@@ -403,6 +403,11 @@ xargs maxSize rawSystemFun fixedArgs bigArgs =
 -- * File Utilities
 -- ------------------------------------------------------------
 
+----------------
+-- Finding files
+
+-- | Find a file by looking in a search path. The file path must match exactly.
+--
 findFile :: [FilePath]    -- ^search locations
          -> FilePath      -- ^File Name
          -> IO FilePath
@@ -412,6 +417,10 @@ findFile searchPath fileName =
     | path <- nub searchPath]
   >>= maybe (die $ fileName ++ " doesn't exist") return
 
+-- | Find a file by looking in a search path with one of a list of possible
+-- file extensions. The file base name should be given and it will be tried
+-- with each of the extensions in each element of the search path.
+--
 findFileWithExtension :: [String]
                       -> [FilePath]
                       -> FilePath
@@ -422,6 +431,9 @@ findFileWithExtension extensions searchPath baseName =
     | path <- nub searchPath
     , ext <- nub extensions ]
 
+-- | Like 'findFileWithExtension' but returns which element of the search path
+-- the file was found in, and the file path relative to that base directory.
+--
 findFileWithExtension' :: [String]
                        -> [FilePath]
                        -> FilePath
@@ -440,6 +452,10 @@ findFirstFile file = findFirst
                                 then return (Just x)
                                 else findFirst xs
 
+-- | Finds the files corresponding to a list of Haskell module names.
+--
+-- As 'findModuleFile' but for a list of module names.
+--
 findModuleFiles :: [FilePath]   -- ^ build prefix (location of objects)
                 -> [String]     -- ^ search suffixes
                 -> [ModuleName] -- ^ modules
@@ -447,6 +463,11 @@ findModuleFiles :: [FilePath]   -- ^ build prefix (location of objects)
 findModuleFiles searchPath extensions moduleNames =
   mapM (findModuleFile searchPath extensions) moduleNames
 
+-- | Find the file corresponding to a Haskell module name.
+--
+-- This is similar to 'findFileWithExtension'' but specialised to a module
+-- name. The function fails if the file corresponding to the module is missing.
+--
 findModuleFile :: [FilePath]  -- ^ build prefix (location of objects)
                -> [String]    -- ^ search suffixes
                -> ModuleName  -- ^ module
@@ -460,6 +481,12 @@ findModuleFile searchPath extensions moduleName =
                   ++ " with any suffix: " ++ show extensions
                   ++ " in the search path: " ++ show searchPath
 
+-- | List all the files in a directory and all subdirectories.
+--
+-- The order places files in sub-directories after all the files in their
+-- parent directories. The list is generated lazily so is not well defined if
+-- the source directory structure changes before the list is used.
+--
 getDirectoryContentsRecursive :: FilePath -> IO [FilePath]
 getDirectoryContentsRecursive topdir = recurseDirectories [""]
   where
@@ -484,6 +511,9 @@ getDirectoryContentsRecursive topdir = recurseDirectories [""]
         ignore ['.']      = True
         ignore ['.', '.'] = True
         ignore _          = False
+
+----------------
+-- File globbing
 
 data FileGlob
    -- | No glob at all, just an ordinary file
@@ -524,30 +554,40 @@ matchDirFileGlob dir filepath = case parseFileGlob filepath of
                     ++ "' does not match any files."
       matches -> return matches
 
-{-# DEPRECATED smartCopySources
-      "Use findModuleFiles and copyFiles or installOrdinaryFiles" #-}
-smartCopySources :: Verbosity -> [FilePath] -> FilePath
-                 -> [ModuleName] -> [String] -> IO ()
-smartCopySources verbosity searchPath targetDir moduleNames extensions =
-      findModuleFiles searchPath extensions moduleNames
-  >>= copyFiles verbosity targetDir
+----------------------------------------
+-- Copying and installing files and dirs
 
+-- | Same as 'createDirectoryIfMissing' but logs at higher verbosity levels.
+--
 createDirectoryIfMissingVerbose :: Verbosity -> Bool -> FilePath -> IO ()
 createDirectoryIfMissingVerbose verbosity parentsToo dir = do
   let msgParents = if parentsToo then " (and its parents)" else ""
   info verbosity ("Creating " ++ dir ++ msgParents)
   createDirectoryIfMissing parentsToo dir
 
+-- | Copies a file without copying file permissions. The target file is created
+-- with default permissions. Any existing target file is replaced.
+--
+-- At higher verbosity levels it logs an info message.
+--
 copyFileVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileVerbose verbosity src dest = do
   info verbosity ("copy " ++ src ++ " to " ++ dest)
   copyFile src dest
 
+-- | Install an ordinary file. This is like a file copy but the permissions
+-- are set appropriately for an installed file. On Unix it is \"-rw-r--r--\"
+-- while on Windows it uses the default permissions for the target directory.
+--
 installOrdinaryFile :: Verbosity -> FilePath -> FilePath -> IO ()
 installOrdinaryFile verbosity src dest = do
   info verbosity ("Installing " ++ src ++ " to " ++ dest)
   copyOrdinaryFile src dest
 
+-- | Install an executable file. This is like a file copy but the permissions
+-- are set appropriately for an installed file. On Unix it is \"-rwxr-xr-x\"
+-- while on Windows it uses the default permissions for the target directory.
+--
 installExecutableFile :: Verbosity -> FilePath -> FilePath -> IO ()
 installExecutableFile verbosity src dest = do
   info verbosity ("Installing executable " ++ src ++ " to " ++ dest)
@@ -587,6 +627,8 @@ copyFiles verbosity targetDir srcFiles = do
                in copyFileVerbose verbosity src dest
             | (srcBase, srcFile) <- srcFiles ]
 
+-- | This is like 'copyFiles' but uses 'installOrdinaryFile'.
+--
 installOrdinaryFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
 installOrdinaryFiles verbosity targetDir srcFiles = do
 
@@ -600,11 +642,26 @@ installOrdinaryFiles verbosity targetDir srcFiles = do
                in installOrdinaryFile verbosity src dest
             | (srcBase, srcFile) <- srcFiles ]
 
+-- | This installs all the files in a directory to a target location,
+-- preserving the directory layout. All the files are assumed to be ordinary
+-- rather than executable files.
+--
 installDirectoryContents :: Verbosity -> FilePath -> FilePath -> IO ()
 installDirectoryContents verbosity srcDir destDir = do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   srcFiles <- getDirectoryContentsRecursive srcDir
   installOrdinaryFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
+
+---------------------------------
+-- Deprecated file copy functions
+
+{-# DEPRECATED smartCopySources
+      "Use findModuleFiles and copyFiles or installOrdinaryFiles" #-}
+smartCopySources :: Verbosity -> [FilePath] -> FilePath
+                 -> [ModuleName] -> [String] -> IO ()
+smartCopySources verbosity searchPath targetDir moduleNames extensions =
+      findModuleFiles searchPath extensions moduleNames
+  >>= copyFiles verbosity targetDir
 
 {-# DEPRECATED copyDirectoryRecursiveVerbose
       "You probably want installDirectoryContents instead" #-}
@@ -613,6 +670,9 @@ copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   srcFiles <- getDirectoryContentsRecursive srcDir
   copyFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
+
+---------------------------
+-- Temporary files and dirs
 
 -- | Use a temporary filename that doesn't already exist.
 --
@@ -634,6 +694,9 @@ withTempDirectory verbosity tmpDir =
   Exception.bracket_
     (createDirectoryIfMissingVerbose verbosity True tmpDir)
     (removeDirectoryRecursive tmpDir)
+
+-----------------------------------
+-- Safely reading and writing files
 
 -- | Gets the contents of a file, but guarantee that it gets closed.
 --
