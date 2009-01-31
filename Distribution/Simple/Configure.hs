@@ -62,6 +62,7 @@ module Distribution.Simple.Configure (configure,
                                       configCompiler, configCompilerAux,
                                       ccLdOptionsBuildInfo,
                                       tryGetConfigStateFile,
+                                      checkForeignDeps,
                                      )
     where
 
@@ -406,7 +407,6 @@ configure (pkg_descr0, pbi) cfg
                                          ("this compiler does not support " ++
                                           "--enable-split-objs; ignoring")
                                     return False
-        checkForeignDeps pkg_descr' programsConfig''' verbosity
 
         let lbi = LocalBuildInfo{
                     installDirTemplates = installDirs,
