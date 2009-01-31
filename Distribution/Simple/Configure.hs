@@ -721,14 +721,34 @@ checkForeignDeps pkg progCfg verbosity = do
            `catchIO`   (\_ -> return False)
            `catchExit` (\_ -> return False)
 
-        -- TODO: make error messages more user-friendly
-        -- (guess the most probable causes of the problems,
-        -- e.g. suggest that *-dev package is probably missing etc)
-        explainErrors hdr libs = do
-            case hdr of
-              Just h -> warn verbosity $ "Required C header not found: " ++ h
-              _      -> return ()
-            mapM_ (warn verbosity) $ map ("Required C library not found: " ++) libs
+        explainErrors Nothing [] = return ()
+        explainErrors hdr libs   = die $ unlines $
+             (if plural then "Missing dependencies on foreign libraries:"
+                        else "Missing dependency on a foreign library:")
+           : case hdr of
+               Nothing -> []
+               Just h  -> ["* Missing header file: " ++ h ]
+          ++ case libs of
+               []    -> []
+               [lib] -> ["* Missing C library: " ++ lib]
+               _     -> ["* Missing C libraries: " ++ intercalate ", " libs]
+          ++ [if plural then messagePlural else messageSingular]
+          where
+            plural = length libs >= 2
+            messageSingular =
+                 "This problem can usually be solved by installing the system "
+              ++ "package that provides this library (you may need the "
+              ++ "\"-dev\" version). If the library is already installed "
+              ++ "but in a non-standard location then you can use the flags "
+              ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
+              ++ "where it is."
+            messagePlural =
+                 "This problem can usually be solved by installing the system "
+              ++ "packages that provide these libraries (you may need the "
+              ++ "\"-dev\" versions). If the libraries are already installed "
+              ++ "but in a non-standard location then you can use the flags "
+              ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
+              ++ "where they are."
 
 -- | Output package check warnings and errors. Exit if any errors.
 checkPackageProblems :: Verbosity
