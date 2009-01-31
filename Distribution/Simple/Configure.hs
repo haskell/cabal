@@ -660,10 +660,10 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
 
 checkForeignDeps :: PackageDescription -> ProgramConfiguration -> Verbosity -> IO ()
 checkForeignDeps pkg progCfg verbosity = do
-  ifBuildsWith allHeaders (commonCppArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
+  ifBuildsWith allHeaders (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
            (return ())
            (do missingLibs <- findMissingLibs
-               missingHdr  <- findOffendingHdr 
+               missingHdr  <- findOffendingHdr
                explainErrors missingHdr missingLibs)
       where
         allHeaders = collectField PD.includes
@@ -674,8 +674,8 @@ checkForeignDeps pkg progCfg verbosity = do
             if ok then success else failure
 
         -- NOTE: if some package-local header has errors,
-        -- we will report that this header is missing. 
-        -- Maybe additional tests for local headers are needed 
+        -- we will report that this header is missing.
+        -- Maybe additional tests for local headers are needed
         -- for better diagnostics
         findOffendingHdr =
             ifBuildsWith allHeaders cppArgs
@@ -686,27 +686,29 @@ checkForeignDeps pkg progCfg verbosity = do
               go (hdrs:hdrsInits) = do
                     ifBuildsWith hdrs cppArgs
                                  (go hdrsInits)
-                                 (return . Just . last $ hdrs) 
+                                 (return . Just . last $ hdrs)
 
-              cppArgs = "-c":commonCppArgs -- don't try to link
+              cppArgs = "-c":commonCcArgs -- don't try to link
 
         findMissingLibs = ifBuildsWith [] (makeLdArgs allLibs)
                                        (return [])
                                        (filterM (fmap not . libExists) allLibs)
-                       
+
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
-        commonCppArgs = [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
+        commonCcArgs  = [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
+                     ++ collectField PD.cppOptions
+                     ++ collectField PD.ccOptions
         commonLdArgs  = [ "-L" ++ dir | dir <- collectField PD.extraLibDirs ]
-        
+                     ++ collectField PD.ldOptions
         makeLdArgs libs = [ "-l"++lib | lib <- libs ] ++ commonLdArgs
 
         makeProgram hdrs = unlines $
                            [ "#include \""  ++ hdr ++ "\"" | hdr <- hdrs ] ++
                            ["int main(int argc, char** argv) { return 0; }"]
-        
-        collectField f = nub $ concatMap f bi
-            where bi = allBuildInfo pkg
+
+        collectField f = concatMap f allBi
+        allBi = allBuildInfo pkg
 
         builds program args = do
             tempDir <- getTemporaryDirectory
