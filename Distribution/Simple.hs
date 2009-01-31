@@ -99,10 +99,10 @@ import Distribution.Simple.Register     ( register, unregister,
                                           removeRegScripts
                                         )
 
-import Distribution.Simple.Configure(getPersistBuildConfig,
-                                     maybeGetPersistBuildConfig,
-                                     checkPersistBuildConfig,
-                                     configure, writePersistBuildConfig)
+import Distribution.Simple.Configure
+         ( getPersistBuildConfig, maybeGetPersistBuildConfig
+         , writePersistBuildConfig, checkPersistBuildConfig
+         , configure, checkForeignDeps )
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( srcPref)
@@ -427,6 +427,7 @@ simpleUserHooks :: UserHooks
 simpleUserHooks =
     emptyUserHooks {
        confHook  = configure,
+       postConf  = finalChecks,
        buildHook = defaultBuildHook,
        makefileHook = defaultMakefileHook,
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
@@ -438,6 +439,12 @@ simpleUserHooks =
        regHook   = defaultRegHook,
        unregHook = \p l _ f -> unregister p l f
       }
+  where
+    finalChecks _args flags pkg_descr lbi =
+      checkForeignDeps pkg_descr progConf verbosity
+      where
+        verbosity = fromFlag (configVerbosity flags)
+        progConf  = withPrograms lbi
 
 -- | Basic autoconf 'UserHooks':
 --
@@ -466,13 +473,18 @@ defaultUserHooks = autoconfUserHooks {
     -- This is the annoying old version that only runs configure if it exists.
     -- It's here for compatibility with existing Setup.hs scripts. See:
     -- http://hackage.haskell.org/trac/hackage/ticket/165
-    where oldCompatPostConf args flags _ _
+    where oldCompatPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
                    noExtraFlags args
                    confExists <- doesFileExist "configure"
                    when confExists $
                        rawSystemExit verbosity "sh" $
                        "configure" : configureArgs backwardsCompatHack flags
+
+                   pbi <- getHookedBuildInfo verbosity
+                   let pkg_descr' = updatePackageDescription pbi pkg_descr
+                   postConf simpleUserHooks args flags pkg_descr' lbi
+
           backwardsCompatHack = True
 
 autoconfUserHooks :: UserHooks
@@ -491,7 +503,7 @@ autoconfUserHooks
        preUnreg    = readHook regVerbosity
       }
     where defaultPostConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO ()
-          defaultPostConf args flags _ _
+          defaultPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
                    noExtraFlags args
                    confExists <- doesFileExist "configure"
@@ -500,18 +512,28 @@ autoconfUserHooks
                             "configure"
                           : configureArgs backwardsCompatHack flags
                      else die "configure script not found."
+
+                   pbi <- getHookedBuildInfo verbosity
+                   let pkg_descr' = updatePackageDescription pbi pkg_descr
+                   postConf simpleUserHooks args flags pkg_descr' lbi
+
           backwardsCompatHack = False
 
           readHook :: (a -> Flag Verbosity) -> Args -> a -> IO HookedBuildInfo
           readHook get_verbosity a flags = do
               noExtraFlags a
-              maybe_infoFile <- defaultHookedPackageDesc
-              case maybe_infoFile of
-                  Nothing       -> return emptyHookedBuildInfo
-                  Just infoFile -> do
-                      let verbosity = fromFlag (get_verbosity flags)
-                      info verbosity $ "Reading parameters from " ++ infoFile
-                      readHookedBuildInfo verbosity infoFile
+              getHookedBuildInfo verbosity
+            where
+              verbosity = fromFlag (get_verbosity flags)
+
+getHookedBuildInfo :: Verbosity -> IO HookedBuildInfo
+getHookedBuildInfo verbosity = do
+  maybe_infoFile <- defaultHookedPackageDesc
+  case maybe_infoFile of
+    Nothing       -> return emptyHookedBuildInfo
+    Just infoFile -> do
+      info verbosity $ "Reading parameters from " ++ infoFile
+      readHookedBuildInfo verbosity infoFile
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()
