@@ -96,7 +96,7 @@ import Data.Char (toLower)
 import Data.List (partition, isPrefixOf)
 import Data.Maybe (isNothing, catMaybes)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
-import System.Directory (doesFileExist, doesDirectoryExist)
+import System.Directory (doesFileExist)
 import Distribution.Verbosity (Verbosity)
 import System.FilePath
          ( (</>), (<.>), takeDirectory, dropExtension, isAbsolute )
@@ -111,20 +111,16 @@ sdist :: PackageDescription -- ^information from the tarball
 sdist pkg mb_lbi flags mkTmpDir pps = do
   let distPref = fromFlag $ sDistDistPref flags
       targetPref = distPref
-      tmpDir = mkTmpDir distPref
+      tmpTargetDir = mkTmpDir distPref
 
   -- do some QA
   printPackageProblems verbosity pkg
 
-  exists <- doesDirectoryExist tmpDir
-  when exists $
-    die $ "Source distribution already in place. please move or remove: "
-       ++ tmpDir
-
   when (isNothing mb_lbi) $
     warn verbosity "Cannot run preprocessors. Run 'configure' command first."
 
-  withTempDirectory verbosity tmpDir $ do
+  createDirectoryIfMissingVerbose verbosity True tmpTargetDir
+  withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
 
     date <- toCalendarTime =<< getClockTime
     let pkg' | snapshot  = snapshotPackage date pkg
