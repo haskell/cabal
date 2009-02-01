@@ -177,8 +177,8 @@ import System.Directory (getTemporaryDirectory)
 
 import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile )
-import Distribution.Compat.TempFile (openTempFile,
-                                     openNewBinaryFile)
+import Distribution.Compat.TempFile
+         ( openTempFile, openNewBinaryFile, createTempDirectory )
 import Distribution.Compat.Exception (catchIO, onException)
 #if mingw32_HOST_OS || mingw32_TARGET_OS
 import Distribution.Compat.Exception (throwIOIO)
@@ -689,11 +689,11 @@ withTempFile tmpDir template action =
 --
 -- Use this exact given dir which must not already exist.
 --
-withTempDirectory :: Verbosity -> FilePath -> IO a -> IO a
-withTempDirectory verbosity tmpDir =
-  Exception.bracket_
-    (createDirectoryIfMissingVerbose verbosity True tmpDir)
-    (removeDirectoryRecursive tmpDir)
+withTempDirectory :: Verbosity -> FilePath -> String -> (FilePath -> IO a) -> IO a
+withTempDirectory _verbosity targetDir template =
+  Exception.bracket
+    (createTempDirectory targetDir template)
+    (removeDirectoryRecursive)
 
 -----------------------------------
 -- Safely reading and writing files
