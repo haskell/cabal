@@ -115,8 +115,7 @@ haddock pkg_descr _ _ haddockFlags
     && not (fromFlag $ haddockExecutables haddockFlags) =
       warn (fromFlag $ haddockVerbosity haddockFlags) $
            "No documentation was generated as this package does not contain "
-        ++ "a library. Perhaps you want to use the haddock command with the "
-        ++ "--executables."
+        ++ "a library. Perhaps you want to use the --executables flag."
 
 haddock pkg_descr lbi suffixes flags = do
     let distPref = fromFlag (haddockDistPref flags)
