@@ -82,7 +82,7 @@ import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as Cabal
          ( installCommand, InstallFlags(..), emptyInstallFlags )
 import Distribution.Simple.Utils
-         ( defaultPackageDesc, rawSystemExit, withTempDirectory, comparing )
+         ( defaultPackageDesc, rawSystemExit, comparing )
 import Distribution.Simple.InstallDirs
          ( fromPathTemplate, toPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
@@ -104,7 +104,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, die, intercalate )
 import Distribution.Client.Utils
-         ( inDir, mergeBy, MergeResult(..) )
+         ( inDir, mergeBy, MergeResult(..), withTempDirectory )
 import Distribution.System
          ( Platform(Platform), buildPlatform, OS(Windows), buildOS )
 import Distribution.Text
@@ -525,19 +525,19 @@ installAvailablePackage _ _ LocalUnpackedPackage installPkg =
 installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg =
   onFailure DownloadFailed $ do
     pkgPath <- fetchPackage verbosity repo pkgid
-    tmp <- getTemporaryDirectory
-    let tmpDirPath = tmp </> ("TMP" ++ display pkgid)
-        path = tmpDirPath </> display pkgid
-    onFailure UnpackFailed $ withTempDirectory verbosity tmpDirPath $ do
-      info verbosity $ "Extracting " ++ pkgPath
-                    ++ " to " ++ tmpDirPath ++ "..."
-      extractTarGzFile tmpDirPath pkgPath
-      let descFilePath = tmpDirPath </> display pkgid
-                                    </> display (packageName pkgid) <.> "cabal"
-      exists <- doesFileExist descFilePath
-      when (not exists) $
-        die $ "Package .cabal file not found: " ++ show descFilePath
-      installPkg (Just path)
+    onFailure UnpackFailed $ do
+      tmp <- getTemporaryDirectory
+      withTempDirectory tmp (display pkgid) $ \tmpDirPath -> do
+        info verbosity $ "Extracting " ++ pkgPath
+                      ++ " to " ++ tmpDirPath ++ "..."
+        extractTarGzFile tmpDirPath pkgPath
+        let unpackedPath = tmpDirPath </> display pkgid
+            descFilePath = unpackedPath
+                       </> display (packageName pkgid) <.> "cabal"
+        exists <- doesFileExist descFilePath
+        when (not exists) $
+          die $ "Package .cabal file not found: " ++ show descFilePath
+        installPkg (Just unpackedPath)
 
 installUnpackedPackage :: Verbosity
                    -> SetupScriptOptions
