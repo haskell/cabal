@@ -180,9 +180,6 @@ import Distribution.Compat.CopyFile
 import Distribution.Compat.TempFile
          ( openTempFile, openNewBinaryFile, createTempDirectory )
 import Distribution.Compat.Exception (catchIO, onException)
-#if mingw32_HOST_OS || mingw32_TARGET_OS
-import Distribution.Compat.Exception (throwIOIO)
-#endif
 import Distribution.Verbosity
 
 -- We only get our own version number when we're building with ourselves
@@ -735,21 +732,7 @@ writeFileAtomic targetFile content = do
   (tmpFile, tmpHandle) <- openNewBinaryFile targetDir template
   do  hPutStr tmpHandle content
       hClose tmpHandle
-#if mingw32_HOST_OS || mingw32_TARGET_OS
       renameFile tmpFile targetFile
-        -- If the targetFile exists then renameFile will fail
-        `catchIO` \err -> do
-          exists <- doesFileExist targetFile
-          if exists
-            then do removeFile targetFile
-                    -- Big fat hairy race condition
-                    renameFile tmpFile targetFile
-                    -- If the removeFile succeeds and the renameFile fails
-                    -- then we've lost the atomic property.
-            else throwIOIO err
-#else
-      renameFile tmpFile targetFile
-#endif
    `onException` do hClose tmpHandle
                     removeFile tmpFile
   where
