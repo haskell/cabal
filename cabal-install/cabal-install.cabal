@@ -67,6 +67,7 @@ Executable cabal
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Win32SelfUpgrade
+        Distribution.Compat.TempFile
         Paths_cabal_install
 
     build-depends: base >= 2 && < 4,

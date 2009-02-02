@@ -13,9 +13,11 @@ import System.IO.Error
          ( isDoesNotExistError )
 import System.Directory
          ( removeFile, renameFile, doesFileExist, getModificationTime
-         , getCurrentDirectory, setCurrentDirectory )
+         , getCurrentDirectory, setCurrentDirectory, removeDirectoryRecursive )
+import Distribution.Compat.TempFile
+         ( createTempDirectory )
 import qualified Control.Exception as Exception
-         ( handle, throwIO, evaluate, finally )
+         ( handle, throwIO, evaluate, finally, bracket )
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
@@ -91,6 +93,13 @@ rewriteFile path newContent =
   where
     mightNotExist e | isDoesNotExistError e = writeFile path newContent
                     | otherwise             = ioError e
+
+--TODO: replace with function from Cabal utils in next version
+withTempDirectory :: FilePath -> String -> (FilePath -> IO a) -> IO a
+withTempDirectory targetDir template =
+  Exception.bracket
+    (createTempDirectory targetDir template)
+    (removeDirectoryRecursive)
 
 -- | Executes the action in the specified directory.
 inDir :: Maybe FilePath -> IO () -> IO ()
