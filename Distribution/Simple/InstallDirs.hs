@@ -283,7 +283,7 @@ substituteTemplates pkgId compilerId dirs = dirs'
       datadir    = subst datadir    prefixBinLibVars,
       datasubdir = subst datasubdir [],
       docdir     = subst docdir     prefixBinLibDataVars,
-      mandir     = subst docdir     (prefixBinLibDataVars ++ [docdirVar]),
+      mandir     = subst mandir     (prefixBinLibDataVars ++ [docdirVar]),
       htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
       haddockdir = subst haddockdir (prefixBinLibDataVars ++
                                       [docdirVar, htmldirVar])
