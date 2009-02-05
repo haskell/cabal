@@ -73,8 +73,8 @@ setFileMode name m =
     throwErrnoIfMinus1_                   name (c_chmod s m)
 #endif
 #else
-setFileOrdinary   = return ()
-setFileExecutable = return ()
+setFileOrdinary   _ = return ()
+setFileExecutable _ = return ()
 #endif
 
 copyFile :: FilePath -> FilePath -> IO ()
