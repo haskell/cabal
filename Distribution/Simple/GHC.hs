@@ -473,7 +473,7 @@ build pkg_descr lbi verbosity = do
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
       ifSharedLib = when (withSharedLib lbi)
-      ifGHCiLib = when (withGHCiLib lbi)
+      ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
 
   -- Build lib
   withLib pkg_descr () $ \lib -> do
