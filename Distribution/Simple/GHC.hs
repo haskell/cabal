@@ -696,12 +696,13 @@ hackThreadedFlag verbosity comp prof bi
   | otherwise              = do
     warn verbosity $ "The ghc flag '-threaded' is not compatible with "
                   ++ "profiling in ghc-6.8 and older. It will be disabled."
-    return bi {
-      options = [ (hc, filter (/= "-threaded") opts)
-                | (hc, opts) <- options bi ]
-    }
+    return bi { options = filterHcOptions (/= "-threaded") (options bi) }
   where
     mustFilterThreaded = prof && compilerVersion comp < Version [6, 10] []
+                      && "-threaded" `elem` hcOptions GHC bi
+    filterHcOptions p hcoptss =
+      [ (hc, if hc == GHC then filter p opts else opts)
+      | (hc, opts) <- hcoptss ]
 
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
