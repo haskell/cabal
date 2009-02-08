@@ -20,14 +20,14 @@ module Distribution.Client.Unpack (
 import Distribution.Package ( packageId, Dependency(..) )
 import Distribution.Simple.PackageIndex as PackageIndex (lookupDependency)
 import Distribution.Simple.Setup(fromFlag, fromFlagOrDefault)
-import Distribution.Simple.Utils(info, notice)
+import Distribution.Simple.Utils(info, notice, die)
 import Distribution.Text(display)
 import Distribution.Version (VersionRange(..))
 
 import Distribution.Client.Setup(UnpackFlags(unpackVerbosity,
                                              unpackDestDir))
 import Distribution.Client.Types(UnresolvedDependency(..),
-                                 Repo, AvailablePackageSource(RepoTarballPackage),
+                                 Repo, AvailablePackageSource(..),
                                  AvailablePackage(AvailablePackage),
                                  AvailablePackageDb(AvailablePackageDb))
 import Distribution.Client.Fetch(fetchPackage)
@@ -57,15 +57,24 @@ unpack flags repos deps
 
   unless (null prefix) $
          createDirectoryIfMissing True prefix
-  sequence_
-      [ do pkgPath <- fetchPackage verbosity repo pkgid
-           let pkgdir = display pkgid
-           notice verbosity $ "Unpacking " ++ display pkgid ++ "..."
-           info verbosity $ "Extracting " ++ pkgPath
-                    ++ " to " ++ prefix </> pkgdir ++ "..."
-           extractTarGzFile prefix pkgPath
-      | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- pkgs ]
 
+  flip mapM_ pkgs $ \pkg ->
+      case pkg of
+
+        Left (Dependency name ver) -> 
+            die $ "There is no available version of " ++ display name 
+                  ++ " that satisfies " ++ display ver
+
+        Right (AvailablePackage pkgid _ (RepoTarballPackage repo)) -> do
+                 pkgPath <- fetchPackage verbosity repo pkgid
+                 let pkgdir = display pkgid
+                 notice verbosity $ "Unpacking " ++ display pkgid ++ "..."
+                 info verbosity $ "Extracting " ++ pkgPath
+                          ++ " to " ++ prefix </> pkgdir ++ "..."
+                 extractTarGzFile prefix pkgPath
+
+        Right (AvailablePackage _ _ LocalUnpackedPackage) -> 
+            error "Distribution.Client.Unpack.unpack: the impossible happened."
     where 
       verbosity = fromFlag (unpackVerbosity flags)
       prefix = fromFlagOrDefault "" (unpackDestDir flags)
@@ -73,9 +82,9 @@ unpack flags repos deps
 
 resolvePackages :: AvailablePackageDb
                    -> [Dependency]
-                   -> [AvailablePackage]
+                   -> [Either Dependency AvailablePackage]
 resolvePackages (AvailablePackageDb available prefs) deps =
-    map (maximumBy (comparing packageId) . candidates) deps
+    map (\d -> best d (candidates d)) deps
     where
       candidates dep@(Dependency name ver) =
           let [x,y] = map (PackageIndex.lookupDependency available)
@@ -84,3 +93,6 @@ resolvePackages (AvailablePackageDb available prefs) deps =
                          `IntersectVersionRanges` ver)
                       , dep ]
           in if null x then y else x
+      best d [] = Left d
+      best _ xs = Right $ maximumBy (comparing packageId) xs
+
