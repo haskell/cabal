@@ -48,8 +48,8 @@ updateRepo :: Verbosity -> Repo -> IO ()
 updateRepo verbosity repo = case repoKind repo of
   Right LocalRepo -> return ()
   Left remoteRepo -> do
-    notice verbosity $ "Downloading package list from server '"
-                    ++ show (remoteRepoURI remoteRepo) ++ "'"
+    notice verbosity $ "Downloading the latest package list from "
+                    ++ remoteRepoName remoteRepo
     indexPath <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
     BS.writeFileAtomic (dropExtension indexPath) . GZip.decompress
                                                =<< BS.readFile indexPath
