@@ -141,7 +141,7 @@ fetchPackage :: Verbosity -> Repo -> PackageIdentifier -> IO String
 fetchPackage verbosity repo pkgid = do
   fetched <- doesFileExist (packageFile repo pkgid)
   if fetched
-    then do notice verbosity $ "'" ++ display pkgid ++ "' is cached."
+    then do info verbosity $ display pkgid ++ " has already been downloaded."
             return (packageFile repo pkgid)
     else do setupMessage verbosity "Downloading" pkgid
             downloadPackage verbosity repo pkgid
