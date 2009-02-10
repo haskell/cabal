@@ -14,7 +14,7 @@ import Network.Browser
          ( Proxy (..), Authority (..), browse
          , setOutHandler, setErrHandler, setProxy, request)
 import Control.Monad
-         ( mplus, join )
+         ( mplus, join, liftM2 )
 import qualified Data.ByteString.Lazy as ByteString
 import Data.ByteString.Lazy (ByteString)
 #ifdef WIN32
@@ -27,9 +27,8 @@ import Control.Exception
          ( handle, bracket )
 import Foreign
          ( toBool, Storable(peek, sizeOf), castPtr, alloca )
-#else
-import System.Environment (getEnvironment)
 #endif
+import System.Environment (getEnvironment)
 
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
@@ -44,10 +43,10 @@ import qualified System.FilePath.Posix as FilePath.Posix
 -- proxy settings hiding all this system-dependent stuff below.
 
 -- try to read the system proxy settings on windows or unix
-proxyString :: IO (Maybe String)
+proxyString, envProxyString, registryProxyString :: IO (Maybe String)
 #ifdef WIN32
 -- read proxy settings from the windows registry
-proxyString = handle (\_ -> return Nothing) $
+registryProxyString = handle (\_ -> return Nothing) $
   bracket (regOpenKey hive path) regCloseKey $ \hkey -> do
     enable <- fmap toBool $ regQueryValueDWORD hkey "ProxyEnable"
     if enable
@@ -67,11 +66,16 @@ proxyString = handle (\_ -> return Nothing) $
       regQueryValueEx hkey name (castPtr ptr) (sizeOf (undefined :: DWORD))
       peek ptr
 #else
+registryProxyString = return Nothing
+#endif
+
 -- read proxy settings by looking for an env var
-proxyString = do
+envProxyString = do
   env <- getEnvironment
   return (lookup "http_proxy" env `mplus` lookup "HTTP_PROXY" env)
-#endif
+
+proxyString = liftM2 mplus envProxyString registryProxyString
+
 
 -- |Get the local proxy settings  
 proxy :: Verbosity -> IO Proxy
