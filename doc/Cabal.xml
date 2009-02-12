@@ -596,12 +596,16 @@ Executable program2
                 normally be either:
                 <itemizedlist>
 	              <listitem>
-	                A <literal>mailto:</literal> URL, eg for a person or a
-	                mailing list.
-	              </listitem>
-	              <listitem>
-	                An <literal>http:</literal> (or <literal>https:</literal>)
-	                URL for an online bug tracking system.
+                        <para>
+                          A <literal>mailto:</literal> URL, eg for a person or a
+                          mailing list.
+                        </para>
+                      </listitem>
+                      <listitem>
+                        <para>
+                          An <literal>http:</literal> (or <literal>https:</literal>)
+                          URL for an online bug tracking system.
+                        </para>
 	              </listitem>
 	            </itemizedlist>
               For example Cabal itself uses a web-based bug tracking system
@@ -1611,14 +1615,14 @@ source-repository this
               The name of the source control system used for this repository.
               The currently recognised types are:
               <itemizedlist>
-	              <listitem>darcs</listitem>
-	              <listitem>git</listitem>
-	              <listitem>svn</listitem>
-	              <listitem>cvs</listitem>
-	              <listitem>mercurial (or alias hg)</listitem>
-	              <listitem>bazaar (or alias bzr)</listitem>
-	              <listitem>arch</listitem>
-	              <listitem>monotone</listitem>
+	              <listitem><para>darcs</para></listitem>
+	              <listitem><para>git</para></listitem>
+	              <listitem><para>svn</para></listitem>
+	              <listitem><para>cvs</para></listitem>
+	              <listitem><para>mercurial (or alias hg)</para></listitem>
+	              <listitem><para>bazaar (or alias bzr)</para></listitem>
+	              <listitem><para>arch</para></listitem>
+	              <listitem><para>monotone</para></listitem>
 	            </itemizedlist>
             </para>
             <para>
@@ -1637,13 +1641,13 @@ source-repository this
               depends on the repository type. For example:
               <itemizedlist>
 	              <listitem>
-	                for darcs: <literal>http://code.haskell.org/foo/</literal>
+	                <para>for darcs: <literal>http://code.haskell.org/foo/</literal></para>
 	              </listitem>
 	              <listitem>
-	                for git: <literal>git://github.com/foo/bar.git</literal>
+	                <para>for git: <literal>git://github.com/foo/bar.git</literal></para>
 	              </listitem>
 	              <listitem>
-	                for CVS: <literal>anoncvs@cvs.foo.org:/cvs</literal>
+	                <para>for CVS: <literal>anoncvs@cvs.foo.org:/cvs</literal></para>
 	              </listitem>
 	            </itemizedlist>
             </para>
