@@ -61,6 +61,9 @@ haddock: $(HADDOCK_STAMP)
 $(HADDOCK_STAMP) : $(CONFIG_STAMP) $(BUILD_STAMP)
 	./setup haddock
 
+XMLLINT=xmllint
+XMLLINT_OPTIONS=--nonet --noout --valid
+
 XSLTPROC=xsltproc
 XSLTPROC_HTML_OUTDIR=dist/doc/users-guide/
 XSLTPROC_HTML_CSS=Cabal.css
@@ -70,10 +73,12 @@ XSLTPROC_HTML_PARAMS=\
 	--stringparam base.dir $(XSLTPROC_HTML_OUTDIR) \
 	--stringparam html.stylesheet $(XSLTPROC_HTML_CSS)
 XSLTPROC_HTML_STYLESHEET=http://docbook.sourceforge.net/release/xsl/current/html/chunk.xsl
+XSLTPROC_OPTIONS=--nonet $(XSLTPROC_HTML_PARAMS) $(XSLTPROC_HTML_STYLESHEET)
 
 users-guide: $(USERGUIDE_STAMP)
 $(USERGUIDE_STAMP) : doc/Cabal.xml
-	$(XSLTPROC) $(XSLTPROC_HTML_PARAMS) $(XSLTPROC_HTML_STYLESHEET) $<
+	$(XMLLINT) $(XMLLINT_OPTIONS) $<
+	$(XSLTPROC) $(XSLTPROC_OPTIONS) $<
 	cp doc/$(XSLTPROC_HTML_CSS) $(XSLTPROC_HTML_OUTDIR)
 
 docs: haddock users-guide
