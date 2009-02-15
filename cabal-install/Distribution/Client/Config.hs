@@ -68,7 +68,7 @@ import Distribution.Verbosity
          ( Verbosity, normal )
 
 import Data.List
-         ( partition )
+         ( partition, find )
 import Data.Maybe
          ( fromMaybe )
 import Data.Monoid
@@ -300,37 +300,40 @@ configFieldDescriptions =
 
      toSavedConfig liftGlobalFlag
        (commandOptions globalCommand ParseArgs)
-       ["version", "numeric-version", "config-file"]
-
-  ++ toSavedConfig liftInstallFlag
-       (installOptions ParseArgs)
-       ["dry-run", "reinstall", "only"]
+       ["version", "numeric-version", "config-file"] []
 
   ++ toSavedConfig liftConfigFlag
        (configureOptions ParseArgs)
-       (["scratchdir", "configure-option"] ++ map fieldName installDirsFields)
+       (["builddir", "configure-option"] ++ map fieldName installDirsFields)
+
+        --FIXME: this is only here because viewAsFieldDescr gives us a parser
+        -- that only recognises 'ghc' etc, the case-sensitive flag names, not
+        -- what the normal case-insensitive parser gives us.
+       [simpleField "compiler"
+          (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
+          configHcFlavor (\v flags -> flags { configHcFlavor = v })
+       ]
 
   ++ toSavedConfig liftConfigExFlag
        (configureExOptions ParseArgs)
-       []
+       [] []
 
-      --FIXME: this is only here because viewAsFieldDescr gives us a parser
-      -- that only recognises 'ghc' etc, the case-sensitive flag names, not
-      -- what the normal case-insensitive parser gives us.
-  ++ [liftConfigFlag $ simpleField "compiler"
-       (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
-       configHcFlavor (\v flags -> flags { configHcFlavor = v })]
+  ++ toSavedConfig liftInstallFlag
+       (installOptions ParseArgs)
+       ["dry-run", "reinstall", "only"] []
 
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
-       ["verbose", "check"]
+       ["verbose", "check"] []
 
   where
-    toSavedConfig lift options excluded =
-      [ lift field
+    toSavedConfig lift options exclusions replacements =
+      [ lift (fromMaybe field replacement)
       | opt <- options
-      , let field = viewAsFieldDescr opt
-      , fieldName field `notElem` excluded ]
+      , let field       = viewAsFieldDescr opt
+            name        = fieldName field
+            replacement = find ((== name) . fieldName) replacements
+      , name `notElem` exclusions ]
     optional = Parse.option mempty . fmap toFlag
 
 -- TODO: next step, make the deprecated fields elicit a warning.
