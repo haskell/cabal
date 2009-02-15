@@ -34,6 +34,8 @@ module Distribution.Client.Setup
 
 import Distribution.Client.Types
          ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..) )
+import Distribution.Client.BuildReports.Types
+         ( ReportLevel(..) )
 
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
@@ -48,6 +50,8 @@ import Distribution.Simple.Setup
          , optionVerbosity, trueArg )
 import Distribution.Simple.Compiler
          ( PackageDB(..) )
+import Distribution.Simple.InstallDirs
+         ( PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Version
          ( Version(Version), VersionRange(..) )
 import Distribution.Package
@@ -459,8 +463,9 @@ data InstallFlags = InstallFlags {
     installReinstall    :: Flag Bool,
     installOnly         :: Flag Bool,
     installRootCmd      :: Flag String,
-    installLogFile      :: Flag FilePath,
-    installBuildReports :: Flag Bool,
+    installSummaryFile  :: [PathTemplate],
+    installLogFile      :: Flag PathTemplate,
+    installBuildReports :: Flag ReportLevel,
     installSymlinkBinDir:: Flag FilePath
   }
 
@@ -471,8 +476,9 @@ defaultInstallFlags = InstallFlags {
     installReinstall    = Flag False,
     installOnly         = Flag False,
     installRootCmd      = mempty,
+    installSummaryFile  = mempty,
     installLogFile      = mempty,
-    installBuildReports = Flag False,
+    installBuildReports = Flag NoReports,
     installSymlinkBinDir= mempty
   }
 
@@ -533,15 +539,24 @@ installOptions showOrParseArgs =
            installSymlinkBinDir (\v flags -> flags { installSymlinkBinDir = v })
            (reqArgFlag "DIR")
 
-      , option [] ["log-builds"]
+      , option [] ["build-summary"]
+          "Save build summaries to file (name template can use $pkgid, $compiler, $os, $arch)"
+          installSummaryFile (\v flags -> flags { installSummaryFile = v })
+          (reqArg' "TEMPLATE" (\x -> [toPathTemplate x]) (map fromPathTemplate))
+
+      , option [] ["build-log"]
           "Log all builds to file (name template can use $pkgid, $compiler, $os, $arch)"
           installLogFile (\v flags -> flags { installLogFile = v })
-          (reqArg' "FILE" toFlag flagToList)
+          (reqArg' "TEMPLATE" (toFlag.toPathTemplate)
+                              (flagToList . fmap fromPathTemplate))
 
-      , option [] ["build-reports"]
-          "Generate detailed build reports. (overrides --log-builds)"
+      , option [] ["remote-build-reporting"]
+          "Generate build reports to send to a remote server (none, anonymous or detailed)."
           installBuildReports (\v flags -> flags { installBuildReports = v })
-          trueArg
+          (reqArg "LEVEL" (readP_to_E (const $ "report level must be 'none', "
+                                            ++ "'anonymous' or 'detailed'")
+                                      (toFlag `fmap` parse))
+                          (flagToList . fmap display))
 
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
@@ -559,6 +574,7 @@ instance Monoid InstallFlags where
     installReinstall    = mempty,
     installOnly         = mempty,
     installRootCmd      = mempty,
+    installSummaryFile  = mempty,
     installLogFile      = mempty,
     installBuildReports = mempty,
     installSymlinkBinDir= mempty
@@ -569,6 +585,7 @@ instance Monoid InstallFlags where
     installReinstall    = combine installReinstall,
     installOnly         = combine installOnly,
     installRootCmd      = combine installRootCmd,
+    installSummaryFile  = combine installSummaryFile,
     installLogFile      = combine installLogFile,
     installBuildReports = combine installBuildReports,
     installSymlinkBinDir= combine installSymlinkBinDir
