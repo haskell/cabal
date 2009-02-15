@@ -27,6 +27,8 @@ module Distribution.Client.Config (
 
 import Distribution.Client.Types
          ( RemoteRepo(..), Username(..), Password(..) )
+import Distribution.Client.BuildReports.Types
+         ( ReportLevel(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
@@ -174,10 +176,15 @@ baseSavedConfig = do
 initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
   cacheDir   <- defaultCacheDir
+  logsDir    <- defaultLogsDir
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
       globalRemoteRepos  = [defaultRemoteRepo]
+    },
+    savedInstallFlags    = mempty {
+      installSummaryFile = [toPathTemplate (logsDir </> "build.log")],
+      installBuildReports= toFlag AnonymousReports
     }
   }
 
