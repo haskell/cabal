@@ -58,6 +58,8 @@ import Distribution.Client.Types as Available
          , Repo(..), ConfiguredPackage(..)
          , BuildResult, BuildFailure(..), BuildSuccess(..)
          , DocsResult(..), TestsResult(..), RemoteRepo(..) )
+import Distribution.Client.BuildReports.Types
+         ( ReportLevel(..) )
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
@@ -84,7 +86,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( defaultPackageDesc, rawSystemExit, comparing )
 import Distribution.Simple.InstallDirs
-         ( fromPathTemplate, toPathTemplate
+         ( PathTemplate, fromPathTemplate, toPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
 import Distribution.Package
          ( PackageName, PackageIdentifier, packageName, packageVersion
@@ -237,17 +239,20 @@ installWithPlanner planner verbosity packageDB repos comp conf
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
-    useDetailedBuildReports = fromFlagOrDefault False (installBuildReports installFlags)
+    useDetailedBuildReports = reportingLevel == DetailedReports
+    reportingLevel = fromFlagOrDefault NoReports (installBuildReports installFlags)
     useLogFile :: FilePath -> Maybe (PackageIdentifier -> FilePath)
     useLogFile logsDir = fmap substLogFileName logFileTemplate
       where
-        logFileTemplate
-          | useDetailedBuildReports = Just $ logsDir </> "$pkgid" <.> "log"
-          | otherwise = flagToMaybe (installLogFile installFlags)
-    substLogFileName path pkg = fromPathTemplate
-                              . substPathTemplate env
-                              . toPathTemplate
-                              $ path
+        logFileTemplate :: Maybe PathTemplate
+        logFileTemplate --TODO: separate policy from mechanism
+          | reportingLevel == DetailedReports
+          = Just $ toPathTemplate $ logsDir </> "$pkgid" <.> "log"
+          | otherwise
+          = flagToMaybe (installLogFile installFlags)
+    substLogFileName template pkg = fromPathTemplate
+                                  . substPathTemplate env
+                                  $ template
       where env = initialPathTemplateEnv (packageId pkg) (compilerId comp)
     dryRun       = fromFlagOrDefault False (installDryRun installFlags)
     miscOptions  = InstallMisc {
