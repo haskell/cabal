@@ -31,9 +31,10 @@ import Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( InstallPlan, PlanPackage )
-import Distribution.Client.Config
-         ( defaultLogsDir )
 
+import Distribution.Simple.InstallDirs
+         ( PathTemplate, fromPathTemplate
+         , initialPathTemplateEnv, substPathTemplate )
 import Distribution.System
          ( Platform(Platform) )
 import Distribution.Compiler
@@ -46,7 +47,7 @@ import Data.List
 import Data.Maybe
          ( catMaybes )
 import System.FilePath
-         ( (</>) )
+         ( (</>), takeDirectory )
 import System.Directory
          ( createDirectoryIfMissing )
 
@@ -75,18 +76,30 @@ storeAnonymous reports = sequence_
       [ (report, repo, remoteRepo)
       | (report, repo@Repo { repoKind = Left remoteRepo }) <- rs ]
 
-storeLocal :: [(BuildReport, Repo)] -> IO ()
-storeLocal reports = do
-  logsDir <- defaultLogsDir
-  let file = logsDir </> "build.log"
-  createDirectoryIfMissing True logsDir
-  appendFile file (concatMap (format . fst) reports)
-  --TODO: make this concurrency safe, either lock the report file or make sure
-  -- the writes for each report are atomic (under 4k and flush at boundaries)
-
+storeLocal :: [PathTemplate] -> [(BuildReport, Repo)] -> IO ()
+storeLocal templates reports = sequence_
+  [ do createDirectoryIfMissing True (takeDirectory file)
+       appendFile file output
+       --TODO: make this concurrency safe, either lock the report file or make
+       --      sure the writes for each report are atomic
+  | (file, reports') <- groupByFileName
+                          [ (reportFileName template report, report)
+                          | template <- templates
+                          , (report, _repo) <- reports ]
+  , let output = concatMap format reports'
+  ]
   where
     format r = '\n' : BuildReport.show r ++ "\n"
 
+    reportFileName template report =
+        fromPathTemplate (substPathTemplate env template)
+      where env = initialPathTemplateEnv
+                    (BuildReport.package  report)
+                    (BuildReport.compiler report)
+
+    groupByFileName = map (\grp@((filename,_):_) -> (filename, map snd grp))
+                    . groupBy (equating  fst)
+                    . sortBy  (comparing fst)
 
 -- ------------------------------------------------------------
 -- * InstallPlan support
