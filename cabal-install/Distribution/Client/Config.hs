@@ -270,7 +270,19 @@ readConfigFile initial file = handleNotExists $
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
 writeConfigFile file comments vals = do
   createDirectoryIfMissing True (takeDirectory file)
-  writeFile file $ showConfigWithComments comments vals ++ "\n"
+  writeFile file $ explanation ++ showConfigWithComments comments vals ++ "\n"
+  where
+    explanation = unlines
+      ["-- This is the configuration file for the 'cabal' command line tool."
+      ,""
+      ,"-- The available configuration options are listed below."
+      ,"-- Some of them have default values listed."
+      ,""
+      ,"-- Lines (like this one) beginning with '--' are comments."
+      ,"-- Be careful with spaces and indentation because they are"
+      ,"-- used to indicate layout for nested sections."
+      ,"",""
+      ]
 
 -- | These are the default values that get used in Cabal if a no value is
 -- given. We use these here to include in comments when we write out the
