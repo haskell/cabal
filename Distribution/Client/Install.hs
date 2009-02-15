@@ -211,11 +211,14 @@ installWithPlanner planner verbosity packageDB repos comp conf
                                        miscOptions configFlags' installFlags
                                        compid pkg mpath (useLogFile logsDir)
 
+        -- build reporting, local and remote
         let buildReports = BuildReports.fromInstallPlan installPlan'
-        BuildReports.storeAnonymous buildReports
-        BuildReports.storeLocal     buildReports
-        when useDetailedBuildReports $
+        BuildReports.storeLocal (installSummaryFile installFlags) buildReports
+        when (reportingLevel >= AnonymousReports) $
+          BuildReports.storeAnonymous buildReports
+        when (reportingLevel == DetailedReports) $
           storeDetailedBuildReports verbosity logsDir buildReports
+
         symlinkBinaries verbosity configFlags installFlags installPlan'
         printBuildFailures installPlan'
 
@@ -239,7 +242,6 @@ installWithPlanner planner verbosity packageDB repos comp conf
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
-    useDetailedBuildReports = reportingLevel == DetailedReports
     reportingLevel = fromFlagOrDefault NoReports (installBuildReports installFlags)
     useLogFile :: FilePath -> Maybe (PackageIdentifier -> FilePath)
     useLogFile logsDir = fmap substLogFileName logFileTemplate
