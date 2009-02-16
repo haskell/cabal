@@ -29,7 +29,7 @@ import qualified Paths_cabal_install
 import Distribution.Package
          ( PackageName(..), packageId, packageVersion )
 import Distribution.Simple.Utils
-         ( notice, comparing )
+         ( warn, notice, comparing )
 import Distribution.Verbosity
          ( Verbosity )
 
@@ -40,6 +40,9 @@ import Data.List (maximumBy)
 
 -- | 'update' downloads the package list from all known servers
 update :: Verbosity -> [Repo] -> IO ()
+update verbosity [] = do
+  warn verbosity $ "No remote package servers have been specified. Usually "
+                ++ "you would have one specified in the config file."
 update verbosity repos = do
   mapM_ (updateRepo verbosity) repos
   checkForSelfUpgrade verbosity repos
