@@ -72,6 +72,13 @@ import System.Time
 -- This is a higher level wrapper used internally in cabal-install.
 --
 getAvailablePackages :: Verbosity -> [Repo] -> IO AvailablePackageDb
+getAvailablePackages verbosity [] = do
+  warn verbosity $ "No remote package servers have been specified. Usually "
+                ++ "you would have one specified in the config file."
+  return AvailablePackageDb {
+    packageIndex       = mempty,
+    packagePreferences = mempty
+  }
 getAvailablePackages verbosity repos = do
   info verbosity "Reading available packages..."
   pkgss <- mapM (readRepoIndex verbosity) repos
