@@ -77,11 +77,11 @@ filepath then it is slightly harder but still possible.
 Unpack Cabal and filepath into separate directories. For example:
 
     tar -xzf filepath-1.1.0.0.tar.gz
-    tar -xzf Cabal-1.6.0.0.tar.gz
+    tar -xzf Cabal-1.6.0.2.tar.gz
 
     # rename to make the following instructions simpler:
     mv filepath-1.1.0.0/ filepath/
-    mv Cabal-1.6.0.0/ Cabal/
+    mv Cabal-1.6.0.2/ Cabal/
 
     cd Cabal
     ghc -i../filepath -cpp --make Setup.hs -o ../filepath/setup
