@@ -22,7 +22,7 @@ GUNZIP=${GUNZIP:-gunzip}
 
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
-CABAL_VER="1.6.0.1"; CABAL_VER_REGEXP="1\.6\."   # == 1.6.*
+CABAL_VER="1.6.0.2"; CABAL_VER_REGEXP="1\.6\."   # == 1.6.*
 HTTP_VER="4000.0.4"; HTTP_VER_REGEXP="4000\.0\.[3456789]"
                                                  # >= 4000.0.3 && < 4000.0.10
 ZLIB_VER="0.5.0.0";  ZLIB_VER_REGEXP="0\.[45]\." # >= 0.4  && < 0.6
@@ -31,13 +31,13 @@ HACKAGE_URL="http://hackage.haskell.org/packages/archive"
 
 die () {
   echo
-  echo "Error:"
+  echo "Error during cabal-install bootstrap:"
   echo $1 >&2
   exit 2
 }
 
 # Check we're in the right directory:
-grep "cabal-install" ./cabal-install.cabal > /dev/null \
+grep "cabal-install" ./cabal-install.cabal > /dev/null 2>&1 \
   || die "The bootstrap.sh script must be run in the cabal-install directory"
 
 ${GHC} --numeric-version > /dev/null \
@@ -58,12 +58,7 @@ ${GHC_PKG} list > ghc-pkg.list \
 need_pkg () {
   PKG=$1
   VER_MATCH=$2
-  if grep " ${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null
-  then
-    return 1
-  else
-    return 0
-  fi
+  ! grep " ${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null 2>&1
 }
 
 info_pkg () {
