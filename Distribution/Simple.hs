@@ -441,10 +441,9 @@ simpleUserHooks =
       }
   where
     finalChecks _args flags pkg_descr lbi =
-      checkForeignDeps pkg_descr progConf verbosity
+      checkForeignDeps pkg_descr lbi verbosity
       where
         verbosity = fromFlag (configVerbosity flags)
-        progConf  = withPrograms lbi
 
 -- | Basic autoconf 'UserHooks':
 --
