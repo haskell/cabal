@@ -64,6 +64,8 @@ import Data.Set (Set)
 import qualified Data.Map as Map
 import qualified Data.Graph as Graph
 import qualified Data.Array as Array
+import Control.Exception
+         ( assert )
 
 -- ------------------------------------------------------------
 -- * Search state types
@@ -445,7 +447,8 @@ finaliseSelectedPackages pref selected constraints =
           case PackageIndex.lookupDependency remainingChoices dep of
             []        -> impossible
             [pkg']    -> pkg'
-            remaining -> maximumBy bestByPref remaining
+            remaining -> assert (checkIsPaired remaining)
+                       $ maximumBy bestByPref remaining
         -- We order candidate packages to pick for a dependency by these
         -- three factors. The last factor is just highest version wins.
         bestByPref =
@@ -460,6 +463,14 @@ finaliseSelectedPackages pref selected constraints =
         -- user's suggested version constraints
         isPreferred p = packageVersion p `withinRange` preferredVersions
           where (PackagePreferences preferredVersions _) = pref (packageName p)
+
+        -- We really only expect to find more than one choice remaining when
+        -- we're finalising a dependency on a paired package.
+        checkIsPaired [p1, p2] =
+          case Constraints.isPaired constraints (packageId p1) of
+            Just p2'   -> packageId p2' == packageId p2
+            Nothing    -> False
+        checkIsPaired _ = False
 
 -- | Improve an existing installation plan by, where possible, swapping
 -- packages we plan to install with ones that are already installed.
