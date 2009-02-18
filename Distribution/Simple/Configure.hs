@@ -725,12 +725,13 @@ checkForeignDeps pkg lbi verbosity = do
 
         builds program args = do
             tempDir <- getTemporaryDirectory
-            withTempFile tempDir ".c" $ \fname hd ->
-              do
-                hPutStrLn hd program
-                hClose hd
+            withTempFile tempDir ".c" $ \cName cHnd ->
+              withTempFile tempDir "" $ \oNname oHnd -> do
+                hPutStrLn cHnd program
+                hClose cHnd
+                hClose oHnd
                 rawSystemProgramStdoutConf verbosity
-                  gccProgram (withPrograms lbi) (fname:args)
+                  gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
                 return True
            `catchIO`   (\_ -> return False)
            `catchExit` (\_ -> return False)
