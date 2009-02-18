@@ -74,8 +74,8 @@ import Distribution.Package
     , packageVersion, Package(..), Dependency(Dependency) )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-    ( InstalledPackageInfo_(package,depends) )
+import qualified Distribution.InstalledPackageInfo as Installed
+    ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
@@ -91,9 +91,9 @@ import Distribution.PackageDescription.Check
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
-    , configureAllKnownPrograms, knownPrograms
+    , configureAllKnownPrograms, knownPrograms, lookupKnownProgram
     , userSpecifyArgss, userSpecifyPaths
-    , lookupKnownProgram, requireProgram, pkgConfigProgram, gccProgram
+    , lookupProgram, requireProgram, pkgConfigProgram, gccProgram
     , rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
@@ -336,7 +336,7 @@ configure (pkg_descr0, pbi) cfg
             bogusDependencies = map inventBogusPackageId (buildDepends pkg_descr)
             bogusPackageSet = PackageIndex.fromList
               [ emptyInstalledPackageInfo {
-                  InstalledPackageInfo.package = bogusPackageId
+                  Installed.package = bogusPackageId
                   -- note that these bogus packages have no other dependencies
                 }
               | bogusPackageId <- bogusDependencies ]
@@ -360,8 +360,8 @@ configure (pkg_descr0, pbi) cfg
                             | (pkg, deps) <- broken ]
 
         let pseudoTopPkg = emptyInstalledPackageInfo {
-                InstalledPackageInfo.package = packageId pkg_descr,
-                InstalledPackageInfo.depends = dep_pkgs
+                Installed.package = packageId pkg_descr,
+                Installed.depends = dep_pkgs
               }
         case PackageIndex.dependencyInconsistencies
            . PackageIndex.insert pseudoTopPkg
@@ -658,8 +658,8 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
       _    -> die "Unknown compiler"
 
 
-checkForeignDeps :: PackageDescription -> ProgramConfiguration -> Verbosity -> IO ()
-checkForeignDeps pkg progCfg verbosity = do
+checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
+checkForeignDeps pkg lbi verbosity = do
   ifBuildsWith allHeaders (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
            (return ())
            (do missingLibs <- findMissingLibs
@@ -696,11 +696,22 @@ checkForeignDeps pkg progCfg verbosity = do
 
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
-        commonCcArgs  = [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
+        commonCcArgs  = programArgs gccProg
+                     ++ hcDefines (compiler lbi)
+                     ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
+                     ++ ["-I."]
                      ++ collectField PD.cppOptions
                      ++ collectField PD.ccOptions
+                     ++ [ "-I" ++ dir
+                        | dep <- deps
+                        , dir <- Installed.includeDirs dep ]
+                     ++ [ opt
+                        | dep <- deps
+                        , opt <- Installed.ccOptions dep ]
+
         commonLdArgs  = [ "-L" ++ dir | dir <- collectField PD.extraLibDirs ]
                      ++ collectField PD.ldOptions
+                     --TODO: do we also need dependent packages' ld options?
         makeLdArgs libs = [ "-l"++lib | lib <- libs ] ++ commonLdArgs
 
         makeProgram hdrs = unlines $
@@ -709,6 +720,8 @@ checkForeignDeps pkg progCfg verbosity = do
 
         collectField f = concatMap f allBi
         allBi = allBuildInfo pkg
+        Just gccProg = lookupProgram  gccProgram (withPrograms lbi)
+        deps = PackageIndex.topologicalOrder (installedPkgs lbi)
 
         builds program args = do
             tempDir <- getTemporaryDirectory
@@ -716,7 +729,8 @@ checkForeignDeps pkg progCfg verbosity = do
               do
                 hPutStrLn hd program
                 hClose hd
-                rawSystemProgramStdoutConf verbosity gccProgram progCfg (fname:args)
+                rawSystemProgramStdoutConf verbosity
+                  gccProgram (withPrograms lbi) (fname:args)
                 return True
            `catchIO`   (\_ -> return False)
            `catchExit` (\_ -> return False)
@@ -749,6 +763,33 @@ checkForeignDeps pkg progCfg verbosity = do
               ++ "but in a non-standard location then you can use the flags "
               ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
               ++ "where they are."
+
+        --FIXME: share this with the PreProcessor module
+        hcDefines :: Compiler -> [String]
+        hcDefines comp =
+          case compilerFlavor comp of
+            GHC  -> ["-D__GLASGOW_HASKELL__=" ++ versionInt version]
+            JHC  -> ["-D__JHC__=" ++ versionInt version]
+            NHC  -> ["-D__NHC__=" ++ versionInt version]
+            Hugs -> ["-D__HUGS__"]
+            _    -> []
+          where
+            version = compilerVersion comp
+                      -- TODO: move this into the compiler abstraction
+            -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all
+            -- the other compilers. Check if that's really what they want.
+            versionInt :: Version -> String
+            versionInt (Version { versionBranch = [] }) = "1"
+            versionInt (Version { versionBranch = [n] }) = show n
+            versionInt (Version { versionBranch = n1:n2:_ })
+              = -- 6.8.x -> 608
+                -- 6.10.x -> 610
+                let s1 = show n1
+                    s2 = show n2
+                    middle = case s2 of
+                             _ : _ : _ -> ""
+                             _         -> "0"
+                in s1 ++ middle ++ s2
 
 -- | Output package check warnings and errors. Exit if any errors.
 checkPackageProblems :: Verbosity
