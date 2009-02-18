@@ -42,9 +42,11 @@ Executable cabal
     Other-Modules:
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
+        Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
         Distribution.Client.Check
         Distribution.Client.Config
+        Distribution.Client.Configure
         Distribution.Client.Dependency
         Distribution.Client.Dependency.Bogus
         Distribution.Client.Dependency.TopDown
@@ -63,6 +65,7 @@ Executable cabal
         Distribution.Client.SrcDist
         Distribution.Client.Tar
         Distribution.Client.Types
+        Distribution.Client.Unpack
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
