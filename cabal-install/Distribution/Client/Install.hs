@@ -354,18 +354,29 @@ planRepoPackages defaultPref comp configFlags configExFlags installFlags
         [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
 
 planUpgradePackages :: Compiler -> ConfigFlags -> ConfigExFlags -> Planner
-planUpgradePackages comp configFlags configExFlags (Just installed)
-  (AvailablePackageDb available availablePrefs) = return $
-  resolveDependenciesWithProgress buildPlatform (compilerId comp)
-    (Just installed) available preferences constraints targets
+planUpgradePackages _comp _configFlags _configExFlags (Just installed)
+  (AvailablePackageDb available _availablePrefs) = die $
+       "the 'upgrade' command (when used without any package arguments) has "
+    ++ "been disabled in this release. It has been disabled because it has "
+    ++ "frequently led people to accidentally break their set of installed "
+    ++ "packages. It will be re-enabled when it is safer to use.\n"
+    ++ "Below is the list of packages that it would have tried to upgrade. You "
+    ++ "can use the 'install' command to install the ones you want. Note that "
+    ++ "it is generally not recommended to upgrade core packages.\n"
+    ++ unlines [ display pkgid | Dependency pkgid _ <- deps ]
+
+--TODO: improve upgrade so we can re-enable it
+--  return $
+--  resolveDependenciesWithProgress buildPlatform (compilerId comp)
+--    (Just installed) available preferences constraints targets
   where
     deps        = upgradableDependencies installed available
-    preferences = mergePackagePrefs PreferAllLatest availablePrefs configExFlags
-    constraints = [ PackageVersionConstraint name ver
-                  | Dependency name ver <- deps ]
-               ++ [ PackageVersionConstraint name ver
-                  | Dependency name ver <- configConstraints configFlags ]
-    targets     = [ name | Dependency name _ <- deps ]
+--    preferences = mergePackagePrefs PreferAllLatest availablePrefs configExFlags
+--    constraints = [ PackageVersionConstraint name ver
+--                  | Dependency name ver <- deps ]
+--               ++ [ PackageVersionConstraint name ver
+--                  | Dependency name ver <- configConstraints configFlags ]
+--    targets     = [ name | Dependency name _ <- deps ]
 
 planUpgradePackages comp _ _ _ _ =
   die $ display (compilerId comp)
