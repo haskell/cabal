@@ -8,7 +8,8 @@
 	* Improved package quality checks
 	* Beginnings of a unit level testsuite using QuickCheck
 
-1.6.0.2 (next stable release)
+1.6.0.2 Duncan Coutts <duncan@haskell.org> February 2009
+	* New configure-time check for C headers and libraries
 	* Added language extensions present in ghc-6.10
 	* Added support for NamedFieldPuns extension in ghc-6.8
 	* Fix in configure step for ghc-6.6 on Windows
@@ -17,6 +18,8 @@
 	* Fix for using pkg-config in a package with a lib and an executable
 	* Fix for building haddock docs for exes that use the Paths module
 	* Fix for installing header files in subdirectories
+	* Fix for the case of building profiling libs but not ordinary libs
+	* Fix read-only attribute of installed files on Windows
 	* Ignore ghc -threaded flag when profiling in ghc-6.8 and older
 
 1.6.0.1 Duncan Coutts <duncan@haskell.org> October 2008
