@@ -19,9 +19,9 @@ debian or ubuntu it is in "libghc6-network-dev".
 
 It requires three other Haskell packages that are not always installed:
 
- * Cabal  (1.4 or later)
- * HTTP
- * zlib
+ * Cabal  (version 1.6  or later)
+ * HTTP   (version 4000 or later)
+ * zlib   (version 0.4  or later)
 
 All of these are available from [Hackage](http://hackage.haskell.org).
 
@@ -58,11 +58,10 @@ You then have two choices:
 Quickstart on Windows systems
 -----------------------------
 
-For Windows users we hope to provide a pre-compiled `cabal.exe` program shortly.
-In the mean time you have to build the three dependencies in [the standard way].
+For Windows users we provide a pre-compiled [cabal.exe] program. Just download
+it and put it somewhere on your `%PATH%`.
 
-[the standard way]:
-  http://haskell.org/haskellwiki/Cabal/How_to_install_a_Cabal_package
+[cabal.exe]: http://haskell.org/cabal/release/cabal-install-latest/cabal.exe
 
 
 Using cabal-install
