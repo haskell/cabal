@@ -2911,7 +2911,7 @@ runhaskell Setup.hs unregister --gen-script</screen>
 	  <varlistentry>
 	    <term><option>--disable-library-vanilla</option></term>
 	    <listitem>
-	      <para>(default) Do not build ordinary libraries. This is useful
+	      <para>Do not build ordinary libraries. This is useful
                 in conjunction with <option>--enable-library-profiling</option>
                 to build only profiling libraries, rather than profiling and
                 ordinary libraries.</para>
