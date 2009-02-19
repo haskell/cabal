@@ -18,9 +18,9 @@ module Distribution.Compat.CopyFile (
 import Control.Monad
          ( when )
 import Control.Exception
-         ( bracket, bracketOnError )
+         ( bracket )
 import Distribution.Compat.Exception
-         ( catchIO )
+         ( catchIO, bracketOnError )
 #if __GLASGOW_HASKELL__ >= 608
 import Distribution.Compat.Exception
          ( throwIOIO )

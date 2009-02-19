@@ -9,9 +9,14 @@
 #define NEW_EXCEPTION
 #endif
 
-module Distribution.Compat.Exception
-    (onException, catchIO, catchExit, throwIOIO)
-    where
+module Distribution.Compat.Exception (
+    onException, catchIO, catchExit, throwIOIO,
+#if __GLASGOW_HASKELL__ <= 604
+    bracketOnError
+#else
+    Exception.bracketOnError
+#endif
+  ) where
 
 import System.Exit
 import qualified Control.Exception as Exception
@@ -49,3 +54,10 @@ catchExit io handler = io `Exception.catch` handler'
           handler' e                            = Exception.throw e
 #endif
 
+#if __GLASGOW_HASKELL__ <= 604
+bracketOnError :: IO a -> (a -> IO b) -> (a -> IO c) -> IO c
+bracketOnError before after thing =
+  Exception.block $ do
+    a <- before
+    Exception.unblock (thing a) `onException` after a
+#endif
