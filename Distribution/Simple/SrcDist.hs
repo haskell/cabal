@@ -78,10 +78,10 @@ import Distribution.Version
          ( Version(versionBranch), VersionRange(AnyVersion) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , copyFiles, copyFileVerbose
+         , copyFiles
          , findFile, findFileWithExtension, matchFileGlob
          , withTempDirectory, defaultPackageDesc
-         , die, warn, notice, setupMessage )
+         , die, warn, notice, setupMessage, info )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
@@ -96,7 +96,7 @@ import Data.Char (toLower)
 import Data.List (partition, isPrefixOf)
 import Data.Maybe (isNothing, catMaybes)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
-import System.Directory (doesFileExist, doesDirectoryExist)
+import System.Directory (doesFileExist, doesDirectoryExist, copyFile)
 import Distribution.Verbosity (Verbosity)
 import System.FilePath
          ( (</>), (<.>), takeDirectory, dropExtension, isAbsolute )
@@ -341,6 +341,14 @@ copyFileTo verbosity dir file = do
   let targetFile = dir </> file
   createDirectoryIfMissingVerbose verbosity True (takeDirectory targetFile)
   copyFileVerbose verbosity file targetFile
+
+copyFileVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
+copyFileVerbose verbosity src dest = do
+  info verbosity ("copy " ++ src ++ " to " ++ dest)
+  --Note: This is the standard copyFile that *does* copy file permissions.
+  --      In particular it will copy executable permissions which we need
+  --      eg to copy ./configure scripts into the tarball src tree.
+  copyFile src dest
 
 printPackageProblems :: Verbosity -> PackageDescription -> IO ()
 printPackageProblems verbosity pkg_descr = do

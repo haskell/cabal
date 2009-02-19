@@ -127,7 +127,8 @@ import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
 
 import System.Directory
-    ( getDirectoryContents, doesDirectoryExist, doesFileExist, removeFile )
+    ( getDirectoryContents, doesDirectoryExist, doesFileExist, removeFile
+    , copyFile )
 import System.Environment
     ( getProgName )
 import System.Cmd
@@ -531,7 +532,8 @@ copyFiles verbosity targetDir srcFiles = do
   -- Copy all the files
   sequence_ [ let src  = srcBase   </> srcFile
                   dest = targetDir </> srcFile
-               in copyFileVerbose verbosity src dest
+               in info verbosity ("copy " ++ src ++ " to " ++ dest)
+               >> copyFile src dest
             | (srcBase, srcFile) <- srcFiles ]
 
 -- adaptation of removeDirectoryRecursive
