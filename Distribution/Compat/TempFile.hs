@@ -27,10 +27,11 @@ import System.IO              (Handle, openTempFile, openBinaryTempFile)
 import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
                                o_BINARY, o_NONBLOCK, o_NOCTTY)
-import Foreign.C              (CInt, withCString, getErrno, errnoToIOError)
+import Foreign.C              (CInt)
 import GHC.Handle             (fdToHandle)
 import Distribution.Compat.Exception (onException)
 #endif
+import Foreign.C              (withCString, getErrno, errnoToIOError)
 
 #if __NHC__
 import System.Posix.Types     (CPid(..))
