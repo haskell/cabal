@@ -74,7 +74,7 @@ import Data.Maybe
 import Data.Monoid
          ( Monoid(..) )
 import Control.Monad
-         ( when, foldM )
+         ( when, foldM, liftM )
 import qualified Data.Map as Map
 import qualified Distribution.Compat.ReadP as Parse
          ( option )
@@ -88,6 +88,8 @@ import Network.URI
          ( URI(..), URIAuth(..) )
 import System.FilePath
          ( (</>), takeDirectory )
+import System.Environment
+         ( getEnvironment )
 import System.IO.Error
          ( isDoesNotExistError )
 
@@ -228,11 +230,20 @@ defaultRemoteRepo = RemoteRepo name uri
 
 loadConfig :: Verbosity -> Flag FilePath -> Flag Bool -> IO SavedConfig
 loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
-  configFile <- maybe defaultConfigFile return (flagToMaybe configFileFlag)
+  let sources = [
+        ("commandline option",   return . flagToMaybe $ configFileFlag),
+        ("env var CABAL_CONFIG", lookup "CABAL_CONFIG" `liftM` getEnvironment),
+        ("default config file",  Just `liftM` defaultConfigFile) ]
 
+      getSource [] = error "no config file path candidate found."
+      getSource ((msg,action): xs) = 
+                        action >>= maybe (getSource xs) (return . (,) msg)
+
+  (source, configFile) <- getSource sources
   minp <- readConfigFile mempty configFile
   case minp of
     Nothing -> do
+      notice verbosity $ "Config file path source is " ++ source ++ "."
       notice verbosity $ "Config file " ++ configFile ++ " not found."
       notice verbosity $ "Writing default configuration to " ++ configFile
       commentConf <- commentSavedConfig
