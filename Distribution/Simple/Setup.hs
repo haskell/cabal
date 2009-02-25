@@ -102,7 +102,7 @@ import Distribution.Simple.Utils
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms,
                              addKnownProgram, emptyProgramConfiguration,
-                             haddockProgram)
+                             haddockProgram, ghcProgram)
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
@@ -1059,7 +1059,8 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
       ++ programConfigurationOptions progConf ParseArgs
              haddockProgramArgs  (\v flags -> flags { haddockProgramArgs = v})
     progConf = addKnownProgram haddockProgram
-               emptyProgramConfiguration
+             $ addKnownProgram ghcProgram
+             $ emptyProgramConfiguration
 
 emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = mempty
