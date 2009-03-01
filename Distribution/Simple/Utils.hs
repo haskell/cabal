@@ -53,6 +53,7 @@ module Distribution.Simple.Utils (
         -- * logging and errors
         die,
         dieWithLocation,
+        topHandler,
         warn, notice, setupMessage, info, debug,
         chattyTry,
 
@@ -151,7 +152,8 @@ import System.IO
     ( Handle, openFile, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
-    ( isDoesNotExistError )
+    ( isDoesNotExistError, ioeSetFileName, ioeSetLocation
+    , ioeGetErrorString, ioeGetFileName, ioeGetLocation )
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
@@ -197,20 +199,38 @@ cabalBootstrapping = False
 cabalBootstrapping = True
 #endif
 
--- ------------------------------------------------------------------------------- Utils for setup
+-- ----------------------------------------------------------------------------
+-- Exception and logging utils
 
 dieWithLocation :: FilePath -> Maybe Int -> String -> IO a
 dieWithLocation filename lineno msg =
-  die $ normalise filename
-     ++ maybe "" (\n -> ":" ++ show n) lineno
-     ++ ": " ++ msg
+  ioError . setLocation lineno
+          . flip ioeSetFileName (normalise filename)
+          $ userError msg
+  where
+    setLocation Nothing  err = err
+    setLocation (Just n) err = ioeSetLocation err (show n)
 
 die :: String -> IO a
-die msg = do
-  hFlush stdout
-  pname <- getProgName
-  hPutStr stderr (wrapText (pname ++ ": " ++ msg))
-  exitWith (ExitFailure 1)
+die msg = ioError (userError msg)
+
+topHandler :: IO a -> IO a
+topHandler prog = catch prog handle
+  where
+    handle ioe = do
+      hFlush stdout
+      pname <- getProgName
+      hPutStr stderr (mesage pname)
+      exitWith (ExitFailure 1)
+      where
+        mesage pname = wrapText (pname ++ ": " ++ file ++ detail)
+        file         = case ioeGetFileName ioe of
+                         Nothing   -> ""
+                         Just path -> path ++ location ++ ": "
+        location     = case ioeGetLocation ioe of
+                         l@(n:_) | n >= '0' && n <= '9' -> ':' : l
+                         _                              -> ""
+        detail       = ioeGetErrorString ioe
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --

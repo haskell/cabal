@@ -111,7 +111,7 @@ import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
          (die, notice, info, warn, setupMessage, chattyTry,
           defaultPackageDesc, defaultHookedPackageDesc,
-          rawSystemExit, cabalVersion )
+          rawSystemExit, cabalVersion, topHandler )
 import Distribution.Verbosity
 import Language.Haskell.Extension
 import Distribution.Version
@@ -156,7 +156,7 @@ defaultMainNoRead pkg_descr =
   defaultMainHelper simpleUserHooks { readDesc = return (Just pkg_descr) }
 
 defaultMainHelper :: UserHooks -> Args -> IO ()
-defaultMainHelper hooks args =
+defaultMainHelper hooks args = topHandler $
   case commandsRun globalCommand commands args of
     CommandHelp   help                 -> printHelp help
     CommandList   opts                 -> printOptionsList opts
