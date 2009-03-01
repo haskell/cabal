@@ -124,11 +124,12 @@ readRepoIndex verbosity repo = handleNotFound $ do
       `mplus` (do prefs' <- extractPrefs entry; return (pkgs, prefs'++prefs))
 
     extractPrefs :: Tar.Entry -> Maybe [Dependency]
-    extractPrefs entry
-      | takeFileName (Tar.fileName entry) == "preferred-versions"
-      = Just . parsePreferredVersions
-      . BS.Char8.unpack . Tar.fileContent $ entry
-      | otherwise = Nothing
+    extractPrefs entry = case Tar.entryContent entry of
+      Tar.NormalFile content _
+         | takeFileName (Tar.entryPath entry) == "preferred-versions"
+        -> Just . parsePreferredVersions
+         . BS.Char8.unpack $ content
+      _ -> Nothing
 
     handleNotFound action = catch action $ \e -> if isDoesNotExistError e
       then do
@@ -189,24 +190,25 @@ parseRepoIndex :: ByteString
 parseRepoIndex = foldlTarball (\pkgs -> maybe pkgs (:pkgs) . extractPkg) []
 
 extractPkg :: Tar.Entry -> Maybe (PackageId, GenericPackageDescription)
-extractPkg entry
-  | takeExtension fileName == ".cabal"
-  = case splitDirectories (normalise fileName) of
-      [pkgname,vers,_] -> case simpleParse vers of
-        Just ver -> Just (pkgid, descr)
-          where
-            pkgid  = PackageIdentifier (PackageName pkgname) ver
-            parsed = parsePackageDescription . fromUTF8 . BS.Char8.unpack
-                                             . Tar.fileContent $ entry
-            descr  = case parsed of
-              ParseOk _ d -> d
-              _           -> error $ "Couldn't read cabal file "
-                                  ++ show fileName
+extractPkg entry = case Tar.entryContent entry of
+  Tar.NormalFile content _
+     | takeExtension fileName == ".cabal"
+    -> case splitDirectories (normalise fileName) of
+        [pkgname,vers,_] -> case simpleParse vers of
+          Just ver -> Just (pkgid, descr)
+            where
+              pkgid  = PackageIdentifier (PackageName pkgname) ver
+              parsed = parsePackageDescription . fromUTF8 . BS.Char8.unpack
+                                               $ content
+              descr  = case parsed of
+                ParseOk _ d -> d
+                _           -> error $ "Couldn't read cabal file "
+                                    ++ show fileName
+          _ -> Nothing
         _ -> Nothing
-      _ -> Nothing
-  | otherwise = Nothing
+  _ -> Nothing
   where
-    fileName = Tar.fileName entry
+    fileName = Tar.entryPath entry
 
 foldlTarball :: (a -> Tar.Entry -> a) -> a
              -> ByteString -> Either String a

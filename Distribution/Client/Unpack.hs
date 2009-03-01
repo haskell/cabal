@@ -31,7 +31,7 @@ import Distribution.Client.Types(UnresolvedDependency(..),
                                  AvailablePackage(AvailablePackage),
                                  AvailablePackageDb(AvailablePackageDb))
 import Distribution.Client.Fetch(fetchPackage)
-import Distribution.Client.Tar(extractTarGzFile)
+import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
     (getAvailablePackages, disambiguateDependencies)
 
@@ -68,10 +68,10 @@ unpack flags repos deps
         Right (AvailablePackage pkgid _ (RepoTarballPackage repo)) -> do
                  pkgPath <- fetchPackage verbosity repo pkgid
                  let pkgdir = display pkgid
-                 notice verbosity $ "Unpacking " ++ display pkgid ++ "..."
+                 notice verbosity $ "Unpacking " ++ pkgdir ++ "..."
                  info verbosity $ "Extracting " ++ pkgPath
                           ++ " to " ++ prefix </> pkgdir ++ "..."
-                 extractTarGzFile prefix pkgPath
+                 Tar.extractTarGzFile prefix pkgdir pkgPath
 
         Right (AvailablePackage _ _ LocalUnpackedPackage) -> 
             error "Distribution.Client.Unpack.unpack: the impossible happened."

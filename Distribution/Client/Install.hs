@@ -548,14 +548,15 @@ installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg =
       withTempDirectory tmp (display pkgid) $ \tmpDirPath -> do
         info verbosity $ "Extracting " ++ pkgPath
                       ++ " to " ++ tmpDirPath ++ "..."
-        extractTarGzFile tmpDirPath pkgPath
-        let unpackedPath = tmpDirPath </> display pkgid
-            descFilePath = unpackedPath
+        let relUnpackedPath = display pkgid
+            absUnpackedPath = tmpDirPath </> relUnpackedPath
+            descFilePath = absUnpackedPath
                        </> display (packageName pkgid) <.> "cabal"
+        extractTarGzFile tmpDirPath relUnpackedPath pkgPath
         exists <- doesFileExist descFilePath
         when (not exists) $
           die $ "Package .cabal file not found: " ++ show descFilePath
-        installPkg (Just unpackedPath)
+        installPkg (Just absUnpackedPath)
 
 installUnpackedPackage :: Verbosity
                    -> SetupScriptOptions
