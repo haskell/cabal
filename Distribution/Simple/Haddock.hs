@@ -192,14 +192,14 @@ haddock pkg_descr lbi suffixes flags = do
     withLib pkg_descr () $ \lib -> do
         let bi = libBuildInfo lib
         libArgs <- fromLibrary lbi lib
-        prepareSources verbosity lbi bi (args `mappend` libArgs) $
+        prepareSources verbosity lbi isVersion2 bi (args `mappend` libArgs) $
              runHaddock verbosity confHaddock
 
     when (flag haddockExecutables) $
       withExe pkg_descr $ \exe -> do
         let bi = buildInfo exe
         exeArgs <- fromExecutable lbi exe
-        prepareSources verbosity lbi bi (args `mappend` exeArgs) $
+        prepareSources verbosity lbi isVersion2 bi (args `mappend` exeArgs) $
              runHaddock verbosity confHaddock
 
   where
@@ -210,11 +210,12 @@ haddock pkg_descr lbi suffixes flags = do
 -- | argTargets, which must have an .hs or .lhs extension.
 prepareSources :: Verbosity
                   -> LocalBuildInfo
+                  -> Bool            -- haddock == 2.*
                   -> BuildInfo
                   -> HaddockArgs
                   -> (HaddockArgs -> IO a)
                   -> IO a
-prepareSources verbosity lbi bi args@HaddockArgs{argTargets=files} k =
+prepareSources verbosity lbi isVersion2 bi args@HaddockArgs{argTargets=files} k =
               withTempDirectory verbosity (buildDir lbi) "tmp" $ \tmp ->
                    mapM (mockPP tmp) files >>= \targets -> k args {argTargets=targets}
           where
@@ -231,7 +232,7 @@ prepareSources verbosity lbi bi args@HaddockArgs{argTargets=files} k =
 
                  if needsCpp
                     then do
-                      runSimplePreProcessor (ppCpp' ["-D__HADDOCK__"] bi lbi)
+                      runSimplePreProcessor (ppCpp' defines bi lbi)
                                             file targetFile verbosity
                     else
                       copyFileVerbose verbosity file targetFile
@@ -242,6 +243,8 @@ prepareSources verbosity lbi bi args@HaddockArgs{argTargets=files} k =
 
                  return hsFile
             needsCpp = CPP `elem` extensions bi
+            defines | isVersion2 = []
+                    | otherwise  = ["-D__HADDOCK__"]
 
 --------------------------------------------------------------------------------------------------
 -- constributions to HaddockArgs
