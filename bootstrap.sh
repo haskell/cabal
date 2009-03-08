@@ -169,7 +169,6 @@ do_pkg () {
 
 # Actually do something!
 
-dep_pkg "parsec" "2\."
 dep_pkg "network" "[12]\."
 
 info_pkg "Cabal" ${CABAL_VER} ${CABAL_VER_REGEXP}
