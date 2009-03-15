@@ -26,7 +26,8 @@ It requires three other Haskell packages that are not always installed:
 All of these are available from [Hackage](http://hackage.haskell.org).
 
 Note that on some Unix systems you may need to install an additional zlib
-development package using your system package manager. This is because the
+development package using your system package manager, for example on
+debian or ubuntu it is in "zlib1g-dev". It is needed is because the
 Haskell zlib package uses the system zlib C library and header files.
 
 In future, cabal-install will be part of the Haskell Platform so will not need
@@ -38,8 +39,8 @@ standard way, but to make it a bit easier we have partly automated the process:
 Quickstart on Unix systems
 --------------------------
 
-As a convenience for users on Unix systems there is a bootstrap.sh script which
-will download and install each of the dependencies in turn.
+As a convenience for users on Unix systems there is a `bootstrap.sh` script
+which will download and install each of the dependencies in turn.
 
     $ ./bootstrap.sh
 
@@ -50,18 +51,37 @@ be installed into `$HOME/.cabal/bin/`.
 You then have two choices:
 
  * put `$HOME/.cabal/bin` on your `$PATH`
- * move the `cabal` program elsewhere and edit the `$HOME/.cabal/config` file
-   and set the `symlink-bindir` entry to point to an alternative location where
-   that is on your `$PATH`, eg a `$HOME/bin` directory.
+ * move the `cabal` program somewhere that is on your `$PATH`
+
+The next thing to do is to get the latest list of packages with:
+
+    $ cabal update
+
+This will also create a default config file (if it does not already echo exist)
+at `$HOME/.cabal/config`
+
+By default cabal will install programs to `$HOME/.cabal/bin`. If you do not
+want to add this directory to your `$PATH` then you can change the setting in
+the config file, for example you could use:
+
+    symlink-bindir: $HOME/bin
 
 
 Quickstart on Windows systems
 -----------------------------
 
 For Windows users we provide a pre-compiled [cabal.exe] program. Just download
-it and put it somewhere on your `%PATH%`.
+it and put it somewhere on your `%PATH%`, for example
+`C:\Program Files\Haskell\bin`.
 
 [cabal.exe]: http://haskell.org/cabal/release/cabal-install-latest/cabal.exe
+
+The next thing to do is to get the latest list of packages with
+
+    cabal update
+
+This will also create a default config file (if it does not already echo exist)
+at `C:\Documents and Settings\username\Application Data\cabal\config`
 
 
 Using cabal-install
