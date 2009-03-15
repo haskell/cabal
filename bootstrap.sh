@@ -132,7 +132,7 @@ install_pkg () {
     || die "Compiling the Setup script failed"
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
 
-  ./Setup configure --user "--prefix=${HOME}/.cabal" \
+  ./Setup configure --user "--prefix=${PREFIX}" \
     --with-compiler=${GHC} --with-hc-pkg=${GHC_PKG} \
     ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
     || die "Configuring the ${PKG} package failed"
@@ -185,10 +185,14 @@ then
     echo "You should either add $CABAL_BIN to your PATH"
     echo "or copy the cabal program to a directory that is on your PATH."
     echo
+    echo "The first thing to do is to get the latest list of packages with:"
+    echo "  cabal update"
+    echo "This will also create a default config file (if it does not already"
+    echo "exist) at $HOME/.cabal/config"
+    echo
     echo "By default cabal will install programs to $HOME/.cabal/bin"
-    echo "If you do not want to add this directory to your PATH then"
-    echo "you can change the setting in the config file $HOME/.cabal/config"
-    echo "For example you could use:"
+    echo "If you do not want to add this directory to your PATH then you can"
+    echo "change the setting in the config file, for example you could use:"
     echo "symlink-bindir: $HOME/bin"
 else
     echo "Sorry, something went wrong."
