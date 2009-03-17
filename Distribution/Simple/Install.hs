@@ -158,7 +158,7 @@ install pkg_descr lbi flags = do
   case compilerFlavor (compiler lbi) of
      GHC  -> do withLib pkg_descr () $ \_ ->
                   GHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
-                withExe pkg_descr $ \_ ->
+                when (hasExes pkg_descr) $
                   GHC.installExe flags lbi installDirs pretendInstallDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
