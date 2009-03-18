@@ -58,7 +58,13 @@ ${GHC_PKG} list > ghc-pkg.list \
 need_pkg () {
   PKG=$1
   VER_MATCH=$2
-  ! grep " ${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null 2>&1
+  if grep " ${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null 2>&1
+  then
+    return 1;
+  else
+    return 0;
+  fi
+  #Note: we cannot use "! grep" here as Solaris 9 /bin/sh doesn't like it.
 }
 
 info_pkg () {
