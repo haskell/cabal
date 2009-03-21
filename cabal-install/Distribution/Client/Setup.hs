@@ -676,7 +676,9 @@ parsePackageArgs = parsePkgArgs []
     parsePkgArgs ds (arg:args) =
       case readPToMaybe parseDependencyOrPackageId arg of
         Just dep -> parsePkgArgs (dep:ds) args
-        Nothing  -> Left ("Failed to parse package dependency: " ++ show arg)
+        Nothing  -> Left $
+         show arg ++ " is not valid syntax for a package name or"
+                  ++ " package dependency."
 
 readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
 readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
