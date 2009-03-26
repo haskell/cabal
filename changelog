@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+1.6.0.3 Ian Lynagh <igloo@earth.li> March 2009
+	* Avoid coping N executables N times (Ticket #525)
+
 1.6.0.2 Duncan Coutts <duncan@haskell.org> February 2009
 	* New configure-time check for C headers and libraries
 	* Added language extensions present in ghc-6.10
