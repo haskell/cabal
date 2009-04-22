@@ -168,12 +168,18 @@ haddock pkg_descr lbi suffixes flags = do
          die "haddock --hyperlink-source requires Haddock version 0.8 or later"
 
     when isVersion2 $ do
-      haddockGhcVersion <- simpleParse `fmap` rawSystemProgramStdout verbosity confHaddock ["--ghc-version"]
-      case haddockGhcVersion of
+      haddockGhcVersionStr <- rawSystemProgramStdout verbosity confHaddock
+                                ["--ghc-version"]
+      case simpleParse haddockGhcVersionStr of
         Nothing -> die "Could not get GHC version from Haddock"
-        Just v -> 
-            when (v /= compilerVersion (compiler lbi)) $
-                 die "Haddock's internal GHC version must match the configured GHC version"
+        Just haddockGhcVersion
+          | haddockGhcVersion == ghcVersion -> return ()
+          | otherwise -> die $
+                 "Haddock's internal GHC version must match the configured "
+              ++ "GHC version.\n"
+              ++ "The GHC version is " ++ display ghcVersion ++ " but "
+              ++ "haddock is using GHC version " ++ display haddockGhcVersion
+          where ghcVersion = compilerVersion (compiler lbi)
 
     -- the tools match the requests, we can proceed
 
