@@ -77,10 +77,11 @@ module Distribution.Simple.Program (
     -- * Programs that Cabal knows about
     , ghcProgram
     , ghcPkgProgram
+    , lhcProgram
+    , lhcPkgProgram
     , nhcProgram
     , hmakeProgram
     , jhcProgram
-    , lhcProgram
     , hugsProgram
     , ffihugsProgram
     , gccProgram
@@ -558,6 +559,7 @@ builtinPrograms =
     , hmakeProgram
     , jhcProgram
     , lhcProgram
+    , lhcPkgProgram
     -- preprocessors
     , hscolourProgram
     , haddockProgram
@@ -588,6 +590,21 @@ ghcPkgProgram = (simpleProgram "ghc-pkg") {
     programFindVersion = findProgramVersion "--version" $ \str ->
       -- Invoking "ghc-pkg --version" gives a string like
       -- "GHC package manager version 6.4.1"
+      case words str of
+        (_:_:_:_:ver:_) -> ver
+        _               -> ""
+  }
+
+lhcProgram :: Program
+lhcProgram = (simpleProgram "lhc") {
+    programFindVersion = findProgramVersion "--numeric-version" id
+  }
+
+lhcPkgProgram :: Program
+lhcPkgProgram = (simpleProgram "lhc-pkg") {
+    programFindVersion = findProgramVersion "--version" $ \str ->
+      -- Invoking "lhc-pkg --version" gives a string like
+      -- "LHC package manager version 0.7"
       case words str of
         (_:_:_:_:ver:_) -> ver
         _               -> ""
@@ -624,16 +641,6 @@ jhcProgram = (simpleProgram "jhc") {
         _         -> ""
   }
 
-lhcProgram :: Program
-lhcProgram = (simpleProgram "lhc") {
-    programFindVersion = findProgramVersion "--version" $ \str ->
-    -- invoking "lhc --version" gives a string like
-    -- "lhc 0.3.20080208 (wubgipkamcep-2)
-    -- compiled by ghc-6.8 on a x86_64 running linux"
-      case words str of
-        (_:ver:_) -> ver
-        _         -> ""
-  }
 
 -- AArgh! Finding the version of hugs or ffihugs is almost impossible.
 hugsProgram :: Program
