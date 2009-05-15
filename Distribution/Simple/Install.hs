@@ -156,10 +156,12 @@ install pkg_descr lbi flags = do
                   GHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $ \_ ->
                   GHC.installExe flags lbi installDirs pretendInstallDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
+     LHC  -> do withLib pkg_descr () $ \_ ->
+                  LHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
+                withExe pkg_descr $ \_ ->
+                  LHC.installExe flags lbi installDirs pretendInstallDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
-     LHC  -> do withLib pkg_descr () $ LHC.installLib verbosity libPref buildPref pkg_descr
-                withExe pkg_descr $ LHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      Hugs -> do
        let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
        let scratchPref = scratchDir lbi
