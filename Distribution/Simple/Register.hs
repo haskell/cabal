@@ -69,7 +69,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, compilerVersion, PackageDB(..) )
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
-                                    lookupProgram, ghcPkgProgram)
+                                    lookupProgram, ghcPkgProgram, lhcPkgProgram)
 import Distribution.Simple.Setup
          ( RegisterFlags(..), CopyDest(..)
          , fromFlag, fromFlagOrDefault, flagToMaybe )
@@ -169,18 +169,11 @@ register pkg_descr lbi regFlags
                  rawSystemPipe pkgTool regScriptLocation cfg allFlags
           _ -> rawSystemProgram verbosity pkgTool allFlags
 
-      Hugs -> do
-        when inplace $ die "--inplace is not supported with Hugs"
-        let installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-        createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
-        installOrdinaryFile verbosity (installedPkgConfigFile distPref)
-                                      (libdir installDirs </> "package.conf")
       LHC -> do
-        (globalDir, userDir) <- LHC.getLhcLibDirsFromVersion (Just (compilerVersion (compiler lbi)))
-        let config_flags = [ "--force", "--global-conf="++globalDir </> "package.conf"
-                           , "--package-conf=" ++ case packageDB of
-                               SpecificPackageDB path -> path
-                               _ -> userDir </> "package.conf"]
+        config_flags <- case packageDB of
+          GlobalPackageDB      -> return []
+          UserPackageDB        -> return ["--user"]
+          SpecificPackageDB db -> return ["--package-conf=" ++ db]
 
         let instConf | genPkgConf = genPkgConfigFile
                      | inplace    = inplacePkgConfigFile distPref
@@ -193,10 +186,10 @@ register pkg_descr lbi regFlags
         let register_flags   = let conf = if genScript && not isWindows
                                              then ["-"]
                                              else [instConf]
-                               in "update" : conf
+                                in "update" : conf
 
         let allFlags = config_flags ++ register_flags
-        let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
+        let Just pkgTool = lookupProgram lhcPkgProgram (withPrograms lbi)
 
         case () of
           _ | genPkgConf -> return ()
@@ -204,6 +197,13 @@ register pkg_descr lbi regFlags
               do cfg <- showInstalledConfig distPref pkg_descr lbi inplace
                  rawSystemPipe pkgTool regScriptLocation cfg allFlags
           _ -> rawSystemProgram verbosity pkgTool allFlags
+
+      Hugs -> do
+        when inplace $ die "--inplace is not supported with Hugs"
+        let installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
+        createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
+        installOrdinaryFile verbosity (installedPkgConfigFile distPref)
+                                      (libdir installDirs </> "package.conf")
       JHC -> notice verbosity "registering for JHC (nothing to do)"
       NHC -> notice verbosity "registering nhc98 (nothing to do)"
       _   -> die "only registering with GHC/Hugs/jhc/nhc98 is implemented"
