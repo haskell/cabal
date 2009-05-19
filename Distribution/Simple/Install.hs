@@ -89,14 +89,15 @@ install pkg_descr lbi flags = do
       installDirs@(InstallDirs {
          bindir     = binPref,
          libdir     = libPref,
-         dynlibdir  = dynlibPref,
+--         dynlibdir  = dynlibPref, --see TODO below
          datadir    = dataPref,
          progdir    = progPref,
          docdir     = docPref,
          htmldir    = htmlPref,
          haddockdir = interfacePref,
          includedir = incPref})
-             = absoluteInstallDirs (packageId pkg_descr) lbi copydest
+             = absoluteInstallDirs pkg_descr lbi copyTo
+      pretendInstallDirs = absoluteInstallDirs pkg_descr lbi pretendCopyTo
 
       progPrefixPref = substPathTemplate (packageId pkg_descr) lbi (progPrefix lbi)
       progSuffixPref = substPathTemplate (packageId pkg_descr) lbi (progSuffix lbi)
