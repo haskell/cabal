@@ -874,8 +874,7 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
               pkg@PackageDescription{library=Just lib} =
     unless (fromFlag $ copyInPlace flags) $ do
         -- copy .hi files over:
-        let verbosity = fromFlag (copyVerbosity flags)
-            copy src dst n = do
+        let copy src dst n = do
               createDirectoryIfMissingVerbose verbosity True dst
               installOrdinaryFile verbosity (src </> n) (dst </> n)
             copyModuleFiles ext =
@@ -883,6 +882,8 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
                 >>= installOrdinaryFiles verbosity targetDir
         ifVanilla $ copyModuleFiles "hi"
         ifProf    $ copyModuleFiles "p_hi"
+        hcrFiles <- findModuleFiles (builtDir : hsSourceDirs (libBuildInfo lib)) ["hcr"] (libModules pkg)
+        flip mapM_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["install", srcBase </> srcFile]
 
         -- copy the built library files over:
         ifVanilla $ copy builtDir targetDir vanillaLibName
@@ -910,6 +911,9 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
     ifProf    = when (hasLib && withProfLib    lbi)
     ifGHCi    = when (hasLib && withGHCiLib    lbi)
     ifShared  = when (hasLib && withSharedLib  lbi)
+
+    verbosity = fromFlag (copyVerbosity flags)
+    runLhc    = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
 
 installLib _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
