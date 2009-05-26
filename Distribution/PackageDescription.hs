@@ -336,9 +336,10 @@ data BuildInfo = BuildInfo {
         options           :: [(CompilerFlavor,[String])],
         ghcProfOptions    :: [String],
         ghcSharedOptions  :: [String],
-        customFieldsBI    :: [(String,String)]  -- ^Custom fields starting
+        customFieldsBI    :: [(String,String)], -- ^Custom fields starting
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
+        targetBuildDepends :: [Dependency] -- ^ Dependencies specific to a library or executable target
     }
     deriving (Show,Read,Eq)
 
@@ -363,7 +364,8 @@ instance Monoid BuildInfo where
     options           = [],
     ghcProfOptions    = [],
     ghcSharedOptions  = [],
-    customFieldsBI    = []
+    customFieldsBI    = [],
+    targetBuildDepends = []
   }
   mappend a b = BuildInfo {
     buildable         = buildable a && buildable b,
@@ -385,7 +387,8 @@ instance Monoid BuildInfo where
     options           = combine    options,
     ghcProfOptions    = combine    ghcProfOptions,
     ghcSharedOptions  = combine    ghcSharedOptions,
-    customFieldsBI    = combine    customFieldsBI
+    customFieldsBI    = combine    customFieldsBI,
+    targetBuildDepends = combineNub targetBuildDepends
   }
     where
       combine    field = field a `mappend` field b
