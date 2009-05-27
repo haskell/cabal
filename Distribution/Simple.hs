@@ -529,8 +529,6 @@ defaultInstallHook :: PackageDescription -> LocalBuildInfo
 defaultInstallHook pkg_descr localbuildinfo _ flags = do
   let copyFlags = defaultCopyFlags {
                       copyDistPref   = installDistPref flags,
-                      copyInPlace    = installInPlace flags,
-                      copyUseWrapper = installUseWrapper flags,
                       copyDest       = toFlag NoCopyDest,
                       copyVerbosity  = installVerbosity flags
                   }

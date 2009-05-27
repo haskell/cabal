@@ -122,8 +122,6 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (hClose, hPutStrLn)
 import Distribution.Compat.Exception (catchExit, catchIO)
-import Distribution.Compat.CopyFile
-         ( setFileExecutable )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -805,14 +803,12 @@ mkGHCiLibName lib = "HS" ++ display lib <.> "o"
 installExe :: CopyFlags -- ^verbosity
            -> LocalBuildInfo
            -> InstallDirs FilePath -- ^Where to copy the files to
-           -> InstallDirs FilePath -- ^Where to pretend the files are (i.e. ignores --destdir)
            -> FilePath  -- ^Build location
            -> (FilePath, FilePath)  -- ^Executable (prefix,suffix)
            -> PackageDescription
            -> IO ()
-installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progsuffix) pkg_descr
+installExe flags lbi installDirs buildPref (progprefix, progsuffix) pkg_descr
     = do let verbosity = fromFlag (copyVerbosity flags)
-             useWrapper = fromFlag (copyUseWrapper flags)
              binDir = bindir installDirs
          createDirectoryIfMissingVerbose verbosity True binDir
          withExe pkg_descr $ \Executable { exeName = e } -> do
@@ -823,31 +819,7 @@ installExe flags lbi installDirs pretendInstallDirs buildPref (progprefix, progs
                        (buildPref </> e </> exeFileName)
                        (dest <.> exeExtension)
                      stripExe verbosity lbi exeFileName (dest <.> exeExtension)
-             if useWrapper
-                 then do
-                     let libExecDir = libexecdir installDirs
-                         pretendLibExecDir = libexecdir pretendInstallDirs
-                         pretendAbsExeFileName =
-                             pretendLibExecDir </> fixedExeBaseName <.> exeExtension
-                         wrapperFileName = binDir </> fixedExeBaseName
-                         myPkgId = packageId (PD.package (localPkgDescr lbi))
-                         myCompilerId = compilerId (compiler lbi)
-                         env = (ExecutableNameVar,
-                                toPathTemplate pretendAbsExeFileName)
-                             : fullPathTemplateEnv myPkgId myCompilerId
-                                                   pretendInstallDirs
-                     createDirectoryIfMissingVerbose verbosity True libExecDir
-                     installBinary (libExecDir </> fixedExeBaseName)
-                     -- XXX Should probably look somewhere more sensible
-                     -- than just . for wrappers
-                     wrapperTemplate <- readFile (e <.> "wrapper")
-                     let wrapper = fromPathTemplate
-                                 $ substPathTemplate env
-                                 $ toPathTemplate wrapperTemplate
-                     writeFileAtomic wrapperFileName wrapper
-                     setFileExecutable wrapperFileName
-                 else do
-                     installBinary (binDir </> fixedExeBaseName)
+             installBinary (binDir </> fixedExeBaseName)
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripExe verbosity lbi name path = when (stripExes lbi) $
@@ -874,8 +846,7 @@ installLib    :: CopyFlags -- ^verbosity
               -> FilePath  -- ^Build location
               -> PackageDescription -> IO ()
 installLib flags lbi targetDir dynlibTargetDir builtDir
-              pkg@PackageDescription{library=Just lib} =
-    unless (fromFlag $ copyInPlace flags) $ do
+              pkg@PackageDescription{library=Just lib} = do
         -- copy .hi files over:
         let verbosity = fromFlag (copyVerbosity flags)
             copy src dst n = do

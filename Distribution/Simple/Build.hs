@@ -67,7 +67,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..)
-         , Executable(..), Library(..), hasLibs )
+         , Executable(..), Library(..) )
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
@@ -89,7 +89,7 @@ import Distribution.Text
 import Data.Maybe
          ( maybeToList )
 import Control.Monad
-         ( unless, when )
+         ( unless )
 import System.FilePath
          ( (</>), (<.>) )
 

@@ -67,8 +67,8 @@ import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.Hugs as Hugs
 
 import Control.Monad (when, unless)
-import System.Directory (doesDirectoryExist, doesFileExist,
-                         getCurrentDirectory)
+import System.Directory
+         ( doesDirectoryExist, doesFileExist )
 import System.FilePath
          ( takeFileName, takeDirectory, (</>), isAbsolute )
 
@@ -83,17 +83,9 @@ install :: PackageDescription -- ^information from the .cabal file
         -> CopyFlags -- ^flags sent to copy or install
         -> IO ()
 install pkg_descr lbi flags = do
-  thisDir <- getCurrentDirectory
   let distPref  = fromFlag (copyDistPref flags)
       verbosity = fromFlag (copyVerbosity flags)
-      inPlace   = fromFlag (copyInPlace flags)
       copydest  = fromFlag (copyDest flags)
-      copyTo    = if inPlace
-                  then CopyTo (thisDir </> distPref </> "install")
-                  else copydest
-      pretendCopyTo = if inPlace
-                      then copyTo
-                      else NoCopyDest
       installDirs@(InstallDirs {
          bindir     = binPref,
          libdir     = libPref,
@@ -104,8 +96,7 @@ install pkg_descr lbi flags = do
          htmldir    = htmlPref,
          haddockdir = interfacePref,
          includedir = incPref})
-             = absoluteInstallDirs pkg_descr lbi copyTo
-      pretendInstallDirs = absoluteInstallDirs pkg_descr lbi pretendCopyTo
+             = absoluteInstallDirs pkg_descr lbi copydest
 
       progPrefixPref = substPathTemplate pkg_descr lbi (progPrefix lbi)
       progSuffixPref = substPathTemplate pkg_descr lbi (progSuffix lbi)
@@ -155,11 +146,11 @@ install pkg_descr lbi flags = do
      GHC  -> do withLib pkg_descr () $ \_ ->
                   GHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $ \_ ->
-                  GHC.installExe flags lbi installDirs pretendInstallDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
+                  GHC.installExe flags lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
      LHC  -> do withLib pkg_descr () $ \_ ->
                   LHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $ \_ ->
-                  LHC.installExe flags lbi installDirs pretendInstallDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
+                  LHC.installExe flags lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
      JHC  -> do withLib pkg_descr () $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      Hugs -> do
