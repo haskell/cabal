@@ -67,7 +67,6 @@ module Distribution.Simple.Setup (
   BuildFlags(..),    emptyBuildFlags,    defaultBuildFlags,    buildCommand,
   buildVerbose,
   CleanFlags(..),    emptyCleanFlags,    defaultCleanFlags,    cleanCommand,
-  MakefileFlags(..), emptyMakefileFlags, defaultMakefileFlags, makefileCommand,
   RegisterFlags(..), emptyRegisterFlags, defaultRegisterFlags, registerCommand,
                                                                unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
@@ -1203,58 +1202,6 @@ instance Monoid BuildFlags where
     buildProgramArgs = combine buildProgramArgs,
     buildVerbosity   = combine buildVerbosity,
     buildDistPref    = combine buildDistPref
-  }
-    where combine field = field a `mappend` field b
-
--- ------------------------------------------------------------
--- * Makefile flags
--- ------------------------------------------------------------
-
-data MakefileFlags = MakefileFlags {
-    makefileFile      :: Flag FilePath,
-    makefileDistPref  :: Flag FilePath,
-    makefileVerbosity :: Flag Verbosity
-  }
-  deriving Show
-
-defaultMakefileFlags :: MakefileFlags
-defaultMakefileFlags  = MakefileFlags {
-    makefileFile      = NoFlag,
-    makefileDistPref  = Flag defaultDistPref,
-    makefileVerbosity = Flag normal
-  }
-
-makefileCommand :: CommandUI MakefileFlags
-makefileCommand = makeCommand name shortDesc longDesc defaultMakefileFlags options
-  where
-    name       = "makefile"
-    shortDesc  = "Generate a makefile (only for GHC libraries)."
-    longDesc   = Nothing
-    options showOrParseArgs =
-      [optionVerbosity makefileVerbosity (\v flags -> flags { makefileVerbosity = v })
-      ,optionDistPref
-         makefileDistPref (\d flags -> flags { makefileDistPref = d })
-         showOrParseArgs
-
-      ,option "f" ["file"]
-         "Filename to use (default: Makefile)."
-         makefileFile (\f flags -> flags { makefileFile = f })
-         (reqArgFlag "PATH")
-      ]
-
-emptyMakefileFlags :: MakefileFlags
-emptyMakefileFlags  = mempty
-
-instance Monoid MakefileFlags where
-  mempty = MakefileFlags {
-    makefileFile      = mempty,
-    makefileDistPref  = mempty,
-    makefileVerbosity = mempty
-  }
-  mappend a b = MakefileFlags {
-    makefileFile      = combine makefileFile,
-    makefileDistPref  = combine makefileDistPref,
-    makefileVerbosity = combine makefileVerbosity
   }
     where combine field = field a `mappend` field b
 

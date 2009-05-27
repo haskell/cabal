@@ -64,7 +64,7 @@ import Distribution.Simple.Program    (Program)
 import Distribution.Simple.Command    (noExtraFlags)
 import Distribution.Simple.PreProcess (PPSuffixHandler)
 import Distribution.Simple.Setup
-         (ConfigFlags, BuildFlags, MakefileFlags, CleanFlags, CopyFlags,
+         (ConfigFlags, BuildFlags, CleanFlags, CopyFlags,
           InstallFlags, SDistFlags, RegisterFlags, HscolourFlags,
           HaddockFlags)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
@@ -105,14 +105,6 @@ data UserHooks = UserHooks {
     buildHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO (),
     -- |Hook to run after build command.  Second arg indicates verbosity level.
     postBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO (),
-
-    -- |Hook to run before makefile command.  Second arg indicates verbosity level.
-    preMakefile  :: Args -> MakefileFlags -> IO HookedBuildInfo,
-
-    -- |Over-ride this hook to get different behavior during makefile.
-    makefileHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> MakefileFlags -> IO (),
-    -- |Hook to run after makefile command.  Second arg indicates verbosity level.
-    postMakefile :: Args -> MakefileFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
     -- |Hook to run before clean command.  Second arg indicates verbosity level.
     preClean  :: Args -> CleanFlags -> IO HookedBuildInfo,
@@ -187,9 +179,6 @@ emptyUserHooks
       preBuild  = rn,
       buildHook = ru,
       postBuild = ru,
-      preMakefile = rn,
-      makefileHook = ru,
-      postMakefile = ru,
       preClean  = rn,
       cleanHook = ru,
       postClean = ru,

@@ -92,7 +92,7 @@ import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Build        ( build, makefile )
+import Distribution.Simple.Build        ( build )
 import Distribution.Simple.SrcDist      ( sdist )
 import Distribution.Simple.Register     ( register, unregister,
                                           writeInstalledConfig,
@@ -193,7 +193,6 @@ defaultMainHelper hooks args = topHandler $
       ,registerCommand        `commandAddAction` registerAction     hooks
       ,unregisterCommand      `commandAddAction` unregisterAction   hooks
       ,testCommand            `commandAddAction` testAction         hooks
-      ,makefileCommand        `commandAddAction` makefileAction     hooks
       ]
 
 -- | Combine the preprocessors in the given hooks with the
@@ -256,13 +255,6 @@ buildAction hooks flags args = do
   hookedAction preBuild buildHook postBuild
                (return lbi { withPrograms = progs })
                hooks flags args
-
-makefileAction :: UserHooks -> MakefileFlags -> Args -> IO ()
-makefileAction hooks flags args
-    = do let distPref = fromFlag $ makefileDistPref flags
-         hookedAction preMakefile makefileHook postMakefile
-                      (getBuildConfig hooks distPref)
-                      hooks flags args
 
 hscolourAction :: UserHooks -> HscolourFlags -> Args -> IO ()
 hscolourAction hooks flags args
@@ -429,7 +421,6 @@ simpleUserHooks =
        confHook  = configure,
        postConf  = finalChecks,
        buildHook = defaultBuildHook,
-       makefileHook = defaultMakefileHook,
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
        instHook  = defaultInstallHook,
        sDistHook = \p l h f -> sdist p l f srcPref (allSuffixHandlers h),
@@ -492,7 +483,6 @@ autoconfUserHooks
       {
        postConf    = defaultPostConf,
        preBuild    = readHook buildVerbosity,
-       preMakefile = readHook makefileVerbosity,
        preClean    = readHook cleanVerbosity,
        preCopy     = readHook copyVerbosity,
        preInst     = readHook installVerbosity,
@@ -558,14 +548,6 @@ defaultBuildHook :: PackageDescription -> LocalBuildInfo
 defaultBuildHook pkg_descr localbuildinfo hooks flags = do
   let distPref = fromFlag $ buildDistPref flags
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
-  when (hasLibs pkg_descr) $
-      writeInstalledConfig distPref pkg_descr localbuildinfo False Nothing
-
-defaultMakefileHook :: PackageDescription -> LocalBuildInfo
-        -> UserHooks -> MakefileFlags -> IO ()
-defaultMakefileHook pkg_descr localbuildinfo hooks flags = do
-  let distPref = fromFlag $ makefileDistPref flags
-  makefile pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
   when (hasLibs pkg_descr) $
       writeInstalledConfig distPref pkg_descr localbuildinfo False Nothing
 
