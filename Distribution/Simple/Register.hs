@@ -66,7 +66,7 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),
                                            absoluteInstallDirs)
 import Distribution.Simple.BuildPaths (haddockName)
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor, compilerVersion, PackageDB(..) )
+         ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
                                     lookupProgram, ghcPkgProgram, lhcPkgProgram)
@@ -80,7 +80,6 @@ import Distribution.Package
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, InstalledPackageInfo_(InstalledPackageInfo)
          , showInstalledPackageInfo )
-import qualified Distribution.Simple.LHC as LHC
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, installOrdinaryFile, writeFileAtomic
