@@ -23,9 +23,6 @@
 -- partly because there tend to be 1,000's of @.o@ files and this can often be
 -- more than we can pass to the @ld@ or @ar@ programs in one go.
 --
--- There is also some code for generating @Makefiles@ but the less said about
--- that the better.
---
 -- Installing for libs and exes involves finding the right files and copying
 -- them to the right places. One of the more tricky things about this module is
 -- remembering the layout of files in the build directory (which is not
@@ -64,16 +61,15 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
-        configure, getInstalledPackages, build, makefile, installLib, installExe,
+        configure, getInstalledPackages, build, installLib, installExe,
         ghcOptions,
         ghcVerbosityOptions
  ) where
 
-import Distribution.Simple.GHC.Makefile
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
-import Distribution.Simple.Setup ( CopyFlags(..), MakefileFlags(..),
-                                   fromFlag, fromFlagOrDefault)
+import Distribution.Simple.Setup
+         ( CopyFlags(..), fromFlag )
 import Distribution.PackageDescription as PD
                                 ( PackageDescription(..), BuildInfo(..),
                                   withLib,
@@ -107,7 +103,7 @@ import Distribution.Simple.Compiler
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
          , Flag, extensionsToFlags )
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
+         ( Version(..), orLaterVersion )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
@@ -124,7 +120,7 @@ import System.Directory         ( removeFile, renameFile,
                                   getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
-import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
+import System.IO (hClose, hPutStrLn)
 import Distribution.Compat.Exception (catchExit, catchIO)
 import Distribution.Compat.CopyFile
          ( setFileExecutable )
@@ -801,125 +797,6 @@ ghcCcOptions lbi bi odir
 
 mkGHCiLibName :: PackageIdentifier -> String
 mkGHCiLibName lib = "HS" ++ display lib <.> "o"
-
--- -----------------------------------------------------------------------------
--- Building a Makefile
-
-makefile :: PackageDescription -> LocalBuildInfo -> MakefileFlags -> IO ()
-makefile pkg_descr lbi flags = do
-  let file = fromFlagOrDefault "Makefile"(makefileFile flags)
-      verbosity = fromFlag (makefileVerbosity flags)
-  targetExists <- doesFileExist file
-  when targetExists $
-    die ("Not overwriting existing copy of " ++ file)
-  h <- openFile file WriteMode
-
-  let Just lib = library pkg_descr
-      bi = libBuildInfo lib
-
-      packageIdStr = display (packageId pkg_descr)
-  (arProg, _) <- requireProgram verbosity arProgram anyVersion
-                   (withPrograms lbi)
-  (ldProg, _) <- requireProgram verbosity ldProgram anyVersion
-                   (withPrograms lbi)
-  let builddir = buildDir lbi
-      Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
-      Just ghcVersion = programVersion ghcProg
-  let decls = [
-        ("modules", unwords (map display (PD.exposedModules lib ++ otherModules bi))),
-        ("GHC", programPath ghcProg),
-        ("GHC_VERSION", (display (compilerVersion (compiler lbi)))),
-        ("VANILLA_WAY", if withVanillaLib lbi then "YES" else "NO"),
-        ("WAYS", (if withProfLib lbi then "p " else "") ++ (if withSharedLib lbi then "dyn" else "")),
-        ("odir", builddir),
-        ("package", packageIdStr),
-        ("GHC_OPTS", unwords $ programArgs ghcProg
-                            ++ ["-package-name", packageIdStr ]
-                            ++ ghcOptions lbi bi (buildDir lbi)),
-        ("MAKEFILE", file),
-        ("C_SRCS", unwords (cSources bi)),
-        ("GHC_CC_OPTS", unwords (ghcCcOptions lbi bi (buildDir lbi))),
-        ("GHCI_LIB", if withGHCiLib lbi
-                     then builddir </> mkGHCiLibName (packageId pkg_descr)
-                     else ""),
-        ("soext", dllExtension),
-        ("LIB_LD_OPTS", unwords (["-package-name", packageIdStr]
-                                 ++ concat [ ["-package", display pkg] | pkg <- packageDeps lbi ]
-                                 ++ ["-l"++libName | libName <- extraLibs bi]
-                                 ++ ["-L"++libDir | libDir <- extraLibDirs bi])),
-        ("AR", programPath arProg),
-        ("LD", programPath ldProg ++ concat [" " ++ arg | arg <- programArgs ldProg ]),
-        ("GENERATE_DOT_DEPEND", if ghcVersion >= Version [6,9] []
-                                then "-dep-makefile $(odir)/.depend"
-                                else "-optdep-f -optdep$(odir)/.depend")
-        ]
-      mkRules srcdir = [
-        "$(odir_)%.$(osuf) : " ++ srcdir ++ "/%.hs",
-        "\t$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)",
-        "",
-        "$(odir_)%.$(osuf) : " ++ srcdir ++ "/%.lhs",
-        "\t$(GHC) $(GHC_OPTS) -c $< -o $@  -ohi $(basename $@).$(hisuf)",
-        "",
-        "$(odir_)%.$(osuf) : " ++ srcdir ++ "/%.$(way_)s",
-        "\t@$(RM) $@",
-        "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@",
-        "",
-        "$(odir_)%.$(osuf) : " ++ srcdir ++ "/%.S",
-        "\t@$(RM) $@",
-        "\t$(GHC) $(GHC_CC_OPTS) -c $< -o $@",
-        "",
-        "$(odir_)%.$(osuf)-boot : " ++ srcdir ++ "/%.hs-boot",
-        "\t$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot",
-        "",
-        "$(odir_)%.$(osuf)-boot : " ++ srcdir ++ "/%.lhs-boot",
-        "\t$(GHC) $(GHC_OPTS) -c $< -o $@ -ohi $(basename $@).$(way_)hi-boot",
-        ""]
-      -- We used to do this with $(eval ...) and $(call ...) in the
-      -- Makefile, but make 3.79.1 (which is what comes with msys)
-      -- doesn't understand $(eval ...), so now we just stick the
-      -- expanded loop directly into the Makefile we generate.
-      vars = ["WAY_p_OPTS = -prof",
-              "WAY_dyn_OPTS = -fPIC -dynamic",
-              "WAY_dyn_CC_OPTS = -fPIC",
-              "",
-              "ifneq \"$(way)\" \"\"",
-              "way_ := $(way)_",
-              "_way := _$(way)",
-              "GHC_OPTS += $(WAY_$(way)_OPTS)",
-              "GHC_OPTS += -hisuf $(way_)hi -hcsuf $(way_)hc -osuf $(osuf)",
-              "GHC_CC_OPTS += $(WAY_$(way)_CC_OPTS)",
-              "endif",
-              "",
-              "osuf  = $(way_)o",
-              "hisuf = $(way_)hi",
-              "",
-              "ifneq \"$(odir)\" \"\"",
-              "odir_ = $(odir)/",
-              "else",
-              "odir_ =",
-              "endif",
-              ""]
-      rules = concatMap mkRules (hsSourceDirs bi)
-
-  hPutStrLn h "# DO NOT EDIT!  Automatically generated by Cabal\n"
-  hPutStrLn h $ unlines (map (\(a,b)-> a ++ " = " ++ munge b) decls)
-  hPutStrLn h $ unlines vars
-  hPutStrLn h makefileTemplate
-  hPutStrLn h $ unlines rules
-   -- put the extra suffix rules *after* the suffix rules in the template.
-   -- the suffix rules in the tempate handle source files that have been
-   -- preprocessed and generated into distdir, whereas the suffix rules
-   -- here point to the source dir.  We want the distdir to override the
-   -- source dir, just in case the user has left a preprocessed version
-   -- of a source file lying around in the source dir.  Also this matches
-   -- the behaviour of 'cabal build'.
-  hClose h
- where
-  munge "" = ""
-  munge ('#':s) = '\\':'#':munge s
-  munge ('\\':s) = '/':munge s
-        -- for Windows, we want to use forward slashes in our pathnames in the Makefile
-  munge (c:s) = c : munge s
 
 -- -----------------------------------------------------------------------------
 -- Installing

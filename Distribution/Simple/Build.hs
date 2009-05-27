@@ -13,11 +13,6 @@
 -- compiler-specific actions. It does do some non-compiler specific bits like
 -- running pre-processors.
 --
--- There's some stuff to do with generating @makefiles@ which is a well hidden
--- feature that's used to build libraries inside the GHC build system but which
--- we'd like to kill off and replace with something better (doing our own
--- dependency analysis properly).
---
 
 {- Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.
@@ -52,7 +47,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Build (
     build,
-    makefile,
 
     initialBuildSteps,
     writeAutogenFiles,
@@ -77,7 +71,7 @@ import Distribution.PackageDescription
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
-         ( BuildFlags(..), MakefileFlags(..), fromFlag )
+         ( BuildFlags(..), fromFlag )
 import Distribution.Simple.PreProcess
          ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
@@ -119,22 +113,6 @@ build pkg_descr lbi flags suffixes = do
     Hugs -> Hugs.build pkg_descr lbi verbosity
     NHC  -> NHC.build  pkg_descr lbi verbosity
     _    -> die ("Building is not supported with this compiler.")
-
-makefile :: PackageDescription  -- ^mostly information from the .cabal file
-         -> LocalBuildInfo -- ^Configuration information
-         -> MakefileFlags -- ^Flags that the user passed to makefile
-         -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
-         -> IO ()
-makefile pkg_descr lbi flags suffixes = do
-  let distPref  = fromFlag (makefileDistPref flags)
-      verbosity = fromFlag (makefileVerbosity flags)
-  initialBuildSteps distPref pkg_descr lbi verbosity suffixes
-  when (not (hasLibs pkg_descr)) $
-      die ("Makefile is only supported for libraries, currently.")
-  setupMessage verbosity "Generating Makefile" (packageId pkg_descr)
-  case compilerFlavor (compiler lbi) of
-    GHC  -> GHC.makefile  pkg_descr lbi flags
-    _    -> die ("Generating a Makefile is not supported for this compiler.")
 
 
 initialBuildSteps :: FilePath -- ^"dist" prefix
