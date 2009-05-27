@@ -27,7 +27,7 @@ import Distribution.Version
 import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.Simple.LocalBuildInfo
-        ( LocalBuildInfo(packageDeps) )
+        ( LocalBuildInfo, externalPackageDeps )
 import Distribution.Text
          ( display )
 
@@ -46,7 +46,7 @@ generate _pkg_descr lbi = concat $
     ,"  (major1) == ",major1," && (major2) == ",major2," && (minor) <= ",minor
     ,"\n\n"
     ]
-  | pkgid@(PackageIdentifier name version) <- packageDeps lbi
+  | pkgid@(PackageIdentifier name version) <- externalPackageDeps lbi
   , let (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
         pkgname = map fixchar (display name)
   ]

@@ -46,6 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
+        externalPackageDeps,
         ComponentLocalBuildInfo(..),
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
@@ -67,6 +68,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 
+import Data.List (nub)
+
 -- |Data cached after configuration step.  See also
 -- 'Distribution.Setup.ConfigFlags'.
 data LocalBuildInfo = LocalBuildInfo {
@@ -79,15 +82,6 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ Where to build the package.
         scratchDir    :: FilePath,
                 -- ^ Where to put the result of the Hugs build.
-        --TODO: eliminate packageDeps field
-        packageDeps   :: [PackageId],
-                -- ^ External package dependencies for the package as a whole,
-                -- the union of the individual 'targetPackageDeps'.
-                -- The 'Distribution.PackageDescription.PackageDescription'
-                -- specifies a set of build dependencies
-                -- that must be satisfied in terms of version ranges.  This
-                -- field fixes those dependencies to the specific versions
-                -- available on this machine for this compiler.
         libraryConfig       :: Maybe ComponentLocalBuildInfo,
         executableConfigs   :: [(String, ComponentLocalBuildInfo)],
         installedPkgs :: PackageIndex InstalledPackageInfo,
@@ -112,8 +106,21 @@ data LocalBuildInfo = LocalBuildInfo {
   } deriving (Read, Show)
 
 data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
-        componentPackageDeps :: [PackageId]
-  } deriving (Read, Show)
+    -- | External package dependencies for this component. The 'BuildInfo'
+    -- specifies a set of build dependencies that must be satisfied in terms of
+    -- version ranges. This field fixes those dependencies to the specific
+    -- versions available on this machine for this compiler.
+    componentPackageDeps :: [PackageId]
+  }
+  deriving (Read, Show)
+
+-- | External package dependencies for the package as a whole, the union of the
+-- individual 'targetPackageDeps'.
+externalPackageDeps :: LocalBuildInfo -> [PackageId]
+externalPackageDeps lbi = nub $
+  -- TODO:  what about non-buildable components?
+     maybe [] componentPackageDeps (libraryConfig lbi)
+  ++ concatMap (componentPackageDeps . snd) (executableConfigs lbi)
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs
