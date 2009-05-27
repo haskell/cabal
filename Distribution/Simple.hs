@@ -94,10 +94,8 @@ import Distribution.Simple.Command
 
 import Distribution.Simple.Build        ( build )
 import Distribution.Simple.SrcDist      ( sdist )
-import Distribution.Simple.Register     ( register, unregister,
-                                          writeInstalledConfig,
-                                          removeRegScripts
-                                        )
+import Distribution.Simple.Register
+         ( register, unregister, removeRegScripts )
 
 import Distribution.Simple.Configure
          ( getPersistBuildConfig, maybeGetPersistBuildConfig
@@ -543,11 +541,8 @@ defaultInstallHook pkg_descr localbuildinfo _ flags = do
 
 defaultBuildHook :: PackageDescription -> LocalBuildInfo
         -> UserHooks -> BuildFlags -> IO ()
-defaultBuildHook pkg_descr localbuildinfo hooks flags = do
-  let distPref = fromFlag $ buildDistPref flags
+defaultBuildHook pkg_descr localbuildinfo hooks flags =
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
-  when (hasLibs pkg_descr) $
-      writeInstalledConfig distPref pkg_descr localbuildinfo False Nothing
 
 defaultRegHook :: PackageDescription -> LocalBuildInfo
         -> UserHooks -> RegisterFlags -> IO ()
