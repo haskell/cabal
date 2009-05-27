@@ -75,7 +75,8 @@ import Distribution.Simple.Setup
 import Distribution.Simple.PreProcess
          ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir) )
+         ( LocalBuildInfo(compiler, buildDir, libraryConfig, executableConfigs)
+         , ComponentLocalBuildInfo )
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
 import Distribution.Simple.Utils
@@ -110,29 +111,35 @@ build pkg_descr lbi flags suffixes = do
 
   withLib pkg_descr $ \lib -> do
     info verbosity "Building library..."
-    buildLib verbosity pkg_descr lbi lib
+    let Just clbi = libraryConfig lbi
+    buildLib verbosity pkg_descr lbi lib clbi
 
   withExe pkg_descr $ \exe -> do
     info verbosity $ "Building executable " ++ exeName exe ++ "..."
-    buildExe verbosity pkg_descr lbi exe
+    let Just clbi = lookup (exeName exe) (executableConfigs lbi)
+    buildExe verbosity pkg_descr lbi exe clbi
 
-buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
-buildLib verbosity pkg_descr lbi lib = case compilerFlavor (compiler lbi) of
-  GHC  -> GHC.buildLib  verbosity pkg_descr lbi lib
-  JHC  -> JHC.buildLib  verbosity pkg_descr lbi lib
-  LHC  -> LHC.buildLib  verbosity pkg_descr lbi lib
-  Hugs -> Hugs.buildLib verbosity pkg_descr lbi lib
-  NHC  -> NHC.buildLib  verbosity pkg_descr lbi lib
-  _    -> die "Building is not supported with this compiler."
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Library            -> ComponentLocalBuildInfo -> IO ()
+buildLib verbosity pkg_descr lbi lib clbi =
+  case compilerFlavor (compiler lbi) of
+    GHC  -> GHC.buildLib  verbosity pkg_descr lbi lib clbi
+    JHC  -> JHC.buildLib  verbosity pkg_descr lbi lib clbi
+    LHC  -> LHC.buildLib  verbosity pkg_descr lbi lib clbi
+    Hugs -> Hugs.buildLib verbosity pkg_descr lbi lib clbi
+    NHC  -> NHC.buildLib  verbosity pkg_descr lbi lib clbi
+    _    -> die "Building is not supported with this compiler."
 
-buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
-buildExe verbosity pkg_descr lbi exe = case compilerFlavor (compiler lbi) of
-  GHC  -> GHC.buildExe  verbosity pkg_descr lbi exe
-  JHC  -> JHC.buildExe  verbosity pkg_descr lbi exe
-  LHC  -> LHC.buildExe  verbosity pkg_descr lbi exe
-  Hugs -> Hugs.buildExe verbosity pkg_descr lbi exe
-  NHC  -> NHC.buildExe  verbosity pkg_descr lbi exe
-  _    -> die "Building is not supported with this compiler."
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Executable         -> ComponentLocalBuildInfo -> IO ()
+buildExe verbosity pkg_descr lbi exe clbi =
+  case compilerFlavor (compiler lbi) of
+    GHC  -> GHC.buildExe  verbosity pkg_descr lbi exe clbi
+    JHC  -> JHC.buildExe  verbosity pkg_descr lbi exe clbi
+    LHC  -> LHC.buildExe  verbosity pkg_descr lbi exe clbi
+    Hugs -> Hugs.buildExe verbosity pkg_descr lbi exe clbi
+    NHC  -> NHC.buildExe  verbosity pkg_descr lbi exe clbi
+    _    -> die "Building is not supported with this compiler."
 
 initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> PackageDescription  -- ^mostly information from the .cabal file

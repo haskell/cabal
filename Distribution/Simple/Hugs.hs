@@ -62,7 +62,7 @@ import Distribution.Simple.PreProcess   ( ppCpp, runSimplePreProcessor )
 import Distribution.Simple.PreProcess.Unlit
                                 ( unlit )
 import Distribution.Simple.LocalBuildInfo
-                                ( LocalBuildInfo(..))
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
                                 ( autogenModuleName, autogenModulesDir,
                                   dllExtension )
@@ -136,8 +136,9 @@ hugsLanguageExtensions =
 -- Building
 
 -- |Building a package for Hugs.
-buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
-buildLib verbosity pkg_descr lbi lib = do
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Library            -> ComponentLocalBuildInfo -> IO ()
+buildLib verbosity pkg_descr lbi lib _clbi = do
     let pref = scratchDir lbi
     createDirectoryIfMissingVerbose verbosity True pref
     copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
@@ -148,8 +149,10 @@ buildLib verbosity pkg_descr lbi lib = do
                          <.> ".hs"
 
 -- |Building an executable for Hugs.
-buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
-buildExe verbosity pkg_descr lbi exe@Executable {modulePath=mainPath, buildInfo=bi} = do
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Executable         -> ComponentLocalBuildInfo -> IO ()
+buildExe verbosity pkg_descr lbi
+  exe@Executable {modulePath=mainPath, buildInfo=bi} _clbi = do
     let pref = scratchDir lbi
     createDirectoryIfMissingVerbose verbosity True pref
     
