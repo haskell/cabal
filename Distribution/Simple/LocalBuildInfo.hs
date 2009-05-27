@@ -61,7 +61,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription (PackageDescription(..))
-import Distribution.Package (PackageIdentifier, Package(..))
+import Distribution.Package (PackageId, Package(..))
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDB, OptimisationLevel )
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -80,7 +80,7 @@ data LocalBuildInfo = LocalBuildInfo {
         scratchDir    :: FilePath,
                 -- ^ Where to put the result of the Hugs build.
         --TODO: eliminate packageDeps field
-        packageDeps   :: [PackageIdentifier],
+        packageDeps   :: [PackageId],
                 -- ^ External package dependencies for the package as a whole,
                 -- the union of the individual 'targetPackageDeps'.
                 -- The 'Distribution.PackageDescription.PackageDescription'
@@ -112,24 +112,24 @@ data LocalBuildInfo = LocalBuildInfo {
   } deriving (Read, Show)
 
 data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
-        componentPackageDeps :: [PackageIdentifier]
+        componentPackageDeps :: [PackageId]
   } deriving (Read, Show)
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs
 
 -- |See 'InstallDirs.absoluteInstallDirs'
-absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
+absoluteInstallDirs :: PackageId -> LocalBuildInfo -> CopyDest
                     -> InstallDirs FilePath
-absoluteInstallDirs pkg_descr lbi copydest =
+absoluteInstallDirs pkgid lbi copydest =
   InstallDirs.absoluteInstallDirs
-    (packageId pkg_descr)
+    pkgid
     (compilerId (compiler lbi))
     copydest
     (installDirTemplates lbi)
 
 -- |See 'InstallDirs.prefixRelativeInstallDirs'
-prefixRelativeInstallDirs :: PackageDescription -> LocalBuildInfo
+prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
                           -> InstallDirs (Maybe FilePath)
 prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
@@ -137,10 +137,10 @@ prefixRelativeInstallDirs pkg_descr lbi =
     (compilerId (compiler lbi))
     (installDirTemplates lbi)
 
-substPathTemplate :: PackageDescription -> LocalBuildInfo
+substPathTemplate :: PackageId -> LocalBuildInfo
                   -> PathTemplate -> FilePath
-substPathTemplate pkg_descr lbi = fromPathTemplate
+substPathTemplate pkgid lbi = fromPathTemplate
                                 . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv
-                   (packageId pkg_descr)
+                   pkgid
                    (compilerId (compiler lbi))
