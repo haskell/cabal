@@ -113,8 +113,10 @@ build pkg_descr lbi flags suffixes = do
          >> withExe pkg_descr (JHC.buildExe verbosity pkg_descr lbi)
     LHC  -> withLib pkg_descr (LHC.buildLib verbosity pkg_descr lbi)
          >> withExe pkg_descr (LHC.buildExe verbosity pkg_descr lbi)
-    Hugs -> Hugs.build pkg_descr lbi verbosity
-    NHC  -> NHC.build  pkg_descr lbi verbosity
+    Hugs -> withLib pkg_descr (Hugs.buildLib verbosity pkg_descr lbi)
+         >> withExe pkg_descr (Hugs.buildExe verbosity pkg_descr lbi)
+    NHC  -> withLib pkg_descr (NHC.buildLib verbosity pkg_descr lbi)
+         >> withExe pkg_descr (NHC.buildExe verbosity pkg_descr lbi)
     _    -> die ("Building is not supported with this compiler.")
 
 

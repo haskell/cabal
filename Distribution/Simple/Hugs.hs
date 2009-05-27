@@ -41,7 +41,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Hugs (
-        configure, build, install
+        configure,
+        buildLib,
+        buildExe,
+        install
  ) where
 
 import Distribution.PackageDescription
@@ -133,128 +136,139 @@ hugsLanguageExtensions =
 -- Building
 
 -- |Building a package for Hugs.
-build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
-build pkg_descr lbi verbosity = do
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
+buildLib verbosity pkg_descr lbi lib = do
     let pref = scratchDir lbi
     createDirectoryIfMissingVerbose verbosity True pref
-    withLib pkg_descr $ \ l -> do
-        copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
-                                  (pref </> paths_modulename)
-        compileBuildInfo pref [] (libModules l) (libBuildInfo l)
-    withExe pkg_descr $ compileExecutable (pref </> "programs")
+    copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
+                              (pref </> paths_modulename)
+    compileBuildInfo verbosity pref [] (libModules lib) (libBuildInfo lib) lbi
   where
-        srcDir = buildDir lbi
+    paths_modulename = ModuleName.toFilePath (autogenModuleName pkg_descr)
+                         <.> ".hs"
 
-        paths_modulename = ModuleName.toFilePath (autogenModuleName pkg_descr)
-                             <.> ".hs"
+-- |Building an executable for Hugs.
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
+buildExe verbosity pkg_descr lbi exe@Executable {modulePath=mainPath, buildInfo=bi} = do
+    let pref = scratchDir lbi
+    createDirectoryIfMissingVerbose verbosity True pref
+    
+    let destDir = pref </> "programs"
+    let exeMods = otherModules bi
+    srcMainFile <- findFile (hsSourceDirs bi) mainPath
+    let exeDir = destDir </> exeName exe
+    let destMainFile = exeDir </> hugsMainFilename exe
+    copyModule verbosity (CPP `elem` extensions bi) bi lbi srcMainFile destMainFile
+    let destPathsFile = exeDir </> paths_modulename
+    copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
+                              destPathsFile
+    compileBuildInfo verbosity exeDir 
+      (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi lbi
+    compileFiles verbosity bi lbi exeDir [destMainFile, destPathsFile]
 
-        compileExecutable :: FilePath -> Executable -> IO ()
-        compileExecutable destDir (exe@Executable {modulePath=mainPath, buildInfo=bi}) = do
-            let exeMods = otherModules bi
-            srcMainFile <- findFile (hsSourceDirs bi) mainPath
-            let exeDir = destDir </> exeName exe
-            let destMainFile = exeDir </> hugsMainFilename exe
-            copyModule (CPP `elem` extensions bi) bi srcMainFile destMainFile
-            let destPathsFile = exeDir </> paths_modulename
-            copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
-                                      destPathsFile
-            compileBuildInfo exeDir (maybe [] (hsSourceDirs . libBuildInfo) (library pkg_descr)) exeMods bi
-            compileFiles bi exeDir [destMainFile, destPathsFile]
+  where
+    paths_modulename = ModuleName.toFilePath (autogenModuleName pkg_descr)
+                         <.> ".hs"
 
-        compileBuildInfo :: FilePath -- ^output directory
-                         -> [FilePath] -- ^library source dirs, if building exes
-                         -> [ModuleName] -- ^Modules
-                         -> BuildInfo -> IO ()
-        compileBuildInfo destDir mLibSrcDirs mods bi = do
-            -- Pass 1: copy or cpp files from build directory to scratch directory
-            let useCpp = CPP `elem` extensions bi
-            let srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
-            info verbosity $ "Source directories: " ++ show srcDirs
-            flip mapM_ mods $ \ m -> do
-                fs <- findFileWithExtension suffixes srcDirs (ModuleName.toFilePath m)
-                case fs of
-                  Nothing ->
-                    die ("can't find source for module " ++ display m)
-                  Just srcFile -> do
-                    let ext = takeExtension srcFile
-                    copyModule useCpp bi srcFile
-                        (destDir </> ModuleName.toFilePath m <.> ext)
-            -- Pass 2: compile foreign stubs in scratch directory
-            stubsFileLists <- fmap catMaybes $ sequence
-              [ findFileWithExtension suffixes [destDir] (ModuleName.toFilePath modu)
-              | modu <- mods]
-            compileFiles bi destDir stubsFileLists
+compileBuildInfo :: Verbosity
+                 -> FilePath -- ^output directory
+                 -> [FilePath] -- ^library source dirs, if building exes
+                 -> [ModuleName] -- ^Modules
+                 -> BuildInfo
+                 -> LocalBuildInfo
+                 -> IO ()
+compileBuildInfo verbosity destDir mLibSrcDirs mods bi lbi = do
+    -- Pass 1: copy or cpp files from build directory to scratch directory
+    let useCpp = CPP `elem` extensions bi
+    let srcDir = buildDir lbi
+        srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
+    info verbosity $ "Source directories: " ++ show srcDirs
+    flip mapM_ mods $ \ m -> do
+        fs <- findFileWithExtension suffixes srcDirs (ModuleName.toFilePath m)
+        case fs of
+          Nothing ->
+            die ("can't find source for module " ++ display m)
+          Just srcFile -> do
+            let ext = takeExtension srcFile
+            copyModule verbosity useCpp bi lbi srcFile
+                (destDir </> ModuleName.toFilePath m <.> ext)
+    -- Pass 2: compile foreign stubs in scratch directory
+    stubsFileLists <- fmap catMaybes $ sequence
+      [ findFileWithExtension suffixes [destDir] (ModuleName.toFilePath modu)
+      | modu <- mods]
+    compileFiles verbosity bi lbi destDir stubsFileLists
 
-        suffixes = ["hs", "lhs"]
+suffixes :: [String]
+suffixes = ["hs", "lhs"]
 
-        -- Copy or cpp a file from the source directory to the build directory.
-        copyModule :: Bool -> BuildInfo -> FilePath -> FilePath -> IO ()
-        copyModule cppAll bi srcFile destFile = do
-            createDirectoryIfMissingVerbose verbosity True (takeDirectory destFile)
-            (exts, opts, _) <- getOptionsFromSource srcFile
-            let ghcOpts = [ op | (GHC, ops) <- opts, op <- ops ]
-            if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
-                runSimplePreProcessor (ppCpp bi lbi) srcFile destFile verbosity
-                return ()
-              else
-                copyFileVerbose verbosity srcFile destFile
+-- Copy or cpp a file from the source directory to the build directory.
+copyModule :: Verbosity -> Bool -> BuildInfo -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
+copyModule verbosity cppAll bi lbi srcFile destFile = do
+    createDirectoryIfMissingVerbose verbosity True (takeDirectory destFile)
+    (exts, opts, _) <- getOptionsFromSource srcFile
+    let ghcOpts = [ op | (GHC, ops) <- opts, op <- ops ]
+    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
+        runSimplePreProcessor (ppCpp bi lbi) srcFile destFile verbosity
+        return ()
+      else
+        copyFileVerbose verbosity srcFile destFile
 
-        compileFiles :: BuildInfo -> FilePath -> [FilePath] -> IO ()
-        compileFiles bi modDir fileList = do
-            ffiFileList <- filterM testFFI fileList
-            unless (null ffiFileList) $ do
-                notice verbosity "Compiling FFI stubs"
-                mapM_ (compileFFI bi modDir) ffiFileList
+compileFiles :: Verbosity -> BuildInfo -> LocalBuildInfo -> FilePath -> [FilePath] -> IO ()
+compileFiles verbosity bi lbi modDir fileList = do
+    ffiFileList <- filterM testFFI fileList
+    unless (null ffiFileList) $ do
+        notice verbosity "Compiling FFI stubs"
+        mapM_ (compileFFI verbosity bi lbi modDir) ffiFileList
 
-        -- Only compile FFI stubs for a file if it contains some FFI stuff
-        testFFI :: FilePath -> IO Bool
-        testFFI file =
-          withHaskellFile file $ \inp ->
-            return $! "foreign" `elem` symbols (stripComments False inp)
+-- Only compile FFI stubs for a file if it contains some FFI stuff
+testFFI :: FilePath -> IO Bool
+testFFI file =
+  withHaskellFile file $ \inp ->
+    return $! "foreign" `elem` symbols (stripComments False inp)
 
-        compileFFI :: BuildInfo -> FilePath -> FilePath -> IO ()
-        compileFFI bi modDir file = do
-            (_, opts, file_incs) <- getOptionsFromSource file
-            let ghcOpts = [ op | (GHC, ops) <- opts, op <- ops ]
-            let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
-            let incs = nub (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
-            let pathFlag = "-P" ++ modDir ++ [searchPathSeparator]
-            let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
-            cfiles <- getCFiles file
-            let cArgs =
-                    ["-I" ++ dir | dir <- includeDirs bi] ++
-                    ccOptions bi ++
-                    cfiles ++
-                    ["-L" ++ dir | dir <- extraLibDirs bi] ++
-                    ldOptions bi ++
-                    ["-l" ++ lib | lib <- extraLibs bi] ++
-                    concat [["-framework", f] | f <- frameworks bi]
-            rawSystemProgramConf verbosity ffihugsProgram (withPrograms lbi)
-              (hugsArgs ++ file : cArgs)
+compileFFI :: Verbosity -> BuildInfo -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
+compileFFI verbosity bi lbi modDir file = do
+    (_, opts, file_incs) <- getOptionsFromSource file
+    let ghcOpts = [ op | (GHC, ops) <- opts, op <- ops ]
+    let pkg_incs = ["\"" ++ inc ++ "\"" | inc <- includes bi]
+    let incs = nub (sort (file_incs ++ includeOpts ghcOpts ++ pkg_incs))
+    let pathFlag = "-P" ++ modDir ++ [searchPathSeparator]
+    let hugsArgs = "-98" : pathFlag : map ("-i" ++) incs
+    cfiles <- getCFiles file
+    let cArgs =
+            ["-I" ++ dir | dir <- includeDirs bi] ++
+            ccOptions bi ++
+            cfiles ++
+            ["-L" ++ dir | dir <- extraLibDirs bi] ++
+            ldOptions bi ++
+            ["-l" ++ lib | lib <- extraLibs bi] ++
+            concat [["-framework", f] | f <- frameworks bi]
+    rawSystemProgramConf verbosity ffihugsProgram (withPrograms lbi)
+      (hugsArgs ++ file : cArgs)
 
-        includeOpts :: [String] -> [String]
-        includeOpts [] = []
-        includeOpts ("-#include" : arg : opts) = arg : includeOpts opts
-        includeOpts (_ : opts) = includeOpts opts
+includeOpts :: [String] -> [String]
+includeOpts [] = []
+includeOpts ("-#include" : arg : opts) = arg : includeOpts opts
+includeOpts (_ : opts) = includeOpts opts
 
-        -- get C file names from CFILES pragmas throughout the source file
-        getCFiles :: FilePath -> IO [String]
-        getCFiles file =
-          withHaskellFile file $ \inp ->
-            let cfiles =
-                  [ normalise cfile
-                  | "{-#" : "CFILES" : rest <- map words
-                                             $ lines
-                                             $ stripComments True inp
-                  , last rest == "#-}"
-                  , cfile <- init rest]
-             in seq (length cfiles) (return cfiles)
+-- get C file names from CFILES pragmas throughout the source file
+getCFiles :: FilePath -> IO [String]
+getCFiles file =
+  withHaskellFile file $ \inp ->
+    let cfiles =
+          [ normalise cfile
+          | "{-#" : "CFILES" : rest <- map words
+                                     $ lines
+                                     $ stripComments True inp
+          , last rest == "#-}"
+          , cfile <- init rest]
+     in seq (length cfiles) (return cfiles)
 
-        -- List of terminal symbols in a source file.
-        symbols :: String -> [String]
-        symbols cs = case lex cs of
-            (sym, cs'):_ | not (null sym) -> sym : symbols cs'
-            _ -> []
+-- List of terminal symbols in a source file.
+symbols :: String -> [String]
+symbols cs = case lex cs of
+    (sym, cs'):_ | not (null sym) -> sym : symbols cs'
+    _ -> []
 
 -- Get the non-literate source of a Haskell module.
 withHaskellFile :: FilePath -> (String -> IO a) -> IO a

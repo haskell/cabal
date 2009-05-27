@@ -42,15 +42,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.NHC
   ( configure
-  , build
+  , buildLib, buildExe
   , installLib, installExe
   ) where
 
 import Distribution.Package
         ( PackageIdentifier, packageName, Package(..) )
 import Distribution.PackageDescription
-        ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..),
-          withLib, withExe, hcOptions )
+        ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
+        , hcOptions )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.LocalBuildInfo
@@ -133,91 +133,94 @@ nhcLanguageExtensions =
 
 -- |FIX: For now, the target must contain a main module.  Not used
 -- ATM. Re-add later.
-build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
-build pkg_descr lbi verbosity = do
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
+buildLib verbosity pkg_descr lbi lib = do
   let conf = withPrograms lbi
       Just nhcProg = lookupProgram nhcProgram conf
-  withLib pkg_descr $ \lib -> do
-    let bi = libBuildInfo lib
-        modules = exposedModules lib ++ otherModules bi
-        -- Unsupported extensions have already been checked by configure
-        extensionFlags = extensionsToFlags (compiler lbi) (extensions bi)
-    inFiles <- getModulePaths lbi bi modules
-    let targetDir = buildDir lbi
-        srcDirs  = nub (map takeDirectory inFiles)
-        destDirs = map (targetDir </>) srcDirs
-    mapM_ (createDirectoryIfMissingVerbose verbosity True) destDirs
-    rawSystemProgramConf verbosity hmakeProgram conf $
-         ["-hc=" ++ programPath nhcProg]
-      ++ nhcVerbosityOptions verbosity
-      ++ ["-d", targetDir, "-hidir", targetDir]
-      ++ extensionFlags
-      ++ maybe [] (hcOptions NHC . libBuildInfo)
-                             (library pkg_descr)
-      ++ concat [ ["-package", display (packageName pkg) ]
-                | pkg <- packageDeps lbi ]
-      ++ inFiles
+  let bi = libBuildInfo lib
+      modules = exposedModules lib ++ otherModules bi
+      -- Unsupported extensions have already been checked by configure
+      extensionFlags = extensionsToFlags (compiler lbi) (extensions bi)
+  inFiles <- getModulePaths lbi bi modules
+  let targetDir = buildDir lbi
+      srcDirs  = nub (map takeDirectory inFiles)
+      destDirs = map (targetDir </>) srcDirs
+  mapM_ (createDirectoryIfMissingVerbose verbosity True) destDirs
+  rawSystemProgramConf verbosity hmakeProgram conf $
+       ["-hc=" ++ programPath nhcProg]
+    ++ nhcVerbosityOptions verbosity
+    ++ ["-d", targetDir, "-hidir", targetDir]
+    ++ extensionFlags
+    ++ maybe [] (hcOptions NHC . libBuildInfo)
+                           (library pkg_descr)
+    ++ concat [ ["-package", display (packageName pkg) ]
+              | pkg <- packageDeps lbi ]
+    ++ inFiles
 {-
-    -- build any C sources
-    unless (null (cSources bi)) $ do
-       info verbosity "Building C Sources..."
-       let commonCcArgs = (if verbosity >= deafening then ["-v"] else [])
-                       ++ ["-I" ++ dir | dir <- includeDirs bi]
-                       ++ [opt | opt <- ccOptions bi]
-                       ++ (if withOptimization lbi then ["-O2"] else [])
-       flip mapM_ (cSources bi) $ \cfile -> do
-         let ofile = targetDir </> cfile `replaceExtension` objExtension
-         createDirectoryIfMissingVerbose verbosity True (takeDirectory ofile)
-         rawSystemProgramConf verbosity hmakeProgram conf
-           (commonCcArgs ++ ["-c", cfile, "-o", ofile])
+  -- build any C sources
+  unless (null (cSources bi)) $ do
+     info verbosity "Building C Sources..."
+     let commonCcArgs = (if verbosity >= deafening then ["-v"] else [])
+                     ++ ["-I" ++ dir | dir <- includeDirs bi]
+                     ++ [opt | opt <- ccOptions bi]
+                     ++ (if withOptimization lbi then ["-O2"] else [])
+     flip mapM_ (cSources bi) $ \cfile -> do
+       let ofile = targetDir </> cfile `replaceExtension` objExtension
+       createDirectoryIfMissingVerbose verbosity True (takeDirectory ofile)
+       rawSystemProgramConf verbosity hmakeProgram conf
+         (commonCcArgs ++ ["-c", cfile, "-o", ofile])
 -}
-    -- link:
-    info verbosity "Linking..."
-    let --cObjs = [ targetDir </> cFile `replaceExtension` objExtension
-        --        | cFile <- cSources bi ]
-        libFilePath = targetDir </> mkLibName (packageId pkg_descr)
-        hObjs = [ targetDir </> ModuleName.toFilePath m <.> objExtension
-                | m <- modules ]
+  -- link:
+  info verbosity "Linking..."
+  let --cObjs = [ targetDir </> cFile `replaceExtension` objExtension
+      --        | cFile <- cSources bi ]
+      libFilePath = targetDir </> mkLibName (packageId pkg_descr)
+      hObjs = [ targetDir </> ModuleName.toFilePath m <.> objExtension
+              | m <- modules ]
 
-    unless (null hObjs {-&& null cObjs-}) $ do
-      -- first remove library if it exists
-      removeFile libFilePath `catchIO` \_ -> return ()
+  unless (null hObjs {-&& null cObjs-}) $ do
+    -- first remove library if it exists
+    removeFile libFilePath `catchIO` \_ -> return ()
 
-      let arVerbosity | verbosity >= deafening = "v"
-                      | verbosity >= normal = ""
-                      | otherwise = "c"
+    let arVerbosity | verbosity >= deafening = "v"
+                    | verbosity >= normal = ""
+                    | otherwise = "c"
 
-      rawSystemProgramConf verbosity arProgram (withPrograms lbi) $
-           ["q"++ arVerbosity, libFilePath]
-        ++ hObjs
---        ++ cObjs
+    rawSystemProgramConf verbosity arProgram (withPrograms lbi) $
+         ["q"++ arVerbosity, libFilePath]
+      ++ hObjs
+--    ++ cObjs
 
-  withExe pkg_descr $ \exe -> do
-    when (dropExtension (modulePath exe) /= exeName exe) $
-      die $ "hmake does not support exe names that do not match the name of "
-         ++ "the 'main-is' file. You will have to rename your executable to "
-         ++ show (dropExtension (modulePath exe))
-    let bi = buildInfo exe
-        modules = otherModules bi
-        -- Unsupported extensions have already been checked by configure
-        extensionFlags = extensionsToFlags (compiler lbi) (extensions bi)
-    inFiles <- getModulePaths lbi bi modules
-    let targetDir = buildDir lbi </> exeName exe
-        exeDir    = targetDir </> (exeName exe ++ "-tmp")
-        srcDirs   = nub (map takeDirectory (modulePath exe : inFiles))
-        destDirs  = map (exeDir </>) srcDirs
-    mapM_ (createDirectoryIfMissingVerbose verbosity True) destDirs
-    rawSystemProgramConf verbosity hmakeProgram conf $
-         ["-hc=" ++ programPath nhcProg]
-      ++ nhcVerbosityOptions verbosity
-      ++ ["-d", targetDir, "-hidir", targetDir]
-      ++ extensionFlags
-      ++ maybe [] (hcOptions NHC . libBuildInfo)
-                             (library pkg_descr)
-      ++ concat [ ["-package", display (packageName pkg) ]
-                | pkg <- packageDeps lbi ]
-      ++ inFiles
-      ++ [exeName exe]
+-- | Building an executable for NHC.
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
+buildExe verbosity pkg_descr lbi exe = do
+  let conf = withPrograms lbi
+      Just nhcProg = lookupProgram nhcProgram conf
+  when (dropExtension (modulePath exe) /= exeName exe) $
+    die $ "hmake does not support exe names that do not match the name of "
+       ++ "the 'main-is' file. You will have to rename your executable to "
+       ++ show (dropExtension (modulePath exe))
+  let bi = buildInfo exe
+      modules = otherModules bi
+      -- Unsupported extensions have already been checked by configure
+      extensionFlags = extensionsToFlags (compiler lbi) (extensions bi)
+  inFiles <- getModulePaths lbi bi modules
+  let targetDir = buildDir lbi </> exeName exe
+      exeDir    = targetDir </> (exeName exe ++ "-tmp")
+      srcDirs   = nub (map takeDirectory (modulePath exe : inFiles))
+      destDirs  = map (exeDir </>) srcDirs
+  mapM_ (createDirectoryIfMissingVerbose verbosity True) destDirs
+  rawSystemProgramConf verbosity hmakeProgram conf $
+       ["-hc=" ++ programPath nhcProg]
+    ++ nhcVerbosityOptions verbosity
+    ++ ["-d", targetDir, "-hidir", targetDir]
+    ++ extensionFlags
+    ++ maybe [] (hcOptions NHC . libBuildInfo)
+                           (library pkg_descr)
+    ++ concat [ ["-package", display (packageName pkg) ]
+              | pkg <- packageDeps lbi ]
+    ++ inFiles
+    ++ [exeName exe]
 
 nhcVerbosityOptions :: Verbosity -> [String]
 nhcVerbosityOptions verbosity
