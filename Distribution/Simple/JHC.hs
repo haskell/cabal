@@ -144,7 +144,7 @@ build pkg_descr lbi verbosity = do
       let libBi = libBuildInfo lib
       let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
       rawSystemProgram verbosity jhcProg $
-        ["-c"] ++ args ++ map display (libModules pkg_descr)
+        ["-c"] ++ args ++ map display (libModules lib)
       let pkgid = display (packageId pkg_descr)
           pfile = buildDir lbi </> "jhc-pkg.conf"
           hlfile= buildDir lbi </> (pkgid ++ ".hl")

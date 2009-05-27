@@ -483,7 +483,7 @@ buildLib verbosity pkg_descr lbi lib = do
   let ghcArgs =
              ["-package-name", display pkgid ]
           ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
-          ++ map display (libModules pkg_descr)
+          ++ map display (libModules lib)
       ghcArgsProf = ghcArgs
           ++ ["-prof",
               "-hisuf", "p_hi",
@@ -496,7 +496,7 @@ buildLib verbosity pkg_descr lbi lib = do
               "-osuf", "dyn_o", "-fPIC"
              ]
           ++ ghcSharedOptions libBi
-  unless (null (libModules pkg_descr)) $
+  unless (null (libModules lib)) $
     do ifVanillaLib forceVanillaLib (runGhcProg ghcArgs)
        ifProfLib (runGhcProg ghcArgsProf)
        ifSharedLib (runGhcProg ghcArgsShared)
@@ -524,26 +524,26 @@ buildLib verbosity pkg_descr lbi lib = do
   stubObjs <- fmap catMaybes $ sequence
     [ findFileWithExtension [objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules pkg_descr ]
+    | x <- libModules lib ]
   stubProfObjs <- fmap catMaybes $ sequence
     [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules pkg_descr ]
+    | x <- libModules lib ]
   stubSharedObjs <- fmap catMaybes $ sequence
     [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules pkg_descr ]
+    | x <- libModules lib ]
 
-  hObjs     <- getHaskellObjects pkg_descr libBi lbi
+  hObjs     <- getHaskellObjects lib lbi
                     pref objExtension True
   hProfObjs <-
     if (withProfLib lbi)
-            then getHaskellObjects pkg_descr libBi lbi
+            then getHaskellObjects lib lbi
                     pref ("p_" ++ objExtension) True
             else return []
   hSharedObjs <-
     if (withSharedLib lbi)
-            then getHaskellObjects pkg_descr libBi lbi
+            then getHaskellObjects lib lbi
                     pref ("dyn_" ++ objExtension) False
             else return []
 
@@ -704,12 +704,12 @@ hackThreadedFlag verbosity comp prof bi
 
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
-getHaskellObjects :: PackageDescription -> BuildInfo -> LocalBuildInfo
-        -> FilePath -> String -> Bool -> IO [FilePath]
-getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext allow_split_objs
+getHaskellObjects :: Library -> LocalBuildInfo
+                  -> FilePath -> String -> Bool -> IO [FilePath]
+getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
         let dirs = [ pref </> (ModuleName.toFilePath x ++ "_split")
-                   | x <- libModules pkg_descr ]
+                   | x <- libModules lib ]
         objss <- mapM getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
@@ -718,7 +718,7 @@ getHaskellObjects pkg_descr _ lbi pref wanted_obj_ext allow_split_objs
         return objs
   | otherwise  =
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
-               | x <- libModules pkg_descr ]
+               | x <- libModules lib ]
 
 
 constructGHCCmdLine
@@ -857,7 +857,7 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
               createDirectoryIfMissingVerbose verbosity True dst
               installOrdinaryFile verbosity (src </> n) (dst </> n)
             copyModuleFiles ext =
-              findModuleFiles [builtDir] [ext] (libModules pkg)
+              findModuleFiles [builtDir] [ext] (libModules lib)
                 >>= installOrdinaryFiles verbosity targetDir
         ifVanilla $ copyModuleFiles "hi"
         ifProf    $ copyModuleFiles "p_hi"
@@ -882,7 +882,7 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
 
     pkgid          = packageId pkg
 
-    hasLib    = not $ null (libModules pkg)
+    hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))
     ifVanilla = when (hasLib && withVanillaLib lbi)
     ifProf    = when (hasLib && withProfLib    lbi)
