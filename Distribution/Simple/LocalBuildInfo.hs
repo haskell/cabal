@@ -46,6 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
+        ComponentLocalBuildInfo(..),
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
@@ -78,13 +79,17 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ Where to build the package.
         scratchDir    :: FilePath,
                 -- ^ Where to put the result of the Hugs build.
+        --TODO: eliminate packageDeps field
         packageDeps   :: [PackageIdentifier],
-                -- ^ Which packages we depend on, /exactly/.
+                -- ^ External package dependencies for the package as a whole,
+                -- the union of the individual 'targetPackageDeps'.
                 -- The 'Distribution.PackageDescription.PackageDescription'
                 -- specifies a set of build dependencies
                 -- that must be satisfied in terms of version ranges.  This
                 -- field fixes those dependencies to the specific versions
                 -- available on this machine for this compiler.
+        libraryConfig       :: Maybe ComponentLocalBuildInfo,
+        executableConfigs   :: [(String, ComponentLocalBuildInfo)],
         installedPkgs :: PackageIndex InstalledPackageInfo,
                 -- ^ All the info about all installed packages.
         pkgDescrFile  :: Maybe FilePath,
@@ -104,7 +109,10 @@ data LocalBuildInfo = LocalBuildInfo {
         stripExes     :: Bool,  -- ^Whether to strip executables during install
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
         progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
+  } deriving (Read, Show)
 
+data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
+        componentPackageDeps :: [PackageIdentifier]
   } deriving (Read, Show)
 
 -- -----------------------------------------------------------------------------

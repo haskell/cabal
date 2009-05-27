@@ -100,8 +100,8 @@ import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
-    ( LocalBuildInfo(..), absoluteInstallDirs
-    , prefixRelativeInstallDirs )
+    ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
+    , absoluteInstallDirs, prefixRelativeInstallDirs )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
     , intercalate, comparing, cabalVersion, cabalBootstrapping
@@ -416,6 +416,10 @@ configure (pkg_descr0, pbi) cfg
                                             (distPref </> "scratch")
                                             (configScratchDir cfg),
                     packageDeps         = dep_pkgs,
+                    libraryConfig       = (\_ -> ComponentLocalBuildInfo dep_pkgs)
+                                              `fmap` library pkg_descr',
+                    executableConfigs   = (\exe -> (exeName exe, ComponentLocalBuildInfo dep_pkgs))
+                                              `fmap` executables pkg_descr',
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
