@@ -82,7 +82,7 @@ import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
-                                ( LocalBuildInfo(..), InstallDirs(..) )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..), InstallDirs(..) )
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
@@ -324,8 +324,9 @@ substTopDir topDir ipo
 
 -- | Build a library with LHC.
 --
-buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
-buildLib verbosity pkg_descr lbi lib = do
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Library            -> ComponentLocalBuildInfo -> IO ()
+buildLib verbosity pkg_descr lbi lib _clbi = do
   let pref = buildDir lbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
@@ -488,8 +489,10 @@ buildLib verbosity pkg_descr lbi lib = do
 
 -- | Build an executable with LHC.
 --
-buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
-buildExe verbosity _pkg_descr lbi exe@Executable { exeName = exeName', modulePath = modPath } = do
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Executable         -> ComponentLocalBuildInfo -> IO ()
+buildExe verbosity _pkg_descr lbi
+  exe@Executable { exeName = exeName', modulePath = modPath } _clbi = do
   let pref = buildDir lbi
       runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
 

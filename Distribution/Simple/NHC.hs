@@ -54,7 +54,7 @@ import Distribution.PackageDescription
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.LocalBuildInfo
-        ( LocalBuildInfo(..) )
+        ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
         ( mkLibName, objExtension, exeExtension )
 import Distribution.Simple.Compiler
@@ -133,8 +133,9 @@ nhcLanguageExtensions =
 
 -- |FIX: For now, the target must contain a main module.  Not used
 -- ATM. Re-add later.
-buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
-buildLib verbosity pkg_descr lbi lib = do
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Library            -> ComponentLocalBuildInfo -> IO ()
+buildLib verbosity pkg_descr lbi lib _clbi = do
   let conf = withPrograms lbi
       Just nhcProg = lookupProgram nhcProgram conf
   let bi = libBuildInfo lib
@@ -192,8 +193,9 @@ buildLib verbosity pkg_descr lbi lib = do
 --    ++ cObjs
 
 -- | Building an executable for NHC.
-buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
-buildExe verbosity pkg_descr lbi exe = do
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Executable         -> ComponentLocalBuildInfo -> IO ()
+buildExe verbosity pkg_descr lbi exe _clbi = do
   let conf = withPrograms lbi
       Just nhcProg = lookupProgram nhcProgram conf
   when (dropExtension (modulePath exe) /= exeName exe) $

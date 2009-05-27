@@ -56,7 +56,7 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-                                ( LocalBuildInfo(..) )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
                                 ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
@@ -136,8 +136,9 @@ getInstalledPackages verbosity packageDBs conf = do
 
 -- | Building a package for JHC.
 -- Currently C source files are not supported.
-buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
-buildLib verbosity pkg_descr lbi lib = do
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Library            -> ComponentLocalBuildInfo -> IO ()
+buildLib verbosity pkg_descr lbi lib _clbi = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   let libBi = libBuildInfo lib
   let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
@@ -151,8 +152,9 @@ buildLib verbosity pkg_descr lbi lib = do
 
 -- | Building an executable for JHC.
 -- Currently C source files are not supported.
-buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
-buildExe verbosity _pkg_descr lbi exe = do
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Executable         -> ComponentLocalBuildInfo -> IO ()
+buildExe verbosity _pkg_descr lbi exe _clbi = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   let exeBi = buildInfo exe
   let out   = buildDir lbi </> exeName exe
