@@ -415,7 +415,6 @@ configure (pkg_descr0, pbi) cfg
                     scratchDir          = fromFlagOrDefault
                                             (distPref </> "scratch")
                                             (configScratchDir cfg),
-                    packageDeps         = dep_pkgs,
                     libraryConfig       = (\_ -> ComponentLocalBuildInfo dep_pkgs)
                                               `fmap` library pkg_descr',
                     executableConfigs   = (\exe -> (exeName exe, ComponentLocalBuildInfo dep_pkgs))
