@@ -73,7 +73,7 @@ import Distribution.Package
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, writeFileAtomic
         , installOrdinaryFile, installExecutableFile
-        , die, info, intercalate )
+        , die, intercalate )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
 import Distribution.Text
@@ -139,7 +139,6 @@ getInstalledPackages verbosity packageDBs conf = do
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
 buildLib verbosity pkg_descr lbi lib = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
-  info verbosity "Building library..."
   let libBi = libBuildInfo lib
   let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
   rawSystemProgram verbosity jhcProg $
@@ -155,7 +154,6 @@ buildLib verbosity pkg_descr lbi lib = do
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
 buildExe verbosity _pkg_descr lbi exe = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
-  info verbosity ("Building executable "++exeName exe)
   let exeBi = buildInfo exe
   let out   = buildDir lbi </> exeName exe
   let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbosity
