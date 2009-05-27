@@ -151,7 +151,7 @@ register pkg_descr lbi regFlags
 
         when (genPkgConf || not genScript) $ do
           info verbosity ("create " ++ instConf)
-          writeInstalledConfig distPref pkg_descr lbi inplace (Just instConf)
+          writeInstalledConfig distPref pkg_descr lbi inplace instConf
 
         let register_flags   = let conf = if genScript && not isWindows
                                              then ["-"]
@@ -180,7 +180,7 @@ register pkg_descr lbi regFlags
 
         when (genPkgConf || not genScript) $ do
           info verbosity ("create " ++ instConf)
-          writeInstalledConfig distPref pkg_descr lbi inplace (Just instConf)
+          writeInstalledConfig distPref pkg_descr lbi inplace instConf
 
         let register_flags   = let conf = if genScript && not isWindows
                                              then ["-"]
@@ -213,12 +213,9 @@ register pkg_descr lbi regFlags
 -- |Register doesn't drop the register info file, it must be done in a
 -- separate step.
 writeInstalledConfig :: FilePath -> PackageDescription -> LocalBuildInfo
-                     -> Bool -> Maybe FilePath -> IO ()
-writeInstalledConfig distPref pkg_descr lbi inplace instConfOverride = do
+                     -> Bool -> FilePath -> IO ()
+writeInstalledConfig distPref pkg_descr lbi inplace instConf = do
   pkg_config <- showInstalledConfig distPref pkg_descr lbi inplace
-  let instConfDefault | inplace   = inplacePkgConfigFile distPref
-                      | otherwise = installedPkgConfigFile distPref
-      instConf = fromMaybe instConfDefault instConfOverride
   writeFileAtomic instConf (pkg_config ++ "\n")
 
 -- |Create a string suitable for writing out to the package config file
@@ -256,6 +253,7 @@ mkInstalledPackageInfo
         -> Bool
         -> IO InstalledPackageInfo
 mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
+  --TODO: get rid of getCurrentDirectory here, make this function pure
   pwd <- getCurrentDirectory
   let
         lib = fromJust (library pkg_descr) -- checked for Nothing earlier
