@@ -107,10 +107,11 @@ build pkg_descr lbi flags suffixes = do
   initialBuildSteps distPref pkg_descr lbi verbosity suffixes
   setupMessage verbosity "Building" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
-    GHC  -> do withLib pkg_descr (GHC.buildLib verbosity pkg_descr lbi)
-               withExe pkg_descr (GHC.buildExe verbosity pkg_descr lbi)
+    GHC  -> withLib pkg_descr (GHC.buildLib verbosity pkg_descr lbi)
+         >> withExe pkg_descr (GHC.buildExe verbosity pkg_descr lbi)
     JHC  -> JHC.build  pkg_descr lbi verbosity
-    LHC  -> LHC.build  pkg_descr lbi verbosity
+    LHC  -> withLib pkg_descr (LHC.buildLib verbosity pkg_descr lbi)
+         >> withExe pkg_descr (LHC.buildExe verbosity pkg_descr lbi)
     Hugs -> Hugs.build pkg_descr lbi verbosity
     NHC  -> NHC.build  pkg_descr lbi verbosity
     _    -> die ("Building is not supported with this compiler.")
