@@ -137,7 +137,7 @@ build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
     let pref = scratchDir lbi
     createDirectoryIfMissingVerbose verbosity True pref
-    withLib pkg_descr () $ \ l -> do
+    withLib pkg_descr $ \ l -> do
         copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
                                   (pref </> paths_modulename)
         compileBuildInfo pref [] (libModules l) (libBuildInfo l)
@@ -362,7 +362,7 @@ install
     -> IO ()
 install verbosity libDir installProgDir binDir targetProgDir buildPref (progprefix,progsuffix) pkg_descr = do
     removeDirectoryRecursive libDir `catchIO` \_ -> return ()
-    withLib pkg_descr () $ \ lib ->
+    withLib pkg_descr $ \ lib ->
       findModuleFiles [buildPref] hugsInstallSuffixes (libModules lib)
         >>= installOrdinaryFiles verbosity libDir
     let buildProgDir = buildPref </> "programs"
