@@ -61,7 +61,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
-        configure, getInstalledPackages, build, installLib, installExe,
+        configure, getInstalledPackages,
+        buildLib, buildExe,
+        installLib, installExe,
         ghcOptions,
         ghcVerbosityOptions
  ) where
@@ -71,10 +73,8 @@ import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.Simple.Setup
          ( CopyFlags(..), fromFlag )
 import Distribution.PackageDescription as PD
-                                ( PackageDescription(..), BuildInfo(..),
-                                  withLib,
-                                  Executable(..), withExe, Library(..),
-                                  libModules, hcOptions )
+         ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
+         , Library(..), libModules, hcOptions )
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo
                                 , parseInstalledPackageInfo )
@@ -457,10 +457,10 @@ substTopDir topDir ipo
 -- -----------------------------------------------------------------------------
 -- Building
 
--- |Building for GHC.  If .ghc-packages exists and is readable, add
--- it to the command-line.
-build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
-build pkg_descr lbi verbosity = do
+-- | Build a library with GHC.
+--
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
+buildLib verbosity pkg_descr lbi lib = do
   let pref = buildDir lbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
@@ -469,218 +469,222 @@ build pkg_descr lbi verbosity = do
       ifSharedLib = when (withSharedLib lbi)
       ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
 
-  -- Build lib
-  withLib pkg_descr () $ \lib -> do
-      info verbosity "Building library..."
+  info verbosity "Building library..."
 
-      libBi <- hackThreadedFlag verbosity
-                 (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
+  libBi <- hackThreadedFlag verbosity
+             (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
 
-      let libTargetDir = pref
-          forceVanillaLib = TemplateHaskell `elem` extensions libBi
-          -- TH always needs vanilla libs, even when building for profiling
+  let libTargetDir = pref
+      forceVanillaLib = TemplateHaskell `elem` extensions libBi
+      -- TH always needs vanilla libs, even when building for profiling
 
-      createDirectoryIfMissingVerbose verbosity True libTargetDir
-      -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
-      let ghcArgs =
-                 ["-package-name", display pkgid ]
-              ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
-              ++ map display (libModules pkg_descr)
-          ghcArgsProf = ghcArgs
-              ++ ["-prof",
-                  "-hisuf", "p_hi",
-                  "-osuf", "p_o"
-                 ]
-              ++ ghcProfOptions libBi
-          ghcArgsShared = ghcArgs
-              ++ ["-dynamic",
-                  "-hisuf", "dyn_hi",
-                  "-osuf", "dyn_o", "-fPIC"
-                 ]
-              ++ ghcSharedOptions libBi
-      unless (null (libModules pkg_descr)) $
-        do ifVanillaLib forceVanillaLib (runGhcProg ghcArgs)
-           ifProfLib (runGhcProg ghcArgsProf)
-           ifSharedLib (runGhcProg ghcArgsShared)
+  createDirectoryIfMissingVerbose verbosity True libTargetDir
+  -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
+  let ghcArgs =
+             ["-package-name", display pkgid ]
+          ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
+          ++ map display (libModules pkg_descr)
+      ghcArgsProf = ghcArgs
+          ++ ["-prof",
+              "-hisuf", "p_hi",
+              "-osuf", "p_o"
+             ]
+          ++ ghcProfOptions libBi
+      ghcArgsShared = ghcArgs
+          ++ ["-dynamic",
+              "-hisuf", "dyn_hi",
+              "-osuf", "dyn_o", "-fPIC"
+             ]
+          ++ ghcSharedOptions libBi
+  unless (null (libModules pkg_descr)) $
+    do ifVanillaLib forceVanillaLib (runGhcProg ghcArgs)
+       ifProfLib (runGhcProg ghcArgsProf)
+       ifSharedLib (runGhcProg ghcArgsShared)
 
-      -- build any C sources
-      unless (null (cSources libBi)) $ do
-         info verbosity "Building C Sources..."
-         sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi pref
-                                                            filename verbosity
-                       createDirectoryIfMissingVerbose verbosity True odir
-                       runGhcProg args
-                       ifSharedLib (runGhcProg (args ++ ["-fPIC", "-osuf dyn_o"]))
-                   | filename <- cSources libBi]
+  -- build any C sources
+  unless (null (cSources libBi)) $ do
+     info verbosity "Building C Sources..."
+     sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi pref
+                                                        filename verbosity
+                   createDirectoryIfMissingVerbose verbosity True odir
+                   runGhcProg args
+                   ifSharedLib (runGhcProg (args ++ ["-fPIC", "-osuf dyn_o"]))
+               | filename <- cSources libBi]
 
-      -- link:
-      info verbosity "Linking..."
-      let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
-          cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
-          vanillaLibFilePath = libTargetDir </> mkLibName pkgid
-          profileLibFilePath = libTargetDir </> mkProfLibName pkgid
-          sharedLibFilePath  = libTargetDir </> mkSharedLibName pkgid
-                                                  (compilerId (compiler lbi))
-          ghciLibFilePath    = libTargetDir </> mkGHCiLibName pkgid
+  -- link:
+  info verbosity "Linking..."
+  let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
+      cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
+      vanillaLibFilePath = libTargetDir </> mkLibName pkgid
+      profileLibFilePath = libTargetDir </> mkProfLibName pkgid
+      sharedLibFilePath  = libTargetDir </> mkSharedLibName pkgid
+                                              (compilerId (compiler lbi))
+      ghciLibFilePath    = libTargetDir </> mkGHCiLibName pkgid
 
-      stubObjs <- fmap catMaybes $ sequence
-        [ findFileWithExtension [objExtension] [libTargetDir]
-            (ModuleName.toFilePath x ++"_stub")
-        | x <- libModules pkg_descr ]
-      stubProfObjs <- fmap catMaybes $ sequence
-        [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
-            (ModuleName.toFilePath x ++"_stub")
-        | x <- libModules pkg_descr ]
-      stubSharedObjs <- fmap catMaybes $ sequence
-        [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
-            (ModuleName.toFilePath x ++"_stub")
-        | x <- libModules pkg_descr ]
+  stubObjs <- fmap catMaybes $ sequence
+    [ findFileWithExtension [objExtension] [libTargetDir]
+        (ModuleName.toFilePath x ++"_stub")
+    | x <- libModules pkg_descr ]
+  stubProfObjs <- fmap catMaybes $ sequence
+    [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
+        (ModuleName.toFilePath x ++"_stub")
+    | x <- libModules pkg_descr ]
+  stubSharedObjs <- fmap catMaybes $ sequence
+    [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
+        (ModuleName.toFilePath x ++"_stub")
+    | x <- libModules pkg_descr ]
 
-      hObjs     <- getHaskellObjects pkg_descr libBi lbi
-                        pref objExtension True
-      hProfObjs <-
-        if (withProfLib lbi)
-                then getHaskellObjects pkg_descr libBi lbi
-                        pref ("p_" ++ objExtension) True
-                else return []
-      hSharedObjs <-
-        if (withSharedLib lbi)
-                then getHaskellObjects pkg_descr libBi lbi
-                        pref ("dyn_" ++ objExtension) False
-                else return []
+  hObjs     <- getHaskellObjects pkg_descr libBi lbi
+                    pref objExtension True
+  hProfObjs <-
+    if (withProfLib lbi)
+            then getHaskellObjects pkg_descr libBi lbi
+                    pref ("p_" ++ objExtension) True
+            else return []
+  hSharedObjs <-
+    if (withSharedLib lbi)
+            then getHaskellObjects pkg_descr libBi lbi
+                    pref ("dyn_" ++ objExtension) False
+            else return []
 
-      unless (null hObjs && null cObjs && null stubObjs) $ do
-        -- first remove library files if they exists
-        sequence_
-          [ removeFile libFilePath `catchIO` \_ -> return ()
-          | libFilePath <- [vanillaLibFilePath, profileLibFilePath
-                           ,sharedLibFilePath,  ghciLibFilePath] ]
+  unless (null hObjs && null cObjs && null stubObjs) $ do
+    -- first remove library files if they exists
+    sequence_
+      [ removeFile libFilePath `catchIO` \_ -> return ()
+      | libFilePath <- [vanillaLibFilePath, profileLibFilePath
+                       ,sharedLibFilePath,  ghciLibFilePath] ]
 
-        let arVerbosity | verbosity >= deafening = "v"
-                        | verbosity >= normal = ""
-                        | otherwise = "c"
-            arArgs = ["q"++ arVerbosity]
-                ++ [vanillaLibFilePath]
-            arObjArgs =
-                   hObjs
-                ++ map (pref </>) cObjs
-                ++ stubObjs
-            arProfArgs = ["q"++ arVerbosity]
-                ++ [profileLibFilePath]
-            arProfObjArgs =
-                   hProfObjs
-                ++ map (pref </>) cObjs
-                ++ stubProfObjs
-            ldArgs = ["-r"]
-                ++ ["-o", ghciLibFilePath <.> "tmp"]
-            ldObjArgs =
-                   hObjs
-                ++ map (pref </>) cObjs
-                ++ stubObjs
-            ghcSharedObjArgs =
-                   hSharedObjs
-                ++ map (pref </>) cSharedObjs
-                ++ stubSharedObjs
-            -- After the relocation lib is created we invoke ghc -shared
-            -- with the dependencies spelled out as -package arguments
-            -- and ghc invokes the linker with the proper library paths
-            ghcSharedLinkArgs =
-                [ "-no-auto-link-packages",
-                  "-shared",
-                  "-dynamic",
-                  "-o", sharedLibFilePath ]
-                ++ ghcSharedObjArgs
-                ++ ["-package-name", display pkgid ]
-                ++ (concat [ ["-package", display pkg] | pkg <- packageDeps lbi ])
-                ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
-                ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
+    let arVerbosity | verbosity >= deafening = "v"
+                    | verbosity >= normal = ""
+                    | otherwise = "c"
+        arArgs = ["q"++ arVerbosity]
+            ++ [vanillaLibFilePath]
+        arObjArgs =
+               hObjs
+            ++ map (pref </>) cObjs
+            ++ stubObjs
+        arProfArgs = ["q"++ arVerbosity]
+            ++ [profileLibFilePath]
+        arProfObjArgs =
+               hProfObjs
+            ++ map (pref </>) cObjs
+            ++ stubProfObjs
+        ldArgs = ["-r"]
+            ++ ["-o", ghciLibFilePath <.> "tmp"]
+        ldObjArgs =
+               hObjs
+            ++ map (pref </>) cObjs
+            ++ stubObjs
+        ghcSharedObjArgs =
+               hSharedObjs
+            ++ map (pref </>) cSharedObjs
+            ++ stubSharedObjs
+        -- After the relocation lib is created we invoke ghc -shared
+        -- with the dependencies spelled out as -package arguments
+        -- and ghc invokes the linker with the proper library paths
+        ghcSharedLinkArgs =
+            [ "-no-auto-link-packages",
+              "-shared",
+              "-dynamic",
+              "-o", sharedLibFilePath ]
+            ++ ghcSharedObjArgs
+            ++ ["-package-name", display pkgid ]
+            ++ (concat [ ["-package", display pkg] | pkg <- packageDeps lbi ])
+            ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
+            ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
-            runLd ldLibName args = do
-              exists <- doesFileExist ldLibName
-                -- This method is called iteratively by xargs. The
-                -- output goes to <ldLibName>.tmp, and any existing file
-                -- named <ldLibName> is included when linking. The
-                -- output is renamed to <libName>.
-              rawSystemProgramConf verbosity ldProgram (withPrograms lbi)
-                (args ++ if exists then [ldLibName] else [])
-              renameFile (ldLibName <.> "tmp") ldLibName
+        runLd ldLibName args = do
+          exists <- doesFileExist ldLibName
+            -- This method is called iteratively by xargs. The
+            -- output goes to <ldLibName>.tmp, and any existing file
+            -- named <ldLibName> is included when linking. The
+            -- output is renamed to <libName>.
+          rawSystemProgramConf verbosity ldProgram (withPrograms lbi)
+            (args ++ if exists then [ldLibName] else [])
+          renameFile (ldLibName <.> "tmp") ldLibName
 
-            runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
+        runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
 
-             --TODO: discover this at configure time or runtime on unix
-             -- The value is 32k on Windows and posix specifies a minimum of 4k
-             -- but all sensible unixes use more than 4k.
-             -- we could use getSysVar ArgumentLimit but that's in the unix lib
-            maxCommandLineSize = 30 * 1024
+         --TODO: discover this at configure time or runtime on unix
+         -- The value is 32k on Windows and posix specifies a minimum of 4k
+         -- but all sensible unixes use more than 4k.
+         -- we could use getSysVar ArgumentLimit but that's in the unix lib
+        maxCommandLineSize = 30 * 1024
 
-        ifVanillaLib False $ xargs maxCommandLineSize
-          runAr arArgs arObjArgs
+    ifVanillaLib False $ xargs maxCommandLineSize
+      runAr arArgs arObjArgs
 
-        ifProfLib $ xargs maxCommandLineSize
-          runAr arProfArgs arProfObjArgs
+    ifProfLib $ xargs maxCommandLineSize
+      runAr arProfArgs arProfObjArgs
 
-        ifGHCiLib $ xargs maxCommandLineSize
-          (runLd ghciLibFilePath) ldArgs ldObjArgs
+    ifGHCiLib $ xargs maxCommandLineSize
+      (runLd ghciLibFilePath) ldArgs ldObjArgs
 
-        ifSharedLib $ runGhcProg ghcSharedLinkArgs
+    ifSharedLib $ runGhcProg ghcSharedLinkArgs
 
-  -- build any executables
-  withExe pkg_descr $ \exe@Executable { exeName = exeName', modulePath = modPath } -> do
-                 info verbosity $ "Building executable: " ++ exeName' ++ "..."
 
-                 exeBi <- hackThreadedFlag verbosity
-                            (compiler lbi) (withProfExe lbi) (buildInfo exe)
+-- | Build an executable with GHC.
+--
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
+buildExe verbosity _pkg_descr lbi exe@Executable { exeName = exeName', modulePath = modPath } = do
+  let pref = buildDir lbi
+      runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
 
-                 -- exeNameReal, the name that GHC really uses (with .exe on Windows)
-                 let exeNameReal = exeName' <.>
-                                   (if null $ takeExtension exeName' then exeExtension else "")
+  info verbosity $ "Building executable: " ++ exeName' ++ "..."
 
-                 let targetDir = pref </> exeName'
-                 let exeDir    = targetDir </> (exeName' ++ "-tmp")
-                 createDirectoryIfMissingVerbose verbosity True targetDir
-                 createDirectoryIfMissingVerbose verbosity True exeDir
-                 -- TODO: do we need to put hs-boot files into place for mutually recursive modules?
-                 -- FIX: what about exeName.hi-boot?
+  exeBi <- hackThreadedFlag verbosity
+             (compiler lbi) (withProfExe lbi) (buildInfo exe)
 
-                 -- build executables
-                 unless (null (cSources exeBi)) $ do
-                  info verbosity "Building C Sources."
-                  sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
-                                                         exeDir filename verbosity
-                                createDirectoryIfMissingVerbose verbosity True odir
-                                runGhcProg args
-                            | filename <- cSources exeBi]
+  -- exeNameReal, the name that GHC really uses (with .exe on Windows)
+  let exeNameReal = exeName' <.>
+                    (if null $ takeExtension exeName' then exeExtension else "")
 
-                 srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
+  let targetDir = pref </> exeName'
+  let exeDir    = targetDir </> (exeName' ++ "-tmp")
+  createDirectoryIfMissingVerbose verbosity True targetDir
+  createDirectoryIfMissingVerbose verbosity True exeDir
+  -- TODO: do we need to put hs-boot files into place for mutually recursive modules?
+  -- FIX: what about exeName.hi-boot?
 
-                 let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
-                 let binArgs linkExe profExe =
-                            (if linkExe
-                                then ["-o", targetDir </> exeNameReal]
-                                else ["-c"])
-                         ++ constructGHCCmdLine lbi exeBi exeDir verbosity
-                         ++ [exeDir </> x | x <- cObjs]
-                         ++ [srcMainFile]
-                         ++ ["-optl" ++ opt | opt <- PD.ldOptions exeBi]
-                         ++ ["-l"++lib | lib <- extraLibs exeBi]
-                         ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
-                         ++ concat [["-framework", f] | f <- PD.frameworks exeBi]
-                         ++ if profExe
-                               then ["-prof",
-                                     "-hisuf", "p_hi",
-                                     "-osuf", "p_o"
-                                    ] ++ ghcProfOptions exeBi
-                               else []
+  -- build executables
+  unless (null (cSources exeBi)) $ do
+   info verbosity "Building C Sources."
+   sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
+                                          exeDir filename verbosity
+                 createDirectoryIfMissingVerbose verbosity True odir
+                 runGhcProg args
+             | filename <- cSources exeBi]
 
-                 -- For building exe's for profiling that use TH we actually
-                 -- have to build twice, once without profiling and the again
-                 -- with profiling. This is because the code that TH needs to
-                 -- run at compile time needs to be the vanilla ABI so it can
-                 -- be loaded up and run by the compiler.
-                 when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
-                    (runGhcProg (binArgs False False))
+  srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
-                 runGhcProg (binArgs True (withProfExe lbi))
+  let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
+  let binArgs linkExe profExe =
+             (if linkExe
+                 then ["-o", targetDir </> exeNameReal]
+                 else ["-c"])
+          ++ constructGHCCmdLine lbi exeBi exeDir verbosity
+          ++ [exeDir </> x | x <- cObjs]
+          ++ [srcMainFile]
+          ++ ["-optl" ++ opt | opt <- PD.ldOptions exeBi]
+          ++ ["-l"++lib | lib <- extraLibs exeBi]
+          ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
+          ++ concat [["-framework", f] | f <- PD.frameworks exeBi]
+          ++ if profExe
+                then ["-prof",
+                      "-hisuf", "p_hi",
+                      "-osuf", "p_o"
+                     ] ++ ghcProfOptions exeBi
+                else []
+
+  -- For building exe's for profiling that use TH we actually
+  -- have to build twice, once without profiling and the again
+  -- with profiling. This is because the code that TH needs to
+  -- run at compile time needs to be the vanilla ABI so it can
+  -- be loaded up and run by the compiler.
+  when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
+     (runGhcProg (binArgs False False))
+
+  runGhcProg (binArgs True (withProfExe lbi))
 
 -- | Filter the "-threaded" flag when profiling as it does not
 --   work with ghc-6.8 and older.
