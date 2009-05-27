@@ -67,7 +67,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..)
-         , Executable(..), Library(..) )
+         , Library(..), withLib, Executable(..), withExe )
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
@@ -107,7 +107,8 @@ build pkg_descr lbi flags suffixes = do
   initialBuildSteps distPref pkg_descr lbi verbosity suffixes
   setupMessage verbosity "Building" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
-    GHC  -> GHC.build  pkg_descr lbi verbosity
+    GHC  -> do withLib pkg_descr () (GHC.buildLib verbosity pkg_descr lbi)
+               withExe pkg_descr    (GHC.buildExe verbosity pkg_descr lbi)
     JHC  -> JHC.build  pkg_descr lbi verbosity
     LHC  -> LHC.build  pkg_descr lbi verbosity
     Hugs -> Hugs.build pkg_descr lbi verbosity
