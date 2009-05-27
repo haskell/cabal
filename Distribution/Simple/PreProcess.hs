@@ -185,7 +185,7 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         let biHandlers = localHandlers bi
         sequence_ [ preprocessModule (hsSourceDirs bi ++ [autogenModulesDir lbi]) (buildDir lbi) forSDist
                                      modu verbosity builtinSuffixes biHandlers
-                  | modu <- libModules pkg_descr]
+                  | modu <- libModules lib ]
     unless (null (executables pkg_descr)) $
         setupMessage verbosity "Preprocessing executables for" (packageId pkg_descr)
     withExe pkg_descr $ \ theExe -> do
