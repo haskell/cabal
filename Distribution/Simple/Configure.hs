@@ -437,8 +437,8 @@ configure (pkg_descr0, pbi) cfg
                     progSuffix          = fromFlag $ configProgSuffix cfg
                   }
 
-        let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-            relative = prefixRelativeInstallDirs pkg_descr lbi
+        let dirs = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
+            relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi
 
         unless (isAbsolute (prefix dirs)) $ die $
             "expected an absolute directory name for --prefix: " ++ prefix dirs
