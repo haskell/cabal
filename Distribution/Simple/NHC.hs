@@ -135,7 +135,7 @@ nhcLanguageExtensions =
 -- ATM. Re-add later.
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildLib verbosity pkg_descr lbi lib _clbi = do
+buildLib verbosity pkg_descr lbi lib clbi = do
   let conf = withPrograms lbi
       Just nhcProg = lookupProgram nhcProgram conf
   let bi = libBuildInfo lib
@@ -155,7 +155,7 @@ buildLib verbosity pkg_descr lbi lib _clbi = do
     ++ maybe [] (hcOptions NHC . libBuildInfo)
                            (library pkg_descr)
     ++ concat [ ["-package", display (packageName pkg) ]
-              | pkg <- packageDeps lbi ]
+              | pkg <- componentPackageDeps clbi ]
     ++ inFiles
 {-
   -- build any C sources
@@ -195,7 +195,7 @@ buildLib verbosity pkg_descr lbi lib _clbi = do
 -- | Building an executable for NHC.
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
-buildExe verbosity pkg_descr lbi exe _clbi = do
+buildExe verbosity pkg_descr lbi exe clbi = do
   let conf = withPrograms lbi
       Just nhcProg = lookupProgram nhcProgram conf
   when (dropExtension (modulePath exe) /= exeName exe) $
@@ -220,7 +220,7 @@ buildExe verbosity pkg_descr lbi exe _clbi = do
     ++ maybe [] (hcOptions NHC . libBuildInfo)
                            (library pkg_descr)
     ++ concat [ ["-package", display (packageName pkg) ]
-              | pkg <- packageDeps lbi ]
+              | pkg <- componentPackageDeps clbi ]
     ++ inFiles
     ++ [exeName exe]
 

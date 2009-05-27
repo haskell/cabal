@@ -461,7 +461,7 @@ substTopDir topDir ipo
 --
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildLib verbosity pkg_descr lbi lib _clbi = do
+buildLib verbosity pkg_descr lbi lib clbi = do
   let pref = buildDir lbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
@@ -481,7 +481,7 @@ buildLib verbosity pkg_descr lbi lib _clbi = do
   -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
   let ghcArgs =
              ["-package-name", display pkgid ]
-          ++ constructGHCCmdLine lbi libBi libTargetDir verbosity
+          ++ constructGHCCmdLine lbi libBi clbi libTargetDir verbosity
           ++ map display (libModules lib)
       ghcArgsProf = ghcArgs
           ++ ["-prof",
@@ -503,7 +503,7 @@ buildLib verbosity pkg_descr lbi lib _clbi = do
   -- build any C sources
   unless (null (cSources libBi)) $ do
      info verbosity "Building C Sources..."
-     sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi pref
+     sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi clbi pref
                                                         filename verbosity
                    createDirectoryIfMissingVerbose verbosity True odir
                    runGhcProg args
@@ -588,7 +588,7 @@ buildLib verbosity pkg_descr lbi lib _clbi = do
               "-o", sharedLibFilePath ]
             ++ ghcSharedObjArgs
             ++ ["-package-name", display pkgid ]
-            ++ (concat [ ["-package", display pkg] | pkg <- packageDeps lbi ])
+            ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps clbi ])
             ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
             ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
@@ -627,7 +627,7 @@ buildLib verbosity pkg_descr lbi lib _clbi = do
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildExe verbosity _pkg_descr lbi
-  exe@Executable { exeName = exeName', modulePath = modPath } _clbi = do
+  exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
   let pref = buildDir lbi
       runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
 
@@ -648,7 +648,7 @@ buildExe verbosity _pkg_descr lbi
   -- build executables
   unless (null (cSources exeBi)) $ do
    info verbosity "Building C Sources."
-   sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi
+   sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi clbi
                                           exeDir filename verbosity
                  createDirectoryIfMissingVerbose verbosity True odir
                  runGhcProg args
@@ -661,7 +661,7 @@ buildExe verbosity _pkg_descr lbi
              (if linkExe
                  then ["-o", targetDir </> exeNameReal]
                  else ["-c"])
-          ++ constructGHCCmdLine lbi exeBi exeDir verbosity
+          ++ constructGHCCmdLine lbi exeBi clbi exeDir verbosity
           ++ [exeDir </> x | x <- cObjs]
           ++ [srcMainFile]
           ++ ["-optl" ++ opt | opt <- PD.ldOptions exeBi]
@@ -723,14 +723,15 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
 constructGHCCmdLine
         :: LocalBuildInfo
         -> BuildInfo
+        -> ComponentLocalBuildInfo
         -> FilePath
         -> Verbosity
         -> [String]
-constructGHCCmdLine lbi bi odir verbosity =
+constructGHCCmdLine lbi bi clbi odir verbosity =
         ["--make"]
      ++ ghcVerbosityOptions verbosity
         -- Unsupported extensions have already been checked by configure
-     ++ ghcOptions lbi bi odir
+     ++ ghcOptions lbi bi clbi odir
 
 ghcVerbosityOptions :: Verbosity -> [String]
 ghcVerbosityOptions verbosity
@@ -738,8 +739,9 @@ ghcVerbosityOptions verbosity
      | verbosity >= normal    = []
      | otherwise              = ["-w", "-v0"]
 
-ghcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
-ghcOptions lbi bi odir
+ghcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
+           -> FilePath -> [String]
+ghcOptions lbi bi clbi odir
      =  ["-hide-all-packages"]
      ++ (case withPackageDB lbi of
            GlobalPackageDB      -> ["-no-user-package-conf"]
@@ -760,7 +762,7 @@ ghcOptions lbi bi odir
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (if compilerVersion c >= Version [6,8] []
            then ["-stubdir", odir] else [])
-     ++ (concat [ ["-package", display pkg] | pkg <- packageDeps lbi ])
+     ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps clbi ])
      ++ (case withOptimization lbi of
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
@@ -769,27 +771,28 @@ ghcOptions lbi bi odir
      ++ extensionsToFlags c (extensions bi)
     where c = compiler lbi
 
-constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath
-                   -> FilePath -> Verbosity -> (FilePath,[String])
-constructCcCmdLine lbi bi pref filename verbosity
+constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
+                   -> FilePath -> FilePath -> Verbosity -> (FilePath,[String])
+constructCcCmdLine lbi bi clbi pref filename verbosity
   =  let odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
               | otherwise = pref </> takeDirectory filename
                         -- ghc 6.4.1 fixed a bug in -odir handling
                         -- for C compilations.
      in
         (odir,
-         ghcCcOptions lbi bi odir
+         ghcCcOptions lbi bi clbi odir
          ++ (if verbosity >= deafening then ["-v"] else [])
          ++ ["-c",filename])
 
 
-ghcCcOptions :: LocalBuildInfo -> BuildInfo -> FilePath -> [String]
-ghcCcOptions lbi bi odir
+ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
+             -> FilePath -> [String]
+ghcCcOptions lbi bi clbi odir
      =  ["-I" ++ dir | dir <- PD.includeDirs bi]
      ++ (case withPackageDB lbi of
              SpecificPackageDB db -> ["-package-conf", db]
              _ -> [])
-     ++ concat [ ["-package", display pkg] | pkg <- packageDeps lbi ]
+     ++ concat [ ["-package", display pkg] | pkg <- componentPackageDeps clbi ]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (case withOptimization lbi of
            NoOptimisation -> []

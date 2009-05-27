@@ -61,9 +61,9 @@ module Distribution.Simple.Register (
         removeRegScripts,
   ) where
 
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..),
-                                           InstallDirs(..),
-                                           absoluteInstallDirs)
+import Distribution.Simple.LocalBuildInfo
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
+         , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
@@ -257,6 +257,8 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
   pwd <- getCurrentDirectory
   let
         lib = fromJust (library pkg_descr) -- checked for Nothing earlier
+        clbi = fromJust (libraryConfig lbi)
+        --TODO: ^^ pass explicitly rather than using fromJust
         bi = libBuildInfo lib
         build_dir = pwd </> buildDir lbi
         installDirs = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
@@ -312,7 +314,7 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
                                             then map (pwd </>) relinc
                                             else installIncludeDir,
         IPI.includes          = includes bi,
-        IPI.depends           = packageDeps lbi,
+        IPI.depends           = componentPackageDeps clbi,
         IPI.hugsOptions       = concat [opts | (Hugs,opts) <- options bi],
         IPI.ccOptions         = [], -- NB. NOT ccOptions bi!
                                     -- We don't want cc-options to be

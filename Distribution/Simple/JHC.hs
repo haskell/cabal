@@ -138,10 +138,10 @@ getInstalledPackages verbosity packageDBs conf = do
 -- Currently C source files are not supported.
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildLib verbosity pkg_descr lbi lib _clbi = do
+buildLib verbosity pkg_descr lbi lib clbi = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   let libBi = libBuildInfo lib
-  let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
+  let args  = constructJHCCmdLine lbi libBi clbi (buildDir lbi) verbosity
   rawSystemProgram verbosity jhcProg $
     ["-c"] ++ args ++ map display (libModules lib)
   let pkgid = display (packageId pkg_descr)
@@ -154,15 +154,16 @@ buildLib verbosity pkg_descr lbi lib _clbi = do
 -- Currently C source files are not supported.
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
-buildExe verbosity _pkg_descr lbi exe _clbi = do
+buildExe verbosity _pkg_descr lbi exe clbi = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   let exeBi = buildInfo exe
   let out   = buildDir lbi </> exeName exe
-  let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbosity
+  let args  = constructJHCCmdLine lbi exeBi clbi (buildDir lbi) verbosity
   rawSystemProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
 
-constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath -> Verbosity -> [String]
-constructJHCCmdLine lbi bi _odir verbosity =
+constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
+                    -> FilePath -> Verbosity -> [String]
+constructJHCCmdLine lbi bi clbi _odir verbosity =
         (if verbosity >= deafening then ["-v"] else [])
      ++ extensionsToFlags (compiler lbi) (extensions bi)
      ++ hcOptions JHC bi
@@ -170,7 +171,7 @@ constructJHCCmdLine lbi bi _odir verbosity =
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
      ++ ["-i", autogenModulesDir lbi]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
-     ++ (concat [ ["-p", display pkg] | pkg <- packageDeps lbi ])
+     ++ (concat [ ["-p", display pkg] | pkg <- componentPackageDeps clbi ])
 
 jhcPkgConf :: PackageDescription -> String
 jhcPkgConf pd =

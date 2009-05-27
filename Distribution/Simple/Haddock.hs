@@ -73,7 +73,9 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
                                         toPathTemplate, fromPathTemplate,
                                         substPathTemplate,
                                         initialPathTemplateEnv)
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.LocalBuildInfo
+         ( LocalBuildInfo(..), externalPackageDeps
+         , ComponentLocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( haddockName,
                                         hscolourPref, autogenModulesDir,
                                         )
@@ -197,15 +199,19 @@ haddock pkg_descr lbi suffixes flags = do
 
     withLib pkg_descr $ \lib -> do
         let bi = libBuildInfo lib
-        libArgs <- fromLibrary lbi lib
+        --TODO: need a withLib variant that gives us the per-component info
+        let Just clbi = libraryConfig lbi
+        libArgs <- fromLibrary lbi lib clbi
         prepareSources verbosity lbi isVersion2 bi (args `mappend` libArgs) $
              runHaddock verbosity confHaddock
 
     when (flag haddockExecutables) $
       withExe pkg_descr $ \exe -> do
         let bi = buildInfo exe
-        exeArgs <- fromExecutable lbi exe
-        prepareSources verbosity lbi isVersion2 bi (args `mappend` exeArgs) $
+        --TODO: need a withLib variant that gives us the per-component info
+        let Just clbi = lookup (exeName exe) (executableConfigs lbi)
+        exeArgs <- fromExecutable lbi exe clbi
+        prepareSources verbosity lbi  isVersion2 bi (args `mappend` exeArgs) $
              runHaddock verbosity confHaddock
 
   where
@@ -284,22 +290,22 @@ fromPackageDescription pkg_descr =
         subtitle | null (synopsis pkg_descr) = ""
                  | otherwise                 = ": " ++ synopsis pkg_descr
 
-fromLibrary :: LocalBuildInfo -> Library -> IO HaddockArgs
-fromLibrary lbi lib = 
+fromLibrary :: LocalBuildInfo -> Library -> ComponentLocalBuildInfo -> IO HaddockArgs
+fromLibrary lbi lib clbi =
             do inFiles <- map snd `fmap` getLibSourceFiles lbi lib
                return $ mempty {
                             argHideModules = (mempty,otherModules $ bi),
-                            argGhcFlags = ghcOptions lbi bi (buildDir lbi),
+                            argGhcFlags = ghcOptions lbi bi clbi (buildDir lbi),
                             argTargets = inFiles 
                           }
     where 
       bi = libBuildInfo lib
       
-fromExecutable :: LocalBuildInfo -> Executable -> IO HaddockArgs
-fromExecutable lbi exe = 
+fromExecutable :: LocalBuildInfo -> Executable -> ComponentLocalBuildInfo -> IO HaddockArgs
+fromExecutable lbi exe clbi =
             do inFiles <- map snd `fmap` getExeSourceFiles lbi exe
                return $ mempty {
-                            argGhcFlags = ghcOptions lbi bi (buildDir lbi),
+                            argGhcFlags = ghcOptions lbi bi clbi (buildDir lbi),
                             argOutputDir = Dir (exeName exe),
                             argTitle = Flag (exeName exe),
                             argTargets = inFiles 
@@ -400,7 +406,7 @@ haddockPackageFlags :: LocalBuildInfo
                     -> IO ([(FilePath,Maybe FilePath)], Maybe String)
 haddockPackageFlags lbi htmlTemplate = do
   let allPkgs = installedPkgs lbi
-      directDeps = packageDeps lbi
+      directDeps = externalPackageDeps lbi
   transitiveDeps <- case dependencyClosure allPkgs directDeps of
                     Left x -> return x
                     Right _ -> die "Can't find transitive deps for haddock"
