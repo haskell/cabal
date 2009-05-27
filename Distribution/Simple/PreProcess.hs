@@ -179,7 +179,7 @@ preprocessSources :: PackageDescription
                   -> IO ()
 
 preprocessSources pkg_descr lbi forSDist verbosity handlers = do
-    withLib pkg_descr () $ \ lib -> do
+    withLib pkg_descr $ \ lib -> do
         setupMessage verbosity "Preprocessing library" (packageId pkg_descr)
         let bi = libBuildInfo lib
         let biHandlers = localHandlers bi

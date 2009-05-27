@@ -137,7 +137,7 @@ build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
   let conf = withPrograms lbi
       Just nhcProg = lookupProgram nhcProgram conf
-  withLib pkg_descr () $ \lib -> do
+  withLib pkg_descr $ \lib -> do
     let bi = libBuildInfo lib
         modules = exposedModules lib ++ otherModules bi
         -- Unsupported extensions have already been checked by configure

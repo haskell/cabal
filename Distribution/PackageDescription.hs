@@ -255,9 +255,9 @@ maybeHasLibs p =
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.
-withLib :: PackageDescription -> a -> (Library -> IO a) -> IO a
-withLib pkg_descr a f =
-   maybe (return a) f (maybeHasLibs pkg_descr)
+withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
+withLib pkg_descr f =
+   maybe (return ()) f (maybeHasLibs pkg_descr)
 
 -- | Get all the module names from the library (exposed and internal modules)
 libModules :: Library -> [ModuleName]
@@ -302,7 +302,7 @@ hasExes p = any (buildable . buildInfo) (executables p)
 
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.
-withExe :: PackageDescription -> (Executable -> IO a) -> IO ()
+withExe :: PackageDescription -> (Executable -> IO ()) -> IO ()
 withExe pkg_descr f =
   sequence_ [f exe | exe <- executables pkg_descr, buildable (buildInfo exe)]
 

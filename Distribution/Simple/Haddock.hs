@@ -195,7 +195,7 @@ haddock pkg_descr lbi suffixes flags = do
             [ fromFlags flags
             , fromPackageDescription pkg_descr ]
 
-    withLib pkg_descr () $ \lib -> do
+    withLib pkg_descr $ \lib -> do
         let bi = libBuildInfo lib
         libArgs <- fromLibrary lbi lib
         prepareSources verbosity lbi isVersion2 bi (args `mappend` libArgs) $
@@ -462,7 +462,7 @@ hscolour' pkg_descr lbi flags = do
     setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref distPref pkg_descr
 
-    withLib pkg_descr () $ \lib -> do
+    withLib pkg_descr $ \lib -> do
 
         let outputDir = hscolourPref distPref pkg_descr </> "src"
         runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib

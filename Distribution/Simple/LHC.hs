@@ -335,7 +335,7 @@ build pkg_descr lbi verbosity = do
       ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
 
   -- Build lib
-  withLib pkg_descr () $ \lib -> do
+  withLib pkg_descr $ \lib -> do
       info verbosity "Building library..."
 
       libBi <- hackThreadedFlag verbosity

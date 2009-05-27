@@ -139,7 +139,7 @@ getInstalledPackages verbosity packageDBs conf = do
 build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 build pkg_descr lbi verbosity = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
-  withLib pkg_descr () $ \lib -> do
+  withLib pkg_descr $ \lib -> do
       info verbosity "Building library..."
       let libBi = libBuildInfo lib
       let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
