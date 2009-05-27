@@ -199,7 +199,7 @@ register pkg_descr lbi regFlags
 
       Hugs -> do
         when inplace $ die "--inplace is not supported with Hugs"
-        let installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
+        let installDirs = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
         createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
         installOrdinaryFile verbosity (installedPkgConfigFile distPref)
                                       (libdir installDirs </> "package.conf")
@@ -261,8 +261,8 @@ mkInstalledPackageInfo distPref pkg_descr lbi inplace = do
         lib = fromJust (library pkg_descr) -- checked for Nothing earlier
         bi = libBuildInfo lib
         build_dir = pwd </> buildDir lbi
-        installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-        inplaceDirs = (absoluteInstallDirs pkg_descr lbi NoCopyDest) {
+        installDirs = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
+        inplaceDirs = (absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest) {
                         datadir    = pwd,
                         datasubdir = distPref,
                         docdir     = inplaceDocdir,
@@ -335,7 +335,7 @@ unregister pkg_descr lbi regFlags = do
   let genScript = fromFlag (regGenScript regFlags)
       verbosity = fromFlag (regVerbosity regFlags)
       packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
-      installDirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
+      installDirs = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
   setupMessage verbosity "Unregistering" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
     GHC -> do

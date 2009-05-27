@@ -96,10 +96,10 @@ install pkg_descr lbi flags = do
          htmldir    = htmlPref,
          haddockdir = interfacePref,
          includedir = incPref})
-             = absoluteInstallDirs pkg_descr lbi copydest
+             = absoluteInstallDirs (packageId pkg_descr) lbi copydest
 
-      progPrefixPref = substPathTemplate pkg_descr lbi (progPrefix lbi)
-      progSuffixPref = substPathTemplate pkg_descr lbi (progSuffix lbi)
+      progPrefixPref = substPathTemplate (packageId pkg_descr) lbi (progPrefix lbi)
+      progSuffixPref = substPathTemplate (packageId pkg_descr) lbi (progSuffix lbi)
 
   docExists <- doesDirectoryExist $ haddockPref distPref pkg_descr
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
@@ -154,7 +154,7 @@ install pkg_descr lbi flags = do
      JHC  -> do withLib pkg_descr $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      Hugs -> do
-       let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
+       let targetProgPref = progdir (absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest)
        let scratchPref = scratchDir lbi
        Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref (progPrefixPref, progSuffixPref) pkg_descr
      NHC  -> do withLib pkg_descr $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)

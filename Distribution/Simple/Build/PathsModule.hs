@@ -23,7 +23,7 @@ import Distribution.System
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, compilerVersion )
 import Distribution.Package
-         ( packageName, packageVersion )
+         ( packageId, packageName, packageVersion )
 import Distribution.PackageDescription
          ( PackageDescription(..), hasLibs )
 import Distribution.Simple.LocalBuildInfo
@@ -128,14 +128,14 @@ generate pkg_descr lbi =
           libdir     = flat_libdir,
           datadir    = flat_datadir,
           libexecdir = flat_libexecdir
-        } = absoluteInstallDirs pkg_descr lbi NoCopyDest
+        } = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
         InstallDirs {
           bindir     = flat_bindirrel,
           libdir     = flat_libdirrel,
           datadir    = flat_datadirrel,
           libexecdir = flat_libexecdirrel,
           progdir    = flat_progdirrel
-        } = prefixRelativeInstallDirs pkg_descr lbi
+        } = prefixRelativeInstallDirs (packageId pkg_descr) lbi
 
         mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
         mkGetDir dir Nothing       = "return " ++ show dir
