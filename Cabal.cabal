@@ -24,8 +24,6 @@ Build-Type: Custom
 
 Extra-Source-Files:
         README changelog
-        Distribution/Simple/GHC/mkGHCMakefile.sh
-        Distribution/Simple/GHC/Makefile.in
 
 source-repository head
   type:     darcs
@@ -107,7 +105,6 @@ Library
         Distribution.Compat.Exception,
         Distribution.Compat.CopyFile,
         Distribution.Compat.TempFile,
-        Distribution.Simple.GHC.Makefile,
         Distribution.Simple.GHC.IPI641,
         Distribution.Simple.GHC.IPI642
 
