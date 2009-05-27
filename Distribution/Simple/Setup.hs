@@ -600,8 +600,6 @@ instance Monoid ConfigFlags where
 data CopyFlags = CopyFlags {
     copyDest      :: Flag CopyDest,
     copyDistPref  :: Flag FilePath,
-    copyUseWrapper :: Flag Bool,
-    copyInPlace    :: Flag Bool,
     copyVerbosity :: Flag Verbosity
   }
   deriving Show
@@ -610,8 +608,6 @@ defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
     copyDistPref  = Flag defaultDistPref,
-    copyUseWrapper = Flag False,
-    copyInPlace    = Flag False,
     copyVerbosity = Flag normal
   }
 
@@ -626,19 +622,9 @@ copyCommand = makeCommand name shortDesc longDesc defaultCopyFlags options
     options showOrParseArgs =
       [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
 
-      ,option "" ["shell-wrappers"]
-         "using shell script wrappers around executables"
-         copyUseWrapper (\v flags -> flags { copyUseWrapper = v })
-         (boolOpt [] [])
-
       ,optionDistPref
          copyDistPref (\d flags -> flags { copyDistPref = d })
          showOrParseArgs
-
-      ,option "" ["inplace"]
-         "copy the package in the install subdirectory of the dist prefix, so it can be used without being installed"
-         copyInPlace (\v flags -> flags { copyInPlace = v })
-         trueArg
 
       ,option "" ["destdir"]
          "directory to copy files to, prepended to installation directories"
@@ -661,15 +647,11 @@ instance Monoid CopyFlags where
   mempty = CopyFlags {
     copyDest      = mempty,
     copyDistPref  = mempty,
-    copyUseWrapper = mempty,
-    copyInPlace    = mempty,
     copyVerbosity = mempty
   }
   mappend a b = CopyFlags {
     copyDest      = combine copyDest,
     copyDistPref  = combine copyDistPref,
-    copyUseWrapper = combine copyUseWrapper,
-    copyInPlace    = combine copyInPlace,
     copyVerbosity = combine copyVerbosity
   }
     where combine field = field a `mappend` field b
