@@ -259,11 +259,10 @@ withLib :: PackageDescription -> a -> (Library -> IO a) -> IO a
 withLib pkg_descr a f =
    maybe (return a) f (maybeHasLibs pkg_descr)
 
--- |Get all the module names from the libraries in this package
-libModules :: PackageDescription -> [ModuleName]
-libModules PackageDescription{library=lib}
-    = maybe [] exposedModules lib
-       ++ maybe [] (otherModules . libBuildInfo) lib
+-- | Get all the module names from the library (exposed and internal modules)
+libModules :: Library -> [ModuleName]
+libModules lib = exposedModules lib
+              ++ otherModules (libBuildInfo lib)
 
 -- ---------------------------------------------------------------------------
 -- The Executable type
@@ -307,10 +306,9 @@ withExe :: PackageDescription -> (Executable -> IO a) -> IO ()
 withExe pkg_descr f =
   sequence_ [f exe | exe <- executables pkg_descr, buildable (buildInfo exe)]
 
--- |Get all the module names from the exes in this package
-exeModules :: PackageDescription -> [ModuleName]
-exeModules PackageDescription{executables=execs}
-    = concatMap (otherModules . buildInfo) execs
+-- | Get all the module names from an exe
+exeModules :: Executable -> [ModuleName]
+exeModules exe = otherModules (buildInfo exe)
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
