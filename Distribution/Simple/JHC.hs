@@ -41,14 +41,14 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.JHC (
-        configure, getInstalledPackages, build, installLib, installExe
+        configure, getInstalledPackages,
+        buildLib, buildExe,
+        installLib, installExe
  ) where
 
 import Distribution.PackageDescription as PD
-                                ( PackageDescription(..), BuildInfo(..),
-                                  withLib,
-                                  Executable(..), withExe, Library(..),
-                                  libModules, hcOptions )
+       ( PackageDescription(..), BuildInfo(..), Executable(..)
+       , Library(..), libModules, hcOptions )
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -136,26 +136,30 @@ getInstalledPackages verbosity packageDBs conf = do
 
 -- | Building a package for JHC.
 -- Currently C source files are not supported.
-build :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
-build pkg_descr lbi verbosity = do
+buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo -> Library -> IO ()
+buildLib verbosity pkg_descr lbi lib = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
-  withLib pkg_descr $ \lib -> do
-      info verbosity "Building library..."
-      let libBi = libBuildInfo lib
-      let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
-      rawSystemProgram verbosity jhcProg $
-        ["-c"] ++ args ++ map display (libModules lib)
-      let pkgid = display (packageId pkg_descr)
-          pfile = buildDir lbi </> "jhc-pkg.conf"
-          hlfile= buildDir lbi </> (pkgid ++ ".hl")
-      writeFileAtomic pfile $ jhcPkgConf pkg_descr
-      rawSystemProgram verbosity jhcProg ["--build-hl="++pfile, "-o", hlfile]
-  withExe pkg_descr $ \exe -> do
-      info verbosity ("Building executable "++exeName exe)
-      let exeBi = buildInfo exe
-      let out   = buildDir lbi </> exeName exe
-      let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbosity
-      rawSystemProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
+  info verbosity "Building library..."
+  let libBi = libBuildInfo lib
+  let args  = constructJHCCmdLine lbi libBi (buildDir lbi) verbosity
+  rawSystemProgram verbosity jhcProg $
+    ["-c"] ++ args ++ map display (libModules lib)
+  let pkgid = display (packageId pkg_descr)
+      pfile = buildDir lbi </> "jhc-pkg.conf"
+      hlfile= buildDir lbi </> (pkgid ++ ".hl")
+  writeFileAtomic pfile $ jhcPkgConf pkg_descr
+  rawSystemProgram verbosity jhcProg ["--build-hl="++pfile, "-o", hlfile]
+
+-- | Building an executable for JHC.
+-- Currently C source files are not supported.
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> IO ()
+buildExe verbosity _pkg_descr lbi exe = do
+  let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
+  info verbosity ("Building executable "++exeName exe)
+  let exeBi = buildInfo exe
+  let out   = buildDir lbi </> exeName exe
+  let args  = constructJHCCmdLine lbi exeBi (buildDir lbi) verbosity
+  rawSystemProgram verbosity jhcProg (["-o",out] ++ args ++ [modulePath exe])
 
 constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> FilePath -> Verbosity -> [String]
 constructJHCCmdLine lbi bi _odir verbosity =

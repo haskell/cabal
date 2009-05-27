@@ -109,7 +109,8 @@ build pkg_descr lbi flags suffixes = do
   case compilerFlavor (compiler lbi) of
     GHC  -> withLib pkg_descr (GHC.buildLib verbosity pkg_descr lbi)
          >> withExe pkg_descr (GHC.buildExe verbosity pkg_descr lbi)
-    JHC  -> JHC.build  pkg_descr lbi verbosity
+    JHC  -> withLib pkg_descr (JHC.buildLib verbosity pkg_descr lbi)
+         >> withExe pkg_descr (JHC.buildExe verbosity pkg_descr lbi)
     LHC  -> withLib pkg_descr (LHC.buildLib verbosity pkg_descr lbi)
          >> withExe pkg_descr (LHC.buildExe verbosity pkg_descr lbi)
     Hugs -> Hugs.build pkg_descr lbi verbosity
