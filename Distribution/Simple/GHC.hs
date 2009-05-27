@@ -469,8 +469,6 @@ buildLib verbosity pkg_descr lbi lib = do
       ifSharedLib = when (withSharedLib lbi)
       ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
 
-  info verbosity "Building library..."
-
   libBi <- hackThreadedFlag verbosity
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
 
@@ -629,8 +627,6 @@ buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo -> Executable -> I
 buildExe verbosity _pkg_descr lbi exe@Executable { exeName = exeName', modulePath = modPath } = do
   let pref = buildDir lbi
       runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
-
-  info verbosity $ "Building executable: " ++ exeName' ++ "..."
 
   exeBi <- hackThreadedFlag verbosity
              (compiler lbi) (withProfExe lbi) (buildInfo exe)
