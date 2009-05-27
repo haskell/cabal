@@ -66,9 +66,8 @@ module Distribution.Simple.LHC (
         ghcVerbosityOptions
  ) where
 
-import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.Simple.Setup
-         ( CopyFlags(..), fromFlag, fromFlagOrDefault)
+         ( CopyFlags(..), fromFlag )
 import Distribution.PackageDescription as PD
                                 ( PackageDescription(..), BuildInfo(..),
                                   withLib,
@@ -103,7 +102,7 @@ import Distribution.Simple.Compiler
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
          , Flag, extensionsToFlags )
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
+         ( Version(..), orLaterVersion )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
@@ -119,8 +118,8 @@ import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
                                   getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
-                                  takeDirectory, replaceExtension, splitExtension )
-import System.IO (openFile, IOMode(WriteMode), hClose, hPutStrLn)
+                                  takeDirectory, replaceExtension )
+import System.IO (hClose, hPutStrLn)
 import Distribution.Compat.Exception (catchExit, catchIO)
 import Distribution.Compat.CopyFile
          ( setFileExecutable )
@@ -232,9 +231,6 @@ getLanguageExtensions verbosity lhcProg = do
     return $ [ (ext, "-X" ++ display ext)
              | Just ext <- map readExtension (lines exts) ]
 
-  where
-    Just lhcVersion = programVersion lhcProg
-
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                      -> IO (PackageIndex InstalledPackageInfo)
 getInstalledPackages verbosity packagedbs conf = do
@@ -291,9 +287,6 @@ getInstalledPackages' verbosity packagedbs conf
        in case [ msg | ParseFailed msg <- parsed ] of
             []   -> Left [ pkg | ParseOk _ pkg <- parsed ]
             msgs -> Right msgs
-
-    Just ghcProg = lookupProgram lhcProgram conf
-    Just ghcVersion = programVersion ghcProg
 
     splitPkgs :: String -> [String]
     splitPkgs = map unlines . splitWith ("---" ==) . lines
