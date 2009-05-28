@@ -47,6 +47,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
         externalPackageDeps,
+        withLibLBI,
+        withExeLBI,
         ComponentLocalBuildInfo(..),
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
@@ -61,7 +63,9 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.PackageDescription (PackageDescription(..))
+import Distribution.PackageDescription
+         ( PackageDescription(..), withLib, Library, withExe
+         , Executable(exeName) )
 import Distribution.Package (PackageId, Package(..))
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDB, OptimisationLevel )
@@ -121,6 +125,27 @@ externalPackageDeps lbi = nub $
   -- TODO:  what about non-buildable components?
      maybe [] componentPackageDeps (libraryConfig lbi)
   ++ concatMap (componentPackageDeps . snd) (executableConfigs lbi)
+
+-- |If the package description has a library section, call the given
+--  function with the library build info as argument.  Extended version of
+-- 'withLib' that also gives corresponding build info.
+withLibLBI :: PackageDescription -> LocalBuildInfo
+           -> (Library -> ComponentLocalBuildInfo -> IO ()) -> IO ()
+withLibLBI pkg_descr lbi f = withLib pkg_descr $ \lib ->
+  case libraryConfig lbi of
+       Just clbi -> f lib clbi
+       Nothing   -> error "withLibLBI: inconsistent data"
+
+-- | Perform the action on each buildable 'Executable' in the package
+-- description.  Extended version of 'withExe' that also gives corresponding
+-- build info.
+withExeLBI :: PackageDescription -> LocalBuildInfo
+           -> (Executable -> ComponentLocalBuildInfo -> IO ()) -> IO ()
+withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
+  case lookup (exeName exe) (executableConfigs lbi) of
+       Just clbi -> f exe clbi
+       Nothing   -> error "withExeLBI: inconsistent data"
+
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs
