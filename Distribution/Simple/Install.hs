@@ -96,9 +96,13 @@ install pkg_descr lbi flags = do
          htmldir    = htmlPref,
          haddockdir = interfacePref,
          includedir = incPref})
-             = absoluteInstallDirs pkg_descr lbi copyTo
-      pretendInstallDirs = absoluteInstallDirs pkg_descr lbi pretendCopyTo
+             = absoluteInstallDirs (packageId pkg_descr) lbi copydest
 
+      --TODO: decide if we need the user to be able to control the libdir
+      -- for shared libs independently of the one for static libs. If so
+      -- it should also have a flag in the command line UI
+      -- For the moment use dynlibdir = libdir
+      dynlibPref = libPref
       progPrefixPref = substPathTemplate (packageId pkg_descr) lbi (progPrefix lbi)
       progSuffixPref = substPathTemplate (packageId pkg_descr) lbi (progSuffix lbi)
 
