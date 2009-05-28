@@ -67,7 +67,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..)
-         , Library(..), withLib, Executable(..), withExe )
+         , Library(..), Executable(..) )
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
@@ -75,8 +75,8 @@ import Distribution.Simple.Setup
 import Distribution.Simple.PreProcess
          ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir, libraryConfig, executableConfigs)
-         , ComponentLocalBuildInfo )
+         ( LocalBuildInfo(compiler, buildDir)
+         , ComponentLocalBuildInfo, withLibLBI, withExeLBI )
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
 import Distribution.Simple.Utils
@@ -109,14 +109,12 @@ build pkg_descr lbi flags suffixes = do
   initialBuildSteps distPref pkg_descr lbi verbosity suffixes
   setupMessage verbosity "Building" (packageId pkg_descr)
 
-  withLib pkg_descr $ \lib -> do
+  withLibLBI pkg_descr lbi $ \lib clbi -> do
     info verbosity "Building library..."
-    let Just clbi = libraryConfig lbi
     buildLib verbosity pkg_descr lbi lib clbi
 
-  withExe pkg_descr $ \exe -> do
+  withExeLBI pkg_descr lbi $ \exe clbi -> do
     info verbosity $ "Building executable " ++ exeName exe ++ "..."
-    let Just clbi = lookup (exeName exe) (executableConfigs lbi)
     buildExe verbosity pkg_descr lbi exe clbi
 
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo

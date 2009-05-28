@@ -75,7 +75,7 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
                                         initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), externalPackageDeps
-         , ComponentLocalBuildInfo(..) )
+         , ComponentLocalBuildInfo(..), withLibLBI, withExeLBI )
 import Distribution.Simple.BuildPaths ( haddockName,
                                         hscolourPref, autogenModulesDir,
                                         )
@@ -197,19 +197,15 @@ haddock pkg_descr lbi suffixes flags = do
             [ fromFlags flags
             , fromPackageDescription pkg_descr ]
 
-    withLib pkg_descr $ \lib -> do
+    withLibLBI pkg_descr lbi $ \lib clbi -> do
         let bi = libBuildInfo lib
-        --TODO: need a withLib variant that gives us the per-component info
-        let Just clbi = libraryConfig lbi
         libArgs <- fromLibrary lbi lib clbi
         prepareSources verbosity lbi isVersion2 bi (args `mappend` libArgs) $
              runHaddock verbosity confHaddock
 
     when (flag haddockExecutables) $
-      withExe pkg_descr $ \exe -> do
+      withExeLBI pkg_descr lbi $ \exe clbi -> do
         let bi = buildInfo exe
-        --TODO: need a withLib variant that gives us the per-component info
-        let Just clbi = lookup (exeName exe) (executableConfigs lbi)
         exeArgs <- fromExecutable lbi exe clbi
         prepareSources verbosity lbi  isVersion2 bi (args `mappend` exeArgs) $
              runHaddock verbosity confHaddock
