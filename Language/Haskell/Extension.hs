@@ -134,6 +134,18 @@ data Extension
   | TransformListComp
   | ViewPatterns
 
+  -- | Allow concrete XML syntax to be used in expressions and patterns,
+  -- as per the Haskell Server Pages extension language: 
+  -- <http://www.haskell.org/haskellwiki/HSP>. The ideas behind it are 
+  -- discussed in the paper "Haskell Server Pages through Dynamic Loading"
+  -- by Niklas Broberg, from Haskell Workshop '05.
+  | XmlSyntax
+
+  -- | Allow regular pattern matching over lists, as discussed in the
+  -- paper "Regular Expression Patterns" by Niklas Broberg, Andreas Farre
+  -- and Josef Svenningsson, from ICFP '04.
+  | RegularPatterns
+
   | UnknownExtension String
   deriving (Show, Read, Eq)
 
@@ -209,6 +221,8 @@ knownExtensions =
   , QuasiQuotes
   , TransformListComp
   , ViewPatterns
+  , XmlSyntax
+  , RegularPatterns
   ]
 
 instance Text Extension where
