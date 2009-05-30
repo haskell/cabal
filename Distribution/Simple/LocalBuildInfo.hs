@@ -72,6 +72,8 @@ import Distribution.Simple.Compiler
          ( Compiler(..), PackageDB, OptimisationLevel )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.Simple.Utils
+         ( die )
 
 import Data.List (nub)
 
@@ -134,8 +136,9 @@ withLibLBI :: PackageDescription -> LocalBuildInfo
            -> (Library -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withLibLBI pkg_descr lbi f = withLib pkg_descr $ \lib ->
   case libraryConfig lbi of
-       Just clbi -> f lib clbi
-       Nothing   -> error "withLibLBI: inconsistent data"
+    Just clbi -> f lib clbi
+    Nothing   -> die $ "internal error: the package contains a library "
+                    ++ "but there is no corresponding configuration data"
 
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.  Extended version of 'withExe' that also gives corresponding
@@ -144,8 +147,10 @@ withExeLBI :: PackageDescription -> LocalBuildInfo
            -> (Executable -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
   case lookup (exeName exe) (executableConfigs lbi) of
-       Just clbi -> f exe clbi
-       Nothing   -> error "withExeLBI: inconsistent data"
+    Just clbi -> f exe clbi
+    Nothing   -> die $ "internal error: the package contains an executable "
+                    ++ exeName exe ++ " but there is no corresponding "
+                    ++ "configuration data"
 
 -- True if the specified package (or library) is defined internally
 -- to the package.
