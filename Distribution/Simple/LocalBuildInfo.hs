@@ -50,6 +50,7 @@ module Distribution.Simple.LocalBuildInfo (
         withLibLBI,
         withExeLBI,
         ComponentLocalBuildInfo(..),
+        isInternalPackage,
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
@@ -145,6 +146,11 @@ withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
   case lookup (exeName exe) (executableConfigs lbi) of
        Just clbi -> f exe clbi
        Nothing   -> error "withExeLBI: inconsistent data"
+
+-- True if the specified package (or library) is defined internally
+-- to the package.
+isInternalPackage :: PackageDescription -> PackageId -> Bool
+isInternalPackage pkg_descr pkgid = packageId pkg_descr == pkgid
 
 
 -- -----------------------------------------------------------------------------
