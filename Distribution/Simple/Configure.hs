@@ -267,12 +267,12 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 configure :: ( Either GenericPackageDescription PackageDescription
              , HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
-configure (pkg_descr0, pbi) cfg
+configure (e_pkg_descr, pbi) cfg
   = do  let distPref = fromFlag (configDistPref cfg)
             verbosity = fromFlag (configVerbosity cfg)
+            pkg_descr0 = either packageDescription id e_pkg_descr
 
-        setupMessage verbosity "Configuring"
-                     (packageId (either packageDescription id pkg_descr0))
+        setupMessage verbosity "Configuring" (packageId pkg_descr0)
 
         createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
@@ -317,7 +317,7 @@ configure (pkg_descr0, pbi) cfg
         let maybePackageSet = (`PackageIndex.merge` internalPackageSet)
                                                     `fmap` maybeInstalledPackageSet
 
-        (pkg_descr0', flags) <- case pkg_descr0 of
+        (pkg_descr0', flags) <- case e_pkg_descr of
             Left ppd ->
                 case finalizePackageDescription
                        (configConfigurationsFlags cfg)
@@ -344,7 +344,7 @@ configure (pkg_descr0, pbi) cfg
                                             | (FlagName name, value) <- flags ]
 
         checkPackageProblems verbosity
-          (either Just (\_->Nothing) pkg_descr0) --TODO: make the Either go away
+          (either Just (\_->Nothing) e_pkg_descr) --TODO: make the Either go away
           (updatePackageDescription pbi pkg_descr)
 
         let installedPackageSet = fromMaybe bogusPackageSet maybeInstalledPackageSet
