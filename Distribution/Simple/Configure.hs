@@ -101,7 +101,7 @@ import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-    , absoluteInstallDirs, prefixRelativeInstallDirs )
+    , absoluteInstallDirs, prefixRelativeInstallDirs, isInternalPackage )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
     , intercalate, comparing, cabalVersion, cabalBootstrapping
@@ -293,8 +293,29 @@ configure (pkg_descr0, pbi) cfg
         let version = compilerVersion comp
             flavor  = compilerFlavor comp
 
-        maybePackageSet <- getInstalledPackages (lessVerbose verbosity) comp
+        -- | Create a PackageIndex that makes *any libraries that might be*
+        -- defined internally to this package look like installed packages, in
+        -- case an executable should refer to any of them as dependencies.
+        --
+        -- It must be *any libraries that might be* defined rather than the
+        -- actual definitions, because these depend on conditionals in the .cabal
+        -- file, and we haven't resolved them yet.  finalizePackageDescription
+        -- does the resolution of conditionals, and it takes internalPackageSet
+        -- as part of its input.
+        --
+        -- Currently a package can define no more than one library (which has
+        -- the same name as the package) but we could extend this later.
+        -- If we later allowed private internal libraries, then here we would
+        -- need to pre-scan the conditional data to make a list of all private
+        -- libraries that could possibly be defined by the .cabal file.
+        let internalPackageSet = PackageIndex.fromList [ emptyInstalledPackageInfo {
+                  Installed.package = package pkg_descr0
+              } ]
+        maybeInstalledPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
                                (implicitPackageDbStack packageDb) programsConfig'
+        -- The merge of the internal and installed packages
+        let maybePackageSet = (`PackageIndex.merge` internalPackageSet)
+                                                    `fmap` maybeInstalledPackageSet
 
         (pkg_descr0', flags) <- case pkg_descr0 of
             Left ppd ->
@@ -326,7 +347,8 @@ configure (pkg_descr0, pbi) cfg
           (either Just (\_->Nothing) pkg_descr0) --TODO: make the Either go away
           (updatePackageDescription pbi pkg_descr)
 
-        let packageSet = fromMaybe bogusPackageSet maybePackageSet
+        let installedPackageSet = fromMaybe bogusPackageSet maybeInstalledPackageSet
+            packageSet          = fromMaybe bogusPackageSet maybePackageSet
             -- FIXME: For Hugs, nhc98 and other compilers we do not know what
             -- packages are already installed, so we just make some up, pretend
             -- that they do exist and just hope for the best. We make them up
@@ -340,14 +362,22 @@ configure (pkg_descr0, pbi) cfg
                   -- note that these bogus packages have no other dependencies
                 }
               | bogusPackageId <- bogusDependencies ]
-        dep_pkgs <- case flavor of
-          GHC -> mapM (configDependency verbosity packageSet) (buildDepends pkg_descr)
-          JHC -> mapM (configDependency verbosity packageSet) (buildDepends pkg_descr)
-          LHC -> mapM (configDependency verbosity packageSet) (buildDepends pkg_descr)
+        allPkgDeps <- case flavor of
+          GHC -> mapM (configDependency verbosity internalPackageSet installedPackageSet) (buildDepends pkg_descr)
+          JHC -> mapM (configDependency verbosity internalPackageSet installedPackageSet) (buildDepends pkg_descr)
+          LHC -> mapM (configDependency verbosity internalPackageSet installedPackageSet) (buildDepends pkg_descr)
           _   -> return bogusDependencies
 
+        let (internalPkgDeps, externalPkgDeps) = partition (isInternalPackage pkg_descr) allPkgDeps
+
+        when (not (null internalPkgDeps)) $
+            die $ "The field 'build-depends: "
+               ++ intercalate ", " (map (display . packageName) internalPkgDeps)
+               ++ "' refers to a library which defined within the same "
+               ++ "package. This feature is not yet supported."
+
         packageDependsIndex <-
-          case PackageIndex.dependencyClosure packageSet dep_pkgs of
+          case PackageIndex.dependencyClosure packageSet externalPkgDeps of
             Left packageDependsIndex -> return packageDependsIndex
             Right broken ->
               die $ "The following installed packages are broken because other"
@@ -361,7 +391,7 @@ configure (pkg_descr0, pbi) cfg
 
         let pseudoTopPkg = emptyInstalledPackageInfo {
                 Installed.package = packageId pkg_descr,
-                Installed.depends = dep_pkgs
+                Installed.depends = allPkgDeps
               }
         case PackageIndex.dependencyInconsistencies
            . PackageIndex.insert pseudoTopPkg
@@ -408,7 +438,7 @@ configure (pkg_descr0, pbi) cfg
                                           "--enable-split-objs; ignoring")
                                     return False
 
-        -- The dep_pkgs contains all the package deps for the whole package
+        -- The allPkgDeps contains all the package deps for the whole package
         -- but we need to select the subset for this specific component.
         -- we just take the subset for the package names this component
         -- needs. Note, this only works because we cannot yet depend on two
@@ -418,8 +448,8 @@ configure (pkg_descr0, pbi) cfg
             configComponent bi = ComponentLocalBuildInfo {
               componentPackageDeps =
                 if newPackageDepsBehaviour pkg_descr'
-                  then selectDependencies bi dep_pkgs
-                  else dep_pkgs
+                  then selectDependencies bi allPkgDeps
+                  else allPkgDeps
             }
             selectDependencies :: BuildInfo -> [PackageId] -> [PackageId]
             selectDependencies bi pkgs =
@@ -491,6 +521,8 @@ configure (pkg_descr0, pbi) cfg
               modifyExecutable e = e{ buildInfo    = buildInfo e    `mappend` extraBi}
           in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
                       , executables = modifyExecutable  `map` executables pkg_descr}
+
+
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies
 
@@ -519,9 +551,29 @@ hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 
 -- | Test for a package dependency and record the version we have installed.
-configDependency :: Verbosity -> PackageIndex InstalledPackageInfo -> Dependency -> IO PackageIdentifier
-configDependency verbosity index dep@(Dependency pkgname _) =
-  case PackageIndex.lookupDependency index dep of
+configDependency :: Verbosity
+                 -> PackageIndex InstalledPackageInfo  -- ^ Internally defined packages
+                 -> PackageIndex InstalledPackageInfo  -- ^ Installed packages
+                 -> Dependency
+                 -> IO PackageIdentifier
+configDependency verbosity internalIndex installedIndex dep@(Dependency pkgname _) =
+  -- If the dependency specification matches anything in the internal package
+  -- index, then we prefer that match to anything in the second.
+  -- For example:
+  --
+  -- Name: MyLibrary
+  -- Version: 0.1
+  -- Library
+  --     ..
+  -- Executable my-exec
+  --     build-depends: MyLibrary
+  --
+  -- We want "build-depends: MyLibrary" always to match the internal library
+  -- even if there is a newer installed library "MyLibrary-0.2".
+  -- However, "build-depends: MyLibrary >= 0.2" should match the installed one.
+  case PackageIndex.lookupDependency internalIndex dep
+                       `inPreferenceTo`
+                   PackageIndex.lookupDependency installedIndex dep of
         [] -> die $ "cannot satisfy dependency "
                       ++ display dep ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
@@ -530,6 +582,12 @@ configDependency verbosity index dep@(Dependency pkgname _) =
                    info verbosity $ "Dependency " ++ display dep
                                 ++ ": using " ++ display pkgid
                    return pkgid
+  where
+    -- If there are any matches in the first set, return them, otherwise return
+    -- the second set.
+    inPreferenceTo :: [a] -> [a] -> [a]
+    inPreferenceTo [] second = second
+    inPreferenceTo first _   = first
 
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
