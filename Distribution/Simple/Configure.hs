@@ -70,8 +70,8 @@ import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedExtensions, PackageDB(..), PackageDBStack )
 import Distribution.Package
-    ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
-    , packageVersion, Package(..), Dependency(Dependency) )
+    ( PackageName(PackageName), PackageId, PackageIdentifier(PackageIdentifier)
+    , packageName, packageVersion, Package(..), Dependency(Dependency) )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -112,8 +112,8 @@ import Distribution.Simple.Register
 import Distribution.System
     ( OS(..), buildOS, buildArch )
 import Distribution.Version
-    ( Version(..)
-    , orLaterVersion, withinRange, isSpecificVersion, isAnyVersion )
+    ( Version(..), orLaterVersion, withinRange, isSpecificVersion, isAnyVersion
+    , LowerBound(..), asVersionIntervals )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
 
@@ -408,6 +408,25 @@ configure (pkg_descr0, pbi) cfg
                                           "--enable-split-objs; ignoring")
                                     return False
 
+        -- The dep_pkgs contains all the package deps for the whole package
+        -- but we need to select the subset for this specific component.
+        -- we just take the subset for the package names this component
+        -- needs. Note, this only works because we cannot yet depend on two
+        -- versions of the same package.
+        let configLib lib = configComponent (libBuildInfo lib)
+            configExe exe = (exeName exe, configComponent(buildInfo exe))
+            configComponent bi = ComponentLocalBuildInfo {
+              componentPackageDeps =
+                if newPackageDepsBehaviour pkg_descr'
+                  then selectDependencies bi dep_pkgs
+                  else dep_pkgs
+            }
+            selectDependencies :: BuildInfo -> [PackageId] -> [PackageId]
+            selectDependencies bi pkgs =
+                [ pkg | pkg <- pkgs, packageName pkg `elem` names ]
+              where
+                names = [ name | Dependency name _ <- targetBuildDepends bi ]
+
         let lbi = LocalBuildInfo{
                     installDirTemplates = installDirs,
                     compiler            = comp,
@@ -415,10 +434,8 @@ configure (pkg_descr0, pbi) cfg
                     scratchDir          = fromFlagOrDefault
                                             (distPref </> "scratch")
                                             (configScratchDir cfg),
-                    libraryConfig       = (\_ -> ComponentLocalBuildInfo dep_pkgs)
-                                              `fmap` library pkg_descr',
-                    executableConfigs   = (\exe -> (exeName exe, ComponentLocalBuildInfo dep_pkgs))
-                                              `fmap` executables pkg_descr',
+                    libraryConfig       = configLib `fmap` library pkg_descr',
+                    executableConfigs   = configExe `fmap` executables pkg_descr',
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
@@ -535,6 +552,23 @@ implicitPackageDbStack packageDB = case packageDB of
   GlobalPackageDB     -> [GlobalPackageDB]
   UserPackageDB       -> [GlobalPackageDB, UserPackageDB]
   SpecificPackageDB p -> [GlobalPackageDB, SpecificPackageDB p]
+
+newPackageDepsBehaviourMinVersion :: Version
+newPackageDepsBehaviourMinVersion = Version { versionBranch = [1,7,1], versionTags = [] }
+
+-- In older cabal versions, there was only one set of package dependencies for
+-- the whole package. In this version, we can have separate dependencies per
+-- target, but we only enable this behaviour if the minimum cabal version
+-- specified is >= a certain minimum. Otherwise, for compatibility we use the
+-- old behaviour.
+newPackageDepsBehaviour :: PackageDescription -> Bool
+newPackageDepsBehaviour pkg_descr =
+   minVersionRequired >= newPackageDepsBehaviourMinVersion
+  where
+    minVersionRequired =
+      case asVersionIntervals (descCabalVersion pkg_descr) of
+        []                      -> Version [0] []
+        ((LowerBound v _, _):_) -> v
 
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
