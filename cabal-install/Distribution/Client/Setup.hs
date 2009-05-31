@@ -46,14 +46,12 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..) )
 import Distribution.Simple.Setup
-         ( Flag(..), toFlag, fromFlag, flagToList, flagToMaybe, fromFlagOrDefault
+         ( Flag(..), toFlag, fromFlag, flagToList, flagToMaybe
          , optionVerbosity, trueArg )
-import Distribution.Simple.Compiler
-         ( PackageDB(..) )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Version
-         ( Version(Version), VersionRange(..) )
+         ( Version(Version), anyVersion, thisVersion )
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.Text
@@ -689,8 +687,8 @@ parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
   where
     pkgidToDependency :: PackageIdentifier -> Dependency
     pkgidToDependency p = case packageVersion p of
-      Version [] _ -> Dependency (packageName p) AnyVersion
-      version      -> Dependency (packageName p) (ThisVersion version)
+      Version [] _ -> Dependency (packageName p) anyVersion
+      version      -> Dependency (packageName p) (thisVersion version)
 
 showRepo :: RemoteRepo -> String
 showRepo repo = remoteRepoName repo ++ ":"

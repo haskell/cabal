@@ -32,7 +32,7 @@ import Distribution.PackageDescription.Configuration
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Version
-         ( VersionRange(AnyVersion, IntersectVersionRanges), withinRange )
+         ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Simple.Utils
          ( comparing )
 import Distribution.Text
@@ -104,11 +104,11 @@ combineConstraints :: (PackageName -> PackagePreferences)
 combineConstraints preferences constraints targets =
   [ (name, ver, flags, pref)
   | name <- targets
-  , let ver   = fromMaybe AnyVersion (Map.lookup name versionConstraints)
+  , let ver   = fromMaybe anyVersion (Map.lookup name versionConstraints)
         flags = fromMaybe []         (Map.lookup name flagsConstraints)
         PackagePreferences pref _ = preferences name ]
   where
-    versionConstraints = Map.fromListWith IntersectVersionRanges
+    versionConstraints = Map.fromListWith intersectVersionRanges
       [ (name, versionRange)
       | PackageVersionConstraint name versionRange <- constraints ]
 
