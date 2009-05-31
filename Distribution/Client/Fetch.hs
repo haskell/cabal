@@ -43,7 +43,7 @@ import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Compiler
-         ( Compiler(compilerId), PackageDB )
+         ( Compiler(compilerId), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Configure
@@ -148,14 +148,14 @@ fetchPackage verbosity repo pkgid = do
 
 -- |Fetch a list of packages and their dependencies.
 fetch :: Verbosity
-      -> PackageDB
+      -> PackageDBStack
       -> [Repo]
       -> Compiler
       -> ProgramConfiguration
       -> [UnresolvedDependency]
       -> IO ()
-fetch verbosity packageDB repos comp conf deps = do
-  installed <- getInstalledPackages verbosity comp packageDB conf
+fetch verbosity packageDBs repos comp conf deps = do
+  installed <- getInstalledPackages verbosity comp packageDBs conf
   AvailablePackageDb available availablePrefs
             <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps

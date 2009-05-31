@@ -27,7 +27,8 @@ import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 
 import Distribution.Simple.Configure (getInstalledPackages)
-import Distribution.Simple.Compiler (Compiler,PackageDB)
+import Distribution.Simple.Compiler
+        ( Compiler, PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils (equating, comparing, notice)
 import Distribution.Simple.Setup (fromFlag)
@@ -64,15 +65,15 @@ import System.Directory
 
 -- |Show information about packages
 list :: Verbosity
-     -> PackageDB
+     -> PackageDBStack
      -> [Repo]
      -> Compiler
      -> ProgramConfiguration
      -> ListFlags
      -> [String]
      -> IO ()
-list verbosity packageDB repos comp conf listFlags pats = do
-    Just installed <- getInstalledPackages verbosity comp packageDB conf
+list verbosity packageDBs repos comp conf listFlags pats = do
+    Just installed <- getInstalledPackages verbosity comp packageDBs conf
     AvailablePackageDb available _ <- getAvailablePackages verbosity repos
     let pkgs | null pats = (PackageIndex.allPackages installed
                            ,PackageIndex.allPackages available)
@@ -103,17 +104,17 @@ list verbosity packageDB repos comp conf listFlags pats = do
     simpleOutput  = fromFlag (listSimpleOutput listFlags)
 
 info :: Verbosity
-     -> PackageDB
+     -> PackageDBStack
      -> [Repo]
      -> Compiler
      -> ProgramConfiguration
      -> InfoFlags
      -> [UnresolvedDependency] --FIXME: just package names? or actually use the constraint
      -> IO ()
-info verbosity packageDB repos comp conf _listFlags deps = do
+info verbosity packageDBs repos comp conf _listFlags deps = do
   AvailablePackageDb available _ <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
-  Just installed <- getInstalledPackages verbosity comp packageDB conf
+  Just installed <- getInstalledPackages verbosity comp packageDBs conf
   let deps'' = [ name | UnresolvedDependency (Dependency name _) _ <- deps' ]
   let pkgs = (concatMap (PackageIndex.lookupPackageName installed) deps''
              ,concatMap (PackageIndex.lookupPackageName available) deps'')
