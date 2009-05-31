@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Setup
     ( globalCommand, GlobalFlags(..), globalRepos
-    , configureCommand, ConfigFlags(..), filterConfigureFlags, configPackageDB'
+    , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
@@ -194,15 +194,6 @@ configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
 
 configureOptions ::  ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions = commandOptions configureCommand
-
-configPackageDB' :: ConfigFlags -> PackageDB
-configPackageDB' config =
-  fromFlagOrDefault defaultDB (configPackageDB config)
-  where
-    defaultDB = case configUserInstall config of
-      NoFlag     -> UserPackageDB
-      Flag True  -> UserPackageDB
-      Flag False -> GlobalPackageDB
 
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion

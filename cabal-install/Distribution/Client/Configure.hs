@@ -37,7 +37,8 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 
 import Distribution.Simple.Compiler
-         ( CompilerId(..), Compiler(compilerId), PackageDB(..) )
+         ( CompilerId(..), Compiler(compilerId)
+         , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Setup
@@ -69,7 +70,7 @@ import Distribution.Verbosity as Verbosity
 
 -- | Configure the package found in the local directory
 configure :: Verbosity
-          -> PackageDB
+          -> PackageDBStack
           -> [Repo]
           -> Compiler
           -> ProgramConfiguration
@@ -77,10 +78,10 @@ configure :: Verbosity
           -> ConfigExFlags
           -> [String]
           -> IO ()
-configure verbosity packageDB repos comp conf
+configure verbosity packageDBs repos comp conf
   configFlags configExFlags extraArgs = do
 
-  installed <- getInstalledPackages verbosity comp packageDB conf
+  installed <- getInstalledPackages verbosity comp packageDBs conf
   available <- getAvailablePackages verbosity repos
 
   progress <- planLocalPackage verbosity comp configFlags configExFlags
@@ -114,12 +115,12 @@ configure verbosity packageDB repos comp conf
       -- Hack: we typically want to allow the UserPackageDB for finding the
       -- Cabal lib when compiling any Setup.hs even if we're doing a global
       -- install. However we also allow looking in a specific package db.
-      -- TODO: if we specify a specific db then we do not look in the user
-      --       package db but we probably should ie [global, user, specific]
-      usePackageDB     = if packageDB == GlobalPackageDB then UserPackageDB
-                                                         else packageDB,
-      usePackageIndex  = if packageDB == GlobalPackageDB then Nothing
-                                                         else index,
+      usePackageDB     = if UserPackageDB `elem` packageDBs
+                           then packageDBs
+                           else packageDBs ++ [UserPackageDB],
+      usePackageIndex  = if UserPackageDB `elem` packageDBs
+                           then index
+                           else Nothing,
       useProgramConfig = conf,
       useDistPref      = fromFlagOrDefault
                            (useDistPref defaultSetupScriptOptions)

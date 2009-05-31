@@ -37,7 +37,7 @@ import Distribution.InstalledPackageInfo
 import Distribution.Simple.Configure
          ( configCompiler, getInstalledPackages )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(GHC), Compiler, PackageDB(..) )
+         ( CompilerFlavor(GHC), Compiler, PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
          , rawSystemProgramConf, ghcProgram )
@@ -73,7 +73,7 @@ import Data.Char         ( isSpace )
 data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion  :: VersionRange,
     useCompiler      :: Maybe Compiler,
-    usePackageDB     :: PackageDB,
+    usePackageDB     :: PackageDBStack,
     usePackageIndex  :: Maybe (PackageIndex InstalledPackageInfo),
     useProgramConfig :: ProgramConfiguration,
     useDistPref      :: FilePath,
@@ -85,7 +85,7 @@ defaultSetupScriptOptions :: SetupScriptOptions
 defaultSetupScriptOptions = SetupScriptOptions {
     useCabalVersion  = AnyVersion,
     useCompiler      = Nothing,
-    usePackageDB     = UserPackageDB,
+    usePackageDB     = [GlobalPackageDB, UserPackageDB],
     usePackageIndex  = Nothing,
     useProgramConfig = emptyProgramConfiguration,
     useDistPref      = defaultDistPref,
@@ -277,20 +277,30 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     when outOfDate $ do
       debug verbosity "Setup script is out of date, compiling..."
       (_, conf, _) <- configureCompiler options'
+      --TODO: get Cabal's GHC module to export a GhcOptions type and render func
       rawSystemProgramConf verbosity ghcProgram conf $
           ghcVerbosityOptions verbosity
        ++ ["--make", setupHsFile, "-o", setupProgFile
           ,"-odir", setupDir, "-hidir", setupDir
           ,"-i", "-i" ++ workingDir ]
-       ++ (case usePackageDB options' of
-             GlobalPackageDB      -> ["-no-user-package-conf"]
-             UserPackageDB        -> []
-             SpecificPackageDB db -> ["-no-user-package-conf"
-                                     ,"-package-conf", db])
+       ++ ghcPackageDbOptions (usePackageDB options')
        ++ if packageName pkg == PackageName "Cabal"
             then []
             else ["-package", display cabalPkgid]
-    where cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
+    where
+      cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
+
+      ghcPackageDbOptions :: PackageDBStack -> [String]
+      ghcPackageDbOptions dbstack = case dbstack of
+        (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
+        (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
+                                             : concatMap specific dbs
+        _                                   -> ierror
+        where
+          specific (SpecificPackageDB db) = [ "-package-conf", db ]
+          specific _ = ierror
+          ierror     = error "internal error: unexpected package db stack"
+
 
   invokeSetupScript :: [String] -> IO ()
   invokeSetupScript args = do
