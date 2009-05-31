@@ -56,6 +56,7 @@ module Distribution.Simple.Compiler (
         -- * Support for package databases
         PackageDB(..),
         PackageDBStack,
+        registrationPackageDB,
 
         -- * Support for optimisation levels
         OptimisationLevel(..),
@@ -123,6 +124,13 @@ data PackageDB = GlobalPackageDB
 -- When it comes to writing, the top most (last) package is used.
 --
 type PackageDBStack = [PackageDB]
+
+-- | Return the package that we should register into. This is the package db at
+-- the top of the stack.
+--
+registrationPackageDB :: PackageDBStack -> PackageDB
+registrationPackageDB []  = error "internal error: empty package db set"
+registrationPackageDB dbs = last dbs
 
 -- ------------------------------------------------------------
 -- * Optimisation levels

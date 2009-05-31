@@ -608,11 +608,7 @@ ghcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
            -> FilePath -> [String]
 ghcOptions lbi bi clbi odir
      =  ["-hide-all-packages"]
-     ++ (case withPackageDB lbi of
-           GlobalPackageDB      -> ["-no-user-package-conf"]
-           UserPackageDB        -> []
-           SpecificPackageDB db -> ["-no-user-package-conf"
-                                   ,"-package-conf", db])
+     ++ ghcPackageDbOptions (withPackageDB lbi)
      ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
      ++ ["-i" ++ odir]
@@ -636,6 +632,17 @@ ghcOptions lbi bi clbi odir
      ++ extensionsToFlags c (extensions bi)
     where c = compiler lbi
 
+ghcPackageDbOptions :: PackageDBStack -> [String]
+ghcPackageDbOptions dbstack = case dbstack of
+  (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
+  (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
+                                       : concatMap specific dbs
+  _                                   -> ierror
+  where
+    specific (SpecificPackageDB db) = [ "-package-conf", db ]
+    specific _ = ierror
+    ierror     = error "internal error: unexpected package db stack"
+
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
                    -> FilePath -> FilePath -> Verbosity -> (FilePath,[String])
 constructCcCmdLine lbi bi clbi pref filename verbosity
@@ -654,9 +661,7 @@ ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
              -> FilePath -> [String]
 ghcCcOptions lbi bi clbi odir
      =  ["-I" ++ dir | dir <- PD.includeDirs bi]
-     ++ (case withPackageDB lbi of
-             SpecificPackageDB db -> ["-package-conf", db]
-             _ -> [])
+     ++ ghcPackageDbOptions (withPackageDB lbi)
      ++ concat [ ["-package", display pkg] | pkg <- componentPackageDeps clbi ]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (case withOptimization lbi of
