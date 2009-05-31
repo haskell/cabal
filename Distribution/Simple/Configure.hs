@@ -280,10 +280,8 @@ configure (e_pkg_descr, pbi) cfg
                            . userSpecifyPaths (configProgramPaths cfg)
                            $ configPrograms cfg
             userInstall = fromFlag (configUserInstall cfg)
-            defaultPackageDB | userInstall = UserPackageDB
-                             | otherwise   = GlobalPackageDB
-            packageDb   = fromFlagOrDefault defaultPackageDB
-                                            (configPackageDB cfg)
+            packageDbs = implicitPackageDbStack userInstall
+                           (flagToMaybe $ configPackageDB cfg)
 
         -- detect compiler
         (comp, programsConfig') <- configCompiler
@@ -312,7 +310,7 @@ configure (e_pkg_descr, pbi) cfg
                   Installed.package = package pkg_descr0
               } ]
         maybeInstalledPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
-                               (implicitPackageDbStack packageDb) programsConfig'
+                                      packageDbs programsConfig'
         -- The merge of the internal and installed packages
         let maybePackageSet = (`PackageIndex.merge` internalPackageSet)
                                                     `fmap` maybeInstalledPackageSet
@@ -480,7 +478,7 @@ configure (e_pkg_descr, pbi) cfg
                     withGHCiLib         = fromFlag $ configGHCiLib cfg,
                     splitObjs           = split_objs,
                     stripExes           = fromFlag $ configStripExes cfg,
-                    withPackageDB       = packageDb,
+                    withPackageDB       = packageDbs,
                     progPrefix          = fromFlag $ configProgPrefix cfg,
                     progSuffix          = fromFlag $ configProgSuffix cfg
                   }
@@ -607,11 +605,14 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 -- stack of 'PackageDB's explictly as a list. This function converts encodes
 -- the package db stack implicit in a single packagedb.
 --
-implicitPackageDbStack :: PackageDB -> PackageDBStack
-implicitPackageDbStack packageDB = case packageDB of
-  GlobalPackageDB     -> [GlobalPackageDB]
-  UserPackageDB       -> [GlobalPackageDB, UserPackageDB]
-  SpecificPackageDB p -> [GlobalPackageDB, SpecificPackageDB p]
+implicitPackageDbStack :: Bool -> Maybe PackageDB -> PackageDBStack
+implicitPackageDbStack userInstall maybePackageDB
+  | userInstall = GlobalPackageDB : UserPackageDB : extra
+  | otherwise   = GlobalPackageDB : extra
+  where
+    extra = case maybePackageDB of
+      Just (SpecificPackageDB db) -> [SpecificPackageDB db]
+      _                           -> []
 
 newPackageDepsBehaviourMinVersion :: Version
 newPackageDepsBehaviourMinVersion = Version { versionBranch = [1,7,1], versionTags = [] }

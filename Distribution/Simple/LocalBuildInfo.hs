@@ -69,7 +69,7 @@ import Distribution.PackageDescription
          , Executable(exeName) )
 import Distribution.Package (PackageId, Package(..))
 import Distribution.Simple.Compiler
-         ( Compiler(..), PackageDB, OptimisationLevel )
+         ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Simple.Utils
@@ -99,7 +99,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ The resolved package description, that does not contain
                 -- any conditionals.
         withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
-        withPackageDB :: PackageDB,  -- ^What package database to use, global\/user
+        withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
         withProfLib   :: Bool,  -- ^Whether to build profiling versions of libs.
         withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
