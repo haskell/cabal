@@ -41,7 +41,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Version
-         ( VersionRange(AnyVersion), withinRange )
+         ( VersionRange, anyVersion, withinRange, simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -585,7 +585,7 @@ addTopLevelInstalledConstraint :: PackageName
 addTopLevelInstalledConstraint pkg constraints =
   Constraints.constrain taggedDep reason constraints
   where
-    dep       = Dependency pkg AnyVersion
+    dep       = Dependency pkg anyVersion
     taggedDep = TaggedDependency InstalledConstraint dep
     reason    = ExcludedByTopLevelDependency dep
 

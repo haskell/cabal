@@ -22,7 +22,8 @@ import Distribution.Simple.PackageIndex as PackageIndex (lookupDependency)
 import Distribution.Simple.Setup(fromFlag, fromFlagOrDefault)
 import Distribution.Simple.Utils(info, notice, die)
 import Distribution.Text(display)
-import Distribution.Version (VersionRange(..))
+import Distribution.Version
+         ( anyVersion, intersectVersionRanges )
 
 import Distribution.Client.Setup(UnpackFlags(unpackVerbosity,
                                              unpackDestDir))
@@ -89,8 +90,8 @@ resolvePackages (AvailablePackageDb available prefs) deps =
       candidates dep@(Dependency name ver) =
           let [x,y] = map (PackageIndex.lookupDependency available)
                       [ Dependency name
-                        (maybe AnyVersion id (Map.lookup name prefs)
-                         `IntersectVersionRanges` ver)
+                        (maybe anyVersion id (Map.lookup name prefs)
+                         `intersectVersionRanges` ver)
                       , dep ]
           in if null x then y else x
       best d [] = Left d
