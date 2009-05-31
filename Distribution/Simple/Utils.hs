@@ -911,12 +911,19 @@ toUTF8 (c:cs)
                  : toUTF8 cs
   where w = ord c
 
+-- | Ignore a Unicode byte order mark (BOM) at the beginning of the input
+--
+ignoreBOM :: String -> String
+ignoreBOM ('\xFEFF':string) = string
+ignoreBOM string            = string
+
 -- | Reads a UTF8 encoded text file as a Unicode String
 --
 -- Reads lazily using ordinary 'readFile'.
 --
 readUTF8File :: FilePath -> IO String
-readUTF8File f = fmap fromUTF8 . hGetContents =<< openBinaryFile f ReadMode
+readUTF8File f = fmap (ignoreBOM . fromUTF8)
+               . hGetContents =<< openBinaryFile f ReadMode
 
 -- | Reads a UTF8 encoded text file as a Unicode String
 --
@@ -924,8 +931,10 @@ readUTF8File f = fmap fromUTF8 . hGetContents =<< openBinaryFile f ReadMode
 --
 withUTF8FileContents :: FilePath -> (String -> IO a) -> IO a
 withUTF8FileContents name action =
-  Exception.bracket (openBinaryFile name ReadMode) hClose
-                    (\hnd -> hGetContents hnd >>= action . fromUTF8)
+  Exception.bracket
+    (openBinaryFile name ReadMode)
+    hClose
+    (\hnd -> hGetContents hnd >>= action . ignoreBOM . fromUTF8)
 
 -- | Writes a Unicode String as a UTF8 encoded text file.
 --
