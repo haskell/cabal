@@ -60,7 +60,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Version
-         ( VersionRange(AnyVersion, ThisVersion) )
+         ( VersionRange, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
          ( notice, info, die )
 import Distribution.System
@@ -109,7 +109,7 @@ configure verbosity packageDBs repos comp conf
 
   where
     setupScriptOptions index = SetupScriptOptions {
-      useCabalVersion  = maybe AnyVersion ThisVersion
+      useCabalVersion  = maybe anyVersion thisVersion
                          (flagToMaybe (configCabalVersion configExFlags)),
       useCompiler      = Just comp,
       -- Hack: we typically want to allow the UserPackageDB for finding the
@@ -153,7 +153,7 @@ planLocalPackage verbosity comp configFlags configExFlags installed
       }
       targets     = [packageName pkg]
       constraints = [PackageVersionConstraint (packageName pkg)
-                       (ThisVersion (packageVersion pkg))
+                       (thisVersion (packageVersion pkg))
                     ,PackageFlagsConstraint   (packageName pkg)
                        (configConfigurationsFlags configFlags)]
                  ++ [ PackageVersionConstraint name ver

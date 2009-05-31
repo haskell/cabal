@@ -38,7 +38,7 @@ import Distribution.PackageDescription.Parse
 import Distribution.ParseUtils
          ( ParseResult(..) )
 import Distribution.Version
-         ( VersionRange(IntersectVersionRanges) )
+         ( intersectVersionRanges )
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Verbosity (Verbosity)
@@ -83,7 +83,7 @@ getAvailablePackages verbosity repos = do
   info verbosity "Reading available packages..."
   pkgss <- mapM (readRepoIndex verbosity) repos
   let (pkgs, prefs) = mconcat pkgss
-      prefs' = Map.fromListWith IntersectVersionRanges
+      prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range <- prefs ]
   evaluate pkgs
   evaluate prefs'

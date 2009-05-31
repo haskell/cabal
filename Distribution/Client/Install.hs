@@ -103,7 +103,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Version
-         ( Version, VersionRange(AnyVersion, ThisVersion) )
+         ( Version, VersionRange, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, die, intercalate )
 import Distribution.Client.Utils
@@ -225,7 +225,7 @@ installWithPlanner planner verbosity packageDBs repos comp conf
 
   where
     setupScriptOptions index = SetupScriptOptions {
-      useCabalVersion  = maybe AnyVersion ThisVersion (libVersion miscOptions),
+      useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
       -- Hack: we typically want to allow the UserPackageDB for finding the
       -- Cabal lib when compiling any Setup.hs even if we're doing a global
@@ -318,7 +318,7 @@ planLocalPackage verbosity comp configFlags configExFlags installed
       }
       targets     = [packageName pkg]
       constraints = [PackageVersionConstraint (packageName pkg)
-                       (ThisVersion (packageVersion pkg))
+                       (thisVersion (packageVersion pkg))
                     ,PackageFlagsConstraint   (packageName pkg)
                        (configConfigurationsFlags configFlags)]
                  ++ [ PackageVersionConstraint name ver

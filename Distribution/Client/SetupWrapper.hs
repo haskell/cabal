@@ -23,7 +23,8 @@ module Distribution.Client.SetupWrapper (
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
 import Distribution.Version
-         ( Version(..), VersionRange(..), withinRange )
+         ( Version(..), VersionRange, anyVersion, intersectVersionRanges
+         , withinRange )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , packageVersion, Dependency(..) )
@@ -83,7 +84,7 @@ data SetupScriptOptions = SetupScriptOptions {
 
 defaultSetupScriptOptions :: SetupScriptOptions
 defaultSetupScriptOptions = SetupScriptOptions {
-    useCabalVersion  = AnyVersion,
+    useCabalVersion  = anyVersion,
     useCompiler      = Nothing,
     usePackageDB     = [GlobalPackageDB, UserPackageDB],
     usePackageIndex  = Nothing,
@@ -104,7 +105,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
   pkg <- maybe getPkg return mpkg
   let setupMethod = determineSetupMethod options' buildType'
       options'    = options {
-                      useCabalVersion = IntersectVersionRanges
+                      useCabalVersion = intersectVersionRanges
                                           (useCabalVersion options)
                                           (descCabalVersion pkg)
                     }
