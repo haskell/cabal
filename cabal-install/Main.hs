@@ -60,7 +60,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
 import Distribution.Simple.Configure (configCompilerAux)
-import Distribution.Simple.Utils (cabalVersion, die, intercalate)
+import Distribution.Simple.Utils
+         ( cabalVersion, die, topHandler, intercalate )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -83,7 +84,7 @@ main = getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
 mainWorker ("win32selfupgrade":args) = win32SelfUpgradeAction args
-mainWorker args =
+mainWorker args = topHandler $
   case commandsRun globalCommand commands args of
     CommandHelp   help                 -> printGlobalHelp help
     CommandList   opts                 -> printOptionsList opts
