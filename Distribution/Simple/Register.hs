@@ -66,7 +66,8 @@ import Distribution.Simple.LocalBuildInfo
          , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
+         ( CompilerFlavor(..), compilerFlavor
+         , PackageDB(..), registrationPackageDB )
 import Distribution.Simple.Program (ConfiguredProgram, programPath,
                                     programArgs, rawSystemProgram,
                                     lookupProgram, ghcPkgProgram, lhcPkgProgram)
@@ -129,7 +130,8 @@ register pkg_descr lbi regFlags
         genPkgConfigFile = fromMaybe genPkgConfigDefault
                                      (fromFlag (regGenPkgConf regFlags))
         verbosity = fromFlag (regVerbosity regFlags)
-        packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
+        packageDB = fromFlagOrDefault (registrationPackageDB (withPackageDB lbi))
+                                      (regPackageDB regFlags)
         inplace  = fromFlag (regInPlace regFlags)
         message | genPkgConf = "Writing package registration file: "
                             ++ genPkgConfigFile ++ " for"
@@ -334,7 +336,8 @@ unregister :: PackageDescription -> LocalBuildInfo -> RegisterFlags -> IO ()
 unregister pkg_descr lbi regFlags = do
   let genScript = fromFlag (regGenScript regFlags)
       verbosity = fromFlag (regVerbosity regFlags)
-      packageDB = fromFlagOrDefault (withPackageDB lbi) (regPackageDB regFlags)
+      packageDB = fromFlagOrDefault (registrationPackageDB (withPackageDB lbi))
+                                    (regPackageDB regFlags)
       installDirs = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
   setupMessage verbosity "Unregistering" (packageId pkg_descr)
   case compilerFlavor (compiler lbi) of
