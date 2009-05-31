@@ -64,21 +64,23 @@ import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 import Distribution.Package
          ( Package(..) )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor )
+         ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..)
          , Library(..), Executable(..) )
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
-         ( BuildFlags(..), fromFlag )
+         ( BuildFlags(..), fromFlag, defaultRegisterFlags
+         , RegisterFlags(..), Flag(..) )
 import Distribution.Simple.PreProcess
          ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir)
+         ( LocalBuildInfo(compiler, buildDir, withPackageDB)
          , ComponentLocalBuildInfo, withLibLBI, withExeLBI )
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
+import Distribution.Simple.Register ( register )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, setupMessage )
@@ -109,13 +111,35 @@ build pkg_descr lbi flags suffixes = do
   initialBuildSteps distPref pkg_descr lbi verbosity suffixes
   setupMessage verbosity "Building" (packageId pkg_descr)
 
+  internalPackageDB <- createInternalPackageDB distPref
+
   withLibLBI pkg_descr lbi $ \lib clbi -> do
     info verbosity "Building library..."
     buildLib verbosity pkg_descr lbi lib clbi
 
-  withExeLBI pkg_descr lbi $ \exe clbi -> do
+    -- Register library in-place, so exes can depend on internally defined libraries.
+    --TODO: go through a proper register api, not the generic command line action
+    register pkg_descr lbi defaultRegisterFlags {
+              regPackageDB = Flag internalPackageDB,
+              regInPlace   = Flag True,
+              regDistPref  = Flag distPref
+          }
+
+  -- Use the internal package db for the exes.
+  let lbi' = lbi { withPackageDB = withPackageDB lbi ++ [internalPackageDB] }
+
+  withExeLBI pkg_descr lbi' $ \exe clbi -> do
     info verbosity $ "Building executable " ++ exeName exe ++ "..."
-    buildExe verbosity pkg_descr lbi exe clbi
+    buildExe verbosity pkg_descr lbi' exe clbi
+
+-- | Initialize a new package db file for libraries defined
+-- internally to the package.
+createInternalPackageDB :: FilePath -> IO PackageDB
+createInternalPackageDB distPref = do
+    let dbFile = distPref </> "package.conf.inplace"
+        packageDB = SpecificPackageDB dbFile
+    writeFile dbFile "[]"
+    return packageDB
 
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()

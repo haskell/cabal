@@ -371,11 +371,12 @@ configure (e_pkg_descr, pbi) cfg
 
         let (internalPkgDeps, externalPkgDeps) = partition (isInternalPackage pkg_descr) allPkgDeps
 
-        when (not (null internalPkgDeps)) $
+        when (not (null internalPkgDeps) && not (newPackageDepsBehaviour pkg_descr)) $
             die $ "The field 'build-depends: "
                ++ intercalate ", " (map (display . packageName) internalPkgDeps)
                ++ "' refers to a library which defined within the same "
-               ++ "package. This feature is not yet supported."
+               ++ "package. To use this feature the package must specify at "
+               ++ "least 'cabal-version: >= 1.8'."
 
         packageDependsIndex <-
           case PackageIndex.dependencyClosure packageSet externalPkgDeps of
