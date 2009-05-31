@@ -553,16 +553,16 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       | libFilePath <- [vanillaLibFilePath, profileLibFilePath
                        ,sharedLibFilePath,  ghciLibFilePath] ]
 
-    let arVerbosity | verbosity >= deafening = "v"
-                    | verbosity >= normal = ""
-                    | otherwise = "c"
-        arArgs = ["q"++ arVerbosity]
+    let arVerbosity | verbosity >= deafening = "-v"
+                    | otherwise              = "-c"
+        arBasicArgs = [ "-r", "-s", arVerbosity ]
+        arArgs = arBasicArgs
             ++ [vanillaLibFilePath]
         arObjArgs =
                hObjs
             ++ map (pref </>) cObjs
             ++ stubObjs
-        arProfArgs = ["q"++ arVerbosity]
+        arProfArgs = arBasicArgs
             ++ [profileLibFilePath]
         arProfObjArgs =
                hProfObjs
