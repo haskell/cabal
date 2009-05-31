@@ -627,10 +627,10 @@ showExclusionReason pkgid ExcludedByConfigureFail =
   display pkgid ++ " was excluded because it could not be configured"
 showExclusionReason pkgid (ExcludedByPackageDependency pkgid' dep) =
   display pkgid ++ " was excluded because " ++
-  display pkgid' ++ " requires " ++ display (untagDependency dep)
+  display pkgid' ++ " requires " ++ displayDep (untagDependency dep)
 showExclusionReason pkgid (ExcludedByTopLevelDependency dep) =
   display pkgid ++ " was excluded because of the top level dependency " ++
-  display dep
+  displayDep dep
 
 
 -- ------------------------------------------------------------
@@ -685,16 +685,16 @@ showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
 showFailure :: Failure -> String
 showFailure (ConfigureFailed pkg missingDeps) =
      "cannot configure " ++ displayPkg pkg ++ ". It requires "
-  ++ listOf (display . fst) missingDeps
+  ++ listOf (displayDep . fst) missingDeps
   ++ '\n' : unlines (map (uncurry whyNot) missingDeps)
 
   where
     whyNot (Dependency name ver) [] =
          "There is no available version of " ++ display name
-      ++ " that satisfies " ++ display ver
+      ++ " that satisfies " ++ displayVer ver
 
     whyNot dep conflicts =
-         "For the dependency on " ++ display dep
+         "For the dependency on " ++ displayDep dep
       ++ " there are these packages: " ++ listOf display pkgs
       ++ ". However none of them are available.\n"
       ++ unlines [ showExclusionReason (packageId pkg') reason
@@ -704,19 +704,19 @@ showFailure (ConfigureFailed pkg missingDeps) =
 
 showFailure (DependencyConflict pkg (TaggedDependency _ dep) conflicts) =
      "dependencies conflict: "
-  ++ displayPkg pkg ++ " requires " ++ display dep ++ " however\n"
+  ++ displayPkg pkg ++ " requires " ++ displayDep dep ++ " however\n"
   ++ unlines [ showExclusionReason (packageId pkg') reason
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
 showFailure (TopLevelVersionConstraintConflict name ver conflicts) =
      "constraints conflict: "
-  ++ "top level constraint " ++ display (Dependency name ver) ++ " however\n"
+  ++ "top level constraint " ++ displayDep (Dependency name ver) ++ " however\n"
   ++ unlines [ showExclusionReason (packageId pkg') reason
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
 showFailure (TopLevelVersionConstraintUnsatisfiable name ver) =
      "There is no available version of " ++ display name
-      ++ " that satisfies " ++ display ver
+      ++ " that satisfies " ++ displayVer ver
 
 showFailure (TopLevelInstallConstraintConflict name conflicts) =
      "constraints conflict: "
@@ -726,6 +726,16 @@ showFailure (TopLevelInstallConstraintConflict name conflicts) =
 
 showFailure (TopLevelInstallConstraintUnsatisfiable name) =
      "There is no installed version of " ++ display name
+
+displayVer :: VersionRange -> String
+displayVer = display . simplifyVersionRange
+
+displayDep :: Dependency -> String
+displayDep = display . simplifyDependency
+
+simplifyDependency :: Dependency -> Dependency
+simplifyDependency (Dependency name range) =
+  Dependency name (simplifyVersionRange range)
 
 -- ------------------------------------------------------------
 -- * Utils
