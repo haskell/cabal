@@ -71,7 +71,8 @@ import Distribution.Simple.Compiler
     , showCompilerId, unsupportedExtensions, PackageDB(..), PackageDBStack )
 import Distribution.Package
     ( PackageName(PackageName), PackageId, PackageIdentifier(PackageIdentifier)
-    , packageName, packageVersion, Package(..), Dependency(Dependency) )
+    , packageName, packageVersion, Package(..)
+    , Dependency(Dependency), simplifyDependency )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -575,11 +576,12 @@ configDependency verbosity internalIndex installedIndex dep@(Dependency pkgname 
                        `inPreferenceTo`
                    PackageIndex.lookupDependency installedIndex dep of
         [] -> die $ "cannot satisfy dependency "
-                      ++ display dep ++ "\n"
+                      ++ display (simplifyDependency dep) ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
                       ++ hackageUrl ++ display pkgname ++ "?"
         pkgs -> do let pkgid = maximumBy (comparing packageVersion) (map packageId pkgs)
-                   info verbosity $ "Dependency " ++ display dep
+                   info verbosity $ "Dependency "
+                                 ++ display (simplifyDependency dep)
                                 ++ ": using " ++ display pkgid
                    return pkgid
   where
