@@ -71,7 +71,8 @@ import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
-         ( CompilerId(..), Compiler(compilerId), PackageDB(..) )
+         ( CompilerId(..), Compiler(compilerId)
+         , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -123,7 +124,7 @@ data InstallMisc = InstallMisc {
 -- |Installs the packages needed to satisfy a list of dependencies.
 install, upgrade
   :: Verbosity
-  -> PackageDB
+  -> PackageDBStack
   -> [Repo]
   -> Compiler
   -> ProgramConfiguration
@@ -166,7 +167,7 @@ type Planner = Maybe (PackageIndex InstalledPackageInfo)
 installWithPlanner ::
            Planner
         -> Verbosity
-        -> PackageDB
+        -> PackageDBStack
         -> [Repo]
         -> Compiler
         -> ProgramConfiguration
@@ -174,10 +175,10 @@ installWithPlanner ::
         -> ConfigExFlags
         -> InstallFlags
         -> IO ()
-installWithPlanner planner verbosity packageDB repos comp conf
+installWithPlanner planner verbosity packageDBs repos comp conf
   configFlags configExFlags installFlags = do
 
-  installed <- getInstalledPackages verbosity comp packageDB conf
+  installed <- getInstalledPackages verbosity comp packageDBs conf
   available <- getAvailablePackages verbosity repos
 
   progress <- planner installed available
@@ -229,12 +230,12 @@ installWithPlanner planner verbosity packageDB repos comp conf
       -- Hack: we typically want to allow the UserPackageDB for finding the
       -- Cabal lib when compiling any Setup.hs even if we're doing a global
       -- install. However we also allow looking in a specific package db.
-      -- TODO: if we specify a specific db then we do not look in the user
-      --       package db but we probably should ie [global, user, specific]
-      usePackageDB     = if packageDB == GlobalPackageDB then UserPackageDB
-                                                         else packageDB,
-      usePackageIndex  = if packageDB == GlobalPackageDB then Nothing
-                                                         else index,
+      usePackageDB     = if UserPackageDB `elem` packageDBs
+                           then packageDBs
+                           else packageDBs ++ [UserPackageDB],
+      usePackageIndex  = if UserPackageDB `elem` packageDBs
+                           then index
+                           else Nothing,
       useProgramConfig = conf,
       useDistPref      = fromFlagOrDefault
                            (useDistPref defaultSetupScriptOptions)

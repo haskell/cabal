@@ -25,7 +25,7 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..)
-         , parsePackageArgs, configPackageDB' )
+         , parsePackageArgs )
 import Distribution.Simple.Setup
          ( BuildFlags(..), buildCommand
          , HaddockFlags(..), haddockCommand
@@ -55,6 +55,8 @@ import Distribution.Client.SrcDist          (sdist)
 import Distribution.Client.Unpack           (unpack)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
+import Distribution.Simple.Compiler
+         ( PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
 import Distribution.Simple.Configure (configCompilerAux)
@@ -347,3 +349,28 @@ win32SelfUpgradeAction (pid:path:rest) =
          -> fromMaybe Verbosity.normal (Verbosity.intToVerbosity (read [n]))
       _  ->           Verbosity.normal
 win32SelfUpgradeAction _ = return ()
+
+--
+-- Utils (transitionary)
+--
+
+-- | Currently the user interface specifies the package dbs to use with just a
+-- single valued option, a 'PackageDB'. However internally we represent the
+-- stack of 'PackageDB's explictly as a list. This function converts encodes
+-- the package db stack implicit in a single packagedb.
+--
+-- TODO: sort this out, make it consistent with the command line UI
+implicitPackageDbStack :: Bool -> Maybe PackageDB -> PackageDBStack
+implicitPackageDbStack userInstall packageDbFlag
+  | userInstall = GlobalPackageDB : UserPackageDB : extra
+  | otherwise   = GlobalPackageDB : extra
+  where
+    extra = case packageDbFlag of
+      Just (SpecificPackageDB db) -> [SpecificPackageDB db]
+      _                           -> []
+
+configPackageDB' :: ConfigFlags -> PackageDBStack
+configPackageDB' cfg =
+  implicitPackageDbStack userInstall (flagToMaybe (configPackageDB cfg))
+  where
+    userInstall = fromFlagOrDefault True (configUserInstall cfg)
