@@ -51,6 +51,7 @@ module Distribution.Package (
         Dependency(..),
         thisPackageVersion,
         notThisPackageVersion,
+        simplifyDependency,
 
         -- * Package classes
         Package(..), packageName, packageVersion,
@@ -58,7 +59,8 @@ module Distribution.Package (
   ) where
 
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion, thisVersion, notThisVersion )
+         ( Version(..), VersionRange, anyVersion, thisVersion
+         , notThisVersion, simplifyVersionRange )
 
 import Distribution.Text (Text(..))
 import qualified Distribution.Compat.ReadP as Parse
@@ -128,6 +130,13 @@ thisPackageVersion (PackageIdentifier n v) =
 notThisPackageVersion :: PackageIdentifier -> Dependency
 notThisPackageVersion (PackageIdentifier n v) =
   Dependency n (notThisVersion v)
+
+-- | Simplify the 'VersionRange' expression in a 'Dependency'.
+-- See 'simplifyVersionRange'.
+--
+simplifyDependency :: Dependency -> Dependency
+simplifyDependency (Dependency name range) =
+  Dependency name (simplifyVersionRange range)
 
 -- | Class of things that can be identified by a 'PackageIdentifier'
 --
