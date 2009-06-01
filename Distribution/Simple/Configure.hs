@@ -375,7 +375,7 @@ configure (e_pkg_descr, pbi) cfg
         when (not (null internalPkgDeps) && not (newPackageDepsBehaviour pkg_descr)) $
             die $ "The field 'build-depends: "
                ++ intercalate ", " (map (display . packageName) internalPkgDeps)
-               ++ "' refers to a library which defined within the same "
+               ++ "' refers to a library which is defined within the same "
                ++ "package. To use this feature the package must specify at "
                ++ "least 'cabal-version: >= 1.8'."
 
