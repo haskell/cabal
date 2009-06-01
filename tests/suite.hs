@@ -8,12 +8,20 @@ module Main where
 
 import Test.Framework
 import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck
+import Test.Framework.Providers.QuickCheck2
 import qualified Test.HUnit as HUnit
 import PackageTests.BuildDeps.SameDepsAllRound.Check
+import PackageTests.BuildDeps.TargetSpecificDeps1.Check
+import PackageTests.BuildDeps.TargetSpecificDeps1.Check
+import PackageTests.BuildDeps.TargetSpecificDeps2.Check
+import PackageTests.BuildDeps.TargetSpecificDeps3.Check
 import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check
 import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check
 import PackageTests.BuildDeps.InternalLibrary0.Check
+import PackageTests.BuildDeps.InternalLibrary1.Check
+import PackageTests.BuildDeps.InternalLibrary2.Check
+import PackageTests.BuildDeps.InternalLibrary3.Check
+import PackageTests.BuildDeps.InternalLibrary4.Check
 import Distribution.Text (display)
 import Distribution.Simple.Utils (cabalVersion)
 import Data.Version
@@ -27,7 +35,19 @@ tests cabalVersion = [
         hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite,
         hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite,
         hunit "PackageTests/BuildDeps/InternalLibrary0/" (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion)
-    ]
+    ] ++
+    -- These tests are only required to pass on cabal version >= 1.7
+    (if cabalVersion >= Version [1, 7] []
+        then [
+            hunit "PackageTests/BuildDeps/TargetSpecificDeps1/" PackageTests.BuildDeps.TargetSpecificDeps1.Check.suite,
+            hunit "PackageTests/BuildDeps/TargetSpecificDeps2/" PackageTests.BuildDeps.TargetSpecificDeps2.Check.suite,
+            hunit "PackageTests/BuildDeps/TargetSpecificDeps3/" PackageTests.BuildDeps.TargetSpecificDeps3.Check.suite,
+            hunit "PackageTests/BuildDeps/InternalLibrary1/" PackageTests.BuildDeps.InternalLibrary1.Check.suite,
+            hunit "PackageTests/BuildDeps/InternalLibrary2/" PackageTests.BuildDeps.InternalLibrary2.Check.suite,
+            hunit "PackageTests/BuildDeps/InternalLibrary3/" PackageTests.BuildDeps.InternalLibrary3.Check.suite,
+            hunit "PackageTests/BuildDeps/InternalLibrary4/" PackageTests.BuildDeps.InternalLibrary4.Check.suite
+        ]
+        else [])
 
 main = do
     putStrLn $ "Cabal test suite - testing cabal version "++display cabalVersion

@@ -16,10 +16,10 @@ Executable suite
     build-depends:
         base,
         test-framework,
-        test-framework-quickcheck,
+        test-framework-quickcheck2 == 0.2.2,
         test-framework-hunit,
         HUnit,
-        QuickCheck,
+        QuickCheck >= 2.1.0.1,
         Cabal,
         filepath,
         process,

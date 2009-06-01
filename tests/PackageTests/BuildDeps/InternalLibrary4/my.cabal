@@ -1,0 +1,23 @@
+name: InternalLibrary4
+version: 0.1
+license: BSD3
+cabal-version: >= 1.7.1
+author: Stephen Blackheath
+stability: stable
+category: PackageTests
+build-type: Simple
+
+description:
+    This test is to make sure that we can explicitly say we want InternalLibrary4-0.2
+    and it will give us the *installed* version 0.2 instead of the internal 0.1.
+
+---------------------------------------
+
+Library
+    exposed-modules: MyLibrary
+    build-depends: base, bytestring, old-time
+
+Executable lemon
+    main-is: lemon.hs
+    hs-source-dirs: programs
+    build-depends: base, bytestring, old-time, InternalLibrary4 >= 0.2
