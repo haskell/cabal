@@ -92,7 +92,8 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
          , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
-         , rawSystemProgramStdout, rawSystemProgramStdoutConf, requireProgram
+         , rawSystemProgramStdout, rawSystemProgramStdoutConf
+         , requireProgramVersion
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , arProgram, ranlibProgram, ldProgram
          , gccProgram, stripProgram
@@ -102,7 +103,7 @@ import Distribution.Simple.Compiler
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
          , Flag, extensionsToFlags )
 import Distribution.Version
-         ( Version(..), orLaterVersion )
+         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
@@ -129,15 +130,15 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath hcPkgPath conf = do
 
-  (lhcProg, conf') <- requireProgram verbosity lhcProgram
-                        (orLaterVersion (Version [0,7] []))
-                        (userMaybeSpecifyPath "lhc" hcPath conf)
-  let Just lhcVersion = programVersion lhcProg
+  (lhcProg, lhcVersion, conf') <-
+    requireProgramVersion verbosity lhcProgram
+      (orLaterVersion (Version [0,7] []))
+      (userMaybeSpecifyPath "lhc" hcPath conf)
 
-  (lhcPkgProg, conf'') <- requireProgram verbosity lhcPkgProgram
-                          (orLaterVersion (Version [0,7] []))
-                          (userMaybeSpecifyPath "lhc-pkg" hcPkgPath conf')
-  let Just lhcPkgVersion = programVersion lhcPkgProg
+  (lhcPkgProg, lhcPkgVersion, conf'') <-
+    requireProgramVersion verbosity lhcPkgProgram
+      (orLaterVersion (Version [0,7] []))
+      (userMaybeSpecifyPath "lhc-pkg" hcPkgPath conf')
 
   when (lhcVersion /= lhcPkgVersion) $ die $
        "Version mismatch between lhc and lhc-pkg: "
