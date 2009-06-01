@@ -71,6 +71,7 @@ module Distribution.Simple.Program (
     , configureAllKnownPrograms
     , reconfigurePrograms
     , requireProgram
+    , requireProgramVersion
     , rawSystemProgramConf
     , rawSystemProgramStdoutConf
 
@@ -462,14 +463,39 @@ reconfigurePrograms verbosity paths argss conf = do
 
 -- | Check that a program is configured and available to be run.
 --
--- Additionally check that the version of the program number is suitable.
--- For example 'AnyVersion' or @'orLaterVersion' ('Version' [1,0] [])@
+-- It raises an exception if the program could not be configured, otherwise
+-- it returns the configured program.
+--
+requireProgram :: Verbosity -> Program -> ProgramConfiguration
+               -> IO (ConfiguredProgram, ProgramConfiguration)
+requireProgram verbosity prog conf = do
+
+  -- If it's not already been configured, try to configure it now
+  conf' <- case lookupProgram prog conf of
+    Nothing -> configureProgram verbosity prog conf
+    Just _  -> return conf
+
+  case lookupProgram prog conf' of
+    Nothing             -> die notFound
+    Just configuredProg -> return (configuredProg, conf')
+
+  where notFound       = programName prog
+                      ++ " is required but it could not be found."
+
+-- | Check that a program is configured and available to be run.
+--
+-- Additionally check that the version of the program number is suitable and
+-- return it. For example you could require 'AnyVersion' or
+-- @'orLaterVersion' ('Version' [1,0] [])@
 --
 -- It raises an exception if the program could not be configured or the version
--- is unsuitable, otherwise it returns the configured program.
-requireProgram :: Verbosity -> Program -> VersionRange -> ProgramConfiguration
-               -> IO (ConfiguredProgram, ProgramConfiguration)
-requireProgram verbosity prog range conf = do
+-- is unsuitable, otherwise it returns the configured program and its version
+-- number.
+--
+requireProgramVersion :: Verbosity -> Program -> VersionRange
+                      -> ProgramConfiguration
+                      -> IO (ConfiguredProgram, Version, ProgramConfiguration)
+requireProgramVersion verbosity prog range conf = do
 
   -- If it's not already been configured, try to configure it now
   conf' <- case lookupProgram prog conf of
@@ -478,12 +504,10 @@ requireProgram verbosity prog range conf = do
 
   case lookupProgram prog conf' of
     Nothing                           -> die notFound
-    Just configuredProg
-      | isAnyVersion range            -> return (configuredProg, conf')
     Just configuredProg@ConfiguredProgram { programLocation = location } ->
       case programVersion configuredProg of
         Just version
-          | withinRange version range -> return (configuredProg, conf')
+          | withinRange version range -> return (configuredProg, version, conf')
           | otherwise                 -> die (badVersion version location)
         Nothing                       -> die (noVersion location)
 

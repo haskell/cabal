@@ -75,7 +75,7 @@ import Distribution.Package
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
-         ( Version(versionBranch), anyVersion )
+         ( Version(versionBranch) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , copyFiles, copyFileVerbose
@@ -294,7 +294,7 @@ createArchive :: Verbosity            -- ^verbosity
 createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
   let tarBallFilePath = targetPref </> tarBallName pkg_descr <.> "tar.gz"
 
-  (tarProg, _) <- requireProgram verbosity tarProgram anyVersion
+  (tarProg, _) <- requireProgram verbosity tarProgram
                     (maybe defaultProgramConfiguration withPrograms mb_lbi)
 
    -- Hmm: I could well be skating on thinner ice here by using the -C option (=> GNU tar-specific?)

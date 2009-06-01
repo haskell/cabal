@@ -94,7 +94,8 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
          , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
-         , rawSystemProgramStdout, rawSystemProgramStdoutConf, requireProgram
+         , rawSystemProgramStdout, rawSystemProgramStdoutConf
+         , requireProgramVersion
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
          , gccProgram, stripProgram )
@@ -103,7 +104,7 @@ import Distribution.Simple.Compiler
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
          , Flag, extensionsToFlags )
 import Distribution.Version
-         ( Version(..), orLaterVersion )
+         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
@@ -130,20 +131,19 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath hcPkgPath conf = do
 
-  (ghcProg, conf') <- requireProgram verbosity ghcProgram
-                        (orLaterVersion (Version [6,4] []))
-                        (userMaybeSpecifyPath "ghc" hcPath conf)
-  let Just ghcVersion = programVersion ghcProg
+  (ghcProg, ghcVersion, conf') <-
+    requireProgramVersion verbosity ghcProgram
+      (orLaterVersion (Version [6,4] []))
+      (userMaybeSpecifyPath "ghc" hcPath conf)
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
-  (ghcPkgProg, conf'') <- requireProgram verbosity ghcPkgProgram {
-                            programFindLocation = guessGhcPkgFromGhcPath ghcProg
-                          }
-                          (orLaterVersion (Version [0] []))
-                          (userMaybeSpecifyPath "ghc-pkg" hcPkgPath conf')
-  let Just ghcPkgVersion = programVersion ghcPkgProg
+  (ghcPkgProg, ghcPkgVersion, conf'') <-
+    requireProgramVersion verbosity ghcPkgProgram {
+      programFindLocation = guessGhcPkgFromGhcPath ghcProg
+    }
+    anyVersion (userMaybeSpecifyPath "ghc-pkg" hcPkgPath conf')
 
   when (ghcVersion /= ghcPkgVersion) $ die $
        "Version mismatch between ghc and ghc-pkg: "

@@ -63,10 +63,10 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..)
          , PackageDB(..), PackageDBStack, Flag, extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
-import Distribution.Simple.Program     ( ConfiguredProgram(..), jhcProgram,
-                                  ProgramConfiguration, userMaybeSpecifyPath,
-                                  requireProgram, lookupProgram,
-                                  rawSystemProgram, rawSystemProgramStdoutConf )
+import Distribution.Simple.Program
+         ( ConfiguredProgram(..), jhcProgram, ProgramConfiguration
+         , userMaybeSpecifyPath, requireProgramVersion, lookupProgram
+         , rawSystemProgram, rawSystemProgramStdoutConf )
 import Distribution.Version     ( anyVersion )
 import Distribution.Package
          ( Package(..) )
@@ -93,8 +93,8 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
-  (jhcProg, conf')  <- requireProgram verbosity jhcProgram anyVersion
-                         (userMaybeSpecifyPath "jhc" hcPath conf)
+  (jhcProg, _, conf') <- requireProgramVersion verbosity jhcProgram anyVersion
+                           (userMaybeSpecifyPath "jhc" hcPath conf)
 
   let Just version = programVersion jhcProg
       comp = Compiler {

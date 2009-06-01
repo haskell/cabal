@@ -94,8 +94,8 @@ import Distribution.Simple.Program
     , ProgramConfiguration, defaultProgramConfiguration
     , configureAllKnownPrograms, knownPrograms, lookupKnownProgram
     , userSpecifyArgss, userSpecifyPaths
-    , lookupProgram, requireProgram, pkgConfigProgram, gccProgram
-    , rawSystemProgramStdoutConf )
+    , lookupProgram, requireProgram, requireProgramVersion
+    , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.InstallDirs
@@ -113,7 +113,8 @@ import Distribution.Simple.Register
 import Distribution.System
     ( OS(..), buildOS, buildArch )
 import Distribution.Version
-    ( Version(..), orLaterVersion, withinRange, isSpecificVersion, isAnyVersion
+    ( Version(..), anyVersion, orLaterVersion, withinRange
+    , isSpecificVersion, isAnyVersion
     , LowerBound(..), asVersionIntervals, simplifyVersionRange )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
@@ -645,7 +646,16 @@ configureRequiredProgram :: Verbosity -> ProgramConfiguration -> Dependency -> I
 configureRequiredProgram verbosity conf (Dependency (PackageName progName) verRange) =
   case lookupKnownProgram progName conf of
     Nothing -> die ("Unknown build tool " ++ progName)
-    Just prog -> snd `fmap` requireProgram verbosity prog verRange conf
+    Just prog
+      -- requireProgramVersion always requires the program have a version
+      -- but if the user says "build-depends: foo" ie no version constraint
+      -- then we should not fail if we cannot discover the program version.
+      | verRange == anyVersion -> do
+          (_, conf') <- requireProgram verbosity prog conf
+          return conf'
+      | otherwise -> do
+          (_, _, conf') <- requireProgramVersion verbosity prog verRange conf
+          return conf'
 
 -- -----------------------------------------------------------------------------
 -- Configuring pkg-config package dependencies
@@ -656,8 +666,9 @@ configurePkgconfigPackages :: Verbosity -> PackageDescription
 configurePkgconfigPackages verbosity pkg_descr conf
   | null allpkgs = return (pkg_descr, conf)
   | otherwise    = do
-    (_, conf') <- requireProgram (lessVerbose verbosity) pkgConfigProgram
-                    (orLaterVersion $ Version [0,9,0] []) conf
+    (_, _, conf') <- requireProgramVersion
+                       (lessVerbose verbosity) pkgConfigProgram
+                       (orLaterVersion $ Version [0,9,0] []) conf
     mapM_ requirePkg allpkgs
     lib'  <- updateLibrary (library pkg_descr)
     exes' <- mapM updateExecutable (executables pkg_descr)

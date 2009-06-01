@@ -61,7 +61,7 @@ import Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
          ( Compiler(..), compilerVersion )
 import Distribution.Simple.Program
-         ( ConfiguredProgram(..), requireProgram
+         ( ConfiguredProgram(..), requireProgramVersion
          , rawSystemProgram, rawSystemProgramStdoutConf, rawSystemProgramStdout
          , hscolourProgram, haddockProgram, ghcProgram )
 import Distribution.Simple.PreProcess (ppCpp', ppUnlit,
@@ -154,11 +154,11 @@ haddock pkg_descr _ _ haddockFlags
 haddock pkg_descr lbi suffixes flags = do
 
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
-    (confHaddock, _) <- requireProgram verbosity haddockProgram
-                        (orLaterVersion (Version [0,6] [])) (withPrograms lbi)
+    (confHaddock, version, _) <-
+      requireProgramVersion verbosity haddockProgram
+        (orLaterVersion (Version [0,6] [])) (withPrograms lbi)
 
     -- various sanity checks
-    let Just version = programVersion confHaddock
     let isVersion2   = version >= Version [2,0] []
 
     when ( flag haddockHoogle 
@@ -458,8 +458,10 @@ hscolour' :: PackageDescription
              -> IO ()
 hscolour' pkg_descr lbi flags = do
     let distPref = fromFlag $ hscolourDistPref flags
-    (hscolourProg, _) <- requireProgram verbosity hscolourProgram
-                         (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
+    (hscolourProg, _, _) <-
+      requireProgramVersion
+        verbosity hscolourProgram
+        (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
 
     setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref distPref pkg_descr

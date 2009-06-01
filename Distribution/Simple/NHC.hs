@@ -63,16 +63,16 @@ import Distribution.Simple.Compiler
 import Language.Haskell.Extension
         ( Extension(..) )
 import Distribution.Simple.Program
-        ( ProgramConfiguration, userMaybeSpecifyPath, requireProgram,
-          lookupProgram, ConfiguredProgram(programVersion), programPath,
-          nhcProgram, hmakeProgram, ldProgram, arProgram,
-          rawSystemProgramConf )
+         ( ProgramConfiguration, userMaybeSpecifyPath, programPath
+         , requireProgram, requireProgramVersion, lookupProgram
+         , nhcProgram, hmakeProgram, ldProgram, arProgram
+         , rawSystemProgramConf )
 import Distribution.Simple.Utils
         ( die, info, findFileWithExtension, findModuleFiles
         , installOrdinaryFile, installExecutableFile, installOrdinaryFiles
         , createDirectoryIfMissingVerbose )
 import Distribution.Version
-        ( Version(..), anyVersion, orLaterVersion )
+        ( Version(..), orLaterVersion )
 import Distribution.Verbosity
 import Distribution.Text
         ( display )
@@ -93,15 +93,16 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
-  (nhcProg, conf') <- requireProgram verbosity nhcProgram
-                          (orLaterVersion (Version [1,20] []))
-                          (userMaybeSpecifyPath "nhc98" hcPath conf)
-  let Just nhcVersion = programVersion nhcProg
+  (_nhcProg, nhcVersion, conf') <-
+    requireProgramVersion verbosity nhcProgram
+      (orLaterVersion (Version [1,20] []))
+      (userMaybeSpecifyPath "nhc98" hcPath conf)
 
-  (_hmakeProg, conf'') <- requireProgram verbosity hmakeProgram
-                          (orLaterVersion (Version [3,13] [])) conf'
-  (_ldProg, conf''')   <- requireProgram verbosity ldProgram anyVersion conf''
-  (_arProg, conf'''')  <- requireProgram verbosity arProgram anyVersion conf'''
+  (_hmakeProg, _hmakeVersion, conf'') <-
+    requireProgramVersion verbosity hmakeProgram
+     (orLaterVersion (Version [3,13] [])) conf'
+  (_ldProg, conf''')   <- requireProgram verbosity ldProgram conf''
+  (_arProg, conf'''')  <- requireProgram verbosity arProgram conf'''
 
   --TODO: put this stuff in a monad so we can say just:
   -- requireProgram hmakeProgram (orLaterVersion (Version [3,13] []))
