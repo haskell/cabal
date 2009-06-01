@@ -57,7 +57,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
                                   requireProgram, rawSystemProgramConf,
                                   ffihugsProgram, hugsProgram )
-import Distribution.Version     ( Version(..), anyVersion )
+import Distribution.Version
+         ( Version(..) )
 import Distribution.Simple.PreProcess   ( ppCpp, runSimplePreProcessor )
 import Distribution.Simple.PreProcess.Unlit
                                 ( unlit )
