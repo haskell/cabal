@@ -103,7 +103,7 @@ import Distribution.Simple.Compiler
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
          , Flag, extensionsToFlags )
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
+         ( Version(..), orLaterVersion )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
