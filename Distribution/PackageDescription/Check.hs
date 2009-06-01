@@ -71,11 +71,11 @@ import qualified System.Directory as System
 
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
-         ( flattenPackageDescription )
+         ( flattenPackageDescription, finalizePackageDescription )
 import Distribution.Compiler
-         ( CompilerFlavor(..) )
+         ( CompilerFlavor(..), buildCompilerFlavor, CompilerId(..) )
 import Distribution.System
-         ( OS(..), Arch(..) )
+         ( OS(..), Arch(..), buildOS, buildArch )
 import Distribution.License
          ( License(..), knownLicenses )
 import Distribution.Simple.Utils
@@ -84,12 +84,14 @@ import Distribution.Simple.Utils
 import Distribution.Version
          ( Version(..)
          , VersionRange, withinRange, foldVersionRange
-         , anyVersion, thisVersion, laterVersion, earlierVersion
+         , anyVersion, noVersion, thisVersion, laterVersion, earlierVersion
          , orLaterVersion, unionVersionRanges, intersectVersionRanges
-         , asVersionIntervals, LowerBound(..) )
+         , asVersionIntervals, LowerBound(..), UpperBound(..) )
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
-         , Dependency(..) )
+         , PackageId, Dependency(..) )
+import Distribution.Simple.PackageIndex
+         ( PackageIndex )
 import Distribution.Text
          ( display )
 import qualified Language.Haskell.Extension as Extension
@@ -158,6 +160,7 @@ checkPackage :: GenericPackageDescription
 checkPackage gpkg mpkg =
      checkConfiguredPackage pkg
   ++ checkConditionals gpkg
+  ++ checkPackageVersions gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -809,6 +812,59 @@ checkCabalVersion pkg =
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription
 -- ------------------------------------------------------------
+
+-- | Check the build-depends fields for any weirdness or bad practise.
+--
+checkPackageVersions :: GenericPackageDescription -> [PackageCheck]
+checkPackageVersions pkg =
+  catMaybes [
+
+    -- Check that the version of base is bounded above.
+    -- For example this bans "build-depends: base >= 3".
+    -- It should probably be "build-depends: base >= 3 && < 4"
+    -- which is the same as  "build-depends: base == 3.*"
+    check (not (boundedAbove baseDependency)) $
+      PackageDistInexcusable $
+           "The dependency 'build-depends: base' does not specify an upper "
+        ++ "bound on the version number. Each major release of the 'base' "
+        ++ "package changes the API in various ways and most packages will "
+        ++ "need some changes to compile with it. The recommended practise "
+        ++ "is to specify an upper bound on the version of the 'base' "
+        ++ "package. This ensures your package will continue to build when a "
+        ++ "new major version of the 'base' package is released. If you are "
+        ++ "not sure what upper bound to use then use the next  major "
+        ++ "version. For example if you have tested your package with 'base' "
+        ++ "version 2 and 3 then use 'build-depends: base >= 2 && < 4'."
+
+  ]
+  where
+    -- TODO: What we really want to do is test if there exists any
+    -- configuration in which the base version is unboudned above.
+    -- However that's a bit tricky because there are many possible
+    -- configurations. As a cheap easy and safe approximation we will
+    -- pick a single "typical" configuration and check if that has an
+    -- open upper bound. To get a typical configuration we finalise
+    -- using no package index and the current platform.
+    finalised = finalizePackageDescription
+                              [] (Nothing :: Maybe (PackageIndex PackageId))
+                              buildOS buildArch
+                              (CompilerId buildCompilerFlavor (Version [] []))
+                              [] pkg
+    baseDependency = case finalised of
+      -- Just in case finalizePackageDescription fails for any reason, we
+      -- will just skip the check, as boundedAbove noVersion = True
+      Left _          -> noVersion
+      Right (pkg', _) ->
+        foldr intersectVersionRanges anyVersion
+          [ vr | Dependency (PackageName "base") vr <- buildDepends pkg' ]
+
+    boundedAbove :: VersionRange -> Bool
+    boundedAbove vr = case asVersionIntervals vr of
+      []        -> True -- this is the inconsistent version range.
+      intervals -> case last intervals of
+        (_,   UpperBound _ _) -> True
+        (_, NoUpperBound    ) -> False
+
 
 checkConditionals :: GenericPackageDescription -> [PackageCheck]
 checkConditionals pkg =
