@@ -1,5 +1,5 @@
 Name: Cabal
-Version: 1.7.1
+Version: 1.7.2
 Copyright: 2003-2006, Isaac Jones
            2005-2008, Duncan Coutts
 License: BSD3
@@ -51,7 +51,7 @@ Library
   ghc-options: -Wall
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
-  cpp-options: "-DCABAL_VERSION=1,7,1"
+  cpp-options: "-DCABAL_VERSION=1,7,2"
   nhc98-Options: -K4M
 
   Exposed-Modules:
