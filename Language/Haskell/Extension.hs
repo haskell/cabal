@@ -78,6 +78,8 @@ data Extension
   | PolymorphicComponents
   | ExistentialQuantification
   | ScopedTypeVariables
+  -- | Deprecated, use ScopedTypeVariables instead.
+  | PatternSignatures
   | ImplicitParams
   | FlexibleContexts
   | FlexibleInstances
@@ -104,7 +106,6 @@ data Extension
   | StandaloneDeriving
 
   | UnicodeSyntax
-  | PatternSignatures
   | UnliftedFFITypes
   | LiberalTypeSynonyms
   | TypeOperators
@@ -155,6 +156,7 @@ data Extension
 deprecatedExtensions :: [(Extension, Maybe Extension)]
 deprecatedExtensions =
   [ (RecordPuns, Just NamedFieldPuns)
+  , (PatternSignatures, Just ScopedTypeVariables)
   ]
 
 knownExtensions :: [Extension]
