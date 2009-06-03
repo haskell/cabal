@@ -25,7 +25,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
-         ( defaultPackageDesc, toUTF8 )
+         ( defaultPackageDesc, toUTF8, wrapText )
 
 check :: Verbosity -> IO Bool
 check verbosity = do
@@ -54,23 +54,19 @@ check verbosity = do
 
     unless (null buildImpossible) $ do
         putStrLn "The package will not build sanely due to these errors:"
-        mapM_ (putStrLn . toUTF8. explanation) buildImpossible
-        putStrLn ""
+        printCheckMessages buildImpossible
 
     unless (null buildWarning) $ do
         putStrLn "The following warnings are likely affect your build negatively:"
-        mapM_ (putStrLn . toUTF8 . explanation) buildWarning
-        putStrLn ""
+        printCheckMessages buildWarning
 
     unless (null distSuspicious) $ do
         putStrLn "These warnings may cause trouble when distributing the package:"
-        mapM_ (putStrLn . toUTF8 . explanation) distSuspicious
-        putStrLn ""
+        printCheckMessages distSuspicious
 
     unless (null distInexusable) $ do
         putStrLn "The following errors will cause portability problems on other environments:"
-        mapM_ (putStrLn . toUTF8 . explanation) distInexusable
-        putStrLn ""
+        printCheckMessages distInexusable
 
     let isDistError (PackageDistSuspicious {}) = False
         isDistError _                          = True
@@ -83,3 +79,7 @@ check verbosity = do
         putStrLn "No errors or warnings could be found in the package."
 
     return (null packageChecks)
+
+  where
+    printCheckMessages = mapM_ (putStrLn . format . explanation)
+    format = toUTF8 . wrapText . ("* "++)
