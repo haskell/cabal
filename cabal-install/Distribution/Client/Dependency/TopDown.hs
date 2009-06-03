@@ -41,7 +41,8 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Version
-         ( VersionRange, anyVersion, withinRange, simplifyVersionRange )
+         ( VersionRange, anyVersion, withinRange, simplifyVersionRange
+         , UpperBound(..), asVersionIntervals )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
@@ -442,13 +443,15 @@ finaliseSelectedPackages pref selected constraints =
     finaliseAvailable mipkg (SemiConfiguredPackage pkg flags deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags deps')
       where
-        deps' = map (packageId . pickRemaining) deps
-        pickRemaining dep =
+        deps' = map (packageId . pickRemaining mipkg) deps
+
+    pickRemaining mipkg dep@(Dependency _name versionRange) =
           case PackageIndex.lookupDependency remainingChoices dep of
             []        -> impossible
             [pkg']    -> pkg'
             remaining -> assert (checkIsPaired remaining)
                        $ maximumBy bestByPref remaining
+      where
         -- We order candidate packages to pick for a dependency by these
         -- three factors. The last factor is just highest version wins.
         bestByPref =
@@ -459,10 +462,21 @@ finaliseSelectedPackages pref selected constraints =
         isCurrent = case mipkg :: Maybe InstalledPackage of
           Nothing   -> \_ -> False
           Just ipkg -> \p -> packageId p `elem` depends ipkg
-        -- Is this package a preferred version acording to the hackage or
-        -- user's suggested version constraints
-        isPreferred p = packageVersion p `withinRange` preferredVersions
+        -- If there is no upper bound on the version range then we apply a
+        -- preferred version acording to the hackage or user's suggested
+        -- version constraints. TODO: distinguish hacks from prefs
+        bounded = boundedAbove versionRange
+        isPreferred p
+          | bounded   = True -- any constant will do
+          | otherwise = packageVersion p `withinRange` preferredVersions
           where (PackagePreferences preferredVersions _) = pref (packageName p)
+
+        boundedAbove :: VersionRange -> Bool
+        boundedAbove vr = case asVersionIntervals vr of
+          []        -> True -- this is the inconsistent version range.
+          intervals -> case last intervals of
+            (_,   UpperBound _ _) -> True
+            (_, NoUpperBound    ) -> False
 
         -- We really only expect to find more than one choice remaining when
         -- we're finalising a dependency on a paired package.
