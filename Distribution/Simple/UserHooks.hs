@@ -82,7 +82,7 @@ data UserHooks = UserHooks {
     -- | Used for @.\/setup test@
     runTests :: Args -> Bool -> PackageDescription -> LocalBuildInfo -> IO (),
     -- | Read the description file
-    readDesc :: IO (Maybe PackageDescription),
+    readDesc :: IO (Maybe GenericPackageDescription),
     -- | Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
     hookedPreProcessors :: [ PPSuffixHandler ],
     -- | These programs are detected at configure time.  Arguments for them are
