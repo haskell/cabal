@@ -27,16 +27,20 @@ import qualified Paths_cabal_install
          ( version )
 
 import Distribution.Package
-         ( PackageName(..), packageId, packageVersion )
+         ( PackageName(..), packageVersion )
+import Distribution.Version
+         ( VersionRange(AnyVersion), withinRange )
 import Distribution.Simple.Utils
-         ( warn, notice, comparing )
+         ( warn, notice )
 import Distribution.Verbosity
          ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Codec.Compression.GZip as GZip (decompress)
+import qualified Data.Map as Map
 import System.FilePath (dropExtension)
-import Data.List (maximumBy)
+import Data.Maybe      (fromMaybe)
+import Control.Monad   (when)
 
 -- | 'update' downloads the package list from all known servers
 update :: Verbosity -> [Repo] -> IO ()
@@ -59,15 +63,20 @@ updateRepo verbosity repo = case repoKind repo of
 
 checkForSelfUpgrade :: Verbosity -> [Repo] -> IO ()
 checkForSelfUpgrade verbosity repos = do
-  AvailablePackageDb available _ <- getAvailablePackages verbosity repos
+  AvailablePackageDb available prefs <- getAvailablePackages verbosity repos
 
   let self = PackageName "cabal-install"
-      pkgs = PackageIndex.lookupPackageName available self
-      latestVersion  = packageVersion (maximumBy (comparing packageId) pkgs)
-      currentVersion = Paths_cabal_install.version
+      preferredVersionRange  = fromMaybe AnyVersion (Map.lookup self prefs)
+      currentVersion         = Paths_cabal_install.version
+      laterPreferredVersions =
+        [ packageVersion pkg
+        | pkg <- PackageIndex.lookupPackageName available self
+        , let version = packageVersion pkg
+        , version > currentVersion
+        , version `withinRange` preferredVersionRange ]
 
-  if not (null pkgs) && latestVersion > currentVersion
-    then notice verbosity $
-              "Note: there is a new version of cabal-install available.\n"
-           ++ "To upgrade, run: cabal install cabal-install"
-    else return ()
+  when (not (null laterPreferredVersions)) $
+    notice verbosity $
+         "Note: there is a new version of cabal-install available.\n"
+      ++ "To upgrade, run: cabal install cabal-install"
+
