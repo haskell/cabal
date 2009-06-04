@@ -29,7 +29,7 @@ import qualified Paths_cabal_install
 import Distribution.Package
          ( PackageName(..), packageVersion )
 import Distribution.Version
-         ( VersionRange(AnyVersion), withinRange )
+         ( anyVersion, withinRange )
 import Distribution.Simple.Utils
          ( warn, notice )
 import Distribution.Verbosity
@@ -66,7 +66,7 @@ checkForSelfUpgrade verbosity repos = do
   AvailablePackageDb available prefs <- getAvailablePackages verbosity repos
 
   let self = PackageName "cabal-install"
-      preferredVersionRange  = fromMaybe AnyVersion (Map.lookup self prefs)
+      preferredVersionRange  = fromMaybe anyVersion (Map.lookup self prefs)
       currentVersion         = Paths_cabal_install.version
       laterPreferredVersions =
         [ packageVersion pkg
