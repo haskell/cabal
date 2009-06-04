@@ -92,8 +92,7 @@ data UserHooks = UserHooks {
     -- |Hook to run before configure command
     preConf  :: Args -> ConfigFlags -> IO HookedBuildInfo,
     -- |Over-ride this hook to get different behavior during configure.
-    confHook :: ( Either GenericPackageDescription PackageDescription
-               , HookedBuildInfo)
+    confHook :: (GenericPackageDescription, HookedBuildInfo)
             -> ConfigFlags -> IO LocalBuildInfo,
     -- |Hook to run after configure command
     postConf :: Args -> ConfigFlags -> PackageDescription -> LocalBuildInfo -> IO (),
