@@ -212,7 +212,7 @@ configureAction hooks flags args = do
 
                 --    get_pkg_descr (configVerbosity flags')
                 --let pkg_descr = updatePackageDescription pbi pkg_descr0
-                let epkg_descr = (Left pkg_descr0, pbi)
+                let epkg_descr = (pkg_descr0, pbi)
 
                 --(warns, ers) <- sanityCheckPackage pkg_descr
                 --errorOut (configVerbosity flags') warns ers
