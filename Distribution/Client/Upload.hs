@@ -120,13 +120,15 @@ handlePackage verbosity uri auth path =
                    request req
      debug verbosity $ show resp
      case rspCode resp of
-       (2,0,0) -> do notice verbosity "OK"
-       (x,y,z) -> do notice verbosity $ "ERROR: " ++ path ++ ": " 
+       (2,0,0) -> do notice verbosity "Ok"
+       (x,y,z) -> do notice verbosity $ "Error: " ++ path ++ ": "
                                      ++ map intToDigit [x,y,z] ++ " "
                                      ++ rspReason resp
                      case findHeader HdrContentType resp of
-                       Just "text/plain" -> notice verbosity $ rspBody resp
-                       _                 -> debug verbosity $ rspBody resp
+                       Just contenttype
+                         | takeWhile (/= ';') contenttype == "text/plain"
+                         -> notice verbosity $ rspBody resp
+                       _ -> debug verbosity $ rspBody resp
 
 mkRequest :: URI -> FilePath -> IO (Request String)
 mkRequest uri path = 
