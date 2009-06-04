@@ -266,13 +266,11 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 
 -- |Perform the \"@.\/setup configure@\" action.
 -- Returns the @.setup-config@ file.
-configure :: ( Either GenericPackageDescription PackageDescription
-             , HookedBuildInfo)
+configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
-configure (e_pkg_descr, pbi) cfg
+configure (pkg_descr0, pbi) cfg
   = do  let distPref = fromFlag (configDistPref cfg)
             verbosity = fromFlag (configVerbosity cfg)
-            pkg_descr0 = either packageDescription id e_pkg_descr
 
         setupMessage verbosity "Configuring" (packageId pkg_descr0)
 
@@ -309,7 +307,7 @@ configure (e_pkg_descr, pbi) cfg
         -- need to pre-scan the conditional data to make a list of all private
         -- libraries that could possibly be defined by the .cabal file.
         let internalPackageSet = PackageIndex.fromList [ emptyInstalledPackageInfo {
-                  Installed.package = package pkg_descr0
+                  Installed.package = packageId pkg_descr0
               } ]
         maybeInstalledPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
                                       packageDbs programsConfig'
@@ -317,8 +315,7 @@ configure (e_pkg_descr, pbi) cfg
         let maybePackageSet = (`PackageIndex.merge` internalPackageSet)
                                                     `fmap` maybeInstalledPackageSet
 
-        (pkg_descr0', flags) <- case e_pkg_descr of
-            Left ppd ->
+        (pkg_descr0', flags) <-
                 case finalizePackageDescription
                        (configConfigurationsFlags cfg)
                        maybePackageSet
@@ -326,7 +323,7 @@ configure (e_pkg_descr, pbi) cfg
                        Distribution.System.buildArch
                        (compilerId comp)
                        (configConstraints cfg)
-                       ppd
+                       pkg_descr0
                 of Right r -> return r
                    Left missing ->
                        die $ "At least the following dependencies are missing:\n"
@@ -334,7 +331,6 @@ configure (e_pkg_descr, pbi) cfg
                             [ disp (Dependency name range')
                             | Dependency name range <- missing
                             , let range' = simplifyVersionRange range ]
-            Right pd -> return (pd,[])
 
         -- add extra include/lib dirs as specified in cfg
         -- we do it here so that those get checked too
@@ -345,8 +341,7 @@ configure (e_pkg_descr, pbi) cfg
                         ++ intercalate ", " [ name ++ "=" ++ display value
                                             | (FlagName name, value) <- flags ]
 
-        checkPackageProblems verbosity
-          (either Just (\_->Nothing) e_pkg_descr) --TODO: make the Either go away
+        checkPackageProblems verbosity (Just pkg_descr0)
           (updatePackageDescription pbi pkg_descr)
 
         let installedPackageSet = fromMaybe bogusPackageSet maybeInstalledPackageSet
