@@ -108,9 +108,9 @@ data UserHooks = UserHooks {
     -- |Hook to run before clean command.  Second arg indicates verbosity level.
     preClean  :: Args -> CleanFlags -> IO HookedBuildInfo,
     -- |Over-ride this hook to get different behavior during clean.
-    cleanHook :: PackageDescription -> Maybe LocalBuildInfo -> UserHooks -> CleanFlags -> IO (),
+    cleanHook :: PackageDescription -> () -> UserHooks -> CleanFlags -> IO (),
     -- |Hook to run after clean command.  Second arg indicates verbosity level.
-    postClean :: Args -> CleanFlags -> PackageDescription -> Maybe LocalBuildInfo -> IO (),
+    postClean :: Args -> CleanFlags -> PackageDescription -> () -> IO (),
 
     -- |Hook to run before copy command
     preCopy  :: Args -> CopyFlags -> IO HookedBuildInfo,

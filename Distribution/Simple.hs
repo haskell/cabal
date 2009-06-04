@@ -276,17 +276,15 @@ haddockAction hooks flags args = do
 
 cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
 cleanAction hooks flags args = do
-                let distPref = fromFlag $ cleanDistPref flags
                 pbi <- preClean hooks args flags
 
-                mlbi <- maybeGetPersistBuildConfig distPref
                 pdfile <- defaultPackageDesc verbosity
                 ppd <- readPackageDescription verbosity pdfile
                 let pkg_descr0 = flattenPackageDescription ppd
                 let pkg_descr = updatePackageDescription pbi pkg_descr0
 
-                cleanHook hooks pkg_descr mlbi hooks flags
-                postClean hooks args flags pkg_descr mlbi
+                cleanHook hooks pkg_descr () hooks flags
+                postClean hooks args flags pkg_descr ()
   where verbosity = fromFlag (cleanVerbosity flags)
 
 copyAction :: UserHooks -> CopyFlags -> Args -> IO ()
