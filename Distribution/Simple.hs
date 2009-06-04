@@ -148,7 +148,7 @@ defaultMainWithHooksArgs = defaultMainHelper
 
 -- | Like 'defaultMain', but accepts the package description as input
 -- rather than using IO to read it.
-defaultMainNoRead :: PackageDescription -> IO ()
+defaultMainNoRead :: GenericPackageDescription -> IO ()
 defaultMainNoRead pkg_descr =
   getArgs >>=
   defaultMainHelper simpleUserHooks { readDesc = return (Just pkg_descr) }
@@ -212,7 +212,7 @@ configureAction hooks flags args = do
 
                 --    get_pkg_descr (configVerbosity flags')
                 --let pkg_descr = updatePackageDescription pbi pkg_descr0
-                let epkg_descr = (pkg_descr0, pbi)
+                let epkg_descr = (Left pkg_descr0, pbi)
 
                 --(warns, ers) <- sanityCheckPackage pkg_descr
                 --errorOut (configVerbosity flags') warns ers
@@ -227,17 +227,15 @@ configureAction hooks flags args = do
                 postConf hooks args flags pkg_descr localbuildinfo
               where
                 verbosity = fromFlag (configVerbosity flags)
-                confPkgDescr :: IO (Maybe FilePath,
-                                    Either GenericPackageDescription
-                                           PackageDescription)
+                confPkgDescr :: IO (Maybe FilePath, GenericPackageDescription)
                 confPkgDescr = do
                   mdescr <- readDesc hooks
                   case mdescr of
-                    Just descr -> return (Nothing, Right descr)
+                    Just descr -> return (Nothing, descr)
                     Nothing -> do
                       pdfile <- defaultPackageDesc verbosity
-                      ppd <- readPackageDescription verbosity pdfile
-                      return (Just pdfile, Left ppd)
+                      descr  <- readPackageDescription verbosity pdfile
+                      return (Just pdfile, descr)
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
