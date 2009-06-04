@@ -87,8 +87,7 @@ import Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
-    ( PackageCheck(..)
-    , checkPackage, checkConfiguredPackage, checkPackageFiles )
+    ( PackageCheck(..), checkPackage, checkPackageFiles )
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
@@ -341,7 +340,7 @@ configure (pkg_descr0, pbi) cfg
                         ++ intercalate ", " [ name ++ "=" ++ display value
                                             | (FlagName name, value) <- flags ]
 
-        checkPackageProblems verbosity (Just pkg_descr0)
+        checkPackageProblems verbosity pkg_descr0
           (updatePackageDescription pbi pkg_descr)
 
         let installedPackageSet = fromMaybe bogusPackageSet maybeInstalledPackageSet
@@ -901,14 +900,12 @@ checkForeignDeps pkg lbi verbosity = do
 
 -- | Output package check warnings and errors. Exit if any errors.
 checkPackageProblems :: Verbosity
-                     -> Maybe GenericPackageDescription
+                     -> GenericPackageDescription
                      -> PackageDescription
                      -> IO ()
-checkPackageProblems verbosity mgpkg pkg = do
+checkPackageProblems verbosity gpkg pkg = do
   ioChecks      <- checkPackageFiles pkg "."
-  let pureChecks = case mgpkg of
-                     Just gpkg -> checkPackage gpkg (Just pkg)
-                     Nothing   -> checkConfiguredPackage pkg
+  let pureChecks = checkPackage gpkg (Just pkg)
       errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
       warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]
   if null errors
