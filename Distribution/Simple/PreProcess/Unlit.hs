@@ -41,8 +41,8 @@ classify ('#':s) = case tokens s of
                                    (t@(_:_), str'):_ -> Just (t, str')
                                    _                 -> Nothing
 classify ('\\':s)
-  | s `isPrefixOf` "begin{code}" = BeginCode
-  | s `isPrefixOf` "end{code}"   = EndCode
+  | "begin{code}" `isPrefixOf` s = BeginCode
+  | "end{code}"   `isPrefixOf` s = EndCode
 classify s | all isSpace s       = Blank s
 classify s                       = Ordinary s
 
