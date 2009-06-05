@@ -755,20 +755,23 @@ pack baseDir paths0 = preparePaths baseDir paths0 >>= packPaths baseDir
 preparePaths :: FilePath -> [FilePath] -> IO [FilePath]
 preparePaths baseDir paths =
   fmap concat $ interleave
-    [ do isDir  <- doesDirectoryExist path
-         if isDir then getDirectoryContentsRecursive (baseDir </> path)
-                  else return [path]
+    [ do isDir  <- doesDirectoryExist (baseDir </> path)
+         if isDir
+           then do entries <- getDirectoryContentsRecursive (baseDir </> path)
+                   return (FilePath.Native.addTrailingPathSeparator path
+                         : map (path </>) entries)
+           else return [path]
     | path <- paths ]
 
 packPaths :: FilePath -> [FilePath] -> IO [Entry]
 packPaths baseDir paths =
   interleave
-    [ do tarpath <- either fail return (toTarPath isDir relPath)
+    [ do tarpath <- either fail return (toTarPath isDir relpath)
          if isDir then packDirectoryEntry filepath tarpath
                   else packFileEntry      filepath tarpath
-    | filepath <- paths
-    , let isDir   = FilePath.Native.hasTrailingPathSeparator filepath
-          relPath = FilePath.Native.makeRelative baseDir filepath ]
+    | relpath <- paths
+    , let isDir    = FilePath.Native.hasTrailingPathSeparator filepath
+          filepath = baseDir </> relpath ]
 
 interleave :: [IO a] -> IO [a]
 interleave = unsafeInterleaveIO . go
@@ -806,14 +809,14 @@ packDirectoryEntry filepath tarpath = do
 
 getDirectoryContentsRecursive :: FilePath -> IO [FilePath]
 getDirectoryContentsRecursive dir0 =
-  recurseDirectories [FilePath.Native.addTrailingPathSeparator dir0]
+  fmap tail (recurseDirectories dir0 [""])
 
-recurseDirectories :: [FilePath] -> IO [FilePath]
-recurseDirectories []         = return []
-recurseDirectories (dir:dirs) = unsafeInterleaveIO $ do
-  (files, dirs') <- collect [] [] =<< getDirectoryContents dir
+recurseDirectories :: FilePath -> [FilePath] -> IO [FilePath]
+recurseDirectories _    []         = return []
+recurseDirectories base (dir:dirs) = unsafeInterleaveIO $ do
+  (files, dirs') <- collect [] [] =<< getDirectoryContents (base </> dir)
 
-  files' <- recurseDirectories (dirs' ++ dirs)
+  files' <- recurseDirectories base (dirs' ++ dirs)
   return (dir : files ++ files')
 
   where
@@ -823,7 +826,7 @@ recurseDirectories (dir:dirs) = unsafeInterleaveIO $ do
     collect files dirs' (entry:entries) = do
       let dirEntry  = dir </> entry
           dirEntry' = FilePath.Native.addTrailingPathSeparator dirEntry
-      isDirectory <- doesDirectoryExist dirEntry
+      isDirectory <- doesDirectoryExist (base </> dirEntry)
       if isDirectory
         then collect files (dirEntry':dirs') entries
         else collect (dirEntry:files) dirs' entries
