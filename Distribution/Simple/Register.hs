@@ -89,6 +89,7 @@ import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Text
          ( display )
+import Distribution.Verbosity ( normal, deafening )
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory (removeFile, getCurrentDirectory,
@@ -160,7 +161,13 @@ register pkg_descr lbi regFlags
                                              else [instConf]
                                 in "update" : conf
 
-        let allFlags = config_flags ++ register_flags
+        let verbosity_flags = if verbosity >= deafening
+                              then ["-v2"]
+                              else if verbosity >= normal
+                              then []
+                              else ["-v0"]
+
+        let allFlags = config_flags ++ register_flags ++ verbosity_flags
         let Just pkgTool = lookupProgram ghcPkgProgram (withPrograms lbi)
 
         case () of
