@@ -120,6 +120,7 @@ build pkg_descr lbi flags suffixes = do
     -- Register library in-place, so exes can depend on internally defined libraries.
     --TODO: go through a proper register api, not the generic command line action
     register pkg_descr lbi defaultRegisterFlags {
+              regVerbosity = Flag verbosity,
               regPackageDB = Flag internalPackageDB,
               regInPlace   = Flag True,
               regDistPref  = Flag distPref
