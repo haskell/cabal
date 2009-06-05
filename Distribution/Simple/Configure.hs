@@ -293,7 +293,7 @@ configure (e_pkg_descr, pbi) cfg
         let version = compilerVersion comp
             flavor  = compilerFlavor comp
 
-        -- | Create a PackageIndex that makes *any libraries that might be*
+        -- Create a PackageIndex that makes *any libraries that might be*
         -- defined internally to this package look like installed packages, in
         -- case an executable should refer to any of them as dependencies.
         --
