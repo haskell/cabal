@@ -93,11 +93,13 @@ import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
          , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
-         , requireProgramVersion
+         , requireProgramVersion, requireProgram
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
          , gccProgram, stripProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
+import qualified Distribution.Simple.Program.Ar    as Ar
+import qualified Distribution.Simple.Program.Ld    as Ld
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
@@ -115,9 +117,9 @@ import Control.Monad            ( unless, when )
 import Data.Char
 import Data.List
 import Data.Maybe               ( catMaybes )
-import System.Directory         ( removeFile, renameFile,
-                                  getDirectoryContents, doesFileExist,
-                                  getTemporaryDirectory )
+import System.Directory
+         ( removeFile, getDirectoryContents, doesFileExist
+         , getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (hClose, hPutStrLn)
@@ -530,28 +532,19 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       | libFilePath <- [vanillaLibFilePath, profileLibFilePath
                        ,sharedLibFilePath,  ghciLibFilePath] ]
 
-    let arVerbosity | verbosity >= deafening = "-v"
-                    | otherwise              = "-c"
-        arBasicArgs = [ "-r", "-s", arVerbosity ]
-        arArgs = arBasicArgs
-            ++ [vanillaLibFilePath]
-        arObjArgs =
+    let staticObjectFiles =
                hObjs
             ++ map (pref </>) cObjs
             ++ stubObjs
-        arProfArgs = arBasicArgs
-            ++ [profileLibFilePath]
-        arProfObjArgs =
+        profObjectFiles =
                hProfObjs
             ++ map (pref </>) cObjs
             ++ stubProfObjs
-        ldArgs = ["-r"]
-            ++ ["-o", ghciLibFilePath <.> "tmp"]
-        ldObjArgs =
+        ghciObjFiles =
                hObjs
             ++ map (pref </>) cObjs
             ++ stubObjs
-        ghcSharedObjArgs =
+        dynamicObjectFiles =
                hSharedObjs
             ++ map (pref </>) cSharedObjs
             ++ stubSharedObjs
@@ -563,40 +556,29 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               "-shared",
               "-dynamic",
               "-o", sharedLibFilePath ]
-            ++ ghcSharedObjArgs
+            ++ dynamicObjectFiles
             ++ ["-package-name", display pkgid ]
             ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps clbi ])
             ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
             ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
-        runLd ldLibName args = do
-          exists <- doesFileExist ldLibName
-            -- This method is called iteratively by xargs. The
-            -- output goes to <ldLibName>.tmp, and any existing file
-            -- named <ldLibName> is included when linking. The
-            -- output is renamed to <libName>.
-          rawSystemProgramConf verbosity ldProgram (withPrograms lbi)
-            (args ++ if exists then [ldLibName] else [])
-          renameFile (ldLibName <.> "tmp") ldLibName
+    ifVanillaLib False $ do
+      (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
+      Ar.createArLibArchive verbosity arProg
+        vanillaLibFilePath staticObjectFiles
 
-        runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
+    ifProfLib $ do
+      (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
+      Ar.createArLibArchive verbosity arProg
+        profileLibFilePath profObjectFiles
 
-         --TODO: discover this at configure time or runtime on unix
-         -- The value is 32k on Windows and posix specifies a minimum of 4k
-         -- but all sensible unixes use more than 4k.
-         -- we could use getSysVar ArgumentLimit but that's in the unix lib
-        maxCommandLineSize = 30 * 1024
+    ifGHCiLib $ do
+      (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+      Ld.combineObjectFiles verbosity ldProg
+        ghciLibFilePath ghciObjFiles
 
-    ifVanillaLib False $ xargs maxCommandLineSize
-      runAr arArgs arObjArgs
-
-    ifProfLib $ xargs maxCommandLineSize
-      runAr arProfArgs arProfObjArgs
-
-    ifGHCiLib $ xargs maxCommandLineSize
-      (runLd ghciLibFilePath) ldArgs ldObjArgs
-
-    ifSharedLib $ runGhcProg ghcSharedLinkArgs
+    ifSharedLib $
+      runGhcProg ghcSharedLinkArgs
 
 
 -- | Build an executable with GHC.
