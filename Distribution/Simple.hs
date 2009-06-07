@@ -95,7 +95,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Build        ( build )
 import Distribution.Simple.SrcDist      ( sdist )
 import Distribution.Simple.Register
-         ( register, unregister, removeRegScripts )
+         ( register, unregister )
 
 import Distribution.Simple.Configure
          ( getPersistBuildConfig, maybeGetPersistBuildConfig
@@ -384,9 +384,6 @@ clean pkg_descr flags = do
     chattyTry "removing dist/" $ do
       exists <- doesDirectoryExist distPref
       when exists (removeDirectoryRecursive distPref)
-
-    -- these live in the top level dir so must be removed separately
-    removeRegScripts
 
     -- Any extra files the user wants to remove
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)

@@ -107,8 +107,6 @@ import Distribution.Simple.Utils
     , intercalate, comparing, cabalVersion, cabalBootstrapping
     , withFileContents, writeFileAtomic 
     , withTempFile )
-import Distribution.Simple.Register
-    ( removeInstalledConfig )
 import Distribution.System
     ( OS(..), buildOS, buildArch )
 import Distribution.Version
@@ -402,8 +400,6 @@ configure (pkg_descr0, pbi) cfg
                         ++ display (PackageIdentifier name ver)
                          | (name, uses) <- inconsistencies
                          , (pkg, ver) <- uses ]
-
-        removeInstalledConfig distPref
 
         -- installation directories
         defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
