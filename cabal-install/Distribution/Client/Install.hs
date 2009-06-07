@@ -41,6 +41,7 @@ import Distribution.Client.Dependency
          , upgradableDependencies
          , Progress(..), foldProgress, )
 import Distribution.Client.Fetch (fetchPackage)
+import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 -- import qualified Distribution.Client.Info as Info
 import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies )
@@ -88,7 +89,7 @@ import Distribution.Simple.Utils
          ( defaultPackageDesc, rawSystemExit, comparing )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate
-         , initialPathTemplateEnv, substPathTemplate )
+         , initialPathTemplateEnv, substPathTemplate, systemPathTemplateEnv )
 import Distribution.Package
          ( PackageName, PackageIdentifier, packageName, packageVersion
          , Package(..), PackageFixedDeps(..)
@@ -220,10 +221,44 @@ installWithPlanner planner verbosity packageDBs repos comp conf
         when (reportingLevel == DetailedReports) $
           storeDetailedBuildReports verbosity logsDir buildReports
 
+        regenerateHaddockIndex installPlan'
+
         symlinkBinaries verbosity configFlags installFlags installPlan'
         printBuildFailures installPlan'
 
   where
+    regenerateHaddockIndex installPlan' = do
+      let regenIndex = and [not . null . filter installedDocs . InstallPlan.toList $ installPlan'
+                             ,UserPackageDB `elem` packageDBs
+                             ,null [() | SpecificPackageDB _ <- packageDBs]
+                           ]
+      when (regenIndex && isJust (flagToMaybe haddockIndex)) $ do
+            installed <- getInstalledPackages verbosity comp packageDBs conf
+            case installed of
+              Nothing -> return () -- warning ?
+              Just index -> do 
+                defaultDirs <- InstallDirs.defaultInstallDirs
+                               ((\(CompilerId x _) -> x) $ compilerId comp)
+                               (fromFlag (configUserInstall configFlags))
+                               True
+                Haddock.regenerateHaddockIndex verbosity index conf 
+                            (substHaddockIndexFileName defaultDirs . fromFlag $ haddockIndex)
+       where
+         installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _)) = True
+         installedDocs _                                            = False
+         haddockIndex = installHaddockIndex installFlags
+         substHaddockIndexFileName defaultDirs template = fromPathTemplate
+                                                        . substPathTemplate env
+                                                        $ template
+    
+           where env = systemPathTemplateEnv (compilerId comp) absoluteDirs
+                 templateDirs   = InstallDirs.combineInstallDirs fromFlagOrDefault
+                                  defaultDirs (configInstallDirs configFlags)
+                 absoluteDirs   = InstallDirs.absoluteInstallDirs' 
+                                  (InstallDirs.compilerToTemplateEnv (compilerId comp) 
+                                   ++ InstallDirs.platformToTemplateEnv (buildPlatform))
+                                  templateDirs
+
     setupScriptOptions index = SetupScriptOptions {
       useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
