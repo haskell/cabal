@@ -859,16 +859,14 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
 installLib _ _ _ _ _ PackageDescription{library=Nothing}
     = die $ "Internal Error. installLibGHC called with no library."
 
--- | use @ranlib@ or @ar -s@ to build an index. This is necessary on systems
--- like MacOS X. If we can't find those, don't worry too much about it.
+-- | On MacOS X we have to call @ranlib@ to regenerate the archive index after
+-- copying. This is because the silly MacOS X linker checks that the archive
+-- index is not older than the file itself, which means simply
+-- copying/installing the file breaks it!!
 --
 updateLibArchive :: Verbosity -> LocalBuildInfo -> FilePath -> IO ()
-updateLibArchive verbosity lbi path =
-  case lookupProgram ranlibProgram (withPrograms lbi) of
-    Just ranlib -> rawSystemProgram verbosity ranlib [path]
-    Nothing     -> case lookupProgram arProgram (withPrograms lbi) of
-      Just ar   -> rawSystemProgram verbosity ar ["-s", path]
-      Nothing   -> warn verbosity $
-                        "Unable to generate a symbol index for the static "
-                     ++ "library '" ++ path
-                     ++ "' (missing the 'ranlib' and 'ar' programs)"
+updateLibArchive verbosity lbi path
+  | buildOS == OSX = do
+    (ranlib, _) <- requireProgram verbosity ranlibProgram (withPrograms lbi)
+    rawSystemProgram verbosity ranlib [path]
+  | otherwise = return ()
