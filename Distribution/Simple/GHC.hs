@@ -76,13 +76,11 @@ import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
          , Library(..), libModules, hcOptions )
 import Distribution.InstalledPackageInfo
-                                ( InstalledPackageInfo
-                                , parseInstalledPackageInfo )
+         ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(..) )
 import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..), InstallDirs(..) )
 import Distribution.Simple.InstallDirs
@@ -99,6 +97,7 @@ import Distribution.Simple.Program
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
          , gccProgram, stripProgram )
+import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
@@ -373,36 +372,14 @@ getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
 getInstalledPackages' verbosity packagedbs conf
   | ghcVersion >= Version [6,9] [] =
   sequence
-    [ do str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf
-                  ["dump", packageDbGhcPkgFlag packagedb]
-           `catchExit` \_ -> die $ "ghc-pkg dump failed"
-         case parsePackages str of
-           Left ok -> return (packagedb, ok)
-           _       -> die "failed to parse output of 'ghc-pkg dump'"
+    [ do pkgs <- HcPkg.dump verbosity ghcPkgProg packagedb
+         return (packagedb, pkgs)
     | packagedb <- packagedbs ]
 
   where
-    parsePackages str =
-      let parsed = map parseInstalledPackageInfo (splitPkgs str)
-       in case [ msg | ParseFailed msg <- parsed ] of
-            []   -> Left [ pkg | ParseOk _ pkg <- parsed ]
-            msgs -> Right msgs
-
-    Just ghcProg = lookupProgram ghcProgram conf
+    Just ghcPkgProg = lookupProgram ghcPkgProgram conf
+    Just ghcProg    = lookupProgram ghcProgram conf
     Just ghcVersion = programVersion ghcProg
-
-    splitPkgs :: String -> [String]
-    splitPkgs = map unlines . splitWith ("---" ==) . lines
-      where
-        splitWith :: (a -> Bool) -> [a] -> [[a]]
-        splitWith p xs = ys : case zs of
-                           []   -> []
-                           _:ws -> splitWith p ws
-          where (ys,zs) = break p xs
-
-    packageDbGhcPkgFlag GlobalPackageDB          = "--global"
-    packageDbGhcPkgFlag UserPackageDB            = "--user"
-    packageDbGhcPkgFlag (SpecificPackageDB path) = "--package-conf=" ++ path
 
 getInstalledPackages' verbosity packagedbs conf = do
     str <- rawSystemProgramStdoutConf verbosity ghcPkgProgram conf ["list"]
