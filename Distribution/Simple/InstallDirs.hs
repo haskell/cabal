@@ -63,7 +63,10 @@ module Distribution.Simple.InstallDirs (
         fromPathTemplate,
         substPathTemplate,
         initialPathTemplateEnv,
-        fullPathTemplateEnv,
+        platformTemplateEnv,
+        compilerTemplateEnv,
+        packageTemplateEnv,
+        installDirsTemplateEnv,
   ) where
 
 
@@ -79,7 +82,7 @@ import System.FilePath (dropDrive)
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion )
 import Distribution.System
-         ( OS(..), buildOS, buildArch )
+         ( OS(..), buildOS, Platform(..), buildPlatform )
 import Distribution.Compiler
          ( CompilerId, CompilerFlavor(..) )
 import Distribution.Text
@@ -267,9 +270,9 @@ defaultInstallDirs comp userInstall hasLibs = do
 -- 'PathTemplate's that still have the 'PrefixVar' in them. Doing this makes it
 -- each to check which paths are relative to the $prefix.
 --
-substituteTemplates :: PackageIdentifier -> CompilerId
+substituteTemplates :: PathTemplateEnv
                     -> InstallDirTemplates -> InstallDirTemplates
-substituteTemplates pkgId compilerId dirs = dirs'
+substituteTemplates env dirs = dirs'
   where
     dirs' = InstallDirs {
       -- So this specifies exactly which vars are allowed in each template
@@ -289,8 +292,6 @@ substituteTemplates pkgId compilerId dirs = dirs'
       haddockdir = subst haddockdir (prefixBinLibDataVars ++
                                       [docdirVar, htmldirVar])
     }
-    -- The initial environment has all the static stuff but no paths
-    env = initialPathTemplateEnv pkgId compilerId
     subst dir env' = substPathTemplate (env'++env) (dir dirs)
 
     prefixVar        = (PrefixVar,     prefix     dirs')
@@ -308,19 +309,23 @@ substituteTemplates pkgId compilerId dirs = dirs'
 -- substituting for all the variables in the abstract paths, to get real
 -- absolute path.
 absoluteInstallDirs :: PackageIdentifier -> CompilerId -> CopyDest
-                    -> InstallDirTemplates -> InstallDirs FilePath
+                    -> InstallDirs PathTemplate
+                    -> InstallDirs FilePath
 absoluteInstallDirs pkgId compilerId copydest dirs =
     (case copydest of
        CopyTo destdir -> fmap ((destdir </>) . dropDrive)
        _              -> id)
   . appendSubdirs (</>)
   . fmap fromPathTemplate
-  $ substituteTemplates pkgId compilerId dirs {
+  $ substituteTemplates env dirs {
       prefix = case copydest of
         -- possibly override the prefix
         CopyPrefix p -> toPathTemplate p
         _            -> prefix dirs
     }
+  where
+    env = initialPathTemplateEnv pkgId compilerId
+
 
 -- |The location prefix for the /copy/ command.
 data CopyDest
@@ -344,10 +349,12 @@ prefixRelativeInstallDirs pkgId compilerId dirs =
   $ -- substitute the path template into each other, except that we map
     -- \$prefix back to $prefix. We're trying to end up with templates that
     -- mention no vars except $prefix.
-    substituteTemplates pkgId compilerId dirs {
+    substituteTemplates env dirs {
       prefix = PathTemplate [Variable PrefixVar]
     }
   where
+    env = initialPathTemplateEnv pkgId compilerId
+
     -- If it starts with $prefix then it's relative and produce the relative
     -- path by stripping off $prefix/ or $prefix
     relative dir = case dir of
@@ -387,6 +394,8 @@ data PathTemplateVariable =
      | ExecutableNameVar -- ^ The executable name; used in shell wrappers
   deriving Eq
 
+type PathTemplateEnv = [(PathTemplateVariable, PathTemplate)]
+
 -- | Convert a 'FilePath' to a 'PathTemplate' including any template vars.
 --
 toPathTemplate :: FilePath -> PathTemplate
@@ -401,8 +410,7 @@ combinePathTemplate :: PathTemplate -> PathTemplate -> PathTemplate
 combinePathTemplate (PathTemplate t1) (PathTemplate t2) =
   PathTemplate (t1 ++ [Ordinary [pathSeparator]] ++ t2)
 
-substPathTemplate :: [(PathTemplateVariable, PathTemplate)]
-                  -> PathTemplate -> PathTemplate
+substPathTemplate :: PathTemplateEnv -> PathTemplate -> PathTemplate
 substPathTemplate environment (PathTemplate template) =
     PathTemplate (concatMap subst template)
 
@@ -412,38 +420,49 @@ substPathTemplate environment (PathTemplate template) =
                   Just (PathTemplate components) -> components
                   Nothing                        -> [component]
 
+
 -- | The initial environment has all the static stuff but no paths
-initialPathTemplateEnv :: PackageIdentifier -> CompilerId
-                       -> [(PathTemplateVariable, PathTemplate)]
+initialPathTemplateEnv :: PackageIdentifier -> CompilerId -> PathTemplateEnv
 initialPathTemplateEnv pkgId compilerId =
-  map (\(v,s) -> (v, PathTemplate [Ordinary s]))
-  [(PkgNameVar,  display (packageName pkgId))
-  ,(PkgVerVar,   display (packageVersion pkgId))
-  ,(PkgIdVar,    display pkgId)
-  ,(CompilerVar, display compilerId)
-  ,(OSVar,       display buildOS)    --these should be params if we want to be
-  ,(ArchVar,     display buildArch)  --able to do cross-platform configuation
+     packageTemplateEnv  pkgId
+  ++ compilerTemplateEnv compilerId
+  ++ platformTemplateEnv buildPlatform -- platform should be param if we want
+                                       -- to do cross-platform configuation
+
+packageTemplateEnv :: PackageIdentifier -> PathTemplateEnv
+packageTemplateEnv pkgId =
+  [(PkgNameVar,  PathTemplate [Ordinary $ display (packageName pkgId)])
+  ,(PkgVerVar,   PathTemplate [Ordinary $ display (packageVersion pkgId)])
+  ,(PkgIdVar,    PathTemplate [Ordinary $ display pkgId])
   ]
 
-fullPathTemplateEnv :: PackageIdentifier -> CompilerId
-                    -> InstallDirs FilePath
-                    -> [(PathTemplateVariable, PathTemplate)]
-fullPathTemplateEnv pkgId compilerId dirs = env ++ dirEnv
-    where -- The initial environment has all the static stuff but no paths
-          env = initialPathTemplateEnv pkgId compilerId
-          -- And here are all the paths
-          dirEnv = [(PrefixVar,     toPathTemplate $ prefix     dirs),
-                    (BindirVar,     toPathTemplate $ bindir     dirs),
-                    (LibdirVar,     toPathTemplate $ libdir     dirs),
-                    -- This isn't defined in an InstallDirs FilePath
-                    -- as its value has already been appended to libdir:
-                    -- (LibsubdirVar,  toPathTemplate $ libsubdir  dirs),
-                    (DatadirVar,    toPathTemplate $ datadir    dirs),
-                    -- This isn't defined in an InstallDirs FilePath
-                    -- as its value has already been appended to datadir:
-                    -- (DatasubdirVar, toPathTemplate $ datasubdir dirs),
-                    (DocdirVar,     toPathTemplate $ docdir     dirs),
-                    (HtmldirVar,    toPathTemplate $ htmldir    dirs)]
+compilerTemplateEnv :: CompilerId -> PathTemplateEnv
+compilerTemplateEnv compilerId =
+  [(CompilerVar, PathTemplate [Ordinary $ display compilerId])
+  ]
+
+platformTemplateEnv :: Platform -> PathTemplateEnv
+platformTemplateEnv (Platform os arch) =
+  [(OSVar,       PathTemplate [Ordinary $ display os])
+  ,(ArchVar,     PathTemplate [Ordinary $ display arch])
+  ]
+
+installDirsTemplateEnv :: InstallDirs FilePath -> PathTemplateEnv
+installDirsTemplateEnv dirs =
+  [(PrefixVar,     toPathTemplate $ prefix     dirs)
+  ,(BindirVar,     toPathTemplate $ bindir     dirs)
+  ,(LibdirVar,     toPathTemplate $ libdir     dirs)
+   -- This isn't defined in an InstallDirs FilePath
+   -- as its value has already been appended to libdir:
+   -- (LibsubdirVar,  toPathTemplate $ libsubdir  dirs)
+  ,(DatadirVar,    toPathTemplate $ datadir    dirs)
+   -- This isn't defined in an InstallDirs FilePath
+   -- as its value has already been appended to datadir:
+   -- (DatasubdirVar, toPathTemplate $ datasubdir dirs)
+  ,(DocdirVar,     toPathTemplate $ docdir     dirs)
+  ,(HtmldirVar,    toPathTemplate $ htmldir    dirs)
+  ]
+
 
 -- ---------------------------------------------------------------------------
 -- Parsing and showing path templates:
