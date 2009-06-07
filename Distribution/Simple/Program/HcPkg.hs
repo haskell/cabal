@@ -36,16 +36,18 @@ import Distribution.ParseUtils
 import Distribution.Simple.Compiler
          ( PackageDB(..) )
 import Distribution.Simple.Program.Types
-         ( ConfiguredProgram(..), programId )
+         ( ConfiguredProgram(programId, programVersion) )
 import Distribution.Simple.Program.Run
          ( ProgramInvocation(..), programInvocation
          , runProgramInvocation, getProgramInvocationOutput )
+import Distribution.Version
+         ( Version(..) )
 import Distribution.Text
          ( display )
 import Distribution.Simple.Utils
          ( die )
 import Distribution.Verbosity
-         ( Verbosity )
+         ( Verbosity, deafening, silent )
 import Distribution.Compat.Exception
          ( catchExit )
 
@@ -59,7 +61,8 @@ register :: Verbosity -> ConfiguredProgram -> PackageDB
                    InstalledPackageInfo
          -> IO ()
 register verbosity hcPkg packagedb pkgFile =
-  runProgramInvocation verbosity (registerInvocation hcPkg packagedb pkgFile)
+  runProgramInvocation verbosity
+    (registerInvocation hcPkg verbosity packagedb pkgFile)
 
 
 -- | Call @hc-pkg@ to re-register a package.
@@ -71,7 +74,8 @@ reregister :: Verbosity -> ConfiguredProgram -> PackageDB
                      InstalledPackageInfo
            -> IO ()
 reregister verbosity hcPkg packagedb pkgFile =
-  runProgramInvocation verbosity (reregisterInvocation hcPkg packagedb pkgFile)
+  runProgramInvocation verbosity
+    (reregisterInvocation hcPkg verbosity packagedb pkgFile)
 
 
 -- | Call @hc-pkg@ to unregister a package
@@ -80,7 +84,8 @@ reregister verbosity hcPkg packagedb pkgFile =
 --
 unregister :: Verbosity -> ConfiguredProgram -> PackageDB -> PackageId -> IO ()
 unregister verbosity hcPkg packagedb pkgid =
-  runProgramInvocation verbosity (unregisterInvocation hcPkg packagedb pkgid)
+  runProgramInvocation verbosity
+    (unregisterInvocation hcPkg verbosity packagedb pkgid)
 
 
 -- | Call @hc-pkg@ to expose a package.
@@ -89,7 +94,8 @@ unregister verbosity hcPkg packagedb pkgid =
 --
 expose :: Verbosity -> ConfiguredProgram -> PackageDB -> PackageId -> IO ()
 expose verbosity hcPkg packagedb pkgid =
-  runProgramInvocation verbosity (exposeInvocation hcPkg packagedb pkgid)
+  runProgramInvocation verbosity
+    (exposeInvocation hcPkg verbosity packagedb pkgid)
 
 
 -- | Call @hc-pkg@ to expose a package.
@@ -98,7 +104,8 @@ expose verbosity hcPkg packagedb pkgid =
 --
 hide :: Verbosity -> ConfiguredProgram -> PackageDB -> PackageId -> IO ()
 hide verbosity hcPkg packagedb pkgid =
-  runProgramInvocation verbosity (hideInvocation hcPkg packagedb pkgid)
+  runProgramInvocation verbosity
+    (hideInvocation hcPkg verbosity packagedb pkgid)
 
 
 -- | Call @hc-pkg@ to get all the installed packages.
@@ -107,7 +114,7 @@ dump :: Verbosity -> ConfiguredProgram -> PackageDB -> IO [InstalledPackageInfo]
 dump verbosity hcPkg packagedb = do
 
   output <- getProgramInvocationOutput verbosity
-              (dumpInvocation hcPkg packagedb)
+              (dumpInvocation hcPkg verbosity packagedb)
     `catchExit` \_ -> die $ programId hcPkg ++ " dump failed"
 
   case parsePackages output of
@@ -137,52 +144,75 @@ dump verbosity hcPkg packagedb = do
 --
 
 registerInvocation, reregisterInvocation
-  :: ConfiguredProgram -> PackageDB
+  :: ConfiguredProgram -> Verbosity -> PackageDB
   -> Either FilePath InstalledPackageInfo
   -> ProgramInvocation
 registerInvocation   = registerInvocation' "register"
 reregisterInvocation = registerInvocation' "update"
 
 registerInvocation' :: String
-                    -> ConfiguredProgram -> PackageDB
+                    -> ConfiguredProgram -> Verbosity -> PackageDB
                     -> Either FilePath InstalledPackageInfo
                     -> ProgramInvocation
-registerInvocation' cmdname hcPkg packagedb (Left pkgFile) =
-  programInvocation hcPkg
-    [cmdname, pkgFile, packageDbOpts packagedb]
+registerInvocation' cmdname hcPkg verbosity packagedb (Left pkgFile) =
+  programInvocation hcPkg $
+       [cmdname, pkgFile, packageDbOpts packagedb]
+    ++ verbosityOpts hcPkg verbosity
 
-registerInvocation' cmdname hcPkg packagedb (Right pkgInfo) =
-  (programInvocation hcPkg
-     [cmdname, "-", packageDbOpts packagedb]) {
-     progInvokeInput = Just (showInstalledPackageInfo pkgInfo)
-  }
-
-
-unregisterInvocation :: ConfiguredProgram -> PackageDB -> PackageId -> ProgramInvocation
-unregisterInvocation hcPkg packagedb pkgid =
-  programInvocation hcPkg
-    ["unregister", packageDbOpts packagedb, display pkgid]
+registerInvocation' cmdname hcPkg verbosity packagedb (Right pkgInfo) =
+  let args = [cmdname, "-", packageDbOpts packagedb]
+           ++ verbosityOpts hcPkg verbosity
+   in (programInvocation hcPkg args) {
+         progInvokeInput = Just (showInstalledPackageInfo pkgInfo)
+      }
 
 
-exposeInvocation :: ConfiguredProgram -> PackageDB -> PackageId -> ProgramInvocation
-exposeInvocation hcPkg packagedb pkgid =
-  programInvocation hcPkg
-    ["expose", packageDbOpts packagedb, display pkgid]
+unregisterInvocation :: ConfiguredProgram
+                     -> Verbosity -> PackageDB -> PackageId
+                     -> ProgramInvocation
+unregisterInvocation hcPkg verbosity packagedb pkgid =
+  programInvocation hcPkg $
+       ["unregister", packageDbOpts packagedb, display pkgid]
+    ++ verbosityOpts hcPkg verbosity
 
 
-hideInvocation :: ConfiguredProgram -> PackageDB -> PackageId -> ProgramInvocation
-hideInvocation hcPkg packagedb pkgid =
-  programInvocation hcPkg
-    ["hide", packageDbOpts packagedb, display pkgid]
+exposeInvocation :: ConfiguredProgram
+                 -> Verbosity -> PackageDB -> PackageId -> ProgramInvocation
+exposeInvocation hcPkg verbosity packagedb pkgid =
+  programInvocation hcPkg $
+       ["expose", packageDbOpts packagedb, display pkgid]
+    ++ verbosityOpts hcPkg verbosity
 
 
-dumpInvocation :: ConfiguredProgram -> PackageDB -> ProgramInvocation
-dumpInvocation hcPkg packagedb =
-  programInvocation hcPkg
-    ["dump", packageDbOpts packagedb]
+hideInvocation :: ConfiguredProgram
+               -> Verbosity -> PackageDB -> PackageId -> ProgramInvocation
+hideInvocation hcPkg verbosity packagedb pkgid =
+  programInvocation hcPkg $
+       ["hide", packageDbOpts packagedb, display pkgid]
+    ++ verbosityOpts hcPkg verbosity
+
+
+dumpInvocation :: ConfiguredProgram
+               -> Verbosity -> PackageDB -> ProgramInvocation
+dumpInvocation hcPkg verbosity packagedb =
+  programInvocation hcPkg $
+       ["dump", packageDbOpts packagedb]
+    ++ verbosityOpts hcPkg verbosity
 
 
 packageDbOpts :: PackageDB -> String
 packageDbOpts GlobalPackageDB        = "--global"
 packageDbOpts UserPackageDB          = "--user"
 packageDbOpts (SpecificPackageDB db) = "--package-conf=" ++ db
+
+verbosityOpts :: ConfiguredProgram -> Verbosity -> [String]
+verbosityOpts hcPkg v
+
+  -- ghc-pkg < 6.11 does not support -v
+  | programId hcPkg == "ghc-pkg"
+ && programVersion hcPkg < Just (Version [6,11] [])
+                   = []
+
+  | v >= deafening = ["-v2"]
+  | v == silent    = ["-v0"]
+  | otherwise      = []
