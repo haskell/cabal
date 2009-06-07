@@ -421,16 +421,11 @@ rawSystemStdin verbosity path args input = do
 
       -- push all the input
       hPutStr inh input
+      hClose inh
 
       -- wait for the program to terminate
       exitcode <- waitForProcess pid
-      unless (exitcode == ExitSuccess) $ do
-        debug verbosity $ path ++ " returned " ++ show exitcode
-                       ++ if null err then "" else
-                          " with error message:\n" ++ err
-        exitWith exitcode
-
-      return ()
+      unless (exitcode == ExitSuccess) (die err)
 #else
   tmpDir <- getTemporaryDirectory
   withTempFile tmpDir ".cmd.stdin" $ \tmpName tmpHandle -> do
