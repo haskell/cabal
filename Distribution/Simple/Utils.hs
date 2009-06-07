@@ -61,8 +61,11 @@ module Distribution.Simple.Utils (
         rawSystemExit,
         rawSystemStdout,
         rawSystemStdout',
+        rawSystemStdin,
         maybeExit,
         xargs,
+        findProgramOnPath,
+        findProgramVersion,
 
         -- * copying files
         smartCopySources,
@@ -136,7 +139,8 @@ import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
 
 import System.Directory
-    ( getDirectoryContents, doesDirectoryExist, doesFileExist, removeFile )
+    ( getDirectoryContents, doesDirectoryExist, doesFileExist, removeFile
+    , findExecutable )
 import System.Environment
     ( getProgName )
 import System.Cmd
@@ -159,7 +163,7 @@ import System.IO.Unsafe
 import qualified Control.Exception as Exception
 
 import Distribution.Text
-    ( display )
+    ( display, simpleParse )
 import Distribution.Package
     ( PackageIdentifier )
 import Distribution.ModuleName (ModuleName)
@@ -181,7 +185,8 @@ import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile )
 import Distribution.Compat.TempFile
          ( openTempFile, openNewBinaryFile, createTempDirectory )
-import Distribution.Compat.Exception (catchIO, onException)
+import Distribution.Compat.Exception
+         ( catchIO, catchExit, onException )
 import Distribution.Verbosity
 
 -- We only get our own version number when we're building with ourselves
@@ -390,6 +395,89 @@ rawSystemStdout' verbosity path args = do
     withFileContents tmpName $ \output ->
       length output `seq` return (output, exitcode)
 #endif
+
+rawSystemStdin :: Verbosity -> FilePath -> [String] -> String -> IO ()
+rawSystemStdin verbosity path args input = do
+  printRawCommandAndArgs verbosity path args
+
+#ifdef __GLASGOW_HASKELL__
+  Exception.bracket
+     (runInteractiveProcess path args Nothing Nothing)
+     (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
+    $ \(inh,outh,errh,pid) -> do
+
+      -- We want to process the input as text.
+      hSetBinaryMode inh False
+
+      -- fork off a thread to pull on (and discard) the stderr and stdout
+      -- so if the process writes to stderr or stdout we do not block.
+      -- NB. do the hGetContents synchronously, otherwise the outer
+      -- bracket can exit before this thread has run, and hGetContents
+      -- will fail.
+      err <- hGetContents errh
+      out <- hGetContents outh
+      forkIO $ do evaluate (length err); return ()
+      forkIO $ do evaluate (length out); return ()
+
+      -- push all the input
+      hPutStr inh input
+
+      -- wait for the program to terminate
+      exitcode <- waitForProcess pid
+      unless (exitcode == ExitSuccess) $ do
+        debug verbosity $ path ++ " returned " ++ show exitcode
+                       ++ if null err then "" else
+                          " with error message:\n" ++ err
+        exitWith exitcode
+
+      return ()
+#else
+  tmpDir <- getTemporaryDirectory
+  withTempFile tmpDir ".cmd.stdin" $ \tmpName tmpHandle -> do
+    hPutStr tmpHandle input 
+    hClose tmpHandle
+    let quote name = "'" ++ name ++ "'"
+    exitcode <- system $ unwords (map quote (path:args)) ++ " <" ++ quote tmpName
+    unless (exitcode == ExitSuccess) $ do
+      debug verbosity $ path ++ " returned " ++ show exitcode
+      exitWith exitCode
+    return ()
+#endif
+
+
+-- | Look for a program on the path.
+findProgramOnPath :: Verbosity -> FilePath -> IO (Maybe FilePath)
+findProgramOnPath verbosity prog = do
+  debug verbosity $ "searching for " ++ prog ++ " in path."
+  res <- findExecutable prog
+  case res of
+      Nothing   -> debug verbosity ("Cannot find " ++ prog ++ " on the path")
+      Just path -> debug verbosity ("found " ++ prog ++ " at "++ path)
+  return res
+
+
+-- | Look for a program and try to find it's version number. It can accept
+-- either an absolute path or the name of a program binary, in which case we
+-- will look for the program on the path.
+--
+findProgramVersion :: String             -- ^ version args
+                   -> (String -> String) -- ^ function to select version
+                                         --   number from program output
+                   -> Verbosity
+                   -> FilePath           -- ^ location
+                   -> IO (Maybe Version)
+findProgramVersion versionArg selectVersion verbosity path = do
+  str <- rawSystemStdout verbosity path [versionArg]
+         `catchIO`   (\_ -> return "")
+         `catchExit` (\_ -> return "")
+  let version :: Maybe Version
+      version = simpleParse (selectVersion str)
+  case version of
+      Nothing -> warn verbosity $ "cannot determine version of " ++ path
+                               ++ " :\n" ++ show str
+      Just v  -> debug verbosity $ path ++ " is version " ++ display v
+  return version
+
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
