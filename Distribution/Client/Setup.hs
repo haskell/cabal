@@ -448,6 +448,7 @@ instance Monoid InfoFlags where
 --
 data InstallFlags = InstallFlags {
     installDocumentation:: Flag Bool,
+    installHaddockIndex :: Flag PathTemplate,
     installDryRun       :: Flag Bool,
     installReinstall    :: Flag Bool,
     installOnly         :: Flag Bool,
@@ -461,6 +462,7 @@ data InstallFlags = InstallFlags {
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
     installDocumentation= Flag False,
+    installHaddockIndex = Flag . toPathTemplate $ "$datadir" </> "doc" </> "index.html",
     installDryRun       = Flag False,
     installReinstall    = Flag False,
     installOnly         = Flag False,
@@ -508,6 +510,11 @@ installOptions showOrParseArgs =
           installDocumentation (\v flags -> flags { installDocumentation = v })
           (boolOpt [] [])
 
+      , option [] ["haddock-index"]
+          "Haddock html index file (name template shouldn't use $pkgid)"
+          installHaddockIndex (\v flags -> flags { installHaddockIndex = v })
+          (reqArg' "TEMPLATE" (toFlag.toPathTemplate)
+                              (flagToList . fmap fromPathTemplate))
       , option [] ["dry-run"]
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
@@ -559,6 +566,7 @@ installOptions showOrParseArgs =
 instance Monoid InstallFlags where
   mempty = InstallFlags {
     installDocumentation= mempty,
+    installHaddockIndex = mempty,
     installDryRun       = mempty,
     installReinstall    = mempty,
     installOnly         = mempty,
@@ -570,6 +578,7 @@ instance Monoid InstallFlags where
   }
   mappend a b = InstallFlags {
     installDocumentation= combine installDocumentation,
+    installHaddockIndex = combine installHaddockIndex,
     installDryRun       = combine installDryRun,
     installReinstall    = combine installReinstall,
     installOnly         = combine installOnly,
