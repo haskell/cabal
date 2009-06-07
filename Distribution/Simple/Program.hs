@@ -47,6 +47,14 @@ module Distribution.Simple.Program (
     , runProgram
     , getProgramOutput
 
+    -- * Program invocations
+    , ProgramInvocation(..)
+    , emptyProgramInvocation
+    , simpleProgramInvocation
+    , programInvocation
+    , runProgramInvocation
+    , getProgramInvocationOutput
+
     -- * The collection of unconfigured and configured progams
     , builtinPrograms
 
