@@ -14,6 +14,7 @@ module Distribution.Simple.Program.Run (
     emptyProgramInvocation,
     simpleProgramInvocation,
     programInvocation,
+    multiStageProgramInvocation,
 
     runProgramInvocation,
     getProgramInvocationOutput,
@@ -27,6 +28,8 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
          ( Verbosity )
 
+import Data.List
+         ( foldl', unfoldr )
 
 -- | Represents a specific invocation of a specific program.
 --
@@ -98,11 +101,84 @@ getProgramInvocationOutput verbosity
   ProgramInvocation {
     progInvokePath  = path,
     progInvokeArgs  = args,
-    progInvokeEnv   = envExtra,
-    progInvokeCwd   = mcwd,
+    progInvokeEnv   = [],
+    progInvokeCwd   = Nothing,
     progInvokeInput = Nothing
   } =
   rawSystemStdout verbosity path args
 
 getProgramInvocationOutput _ _ =
    die "getProgramInvocationOutput: not yet implemented for this form of invocation"
+
+
+-- | Like the unix xargs program. Useful for when we've got very long command
+-- lines that might overflow an OS limit on command line length and so you
+-- need to invoke a command multiple times to get all the args in.
+--
+-- It takes four template invocations corresponding to the simple, initial,
+-- middle and last invocations. If the number of args given is small enough
+-- that we can get away with just a single invocation then the simple one is
+-- used:
+--
+-- > $ simple args
+--
+-- If the number of args given means that we need to use multiple invocations
+-- then the templates for the initial, middle and last invocations are used:
+--
+-- > $ initial args_0
+-- > $ middle  args_1
+-- > $ middle  args_2
+-- >   ...
+-- > $ final   args_n
+--
+multiStageProgramInvocation
+  :: ProgramInvocation
+  -> (ProgramInvocation, ProgramInvocation, ProgramInvocation)
+  -> [String]
+  -> [ProgramInvocation]
+multiStageProgramInvocation simple (initial, middle, final) args =
+
+  let argSize inv  = length (progInvokePath inv)
+                   + foldl' (\s a -> length a + 1 + s) 1 (progInvokeArgs inv)
+      fixedArgSize = maximum (map argSize [simple, initial, middle, final])
+      chunkSize    = maxCommandLineSize - fixedArgSize
+
+   in case splitChunks chunkSize args of
+        []     -> [ simple ]
+
+        [c]    -> [ simple  `appendArgs` c ]
+
+        [c,c'] -> [ initial `appendArgs` c ]
+               ++ [ final   `appendArgs` c']
+
+        (c:cs) -> [ initial `appendArgs` c ]
+               ++ [ middle  `appendArgs` c'| c' <- init cs ]
+               ++ [ final   `appendArgs` c'| let c' = last cs ]
+
+  where
+    inv `appendArgs` as = inv { progInvokeArgs = progInvokeArgs inv ++ as }
+
+    splitChunks len = unfoldr $ \s ->
+      if null s then Nothing
+                else Just (chunk len s)
+
+    chunk len (s:_) | length s >= len = error toolong
+    chunk len ss    = chunk' [] len ss
+
+    chunk' acc _   []     = (reverse acc,[])
+    chunk' acc len (s:ss)
+      | len' < len = chunk' (s:acc) (len-len'-1) ss
+      | otherwise  = (reverse acc, s:ss)
+      where len' = length s
+
+    toolong = "multiStageProgramInvocation: a single program arg is larger "
+           ++ "than the maximum command line length!"
+
+
+--FIXME: discover this at configure time or runtime on unix
+-- The value is 32k on Windows and posix specifies a minimum of 4k
+-- but all sensible unixes use more than 4k.
+-- we could use getSysVar ArgumentLimit but that's in the unix lib
+--
+maxCommandLineSize :: Int
+maxCommandLineSize = 30 * 1024
