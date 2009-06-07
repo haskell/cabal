@@ -71,8 +71,7 @@ import Distribution.PackageDescription
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
-         ( BuildFlags(..), fromFlag, defaultRegisterFlags
-         , RegisterFlags(..), Flag(..) )
+         ( BuildFlags(..), fromFlag )
 import Distribution.Simple.PreProcess
          ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
@@ -80,7 +79,8 @@ import Distribution.Simple.LocalBuildInfo
          , ComponentLocalBuildInfo, withLibLBI, withExeLBI )
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
-import Distribution.Simple.Register ( register )
+import Distribution.Simple.Register
+         ( registerPackage )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, setupMessage )
@@ -117,14 +117,10 @@ build pkg_descr lbi flags suffixes = do
     info verbosity "Building library..."
     buildLib verbosity pkg_descr lbi lib clbi
 
-    -- Register library in-place, so exes can depend on internally defined libraries.
-    --TODO: go through a proper register api, not the generic command line action
-    register pkg_descr lbi defaultRegisterFlags {
-              regVerbosity = Flag verbosity,
-              regPackageDB = Flag internalPackageDB,
-              regInPlace   = Flag True,
-              regDistPref  = Flag distPref
-          }
+    -- Register the library in-place, so exes can depend
+    -- on internally defined libraries.
+    registerPackage verbosity
+      pkg_descr lib lbi clbi distPref True internalPackageDB
 
   -- Use the internal package db for the exes.
   let lbi' = lbi { withPackageDB = withPackageDB lbi ++ [internalPackageDB] }
