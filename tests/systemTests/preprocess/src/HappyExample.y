@@ -5,6 +5,7 @@ import Data.Char
 
 %name calc
 %tokentype { Token }
+%expect 0
 
 
 %token 
