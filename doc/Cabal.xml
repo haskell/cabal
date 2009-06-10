@@ -403,6 +403,23 @@ Executable program2
               or underscores.</para>
           </listitem>
         </varlistentry>
+
+	<varlistentry>
+	  <term>
+	    <replaceable>compiler</replaceable>
+	  </term>
+	  <listitem>
+	    <para>A compiler flavor (one
+              of: <literal>GHC</literal>, <literal>NHC</literal>,
+	          <literal>YHC</literal>, <literal>Hugs</literal>,
+	          <literal>HBC</literal>, <literal>Helium</literal>,
+                  <literal>JHC</literal>, or <literal>LHC</literal>)
+              followed by a version range.  For example,
+              <literal>GHC ==6.10.3</literal>,
+	      or <literal>LHC &gt;=0.6 && &lt;0.8</literal>.
+            </para>
+	  </listitem>
+	</varlistentry>
       </variablelist>
 
       <note>
