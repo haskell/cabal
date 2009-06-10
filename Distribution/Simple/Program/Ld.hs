@@ -10,7 +10,6 @@
 
 module Distribution.Simple.Program.Ld (
     combineObjectFiles,
-    ,
   ) where
 
 import Distribution.Simple.Program.Types
