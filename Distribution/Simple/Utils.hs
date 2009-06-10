@@ -435,7 +435,7 @@ rawSystemStdin verbosity path args input = do
     exitcode <- system $ unwords (map quote (path:args)) ++ " <" ++ quote tmpName
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
-      exitWith exitCode
+      exitWith exitcode
     return ()
 #endif
 
