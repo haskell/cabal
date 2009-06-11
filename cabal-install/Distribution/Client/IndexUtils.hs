@@ -234,7 +234,8 @@ disambiguateDependencies index deps = do
              (_, Left name)) <- zip deps names ]
         ambigious -> die $ unlines
           [ if null matches
-              then "There is no package named " ++ display name
+              then "There is no package named " ++ display name ++ ". "
+                ++ "Perhaps you need to run 'cabal update' first?"
               else "The package name " ++ display name ++ "is ambigious. "
                 ++ "It could be: " ++ intercalate ", " (map display matches)
           | (name, matches) <- ambigious ]
