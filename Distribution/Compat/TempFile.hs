@@ -28,7 +28,11 @@ import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
                                o_BINARY, o_NONBLOCK, o_NOCTTY)
 import Foreign.C              (CInt)
+#if __GLASGOW_HASKELL__ >= 611
+import GHC.IO.Handle.FD       (fdToHandle)
+#else
 import GHC.Handle             (fdToHandle)
+#endif
 import Distribution.Compat.Exception (onException)
 #endif
 import Foreign.C              (withCString, getErrno, errnoToIOError)
