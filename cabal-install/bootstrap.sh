@@ -18,6 +18,29 @@ WGET=${WGET:-wget}
 CURL=${CURL:-curl}
 TAR=${TAR:-tar}
 GUNZIP=${GUNZIP:-gunzip}
+SCOPE_OF_INSTALLATION="--user"
+
+
+for arg in $*
+do
+  case "${arg}" in
+    "--user")
+      SCOPE_OF_INSTALLATION=${arg}
+      shift;;
+    "--global")
+      SCOPE_OF_INSTALLATION=${arg}
+      PREFIX="/usr/local"
+      shift;;
+    *)
+      echo "Unknown argument or option, quitting: ${arg}"
+      echo "usage: bootstrap.sh [OPTION]"
+      echo
+      echo "options:"
+      echo "   --user    Install for the local user (default)"
+      echo "   --global  Install systemwide"
+      exit;;
+  esac
+done
 
 
 # Versions of the packages to install.
@@ -138,7 +161,7 @@ install_pkg () {
     || die "Compiling the Setup script failed"
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
 
-  ./Setup configure --user "--prefix=${PREFIX}" \
+  ./Setup configure ${SCOPE_OF_INSTALLATION} "--prefix=${PREFIX}" \
     --with-compiler=${GHC} --with-hc-pkg=${GHC_PKG} \
     ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
     || die "Configuring the ${PKG} package failed"
