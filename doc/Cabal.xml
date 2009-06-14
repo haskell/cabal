@@ -416,7 +416,7 @@ Executable program2
                   <literal>JHC</literal>, or <literal>LHC</literal>)
               followed by a version range.  For example,
               <literal>GHC ==6.10.3</literal>,
-	      or <literal>LHC &gt;=0.6 && &lt;0.8</literal>.
+	      or <literal>LHC &gt;=0.6 &amp;&amp; &lt;0.8</literal>.
             </para>
 	  </listitem>
 	</varlistentry>
