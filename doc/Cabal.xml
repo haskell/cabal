@@ -1790,17 +1790,20 @@ source-repository this
         a slightly longer <filename>Setup.hs</filename>:</para>
       <programlisting>
 import Distribution.Simple
-main = defaultMainWithHooks defaultUserHooks</programlisting>
+main = defaultMainWithHooks autoconfUserHooks</programlisting>
+
+      <para>Most packages, however, would probably do better with
+        configurations (see <xref linkend="configurations"/>).</para>
 
       <para>This program differs from <literal>defaultMain</literal>
         in two ways:</para>
       <orderedlist>
         <listitem>
-          <para>If the package root directory contains a file called
-            <filename>configure</filename>, the configure step will
-            run that.  This <filename>configure</filename> program may
-            be a script produced by the &Autoconf;
-            system, or may be hand-written.  This program typically
+          <para>The package root directory must contain a shell script called
+	    <filename>configure</filename>. The configure step will run the
+	    script. This <filename>configure</filename> script may
+            be produced by &Autoconf; or may be hand-written. The
+	    <filename>configure</filename> script typically
             discovers information about the system and records it for
             later steps, e.g. by generating system-dependent header files
             for inclusion in C source files and preprocessed Haskell
