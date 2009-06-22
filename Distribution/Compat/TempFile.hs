@@ -27,6 +27,9 @@ import System.IO              (Handle, openTempFile, openBinaryTempFile)
 import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
                                o_BINARY, o_NONBLOCK, o_NOCTTY)
+#if __GLASGOW_HASKELL__ >= 611
+import System.Posix.Internals (withFilePath)
+#endif
 import Foreign.C              (CInt)
 #if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.Handle.FD       (fdToHandle)
@@ -116,8 +119,12 @@ openNewBinaryFile dir template = do
 
     oflags = rw_flags .|. o_EXCL .|. o_BINARY
 
+#if __GLASGOW_HASKELL__ < 611
+    withFilePath = withCString
+#endif
+
     findTempName x = do
-      fd <- withCString filepath $ \ f ->
+      fd <- withFilePath filepath $ \ f ->
               c_open f oflags 0o666
       if fd < 0
        then do
