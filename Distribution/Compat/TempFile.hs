@@ -14,7 +14,6 @@ module Distribution.Compat.TempFile (
 
 
 import System.FilePath        ((</>))
-import System.Posix.Internals (mkdir)
 import Foreign.C              (eEXIST)
 
 #if __NHC__ || __HUGS__
@@ -27,8 +26,11 @@ import System.IO              (Handle, openTempFile, openBinaryTempFile)
 import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
                                o_BINARY, o_NONBLOCK, o_NOCTTY)
+import System.IO.Error        (try, isAlreadyExistsError, ioError)
 #if __GLASGOW_HASKELL__ >= 611
 import System.Posix.Internals (withFilePath)
+#else
+import Foreign.C              (withCString)
 #endif
 import Foreign.C              (CInt)
 #if __GLASGOW_HASKELL__ >= 611
@@ -38,13 +40,19 @@ import GHC.Handle             (fdToHandle)
 #endif
 import Distribution.Compat.Exception (onException)
 #endif
-import Foreign.C              (withCString, getErrno, errnoToIOError)
+import Foreign.C              (getErrno, errnoToIOError)
 
 #if __NHC__
 import System.Posix.Types     (CPid(..))
 foreign import ccall unsafe "getpid" c_getpid :: IO CPid
 #else
 import System.Posix.Internals (c_getpid)
+#endif
+
+#ifdef mingw32_HOST_OS
+import System.Directory       ( createDirectory )
+#else
+import qualified System.Posix
 #endif
 
 -- ------------------------------------------------------------
@@ -181,11 +189,15 @@ createTempDirectory dir template = do
   where
     findTempName x = do
       let dirpath = dir </> template ++ show x
-      res <- withCString dirpath $ \s -> mkdir s 0o700
-      if res == 0
-        then return dirpath
-        else do
-          errno <- getErrno
-          if errno == eEXIST
-            then findTempName (x+1)
-            else ioError (errnoToIOError "createTempDirectory" errno Nothing (Just dir))
+      r <- try $ mkPrivateDir dirpath
+      case r of
+        Right _ -> return dirpath
+        Left  e | isAlreadyExistsError e -> findTempName (x+1)
+                | otherwise              -> ioError e
+
+mkPrivateDir :: String -> IO ()
+#ifdef mingw32_HOST_OS
+mkPrivateDir s = createDirectory s
+#else
+mkPrivateDir s = System.Posix.createDirectory s 0o700
+#endif

@@ -48,6 +48,9 @@ Library
                    array      >= 0.1 && < 0.3,
                    pretty     >= 1   && < 1.1
 
+  if !os(windows)
+    Build-Depends: unix       >= 2.2 && < 2.4
+
   ghc-options: -Wall
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
