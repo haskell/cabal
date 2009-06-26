@@ -198,28 +198,38 @@ configureToolchain :: ConfiguredProgram -> ProgramConfiguration
                                         -> ProgramConfiguration
 configureToolchain ghcProg =
     addKnownProgram gccProgram {
-      programFindLocation = findProg gccProgram (baseDir </> "gcc.exe"),
+      programFindLocation = findProg gccProgram
+                              [ baseDir </> "gcc.exe",
+                                mingwDir </> "bin" </> "gcc.exe" ],
       programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
-      programFindLocation = findProg ldProgram (libDir </> "ld.exe"),
+      programFindLocation = findProg ldProgram
+                              [ libDir </> "ld.exe",
+                                mingwDir </> "mingw32" </> "bin" </> "ld.exe" ],
       programPostConf     = configureLd
     }
   where
     compilerDir = takeDirectory (programPath ghcProg)
     baseDir     = takeDirectory compilerDir
+    mingwDir    = baseDir </> "mingw"
     libDir      = baseDir </> "gcc-lib"
     includeDir  = baseDir </> "include" </> "mingw"
     isWindows   = case buildOS of Windows -> True; _ -> False
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
-    findProg :: Program -> FilePath -> Verbosity -> IO (Maybe FilePath)
-    findProg prog location | isWindows = \verbosity -> do
-        exists <- doesFileExist location
-        if exists then return (Just location)
-                  else do warn verbosity ("Couldn't find " ++ programName prog ++ " where I expected it. Trying the search path.")
-                          programFindLocation prog verbosity
+    findProg :: Program -> [FilePath] -> Verbosity -> IO (Maybe FilePath)
+    findProg prog locations
+      | isWindows = \verbosity -> look locations verbosity
       | otherwise = programFindLocation prog
+      where
+        look [] verbosity = do
+          warn verbosity ("Couldn't find " ++ programName prog ++ " where I expected it. Trying the search path.")
+          programFindLocation prog verbosity
+        look (f:fs) verbosity = do
+          exists <- doesFileExist f
+          if exists then return (Just f)
+                    else look fs verbosity
 
     configureGcc :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
     configureGcc
