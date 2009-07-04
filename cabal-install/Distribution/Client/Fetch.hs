@@ -223,7 +223,6 @@ packageURI repo pkgid =
   (remoteRepoURI repo) {
     uriPath = FilePath.Posix.joinPath
       [uriPath (remoteRepoURI repo)
-      ,"packages"
-      ,display pkgid
-      ,"tarball"]
+      ,"package"
+      ,display pkgid <.> "tar.gz"]
   }
