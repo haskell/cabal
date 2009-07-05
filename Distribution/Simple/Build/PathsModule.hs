@@ -128,7 +128,7 @@ generate pkg_descr lbi =
           libdir     = flat_libdir,
           datadir    = flat_datadir,
           libexecdir = flat_libexecdir
-        } = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
+        } = absoluteInstallDirs pkg_descr lbi NoCopyDest
         InstallDirs {
           bindir     = flat_bindirrel,
           libdir     = flat_libdirrel,

@@ -162,11 +162,11 @@ isInternalPackage pkg_descr pkgid = packageId pkg_descr == pkgid
 -- Wrappers for a couple functions from InstallDirs
 
 -- |See 'InstallDirs.absoluteInstallDirs'
-absoluteInstallDirs :: PackageId -> LocalBuildInfo -> CopyDest
+absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
                     -> InstallDirs FilePath
-absoluteInstallDirs pkgid lbi copydest =
+absoluteInstallDirs pkg lbi copydest =
   InstallDirs.absoluteInstallDirs
-    pkgid
+    (packageId pkg)
     (compilerId (compiler lbi))
     copydest
     (installDirTemplates lbi)

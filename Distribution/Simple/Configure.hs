@@ -476,7 +476,7 @@ configure (pkg_descr0, pbi) cfg
                     progSuffix          = fromFlag $ configProgSuffix cfg
                   }
 
-        let dirs = absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest
+        let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
             relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi
 
         unless (isAbsolute (prefix dirs)) $ die $
