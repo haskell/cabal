@@ -225,7 +225,7 @@ registerPackageHugs verbosity pkg lib lbi clbi distPref inplace _packageDb = do
   when inplace $ die "--inplace is not supported with Hugs"
   installedPkgInfo <- generateRegistrationInfo
                         pkg lib lbi clbi inplace distPref
-  let installDirs = absoluteInstallDirs (packageId pkg) lbi NoCopyDest
+  let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
   createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
   writeFileAtomic (libdir installDirs </> "package.conf")
                   (showInstalledPackageInfo installedPkgInfo ++ "\n")
@@ -333,7 +333,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg lib lbi clbi =
   where
     adjustReativeIncludeDirs = map (inplaceDir </>)
     installDirs =
-      (absoluteInstallDirs (packageId pkg) lbi NoCopyDest) {
+      (absoluteInstallDirs pkg lbi NoCopyDest) {
         libdir     = inplaceDir </> buildDir lbi,
         datadir    = inplaceDir,
         datasubdir = distPref,
@@ -364,7 +364,7 @@ absoluteInstalledPackageInfo pkg lib lbi clbi =
       | null (installIncludes bi) = []
       | otherwise                 = [includedir installDirs]
     bi = libBuildInfo lib
-    installDirs = absoluteInstallDirs (packageId pkg) lbi NoCopyDest
+    installDirs = absoluteInstallDirs pkg lbi NoCopyDest
 
 
 -- -----------------------------------------------------------------------------
@@ -377,7 +377,7 @@ unregister pkg lbi regFlags = do
       verbosity = fromFlag (regVerbosity regFlags)
       packageDb = fromFlagOrDefault (registrationPackageDB (withPackageDB lbi))
                                     (regPackageDB regFlags)
-      installDirs = absoluteInstallDirs pkgid lbi NoCopyDest
+      installDirs = absoluteInstallDirs pkg lbi NoCopyDest
   setupMessage verbosity "Unregistering" pkgid
   case compilerFlavor (compiler lbi) of
     GHC ->
