@@ -448,20 +448,16 @@ platformTemplateEnv (Platform os arch) =
   ,(ArchVar,     PathTemplate [Ordinary $ display arch])
   ]
 
-installDirsTemplateEnv :: InstallDirs FilePath -> PathTemplateEnv
+installDirsTemplateEnv :: InstallDirs PathTemplate -> PathTemplateEnv
 installDirsTemplateEnv dirs =
-  [(PrefixVar,     toPathTemplate $ prefix     dirs)
-  ,(BindirVar,     toPathTemplate $ bindir     dirs)
-  ,(LibdirVar,     toPathTemplate $ libdir     dirs)
-   -- This isn't defined in an InstallDirs FilePath
-   -- as its value has already been appended to libdir:
-   -- (LibsubdirVar,  toPathTemplate $ libsubdir  dirs)
-  ,(DatadirVar,    toPathTemplate $ datadir    dirs)
-   -- This isn't defined in an InstallDirs FilePath
-   -- as its value has already been appended to datadir:
-   -- (DatasubdirVar, toPathTemplate $ datasubdir dirs)
-  ,(DocdirVar,     toPathTemplate $ docdir     dirs)
-  ,(HtmldirVar,    toPathTemplate $ htmldir    dirs)
+  [(PrefixVar,     prefix     dirs)
+  ,(BindirVar,     bindir     dirs)
+  ,(LibdirVar,     libdir     dirs)
+  ,(LibsubdirVar,  libsubdir  dirs)
+  ,(DatadirVar,    datadir    dirs)
+  ,(DatasubdirVar, datasubdir dirs)
+  ,(DocdirVar,     docdir     dirs)
+  ,(HtmldirVar,    htmldir    dirs)
   ]
 
 
