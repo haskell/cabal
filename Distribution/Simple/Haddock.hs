@@ -357,7 +357,7 @@ renderArgs verbosity version args k = do
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h 
              let pflag = (:[]).("--prologue="++) $ prologFileName
-             k $ (pflag ++ renderPureArgs isVersion2 args, result)
+             k $ (pflag ++ renderPureArgs version args, result)
     where 
       isVersion2 = version >= Version [2,0] []
       outputDir = (unDir $ argOutputDir args)
@@ -368,8 +368,8 @@ renderArgs verbosity version args k = do
                      where pkgid = arg argPackageName
       arg f = fromFlag $ f args
       
-renderPureArgs :: Bool -> HaddockArgs -> [[Char]]
-renderPureArgs isVersion2 args = concat 
+renderPureArgs :: Version -> HaddockArgs -> [[Char]]
+renderPureArgs version args = concat 
     [ 
      (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
      . fromFlag . argInterfaceFile $ args,     
@@ -381,7 +381,7 @@ renderPureArgs isVersion2 args = concat
      maybe [] (\(m,e) -> ["--source-module=" ++ m
                          ,"--source-entity=" ++ e]) . flagToMaybe . argLinkSource $ args,
      maybe [] ((:[]).("--css="++)) . flagToMaybe . argCssFile $ args,
-     bool [] ["--verbose"] . getAny . argVerbose $ args,
+     bool [] [verbosityFlag] . getAny . argVerbose $ args,
      (\o -> case o of Hoogle -> ["--hoogle"]; Html -> ["--html"]) . fromFlag . argOutput $ args,
      renderInterfaces . argInterfaces $ args,
      (:[]).("--odir="++) . unDir . argOutputDir $ args,
@@ -394,6 +394,11 @@ renderPureArgs isVersion2 args = concat
     where 
       renderInterfaces = map (\(i,mh) -> "--read-interface=" ++ maybe "" (++",") mh ++ i)    
       bool a b c = if c then a else b
+      isVersion2 = version >= Version [2,0] []
+      isVersion2_5 = version >= Version [2,5] []
+      verbosityFlag
+       | isVersion2_5 = "--verbosity=1"
+       | otherwise = "--verbose"
 
 -----------------------------------------------------------------------------------------------------------
 
