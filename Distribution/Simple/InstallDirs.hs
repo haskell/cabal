@@ -56,6 +56,7 @@ module Distribution.Simple.InstallDirs (
         absoluteInstallDirs,
         CopyDest(..),
         prefixRelativeInstallDirs,
+        substituteInstallDirTemplates,
 
         PathTemplate,
         PathTemplateVariable(..),
@@ -270,9 +271,9 @@ defaultInstallDirs comp userInstall hasLibs = do
 -- 'PathTemplate's that still have the 'PrefixVar' in them. Doing this makes it
 -- each to check which paths are relative to the $prefix.
 --
-substituteTemplates :: PathTemplateEnv
-                    -> InstallDirTemplates -> InstallDirTemplates
-substituteTemplates env dirs = dirs'
+substituteInstallDirTemplates :: PathTemplateEnv
+                              -> InstallDirTemplates -> InstallDirTemplates
+substituteInstallDirTemplates env dirs = dirs'
   where
     dirs' = InstallDirs {
       -- So this specifies exactly which vars are allowed in each template
@@ -317,7 +318,7 @@ absoluteInstallDirs pkgId compilerId copydest dirs =
        _              -> id)
   . appendSubdirs (</>)
   . fmap fromPathTemplate
-  $ substituteTemplates env dirs {
+  $ substituteInstallDirTemplates env dirs {
       prefix = case copydest of
         -- possibly override the prefix
         CopyPrefix p -> toPathTemplate p
@@ -349,7 +350,7 @@ prefixRelativeInstallDirs pkgId compilerId dirs =
   $ -- substitute the path template into each other, except that we map
     -- \$prefix back to $prefix. We're trying to end up with templates that
     -- mention no vars except $prefix.
-    substituteTemplates env dirs {
+    substituteInstallDirTemplates env dirs {
       prefix = PathTemplate [Variable PrefixVar]
     }
   where
