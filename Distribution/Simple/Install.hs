@@ -96,7 +96,7 @@ install pkg_descr lbi flags = do
          htmldir    = htmlPref,
          haddockdir = interfacePref,
          includedir = incPref})
-             = absoluteInstallDirs (packageId pkg_descr) lbi copydest
+             = absoluteInstallDirs pkg_descr lbi copydest
 
       --TODO: decide if we need the user to be able to control the libdir
       -- for shared libs independently of the one for static libs. If so
@@ -159,7 +159,7 @@ install pkg_descr lbi flags = do
      JHC  -> do withLib pkg_descr $ JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      Hugs -> do
-       let targetProgPref = progdir (absoluteInstallDirs (packageId pkg_descr) lbi NoCopyDest)
+       let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
        let scratchPref = scratchDir lbi
        Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref (progPrefixPref, progSuffixPref) pkg_descr
      NHC  -> do withLib pkg_descr $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)
