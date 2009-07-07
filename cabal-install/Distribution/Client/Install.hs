@@ -309,7 +309,7 @@ regenerateHaddockIndex :: Verbosity
                        -> IO ()
 regenerateHaddockIndex verbosity packageDBs comp conf
                        configFlags installFlags installPlan
-  | haddockIndexFileIsSpecified && shouldRegenerateHaddockIndex = do
+  | haddockIndexFileIsRequested && shouldRegenerateHaddockIndex = do
 
   defaultDirs <- InstallDirs.defaultInstallDirs
                    (compilerFlavor comp)
@@ -329,8 +329,9 @@ regenerateHaddockIndex verbosity packageDBs comp conf
 
   | otherwise = return ()
   where
-    haddockIndexFileIsSpecified =
-      isJust (flagToMaybe (installHaddockIndex installFlags))
+    haddockIndexFileIsRequested =
+         fromFlag (installDocumentation installFlags)
+      && isJust (flagToMaybe (installHaddockIndex installFlags))
 
     -- We want to regenerate the index if some new documentation was actually
     -- installed. Since the index is per-user, we don't do it for global
