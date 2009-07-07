@@ -82,7 +82,7 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..), InstallDirs(..) )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
@@ -114,7 +114,6 @@ import Distribution.Text
 import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad            ( unless, when )
-import Data.Char
 import Data.List
 import Data.Maybe               ( catMaybes )
 import System.Directory
