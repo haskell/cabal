@@ -462,7 +462,7 @@ data InstallFlags = InstallFlags {
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
     installDocumentation= Flag False,
-    installHaddockIndex = Flag . toPathTemplate $ "$datadir" </> "doc" </> "index.html",
+    installHaddockIndex = Flag docIndexFile,
     installDryRun       = Flag False,
     installReinstall    = Flag False,
     installOnly         = Flag False,
@@ -472,6 +472,8 @@ defaultInstallFlags = InstallFlags {
     installBuildReports = Flag NoReports,
     installSymlinkBinDir= mempty
   }
+  where
+    docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
 
 installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
 installCommand = CommandUI {
@@ -510,11 +512,12 @@ installOptions showOrParseArgs =
           installDocumentation (\v flags -> flags { installDocumentation = v })
           (boolOpt [] [])
 
-      , option [] ["haddock-index"]
-          "Haddock html index file (name template shouldn't use $pkgid)"
+      , option [] ["doc-index-file"]
+          "A central index of haddock API documentation (template cannot use $pkgid)"
           installHaddockIndex (\v flags -> flags { installHaddockIndex = v })
           (reqArg' "TEMPLATE" (toFlag.toPathTemplate)
                               (flagToList . fmap fromPathTemplate))
+
       , option [] ["dry-run"]
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
