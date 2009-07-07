@@ -60,7 +60,7 @@ module Distribution.Simple.BuildPaths (
   ) where
 
 
-import System.FilePath (FilePath, (</>), (<.>))
+import System.FilePath ((</>), (<.>))
 
 import Distribution.Package
          ( PackageIdentifier, packageName )
