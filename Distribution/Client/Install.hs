@@ -245,7 +245,7 @@ installWithPlanner planner verbosity packageDBs repos comp conf
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
-    reportingLevel = fromFlagOrDefault NoReports (installBuildReports installFlags)
+    reportingLevel = fromFlag (installBuildReports installFlags)
     useLogFile :: FilePath -> Maybe (PackageIdentifier -> FilePath)
     useLogFile logsDir = fmap substLogFileName logFileTemplate
       where
@@ -259,7 +259,7 @@ installWithPlanner planner verbosity packageDBs repos comp conf
                                   . substPathTemplate env
                                   $ template
       where env = initialPathTemplateEnv (packageId pkg) (compilerId comp)
-    dryRun       = fromFlagOrDefault False (installDryRun installFlags)
+    dryRun       = fromFlag (installDryRun installFlags)
     miscOptions  = InstallMisc {
       rootCmd    = if fromFlag (configUserInstall configFlags)
                      then Nothing      -- ignore --root-cmd if --user.
@@ -401,7 +401,7 @@ planRepoPackages defaultPref comp configFlags configExFlags installFlags
 
   deps' <- IndexUtils.disambiguateDependencies available deps
   let installed'
-        | fromFlagOrDefault False (installReinstall installFlags)
+        | fromFlag (installReinstall installFlags)
                     = fmap (hideGivenDeps deps') installed
         | otherwise = installed
       targets     = dependencyTargets deps'
@@ -670,8 +670,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions
       buildDistPref  = configDistPref configFlags,
       buildVerbosity = toFlag verbosity'
     }
-    shouldHaddock    = fromFlagOrDefault False
-                         (installDocumentation installConfigFlags)
+    shouldHaddock    = fromFlag (installDocumentation installConfigFlags)
     haddockFlags _   = emptyHaddockFlags {
       haddockDistPref  = configDistPref configFlags,
       haddockVerbosity = toFlag verbosity'
