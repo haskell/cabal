@@ -47,7 +47,6 @@ module Distribution.ReadE (
    readP_to_E
   ) where
 
-import Data.Either (either)
 import Distribution.Compat.ReadP
 import Data.Char ( isSpace )
 

@@ -26,7 +26,7 @@ import System.IO              (Handle, openTempFile, openBinaryTempFile)
 import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
                                o_BINARY, o_NONBLOCK, o_NOCTTY)
-import System.IO.Error        (try, isAlreadyExistsError, ioError)
+import System.IO.Error        (try, isAlreadyExistsError)
 #if __GLASGOW_HASKELL__ >= 611
 import System.Posix.Internals (withFilePath)
 #else
