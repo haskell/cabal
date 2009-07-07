@@ -30,8 +30,9 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Text (display)
 import Distribution.Simple.PackageIndex(PackageIndex, allPackages,
                                         allPackagesByName, fromList)
-import Distribution.Simple.Utils (comparing, installDirectoryContents
-                                 , intercalate, warn, withTempDirectory)
+import Distribution.Simple.Utils
+         ( comparing, intercalate, debug
+         , installDirectoryContents, withTempDirectory )
 import Distribution.InstalledPackageInfo as InstalledPackageInfo 
     (InstalledPackageInfo,InstalledPackageInfo_(haddockHTMLs, haddockInterfaces, exposed, package))
 
@@ -40,7 +41,7 @@ regenerateHaddockIndex verbosity pkgs conf index = do
       (paths,warns) <- haddockPackagePaths pkgs'
       case warns of
         Nothing -> return ()
-        Just m  -> warn verbosity m
+        Just m  -> debug verbosity m
       
       (confHaddock, _, _) <-
           requireProgramVersion verbosity haddockProgram
