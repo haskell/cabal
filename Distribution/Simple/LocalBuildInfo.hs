@@ -62,7 +62,6 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                prefixRelativeInstallDirs,
                                                substPathTemplate, )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Simple.Setup (CopyDest(..))
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library, withExe
