@@ -72,7 +72,7 @@ import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
-         ( CompilerId(..), Compiler(compilerId)
+         ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import Distribution.Simple.Configure (getInstalledPackages)
@@ -87,9 +87,9 @@ import qualified Distribution.Simple.Setup as Cabal
          ( installCommand, InstallFlags(..), emptyInstallFlags )
 import Distribution.Simple.Utils
          ( defaultPackageDesc, rawSystemExit, comparing )
-import Distribution.Simple.InstallDirs
-         ( PathTemplate, fromPathTemplate, toPathTemplate
-         , initialPathTemplateEnv, substPathTemplate, systemPathTemplateEnv )
+import Distribution.Simple.InstallDirs as InstallDirs
+         ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
+         , initialPathTemplateEnv, compilerTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
          ( PackageName, PackageIdentifier, packageName, packageVersion
          , Package(..), PackageFixedDeps(..)
@@ -220,45 +220,12 @@ installWithPlanner planner verbosity packageDBs repos comp conf
           BuildReports.storeAnonymous buildReports
         when (reportingLevel == DetailedReports) $
           storeDetailedBuildReports verbosity logsDir buildReports
-
-        regenerateHaddockIndex installPlan'
-
+        regenerateHaddockIndex verbosity packageDBs comp conf
+                               configFlags installFlags installPlan'
         symlinkBinaries verbosity configFlags installFlags installPlan'
         printBuildFailures installPlan'
 
   where
-    regenerateHaddockIndex installPlan' = do
-      let regenIndex = and [not . null . filter installedDocs . InstallPlan.toList $ installPlan'
-                             ,UserPackageDB `elem` packageDBs
-                             ,null [() | SpecificPackageDB _ <- packageDBs]
-                           ]
-      when (regenIndex && isJust (flagToMaybe haddockIndex)) $ do
-            installed <- getInstalledPackages verbosity comp packageDBs conf
-            case installed of
-              Nothing -> return () -- warning ?
-              Just index -> do 
-                defaultDirs <- InstallDirs.defaultInstallDirs
-                               ((\(CompilerId x _) -> x) $ compilerId comp)
-                               (fromFlag (configUserInstall configFlags))
-                               True
-                Haddock.regenerateHaddockIndex verbosity index conf 
-                            (substHaddockIndexFileName defaultDirs . fromFlag $ haddockIndex)
-       where
-         installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _)) = True
-         installedDocs _                                            = False
-         haddockIndex = installHaddockIndex installFlags
-         substHaddockIndexFileName defaultDirs template = fromPathTemplate
-                                                        . substPathTemplate env
-                                                        $ template
-    
-           where env = systemPathTemplateEnv (compilerId comp) absoluteDirs
-                 templateDirs   = InstallDirs.combineInstallDirs fromFlagOrDefault
-                                  defaultDirs (configInstallDirs configFlags)
-                 absoluteDirs   = InstallDirs.absoluteInstallDirs' 
-                                  (InstallDirs.compilerToTemplateEnv (compilerId comp) 
-                                   ++ InstallDirs.platformToTemplateEnv (buildPlatform))
-                                  templateDirs
-
     setupScriptOptions index = SetupScriptOptions {
       useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
@@ -331,6 +298,66 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
     missingFile (IOException ioe)
       | isDoesNotExistError ioe  = Just ioe
     missingFile _                = Nothing
+
+regenerateHaddockIndex :: Verbosity
+                       -> [PackageDB]
+                       -> Compiler
+                       -> ProgramConfiguration
+                       -> ConfigFlags
+                       -> InstallFlags
+                       -> InstallPlan
+                       -> IO ()
+regenerateHaddockIndex verbosity packageDBs comp conf
+                       configFlags installFlags installPlan
+  | haddockIndexFileIsSpecified && shouldRegenerateHaddockIndex = do
+
+  defaultDirs <- InstallDirs.defaultInstallDirs
+                   (compilerFlavor comp)
+                   (fromFlag (configUserInstall configFlags))
+                   True
+  let indexFileTemplate = fromFlag (installHaddockIndex installFlags)
+      indexFile = substHaddockIndexFileName defaultDirs indexFileTemplate
+
+  notice verbosity $
+     "Updating documentation index " ++ indexFile
+
+  --TODO: might be nice if the install plan gave us the new InstalledPackageInfo
+  installed <- getInstalledPackages verbosity comp packageDBs conf
+  case installed of
+    Nothing    -> return () -- warning ?
+    Just index -> Haddock.regenerateHaddockIndex verbosity index conf indexFile
+
+  | otherwise = return ()
+  where
+    haddockIndexFileIsSpecified =
+      isJust (flagToMaybe (installHaddockIndex installFlags))
+
+    -- We want to regenerate the index if some new documentation was actually
+    -- installed. Since the index is per-user, we don't do it for global
+    -- installs or special cases where we're installing into a specific db.
+    shouldRegenerateHaddockIndex = normalUserInstall
+                                && someDocsWereInstalled installPlan
+      where
+        someDocsWereInstalled = any installedDocs . InstallPlan.toList
+        normalUserInstall     = (UserPackageDB `elem` packageDBs)
+                             && all (not . isSpecificPackageDB) packageDBs
+
+        installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _)) = True
+        installedDocs _                                            = False
+        isSpecificPackageDB (SpecificPackageDB _) = True
+        isSpecificPackageDB _                     = False
+
+    substHaddockIndexFileName defaultDirs = fromPathTemplate
+                                          . substPathTemplate env
+      where
+        env  = env0 ++ installDirsTemplateEnv absoluteDirs
+        env0 = InstallDirs.compilerTemplateEnv (compilerId comp)
+            ++ InstallDirs.platformTemplateEnv (buildPlatform)
+        absoluteDirs = InstallDirs.substituteInstallDirTemplates
+                         env0 templateDirs
+        templateDirs = InstallDirs.combineInstallDirs fromFlagOrDefault
+                         defaultDirs (configInstallDirs configFlags)
+
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
