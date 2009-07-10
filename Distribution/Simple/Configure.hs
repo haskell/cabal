@@ -94,7 +94,8 @@ import Distribution.Simple.Program
     , configureAllKnownPrograms, knownPrograms, lookupKnownProgram
     , userSpecifyArgss, userSpecifyPaths
     , lookupProgram, requireProgram, requireProgramVersion
-    , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
+    , pkgConfigProgram, gccProgram
+    , rawSystemProgramConf, rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.InstallDirs
@@ -832,7 +833,7 @@ checkForeignDeps pkg lbi verbosity = do
                 hPutStrLn cHnd program
                 hClose cHnd
                 hClose oHnd
-                rawSystemProgramStdoutConf verbosity
+                rawSystemProgramConf verbosity
                   gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
                 return True
            `catchIO`   (\_ -> return False)
