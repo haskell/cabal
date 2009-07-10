@@ -92,7 +92,7 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
          , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
-         , rawSystemProgramStdout, rawSystemProgramStdoutConf
+         , rawSystemProgramStdoutConf
          , requireProgramVersion, requireProgram
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
@@ -254,7 +254,7 @@ configureToolchain ghcProg =
                withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
                    hClose testohnd'
-                   rawSystemProgramStdout verbosity ldProg
+                   rawSystemProgram verbosity ldProg
                      ["-x", "-r", testofile, "-o", testofile']
                    return True
                  `catchIO`   (\_ -> return False)
