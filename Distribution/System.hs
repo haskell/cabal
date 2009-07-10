@@ -155,7 +155,7 @@ instance Text Platform where
   disp (Platform arch os) = disp arch <> Disp.char '-' <> disp os
   parse = do
     arch <- parse
-    Parse.char '-'
+    _ <- Parse.char '-'
     os   <- parse
     return (Platform arch os)
 

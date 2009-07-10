@@ -370,11 +370,11 @@ rawSystemStdout' verbosity path args = do
       -- bracket can exit before this thread has run, and hGetContents
       -- will fail.
       err <- hGetContents errh
-      forkIO $ do evaluate (length err); return ()
+      _ <- forkIO $ do _ <- evaluate (length err); return ()
 
       -- wait for all the output
       output <- hGetContents outh
-      evaluate (length output)
+      _ <- evaluate (length output)
 
       -- wait for the program to terminate
       exitcode <- waitForProcess pid
@@ -416,8 +416,8 @@ rawSystemStdin verbosity path args input = do
       -- will fail.
       err <- hGetContents errh
       out <- hGetContents outh
-      forkIO $ do evaluate (length err); return ()
-      forkIO $ do evaluate (length out); return ()
+      _ <- forkIO $ do _ <- evaluate (length err); return ()
+      _ <- forkIO $ do _ <- evaluate (length out); return ()
 
       -- push all the input
       hPutStr inh input
@@ -854,7 +854,7 @@ rewriteFile :: FilePath -> String -> IO ()
 rewriteFile path newContent =
   flip catch mightNotExist $ do
     existingContent <- readFile path
-    evaluate (length existingContent)
+    _ <- evaluate (length existingContent)
     unless (existingContent == newContent) $
       writeFileAtomic path newContent
   where
