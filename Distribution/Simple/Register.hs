@@ -389,10 +389,10 @@ unregister pkg lbi regFlags = do
                   (invocationAsSystemScript buildOS invocation)
             else runProgramInvocation verbosity invocation
     Hugs -> do
-        try $ removeDirectoryRecursive (libdir installDirs)
+        _ <- try $ removeDirectoryRecursive (libdir installDirs)
         return ()
     NHC -> do
-        try $ removeDirectoryRecursive (libdir installDirs)
+        _ <- try $ removeDirectoryRecursive (libdir installDirs)
         return ()
     _ ->
         die ("only unregistering with GHC and Hugs is implemented")

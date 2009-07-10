@@ -630,13 +630,13 @@ instance Text VersionRange where
     f1 <- factor
     Parse.skipSpaces
     (do
-       Parse.string "||"
+       _ <- Parse.string "||"
        Parse.skipSpaces
        f2 <- factor
        return (UnionVersionRanges f1 f2)
      +++
      do
-       Parse.string "&&"
+       _ <- Parse.string "&&"
        Parse.skipSpaces
        f2 <- factor
        return (IntersectVersionRanges f1 f2)
@@ -649,11 +649,11 @@ instance Text VersionRange where
         parseAnyVersion    = Parse.string "-any" >> return AnyVersion
 
         parseWildcardRange = do
-          Parse.string "=="
+          _ <- Parse.string "=="
           Parse.skipSpaces
           branch <- Parse.sepBy1 digits (Parse.char '.')
-          Parse.char '.'
-          Parse.char '*'
+          _ <- Parse.char '.'
+          _ <- Parse.char '*'
           return (WildcardVersion (Version branch []))
 
         digits = do

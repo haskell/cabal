@@ -668,7 +668,7 @@ parsePackageDescription file = do
             skipField
             getBody
       Just f -> do
-            lift $ syntaxError (lineNo f) $
+            _ <- lift $ syntaxError (lineNo f) $
               "Construct not supported at this position: " ++ show f
             skipField
             getBody
