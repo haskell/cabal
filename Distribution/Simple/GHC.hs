@@ -675,7 +675,11 @@ getHaskellObjects :: Library -> LocalBuildInfo
                   -> FilePath -> String -> Bool -> IO [FilePath]
 getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
-        let dirs = [ pref </> (ModuleName.toFilePath x ++ "_split")
+        let splitSuffix = if compilerVersion (compiler lbi) <
+                             Version [6, 11] []
+                          then "_split"
+                          else "_" ++ wanted_obj_ext ++ "_split"
+            dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
                    | x <- libModules lib ]
         objss <- mapM getDirectoryContents dirs
         let objs = [ dir </> obj
