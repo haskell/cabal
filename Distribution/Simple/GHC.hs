@@ -715,6 +715,8 @@ ghcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
            -> FilePath -> [String]
 ghcOptions lbi bi clbi odir
      =  ["-hide-all-packages"]
+     ++ (if compilerVersion c >= Version [6,11] []
+           then ["-fbuilding-cabal-package"] else [])
      ++ ghcPackageDbOptions (withPackageDB lbi)
      ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
