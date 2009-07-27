@@ -254,7 +254,7 @@ configureToolchain ghcProg =
                withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
                    hClose testohnd'
-                   rawSystemProgramStdout verbosity ldProg
+                   _ <- rawSystemProgramStdout verbosity ldProg
                      ["-x", "-r", testofile, "-o", testofile']
                    return True
                  `catchIO`   (\_ -> return False)

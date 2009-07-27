@@ -832,7 +832,7 @@ checkForeignDeps pkg lbi verbosity = do
                 hPutStrLn cHnd program
                 hClose cHnd
                 hClose oHnd
-                rawSystemProgramStdoutConf verbosity
+                _ <- rawSystemProgramStdoutConf verbosity
                   gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
                 return True
            `catchIO`   (\_ -> return False)
