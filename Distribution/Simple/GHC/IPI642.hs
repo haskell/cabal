@@ -53,7 +53,7 @@ import qualified Distribution.License as Current
 
 import Distribution.Version (Version)
 import Distribution.ModuleName (ModuleName)
-import Distribution.Text (simpleParse)
+import Distribution.Text (simpleParse,display)
 
 import Data.Maybe
 
@@ -113,6 +113,9 @@ convertPackageId :: PackageIdentifier -> Current.PackageIdentifier
 convertPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
   Current.PackageIdentifier (Current.PackageName n) v
 
+mkInstalledPackageId :: Current.PackageIdentifier -> Current.InstalledPackageId
+mkInstalledPackageId = Current.InstalledPackageId . display
+
 convertModuleName :: String -> ModuleName
 convertModuleName s = fromJust $ simpleParse s
 
@@ -127,6 +130,7 @@ convertLicense OtherLicense = Current.OtherLicense
 
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
+    Current.installedPackageId = mkInstalledPackageId (convertPackageId (package ipi)),
     Current.package            = convertPackageId (package ipi),
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
@@ -147,7 +151,7 @@ toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
     Current.extraGHCiLibraries = extraGHCiLibraries ipi,
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map convertPackageId (depends ipi),
+    Current.depends            = map (mkInstalledPackageId.convertPackageId) (depends ipi),
     Current.hugsOptions        = hugsOptions ipi,
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,

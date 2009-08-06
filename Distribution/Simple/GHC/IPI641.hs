@@ -43,6 +43,8 @@ module Distribution.Simple.GHC.IPI641 (
   ) where
 
 import qualified Distribution.InstalledPackageInfo as Current
+import qualified Distribution.Package as Current hiding (depends)
+import Distribution.Text (display)
 
 import Distribution.Simple.GHC.IPI642
          ( PackageIdentifier, convertPackageId
@@ -88,8 +90,12 @@ data InstalledPackageInfo = InstalledPackageInfo {
   }
   deriving Read
 
+mkInstalledPackageId :: Current.PackageIdentifier -> Current.InstalledPackageId
+mkInstalledPackageId = Current.InstalledPackageId . display
+
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
+    Current.installedPackageId = mkInstalledPackageId (convertPackageId (package ipi)),
     Current.package            = convertPackageId (package ipi),
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
@@ -110,7 +116,7 @@ toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
     Current.extraGHCiLibraries = [],
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map convertPackageId (depends ipi),
+    Current.depends            = map (mkInstalledPackageId.convertPackageId) (depends ipi),
     Current.hugsOptions        = hugsOptions ipi,
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
