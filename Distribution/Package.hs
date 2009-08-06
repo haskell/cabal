@@ -47,7 +47,10 @@ module Distribution.Package (
         PackageIdentifier(..),
         PackageId,
 
-        -- * Package dependencies
+        -- * Installed package identifiers
+        InstalledPackageId(..),
+
+        -- * Package source dependencies
         Dependency(..),
         thisPackageVersion,
         notThisPackageVersion,
@@ -66,7 +69,7 @@ import Distribution.Text (Text(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((<++))
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<>), (<+>))
+import Text.PrettyPrint ((<>), (<+>), text)
 import qualified Data.Char as Char ( isDigit, isAlphaNum )
 import Data.List ( intersperse )
 
@@ -107,9 +110,27 @@ instance Text PackageIdentifier where
     return (PackageIdentifier n v)
 
 -- ------------------------------------------------------------
--- * Package dependencies
+-- * Installed Package Ids
 -- ------------------------------------------------------------
 
+-- | An InstalledPackageId uniquely identifies a package instance.
+-- There can be at most one package with a given 'InstalledPackageId'
+-- in a package database, or overlay of databases.
+--
+newtype InstalledPackageId = InstalledPackageId String
+ deriving (Read,Show,Eq,Ord)
+
+instance Text InstalledPackageId where
+  disp (InstalledPackageId str) = text str
+
+  parse = InstalledPackageId `fmap` Parse.munch1 abi_char
+   where abi_char c = Char.isAlphaNum c || c `elem` ":-_."
+
+-- ------------------------------------------------------------
+-- * Package source dependencies
+-- ------------------------------------------------------------
+
+-- | describes a source (API) dependency
 data Dependency = Dependency PackageName VersionRange
                   deriving (Read, Show, Eq)
 
