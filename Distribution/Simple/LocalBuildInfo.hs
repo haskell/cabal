@@ -50,6 +50,8 @@ module Distribution.Simple.LocalBuildInfo (
         withLibLBI,
         withExeLBI,
         ComponentLocalBuildInfo(..),
+        componentPackageDeps,
+        getLocalPackageInfo,
         isInternalPackage,
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
@@ -66,11 +68,14 @@ import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library, withExe
          , Executable(exeName) )
-import Distribution.Package (PackageId, Package(..))
+import Distribution.Package
+         ( PackageId, Package(..), InstalledPackageId(..) )
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
-import Distribution.Simple.PackageIndex (PackageIndex)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.Simple.PackageIndex
+         ( InstalledPackageIndex, lookupInstalledPackage )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import Distribution.Simple.Utils
          ( die )
 
@@ -90,7 +95,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ Where to put the result of the Hugs build.
         libraryConfig       :: Maybe ComponentLocalBuildInfo,
         executableConfigs   :: [(String, ComponentLocalBuildInfo)],
-        installedPkgs :: PackageIndex InstalledPackageInfo,
+        installedPkgs :: InstalledPackageIndex,
                 -- ^ All the info about all installed packages.
         pkgDescrFile  :: Maybe FilePath,
                 -- ^ the filename containing the .cabal file, if available
@@ -116,17 +121,28 @@ data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
     -- specifies a set of build dependencies that must be satisfied in terms of
     -- version ranges. This field fixes those dependencies to the specific
     -- versions available on this machine for this compiler.
-    componentPackageDeps :: [PackageId]
+    componentInstalledPackageDeps :: [InstalledPackageId]
   }
   deriving (Read, Show)
 
+componentPackageDeps :: LocalBuildInfo -> ComponentLocalBuildInfo -> [PackageId]
+componentPackageDeps lbi =
+  map (packageId.getLocalPackageInfo lbi) . componentInstalledPackageDeps
+
+getLocalPackageInfo :: LocalBuildInfo -> InstalledPackageId
+                    -> InstalledPackageInfo
+getLocalPackageInfo lbi ipid@(InstalledPackageId s)  =
+  case lookupInstalledPackage (installedPkgs lbi) ipid of
+    Nothing  -> error ("getLocalPackageInfo: unknown InstalledPackageId: " ++ s)
+    Just ipi -> ipi
+
 -- | External package dependencies for the package as a whole, the union of the
 -- individual 'targetPackageDeps'.
-externalPackageDeps :: LocalBuildInfo -> [PackageId]
+externalPackageDeps :: LocalBuildInfo -> [InstalledPackageId]
 externalPackageDeps lbi = nub $
   -- TODO:  what about non-buildable components?
-     maybe [] componentPackageDeps (libraryConfig lbi)
-  ++ concatMap (componentPackageDeps . snd) (executableConfigs lbi)
+     maybe [] componentInstalledPackageDeps (libraryConfig lbi)
+  ++ concatMap (componentInstalledPackageDeps . snd) (executableConfigs lbi)
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.  Extended version of
