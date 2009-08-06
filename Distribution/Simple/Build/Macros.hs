@@ -21,13 +21,13 @@ module Distribution.Simple.Build.Macros (
   ) where
 
 import Distribution.Package
-         ( PackageIdentifier(PackageIdentifier) )
+         ( PackageIdentifier(PackageIdentifier), packageId )
 import Distribution.Version
          ( Version(versionBranch) )
 import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.Simple.LocalBuildInfo
-        ( LocalBuildInfo, externalPackageDeps )
+        ( LocalBuildInfo, externalPackageDeps, getLocalPackageInfo )
 import Distribution.Text
          ( display )
 
@@ -46,7 +46,8 @@ generate _pkg_descr lbi = concat $
     ,"  (major1) == ",major1," && (major2) == ",major2," && (minor) <= ",minor
     ,"\n\n"
     ]
-  | pkgid@(PackageIdentifier name version) <- externalPackageDeps lbi
+  | pkgid@(PackageIdentifier name version) <-
+      map (packageId . getLocalPackageInfo lbi) $ externalPackageDeps lbi
   , let (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
         pkgname = map fixchar (display name)
   ]
