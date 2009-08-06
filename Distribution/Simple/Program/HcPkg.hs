@@ -27,9 +27,9 @@ module Distribution.Simple.Program.HcPkg (
   ) where
 
 import Distribution.Package
-         ( PackageId )
+         ( PackageId, packageId, InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo
+         ( InstalledPackageInfo, InstalledPackageInfo_(..)
          , showInstalledPackageInfo, parseInstalledPackageInfo )
 import Distribution.ParseUtils
          ( ParseResult(..) )
@@ -124,10 +124,19 @@ dump verbosity hcPkg packagedb = do
 
   where
     parsePackages str =
-      let parsed = map parseInstalledPackageInfo (splitPkgs str)
+      let parsed = map parseIPI (splitPkgs str)
        in case [ msg | ParseFailed msg <- parsed ] of
             []   -> Left [ pkg | ParseOk _ pkg <- parsed ]
             msgs -> Right msgs
+
+    parseIPI s
+     | case programVersion hcPkg of
+          Nothing -> False
+          Just v  -> v < Version [6,11] [] = do
+                  ipi <- parseInstalledPackageInfo s
+                  return (fixInstalledPackageId ipi)
+     | otherwise =
+        parseInstalledPackageInfo s
 
     splitPkgs :: String -> [String]
     splitPkgs = map unlines . splitWith ("---" ==) . lines
@@ -138,6 +147,14 @@ dump verbosity hcPkg packagedb = do
                            _:ws -> splitWith p ws
           where (ys,zs) = break p xs
 
+-- Older GHCs did not have the installedPackageId field, so we fill it
+-- as (display (packageId p)).
+fixInstalledPackageId :: InstalledPackageInfo -> InstalledPackageInfo
+fixInstalledPackageId p
+  | null ipid_str = p { installedPackageId = 
+                        InstalledPackageId (display (packageId p)) }
+  | otherwise     = p
+  where InstalledPackageId ipid_str = installedPackageId p
 
 --------------------------
 -- The program invocations
