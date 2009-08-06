@@ -64,6 +64,7 @@ module Distribution.Simple.GHC (
         configure, getInstalledPackages,
         buildLib, buildExe,
         installLib, installExe,
+        libAbiHash,
         ghcOptions,
         ghcVerbosityOptions
  ) where
@@ -469,7 +470,8 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
   let ghcArgs =
-             ["-package-name", display pkgid ]
+             "--make"
+          :  ["-package-name", display pkgid ]
           ++ constructGHCCmdLine lbi libBi clbi libTargetDir verbosity
           ++ map display (libModules lib)
       ghcArgsProf = ghcArgs
@@ -568,7 +570,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               "-o", sharedLibFilePath ]
             ++ dynamicObjectFiles
             ++ ["-package-name", display pkgid ]
-            ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps clbi ])
+            ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ])
             ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
             ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
@@ -627,7 +629,8 @@ buildExe verbosity _pkg_descr lbi
 
   let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
   let binArgs linkExe profExe =
-             (if linkExe
+             "--make"
+          :  (if linkExe
                  then ["-o", targetDir </> exeNameReal]
                  else ["-c"])
           ++ constructGHCCmdLine lbi exeBi clbi exeDir verbosity
@@ -692,6 +695,23 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
                | x <- libModules lib ]
 
+-- | Extracts a String representing a hash of the ABI of a built
+-- library.  It can fail if the library has not yet been built.
+--
+libAbiHash :: Verbosity -> PackageDescription -> LocalBuildInfo
+           -> Library -> ComponentLocalBuildInfo -> IO String
+libAbiHash verbosity pkg_descr lbi lib clbi = do
+  libBi <- hackThreadedFlag verbosity
+             (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
+  let
+      ghcArgs =
+             "--abi-hash"
+          :  ["-package-name", display (packageId pkg_descr) ]
+          ++ constructGHCCmdLine lbi libBi clbi (buildDir lbi) verbosity
+          ++ map display (exposedModules lib)
+  --
+  rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi) ghcArgs
+
 
 constructGHCCmdLine
         :: LocalBuildInfo
@@ -701,8 +721,7 @@ constructGHCCmdLine
         -> Verbosity
         -> [String]
 constructGHCCmdLine lbi bi clbi odir verbosity =
-        ["--make"]
-     ++ ghcVerbosityOptions verbosity
+        ghcVerbosityOptions verbosity
         -- Unsupported extensions have already been checked by configure
      ++ ghcOptions lbi bi clbi odir
 
