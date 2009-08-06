@@ -308,9 +308,10 @@ configure (pkg_descr0, pbi) cfg
               } ]
         maybeInstalledPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
                                       packageDbs programsConfig'
+
         -- The merge of the internal and installed packages
-        let maybePackageSet = (`PackageIndex.merge` internalPackageSet)
-                                                    `fmap` maybeInstalledPackageSet
+        let maybePackageSet = fmap (PackageIndex.merge internalPackageSet) $
+                              maybeInstalledPackageSet
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -356,10 +357,16 @@ configure (pkg_descr0, pbi) cfg
                   -- note that these bogus packages have no other dependencies
                 }
               | bogusPackageId <- bogusDependencies ]
+
+            configDependencies =
+                 mapM (configDependency verbosity internalPackageSet
+                       installedPackageSet) $
+                 buildDepends pkg_descr
+
         allPkgDeps <- case flavor of
-          GHC -> mapM (configDependency verbosity internalPackageSet installedPackageSet) (buildDepends pkg_descr)
-          JHC -> mapM (configDependency verbosity internalPackageSet installedPackageSet) (buildDepends pkg_descr)
-          LHC -> mapM (configDependency verbosity internalPackageSet installedPackageSet) (buildDepends pkg_descr)
+          GHC -> configDependencies
+          JHC -> configDependencies
+          LHC -> configDependencies
           _   -> return bogusDependencies
 
         let (internalPkgDeps, externalPkgDeps) = partition (isInternalPackage pkg_descr) allPkgDeps
