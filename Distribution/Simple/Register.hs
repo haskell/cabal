@@ -67,8 +67,9 @@ import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
          , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
+import qualified Distribution.Simple.GHC as GHC
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor
+         ( compilerVersion, CompilerFlavor(..), compilerFlavor
          , PackageDB(..), registrationPackageDB )
 import Distribution.Simple.Program
          ( ConfiguredProgram, runProgramInvocation
@@ -82,7 +83,7 @@ import Distribution.Simple.Setup
 import Distribution.PackageDescription
          ( PackageDescription(..), Library(..), BuildInfo(..), hcOptions )
 import Distribution.Package
-         ( Package(..), packageName )
+         ( Package(..), packageName, InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, InstalledPackageInfo_(InstalledPackageInfo)
          , showInstalledPackageInfo )
@@ -94,6 +95,7 @@ import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Text
          ( display )
+import Distribution.Version ( Version(..) )
 import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
 import Distribution.Compat.CopyFile
@@ -138,7 +140,7 @@ register pkg@PackageDescription { library       = Just lib  }
     verbosity = fromFlag (regVerbosity regFlags)
 
     writeRegistrationFile = do
-      installedPkgInfo <- generateRegistrationInfo
+      installedPkgInfo <- generateRegistrationInfo verbosity
                             pkg lib lbi clbi inplace distPref
       notice verbosity ("Creating package registration file: " ++ regFile)
       writeFileAtomic regFile (showInstalledPackageInfo installedPkgInfo ++ "\n")
@@ -159,22 +161,37 @@ register _ _ regFlags = notice verbosity "No package to register"
     verbosity = fromFlag (regVerbosity regFlags)
 
 
-generateRegistrationInfo :: PackageDescription
+generateRegistrationInfo :: Verbosity
+                         -> PackageDescription
                          -> Library
                          -> LocalBuildInfo
                          -> ComponentLocalBuildInfo
                          -> Bool
                          -> FilePath
                          -> IO InstalledPackageInfo
-generateRegistrationInfo pkg lib lbi clbi inplace distPref = do
+generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
+
+  let comp = compiler lbi
+  ipid_suffix <-
+     if inplace
+        then return "inplace"
+        else if compilerFlavor comp == GHC &&
+                compilerVersion comp >= Version [6,11] []
+                then GHC.libAbiHash verbosity pkg lbi lib clbi
+                else return "installed"
+
+  let ipid = InstalledPackageId (display (packageId pkg) ++ '-':ipid_suffix)
+
   let installedPkgInfo
         | inplace   = inplaceInstalledPackageInfo pwd distPref
                         pkg lib lbi clbi
         | otherwise = absoluteInstalledPackageInfo
                         pkg lib lbi clbi
-  return installedPkgInfo
+  return installedPkgInfo{ IPI.installedPackageId = ipid }
+
+
 
 
 registerPackage :: Verbosity
@@ -208,14 +225,14 @@ registerPackageGHC, registerPackageLHC, registerPackageHugs
   -> PackageDB
   -> IO ()
 registerPackageGHC verbosity pkg lib lbi clbi distPref inplace packageDb = do
-  installedPkgInfo <- generateRegistrationInfo
+  installedPkgInfo <- generateRegistrationInfo verbosity
                         pkg lib lbi clbi inplace distPref
   let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
   HcPkg.reregister verbosity ghcPkg packageDb (Right installedPkgInfo)
 
 
 registerPackageLHC verbosity pkg lib lbi clbi distPref inplace packageDb = do
-  installedPkgInfo <- generateRegistrationInfo
+  installedPkgInfo <- generateRegistrationInfo verbosity
                         pkg lib lbi clbi inplace distPref
   let Just lhcPkg = lookupProgram lhcPkgProgram (withPrograms lbi)
   HcPkg.reregister verbosity lhcPkg packageDb (Right installedPkgInfo)
@@ -223,7 +240,7 @@ registerPackageLHC verbosity pkg lib lbi clbi distPref inplace packageDb = do
 
 registerPackageHugs verbosity pkg lib lbi clbi distPref inplace _packageDb = do
   when inplace $ die "--inplace is not supported with Hugs"
-  installedPkgInfo <- generateRegistrationInfo
+  installedPkgInfo <- generateRegistrationInfo verbosity
                         pkg lib lbi clbi inplace distPref
   let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
   createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
@@ -242,7 +259,7 @@ writeHcPkgRegisterScript :: Verbosity
                          -> PackageDB
                          -> IO ()
 writeHcPkgRegisterScript verbosity hcPkg pkg lib lbi clbi distPref inplace packageDb = do
-  installedPkgInfo <- generateRegistrationInfo
+  installedPkgInfo <- generateRegistrationInfo verbosity
                         pkg lib lbi clbi inplace distPref
 
   let invocation  = HcPkg.reregisterInvocation hcPkg Verbosity.normal
@@ -275,6 +292,7 @@ generalInstalledPackageInfo
   -> InstalledPackageInfo
 generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
   InstalledPackageInfo {
+    IPI.installedPackageId = InstalledPackageId (display (packageId pkg)),
     IPI.package            = packageId   pkg,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
@@ -297,7 +315,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
     IPI.extraGHCiLibraries = [],
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
     IPI.includes           = includes bi,
-    IPI.depends            = componentPackageDeps clbi,
+    IPI.depends            = componentInstalledPackageDeps clbi,
     IPI.hugsOptions        = hcOptions Hugs bi,
     IPI.ccOptions          = [], -- Note. NOT ccOptions bi!
                                  -- We don't want cc-options to be propagated
@@ -365,7 +383,6 @@ absoluteInstalledPackageInfo pkg lib lbi clbi =
       | otherwise                 = [includedir installDirs]
     bi = libBuildInfo lib
     installDirs = absoluteInstallDirs pkg lbi NoCopyDest
-
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
