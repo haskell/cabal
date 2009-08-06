@@ -82,7 +82,8 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..),
+           componentPackageDeps )
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
@@ -732,7 +733,7 @@ ghcOptions lbi bi clbi odir
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (if compilerVersion c >= Version [6,8] []
            then ["-stubdir", odir] else [])
-     ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps clbi ])
+     ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ])
      ++ (case withOptimization lbi of
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
@@ -772,7 +773,7 @@ ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
 ghcCcOptions lbi bi clbi odir
      =  ["-I" ++ dir | dir <- PD.includeDirs bi]
      ++ ghcPackageDbOptions (withPackageDB lbi)
-     ++ concat [ ["-package", display pkg] | pkg <- componentPackageDeps clbi ]
+     ++ concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (case withOptimization lbi of
            NoOptimisation -> []
