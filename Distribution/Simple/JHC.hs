@@ -56,7 +56,8 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..),
+           componentPackageDeps )
 import Distribution.Simple.BuildPaths
                                 ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
@@ -171,7 +172,7 @@ constructJHCCmdLine lbi bi clbi _odir verbosity =
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
      ++ ["-i", autogenModulesDir lbi]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
-     ++ (concat [ ["-p", display pkg] | pkg <- componentPackageDeps clbi ])
+     ++ (concat [ ["-p", display pkg] | pkg <- componentPackageDeps lbi clbi ])
 
 jhcPkgConf :: PackageDescription -> String
 jhcPkgConf pd =
