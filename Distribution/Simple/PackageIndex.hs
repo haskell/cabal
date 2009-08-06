@@ -55,6 +55,15 @@ module Distribution.Simple.PackageIndex (
   dependencyInconsistencies,
   dependencyCycles,
   dependencyGraph,
+
+  -- * The index of installed packages
+  InstalledPackageIndex,
+  listToInstalledPackageIndex,
+  lookupInstalledPackageByName,
+  addToInstalledPackageIndex,
+  lookupInstalledPackage,
+  allInstalledPackages
+
   ) where
 
 import Prelude hiding (lookup)
@@ -68,7 +77,7 @@ import Data.Array ((!))
 #if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
 import Data.List (groupBy, sortBy, nub, find, isPrefixOf, tails)
 #else
-import Data.List (groupBy, sortBy, nub, find, isInfixOf)
+import Data.List (groupBy, sortBy, find, isInfixOf)
 #endif
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing, fromMaybe)
@@ -76,10 +85,14 @@ import Data.Maybe (isNothing, fromMaybe)
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
          , Package(..), packageName, packageVersion
-         , Dependency(Dependency), PackageFixedDeps(..) )
+         , Dependency(Dependency), PackageFixedDeps(..)
+         , InstalledPackageId(..) )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo, installedPackageId, package )
+import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
          ( Version, withinRange )
-import Distribution.Simple.Utils (lowercase, equating, comparing)
+import Distribution.Simple.Utils (lowercase, comparing)
 
 #if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
 import Text.Read
@@ -354,128 +367,6 @@ searchByNameSubstring (PackageIndex m) searchterm =
   , pkg <- pkgs ]
   where lsearchterm = lowercase searchterm
 
---
--- * Special queries
---
-
--- | All packages that have dependencies that are not in the index.
---
--- Returns such packages along with the dependencies that they're missing.
---
-brokenPackages :: PackageFixedDeps pkg
-               => PackageIndex pkg
-               -> [(pkg, [PackageIdentifier])]
-brokenPackages index =
-  [ (pkg, missing)
-  | pkg  <- allPackages index
-  , let missing = [ pkg' | pkg' <- depends pkg
-                         , isNothing (lookupPackageId index pkg') ]
-  , not (null missing) ]
-
--- | Tries to take the transative closure of the package dependencies.
---
--- If the transative closure is complete then it returns that subset of the
--- index. Otherwise it returns the broken packages as in 'brokenPackages'.
---
--- * Note that if the result is @Right []@ it is because at least one of
--- the original given 'PackageIdentifier's do not occur in the index.
---
-dependencyClosure :: PackageFixedDeps pkg
-                  => PackageIndex pkg
-                  -> [PackageIdentifier]
-                  -> Either (PackageIndex pkg)
-                            [(pkg, [PackageIdentifier])]
-dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
-  (completed, []) -> Left completed
-  (completed, _)  -> Right (brokenPackages completed)
-  where
-    closure completed failed []             = (completed, failed)
-    closure completed failed (pkgid:pkgids) = case lookupPackageId index pkgid of
-      Nothing   -> closure completed (pkgid:failed) pkgids
-      Just pkg  -> case lookupPackageId completed (packageId pkg) of
-        Just _  -> closure completed  failed pkgids
-        Nothing -> closure completed' failed pkgids'
-          where completed' = insert pkg completed
-                pkgids'    = depends pkg ++ pkgids
-
--- | Takes the transative closure of the packages reverse dependencies.
---
--- * The given 'PackageIdentifier's must be in the index.
---
-reverseDependencyClosure :: PackageFixedDeps pkg
-                         => PackageIndex pkg
-                         -> [PackageIdentifier]
-                         -> [pkg]
-reverseDependencyClosure index =
-    map vertexToPkg
-  . concatMap Tree.flatten
-  . Graph.dfs reverseDepGraph
-  . map (fromMaybe noSuchPkgId . pkgIdToVertex)
-
-  where
-    (depGraph, vertexToPkg, pkgIdToVertex) = dependencyGraph index
-    reverseDepGraph = Graph.transposeG depGraph
-    noSuchPkgId = error "reverseDependencyClosure: package is not in the graph"
-
-topologicalOrder :: PackageFixedDeps pkg => PackageIndex pkg -> [pkg]
-topologicalOrder index = map toPkgId
-                       . Graph.topSort
-                       $ graph
-  where (graph, toPkgId, _) = dependencyGraph index
-
-reverseTopologicalOrder :: PackageFixedDeps pkg => PackageIndex pkg -> [pkg]
-reverseTopologicalOrder index = map toPkgId
-                              . Graph.topSort
-                              . Graph.transposeG
-                              $ graph
-  where (graph, toPkgId, _) = dependencyGraph index
-
--- | Given a package index where we assume we want to use all the packages
--- (use 'dependencyClosure' if you need to get such a index subset) find out
--- if the dependencies within it use consistent versions of each package.
--- Return all cases where multiple packages depend on different versions of
--- some other package.
---
--- Each element in the result is a package name along with the packages that
--- depend on it and the versions they require. These are guaranteed to be
--- distinct.
---
-dependencyInconsistencies :: PackageFixedDeps pkg
-                          => PackageIndex pkg
-                          -> [(PackageName, [(PackageIdentifier, Version)])]
-dependencyInconsistencies index =
-  [ (name, inconsistencies)
-  | (name, uses) <- Map.toList inverseIndex
-  , let inconsistencies = duplicatesBy uses
-        versions = map snd inconsistencies
-  , reallyIsInconsistent name (nub versions) ]
-
-  where inverseIndex = Map.fromListWith (++)
-          [ (packageName dep, [(packageId pkg, packageVersion dep)])
-          | pkg <- allPackages index
-          , dep <- depends pkg ]
-
-        duplicatesBy = (\groups -> if length groups == 1
-                                     then []
-                                     else concat groups)
-                     . groupBy (equating snd)
-                     . sortBy (comparing snd)
-
-        reallyIsInconsistent :: PackageName -> [Version] -> Bool
-        reallyIsInconsistent _    []       = False
-        reallyIsInconsistent name [v1, v2] =
-          case (mpkg1, mpkg2) of
-            (Just pkg1, Just pkg2) -> pkgid1 `notElem` depends pkg2
-                                   && pkgid2 `notElem` depends pkg1
-            _ -> True
-          where
-            pkgid1 = PackageIdentifier name v1
-            pkgid2 = PackageIdentifier name v2
-            mpkg1 = lookupPackageId index pkgid1
-            mpkg2 = lookupPackageId index pkgid2
-
-        reallyIsInconsistent _ _ = True
-
 -- | Find if there are any cycles in the dependency graph. If there are no
 -- cycles the result is @[]@.
 --
@@ -492,34 +383,186 @@ dependencyCycles index =
     adjacencyList = [ (pkg, packageId pkg, depends pkg)
                     | pkg <- allPackages index ]
 
+-----------------------------------------------------------------------------
+-- The Installed Package index
+-----------------------------------------------------------------------------
+
+-- | This is a mapping from 'InstalledPackageId' to 'InstalledPackageInfo'.
+-- Since an 'InstalledPackageId' uniquely identifies a package, there
+-- is a single 'InstalledPackageInfo' for each 'InstalledPackageId'.
+newtype InstalledPackageIndex
+      = InstalledPackageIndex (Map InstalledPackageId InstalledPackageInfo)
+#if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 606)
+  deriving (Show, Read)
+#else
+#error Todo: Show instance for InstalledPackageIndex
+#endif
+
+instance Monoid InstalledPackageIndex where
+  mempty  = InstalledPackageIndex Map.empty
+  mappend (InstalledPackageIndex ix1) (InstalledPackageIndex ix2) = 
+    InstalledPackageIndex (ix1 `Map.union` ix2)
+
+listToInstalledPackageIndex :: [InstalledPackageInfo] -> InstalledPackageIndex
+listToInstalledPackageIndex ipis = 
+  InstalledPackageIndex $ Map.fromList $
+      [ (installedPackageId p, p) | p <- ipis ]
+
+addToInstalledPackageIndex
+   :: InstalledPackageInfo -> InstalledPackageIndex -> InstalledPackageIndex
+addToInstalledPackageIndex info (InstalledPackageIndex ix)
+  = InstalledPackageIndex (Map.insert (installedPackageId info) info ix)
+
+lookupInstalledPackage :: InstalledPackageIndex -> InstalledPackageId 
+                       -> Maybe InstalledPackageInfo
+lookupInstalledPackage (InstalledPackageIndex ix) ipid = Map.lookup ipid ix
+
+
+lookupInstalledPackageByName :: InstalledPackageIndex -> PackageName
+                             -> [InstalledPackageInfo]
+lookupInstalledPackageByName ix name = 
+  filter ((== name) . packageName . package) (allInstalledPackages ix)
+
+allInstalledPackages :: InstalledPackageIndex -> [InstalledPackageInfo]
+allInstalledPackages (InstalledPackageIndex ix) = Map.elems ix
+
+--
+-- * Special queries
+--
+
+-- | All packages that have dependencies that are not in the index.
+--
+-- Returns such packages along with the dependencies that they're missing.
+--
+brokenPackages :: InstalledPackageIndex
+               -> [(InstalledPackageInfo, [InstalledPackageId])]
+brokenPackages index =
+  [ (pkg, missing)
+  | pkg  <- allInstalledPackages index
+  , let missing = [ pkg' | pkg' <- IPI.depends pkg
+                         , isNothing (lookupInstalledPackage index pkg') ]
+  , not (null missing) ]
+
+
+-- | Tries to take the transative closure of the package dependencies.
+--
+-- If the transative closure is complete then it returns that subset of the
+-- index. Otherwise it returns the broken packages as in 'brokenPackages'.
+--
+-- * Note that if the result is @Right []@ it is because at least one of
+-- the original given 'PackageIdentifier's do not occur in the index.
+--
+dependencyClosure :: InstalledPackageIndex
+                  -> [InstalledPackageId]
+                  -> Either InstalledPackageIndex
+                            [(InstalledPackageInfo, [InstalledPackageId])]
+dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
+  (completed, []) -> Left completed
+  (completed, _)  -> Right (brokenPackages completed)
+  where
+    closure completed failed []             = (completed, failed)
+    closure completed failed (pkgid:pkgids) = case lookupInstalledPackage index pkgid of
+      Nothing   -> closure completed (pkgid:failed) pkgids
+      Just pkg  -> case lookupInstalledPackage completed (installedPackageId pkg) of
+        Just _  -> closure completed  failed pkgids
+        Nothing -> closure completed' failed pkgids'
+          where completed' = addToInstalledPackageIndex pkg completed
+                pkgids'    = IPI.depends pkg ++ pkgids
+
+-- | Takes the transative closure of the packages reverse dependencies.
+--
+-- * The given 'PackageIdentifier's must be in the index.
+--
+reverseDependencyClosure :: InstalledPackageIndex
+                         -> [InstalledPackageId]
+                         -> [InstalledPackageInfo]
+reverseDependencyClosure index =
+    map vertexToPkg
+  . concatMap Tree.flatten
+  . Graph.dfs reverseDepGraph
+  . map (fromMaybe noSuchPkgId . pkgIdToVertex)
+
+  where
+    (depGraph, vertexToPkg, pkgIdToVertex) = dependencyGraph index
+    reverseDepGraph = Graph.transposeG depGraph
+    noSuchPkgId = error "reverseDependencyClosure: package is not in the graph"
+
+topologicalOrder :: InstalledPackageIndex -> [InstalledPackageInfo]
+topologicalOrder index = map toPkgId
+                       . Graph.topSort
+                       $ graph
+  where (graph, toPkgId, _) = dependencyGraph index
+
+reverseTopologicalOrder :: InstalledPackageIndex -> [InstalledPackageInfo]
+reverseTopologicalOrder index = map toPkgId
+                              . Graph.topSort
+                              . Graph.transposeG
+                              $ graph
+  where (graph, toPkgId, _) = dependencyGraph index
+
 -- | Builds a graph of the package dependencies.
 --
 -- Dependencies on other packages that are not in the index are discarded.
 -- You can check if there are any such dependencies with 'brokenPackages'.
 --
-dependencyGraph :: PackageFixedDeps pkg
-                => PackageIndex pkg
+dependencyGraph :: InstalledPackageIndex
                 -> (Graph.Graph,
-                    Graph.Vertex -> pkg,
-                    PackageIdentifier -> Maybe Graph.Vertex)
-dependencyGraph index = (graph, vertexToPkg, pkgIdToVertex)
+                    Graph.Vertex -> InstalledPackageInfo,
+                    InstalledPackageId -> Maybe Graph.Vertex)
+dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
   where
     graph = Array.listArray bounds
-              [ [ v | Just v <- map pkgIdToVertex (depends pkg) ]
+              [ [ v | Just v <- map id_to_vertex (IPI.depends pkg) ]
               | pkg <- pkgs ]
-    vertexToPkg vertex = pkgTable ! vertex
-    pkgIdToVertex = binarySearch 0 topBound
+
+    pkgs             = sortBy (comparing packageId) (allInstalledPackages index)
+    vertices         = zip (map installedPackageId pkgs) [0..]
+    vertex_map       = Map.fromList vertices
+    id_to_vertex pid = Map.lookup pid vertex_map
+
+    vertex_to_pkg vertex = pkgTable ! vertex
 
     pkgTable   = Array.listArray bounds pkgs
-    pkgIdTable = Array.listArray bounds (map packageId pkgs)
-    pkgs = sortBy (comparing packageId) (allPackages index)
     topBound = length pkgs - 1
     bounds = (0, topBound)
 
-    binarySearch a b key
-      | a > b     = Nothing
-      | otherwise = case compare key (pkgIdTable ! mid) of
-          LT -> binarySearch a (mid-1) key
-          EQ -> Just mid
-          GT -> binarySearch (mid+1) b key
-      where mid = (a + b) `div` 2
+-- | Given a package index where we assume we want to use all the packages
+-- (use 'dependencyClosure' if you need to get such a index subset) find out
+-- if the dependencies within it use consistent versions of each package.
+-- Return all cases where multiple packages depend on different versions of
+-- some other package.
+--
+-- Each element in the result is a package name along with the packages that
+-- depend on it and the versions they require. These are guaranteed to be
+-- distinct.
+--
+dependencyInconsistencies :: InstalledPackageIndex
+                          -> [(PackageName, [(PackageIdentifier, Version)])]
+dependencyInconsistencies index =
+  [ (name, [ (pid,packageVersion dep) | (dep,pids) <- uses, pid <- pids])
+  | (name, ipid_map) <- Map.toList inverseIndex
+  , let uses = Map.elems ipid_map
+  , reallyIsInconsistent (map fst uses) ]
+
+  where -- for each PackageName,
+        --   for each package with that name,
+        --     the InstalledPackageInfo and the package Ids of packages
+        --     that depend on it.
+        inverseIndex :: Map PackageName
+                            (Map InstalledPackageId
+                                 (InstalledPackageInfo, [PackageIdentifier]))
+        inverseIndex = Map.fromListWith (Map.unionWith (\(a,b) (_,b') -> (a,b++b')))
+          [ (packageName dep,
+             Map.fromList [(ipid,(dep,[packageId pkg]))])
+          | pkg <- allInstalledPackages index
+          , ipid <- IPI.depends pkg
+          , Just dep <- [lookupInstalledPackage index ipid]
+          ]
+
+        reallyIsInconsistent :: [InstalledPackageInfo] -> Bool
+        reallyIsInconsistent []       = False
+        reallyIsInconsistent [_p]     = False
+        reallyIsInconsistent [p1, p2] =
+             installedPackageId p1 `notElem` IPI.depends p2
+          && installedPackageId p2 `notElem` IPI.depends p1
+        reallyIsInconsistent _ = True
