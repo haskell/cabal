@@ -79,11 +79,12 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths ( haddockName,
                                         hscolourPref, autogenModulesDir,
                                         )
-import Distribution.Simple.PackageIndex (dependencyClosure, allPackages)
+import Distribution.Simple.PackageIndex (dependencyClosure)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-         ( lookupPackageId )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo_(..) )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import Distribution.Simple.Utils
          ( die, warn, notice, intercalate, setupMessage
          , createDirectoryIfMissingVerbose, withTempFile, copyFileVerbose
@@ -412,28 +413,27 @@ haddockPackageFlags lbi htmlTemplate = do
                     Left x -> return x
                     Right _ -> die "Can't find transitive deps for haddock"
   interfaces <- sequence
-    [ case interfaceAndHtmlPath pkgid of
-        Nothing -> return (pkgid, Nothing)
+    [ case interfaceAndHtmlPath ipkg of
+        Nothing -> return (Left (packageId ipkg))
         Just (interface, html) -> do
           exists <- doesFileExist interface
           if exists
-            then return (pkgid, Just (interface, html))
-            else return (pkgid, Nothing)
-    | pkgid <- map InstalledPackageInfo.package $ allPackages transitiveDeps ]
+            then return (Right (interface, html))
+            else return (Left (packageId ipkg))
+    | ipkg <- PackageIndex.allInstalledPackages transitiveDeps ]
 
-  let missing = [ pkgid | (pkgid, Nothing) <- interfaces ]
+  let missing = [ pkgid | Left pkgid <- interfaces ]
       warning = "The documentation for the following packages are not "
              ++ "installed. No links will be generated to these packages: "
              ++ intercalate ", " (map display missing)
       flags = [ (interface, if null html then Nothing else Just html)
-              | (_, Just (interface, html)) <- interfaces ]
+              | Right (interface, html) <- interfaces ]
 
   return (flags, if null missing then Nothing else Just warning)
 
   where
-    interfaceAndHtmlPath :: PackageIdentifier -> Maybe (FilePath, FilePath)
-    interfaceAndHtmlPath pkgId = do
-      pkg <- PackageIndex.lookupPackageId (installedPkgs lbi) pkgId
+    interfaceAndHtmlPath :: InstalledPackageInfo -> Maybe (FilePath, FilePath)
+    interfaceAndHtmlPath pkg = do
       interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
       html <- case htmlTemplate of
         Nothing -> listToMaybe (InstalledPackageInfo.haddockHTMLs pkg)
@@ -442,7 +442,7 @@ haddockPackageFlags lbi htmlTemplate = do
 
       where expandTemplateVars = fromPathTemplate . substPathTemplate env
             env = (PrefixVar, prefix (installDirTemplates lbi))
-                : initialPathTemplateEnv pkgId (compilerId (compiler lbi))
+                : initialPathTemplateEnv (packageId pkg) (compilerId (compiler lbi))
 
 -- --------------------------------------------------------------------------
 -- hscolour support
