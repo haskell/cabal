@@ -70,9 +70,10 @@ import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedExtensions, PackageDB(..), PackageDBStack )
 import Distribution.Package
-    ( PackageName(PackageName), PackageId, PackageIdentifier(PackageIdentifier)
+    ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
     , packageName, packageVersion, Package(..)
-    , Dependency(Dependency), simplifyDependency )
+    , Dependency(Dependency), simplifyDependency
+    , InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
     ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -303,8 +304,10 @@ configure (pkg_descr0, pbi) cfg
         -- If we later allowed private internal libraries, then here we would
         -- need to pre-scan the conditional data to make a list of all private
         -- libraries that could possibly be defined by the .cabal file.
-        let internalPackageSet = PackageIndex.fromList [ emptyInstalledPackageInfo {
-                  Installed.package = packageId pkg_descr0
+        let pid = packageId pkg_descr0
+            internalPackageSet = PackageIndex.fromList [ emptyInstalledPackageInfo {
+                  Installed.installedPackageId = InstalledPackageId $ display $ pid,
+                  Installed.package = pid
               } ]
         maybeInstalledPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
                                       packageDbs programsConfig'
@@ -378,8 +381,24 @@ configure (pkg_descr0, pbi) cfg
                ++ "package. To use this feature the package must specify at "
                ++ "least 'cabal-version: >= 1.8'."
 
+        let installedPackageIndex =
+               PackageIndex.listToInstalledPackageIndex $
+               PackageIndex.allPackages packageSet
+
+            getInstalledPkg pkgid =
+              case PackageIndex.lookupPackageId packageSet pkgid of
+                Nothing  -> error ("getInstalledPkgId: " ++ display pkgid)
+                Just ipi -> ipi
+
+            allDepIPIs :: [InstalledPackageInfo]
+            allDepIPIs = map getInstalledPkg allPkgDeps
+
+            externalDepIPIs :: [InstalledPackageInfo]
+            externalDepIPIs = map getInstalledPkg externalPkgDeps
+
         packageDependsIndex <-
-          case PackageIndex.dependencyClosure packageSet externalPkgDeps of
+          case PackageIndex.dependencyClosure installedPackageIndex
+                  (map Installed.installedPackageId externalDepIPIs) of
             Left packageDependsIndex -> return packageDependsIndex
             Right broken ->
               die $ "The following installed packages are broken because other"
@@ -392,11 +411,12 @@ configure (pkg_descr0, pbi) cfg
                             | (pkg, deps) <- broken ]
 
         let pseudoTopPkg = emptyInstalledPackageInfo {
+                Installed.installedPackageId = InstalledPackageId (display (packageId pkg_descr)),
                 Installed.package = packageId pkg_descr,
-                Installed.depends = allPkgDeps
+                Installed.depends = map Installed.installedPackageId allDepIPIs
               }
         case PackageIndex.dependencyInconsistencies
-           . PackageIndex.insert pseudoTopPkg
+           . PackageIndex.addToInstalledPackageIndex pseudoTopPkg
            $ packageDependsIndex of
           [] -> return ()
           inconsistencies ->
@@ -446,12 +466,13 @@ configure (pkg_descr0, pbi) cfg
         let configLib lib = configComponent (libBuildInfo lib)
             configExe exe = (exeName exe, configComponent(buildInfo exe))
             configComponent bi = ComponentLocalBuildInfo {
-              componentPackageDeps =
+              componentInstalledPackageDeps =
                 if newPackageDepsBehaviour pkg_descr'
-                  then selectDependencies bi allPkgDeps
-                  else allPkgDeps
+                  then map Installed.installedPackageId $ selectDependencies bi allDepIPIs
+                  else map Installed.installedPackageId $ allDepIPIs
             }
-            selectDependencies :: BuildInfo -> [PackageId] -> [PackageId]
+            selectDependencies :: BuildInfo -> [InstalledPackageInfo]
+                               -> [InstalledPackageInfo]
             selectDependencies bi pkgs =
                 [ pkg | pkg <- pkgs, packageName pkg `elem` names ]
               where
@@ -521,7 +542,6 @@ configure (pkg_descr0, pbi) cfg
               modifyExecutable e = e{ buildInfo    = buildInfo e    `mappend` extraBi}
           in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
                       , executables = modifyExecutable  `map` executables pkg_descr}
-
 
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies
