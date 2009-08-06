@@ -67,7 +67,6 @@ import Distribution.PackageDescription as PD
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-         ( topologicalOrder, lookupPackageName, insert )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
@@ -400,8 +399,8 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     -- OS X (it's ld is a tad stricter than gnu ld). Thus we remove the
     -- ldOptions for GHC's rts package:
     hackRtsPackage index =
-      case PackageIndex.lookupPackageName index (PackageName "rts") of
-        [rts] -> PackageIndex.insert rts { Installed.ldOptions = [] } index
+      case PackageIndex.lookupInstalledPackageByName index (PackageName "rts") of
+        [rts] -> PackageIndex.addToInstalledPackageIndex rts { Installed.ldOptions = [] } index
         _ -> error "No (or multiple) ghc rts package is registered!!"
 
 getLdOptions :: BuildInfo -> [String]
