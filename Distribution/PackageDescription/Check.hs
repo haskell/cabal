@@ -84,7 +84,7 @@ import Distribution.Simple.Utils
 import Distribution.Version
          ( Version(..)
          , VersionRange, withinRange, foldVersionRange
-         , anyVersion, noVersion, thisVersion, laterVersion, earlierVersion
+         , anyVersion, thisVersion, laterVersion, earlierVersion
          , orLaterVersion, unionVersionRanges, intersectVersionRanges
          , asVersionIntervals, LowerBound(..), UpperBound(..) )
 import Distribution.Package
@@ -823,7 +823,7 @@ checkPackageVersions pkg =
     -- For example this bans "build-depends: base >= 3".
     -- It should probably be "build-depends: base >= 3 && < 4"
     -- which is the same as  "build-depends: base == 3.*"
-    check (not (boundedAbove baseDependency)) $
+    check (not baseDependencyOK) $
       PackageDistInexcusable $
            "The dependency 'build-depends: base' does not specify an upper "
         ++ "bound on the version number. Each major release of the 'base' "
@@ -850,13 +850,17 @@ checkPackageVersions pkg =
                               buildOS buildArch
                               (CompilerId buildCompilerFlavor (Version [] []))
                               [] pkg
-    baseDependency = case finalised of
+    baseDependencyOK = case mBaseDependency of
+                       Nothing -> True
+                       Just baseDependency -> boundedAbove baseDependency
+    mBaseDependency = case finalised of
       -- Just in case finalizePackageDescription fails for any reason, we
-      -- will just skip the check, as boundedAbove noVersion = True
-      Left _          -> noVersion
+      -- will just skip the check
+      Left _          -> Nothing
       Right (pkg', _) ->
-        foldr intersectVersionRanges anyVersion
-          [ vr | Dependency (PackageName "base") vr <- buildDepends pkg' ]
+        case [ vr | Dependency (PackageName "base") vr <- buildDepends pkg' ] of
+        [] -> Nothing
+        deps -> Just $ foldr intersectVersionRanges anyVersion deps
 
     boundedAbove :: VersionRange -> Bool
     boundedAbove vr = case asVersionIntervals vr of
