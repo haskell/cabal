@@ -968,6 +968,7 @@ data HaddockFlags = HaddockFlags {
     haddockProgramPaths :: [(String, FilePath)],
     haddockProgramArgs  :: [(String, [String])],
     haddockHoogle       :: Flag Bool,
+    haddockHtml         :: Flag Bool,
     haddockHtmlLocation :: Flag String,
     haddockExecutables  :: Flag Bool,
     haddockInternal     :: Flag Bool,
@@ -984,6 +985,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockProgramPaths = mempty,
     haddockProgramArgs  = [],
     haddockHoogle       = Flag False,
+    haddockHtml         = Flag False,
     haddockHtmlLocation = NoFlag,
     haddockExecutables  = Flag False,
     haddockInternal     = Flag False,
@@ -1009,6 +1011,11 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
       ,option "" ["hoogle"]
          "Generate a hoogle database"
          haddockHoogle (\v flags -> flags { haddockHoogle = v })
+         trueArg
+
+      ,option "" ["html"]
+         "Generate HTML documentation (the default)"
+         haddockHtml (\v flags -> flags { haddockHtml = v })
          trueArg
 
       ,option "" ["html-location"]
@@ -1057,6 +1064,7 @@ instance Monoid HaddockFlags where
     haddockProgramPaths = mempty,
     haddockProgramArgs  = mempty,
     haddockHoogle       = mempty,
+    haddockHtml         = mempty,
     haddockHtmlLocation = mempty,
     haddockExecutables  = mempty,
     haddockInternal     = mempty,
@@ -1070,6 +1078,7 @@ instance Monoid HaddockFlags where
     haddockProgramPaths = combine haddockProgramPaths,
     haddockProgramArgs  = combine haddockProgramArgs,
     haddockHoogle       = combine haddockHoogle,
+    haddockHtml         = combine haddockHoogle,
     haddockHtmlLocation = combine haddockHtmlLocation,
     haddockExecutables  = combine haddockExecutables,
     haddockInternal     = combine haddockInternal,
