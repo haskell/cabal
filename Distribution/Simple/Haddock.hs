@@ -123,7 +123,7 @@ data HaddockArgs = HaddockArgs {
  argLinkSource :: Flag (Template,Template),       -- ^ (template for modules, template for symbols)
  argCssFile :: Flag FilePath,                     -- ^ optinal custom css file.
  argVerbose :: Any,                            
- argOutput :: Flag Output,                        -- ^ Html or Hoogle doc?                                   required.
+ argOutput :: Flag [Output],                      -- ^ Html or Hoogle doc or both?                                   required.
  argInterfaces :: [(FilePath, Maybe FilePath)],   -- ^ [(interface file, path to the html docs for links)]
  argOutputDir :: Directory,                       -- ^ where to generate the documentation.
  argTitle :: Flag String,                         -- ^ page's title,                                         required.
@@ -273,7 +273,11 @@ fromFlags flags =
                                else NoFlag,
       argCssFile = haddockCss flags,
       argVerbose = maybe mempty (Any . (>= deafening)) . flagToMaybe $ haddockVerbosity flags,
-      argOutput = fmap (\b -> if b then Hoogle else Html) $ haddockHoogle flags,
+      argOutput = 
+          Flag $ case [ Html | Flag True <- [haddockHtml flags] ] ++
+                      [ Hoogle | Flag True <- [haddockHoogle flags] ]
+                 of [] -> [ Html ]
+                    os -> os,
       argOutputDir = maybe mempty Dir . flagToMaybe $ haddockDistPref flags
     }
 
@@ -383,11 +387,16 @@ renderArgs verbosity version args k = do
     where 
       isVersion2 = version >= Version [2,0] []
       outputDir = (unDir $ argOutputDir args)
-      result = outputDir </> 
-               case arg argOutput of
-                 Html -> "index.html"
-                 Hoogle -> (if isVersion2 then display $ packageName pkgid else display pkgid) <.> "txt"
-                     where pkgid = arg argPackageName
+      result = intercalate ", "
+             . map (\o -> outputDir </>
+                            case o of
+                              Html -> "index.html"
+                              Hoogle -> pkgstr <.> "txt")
+             $ arg argOutput
+            where
+              pkgstr | isVersion2 = display $ packageName pkgid
+                     | otherwise = display pkgid
+              pkgid = arg argPackageName
       arg f = fromFlag $ f args
       
 renderPureArgs :: Version -> HaddockArgs -> [[Char]]
@@ -404,7 +413,7 @@ renderPureArgs version args = concat
                          ,"--source-entity=" ++ e]) . flagToMaybe . argLinkSource $ args,
      maybe [] ((:[]).("--css="++)) . flagToMaybe . argCssFile $ args,
      bool [] [verbosityFlag] . getAny . argVerbose $ args,
-     (\o -> case o of Hoogle -> ["--hoogle"]; Html -> ["--html"]) . fromFlag . argOutput $ args,
+     map (\o -> case o of Hoogle -> "--hoogle"; Html -> "--html") . fromFlag . argOutput $ args,
      renderInterfaces . argInterfaces $ args,
      (:[]).("--odir="++) . unDir . argOutputDir $ args,
      (:[]).("--title="++) . (bool (++" (internal documentation)") id (getAny $ argIgnoreExports args)) 
