@@ -88,7 +88,7 @@ import Distribution.Package
          , Dependency(Dependency), PackageFixedDeps(..)
          , InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, installedPackageId, package )
+         ( InstalledPackageInfo, installedPackageId, sourcePackageId )
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
          ( Version, withinRange )
@@ -421,7 +421,7 @@ lookupInstalledPackage (InstalledPackageIndex ix) ipid = Map.lookup ipid ix
 lookupInstalledPackageByName :: InstalledPackageIndex -> PackageName
                              -> [InstalledPackageInfo]
 lookupInstalledPackageByName ix name = 
-  filter ((== name) . packageName . package) (allInstalledPackages ix)
+  filter ((== name) . packageName . sourcePackageId) (allInstalledPackages ix)
 
 allInstalledPackages :: InstalledPackageIndex -> [InstalledPackageInfo]
 allInstalledPackages (InstalledPackageIndex ix) = Map.elems ix

@@ -96,7 +96,7 @@ mkInstalledPackageId = Current.InstalledPackageId . display
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
     Current.installedPackageId = mkInstalledPackageId (convertPackageId (package ipi)),
-    Current.package            = convertPackageId (package ipi),
+    Current.sourcePackageId    = convertPackageId (package ipi),
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
     Current.maintainer         = maintainer ipi,
