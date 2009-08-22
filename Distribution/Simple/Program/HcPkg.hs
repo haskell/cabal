@@ -27,7 +27,7 @@ module Distribution.Simple.Program.HcPkg (
   ) where
 
 import Distribution.Package
-         ( PackageId, packageId, InstalledPackageId(..) )
+         ( PackageId, InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, InstalledPackageInfo_(..)
          , showInstalledPackageInfo, parseInstalledPackageInfo )
@@ -51,6 +51,8 @@ import Distribution.Verbosity
 import Distribution.Compat.Exception
          ( catchExit )
 
+import Control.Monad
+         ( liftM )
 
 -- | Call @hc-pkg@ to register a package.
 --
@@ -124,19 +126,11 @@ dump verbosity hcPkg packagedb = do
 
   where
     parsePackages str =
-      let parsed = map parseIPI (splitPkgs str)
+      let parse  = liftM setInstalledPackageId . parseInstalledPackageInfo
+          parsed = map parse (splitPkgs str)
        in case [ msg | ParseFailed msg <- parsed ] of
             []   -> Left [ pkg | ParseOk _ pkg <- parsed ]
             msgs -> Right msgs
-
-    parseIPI s
-     | case programVersion hcPkg of
-          Nothing -> False
-          Just v  -> v < Version [6,11] [] = do
-                  ipi <- parseInstalledPackageInfo s
-                  return (fixInstalledPackageId ipi)
-     | otherwise =
-        parseInstalledPackageInfo s
 
     splitPkgs :: String -> [String]
     splitPkgs = map unlines . splitWith ("---" ==) . lines
@@ -147,14 +141,21 @@ dump verbosity hcPkg packagedb = do
                            _:ws -> splitWith p ws
           where (ys,zs) = break p xs
 
--- Older GHCs did not have the installedPackageId field, so we fill it
--- as (display (packageId p)).
-fixInstalledPackageId :: InstalledPackageInfo -> InstalledPackageInfo
-fixInstalledPackageId p
-  | null ipid_str = p { installedPackageId = 
-                        InstalledPackageId (display (packageId p)) }
-  | otherwise     = p
-  where InstalledPackageId ipid_str = installedPackageId p
+
+-- Older installed package info files did not have the installedPackageId
+-- field, so if it is missing then we fill it as the source package ID.
+setInstalledPackageId :: InstalledPackageInfo -> InstalledPackageInfo
+setInstalledPackageId pkginfo@InstalledPackageInfo {
+                        installedPackageId = InstalledPackageId "",
+                        sourcePackageId    = pkgid
+                      }
+                    = pkginfo {
+                        --TODO use a proper named function for the conversion
+                        -- from source package id to installed package id
+                        installedPackageId = InstalledPackageId (display pkgid)
+                      }
+setInstalledPackageId pkginfo = pkginfo
+
 
 --------------------------
 -- The program invocations
