@@ -109,7 +109,7 @@ import Distribution.Simple.Utils
     , withFileContents, writeFileAtomic 
     , withTempFile )
 import Distribution.System
-    ( OS(..), buildOS, buildArch )
+    ( OS(..), buildOS, buildPlatform )
 import Distribution.Version
     ( Version(..), anyVersion, orLaterVersion, withinRange
     , isSpecificVersion, isAnyVersion
@@ -320,12 +320,17 @@ configure (pkg_descr0, pbi) cfg
         let maybePackageSet = fmap (PackageIndex.merge internalPackageSet) $
                               maybeInstalledPackageSet
 
+            -- Constraint test function for the solver
+            dependencySatisfiable = case maybeInstalledPackageSet of
+              Nothing   -> const True -- we do not know what is available so
+                                      -- we pretend everything is available
+              Just pkgs -> not . null . PackageIndex.lookupDependency pkgs
+
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
                        (configConfigurationsFlags cfg)
-                       maybePackageSet
-                       Distribution.System.buildOS
-                       Distribution.System.buildArch
+                       dependencySatisfiable
+                       Distribution.System.buildPlatform
                        (compilerId comp)
                        (configConstraints cfg)
                        pkg_descr0

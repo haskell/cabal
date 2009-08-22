@@ -58,20 +58,18 @@ module Distribution.PackageDescription.Configuration (
   ) where
 
 import Distribution.Package
-         ( PackageName, Package, Dependency(..) )
+         ( PackageName, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
          , Flag(..), FlagName(..), FlagAssignment
          , CondTree(..), ConfVar(..), Condition(..) )
-import Distribution.Simple.PackageIndex (PackageIndex)
-import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Version
          ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Compiler
          ( CompilerId(CompilerId) )
 import Distribution.System
-         ( OS, Arch )
+         ( Platform(..), OS, Arch )
 import Distribution.Simple.Utils (currentDir, lowercase)
 
 import Distribution.Text
@@ -470,20 +468,18 @@ instance Monoid PDTagged where
 -- return the package description and the full flag assignment chosen.
 --
 finalizePackageDescription ::
-     Package pkg
-  => FlagAssignment  -- ^ Explicitly specified flag assignments
-  -> Maybe (PackageIndex pkg) -- ^ Available dependencies. Pass 'Nothing' if
-                              -- this is unknown.
-  -> OS     -- ^ OS-name
-  -> Arch   -- ^ Arch-name
-  -> CompilerId -- ^ Compiler + Version
+     FlagAssignment  -- ^ Explicitly specified flag assignments
+  -> (Dependency -> Bool) -- ^ Is a given depenency satisfiable from the set of available packages?
+                          -- If this is unknown then use True.
+  -> Platform      -- ^ The 'Arch' and 'OS'
+  -> CompilerId    -- ^ Compiler + Version
   -> [Dependency]  -- ^ Additional constraints
   -> GenericPackageDescription
   -> Either [Dependency]
             (PackageDescription, FlagAssignment)
              -- ^ Either missing dependencies or the resolved package
              -- description along with the flag assignments chosen.
-finalizePackageDescription userflags mpkgs os arch impl constraints
+finalizePackageDescription userflags satisfyDep (Platform arch os) impl constraints
         (GenericPackageDescription pkg flags mlib0 exes0) =
     case resolveFlags of
       Right ((mlib, exes'), targetSet, flagVals) ->
@@ -517,11 +513,6 @@ finalizePackageDescription userflags mpkgs os arch impl constraints
     check ds     = if all satisfyDep ds
                    then DepOk
                    else MissingDeps $ filter (not . satisfyDep) ds
-    -- if we don't know which packages are present, we just accept any
-    -- dependency
-    satisfyDep   = maybe (const True)
-                         (\pkgs -> not . null . PackageIndex.lookupDependency pkgs)
-                         mpkgs
 
 {-
 let tst_p = (CondNode [1::Int] [Distribution.Package.Dependency "a" AnyVersion] [])

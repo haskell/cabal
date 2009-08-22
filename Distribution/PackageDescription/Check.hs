@@ -75,7 +75,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Compiler
          ( CompilerFlavor(..), buildCompilerFlavor, CompilerId(..) )
 import Distribution.System
-         ( OS(..), Arch(..), buildOS, buildArch )
+         ( OS(..), Arch(..), buildPlatform )
 import Distribution.License
          ( License(..), knownLicenses )
 import Distribution.Simple.Utils
@@ -89,9 +89,7 @@ import Distribution.Version
          , asVersionIntervals, LowerBound(..), UpperBound(..) )
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
-         , PackageId, Dependency(..) )
-import Distribution.Simple.PackageIndex
-         ( PackageIndex )
+         , Dependency(..) )
 import Distribution.Text
          ( display )
 import qualified Language.Haskell.Extension as Extension
@@ -846,8 +844,7 @@ checkPackageVersions pkg =
     -- open upper bound. To get a typical configuration we finalise
     -- using no package index and the current platform.
     finalised = finalizePackageDescription
-                              [] (Nothing :: Maybe (PackageIndex PackageId))
-                              buildOS buildArch
+                              [] (const True) buildPlatform
                               (CompilerId buildCompilerFlavor (Version [] []))
                               [] pkg
     baseDependency = case finalised of
