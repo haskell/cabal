@@ -113,7 +113,7 @@ instance Text PackageIdentifier where
 -- * Installed Package Ids
 -- ------------------------------------------------------------
 
--- | An InstalledPackageId uniquely identifies a package instance.
+-- | An InstalledPackageId uniquely identifies an instance of an installed package.
 -- There can be at most one package with a given 'InstalledPackageId'
 -- in a package database, or overlay of databases.
 --
@@ -130,7 +130,8 @@ instance Text InstalledPackageId where
 -- * Package source dependencies
 -- ------------------------------------------------------------
 
--- | describes a source (API) dependency
+-- | Describes a dependency on a source package (API)
+--
 data Dependency = Dependency PackageName VersionRange
                   deriving (Read, Show, Eq)
 

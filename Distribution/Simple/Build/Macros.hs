@@ -47,6 +47,7 @@ generate _pkg_descr lbi = concat $
     ,"\n\n"
     ]
   | pkgid@(PackageIdentifier name version) <-
+      --TODO: too many conversions from InstalledPackageId to source PackageId
       map (packageId . getLocalPackageInfo lbi) $ externalPackageDeps lbi
   , let (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
         pkgname = map fixchar (display name)
