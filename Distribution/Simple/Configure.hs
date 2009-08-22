@@ -306,6 +306,10 @@ configure (pkg_descr0, pbi) cfg
         -- libraries that could possibly be defined by the .cabal file.
         let pid = packageId pkg_descr0
             internalPackageSet = PackageIndex.fromList [ emptyInstalledPackageInfo {
+                  --TODO: should use a per-compiler method to map the source
+                  --      package ID into an installed package id we can use
+                  --      for the internal package set. The open-codes use of
+                  --      InstalledPackageId . display here is a hack.
                   Installed.installedPackageId = InstalledPackageId $ display $ pid,
                   Installed.sourcePackageId = pid
               } ]
@@ -381,6 +385,7 @@ configure (pkg_descr0, pbi) cfg
                ++ "package. To use this feature the package must specify at "
                ++ "least 'cabal-version: >= 1.8'."
 
+        --TODO: sort out this need to keep converting package id types.
         let installedPackageIndex =
                PackageIndex.listToInstalledPackageIndex $
                PackageIndex.allPackages packageSet

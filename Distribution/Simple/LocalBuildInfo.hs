@@ -125,6 +125,12 @@ data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
   }
   deriving (Read, Show)
 
+--TODO: check how these are used. In particular check how we handle
+--      intra-package deps, are they really InstalledPackageId?
+
+--TODO: having to do (packageId . getLocalPackageInfo lbi) to convert
+--      an InstalledPackageId to a PackageId is not really ideal.
+
 componentPackageDeps :: LocalBuildInfo -> ComponentLocalBuildInfo -> [PackageId]
 componentPackageDeps lbi =
   map (packageId.getLocalPackageInfo lbi) . componentInstalledPackageDeps

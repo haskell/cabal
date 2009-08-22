@@ -173,6 +173,8 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
+  --TODO: the method of setting the InstalledPackageId is compiler specific
+  --      this aspect should be delegated to a per-compiler helper.
   let comp = compiler lbi
   ipid_suffix <-
      if inplace
@@ -190,8 +192,6 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
         | otherwise = absoluteInstalledPackageInfo
                         pkg lib lbi clbi
   return installedPkgInfo{ IPI.installedPackageId = ipid }
-
-
 
 
 registerPackage :: Verbosity
@@ -292,6 +292,7 @@ generalInstalledPackageInfo
   -> InstalledPackageInfo
 generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
   InstalledPackageInfo {
+    --TODO: do not open-code this conversion from PackageId to InstalledPackageId
     IPI.installedPackageId = InstalledPackageId (display (packageId pkg)),
     IPI.sourcePackageId    = packageId   pkg,
     IPI.license            = license     pkg,
