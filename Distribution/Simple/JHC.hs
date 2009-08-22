@@ -52,7 +52,7 @@ import Distribution.PackageDescription as PD
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo, emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(package) )
+                                ( InstalledPackageInfo_(sourcePackageId) )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -124,7 +124,7 @@ getInstalledPackages verbosity packageDBs conf = do
    case pCheck (readP_to_S (many (skipSpaces >> parse)) str) of
      [ps] -> return $ PackageIndex.fromList
                     [ emptyInstalledPackageInfo {
-                        InstalledPackageInfo.package = p
+                        InstalledPackageInfo.sourcePackageId = p
                       }
                     | p <- ps ]
      _    -> die "cannot parse package list"
