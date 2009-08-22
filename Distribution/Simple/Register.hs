@@ -293,7 +293,7 @@ generalInstalledPackageInfo
 generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
   InstalledPackageInfo {
     IPI.installedPackageId = InstalledPackageId (display (packageId pkg)),
-    IPI.package            = packageId   pkg,
+    IPI.sourcePackageId    = packageId   pkg,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
     IPI.maintainer         = maintainer  pkg,

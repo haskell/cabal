@@ -72,7 +72,7 @@ import Distribution.ParseUtils
          , parseFreeText, showFreeText )
 import Distribution.License     ( License(..) )
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier(..), InstalledPackageId(..)
+         ( PackageName(..), PackageIdentifier(..), PackageId, InstalledPackageId(..)
          , packageName, packageVersion )
 import qualified Distribution.Package as Package
          ( Package(..) )
@@ -89,8 +89,8 @@ import Distribution.Text
 data InstalledPackageInfo_ m
    = InstalledPackageInfo {
         -- these parts are exactly the same as PackageDescription
-        package           :: PackageIdentifier,
         installedPackageId :: InstalledPackageId,
+        sourcePackageId    :: PackageId,
         license           :: License,
         copyright         :: String,
         maintainer        :: String,
@@ -123,15 +123,15 @@ data InstalledPackageInfo_ m
     deriving (Read, Show)
 
 instance Package.Package          (InstalledPackageInfo_ str) where
-   packageId = package
+   packageId = sourcePackageId
 
 type InstalledPackageInfo = InstalledPackageInfo_ ModuleName
 
 emptyInstalledPackageInfo :: InstalledPackageInfo_ m
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
-        package           = PackageIdentifier (PackageName "") noVersion,
         installedPackageId = InstalledPackageId "",
+        sourcePackageId    = PackageIdentifier (PackageName "") noVersion,
         license           = AllRightsReserved,
         copyright         = "",
         maintainer        = "",
@@ -189,10 +189,10 @@ basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
 basicFieldDescrs =
  [ simpleField "name"
                            disp                   parsePackageNameQ
-                           packageName            (\name pkg -> pkg{package=(package pkg){pkgName=name}})
+                           packageName            (\name pkg -> pkg{sourcePackageId=(sourcePackageId pkg){pkgName=name}})
  , simpleField "version"
                            disp                   parseOptVersion
-                           packageVersion         (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
+                           packageVersion         (\ver pkg -> pkg{sourcePackageId=(sourcePackageId pkg){pkgVersion=ver}})
  , simpleField "id"
                            disp                   parse
                            installedPackageId     (\ipid pkg -> pkg{installedPackageId=ipid})

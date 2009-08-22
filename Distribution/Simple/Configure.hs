@@ -307,7 +307,7 @@ configure (pkg_descr0, pbi) cfg
         let pid = packageId pkg_descr0
             internalPackageSet = PackageIndex.fromList [ emptyInstalledPackageInfo {
                   Installed.installedPackageId = InstalledPackageId $ display $ pid,
-                  Installed.package = pid
+                  Installed.sourcePackageId = pid
               } ]
         maybeInstalledPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
                                       packageDbs programsConfig'
@@ -356,7 +356,7 @@ configure (pkg_descr0, pbi) cfg
             bogusDependencies = map inventBogusPackageId (buildDepends pkg_descr)
             bogusPackageSet = PackageIndex.fromList
               [ emptyInstalledPackageInfo {
-                  Installed.package = bogusPackageId
+                  Installed.sourcePackageId = bogusPackageId
                   -- note that these bogus packages have no other dependencies
                 }
               | bogusPackageId <- bogusDependencies ]
@@ -412,7 +412,7 @@ configure (pkg_descr0, pbi) cfg
 
         let pseudoTopPkg = emptyInstalledPackageInfo {
                 Installed.installedPackageId = InstalledPackageId (display (packageId pkg_descr)),
-                Installed.package = packageId pkg_descr,
+                Installed.sourcePackageId = packageId pkg_descr,
                 Installed.depends = map Installed.installedPackageId allDepIPIs
               }
         case PackageIndex.dependencyInconsistencies
