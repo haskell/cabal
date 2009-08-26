@@ -80,7 +80,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
 import Distribution.Simple.Register
-         ( registerPackage )
+         ( registerPackage, generateRegistrationInfo )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, setupMessage )
@@ -117,10 +117,13 @@ build pkg_descr lbi flags suffixes = do
     info verbosity "Building library..."
     buildLib verbosity pkg_descr lbi lib clbi
 
+    installedPkgInfo <- generateRegistrationInfo verbosity pkg_descr lib
+                               lbi clbi True{-inplace-} distPref
+
     -- Register the library in-place, so exes can depend
     -- on internally defined libraries.
     registerPackage verbosity
-      pkg_descr lib lbi clbi distPref True internalPackageDB
+      installedPkgInfo pkg_descr lbi True{-inplace-} internalPackageDB
 
   -- Use the internal package db for the exes.
   let lbi' = lbi { withPackageDB = withPackageDB lbi ++ [internalPackageDB] }
