@@ -58,6 +58,7 @@ module Distribution.Simple.Register (
     unregister,
 
     registerPackage,
+    generateRegistrationInfo,
     inplaceInstalledPackageInfo,
     absoluteInstalledPackageInfo,
     generalInstalledPackageInfo,
@@ -120,11 +121,17 @@ register :: PackageDescription -> LocalBuildInfo
          -> IO ()
 register pkg@PackageDescription { library       = Just lib  }
          lbi@LocalBuildInfo     { libraryConfig = Just clbi } regFlags
-  -- Three different modes:
-  | modeGenerateRegFile   = writeRegistrationFile
-  | modeGenerateRegScript = writeRegisterScript
-  | otherwise             = registerPackage verbosity
-                              pkg lib lbi clbi distPref inplace packageDb
+  = do
+
+    installedPkgInfo <- generateRegistrationInfo
+                           verbosity pkg lib lbi clbi inplace distPref
+
+     -- Three different modes:
+    case () of
+     _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo
+       | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
+       | otherwise             -> registerPackage verbosity
+                                    installedPkgInfo pkg lbi inplace packageDb
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -139,18 +146,16 @@ register pkg@PackageDescription { library       = Just lib  }
     distPref  = fromFlag (regDistPref regFlags)
     verbosity = fromFlag (regVerbosity regFlags)
 
-    writeRegistrationFile = do
-      installedPkgInfo <- generateRegistrationInfo verbosity
-                            pkg lib lbi clbi inplace distPref
+    writeRegistrationFile installedPkgInfo = do
       notice verbosity ("Creating package registration file: " ++ regFile)
       writeFileAtomic regFile (showInstalledPackageInfo installedPkgInfo ++ "\n")
 
-    writeRegisterScript =
+    writeRegisterScript installedPkgInfo =
       case compilerFlavor (compiler lbi) of
         GHC  -> do (ghcPkg, _) <- requireProgram verbosity ghcPkgProgram (withPrograms lbi)
-                   writeHcPkgRegisterScript verbosity ghcPkg pkg lib lbi clbi distPref inplace packageDb
+                   writeHcPkgRegisterScript verbosity installedPkgInfo ghcPkg packageDb
         LHC  -> do (lhcPkg, _) <- requireProgram verbosity lhcPkgProgram (withPrograms lbi)
-                   writeHcPkgRegisterScript verbosity lhcPkg pkg lib lbi clbi distPref inplace packageDb
+                   writeHcPkgRegisterScript verbosity installedPkgInfo lhcPkg packageDb
         Hugs -> notice verbosity "Registration scripts not needed for hugs"
         JHC  -> notice verbosity "Registration scripts not needed for jhc"
         NHC  -> notice verbosity "Registration scripts not needed for nhc98"
@@ -176,39 +181,36 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
   --TODO: the method of setting the InstalledPackageId is compiler specific
   --      this aspect should be delegated to a per-compiler helper.
   let comp = compiler lbi
-  ipid_suffix <-
-     if inplace
-        then return "inplace"
-        else if compilerFlavor comp == GHC &&
-                compilerVersion comp >= Version [6,11] []
-                then GHC.libAbiHash verbosity pkg lbi lib clbi
-                else return "installed"
-
-  let ipid = InstalledPackageId (display (packageId pkg) ++ '-':ipid_suffix)
+  ipid <-
+    case compilerFlavor comp of
+     GHC | compilerVersion comp >= Version [6,11] [] -> do
+            s <- GHC.libAbiHash verbosity pkg lbi lib clbi
+            return (InstalledPackageId (display (packageId pkg) ++ '-':s))
+     _other -> do
+            return (InstalledPackageId (display (packageId pkg)))
 
   let installedPkgInfo
         | inplace   = inplaceInstalledPackageInfo pwd distPref
                         pkg lib lbi clbi
         | otherwise = absoluteInstalledPackageInfo
                         pkg lib lbi clbi
+
   return installedPkgInfo{ IPI.installedPackageId = ipid }
 
 
 registerPackage :: Verbosity
+                -> InstalledPackageInfo
                 -> PackageDescription
-                -> Library
                 -> LocalBuildInfo
-                -> ComponentLocalBuildInfo
-                -> FilePath
                 -> Bool
                 -> PackageDB
                 -> IO ()
-registerPackage verbosity pkg lib lbi clbi distPref inplace packageDb = do
+registerPackage verbosity installedPkgInfo pkg lbi inplace packageDb = do
   setupMessage verbosity "Registering" (packageId pkg)
   case compilerFlavor (compiler lbi) of
-    GHC  -> registerPackageGHC  verbosity pkg lib lbi clbi distPref inplace packageDb
-    LHC  -> registerPackageLHC  verbosity pkg lib lbi clbi distPref inplace packageDb
-    Hugs -> registerPackageHugs verbosity pkg lib lbi clbi distPref inplace packageDb
+    GHC  -> registerPackageGHC  verbosity installedPkgInfo pkg lbi inplace packageDb
+    LHC  -> registerPackageLHC  verbosity installedPkgInfo pkg lbi inplace packageDb
+    Hugs -> registerPackageHugs verbosity installedPkgInfo pkg lbi inplace packageDb
     JHC  -> notice verbosity "Registering for jhc (nothing to do)"
     NHC  -> notice verbosity "Registering for nhc98 (nothing to do)"
     _    -> die "Registering is not implemented for this compiler"
@@ -216,32 +218,22 @@ registerPackage verbosity pkg lib lbi clbi distPref inplace packageDb = do
 
 registerPackageGHC, registerPackageLHC, registerPackageHugs
   :: Verbosity
+  -> InstalledPackageInfo
   -> PackageDescription
-  -> Library
   -> LocalBuildInfo
-  -> ComponentLocalBuildInfo
-  -> FilePath
   -> Bool
   -> PackageDB
   -> IO ()
-registerPackageGHC verbosity pkg lib lbi clbi distPref inplace packageDb = do
-  installedPkgInfo <- generateRegistrationInfo verbosity
-                        pkg lib lbi clbi inplace distPref
+registerPackageGHC verbosity installedPkgInfo _pkg lbi _inplace packageDb = do
   let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
   HcPkg.reregister verbosity ghcPkg packageDb (Right installedPkgInfo)
 
-
-registerPackageLHC verbosity pkg lib lbi clbi distPref inplace packageDb = do
-  installedPkgInfo <- generateRegistrationInfo verbosity
-                        pkg lib lbi clbi inplace distPref
+registerPackageLHC verbosity installedPkgInfo _pkg lbi _inplace packageDb = do
   let Just lhcPkg = lookupProgram lhcPkgProgram (withPrograms lbi)
   HcPkg.reregister verbosity lhcPkg packageDb (Right installedPkgInfo)
 
-
-registerPackageHugs verbosity pkg lib lbi clbi distPref inplace _packageDb = do
+registerPackageHugs verbosity installedPkgInfo pkg lbi inplace _packageDb = do
   when inplace $ die "--inplace is not supported with Hugs"
-  installedPkgInfo <- generateRegistrationInfo verbosity
-                        pkg lib lbi clbi inplace distPref
   let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
   createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
   writeFileAtomic (libdir installDirs </> "package.conf")
@@ -249,19 +241,11 @@ registerPackageHugs verbosity pkg lib lbi clbi distPref inplace _packageDb = do
 
 
 writeHcPkgRegisterScript :: Verbosity
+                         -> InstalledPackageInfo
                          -> ConfiguredProgram
-                         -> PackageDescription
-                         -> Library
-                         -> LocalBuildInfo
-                         -> ComponentLocalBuildInfo
-                         -> FilePath
-                         -> Bool
                          -> PackageDB
                          -> IO ()
-writeHcPkgRegisterScript verbosity hcPkg pkg lib lbi clbi distPref inplace packageDb = do
-  installedPkgInfo <- generateRegistrationInfo verbosity
-                        pkg lib lbi clbi inplace distPref
-
+writeHcPkgRegisterScript verbosity installedPkgInfo hcPkg packageDb = do
   let invocation  = HcPkg.reregisterInvocation hcPkg Verbosity.normal
                       packageDb (Right installedPkgInfo)
       regScript   = invocationAsSystemScript buildOS   invocation
