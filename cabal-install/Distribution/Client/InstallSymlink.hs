@@ -63,12 +63,12 @@ import Distribution.System
          ( Platform(Platform) )
 
 import System.Posix.Files
-         ( getSymbolicLinkStatus, isSymbolicLink, readSymbolicLink
-         , createSymbolicLink, removeLink )
+         ( getSymbolicLinkStatus, isSymbolicLink, createSymbolicLink
+         , removeLink )
 import System.Directory
          ( canonicalizePath )
 import System.FilePath
-         ( (</>), takeDirectory, splitPath, joinPath, isAbsolute )
+         ( (</>), splitPath, joinPath, isAbsolute )
 import System.IO.Error
          ( catch, isDoesNotExistError, ioError )
 import Control.Exception
@@ -178,7 +178,8 @@ symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
                           --   did not own. Other errors like permission errors
                           --   just propagate as exceptions.
 symlinkBinary publicBindir privateBindir publicName privateName = do
-  ok <- targetOkToOverwrite (publicBindir </> publicName) privateBindir
+  ok <- targetOkToOverwrite (publicBindir </> publicName)
+                            (privateBindir </> privateName)
   case ok of
     NotOurFile    ->                     return False
     NotExists     ->           mkLink >> return True
@@ -191,24 +192,22 @@ symlinkBinary publicBindir privateBindir publicName privateName = do
 
 -- | Check a filepath of a symlink that we would like to create to see if it
 -- is ok. For it to be ok to overwrite it must either not already exist yet or
--- be a symlink to our private bin dir (in which case we can assume ownership).
+-- be a symlink to our target (in which case we can assume ownership).
 --
 targetOkToOverwrite :: FilePath -- ^ The filepath of the symlink to the private
                                 -- binary that we would like to create
-                    -> FilePath -- ^ The canonical path of the private bin
-                                -- directory. Use 'canonicalizePath'.
+                    -> FilePath -- ^ The canonical path of the private binary.
+                                -- Use 'canonicalizePath' to make this.
                     -> IO SymlinkStatus
-targetOkToOverwrite symlink privateBinDir = handleNotExist $ do
+targetOkToOverwrite symlink target = handleNotExist $ do
   status <- getSymbolicLinkStatus symlink
   if not (isSymbolicLink status)
     then return NotOurFile
-    else return
-       . (\ok -> if ok then OkToOverwrite else NotOurFile)
-       . (== privateBinDir)
-       . takeDirectory
-     =<< canonicalizePath
-       . (symlink </>)
-     =<< readSymbolicLink symlink
+    else do target' <- canonicalizePath symlink
+            -- This relies on canonicalizePath handling symlinks
+            if target == target'
+              then return OkToOverwrite
+              else return NotOurFile
 
   where
     handleNotExist action = catch action $ \ioexception ->
