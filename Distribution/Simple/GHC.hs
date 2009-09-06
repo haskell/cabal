@@ -459,9 +459,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       ifProfLib = when (withProfLib lbi)
       ifSharedLib = when (withSharedLib lbi)
       ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
+      comp = compiler lbi
 
   libBi <- hackThreadedFlag verbosity
-             (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
+             comp (withProfLib lbi) (libBuildInfo lib)
 
   let libTargetDir = pref
       forceVanillaLib = TemplateHaskell `elem` extensions libBi
@@ -570,7 +571,11 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               "-o", sharedLibFilePath ]
             ++ dynamicObjectFiles
             ++ ["-package-name", display pkgid ]
-            ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ])
+            ++ concat (if compilerVersion comp >= Version [6,11] []
+                          then [ ["-package-id", display ipid]
+                               | ipid <- componentInstalledPackageDeps clbi ]
+                          else [ ["-package", display pkg]
+                               | pkg <- componentPackageDeps lbi clbi ])
             ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
             ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
@@ -752,7 +757,11 @@ ghcOptions lbi bi clbi odir
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (if compilerVersion c >= Version [6,8] []
            then ["-stubdir", odir] else [])
-     ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ])
+     ++ concat (if compilerVersion c >= Version [6,11] []
+                   then [ ["-package-id", display ipid]
+                        | ipid <- componentInstalledPackageDeps clbi ]
+                   else [ ["-package", display pkg]
+                        | pkg <- componentPackageDeps lbi clbi ])
      ++ (case withOptimization lbi of
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
