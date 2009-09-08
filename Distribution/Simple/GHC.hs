@@ -863,6 +863,7 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
                 >>= installOrdinaryFiles verbosity targetDir
         ifVanilla $ copyModuleFiles "hi"
         ifProf    $ copyModuleFiles "p_hi"
+        ifShared  $ copyModuleFiles "dyn_hi"
 
         -- copy the built library files over:
         ifVanilla $ copy builtDir targetDir vanillaLibName
