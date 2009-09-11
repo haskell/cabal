@@ -668,8 +668,19 @@ checkCabalVersion :: PackageDescription -> [PackageCheck]
 checkCabalVersion pkg =
   catMaybes [
 
+    -- check use of "foo (>= 1.0 && < 1.4) || >=1.8 " version-range syntax
+    checkVersion [1,8] (not (null versionRangeExpressions)) $
+      PackageDistInexcusable $
+           "The package uses full version-range expressions "
+        ++ "in a 'build-depends' field: "
+        ++ commaSep (map display versionRangeExpressions)
+        ++ ". To use this new syntax the package needs to specify at least "
+        ++ "'cabal-version: >= 1.8'. Alternatively, if broader compatibility "
+        ++ "is important, then convert to conjunctive normal form, and use "
+        ++ "multiple 'build-depends:' lines, one conjunct per line."
+
     -- check use of "build-depends: foo == 1.*" syntax
-    checkVersion [1,6] (not (null depsUsingWildcardSyntax)) $
+  , checkVersion [1,6] (not (null depsUsingWildcardSyntax)) $
       PackageDistInexcusable $
            "The package uses wildcard syntax in the 'build-depends' field: "
         ++ commaSep (map display depsUsingWildcardSyntax)
@@ -751,6 +762,12 @@ checkCabalVersion pkg =
     usesGlobSyntax str = case parseFileGlob str of
       Just (FileGlob _ _) -> True
       _                   -> False
+
+    versionRangeExpressions =
+        [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+              , depth vr > (2::Int) ]
+        where depth = foldVersionRange 1 (const 1) (const 1) (const 1)
+                                         (const (const 1)) (+) (+)
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]

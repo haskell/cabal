@@ -626,26 +626,29 @@ instance Text VersionRange where
   disp (IntersectVersionRanges r1 r2)
     = disp r1 <+> Disp.text "&&" <+> disp r2
 
-  parse = do
-    f1 <- factor
-    Parse.skipSpaces
-    (do
-       _ <- Parse.string "||"
-       Parse.skipSpaces
-       f2 <- factor
-       return (UnionVersionRanges f1 f2)
-     +++
-     do
-       _ <- Parse.string "&&"
-       Parse.skipSpaces
-       f2 <- factor
-       return (IntersectVersionRanges f1 f2)
-     +++
-     return f1)
+  parse = expr
    where
-        factor   = Parse.choice $ parseAnyVersion
-                                : parseWildcardRange
-                                : map parseRangeOp rangeOps
+        expr   = do Parse.skipSpaces
+                    t <- term
+                    Parse.skipSpaces
+                    (do _  <- Parse.string "||"
+                        Parse.skipSpaces
+                        e <- expr
+                        return (UnionVersionRanges t e)
+                     +++
+                     return t)
+        term   = do f <- factor
+                    Parse.skipSpaces
+                    (do _  <- Parse.string "&&"
+                        Parse.skipSpaces
+                        t <- term
+                        return (IntersectVersionRanges f t)
+                     +++
+                     return f)
+        factor = Parse.choice $ parens expr
+                              : parseAnyVersion
+                              : parseWildcardRange
+                              : map parseRangeOp rangeOps
         parseAnyVersion    = Parse.string "-any" >> return AnyVersion
 
         parseWildcardRange = do
@@ -655,6 +658,12 @@ instance Text VersionRange where
           _ <- Parse.char '.'
           _ <- Parse.char '*'
           return (WildcardVersion (Version branch []))
+
+        parens p = Parse.between (Parse.char '(' >> Parse.skipSpaces)
+                                 (Parse.char ')' >> Parse.skipSpaces)
+                                 (do a <- p
+                                     Parse.skipSpaces
+                                     return a)
 
         digits = do
           first <- Parse.satisfy Char.isDigit
