@@ -83,7 +83,7 @@ import Distribution.Simple.Utils
 
 import Distribution.Version
          ( Version(..)
-         , VersionRange, withinRange, foldVersionRange, foldVersionRange'
+         , VersionRange, withinRange, foldVersionRange'
          , anyVersion, noVersion, thisVersion, laterVersion, earlierVersion
          , orLaterVersion, orEarlierVersion
          , unionVersionRanges, intersectVersionRanges
@@ -767,9 +767,11 @@ checkCabalVersion pkg =
     versionRangeExpressions =
         [ dep | dep@(Dependency _ vr) <- buildDepends pkg
               , depth vr > (2::Int) ]
-        where depth = foldVersionRange
+        where depth = foldVersionRange'
                         1 (const 1)
                         (const 1) (const 1)
+                        (const 1) (const 1)
+                        (const (const 1))
                         (+) (+)
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
