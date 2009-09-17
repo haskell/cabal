@@ -653,26 +653,23 @@ intersectInterval (lower , upper ) (lower', upper')
 --
 
 instance Text VersionRange where
-  disp AnyVersion           = Disp.text "-any"
-  disp (ThisVersion    v)   = Disp.text "==" <> disp v
-  disp (LaterVersion   v)   = Disp.char '>'  <> disp v
-  disp (EarlierVersion v)   = Disp.char '<'  <> disp v
-  disp (WildcardVersion v)  = Disp.text "==" <> dispWild v
+  disp = fst
+       . foldVersionRange'                         -- precedence:
+           (         Disp.text "-any"                           , 0)
+           (\v   -> (Disp.text "==" <> disp v                   , 0))
+           (\v   -> (Disp.char '>'  <> disp v                   , 0))
+           (\v   -> (Disp.char '<'  <> disp v                   , 0))
+           (\v   -> (Disp.text ">=" <> disp v                   , 0))
+           (\v   -> (Disp.text "<=" <> disp v                   , 0))
+           (\v _ -> (Disp.text "==" <> dispWild v               , 0))
+           (\(r1, p1) (r2, p2) -> (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
+           (\(r1, p1) (r2, p2) -> (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
+
     where dispWild (Version b _) =
                Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
             <> Disp.text ".*"
-  disp (UnionVersionRanges (ThisVersion  v1) (LaterVersion v2))
-    | v1 == v2 = Disp.text ">=" <> disp v1
-  disp (UnionVersionRanges (LaterVersion v2) (ThisVersion  v1))
-    | v1 == v2 = Disp.text ">=" <> disp v1
-  disp (UnionVersionRanges (ThisVersion v1) (EarlierVersion v2))
-    | v1 == v2 = Disp.text "<=" <> disp v1
-  disp (UnionVersionRanges (EarlierVersion v2) (ThisVersion v1))
-    | v1 == v2 = Disp.text "<=" <> disp v1
-  disp (UnionVersionRanges r1 r2)
-    = disp r1 <+> Disp.text "||" <+> disp r2
-  disp (IntersectVersionRanges r1 r2)
-    = disp r1 <+> Disp.text "&&" <+> disp r2
+          punct p p' | p < p'    = Disp.parens
+                     | otherwise = id
 
   parse = expr
    where
