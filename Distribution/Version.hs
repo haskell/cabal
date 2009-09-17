@@ -65,6 +65,7 @@ module Distribution.Version (
   isSpecificVersion,
   simplifyVersionRange,
   foldVersionRange,
+  foldVersionRange',
 
   -- * Version intervals view
   asVersionIntervals,
@@ -228,24 +229,74 @@ betweenVersionsInclusive v1 v2 =
     "In practice this is not very useful because we normally use inclusive lower bounds and exclusive upper bounds"
   #-}
 
--- | Fold over the syntactic structure of a 'VersionRange'.
+-- | Fold over the basic syntactic structure of a 'VersionRange'.
 --
 -- This provides a syntacic view of the expression defining the version range.
+-- The syntactic sugar @">= v"@, @"<= v"@ and @"== v.*"@ is presented
+-- in terms of the other basic syntax.
+--
 -- For a semantic view use 'asVersionIntervals'.
 --
-foldVersionRange :: a -> (Version -> a) -> (Version -> a) -> (Version -> a)
-                 -> (Version -> Version -> a)
-                 -> (a -> a -> a)  -> (a -> a -> a)
+foldVersionRange :: a                         -- ^ @"-any"@ version
+                 -> (Version -> a)            -- ^ @"== v"@
+                 -> (Version -> a)            -- ^ @"> v"@
+                 -> (Version -> a)            -- ^ @"< v"@
+                 -> (a -> a -> a)             -- ^ @"_ || _@" union
+                 -> (a -> a -> a)             -- ^ @"_ && _@" intersection
                  -> VersionRange -> a
-foldVersionRange anyv this later earlier wildcard union intersect = fold
+foldVersionRange anyv this later earlier union intersect = fold
   where
     fold AnyVersion                     = anyv
     fold (ThisVersion v)                = this v
     fold (LaterVersion v)               = later v
     fold (EarlierVersion v)             = earlier v
+    fold (WildcardVersion v)            = fold (wildcard v)
+    fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
+    fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
+    
+    wildcard v = intersectVersionRanges
+                   (orLaterVersion v)
+                   (earlierVersion (wildcardUpperBound v))
+
+-- | An extended variant of 'foldVersionRange' that also provides a view of
+-- in which the syntactic sugar @">= v"@, @"<= v"@ and @"== v.*"@ is presented
+-- explicitly rather than in terms of the other basic syntax.
+--
+foldVersionRange' :: a                         -- ^ @"-any"@ version
+                  -> (Version -> a)            -- ^ @"== v"@
+                  -> (Version -> a)            -- ^ @"> v"@
+                  -> (Version -> a)            -- ^ @"< v"@
+                  -> (Version -> a)            -- ^ @">= v"@
+                  -> (Version -> a)            -- ^ @"<= v"@                  
+                  -> (Version -> Version -> a) -- ^ @"== v.*"@ wildcard. The
+                                               -- function is passed the
+                                               -- inclusive lower bound and the
+                                               -- exclusive upper bounds of the
+                                               -- range defined by the wildcard.
+                  -> (a -> a -> a)             -- ^ @"_ || _@" union
+                  -> (a -> a -> a)             -- ^ @"_ && _@" intersection
+                  -> VersionRange -> a
+foldVersionRange' anyv this later earlier orLater orEarlier
+                  wildcard union intersect = fold
+  where
+    fold AnyVersion                     = anyv
+    fold (ThisVersion v)                = this v
+    fold (LaterVersion v)               = later v
+    fold (EarlierVersion v)             = earlier v
+
+    fold (UnionVersionRanges (ThisVersion    v)
+                             (LaterVersion   v')) | v==v' = orLater v
+    fold (UnionVersionRanges (LaterVersion   v)
+                             (ThisVersion    v')) | v==v' = orLater v
+    fold (UnionVersionRanges (ThisVersion    v)
+                             (EarlierVersion v')) | v==v' = orEarlier v
+    fold (UnionVersionRanges (EarlierVersion v)
+                             (ThisVersion    v')) | v==v' = orEarlier v
+
     fold (WildcardVersion v)            = wildcard v (wildcardUpperBound v)
     fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
     fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
+
 
 -- | Does this version fall within the given range?
 --
@@ -257,8 +308,6 @@ withinRange v = foldVersionRange
                    (\v'  -> versionBranch v == versionBranch v')
                    (\v'  -> versionBranch v >  versionBranch v')
                    (\v'  -> versionBranch v <  versionBranch v')
-                   (\l u -> versionBranch v >= versionBranch l
-                         && versionBranch v <  versionBranch u)
                    (||)
                    (&&)
 
@@ -498,7 +547,6 @@ toVersionIntervals = foldVersionRange
   (\v    -> chkIvl (LowerBound v ExclusiveBound, NoUpperBound))
   (\v    -> if isVersion0 v then VersionIntervals [] else
             chkIvl (minLowerBound,               UpperBound v ExclusiveBound))
-  (\v v' -> chkIvl (LowerBound v InclusiveBound, UpperBound v' ExclusiveBound))
   unionVersionIntervals
   intersectVersionIntervals
   where

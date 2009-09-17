@@ -83,9 +83,10 @@ import Distribution.Simple.Utils
 
 import Distribution.Version
          ( Version(..)
-         , VersionRange, withinRange, foldVersionRange
+         , VersionRange, withinRange, foldVersionRange, foldVersionRange'
          , anyVersion, noVersion, thisVersion, laterVersion, earlierVersion
-         , orLaterVersion, unionVersionRanges, intersectVersionRanges
+         , orLaterVersion, orEarlierVersion
+         , unionVersionRanges, intersectVersionRanges
          , asVersionIntervals, LowerBound(..), UpperBound(..) )
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
@@ -766,24 +767,28 @@ checkCabalVersion pkg =
     versionRangeExpressions =
         [ dep | dep@(Dependency _ vr) <- buildDepends pkg
               , depth vr > (2::Int) ]
-        where depth = foldVersionRange 1 (const 1) (const 1) (const 1)
-                                         (const (const 1)) (+) (+)
+        where depth = foldVersionRange
+                        1 (const 1)
+                        (const 1) (const 1)
+                        (+) (+)
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]
 
     usesWildcardSyntax :: VersionRange -> Bool
     usesWildcardSyntax =
-      foldVersionRange
+      foldVersionRange'
         False (const False)
+        (const False) (const False)
         (const False) (const False)
         (\_ _ -> True) -- the wildcard case
         (||) (||)
 
     eliminateWildcardSyntax =
-      foldVersionRange
+      foldVersionRange'
         anyVersion thisVersion
         laterVersion earlierVersion
+        orLaterVersion orEarlierVersion
         (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
         intersectVersionRanges unionVersionRanges
 
