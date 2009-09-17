@@ -2,6 +2,7 @@
 module Test.Distribution.Version (properties) where
 
 import Distribution.Version
+import Distribution.Text
 
 import Test.QuickCheck
 import Test.QuickCheck.Utils
@@ -68,6 +69,9 @@ properties =
   , property prop_intersectVersionIntervals_associative
   , property prop_union_intersect_distributive
   , property prop_intersect_union_distributive
+
+   -- parsing an pretty printing
+  , property prop_parse_disp
   ]
 
 instance Arbitrary Version where
@@ -545,3 +549,40 @@ prop_intermediateVersion v1 v2 =
 adjacentVersions :: Version -> Version -> Bool
 adjacentVersions (Version v1 _) (Version v2 _) = v1 ++ [0] == v2
                                               || v2 ++ [0] == v1
+
+--------------------------------
+-- Parsing and pretty printing
+--
+
+prop_parse_disp :: VersionRange -> Bool
+prop_parse_disp vr =
+  simpleParse (display vr) == Just (canonicalise vr)
+
+  where
+    canonicalise = swizzle . swap
+
+    swizzle     (UnionVersionRanges (UnionVersionRanges v1 v2) v3)
+      | not (isOrLaterVersion v1 v2) && not (isOrEarlierVersion v1 v2)
+      = swizzle (UnionVersionRanges v1 (UnionVersionRanges v2  v3))
+
+    swizzle     (IntersectVersionRanges (IntersectVersionRanges v1 v2) v3)
+      = swizzle (IntersectVersionRanges v1 (IntersectVersionRanges v2  v3))
+
+    swizzle (UnionVersionRanges v1 v2) =
+      UnionVersionRanges (swizzle v1) (swizzle v2)
+    swizzle (IntersectVersionRanges v1 v2) =
+      IntersectVersionRanges (swizzle v1) (swizzle v2)
+    swizzle v = v
+
+    isOrLaterVersion (ThisVersion  v) (LaterVersion v') = v == v'
+    isOrLaterVersion _                _                 = False
+
+    isOrEarlierVersion (ThisVersion v)    (EarlierVersion v') = v == v'
+    isOrEarlierVersion _                  _                   = False
+
+    swap =
+      foldVersionRange' anyVersion thisVersion
+                        laterVersion earlierVersion
+                        orLaterVersion orEarlierVersion
+                        (\v _ -> withinVersion v)
+                        unionVersionRanges intersectVersionRanges
