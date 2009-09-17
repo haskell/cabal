@@ -34,6 +34,7 @@ properties =
   , property prop_intersectVersionRanges
   , property prop_withinVersion
   , property prop_foldVersionRange
+  , property prop_foldVersionRange'
 
     -- the semantic query functions
   , property prop_isAnyVersion1
@@ -93,8 +94,10 @@ instance Arbitrary VersionRange where
         , (1, liftM thisVersion arbitrary)
         , (1, liftM laterVersion arbitrary)
         , (1, liftM orLaterVersion arbitrary)
+        , (1, liftM orLaterVersion' arbitrary)
         , (1, liftM earlierVersion arbitrary)
         , (1, liftM orEarlierVersion arbitrary)
+        , (1, liftM orEarlierVersion' arbitrary)
         , (1, liftM withinVersion arbitrary)
         ] ++ if n == 0 then [] else
         [ (2, liftM2 unionVersionRanges     verRangeExp2 verRangeExp2)
@@ -102,6 +105,11 @@ instance Arbitrary VersionRange where
         ]
         where
           verRangeExp2 = verRangeExp (n `div` 2)
+
+      orLaterVersion'   v =
+        UnionVersionRanges (LaterVersion v)   (ThisVersion v)
+      orEarlierVersion' v =
+        UnionVersionRanges (EarlierVersion v) (ThisVersion v)
 
 ---------------------------
 -- VersionRange properties
@@ -167,12 +175,48 @@ prop_withinVersion v v' =
 
 prop_foldVersionRange :: VersionRange -> Bool
 prop_foldVersionRange range =
-     range
+     expandWildcard range
   == foldVersionRange anyVersion thisVersion
                       laterVersion earlierVersion
-                      (\v _ -> withinVersion v)
                       unionVersionRanges intersectVersionRanges
                       range
+  where
+    expandWildcard (WildcardVersion v) =
+        intersectVersionRanges (orLaterVersion v) (earlierVersion (upper v))
+      where
+        upper (Version lower t) = Version (init lower ++ [last lower + 1]) t
+
+    expandWildcard (UnionVersionRanges     v1 v2) =
+      UnionVersionRanges (expandWildcard v1) (expandWildcard v2)
+    expandWildcard (IntersectVersionRanges v1 v2) =
+      IntersectVersionRanges (expandWildcard v1) (expandWildcard v2)
+    expandWildcard v = v
+
+
+prop_foldVersionRange' :: VersionRange -> Bool
+prop_foldVersionRange' range =
+     canonicalise range
+  == foldVersionRange' anyVersion thisVersion
+                       laterVersion earlierVersion
+                       orLaterVersion orEarlierVersion
+                       (\v _ -> withinVersion v)
+                       unionVersionRanges intersectVersionRanges
+                       range
+  where
+    canonicalise (UnionVersionRanges (LaterVersion v)
+                                     (ThisVersion  v')) | v == v'
+                = UnionVersionRanges (ThisVersion   v')
+                                     (LaterVersion  v)
+    canonicalise (UnionVersionRanges (EarlierVersion v)
+                                     (ThisVersion    v')) | v == v'
+                = UnionVersionRanges (ThisVersion    v')
+                                     (EarlierVersion v)
+    canonicalise (UnionVersionRanges v1 v2) =
+      UnionVersionRanges (canonicalise v1) (canonicalise v2)
+    canonicalise (IntersectVersionRanges v1 v2) =
+      IntersectVersionRanges (canonicalise v1) (canonicalise v2)
+    canonicalise v = v
+
 
 prop_isAnyVersion1 :: VersionRange -> Version -> Property
 prop_isAnyVersion1 range version =
@@ -182,7 +226,7 @@ prop_isAnyVersion2 :: VersionRange -> Property
 prop_isAnyVersion2 range =
   isAnyVersion range ==>
     foldVersionRange True (\_ -> False) (\_ -> False) (\_ -> False)
-                          (\_ _ -> False) (\_ _ -> False) (\_ _ -> False)
+                          (\_ _ -> False) (\_ _ -> False)
       (simplifyVersionRange range)
 
 prop_isNoVersion :: VersionRange -> Version -> Property
@@ -202,7 +246,7 @@ prop_isSpecificVersion2 :: VersionRange -> Property
 prop_isSpecificVersion2 range =
   isJust version ==>
     foldVersionRange Nothing Just (\_ -> Nothing) (\_ -> Nothing)
-                     (\_ _ -> Nothing) (\_ _ -> Nothing) (\_ _ -> Nothing)
+                     (\_ _ -> Nothing) (\_ _ -> Nothing)
       (simplifyVersionRange range)
     == version
 
@@ -473,8 +517,7 @@ equivalentVersionRange vr1 vr2 =
   in all (\v -> withinRange v vr1 == withinRange v vr2) probeVersions
 
   where
-    versionsUsed = foldVersionRange [] (\x->[x]) (\x->[x]) (\x->[x])
-                                    (\x y -> [x,y]) (++) (++)
+    versionsUsed = foldVersionRange [] (\x->[x]) (\x->[x]) (\x->[x]) (++) (++)
     intermediateVersions (v1:v2:vs) = v1 : intermediateVersion v1 v2
                                          : intermediateVersions (v2:vs)
     intermediateVersions vs = vs
