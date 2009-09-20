@@ -283,7 +283,9 @@ prop_simplifyVersionRange2' r r' =
 prop_simplifyVersionRange2'' :: VersionRange -> VersionRange -> Property
 prop_simplifyVersionRange2'' r r' =
   r /= r' && r `equivalentVersionRange` r' ==>
-    simplifyVersionRange r == simplifyVersionRange r'
+       simplifyVersionRange r == simplifyVersionRange r'
+    || isNoVersion r
+    || isNoVersion r'
 
 --------------------
 -- VersionIntervals

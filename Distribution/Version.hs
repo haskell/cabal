@@ -373,9 +373,12 @@ isSpecificVersion vr = case asVersionIntervals vr of
     | v == v' -> Just v
   _           -> Nothing
 
--- | Simplify a 'VersionRange' expression into a canonical form.
+-- | Simplify a 'VersionRange' expression. For non-empty version ranges
+-- this produces a canonical form. Empty or inconsistent version ranges
+-- are left as-is because that provides more information.
 --
--- It just uses @fromVersionIntervals . toVersionIntervals@
+-- If you need a canonical form use
+-- @fromVersionIntervals . toVersionIntervals@
 --
 -- It satisfies the following properties:
 --
@@ -383,9 +386,18 @@ isSpecificVersion vr = case asVersionIntervals vr of
 --
 -- >     withinRange v r = withinRange v r'
 -- > ==> simplifyVersionRange r = simplifyVersionRange r'
+-- >  || isNoVersion r
+-- >  || isNoVersion r'
 --
 simplifyVersionRange :: VersionRange -> VersionRange
-simplifyVersionRange = fromVersionIntervals . toVersionIntervals
+simplifyVersionRange vr
+    -- If the version range is inconsistent then we just return the
+    -- original since that has more information than ">1 && < 1", which
+    -- is the canonical inconsistent version range.
+    | null (versionIntervals vi) = vr
+    | otherwise                  = fromVersionIntervals vi
+  where
+    vi = toVersionIntervals vr
 
 ----------------------------
 -- Wildcard range utilities
