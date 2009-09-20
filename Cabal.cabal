@@ -44,12 +44,12 @@ Library
     Build-Depends: directory  >= 1   && < 1.1,
                    process    >= 1   && < 1.1,
                    old-time   >= 1   && < 1.1,
-                   containers >= 0.1 && < 0.3,
-                   array      >= 0.1 && < 0.3,
+                   containers >= 0.1 && < 0.4,
+                   array      >= 0.1 && < 0.4,
                    pretty     >= 1   && < 1.1
 
   if !os(windows)
-    Build-Depends: unix       >= 2.2 && < 2.4
+    Build-Depends: unix       >= 2.2 && < 2.5
 
   ghc-options: -Wall
   if impl(ghc >= 6.8)
