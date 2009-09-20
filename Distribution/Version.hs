@@ -667,7 +667,7 @@ intersectInterval (lower , upper ) (lower', upper')
 instance Text VersionRange where
   disp = fst
        . foldVersionRange'                         -- precedence:
-           (         Disp.text "-any"                           , 0)
+           (         Disp.text "-any"                           , 0 :: Int)
            (\v   -> (Disp.text "==" <> disp v                   , 0))
            (\v   -> (Disp.char '>'  <> disp v                   , 0))
            (\v   -> (Disp.char '<'  <> disp v                   , 0))
