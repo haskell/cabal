@@ -113,7 +113,7 @@ import Distribution.System
 import Distribution.Version
     ( Version(..), anyVersion, orLaterVersion, withinRange
     , isSpecificVersion, isAnyVersion
-    , LowerBound(..), asVersionIntervals, simplifyVersionRange )
+    , LowerBound(..), asVersionIntervals )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
 
@@ -337,10 +337,9 @@ configure (pkg_descr0, pbi) cfg
                 of Right r -> return r
                    Left missing ->
                        die $ "At least the following dependencies are missing:\n"
-                         ++ (render . nest 4 . sep . punctuate comma)
-                            [ disp (Dependency name range')
-                            | Dependency name range <- missing
-                            , let range' = simplifyVersionRange range ]
+                         ++ (render . nest 4 . sep . punctuate comma
+                                    . map (disp . simplifyDependency)
+                                    $ missing)
 
         -- add extra include/lib dirs as specified in cfg
         -- we do it here so that those get checked too
