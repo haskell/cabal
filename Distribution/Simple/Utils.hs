@@ -131,6 +131,10 @@ module Distribution.Simple.Utils (
 
 import Control.Monad
     ( when, unless, filterM )
+#ifdef __GLASGOW_HASKELL__
+import Control.Concurrent.MVar
+    ( newEmptyMVar, putMVar, takeMVar )
+#endif
 import Data.List
     ( nub, unfoldr, isPrefixOf, tails, intersperse )
 import Data.Char as Char
@@ -370,11 +374,16 @@ rawSystemStdout' verbosity path args = do
       -- bracket can exit before this thread has run, and hGetContents
       -- will fail.
       err <- hGetContents errh
-      _ <- forkIO $ do _ <- evaluate (length err); return ()
+      out <- hGetContents outh
 
-      -- wait for all the output
-      output <- hGetContents outh
-      _ <- evaluate (length output)
+      mv <- newEmptyMVar
+      let force str = (do _ <- evaluate (length str)
+                          return ())
+            `Exception.finally` putMVar mv ()
+      _ <- forkIO $ force out
+      _ <- forkIO $ force err
+      takeMVar mv
+      takeMVar mv
 
       -- wait for the program to terminate
       exitcode <- waitForProcess pid
@@ -383,7 +392,7 @@ rawSystemStdout' verbosity path args = do
                        ++ if null err then "" else
                           " with error message:\n" ++ err
 
-      return (output, exitcode)
+      return (out, exitcode)
 #else
   tmpDir <- getTemporaryDirectory
   withTempFile tmpDir ".cmd.stdout" $ \tmpName tmpHandle -> do
@@ -416,12 +425,18 @@ rawSystemStdin verbosity path args input = do
       -- will fail.
       err <- hGetContents errh
       out <- hGetContents outh
-      _ <- forkIO $ do _ <- evaluate (length err); return ()
-      _ <- forkIO $ do _ <- evaluate (length out); return ()
+      mv <- newEmptyMVar
+      let force str = (do _ <- evaluate (length str)
+                          return ())
+            `Exception.finally` putMVar mv ()
+      _ <- forkIO $ force out
+      _ <- forkIO $ force err
 
       -- push all the input
       hPutStr inh input
       hClose inh
+      takeMVar mv
+      takeMVar mv
 
       -- wait for the program to terminate
       exitcode <- waitForProcess pid
