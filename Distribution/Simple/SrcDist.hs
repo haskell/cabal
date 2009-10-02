@@ -324,7 +324,8 @@ prepareDir verbosity _pkg _distPref inPref pps modules bi
            | module_ <- modules ++ otherModules bi ]
          bootFiles <- sequence
            [ let file = ModuleName.toFilePath module_
-              in findFileWithExtension ["hs-boot"] (hsSourceDirs bi) file
+                 fileExts = ["hs-boot", "lhs-boot"]
+              in findFileWithExtension fileExts (hsSourceDirs bi) file
            | module_ <- modules ++ otherModules bi ]
 
          let allSources = sources ++ catMaybes bootFiles ++ cSources bi
