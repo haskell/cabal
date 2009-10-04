@@ -740,10 +740,9 @@ ghcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
            -> FilePath -> [String]
 ghcOptions lbi bi clbi odir
      =  ["-hide-all-packages"]
-     ++ (if compilerVersion c >= Version [6,11] []
-           then ["-fbuilding-cabal-package"] else [])
+     ++ ["-fbuilding-cabal-package" | ghcVer >= Version [6,11] [] ]
      ++ ghcPackageDbOptions (withPackageDB lbi)
-     ++ (if splitObjs lbi then ["-split-objs"] else [])
+     ++ ["-split-objs" | splitObjs lbi ]
      ++ ["-i"]
      ++ ["-i" ++ odir]
      ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
@@ -753,11 +752,11 @@ ghcOptions lbi bi clbi odir
      ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
      ++ ["-optP" ++ opt | opt <- cppOptions bi]
      ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi </> cppHeaderName) ]
-     ++ [ "-#include \"" ++ inc ++ "\"" | inc <- PD.includes bi ]
+     ++ [ "-#include \"" ++ inc ++ "\"" | ghcVer < Version [6,11] []
+                                        , inc <- PD.includes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
-     ++ (if compilerVersion c >= Version [6,8] []
-           then ["-stubdir", odir] else [])
-     ++ concat (if compilerVersion c >= Version [6,11] []
+     ++ concat [ ["-stubdir", odir] | ghcVer >=  Version [6,8] [] ]
+     ++ concat (if ghcVer >= Version [6,11] []
                    then [ ["-package-id", display ipid]
                         | ipid <- componentInstalledPackageDeps clbi ]
                    else [ ["-package", display pkg]
@@ -767,8 +766,9 @@ ghcOptions lbi bi clbi odir
            NormalOptimisation  -> ["-O"]
            MaximumOptimisation -> ["-O2"])
      ++ hcOptions GHC bi
-     ++ extensionsToFlags c (extensions bi)
-    where c = compiler lbi
+     ++ extensionsToFlags (compiler lbi) (extensions bi)
+    where
+      ghcVer = compilerVersion (compiler lbi)
 
 ghcPackageDbOptions :: PackageDBStack -> [String]
 ghcPackageDbOptions dbstack = case dbstack of
