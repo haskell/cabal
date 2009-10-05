@@ -115,6 +115,7 @@ import Language.Haskell.Extension (Extension(..))
 import Control.Monad            ( unless, when )
 import Data.List
 import Data.Maybe               ( catMaybes )
+import Data.Monoid              ( Monoid(..) )
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
                                   getTemporaryDirectory )
@@ -233,21 +234,25 @@ getLanguageExtensions verbosity lhcProg = do
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                      -> IO PackageIndex
 getInstalledPackages verbosity packagedbs conf = do
-  pkgss <- getInstalledPackages' verbosity packagedbs conf
   checkPackageDbStack packagedbs
-  let pkgs = concatMap snd pkgss
-      -- On Windows, various fields have $topdir/foo rather than full
-      -- paths. We need to substitute the right value in so that when
-      -- we, for example, call gcc, we have proper paths to give it
-      Just ghcProg = lookupProgram lhcProgram conf
-      compilerDir  = takeDirectory (programPath ghcProg)
-      topDir       = takeDirectory compilerDir
-      pkgs'        = map (substTopDir topDir) pkgs
-      pi1          = PackageIndex.fromList pkgs'
-      rtsPackages  = lookupPackageName pi1 (PackageName "rts")
-      rtsPackages' = map removeMingwIncludeDir (concatMap snd rtsPackages)
-      pi2          = pi1 `merge` fromList rtsPackages'
-  return pi2
+  pkgss <- getInstalledPackages' verbosity packagedbs conf
+  let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
+                | (_, pkgs) <- pkgss ]
+  return $! hackRtsPackage (mconcat indexes)
+
+  where
+    -- On Windows, various fields have $topdir/foo rather than full
+    -- paths. We need to substitute the right value in so that when
+    -- we, for example, call gcc, we have proper paths to give it
+    Just ghcProg = lookupProgram lhcProgram conf
+    compilerDir  = takeDirectory (programPath ghcProg)
+    topDir       = takeDirectory compilerDir
+
+    hackRtsPackage index =
+      case PackageIndex.lookupPackageName index (PackageName "rts") of
+        [(_,[rts])]
+           -> PackageIndex.insert (removeMingwIncludeDir rts) index
+        _  -> error "No (or multiple) rts package is registered!!"
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
