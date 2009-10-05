@@ -80,11 +80,10 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(..) )
-import Distribution.Simple.PackageIndex
+import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..),
-           componentPackageDeps )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
@@ -576,11 +575,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               "-o", sharedLibFilePath ]
             ++ dynamicObjectFiles
             ++ ["-package-name", display pkgid ]
-            ++ concat (if compilerVersion comp >= Version [6,11] []
-                          then [ ["-package-id", display ipid]
-                               | ipid <- componentInstalledPackageDeps clbi ]
-                          else [ ["-package", display pkg]
-                               | pkg <- componentPackageDeps lbi clbi ])
+            ++ ghcPackageFlags lbi clbi
             ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
             ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
@@ -761,17 +756,24 @@ ghcOptions lbi bi clbi odir
                                         , inc <- PD.includes bi ]
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ concat [ ["-stubdir", odir] | ghcVer >=  Version [6,8] [] ]
-     ++ concat (if ghcVer >= Version [6,11] []
-                   then [ ["-package-id", display ipid]
-                        | ipid <- componentInstalledPackageDeps clbi ]
-                   else [ ["-package", display pkg]
-                        | pkg <- componentPackageDeps lbi clbi ])
+     ++ ghcPackageFlags lbi clbi
      ++ (case withOptimization lbi of
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
            MaximumOptimisation -> ["-O2"])
      ++ hcOptions GHC bi
      ++ extensionsToFlags (compiler lbi) (extensions bi)
+    where
+      ghcVer = compilerVersion (compiler lbi)
+
+ghcPackageFlags :: LocalBuildInfo -> ComponentLocalBuildInfo -> [String]
+ghcPackageFlags lbi clbi
+  | ghcVer >= Version [6,11] []
+              = concat [ ["-package-id", display ipkgid]
+                       | (ipkgid, _) <- componentPackageDeps clbi ]
+
+  | otherwise = concat [ ["-package", display pkgid]
+                       | (_, pkgid)  <- componentPackageDeps clbi ]
     where
       ghcVer = compilerVersion (compiler lbi)
 
@@ -806,7 +808,7 @@ ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
 ghcCcOptions lbi bi clbi odir
      =  ["-I" ++ dir | dir <- PD.includeDirs bi]
      ++ ghcPackageDbOptions (withPackageDB lbi)
-     ++ concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ]
+     ++ ghcPackageFlags lbi clbi
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (case withOptimization lbi of
            NoOptimisation -> []
