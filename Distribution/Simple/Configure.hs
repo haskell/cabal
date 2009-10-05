@@ -391,13 +391,14 @@ configure (pkg_descr0, pbi) cfg
 
         --TODO: sort out this need to keep converting package id types.
         let installedPackageIndex =
-               PackageIndex.listToInstalledPackageIndex $
+               PackageIndex.fromList $
                PackageIndex.allPackages packageSet
 
             getInstalledPkg pkgid =
-              case PackageIndex.lookupPackageId packageSet pkgid of
-                Nothing  -> error ("getInstalledPkgId: " ++ display pkgid)
-                Just ipi -> ipi
+              case PackageIndex.lookupSourcePackageId packageSet pkgid of
+                [ipi] -> ipi
+                _     -> error ("getInstalledPkgId: " ++ display pkgid)
+
 
             allDepIPIs :: [InstalledPackageInfo]
             allDepIPIs = map getInstalledPkg allPkgDeps
@@ -425,7 +426,7 @@ configure (pkg_descr0, pbi) cfg
                 Installed.depends = map Installed.installedPackageId allDepIPIs
               }
         case PackageIndex.dependencyInconsistencies
-           . PackageIndex.addToInstalledPackageIndex pseudoTopPkg
+           . PackageIndex.insert pseudoTopPkg
            $ packageDependsIndex of
           [] -> return ()
           inconsistencies ->
@@ -581,8 +582,8 @@ hackageUrl = "http://hackage.haskell.org/cgi-bin/hackage-scripts/package/"
 
 -- | Test for a package dependency and record the version we have installed.
 configDependency :: Verbosity
-                 -> PackageIndex InstalledPackageInfo  -- ^ Internally defined packages
-                 -> PackageIndex InstalledPackageInfo  -- ^ Installed packages
+                 -> PackageIndex  -- ^ Internally defined packages
+                 -> PackageIndex  -- ^ Installed packages
                  -> Dependency
                  -> IO PackageIdentifier
 configDependency verbosity internalIndex installedIndex dep@(Dependency pkgname _) =
@@ -607,7 +608,8 @@ configDependency verbosity internalIndex installedIndex dep@(Dependency pkgname 
                       ++ display (simplifyDependency dep) ++ "\n"
                       ++ "Perhaps you need to download and install it from\n"
                       ++ hackageUrl ++ display pkgname ++ "?"
-        pkgs -> do let pkgid = maximumBy (comparing packageVersion) (map packageId pkgs)
+        pkgs -> do let pkgid = packageId $ maximumBy (comparing packageVersion)
+                                                     (concatMap snd pkgs)
                    info verbosity $ "Dependency "
                                  ++ display (simplifyDependency dep)
                                 ++ ": using " ++ display pkgid
@@ -621,7 +623,7 @@ configDependency verbosity internalIndex installedIndex dep@(Dependency pkgname 
 
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
-                     -> IO (Maybe (PackageIndex InstalledPackageInfo))
+                     -> IO (Maybe PackageIndex)
 getInstalledPackages verbosity comp packageDBs progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
