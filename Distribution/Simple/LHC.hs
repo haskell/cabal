@@ -231,7 +231,7 @@ getLanguageExtensions verbosity lhcProg = do
              | Just ext <- map readExtension (lines exts) ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
-                     -> IO (PackageIndex InstalledPackageInfo)
+                     -> IO PackageIndex
 getInstalledPackages verbosity packagedbs conf = do
   pkgss <- getInstalledPackages' verbosity packagedbs conf
   checkPackageDbStack packagedbs
@@ -245,7 +245,7 @@ getInstalledPackages verbosity packagedbs conf = do
       pkgs'        = map (substTopDir topDir) pkgs
       pi1          = PackageIndex.fromList pkgs'
       rtsPackages  = lookupPackageName pi1 (PackageName "rts")
-      rtsPackages' = map removeMingwIncludeDir rtsPackages
+      rtsPackages' = map removeMingwIncludeDir (concatMap snd rtsPackages)
       pi2          = pi1 `merge` fromList rtsPackages'
   return pi2
 

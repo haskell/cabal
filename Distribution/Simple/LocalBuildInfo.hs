@@ -73,7 +73,7 @@ import Distribution.Package
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
-         ( InstalledPackageIndex, lookupInstalledPackage )
+         ( PackageIndex, lookupInstalledPackageId )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.Utils
@@ -95,7 +95,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ Where to put the result of the Hugs build.
         libraryConfig       :: Maybe ComponentLocalBuildInfo,
         executableConfigs   :: [(String, ComponentLocalBuildInfo)],
-        installedPkgs :: InstalledPackageIndex,
+        installedPkgs :: PackageIndex,
                 -- ^ All the info about all installed packages.
         pkgDescrFile  :: Maybe FilePath,
                 -- ^ the filename containing the .cabal file, if available
@@ -138,7 +138,7 @@ componentPackageDeps lbi =
 getLocalPackageInfo :: LocalBuildInfo -> InstalledPackageId
                     -> InstalledPackageInfo
 getLocalPackageInfo lbi ipid@(InstalledPackageId s)  =
-  case lookupInstalledPackage (installedPkgs lbi) ipid of
+  case lookupInstalledPackageId (installedPkgs lbi) ipid of
     Nothing  -> error ("getLocalPackageInfo: unknown InstalledPackageId: " ++ s)
     Just ipi -> ipi
 

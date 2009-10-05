@@ -50,7 +50,7 @@ import Distribution.PackageDescription as PD
        ( PackageDescription(..), BuildInfo(..), Executable(..)
        , Library(..), libModules, hcOptions )
 import Distribution.InstalledPackageInfo
-                                ( InstalledPackageInfo, emptyInstalledPackageInfo )
+                                ( emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(sourcePackageId) )
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -114,7 +114,7 @@ jhcLanguageExtensions =
     ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
-                    -> IO (PackageIndex InstalledPackageInfo)
+                    -> IO PackageIndex
 getInstalledPackages verbosity packageDBs conf = do
    case packageDBs of
      [GlobalPackageDB] -> return ()

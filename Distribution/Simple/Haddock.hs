@@ -420,7 +420,7 @@ haddockPackageFlags lbi htmlTemplate = do
           if exists
             then return (Right (interface, html))
             else return (Left (packageId ipkg))
-    | ipkg <- PackageIndex.allInstalledPackages transitiveDeps ]
+    | ipkg <- PackageIndex.allPackages transitiveDeps ]
 
   let missing = [ pkgid | Left pkgid <- interfaces ]
       warning = "The documentation for the following packages are not "
