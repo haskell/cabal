@@ -51,7 +51,7 @@ Library
   if !os(windows)
     Build-Depends: unix       >= 2.2 && < 2.5
 
-  ghc-options: -Wall
+  ghc-options: -Wall -fno-ignore-asserts
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
   cpp-options: "-DCABAL_VERSION=1,7,5"
