@@ -82,8 +82,7 @@ import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..),
-           componentPackageDeps )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
@@ -459,7 +458,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               "-o", sharedLibFilePath ]
             ++ ghcSharedObjArgs
             ++ ["-package-name", display pkgid ]
-            ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ])
+            ++ ghcPackageFlags lbi clbi
             ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
             ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
 
@@ -629,7 +628,7 @@ ghcOptions lbi bi clbi odir
      ++ [ "-odir",  odir, "-hidir", odir ]
      ++ (if compilerVersion c >= Version [6,8] []
            then ["-stubdir", odir] else [])
-     ++ (concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ])
+     ++ ghcPackageFlags lbi clbi
      ++ (case withOptimization lbi of
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
@@ -637,6 +636,17 @@ ghcOptions lbi bi clbi odir
      ++ hcOptions GHC bi
      ++ extensionsToFlags c (extensions bi)
     where c = compiler lbi
+
+ghcPackageFlags :: LocalBuildInfo -> ComponentLocalBuildInfo -> [String]
+ghcPackageFlags lbi clbi
+  | ghcVer >= Version [6,11] []
+              = concat [ ["-package-id", display ipkgid]
+                       | (ipkgid, _) <- componentPackageDeps clbi ]
+
+  | otherwise = concat [ ["-package", display pkgid]
+                       | (_, pkgid)  <- componentPackageDeps clbi ]
+    where
+      ghcVer = compilerVersion (compiler lbi)
 
 ghcPackageDbOptions :: PackageDBStack -> [String]
 ghcPackageDbOptions dbstack = case dbstack of
@@ -668,7 +678,7 @@ ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
 ghcCcOptions lbi bi clbi odir
      =  ["-I" ++ dir | dir <- PD.includeDirs bi]
      ++ ghcPackageDbOptions (withPackageDB lbi)
-     ++ concat [ ["-package", display pkg] | pkg <- componentPackageDeps lbi clbi ]
+     ++ ghcPackageFlags lbi clbi
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (case withOptimization lbi of
            NoOptimisation -> []

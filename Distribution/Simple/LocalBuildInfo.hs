@@ -50,9 +50,6 @@ module Distribution.Simple.LocalBuildInfo (
         withLibLBI,
         withExeLBI,
         ComponentLocalBuildInfo(..),
-        componentPackageDeps,
-        getLocalPackageInfo,
-        isInternalPackage,
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
@@ -73,9 +70,7 @@ import Distribution.Package
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
-         ( PackageIndex, lookupInstalledPackageId )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+         ( PackageIndex )
 import Distribution.Simple.Utils
          ( die )
 
@@ -117,38 +112,21 @@ data LocalBuildInfo = LocalBuildInfo {
   } deriving (Read, Show)
 
 data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
-    -- | External package dependencies for this component. The 'BuildInfo'
-    -- specifies a set of build dependencies that must be satisfied in terms of
-    -- version ranges. This field fixes those dependencies to the specific
-    -- versions available on this machine for this compiler.
-    componentInstalledPackageDeps :: [InstalledPackageId]
+    -- | Resolved internal and external package dependencies for this component.
+    -- The 'BuildInfo' specifies a set of build dependencies that must be
+    -- satisfied in terms of version ranges. This field fixes those dependencies
+    -- to the specific versions available on this machine for this compiler.
+    componentPackageDeps :: [(InstalledPackageId, PackageId)]
   }
   deriving (Read, Show)
 
---TODO: check how these are used. In particular check how we handle
---      intra-package deps, are they really InstalledPackageId?
-
---TODO: having to do (packageId . getLocalPackageInfo lbi) to convert
---      an InstalledPackageId to a PackageId is not really ideal.
-
-componentPackageDeps :: LocalBuildInfo -> ComponentLocalBuildInfo -> [PackageId]
-componentPackageDeps lbi =
-  map (packageId.getLocalPackageInfo lbi) . componentInstalledPackageDeps
-
-getLocalPackageInfo :: LocalBuildInfo -> InstalledPackageId
-                    -> InstalledPackageInfo
-getLocalPackageInfo lbi ipid@(InstalledPackageId s)  =
-  case lookupInstalledPackageId (installedPkgs lbi) ipid of
-    Nothing  -> error ("getLocalPackageInfo: unknown InstalledPackageId: " ++ s)
-    Just ipi -> ipi
-
 -- | External package dependencies for the package as a whole, the union of the
 -- individual 'targetPackageDeps'.
-externalPackageDeps :: LocalBuildInfo -> [InstalledPackageId]
+externalPackageDeps :: LocalBuildInfo -> [(InstalledPackageId, PackageId)]
 externalPackageDeps lbi = nub $
   -- TODO:  what about non-buildable components?
-     maybe [] componentInstalledPackageDeps (libraryConfig lbi)
-  ++ concatMap (componentInstalledPackageDeps . snd) (executableConfigs lbi)
+     maybe [] componentPackageDeps (libraryConfig lbi)
+  ++ concatMap (componentPackageDeps . snd) (executableConfigs lbi)
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.  Extended version of
@@ -172,11 +150,6 @@ withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
     Nothing   -> die $ "internal error: the package contains an executable "
                     ++ exeName exe ++ " but there is no corresponding "
                     ++ "configuration data"
-
--- True if the specified package (or library) is defined internally
--- to the package.
-isInternalPackage :: PackageDescription -> PackageId -> Bool
-isInternalPackage pkg_descr pkgid = packageId pkg_descr == pkgid
 
 
 -- -----------------------------------------------------------------------------
