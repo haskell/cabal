@@ -318,7 +318,9 @@ configure (pkg_descr0, pbi) cfg
             dependencySatisfiable = case maybeInstalledPackageSet of
               Nothing   -> const True -- we do not know what is available so
                                       -- we pretend everything is available
-              Just pkgs -> not . null . PackageIndex.lookupDependency pkgs
+              Just pkgs -> not . null . PackageIndex.lookupDependency pkgs'
+                where
+                  pkgs' = PackageIndex.insert internalPackage pkgs
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
