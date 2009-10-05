@@ -408,7 +408,7 @@ haddockPackageFlags :: LocalBuildInfo
                     -> IO ([(FilePath,Maybe FilePath)], Maybe String)
 haddockPackageFlags lbi htmlTemplate = do
   let allPkgs = installedPkgs lbi
-      directDeps = externalPackageDeps lbi
+      directDeps = map fst (externalPackageDeps lbi)
   transitiveDeps <- case dependencyClosure allPkgs directDeps of
                     Left x -> return x
                     Right _ -> die "Can't find transitive deps for haddock"

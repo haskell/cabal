@@ -54,8 +54,7 @@ import Distribution.PackageDescription
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.LocalBuildInfo
-        ( LocalBuildInfo(..), ComponentLocalBuildInfo(..), 
-          componentPackageDeps )
+        ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths
         ( mkLibName, objExtension, exeExtension )
 import Distribution.Simple.Compiler
@@ -156,8 +155,8 @@ buildLib verbosity pkg_descr lbi lib clbi = do
     ++ extensionFlags
     ++ maybe [] (hcOptions NHC . libBuildInfo)
                            (library pkg_descr)
-    ++ concat [ ["-package", display (packageName pkg) ]
-              | pkg <- componentPackageDeps lbi clbi ]
+    ++ concat [ ["-package", display (packageName pkgid) ]
+              | (_, pkgid) <- componentPackageDeps clbi ]
     ++ inFiles
 {-
   -- build any C sources
@@ -221,8 +220,8 @@ buildExe verbosity pkg_descr lbi exe clbi = do
     ++ extensionFlags
     ++ maybe [] (hcOptions NHC . libBuildInfo)
                            (library pkg_descr)
-    ++ concat [ ["-package", display (packageName pkg) ]
-              | pkg <- componentPackageDeps lbi clbi ]
+    ++ concat [ ["-package", display (packageName pkgid) ]
+              | (_, pkgid) <- componentPackageDeps clbi ]
     ++ inFiles
     ++ [exeName exe]
 

@@ -456,13 +456,13 @@ configure (pkg_descr0, pbi) cfg
         let configLib lib = configComponent (libBuildInfo lib)
             configExe exe = (exeName exe, configComponent(buildInfo exe))
             configComponent bi = ComponentLocalBuildInfo {
-              componentInstalledPackageDeps =
+              componentPackageDeps =
                 if newPackageDepsBehaviour pkg_descr'
-                  then [ installedPackageId pkg
+                  then [ (installedPackageId pkg, packageId pkg)
                        | pkg <- selectSubset bi externalPkgDeps ]
-                    ++ [ InstalledPackageId (display pkgid)
+                    ++ [ (InstalledPackageId (display pkgid), pkgid)
                        | pkgid <- selectSubset bi internalPkgDeps ]
-                  else [ installedPackageId pkg
+                  else [ (installedPackageId pkg, packageId pkg)
                        | pkg <- externalPkgDeps ]
             }
             selectSubset :: Package pkg => BuildInfo -> [pkg] -> [pkg]
