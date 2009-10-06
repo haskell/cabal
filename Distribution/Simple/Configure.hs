@@ -91,7 +91,7 @@ import Distribution.Simple.Hpc ( enableCoverage )
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
-    , configureAllKnownPrograms, knownPrograms, lookupKnownProgram
+    , configureAllKnownPrograms, knownPrograms, lookupKnownProgram, addKnownProgram
     , userSpecifyArgss, userSpecifyPaths
     , requireProgram, requireProgramVersion
     , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
@@ -265,6 +265,7 @@ configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
   = do  let distPref = fromFlag (configDistPref cfg)
+            buildDir' = distPref </> "build"
             verbosity = fromFlag (configVerbosity cfg)
 
         setupMessage verbosity "Configuring" (packageId pkg_descr0)
@@ -425,13 +426,21 @@ configure (pkg_descr0, pbi) cfg
              ++ "supported by " ++ display (compilerId comp) ++ ": "
              ++ intercalate ", " (map display exts)
 
+        -- configured known/required programs & build tools
         let requiredBuildTools = concatMap buildTools (allBuildInfo pkg_descr)
-        programsConfig'' <-
-              configureAllKnownPrograms (lessVerbose verbosity) programsConfig'
-          >>= configureRequiredPrograms verbosity requiredBuildTools
 
-        (pkg_descr', programsConfig''') <- configurePkgconfigPackages verbosity
-                                            pkg_descr programsConfig''
+        -- add all exes built by this package ("internal exes") to the program
+        -- conf; this makes the namespace of build-tools include intrapackage
+        -- references to executables
+        let programsConfig'' = foldr (addInternalExe buildDir') programsConfig'
+                                 (executables pkg_descr)
+
+        programsConfig''' <-
+              configureAllKnownPrograms (lessVerbose verbosity) programsConfig''
+          >>= configureRequiredPrograms verbosity requiredBuildTools 
+
+        (pkg_descr', programsConfig'''') <-
+          configurePkgconfigPackages verbosity pkg_descr programsConfig'''
 
         split_objs <-
            if not (fromFlag $ configSplitObjs cfg)
@@ -475,7 +484,7 @@ configure (pkg_descr0, pbi) cfg
                                                -- did they would go here.
                     installDirTemplates = installDirs,
                     compiler            = comp,
-                    buildDir            = distPref </> "build",
+                    buildDir            = buildDir', 
                     scratchDir          = fromFlagOrDefault
                                             (distPref </> "scratch")
                                             (configScratchDir cfg),
@@ -485,7 +494,7 @@ configure (pkg_descr0, pbi) cfg
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
-                    withPrograms        = programsConfig''',
+                    withPrograms        = programsConfig'''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
                     withProfLib         = fromFlag $ configProfLib cfg,
                     withSharedLib       = fromFlag $ configSharedLib cfg,
@@ -526,11 +535,20 @@ configure (pkg_descr0, pbi) cfg
         dirinfo "Documentation"    (docdir dirs)     (docdir relative)
 
         sequence_ [ reportProgram verbosity prog configuredProg
-                  | (prog, configuredProg) <- knownPrograms programsConfig''' ]
+                  | (prog, configuredProg) <- knownPrograms programsConfig'''' ]
 
         return lbi
 
     where
+      addInternalExe bd exe =
+        let nm = exeName exe in
+        addKnownProgram Program {
+          programName         = nm, 
+          programFindLocation = \_ -> return $ Just $ bd </> nm </> nm,
+          programFindVersion  = \_ _ -> return Nothing, 
+          programPostConf     = \_ _ -> return []
+        }
+
       addExtraIncludeLibDirs pkg_descr =
           let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
                                , PD.includeDirs = configExtraIncludeDirs cfg}
