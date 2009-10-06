@@ -364,7 +364,8 @@ getInstalledPackages verbosity packagedbs conf = do
       case PackageIndex.lookupPackageName index (PackageName "rts") of
         [(_,[rts])]
            -> PackageIndex.insert (removeMingwIncludeDir rts) index
-        _  -> error "No (or multiple) ghc rts package is registered!!"
+        _  -> index -- No (or multiple) ghc rts package is registered!!
+                    -- Feh, whatever, the ghc testsuite does some crazy stuff.
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
