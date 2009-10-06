@@ -65,7 +65,7 @@ import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
 import Data.List as List
-         ( null, foldl'
+         ( null, foldl', sort
          , groupBy, sortBy, find, isInfixOf, nubBy, deleteBy, deleteFirstsBy )
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing, fromMaybe)
@@ -119,7 +119,8 @@ instance Monoid PackageIndex where
 invariant :: PackageIndex -> Bool
 invariant (PackageIndex pids pnames) =
      map installedPackageId (Map.elems pids)
-  == [ assert pinstOk (installedPackageId pinst)
+  == sort
+     [ assert pinstOk (installedPackageId pinst)
      | (pname, pvers)  <- Map.toList pnames
      , let pversOk = not (Map.null pvers)
      , (pver,  pinsts) <- assert pversOk $ Map.toList pvers
