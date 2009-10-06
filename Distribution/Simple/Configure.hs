@@ -599,13 +599,12 @@ selectDependency internalIndex installedIndex
     [(_,[pkg])] | packageVersion pkg `withinRange` vr
            -> Right $ InternalDependency dep (packageId pkg)
 
-    []     -> case PackageIndex.lookupDependency installedIndex dep of
+    _      -> case PackageIndex.lookupDependency installedIndex dep of
       []   -> Left  $ DependencyNotExists pkgname
       pkgs -> Right $ ExternalDependency dep $
                 -- by default we just pick the latest
                 case last pkgs of
                   (_ver, instances) -> head instances -- the first preference
-    _      -> Left  $ DependencyNoVersion dep
 
 reportSelectedDependencies :: Verbosity
                            -> [ResolvedDependency] -> IO ()
