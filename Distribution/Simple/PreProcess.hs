@@ -381,7 +381,7 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
  ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
                                 ++ PD.cppOptions   bi ]
  ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
- ++ [ "--lflag=-R" ++ opt | isELF
+ ++ [ "--lflag=-Wl,-R," ++ opt | isELF
                           , opt <- PD.extraLibDirs bi ]
  ++ [ "--lflag=-l" ++ opt | opt <- PD.extraLibs    bi ]
  ++ [ "--lflag="   ++ opt | opt <- PD.ldOptions    bi ]
@@ -394,7 +394,7 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
  ++ [ "--lflag=" ++ opt
     | pkg <- pkgs
     , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
-          ++ [ "-R" ++ opt | isELF
+          ++ [ "-Wl,-R," ++ opt | isELF
                            , opt <- Installed.libraryDirs    pkg ]
           ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
           ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
