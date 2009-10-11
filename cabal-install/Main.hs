@@ -24,6 +24,7 @@ import Distribution.Client.Setup
          , ListFlags(..), listCommand
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
+         , InitFlags, initCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..)
          , parsePackageArgs )
@@ -54,6 +55,7 @@ import Distribution.Client.Check as Check   (check)
 import Distribution.Client.Upload as Upload (upload, check, report)
 import Distribution.Client.SrcDist          (sdist)
 import Distribution.Client.Unpack           (unpack)
+import Distribution.Client.Init             (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
 import Distribution.Simple.Compiler
@@ -133,6 +135,7 @@ mainWorker args = topHandler $
       ,sdistCommand           `commandAddAction` sdistAction
       ,reportCommand          `commandAddAction` reportAction
       ,unpackCommand          `commandAddAction` unpackAction
+      ,initCommand            `commandAddAction` initAction
       ,wrapperAction (buildCommand defaultProgramConfiguration)
                      buildVerbosity    buildDistPref
       ,wrapperAction copyCommand
@@ -342,6 +345,10 @@ unpackAction flags extraArgs globalFlags = do
   let verbosity = fromFlag (unpackVerbosity flags)
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   unpack flags (globalRepos (savedGlobalFlags config)) pkgs
+
+initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
+initAction flags _extraArgs _globalFlags = do
+  initCabal flags
 
 win32SelfUpgradeAction :: [String] -> IO ()
 win32SelfUpgradeAction (pid:path:rest) =
