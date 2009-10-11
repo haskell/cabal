@@ -8,8 +8,8 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Heuristics for creating initial cabal files
--- XXX: module name is preliminary, merge into Client.Init ?
+-- Heuristics for creating initial cabal files.
+--
 -----------------------------------------------------------------------------
 module Distribution.Client.Init.Heuristics (
     guessPackageName,

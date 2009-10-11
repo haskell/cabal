@@ -25,6 +25,7 @@ module Distribution.Client.Setup
     , uploadCommand, UploadFlags(..)
     , reportCommand
     , unpackCommand, UnpackFlags(..)
+    , initCommand, IT.InitFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -36,6 +37,8 @@ import Distribution.Client.Types
          ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
+import qualified Distribution.Client.Init.Types as IT
+         ( InitFlags(..), PackageType(..) )
 
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
@@ -66,7 +69,7 @@ import Distribution.Verbosity
 import Data.Char
          ( isSpace, isAlphaNum )
 import Data.Maybe
-         ( listToMaybe, maybeToList )
+         ( listToMaybe, maybeToList, fromMaybe )
 import Data.Monoid
          ( Monoid(..) )
 import Control.Monad
@@ -658,6 +661,164 @@ instance Monoid UploadFlags where
     uploadVerbosity = combine uploadVerbosity
   }
     where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Init flags
+-- ------------------------------------------------------------
+
+emptyInitFlags :: IT.InitFlags
+emptyInitFlags  = mempty
+
+defaultInitFlags :: IT.InitFlags
+defaultInitFlags  = emptyInitFlags
+
+initCommand :: CommandUI IT.InitFlags
+initCommand = CommandUI {
+    commandName = "init",
+    commandSynopsis = "Interactively create a .cabal file.",
+    commandUsage = \pname -> unlines
+       [ "Usage: " ++ pname ++ " init [FLAGS]"
+       , ""
+       , "Cabalise a project by creating a .cabal, Setup.lhs, and"
+       , "optionally a LICENSE file."
+       , ""
+       , "Calling init with no arguments (recommended) uses an"
+       , "interactive mode, which will try to guess as much as"
+       , "possible and prompt you for the rest.  Command-line"
+       , "arguments are provided for scripting purposes."
+       , "If you don't want interactive mode, be sure to pass"
+       , "the -n flag."
+       , ""
+       , "Flags for init:"
+       ],
+    commandDescription = Nothing,
+    commandDefaultFlags = defaultInitFlags,
+    commandOptions = \_ ->
+      [ option ['n'] ["nonInteractive"]
+        "Non-interactive mode."
+        IT.nonInteractive (\v flags -> flags { IT.nonInteractive = v })
+        trueArg
+
+      , option ['q'] ["quiet"]
+        "Do not generate log messages to stdout."
+        IT.quiet (\v flags -> flags { IT.quiet = v })
+        trueArg
+
+      , option [] ["noComments"]
+        "Do not generate explanatory comments in the .cabal file."
+        IT.noComments (\v flags -> flags { IT.noComments = v })
+        trueArg
+
+      , option ['m'] ["minimal"]
+        "Generate a minimal .cabal file, that is, do not include extra empty fields.  Also implies --noComments."
+        IT.minimal (\v flags -> flags { IT.minimal = v })
+        trueArg
+
+      , option [] ["packageDir"]
+        "Root directory of the package (default = current directory)."
+        IT.packageDir (\v flags -> flags { IT.packageDir = v })
+        (reqArgFlag "DIRECTORY")
+
+      , option ['p'] ["packageName"]
+        "Name of the Cabal package to create."
+        IT.packageName (\v flags -> flags { IT.packageName = v })
+        (reqArgFlag "PACKAGE")
+
+      , option [] ["version"]
+        "Initial version of the package."
+        IT.version (\v flags -> flags { IT.version = v })
+        (reqArg "VERSION" (readP_to_E ("Cannot parse package version: "++)
+                                      (toFlag `fmap` parse))
+                          (flagToList . fmap display))
+
+      , option [] ["cabalVersion"]
+        "Required version of the Cabal library."
+        IT.cabalVersion (\v flags -> flags { IT.cabalVersion = v })
+        (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal version range: "++)
+                                            (toFlag `fmap` parse))
+                                (flagToList . fmap display))
+
+      , option ['l'] ["license"]
+        "Project license."
+        IT.license (\v flags -> flags { IT.license = v })
+        (reqArg "LICENSE" (readP_to_E ("Cannot parse license: "++)
+                                      (toFlag `fmap` parse))
+                          (flagToList . fmap display))
+
+      , option ['a'] ["author"]
+        "Name of the project's author."
+        IT.author (\v flags -> flags { IT.author = v })
+        (reqArgFlag "NAME")
+
+      , option ['e'] ["email"]
+        "Email address of the maintainer."
+        IT.email (\v flags -> flags { IT.email = v })
+        (reqArgFlag "EMAIL")
+
+      , option [] ["stability"]
+        "Package stability."
+        IT.stability (\v flags -> flags { IT.stability = v })
+        (reqArg' "STABILITY" (\s -> toFlag $ maybe (Left s) Right (readMaybe s))
+                             (flagToList . fmap (either id show)))
+
+      , option ['u'] ["homepage"]
+        "Project homepage and/or repository."
+        IT.homepage (\v flags -> flags { IT.homepage = v })
+        (reqArgFlag "URL")
+
+      , option ['s'] ["synopsis"]
+        "Short project synopsis."
+        IT.synopsis (\v flags -> flags { IT.synopsis = v })
+        (reqArgFlag "TEXT")
+
+      , option ['c'] ["category"]
+        "Project category."
+        IT.category (\v flags -> flags { IT.category = v })
+        (reqArg' "CATEGORY" (\s -> toFlag $ maybe (Left s) Right (readMaybe s))
+                            (flagToList . fmap (either id show)))
+
+      , option [] ["isLibrary"]
+        "Build a library."
+        IT.packageType (\v flags -> flags { IT.packageType = v })
+        (noArg (Flag IT.Library))
+
+      , option [] ["isExecutable"]
+        "Build an executable."
+        IT.packageType
+        (\v flags -> flags { IT.packageType = v })
+        (noArg (Flag IT.Executable))
+
+      , option ['o'] ["exposeModule"]
+        "Export a module from the package."
+        IT.exposedModules
+        (\v flags -> flags { IT.exposedModules = v })
+        (reqArg "MODULE" (readP_to_E ("Cannot parse module name: "++)
+                                     ((Just . (:[])) `fmap` parse))
+                         (fromMaybe [] . fmap (fmap display)))
+
+      , option ['d'] ["dependency"]
+        "Package dependency."
+        IT.dependencies (\v flags -> flags { IT.dependencies = v })
+        (reqArg "PACKAGE" (readP_to_E ("Cannot parse dependency: "++)
+                                      ((Just . (:[])) `fmap` parse))
+                          (fromMaybe [] . fmap (fmap display)))
+
+      , option [] ["sourceDir"]
+        "Directory containing package source."
+        IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
+        (reqArg' "DIR" (Just . (:[]))
+                       (fromMaybe []))
+
+      , option [] ["buildTool"]
+        "Required external build tool."
+        IT.buildTools (\v flags -> flags { IT.buildTools = v })
+        (reqArg' "TOOL" (Just . (:[]))
+                        (fromMaybe []))
+      ]
+  }
+  where readMaybe s = case reads s of
+                        [(x,"")]  -> Just x
+                        otherwise -> Nothing
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils
