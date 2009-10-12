@@ -211,6 +211,7 @@ configureToolchain ghcProg =
       programPostConf     = configureLd
     }
   where
+    Just ghcVersion = programVersion ghcProg
     compilerDir = takeDirectory (programPath ghcProg)
     baseDir     = takeDirectory compilerDir
     mingwDir    = baseDir </> "mingw"
@@ -237,10 +238,13 @@ configureToolchain ghcProg =
       | isWindows = \_ gccProg -> case programLocation gccProg of
           -- if it's found on system then it means we're using the result
           -- of programFindLocation above rather than a user-supplied path
-          -- that means we should add this extra flag to tell ghc's gcc
-          -- where it lives and thus where gcc can find its various files:
-          FoundOnSystem {} -> return ["-B" ++ libDir, "-I" ++ includeDir]
-          UserSpecified {} -> return []
+          -- Pre GHC 6.12, that meant we should add these flags to tell
+          -- ghc's gcc where it lives and thus where gcc can find its
+          -- various files:
+          FoundOnSystem {}
+           | ghcVersion < Version [6,11] [] ->
+              return ["-B" ++ libDir, "-I" ++ includeDir]
+          _ -> return []
       | otherwise = \_ _   -> return []
 
     -- we need to find out if ld supports the -x flag
