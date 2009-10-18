@@ -58,9 +58,6 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Setup
          ( ConfigFlags(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import Distribution.Simple.PackageIndex (PackageIndex)
-import Distribution.System
-         ( Platform(Platform) )
 
 import System.Posix.Files
          ( getSymbolicLinkStatus, isSymbolicLink, createSymbolicLink
@@ -135,8 +132,8 @@ symlinkBinaries configFlags installFlags plan =
     pkgDescription :: ConfiguredPackage -> PackageDescription
     pkgDescription (ConfiguredPackage (AvailablePackage _ pkg _) flags _) =
       case finalizePackageDescription flags
-             (Nothing :: Maybe (PackageIndex PackageDescription))
-             os arch compilerId [] pkg of
+             (const True)
+             platform compilerId [] pkg of
         Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
         Right (desc, _) -> desc
 
@@ -162,7 +159,7 @@ symlinkBinaries configFlags installFlags plan =
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
     prefixTemplate   = fromFlagTemplate (configProgPrefix configFlags)
     suffixTemplate   = fromFlagTemplate (configProgSuffix configFlags)
-    (Platform arch os) = InstallPlan.planPlatform plan
+    platform         = InstallPlan.planPlatform plan
     compilerId@(CompilerId compilerFlavor _) = InstallPlan.planCompiler plan
 
 symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir

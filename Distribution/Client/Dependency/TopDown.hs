@@ -46,7 +46,7 @@ import Distribution.Version
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
-         ( Platform(Platform) )
+         ( Platform )
 import Distribution.Simple.Utils
          ( equating, comparing )
 import Distribution.Text
@@ -291,17 +291,20 @@ addTopLevelConstraints (PackageInstalledConstraint pkg:deps) cs =
       Fail (TopLevelInstallConstraintConflict pkg conflicts)
 
 configurePackage :: Platform -> CompilerId -> ConfigurePackage
-configurePackage (Platform arch os) comp available spkg = case spkg of
+configurePackage platform comp available spkg = case spkg of
   InstalledOnly         ipkg      -> Right (InstalledOnly ipkg)
   AvailableOnly              apkg -> fmap AvailableOnly (configure apkg)
   InstalledAndAvailable ipkg apkg -> fmap (InstalledAndAvailable ipkg)
                                           (configure apkg)
   where
   configure (UnconfiguredPackage apkg@(AvailablePackage _ p _) _ flags) =
-    case finalizePackageDescription flags (Just available) os arch comp [] p of
+    case finalizePackageDescription flags dependencySatisfiable
+                                    platform comp [] p of
       Left missing        -> Left missing
       Right (pkg, flags') -> Right $
         SemiConfiguredPackage apkg flags' (buildDepends pkg)
+
+  dependencySatisfiable = not . null . PackageIndex.lookupDependency available
 
 -- | Annotate each installed packages with its set of transative dependencies
 -- and its topological sort number.
