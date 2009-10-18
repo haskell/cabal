@@ -64,7 +64,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, die )
 import Distribution.System
-         ( Platform(Platform), buildPlatform )
+         ( Platform, buildPlatform )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 
@@ -191,7 +191,7 @@ configurePackage :: Verbosity
                  -> ConfiguredPackage
                  -> [String]
                  -> IO ()
-configurePackage verbosity (Platform arch os) comp scriptOptions configFlags
+configurePackage verbosity platform comp scriptOptions configFlags
   (ConfiguredPackage (AvailablePackage _ gpkg _) flags deps) extraArgs =
 
   setupWrapper verbosity
@@ -205,7 +205,7 @@ configurePackage verbosity (Platform arch os) comp scriptOptions configFlags
     }
 
     pkg = case finalizePackageDescription flags
-           (Nothing :: Maybe (PackageIndex PackageDescription))
-           os arch comp [] gpkg of
+           (const True)
+           platform comp [] gpkg of
       Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
       Right (desc, _) -> desc
