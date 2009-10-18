@@ -65,7 +65,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Text
          ( display )
 import Distribution.System
-         ( Platform(Platform) )
+         ( Platform )
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.Client.Utils
@@ -455,7 +455,7 @@ showPackageProblem (InvalidDep dep pkgid) =
 
 configuredPackageProblems :: Platform -> CompilerId
                           -> ConfiguredPackage -> [PackageProblem]
-configuredPackageProblems (Platform arch os) comp
+configuredPackageProblems platform comp
   (ConfiguredPackage pkg specifiedFlags specifiedDeps) =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
@@ -487,7 +487,9 @@ configuredPackageProblems (Platform arch os) comp
     requiredDeps =
       --TODO: use something lower level than finalizePackageDescription
       case finalizePackageDescription specifiedFlags
-         (Nothing :: Maybe (PackageIndex PackageIdentifier)) os arch comp []
+         (const True)
+         platform comp
+         []
          (packageDescription pkg) of
         Right (resolvedPkg, _) -> buildDepends resolvedPkg
         Left  _ -> error "configuredPackageInvalidDeps internal error"

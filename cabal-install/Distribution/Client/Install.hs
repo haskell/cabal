@@ -110,7 +110,7 @@ import Distribution.Simple.Utils as Utils
 import Distribution.Client.Utils
          ( inDir, mergeBy, MergeResult(..), withTempDirectory )
 import Distribution.System
-         ( Platform(Platform), buildPlatform, OS(Windows), buildOS )
+         ( Platform, buildPlatform, OS(Windows), buildOS )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -584,7 +584,7 @@ installConfiguredPackage :: Platform -> CompilerId
                          -> (ConfigFlags -> AvailablePackageSource
                                          -> PackageDescription -> a)
                          -> a
-installConfiguredPackage (Platform arch os) comp configFlags
+installConfiguredPackage platform comp configFlags
   (ConfiguredPackage (AvailablePackage _ gpkg source) flags deps)
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
@@ -592,8 +592,8 @@ installConfiguredPackage (Platform arch os) comp configFlags
   } source pkg
   where
     pkg = case finalizePackageDescription flags
-           (Nothing :: Maybe (PackageIndex PackageDescription))
-           os arch comp [] gpkg of
+           (const True)
+           platform comp [] gpkg of
       Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
       Right (desc, _) -> desc
 

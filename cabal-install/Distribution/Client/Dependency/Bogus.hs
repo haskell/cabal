@@ -37,8 +37,6 @@ import Distribution.Simple.Utils
          ( comparing )
 import Distribution.Text
          ( display )
-import Distribution.System
-         ( Platform(Platform) )
 
 import Data.List
          ( maximumBy )
@@ -52,7 +50,7 @@ import qualified Data.Map as Map
 -- We just pretend that everything is installed and hope for the best.
 --
 bogusResolver :: DependencyResolver
-bogusResolver (Platform arch os) comp _ available
+bogusResolver platform comp _ available
               preferences constraints targets =
     resolveFromAvailable []
       (combineConstraints preferences constraints targets)
@@ -62,7 +60,7 @@ bogusResolver (Platform arch os) comp _ available
       case latestAvailableSatisfying available name verConstraint verPref of
         Nothing  -> Fail ("Unresolved dependency: " ++ display dep)
         Just apkg@(AvailablePackage _ pkg _) ->
-          case finalizePackageDescription flags none os arch comp [] pkg of
+          case finalizePackageDescription flags none platform comp [] pkg of
             Right (_, flags') -> Step msg (resolveFromAvailable chosen' deps)
               where
                 msg     = "selecting " ++ display (packageId pkg)
@@ -70,8 +68,8 @@ bogusResolver (Platform arch os) comp _ available
                 chosen' = InstallPlan.Configured cpkg : chosen
             _ -> error "bogusResolver: impossible happened"
           where
-            none :: Maybe (PackageIndex PackageIdentifier)
-            none = Nothing
+            none :: Dependency -> Bool
+            none = const True
       where
         dep = Dependency name verConstraint
 
