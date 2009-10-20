@@ -224,6 +224,8 @@ then
     echo "symlink-bindir: $HOME/bin"
 else
     echo "Sorry, something went wrong."
+    echo "The 'cabal' executable was not successfully installed into"
+    echo "$CABAL_BIN/"
 fi
 echo
 
