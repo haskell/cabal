@@ -232,17 +232,17 @@ betweenVersionsInclusive v1 v2 =
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
 --
 -- This provides a syntacic view of the expression defining the version range.
--- The syntactic sugar @">= v"@, @"<= v"@ and @"== v.*"@ is presented
+-- The syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"== v.*\"@ is presented
 -- in terms of the other basic syntax.
 --
 -- For a semantic view use 'asVersionIntervals'.
 --
-foldVersionRange :: a                         -- ^ @"-any"@ version
-                 -> (Version -> a)            -- ^ @"== v"@
-                 -> (Version -> a)            -- ^ @"> v"@
-                 -> (Version -> a)            -- ^ @"< v"@
-                 -> (a -> a -> a)             -- ^ @"_ || _@" union
-                 -> (a -> a -> a)             -- ^ @"_ && _@" intersection
+foldVersionRange :: a                         -- ^ @\"-any\"@ version
+                 -> (Version -> a)            -- ^ @\"== v\"@
+                 -> (Version -> a)            -- ^ @\"> v\"@
+                 -> (Version -> a)            -- ^ @\"< v\"@
+                 -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
+                 -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
                  -> VersionRange -> a
 foldVersionRange anyv this later earlier union intersect = fold
   where
@@ -259,22 +259,22 @@ foldVersionRange anyv this later earlier union intersect = fold
                    (earlierVersion (wildcardUpperBound v))
 
 -- | An extended variant of 'foldVersionRange' that also provides a view of
--- in which the syntactic sugar @">= v"@, @"<= v"@ and @"== v.*"@ is presented
+-- in which the syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"== v.*\"@ is presented
 -- explicitly rather than in terms of the other basic syntax.
 --
-foldVersionRange' :: a                         -- ^ @"-any"@ version
-                  -> (Version -> a)            -- ^ @"== v"@
-                  -> (Version -> a)            -- ^ @"> v"@
-                  -> (Version -> a)            -- ^ @"< v"@
-                  -> (Version -> a)            -- ^ @">= v"@
-                  -> (Version -> a)            -- ^ @"<= v"@                  
-                  -> (Version -> Version -> a) -- ^ @"== v.*"@ wildcard. The
+foldVersionRange' :: a                         -- ^ @\"-any\"@ version
+                  -> (Version -> a)            -- ^ @\"== v\"@
+                  -> (Version -> a)            -- ^ @\"> v\"@
+                  -> (Version -> a)            -- ^ @\"< v\"@
+                  -> (Version -> a)            -- ^ @\">= v\"@
+                  -> (Version -> a)            -- ^ @\"<= v\"@
+                  -> (Version -> Version -> a) -- ^ @\"== v.*\"@ wildcard. The
                                                -- function is passed the
                                                -- inclusive lower bound and the
                                                -- exclusive upper bounds of the
                                                -- range defined by the wildcard.
-                  -> (a -> a -> a)             -- ^ @"_ || _@" union
-                  -> (a -> a -> a)             -- ^ @"_ && _@" intersection
+                  -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
+                  -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
                   -> VersionRange -> a
 foldVersionRange' anyv this later earlier orLater orEarlier
                   wildcard union intersect = fold
