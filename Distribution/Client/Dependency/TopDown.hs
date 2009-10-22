@@ -22,16 +22,14 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( PlanPackage(..) )
 import Distribution.Client.Types
-         ( AvailablePackage(..), ConfiguredPackage(..) )
+         ( AvailablePackage(..), ConfiguredPackage(..), InstalledPackage(..) )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Package
          ( PackageName(..), PackageIdentifier, Package(packageId), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion, notThisPackageVersion
@@ -73,7 +71,7 @@ import Control.Exception
 -- ------------------------------------------------------------
 
 type Constraints  = Constraints.Constraints
-                      InstalledPackage UnconfiguredPackage ExclusionReason
+                      InstalledPackageEx UnconfiguredPackage ExclusionReason
 type SelectedPackages = PackageIndex SelectedPackage
 
 -- ------------------------------------------------------------
@@ -105,7 +103,7 @@ explore pref (ChoiceNode _ choices)  =
         (_, node') = maximumBy (bestByPref pkgname) choice
   where
     topSortNumber choice = case fst (head choice) of
-      InstalledOnly           (InstalledPackage    _ i _) -> i
+      InstalledOnly           (InstalledPackageEx  _ i _) -> i
       AvailableOnly           (UnconfiguredPackage _ i _) -> i
       InstalledAndAvailable _ (UnconfiguredPackage _ i _) -> i
 
@@ -186,7 +184,7 @@ packageConstraints = either installedConstraints availableConstraints
     preferAvailable (InstalledOnly           pkg) = Left pkg
     preferAvailable (AvailableOnly           pkg) = Right pkg
     preferAvailable (InstalledAndAvailable _ pkg) = Right pkg
-    installedConstraints (InstalledPackage      _ _ deps) =
+    installedConstraints (InstalledPackageEx    _ _ deps) =
       [ TaggedDependency InstalledConstraint (thisPackageVersion dep)
       | dep <- deps ]
     availableConstraints (SemiConfiguredPackage _ _ deps) =
@@ -234,7 +232,7 @@ topDownResolver = ((((((mapMessages .).).).).).) . topDownResolver'
 -- | The native resolver with detailed structured logging and failure types.
 --
 topDownResolver' :: Platform -> CompilerId
-                 -> PackageIndex InstalledPackageInfo
+                 -> PackageIndex InstalledPackage
                  -> PackageIndex AvailablePackage
                  -> (PackageName -> PackagePreferences)
                  -> [PackageConstraint]
@@ -248,6 +246,7 @@ topDownResolver' platform comp installed available
 
   where
     configure   = configurePackage platform comp
+    constraintSet :: Constraints
     constraintSet = Constraints.empty
       (annotateInstalledPackages             topSortNumber installed')
       (annotateAvailablePackages constraints topSortNumber available')
@@ -310,13 +309,13 @@ configurePackage platform comp available spkg = case spkg of
 -- and its topological sort number.
 --
 annotateInstalledPackages :: (PackageName -> TopologicalSortNumber)
-                          -> PackageIndex InstalledPackageInfo
                           -> PackageIndex InstalledPackage
+                          -> PackageIndex InstalledPackageEx
 annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
-  [ InstalledPackage pkg (dfsNumber (packageName pkg)) (transitiveDepends pkg)
+  [ InstalledPackageEx pkg (dfsNumber (packageName pkg)) (transitiveDepends pkg)
   | pkg <- PackageIndex.allPackages installed ]
   where
-    transitiveDepends :: InstalledPackageInfo -> [PackageIdentifier]
+    transitiveDepends :: InstalledPackage -> [PackageIdentifier]
     transitiveDepends = map (packageId . toPkg) . tail . Graph.reachable graph
                       . fromJust . toVertex . packageId
     (graph, toPkg, toVertex) = PackageIndex.dependencyGraph installed
@@ -358,7 +357,7 @@ annotateAvailablePackages constraints dfsNumber available = PackageIndex.fromLis
 -- edges and even cycles, but that doesn't really matter here, it's only a
 -- heuristic.
 --
-topologicalSortNumbering :: PackageIndex InstalledPackageInfo
+topologicalSortNumbering :: PackageIndex InstalledPackage
                          -> PackageIndex AvailablePackage
                          -> (PackageName -> TopologicalSortNumber)
 topologicalSortNumbering installed available =
@@ -385,17 +384,17 @@ topologicalSortNumbering installed available =
 -- each index that we could possibly ever need. Do this by flattening packages
 -- and looking at the names of all possible dependencies.
 --
-selectNeededSubset :: PackageIndex InstalledPackageInfo
+selectNeededSubset :: PackageIndex InstalledPackage
                    -> PackageIndex AvailablePackage
                    -> Set PackageName
-                   -> (PackageIndex InstalledPackageInfo
+                   -> (PackageIndex InstalledPackage
                       ,PackageIndex AvailablePackage)
 selectNeededSubset installed available = select mempty mempty
   where
-    select :: PackageIndex InstalledPackageInfo
+    select :: PackageIndex InstalledPackage
            -> PackageIndex AvailablePackage
            -> Set PackageName
-           -> (PackageIndex InstalledPackageInfo
+           -> (PackageIndex InstalledPackage
               ,PackageIndex AvailablePackage)
     select installed' available' remaining
       | Set.null remaining = (installed', available')
@@ -442,7 +441,7 @@ finaliseSelectedPackages pref selected constraints =
         Just (InstalledOnly _)           -> finaliseInstalled ipkg
         Just (InstalledAndAvailable _ _) -> finaliseAvailable (Just ipkg) apkg
 
-    finaliseInstalled (InstalledPackage pkg _ _) = InstallPlan.PreExisting pkg
+    finaliseInstalled (InstalledPackageEx pkg _ _) = InstallPlan.PreExisting pkg
     finaliseAvailable mipkg (SemiConfiguredPackage pkg flags deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags deps')
       where
@@ -462,7 +461,7 @@ finaliseSelectedPackages pref selected constraints =
         -- Is the package already used by the installed version of this
         -- package? If so we should pick that first. This stops us from doing
         -- silly things like deciding to rebuild haskell98 against base 3.
-        isCurrent = case mipkg :: Maybe InstalledPackage of
+        isCurrent = case mipkg :: Maybe InstalledPackageEx of
           Nothing   -> \_ -> False
           Just ipkg -> \p -> packageId p `elem` depends ipkg
         -- If there is no upper bound on the version range then we apply a
@@ -494,7 +493,7 @@ finaliseSelectedPackages pref selected constraints =
 -- This may add additional constraints due to the dependencies of installed
 -- packages on other installed packages.
 --
-improvePlan :: PackageIndex InstalledPackageInfo
+improvePlan :: PackageIndex InstalledPackage
             -> Constraints
             -> PackageIndex PlanPackage
             -> (PackageIndex PlanPackage, Constraints)
@@ -521,7 +520,7 @@ improvePlan installed constraints0 selected0 =
         _                    -> False
 
     tryInstalled :: PackageIndex PlanPackage -> Constraints
-                 -> [InstalledPackageInfo]
+                 -> [InstalledPackage]
                  -> Maybe (PackageIndex PlanPackage, Constraints)
     tryInstalled selected constraints [] = Just (selected, constraints)
     tryInstalled selected constraints (pkg:pkgs) =

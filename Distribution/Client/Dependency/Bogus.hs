@@ -29,8 +29,8 @@ import Distribution.PackageDescription
          ( GenericPackageDescription(..), CondTree(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Version
          ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Simple.Utils

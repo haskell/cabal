@@ -28,15 +28,18 @@ import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
 import Distribution.Version (Version(Version), orLaterVersion)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text (display)
-import Distribution.Simple.PackageIndex(PackageIndex, allPackages,
+import Distribution.Client.PackageIndex(PackageIndex, allPackages,
                                         allPackagesByName, fromList)
 import Distribution.Simple.Utils
          ( comparing, intercalate, debug
          , installDirectoryContents, withTempDirectory )
 import Distribution.InstalledPackageInfo as InstalledPackageInfo 
-    (InstalledPackageInfo,InstalledPackageInfo_(haddockHTMLs, haddockInterfaces, exposed, package))
+         ( InstalledPackageInfo
+         , InstalledPackageInfo_(haddockHTMLs, haddockInterfaces, exposed) )
+import Distribution.Client.Types
+         ( InstalledPackage(..) )
 
-regenerateHaddockIndex :: Verbosity -> PackageIndex InstalledPackageInfo -> ProgramConfiguration -> FilePath -> IO ()
+regenerateHaddockIndex :: Verbosity -> PackageIndex InstalledPackage -> ProgramConfiguration -> FilePath -> IO ()
 regenerateHaddockIndex verbosity pkgs conf index = do
       (paths,warns) <- haddockPackagePaths pkgs'
       case warns of
@@ -63,10 +66,11 @@ regenerateHaddockIndex verbosity pkgs conf index = do
             . allPackagesByName 
             . fromList
             . filter exposed
+            . map (\(InstalledPackage pkg _) -> pkg)
             . allPackages
             $ pkgs
 
-haddockPackagePaths :: [InstalledPackageInfo_ m]
+haddockPackagePaths :: [InstalledPackageInfo]
                        -> IO ([(FilePath, FilePath)], Maybe [Char])
 haddockPackagePaths pkgs = do
   interfaces <- sequence
@@ -77,7 +81,7 @@ haddockPackagePaths pkgs = do
             then return (pkgid, Just (interface, html))
             else return (pkgid, Nothing)
         Nothing -> return (pkgid, Nothing)
-    | pkg <- pkgs, let pkgid = InstalledPackageInfo.package pkg ]
+    | pkg <- pkgs, let pkgid = packageId pkg ]
 
   let missing = [ pkgid | (pkgid, Nothing) <- interfaces ]
 

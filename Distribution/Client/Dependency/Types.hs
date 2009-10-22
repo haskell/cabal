@@ -22,14 +22,12 @@ module Distribution.Client.Dependency.Types (
   ) where
 
 import Distribution.Client.Types
-         ( AvailablePackage(..) )
+         ( AvailablePackage(..), InstalledPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.PackageDescription
          ( FlagAssignment )
-import Distribution.Simple.PackageIndex
+import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Package
          ( PackageName )
@@ -52,7 +50,7 @@ import Prelude hiding (fail)
 --
 type DependencyResolver = Platform
                        -> CompilerId
-                       -> PackageIndex InstalledPackageInfo
+                       -> PackageIndex InstalledPackage
                        -> PackageIndex AvailablePackage
                        -> (PackageName -> PackagePreferences)
                        -> [PackageConstraint]
