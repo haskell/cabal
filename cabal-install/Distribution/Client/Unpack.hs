@@ -18,7 +18,7 @@ module Distribution.Client.Unpack (
   ) where
 
 import Distribution.Package ( packageId, Dependency(..) )
-import Distribution.Simple.PackageIndex as PackageIndex (lookupDependency)
+import Distribution.Client.PackageIndex as PackageIndex (lookupDependency)
 import Distribution.Simple.Setup(fromFlag, fromFlagOrDefault)
 import Distribution.Simple.Utils(info, notice, die)
 import Distribution.Text(display)

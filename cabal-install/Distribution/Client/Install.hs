@@ -44,7 +44,8 @@ import Distribution.Client.Fetch (fetchPackage)
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 -- import qualified Distribution.Client.Info as Info
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, disambiguateDependencies )
+         ( getAvailablePackages, disambiguateDependencies
+         , getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
@@ -58,7 +59,8 @@ import Distribution.Client.Types as Available
          , AvailablePackageSource(..), AvailablePackageDb(..)
          , Repo(..), ConfiguredPackage(..)
          , BuildResult, BuildFailure(..), BuildSuccess(..)
-         , DocsResult(..), TestsResult(..), RemoteRepo(..) )
+         , DocsResult(..), TestsResult(..), RemoteRepo(..)
+         , InstalledPackage )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.SetupWrapper
@@ -75,10 +77,9 @@ import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
-import Distribution.Simple.Configure (getInstalledPackages)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..), emptyHaddockFlags
          , buildCommand, BuildFlags(..), emptyBuildFlags
@@ -101,8 +102,6 @@ import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.Version
          ( Version, VersionRange, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
@@ -160,7 +159,7 @@ upgrade verbosity packageDB repos comp conf
             | otherwise = planRepoPackages PreferAllLatest
                             comp configFlags configExFlags installFlags deps
 
-type Planner = Maybe (PackageIndex InstalledPackageInfo)
+type Planner = Maybe (PackageIndex InstalledPackage)
             -> AvailablePackageDb
             -> IO (Progress String String InstallPlan)
 
@@ -460,7 +459,7 @@ mergePackagePrefs defaultPref availablePrefs configExFlags =
     ++ [ PackageVersionPreference name ver
        | Dependency name ver <- configPreferences configExFlags ]
 
-printDryRun :: Verbosity -> Maybe (PackageIndex InstalledPackageInfo)
+printDryRun :: Verbosity -> Maybe (PackageIndex InstalledPackage)
             -> InstallPlan -> IO ()
 printDryRun verbosity minstalled plan = case unfoldr next plan of
   []   -> return ()
@@ -724,7 +723,7 @@ withWin32SelfUpgrade _ _ _ _ action | buildOS /= Windows = action
 withWin32SelfUpgrade verbosity configFlags compid pkg action = do
 
   defaultDirs <- InstallDirs.defaultInstallDirs
-                   compilerFlavor
+                   compFlavor
                    (fromFlag (configUserInstall configFlags))
                    (PackageDescription.hasLibs pkg)
 
@@ -733,7 +732,7 @@ withWin32SelfUpgrade verbosity configFlags compid pkg action = do
 
   where
     pkgid = packageId pkg
-    (CompilerId compilerFlavor _) = compid
+    (CompilerId compFlavor _) = compid
 
     exeInstallPaths defaultDirs =
       [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension

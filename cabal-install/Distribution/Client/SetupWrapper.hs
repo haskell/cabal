@@ -20,6 +20,9 @@ module Distribution.Client.SetupWrapper (
     defaultSetupScriptOptions,
   ) where
 
+import Distribution.Client.Types
+         ( InstalledPackage )
+
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
 import Distribution.Version
@@ -33,10 +36,8 @@ import Distribution.PackageDescription
          , PackageDescription(..), BuildType(..) )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.Simple.Configure
-         ( configCompiler, getInstalledPackages )
+         ( configCompiler )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(GHC), Compiler, PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
@@ -48,8 +49,10 @@ import Distribution.Simple.Command
          ( CommandUI(..), commandShowOptions )
 import Distribution.Simple.GHC
          ( ghcVerbosityOptions )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Client.PackageIndex (PackageIndex)
+import Distribution.Client.IndexUtils
+         ( getInstalledPackages )
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, findPackageDesc, comparing
          , createDirectoryIfMissingVerbose )
@@ -75,7 +78,7 @@ data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion  :: VersionRange,
     useCompiler      :: Maybe Compiler,
     usePackageDB     :: PackageDBStack,
-    usePackageIndex  :: Maybe (PackageIndex InstalledPackageInfo),
+    usePackageIndex  :: Maybe (PackageIndex InstalledPackage),
     useProgramConfig :: ProgramConfiguration,
     useDistPref      :: FilePath,
     useLoggingHandle :: Maybe Handle,

@@ -33,7 +33,8 @@ import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
          ( foldProgress )
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, disambiguateDependencies )
+         ( getAvailablePackages, disambiguateDependencies
+         , getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.HttpUtils (getHTTP, isOldHackageURI)
 import Distribution.Client.Utils
@@ -41,13 +42,11 @@ import Distribution.Client.Utils
 
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
+import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration )
-import Distribution.Simple.Configure
-         ( getInstalledPackages )
 import Distribution.Simple.Utils
          ( die, notice, info, debug, setupMessage
          , copyFileVerbose )

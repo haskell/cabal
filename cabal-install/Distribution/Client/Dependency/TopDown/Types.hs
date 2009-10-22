@@ -13,9 +13,8 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( AvailablePackage(..) )
+         ( AvailablePackage(..), InstalledPackage )
 
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.Package
          ( PackageIdentifier, Dependency
          , Package(packageId), PackageFixedDeps(depends) )
@@ -27,10 +26,10 @@ import Distribution.PackageDescription
 -- ------------------------------------------------------------
 
 type SelectablePackage
-   = InstalledOrAvailable InstalledPackage UnconfiguredPackage
+   = InstalledOrAvailable InstalledPackageEx UnconfiguredPackage
 
 type SelectedPackage
-   = InstalledOrAvailable InstalledPackage SemiConfiguredPackage
+   = InstalledOrAvailable InstalledPackageEx SemiConfiguredPackage
 
 data InstalledOrAvailable installed available
    = InstalledOnly         installed
@@ -39,11 +38,11 @@ data InstalledOrAvailable installed available
 
 type TopologicalSortNumber = Int
 
-data InstalledPackage
-   = InstalledPackage
-       InstalledPackageInfo
+data InstalledPackageEx
+   = InstalledPackageEx
+       InstalledPackage
        !TopologicalSortNumber
-       [PackageIdentifier]
+       [PackageIdentifier]    -- transative closure of installed deps
 
 data UnconfiguredPackage
    = UnconfiguredPackage
@@ -58,11 +57,11 @@ data SemiConfiguredPackage
        [Dependency]      -- dependencies we end up with when we apply
                          -- the flag assignment
 
-instance Package InstalledPackage where
-  packageId (InstalledPackage p _ _) = packageId p
+instance Package InstalledPackageEx where
+  packageId (InstalledPackageEx p _ _) = packageId p
 
-instance PackageFixedDeps InstalledPackage where
-  depends (InstalledPackage _ _ deps) = deps
+instance PackageFixedDeps InstalledPackageEx where
+  depends (InstalledPackageEx _ _ deps) = deps
 
 instance Package UnconfiguredPackage where
   packageId (UnconfiguredPackage p _ _) = packageId p

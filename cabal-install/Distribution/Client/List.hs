@@ -15,10 +15,9 @@ module Distribution.Client.List (
 
 import Distribution.Package
          ( PackageName(..), packageName, packageVersion
-         , Dependency(..), thisPackageVersion )
+         , Dependency(..), thisPackageVersion, depends )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import qualified Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.PackageDescription   as Available
 import Distribution.PackageDescription
@@ -26,13 +25,12 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 
-import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils (equating, comparing, notice)
 import Distribution.Simple.Setup (fromFlag)
-import qualified Distribution.Simple.PackageIndex as PackageIndex
+import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Version   (Version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text
@@ -40,13 +38,14 @@ import Distribution.Text
 
 import Distribution.Client.Types
          ( AvailablePackage(..), Repo, AvailablePackageDb(..)
-         , UnresolvedDependency(..) )
+         , UnresolvedDependency(..), InstalledPackage(..) )
 import Distribution.Client.Setup
          ( ListFlags(..), InfoFlags(..) )
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, disambiguateDependencies )
+         ( getAvailablePackages, disambiguateDependencies
+         , getInstalledPackages )
 import Distribution.Client.Fetch
          ( isFetched )
 
@@ -129,9 +128,9 @@ info verbosity packageDBs repos comp conf _listFlags deps = do
 --
 data PackageDisplayInfo = PackageDisplayInfo {
     pkgname           :: PackageName,
-    allInstalled      :: [InstalledPackageInfo],
+    allInstalled      :: [InstalledPackage],
     allAvailable      :: [AvailablePackage],
-    latestInstalled   :: Maybe InstalledPackageInfo,
+    latestInstalled   :: Maybe InstalledPackage,
     latestAvailable   :: Maybe AvailablePackage,
     homepage          :: String,
     bugReports        :: String,
@@ -271,7 +270,7 @@ reflowLines = vcat . map text . lines
 -- the input package info records are all supposed to refer to the same
 -- package name.
 --
-mergePackageInfo :: [InstalledPackageInfo]
+mergePackageInfo :: [InstalledPackage]
                  -> [AvailablePackage]
                  -> PackageDisplayInfo
 mergePackageInfo installedPkgs availablePkgs =
@@ -314,8 +313,7 @@ mergePackageInfo installedPkgs availablePkgs =
                            (maybe [] Available.exposedModules
                                    . Available.library) available,
     dependencies = combine Available.buildDepends available
-                           (map thisPackageVersion
-                             . Installed.depends) installed,
+                           (map thisPackageVersion . depends) installed',
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)
                  $ installed,
@@ -323,7 +321,8 @@ mergePackageInfo installedPkgs availablePkgs =
   }
   where
     combine f x g y  = fromJust (fmap f x `mplus` fmap g y)
-    installed        = latest installedPkgs
+    installed'       = latest installedPkgs
+    installed        = fmap (\(InstalledPackage p _) -> p) installed'
     availableGeneric = fmap packageDescription (latest availablePkgs)
     available        = fmap flattenPackageDescription availableGeneric
     latest []        = Nothing
@@ -350,8 +349,8 @@ updateFileSystemPackageDetails pkginfo = do
 -- same package by name. In the result pairs, the lists are guaranteed to not
 -- both be empty.
 --
-mergePackages ::   [InstalledPackageInfo] -> [AvailablePackage]
-              -> [([InstalledPackageInfo],   [AvailablePackage])]
+mergePackages ::   [InstalledPackage] -> [AvailablePackage]
+              -> [([InstalledPackage],   [AvailablePackage])]
 mergePackages installed available =
     map collect
   $ mergeBy (\i a -> fst i `compare` fst a)

@@ -11,6 +11,7 @@
 -- Extra utils related to the package indexes.
 -----------------------------------------------------------------------------
 module Distribution.Client.IndexUtils (
+  getInstalledPackages,
   getAvailablePackages,
 
   readPackageIndexFile,
@@ -24,21 +25,29 @@ import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.Types
          ( UnresolvedDependency(..), AvailablePackage(..)
          , AvailablePackageSource(..), Repo(..), RemoteRepo(..)
-         , AvailablePackageDb(..) )
+         , AvailablePackageDb(..), InstalledPackage(..) )
 
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), PackageName(..), Package(..)
-         , Dependency(Dependency) )
-import Distribution.Simple.PackageIndex (PackageIndex)
-import qualified Distribution.Simple.PackageIndex as PackageIndex
+         , Dependency(Dependency), InstalledPackageId(..) )
+import Distribution.Client.PackageIndex (PackageIndex)
+import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
+import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.PackageDescription
          ( GenericPackageDescription )
 import Distribution.PackageDescription.Parse
          ( parsePackageDescription )
+import Distribution.Simple.Compiler
+         ( Compiler, PackageDBStack )
+import Distribution.Simple.Program
+         ( ProgramConfiguration )
+import qualified Distribution.Simple.Configure as Configure
+         ( getInstalledPackages )
 import Distribution.ParseUtils
          ( ParseResult(..) )
 import Distribution.Version
-         ( intersectVersionRanges )
+         ( Version(Version), intersectVersionRanges )
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Verbosity (Verbosity)
@@ -62,6 +71,40 @@ import System.Directory
          ( getModificationTime )
 import System.Time
          ( getClockTime, diffClockTimes, normalizeTimeDiff, TimeDiff(tdDay) )
+
+getInstalledPackages :: Verbosity -> Compiler
+                     -> PackageDBStack -> ProgramConfiguration
+                     -> IO (Maybe (PackageIndex InstalledPackage))
+getInstalledPackages verbosity comp packageDbs conf =
+  fmap (fmap convert)
+       (Configure.getInstalledPackages verbosity comp packageDbs conf)
+  where
+    convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
+    convert index = PackageIndex.fromList $
+      reverse -- because later ones mask earlier ones, but
+              -- InstalledPackageIndex.allPackages gives us the most preferred
+              -- instances first, when packages share a package id, like when
+              -- the same package is installed in the global & user dbs.
+      [ InstalledPackage ipkg (sourceDeps index ipkg)
+      | ipkg <- InstalledPackageIndex.allPackages index ]
+
+    -- The InstalledPackageInfo only lists dependencies by the
+    -- InstalledPackageId, which means we do not directly know the corresponding
+    -- source dependency. The only way to find out is to lookup the
+    -- InstalledPackageId to get the InstalledPackageInfo and look at its
+    -- source PackageId. But if the package is broken because it depends on
+    -- other packages that do not exist then we have a problem we cannot find
+    -- the original source package id. Instead we make up a bogus package id.
+    -- This should have the same effect since it should be a dependency on a
+    -- non-existant package.
+    sourceDeps index ipkg =
+      [ maybe (brokenPackageId depid) packageId mdep
+      | let depids = InstalledPackageInfo.depends ipkg
+            getpkg = InstalledPackageIndex.lookupInstalledPackageId index
+      , (depid, mdep) <- zip depids (map getpkg depids) ]
+
+    brokenPackageId (InstalledPackageId str) =
+      PackageIdentifier (PackageName (str ++ "-broken")) (Version [] [])
 
 -- | Read a repository index from disk, from the local files specified by
 -- a list of 'Repo's.

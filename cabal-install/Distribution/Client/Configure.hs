@@ -27,12 +27,12 @@ import Distribution.Client.Dependency
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages )
+         ( getAvailablePackages, getInstalledPackages )
 import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
 import Distribution.Client.Types as Available
          ( AvailablePackage(..), AvailablePackageSource(..), Repo(..)
-         , AvailablePackageDb(..), ConfiguredPackage(..) )
+         , AvailablePackageDb(..), ConfiguredPackage(..), InstalledPackage )
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 
@@ -40,25 +40,19 @@ import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId)
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration )
-import Distribution.Simple.Configure (getInstalledPackages)
 import Distribution.Simple.Setup
          ( ConfigFlags(..), toFlag, flagToMaybe, fromFlagOrDefault )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import Distribution.Package
          ( PackageName, packageName, packageVersion
          , Package(..), Dependency(..), thisPackageVersion )
-import qualified Distribution.PackageDescription as PackageDescription
-import Distribution.PackageDescription
-         ( PackageDescription )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.Version
          ( VersionRange, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
@@ -134,7 +128,7 @@ configure verbosity packageDBs repos comp conf
 --
 planLocalPackage :: Verbosity -> Compiler
                  -> ConfigFlags -> ConfigExFlags
-                 -> Maybe (PackageIndex InstalledPackageInfo)
+                 -> Maybe (PackageIndex InstalledPackage)
                  -> AvailablePackageDb
                  -> IO (Progress String String InstallPlan)
 planLocalPackage verbosity comp configFlags configExFlags installed

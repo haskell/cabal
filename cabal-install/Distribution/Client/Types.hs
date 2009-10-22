@@ -13,11 +13,13 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageIdentifier(..), Package(..)
+         ( PackageName, PackageId, Package(..)
          , PackageFixedDeps(..), Dependency )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagAssignment )
-import Distribution.Simple.PackageIndex
+import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Version
          ( VersionRange )
@@ -37,6 +39,29 @@ data AvailablePackageDb = AvailablePackageDb {
   packagePreferences :: Map PackageName VersionRange
 }
 
+-- | TODO: This is a hack to help us transition from Cabal-1.6 to 1.8.
+-- What is new in 1.8 is that installed packages and dependencies between
+-- installed packages are now identified by an opaque InstalledPackageId
+-- rather than a source PackageId.
+--
+-- We should use simply an 'InstalledPackageInfo' here but to ease the
+-- transition we are temporarily using this variant where we pretend that
+-- installed packages still specify their deps in terms of PackageIds.
+--
+-- Crucially this means that 'InstalledPackage' can be an instance of
+-- 'PackageFixedDeps' where as 'InstalledPackageInfo' is no longer an instance
+-- of that class. This means we can make 'PackageIndex'es of InstalledPackage
+-- where as the InstalledPackageInfo now has its own monomorphic index type.
+--
+data InstalledPackage = InstalledPackage
+       InstalledPackageInfo
+       [PackageId]
+
+instance Package InstalledPackage where
+  packageId (InstalledPackage pkg _) = packageId pkg
+instance PackageFixedDeps InstalledPackage where
+  depends (InstalledPackage _ deps) = deps
+
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
 -- the sense that it provides all the configuration information and so the
@@ -45,7 +70,7 @@ data AvailablePackageDb = AvailablePackageDb {
 data ConfiguredPackage = ConfiguredPackage
        AvailablePackage    -- package info, including repo
        FlagAssignment      -- complete flag assignment for the package
-       [PackageIdentifier] -- set of exact dependencies. These must be
+       [PackageId]         -- set of exact dependencies. These must be
                            -- consistent with the 'buildDepends' in the
                            -- 'PackageDescrption' that you'd get by applying
                            -- the flag assignment.
@@ -61,7 +86,7 @@ instance PackageFixedDeps ConfiguredPackage where
 -- | We re-use @GenericPackageDescription@ and use the @package-url@
 -- field to store the tarball URI.
 data AvailablePackage = AvailablePackage {
-    packageInfoId      :: PackageIdentifier,
+    packageInfoId      :: PackageId,
     packageDescription :: GenericPackageDescription,
     packageSource      :: AvailablePackageSource
   }
@@ -111,7 +136,7 @@ data UnresolvedDependency
   deriving (Show)
 
 type BuildResult  = Either BuildFailure BuildSuccess
-data BuildFailure = DependentFailed PackageIdentifier
+data BuildFailure = DependentFailed PackageId
                   | DownloadFailed  Exception
                   | UnpackFailed    Exception
                   | ConfigureFailed Exception
