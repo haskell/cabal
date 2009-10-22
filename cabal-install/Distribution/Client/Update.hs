@@ -20,7 +20,7 @@ import Distribution.Client.Fetch
          ( downloadIndex )
 import qualified Distribution.Client.Utils as BS
          ( writeFileAtomic )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
+import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
          ( getAvailablePackages )
 import qualified Paths_cabal_install

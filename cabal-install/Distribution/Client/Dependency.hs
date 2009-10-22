@@ -29,13 +29,12 @@ module Distribution.Client.Dependency (
 
 import Distribution.Client.Dependency.Bogus (bogusResolver)
 import Distribution.Client.Dependency.TopDown (topDownResolver)
-import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
-         ( UnresolvedDependency(..), AvailablePackage(..) )
+         ( UnresolvedDependency(..), AvailablePackage(..), InstalledPackage )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
@@ -44,7 +43,7 @@ import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), packageVersion, packageName
          , Dependency(..), Package(..), PackageFixedDeps(..) )
 import Distribution.Version
-         ( VersionRange(AnyVersion), orLaterVersion, isAnyVersion )
+         ( VersionRange, anyVersion, orLaterVersion, isAnyVersion )
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.System
@@ -113,7 +112,7 @@ data PackagePreference
 
 resolveDependencies :: Platform
                     -> CompilerId
-                    -> Maybe (PackageIndex InstalledPackageInfo)
+                    -> Maybe (PackageIndex InstalledPackage)
                     -> PackageIndex AvailablePackage
                     -> PackagesPreference
                     -> [PackageConstraint]
@@ -127,7 +126,7 @@ resolveDependencies platform comp installed available
 
 resolveDependenciesWithProgress :: Platform
                                 -> CompilerId
-                                -> Maybe (PackageIndex InstalledPackageInfo)
+                                -> Maybe (PackageIndex InstalledPackage)
                                 -> PackageIndex AvailablePackage
                                 -> PackagesPreference
                                 -> [PackageConstraint]
@@ -152,7 +151,7 @@ hideBrokenPackages index =
 dependencyResolver
   :: DependencyResolver
   -> Platform -> CompilerId
-  -> PackageIndex InstalledPackageInfo
+  -> PackageIndex InstalledPackage
   -> PackageIndex AvailablePackage
   -> PackagesPreference
   -> [PackageConstraint]
@@ -195,7 +194,7 @@ interpretPackagesPreference selected (PackagesPreference defaultPref prefs) =
 
   where
     versionPref pkgname =
-      fromMaybe AnyVersion (Map.lookup pkgname versionPrefs)
+      fromMaybe anyVersion (Map.lookup pkgname versionPrefs)
     versionPrefs = Map.fromList
       [ (pkgname, pref)
       | PackageVersionPreference pkgname pref <- prefs ]
@@ -217,7 +216,7 @@ interpretPackagesPreference selected (PackagesPreference defaultPref prefs) =
 -- | Given the list of installed packages and available packages, figure
 -- out which packages can be upgraded.
 --
-upgradableDependencies :: PackageIndex InstalledPackageInfo
+upgradableDependencies :: PackageIndex InstalledPackage
                        -> PackageIndex AvailablePackage
                        -> [Dependency]
 upgradableDependencies installed available =

@@ -45,23 +45,22 @@ module Distribution.Client.InstallPlan (
 
 import Distribution.Client.Types
          ( AvailablePackage(packageDescription), ConfiguredPackage(..)
+         , InstalledPackage
          , BuildFailure, BuildSuccess )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , PackageFixedDeps(..), Dependency(..) )
 import Distribution.Version
          ( Version, withinRange )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.PackageDescription
          ( GenericPackageDescription(genPackageFlags)
          , PackageDescription(buildDepends)
          , Flag(flagName), FlagName(..) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
-import Distribution.Simple.PackageIndex
+import Distribution.Client.PackageIndex
          ( PackageIndex )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
+import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Text
          ( display )
 import Distribution.System
@@ -124,7 +123,7 @@ import Control.Exception
 -- have problems with inconsistent dependencies.
 -- On the other hand it is true that every closed sub plan is valid.
 
-data PlanPackage = PreExisting InstalledPackageInfo
+data PlanPackage = PreExisting InstalledPackage
                  | Configured  ConfiguredPackage
                  | Installed   ConfiguredPackage BuildSuccess
                  | Failed      ConfiguredPackage BuildFailure
