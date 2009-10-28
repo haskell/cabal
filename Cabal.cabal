@@ -49,7 +49,7 @@ Library
                    pretty     >= 1   && < 1.1
 
   if !os(windows)
-    Build-Depends: unix       >= 2.2 && < 2.5
+    Build-Depends: unix       >= 2.1 && < 2.5
 
   ghc-options: -Wall -fno-ignore-asserts
   if impl(ghc >= 6.8)
