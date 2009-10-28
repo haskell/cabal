@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -cpp #-}
+{-# OPTIONS_NHC98 -cpp #-}
+{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Heuristics
@@ -28,7 +32,9 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Client.Types ( packageDescription, AvailablePackageDb(..) )
 import Control.Monad (liftM )
 import Data.Char   ( isUpper, isLower, isSpace )
+#if MIN_VERSION_base(3,0,3)
 import Data.Either ( partitionEithers )
+#endif
 import Data.List   ( intercalate )
 import Data.Maybe  ( catMaybes )
 import Data.Monoid ( mempty, mappend )
@@ -172,3 +178,12 @@ test db testProjectRoot = do
   putStrLn "List of known categories"
   print $ knownCategories db
 -}
+
+#if MIN_VERSION_base(3,0,3)
+#else
+partitionEithers :: [Either a b] -> ([a],[b])
+partitionEithers = foldr (either left right) ([],[])
+ where
+   left  a (l, r) = (a:l, r)
+   right a (l, r) = (l, a:r)
+#endif
