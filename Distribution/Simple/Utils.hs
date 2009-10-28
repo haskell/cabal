@@ -160,8 +160,11 @@ import System.IO
     ( Handle, openFile, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
-    ( isDoesNotExistError, ioeSetFileName, ioeSetLocation
-    , ioeGetErrorString, ioeGetFileName, ioeGetLocation )
+    ( isDoesNotExistError, ioeSetFileName, ioeGetFileName, ioeGetErrorString )
+#if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 608)
+import System.IO.Error
+    ( ioeSetLocation, ioeGetLocation )
+#endif
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
@@ -217,8 +220,12 @@ dieWithLocation filename lineno msg =
           . flip ioeSetFileName (normalise filename)
           $ userError msg
   where
+#if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 608)
+    setLocation _        err = err
+#else
     setLocation Nothing  err = err
     setLocation (Just n) err = ioeSetLocation err (show n)
+#endif
 
 die :: String -> IO a
 die msg = ioError (userError msg)
@@ -236,9 +243,13 @@ topHandler prog = catch prog handle
         file         = case ioeGetFileName ioe of
                          Nothing   -> ""
                          Just path -> path ++ location ++ ": "
+#if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 608)
+        location     = ""
+#else
         location     = case ioeGetLocation ioe of
                          l@(n:_) | n >= '0' && n <= '9' -> ':' : l
                          _                              -> ""
+#endif
         detail       = ioeGetErrorString ioe
 
 -- | Non fatal conditions that may be indicative of an error or problem.
