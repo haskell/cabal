@@ -57,10 +57,15 @@ Executable cabal
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
+        Distribution.Client.Init
+        Distribution.Client.Init.Heuristics
+        Distribution.Client.Init.Licenses
+        Distribution.Client.Init.Types
         Distribution.Client.Install
         Distribution.Client.InstallPlan
         Distribution.Client.InstallSymlink
         Distribution.Client.List
+        Distribution.Client.PackageIndex
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist
