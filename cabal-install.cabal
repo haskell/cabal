@@ -94,8 +94,8 @@ Executable cabal
                      directory  >= 1   && < 1.1,
                      pretty     >= 1   && < 1.1,
                      random     >= 1   && < 1.1,
-                     containers >= 0.1 && < 0.3,
-                     array      >= 0.1 && < 0.3,
+                     containers >= 0.1 && < 0.4,
+                     array      >= 0.1 && < 0.4,
                      old-time   >= 1   && < 1.1,
                      time       >= 1.1 && < 1.2
 
@@ -108,5 +108,5 @@ Executable cabal
       build-depends: Win32 >= 2 && < 3
       cpp-options: -DWIN32
     else
-      build-depends: unix >= 1.0 && < 2.4
+      build-depends: unix >= 1.0 && < 2.5
     extensions: CPP

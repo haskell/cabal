@@ -8,8 +8,19 @@ module Distribution.Compat.TempFile (
   ) where
 
 import System.FilePath        ((</>))
-import System.Posix.Internals (mkdir, c_getpid)
-import Foreign.C              (withCString, getErrno, eEXIST, errnoToIOError)
+#ifdef mingw32_HOST_OS
+import System.Directory       (createDirectory)
+#else
+import System.Posix.Directory (createDirectory)
+#endif
+import System.IO.Error        (try, isAlreadyExistsError)
+
+#if __NHC__
+import System.Posix.Types     (CPid(..))
+foreign import ccall unsafe "getpid" c_getpid :: IO CPid
+#else
+import System.Posix.Internals (c_getpid)
+#endif
 
 createTempDirectory :: FilePath -> String -> IO FilePath
 createTempDirectory dir template = do
@@ -18,11 +29,15 @@ createTempDirectory dir template = do
   where
     findTempName x = do
       let dirpath = dir </> template ++ show x
-      res <- withCString dirpath $ \s -> mkdir s 0o700
-      if res == 0
-        then return dirpath
-        else do
-          errno <- getErrno
-          if errno == eEXIST
-            then findTempName (x+1)
-            else ioError (errnoToIOError "createTempDirectory" errno Nothing (Just dir))
+      r <- try $ mkPrivateDir dirpath
+      case r of
+        Right _ -> return dirpath
+        Left  e | isAlreadyExistsError e -> findTempName (x+1)
+                | otherwise              -> ioError e
+
+mkPrivateDir :: String -> IO ()
+#ifdef mingw32_HOST_OS
+mkPrivateDir s = System.Directory.createDirectory s
+#else
+mkPrivateDir s = System.Posix.Directory.createDirectory s 0o700
+#endif
