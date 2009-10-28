@@ -70,7 +70,8 @@ import Distribution.Simple.Program
          , rawSystemProgram, rawSystemProgramStdoutConf )
 import Distribution.Version     ( anyVersion )
 import Distribution.Package
-         ( Package(..), InstalledPackageId(InstalledPackageId) )
+         ( Package(..), InstalledPackageId(InstalledPackageId),
+           pkgName, pkgVersion, )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, writeFileAtomic
         , installOrdinaryFile, installExecutableFile
@@ -84,7 +85,7 @@ import Distribution.Compat.ReadP
 
 import Data.List                ( nub )
 import Data.Char                ( isSpace )
-
+import Data.Maybe               ( fromMaybe )
 
 
 -- -----------------------------------------------------------------------------
@@ -147,13 +148,17 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   let libBi = libBuildInfo lib
   let args  = constructJHCCmdLine lbi libBi clbi (buildDir lbi) verbosity
+{- This is not needed. Maybe it was needed for JHC before version 0.7.2.
   rawSystemProgram verbosity jhcProg $
     ["-c"] ++ args ++ map display (libModules lib)
+-}
   let pkgid = display (packageId pkg_descr)
       pfile = buildDir lbi </> "jhc-pkg.conf"
       hlfile= buildDir lbi </> (pkgid ++ ".hl")
   writeFileAtomic pfile $ jhcPkgConf pkg_descr
-  rawSystemProgram verbosity jhcProg ["--build-hl="++pfile, "-o", hlfile]
+  rawSystemProgram verbosity jhcProg $
+     ["--build-hl="++pfile, "-o", hlfile] ++
+     args ++ map display (libModules lib)
 
 -- | Building an executable for JHC.
 -- Currently C source files are not supported.
@@ -176,17 +181,23 @@ constructJHCCmdLine lbi bi clbi _odir verbosity =
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
      ++ ["-i", autogenModulesDir lbi]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
-     ++ (concat [ ["-p", display pkgid]
+     {-
+     It would be better if JHC would accept package names with versions,
+     but JHC-0.7.2 doesn't accept this.
+     Thus, we have to strip the version with 'pkgName'.
+     -}
+     ++ (concat [ ["-p", display (pkgName pkgid)]
                 | (_, pkgid) <- componentPackageDeps clbi ])
 
 jhcPkgConf :: PackageDescription -> String
 jhcPkgConf pd =
   let sline name sel = name ++ ": "++sel pd
-      Just lib = library pd
+      lib = fromMaybe (error "no library available") . library
       comma = intercalate "," . map display
-  in unlines [sline "name" (display . packageId)
-             ,"exposed-modules: " ++ (comma (PD.exposedModules lib))
-             ,"hidden-modules: " ++ (comma (otherModules $ libBuildInfo lib))
+  in unlines [sline "name" (display . pkgName . packageId)
+             ,sline "version" (display . pkgVersion . packageId)
+             ,sline "exposed-modules" (comma . PD.exposedModules . lib)
+             ,sline "hidden-modules" (comma . otherModules . libBuildInfo . lib)
              ]
 
 installLib :: Verbosity -> FilePath -> FilePath -> PackageDescription -> Library -> IO ()
