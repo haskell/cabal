@@ -818,7 +818,7 @@ initCommand = CommandUI {
   }
   where readMaybe s = case reads s of
                         [(x,"")]  -> Just x
-                        otherwise -> Nothing
+                        _         -> Nothing
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils

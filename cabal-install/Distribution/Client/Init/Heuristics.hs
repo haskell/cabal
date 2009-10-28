@@ -20,7 +20,7 @@ module Distribution.Client.Init.Heuristics (
 ) where
 import Distribution.Simple.Setup(Flag(..))
 import Distribution.ModuleName ( ModuleName, fromString )
-import Distribution.Simple.PackageIndex
+import Distribution.Client.PackageIndex
     ( allPackagesByName )
 import qualified Distribution.PackageDescription as PD
     ( category, packageDescription )
