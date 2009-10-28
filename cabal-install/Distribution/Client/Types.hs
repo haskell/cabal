@@ -26,8 +26,8 @@ import Distribution.Version
 
 import Data.Map (Map)
 import Network.URI (URI)
-import Control.Exception
-         ( Exception )
+import Distribution.Compat.Exception
+         ( SomeException )
 
 newtype Username = Username { unUsername :: String }
 newtype Password = Password { unPassword :: String }
@@ -137,11 +137,11 @@ data UnresolvedDependency
 
 type BuildResult  = Either BuildFailure BuildSuccess
 data BuildFailure = DependentFailed PackageId
-                  | DownloadFailed  Exception
-                  | UnpackFailed    Exception
-                  | ConfigureFailed Exception
-                  | BuildFailed     Exception
-                  | InstallFailed   Exception
+                  | DownloadFailed  SomeException
+                  | UnpackFailed    SomeException
+                  | ConfigureFailed SomeException
+                  | BuildFailed     SomeException
+                  | InstallFailed   SomeException
 data BuildSuccess = BuildOk         DocsResult TestsResult
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk

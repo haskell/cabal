@@ -17,8 +17,9 @@ import System.Directory
 import Distribution.Compat.TempFile
          ( createTempDirectory )
 import qualified Control.Exception as Exception
-         ( handle, throwIO, evaluate, finally, bracket )
-
+         ( evaluate, finally, bracket )
+import qualified Distribution.Compat.Exception as Exception
+         ( onException )
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
 -- * The result list never contains @(Nothing, Nothing)@.
@@ -51,9 +52,8 @@ duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
 writeFileAtomic :: FilePath -> BS.ByteString -> IO ()
 writeFileAtomic targetFile content = do
   (tmpFile, tmpHandle) <- openBinaryTempFile targetDir template
-  Exception.handle (\err -> do hClose tmpHandle
-                               removeFile tmpFile
-                               Exception.throwIO err) $ do
+  Exception.onException (do hClose tmpHandle
+                            removeFile tmpFile) $ do
       BS.hPut tmpHandle content
       hClose tmpHandle
       renameFile tmpFile targetFile
