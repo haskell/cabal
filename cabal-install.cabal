@@ -79,7 +79,7 @@ Executable cabal
         Distribution.Compat.TempFile
         Paths_cabal_install
 
-    build-depends: base >= 2 && < 4,
+    build-depends: base >= 2 && < 5,
                    Cabal >= 1.7.5 && < 1.9,
                    filepath >= 1.0,
                    network >= 1 && < 3,

@@ -21,7 +21,18 @@ import Data.Maybe
          ( isJust, fromMaybe )
 import qualified Data.Map as Map
 import Control.Exception as Exception
-         ( handle, handleJust, Exception(IOException) )
+         ( handleJust )
+#if MIN_VERSION_base(4,0,0)
+import Control.Exception as Exception
+         ( Exception(toException), catches, Handler(Handler), IOException )
+import System.Exit
+         ( ExitCode )
+#else
+import Control.Exception as Exception
+         ( Exception(IOException, ExitException) )
+#endif
+import Distribution.Compat.Exception
+         ( SomeException, catchIO, catchExit )
 import Control.Monad
          ( when, unless )
 import System.Directory
@@ -294,7 +305,11 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
       warn verbosity $ "Missing log file for build report: "
                     ++ fromMaybe ""  (ioeGetFileName ioe)
 
+#if MIN_VERSION_base(4,0,0)
+    missingFile ioe
+#else
     missingFile (IOException ioe)
+#endif
       | isDoesNotExistError ioe  = Just ioe
     missingFile _                = Nothing
 
@@ -645,9 +660,10 @@ installUnpackedPackage verbosity scriptOptions miscOptions
 
   -- Doc generation phase
       docsResult <- if shouldHaddock
-        then Exception.handle (\_ -> return DocsFailed) $ do
-               setup haddockCommand haddockFlags
-               return DocsOk
+        then (do setup haddockCommand haddockFlags
+                 return DocsOk)
+               `catchIO`   (\_ -> return DocsFailed)
+               `catchExit` (\_ -> return DocsFailed)
         else return DocsNotTried
 
   -- Tests phase
@@ -710,9 +726,21 @@ installUnpackedPackage verbosity scriptOptions miscOptions
         else die $ "Unable to find cabal executable at: " ++ self
 
 -- helper
-onFailure :: (Exception -> BuildFailure) -> IO BuildResult -> IO BuildResult
-onFailure result = Exception.handle (return . Left . result)
-
+onFailure :: (SomeException -> BuildFailure) -> IO BuildResult -> IO BuildResult
+onFailure result action =
+#if MIN_VERSION_base(4,0,0)
+  action `catches`
+    [ Handler $ \ioe  -> handler (ioe  :: IOException)
+    , Handler $ \exit -> handler (exit :: ExitCode)
+    ]
+  where
+    handler :: Exception e => e -> IO BuildResult
+    handler = return . Left . result . toException
+#else
+  action
+    `catchIO`   (return . Left . result . IOException)
+    `catchExit` (return . Left . result . ExitException)
+#endif
 
 withWin32SelfUpgrade :: Verbosity
                      -> ConfigFlags
