@@ -9,7 +9,9 @@
 -- This module contains most of the JHC-specific code for configuring, building
 -- and installing packages.
 
-{- Copyright (c) 2003-2005, Isaac Jones
+{-
+Copyright (c) 2009, Henning Thielemann
+Copyright (c) 2003-2005, Isaac Jones
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -50,9 +52,8 @@ import Distribution.PackageDescription as PD
        ( PackageDescription(..), BuildInfo(..), Executable(..)
        , Library(..), libModules, hcOptions )
 import Distribution.InstalledPackageInfo
-                                ( emptyInstalledPackageInfo )
+         ( emptyInstalledPackageInfo, )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(sourcePackageId) )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -69,7 +70,7 @@ import Distribution.Simple.Program
          , rawSystemProgram, rawSystemProgramStdoutConf )
 import Distribution.Version     ( anyVersion )
 import Distribution.Package
-         ( Package(..) )
+         ( Package(..), InstalledPackageId(InstalledPackageId) )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, writeFileAtomic
         , installOrdinaryFile, installExecutableFile
@@ -79,7 +80,7 @@ import Distribution.Verbosity
 import Distribution.Text
          ( Text(parse), display )
 import Distribution.Compat.ReadP
-    ( readP_to_S, many, skipSpaces )
+    ( readP_to_S, string, skipSpaces )
 
 import Data.List                ( nub )
 import Data.Char                ( isSpace )
@@ -120,16 +121,20 @@ getInstalledPackages verbosity packageDBs conf = do
      _                 -> die "JHC does not yet support multiple package DBs"
 
    str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
-   case pCheck (readP_to_S (many (skipSpaces >> parse)) str) of
-     [ps] -> return $ PackageIndex.fromList
-                    [ emptyInstalledPackageInfo {
-                        InstalledPackageInfo.sourcePackageId = p
-                      }
-                    | p <- ps ]
-     _    -> die "cannot parse package list"
-  where
-    pCheck :: [(a, [Char])] -> [a]
-    pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
+   let pCheck :: [(a, String)] -> [a]
+       pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
+   let parseLine ln =
+          pCheck (readP_to_S
+             (skipSpaces >> string "Name:" >> skipSpaces >> parse) ln)
+   return $
+      PackageIndex.fromList $
+      map (\p -> emptyInstalledPackageInfo {
+                    InstalledPackageInfo.installedPackageId =
+                       InstalledPackageId (display p),
+                    InstalledPackageInfo.sourcePackageId = p
+                 }) $
+      concatMap parseLine $
+      lines str
 
 -- -----------------------------------------------------------------------------
 -- Building
