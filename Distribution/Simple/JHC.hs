@@ -117,10 +117,16 @@ jhcLanguageExtensions =
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                     -> IO PackageIndex
 getInstalledPackages verbosity packageDBs conf = do
+{-
    case packageDBs of
      [GlobalPackageDB] -> return ()
      _                 -> die "JHC does not yet support multiple package DBs"
-
+-}
+{-
+jhc --list-libraries lists all available libraries.
+How shall I find out, whether they are global or local
+without checking all files and locations?
+-}
    str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
    let pCheck :: [(a, String)] -> [a]
        pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
