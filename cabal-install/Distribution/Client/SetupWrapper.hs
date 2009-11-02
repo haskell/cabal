@@ -55,9 +55,9 @@ import Distribution.Client.IndexUtils
          ( getInstalledPackages )
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, findPackageDesc, comparing
-         , createDirectoryIfMissingVerbose )
+         , createDirectoryIfMissingVerbose, rewriteFile )
 import Distribution.Client.Utils
-         ( moreRecentFile, rewriteFile, inDir )
+         ( moreRecentFile, inDir )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity

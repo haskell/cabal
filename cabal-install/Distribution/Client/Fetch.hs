@@ -37,8 +37,6 @@ import Distribution.Client.IndexUtils as IndexUtils
          , getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.HttpUtils (getHTTP, isOldHackageURI)
-import Distribution.Client.Utils
-         ( writeFileAtomic )
 
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
@@ -49,7 +47,7 @@ import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Utils
          ( die, notice, info, debug, setupMessage
-         , copyFileVerbose )
+         , copyFileVerbose, writeFileAtomic )
 import Distribution.System
          ( buildPlatform )
 import Distribution.Text
@@ -58,6 +56,7 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import qualified Data.Map as Map
+import qualified Data.ByteString.Lazy.Char8 as BS
 import Control.Monad
          ( when, filterM )
 import System.Directory
@@ -88,7 +87,7 @@ downloadURI verbosity path uri = do
     Right rsp
       | rspCode rsp == (2,0,0)
      -> do info verbosity ("Downloaded to " ++ path)
-           writeFileAtomic path (rspBody rsp)
+           writeFileAtomic path (BS.unpack $ rspBody rsp)
      --FIXME: check the content-length header matches the body length.
      --TODO: stream the download into the file rather than buffering the whole
      --      thing in memory.
