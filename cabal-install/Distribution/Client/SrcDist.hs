@@ -17,9 +17,7 @@ import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Utils
          ( defaultPackageDesc, warn, notice, setupMessage
-         , createDirectoryIfMissingVerbose )
-import Distribution.Client.Utils
-         ( withTempDirectory )
+         , createDirectoryIfMissingVerbose, withTempDirectory )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
@@ -50,7 +48,7 @@ sdist flags = do
     warn verbosity "Cannot run preprocessors. Run 'configure' command first."
 
   createDirectoryIfMissingVerbose verbosity True tmpTargetDir
-  withTempDirectory tmpTargetDir "sdist." $ \tmpDir -> do
+  withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
 
     date <- toCalendarTime =<< getClockTime
     let pkg' | snapshot  = snapshotPackage date pkg
