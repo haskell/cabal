@@ -18,8 +18,6 @@ import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), LocalRepo(..), AvailablePackageDb(..) )
 import Distribution.Client.Fetch
          ( downloadIndex )
-import qualified Distribution.Client.Utils as BS
-         ( writeFileAtomic )
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
          ( getAvailablePackages )
@@ -31,11 +29,11 @@ import Distribution.Package
 import Distribution.Version
          ( anyVersion, withinRange )
 import Distribution.Simple.Utils
-         ( warn, notice )
+         ( warn, notice, writeFileAtomic )
 import Distribution.Verbosity
          ( Verbosity )
 
-import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS
 import qualified Codec.Compression.GZip as GZip (decompress)
 import qualified Data.Map as Map
 import System.FilePath (dropExtension)
@@ -58,8 +56,9 @@ updateRepo verbosity repo = case repoKind repo of
     notice verbosity $ "Downloading the latest package list from "
                     ++ remoteRepoName remoteRepo
     indexPath <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
-    BS.writeFileAtomic (dropExtension indexPath) . GZip.decompress
-                                               =<< BS.readFile indexPath
+    writeFileAtomic (dropExtension indexPath) . BS.unpack
+                                              . GZip.decompress
+                                            =<< BS.readFile indexPath
 
 checkForSelfUpgrade :: Verbosity -> [Repo] -> IO ()
 checkForSelfUpgrade verbosity repos = do

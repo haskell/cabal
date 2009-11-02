@@ -116,9 +116,9 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( Version, VersionRange, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, warn, die, intercalate )
+         ( notice, info, warn, die, intercalate, withTempDirectory )
 import Distribution.Client.Utils
-         ( inDir, mergeBy, MergeResult(..), withTempDirectory )
+         ( inDir, mergeBy, MergeResult(..) )
 import Distribution.System
          ( Platform, buildPlatform, OS(Windows), buildOS )
 import Distribution.Text
@@ -623,7 +623,7 @@ installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg =
     pkgPath <- fetchPackage verbosity repo pkgid
     onFailure UnpackFailed $ do
       tmp <- getTemporaryDirectory
-      withTempDirectory tmp (display pkgid) $ \tmpDirPath -> do
+      withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath -> do
         info verbosity $ "Extracting " ++ pkgPath
                       ++ " to " ++ tmpDirPath ++ "..."
         let relUnpackedPath = display pkgid
