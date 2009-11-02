@@ -45,7 +45,7 @@ done
 
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
-CABAL_VER="1.6.0.2"; CABAL_VER_REGEXP="1\.6\."   # == 1.6.*
+CABAL_VER="1.8.0"; CABAL_VER_REGEXP="1\.[78]\."   # >= 1.7 && < 1.9
 HTTP_VER="4000.0.4"; HTTP_VER_REGEXP="4000\.0\.[3456789]"
                                                  # >= 4000.0.3 && < 4000.0.10
 ZLIB_VER="0.5.0.0";  ZLIB_VER_REGEXP="0\.[45]\." # >= 0.4  && < 0.6
