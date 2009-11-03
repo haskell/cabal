@@ -157,6 +157,7 @@ updateInstallDirs userInstallFlag
 baseSavedConfig :: IO SavedConfig
 baseSavedConfig = do
   userPrefix <- defaultCabalDir
+  worldFile  <- defaultWorldFile
   return mempty {
     savedConfigureFlags  = mempty {
       configHcFlavor     = toFlag defaultCompiler,
@@ -165,6 +166,9 @@ baseSavedConfig = do
     },
     savedUserInstallDirs = mempty {
       prefix             = toFlag (toPathTemplate userPrefix)
+    },
+    savedGlobalFlags = mempty {
+      globalWorldFile    = toFlag worldFile
     }
   }
 
@@ -178,10 +182,12 @@ initialSavedConfig :: IO SavedConfig
 initialSavedConfig = do
   cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
+  worldFile  <- defaultWorldFile
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalRemoteRepos  = [defaultRemoteRepo]
+      globalRemoteRepos  = [defaultRemoteRepo],
+      globalWorldFile    = toFlag worldFile
     },
     savedInstallFlags    = mempty {
       installSummaryFile = [toPathTemplate (logsDir </> "build.log")],
@@ -206,6 +212,12 @@ defaultLogsDir :: IO FilePath
 defaultLogsDir = do
   dir <- defaultCabalDir
   return $ dir </> "logs"
+
+-- | Default position of the world file
+defaultWorldFile :: IO FilePath
+defaultWorldFile = do
+  dir <- defaultCabalDir
+  return $ dir </> "world"
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor

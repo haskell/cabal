@@ -92,7 +92,8 @@ data GlobalFlags = GlobalFlags {
     globalConfigFile     :: Flag FilePath,
     globalRemoteRepos    :: [RemoteRepo],     -- ^Available Hackage servers.
     globalCacheDir       :: Flag FilePath,
-    globalLocalRepos     :: [FilePath]
+    globalLocalRepos     :: [FilePath],
+    globalWorldFile      :: Flag FilePath
   }
 
 defaultGlobalFlags :: GlobalFlags
@@ -102,7 +103,8 @@ defaultGlobalFlags  = GlobalFlags {
     globalConfigFile     = mempty,
     globalRemoteRepos    = [],
     globalCacheDir       = mempty,
-    globalLocalRepos     = mempty
+    globalLocalRepos     = mempty,
+    globalWorldFile      = mempty
   }
 
 globalCommand :: CommandUI GlobalFlags
@@ -152,6 +154,11 @@ globalCommand = CommandUI {
          "The location of a local repository"
          globalLocalRepos (\v flags -> flags { globalLocalRepos = v })
          (reqArg' "DIR" (\x -> [x]) id)
+
+      ,option [] ["world-file"]
+         "The location of the world file"
+         globalWorldFile (\v flags -> flags { globalWorldFile = v })
+         (reqArgFlag "FILE")
       ]
   }
 
@@ -162,7 +169,8 @@ instance Monoid GlobalFlags where
     globalConfigFile     = mempty,
     globalRemoteRepos    = mempty,
     globalCacheDir       = mempty,
-    globalLocalRepos     = mempty
+    globalLocalRepos     = mempty,
+    globalWorldFile      = mempty
   }
   mappend a b = GlobalFlags {
     globalVersion        = combine globalVersion,
@@ -170,7 +178,8 @@ instance Monoid GlobalFlags where
     globalConfigFile     = combine globalConfigFile,
     globalRemoteRepos    = combine globalRemoteRepos,
     globalCacheDir       = combine globalCacheDir,
-    globalLocalRepos     = combine globalLocalRepos
+    globalLocalRepos     = combine globalLocalRepos,
+    globalWorldFile      = combine globalWorldFile
   }
     where combine field = field a `mappend` field b
 
@@ -461,7 +470,8 @@ data InstallFlags = InstallFlags {
     installSummaryFile  :: [PathTemplate],
     installLogFile      :: Flag PathTemplate,
     installBuildReports :: Flag ReportLevel,
-    installSymlinkBinDir:: Flag FilePath
+    installSymlinkBinDir:: Flag FilePath,
+    installOneShot      :: Flag Bool
   }
 
 defaultInstallFlags :: InstallFlags
@@ -475,7 +485,8 @@ defaultInstallFlags = InstallFlags {
     installSummaryFile  = mempty,
     installLogFile      = mempty,
     installBuildReports = Flag NoReports,
-    installSymlinkBinDir= mempty
+    installSymlinkBinDir= mempty,
+    installOneShot      = Flag False
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
@@ -562,6 +573,10 @@ installOptions showOrParseArgs =
                                       (toFlag `fmap` parse))
                           (flagToList . fmap display))
 
+      , option [] ["one-shot"]
+          "Do not record the packages in the world file."
+          installOneShot (\v flags -> flags { installOneShot = v })
+          trueArg
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
@@ -582,7 +597,8 @@ instance Monoid InstallFlags where
     installSummaryFile  = mempty,
     installLogFile      = mempty,
     installBuildReports = mempty,
-    installSymlinkBinDir= mempty
+    installSymlinkBinDir= mempty,
+    installOneShot      = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation= combine installDocumentation,
@@ -594,7 +610,8 @@ instance Monoid InstallFlags where
     installSummaryFile  = combine installSummaryFile,
     installLogFile      = combine installLogFile,
     installBuildReports = combine installBuildReports,
-    installSymlinkBinDir= combine installSymlinkBinDir
+    installSymlinkBinDir= combine installSymlinkBinDir,
+    installOneShot      = combine installOneShot
   }
     where combine field = field a `mappend` field b
 
