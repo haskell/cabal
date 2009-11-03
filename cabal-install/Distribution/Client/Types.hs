@@ -18,12 +18,18 @@ import Distribution.Package
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
-         ( GenericPackageDescription, FlagAssignment )
+         ( GenericPackageDescription, FlagAssignment, FlagName(FlagName) )
 import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Version
          ( VersionRange )
+import Distribution.Text
+          ( Text(disp,parse) )
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
+         
 
+import Data.Char as Char
 import Data.Map (Map)
 import Network.URI (URI)
 import Distribution.Compat.Exception
@@ -133,7 +139,60 @@ data UnresolvedDependency
     { dependency :: Dependency
     , depFlags   :: FlagAssignment
     }
-  deriving (Show)
+  deriving (Show,Eq)
+
+
+instance Text UnresolvedDependency where
+  disp udep = disp (dependency udep) Disp.<+> dispFlags (depFlags udep)
+    where 
+      dispFlags [] = Disp.empty
+      dispFlags fs = Disp.text "--flags=" 
+                     Disp.<> 
+                     (Disp.doubleQuotes $ flagAssToDoc fs)
+      flagAssToDoc = foldr (\(FlagName fname,val) flagAssDoc -> 
+                             (if not val then Disp.char '-' 
+                                         else Disp.empty)
+                             Disp.<> Disp.text fname 
+                             Disp.<+> flagAssDoc)
+                           Disp.empty 
+  parse = do
+    dep <- parse 
+    Parse.skipSpaces
+    flagAss <- Parse.option [] parseFlagAssignment
+    return $ UnresolvedDependency dep flagAss 
+    where
+      parseFlagAssignment :: Parse.ReadP r FlagAssignment
+      parseFlagAssignment = do 
+        Parse.string "--flags"
+        Parse.skipSpaces
+        Parse.char '='
+        Parse.skipSpaces
+        inDoubleQuotes $ Parse.many1 flag
+        where
+          inDoubleQuotes :: Parse.ReadP r a -> Parse.ReadP r a
+          inDoubleQuotes = Parse.between (Parse.char '"') (Parse.char '"') 
+
+          flag = do
+            Parse.skipSpaces
+            val <- negative Parse.+++ positive
+            name <- ident
+            Parse.skipSpaces
+            return (FlagName name,val)
+          negative = do
+            Parse.char '-'
+            return False
+          positive = return True
+
+          ident :: Parse.ReadP r String
+          ident = do 
+            -- First character must be a letter/digit to avoid flags
+            -- like "+-debug":
+            c  <- Parse.satisfy Char.isAlphaNum
+            cs <- Parse.munch (\ch -> Char.isAlphaNum ch || ch == '_' 
+                                                         || ch == '-')
+            return (c:cs)
+        
+
 
 type BuildResult  = Either BuildFailure BuildSuccess
 data BuildFailure = DependentFailed PackageId
