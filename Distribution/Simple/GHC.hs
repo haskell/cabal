@@ -506,6 +506,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
      info verbosity "Building C Sources..."
      sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi clbi pref
                                                         filename verbosity
+                                                        (withProfLib lbi)
                    createDirectoryIfMissingVerbose verbosity True odir
                    runGhcProg args
                    ifSharedLib (runGhcProg (args ++ ["-fPIC", "-osuf dyn_o"]))
@@ -631,6 +632,7 @@ buildExe verbosity _pkg_descr lbi
    info verbosity "Building C Sources."
    sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi clbi
                                           exeDir filename verbosity
+                                          (withProfExe lbi)
                  createDirectoryIfMissingVerbose verbosity True odir
                  runGhcProg args
              | filename <- cSources exeBi]
@@ -795,8 +797,9 @@ ghcPackageDbOptions dbstack = case dbstack of
     ierror = error "internal error: unexpected package db stack"
 
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
-                   -> FilePath -> FilePath -> Verbosity -> (FilePath,[String])
-constructCcCmdLine lbi bi clbi pref filename verbosity
+                   -> FilePath -> FilePath -> Verbosity -> Bool
+                   ->(FilePath,[String])
+constructCcCmdLine lbi bi clbi pref filename verbosity profiling
   =  let odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
               | otherwise = pref </> takeDirectory filename
                         -- ghc 6.4.1 fixed a bug in -odir handling
@@ -805,8 +808,12 @@ constructCcCmdLine lbi bi clbi pref filename verbosity
         (odir,
          ghcCcOptions lbi bi clbi odir
          ++ (if verbosity >= deafening then ["-v"] else [])
-         ++ ["-c",filename])
-
+         ++ ["-c",filename]
+         -- Note: When building with profiling enabled, we pass the -prof
+         -- option to ghc here when compiling C code, so that the PROFILING
+         -- macro gets defined. The macro is used in ghc's Rts.h in the
+         -- definitions of closure layouts (Closures.h).
+         ++ ["-prof" | profiling])
 
 ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
              -> FilePath -> [String]
