@@ -58,19 +58,21 @@ module Distribution.PackageDescription.Configuration (
   ) where
 
 import Distribution.Package
-         ( PackageName, Dependency(..), simplifyDependency )
+         ( PackageName, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
          , Flag(..), FlagName(..), FlagAssignment
          , CondTree(..), ConfVar(..), Condition(..) )
 import Distribution.Version
-         ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
+         ( VersionRange, anyVersion, intersectVersionRanges, withinRange
+         , toVersionIntervals, intersectVersionIntervals )
 import Distribution.Compiler
          ( CompilerId(CompilerId) )
 import Distribution.System
          ( Platform(..), OS, Arch )
-import Distribution.Simple.Utils (currentDir, lowercase, comparing)
+import Distribution.Simple.Utils
+         ( currentDir, lowercase )
 
 import Distribution.Text
          ( Text(parse) )
@@ -79,11 +81,11 @@ import Control.Arrow (first)
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
 import Control.Exception (assert)
-import Data.List (sortBy, nub)
+import Data.List (nub)
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
-import qualified Data.Map as M
+import qualified Data.Map as Map
 import Data.Monoid
 
 #if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 606)
@@ -340,9 +342,9 @@ instance Read DependencyMap where
 #endif
 
 instance Monoid DependencyMap where
-    mempty = DependencyMap M.empty
+    mempty = DependencyMap Map.empty
     (DependencyMap a) `mappend` (DependencyMap b) =
-        DependencyMap (M.unionWith intersectVersionRanges a b)
+        DependencyMap (Map.unionWith intersectVersionRanges a b)
 
 toDepMap :: [Dependency] -> DependencyMap
 toDepMap ds =
@@ -406,12 +408,12 @@ constrainBy :: DependencyMap  -- ^ Input map
             -> DependencyMap
 constrainBy left extra =
     DependencyMap $
-      M.foldWithKey tightenConstraint (unDependencyMap left)
-                                      (unDependencyMap extra)
+      Map.foldWithKey tightenConstraint (unDependencyMap left)
+                                        (unDependencyMap extra)
   where tightenConstraint n c l =
-            case M.lookup n l of
+            case Map.lookup n l of
               Nothing -> l
-              Just vr -> M.insert n (intersectVersionRanges vr c) l
+              Just vr -> Map.insert n (intersectVersionRanges vr c) l
 
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
@@ -503,12 +505,10 @@ finalizePackageDescription userflags satisfyDep (Platform arch os) impl constrai
           -- as a sanity check, check that the overall deps from the target set
           -- matches those from the (unfiltered for being buildable) components
           sanity        = canonicalise overallDeps' == canonicalise overallDeps''
-          overallDeps'  = nub
-                        . concatMap targetBuildDepends
-                        $ buildInfos
+          overallDeps'  = concatMap targetBuildDepends buildInfos
           overallDeps'' = fromDepMap (overallDependencies targetSet)
-          canonicalise  = sortBy (comparing (\(Dependency name _) -> name))
-                        . map simplifyDependency
+          canonicalise  = Map.fromListWith intersectVersionIntervals
+                        . map (\(Dependency name vr) -> (name, toVersionIntervals vr))
 
       Left missing -> Left missing
   where
