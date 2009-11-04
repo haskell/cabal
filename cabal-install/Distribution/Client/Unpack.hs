@@ -17,10 +17,14 @@ module Distribution.Client.Unpack (
 
   ) where
 
-import Distribution.Package ( packageId, Dependency(..) )
+import Distribution.Package
+         ( PackageId, packageId, Dependency(..) )
 import Distribution.Client.PackageIndex as PackageIndex (lookupDependency)
 import Distribution.Simple.Setup(fromFlag, fromFlagOrDefault)
-import Distribution.Simple.Utils(info, notice, die)
+import Distribution.Simple.Utils
+         ( notice, die )
+import Distribution.Verbosity
+         ( Verbosity )
 import Distribution.Text(display)
 import Distribution.Version
          ( anyVersion, intersectVersionRanges )
@@ -36,11 +40,14 @@ import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
     (getAvailablePackages, disambiguateDependencies)
 
-import System.Directory(createDirectoryIfMissing)
-import Control.Monad(unless)
+import System.Directory
+         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
+import Control.Monad
+         ( unless, when )
 import Data.Ord (comparing)
 import Data.List(null, maximumBy)
-import System.FilePath((</>))
+import System.FilePath
+         ( (</>), addTrailingPathSeparator )
 import qualified Data.Map as Map
 
 unpack :: UnpackFlags -> [Repo] -> [Dependency] -> IO ()
@@ -67,12 +74,8 @@ unpack flags repos deps
                   ++ " that satisfies " ++ display ver
 
         Right (AvailablePackage pkgid _ (RepoTarballPackage repo)) -> do
-                 pkgPath <- fetchPackage verbosity repo pkgid
-                 let pkgdir = display pkgid
-                 notice verbosity $ "Unpacking " ++ pkgdir ++ "..."
-                 info verbosity $ "Extracting " ++ pkgPath
-                          ++ " to " ++ prefix </> pkgdir ++ "..."
-                 Tar.extractTarGzFile prefix pkgdir pkgPath
+            pkgPath <- fetchPackage verbosity repo pkgid
+            unpackPackage verbosity prefix pkgid pkgPath
 
         Right (AvailablePackage _ _ LocalUnpackedPackage) -> 
             error "Distribution.Client.Unpack.unpack: the impossible happened."
@@ -80,6 +83,20 @@ unpack flags repos deps
       verbosity = fromFlag (unpackVerbosity flags)
       prefix = fromFlagOrDefault "" (unpackDestDir flags)
       toUnresolved d = UnresolvedDependency d []
+
+unpackPackage :: Verbosity -> FilePath -> PackageId -> FilePath -> IO ()
+unpackPackage verbosity prefix pkgid pkgPath = do
+    let pkgdirname = display pkgid
+        pkgdir     = prefix </> pkgdirname
+        pkgdir'    = addTrailingPathSeparator pkgdir
+    existsDir  <- doesDirectoryExist pkgdir
+    when existsDir $ die $
+     "The directory \"" ++ pkgdir' ++ "\" already exists, not unpacking."
+    existsFile  <- doesFileExist pkgdir
+    when existsFile $ die $
+     "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
+    notice verbosity $ "Unpacking to " ++ pkgdir'
+    Tar.extractTarGzFile prefix pkgdirname pkgPath
 
 resolvePackages :: AvailablePackageDb
                    -> [Dependency]
