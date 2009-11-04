@@ -58,7 +58,7 @@ module Distribution.PackageDescription.Configuration (
   ) where
 
 import Distribution.Package
-         ( PackageName, Dependency(..) )
+         ( PackageName, Dependency(..), simplifyDependency )
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
@@ -70,7 +70,7 @@ import Distribution.Compiler
          ( CompilerId(CompilerId) )
 import Distribution.System
          ( Platform(..), OS, Arch )
-import Distribution.Simple.Utils (currentDir, lowercase)
+import Distribution.Simple.Utils (currentDir, lowercase, comparing)
 
 import Distribution.Text
          ( Text(parse) )
@@ -78,6 +78,8 @@ import Distribution.Compat.ReadP as ReadP hiding ( char )
 import Control.Arrow (first)
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
+import Control.Exception (assert)
+import Data.List (sortBy, nub)
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
@@ -485,9 +487,29 @@ finalizePackageDescription userflags satisfyDep (Platform arch os) impl constrai
       Right ((mlib, exes'), targetSet, flagVals) ->
         Right ( pkg { library = mlib
                     , executables = exes'
-                    , buildDepends = fromDepMap $ overallDependencies targetSet
+                    , buildDepends = assert sanity overallDeps
                     }
               , flagVals )
+        where
+          -- Note that we exclude non-buildable components. This means your tools and
+          -- test progs to not contribute to the overall package dependencies.
+          --
+          overallDeps = nub
+                      . concatMap targetBuildDepends
+                      . filter buildable
+                      $ buildInfos
+          buildInfos  = map libBuildInfo (maybeToList mlib) ++ map buildInfo exes'
+
+          -- as a sanity check, check that the overall deps from the target set
+          -- matches those from the (unfiltered for being buildable) components
+          sanity        = canonicalise overallDeps' == canonicalise overallDeps''
+          overallDeps'  = nub
+                        . concatMap targetBuildDepends
+                        $ buildInfos
+          overallDeps'' = fromDepMap (overallDependencies targetSet)
+          canonicalise  = sortBy (comparing (\(Dependency name _) -> name))
+                        . map simplifyDependency
+
       Left missing -> Left missing
   where
     -- Combine lib and exes into one list of @CondTree@s with tagged data
