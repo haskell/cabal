@@ -117,16 +117,9 @@ jhcLanguageExtensions =
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                     -> IO PackageIndex
 getInstalledPackages verbosity packageDBs conf = do
-{-
-   case packageDBs of
-     [GlobalPackageDB] -> return ()
-     _                 -> die "JHC does not yet support multiple package DBs"
--}
-{-
-jhc --list-libraries lists all available libraries.
-How shall I find out, whether they are global or local
-without checking all files and locations?
--}
+   -- jhc --list-libraries lists all available libraries.
+   -- How shall I find out, whether they are global or local
+   -- without checking all files and locations?
    str <- rawSystemProgramStdoutConf verbosity jhcProgram conf ["--list-libraries"]
    let pCheck :: [(a, String)] -> [a]
        pCheck rs = [ r | (r,s) <- rs, all isSpace s ]
@@ -154,10 +147,6 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let Just jhcProg = lookupProgram jhcProgram (withPrograms lbi)
   let libBi = libBuildInfo lib
   let args  = constructJHCCmdLine lbi libBi clbi (buildDir lbi) verbosity
-{- This is not needed. Maybe it was needed for JHC before version 0.7.2.
-  rawSystemProgram verbosity jhcProg $
-    ["-c"] ++ args ++ map display (libModules lib)
--}
   let pkgid = display (packageId pkg_descr)
       pfile = buildDir lbi </> "jhc-pkg.conf"
       hlfile= buildDir lbi </> (pkgid ++ ".hl")
@@ -187,11 +176,9 @@ constructJHCCmdLine lbi bi clbi _odir verbosity =
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]
      ++ ["-i", autogenModulesDir lbi]
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
-     {-
-     It would be better if JHC would accept package names with versions,
-     but JHC-0.7.2 doesn't accept this.
-     Thus, we have to strip the version with 'pkgName'.
-     -}
+     -- It would be better if JHC would accept package names with versions,
+     -- but JHC-0.7.2 doesn't accept this.
+     -- Thus, we have to strip the version with 'pkgName'.
      ++ (concat [ ["-p", display (pkgName pkgid)]
                 | (_, pkgid) <- componentPackageDeps clbi ])
 
