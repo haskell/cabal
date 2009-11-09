@@ -110,6 +110,8 @@ import Distribution.Simple.Utils
          (die, notice, info, warn, setupMessage, chattyTry,
           defaultPackageDesc, defaultHookedPackageDesc,
           rawSystemExit, cabalVersion, topHandler )
+import Distribution.System
+         ( OS(..), buildOS )
 import Distribution.Verbosity
 import Language.Haskell.Extension
 import Distribution.Version
@@ -122,6 +124,8 @@ import System.Environment(getArgs,getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit
+import Control.Exception (handleJust)
+import System.IO.Error   (isDoesNotExistError)
 
 import Control.Monad   (when)
 import Data.List       (intersperse, unionBy)
@@ -429,7 +433,7 @@ simpleUserHooks =
 
 -- | Basic autoconf 'UserHooks':
 --
--- * on non-Windows systems, 'postConf' runs @.\/configure@, if present.
+-- * 'postConf' runs @.\/configure@, if present.
 --
 -- * the pre-hooks 'preBuild', 'preClean', 'preCopy', 'preInst',
 --   'preReg' and 'preUnreg' read additional build information from
@@ -437,8 +441,6 @@ simpleUserHooks =
 --
 -- Thus @configure@ can use local system information to generate
 -- /package/@.buildinfo@ and possibly other files.
-
--- FIXME: do something sensible for windows, or do nothing in postConf.
 
 {-# DEPRECATED defaultUserHooks
      "Use simpleUserHooks or autoconfUserHooks, unless you need Cabal-1.2\n             compatibility in which case you must stick with defaultUserHooks" #-}
@@ -459,8 +461,8 @@ defaultUserHooks = autoconfUserHooks {
                    noExtraFlags args
                    confExists <- doesFileExist "configure"
                    when confExists $
-                       rawSystemExit verbosity "sh" $
-                       "configure" : configureArgs backwardsCompatHack flags
+                       runConfigureScript verbosity
+                         backwardsCompatHack flags
 
                    pbi <- getHookedBuildInfo verbosity
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
@@ -488,9 +490,8 @@ autoconfUserHooks
                    noExtraFlags args
                    confExists <- doesFileExist "configure"
                    if confExists
-                     then rawSystemExit verbosity "sh" $
-                            "configure"
-                          : configureArgs backwardsCompatHack flags
+                     then runConfigureScript verbosity
+                            backwardsCompatHack flags
                      else die "configure script not found."
 
                    pbi <- getHookedBuildInfo verbosity
@@ -505,6 +506,27 @@ autoconfUserHooks
               getHookedBuildInfo verbosity
             where
               verbosity = fromFlag (get_verbosity flags)
+
+runConfigureScript :: Verbosity -> Bool -> ConfigFlags -> IO ()
+runConfigureScript verbosity backwardsCompatHack flags =
+
+  handleNoWindowsSH $
+    rawSystemExit verbosity "sh" args
+
+  where
+    args = "configure" : configureArgs backwardsCompatHack flags
+
+    handleNoWindowsSH
+      | buildOS /= Windows
+      = id
+
+      | otherwise
+      = handleJust
+          (\ioe -> if isDoesNotExistError ioe then Just () else Nothing)
+          (\() -> die notFoundMsg)
+
+    notFoundMsg = "The package has a './configure' script. This requires a "
+               ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin."
 
 getHookedBuildInfo :: Verbosity -> IO HookedBuildInfo
 getHookedBuildInfo verbosity = do
