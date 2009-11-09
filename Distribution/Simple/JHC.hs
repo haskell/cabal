@@ -62,20 +62,21 @@ import Distribution.Simple.BuildPaths
                                 ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..)
-         , PackageDB(..), PackageDBStack, Flag, extensionsToFlags )
+         , PackageDBStack, Flag, extensionsToFlags )
 import Language.Haskell.Extension (Extension(..))
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), jhcProgram, ProgramConfiguration
          , userMaybeSpecifyPath, requireProgramVersion, lookupProgram
          , rawSystemProgram, rawSystemProgramStdoutConf )
-import Distribution.Version     ( anyVersion )
+import Distribution.Version
+         ( Version(..), orLaterVersion )
 import Distribution.Package
          ( Package(..), InstalledPackageId(InstalledPackageId),
            pkgName, pkgVersion, )
 import Distribution.Simple.Utils
         ( createDirectoryIfMissingVerbose, writeFileAtomic
         , installOrdinaryFile, installExecutableFile
-        , die, intercalate )
+        , intercalate )
 import System.FilePath          ( (</>) )
 import Distribution.Verbosity
 import Distribution.Text
@@ -95,7 +96,8 @@ configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
-  (jhcProg, _, conf') <- requireProgramVersion verbosity jhcProgram anyVersion
+  (jhcProg, _, conf') <- requireProgramVersion verbosity
+                           jhcProgram (orLaterVersion (Version [0,7,2] []))
                            (userMaybeSpecifyPath "jhc" hcPath conf)
 
   let Just version = programVersion jhcProg
@@ -116,7 +118,7 @@ jhcLanguageExtensions =
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                     -> IO PackageIndex
-getInstalledPackages verbosity packageDBs conf = do
+getInstalledPackages verbosity _packageDBs conf = do
    -- jhc --list-libraries lists all available libraries.
    -- How shall I find out, whether they are global or local
    -- without checking all files and locations?
