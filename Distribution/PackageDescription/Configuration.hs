@@ -66,7 +66,8 @@ import Distribution.PackageDescription
          , CondTree(..), ConfVar(..), Condition(..) )
 import Distribution.Version
          ( VersionRange, anyVersion, intersectVersionRanges, withinRange
-         , toVersionIntervals, intersectVersionIntervals )
+         , toVersionIntervals, intersectVersionIntervals
+         , fromVersionIntervals )
 import Distribution.Compiler
          ( CompilerId(CompilerId) )
 import Distribution.System
@@ -81,7 +82,6 @@ import Control.Arrow (first)
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
 import Control.Exception (assert)
-import Data.List (nub)
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
@@ -496,7 +496,7 @@ finalizePackageDescription userflags satisfyDep (Platform arch os) impl constrai
           -- Note that we exclude non-buildable components. This means your tools and
           -- test progs to not contribute to the overall package dependencies.
           --
-          overallDeps = nub
+          overallDeps = canonicalise
                       . concatMap targetBuildDepends
                       . filter buildable
                       $ buildInfos
@@ -507,8 +507,11 @@ finalizePackageDescription userflags satisfyDep (Platform arch os) impl constrai
           sanity        = canonicalise overallDeps' == canonicalise overallDeps''
           overallDeps'  = concatMap targetBuildDepends buildInfos
           overallDeps'' = fromDepMap (overallDependencies targetSet)
-          canonicalise  = Map.fromListWith intersectVersionIntervals
-                        . map (\(Dependency name vr) -> (name, toVersionIntervals vr))
+          canonicalise  =
+              map (\(name, vi) -> Dependency name (fromVersionIntervals vi))
+            . Map.toList
+            . Map.fromListWith intersectVersionIntervals
+            . map (\(Dependency name vr) -> (name, toVersionIntervals vr))
 
       Left missing -> Left missing
   where
