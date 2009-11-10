@@ -1,7 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -cpp #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Heuristics
@@ -28,6 +25,8 @@ import Distribution.Client.PackageIndex
     ( allPackagesByName )
 import qualified Distribution.PackageDescription as PD
     ( category, packageDescription )
+import Distribution.Simple.Utils
+         ( intercalate )
 
 import Distribution.Client.Types ( packageDescription, AvailablePackageDb(..) )
 import Control.Monad (liftM )
@@ -35,7 +34,6 @@ import Data.Char   ( isUpper, isLower, isSpace )
 #if MIN_VERSION_base(3,0,3)
 import Data.Either ( partitionEithers )
 #endif
-import Data.List   ( intercalate )
 import Data.Maybe  ( catMaybes )
 import Data.Monoid ( mempty, mappend )
 import qualified Data.Set as Set ( fromList, toList )

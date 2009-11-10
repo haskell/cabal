@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init
@@ -34,7 +35,11 @@ import Data.Maybe
 import Data.Traversable
   ( traverse )
 import Control.Monad
-  ( (>=>), when )
+  ( when )
+#if MIN_VERSION_base(3,0,0)
+import Control.Monad
+  ( (>=>) )
+#endif
 
 import Text.PrettyPrint.HughesPJ hiding (mode, cat)
 
@@ -558,3 +563,9 @@ generateWarnings flags = do
 message :: InitFlags -> String -> IO ()
 message (InitFlags{quiet = Flag True}) _ = return ()
 message _ s = putStrLn s
+
+#if MIN_VERSION_base(3,0,0)
+#else
+(>=>)       :: Monad m => (a -> m b) -> (b -> m c) -> (a -> m c)
+f >=> g     = \x -> f x >>= g
+#endif
