@@ -7,6 +7,7 @@ module Distribution.Compat.Exception (
   SomeException,
   onException,
   catchIO,
+  handleIO,
   catchExit,
   throwIOIO
   ) where
@@ -41,6 +42,9 @@ catchIO = Exception.catch
 #else
 catchIO = Exception.catchJust Exception.ioErrors
 #endif
+
+handleIO :: (Exception.IOException -> IO a) -> IO a -> IO a
+handleIO = flip catchIO
 
 catchExit :: IO a -> (ExitCode -> IO a) -> IO a
 #if MIN_VERSION_base(4,0,0)

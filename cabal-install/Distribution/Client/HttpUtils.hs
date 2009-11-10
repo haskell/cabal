@@ -24,7 +24,9 @@ import System.Win32.Registry
          ( hKEY_CURRENT_USER, regOpenKey, regCloseKey
          , regQueryValue, regQueryValueEx )
 import Control.Exception
-         ( handle, bracket )
+         ( bracket )
+import Distribution.Compat.Exception
+         ( handleIO )
 import Foreign
          ( toBool, Storable(peek, sizeOf), castPtr, alloca )
 #endif
@@ -46,7 +48,7 @@ import qualified System.FilePath.Posix as FilePath.Posix
 proxyString, envProxyString, registryProxyString :: IO (Maybe String)
 #ifdef WIN32
 -- read proxy settings from the windows registry
-registryProxyString = handle (\_ -> return Nothing) $
+registryProxyString = handleIO (\_ -> return Nothing) $
   bracket (regOpenKey hive path) regCloseKey $ \hkey -> do
     enable <- fmap toBool $ regQueryValueDWORD hkey "ProxyEnable"
     if enable
