@@ -76,6 +76,7 @@ Executable cabal
         Distribution.Client.Upload
         Distribution.Client.Utils
         Distribution.Client.Win32SelfUpgrade
+        Distribution.Compat.Exception
         Distribution.Compat.TempFile
         Paths_cabal_install
 
