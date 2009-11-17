@@ -124,8 +124,8 @@ import System.Environment(getArgs,getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit
-import Control.Exception (handleJust)
 import System.IO.Error   (isDoesNotExistError)
+import Distribution.Compat.Exception (catchIO, throwIOIO)
 
 import Control.Monad   (when)
 import Data.List       (intersperse, unionBy)
@@ -516,14 +516,15 @@ runConfigureScript verbosity backwardsCompatHack flags =
   where
     args = "configure" : configureArgs backwardsCompatHack flags
 
-    handleNoWindowsSH
+    handleNoWindowsSH action
       | buildOS /= Windows
-      = id
+      = action
 
       | otherwise
-      = handleJust
-          (\ioe -> if isDoesNotExistError ioe then Just () else Nothing)
-          (\() -> die notFoundMsg)
+      = action
+          `catchIO` \ioe -> if isDoesNotExistError ioe
+                              then die notFoundMsg
+                              else throwIOIO ioe
 
     notFoundMsg = "The package has a './configure' script. This requires a "
                ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin."
