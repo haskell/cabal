@@ -91,7 +91,7 @@ import Distribution.Simple.Program
     , ProgramConfiguration, defaultProgramConfiguration
     , configureAllKnownPrograms, knownPrograms, lookupKnownProgram
     , userSpecifyArgss, userSpecifyPaths
-    , lookupProgram, requireProgram, requireProgramVersion
+    , requireProgram, requireProgramVersion
     , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
@@ -846,8 +846,7 @@ checkForeignDeps pkg lbi verbosity = do
 
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
-        commonCcArgs  = programArgs gccProg
-                     ++ hcDefines (compiler lbi)
+        commonCcArgs  = hcDefines (compiler lbi)
                      ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
                      ++ ["-I."]
                      ++ collectField PD.cppOptions
@@ -873,7 +872,6 @@ checkForeignDeps pkg lbi verbosity = do
 
         collectField f = concatMap f allBi
         allBi = allBuildInfo pkg
-        Just gccProg = lookupProgram  gccProgram (withPrograms lbi)
         deps = PackageIndex.topologicalOrder (installedPkgs lbi)
 
         builds program args = do
