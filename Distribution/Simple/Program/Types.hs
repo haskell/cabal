@@ -65,7 +65,12 @@ data ConfiguredProgram = ConfiguredProgram {
        -- | Default command-line args for this program.
        -- These flags will appear first on the command line, so they can be
        -- overridden by subsequent flags.
-       programArgs :: [String],
+       programDefaultArgs :: [String],
+
+       -- | Override command-line args for this program.
+       -- These flags will appear last on the command line, so they override
+       -- all earlier flags.
+       programOverrideArgs :: [String],
 
        -- | Location of the program. eg. @\/usr\/bin\/ghc-6.4@
        programLocation :: ProgramLocation

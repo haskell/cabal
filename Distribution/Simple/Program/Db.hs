@@ -197,7 +197,8 @@ userSpecifyArgs name args' =
          \(prog, path, args) -> Just (prog, path, args ++ args'))
   . updateConfiguredProgs
       (flip Map.update name $
-         \prog -> Just prog { programArgs = programArgs prog ++ args' })
+         \prog -> Just prog { programOverrideArgs = programOverrideArgs prog
+                                                 ++ args' })
 
 
 -- | Like 'userSpecifyPath' but for a list of progs and their paths.
@@ -285,15 +286,16 @@ configureProgram verbosity prog conf = do
     Nothing -> return conf
     Just location -> do
       version <- programFindVersion prog verbosity (locationPath location)
-      let configuredProg    = ConfiguredProgram {
-            programId       = name,
-            programVersion  = version,
-            programArgs     = userSpecifiedArgs prog conf,
-            programLocation = location
+      let configuredProg        = ConfiguredProgram {
+            programId           = name,
+            programVersion      = version,
+            programDefaultArgs  = [],
+            programOverrideArgs = userSpecifiedArgs prog conf,
+            programLocation     = location
           }
       extraArgs <- programPostConf prog verbosity configuredProg
-      let configuredProg'   = configuredProg {
-            programArgs     = extraArgs ++ programArgs configuredProg
+      let configuredProg'       = configuredProg {
+            programDefaultArgs  = extraArgs
           }
       return (updateConfiguredProgs (Map.insert name configuredProg') conf)
 
