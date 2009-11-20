@@ -64,10 +64,12 @@ simpleProgramInvocation path args =
   }
 
 programInvocation :: ConfiguredProgram -> [String] -> ProgramInvocation
-programInvocation prog extraArgs =
+programInvocation prog args =
   emptyProgramInvocation {
     progInvokePath = programPath prog,
-    progInvokeArgs = programArgs prog ++ extraArgs
+    progInvokeArgs = programDefaultArgs prog
+                  ++ args
+                  ++ programOverrideArgs prog
   }
 
 
