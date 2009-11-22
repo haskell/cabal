@@ -446,6 +446,15 @@ checkEntrySecurity entry = case entryContent entry of
       | otherwise = Nothing
 
 checkEntryTarbomb :: FilePath -> Entry -> Maybe String
+checkEntryTarbomb _ entry | nonFilesystemEntry = Nothing
+  where
+    -- Ignore some special entries we will not unpack anyway
+    nonFilesystemEntry =
+      case entryContent entry of
+        OtherEntryType 'g' _ _ -> True --PAX global header
+        OtherEntryType 'x' _ _ -> True --PAX individual header
+        _                      -> False
+
 checkEntryTarbomb expectedTopDir entry =
   case FilePath.Native.splitDirectories (entryPath entry) of
     (topDir:_) | topDir == expectedTopDir -> Nothing
