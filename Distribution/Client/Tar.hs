@@ -59,6 +59,7 @@ module Distribution.Client.Tar (
 
 import Data.Char     (ord)
 import Data.Int      (Int64)
+import Data.Bits     (Bits, shiftL)
 import Data.List     (foldl')
 import Numeric       (readOct, showOct)
 import Control.Monad (MonadPlus(mplus))
@@ -563,18 +564,31 @@ correctChecksum header checksum = checksum == checksum'
 
 -- * TAR format primitive input
 
-getOct :: Integral a => Int64 -> Int64 -> ByteString -> Partial a
-getOct off len = parseOct
-               . BS.Char8.unpack
-               . BS.Char8.takeWhile (\c -> c /= '\NUL' && c /= ' ')
-               . BS.Char8.dropWhile (== ' ')
-               . getBytes off len
+getOct :: (Integral a, Bits a) => Int64 -> Int64 -> ByteString -> Partial a
+getOct off len header
+  | BS.head bytes == 128 = parseBinInt (BS.unpack (BS.tail bytes))
+  | null octstr          = return 0
+  | otherwise            = case readOct octstr of
+               [(x,[])] -> return x
+               _        -> fail "tar header is malformed (bad numeric encoding)"
   where
-    parseOct "" = return 0
-    parseOct ('\128':_) = fail "tar header uses non-standard number encoding"
-    parseOct s  = case readOct s of
-      [(x,[])] -> return x
-      _        -> fail "tar header is malformatted (bad numeric encoding)"
+    bytes  = getBytes off len header
+    octstr = BS.Char8.unpack
+           . BS.Char8.takeWhile (\c -> c /= '\NUL' && c /= ' ')
+           . BS.Char8.dropWhile (== ' ')
+           $ bytes
+
+    -- Some tar programs switch into a binary format when they try to represent
+    -- field values that will not fit in the required width when using the text
+    -- octal format. In particular, the UID/GID fields can only hold up to 2^21
+    -- while in the binary format can hold up to 2^32. The binary format uses
+    -- '\128' as the header which leaves 7 bytes. Only the last 4 are used.
+    parseBinInt [0, 0, 0, byte3, byte2, byte1, byte0] =
+      return $! shiftL (fromIntegral byte3) 24
+              + shiftL (fromIntegral byte2) 16
+              + shiftL (fromIntegral byte1) 8
+              + shiftL (fromIntegral byte0) 0
+    parseBinInt _ = fail "tar header uses non-standard number encoding"
 
 getBytes :: Int64 -> Int64 -> ByteString -> ByteString
 getBytes off len = BS.take len . BS.drop off
