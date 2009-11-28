@@ -811,9 +811,15 @@ withTempFile tmpDir template action =
     (\(name, handle) -> hClose handle >> removeFile name)
     (uncurry action)
 
--- | Use a temporary directory.
+-- | Create and use a temporary directory.
 --
--- Use this exact given dir which must not already exist.
+-- Creates a new temporary directory inside the given directory, making use
+-- of the template. The temp directory is deleted after use. For example:
+--
+-- > withTempDirectory verbosity "src" "sdist." $ \tmpDir -> do ...
+--
+-- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
+-- @src/sdist.342@.
 --
 withTempDirectory :: Verbosity -> FilePath -> String -> (FilePath -> IO a) -> IO a
 withTempDirectory _verbosity targetDir template =
@@ -838,20 +844,6 @@ withFileContents name action =
 --
 -- The file is either written sucessfully or an IO exception is raised and
 -- the original file is left unchanged.
---
--- * Warning: On Windows this operation is very nearly but not quite atomic.
---   See below.
---
--- On Posix it works by writing a temporary file and atomically renaming over
--- the top any pre-existing target file with the temporary one.
---
--- On Windows it is not possible to rename over an existing file so the target
--- file has to be deleted before the temporary file is renamed to the target.
--- Therefore there is a race condition between the existing file being removed
--- and the temporary file being renamed. Another thread could write to the
--- target or change the permission on the target directory between the deleting
--- and renaming steps. An exception would be raised but the target file would
--- either no longer exist or have the content as written by the other thread.
 --
 -- On windows it is not possible to delete a file that is open by a process.
 -- This case will give an IO exception but the atomic property is not affected.
