@@ -58,6 +58,10 @@ import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import Distribution.Simple.Command
 import Distribution.Simple.Configure (configCompilerAux)
+import Distribution.Simple.Compiler
+         ( Compiler, CompilerFlavor(GHC), compilerFlavor, compilerVersion )
+import Distribution.Version
+         ( Version(Version) )
 import Distribution.Simple.Utils (cabalVersion, die, intercalate)
 import Distribution.Text
          ( display )
@@ -72,7 +76,7 @@ import System.Directory         (doesFileExist)
 import Data.List                (intersperse)
 import Data.Maybe               (fromMaybe)
 import Data.Monoid              (Monoid(..))
-import Control.Monad            (unless)
+import Control.Monad            (unless, when)
 
 -- | Entry point
 --
@@ -172,6 +176,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags'
+  compVersionCheck comp
   configure verbosity
             (configPackageDB' configFlags') (globalRepos globalFlags')
             comp conf configFlags' configExFlags' extraArgs
@@ -195,6 +200,7 @@ installAction (configFlags, configExFlags, installFlags)
       installFlags'  = savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags'
+  compVersionCheck comp
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf configFlags' configExFlags' installFlags'
@@ -208,6 +214,7 @@ listAction listFlags extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags
+  compVersionCheck comp
   list verbosity
        (configPackageDB' configFlags)
        (globalRepos globalFlags')
@@ -224,6 +231,7 @@ infoAction infoFlags extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags
+  compVersionCheck comp
   info verbosity
        (configPackageDB' configFlags)
        (globalRepos globalFlags')
@@ -254,6 +262,7 @@ upgradeAction (configFlags, configExFlags, installFlags)
       installFlags'  = savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags'
+  compVersionCheck comp
   upgrade verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf configFlags' configExFlags' installFlags'
@@ -268,6 +277,7 @@ fetchAction verbosityFlag extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags
+  compVersionCheck comp
   fetch verbosity
         (configPackageDB' configFlags) (globalRepos globalFlags')
         comp conf
@@ -347,3 +357,16 @@ win32SelfUpgradeAction (pid:path:rest) =
          -> fromMaybe Verbosity.normal (Verbosity.intToVerbosity (read [n]))
       _  ->           Verbosity.normal
 win32SelfUpgradeAction _ = return ()
+
+compVersionCheck :: Compiler -> IO ()
+compVersionCheck comp =
+  when (compilerFlavor comp == GHC
+     && compilerVersion comp >  Version [6,11] []) $
+   die upgradeMessage
+ where
+   upgradeMessage = "This version of the cabal program is too old to work "
+                 ++ "with ghc-6.12+. You will need to install the "
+                 ++ "'cabal-install' package version 0.8 or higher.\nIf you "
+                 ++ "still have an older ghc installed (eg 6.10.4), run:\n"
+                 ++ "$ cabal install -w ghc-6.10.4 'cabal-install >= 0.8'"
+
