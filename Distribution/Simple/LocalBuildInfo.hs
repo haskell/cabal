@@ -53,7 +53,10 @@ module Distribution.Simple.LocalBuildInfo (
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
-        substPathTemplate
+        substPathTemplate,
+
+        -- * Deprecated
+        packageDeps
   ) where
 
 
@@ -119,6 +122,10 @@ data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
     componentPackageDeps :: [(InstalledPackageId, PackageId)]
   }
   deriving (Read, Show)
+
+{-# DEPRECATED packageDeps "use externalPackageDeps or componentPackageDeps" #-}
+packageDeps :: LocalBuildInfo -> [PackageId]
+packageDeps = map snd . externalPackageDeps
 
 -- | External package dependencies for the package as a whole, the union of the
 -- individual 'targetPackageDeps'.
