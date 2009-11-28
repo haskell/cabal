@@ -55,7 +55,7 @@ import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Builtin
          ( builtinPrograms )
 import Distribution.Simple.Utils
-         ( die, findProgramOnPath )
+         ( die, findProgramLocation )
 import Distribution.Version
          ( Version, VersionRange, isAnyVersion, withinRange )
 import Distribution.Text
@@ -278,7 +278,7 @@ configureProgram verbosity prog conf = do
       absolute <- doesFileExist path
       if absolute
         then return (Just (UserSpecified path))
-        else findProgramOnPath verbosity path
+        else findProgramLocation verbosity path
          >>= maybe (die notFound) (return . Just . UserSpecified)
       where notFound = "Cannot find the program '" ++ name ++ "' at '"
                      ++ path ++ "' or on the path"

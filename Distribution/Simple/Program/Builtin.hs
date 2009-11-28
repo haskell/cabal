@@ -46,7 +46,7 @@ module Distribution.Simple.Program.Builtin (
 import Distribution.Simple.Program.Types
          ( Program(..), simpleProgram )
 import Distribution.Simple.Utils
-         ( findProgramOnPath, findProgramVersion )
+         ( findProgramLocation, findProgramVersion )
 
 -- ------------------------------------------------------------
 -- * Known programs
@@ -216,7 +216,7 @@ cpphsProgram = (simpleProgram "cpphs") {
 
 hscolourProgram :: Program
 hscolourProgram = (simpleProgram "hscolour") {
-    programFindLocation = \v -> findProgramOnPath v "HsColour",
+    programFindLocation = \v -> findProgramLocation v "HsColour",
     programFindVersion  = findProgramVersion "-version" $ \str ->
       -- Invoking "HsColour -version" gives a string like "HsColour 1.7"
       case words str of
