@@ -36,7 +36,7 @@ module Distribution.Simple.Program (
     -- * Program and functions for constructing them
       Program(..)
     , simpleProgram
-    , findProgramOnPath
+    , findProgramLocation
     , findProgramVersion
 
     -- * Configured program and related functions
@@ -115,6 +115,7 @@ module Distribution.Simple.Program (
     , rawSystemProgramStdout
     , rawSystemProgramConf
     , rawSystemProgramStdoutConf
+    , findProgramOnPath
 
     ) where
 
@@ -124,7 +125,7 @@ import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Builtin
 
 import Distribution.Simple.Utils
-         ( die, findProgramOnPath, findProgramVersion )
+         ( die, findProgramLocation, findProgramVersion )
 import Distribution.Verbosity
          ( Verbosity )
 
@@ -209,3 +210,7 @@ defaultProgramConfiguration = defaultProgramDb
 restoreProgramConfiguration :: [Program] -> ProgramConfiguration
                                          -> ProgramConfiguration
 restoreProgramConfiguration = restoreProgramDb
+
+{-# DEPRECATED findProgramOnPath "use findProgramLocation instead" #-}
+findProgramOnPath :: String -> Verbosity -> IO (Maybe FilePath)
+findProgramOnPath = flip findProgramLocation
