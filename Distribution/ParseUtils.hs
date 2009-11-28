@@ -263,7 +263,7 @@ ppField :: String -> Doc -> Doc
 ppField name fielddoc = text name <> colon <+> fielddoc
 
 showFields :: [FieldDescr a] -> a -> String
-showFields fields = render . ppFields fields
+showFields fields = render . ($+$ text "") . ppFields fields
 
 showSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
 showSingleNamedField fields f =

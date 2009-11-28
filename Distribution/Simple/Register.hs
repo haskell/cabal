@@ -148,7 +148,7 @@ register pkg@PackageDescription { library       = Just lib  }
 
     writeRegistrationFile installedPkgInfo = do
       notice verbosity ("Creating package registration file: " ++ regFile)
-      writeFileAtomic regFile (showInstalledPackageInfo installedPkgInfo ++ "\n")
+      writeFileAtomic regFile (showInstalledPackageInfo installedPkgInfo)
 
     writeRegisterScript installedPkgInfo =
       case compilerFlavor (compiler lbi) of
@@ -237,7 +237,7 @@ registerPackageHugs verbosity installedPkgInfo pkg lbi inplace _packageDb = do
   let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
   createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
   writeFileAtomic (libdir installDirs </> "package.conf")
-                  (showInstalledPackageInfo installedPkgInfo ++ "\n")
+                  (showInstalledPackageInfo installedPkgInfo)
 
 
 writeHcPkgRegisterScript :: Verbosity
