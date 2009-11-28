@@ -64,7 +64,7 @@ module Distribution.Simple.Utils (
         rawSystemStdin,
         maybeExit,
         xargs,
-        findProgramOnPath,
+        findProgramLocation,
         findProgramVersion,
 
         -- * copying files
@@ -467,8 +467,8 @@ rawSystemStdin verbosity path args input = do
 
 
 -- | Look for a program on the path.
-findProgramOnPath :: Verbosity -> FilePath -> IO (Maybe FilePath)
-findProgramOnPath verbosity prog = do
+findProgramLocation :: Verbosity -> FilePath -> IO (Maybe FilePath)
+findProgramLocation verbosity prog = do
   debug verbosity $ "searching for " ++ prog ++ " in path."
   res <- findExecutable prog
   case res of

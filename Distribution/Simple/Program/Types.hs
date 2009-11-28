@@ -27,7 +27,7 @@ module Distribution.Simple.Program.Types (
   ) where
 
 import Distribution.Simple.Utils
-         ( findProgramOnPath )
+         ( findProgramLocation )
 import Distribution.Version
          ( Version )
 import Distribution.Verbosity
@@ -100,7 +100,7 @@ programPath = locationPath . programLocation
 simpleProgram :: String -> Program
 simpleProgram name = Program {
     programName         = name,
-    programFindLocation = \v   -> findProgramOnPath v name,
+    programFindLocation = \v   -> findProgramLocation v name,
     programFindVersion  = \_ _ -> return Nothing,
     programPostConf     = \_ _ -> return []
   }
