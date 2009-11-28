@@ -160,11 +160,15 @@ simplifyDependency :: Dependency -> Dependency
 simplifyDependency (Dependency name range) =
   Dependency name (simplifyVersionRange range)
 
--- | Class of things that can be identified by a 'PackageIdentifier'
+-- | Class of things that have a 'PackageIdentifier'
 --
 -- Types in this class are all notions of a package. This allows us to have
 -- different types for the different phases that packages go though, from
 -- simple name\/id, package description, configured or installed packages.
+--
+-- Not all kinds of packages can be uniquely identified by a
+-- 'PackageIdentifier'. In particular, installed packages cannot, there may be
+-- many installed instances of the same source package.
 --
 class Package pkg where
   packageId :: pkg -> PackageIdentifier
