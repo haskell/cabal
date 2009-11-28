@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-0.6.4 (next stable release)
+0.6.4 Duncan Coutts <duncan@haskell.org> Nov 2009
 	* Improve the algorithm for selecting the base package version
 	* Hackage errors now reported by "cabal upload [--check]"
 	* Improved format of messages from "cabal check"
