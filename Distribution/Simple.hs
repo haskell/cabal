@@ -427,7 +427,7 @@ simpleUserHooks =
       }
   where
     finalChecks _args flags pkg_descr lbi =
-      checkForeignDeps pkg_descr lbi verbosity
+      checkForeignDeps pkg_descr lbi (lessVerbose verbosity)
       where
         verbosity = fromFlag (configVerbosity flags)
 
