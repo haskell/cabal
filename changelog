@@ -1,12 +1,23 @@
 -*-change-log-*-
 
-1.7.x (current development version)
-	* Support for LHC
+1.8.0.x (next stable release version)
+	* Support for GHC-6.12
+	* New unique installed package IDs which use a package hash
+	* Allow executables to depend on the lib within the same package
+	* Dependencies for each component apply only to that component
+	  (previously applied to all the other components too)
 	* Added new known license MIT and versioned GPL and LGPL
-	* Deprecate RecordPuns extension in favour of NamedFieldPuns
+	* More liberal package version range syntax
+	* Package registration files are now UTF8
+	* Support for LHC and JHC-0.7.2
+	* Deprecated RecordPuns extension in favour of NamedFieldPuns
+	* Deprecated PatternSignatures extension in favor of ScopedTypeVariables
 	* New VersionRange semantic view as a sequence of intervals
 	* Improved package quality checks
+	* Minor simplification in a couple Setup.hs hooks
 	* Beginnings of a unit level testsuite using QuickCheck
+	* Various bug fixes
+	* Various internal cleanups
 
 1.6.0.2 Duncan Coutts <duncan@haskell.org> February 2009
 	* New configure-time check for C headers and libraries
