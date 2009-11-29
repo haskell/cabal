@@ -60,8 +60,7 @@ module Distribution.Simple.Utils (
         -- * running programs
         rawSystemExit,
         rawSystemStdout,
-        rawSystemStdout',
-        rawSystemStdin,
+        rawSystemStdInOut,
         maybeExit,
         xargs,
         findProgramLocation,
@@ -358,41 +357,64 @@ rawSystemExit verbosity path args = do
 
 -- | Run a command and return its output.
 --
--- The output is assumed to be encoded as UTF8.
+-- The output is assumed to be text in the locale encoding.
 --
 rawSystemStdout :: Verbosity -> FilePath -> [String] -> IO String
 rawSystemStdout verbosity path args = do
-  (output, exitCode) <- rawSystemStdout' verbosity path args
-  unless (exitCode == ExitSuccess) $ exitWith exitCode
+  (output, errors, exitCode) <- rawSystemStdInOut verbosity path args
+                                                  Nothing False
+  when (exitCode /= ExitSuccess) $
+    die errors
   return output
 
-rawSystemStdout' :: Verbosity -> FilePath -> [String] -> IO (String, ExitCode)
-rawSystemStdout' verbosity path args = do
+-- | Run a command and return its output, errors and exit status. Optionally
+-- also supply some input. Also provides control over whether the binary/text
+-- mode of the input and output.
+--
+rawSystemStdInOut :: Verbosity
+                  -> FilePath -> [String]
+                  -> Maybe (String, Bool) -- ^ input text and binary mode
+                  -> Bool                 -- ^ output in binary mode
+                  -> IO (String, String, ExitCode) -- ^ output, errors, exit
+rawSystemStdInOut verbosity path args input outputBinary = do
   printRawCommandAndArgs verbosity path args
 
 #ifdef __GLASGOW_HASKELL__
   Exception.bracket
      (runInteractiveProcess path args Nothing Nothing)
      (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
-    $ \(_,outh,errh,pid) -> do
+    $ \(inh,outh,errh,pid) -> do
 
-      -- We want to process the output as text.
-      hSetBinaryMode outh False
+      -- output mode depends on what the caller wants
+      hSetBinaryMode outh outputBinary
+      -- but the errors are always assumed to be text (in the current locale)
+      hSetBinaryMode errh False
 
-      -- fork off a thread to pull on (and discard) the stderr
+      -- fork off a couple threads to pull on the stderr and stdout
       -- so if the process writes to stderr we do not block.
-      -- NB. do the hGetContents synchronously, otherwise the outer
-      -- bracket can exit before this thread has run, and hGetContents
-      -- will fail.
+
       err <- hGetContents errh
       out <- hGetContents outh
 
       mv <- newEmptyMVar
-      let force str = (do _ <- evaluate (length str)
-                          return ())
+      let force str = (evaluate (length str) >> return ())
             `Exception.finally` putMVar mv ()
+          --TODO: handle exceptions like text decoding.
       _ <- forkIO $ force out
       _ <- forkIO $ force err
+
+      -- push all the input, if any
+      case input of
+        Nothing -> return ()
+        Just (inputStr, inputBinary) -> do
+                -- input mode depends on what the caller wants
+          hSetBinaryMode inh inputBinary
+          hPutStr inh inputStr
+          hClose inh
+          --TODO: this probably fails if the process refuses to consume
+          -- or if it closes stdin (eg if it exits)
+
+      -- wait for both to finish, in either order
       takeMVar mv
       takeMVar mv
 
@@ -403,66 +425,33 @@ rawSystemStdout' verbosity path args = do
                        ++ if null err then "" else
                           " with error message:\n" ++ err
 
-      return (out, exitcode)
+      return (out, err, exitcode)
 #else
   tmpDir <- getTemporaryDirectory
-  withTempFile tmpDir ".cmd.stdout" $ \tmpName tmpHandle -> do
-    hClose tmpHandle
+  withTempFile tmpDir ".cmd.stdout" $ \outName outHandle ->
+   withTempFile tmpDir ".cmd.stdin" $ \inName inHandle -> do
+    hClose outHandle
+
+    case input of
+      Nothing -> return ()
+      Just (inputStr, inputBinary) -> do
+        hSetBinaryMode inHandle inputBinary
+        hPutStr inHandle inputStr
+    hClose inHandle
+
     let quote name = "'" ++ name ++ "'"
-    exitcode <- system $ unwords (map quote (path:args)) ++ " >" ++ quote tmpName
+        cmd = unwords (map quote (path:args))
+           ++ " <" ++ quote inName
+           ++ " >" ++ quote outName
+    exitcode <- system cmd
+
     unless (exitcode == ExitSuccess) $
       debug verbosity $ path ++ " returned " ++ show exitcode
-    withFileContents tmpName $ \output ->
-      length output `seq` return (output, exitcode)
-#endif
 
-rawSystemStdin :: Verbosity -> FilePath -> [String] -> String -> IO ()
-rawSystemStdin verbosity path args input = do
-  printRawCommandAndArgs verbosity path args
-
-#ifdef __GLASGOW_HASKELL__
-  Exception.bracket
-     (runInteractiveProcess path args Nothing Nothing)
-     (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
-    $ \(inh,outh,errh,pid) -> do
-
-      -- We want to process the input as text.
-      hSetBinaryMode inh False
-
-      -- fork off a thread to pull on (and discard) the stderr and stdout
-      -- so if the process writes to stderr or stdout we do not block.
-      -- NB. do the hGetContents synchronously, otherwise the outer
-      -- bracket can exit before this thread has run, and hGetContents
-      -- will fail.
-      err <- hGetContents errh
-      out <- hGetContents outh
-      mv <- newEmptyMVar
-      let force str = (do _ <- evaluate (length str)
-                          return ())
-            `Exception.finally` putMVar mv ()
-      _ <- forkIO $ force out
-      _ <- forkIO $ force err
-
-      -- push all the input
-      hPutStr inh input
-      hClose inh
-      takeMVar mv
-      takeMVar mv
-
-      -- wait for the program to terminate
-      exitcode <- waitForProcess pid
-      unless (exitcode == ExitSuccess) (die err)
-#else
-  tmpDir <- getTemporaryDirectory
-  withTempFile tmpDir ".cmd.stdin" $ \tmpName tmpHandle -> do
-    hPutStr tmpHandle input 
-    hClose tmpHandle
-    let quote name = "'" ++ name ++ "'"
-    exitcode <- system $ unwords (map quote (path:args)) ++ " <" ++ quote tmpName
-    unless (exitcode == ExitSuccess) $ do
-      debug verbosity $ path ++ " returned " ++ show exitcode
-      exitWith exitcode
-    return ()
+    Exception.bracket (openFile outName ReadMode) hClose $ \hnd -> do
+      hSetBinaryMode hnd outputBinary
+      output <- hGetContents hnd
+      length output `seq` return (output, "", exitcode)
 #endif
 
 
