@@ -756,7 +756,7 @@ checkCabalVersion pkg =
     requiresAtLeast = case cabalVersionIntervals of
       (LowerBound ver' _,_):_ -> (ver' >=)
       _                       -> const False
-      where cabalVersionIntervals = asVersionIntervals (descCabalVersion pkg)
+     where cabalVersionIntervals = asVersionIntervals (descCabalVersion pkg)
 
     dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
     extraSrcFilesUsingGlobSyntax = filter usesGlobSyntax (extraSrcFiles pkg)
@@ -1067,7 +1067,7 @@ checkTarPath path
       Left err         -> Just err
       Right []         -> Nothing
       Right (_:_)      -> Just noSplit
-      where
+     where
         -- drop the '/' between the name and prefix:
         remainder = init first : rest
 
