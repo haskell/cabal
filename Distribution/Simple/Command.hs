@@ -382,7 +382,7 @@ commonFlags :: ShowOrParseArgs -> [GetOpt.OptDescr CommonFlag]
 commonFlags showOrParseArgs = case showOrParseArgs of
   ShowArgs  -> [help]
   ParseArgs -> [help, list]
-  where
+ where
     help = GetOpt.Option helpShortFlags ["help"] (GetOpt.NoArg HelpFlag)
              "Show this help text"
     helpShortFlags = case showOrParseArgs of
@@ -475,9 +475,9 @@ commandsRun globalCommand commands args =
         [Command _ _ action] -> CommandReadyToGo (flags, action cmdArgs)
         _                    -> CommandReadyToGo (flags, badCommand name)
       []                     -> CommandReadyToGo (flags, noCommand)
-      where flags = mkflags (commandDefaultFlags globalCommand)
+     where flags = mkflags (commandDefaultFlags globalCommand)
 
-  where
+ where
     lookupCommand cname = [ cmd | cmd@(Command cname' _ _) <- commands'
                           , cname'==cname ]
     noCommand        = CommandErrors ["no command given (try --help)\n"]
@@ -521,7 +521,7 @@ commandsRun globalCommand commands args =
                 _                -> CommandHelp globalHelp
             _                    -> badCommand name
 
-      where globalHelp = commandHelp globalCommand'
+     where globalHelp = commandHelp globalCommand'
     helpCommandUI =
       (makeCommand "help" "Help about commands" Nothing () (const [])) {
         commandUsage = \pname ->

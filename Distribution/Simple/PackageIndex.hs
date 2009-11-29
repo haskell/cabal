@@ -445,7 +445,7 @@ dependencyClosure :: PackageIndex
 dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
   (completed, []) -> Left completed
   (completed, _)  -> Right (brokenPackages completed)
-  where
+ where
     closure completed failed []             = (completed, failed)
     closure completed failed (pkgid:pkgids) = case lookupInstalledPackageId index pkgid of
       Nothing   -> closure completed (pkgid:failed) pkgids

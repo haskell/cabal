@@ -654,7 +654,7 @@ ghcPackageDbOptions dbstack = case dbstack of
   (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
                                        : concatMap specific dbs
   _                                   -> ierror
-  where
+ where
     specific (SpecificPackageDB db) = [ "-package-conf", db ]
     specific _ = ierror
     ierror     = error "internal error: unexpected package db stack"
