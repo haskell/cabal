@@ -1,5 +1,7 @@
 -*-change-log-*-
 
+1.9.x (current development version)
+
 1.8.0.x (next stable release version)
 	* Support for GHC-6.12
 	* New unique installed package IDs which use a package hash
