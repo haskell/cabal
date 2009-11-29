@@ -106,7 +106,7 @@ runProgramInvocation verbosity
     progInvokeInput = Just inputStr,
     progInvokeInputEncoding = encoding
   } = do
-    (output, errors, exitCode) <- rawSystemStdInOut verbosity
+    (_, errors, exitCode) <- rawSystemStdInOut verbosity
                                     path args
                                     (Just input) False
     when (exitCode /= ExitSuccess) $
