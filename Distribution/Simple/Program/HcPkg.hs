@@ -38,7 +38,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program.Types
          ( ConfiguredProgram(programId, programVersion) )
 import Distribution.Simple.Program.Run
-         ( ProgramInvocation(..), programInvocation
+         ( ProgramInvocation(..), IOEncoding(..), programInvocation
          , runProgramInvocation, getProgramInvocationOutput )
 import Distribution.Version
          ( Version(..) )
@@ -168,21 +168,25 @@ registerInvocation, reregisterInvocation
 registerInvocation   = registerInvocation' "register"
 reregisterInvocation = registerInvocation' "update"
 
+
 registerInvocation' :: String
                     -> ConfiguredProgram -> Verbosity -> PackageDB
                     -> Either FilePath InstalledPackageInfo
                     -> ProgramInvocation
 registerInvocation' cmdname hcPkg verbosity packagedb (Left pkgFile) =
-  programInvocation hcPkg $
-       [cmdname, pkgFile, packageDbOpts packagedb]
-    ++ verbosityOpts hcPkg verbosity
+    programInvocation hcPkg args
+  where
+    args = [cmdname, pkgFile, packageDbOpts packagedb]
+        ++ verbosityOpts hcPkg verbosity
 
 registerInvocation' cmdname hcPkg verbosity packagedb (Right pkgInfo) =
-  let args = [cmdname, "-", packageDbOpts packagedb]
-           ++ verbosityOpts hcPkg verbosity
-   in (programInvocation hcPkg args) {
-         progInvokeInput = Just (showInstalledPackageInfo pkgInfo)
-      }
+    (programInvocation hcPkg args) {
+      progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
+      progInvokeInputEncoding = IOEncodingUTF8
+    }
+  where
+    args = [cmdname, "-", packageDbOpts packagedb]
+        ++ verbosityOpts hcPkg verbosity
 
 
 unregisterInvocation :: ConfiguredProgram
@@ -213,9 +217,12 @@ hideInvocation hcPkg verbosity packagedb pkgid =
 dumpInvocation :: ConfiguredProgram
                -> Verbosity -> PackageDB -> ProgramInvocation
 dumpInvocation hcPkg verbosity packagedb =
-  programInvocation hcPkg $
-       ["dump", packageDbOpts packagedb]
-    ++ verbosityOpts hcPkg verbosity
+    (programInvocation hcPkg args) {
+      progInvokeOutputEncoding = IOEncodingUTF8
+    }
+  where
+    args = ["dump", packageDbOpts packagedb]
+        ++ verbosityOpts hcPkg verbosity
 
 
 packageDbOpts :: PackageDB -> String

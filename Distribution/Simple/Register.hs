@@ -90,7 +90,7 @@ import Distribution.InstalledPackageInfo
          , showInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, writeFileAtomic
+         ( createDirectoryIfMissingVerbose, writeUTF8File, writeFileAtomic
          , die, notice, setupMessage )
 import Distribution.System
          ( OS(..), buildOS )
@@ -148,7 +148,7 @@ register pkg@PackageDescription { library       = Just lib  }
 
     writeRegistrationFile installedPkgInfo = do
       notice verbosity ("Creating package registration file: " ++ regFile)
-      writeFileAtomic regFile (showInstalledPackageInfo installedPkgInfo)
+      writeUTF8File regFile (showInstalledPackageInfo installedPkgInfo)
 
     writeRegisterScript installedPkgInfo =
       case compilerFlavor (compiler lbi) of
@@ -236,8 +236,8 @@ registerPackageHugs verbosity installedPkgInfo pkg lbi inplace _packageDb = do
   when inplace $ die "--inplace is not supported with Hugs"
   let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
   createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
-  writeFileAtomic (libdir installDirs </> "package.conf")
-                  (showInstalledPackageInfo installedPkgInfo)
+  writeUTF8File (libdir installDirs </> "package.conf")
+                (showInstalledPackageInfo installedPkgInfo)
 
 
 writeHcPkgRegisterScript :: Verbosity
@@ -251,7 +251,7 @@ writeHcPkgRegisterScript verbosity installedPkgInfo hcPkg packageDb = do
       regScript   = invocationAsSystemScript buildOS   invocation
 
   notice verbosity ("Creating package registration script: " ++ regScriptFileName)
-  writeFileAtomic regScriptFileName regScript
+  writeUTF8File regScriptFileName regScript
   setFileExecutable regScriptFileName
 
 regScriptFileName :: FilePath
