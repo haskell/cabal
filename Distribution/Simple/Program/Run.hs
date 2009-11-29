@@ -11,6 +11,7 @@
 
 module Distribution.Simple.Program.Run (
     ProgramInvocation(..),
+    IOEncoding(..),
     emptyProgramInvocation,
     simpleProgramInvocation,
     programInvocation,
@@ -24,12 +25,17 @@ module Distribution.Simple.Program.Run (
 import Distribution.Simple.Program.Types
          ( ConfiguredProgram(..), programPath )
 import Distribution.Simple.Utils
-         ( die, rawSystemExit, rawSystemStdin, rawSystemStdout )
+         ( die, rawSystemExit, rawSystemStdInOut
+         , toUTF8, fromUTF8 )
 import Distribution.Verbosity
          ( Verbosity )
 
 import Data.List
          ( foldl', unfoldr )
+import Control.Monad
+         ( when )
+import System.Exit
+         ( ExitCode(..) )
 
 -- | Represents a specific invocation of a specific program.
 --
@@ -43,8 +49,13 @@ data ProgramInvocation = ProgramInvocation {
        progInvokeArgs  :: [String],
        progInvokeEnv   :: [(String, String)],
        progInvokeCwd   :: Maybe FilePath,
-       progInvokeInput :: Maybe String
+       progInvokeInput :: Maybe String,
+       progInvokeInputEncoding  :: IOEncoding,
+       progInvokeOutputEncoding :: IOEncoding
      }
+
+data IOEncoding = IOEncodingText   -- locale mode text
+                | IOEncodingUTF8   -- always utf8
 
 emptyProgramInvocation :: ProgramInvocation
 emptyProgramInvocation =
@@ -53,7 +64,9 @@ emptyProgramInvocation =
     progInvokeArgs  = [],
     progInvokeEnv   = [],
     progInvokeCwd   = Nothing,
-    progInvokeInput = Nothing
+    progInvokeInput = Nothing,
+    progInvokeInputEncoding  = IOEncodingText,
+    progInvokeOutputEncoding = IOEncodingText
   }
 
 simpleProgramInvocation :: FilePath -> [String] -> ProgramInvocation
@@ -90,9 +103,18 @@ runProgramInvocation verbosity
     progInvokeArgs  = args,
     progInvokeEnv   = [],
     progInvokeCwd   = Nothing,
-    progInvokeInput = Just input
-  } =
-  rawSystemStdin verbosity path args input
+    progInvokeInput = Just inputStr,
+    progInvokeInputEncoding = encoding
+  } = do
+    (output, errors, exitCode) <- rawSystemStdInOut verbosity
+                                    path args
+                                    (Just input) False
+    when (exitCode /= ExitSuccess) $
+      die errors
+  where
+    input = case encoding of
+              IOEncodingText -> (inputStr, False)
+              IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
 
 runProgramInvocation _ _ =
    die "runProgramInvocation: not yet implemented for this form of invocation"
@@ -105,9 +127,17 @@ getProgramInvocationOutput verbosity
     progInvokeArgs  = args,
     progInvokeEnv   = [],
     progInvokeCwd   = Nothing,
-    progInvokeInput = Nothing
-  } =
-  rawSystemStdout verbosity path args
+    progInvokeInput = Nothing,
+    progInvokeOutputEncoding = encoding
+  } = do
+  let utf8 = case encoding of IOEncodingUTF8 -> True; _ -> False
+  (output, errors, exitCode) <- rawSystemStdInOut verbosity
+                                  path args
+                                  Nothing utf8
+  when (exitCode /= ExitSuccess) $
+    die errors
+  return (if utf8 then fromUTF8 output else output)
+
 
 getProgramInvocationOutput _ _ =
    die "getProgramInvocationOutput: not yet implemented for this form of invocation"
