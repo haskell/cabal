@@ -248,7 +248,8 @@ munch1 :: (Char -> Bool) -> ReadP r String
 -- ^ Parses the first one or more characters satisfying the predicate.
 munch1 p =
   do c <- get
-     if p c then do s <- munch p; return (c:s) else pfail
+     if p c then do s <- munch p; return (c:s)
+            else pfail
 
 choice :: [ReadP r a] -> ReadP r a
 -- ^ Combines all parsers in the specified list.

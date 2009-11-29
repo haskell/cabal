@@ -515,7 +515,7 @@ mkField d (Node (n,_,l) ts) = case span (\c -> isAlphaNum c || c == '-') l of
                                           (fieldValue rest' followingLines)
     rest'       -> do ts' <- mapM (mkField (d+1)) ts
                       return (Section n (map toLower name) rest' ts')
-    where fieldValue firstLine followingLines =
+ where    fieldValue firstLine followingLines =
             let firstLine' = trimLeading firstLine
                 followingLines' = map (\(_,_,s) -> stripDot s) followingLines
                 allLines | null firstLine' =              followingLines'

@@ -257,9 +257,9 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
                    (psrcLoc, psrcRelFile)
                    (buildLoc, srcStem <.> "hs") verbosity
 
-      where dirName = takeDirectory
-            tailNotNull [] = []
-            tailNotNull x  = tail x
+     where dirName = takeDirectory
+           tailNotNull [] = []
+           tailNotNull x  = tail x
 
 -- ------------------------------------------------------------
 -- * known preprocessors
