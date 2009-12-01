@@ -883,9 +883,11 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
               pkg@PackageDescription{library=Just lib} = do
         -- copy .hi files over:
         let verbosity = fromFlag (copyVerbosity flags)
-            copy src dst n = do
+            copyHelper installFun src dst n = do
               createDirectoryIfMissingVerbose verbosity True dst
-              installOrdinaryFile verbosity (src </> n) (dst </> n)
+              installFun verbosity (src </> n) (dst </> n)
+            copy       = copyHelper installOrdinaryFile
+            copyShared = copyHelper installExecutableFile
             copyModuleFiles ext =
               findModuleFiles [builtDir] [ext] (libModules lib)
                 >>= installOrdinaryFiles verbosity targetDir
@@ -897,7 +899,7 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
         ifVanilla $ copy builtDir targetDir vanillaLibName
         ifProf    $ copy builtDir targetDir profileLibName
         ifGHCi    $ copy builtDir targetDir ghciLibName
-        ifShared  $ copy builtDir dynlibTargetDir sharedLibName
+        ifShared  $ copyShared builtDir dynlibTargetDir sharedLibName
 
         -- run ranlib if necessary:
         ifVanilla $ updateLibArchive verbosity lbi
