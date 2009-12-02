@@ -26,7 +26,7 @@ import Distribution.Simple.Program.Types
          ( ConfiguredProgram(..), programPath )
 import Distribution.Simple.Utils
          ( die, rawSystemExit, rawSystemStdInOut
-         , toUTF8, fromUTF8 )
+         , toUTF8, fromUTF8, normaliseLineEndings )
 import Distribution.Verbosity
          ( Verbosity )
 
@@ -131,12 +131,14 @@ getProgramInvocationOutput verbosity
     progInvokeOutputEncoding = encoding
   } = do
   let utf8 = case encoding of IOEncodingUTF8 -> True; _ -> False
+      decode | utf8      = fromUTF8 . normaliseLineEndings
+             | otherwise = id
   (output, errors, exitCode) <- rawSystemStdInOut verbosity
                                   path args
                                   Nothing utf8
   when (exitCode /= ExitSuccess) $
     die errors
-  return (if utf8 then fromUTF8 output else output)
+  return (decode output)
 
 
 getProgramInvocationOutput _ _ =
