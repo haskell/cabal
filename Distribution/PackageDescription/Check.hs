@@ -443,19 +443,21 @@ checkGhcOptions pkg =
         "'ghc-options: -d*' debug flags are not appropriate for a distributed package."
 
   , checkFlags ["-prof"] $
-      PackageDistInexcusable $
-        "'ghc-options: -prof' is not needed. Use the --enable-library-profiling configure flag."
+      PackageBuildWarning $
+           "'ghc-options: -prof' is not necessary and will lead to problems "
+        ++ "when used on a library. Use the configure flag "
+        ++ "--enable-library-profiling and/or --enable-executable-profiling."
 
   , checkFlags ["-o"] $
-      PackageDistInexcusable $
-        "'ghc-options: -o' is not allowed. The output files are named automatically."
+      PackageBuildWarning $
+        "'ghc-options: -o' is not needed. The output files are named automatically."
 
   , checkFlags ["-hide-package"] $
-      PackageDistInexcusable $
+      PackageBuildWarning $
            "'ghc-options: -hide-package' is never needed. Cabal hides all packages."
 
   , checkFlags ["--make"] $
-      PackageDistInexcusable $
+      PackageBuildWarning $
         "'ghc-options: --make' is never needed. Cabal uses this automatically."
 
   , checkFlags ["-main-is"] $
@@ -477,7 +479,7 @@ checkGhcOptions pkg =
         ++ "and not just imposing longer compile times on your users."
 
   , checkFlags ["-split-objs"] $
-      PackageDistInexcusable $
+      PackageBuildWarning $
         "'ghc-options: -split-objs' is not needed. Use the --enable-split-objs configure flag."
 
   , checkFlags ["-optl-Wl,-s", "-optl-s"] $
