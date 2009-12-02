@@ -132,6 +132,8 @@ dump verbosity hcPkg packagedb = do
             []   -> Left [ pkg | ParseOk _ pkg <- parsed ]
             msgs -> Right msgs
 
+    --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
+    -- and converting back and forth with lines/unlines.
     splitPkgs :: String -> [String]
     splitPkgs = map unlines . splitWith ("---" ==) . lines
       where

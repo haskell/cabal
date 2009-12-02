@@ -76,7 +76,8 @@ import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
 import Distribution.Text
          ( Text(..) )
-import Distribution.Simple.Utils (intercalate, lowercase)
+import Distribution.Simple.Utils
+         ( intercalate, lowercase, normaliseLineEndings )
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
@@ -427,13 +428,6 @@ trimLeading, trimTrailing :: String -> String
 trimLeading  = dropWhile isSpace
 trimTrailing = reverse . dropWhile isSpace . reverse
 
-
--- | Fix different systems silly line ending conventions
-normaliseLineEndings :: String -> String
-normaliseLineEndings [] = []
-normaliseLineEndings ('\r':'\n':s) = '\n' : normaliseLineEndings s -- windows
-normaliseLineEndings ('\r':s)      = '\n' : normaliseLineEndings s -- old osx
-normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 
 type SyntaxTree = Tree (LineNo, HasTabs, String)
 

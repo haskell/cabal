@@ -117,6 +117,7 @@ module Distribution.Simple.Utils (
         readUTF8File,
         withUTF8FileContents,
         writeUTF8File,
+        normaliseLineEndings,
 
         -- * generic utils
         equating,
@@ -1032,6 +1033,13 @@ withUTF8FileContents name action =
 --
 writeUTF8File :: FilePath -> String -> IO ()
 writeUTF8File path = writeFileAtomic path . toUTF8
+
+-- | Fix different systems silly line ending conventions
+normaliseLineEndings :: String -> String
+normaliseLineEndings [] = []
+normaliseLineEndings ('\r':'\n':s) = '\n' : normaliseLineEndings s -- windows
+normaliseLineEndings ('\r':s)      = '\n' : normaliseLineEndings s -- old osx
+normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 
 -- ------------------------------------------------------------
 -- * Common utils
