@@ -105,7 +105,7 @@ compilerVersion = (\(CompilerId _ v) -> v) . compilerId
 data PackageDB = GlobalPackageDB
                | UserPackageDB
                | SpecificPackageDB FilePath
-    deriving (Eq, Show, Read)
+    deriving (Eq, Ord, Show, Read)
 
 -- | We typically get packages from several databases, and stack them
 -- together. This type lets us be explicit about that stacking. For example
