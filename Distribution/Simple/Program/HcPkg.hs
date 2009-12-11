@@ -34,7 +34,7 @@ import Distribution.InstalledPackageInfo
 import Distribution.ParseUtils
          ( ParseResult(..) )
 import Distribution.Simple.Compiler
-         ( PackageDB(..) )
+         ( PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program.Types
          ( ConfiguredProgram(programId, programVersion) )
 import Distribution.Simple.Program.Run
@@ -58,7 +58,7 @@ import Control.Monad
 --
 -- > hc-pkg register {filename | -} [--user | --global | --package-conf]
 --
-register :: Verbosity -> ConfiguredProgram -> PackageDB
+register :: Verbosity -> ConfiguredProgram -> PackageDBStack
          -> Either FilePath
                    InstalledPackageInfo
          -> IO ()
@@ -71,7 +71,7 @@ register verbosity hcPkg packagedb pkgFile =
 --
 -- > hc-pkg register {filename | -} [--user | --global | --package-conf]
 --
-reregister :: Verbosity -> ConfiguredProgram -> PackageDB
+reregister :: Verbosity -> ConfiguredProgram -> PackageDBStack
            -> Either FilePath
                      InstalledPackageInfo
            -> IO ()
@@ -164,7 +164,7 @@ setInstalledPackageId pkginfo = pkginfo
 --
 
 registerInvocation, reregisterInvocation
-  :: ConfiguredProgram -> Verbosity -> PackageDB
+  :: ConfiguredProgram -> Verbosity -> PackageDBStack
   -> Either FilePath InstalledPackageInfo
   -> ProgramInvocation
 registerInvocation   = registerInvocation' "register"
@@ -172,22 +172,22 @@ reregisterInvocation = registerInvocation' "update"
 
 
 registerInvocation' :: String
-                    -> ConfiguredProgram -> Verbosity -> PackageDB
+                    -> ConfiguredProgram -> Verbosity -> PackageDBStack
                     -> Either FilePath InstalledPackageInfo
                     -> ProgramInvocation
-registerInvocation' cmdname hcPkg verbosity packagedb (Left pkgFile) =
+registerInvocation' cmdname hcPkg verbosity packagedbs (Left pkgFile) =
     programInvocation hcPkg args
   where
-    args = [cmdname, pkgFile, packageDbOpts packagedb]
+    args = [cmdname, pkgFile] ++ packageDbStackOpts packagedbs
         ++ verbosityOpts hcPkg verbosity
 
-registerInvocation' cmdname hcPkg verbosity packagedb (Right pkgInfo) =
+registerInvocation' cmdname hcPkg verbosity packagedbs (Right pkgInfo) =
     (programInvocation hcPkg args) {
       progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
       progInvokeInputEncoding = IOEncodingUTF8
     }
   where
-    args = [cmdname, "-", packageDbOpts packagedb]
+    args = [cmdname, "-"] ++ packageDbStackOpts packagedbs
         ++ verbosityOpts hcPkg verbosity
 
 
@@ -226,6 +226,20 @@ dumpInvocation hcPkg verbosity packagedb =
     args = ["dump", packageDbOpts packagedb]
         ++ verbosityOpts hcPkg verbosity
 
+
+packageDbStackOpts :: PackageDBStack -> [String]
+packageDbStackOpts dbstack = case dbstack of
+  (GlobalPackageDB:UserPackageDB:dbs) -> "--global"
+                                       : "--user"
+                                       : map specific dbs
+  (GlobalPackageDB:dbs)               -> "--global"
+                                       : "--no-user-package-conf"
+                                       : map specific dbs
+  _                                   -> ierror
+  where
+    specific (SpecificPackageDB db) = "--package-conf=" ++ db
+    specific _ = ierror
+    ierror     = error "internal error: unexpected package db stack"
 
 packageDbOpts :: PackageDB -> String
 packageDbOpts GlobalPackageDB        = "--global"
