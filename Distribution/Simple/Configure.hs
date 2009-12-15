@@ -118,6 +118,7 @@ import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
+import qualified Distribution.Simple.UHC  as UHC
 
 import Control.Monad
     ( when, unless, foldM, filterM )
@@ -775,6 +776,7 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
                  LHC.configure  verbosity hcPath Nothing ghcConf
       Hugs -> Hugs.configure verbosity hcPath hcPkg conf
       NHC  -> NHC.configure  verbosity hcPath hcPkg conf
+      UHC  -> UHC.configure  verbosity hcPath hcPkg conf
       _    -> die "Unknown compiler"
 
 

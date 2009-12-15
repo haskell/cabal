@@ -333,7 +333,8 @@ configureOptions showOrParseArgs =
                     , (Flag NHC, ([] , ["nhc98"]), "compile with NHC")
                     , (Flag JHC, ([] , ["jhc"]), "compile with JHC")
                     , (Flag LHC, ([] , ["lhc"]), "compile with LHC")
-                    , (Flag Hugs,([] , ["hugs"]), "compile with Hugs")])
+                    , (Flag Hugs,([] , ["hugs"]), "compile with Hugs")
+                    , (Flag UHC, ([] , ["uhc"]), "compile with UHC")])
 
       ,option "w" ["with-compiler"]
          "give the path to a particular compiler"
