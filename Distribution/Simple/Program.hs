@@ -93,6 +93,7 @@ module Distribution.Simple.Program (
     , jhcProgram
     , hugsProgram
     , ffihugsProgram
+    , uhcProgram
     , gccProgram
     , ranlibProgram
     , arProgram

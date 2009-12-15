@@ -25,6 +25,7 @@ module Distribution.Simple.Program.Builtin (
     jhcProgram,
     hugsProgram,
     ffihugsProgram,
+    uhcProgram,
     gccProgram,
     ranlibProgram,
     arProgram,
@@ -67,6 +68,7 @@ builtinPrograms =
     , jhcProgram
     , lhcProgram
     , lhcPkgProgram
+    , uhcProgram
     -- preprocessors
     , hscolourProgram
     , haddockProgram
@@ -146,6 +148,10 @@ jhcProgram = (simpleProgram "jhc") {
       case words str of
         (_:ver:_) -> ver
         _         -> ""
+  }
+
+uhcProgram = (simpleProgram "uhc") {
+    programFindVersion = findProgramVersion "--numeric-version" id
   }
 
 
