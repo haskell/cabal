@@ -73,12 +73,12 @@ import Text.PrettyPrint ((<>))
 import qualified Data.Char as Char (toLower, isDigit, isAlphaNum)
 import Control.Monad (when)
 
-data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC | LHC
+data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
                     | OtherCompiler String
   deriving (Show, Read, Eq, Ord)
 
 knownCompilerFlavors :: [CompilerFlavor]
-knownCompilerFlavors = [GHC, NHC, YHC, Hugs, HBC, Helium, JHC, LHC]
+knownCompilerFlavors = [GHC, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
 
 instance Text CompilerFlavor where
   disp (OtherCompiler name) = Disp.text name
