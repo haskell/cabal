@@ -66,11 +66,17 @@ XMLLINT_OPTIONS=--nonet --noout --valid
 
 XSLTPROC=xsltproc
 XSLTPROC_HTML_OUTDIR=dist/doc/users-guide/
+XSLTPROC_HTML_DOCTYPE_PUBLIC="-//W3C//DTD HTML 4.01 Transitional//EN"
+XSLTPROC_HTML_DOCTYPE_SYSTEM="http://www.w3.org/TR/html4/loose.dtd"
+XSLTPROC_HTML_ENCODING=UTF-8
 XSLTPROC_HTML_CSS=Cabal.css
 XSLTPROC_HTML_PARAMS=\
 	--param use.id.as.filename 1 \
 	--param toc.section.depth 3 \
 	--stringparam base.dir $(XSLTPROC_HTML_OUTDIR) \
+	--stringparam chunker.output.doctype-public $(XSLTPROC_HTML_DOCTYPE_PUBLIC) \
+	--stringparam chunker.output.doctype-system $(XSLTPROC_HTML_DOCTYPE_SYSTEM) \
+	--stringparam chunker.output.encoding $(XSLTPROC_HTML_ENCODING) \
 	--stringparam html.stylesheet $(XSLTPROC_HTML_CSS)
 XSLTPROC_HTML_STYLESHEET=http://docbook.sourceforge.net/release/xsl/current/html/chunk.xsl
 XSLTPROC_OPTIONS=--nonet $(XSLTPROC_HTML_PARAMS) $(XSLTPROC_HTML_STYLESHEET)
