@@ -428,9 +428,11 @@ configure (pkg_descr0, pbi) cfg
         -- check extensions
         let extlist = nub $ concatMap extensions (allBuildInfo pkg_descr)
         let exts = unsupportedExtensions comp extlist
-        unless (null exts) $ warn verbosity $ -- Just warn, FIXME: Should this be an error?
-            display flavor ++ " does not support the following extensions: " ++
-            intercalate ", " (map display exts)
+        when (not (null exts)) $
+          die $ "The package " ++ display (packageId pkg_descr0)
+             ++ " requires the following language extensions which are not "
+             ++ "supported by " ++ display (compilerId comp) ++ ": "
+             ++ intercalate ", " (map display exts)
 
         let requiredBuildTools = concatMap buildTools (allBuildInfo pkg_descr)
         programsConfig'' <-
