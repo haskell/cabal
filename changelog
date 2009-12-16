@@ -1,6 +1,6 @@
 -*-change-log-*-
 
-1.8.0.x (next stable release version)
+1.8.0.2 Duncan Coutts <duncan@haskell.org> December 2009
 	* Support for GHC-6.12
 	* New unique installed package IDs which use a package hash
 	* Allow executables to depend on the lib within the same package
