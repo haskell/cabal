@@ -17,9 +17,9 @@ come with a standard ghc installation. It requires the `network` package, which
 is sometimes packaged separately by Linux distributions, for example on
 debian or ubuntu it is in "libghc6-network-dev".
 
-It requires three other Haskell packages that are not always installed:
+It requires a few other Haskell packages that are not always installed:
 
- * Cabal  (version 1.6  or later)
+ * Cabal  (version 1.8  or later)
  * HTTP   (version 4000 or later)
  * zlib   (version 0.4  or later)
 
@@ -30,10 +30,11 @@ development package using your system package manager, for example on
 debian or ubuntu it is in "zlib1g-dev". It is needed is because the
 Haskell zlib package uses the system zlib C library and header files.
 
-In future, cabal-install will be part of the Haskell Platform so will not need
-to be installed separately. In the mean time however you have to install it
-manually. Since it is just an ordinary Cabal package it can be built in the
-standard way, but to make it a bit easier we have partly automated the process:
+The `cabal-install` package is now part of the Haskell Platform so you do not
+usually need to install it separately. However if you are starting from a
+minimal ghc installation then you need to install `cabal-install` manually.
+Since it is just an ordinary Cabal package it can be built in the standard
+way, but to make it a bit easier we have partly automated the process:
 
 
 Quickstart on Unix systems
