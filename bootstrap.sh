@@ -45,10 +45,12 @@ done
 
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
-CABAL_VER="1.8.0"; CABAL_VER_REGEXP="1\.[78]\."   # >= 1.7 && < 1.9
-HTTP_VER="4000.0.4"; HTTP_VER_REGEXP="4000\.0\.[3456789]"
-                                                 # >= 4000.0.3 && < 4000.0.10
-ZLIB_VER="0.5.0.0";  ZLIB_VER_REGEXP="0\.[45]\." # >= 0.4  && < 0.6
+PARSEC_VER="2.1.0.1";  PARSEC_VER_REGEXP="2\."     # == 2.*
+NETWORK_VER="2.2.1.5"; NETWORK_VER_REGEXP="2\."    # == 2.*
+CABAL_VER="1.8.0.2";   CABAL_VER_REGEXP="1\.8\."   # == 1.8.*
+MTL_VER="1.1.0.2";     MTL_VER_REGEXP="1\.1\."     # == 1.1.*
+HTTP_VER="4000.0.8";   HTTP_VER_REGEXP="4000\.0"   # == 4000.0.*
+ZLIB_VER="0.5.2.0";    ZLIB_VER_REGEXP="0\.[45]\." # == 0.5.*
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
 
@@ -192,15 +194,19 @@ do_pkg () {
 
 # Actually do something!
 
-dep_pkg "network" "[12]\."
+info_pkg "parsec"  ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
+info_pkg "network" ${NETWORK_VER} ${NETWORK_VER_REGEXP}
+info_pkg "Cabal"   ${CABAL_VER}   ${CABAL_VER_REGEXP}
+info_pkg "mtl"     ${MTL_VER}     ${MTL_VER_REGEXP}
+info_pkg "HTTP"    ${HTTP_VER}    ${HTTP_VER_REGEXP}
+info_pkg "zlib"    ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 
-info_pkg "Cabal" ${CABAL_VER} ${CABAL_VER_REGEXP}
-info_pkg "HTTP"  ${HTTP_VER}  ${HTTP_VER_REGEXP}
-info_pkg "zlib"  ${ZLIB_VER}  ${ZLIB_VER_REGEXP}
-
-do_pkg "Cabal" ${CABAL_VER} ${CABAL_VER_REGEXP}
-do_pkg "HTTP"  ${HTTP_VER}  ${HTTP_VER_REGEXP}
-do_pkg "zlib"  ${ZLIB_VER}  ${ZLIB_VER_REGEXP}
+do_pkg "parsec"  ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
+do_pkg "network" ${NETWORK_VER} ${NETWORK_VER_REGEXP}
+do_pkg "Cabal"   ${CABAL_VER}   ${CABAL_VER_REGEXP}
+do_pkg "mtl"     ${MTL_VER}     ${MTL_VER_REGEXP}
+do_pkg "HTTP"    ${HTTP_VER}    ${HTTP_VER_REGEXP}
+do_pkg "zlib"    ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 
 install_pkg "cabal-install"
 
