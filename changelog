@@ -1,5 +1,21 @@
 -*-change-log-*-
 
+0.8.0 Duncan Coutts <duncan@haskell.org> Dec 2009
+	* Works with ghc-6.12
+	* New "cabal init" command for making initial project .cabal file
+	* New feature to maintain an index of haddock documentation
+
+0.6.4 Duncan Coutts <duncan@haskell.org> Nov 2009
+	* Improve the algorithm for selecting the base package version
+	* Hackage errors now reported by "cabal upload [--check]"
+	* Improved format of messages from "cabal check"
+	* Config file can now be selected by an env var
+	* Updated tar reading/writing code
+	* Improve instructions in the README and bootstrap output
+	* Fix bootstrap.sh on Solaris 9
+	* Fix bootstrap for systems where network uses parsec 3
+	* Fix building with ghc-6.6
+
 0.6.2 Duncan Coutts <duncan@haskell.org> Feb 2009
 	* The upgrade command has been disabled in this release
 	* The configure and install commands now have consistent behaviour
