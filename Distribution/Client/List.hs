@@ -171,7 +171,8 @@ showPackageSummaryInfo pkginfo =
          Just pkg -> disp (packageVersion pkg)
      , text "Latest version installed:" <+>
        case latestInstalled pkginfo of
-         Nothing  -> text "[ Not installed ]"
+         Nothing  | hasLib pkginfo -> text "[ Not installed ]"
+                  | otherwise      -> text "[ Unknown ]"
          Just pkg -> disp (packageVersion pkg)
      , maybeShow (homepage pkginfo) "Homepage:" text
      , text "License: " <+> text (show (license pkginfo))
