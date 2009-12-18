@@ -244,7 +244,10 @@ installWithPlanner planner verbosity packageDBs repos comp conf
       -- install. However we also allow looking in a specific package db.
       usePackageDB     = if UserPackageDB `elem` packageDBs
                            then packageDBs
-                           else packageDBs ++ [UserPackageDB],
+                           else let (db@GlobalPackageDB:dbs) = packageDBs
+                                 in db : UserPackageDB : dbs,
+                                --TODO: use Ord instance:
+                                -- insert UserPackageDB packageDBs
       usePackageIndex  = if UserPackageDB `elem` packageDBs
                            then index
                            else Nothing,
