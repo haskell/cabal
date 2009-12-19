@@ -65,6 +65,8 @@ import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, readP_to_S, char, munch1, pfail, (+++) )
 import Distribution.Verbosity
          ( Verbosity, normal )
+import Distribution.Simple.Utils
+         ( wrapText )
 
 import Data.Char
          ( isSpace, isAlphaNum )
@@ -676,25 +678,21 @@ initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
     commandName = "init",
     commandSynopsis = "Interactively create a .cabal file.",
-    commandUsage = \pname -> unlines
-       [ "Usage: " ++ pname ++ " init [FLAGS]"
-       , ""
-       , "Cabalise a project by creating a .cabal, Setup.lhs, and"
-       , "optionally a LICENSE file."
-       , ""
-       , "Calling init with no arguments (recommended) uses an"
-       , "interactive mode, which will try to guess as much as"
-       , "possible and prompt you for the rest.  Command-line"
-       , "arguments are provided for scripting purposes."
-       , "If you don't want interactive mode, be sure to pass"
-       , "the -n flag."
-       , ""
-       , "Flags for init:"
-       ],
-    commandDescription = Nothing,
+    commandDescription = Just $ \_ -> wrapText $
+         "Cabalise a project by creating a .cabal, Setup.hs, and "
+      ++ "optionally a LICENSE file.\n\n"
+      ++ "Calling init with no arguments (recommended) uses an "
+      ++ "interactive mode, which will try to guess as much as "
+      ++ "possible and prompt you for the rest.  Command-line "
+      ++ "arguments are provided for scripting purposes. "
+      ++ "If you don't want interactive mode, be sure to pass "
+      ++ "the -n flag.\n",
+    commandUsage = \pname ->
+         "Usage: " ++ pname ++ " init [FLAGS]\n\n"
+      ++ "Flags for init:",
     commandDefaultFlags = defaultInitFlags,
     commandOptions = \_ ->
-      [ option ['n'] ["nonInteractive"]
+      [ option ['n'] ["non-interactive"]
         "Non-interactive mode."
         IT.nonInteractive (\v flags -> flags { IT.nonInteractive = v })
         trueArg
@@ -704,22 +702,22 @@ initCommand = CommandUI {
         IT.quiet (\v flags -> flags { IT.quiet = v })
         trueArg
 
-      , option [] ["noComments"]
+      , option [] ["no-comments"]
         "Do not generate explanatory comments in the .cabal file."
         IT.noComments (\v flags -> flags { IT.noComments = v })
         trueArg
 
       , option ['m'] ["minimal"]
-        "Generate a minimal .cabal file, that is, do not include extra empty fields.  Also implies --noComments."
+        "Generate a minimal .cabal file, that is, do not include extra empty fields.  Also implies --no-comments."
         IT.minimal (\v flags -> flags { IT.minimal = v })
         trueArg
 
-      , option [] ["packageDir"]
+      , option [] ["package-dir"]
         "Root directory of the package (default = current directory)."
         IT.packageDir (\v flags -> flags { IT.packageDir = v })
         (reqArgFlag "DIRECTORY")
 
-      , option ['p'] ["packageName"]
+      , option ['p'] ["package-name"]
         "Name of the Cabal package to create."
         IT.packageName (\v flags -> flags { IT.packageName = v })
         (reqArgFlag "PACKAGE")
@@ -731,7 +729,7 @@ initCommand = CommandUI {
                                       (toFlag `fmap` parse))
                           (flagToList . fmap display))
 
-      , option [] ["cabalVersion"]
+      , option [] ["cabal-version"]
         "Required version of the Cabal library."
         IT.cabalVersion (\v flags -> flags { IT.cabalVersion = v })
         (reqArg "VERSION_RANGE" (readP_to_E ("Cannot parse Cabal version range: "++)
@@ -777,18 +775,18 @@ initCommand = CommandUI {
         (reqArg' "CATEGORY" (\s -> toFlag $ maybe (Left s) Right (readMaybe s))
                             (flagToList . fmap (either id show)))
 
-      , option [] ["isLibrary"]
+      , option [] ["is-library"]
         "Build a library."
         IT.packageType (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Library))
 
-      , option [] ["isExecutable"]
+      , option [] ["is-executable"]
         "Build an executable."
         IT.packageType
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Executable))
 
-      , option ['o'] ["exposeModule"]
+      , option ['o'] ["expose-module"]
         "Export a module from the package."
         IT.exposedModules
         (\v flags -> flags { IT.exposedModules = v })
@@ -803,13 +801,13 @@ initCommand = CommandUI {
                                       ((Just . (:[])) `fmap` parse))
                           (fromMaybe [] . fmap (fmap display)))
 
-      , option [] ["sourceDir"]
+      , option [] ["source-dir"]
         "Directory containing package source."
         IT.sourceDirs (\v flags -> flags { IT.sourceDirs = v })
         (reqArg' "DIR" (Just . (:[]))
                        (fromMaybe []))
 
-      , option [] ["buildTool"]
+      , option [] ["build-tool"]
         "Required external build tool."
         IT.buildTools (\v flags -> flags { IT.buildTools = v })
         (reqArg' "TOOL" (Just . (:[]))
