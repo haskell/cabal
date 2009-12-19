@@ -266,7 +266,7 @@ instance Monoid ConfigExFlags where
 fetchCommand :: CommandUI (Flag Verbosity)
 fetchCommand = CommandUI {
     commandName         = "fetch",
-    commandSynopsis     = "Downloads packages for later installation or study.",
+    commandSynopsis     = "Downloads packages for later installation.",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "fetch",
     commandDefaultFlags = toFlag normal,
