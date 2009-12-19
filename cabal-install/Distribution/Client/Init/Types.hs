@@ -46,7 +46,6 @@ data InitFlags =
               , license      :: Flag License
               , author       :: Flag String
               , email        :: Flag String
-              , stability    :: Flag (Either String Stability)
               , homepage     :: Flag String
 
               , synopsis     :: Flag String
@@ -83,7 +82,6 @@ instance Monoid InitFlags where
     , license        = mempty
     , author         = mempty
     , email          = mempty
-    , stability      = mempty
     , homepage       = mempty
     , synopsis       = mempty
     , category       = mempty
@@ -106,7 +104,6 @@ instance Monoid InitFlags where
     , license        = combine license
     , author         = combine author
     , email          = combine email
-    , stability      = combine stability
     , homepage       = combine homepage
     , synopsis       = combine synopsis
     , category       = combine category
@@ -143,18 +140,6 @@ data Category
 instance Text Category where
   disp  = Disp.text . show
   parse = Parse.choice $ map (fmap read . Parse.string . show) [Codec .. ]
-
--- | Some common package stability indicators.
-data Stability
-    = Stable
-    | Provisional
-    | Experimental
-    | Alpha
-    deriving (Read, Show, Eq, Ord, Bounded, Enum)
-
-instance Text Stability where
-  disp  = Disp.text . show
-  parse = Parse.choice $ map (fmap read . Parse.string . show) [Stable .. ]
 
 #if MIN_VERSION_base(3,0,0)
 #else
