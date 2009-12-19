@@ -123,19 +123,19 @@ mainWorker args = topHandler $
                                   ++ " of the Cabal library "
 
     commands =
-      [configureExCommand     `commandAddAction` configureAction
-      ,installCommand         `commandAddAction` installAction
+      [installCommand         `commandAddAction` installAction
+      ,updateCommand          `commandAddAction` updateAction
       ,listCommand            `commandAddAction` listAction
       ,infoCommand            `commandAddAction` infoAction
-      ,updateCommand          `commandAddAction` updateAction
       ,upgradeCommand         `commandAddAction` upgradeAction
       ,fetchCommand           `commandAddAction` fetchAction
-      ,uploadCommand          `commandAddAction` uploadAction
+      ,unpackCommand          `commandAddAction` unpackAction
       ,checkCommand           `commandAddAction` checkAction
       ,sdistCommand           `commandAddAction` sdistAction
+      ,uploadCommand          `commandAddAction` uploadAction
       ,reportCommand          `commandAddAction` reportAction
-      ,unpackCommand          `commandAddAction` unpackAction
       ,initCommand            `commandAddAction` initAction
+      ,configureExCommand     `commandAddAction` configureAction
       ,wrapperAction (buildCommand defaultProgramConfiguration)
                      buildVerbosity    buildDistPref
       ,wrapperAction copyCommand
