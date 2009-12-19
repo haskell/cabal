@@ -753,12 +753,6 @@ initCommand = CommandUI {
         IT.email (\v flags -> flags { IT.email = v })
         (reqArgFlag "EMAIL")
 
-      , option [] ["stability"]
-        "Package stability."
-        IT.stability (\v flags -> flags { IT.stability = v })
-        (reqArg' "STABILITY" (\s -> toFlag $ maybe (Left s) Right (readMaybe s))
-                             (flagToList . fmap (either id show)))
-
       , option ['u'] ["homepage"]
         "Project homepage and/or repository."
         IT.homepage (\v flags -> flags { IT.homepage = v })
