@@ -49,7 +49,7 @@ import Distribution.Version
   ( orLaterVersion )
 
 import Distribution.Client.Init.Types
-  ( InitFlags(..), PackageType(..), Category(..), Stability(..) )
+  ( InitFlags(..), PackageType(..), Category(..) )
 import Distribution.Client.Init.Licenses
   ( bsd3, gplv2, gplv3, lgpl2, lgpl3 )
 import Distribution.Client.Init.Heuristics
@@ -92,7 +92,6 @@ extendFlags =  getPackageName
            >=> getAuthorInfo
            >=> getHomepage
            >=> getSynopsis
-           >=> getStability
            >=> getCategory
            >=> getLibOrExec
            >=> getSrcDir
@@ -184,15 +183,6 @@ getSynopsis flags = do
          ?>> maybePrompt flags (promptStr "Project synopsis" Nothing)
 
   return $ flags { synopsis = maybeToFlag syn }
-
-getStability :: InitFlags -> IO InitFlags
-getStability flags = do
-  stab <-     return (flagToMaybe $ stability flags)
-          ?>> maybePrompt flags (promptList "Project stability" [Stable ..]
-                                            (Just Experimental)
-                                            True)
-
-  return $ flags { stability = maybeToFlag stab }
 
 -- | Prompt for a package category.
 --   Note that it should be possible to do some smarter guessing here too, i.e.
@@ -456,10 +446,6 @@ generateCabalFile fileName c = render $
 
        , fieldS "Copyright"     NoFlag
                 (Just "A copyright notice.")
-                True
-
-       , fieldS "Stability"     (either id display `fmap` stability c)
-                (Just "Stability of the pakcage (experimental, provisional, stable...)")
                 True
 
        , fieldS "Category"      (either id display `fmap` category c)
