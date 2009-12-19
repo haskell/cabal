@@ -11,8 +11,8 @@ module Distribution.Client.Init.Licenses
 type License = String
 
 bsd3 :: String -> String -> License
-bsd3 s y = unlines
-    [ "Copyright " ++ s ++ " " ++ y
+bsd3 authors year = unlines
+    [ "Copyright (c)" ++ year ++ ", " ++ authors
     , ""
     , "All rights reserved."
     , ""
@@ -27,7 +27,7 @@ bsd3 s y = unlines
     , "      disclaimer in the documentation and/or other materials provided"
     , "      with the distribution."
     , ""
-    , "    * Neither the name of " ++ s ++ " nor the names of other"
+    , "    * Neither the name of " ++ authors ++ " nor the names of other"
     , "      contributors may be used to endorse or promote products derived"
     , "      from this software without specific prior written permission."
     , ""
