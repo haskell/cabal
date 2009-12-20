@@ -128,8 +128,8 @@ getAvailablePackages verbosity repos = do
   let (pkgs, prefs) = mconcat pkgss
       prefs' = Map.fromListWith intersectVersionRanges
                  [ (name, range) | Dependency name range <- prefs ]
-  evaluate pkgs
-  evaluate prefs'
+  _ <- evaluate pkgs
+  _ <- evaluate prefs'
   return AvailablePackageDb {
     packageIndex       = pkgs,
     packagePreferences = prefs'
