@@ -27,7 +27,7 @@ module Distribution.Client.BuildReports.Anonymous (
   ) where
 
 import Distribution.Client.Types
-         ( ConfiguredPackage(..), BuildResult )
+         ( ConfiguredPackage(..) )
 import qualified Distribution.Client.Types as BR
          ( BuildResult, BuildFailure(..), BuildSuccess(..)
          , DocsResult(..), TestsResult(..) )
