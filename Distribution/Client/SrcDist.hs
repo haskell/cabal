@@ -55,7 +55,7 @@ sdist flags = do
              | otherwise = pkg
     setupMessage verbosity "Building source dist for" (packageId pkg')
 
-    if snapshot
+    _ <- if snapshot
       then prepareSnapshotTree verbosity pkg' mb_lbi distPref tmpDir pps
       else prepareTree         verbosity pkg' mb_lbi distPref tmpDir pps
     targzFile <- createArchive verbosity pkg tmpDir distPref
