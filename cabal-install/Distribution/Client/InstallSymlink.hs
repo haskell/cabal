@@ -66,6 +66,8 @@ import System.Directory
          ( canonicalizePath )
 import System.FilePath
          ( (</>), splitPath, joinPath, isAbsolute )
+
+import Prelude hiding (catch, ioError)
 import System.IO.Error
          ( catch, isDoesNotExistError, ioError )
 import Control.Exception
