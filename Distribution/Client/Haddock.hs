@@ -16,12 +16,12 @@ module Distribution.Client.Haddock
     )
     where
 
-import Data.Maybe (Maybe(..), listToMaybe)
+import Data.Maybe (listToMaybe)
 import Data.List (maximumBy)
-import Control.Monad (Monad(return), sequence, guard)
+import Control.Monad (guard)
 import System.Directory (createDirectoryIfMissing, doesFileExist,
                          renameFile)
-import System.FilePath (FilePath, (</>), splitFileName)
+import System.FilePath ((</>), splitFileName)
 import Distribution.Package (Package(..))
 import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
                                    , rawSystemProgram, requireProgramVersion)
