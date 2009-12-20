@@ -45,7 +45,7 @@ import System.Directory
 import Control.Monad
          ( unless, when )
 import Data.Ord (comparing)
-import Data.List(null, maximumBy)
+import Data.List(maximumBy)
 import System.FilePath
          ( (</>), addTrailingPathSeparator )
 import qualified Data.Map as Map
