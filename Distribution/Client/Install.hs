@@ -101,7 +101,7 @@ import Distribution.Simple.Utils
          ( defaultPackageDesc, rawSystemExit, comparing )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
-         , initialPathTemplateEnv, compilerTemplateEnv, installDirsTemplateEnv )
+         , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
          ( PackageName, PackageIdentifier, packageName, packageVersion
          , Package(..), PackageFixedDeps(..)
