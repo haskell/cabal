@@ -259,7 +259,8 @@ upgradeAction (configFlags, configExFlags, installFlags)
                                  (configUserInstall configFlags)
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
-      installFlags'  = savedInstallFlags     config `mappend` installFlags
+      installFlags'  = defaultInstallFlags          `mappend`
+                       savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags'
   upgrade verbosity
