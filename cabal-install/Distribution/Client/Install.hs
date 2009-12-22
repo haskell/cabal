@@ -558,7 +558,8 @@ printBuildFailures plan =
     printFailureReason reason = case reason of
       DependentFailed pkgid -> " depends on " ++ display pkgid
                             ++ " which failed to install."
-      DownloadFailed  _ -> " failed while downloading the package."
+      DownloadFailed  e -> " failed while downloading the package."
+                        ++ " The exception was:\n  " ++ show e
       UnpackFailed    e -> " failed while unpacking the package."
                         ++ " The exception was:\n  " ++ show e
       ConfigureFailed e -> " failed during the configure step."
