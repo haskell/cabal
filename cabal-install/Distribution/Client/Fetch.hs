@@ -36,7 +36,8 @@ import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies
          , getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.HttpUtils (getHTTP, isOldHackageURI)
+import Distribution.Client.HttpUtils
+         ( downloadURI, isOldHackageURI )
 
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
@@ -46,8 +47,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Utils
-         ( die, notice, info, debug, setupMessage
-         , copyFileVerbose, writeFileAtomic )
+         ( die, notice, info, debug, setupMessage )
 import Distribution.System
          ( buildPlatform )
 import Distribution.Text
@@ -56,7 +56,6 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import qualified Data.Map as Map
-import qualified Data.ByteString.Lazy.Char8 as BS
 import Control.Monad
          ( when, filterM )
 import System.Directory
@@ -66,36 +65,8 @@ import System.FilePath
 import qualified System.FilePath.Posix as FilePath.Posix
          ( combine, joinPath )
 import Network.URI
-         ( URI(uriPath, uriScheme) )
-import Network.HTTP
-         ( Response(..) )
-import Network.Stream
-         ( ConnError(..) )
+         ( URI(uriPath) )
 
-
-downloadURI :: Verbosity
-            -> FilePath -- ^ Where to put it
-            -> URI      -- ^ What to download
-            -> IO (Maybe ConnError)
-downloadURI verbosity path uri | uriScheme uri == "file:" = do
-  copyFileVerbose verbosity (uriPath uri) path
-  return Nothing
-downloadURI verbosity path uri = do
-  eitherResult <- getHTTP verbosity uri
-  case eitherResult of
-    Left err -> return (Just err)
-    Right rsp
-      | rspCode rsp == (2,0,0)
-     -> do info verbosity ("Downloaded to " ++ path)
-           writeFileAtomic path (BS.unpack $ rspBody rsp)
-     --FIXME: check the content-length header matches the body length.
-     --TODO: stream the download into the file rather than buffering the whole
-     --      thing in memory.
-     --      remember the ETag so we can not re-download if nothing changed.
-     >> return Nothing
-
-      | otherwise
-     -> return (Just (ErrorMisc ("Unsucessful HTTP code: " ++ show (rspCode rsp))))
 
 -- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
 downloadPackage :: Verbosity -> Repo -> PackageIdentifier -> IO String
@@ -108,11 +79,8 @@ downloadPackage verbosity repo@Repo{ repoKind = Left remoteRepo } pkgid = do
       path = packageFile      repo pkgid
   debug verbosity $ "GET " ++ show uri
   createDirectoryIfMissing True dir
-  status <- downloadURI verbosity path uri
-  case status of
-    Just err -> die $ "Failed to download '" ++ display pkgid
-                   ++ "': " ++ show err
-    Nothing  -> return path
+  downloadURI verbosity uri path
+  return path
 
 -- Downloads an index file to [config-dir/packages/serv-id].
 downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO FilePath
@@ -123,10 +91,8 @@ downloadIndex verbosity repo cacheDir = do
             }
       path = cacheDir </> "00-index" <.> "tar.gz"
   createDirectoryIfMissing True cacheDir
-  mbError <- downloadURI verbosity path uri
-  case mbError of
-    Just err -> die $ "Failed to download index '" ++ show err ++ "'"
-    Nothing  -> return path
+  downloadURI verbosity uri path
+  return path
 
 -- |Returns @True@ if the package has already been fetched.
 isFetched :: AvailablePackage -> IO Bool
