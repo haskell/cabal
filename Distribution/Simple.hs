@@ -354,7 +354,7 @@ hookedAction pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    let pkg_descr0 = localPkgDescr localbuildinfo
    --pkg_descr0 <- get_pkg_descr (get_verbose flags)
    let pkg_descr = updatePackageDescription pbi pkg_descr0
-   -- XXX: should we write the modified package descr back to the
+   -- TODO: should we write the modified package descr back to the
    -- localbuildinfo?
    cmd_hook hooks pkg_descr localbuildinfo hooks flags
    post_hook hooks args flags pkg_descr localbuildinfo
