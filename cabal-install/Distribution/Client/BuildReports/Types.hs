@@ -15,7 +15,7 @@ module Distribution.Client.BuildReports.Types (
   ) where
 
 import qualified Distribution.Text as Text
-         ( Text(disp, parse) )
+         ( Text(..) )
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
