@@ -80,7 +80,6 @@ Executable cabal
         Distribution.Client.Utils
         Distribution.Client.Win32SelfUpgrade
         Distribution.Compat.Exception
-        Distribution.Compat.TempFile
         Paths_cabal_install
 
     build-depends: base     >= 2        && < 5,
