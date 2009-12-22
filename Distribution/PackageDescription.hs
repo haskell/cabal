@@ -592,26 +592,7 @@ data GenericPackageDescription =
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
 
-{-
--- XXX: I think we really want a PPrint or Pretty or ShowPretty class.
-instance Show GenericPackageDescription where
-    show (GenericPackageDescription pkg flgs mlib exes) =
-        showPackageDescription pkg ++ "\n" ++
-        (render $ vcat $ map ppFlag flgs) ++ "\n" ++
-        render (maybe empty (\l -> showStanza "Library" (ppCondTree l showDeps)) mlib)
-        ++ "\n" ++
-        (render $ vcat $
-            map (\(n,ct) -> showStanza ("Executable " ++ n) (ppCondTree ct showDeps)) exes)
-      where
-        ppFlag (MkFlag name desc dflt manual) =
-            showStanza ("Flag " ++ name)
-              ((if (null desc) then empty else
-                   text ("Description: " ++ desc)) $+$
-              text ("Default: " ++ show dflt) $+$
-              text ("Manual: " ++ show manual))
-        showDeps = fsep . punctuate comma . map showDependency
-        showStanza h b = text h <+> lbrace $+$ nest 2 b $+$ rbrace
--}
+--TODO: make PackageDescription an instance of Text.
 
 -- | A flag can represent a feature to be included, or a way of linking
 --   a target against its dependencies, or in fact whatever you can think of.

@@ -127,7 +127,7 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
              | otherwise = pkg
     setupMessage verbosity "Building source dist for" (packageId pkg')
 
-    -- XXX This looks a bit suspicious. Should createArchive be passed
+    -- FIXME This looks a bit suspicious. Should createArchive be passed
     -- the result of prepareSnapshotTree/prepareTree?
     _ <- if snapshot
       then prepareSnapshotTree verbosity pkg' mb_lbi distPref tmpDir pps
