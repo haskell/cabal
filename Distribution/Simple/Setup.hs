@@ -110,7 +110,7 @@ import Data.Char (isSpace)
 import Data.Monoid (Monoid(..))
 import Distribution.Verbosity
 
--- XXX Not sure where this should live
+-- FIXME Not sure where this should live
 defaultDistPref :: FilePath
 defaultDistPref = "dist"
 

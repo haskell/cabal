@@ -142,7 +142,7 @@ simplifyWithSysParams os arch (CompilerId comp compVer) cond = (cond', flags)
                                   && compVer `withinRange` vr
     interp (Flag  f)   = Left f
 
--- XXX: Add instances and check
+-- TODO: Add instances and check
 --
 -- prop_sC_idempotent cond a o = cond' == cond''
 --   where
@@ -224,9 +224,9 @@ data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 -- assignments.
 --
 -- In case of failure, the _smallest_ number of of missing dependencies is
--- returned. [XXX: Could also be specified with a function argument.]
+-- returned. [TODO: Could also be specified with a function argument.]
 --
--- XXX: The current algorithm is rather naive.  A better approach would be to:
+-- TODO: The current algorithm is rather naive.  A better approach would be to:
 --
 -- * Rule out possible paths, by taking a look at the associated dependencies.
 --
@@ -556,7 +556,7 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- joined into one field, which may not be possible in the original package
 -- description, due to the use of exclusive choices (if ... else ...).
 --
--- XXX: One particularly tricky case is defaulting.  In the original package
+-- TODO: One particularly tricky case is defaulting.  In the original package
 -- description, e.g., the source directory might either be the default or a
 -- certain, explicitly set path.  Since defaults are filled in only after the
 -- package has been resolved and when no explicit value has been set, the

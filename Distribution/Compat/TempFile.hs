@@ -142,7 +142,7 @@ openNewBinaryFile dir template = do
            then findTempName (x+1)
            else ioError (errnoToIOError "openNewBinaryFile" errno Nothing (Just dir))
        else do
-         -- XXX We want to tell fdToHandle what the filepath is,
+         -- TODO: We want to tell fdToHandle what the filepath is,
          -- as any exceptions etc will only be able to report the
          -- fd currently
          h <-
@@ -161,14 +161,14 @@ openNewBinaryFile dir template = do
         filename        = prefix ++ show x ++ suffix
         filepath        = dir `combine` filename
 
-        -- XXX bits copied from System.FilePath, since that's not available here
+        -- FIXME: bits copied from System.FilePath
         combine a b
                   | null b = a
                   | null a = b
                   | last a == pathSeparator = a ++ b
                   | otherwise = a ++ [pathSeparator] ++ b
 
--- XXX Should use filepath library
+-- FIXME: Should use filepath library
 pathSeparator :: Char
 #ifdef mingw32_HOST_OS
 pathSeparator = '\\'
@@ -176,7 +176,7 @@ pathSeparator = '\\'
 pathSeparator = '/'
 #endif
 
--- XXX Copied from GHC.Handle
+-- FIXME: Copied from GHC.Handle
 std_flags, output_flags, rw_flags :: CInt
 std_flags    = o_NONBLOCK   .|. o_NOCTTY
 output_flags = std_flags    .|. o_CREAT

@@ -486,7 +486,7 @@ standardPP lbi prog args =
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
       do rawSystemProgramConf verbosity prog (withPrograms lbi)
                               (args ++ ["-o", outFile, inFile])
-         -- XXX This is a nasty hack. GHC requires that hs-boot files
+         -- Note: This is a nasty hack. GHC requires that hs-boot files
          -- be in the same place as the hs files, so if we put the hs
          -- file in dist/... then we need to copy the hs-boot file
          -- there too. This should probably be done another way, e.g.
