@@ -2,20 +2,26 @@
 -----------------------------------------------------------------------------
 -- | Separate module for HTTP actions, using a proxy server if one exists 
 -----------------------------------------------------------------------------
-module Distribution.Client.HttpUtils (getHTTP, proxy, isOldHackageURI) where
+module Distribution.Client.HttpUtils (
+    downloadURI,
+    getHTTP,
+    proxy,
+    isOldHackageURI
+  ) where
 
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
          , Header(..), HeaderName(..) )
 import Network.URI
          ( URI (..), URIAuth (..), parseAbsoluteURI )
-import Network.Stream (Result)
+import Network.Stream
+         ( Result, ConnError(..) )
 import Network.Browser
          ( Proxy (..), Authority (..), browse
          , setOutHandler, setErrHandler, setProxy, request)
 import Control.Monad
          ( mplus, join, liftM2 )
-import qualified Data.ByteString.Lazy as ByteString
+import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy (ByteString)
 #ifdef WIN32
 import System.Win32.Types
@@ -34,7 +40,9 @@ import System.Environment (getEnvironment)
 
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
-import Distribution.Simple.Utils (warn, debug)
+import Distribution.Simple.Utils
+         ( die, info, warn, debug
+         , copyFileVerbose, writeFileAtomic )
 import Distribution.Text
          ( display )
 import qualified System.FilePath.Posix as FilePath.Posix
@@ -92,6 +100,7 @@ proxy verbosity = do
         warn verbosity $ "ignoring http proxy, trying a direct connection"
         return NoProxy
       Just p  -> return p
+--TODO: print info message when we're using a proxy
 
 -- | We need to be able to parse non-URIs like @\"wwwcache.example.com:80\"@
 -- which lack the @\"http://\"@ URI scheme. The problem is that
@@ -151,6 +160,33 @@ getHTTP verbosity uri = do
                                 setProxy p
                                 request req
                  return (Right resp)
+
+downloadURI :: Verbosity
+            -> URI      -- ^ What to download
+            -> FilePath -- ^ Where to put it
+            -> IO ()
+downloadURI verbosity uri path | uriScheme uri == "file:" =
+  copyFileVerbose verbosity (uriPath uri) path
+downloadURI verbosity uri path = do
+  result <- getHTTP verbosity uri
+  let result' = case result of
+        Left  err -> Left err
+        Right rsp -> case rspCode rsp of
+          (2,0,0) -> Right (rspBody rsp)
+          (a,b,c) -> Left err
+            where
+              err = ErrorMisc $ "Unsucessful HTTP code: "
+                             ++ concatMap show [a,b,c]
+
+  case result' of
+    Left err   -> die $ "Failed to download " ++ show uri ++ " : " ++ show err
+    Right body -> do
+      info verbosity ("Downloaded to " ++ path)
+      writeFileAtomic path (ByteString.unpack body)
+      --FIXME: check the content-length header matches the body length.
+      --TODO: stream the download into the file rather than buffering the whole
+      --      thing in memory.
+      --      remember the ETag so we can not re-download if nothing changed.
 
 -- Utility function for legacy support.
 isOldHackageURI :: URI -> Bool
