@@ -30,7 +30,7 @@ import Distribution.Client.Types
          , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
-         ( InstallPlan, PlanPackage )
+         ( InstallPlan )
 
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
