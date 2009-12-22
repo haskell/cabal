@@ -54,11 +54,14 @@ import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), Flag )
-import Distribution.Simple.Program     ( ProgramConfiguration, userMaybeSpecifyPath,
-                                  requireProgram, rawSystemProgramConf,
-                                  ffihugsProgram, hugsProgram )
+import Distribution.Simple.Program
+         ( Program(programFindVersion)
+         , ProgramConfiguration, userMaybeSpecifyPath
+         , requireProgram, requireProgramVersion
+         , rawSystemProgramConf
+         , ffihugsProgram, hugsProgram )
 import Distribution.Version
-         ( Version(..) )
+         ( Version(..), orLaterVersion )
 import Distribution.Simple.PreProcess   ( ppCpp, runSimplePreProcessor )
 import Distribution.Simple.PreProcess.Unlit
                                 ( unlit )
@@ -71,6 +74,7 @@ import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, installOrdinaryFiles
          , withUTF8FileContents, writeFileAtomic, copyFileVerbose
          , findFile, findFileWithExtension, findModuleFiles
+         , rawSystemStdInOut
          , die, info, notice )
 import Language.Haskell.Extension
                                 ( Extension(..) )
@@ -87,6 +91,7 @@ import Data.Maybe               ( mapMaybe, catMaybes )
 import Control.Monad            ( unless, when, filterM )
 import Data.List                ( nub, sort, isSuffixOf )
 import System.Directory         ( removeDirectoryRecursive )
+import System.Exit              ( ExitCode(ExitSuccess) )
 import Distribution.Compat.CopyFile
          ( setFileExecutable )
 import Distribution.Compat.Exception
@@ -100,13 +105,45 @@ configure verbosity hcPath _hcPkgPath conf = do
 
   (_ffihugsProg, conf') <- requireProgram verbosity ffihugsProgram
                             (userMaybeSpecifyPath "ffihugs" hcPath conf)
-  (_hugsProg, conf'')   <- requireProgram verbosity hugsProgram conf'
+  (_hugsProg, version, conf'')
+                        <- requireProgramVersion verbosity hugsProgram'
+                            (orLaterVersion (Version [2006] [])) conf'
 
   let comp = Compiler {
-        compilerId             = CompilerId Hugs (Version [] []),
+        compilerId             = CompilerId Hugs version,
         compilerExtensions     = hugsLanguageExtensions
       }
   return (comp, conf'')
+
+  where
+    hugsProgram' = hugsProgram { programFindVersion = getVersion }
+
+getVersion :: Verbosity -> FilePath -> IO (Maybe Version)
+getVersion verbosity hugsPath = do
+  (output, _err, exit) <- rawSystemStdInOut verbosity hugsPath []
+                              (Just (":quit", False)) False
+  if exit == ExitSuccess
+    then return $! findVersion output
+    else return Nothing
+
+  where
+    findVersion output = do
+      (monthStr, yearStr) <- selectWords output
+      year  <- convertYear yearStr
+      month <- convertMonth monthStr
+      return (Version [year, month] [])
+
+    selectWords output =
+      case [ (month, year)
+           | [_,_,"Version:", month, year,_] <- map words (lines output) ] of
+        [(month, year)] -> Just (month, year)
+        _               -> Nothing
+    convertYear year = case reads year of
+      [(y, [])] | y >= 1999 && y < 2020 -> Just y
+      _                                 -> Nothing
+    convertMonth month = lookup month (zip months [1..])
+    months = [ "January", "February", "March", "April", "May", "June", "July"
+             , "August", "September", "October", "November", "December" ]
 
 -- | The flags for the supported extensions
 hugsLanguageExtensions :: [(Extension, Flag)]
