@@ -108,9 +108,8 @@ import Distribution.Simple.Utils
 import Distribution.System
     ( OS(..), buildOS, buildPlatform )
 import Distribution.Version
-    ( Version(..), anyVersion, orLaterVersion, withinRange
-    , isSpecificVersion, isAnyVersion
-    , LowerBound(..), asVersionIntervals )
+         ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion
+         , LowerBound(..), asVersionIntervals )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
 
@@ -125,7 +124,7 @@ import Control.Monad
 import Data.List
     ( nub, partition, isPrefixOf, inits )
 import Data.Maybe
-    ( fromMaybe, isNothing )
+         ( isNothing )
 import Data.Monoid
     ( Monoid(..) )
 import System.Directory
@@ -311,16 +310,14 @@ configure (pkg_descr0, pbi) cfg
                 Installed.sourcePackageId = pid
               }
             internalPackageSet = PackageIndex.fromList [internalPackage]
-        maybeInstalledPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
+        installedPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
                                       packageDbs programsConfig'
 
         let -- Constraint test function for the solver
-            dependencySatisfiable = case maybeInstalledPackageSet of
-              Nothing   -> const True -- we do not know what is available so
-                                      -- we pretend everything is available
-              Just pkgs -> not . null . PackageIndex.lookupDependency pkgs'
-                where
-                  pkgs' = PackageIndex.insert internalPackage pkgs
+            dependencySatisfiable =
+                not . null . PackageIndex.lookupDependency pkgs'
+              where
+                pkgs' = PackageIndex.insert internalPackage installedPackageSet
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -349,18 +346,7 @@ configure (pkg_descr0, pbi) cfg
         checkPackageProblems verbosity pkg_descr0
           (updatePackageDescription pbi pkg_descr)
 
-        let installedPackageSet = fromMaybe bogusPackageSet maybeInstalledPackageSet
-            -- FIXME: For Hugs, nhc98 and other compilers we do not know what
-            -- packages are already installed, so we just make some up, pretend
-            -- that they do exist and just hope for the best. We make them up
-            -- based on what other package the package we're currently building
-            -- happens to depend on. See 'inventBogusPackageInfo' below.
-            -- Let's hope they really are installed... :-)
-            bogusDependencies = map inventBogusPackageInfo
-                                    (buildDepends pkg_descr)
-            bogusPackageSet = PackageIndex.fromList bogusDependencies
-
-            selectDependencies =
+        let selectDependencies =
                 (\xs -> ([ x | Left x <- xs ], [ x | Right x <- xs ]))
               . map (selectDependency internalPackageSet installedPackageSet)
 
@@ -534,18 +520,6 @@ configure (pkg_descr0, pbi) cfg
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies
 
--- |Converts build dependencies to a versioned dependency.  only sets
--- version information for exact versioned dependencies.
-inventBogusPackageInfo :: Dependency -> InstalledPackageInfo
-inventBogusPackageInfo (Dependency s vr) =
-  emptyInstalledPackageInfo {
-    Installed.sourcePackageId = case isSpecificVersion vr of
-      -- if they specify the exact version, use that:
-      Just v -> PackageIdentifier s v
-      -- otherwise, just set it to empty
-      Nothing -> PackageIdentifier s (Version [] [])
-  }
-
 reportProgram :: Verbosity -> Program -> Maybe ConfiguredProgram -> IO ()
 reportProgram verbosity prog Nothing
     = info verbosity $ "No " ++ programName prog ++ " found"
@@ -626,16 +600,17 @@ reportFailedDependencies failed =
 
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
-                     -> IO (Maybe PackageIndex)
+                     -> IO PackageIndex
 getInstalledPackages verbosity comp packageDBs progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC -> Just `fmap` GHC.getInstalledPackages verbosity packageDBs progconf
-    Hugs-> Just `fmap`Hugs.getInstalledPackages verbosity packageDBs progconf
-    JHC -> Just `fmap` JHC.getInstalledPackages verbosity packageDBs progconf
-    LHC -> Just `fmap` LHC.getInstalledPackages verbosity packageDBs progconf
-    NHC -> Just `fmap` NHC.getInstalledPackages verbosity packageDBs progconf
-    _   -> return Nothing
+    GHC -> GHC.getInstalledPackages verbosity packageDBs progconf
+    Hugs->Hugs.getInstalledPackages verbosity packageDBs progconf
+    JHC -> JHC.getInstalledPackages verbosity packageDBs progconf
+    LHC -> LHC.getInstalledPackages verbosity packageDBs progconf
+    NHC -> NHC.getInstalledPackages verbosity packageDBs progconf
+    flv -> die $ "don't know how to find the installed packages for "
+              ++ display flv
 
 -- | Currently the user interface specifies the package dbs to use with just a
 -- single valued option, a 'PackageDB'. However internally we represent the
