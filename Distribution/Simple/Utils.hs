@@ -161,7 +161,7 @@ import System.IO
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( isDoesNotExistError, ioeSetFileName, ioeGetFileName, ioeGetErrorString )
-#if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 608)
+#if !(defined(__HUGS__) || (defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 608))
 import System.IO.Error
     ( ioeSetLocation, ioeGetLocation )
 #endif
@@ -220,7 +220,7 @@ dieWithLocation filename lineno msg =
           . flip ioeSetFileName (normalise filename)
           $ userError msg
   where
-#if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 608)
+#if defined(__HUGS__) || (defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 608)
     setLocation _        err = err
 #else
     setLocation Nothing  err = err
@@ -243,7 +243,7 @@ topHandler prog = catch prog handle
         file         = case ioeGetFileName ioe of
                          Nothing   -> ""
                          Just path -> path ++ location ++ ": "
-#if defined(__GLASGOW_HASKELL__) && (__GLASGOW_HASKELL__ < 608)
+#if defined(__HUGS__) || (defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 608)
         location     = ""
 #else
         location     = case ioeGetLocation ioe of

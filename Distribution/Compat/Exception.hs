@@ -5,7 +5,7 @@
 {-# OPTIONS_NHC98 -cpp #-}
 {-# OPTIONS_JHC -fcpp #-}
 
-#if !defined(__GLASGOW_HASKELL__) || (__GLASGOW_HASKELL__ >= 609)
+#if !(defined(__HUGS__) || (defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 610))
 #define NEW_EXCEPTION
 #endif
 
