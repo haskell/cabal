@@ -2,6 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Hugs
 -- Copyright   :  Isaac Jones 2003-2006
+--                Duncan Coutts 2009
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
@@ -41,24 +42,36 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Hugs (
-        configure,
-        buildLib,
-        buildExe,
-        install
- ) where
+    configure,
+    getInstalledPackages,
+    buildLib,
+    buildExe,
+    install
+  ) where
 
+import Distribution.Package
+         ( PackageName, PackageIdentifier(..), InstalledPackageId(..)
+         , packageName )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo
+         , InstalledPackageInfo_( InstalledPackageInfo, installedPackageId
+                                , sourcePackageId )
+         , emptyInstalledPackageInfo, parseInstalledPackageInfo )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), hcOptions,
            Executable(..), withExe, Library(..), withLib, libModules )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), CompilerId(..), Compiler(..), Flag )
+         ( CompilerFlavor(..), CompilerId(..), Compiler(..), Flag
+         , PackageDB(..), PackageDBStack )
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Program
          ( Program(programFindVersion)
          , ProgramConfiguration, userMaybeSpecifyPath
          , requireProgram, requireProgramVersion
-         , rawSystemProgramConf
+         , rawSystemProgramConf, programPath
          , ffihugsProgram, hugsProgram )
 import Distribution.Version
          ( Version(..), orLaterVersion )
@@ -83,15 +96,21 @@ import System.FilePath          ( (</>), takeExtension, (<.>),
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Text
-         ( display )
+         ( display, simpleParse )
+import Distribution.ParseUtils
+         ( ParseResult(..) )
 import Distribution.Verbosity
 
 import Data.Char                ( isSpace )
 import Data.Maybe               ( mapMaybe, catMaybes )
+import Data.Monoid              ( Monoid(..) )
 import Control.Monad            ( unless, when, filterM )
 import Data.List                ( nub, sort, isSuffixOf )
-import System.Directory         ( removeDirectoryRecursive )
-import System.Exit              ( ExitCode(ExitSuccess) )
+import System.Directory
+         ( doesFileExist, doesDirectoryExist, getDirectoryContents
+         , removeDirectoryRecursive, getHomeDirectory )
+import System.Exit
+         ( ExitCode(ExitSuccess) )
 import Distribution.Compat.CopyFile
          ( setFileExecutable )
 import Distribution.Compat.Exception
@@ -169,6 +188,114 @@ hugsLanguageExtensions =
     ,(EmptyDataDecls             , "")
     ,(CPP                        , "")
     ]
+
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+                     -> IO PackageIndex
+getInstalledPackages verbosity packagedbs conf = do
+  homedir       <- getHomeDirectory
+  (hugsProg, _) <- requireProgram verbosity hugsProgram conf
+  let bindir = takeDirectory (programPath hugsProg)
+      libdir = takeDirectory bindir </> "lib" </> "hugs"
+      dbdirs = nub (concatMap (packageDbPaths homedir libdir) packagedbs)
+  indexes  <- mapM getIndividualDBPackages dbdirs
+  return $! mconcat indexes
+
+  where
+    getIndividualDBPackages :: FilePath -> IO PackageIndex
+    getIndividualDBPackages dbdir = do
+      pkgdirs <- getPackageDbDirs dbdir
+      pkgs    <- sequence [ getInstalledPackage pkgname pkgdir
+                          | (pkgname, pkgdir) <- pkgdirs ]
+      let pkgs' = map setInstalledPackageId (catMaybes pkgs)
+      return (PackageIndex.fromList pkgs')
+
+packageDbPaths :: FilePath -> FilePath -> PackageDB -> [FilePath]
+packageDbPaths home libdir db = case db of
+  GlobalPackageDB        -> [ "/usr/local/lib/hugs/packages"
+                            , libdir </> "packages" ]
+  UserPackageDB          -> [ home </> "lib/hugs/packages" ]
+  SpecificPackageDB path -> [ path ]
+
+getPackageDbDirs :: FilePath -> IO [(PackageName, FilePath)]
+getPackageDbDirs dbdir = do
+  dbexists <- doesDirectoryExist dbdir
+  if not dbexists
+    then return []
+    else do
+      entries  <- getDirectoryContents dbdir
+      pkgdirs  <- sequence
+        [ do pkgdirExists <- doesDirectoryExist pkgdir
+             return (pkgname, pkgdir, pkgdirExists)
+        | (entry, Just pkgname) <- [ (entry, simpleParse entry)
+                                   | entry <- entries ]
+        , let pkgdir = dbdir </> entry ]
+      return [ (pkgname, pkgdir) | (pkgname, pkgdir, True) <- pkgdirs ]
+
+getInstalledPackage :: PackageName -> FilePath -> IO (Maybe InstalledPackageInfo)
+getInstalledPackage pkgname pkgdir = do
+  let pkgconfFile = pkgdir </> "package.conf"
+  pkgconfExists <- doesFileExist pkgconfFile
+
+  let pathsModule = pkgdir </> ("Paths_" ++ display pkgname)  <.> "hs"
+  pathsModuleExists <- doesFileExist pathsModule
+
+  case () of
+    _ | pkgconfExists     -> getFullInstalledPackageInfo pkgname pkgconfFile
+      | pathsModuleExists -> getPhonyInstalledPackageInfo pkgname pathsModule
+      | otherwise         -> return Nothing
+
+getFullInstalledPackageInfo :: PackageName -> FilePath
+                            -> IO (Maybe InstalledPackageInfo)
+getFullInstalledPackageInfo pkgname pkgconfFile =
+  withUTF8FileContents pkgconfFile $ \contents ->
+    case parseInstalledPackageInfo contents of
+      ParseOk _ pkginfo | packageName pkginfo == pkgname
+                        -> return (Just pkginfo)
+      _                 -> return Nothing
+
+-- | This is a backup option for existing versions of Hugs which do not supply
+-- proper installed package info files for the bundled libs. Instead we look
+-- for the Paths_pkgname.hs file and extract the package version from that.
+-- We don't know any other details for such packages, in particular we pretend
+-- that they have no dependencies.
+--
+getPhonyInstalledPackageInfo :: PackageName -> FilePath
+                             -> IO (Maybe InstalledPackageInfo)
+getPhonyInstalledPackageInfo pkgname pathsModule = do
+  content <- readFile pathsModule
+  case extractVersion content of
+    Nothing      -> return Nothing
+    Just version -> return (Just pkginfo)
+      where
+        pkgid   = PackageIdentifier pkgname version
+        pkginfo = emptyInstalledPackageInfo { sourcePackageId = pkgid }
+  where
+    -- search through the Paths_pkgname.hs file, looking for a line like:
+    --
+    -- > version = Version {versionBranch = [2,0], versionTags = []}
+    --
+    -- and parse it using 'Read'. Yes we are that evil.
+    --
+    extractVersion content =
+      case [ version
+           | ("version":"=":rest) <- map words (lines content)
+           , (version, []) <- reads (concat rest) ] of
+        [version] -> Just version
+        _         -> Nothing
+
+-- Older installed package info files did not have the installedPackageId
+-- field, so if it is missing then we fill it as the source package ID.
+setInstalledPackageId :: InstalledPackageInfo -> InstalledPackageInfo
+setInstalledPackageId pkginfo@InstalledPackageInfo {
+                        installedPackageId = InstalledPackageId "",
+                        sourcePackageId    = pkgid
+                      }
+                    = pkginfo {
+                        --TODO use a proper named function for the conversion
+                        -- from source package id to installed package id
+                        installedPackageId = InstalledPackageId (display pkgid)
+                      }
+setInstalledPackageId pkginfo = pkginfo
 
 -- -----------------------------------------------------------------------------
 -- Building
