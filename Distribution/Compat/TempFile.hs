@@ -21,6 +21,7 @@ import System.IO              (openFile, openBinaryFile,
                                Handle, IOMode(ReadWriteMode))
 import System.Directory       (doesFileExist)
 import System.FilePath        ((<.>), splitExtension)
+import System.IO.Error        (try, isAlreadyExistsError)
 #else
 import System.IO              (Handle, openTempFile, openBinaryTempFile)
 import Data.Bits              ((.|.))
