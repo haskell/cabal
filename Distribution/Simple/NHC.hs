@@ -2,6 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.NHC
 -- Copyright   :  Isaac Jones 2003-2006
+--                Duncan Coutts 2009
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
@@ -40,14 +41,23 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.NHC
-  ( configure
-  , buildLib, buildExe
-  , installLib, installExe
+module Distribution.Simple.NHC (
+    configure,
+    getInstalledPackages,
+    buildLib,
+    buildExe,
+    installLib,
+    installExe,
   ) where
 
 import Distribution.Package
-        ( PackageIdentifier, packageName, Package(..) )
+         ( PackageName, PackageIdentifier(..), InstalledPackageId(..)
+         , packageId, packageName )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo
+         , InstalledPackageInfo_( InstalledPackageInfo, installedPackageId
+                                , sourcePackageId )
+         , emptyInstalledPackageInfo, parseInstalledPackageInfo )
 import Distribution.PackageDescription
         ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
         , hcOptions )
@@ -59,7 +69,9 @@ import Distribution.Simple.BuildPaths
         ( mkLibName, objExtension, exeExtension )
 import Distribution.Simple.Compiler
         ( CompilerFlavor(..), CompilerId(..), Compiler(..)
-        , Flag, extensionsToFlags )
+        , Flag, extensionsToFlags, PackageDB(..), PackageDBStack )
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PackageIndex (PackageIndex)
 import Language.Haskell.Extension
         ( Extension(..) )
 import Distribution.Simple.Program
@@ -70,19 +82,25 @@ import Distribution.Simple.Program
 import Distribution.Simple.Utils
         ( die, info, findFileWithExtension, findModuleFiles
         , installOrdinaryFile, installExecutableFile, installOrdinaryFiles
-        , createDirectoryIfMissingVerbose )
+        , createDirectoryIfMissingVerbose, withUTF8FileContents )
 import Distribution.Version
         ( Version(..), orLaterVersion )
 import Distribution.Verbosity
 import Distribution.Text
-        ( display )
+         ( display, simpleParse )
+import Distribution.ParseUtils
+         ( ParseResult(..) )
 
 import System.FilePath
         ( (</>), (<.>), normalise, takeDirectory, dropExtension )
 import System.Directory
-        ( removeFile )
+         ( doesFileExist, doesDirectoryExist, getDirectoryContents
+         , removeFile, getHomeDirectory )
 
+import Data.Char ( toLower )
 import Data.List ( nub )
+import Data.Maybe    ( catMaybes )
+import Data.Monoid   ( Monoid(..) )
 import Control.Monad ( when, unless )
 import Distribution.Compat.Exception
 
@@ -121,6 +139,7 @@ nhcLanguageExtensions :: [(Extension, Flag)]
 nhcLanguageExtensions =
     -- TODO: use -98 when no extensions are specified.
     -- NHC doesn't enforce the monomorphism restriction at all.
+    -- TODO: pattern guards in 1.20
     [(NoMonomorphismRestriction, "")
     ,(ForeignFunctionInterface,  "")
     ,(ExistentialQuantification, "")
@@ -128,6 +147,118 @@ nhcLanguageExtensions =
     ,(NamedFieldPuns,            "-puns")
     ,(CPP,                       "-cpp")
     ]
+
+getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+                     -> IO PackageIndex
+getInstalledPackages verbosity packagedbs conf = do
+  homedir      <- getHomeDirectory
+  (nhcProg, _) <- requireProgram verbosity nhcProgram conf
+  let bindir = takeDirectory (programPath nhcProg)
+      incdir = takeDirectory bindir </> "include" </> "nhc98"
+      dbdirs = nub (concatMap (packageDbPaths homedir incdir) packagedbs)
+  indexes  <- mapM getIndividualDBPackages dbdirs
+  return $! mconcat indexes
+
+  where
+    getIndividualDBPackages :: FilePath -> IO PackageIndex
+    getIndividualDBPackages dbdir = do
+      pkgdirs <- getPackageDbDirs dbdir
+      pkgs    <- sequence [ getInstalledPackage pkgname pkgdir
+                          | (pkgname, pkgdir) <- pkgdirs ]
+      let pkgs' = map setInstalledPackageId (catMaybes pkgs)
+      return (PackageIndex.fromList pkgs')
+
+packageDbPaths :: FilePath -> FilePath -> PackageDB -> [FilePath]
+packageDbPaths _home incdir db = case db of
+  GlobalPackageDB        -> [ incdir </> "packages" ]
+  UserPackageDB          -> [] --TODO any standard per-user db?
+  SpecificPackageDB path -> [ path ]
+
+getPackageDbDirs :: FilePath -> IO [(PackageName, FilePath)]
+getPackageDbDirs dbdir = do
+  dbexists <- doesDirectoryExist dbdir
+  if not dbexists
+    then return []
+    else do
+      entries  <- getDirectoryContents dbdir
+      pkgdirs  <- sequence
+        [ do pkgdirExists <- doesDirectoryExist pkgdir
+             return (pkgname, pkgdir, pkgdirExists)
+        | (entry, Just pkgname) <- [ (entry, simpleParse entry)
+                                   | entry <- entries ]
+        , let pkgdir = dbdir </> entry ]
+      return [ (pkgname, pkgdir) | (pkgname, pkgdir, True) <- pkgdirs ]
+
+getInstalledPackage :: PackageName -> FilePath -> IO (Maybe InstalledPackageInfo)
+getInstalledPackage pkgname pkgdir = do
+  let pkgconfFile = pkgdir </> "package.conf"
+  pkgconfExists <- doesFileExist pkgconfFile
+
+  let cabalFile = pkgdir <.> "cabal"
+  cabalExists <- doesFileExist cabalFile
+
+  case () of
+    _ | pkgconfExists -> getFullInstalledPackageInfo pkgname pkgconfFile
+      | cabalExists   -> getPhonyInstalledPackageInfo pkgname cabalFile
+      | otherwise     -> return Nothing
+
+getFullInstalledPackageInfo :: PackageName -> FilePath
+                            -> IO (Maybe InstalledPackageInfo)
+getFullInstalledPackageInfo pkgname pkgconfFile =
+  withUTF8FileContents pkgconfFile $ \contents ->
+    case parseInstalledPackageInfo contents of
+      ParseOk _ pkginfo | packageName pkginfo == pkgname
+                        -> return (Just pkginfo)
+      _                 -> return Nothing
+
+-- | This is a backup option for existing versions of nhc98 which do not supply
+-- proper installed package info files for the bundled libs. Instead we look
+-- for the .cabal file and extract the package version from that.
+-- We don't know any other details for such packages, in particular we pretend
+-- that they have no dependencies.
+--
+getPhonyInstalledPackageInfo :: PackageName -> FilePath
+                             -> IO (Maybe InstalledPackageInfo)
+getPhonyInstalledPackageInfo pkgname pathsModule = do
+  content <- readFile pathsModule
+  case extractVersion content of
+    Nothing      -> return Nothing
+    Just version -> return (Just pkginfo)
+      where
+        pkgid   = PackageIdentifier pkgname version
+        pkginfo = emptyInstalledPackageInfo { sourcePackageId = pkgid }
+  where
+    -- search through the .cabal file, looking for a line like:
+    --
+    -- > version: 2.0
+    --
+    extractVersion :: String -> Maybe Version
+    extractVersion content =
+      case catMaybes (map extractVersionLine (lines content)) of
+        [version] -> Just version
+        _         -> Nothing
+    extractVersionLine :: String -> Maybe Version
+    extractVersionLine line =
+      case words line of
+        [versionTag, ":", versionStr]
+          | map toLower versionTag == "version"  -> simpleParse versionStr
+        [versionTag,      versionStr]
+          | map toLower versionTag == "version:" -> simpleParse versionStr
+        _                                        -> Nothing
+
+-- Older installed package info files did not have the installedPackageId
+-- field, so if it is missing then we fill it as the source package ID.
+setInstalledPackageId :: InstalledPackageInfo -> InstalledPackageInfo
+setInstalledPackageId pkginfo@InstalledPackageInfo {
+                        installedPackageId = InstalledPackageId "",
+                        sourcePackageId    = pkgid
+                      }
+                    = pkginfo {
+                        --TODO use a proper named function for the conversion
+                        -- from source package id to installed package id
+                        installedPackageId = InstalledPackageId (display pkgid)
+                      }
+setInstalledPackageId pkginfo = pkginfo
 
 -- -----------------------------------------------------------------------------
 -- Building

@@ -364,16 +364,7 @@ configure (pkg_descr0, pbi) cfg
                 (\xs -> ([ x | Left x <- xs ], [ x | Right x <- xs ]))
               . map (selectDependency internalPackageSet installedPackageSet)
 
-            (failedDeps, allPkgDeps) = case flavor of
-              GHC -> selectDependencies (buildDepends pkg_descr)
-              JHC -> selectDependencies (buildDepends pkg_descr)
-              LHC -> selectDependencies (buildDepends pkg_descr)
-              _   -> ([], bogusSelection)
-                where
-                  bogusSelection :: [ResolvedDependency]
-                  bogusSelection = zipWith ExternalDependency
-                                           (buildDepends pkg_descr)
-                                           bogusDependencies
+            (failedDeps, allPkgDeps) = selectDependencies (buildDepends pkg_descr)
 
             internalPkgDeps = [ pkgid | InternalDependency _ pkgid <- allPkgDeps ]
             externalPkgDeps = [ pkg   | ExternalDependency _ pkg   <- allPkgDeps ]
@@ -640,8 +631,10 @@ getInstalledPackages verbosity comp packageDBs progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
     GHC -> Just `fmap` GHC.getInstalledPackages verbosity packageDBs progconf
+    Hugs-> Just `fmap`Hugs.getInstalledPackages verbosity packageDBs progconf
     JHC -> Just `fmap` JHC.getInstalledPackages verbosity packageDBs progconf
     LHC -> Just `fmap` LHC.getInstalledPackages verbosity packageDBs progconf
+    NHC -> Just `fmap` NHC.getInstalledPackages verbosity packageDBs progconf
     _   -> return Nothing
 
 -- | Currently the user interface specifies the package dbs to use with just a
