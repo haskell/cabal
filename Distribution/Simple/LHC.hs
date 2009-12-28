@@ -64,6 +64,7 @@ module Distribution.Simple.LHC (
         configure, getInstalledPackages,
         buildLib, buildExe,
         installLib, installExe,
+        registerPackage,
         ghcOptions,
         ghcVerbosityOptions
  ) where
@@ -98,6 +99,7 @@ import Distribution.Simple.Program
          , arProgram, ranlibProgram, ldProgram
          , gccProgram, stripProgram
          , lhcProgram, lhcPkgProgram )
+import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
@@ -797,3 +799,18 @@ updateLibArchive verbosity lbi path =
                         "Unable to generate a symbol index for the static "
                      ++ "library '" ++ path
                      ++ "' (missing the 'ranlib' and 'ar' programs)"
+
+-- -----------------------------------------------------------------------------
+-- Registering
+
+registerPackage
+  :: Verbosity
+  -> InstalledPackageInfo
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Bool
+  -> PackageDBStack
+  -> IO ()
+registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
+  let Just lhcPkg = lookupProgram lhcPkgProgram (withPrograms lbi)
+  HcPkg.reregister verbosity lhcPkg packageDbs (Right installedPkgInfo)
