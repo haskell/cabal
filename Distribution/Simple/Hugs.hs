@@ -210,9 +210,9 @@ getInstalledPackages verbosity packagedbs conf = do
       return (PackageIndex.fromList pkgs')
 
 packageDbPaths :: FilePath -> FilePath -> PackageDB -> [FilePath]
-packageDbPaths home libdir db = case db of
-  GlobalPackageDB        -> [ "/usr/local/lib/hugs/packages"
-                            , libdir </> "packages" ]
+packageDbPaths home hugslibdir db = case db of
+  GlobalPackageDB        -> [ hugslibdir </> "packages"
+                            , "/usr/local/lib/hugs/packages" ]
   UserPackageDB          -> [ home </> "lib/hugs/packages" ]
   SpecificPackageDB path -> [ path ]
 
