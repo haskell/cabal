@@ -244,13 +244,10 @@ defaultInstallDirs comp userInstall hasLibs = do
       progdir      = "$libdir" </> "hugs" </> "programs",
       includedir   = "$libdir" </> "$libsubdir" </> "include",
       datadir      = case buildOS of
-        Windows    | hasLibs   -> windowsProgramFilesDir </> "Haskell"
-                   | otherwise -> "$prefix"
+        Windows   -> "$prefix"
         _other    -> "$prefix" </> "share",
       datasubdir   = "$pkgid",
-      docdir       = case buildOS of
-        Windows   -> "$prefix"  </> "doc" </> "$pkgid"
-        _other    -> "$datadir" </> "doc" </> "$pkgid",
+      docdir       = "$datadir" </> "doc" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
       haddockdir   = "$htmldir"
