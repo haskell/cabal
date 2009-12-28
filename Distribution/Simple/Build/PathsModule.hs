@@ -151,6 +151,7 @@ generate pkg_descr lbi =
         absolute =
              hasLibs pkg_descr        -- we can only make progs relocatable
           || isNothing flat_bindirrel -- if the bin dir is an absolute path
+          || (isHugs && isNothing flat_progdirrel)
           || not (supportsRelocatableProgs (compilerFlavor (compiler lbi)))
 
         supportsRelocatableProgs Hugs = True
