@@ -46,17 +46,18 @@ module Distribution.Simple.Hugs (
     getInstalledPackages,
     buildLib,
     buildExe,
-    install
+    install,
+    registerPackage,
   ) where
 
 import Distribution.Package
          ( PackageName, PackageIdentifier(..), InstalledPackageId(..)
          , packageName )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo
+         ( InstalledPackageInfo, emptyInstalledPackageInfo
          , InstalledPackageInfo_( InstalledPackageInfo, installedPackageId
                                 , sourcePackageId )
-         , emptyInstalledPackageInfo, parseInstalledPackageInfo )
+         , parseInstalledPackageInfo, showInstalledPackageInfo )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), hcOptions,
            Executable(..), withExe, Library(..), withLib, libModules )
@@ -79,14 +80,17 @@ import Distribution.Simple.PreProcess   ( ppCpp, runSimplePreProcessor )
 import Distribution.Simple.PreProcess.Unlit
                                 ( unlit )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
+         , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
                                 ( autogenModuleName, autogenModulesDir,
                                   dllExtension )
+import Distribution.Simple.Setup
+         ( CopyDest(..) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, installOrdinaryFiles
-         , withUTF8FileContents, writeFileAtomic, copyFileVerbose
-         , findFile, findFileWithExtension, findModuleFiles
+         , withUTF8FileContents, writeFileAtomic, writeUTF8File
+         , copyFileVerbose, findFile, findFileWithExtension, findModuleFiles
          , rawSystemStdInOut
          , die, info, notice )
 import Language.Haskell.Extension
@@ -591,3 +595,24 @@ hugsInstallSuffixes = [".hs", ".lhs", dllExtension]
 hugsMainFilename :: Executable -> FilePath
 hugsMainFilename exe = "Main" <.> ext
   where ext = takeExtension (modulePath exe)
+
+-- -----------------------------------------------------------------------------
+-- Registering
+
+registerPackage
+  :: Verbosity
+  -> InstalledPackageInfo
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Bool
+  -> PackageDBStack
+  -> IO ()
+registerPackage verbosity installedPkgInfo pkg lbi inplace _packageDbs = do
+  --TODO: prefer to have it based on the packageDbs, but how do we know
+  -- the package subdir based on the name? the user can set crazy libsubdir
+  let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
+      pkgdir  | inplace   = buildDir lbi
+              | otherwise = libdir installDirs
+  createDirectoryIfMissingVerbose verbosity True pkgdir
+  writeUTF8File (pkgdir </> "package.conf")
+                (showInstalledPackageInfo installedPkgInfo)

@@ -68,7 +68,9 @@ import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
          , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
-import qualified Distribution.Simple.GHC as GHC
+import qualified Distribution.Simple.GHC  as GHC
+import qualified Distribution.Simple.LHC  as LHC
+import qualified Distribution.Simple.Hugs as Hugs
 import Distribution.Simple.Compiler
          ( compilerVersion, CompilerFlavor(..), compilerFlavor
          , PackageDBStack, registrationPackageDB )
@@ -90,7 +92,7 @@ import Distribution.InstalledPackageInfo
          , showInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, writeUTF8File, writeFileAtomic
+         ( writeUTF8File, writeFileAtomic
          , die, notice, setupMessage )
 import Distribution.System
          ( OS(..), buildOS )
@@ -107,7 +109,6 @@ import System.Directory
          ( getCurrentDirectory, removeDirectoryRecursive )
 import System.IO.Error (try)
 
-import Control.Monad (when)
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Data.List (partition)
@@ -208,36 +209,12 @@ registerPackage :: Verbosity
 registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
   setupMessage verbosity "Registering" (packageId pkg)
   case compilerFlavor (compiler lbi) of
-    GHC  -> registerPackageGHC  verbosity installedPkgInfo pkg lbi inplace packageDbs
-    LHC  -> registerPackageLHC  verbosity installedPkgInfo pkg lbi inplace packageDbs
-    Hugs -> registerPackageHugs verbosity installedPkgInfo pkg lbi inplace packageDbs
+    GHC  -> GHC.registerPackage  verbosity installedPkgInfo pkg lbi inplace packageDbs
+    LHC  -> LHC.registerPackage  verbosity installedPkgInfo pkg lbi inplace packageDbs
+    Hugs -> Hugs.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
     JHC  -> notice verbosity "Registering for jhc (nothing to do)"
     NHC  -> notice verbosity "Registering for nhc98 (nothing to do)"
     _    -> die "Registering is not implemented for this compiler"
-
-
-registerPackageGHC, registerPackageLHC, registerPackageHugs
-  :: Verbosity
-  -> InstalledPackageInfo
-  -> PackageDescription
-  -> LocalBuildInfo
-  -> Bool
-  -> PackageDBStack
-  -> IO ()
-registerPackageGHC verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
-  let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
-  HcPkg.reregister verbosity ghcPkg packageDbs (Right installedPkgInfo)
-
-registerPackageLHC verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
-  let Just lhcPkg = lookupProgram lhcPkgProgram (withPrograms lbi)
-  HcPkg.reregister verbosity lhcPkg packageDbs (Right installedPkgInfo)
-
-registerPackageHugs verbosity installedPkgInfo pkg lbi inplace _packageDbs = do
-  when inplace $ die "--inplace is not supported with Hugs"
-  let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
-  createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
-  writeUTF8File (libdir installDirs </> "package.conf")
-                (showInstalledPackageInfo installedPkgInfo)
 
 
 writeHcPkgRegisterScript :: Verbosity
