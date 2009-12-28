@@ -59,7 +59,6 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
 import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.Package
          ( Package(..), PackageName(..) )
-import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
@@ -84,8 +83,6 @@ import Distribution.System
          ( OS(OSX, Windows), buildOS )
 import Distribution.Version (Version(..))
 import Distribution.Verbosity
-import Distribution.Text
-         ( display )
 
 import Control.Monad (when, unless)
 import Data.Maybe (fromMaybe)
@@ -182,8 +179,9 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         setupMessage verbosity "Preprocessing library" (packageId pkg_descr)
         let bi = libBuildInfo lib
         let biHandlers = localHandlers bi
-        sequence_ [ preprocessModule (hsSourceDirs bi ++ [autogenModulesDir lbi]) (buildDir lbi) forSDist
-                                     modu verbosity builtinSuffixes biHandlers
+        sequence_ [ preprocessFile (hsSourceDirs bi ++ [autogenModulesDir lbi]) (buildDir lbi) forSDist
+                                   (ModuleName.toFilePath modu) verbosity
+                                   builtinSuffixes biHandlers
                   | modu <- libModules lib ]
     unless (null (executables pkg_descr)) $
         setupMessage verbosity "Preprocessing executables for" (packageId pkg_descr)
@@ -191,12 +189,12 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         let bi = buildInfo theExe
         let biHandlers = localHandlers bi
         let exeDir = buildDir lbi </> exeName theExe </> exeName theExe ++ "-tmp"
-        sequence_ [ preprocessModule (hsSourceDirs bi ++ [autogenModulesDir lbi]) exeDir forSDist
-                                     modu verbosity builtinSuffixes biHandlers
+        sequence_ [ preprocessFile (hsSourceDirs bi ++ [autogenModulesDir lbi]) exeDir forSDist
+                                   (ModuleName.toFilePath modu) verbosity
+                                   builtinSuffixes biHandlers
                   | modu <- otherModules bi]
-        preprocessModule (hsSourceDirs bi) exeDir forSDist
-                          --FIXME: we should not pretend it's a module name:
-                         (ModuleName.simple (dropExtensions (modulePath theExe)))
+        preprocessFile (hsSourceDirs bi) exeDir forSDist
+                         (dropExtensions (modulePath theExe))
                          verbosity builtinSuffixes biHandlers
   where hc = compilerFlavor (compiler lbi)
         builtinSuffixes
@@ -206,27 +204,25 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
 
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
-preprocessModule
+preprocessFile
     :: [FilePath]               -- ^source directories
     -> FilePath                 -- ^build directory
     -> Bool                     -- ^preprocess for sdist
-    -> ModuleName               -- ^module name
+    -> FilePath                 -- ^module file name
     -> Verbosity                -- ^verbosity
     -> [String]                 -- ^builtin suffixes
     -> [(String, PreProcessor)] -- ^possible preprocessors
     -> IO ()
-preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes handlers = do
+preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes handlers = do
     -- look for files in the various source dirs with this module name
     -- and a file extension of a known preprocessor
-    psrcFiles <- findFileWithExtension' (map fst handlers) searchLoc
-                   (ModuleName.toFilePath modu)
+    psrcFiles <- findFileWithExtension' (map fst handlers) searchLoc baseFile
     case psrcFiles of
         -- no preprocessor file exists, look for an ordinary source file
       Nothing -> do
-                 bsrcFiles <- findFileWithExtension builtinSuffixes searchLoc
-                                (ModuleName.toFilePath modu)
+                 bsrcFiles <- findFileWithExtension builtinSuffixes searchLoc baseFile
                  case bsrcFiles of
-                  Nothing -> die $ "can't find source for " ++ display modu
+                  Nothing -> die $ "can't find source for " ++ baseFile
                                 ++ " in " ++ intercalate ", " searchLoc
                   _       -> return ()
         -- found a pre-processable file in one of the source dirs
@@ -243,11 +239,11 @@ preprocessModule searchLoc buildLoc forSDist modu verbosity builtinSuffixes hand
             -- platform independent files and put them into the 'buildLoc'
             -- (which we assume is set to the temp. directory that will become
             -- the tarball).
+            --TODO: eliminate sdist variant, just supply different handlers
             when (not forSDist || forSDist && platformIndependent pp) $ do
               -- look for existing pre-processed source file in the dest dir to
               -- see if we really have to re-run the preprocessor.
-              ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc]
-                              (ModuleName.toFilePath modu)
+              ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc] baseFile
               recomp <- case ppsrcFiles of
                           Nothing -> return True
                           Just ppsrcFile -> do
