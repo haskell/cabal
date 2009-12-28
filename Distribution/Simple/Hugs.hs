@@ -312,6 +312,8 @@ buildLib verbosity pkg_descr lbi lib _clbi = do
   where
     paths_modulename = ModuleName.toFilePath (autogenModuleName pkg_descr)
                          <.> ".hs"
+    --TODO: switch to using autogenModulesDir as a search dir, rather than
+    --      always copying the file over.
 
 -- |Building an executable for Hugs.
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
@@ -345,6 +347,7 @@ compileBuildInfo :: Verbosity
                  -> BuildInfo
                  -> LocalBuildInfo
                  -> IO ()
+--TODO: should not be using mLibSrcDirs at all
 compileBuildInfo verbosity destDir mLibSrcDirs mods bi lbi = do
     -- Pass 1: copy or cpp files from build directory to scratch directory
     let useCpp = CPP `elem` extensions bi
