@@ -171,8 +171,6 @@ copyAction flags args = do
   let destArgs = case fromFlag $ copyDest flags of
         NoCopyDest      -> ["install"]
         CopyTo path     -> ["copy", "destdir=" ++ path]
-        CopyPrefix path -> ["install", "prefix=" ++ path]
-                -- CopyPrefix is backwards compat, DEPRECATED
   rawSystemExit (fromFlag $ copyVerbosity flags) "make" destArgs
 
 installAction :: InstallFlags -> [String] -> IO ()
