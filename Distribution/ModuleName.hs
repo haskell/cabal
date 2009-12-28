@@ -88,7 +88,7 @@ validModuleComponent (c:cs) = Char.isUpper c
 
 -- XXX This is used in Distribution/Simple/PreProcess.hs, so we can't
 -- deprecate it yet without getting warnings, and thus build failures
--- {-# DEPRECATED simple "use ModuleName.fromString instead" #-}
+{-# DEPRECATED simple "use ModuleName.fromString instead" #-}
 simple :: String -> ModuleName
 simple str = ModuleName [str]
 
