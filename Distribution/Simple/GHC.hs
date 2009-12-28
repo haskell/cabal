@@ -65,6 +65,7 @@ module Distribution.Simple.GHC (
         buildLib, buildExe,
         installLib, installExe,
         libAbiHash,
+        registerPackage,
         ghcOptions,
         ghcVerbosityOptions,
         ghcPackageDbOptions,
@@ -945,3 +946,19 @@ updateLibArchive verbosity lbi path
     (ranlib, _) <- requireProgram verbosity ranlibProgram (withPrograms lbi)
     rawSystemProgram verbosity ranlib [path]
   | otherwise = return ()
+
+
+-- -----------------------------------------------------------------------------
+-- Registering
+
+registerPackage
+  :: Verbosity
+  -> InstalledPackageInfo
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Bool
+  -> PackageDBStack
+  -> IO ()
+registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
+  let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
+  HcPkg.reregister verbosity ghcPkg packageDbs (Right installedPkgInfo)
