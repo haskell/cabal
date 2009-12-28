@@ -62,8 +62,6 @@ import Distribution.Simple.Utils
          ( notice, warn, lowercase )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
-import Distribution.System
-         ( OS(Windows), buildOS )
 import Distribution.Verbosity
          ( Verbosity, normal )
 
@@ -212,11 +210,9 @@ defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
 
 defaultUserInstall :: Bool
-defaultUserInstall = case buildOS of
-  -- We do global installs by default on Windows
-  Windows -> False
-  -- and per-user installs by default everywhere else
-  _       -> True
+defaultUserInstall = True
+-- We do per-user installs by default on all platforms. We used to default to
+-- global installs on Windows but that no longer works on Windows Vista or 7.
 
 defaultRemoteRepo :: RemoteRepo
 defaultRemoteRepo = RemoteRepo name uri
