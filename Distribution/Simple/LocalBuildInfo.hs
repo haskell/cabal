@@ -82,10 +82,12 @@ data LocalBuildInfo = LocalBuildInfo {
         installDirTemplates :: InstallDirTemplates,
                 -- ^ The installation directories for the various differnt
                 -- kinds of files
+        --TODO: inplaceDirTemplates :: InstallDirs FilePath
         compiler      :: Compiler,
                 -- ^ The compiler we're building with
         buildDir      :: FilePath,
                 -- ^ Where to build the package.
+        --TODO: eliminate hugs's scratchDir, use builddir
         scratchDir    :: FilePath,
                 -- ^ Where to put the result of the Hugs build.
         libraryConfig       :: Maybe ComponentLocalBuildInfo,

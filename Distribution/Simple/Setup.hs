@@ -350,6 +350,7 @@ configureOptions showOrParseArgs =
          "directory to receive the built package (hugs-only)"
          configScratchDir (\v flags -> flags { configScratchDir = v })
          (reqArgFlag "DIR")
+      --TODO: eliminate scratchdir flag
 
       ,option "" ["program-prefix"]
           "prefix to be applied to installed executables"
