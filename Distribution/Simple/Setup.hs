@@ -632,13 +632,6 @@ copyCommand = makeCommand name shortDesc longDesc defaultCopyFlags options
          copyDest (\v flags -> flags { copyDest = v })
          (reqArg "DIR" (succeedReadE (Flag . CopyTo))
                        (\f -> case f of Flag (CopyTo p) -> [p]; _ -> []))
-
-      ,option "" ["copy-prefix"]
-         "[DEPRECATED, directory to copy files to instead of prefix]"
-         copyDest (\v flags -> flags { copyDest = v })
-         (reqArg' "DIR" (Flag . CopyPrefix)
-                       (\f -> case f of Flag (CopyPrefix p) -> [p]; _ -> []))
-
       ]
 
 emptyCopyFlags :: CopyFlags

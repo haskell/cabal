@@ -315,12 +315,7 @@ absoluteInstallDirs pkgId compilerId copydest dirs =
        _              -> id)
   . appendSubdirs (</>)
   . fmap fromPathTemplate
-  $ substituteInstallDirTemplates env dirs {
-      prefix = case copydest of
-        -- possibly override the prefix
-        CopyPrefix p -> toPathTemplate p
-        _            -> prefix dirs
-    }
+  $ substituteInstallDirTemplates env dirs
   where
     env = initialPathTemplateEnv pkgId compilerId
 
@@ -329,7 +324,6 @@ absoluteInstallDirs pkgId compilerId copydest dirs =
 data CopyDest
   = NoCopyDest
   | CopyTo FilePath
-  | CopyPrefix FilePath         -- DEPRECATED
   deriving (Eq, Show)
 
 -- | Check which of the paths are relative to the installation $prefix.
