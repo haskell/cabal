@@ -194,9 +194,9 @@ getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
 getInstalledPackages verbosity packagedbs conf = do
   homedir       <- getHomeDirectory
   (hugsProg, _) <- requireProgram verbosity hugsProgram conf
-  let bindir = takeDirectory (programPath hugsProg)
-      libdir = takeDirectory bindir </> "lib" </> "hugs"
-      dbdirs = nub (concatMap (packageDbPaths homedir libdir) packagedbs)
+  let hugsbindir = takeDirectory (programPath hugsProg)
+      hugslibdir = takeDirectory hugsbindir </> "lib" </> "hugs"
+      dbdirs = nub (concatMap (packageDbPaths homedir hugslibdir) packagedbs)
   indexes  <- mapM getIndividualDBPackages dbdirs
   return $! mconcat indexes
 
