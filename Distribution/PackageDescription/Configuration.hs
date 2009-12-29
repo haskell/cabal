@@ -65,9 +65,7 @@ import Distribution.PackageDescription
          , Flag(..), FlagName(..), FlagAssignment
          , CondTree(..), ConfVar(..), Condition(..) )
 import Distribution.Version
-         ( VersionRange, anyVersion, intersectVersionRanges, withinRange
-         , toVersionIntervals, intersectVersionIntervals
-         , fromVersionIntervals )
+         ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Compiler
          ( CompilerId(CompilerId) )
 import Distribution.System
@@ -81,7 +79,6 @@ import Distribution.Compat.ReadP as ReadP hiding ( char )
 import Control.Arrow (first)
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 
-import Control.Exception (assert)
 import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
@@ -489,29 +486,13 @@ finalizePackageDescription userflags satisfyDep (Platform arch os) impl constrai
       Right ((mlib, exes'), targetSet, flagVals) ->
         Right ( pkg { library = mlib
                     , executables = exes'
-                    , buildDepends = assert sanity overallDeps
+                    , buildDepends = fromDepMap (overallDependencies targetSet)
+                      --TODO: we need to find a way to avoid pulling in deps
+                      -- for non-buildable components. However cannot simply
+                      -- filter at this stage, since if the package were not
+                      -- available we would have failed already.
                     }
               , flagVals )
-        where
-          -- Note that we exclude non-buildable components. This means your tools and
-          -- test progs to not contribute to the overall package dependencies.
-          --
-          overallDeps = canonicalise
-                      . concatMap targetBuildDepends
-                      . filter buildable
-                      $ buildInfos
-          buildInfos  = map libBuildInfo (maybeToList mlib) ++ map buildInfo exes'
-
-          -- as a sanity check, check that the overall deps from the target set
-          -- matches those from the (unfiltered for being buildable) components
-          sanity        = canonicalise overallDeps' == canonicalise overallDeps''
-          overallDeps'  = concatMap targetBuildDepends buildInfos
-          overallDeps'' = fromDepMap (overallDependencies targetSet)
-          canonicalise  =
-              map (\(name, vi) -> Dependency name (fromVersionIntervals vi))
-            . Map.toList
-            . Map.fromListWith intersectVersionIntervals
-            . map (\(Dependency name vr) -> (name, toVersionIntervals vr))
 
       Left missing -> Left missing
   where
