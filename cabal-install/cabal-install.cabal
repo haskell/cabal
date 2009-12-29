@@ -51,7 +51,6 @@ Executable cabal
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
-        Distribution.Client.Dependency.Bogus
         Distribution.Client.Dependency.TopDown
         Distribution.Client.Dependency.TopDown.Constraints
         Distribution.Client.Dependency.TopDown.Types
@@ -83,7 +82,7 @@ Executable cabal
         Paths_cabal_install
 
     build-depends: base     >= 2        && < 5,
-                   Cabal    >= 1.8      && < 1.9,
+                   Cabal    >= 1.9      && < 1.10,
                    filepath >= 1.0,
                    network  >= 1        && < 3,
                    HTTP     >= 4000.0.2 && < 4001,

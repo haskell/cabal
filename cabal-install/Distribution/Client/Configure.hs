@@ -113,7 +113,7 @@ configure verbosity packageDBs repos comp conf
                            then packageDBs
                            else packageDBs ++ [UserPackageDB],
       usePackageIndex  = if UserPackageDB `elem` packageDBs
-                           then index
+                           then Just index
                            else Nothing,
       useProgramConfig = conf,
       useDistPref      = fromFlagOrDefault
@@ -128,7 +128,7 @@ configure verbosity packageDBs repos comp conf
 --
 planLocalPackage :: Verbosity -> Compiler
                  -> ConfigFlags -> ConfigExFlags
-                 -> Maybe (PackageIndex InstalledPackage)
+                 -> PackageIndex InstalledPackage
                  -> AvailablePackageDb
                  -> IO (Progress String String InstallPlan)
 planLocalPackage verbosity comp configFlags configExFlags installed
@@ -139,7 +139,7 @@ planLocalPackage verbosity comp configFlags configExFlags installed
       -- dependency on exactly that package. So the resolver ends up having
       -- to pick the local package.
       available' = PackageIndex.insert localPkg mempty
-      installed' = PackageIndex.deletePackageId (packageId localPkg) `fmap` installed
+      installed' = PackageIndex.deletePackageId (packageId localPkg) installed
       localPkg = AvailablePackage {
         packageInfoId                = packageId pkg,
         Available.packageDescription = pkg,
