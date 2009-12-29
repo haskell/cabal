@@ -74,10 +74,9 @@ import System.Time
 
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
-                     -> IO (Maybe (PackageIndex InstalledPackage))
+                     -> IO (PackageIndex InstalledPackage)
 getInstalledPackages verbosity comp packageDbs conf =
-  fmap (fmap convert)
-       (Configure.getInstalledPackages verbosity comp packageDbs conf)
+  fmap convert (Configure.getInstalledPackages verbosity comp packageDbs conf)
   where
     convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
     convert index = PackageIndex.fromList $

@@ -71,7 +71,6 @@ import System.Process    ( runProcess, waitForProcess )
 import Control.Monad     ( when, unless )
 import Data.List         ( maximumBy )
 import Data.Maybe        ( fromMaybe, isJust )
-import Data.Monoid       ( Monoid(mempty) )
 import Data.Char         ( isSpace )
 
 data SetupScriptOptions = SetupScriptOptions {
@@ -207,8 +206,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   installedCabalVersion options' comp conf = do
     index <- case usePackageIndex options' of
       Just index -> return index
-      Nothing    -> fromMaybe mempty
-             `fmap` getInstalledPackages verbosity
+      Nothing    -> getInstalledPackages verbosity
                       comp (usePackageDB options') conf
 
     let cabalDep = Dependency (PackageName "Cabal") (useCabalVersion options)
