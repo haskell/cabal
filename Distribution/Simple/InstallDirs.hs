@@ -216,7 +216,7 @@ type InstallDirTemplates = InstallDirs PathTemplate
 -- Default installation directories
 
 defaultInstallDirs :: CompilerFlavor -> Bool -> Bool -> IO InstallDirTemplates
-defaultInstallDirs comp userInstall hasLibs = do
+defaultInstallDirs comp userInstall _hasLibs = do
   windowsProgramFilesDir <- getWindowsProgramFilesDir
   userInstallPrefix      <- getAppUserDataDirectory "cabal"
   lhcPrefix              <- getAppUserDataDirectory "lhc"
