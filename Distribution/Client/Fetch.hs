@@ -128,7 +128,7 @@ fetch verbosity packageDBs repos comp conf deps = do
       -- will decide that they need fetching, even if they're already
       -- installed. Sicne we want to get the source packages of things we might
       -- have installed (but not have the sources for).
-      installed' = fmap (hideGivenDeps deps') installed
+      installed' = hideGivenDeps deps' installed
       hideGivenDeps pkgs index =
         foldr PackageIndex.deletePackageName index
           [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]

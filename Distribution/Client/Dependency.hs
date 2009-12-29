@@ -27,7 +27,6 @@ module Distribution.Client.Dependency (
     upgradableDependencies,
   ) where
 
-import Distribution.Client.Dependency.Bogus (bogusResolver)
 import Distribution.Client.Dependency.TopDown (topDownResolver)
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.PackageIndex (PackageIndex)
@@ -52,7 +51,6 @@ import Distribution.Simple.Utils (comparing)
 import Distribution.Client.Utils (mergeBy, MergeResult(..))
 
 import Data.List (maximumBy)
-import Data.Monoid (Monoid(mempty))
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -112,7 +110,7 @@ data PackagePreference
 
 resolveDependencies :: Platform
                     -> CompilerId
-                    -> Maybe (PackageIndex InstalledPackage)
+                    -> PackageIndex InstalledPackage
                     -> PackageIndex AvailablePackage
                     -> PackagesPreference
                     -> [PackageConstraint]
@@ -126,17 +124,14 @@ resolveDependencies platform comp installed available
 
 resolveDependenciesWithProgress :: Platform
                                 -> CompilerId
-                                -> Maybe (PackageIndex InstalledPackage)
+                                -> PackageIndex InstalledPackage
                                 -> PackageIndex AvailablePackage
                                 -> PackagesPreference
                                 -> [PackageConstraint]
                                 -> [PackageName]
                                 -> Progress String String InstallPlan
-resolveDependenciesWithProgress platform comp (Just installed) =
+resolveDependenciesWithProgress platform comp installed =
   dependencyResolver defaultResolver platform comp installed
-
-resolveDependenciesWithProgress platform comp Nothing =
-  dependencyResolver bogusResolver platform comp mempty
 
 hideBrokenPackages :: PackageFixedDeps p => PackageIndex p -> PackageIndex p
 hideBrokenPackages index =

@@ -72,7 +72,7 @@ list :: Verbosity
      -> [String]
      -> IO ()
 list verbosity packageDBs repos comp conf listFlags pats = do
-    Just installed <- getInstalledPackages verbosity comp packageDBs conf
+    installed <- getInstalledPackages verbosity comp packageDBs conf
     AvailablePackageDb available _ <- getAvailablePackages verbosity repos
     let pkgs | null pats = (PackageIndex.allPackages installed
                            ,PackageIndex.allPackages available)
@@ -113,7 +113,7 @@ info :: Verbosity
 info verbosity packageDBs repos comp conf _listFlags deps = do
   AvailablePackageDb available _ <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
-  Just installed <- getInstalledPackages verbosity comp packageDBs conf
+  installed <- getInstalledPackages verbosity comp packageDBs conf
   let deps'' = [ name | UnresolvedDependency (Dependency name _) _ <- deps' ]
   let pkgs = (concatMap (PackageIndex.lookupPackageName installed) deps''
              ,concatMap (PackageIndex.lookupPackageName available) deps'')

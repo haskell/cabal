@@ -170,7 +170,7 @@ upgrade verbosity packageDB repos comp conf
             | otherwise = planRepoPackages PreferAllLatest
                             comp configFlags configExFlags installFlags deps
 
-type Planner = Maybe (PackageIndex InstalledPackage)
+type Planner = PackageIndex InstalledPackage
             -> AvailablePackageDb
             -> IO (Progress String String InstallPlan)
 
@@ -249,7 +249,7 @@ installWithPlanner planner verbosity packageDBs repos comp conf
                                 --TODO: use Ord instance:
                                 -- insert UserPackageDB packageDBs
       usePackageIndex  = if UserPackageDB `elem` packageDBs
-                           then index
+                           then Just index
                            else Nothing,
       useProgramConfig = conf,
       useDistPref      = fromFlagOrDefault
@@ -340,9 +340,7 @@ regenerateHaddockIndex verbosity packageDBs comp conf
 
   --TODO: might be nice if the install plan gave us the new InstalledPackageInfo
   installed <- getInstalledPackages verbosity comp packageDBs conf
-  case installed of
-    Nothing    -> return () -- warning ?
-    Just index -> Haddock.regenerateHaddockIndex verbosity index conf indexFile
+  Haddock.regenerateHaddockIndex verbosity installed conf indexFile
 
   | otherwise = return ()
   where
@@ -390,7 +388,7 @@ planLocalPackage verbosity comp configFlags configExFlags installed
       -- dependency on exactly that package. So the resolver ends up having
       -- to pick the local package.
       available' = PackageIndex.insert localPkg available
-      installed' = PackageIndex.deletePackageId (packageId localPkg) `fmap` installed
+      installed' = PackageIndex.deletePackageId (packageId localPkg) installed
       localPkg = AvailablePackage {
         packageInfoId                = packageId pkg,
         Available.packageDescription = pkg,
@@ -420,7 +418,7 @@ planRepoPackages defaultPref comp configFlags configExFlags installFlags
   deps' <- IndexUtils.disambiguateDependencies available deps
   let installed'
         | fromFlag (installReinstall installFlags)
-                    = fmap (hideGivenDeps deps') installed
+                    = hideGivenDeps deps' installed
         | otherwise = installed
       targets     = dependencyTargets deps'
       constraints = dependencyConstraints deps'
@@ -435,7 +433,7 @@ planRepoPackages defaultPref comp configFlags configExFlags installFlags
         [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
 
 planUpgradePackages :: Compiler -> ConfigFlags -> ConfigExFlags -> Planner
-planUpgradePackages _comp _configFlags _configExFlags (Just installed)
+planUpgradePackages _comp _configFlags _configExFlags installed
   (AvailablePackageDb available _availablePrefs) = die $
        "the 'upgrade' command (when used without any package arguments) has "
     ++ "been disabled in this release. It has been disabled because it has "
@@ -459,11 +457,6 @@ planUpgradePackages _comp _configFlags _configExFlags (Just installed)
 --                  | Dependency name ver <- configConstraints configFlags ]
 --    targets     = [ name | Dependency name _ <- deps ]
 
-planUpgradePackages comp _ _ _ _ =
-  die $ display (compilerId comp)
-     ++ " does not track installed packages so cabal cannot figure out what"
-     ++ " packages need to be upgraded."
-
 mergePackagePrefs :: PackagesPreferenceDefault
                   -> Map.Map PackageName VersionRange
                   -> ConfigExFlags
@@ -477,9 +470,9 @@ mergePackagePrefs defaultPref availablePrefs configExFlags =
     ++ [ PackageVersionPreference name ver
        | Dependency name ver <- configPreferences configExFlags ]
 
-printDryRun :: Verbosity -> Maybe (PackageIndex InstalledPackage)
+printDryRun :: Verbosity -> PackageIndex InstalledPackage
             -> InstallPlan -> IO ()
-printDryRun verbosity minstalled plan = case unfoldr next plan of
+printDryRun verbosity installed plan = case unfoldr next plan of
   []   -> return ()
   pkgs
     | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
@@ -498,9 +491,6 @@ printDryRun verbosity minstalled plan = case unfoldr next plan of
               -- pretending that each package is installed
 
     showPkgAndReason pkg' = display (packageId pkg') ++ " " ++
-      case minstalled of
-        Nothing        -> ""
-        Just installed ->
           case PackageIndex.lookupPackageName installed (packageName pkg') of
             [] -> "(new package)"
             ps ->  case find ((==packageId pkg') . packageId) ps of
