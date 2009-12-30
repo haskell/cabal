@@ -60,10 +60,11 @@ import Distribution.PackageDescription as PD
           Executable(..), withExe)
 import Distribution.Simple.Compiler
          ( Compiler(..), compilerVersion )
+import Distribution.Simple.GHC ( ghcLibDir )
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), requireProgramVersion
-         , rawSystemProgram, rawSystemProgramStdoutConf, rawSystemProgramStdout
-         , hscolourProgram, haddockProgram, ghcProgram )
+         , rawSystemProgram, rawSystemProgramStdout
+         , hscolourProgram, haddockProgram )
 import Distribution.Simple.PreProcess (ppCpp', ppUnlit,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Simple.Setup
@@ -103,7 +104,6 @@ import Control.Monad ( when, guard )
 import Control.Exception (assert)
 import Data.Monoid
 import Data.Maybe    ( fromMaybe, listToMaybe )
-import Data.Char     (isSpace)
 
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        normalise, splitPath, joinPath)
@@ -546,11 +546,6 @@ getSourceFiles dirs modules = flip mapM modules $ \m -> fmap ((,) m) $
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
 exeBuildDir lbi exe = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
-
-ghcLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
-ghcLibDir verbosity lbi = 
-    (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi) ["--print-libdir"]
 
 ---------------------------------------------------------------------------------------------
 
