@@ -175,7 +175,7 @@ showPackageSummaryInfo pkginfo =
                   | otherwise      -> text "[ Unknown ]"
          Just pkg -> disp (packageVersion pkg)
      , maybeShow (homepage pkginfo) "Homepage:" text
-     , text "License: " <+> text (show (license pkginfo))
+     , text "License: " <+> text (display (license pkginfo))
      ])
      $+$ text ""
   where
