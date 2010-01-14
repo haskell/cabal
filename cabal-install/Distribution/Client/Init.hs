@@ -375,8 +375,7 @@ writeSetupFile flags = do
   writeFile "Setup.hs" setupFile
  where
   setupFile = unlines
-    [ "#!/usr/bin/env runhaskell"
-    , "import Distribution.Simple"
+    [ "import Distribution.Simple"
     , "main = defaultMain"
     ]
 
