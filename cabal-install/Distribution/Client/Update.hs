@@ -33,7 +33,8 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
          ( Verbosity )
 
-import qualified Data.ByteString.Lazy.Char8 as BS
+import qualified Data.ByteString.Lazy       as BS
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Codec.Compression.GZip as GZip (decompress)
 import qualified Data.Map as Map
 import System.FilePath (dropExtension)
@@ -56,7 +57,7 @@ updateRepo verbosity repo = case repoKind repo of
     notice verbosity $ "Downloading the latest package list from "
                     ++ remoteRepoName remoteRepo
     indexPath <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
-    writeFileAtomic (dropExtension indexPath) . BS.unpack
+    writeFileAtomic (dropExtension indexPath) . BS.Char8.unpack
                                               . GZip.decompress
                                             =<< BS.readFile indexPath
 
