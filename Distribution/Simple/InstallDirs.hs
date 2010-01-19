@@ -434,7 +434,7 @@ compilerTemplateEnv compilerId =
   ]
 
 platformTemplateEnv :: Platform -> PathTemplateEnv
-platformTemplateEnv (Platform os arch) =
+platformTemplateEnv (Platform arch os) =
   [(OSVar,       PathTemplate [Ordinary $ display os])
   ,(ArchVar,     PathTemplate [Ordinary $ display arch])
   ]
