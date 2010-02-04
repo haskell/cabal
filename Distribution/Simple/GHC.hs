@@ -116,6 +116,7 @@ import Distribution.Text
 import Language.Haskell.Extension (Extension(..))
 
 import Control.Monad            ( unless, when )
+import Data.Char                ( isSpace )
 import Data.List
 import Data.Maybe               ( catMaybes )
 import Data.Monoid              ( Monoid(..) )
@@ -353,6 +354,7 @@ getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
 getInstalledPackages verbosity packagedbs conf = do
   checkPackageDbStack packagedbs
   pkgss <- getInstalledPackages' verbosity packagedbs conf
+  topDir <- ghcLibDir' verbosity ghcProg
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
   return $! hackRtsPackage (mconcat indexes)
@@ -362,8 +364,6 @@ getInstalledPackages verbosity packagedbs conf = do
     -- paths. We need to substitute the right value in so that when
     -- we, for example, call gcc, we have proper paths to give it
     Just ghcProg = lookupProgram ghcProgram conf
-    compilerDir  = takeDirectory (programPath ghcProg)
-    topDir       = takeDirectory compilerDir
 
     hackRtsPackage index =
       case PackageIndex.lookupPackageName index (PackageName "rts") of
@@ -371,6 +371,11 @@ getInstalledPackages verbosity packagedbs conf = do
            -> PackageIndex.insert (removeMingwIncludeDir rts) index
         _  -> index -- No (or multiple) ghc rts package is registered!!
                     -- Feh, whatever, the ghc testsuite does some crazy stuff.
+
+ghcLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
+ghcLibDir' verbosity ghcProg =
+    (reverse . dropWhile isSpace . reverse) `fmap`
+     rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
