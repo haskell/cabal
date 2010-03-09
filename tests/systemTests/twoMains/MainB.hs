@@ -1,6 +1,8 @@
 module Main where
-import System
+
+import System.Environment (getArgs)
 import Control.Monad (when)
+
 main = do print 'b'
           args <- getArgs
           let isB = head args
