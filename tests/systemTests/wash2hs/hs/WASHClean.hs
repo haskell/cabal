@@ -1,6 +1,6 @@
 module WASHClean where
 
-import Char
+import Data.Char
 
 import WASHData
 
