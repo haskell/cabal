@@ -2,8 +2,8 @@ module Main where
 
 -- ghc --make WASHMain -package text -o WASHMain
 
-import IO
-import List
+import System.IO
+import Data.List
 import System
 import WASHGenerator
 import WASHFlags

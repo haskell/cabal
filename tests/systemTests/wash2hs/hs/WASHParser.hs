@@ -1,6 +1,6 @@
 module WASHParser ( xmlfile, washfile ) where {
 
-import Char ;
+import Data.Char ;
 import Parsec hiding (letter) ;
 import WASHData;
 import WASHUtil;

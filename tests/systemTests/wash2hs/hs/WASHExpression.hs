@@ -1,6 +1,6 @@
 module WASHExpression where
 
-import Monad
+import Control.Monad
 
 import WASHFlags
 import qualified WASHUtil
