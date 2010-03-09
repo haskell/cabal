@@ -5,7 +5,7 @@ module WASHUtil
     , openFile
     ) where {
 
-import IOExts ;
+import System.IOExts ;
 import WASHData ;
 
 itemList :: (item -> ShowS) -> String -> String -> [item] -> ShowS ;
