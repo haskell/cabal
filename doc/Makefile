@@ -4,7 +4,11 @@ ifeq "$(findstring boilerplate.mk, $(wildcard $(TOP)/mk/*))" ""
 # ----------------------------------------------------------------------------
 # Standalone Makefile:
 
-all: Cabal.xml
+.PHONY: all
+
+all: Cabal.pdf
+
+Cabal.pdf: Cabal.xml
 	docbook2pdf Cabal.xml
 
 clean:
