@@ -1358,6 +1358,21 @@ Library {
 	      explicitly override the default to False.</para>
             </listitem>
           </varlistentry>
+          <varlistentry>
+            <term>
+              <literal>manual:</literal>
+              <replaceable>boolean</replaceable>
+              (default: <literal>False</literal>)
+            </term>
+            <listitem>
+              <para>By default, Cabal will first try to satisfy
+              dependencies with the default flag value and then,
+              if that is not possible, with the negated value.
+              However, if the flag is manual, then the default
+              value (which can be overridden by commandline flags)
+              will be used.</para>
+            </listitem>
+          </varlistentry>
         </variablelist>
 	</sect4>
 	<sect4 id="conditionals">
