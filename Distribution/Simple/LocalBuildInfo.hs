@@ -47,6 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
         externalPackageDeps,
+        inplacePackageId,
         withLibLBI,
         withExeLBI,
         ComponentLocalBuildInfo(..),
@@ -73,6 +74,8 @@ import Distribution.Simple.PackageIndex
          ( PackageIndex )
 import Distribution.Simple.Utils
          ( die )
+import Distribution.Text
+         ( display )
 
 import Data.List (nub)
 
@@ -129,6 +132,12 @@ externalPackageDeps lbi = nub $
   -- TODO:  what about non-buildable components?
      maybe [] componentPackageDeps (libraryConfig lbi)
   ++ concatMap (componentPackageDeps . snd) (executableConfigs lbi)
+
+-- | The installed package Id we use for local packages registered in the local
+-- package db. This is what is used for intra-package deps between components.
+--
+inplacePackageId :: PackageId -> InstalledPackageId
+inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.  Extended version of
