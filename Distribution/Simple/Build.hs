@@ -123,8 +123,7 @@ build pkg_descr lbi flags suffixes = do
     -- Register the library in-place, so exes can depend
     -- on internally defined libraries.
     registerPackage verbosity
-      installedPkgInfo pkg_descr lbi True -- True meaning inplace
-      (withPackageDB lbi ++ [internalPackageDB])
+      installedPkgInfo pkg_descr lbi True{-inplace-} internalPackageDB
 
   -- Use the internal package db for the exes.
   let lbi' = lbi { withPackageDB = withPackageDB lbi ++ [internalPackageDB] }
