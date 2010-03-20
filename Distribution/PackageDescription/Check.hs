@@ -196,6 +196,10 @@ checkSanity pkg =
   , check (null (executables pkg) && isNothing (library pkg)) $
       PackageBuildImpossible
         "No executables and no library found. Nothing to do."
+
+  , check (not (null exeDuplicates)) $
+      PackageBuildImpossible $ "Duplicate executable sections "
+        ++ commaSep exeDuplicates
   ]
 
   ++ maybe []  checkLibrary    (library pkg)
@@ -208,8 +212,9 @@ checkSanity pkg =
            "This package requires Cabal version: "
         ++ display requiredCabalVersion
   ]
-
-  where requiredCabalVersion = descCabalVersion pkg
+  where
+    exeDuplicates = dups (map exeName (executables pkg))
+    requiredCabalVersion = descCabalVersion pkg
 
 checkLibrary :: Library -> [PackageCheck]
 checkLibrary lib =
@@ -217,13 +222,12 @@ checkLibrary lib =
 
     check (not (null moduleDuplicates)) $
        PackageBuildWarning $
-         "Duplicate modules in library: " ++ commaSep moduleDuplicates
+            "Duplicate modules in library: "
+         ++ commaSep (map display moduleDuplicates)
   ]
 
-  where moduleDuplicates = [ display module_
-                           | let modules = exposedModules lib
-                                        ++ otherModules (libBuildInfo lib)
-                           , (module_:_:_) <- group (sort modules) ]
+  where
+    moduleDuplicates = dups (libModules lib)
 
 checkExecutable :: Executable -> [PackageCheck]
 checkExecutable exe =
@@ -242,12 +246,10 @@ checkExecutable exe =
   , check (not (null moduleDuplicates)) $
        PackageBuildWarning $
             "Duplicate modules in executable '" ++ exeName exe ++ "': "
-         ++ commaSep moduleDuplicates
+         ++ commaSep (map display moduleDuplicates)
   ]
-
-  where moduleDuplicates = [ display module_
-                           | let modules = otherModules (buildInfo exe)
-                           , (module_:_:_) <- group (sort modules) ]
+  where
+    moduleDuplicates = dups (exeModules exe)
 
 -- ------------------------------------------------------------
 -- * Additional pure checks
@@ -1123,3 +1125,6 @@ quote s = "'" ++ s ++ "'"
 
 commaSep :: [String] -> String
 commaSep = intercalate ", "
+
+dups :: Ord a => [a] -> [a]
+dups xs = [ x | (x:_:_) <- group (sort xs) ]
