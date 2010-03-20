@@ -71,13 +71,18 @@ import Distribution.Simple.BuildPaths (haddockName)
 import qualified Distribution.Simple.GHC as GHC
 import Distribution.Simple.Compiler
          ( compilerVersion, CompilerFlavor(..), compilerFlavor
-         , PackageDB(..), registrationPackageDB )
+         , PackageDB(..), PackageDBStack, registrationPackageDB )
 import Distribution.Simple.Program
          ( ConfiguredProgram, runProgramInvocation
          , requireProgram, lookupProgram, ghcPkgProgram, lhcPkgProgram )
 import Distribution.Simple.Program.Script
          ( invocationAsSystemScript )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
+import Distribution.Simple.Program.Run
+         ( ProgramInvocation(..), IOEncoding(..), programInvocation
+         , runProgramInvocation )
+import Distribution.Simple.Program.Types
+         ( ConfiguredProgram(programId, programVersion) )
 import Distribution.Simple.Setup
          ( RegisterFlags(..), CopyDest(..)
          , fromFlag, fromFlagOrDefault, flagToMaybe )
@@ -98,7 +103,7 @@ import Distribution.Text
          ( display )
 import Distribution.Version ( Version(..) )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, normal )
+         ( Verbosity, normal, deafening, silent )
 import Distribution.Compat.CopyFile
          ( setFileExecutable )
 
@@ -109,7 +114,7 @@ import System.IO.Error (try)
 
 import Control.Monad (when)
 import Data.Maybe
-         ( isJust, fromMaybe )
+         ( isJust, fromMaybe, maybeToList )
 import Data.List (partition)
 
 
@@ -130,8 +135,8 @@ register pkg@PackageDescription { library       = Just lib  }
     case () of
      _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo
        | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
-       | otherwise             -> registerPackage verbosity
-                                    installedPkgInfo pkg lbi inplace packageDb
+       | otherwise             -> registerPackage' verbosity
+                                    installedPkgInfo pkg lbi inplace packageDbs
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -141,8 +146,8 @@ register pkg@PackageDescription { library       = Just lib  }
     modeGenerateRegScript = fromFlag (regGenScript regFlags)
 
     inplace   = fromFlag (regInPlace regFlags)
-    packageDb = fromFlagOrDefault (registrationPackageDB (withPackageDB lbi))
-                                  (regPackageDB regFlags)
+    packageDbs = withPackageDB lbi
+              ++ maybeToList (flagToMaybe  (regPackageDB regFlags))
     distPref  = fromFlag (regDistPref regFlags)
     verbosity = fromFlag (regVerbosity regFlags)
 
@@ -153,9 +158,9 @@ register pkg@PackageDescription { library       = Just lib  }
     writeRegisterScript installedPkgInfo =
       case compilerFlavor (compiler lbi) of
         GHC  -> do (ghcPkg, _) <- requireProgram verbosity ghcPkgProgram (withPrograms lbi)
-                   writeHcPkgRegisterScript verbosity installedPkgInfo ghcPkg packageDb
+                   writeHcPkgRegisterScript verbosity installedPkgInfo ghcPkg packageDbs
         LHC  -> do (lhcPkg, _) <- requireProgram verbosity lhcPkgProgram (withPrograms lbi)
-                   writeHcPkgRegisterScript verbosity installedPkgInfo lhcPkg packageDb
+                   writeHcPkgRegisterScript verbosity installedPkgInfo lhcPkg packageDbs
         Hugs -> notice verbosity "Registration scripts not needed for hugs"
         JHC  -> notice verbosity "Registration scripts not needed for jhc"
         NHC  -> notice verbosity "Registration scripts not needed for nhc98"
@@ -205,12 +210,27 @@ registerPackage :: Verbosity
                 -> Bool
                 -> PackageDB
                 -> IO ()
-registerPackage verbosity installedPkgInfo pkg lbi inplace packageDb = do
+registerPackage verbosity installedPkgInfo pkg lbi inplace packageDb =
+    registerPackage' verbosity installedPkgInfo pkg lbi inplace packageDbs
+  where
+    packageDbs
+      | registrationPackageDB (withPackageDB lbi) == packageDb
+                  = withPackageDB lbi
+      | otherwise = withPackageDB lbi ++ [packageDb]
+
+registerPackage' :: Verbosity
+                -> InstalledPackageInfo
+                -> PackageDescription
+                -> LocalBuildInfo
+                -> Bool
+                -> PackageDBStack
+                -> IO ()
+registerPackage' verbosity installedPkgInfo pkg lbi inplace packageDbs = do
   setupMessage verbosity "Registering" (packageId pkg)
   case compilerFlavor (compiler lbi) of
-    GHC  -> registerPackageGHC  verbosity installedPkgInfo pkg lbi inplace packageDb
-    LHC  -> registerPackageLHC  verbosity installedPkgInfo pkg lbi inplace packageDb
-    Hugs -> registerPackageHugs verbosity installedPkgInfo pkg lbi inplace packageDb
+    GHC  -> registerPackageGHC  verbosity installedPkgInfo pkg lbi inplace packageDbs
+    LHC  -> registerPackageLHC  verbosity installedPkgInfo pkg lbi inplace packageDbs
+    Hugs -> registerPackageHugs verbosity installedPkgInfo pkg lbi inplace packageDbs
     JHC  -> notice verbosity "Registering for jhc (nothing to do)"
     NHC  -> notice verbosity "Registering for nhc98 (nothing to do)"
     _    -> die "Registering is not implemented for this compiler"
@@ -222,17 +242,17 @@ registerPackageGHC, registerPackageLHC, registerPackageHugs
   -> PackageDescription
   -> LocalBuildInfo
   -> Bool
-  -> PackageDB
+  -> PackageDBStack
   -> IO ()
-registerPackageGHC verbosity installedPkgInfo _pkg lbi _inplace packageDb = do
+registerPackageGHC verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
   let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
-  HcPkg.reregister verbosity ghcPkg packageDb (Right installedPkgInfo)
+  reregister verbosity ghcPkg packageDbs installedPkgInfo
 
-registerPackageLHC verbosity installedPkgInfo _pkg lbi _inplace packageDb = do
+registerPackageLHC verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
   let Just lhcPkg = lookupProgram lhcPkgProgram (withPrograms lbi)
-  HcPkg.reregister verbosity lhcPkg packageDb (Right installedPkgInfo)
+  reregister verbosity lhcPkg packageDbs installedPkgInfo
 
-registerPackageHugs verbosity installedPkgInfo pkg lbi inplace _packageDb = do
+registerPackageHugs verbosity installedPkgInfo pkg lbi inplace _packageDbs = do
   when inplace $ die "--inplace is not supported with Hugs"
   let installDirs = absoluteInstallDirs pkg lbi NoCopyDest
   createDirectoryIfMissingVerbose verbosity True (libdir installDirs)
@@ -243,11 +263,11 @@ registerPackageHugs verbosity installedPkgInfo pkg lbi inplace _packageDb = do
 writeHcPkgRegisterScript :: Verbosity
                          -> InstalledPackageInfo
                          -> ConfiguredProgram
-                         -> PackageDB
+                         -> PackageDBStack
                          -> IO ()
-writeHcPkgRegisterScript verbosity installedPkgInfo hcPkg packageDb = do
-  let invocation  = HcPkg.reregisterInvocation hcPkg Verbosity.normal
-                      packageDb (Right installedPkgInfo)
+writeHcPkgRegisterScript verbosity installedPkgInfo hcPkg packageDbs = do
+  let invocation  = reregisterInvocation hcPkg Verbosity.normal
+                      packageDbs installedPkgInfo
       regScript   = invocationAsSystemScript buildOS   invocation
 
   notice verbosity ("Creating package registration script: " ++ regScriptFileName)
@@ -403,3 +423,48 @@ unregScriptFileName :: FilePath
 unregScriptFileName = case buildOS of
                           Windows -> "unregister.bat"
                           _       -> "unregister.sh"
+
+reregister :: Verbosity -> ConfiguredProgram -> PackageDBStack
+           -> InstalledPackageInfo
+           -> IO ()
+reregister verbosity hcPkg packagedb pkgFile =
+  runProgramInvocation verbosity
+    (reregisterInvocation hcPkg verbosity packagedb pkgFile)
+
+reregisterInvocation :: ConfiguredProgram -> Verbosity -> PackageDBStack
+                    -> InstalledPackageInfo
+                    -> ProgramInvocation
+reregisterInvocation hcPkg verbosity packagedbs pkgInfo =
+    (programInvocation hcPkg args) {
+      progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
+      progInvokeInputEncoding = IOEncodingUTF8
+    }
+  where
+    args = ["update", "-"] ++ packageDbStackOpts packagedbs
+        ++ verbosityOpts verbosity
+
+    verbosityOpts :: Verbosity -> [String]
+    verbosityOpts v
+
+      -- ghc-pkg < 6.11 does not support -v
+      | programId hcPkg == "ghc-pkg"
+     && programVersion hcPkg < Just (Version [6,11] [])
+                       = []
+
+      | v >= deafening = ["-v2"]
+      | v == silent    = ["-v0"]
+      | otherwise      = []
+
+    packageDbStackOpts :: PackageDBStack -> [String]
+    packageDbStackOpts dbstack = case dbstack of
+      (GlobalPackageDB:UserPackageDB:dbs) -> "--global"
+                                           : "--user"
+                                           : map specific dbs
+      (GlobalPackageDB:dbs)               -> "--global"
+                                           : "--no-user-package-conf"
+                                           : map specific dbs
+      _                                   -> ierror
+      where
+        specific (SpecificPackageDB db) = "--package-conf=" ++ db
+        specific _ = ierror
+        ierror     = error "internal error: unexpected package db stack"

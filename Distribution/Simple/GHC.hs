@@ -800,15 +800,14 @@ ghcPackageFlags lbi clbi
 
 ghcPackageDbOptions :: PackageDBStack -> [String]
 ghcPackageDbOptions dbstack = case dbstack of
-  (GlobalPackageDB:dbs)
-    | UserPackageDB `elem` dbs -> concatMap specific dbs
-    | otherwise                -> "-no-user-package-conf"
-                                : concatMap specific dbs
-  _                            -> ierror
- where
+  (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
+  (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
+                                       : concatMap specific dbs
+  _                                   -> ierror
+  where
     specific (SpecificPackageDB db) = [ "-package-conf", db ]
-    specific _                      = []
-    ierror = error "internal error: unexpected package db stack"
+    specific _ = ierror
+    ierror     = error "internal error: unexpected package db stack"
 
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
                    -> FilePath -> FilePath -> Verbosity -> Bool
