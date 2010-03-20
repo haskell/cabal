@@ -99,7 +99,7 @@ import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-    , absoluteInstallDirs, prefixRelativeInstallDirs )
+    , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
     , intercalate, cabalVersion, cabalBootstrapping
@@ -441,7 +441,7 @@ configure (pkg_descr0, pbi) cfg
                 if newPackageDepsBehaviour pkg_descr'
                   then [ (installedPackageId pkg, packageId pkg)
                        | pkg <- selectSubset bi externalPkgDeps ]
-                    ++ [ (InstalledPackageId (display pkgid), pkgid)
+                    ++ [ (inplacePackageId pkgid, pkgid)
                        | pkgid <- selectSubset bi internalPkgDeps ]
                   else [ (installedPackageId pkg, packageId pkg)
                        | pkg <- externalPkgDeps ]
