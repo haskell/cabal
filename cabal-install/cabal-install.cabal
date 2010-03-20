@@ -68,6 +68,7 @@ Executable cabal
         Distribution.Client.InstallSymlink
         Distribution.Client.List
         Distribution.Client.PackageIndex
+        Distribution.Client.PackageUtils
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist
