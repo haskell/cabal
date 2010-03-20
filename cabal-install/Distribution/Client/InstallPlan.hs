@@ -54,8 +54,9 @@ import Distribution.Version
          ( Version, withinRange )
 import Distribution.PackageDescription
          ( GenericPackageDescription(genPackageFlags)
-         , PackageDescription(buildDepends)
          , Flag(flagName), FlagName(..) )
+import Distribution.Client.PackageUtils
+         ( externalBuildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Client.PackageIndex
@@ -490,5 +491,5 @@ configuredPackageProblems platform comp
          platform comp
          []
          (packageDescription pkg) of
-        Right (resolvedPkg, _) -> buildDepends resolvedPkg
+        Right (resolvedPkg, _) -> externalBuildDepends resolvedPkg
         Left  _ -> error "configuredPackageInvalidDeps internal error"

@@ -36,6 +36,8 @@ import Distribution.Package
          , PackageFixedDeps(depends) )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
+import Distribution.Client.PackageUtils
+         ( externalBuildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Version
@@ -301,7 +303,7 @@ configurePackage platform comp available spkg = case spkg of
                                     platform comp [] p of
       Left missing        -> Left missing
       Right (pkg, flags') -> Right $
-        SemiConfiguredPackage apkg flags' (buildDepends pkg)
+        SemiConfiguredPackage apkg flags' (externalBuildDepends pkg)
 
   dependencySatisfiable = not . null . PackageIndex.lookupDependency available
 
