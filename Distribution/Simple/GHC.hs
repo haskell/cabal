@@ -205,21 +205,29 @@ configureToolchain :: ConfiguredProgram -> ProgramConfiguration
 configureToolchain ghcProg =
     addKnownProgram gccProgram {
       programFindLocation = findProg gccProgram
-                              [ baseDir </> "gcc.exe",
-                                mingwDir </> "bin" </> "gcc.exe" ],
+                              [ if ghcVersion >= Version [6,12] []
+                                  then mingwBinDir </> "gcc.exe"
+                                  else baseDir     </> "gcc.exe" ],
       programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
       programFindLocation = findProg ldProgram
-                              [ libDir </> "ld.exe",
-                                mingwDir </> "mingw32" </> "bin" </> "ld.exe" ],
+                              [ if ghcVersion >= Version [6,12] []
+                                  then mingwBinDir </> "ld.exe"
+                                  else libDir      </> "ld.exe" ],
       programPostConf     = configureLd
+    }
+  . addKnownProgram arProgram {
+      programFindLocation = findProg arProgram
+                              [ if ghcVersion >= Version [6,12] []
+                                  then mingwBinDir </> "ar.exe"
+                                  else libDir      </> "ar.exe" ]
     }
   where
     Just ghcVersion = programVersion ghcProg
     compilerDir = takeDirectory (programPath ghcProg)
     baseDir     = takeDirectory compilerDir
-    mingwDir    = baseDir </> "mingw"
+    mingwBinDir = baseDir </> "mingw" </> "bin"
     libDir      = baseDir </> "gcc-lib"
     includeDir  = baseDir </> "include" </> "mingw"
     isWindows   = case buildOS of Windows -> True; _ -> False
