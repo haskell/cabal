@@ -106,7 +106,7 @@ cabal_install spec = do
 -- | Returns the command that was issued, the return code, and hte output text
 cabal :: PackageSpec -> [String] -> IO (String, ExitCode, String)
 cabal spec cabalArgs =
-    run (Just $ directory spec) "runhaskell" (["Setup"] ++ cabalArgs)
+    run (Just $ directory spec) "runghc" (["Setup.hs"] ++ cabalArgs)
 
 -- | Returns the command that was issued, the return code, and hte output text
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
