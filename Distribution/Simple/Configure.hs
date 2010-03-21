@@ -455,7 +455,7 @@ configure (pkg_descr0, pbi) cfg
                 if newPackageDepsBehaviour pkg_descr'
                   then [ (installedPackageId pkg, packageId pkg)
                        | pkg <- selectSubset bi externalPkgDeps ]
-                    ++ [ (InstalledPackageId (display pkgid), pkgid)
+                    ++ [ (inplacePackageId pkgid, pkgid)
                        | pkgid <- selectSubset bi internalPkgDeps ]
                   else [ (installedPackageId pkg, packageId pkg)
                        | pkg <- externalPkgDeps ]
@@ -530,6 +530,10 @@ configure (pkg_descr0, pbi) cfg
               modifyExecutable e = e{ buildInfo    = buildInfo e    `mappend` extraBi}
           in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
                       , executables = modifyExecutable  `map` executables pkg_descr}
+
+-- Quick hack in 1.8 branch, it's done properly in HEAD
+inplacePackageId :: PackageId -> InstalledPackageId
+inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies

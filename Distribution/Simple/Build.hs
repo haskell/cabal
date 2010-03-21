@@ -62,12 +62,13 @@ import qualified Distribution.Simple.Build.Macros      as Build.Macros
 import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 
 import Distribution.Package
-         ( Package(..) )
+         ( Package(..), PackageId, InstalledPackageId(..) )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..)
          , Library(..), Executable(..) )
+import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
@@ -80,7 +81,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
 import Distribution.Simple.Register
-         ( registerPackage, generateRegistrationInfo )
+         ( registerPackage, inplaceInstalledPackageInfo )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, setupMessage )
@@ -96,6 +97,8 @@ import Control.Monad
          ( unless )
 import System.FilePath
          ( (</>), (<.>) )
+import System.Directory
+         ( getCurrentDirectory )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -117,11 +120,15 @@ build pkg_descr lbi flags suffixes = do
     info verbosity "Building library..."
     buildLib verbosity pkg_descr lbi lib clbi
 
-    installedPkgInfo <- generateRegistrationInfo verbosity pkg_descr lib
-                               lbi clbi True{-inplace-} distPref
-
     -- Register the library in-place, so exes can depend
     -- on internally defined libraries.
+    pwd <- getCurrentDirectory
+    let installedPkgInfo =
+          (inplaceInstalledPackageInfo pwd distPref pkg_descr lib lbi clbi) {
+            -- The inplace registration uses the "-inplace" suffix,
+            -- not an ABI hash.
+            IPI.installedPackageId = inplacePackageId (packageId installedPkgInfo)
+          }
     registerPackage verbosity
       installedPkgInfo pkg_descr lbi True{-inplace-} internalPackageDB
 
@@ -131,6 +138,10 @@ build pkg_descr lbi flags suffixes = do
   withExeLBI pkg_descr lbi' $ \exe clbi -> do
     info verbosity $ "Building executable " ++ exeName exe ++ "..."
     buildExe verbosity pkg_descr lbi' exe clbi
+
+-- Quick hack in 1.8 branch, it's done properly in HEAD
+inplacePackageId :: PackageId -> InstalledPackageId
+inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 
 -- | Initialize a new package db file for libraries defined
 -- internally to the package.
