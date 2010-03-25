@@ -73,7 +73,7 @@ import Distribution.Simple.Compiler
          ( compilerVersion, CompilerFlavor(..), compilerFlavor
          , PackageDB(..), PackageDBStack, registrationPackageDB )
 import Distribution.Simple.Program
-         ( ConfiguredProgram, runProgramInvocation
+         ( ConfiguredProgram
          , requireProgram, lookupProgram, ghcPkgProgram, lhcPkgProgram )
 import Distribution.Simple.Program.Script
          ( invocationAsSystemScript )
