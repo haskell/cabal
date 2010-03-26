@@ -86,8 +86,6 @@ validModuleComponent []     = False
 validModuleComponent (c:cs) = Char.isUpper c
                            && all validModuleChar cs
 
--- FIXME This is used in Distribution/Simple/PreProcess.hs, so we can't
--- deprecate it yet without getting warnings, and thus build failures
 {-# DEPRECATED simple "use ModuleName.fromString instead" #-}
 simple :: String -> ModuleName
 simple str = ModuleName [str]
