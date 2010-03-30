@@ -65,6 +65,7 @@ import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.Hugs as Hugs
+import qualified Distribution.Simple.UHC  as UHC
 
 import Control.Monad (when, unless)
 import System.Directory
@@ -164,6 +165,7 @@ install pkg_descr lbi flags = do
        Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref (progPrefixPref, progSuffixPref) pkg_descr
      NHC  -> do withLib pkg_descr $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)
                 withExe pkg_descr $ NHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref)
+     UHC  -> do withLib pkg_descr $ \ _ -> UHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
      _    -> die ("only installing with GHC, JHC, Hugs or nhc98 is implemented")
   return ()
   -- register step should be performed by caller.
