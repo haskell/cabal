@@ -236,6 +236,7 @@ defaultInstallDirs comp userInstall _hasLibs = do
            Hugs   -> "hugs" </> "packages" </> "$pkg"
            JHC    -> "$compiler"
            LHC    -> "$compiler"
+           UHC    -> "$pkgid"
            _other -> "$pkgid" </> "$compiler",
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of

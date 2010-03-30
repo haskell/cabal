@@ -71,6 +71,7 @@ import Distribution.Simple.BuildPaths (haddockName)
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.Hugs as Hugs
+import qualified Distribution.Simple.UHC  as UHC
 import Distribution.Simple.Compiler
          ( compilerVersion, CompilerFlavor(..), compilerFlavor
          , PackageDBStack, registrationPackageDB )
@@ -160,6 +161,7 @@ register pkg@PackageDescription { library       = Just lib  }
         Hugs -> notice verbosity "Registration scripts not needed for hugs"
         JHC  -> notice verbosity "Registration scripts not needed for jhc"
         NHC  -> notice verbosity "Registration scripts not needed for nhc98"
+        UHC  -> notice verbosity "Registration scripts not needed for uhc"
         _    -> die "Registration scripts are not implemented for this compiler"
 
 register _ _ regFlags = notice verbosity "No package to register"
@@ -212,6 +214,7 @@ registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
     GHC  -> GHC.registerPackage  verbosity installedPkgInfo pkg lbi inplace packageDbs
     LHC  -> LHC.registerPackage  verbosity installedPkgInfo pkg lbi inplace packageDbs
     Hugs -> Hugs.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
+    UHC  -> UHC.registerPackage  verbosity installedPkgInfo pkg lbi inplace packageDbs
     JHC  -> notice verbosity "Registering for jhc (nothing to do)"
     NHC  -> notice verbosity "Registering for nhc98 (nothing to do)"
     _    -> die "Registering is not implemented for this compiler"
