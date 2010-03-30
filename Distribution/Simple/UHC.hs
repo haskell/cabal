@@ -145,14 +145,14 @@ installedPkgConfig = "installed-pkg-config"
 -- looking only for the presence of an installed package configuration.
 -- TODO: Actually make use of the information provided in the file.
 isPkgDir :: String -> String -> String -> IO Bool
-isPkgDir c dir ('.' : xs) = return False  -- ignore files starting with a .
+isPkgDir _ _   ('.' : _)  = return False  -- ignore files starting with a .
 isPkgDir c dir xs         = do
                               let candidate = dir </> uhcPackageDir xs c
                               -- putStrLn $ "trying: " ++ candidate
                               doesFileExist (candidate </> installedPkgConfig)
 
 parsePackage :: String -> [PackageId]
-parsePackage x = map fst (filter (\ (_,x) -> null x) (readP_to_S parse x))
+parsePackage x = map fst (filter (\ (_,y) -> null y) (readP_to_S parse x))
 
 -- | Create a trivial package info from a directory name.
 mkInstalledPackageInfo :: PackageId -> InstalledPackageInfo
@@ -223,43 +223,26 @@ uhcPackageDbOptions user system db = map (\ x -> "--pkg-searchpath=" ++ x)
 installLib :: CopyFlags -> LocalBuildInfo
            -> FilePath -> FilePath -> FilePath
            -> PackageDescription -> IO ()
-installLib flags lbi targetDir dynlibTargetDir builtDir
-              pkg@PackageDescription{ library = Nothing } =
+installLib _flags _lbi _targetDir _dynlibTargetDir _builtDir
+                  PackageDescription{ library = Nothing } =
     return ()   -- TODO: is this ok?
-installLib flags lbi targetDir dynlibTargetDir builtDir
-              pkg@PackageDescription{ library = Just lib } = do
-
+installLib flags _lbi targetDir _dynlibTargetDir builtDir
+              pkg@PackageDescription{ library = Just _ } = do
     -- putStrLn $ "dest:  " ++ targetDir
     -- putStrLn $ "built: " ++ builtDir
-
     let verbosity  = fromFlag (copyVerbosity flags)
-        copyHelper installFun src dst n = do
-          createDirectoryIfMissingVerbose verbosity True dst
-          installFun verbosity (src </> n) (dst </> n)
-        copy       = copyHelper installOrdinaryFile
-        copyShared = copyHelper installExecutableFile
-        copyModuleFiles ext =
-          findModuleFiles [builtDir] [ext] (libModules lib)
-            >>= installOrdinaryFiles verbosity targetDir
-
-    installDirectoryContents verbosity (builtDir </> display pkgid) targetDir
-
-  where
-
-    vanillaLibName = mkUHCLibName pkgid
-    pkgid          = packageId pkg
-
--- GHC library names have an extra HS
-mkUHCLibName :: PackageIdentifier -> String
-mkUHCLibName lib = "lib" ++ display lib <.> "a"
+    installDirectoryContents verbosity (builtDir </> display (packageId pkg)) targetDir
 
 -- currently hardcoded UHC code generator and variant to use
+uhcTarget, uhcTargetVariant :: String
 uhcTarget        = "bc"
 uhcTargetVariant = "plain"
 
 -- root directory for a package in UHC
+uhcPackageDir    :: String -> String -> FilePath
+uhcPackageSubDir ::           String -> FilePath
 uhcPackageDir    pkgid compilerid = pkgid </> uhcPackageSubDir compilerid
-uhcPackageSubDir       compilerid = compilerid </> "bc" </> "plain"
+uhcPackageSubDir       compilerid = compilerid </> uhcTarget </> uhcTargetVariant
 
 -- -----------------------------------------------------------------------------
 -- Registering
