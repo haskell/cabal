@@ -610,6 +610,7 @@ getInstalledPackages verbosity comp packageDBs progconf = do
     JHC -> JHC.getInstalledPackages verbosity packageDBs progconf
     LHC -> LHC.getInstalledPackages verbosity packageDBs progconf
     NHC -> NHC.getInstalledPackages verbosity packageDBs progconf
+    UHC -> UHC.getInstalledPackages verbosity comp packageDBs progconf
     flv -> die $ "don't know how to find the installed packages for "
               ++ display flv
 
