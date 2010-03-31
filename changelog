@@ -1,5 +1,14 @@
 -*-change-log-*-
 
+1.8.0.4 Duncan Coutts <duncan@haskell.org> March 2010
+	* Fix exe-depends-on-lib feature with ghc-6.12
+	* Fix use of --package-db with ghc-6.12
+	* By default $datadir now follows the $prefix on Windows
+	* Find ar.exe on windows better
+	* Fix mixup between $arch and $os path variables
+	* Support for for hugs and nhc package databases
+	* Set dynlib name for shared libs on OSX
+
 1.8.0.2 Duncan Coutts <duncan@haskell.org> December 2009
 	* Support for GHC-6.12
 	* New unique installed package IDs which use a package hash
