@@ -1,9 +1,9 @@
 
-VERSION=1.8.0.3
+VERSION=1.8.0.4
 
 #KIND=devel
-KIND=rc
-#KIND=latest
+#KIND=rc
+KIND=latest
 
 PREFIX=/usr/local
 HC=ghc
