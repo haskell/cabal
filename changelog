@@ -1,5 +1,13 @@
 -*-change-log-*-
 
+0.8.2 Duncan Coutts <duncan@haskell.org> Mar 2010
+	* Changed default to per-user installs on Windows
+	* Fixed "cabal update" on Windows
+	* Handle packages with intra-component dependencies
+	* Minor policy improvements to "cabal init"
+	* Fix "fromFlag" error in upgrade
+	* Fix "sdist --snapshot"
+
 0.8.0 Duncan Coutts <duncan@haskell.org> Dec 2009
 	* Works with ghc-6.12
 	* New "cabal init" command for making initial project .cabal file
