@@ -38,6 +38,7 @@ import Distribution.Client.Setup
 
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
+         , installDirsOptions
          , Flag, toFlag, flagToMaybe, fromFlagOrDefault, flagToList )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
@@ -502,64 +503,3 @@ ppSection name arg fields def cur =
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
 
---TODO: this is now exported in Cabal-1.5
-installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
-installDirsOptions =
-  [ option "" ["prefix"]
-      "bake this prefix in preparation of installation"
-      prefix (\v flags -> flags { prefix = v })
-      installDirArg
-
-  , option "" ["bindir"]
-      "installation directory for executables"
-      bindir (\v flags -> flags { bindir = v })
-      installDirArg
-
-  , option "" ["libdir"]
-      "installation directory for libraries"
-      libdir (\v flags -> flags { libdir = v })
-      installDirArg
-
-  , option "" ["libsubdir"]
-      "subdirectory of libdir in which libs are installed"
-      libsubdir (\v flags -> flags { libsubdir = v })
-      installDirArg
-
-  , option "" ["libexecdir"]
-      "installation directory for program executables"
-      libexecdir (\v flags -> flags { libexecdir = v })
-      installDirArg
-
-  , option "" ["datadir"]
-      "installation directory for read-only data"
-      datadir (\v flags -> flags { datadir = v })
-      installDirArg
-
-  , option "" ["datasubdir"]
-      "subdirectory of datadir in which data files are installed"
-      datasubdir (\v flags -> flags { datasubdir = v })
-      installDirArg
-
-  , option "" ["docdir"]
-      "installation directory for documentation"
-      docdir (\v flags -> flags { docdir = v })
-      installDirArg
-
-  , option "" ["htmldir"]
-      "installation directory for HTML documentation"
-      htmldir (\v flags -> flags { htmldir = v })
-      installDirArg
-
-  , option "" ["haddockdir"]
-      "installation directory for haddock interfaces"
-      haddockdir (\v flags -> flags { haddockdir = v })
-      installDirArg
-  ]
-  where
-    installDirArg _sf _lf d get set =
-      reqArgFlag "DIR" _sf _lf d
-        (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
-
-    reqArgFlag ad = reqArg ad (fmap toFlag (readP_to_E err parseFilePathQ))
-                              (map (show . showFilePath) . flagToList)
-      where err _ = "paths with spaces must use Haskell String syntax"
