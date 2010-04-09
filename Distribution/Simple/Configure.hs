@@ -778,6 +778,11 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
       _    -> die "Unknown compiler"
 
 
+-- Try to build a test C program which includes every header and links every
+-- lib. If that fails, try to narrow it down by preprocessing (only) and linking
+-- with individual headers and libs.  If none is the obvious culprit then give a
+-- generic error message.
+-- TODO: produce a log file from the compiler errors, if any.
 checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 checkForeignDeps pkg lbi verbosity = do
   ifBuildsWith allHeaders (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
@@ -793,10 +798,6 @@ checkForeignDeps pkg lbi verbosity = do
             ok <- builds (makeProgram headers) args
             if ok then success else failure
 
-        -- NOTE: if some package-local header has errors,
-        -- we will report that this header is missing.
-        -- Maybe additional tests for local headers are needed
-        -- for better diagnostics
         findOffendingHdr =
             ifBuildsWith allHeaders cppArgs
                          (return Nothing)
@@ -808,7 +809,7 @@ checkForeignDeps pkg lbi verbosity = do
                                  (go hdrsInits)
                                  (return . Just . last $ hdrs)
 
-              cppArgs = "-c":commonCcArgs -- don't try to link
+              cppArgs = "-E":commonCcArgs -- preprocess only
 
         findMissingLibs = ifBuildsWith [] (makeLdArgs allLibs)
                                        (return [])
@@ -857,18 +858,28 @@ checkForeignDeps pkg lbi verbosity = do
            `catchIO`   (\_ -> return False)
            `catchExit` (\_ -> return False)
 
-        explainErrors Nothing [] = return ()
+        explainErrors Nothing [] = die messageUnknownError
+          where
+            messageUnknownError =
+                 "All foreign libraries and headers were found, but the C "
+              ++ "compiler encountered an error when including and linking "
+              ++ "them all together.  You can re-run configure with the "
+              ++ "verbosity flag -v3 to see the error messages."
+
         explainErrors hdr libs   = die $ unlines $
              (if plural then "Missing dependencies on foreign libraries:"
                         else "Missing dependency on a foreign library:")
            : case hdr of
                Nothing -> []
-               Just h  -> ["* Missing header file: " ++ h ]
+               Just h  -> ["* Missing or erroneous header file: " ++ h ]
           ++ case libs of
                []    -> []
                [lib] -> ["* Missing C library: " ++ lib]
                _     -> ["* Missing C libraries: " ++ intercalate ", " libs]
           ++ [if plural then messagePlural else messageSingular]
+          ++ case hdr of
+               Nothing -> []
+               Just _  -> [hdrMessage]
           where
             plural = length libs >= 2
             messageSingular =
@@ -885,6 +896,9 @@ checkForeignDeps pkg lbi verbosity = do
               ++ "but in a non-standard location then you can use the flags "
               ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
               ++ "where they are."
+            hdrMessage =
+                 "If the header file does exist, it may contain errors that "
+              ++ "are caught at the preprocessing stage."
 
         --FIXME: share this with the PreProcessor module
         hcDefines :: Compiler -> [String]
