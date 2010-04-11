@@ -294,11 +294,7 @@ ppCpp' extraArgs bi lbi =
     GHC -> ppGhcCpp (cppArgs ++ extraArgs) bi lbi
     _   -> ppCpphs  (cppArgs ++ extraArgs) bi lbi
 
-  where cppArgs = sysDefines ++ cppOptions bi ++ getCppOptions bi lbi
-        sysDefines =
-                ["-D" ++ os ++ "_" ++ loc ++ "_OS" | loc <- locations] ++
-                ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
-        locations = ["BUILD", "HOST"]
+  where cppArgs = getCppOptions bi lbi
 
 ppGhcCpp :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppGhcCpp extraArgs _bi lbi =
@@ -373,8 +369,10 @@ ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
     -- system's dynamic linker. This is needed because hsc2hs works by
     -- compiling a C program and then running it.
 
-    -- Options from the current package:
  ++ [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
+ ++ [ "--cflag="   ++ opt | opt <- sysDefines ]
+
+    -- Options from the current package:
  ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
  ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
                                 ++ PD.cppOptions   bi ]
@@ -429,11 +427,21 @@ ppC2hs bi lbi
                 inBaseDir </> inRelativeFile]
       }
 
+--TODO: perhaps use this with hsc2hs too
+--TODO: remove cc-options from cpphs for cabal-version: >= 1.10
 getCppOptions :: BuildInfo -> LocalBuildInfo -> [String]
 getCppOptions bi lbi
     = hcDefines (compiler lbi)
+   ++ sysDefines
+   ++ cppOptions bi
    ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
    ++ [opt | opt@('-':c:_) <- PD.ccOptions bi, c `elem` "DIU"]
+
+sysDefines :: [String]
+sysDefines = ["-D" ++ os   ++ "_" ++ loc ++ "_OS"   | loc <- locations]
+          ++ ["-D" ++ arch ++ "_" ++ loc ++ "_ARCH" | loc <- locations]
+  where
+    locations = ["BUILD", "HOST"]
 
 hcDefines :: Compiler -> [String]
 hcDefines comp =
