@@ -302,7 +302,8 @@ fromLibrary tmp lbi lib clbi =
                                        -- haddock stomps on our precious .hi
                                        -- and .o files. Workaround by telling
                                        -- haddock to write them elsewhere.
-                                       ++ [ "-odir", tmp, "-hidir", tmp ],
+                                       ++ [ "-odir", tmp, "-hidir", tmp
+                                          , "-stubdir", tmp ],
                             argTargets = inFiles 
                           }
     where 
@@ -319,7 +320,8 @@ fromExecutable tmp lbi exe clbi =
                                        -- haddock stomps on our precious .hi
                                        -- and .o files. Workaround by telling
                                        -- haddock to write them elsewhere.
-                                       ++ [ "-odir", tmp, "-hidir", tmp ],
+                                       ++ [ "-odir", tmp, "-hidir", tmp
+                                          , "-stubdir", tmp ],
                             argOutputDir = Dir (exeName exe),
                             argTitle = Flag (exeName exe),
                             argTargets = inFiles 
