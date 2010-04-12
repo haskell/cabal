@@ -253,13 +253,36 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
               when recomp $ do
                 let destDir = buildLoc </> dirName srcStem
                 createDirectoryIfMissingVerbose verbosity True destDir
-                runPreProcessor pp
+                runPreProcessorWithHsBootHack pp
                    (psrcLoc, psrcRelFile)
-                   (buildLoc, srcStem <.> "hs") verbosity
+                   (buildLoc, srcStem <.> "hs")
 
-     where dirName = takeDirectory
-           tailNotNull [] = []
-           tailNotNull x  = tail x
+  where
+    dirName = takeDirectory
+    tailNotNull [] = []
+    tailNotNull x  = tail x
+
+    -- FIXME: This is a somewhat nasty hack. GHC requires that hs-boot files
+    -- be in the same place as the hs files, so if we put the hs file in dist/
+    -- then we need to copy the hs-boot file there too. This should probably be
+    -- done another way. Possibly we should also be looking for .lhs-boot
+    -- files, but I think that preprocessors only produce .hs files.
+    runPreProcessorWithHsBootHack pp
+      (inBaseDir,  inRelativeFile)
+      (outBaseDir, outRelativeFile) = do
+        runPreProcessor pp
+          (inBaseDir, inRelativeFile)
+          (outBaseDir, outRelativeFile) verbosity
+
+        exists <- doesFileExist inBoot
+        when exists $ copyFileVerbose verbosity inBoot outBoot
+
+      where
+        inBoot  = replaceExtension inFile  "hs-boot"
+        outBoot = replaceExtension outFile "hs-boot"
+
+        inFile  = normalise (inBaseDir  </> inRelativeFile)
+        outFile = normalise (outBaseDir </> outRelativeFile)
 
 -- ------------------------------------------------------------
 -- * known preprocessors
@@ -488,21 +511,8 @@ standardPP lbi prog args =
   PreProcessor {
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
-      do rawSystemProgramConf verbosity prog (withPrograms lbi)
-                              (args ++ ["-o", outFile, inFile])
-         -- Note: This is a nasty hack. GHC requires that hs-boot files
-         -- be in the same place as the hs files, so if we put the hs
-         -- file in dist/... then we need to copy the hs-boot file
-         -- there too. This should probably be done another way, e.g.
-         -- by preprocessing all files, with and "id" preprocessor if
-         -- nothing else, so the hs-boot files automatically get copied
-         -- into the right place.
-         -- Possibly we should also be looking for .lhs-boot files, but
-         -- I think that preprocessors only produce .hs files.
-         let inBoot  = replaceExtension inFile  "hs-boot"
-             outBoot = replaceExtension outFile "hs-boot"
-         exists <- doesFileExist inBoot
-         when exists $ copyFileVerbose verbosity inBoot outBoot
+      rawSystemProgramConf verbosity prog (withPrograms lbi)
+                           (args ++ ["-o", outFile, inFile])
   }
 
 -- |Convenience function; get the suffixes of these preprocessors.
