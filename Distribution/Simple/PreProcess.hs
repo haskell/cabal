@@ -75,13 +75,15 @@ import Distribution.Simple.Utils
          , die, setupMessage, intercalate, copyFileVerbose
          , findFileWithExtension, findFileWithExtension' )
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), lookupProgram, programPath
+         ( Program(..), ConfiguredProgram(..), programPath
+         , lookupProgram, requireProgram, requireProgramVersion
          , rawSystemProgramConf, rawSystemProgram
          , greencardProgram, cpphsProgram, hsc2hsProgram, c2hsProgram
          , happyProgram, alexProgram, haddockProgram, ghcProgram, gccProgram )
 import Distribution.System
          ( OS(OSX, Windows), buildOS )
-import Distribution.Version (Version(..))
+import Distribution.Version
+         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.Verbosity
 
 import Control.Monad (when, unless)
@@ -323,7 +325,9 @@ ppGhcCpp :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppGhcCpp extraArgs _bi lbi =
   PreProcessor {
     platformIndependent = False,
-    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
+      (ghcProg, ghcVersion, _) <- requireProgramVersion verbosity
+                                    ghcProgram anyVersion (withPrograms lbi)
       rawSystemProgram verbosity ghcProg $
           ["-E", "-cpp"]
           -- This is a bit of an ugly hack. We're going to
@@ -337,14 +341,14 @@ ppGhcCpp extraArgs _bi lbi =
        ++ ["-o", outFile, inFile]
        ++ extraArgs
   }
-  where Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
-        Just ghcVersion = programVersion ghcProg
 
 ppCpphs :: [String] -> BuildInfo -> LocalBuildInfo -> PreProcessor
 ppCpphs extraArgs _bi lbi =
   PreProcessor {
     platformIndependent = False,
-    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity ->
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
+      (cpphsProg, cpphsVersion, _) <- requireProgramVersion verbosity
+                                        cpphsProgram anyVersion (withPrograms lbi)
       rawSystemProgram verbosity cpphsProg $
           ("-O" ++ outFile) : inFile
         : "--noline" : "--strip"
@@ -353,8 +357,6 @@ ppCpphs extraArgs _bi lbi =
              else [])
         ++ extraArgs
   }
-  where Just cpphsProg = lookupProgram cpphsProgram (withPrograms lbi)
-        Just cpphsVersion = programVersion cpphsProg
 
 -- Haddock versions before 0.8 choke on #line and #file pragmas.  Those
 -- pragmas are necessary for correct links when we preprocess.  So use
@@ -367,59 +369,65 @@ use_optP_P lbi
      _                               -> True
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppHsc2hs bi lbi = standardPP lbi hsc2hsProgram $
-    [ "--cc=" ++ programPath gccProg
-    , "--ld=" ++ programPath gccProg ]
+ppHsc2hs bi lbi =
+  PreProcessor {
+    platformIndependent = False,
+    runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
+      (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
+      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) $
+          [ "--cc=" ++ programPath gccProg
+          , "--ld=" ++ programPath gccProg ]
 
-    -- Additional gcc options
- ++ [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
-                              ++ programOverrideArgs gccProg ]
- ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs  gccProg
-                              ++ programOverrideArgs gccProg ]
+          -- Additional gcc options
+       ++ [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
+                                    ++ programOverrideArgs gccProg ]
+       ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs  gccProg
+                                    ++ programOverrideArgs gccProg ]
 
-    -- OSX frameworks:
- ++ [ what ++ "=-F" ++ opt
-    | isOSX
-    , opt <- nub (concatMap Installed.frameworkDirs pkgs)
-    , what <- ["--cflag", "--lflag"] ]
- ++ [ "--lflag=" ++ arg
-    | isOSX
-    , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs
-    , arg <- ["-framework", opt] ]
+          -- OSX frameworks:
+       ++ [ what ++ "=-F" ++ opt
+          | isOSX
+          , opt <- nub (concatMap Installed.frameworkDirs pkgs)
+          , what <- ["--cflag", "--lflag"] ]
+       ++ [ "--lflag=" ++ arg
+          | isOSX
+          , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs
+          , arg <- ["-framework", opt] ]
 
-    -- Note that on ELF systems, wherever we use -L, we must also use -R
-    -- because presumably that -L dir is not on the normal path for the
-    -- system's dynamic linker. This is needed because hsc2hs works by
-    -- compiling a C program and then running it.
+          -- Note that on ELF systems, wherever we use -L, we must also use -R
+          -- because presumably that -L dir is not on the normal path for the
+          -- system's dynamic linker. This is needed because hsc2hs works by
+          -- compiling a C program and then running it.
 
- ++ [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
- ++ [ "--cflag="   ++ opt | opt <- sysDefines ]
+       ++ [ "--cflag="   ++ opt | opt <- hcDefines (compiler lbi) ]
+       ++ [ "--cflag="   ++ opt | opt <- sysDefines ]
 
-    -- Options from the current package:
- ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
- ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
-                                ++ PD.cppOptions   bi ]
- ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
- ++ [ "--lflag=-Wl,-R," ++ opt | isELF
-                          , opt <- PD.extraLibDirs bi ]
- ++ [ "--lflag=-l" ++ opt | opt <- PD.extraLibs    bi ]
- ++ [ "--lflag="   ++ opt | opt <- PD.ldOptions    bi ]
+          -- Options from the current package:
+       ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
+       ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
+                                      ++ PD.cppOptions   bi ]
+       ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
+       ++ [ "--lflag=-Wl,-R," ++ opt | isELF
+                                , opt <- PD.extraLibDirs bi ]
+       ++ [ "--lflag=-l" ++ opt | opt <- PD.extraLibs    bi ]
+       ++ [ "--lflag="   ++ opt | opt <- PD.ldOptions    bi ]
 
-    -- Options from dependent packages
- ++ [ "--cflag=" ++ opt
-    | pkg <- pkgs
-    , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
-          ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
- ++ [ "--lflag=" ++ opt
-    | pkg <- pkgs
-    , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
-          ++ [ "-Wl,-R," ++ opt | isELF
-                           , opt <- Installed.libraryDirs    pkg ]
-          ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
-          ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+          -- Options from dependent packages
+       ++ [ "--cflag=" ++ opt
+          | pkg <- pkgs
+          , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
+                ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
+       ++ [ "--lflag=" ++ opt
+          | pkg <- pkgs
+          , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
+                ++ [ "-Wl,-R," ++ opt | isELF
+                                 , opt <- Installed.libraryDirs    pkg ]
+                ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
+                ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+       ++ ["-o", outFile, inFile]
+  }
   where
     pkgs = PackageIndex.topologicalOrder (packageHacks (installedPkgs lbi))
-    Just gccProg = lookupProgram  gccProgram (withPrograms lbi)
     isOSX = case buildOS of OSX -> True; _ -> False
     isELF = case buildOS of OSX -> False; Windows -> False; _ -> True;
     packageHacks = case compilerFlavor (compiler lbi) of
