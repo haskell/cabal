@@ -445,18 +445,38 @@ ppHsc2hs bi lbi =
 
 
 ppC2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
-ppC2hs bi lbi
-    = PreProcessor {
-        platformIndependent = False,
-        runPreProcessor = \(inBaseDir, inRelativeFile)
-                           (outBaseDir, outRelativeFile) verbosity ->
-          rawSystemProgramConf verbosity c2hsProgram (withPrograms lbi) $
-               ["--include=" ++ outBaseDir]
-            ++ ["--cppopts=" ++ opt | opt <- getCppOptions bi lbi]
-            ++ ["--output-dir=" ++ outBaseDir,
-                "--output=" ++ outRelativeFile,
-                inBaseDir </> inRelativeFile]
-      }
+ppC2hs bi lbi =
+  PreProcessor {
+    platformIndependent = False,
+    runPreProcessor = \(inBaseDir, inRelativeFile)
+                       (outBaseDir, outRelativeFile) verbosity -> do
+      (c2hsProg, _, _) <- requireProgramVersion verbosity
+                            c2hsProgram (orLaterVersion (Version [0,15] []))
+                            (withPrograms lbi)
+      (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
+      rawSystemProgram verbosity c2hsProg $
+
+          -- Options from the current package:
+           [ "--cpp=" ++ programPath gccProg, "--cppopts=-E" ]
+        ++ [ "--cppopts=" ++ opt | opt <- getCppOptions bi lbi ]
+        ++ [ "--include=" ++ outBaseDir ]
+
+          -- Options from dependent packages
+       ++ [ "--cppopts=" ++ opt
+          | pkg <- pkgs
+          , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
+                ++ [         opt | opt@('-':c:_) <- Installed.ccOptions pkg
+                                 , c `elem` "DIU" ] ]
+          --TODO: install .chi files for packages, so we can --include
+          -- those dirs here, for the dependencies
+
+           -- input and output files
+        ++ [ "--output-dir=" ++ outBaseDir
+           , "--output=" ++ outRelativeFile
+           , inBaseDir </> inRelativeFile ]
+  }
+  where
+    pkgs = PackageIndex.topologicalOrder (installedPkgs lbi)
 
 --TODO: perhaps use this with hsc2hs too
 --TODO: remove cc-options from cpphs for cabal-version: >= 1.10
