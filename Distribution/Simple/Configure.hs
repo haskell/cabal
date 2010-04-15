@@ -799,17 +799,22 @@ checkForeignDeps pkg lbi verbosity = do
             if ok then success else failure
 
         findOffendingHdr =
-            ifBuildsWith allHeaders cppArgs
+            ifBuildsWith allHeaders ccArgs
                          (return Nothing)
                          (go . tail . inits $ allHeaders)
             where
               go [] = return Nothing       -- cannot happen
-              go (hdrs:hdrsInits) = do
+              go (hdrs:hdrsInits) =
+                    -- Try just preprocessing first
                     ifBuildsWith hdrs cppArgs
-                                 (go hdrsInits)
-                                 (return . Just . last $ hdrs)
+                      -- If that works, try compiling too
+                      (ifBuildsWith hdrs ccArgs
+                        (go hdrsInits)
+                        (return . Just . Right . last $ hdrs))
+                      (return . Just . Left . last $ hdrs)
 
-              cppArgs = "-E":commonCcArgs -- preprocess only
+              cppArgs = "-E":commonCppArgs -- preprocess only
+              ccArgs  = "-c":commonCcArgs  -- don't try to link
 
         findMissingLibs = ifBuildsWith [] (makeLdArgs allLibs)
                                        (return [])
@@ -817,7 +822,7 @@ checkForeignDeps pkg lbi verbosity = do
 
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
-        commonCcArgs  = hcDefines (compiler lbi)
+        commonCppArgs = hcDefines (compiler lbi)
                      ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
                      ++ ["-I."]
                      ++ collectField PD.cppOptions
@@ -825,6 +830,12 @@ checkForeignDeps pkg lbi verbosity = do
                      ++ [ "-I" ++ dir
                         | dep <- deps
                         , dir <- Installed.includeDirs dep ]
+                     ++ [ opt
+                        | dep <- deps
+                        , opt <- Installed.ccOptions dep ]
+
+        commonCcArgs  = commonCppArgs
+                     ++ collectField PD.ccOptions
                      ++ [ opt
                         | dep <- deps
                         , opt <- Installed.ccOptions dep ]
@@ -858,47 +869,56 @@ checkForeignDeps pkg lbi verbosity = do
            `catchIO`   (\_ -> return False)
            `catchExit` (\_ -> return False)
 
-        explainErrors Nothing [] = die messageUnknownError
-          where
-            messageUnknownError =
-                 "All foreign libraries and headers were found, but the C "
-              ++ "compiler encountered an error when including and linking "
-              ++ "them all together.  You can re-run configure with the "
-              ++ "verbosity flag -v3 to see the error messages."
-
-        explainErrors hdr libs   = die $ unlines $
-             (if plural then "Missing dependencies on foreign libraries:"
-                        else "Missing dependency on a foreign library:")
-           : case hdr of
-               Nothing -> []
-               Just h  -> ["* Missing or erroneous header file: " ++ h ]
+        explainErrors Nothing [] = return () -- should be impossible!
+        explainErrors hdr libs = die $ unlines $
+             [ if plural
+                 then "Missing dependencies on foreign libraries:"
+                 else "Missing dependency on a foreign library:"
+             | missing ]
+          ++ case hdr of
+               Just (Left h) -> ["* Missing (or bad) header file: " ++ h ]
+               _             -> []
           ++ case libs of
                []    -> []
                [lib] -> ["* Missing C library: " ++ lib]
                _     -> ["* Missing C libraries: " ++ intercalate ", " libs]
-          ++ [if plural then messagePlural else messageSingular]
+          ++ [if plural then messagePlural else messageSingular | missing]
           ++ case hdr of
-               Nothing -> []
-               Just _  -> [hdrMessage]
+               Just (Left  _) -> [ headerCppMessage ]
+               Just (Right h) -> [ (if missing then "* " else "")
+                                   ++ "Bad header file: " ++ h
+                                 , headerCcMessage ]
+               _              -> []
+
           where
-            plural = length libs >= 2
-            messageSingular =
-                 "This problem can usually be solved by installing the system "
-              ++ "package that provides this library (you may need the "
-              ++ "\"-dev\" version). If the library is already installed "
-              ++ "but in a non-standard location then you can use the flags "
-              ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
-              ++ "where it is."
-            messagePlural =
-                 "This problem can usually be solved by installing the system "
-              ++ "packages that provide these libraries (you may need the "
-              ++ "\"-dev\" versions). If the libraries are already installed "
-              ++ "but in a non-standard location then you can use the flags "
-              ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
-              ++ "where they are."
-            hdrMessage =
-                 "If the header file does exist, it may contain errors that "
-              ++ "are caught at the preprocessing stage."
+            plural  = length libs >= 2
+            -- Is there something missing? (as opposed to broken)
+            missing = not (null libs)
+                   || case hdr of Just (Left _) -> True; _ -> False
+
+        messageSingular =
+             "This problem can usually be solved by installing the system "
+          ++ "package that provides this library (you may need the "
+          ++ "\"-dev\" version). If the library is already installed "
+          ++ "but in a non-standard location then you can use the flags "
+          ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
+          ++ "where it is."
+        messagePlural =
+             "This problem can usually be solved by installing the system "
+          ++ "packages that provide these libraries (you may need the "
+          ++ "\"-dev\" versions). If the libraries are already installed "
+          ++ "but in a non-standard location then you can use the flags "
+          ++ "--extra-include-dirs= and --extra-lib-dirs= to specify "
+          ++ "where they are."
+        headerCppMessage =
+             "If the header file does exist, it may contain errors that "
+          ++ "are caught by the C compiler at the preprocessing stage. "
+          ++ "In this case you can re-run configure with the verbosity "
+          ++ "flag -v3 to see the error messages."
+        headerCcMessage =
+             "The header file contains a compile error. "
+          ++ "You can re-run configure with the verbosity flag "
+          ++ "-v3 to see the error messages from the C compiler."
 
         --FIXME: share this with the PreProcessor module
         hcDefines :: Compiler -> [String]
