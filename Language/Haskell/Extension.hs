@@ -86,6 +86,10 @@ data Extension =
   -- instance being applicable.
   | IncoherentInstances
 
+  -- | [GHC &#xa7; 7.3.8] Allows recursive bindings in @do@ blocks,
+  -- using the @rec@ keyword.
+  | DoRec
+
   -- | [GHC &#xa7; 7.3.8.2] Deprecated in GHC.  Allows recursive bindings
   -- using @mdo@, a variant of @do@.  @DoRec@ provides a different,
   -- preferred syntax.
