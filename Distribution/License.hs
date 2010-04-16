@@ -106,7 +106,7 @@ data License =
 knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
                 , LGPL unversioned, LGPL (version [2,1]), LGPL (version [3])
-                , BSD3, BSD4, MIT
+                , BSD3, MIT
                 , PublicDomain, AllRightsReserved, OtherLicense]
  where
    unversioned = Nothing
