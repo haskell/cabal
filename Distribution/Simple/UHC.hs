@@ -222,12 +222,8 @@ uhcPackageDbOptions user system db = map (\ x -> "--pkg-searchpath=" ++ x)
 
 installLib :: CopyFlags -> LocalBuildInfo
            -> FilePath -> FilePath -> FilePath
-           -> PackageDescription -> IO ()
-installLib _flags _lbi _targetDir _dynlibTargetDir _builtDir
-                  PackageDescription{ library = Nothing } =
-    return ()   -- TODO: is this ok?
-installLib flags _lbi targetDir _dynlibTargetDir builtDir
-              pkg@PackageDescription{ library = Just _ } = do
+           -> PackageDescription -> Library -> IO ()
+installLib flags _lbi targetDir _dynlibTargetDir builtDir pkg _library = do
     -- putStrLn $ "dest:  " ++ targetDir
     -- putStrLn $ "built: " ++ builtDir
     let verbosity  = fromFlag (copyVerbosity flags)

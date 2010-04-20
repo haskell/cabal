@@ -149,23 +149,25 @@ install pkg_descr lbi flags = do
   when (hasLibs pkg_descr) $ installIncludeFiles verbosity pkg_descr incPref
 
   case compilerFlavor (compiler lbi) of
-     GHC  -> do withLib pkg_descr $ \_ ->
+     GHC  -> do withLib pkg_descr $
                   GHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
-                withExe pkg_descr $ \_ ->
+                withExe pkg_descr $
                   GHC.installExe flags lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
-     LHC  -> do withLib pkg_descr $ \_ ->
+     LHC  -> do withLib pkg_descr $
                   LHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
-                withExe pkg_descr $ \_ ->
+                withExe pkg_descr $
                   LHC.installExe flags lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
-     JHC  -> do withLib pkg_descr $ JHC.installLib verbosity libPref buildPref pkg_descr
-                withExe pkg_descr $ JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
+     JHC  -> do withLib pkg_descr $
+                  JHC.installLib verbosity libPref buildPref pkg_descr
+                withExe pkg_descr $
+                  JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
      Hugs -> do
        let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
        let scratchPref = scratchDir lbi
        Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref (progPrefixPref, progSuffixPref) pkg_descr
      NHC  -> do withLib pkg_descr $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)
                 withExe pkg_descr $ NHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref)
-     UHC  -> do withLib pkg_descr $ \ _ -> UHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
+     UHC  -> do withLib pkg_descr $ UHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
      _    -> die ("only installing with GHC, JHC, Hugs or nhc98 is implemented")
   return ()
   -- register step should be performed by caller.
