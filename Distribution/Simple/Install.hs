@@ -74,6 +74,8 @@ import System.FilePath
          ( takeFileName, takeDirectory, (</>), isAbsolute )
 
 import Distribution.Verbosity
+import Distribution.Text
+         ( display )
 
 -- |Perform the \"@.\/setup install@\" and \"@.\/setup copy@\"
 -- actions.  Move files into place based on the prefix argument.  FIX:
@@ -168,7 +170,9 @@ install pkg_descr lbi flags = do
      NHC  -> do withLib pkg_descr $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)
                 withExe pkg_descr $ NHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref)
      UHC  -> do withLib pkg_descr $ UHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
-     _    -> die ("only installing with GHC, JHC, Hugs or nhc98 is implemented")
+     _    -> die $ "installing with "
+                ++ display (compilerFlavor (compiler lbi))
+                ++ " is not implemented"
   return ()
   -- register step should be performed by caller.
 
