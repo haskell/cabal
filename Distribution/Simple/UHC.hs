@@ -62,7 +62,6 @@ import Distribution.Simple.Compiler as C
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.PackageIndex
 import Distribution.Simple.Program
-import Distribution.Simple.Setup
 import Distribution.Simple.Utils
 import Distribution.Text
 import Distribution.Verbosity
@@ -220,13 +219,12 @@ uhcPackageDbOptions user system db = map (\ x -> "--pkg-searchpath=" ++ x)
 -- -----------------------------------------------------------------------------
 -- Installation
 
-installLib :: CopyFlags -> LocalBuildInfo
+installLib :: Verbosity -> LocalBuildInfo
            -> FilePath -> FilePath -> FilePath
            -> PackageDescription -> Library -> IO ()
-installLib flags _lbi targetDir _dynlibTargetDir builtDir pkg _library = do
+installLib verbosity _lbi targetDir _dynlibTargetDir builtDir pkg _library = do
     -- putStrLn $ "dest:  " ++ targetDir
     -- putStrLn $ "built: " ++ builtDir
-    let verbosity  = fromFlag (copyVerbosity flags)
     installDirectoryContents verbosity (builtDir </> display (packageId pkg)) targetDir
 
 -- currently hardcoded UHC code generator and variant to use

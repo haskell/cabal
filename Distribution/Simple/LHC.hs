@@ -69,8 +69,6 @@ module Distribution.Simple.LHC (
         ghcVerbosityOptions
  ) where
 
-import Distribution.Simple.Setup
-         ( CopyFlags(..), fromFlag )
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
          , Library(..), libModules, hcOptions )
@@ -694,7 +692,7 @@ mkGHCiLibName lib = "HS" ++ display lib <.> "o"
 -- Installing
 
 -- |Install executables for GHC.
-installExe :: CopyFlags -- ^verbosity
+installExe :: Verbosity
            -> LocalBuildInfo
            -> InstallDirs FilePath -- ^Where to copy the files to
            -> FilePath  -- ^Build location
@@ -702,9 +700,8 @@ installExe :: CopyFlags -- ^verbosity
            -> PackageDescription
            -> Executable
            -> IO ()
-installExe flags lbi installDirs buildPref (progprefix, progsuffix) _pkg exe = do
-  let verbosity = fromFlag (copyVerbosity flags)
-      binDir = bindir installDirs
+installExe verbosity lbi installDirs buildPref (progprefix, progsuffix) _pkg exe = do
+  let binDir = bindir installDirs
   createDirectoryIfMissingVerbose verbosity True binDir
   let exeFileName = exeName exe <.> exeExtension
       fixedExeBaseName = progprefix ++ exeName exe ++ progsuffix
@@ -733,7 +730,7 @@ stripExe verbosity lbi name path = when (stripExes lbi) $
        _   -> []
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
-installLib    :: CopyFlags -- ^verbosity
+installLib    :: Verbosity
               -> LocalBuildInfo
               -> FilePath  -- ^install location
               -> FilePath  -- ^install location for dynamic librarys
@@ -741,7 +738,7 @@ installLib    :: CopyFlags -- ^verbosity
               -> PackageDescription
               -> Library
               -> IO ()
-installLib flags lbi targetDir dynlibTargetDir builtDir pkg lib = do
+installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib = do
   -- copy .hi files over:
   let copy src dst n = do
         createDirectoryIfMissingVerbose verbosity True dst
@@ -781,7 +778,6 @@ installLib flags lbi targetDir dynlibTargetDir builtDir pkg lib = do
     ifGHCi    = when (hasLib && withGHCiLib    lbi)
     ifShared  = when (hasLib && withSharedLib  lbi)
 
-    verbosity = fromFlag (copyVerbosity flags)
     runLhc    = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
 
 -- | use @ranlib@ or @ar -s@ to build an index. This is necessary on systems
