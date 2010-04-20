@@ -72,7 +72,7 @@ module Distribution.Simple.LHC (
 import Distribution.Simple.Setup
          ( CopyFlags(..), fromFlag )
 import Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
+         ( PackageDescription(..), BuildInfo(..), Executable(..)
          , Library(..), libModules, hcOptions )
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo
@@ -700,20 +700,20 @@ installExe :: CopyFlags -- ^verbosity
            -> FilePath  -- ^Build location
            -> (FilePath, FilePath)  -- ^Executable (prefix,suffix)
            -> PackageDescription
+           -> Executable
            -> IO ()
-installExe flags lbi installDirs buildPref (progprefix, progsuffix) pkg_descr
-    = do let verbosity = fromFlag (copyVerbosity flags)
-             binDir = bindir installDirs
-         createDirectoryIfMissingVerbose verbosity True binDir
-         withExe pkg_descr $ \Executable { exeName = e } -> do
-             let exeFileName = e <.> exeExtension
-                 fixedExeBaseName = progprefix ++ e ++ progsuffix
-                 installBinary dest = do
-                     installExecutableFile verbosity
-                       (buildPref </> e </> exeFileName)
-                       (dest <.> exeExtension)
-                     stripExe verbosity lbi exeFileName (dest <.> exeExtension)
-             installBinary (binDir </> fixedExeBaseName)
+installExe flags lbi installDirs buildPref (progprefix, progsuffix) _pkg exe = do
+  let verbosity = fromFlag (copyVerbosity flags)
+      binDir = bindir installDirs
+  createDirectoryIfMissingVerbose verbosity True binDir
+  let exeFileName = exeName exe <.> exeExtension
+      fixedExeBaseName = progprefix ++ exeName exe ++ progsuffix
+      installBinary dest = do
+          installExecutableFile verbosity
+            (buildPref </> exeName exe </> exeFileName)
+            (dest <.> exeExtension)
+          stripExe verbosity lbi exeFileName (dest <.> exeExtension)
+  installBinary (binDir </> fixedExeBaseName)
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripExe verbosity lbi name path = when (stripExes lbi) $
@@ -738,32 +738,33 @@ installLib    :: CopyFlags -- ^verbosity
               -> FilePath  -- ^install location
               -> FilePath  -- ^install location for dynamic librarys
               -> FilePath  -- ^Build location
-              -> PackageDescription -> IO ()
-installLib flags lbi targetDir dynlibTargetDir builtDir
-              pkg@PackageDescription{library=Just lib} = do
-        -- copy .hi files over:
-        let copy src dst n = do
-              createDirectoryIfMissingVerbose verbosity True dst
-              installOrdinaryFile verbosity (src </> n) (dst </> n)
-            copyModuleFiles ext =
-              findModuleFiles [builtDir] [ext] (libModules lib)
-                >>= installOrdinaryFiles verbosity targetDir
-        ifVanilla $ copyModuleFiles "hi"
-        ifProf    $ copyModuleFiles "p_hi"
-        hcrFiles <- findModuleFiles (builtDir : hsSourceDirs (libBuildInfo lib)) ["hcr"] (libModules lib)
-        flip mapM_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["install", srcBase </> srcFile]
+              -> PackageDescription
+              -> Library
+              -> IO ()
+installLib flags lbi targetDir dynlibTargetDir builtDir pkg lib = do
+  -- copy .hi files over:
+  let copy src dst n = do
+        createDirectoryIfMissingVerbose verbosity True dst
+        installOrdinaryFile verbosity (src </> n) (dst </> n)
+      copyModuleFiles ext =
+        findModuleFiles [builtDir] [ext] (libModules lib)
+          >>= installOrdinaryFiles verbosity targetDir
+  ifVanilla $ copyModuleFiles "hi"
+  ifProf    $ copyModuleFiles "p_hi"
+  hcrFiles <- findModuleFiles (builtDir : hsSourceDirs (libBuildInfo lib)) ["hcr"] (libModules lib)
+  flip mapM_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["install", srcBase </> srcFile]
 
-        -- copy the built library files over:
-        ifVanilla $ copy builtDir targetDir vanillaLibName
-        ifProf    $ copy builtDir targetDir profileLibName
-        ifGHCi    $ copy builtDir targetDir ghciLibName
-        ifShared  $ copy builtDir dynlibTargetDir sharedLibName
+  -- copy the built library files over:
+  ifVanilla $ copy builtDir targetDir vanillaLibName
+  ifProf    $ copy builtDir targetDir profileLibName
+  ifGHCi    $ copy builtDir targetDir ghciLibName
+  ifShared  $ copy builtDir dynlibTargetDir sharedLibName
 
-        -- run ranlib if necessary:
-        ifVanilla $ updateLibArchive verbosity lbi
-                                     (targetDir </> vanillaLibName)
-        ifProf    $ updateLibArchive verbosity lbi
-                                     (targetDir </> profileLibName)
+  -- run ranlib if necessary:
+  ifVanilla $ updateLibArchive verbosity lbi
+                               (targetDir </> vanillaLibName)
+  ifProf    $ updateLibArchive verbosity lbi
+                               (targetDir </> profileLibName)
 
   where
     vanillaLibName = mkLibName pkgid
@@ -782,9 +783,6 @@ installLib flags lbi targetDir dynlibTargetDir builtDir
 
     verbosity = fromFlag (copyVerbosity flags)
     runLhc    = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
-
-installLib _ _ _ _ _ PackageDescription{library=Nothing}
-    = die $ "Internal Error. installLibGHC called with no library."
 
 -- | use @ranlib@ or @ar -s@ to build an index. This is necessary on systems
 -- like MacOS X. If we can't find those, don't worry too much about it.
