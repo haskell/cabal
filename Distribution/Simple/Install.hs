@@ -152,13 +152,13 @@ install pkg_descr lbi flags = do
 
   case compilerFlavor (compiler lbi) of
      GHC  -> do withLib pkg_descr $
-                  GHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
+                  GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $
-                  GHC.installExe flags lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
+                  GHC.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
      LHC  -> do withLib pkg_descr $
-                  LHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
+                  LHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
                 withExe pkg_descr $
-                  LHC.installExe flags lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
+                  LHC.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
      JHC  -> do withLib pkg_descr $
                   JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $
@@ -169,7 +169,7 @@ install pkg_descr lbi flags = do
        Hugs.install verbosity libPref progPref binPref targetProgPref scratchPref (progPrefixPref, progSuffixPref) pkg_descr
      NHC  -> do withLib pkg_descr $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)
                 withExe pkg_descr $ NHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref)
-     UHC  -> do withLib pkg_descr $ UHC.installLib flags lbi libPref dynlibPref buildPref pkg_descr
+     UHC  -> do withLib pkg_descr $ UHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
      _    -> die $ "installing with "
                 ++ display (compilerFlavor (compiler lbi))
                 ++ " is not implemented"
