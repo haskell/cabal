@@ -845,7 +845,7 @@ constructCcCmdLine lbi bi clbi pref filename verbosity profiling
 ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
              -> FilePath -> [String]
 ghcCcOptions lbi bi clbi odir
-     =  ["-I" ++ dir | dir <- PD.includeDirs bi]
+     =  ["-I" ++ dir | dir <- odir : PD.includeDirs bi]
      ++ ghcPackageDbOptions (withPackageDB lbi)
      ++ ghcPackageFlags lbi clbi
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
