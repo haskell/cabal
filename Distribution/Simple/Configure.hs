@@ -100,6 +100,8 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
     , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId )
+import Distribution.Simple.BuildPaths
+    ( autogenModulesDir )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
     , intercalate, cabalVersion, cabalBootstrapping
@@ -826,6 +828,7 @@ checkForeignDeps pkg lbi verbosity = do
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
         commonCppArgs = hcDefines (compiler lbi)
+                     ++ [ "-I" ++ autogenModulesDir lbi ]
                      ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
                      ++ ["-I."]
                      ++ collectField PD.cppOptions
