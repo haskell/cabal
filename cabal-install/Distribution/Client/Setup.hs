@@ -93,6 +93,7 @@ data GlobalFlags = GlobalFlags {
     globalRemoteRepos    :: [RemoteRepo],     -- ^Available Hackage servers.
     globalCacheDir       :: Flag FilePath,
     globalLocalRepos     :: [FilePath],
+    globalLogsDir        :: Flag FilePath,
     globalWorldFile      :: Flag FilePath
   }
 
@@ -104,6 +105,7 @@ defaultGlobalFlags  = GlobalFlags {
     globalRemoteRepos    = [],
     globalCacheDir       = mempty,
     globalLocalRepos     = mempty,
+    globalLogsDir        = mempty,
     globalWorldFile      = mempty
   }
 
@@ -155,6 +157,11 @@ globalCommand = CommandUI {
          globalLocalRepos (\v flags -> flags { globalLocalRepos = v })
          (reqArg' "DIR" (\x -> [x]) id)
 
+      ,option [] ["logs-dir"]
+         "The location to put log files"
+         globalLogsDir (\v flags -> flags { globalLogsDir = v })
+         (reqArgFlag "DIR")
+
       ,option [] ["world-file"]
          "The location of the world file"
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
@@ -170,6 +177,7 @@ instance Monoid GlobalFlags where
     globalRemoteRepos    = mempty,
     globalCacheDir       = mempty,
     globalLocalRepos     = mempty,
+    globalLogsDir        = mempty,
     globalWorldFile      = mempty
   }
   mappend a b = GlobalFlags {
@@ -179,6 +187,7 @@ instance Monoid GlobalFlags where
     globalRemoteRepos    = combine globalRemoteRepos,
     globalCacheDir       = combine globalCacheDir,
     globalLocalRepos     = combine globalLocalRepos,
+    globalLogsDir        = combine globalLogsDir,
     globalWorldFile      = combine globalWorldFile
   }
     where combine field = field a `mappend` field b
