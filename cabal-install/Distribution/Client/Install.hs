@@ -60,10 +60,11 @@ import Distribution.Client.IndexUtils as IndexUtils
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
-         ( ConfigFlags(..), configureCommand, filterConfigureFlags
+         ( GlobalFlags(..)
+         , ConfigFlags(..), configureCommand, filterConfigureFlags
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
-         ( defaultLogsDir, defaultCabalDir )
+         ( defaultCabalDir )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Available
          ( UnresolvedDependency(..), AvailablePackage(..)
@@ -140,20 +141,21 @@ install, upgrade
   -> [Repo]
   -> Compiler
   -> ProgramConfiguration
+  -> GlobalFlags
   -> ConfigFlags
   -> ConfigExFlags
   -> InstallFlags
   -> [UnresolvedDependency]
   -> IO ()
 install verbosity packageDB repos comp conf
-  configFlags configExFlags installFlags deps =
+  globalFlags configFlags configExFlags installFlags deps =
 
     installWithPlanner verbosity context planner
 
   where
     context :: InstallContext
     context = (packageDB, repos, comp, conf,
-               configFlags, configExFlags, installFlags)
+               globalFlags, configFlags, configExFlags, installFlags)
 
     planner :: Planner
     planner | null deps = planLocalPackage verbosity
@@ -162,14 +164,14 @@ install verbosity packageDB repos comp conf
                             comp configFlags configExFlags installFlags deps
 
 upgrade verbosity packageDB repos comp conf
-  configFlags configExFlags installFlags deps =
+  globalFlags configFlags configExFlags installFlags deps =
 
     installWithPlanner verbosity context planner
 
   where
     context :: InstallContext
     context = (packageDB, repos, comp, conf,
-               configFlags, configExFlags, installFlags)
+               globalFlags, configFlags, configExFlags, installFlags)
 
     planner :: Planner
     planner | null deps = planUpgradePackages
@@ -185,6 +187,7 @@ type InstallContext = ( PackageDBStack
                       , [Repo]
                       , Compiler
                       , ProgramConfiguration
+                      , GlobalFlags
                       , ConfigFlags
                       , ConfigExFlags
                       , InstallFlags )
@@ -196,7 +199,7 @@ installWithPlanner :: Verbosity
                    -> Planner
                    -> IO ()
 installWithPlanner verbosity
-  context@(packageDBs, repos, comp, conf, _, _, installFlags) planner = do
+  context@(packageDBs, repos, comp, conf, _, _, _, installFlags) planner = do
 
   installed   <- getInstalledPackages verbosity comp packageDBs conf
   available   <- getAvailablePackages verbosity repos
@@ -412,9 +415,8 @@ postInstallActions :: Verbosity
                    -> InstallPlan
                    -> IO ()
 postInstallActions verbosity
-  (packageDBs, _, comp, conf, configFlags, _, installFlags) installPlan = do
-
-  logsDir <- defaultLogsDir --FIXME: get this from global flags
+  (packageDBs, _, comp, conf, globalFlags, configFlags, _, installFlags)
+  installPlan = do
 
   let buildReports = BuildReports.fromInstallPlan installPlan
   BuildReports.storeLocal (installSummaryFile installFlags) buildReports
@@ -432,6 +434,7 @@ postInstallActions verbosity
 
   where
     reportingLevel = fromFlag (installBuildReports installFlags)
+    logsDir        = fromFlag (globalLogsDir globalFlags)
 
 storeDetailedBuildReports :: Verbosity -> FilePath
                           -> [(BuildReports.BuildReport, Repo)] -> IO ()
@@ -596,10 +599,9 @@ performInstallations :: Verbosity
                      -> InstallPlan
                      -> IO InstallPlan
 performInstallations verbosity
-  (packageDBs, _, comp, conf, configFlags, configExFlags, installFlags)
+  (packageDBs, _, comp, conf,
+   globalFlags, configFlags, configExFlags, installFlags)
   installed installPlan = do
-
-  logsDir <- defaultLogsDir --FIXME: get this from global flags
 
   executeInstallPlan installPlan $ \cpkg ->
     installConfiguredPackage platform compid configFlags
@@ -607,7 +609,7 @@ performInstallations verbosity
       installAvailablePackage verbosity (packageId pkg) src $ \mpath ->
         installUnpackedPackage verbosity (setupScriptOptions installed)
                                miscOptions configFlags' installFlags
-                               compid pkg mpath (useLogFile logsDir)
+                               compid pkg mpath useLogFile
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -636,8 +638,9 @@ performInstallations verbosity
       useWorkingDir    = Nothing
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
-    useLogFile :: FilePath -> Maybe (PackageIdentifier -> FilePath)
-    useLogFile logsDir = fmap substLogFileName logFileTemplate
+    logsDir        = fromFlag (globalLogsDir globalFlags)
+    useLogFile :: Maybe (PackageIdentifier -> FilePath)
+    useLogFile = fmap substLogFileName logFileTemplate
       where
         logFileTemplate :: Maybe PathTemplate
         logFileTemplate --TODO: separate policy from mechanism

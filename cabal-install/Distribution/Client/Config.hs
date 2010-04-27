@@ -39,24 +39,22 @@ import Distribution.Client.Setup
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
          , installDirsOptions
-         , Flag, toFlag, flagToMaybe, fromFlagOrDefault, flagToList )
+         , Flag, toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
-         , PathTemplate, toPathTemplate, fromPathTemplate )
+         , PathTemplate, toPathTemplate )
 import Distribution.ParseUtils
          ( FieldDescr(..), liftField
          , ParseResult(..), locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
-         , simpleField, listField, parseFilePathQ, showFilePath, parseTokenQ )
+         , simpleField, listField, parseFilePathQ, parseTokenQ )
 import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
 import qualified Distribution.Text as Text
          ( Text(..) )
-import Distribution.ReadE
-         ( readP_to_E )
 import Distribution.Simple.Command
          ( CommandUI(commandOptions), commandDefaultFlags, ShowOrParseArgs(..)
-         , viewAsFieldDescr, OptionField, option, reqArg )
+         , viewAsFieldDescr )
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Utils
@@ -157,6 +155,7 @@ updateInstallDirs userInstallFlag
 baseSavedConfig :: IO SavedConfig
 baseSavedConfig = do
   userPrefix <- defaultCabalDir
+  logsDir    <- defaultLogsDir
   worldFile  <- defaultWorldFile
   return mempty {
     savedConfigureFlags  = mempty {
@@ -168,6 +167,7 @@ baseSavedConfig = do
       prefix             = toFlag (toPathTemplate userPrefix)
     },
     savedGlobalFlags = mempty {
+      globalLogsDir      = toFlag logsDir,
       globalWorldFile    = toFlag worldFile
     }
   }
@@ -195,6 +195,8 @@ initialSavedConfig = do
     }
   }
 
+--TODO: misleading, there's no way to override this default
+--      either make it possible or rename to simply getCabalDir.
 defaultCabalDir :: IO FilePath
 defaultCabalDir = getAppUserDataDirectory "cabal"
 

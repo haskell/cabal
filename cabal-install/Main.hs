@@ -222,7 +222,7 @@ installAction (configFlags, configExFlags, installFlags)
   (comp, conf) <- configCompilerAux configFlags'
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf configFlags' configExFlags' installFlags'
+          comp conf globalFlags' configFlags' configExFlags' installFlags'
           (uDepsFromWorld ++ uDepsNoWorld)
   unless oneShot $ World.insert verbosity dryRun worldFile uDepsNoWorld 
 
@@ -282,7 +282,7 @@ upgradeAction (configFlags, configExFlags, installFlags)
   (comp, conf) <- configCompilerAux configFlags'
   upgrade verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf configFlags' configExFlags' installFlags'
+          comp conf globalFlags' configFlags' configExFlags' installFlags'
           [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
           | pkg <- pkgs ]
 
