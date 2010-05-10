@@ -48,10 +48,9 @@ import System.IO.Error( isDoesNotExistError, )
 import qualified Data.ByteString.Lazy.Char8 as B
 import Prelude hiding ( getContents )
 
-
--- | Adds packages to the world file; creates the file if it doesn't 
--- exist yet. Flag assignments for a package are updated if already 
--- present. IO errors are non-fatal.
+-- | Adds packages to the world file; creates the file if it doesn't
+-- exist yet. Version constraints and flag assignments for a package are
+-- updated if already present. IO errors are non-fatal.
 insert :: Verbosity -> Bool -> FilePath -> [UnresolvedDependency] -> IO ()
 insert = modifyWorld $ unionBy equalUDep
 
@@ -64,7 +63,8 @@ delete = modifyWorld $ flip (deleteFirstsBy equalUDep)
 -- | UnresolvedDependency values are considered equal if they refer to
 -- the same package, i.e., we don't care about differing versions or flags.
 equalUDep :: UnresolvedDependency -> UnresolvedDependency -> Bool
-equalUDep u1 u2 = dependency u1 == dependency u2
+equalUDep (UnresolvedDependency (Dependency pkg1 _) _)
+          (UnresolvedDependency (Dependency pkg2 _) _) = pkg1 == pkg2
 
 -- | Modifies the world file by applying an update-function ('unionBy'
 -- for 'insert', 'deleteFirstsBy' for 'delete') to the given list of
