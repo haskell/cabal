@@ -133,6 +133,12 @@ import Distribution.Simple.BuildPaths ( exeExtension )
 -- * Top level user actions
 -- ------------------------------------------------------------
 
+-- | An installation target given by the user. At the moment this
+-- is just a named package, possibly with a version constraint.
+-- It should be generalised to handle other targets like http or dirs.
+--
+type InstallTarget = UnresolvedDependency
+
 -- | Installs the packages needed to satisfy a list of dependencies.
 --
 install, upgrade
@@ -145,12 +151,12 @@ install, upgrade
   -> ConfigFlags
   -> ConfigExFlags
   -> InstallFlags
-  -> [UnresolvedDependency]
+  -> [InstallTarget]
   -> IO ()
 install verbosity packageDB repos comp conf
-  globalFlags configFlags configExFlags installFlags deps =
+  globalFlags configFlags configExFlags installFlags targets =
 
-    installWithPlanner verbosity context planner
+    installWithPlanner verbosity context planner targets
 
   where
     context :: InstallContext
@@ -158,15 +164,19 @@ install verbosity packageDB repos comp conf
                globalFlags, configFlags, configExFlags, installFlags)
 
     planner :: Planner
-    planner | null deps = planLocalPackage verbosity
-                            comp configFlags configExFlags
-            | otherwise = planRepoPackages PreferLatestForSelected
-                            comp configFlags configExFlags installFlags deps
+    planner
+      | null targets = planLocalPackage verbosity
+                         comp configFlags configExFlags
+
+      | otherwise    = planRepoPackages PreferLatestForSelected
+                         comp globalFlags configFlags configExFlags
+                         installFlags targets
+
 
 upgrade verbosity packageDB repos comp conf
   globalFlags configFlags configExFlags installFlags deps =
 
-    installWithPlanner verbosity context planner
+    installWithPlanner verbosity context planner []
 
   where
     context :: InstallContext
@@ -177,7 +187,8 @@ upgrade verbosity packageDB repos comp conf
     planner | null deps = planUpgradePackages
                             comp configFlags configExFlags
             | otherwise = planRepoPackages PreferAllLatest
-                            comp configFlags configExFlags installFlags deps
+                            comp globalFlags configFlags configExFlags
+                            installFlags deps
 
 type Planner = PackageIndex InstalledPackage
             -> AvailablePackageDb
@@ -197,9 +208,11 @@ type InstallContext = ( PackageDBStack
 installWithPlanner :: Verbosity
                    -> InstallContext
                    -> Planner
+                   -> [UnresolvedDependency]
                    -> IO ()
 installWithPlanner verbosity
-  context@(packageDBs, repos, comp, conf, _, _, _, installFlags) planner = do
+  context@(packageDBs, repos, comp, conf, _, _, _, installFlags)
+  planner targets = do
 
   installed   <- getInstalledPackages verbosity comp packageDBs conf
   available   <- getAvailablePackages verbosity repos
@@ -213,7 +226,7 @@ installWithPlanner verbosity
 
   unless dryRun $
         performInstallations verbosity context installed installPlan
-    >>= postInstallActions verbosity context
+    >>= postInstallActions verbosity context targets
 
   where
     dryRun = fromFlag (installDryRun installFlags)
@@ -263,12 +276,14 @@ planLocalPackage verbosity comp configFlags configExFlags installed
 --
 planRepoPackages :: PackagesPreferenceDefault
                  -> Compiler
+                 -> GlobalFlags
                  -> ConfigFlags
                  -> ConfigExFlags
                  -> InstallFlags
                  -> [UnresolvedDependency]
                  -> Planner
-planRepoPackages defaultPref comp configFlags configExFlags installFlags
+planRepoPackages defaultPref comp
+  globalFlags configFlags configExFlags installFlags
   deps installed (AvailablePackageDb available availablePrefs) = do
 
   deps' <- IndexUtils.disambiguateDependencies available deps
@@ -412,11 +427,12 @@ printDryRun verbosity installed plan = case unfoldr next plan of
 --
 postInstallActions :: Verbosity
                    -> InstallContext
+                   -> [InstallTarget]
                    -> InstallPlan
                    -> IO ()
 postInstallActions verbosity
   (packageDBs, _, comp, conf, globalFlags, configFlags, _, installFlags)
-  installPlan = do
+  targets installPlan = do
 
   let buildReports = BuildReports.fromInstallPlan installPlan
   BuildReports.storeLocal (installSummaryFile installFlags) buildReports
