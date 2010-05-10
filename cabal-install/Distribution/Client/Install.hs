@@ -1,10 +1,12 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Install
--- Copyright   :  (c) David Himmelstrup 2005
+-- Copyright   :  (c) 2005 David Himmelstrup
+--                    2007 Bjorn Bringert
+--                    2007-2010 Duncan Coutts
 -- License     :  BSD-like
 --
--- Maintainer  :  lemmih@gmail.com
+-- Maintainer  :  cabal-devel@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
 --
