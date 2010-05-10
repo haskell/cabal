@@ -153,7 +153,12 @@ dependencyResolver
   -> [PackageName]
   -> Progress String String InstallPlan
 dependencyResolver resolver platform comp installed available
-                            pref constraints targets =
+                            pref constraints targets
+    -- TODO: the top down resolver chokes on the base constraints
+    -- below when there are no targets and thus no dep on base.
+    -- Need to refactor contraints separate from needing packages.
+  | null targets = return (toPlan [])
+  | otherwise    =
   let installed' = hideBrokenPackages installed
       -- If the user is not explicitly asking to upgrade base then lets
       -- prevent that from happening accidentally since it is usually not what
