@@ -129,6 +129,20 @@ import Distribution.Verbosity as Verbosity
          ( Verbosity, showForCabal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
+--TODO:
+-- * add --upgrade-deps flag
+-- * add --only-deps flag
+-- * eliminate upgrade, replaced by --upgrade-deps and world target
+-- * assign flags to packages individually
+--   * complain about flags that do not apply to any package given as target
+--     so flags do not apply to dependencies, only listed, can use flag
+--     constraints for dependencies
+--   * only record applicable flags in world file
+-- * allow flag constraints
+-- * allow installed constraints
+-- * allow flag and installed preferences
+-- * change world file to use cabal section syntax
+--   * allow persistent configure flags for each package individually
 
 -- ------------------------------------------------------------
 -- * Top level user actions
