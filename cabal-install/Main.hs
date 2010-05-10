@@ -11,7 +11,7 @@
 -- Entry point to the default cabal-install front-end.
 -----------------------------------------------------------------------------
 
-module Main where
+module Main (main) where
 
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, globalRepos
@@ -112,9 +112,7 @@ mainWorker args = topHandler $
       putStr $ "\nYou can edit the cabal configuration file to set defaults:\n"
             ++ "  " ++ configFile ++ "\n"
     printOptionsList = putStr . unlines
-    printErrors errs = do
-      putStr (concat (intersperse "\n" errs))
-      exitFailure
+    printErrors errs = die $ concat (intersperse "\n" errs)
     printNumericVersion = putStrLn $ display Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
                                   ++ display Paths_cabal_install.version
@@ -351,6 +349,8 @@ initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
 initAction flags _extraArgs _globalFlags = do
   initCabal flags
 
+-- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
+--
 win32SelfUpgradeAction :: [String] -> IO ()
 win32SelfUpgradeAction (pid:path:rest) =
   Win32SelfUpgrade.deleteOldExeFile verbosity (read pid) path
