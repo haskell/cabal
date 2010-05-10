@@ -57,7 +57,6 @@ import Distribution.Client.SrcDist          (sdist)
 import Distribution.Client.Unpack           (unpack)
 import Distribution.Client.Init             (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
-import qualified Distribution.Client.World as World
 
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack )
@@ -203,28 +202,12 @@ installAction (configFlags, configExFlags, installFlags)
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-      pkgsFlagAss    = configConfigurationsFlags configFlags'
-      pkgsNoWorld    = filter (/=World.worldPkg) pkgs 
-      -- User-specified packages except 'world':
-      uDepsNoWorld   = [ UnresolvedDependency pkg pkgsFlagAss
-                     | pkg <- pkgsNoWorld ]
-      worldFile      = fromFlag $ globalWorldFile globalFlags'
-      dryRun         = fromFlagOrDefault False (installDryRun installFlags')
-      oneShot        = fromFlagOrDefault False (installOneShot installFlags')
-
-  -- Read packages from the world file if requested:
-  uDepsFromWorld <- if pkgsNoWorld /= pkgs && not oneShot
-    then do 
-      unless (null pkgsFlagAss) $ 
-        die "Package world does not take any flags."
-      World.getContents worldFile
-    else return []
   (comp, conf) <- configCompilerAux configFlags'
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags'
-          (uDepsFromWorld ++ uDepsNoWorld)
-  unless oneShot $ World.insert verbosity dryRun worldFile uDepsNoWorld 
+          [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
+          | pkg <- pkgs ]
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do

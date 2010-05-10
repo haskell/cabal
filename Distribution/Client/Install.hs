@@ -16,7 +16,7 @@ module Distribution.Client.Install (
   ) where
 
 import Data.List
-         ( unfoldr, find, nub, sort )
+         ( unfoldr, find, nub, sort, partition )
 import Data.Maybe
          ( isJust, fromMaybe )
 import qualified Data.Map as Map
@@ -83,6 +83,7 @@ import qualified Distribution.Client.BuildReports.Storage as BuildReports
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
+import qualified Distribution.Client.World as World
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
@@ -286,7 +287,8 @@ planRepoPackages defaultPref comp
   globalFlags configFlags configExFlags installFlags
   deps installed (AvailablePackageDb available availablePrefs) = do
 
-  deps' <- IndexUtils.disambiguateDependencies available deps
+  deps' <- addWorldPackages deps
+       >>= IndexUtils.disambiguateDependencies available
 
   let installed'
         | fromFlag (installReinstall installFlags)
@@ -303,6 +305,19 @@ planRepoPackages defaultPref comp
     hideGivenDeps pkgs index =
       foldr PackageIndex.deletePackageName index
         [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
+
+    addWorldPackages :: [UnresolvedDependency] -> IO [UnresolvedDependency]
+    addWorldPackages targets = case partition World.isWorldTarget targets of
+      ([], _)               -> return targets
+      (world, otherTargets) -> do
+        unless (all World.isGoodWorldTarget world) $
+          die $ "The virtual package 'world' does not take any version "
+             ++ "or configuration flags."
+        worldTargets <- World.getContents worldFile
+        --TODO: should we warn if there are no world targets?
+        return (otherTargets ++ worldTargets)
+      where
+        worldFile = fromFlag $ globalWorldFile globalFlags
 
 
 planUpgradePackages :: Compiler
@@ -423,6 +438,7 @@ printDryRun verbosity installed plan = case unfoldr next plan of
 --  * build reporting, local and remote
 --  * symlinking binaries
 --  * updating indexes
+--  * updating world file
 --  * error reporting
 --
 postInstallActions :: Verbosity
@@ -433,6 +449,9 @@ postInstallActions :: Verbosity
 postInstallActions verbosity
   (packageDBs, _, comp, conf, globalFlags, configFlags, _, installFlags)
   targets installPlan = do
+
+  unless oneShot $
+    World.insert verbosity dryRun worldFile targets'
 
   let buildReports = BuildReports.fromInstallPlan installPlan
   BuildReports.storeLocal (installSummaryFile installFlags) buildReports
@@ -451,6 +470,10 @@ postInstallActions verbosity
   where
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
+    dryRun         = fromFlag (installDryRun installFlags)
+    oneShot        = fromFlag (installOneShot installFlags)
+    worldFile      = fromFlag $ globalWorldFile globalFlags
+    targets'       = filter (not . World.isWorldTarget) targets
 
 storeDetailedBuildReports :: Verbosity -> FilePath
                           -> [(BuildReports.BuildReport, Repo)] -> IO ()
