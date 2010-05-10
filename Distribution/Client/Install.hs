@@ -467,7 +467,7 @@ postInstallActions verbosity
   targets installPlan = do
 
   unless oneShot $
-    World.insert verbosity dryRun worldFile targets'
+    World.insert verbosity worldFile targets'
 
   let buildReports = BuildReports.fromInstallPlan installPlan
   BuildReports.storeLocal (installSummaryFile installFlags) buildReports
@@ -486,7 +486,6 @@ postInstallActions verbosity
   where
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
-    dryRun         = fromFlag (installDryRun installFlags)
     oneShot        = fromFlag (installOneShot installFlags)
     worldFile      = fromFlag $ globalWorldFile globalFlags
     targets'       = filter (not . World.isWorldTarget) targets

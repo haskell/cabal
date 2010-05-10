@@ -43,7 +43,6 @@ import Distribution.Verbosity ( Verbosity )
 import Distribution.Simple.Utils ( die, info, chattyTry )
 import Data.List( unionBy, deleteFirstsBy, nubBy )
 import Data.Maybe( isJust, fromJust )
-import Control.Monad( unless )
 import System.IO.Error( isDoesNotExistError, )
 import qualified Data.ByteString.Lazy.Char8 as B
 import Prelude hiding ( getContents )
@@ -51,13 +50,13 @@ import Prelude hiding ( getContents )
 -- | Adds packages to the world file; creates the file if it doesn't
 -- exist yet. Version constraints and flag assignments for a package are
 -- updated if already present. IO errors are non-fatal.
-insert :: Verbosity -> Bool -> FilePath -> [UnresolvedDependency] -> IO ()
+insert :: Verbosity -> FilePath -> [UnresolvedDependency] -> IO ()
 insert = modifyWorld $ unionBy equalUDep
 
 -- | Removes packages from the world file.
 -- Note: Currently unused as there is no mechanism in Cabal (yet) to
 -- handle uninstalls. IO errors are non-fatal.
-delete :: Verbosity -> Bool -> FilePath -> [UnresolvedDependency] -> IO ()
+delete :: Verbosity -> FilePath -> [UnresolvedDependency] -> IO ()
 delete = modifyWorld $ flip (deleteFirstsBy equalUDep)
 
 -- | UnresolvedDependency values are considered equal if they refer to
@@ -75,12 +74,11 @@ modifyWorld :: ([UnresolvedDependency] -> [UnresolvedDependency]
                         -- the list of user packages are merged with
                         -- existing world packages.
             -> Verbosity
-            -> Bool                   -- ^ Dry-run?
             -> FilePath               -- ^ Location of the world file
             -> [UnresolvedDependency] -- ^ list of user supplied packages
             -> IO ()
-modifyWorld _ _         _      _     []   = return ()
-modifyWorld f verbosity dryRun world pkgs =
+modifyWorld _ _         _     []   = return ()
+modifyWorld f verbosity world pkgs =
   chattyTry "Error while updating world-file. " $ do
     pkgsOldWorld <- getContents world
     -- Filter out packages that are not in the world file:
@@ -89,11 +87,10 @@ modifyWorld f verbosity dryRun world pkgs =
     -- equivalence the awkward way:
     if not (all (`elem` pkgsOldWorld) pkgsNewWorld &&
             all (`elem` pkgsNewWorld) pkgsOldWorld)
-      then
-        unless dryRun $ do
-          writeFileAtomic world $ unlines
-              [ (display pkg) | pkg <- pkgsNewWorld]
-          info verbosity "Updating world file..."
+      then do
+        info verbosity "Updating world file..."
+        writeFileAtomic world $ unlines
+            [ (display pkg) | pkg <- pkgsNewWorld]
       else
         info verbosity "World file is already up to date."
 
