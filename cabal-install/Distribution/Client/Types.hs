@@ -102,8 +102,14 @@ instance Package AvailablePackage where packageId = packageInfoId
 
 data AvailablePackageSource =
 
-    -- | The unpacked package in the current dir
-    LocalUnpackedPackage
+    -- | An unpacked package in the given dir, or current dir
+    LocalUnpackedPackage (Maybe FilePath)
+
+    -- | A package as a tarball that's available as a local tarball
+  | LocalTarballPackage FilePath
+
+    -- | A package as a tarball from a remote URI
+  | RemoteTarballPackage URI
 
     -- | A package available as a tarball from a repository.
     --
@@ -115,8 +121,6 @@ data AvailablePackageSource =
   deriving Show
 
 --TODO:
---  * generalise local package to any local unpacked package, not just in the
---      current dir, ie add a FilePath param
 --  * add support for darcs and other SCM style remote repos with a local cache
 
 data LocalRepo = LocalRepo

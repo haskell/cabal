@@ -91,7 +91,7 @@ configure verbosity packageDBs repos comp conf
         configureCommand (const configFlags) extraArgs
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [pkg@(ConfiguredPackage (AvailablePackage _ _ LocalUnpackedPackage) _ _)] ->
+      [pkg@(ConfiguredPackage (AvailablePackage _ _ (LocalUnpackedPackage _)) _ _)] ->
         configurePackage verbosity
           (InstallPlan.planPlatform installPlan)
           (InstallPlan.planCompiler installPlan)
@@ -143,7 +143,7 @@ planLocalPackage verbosity comp configFlags configExFlags installed
       localPkg = AvailablePackage {
         packageInfoId                = packageId pkg,
         Available.packageDescription = pkg,
-        packageSource                = LocalUnpackedPackage
+        packageSource                = LocalUnpackedPackage Nothing
       }
       targets     = [packageName pkg]
       constraints = [PackageVersionConstraint (packageName pkg)
