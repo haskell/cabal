@@ -97,7 +97,9 @@ downloadIndex verbosity repo cacheDir = do
 -- |Returns @True@ if the package has already been fetched.
 isFetched :: AvailablePackage -> IO Bool
 isFetched (AvailablePackage pkgid _ source) = case source of
-  LocalUnpackedPackage    -> return True
+  LocalUnpackedPackage _  -> return True
+  LocalTarballPackage  _  -> return True
+  RemoteTarballPackage _  -> return False --TODO: ad-hoc download caching
   RepoTarballPackage repo -> doesFileExist (packageFile repo pkgid)
 
 -- |Fetch a package if we don't have it already.

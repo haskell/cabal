@@ -35,13 +35,19 @@ import Distribution.Client.Types(UnresolvedDependency(..),
                                  Repo, AvailablePackageSource(..),
                                  AvailablePackage(AvailablePackage),
                                  AvailablePackageDb(AvailablePackageDb))
-import Distribution.Client.Fetch(fetchPackage)
+import Distribution.Client.Fetch
+        ( fetchPackage )
+import Distribution.Client.HttpUtils
+        ( downloadURI )
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
     (getAvailablePackages, disambiguateDependencies)
 
 import System.Directory
-         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
+         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
+         , getTemporaryDirectory )
+import System.IO
+         ( openTempFile, hClose )
 import Control.Monad
          ( unless, when )
 import Data.Ord (comparing)
@@ -66,20 +72,33 @@ unpack flags repos deps
   unless (null prefix) $
          createDirectoryIfMissing True prefix
 
-  flip mapM_ pkgs $ \pkg ->
-      case pkg of
+  flip mapM_ pkgs $ \pkg -> case pkg of
 
-        Left (Dependency name ver) -> 
-            die $ "There is no available version of " ++ display name 
-                  ++ " that satisfies " ++ display ver
+    Left (Dependency name ver) ->
+      die $ "There is no available version of " ++ display name
+            ++ " that satisfies " ++ display ver
 
-        Right (AvailablePackage pkgid _ (RepoTarballPackage repo)) -> do
-            pkgPath <- fetchPackage verbosity repo pkgid
-            unpackPackage verbosity prefix pkgid pkgPath
+    Right (AvailablePackage pkgid _ (LocalTarballPackage tarballPath)) ->
+      unpackPackage verbosity prefix pkgid tarballPath
 
-        Right (AvailablePackage _ _ LocalUnpackedPackage) -> 
-            error "Distribution.Client.Unpack.unpack: the impossible happened."
-    where 
+    Right (AvailablePackage pkgid _ (RemoteTarballPackage tarballURL)) -> do
+      tmp <- getTemporaryDirectory
+      (tarballPath, hnd) <- openTempFile tmp (display pkgid)
+      hClose hnd
+      --TODO: perhaps we've already had to download this to a local cache
+      --      so we even know what package version it is. So might be able
+      --      to get it from the local cache rather than from remote.
+      downloadURI verbosity tarballURL tarballPath
+      unpackPackage verbosity prefix pkgid tarballPath
+
+    Right (AvailablePackage pkgid _ (RepoTarballPackage repo)) -> do
+      tarballPath <- fetchPackage verbosity repo pkgid
+      unpackPackage verbosity prefix pkgid tarballPath
+
+    Right (AvailablePackage _ _ (LocalUnpackedPackage _)) ->
+      error "Distribution.Client.Unpack.unpack: the impossible happened."
+
+    where
       verbosity = fromFlag (unpackVerbosity flags)
       prefix = fromFlagOrDefault "" (unpackDestDir flags)
       toUnresolved d = UnresolvedDependency d []
