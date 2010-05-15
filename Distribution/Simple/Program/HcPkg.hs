@@ -239,7 +239,7 @@ packageDbStackOpts dbstack = case dbstack of
   where
     specific (SpecificPackageDB db) = "--package-conf=" ++ db
     specific _ = ierror
-    ierror     = error "internal error: unexpected package db stack"
+    ierror     = error ("internal error: unexpected package db stack: " ++ show dbstack)
 
 packageDbOpts :: PackageDB -> String
 packageDbOpts GlobalPackageDB        = "--global"
