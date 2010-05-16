@@ -50,7 +50,7 @@ invocationAsShellScript
        ++ [ (case minput of
               Nothing    -> ""
               Just input -> "echo " ++ quote input ++ " | ")
-         ++ quote path ++ concatMap (\arg -> ' ':quote arg) args ]
+         ++ unwords (map quote $ path : args) ++ " \"$@\""]
 
   where
     quote :: String -> String
