@@ -237,11 +237,9 @@ installWithPlanner verbosity
   installed   <- getInstalledPackages verbosity comp packageDBs conf
   available   <- getAvailablePackages verbosity repos
 
-  progress    <- planner installed available
   notice verbosity "Resolving dependencies..."
-  installPlan <- either die return
-             =<< foldProgress (\message rest -> info verbosity message >> rest)
-                              (return . Left) (return . Right) progress
+  installPlan <- foldProgress logMsg die return =<< planner installed available
+
   printPlanMessages verbosity installed installPlan dryRun
 
   unless dryRun $
@@ -250,7 +248,7 @@ installWithPlanner verbosity
 
   where
     dryRun = fromFlag (installDryRun installFlags)
-
+    logMsg message rest = info verbosity message >> rest
 
 -- ------------------------------------------------------------
 -- * Installation planning

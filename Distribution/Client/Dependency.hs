@@ -119,8 +119,9 @@ resolveDependencies :: Platform
 resolveDependencies platform comp installed available
                     preferences constraints targets =
   foldProgress (flip const) Left Right $
-    resolveDependenciesWithProgress platform comp installed available
-                                    preferences constraints targets
+    resolveDependenciesWithProgress
+      platform comp installed available
+      preferences constraints targets
 
 resolveDependenciesWithProgress :: Platform
                                 -> CompilerId
@@ -130,30 +131,8 @@ resolveDependenciesWithProgress :: Platform
                                 -> [PackageConstraint]
                                 -> [PackageName]
                                 -> Progress String String InstallPlan
-resolveDependenciesWithProgress platform comp installed =
-  dependencyResolver defaultResolver platform comp installed
-
-hideBrokenPackages :: PackageFixedDeps p => PackageIndex p -> PackageIndex p
-hideBrokenPackages index =
-    check (null . PackageIndex.brokenPackages)
-  . foldr (PackageIndex.deletePackageId . packageId) index
-  . PackageIndex.reverseDependencyClosure index
-  . map (packageId . fst)
-  $ PackageIndex.brokenPackages index
-  where
-    check p x = assert (p x) x
-
-dependencyResolver
-  :: DependencyResolver
-  -> Platform -> CompilerId
-  -> PackageIndex InstalledPackage
-  -> PackageIndex AvailablePackage
-  -> PackagesPreference
-  -> [PackageConstraint]
-  -> [PackageName]
-  -> Progress String String InstallPlan
-dependencyResolver resolver platform comp installed available
-                            pref constraints targets
+resolveDependenciesWithProgress platform comp installed available
+                                pref constraints targets
     -- TODO: the top down resolver chokes on the base constraints
     -- below when there are no targets and thus no dep on base.
     -- Need to refactor contraints separate from needing packages.
@@ -171,8 +150,8 @@ dependencyResolver resolver platform comp installed available
         , not (null (PackageIndex.lookupPackageName installed pkgname)) ]
       preferences = interpretPackagesPreference (Set.fromList targets) pref
    in fmap toPlan
-    $ resolver platform comp installed' available
-               preferences (extraConstraints ++ constraints) targets
+    $ defaultResolver platform comp installed' available
+                      preferences (extraConstraints ++ constraints) targets
 
   where
     toPlan pkgs =
@@ -182,6 +161,16 @@ dependencyResolver resolver platform comp installed available
             "internal error: could not construct a valid install plan."
           : "The proposed (invalid) plan contained the following problems:"
           : map InstallPlan.showPlanProblem problems
+
+hideBrokenPackages :: PackageFixedDeps p => PackageIndex p -> PackageIndex p
+hideBrokenPackages index =
+    check (null . PackageIndex.brokenPackages)
+  . foldr (PackageIndex.deletePackageId . packageId) index
+  . PackageIndex.reverseDependencyClosure index
+  . map (packageId . fst)
+  $ PackageIndex.brokenPackages index
+  where
+    check p x = assert (p x) x
 
 -- | Give an interpretation to the global 'PackagesPreference' as
 --  specific per-package 'PackageVersionPreference'.
