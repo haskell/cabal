@@ -24,8 +24,10 @@ module Distribution.Client.Fetch (
 import Distribution.Client.Types
          ( UnresolvedDependency (..), AvailablePackage(..)
          , AvailablePackageSource(..), AvailablePackageDb(..)
-         , Repo(..), RemoteRepo(..), LocalRepo(..) )
-import Distribution.Client.Dependency
+         , Repo(..), RemoteRepo(..), LocalRepo(..)
+         , InstalledPackage )
+import Distribution.Client.PackageIndex (PackageIndex)
+import Distribution.Client.Dependency as Dependency
          ( resolveDependenciesWithProgress
          , dependencyConstraints, dependencyTargets
          , PackagesPreference(..), PackagesPreferenceDefault(..)
@@ -120,46 +122,74 @@ fetch :: Verbosity
       -> ProgramConfiguration
       -> [UnresolvedDependency]
       -> IO ()
+fetch verbosity _ _ _ _ [] =
+  notice verbosity "No packages requested. Nothing to do."
+
 fetch verbosity packageDBs repos comp conf deps = do
-  installed <- getInstalledPackages verbosity comp packageDBs conf
-  AvailablePackageDb available availablePrefs
-            <- getAvailablePackages verbosity repos
+
+  availableDb@(AvailablePackageDb available _)
+        <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
 
-  let -- Hide the packages given on the command line so that the dep resolver
-      -- will decide that they need fetching, even if they're already
-      -- installed. Sicne we want to get the source packages of things we might
-      -- have installed (but not have the sources for).
-      installed' = hideGivenDeps deps' installed
-      hideGivenDeps pkgs index =
-        foldr PackageIndex.deletePackageName index
-          [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
+  pkgs <- do
+      installed <- getInstalledPackages verbosity comp packageDBs conf
+      resolveWithDependencies verbosity comp installed availableDb deps'
 
-  let  progress = resolveDependenciesWithProgress
-                   buildPlatform (compilerId comp)
-                   installed' available
-                   (PackagesPreference PreferLatestForSelected
-                     [ PackageVersionPreference name ver
-                     | (name, ver) <- Map.toList availablePrefs ])
-                   (dependencyConstraints deps')
-                   (dependencyTargets deps')
+  pkgs' <- filterM (fmap not . isFetched) pkgs
+  when (null pkgs') $
+    notice verbosity $ "No packages need to be fetched. "
+                    ++ "All the requested packages are already cached."
+  sequence_
+    [ fetchPackage verbosity repo pkgid
+    | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- pkgs' ]
+
+
+resolveWithDependencies :: Verbosity
+                        -> Compiler
+                        -> PackageIndex InstalledPackage
+                        -> AvailablePackageDb
+                        -> [UnresolvedDependency]
+                        -> IO [AvailablePackage]
+resolveWithDependencies verbosity comp
+  installed (AvailablePackageDb available availablePrefs) deps = do
+
   notice verbosity "Resolving dependencies..."
-  maybePlan <- foldProgress (\message rest -> info verbosity message >> rest)
-                            (return . Left) (return . Right) progress
-  case maybePlan of
-    Left message -> die message
-    Right pkgs   -> do
-      ps <- filterM (fmap not . isFetched)
-              [ pkg | (InstallPlan.Configured
-                        (InstallPlan.ConfiguredPackage pkg _ _))
-                          <- InstallPlan.toList pkgs ]
-      when (null ps) $
-        notice verbosity $ "No packages need to be fetched. "
-                        ++ "All the requested packages are already cached."
+  plan <- foldProgress logMsg die return $
+            resolveDependenciesWithProgress
+              buildPlatform (compilerId comp)
+              installed' available
+              preferences constraints
+              targets
 
-      sequence_ 
-        [ fetchPackage verbosity repo pkgid
-        | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- ps ]
+  return (selectPackagesToFetch plan)
+
+  where
+    targets     = dependencyTargets     deps
+    constraints = dependencyConstraints deps
+    preferences = PackagesPreference
+                    PreferLatestForSelected
+                    [ PackageVersionPreference name ver
+                    | (name, ver) <- Map.toList availablePrefs ]
+
+    installed'  = hideGivenDeps deps installed
+
+    -- Hide the packages given on the command line so that the dep resolver
+    -- will decide that they need fetching, even if they're already
+    -- installed. Sicne we want to get the source packages of things we might
+    -- have installed (but not have the sources for).
+    hideGivenDeps pkgs index =
+      foldr PackageIndex.deletePackageName index
+        [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
+
+    -- The packages we want to fetch are those packages the 'InstallPlan' that
+    -- are in the 'InstallPlan.Configured' state.
+    selectPackagesToFetch :: InstallPlan.InstallPlan -> [AvailablePackage]
+    selectPackagesToFetch plan =
+      [ pkg | (InstallPlan.Configured (InstallPlan.ConfiguredPackage pkg _ _))
+                 <- InstallPlan.toList plan ]
+
+    logMsg message rest = info verbosity message >> rest
+
 
 -- |Generate the full path to the locally cached copy of
 -- the tarball for a given @PackageIdentifer@.
