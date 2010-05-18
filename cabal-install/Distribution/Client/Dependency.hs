@@ -17,6 +17,8 @@ module Distribution.Client.Dependency (
     resolveDependencies,
     resolveDependenciesWithProgress,
 
+    resolveAvailablePackages,
+
     dependencyConstraints,
     dependencyTargets,
 
@@ -40,18 +42,21 @@ import Distribution.Client.Dependency.Types
          , Progress(..), foldProgress )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), packageVersion, packageName
-         , Dependency(..), Package(..), PackageFixedDeps(..) )
+         , Dependency(Dependency), Package(..), PackageFixedDeps(..) )
 import Distribution.Version
-         ( VersionRange, anyVersion, orLaterVersion, isAnyVersion )
+         ( VersionRange, anyVersion, orLaterVersion
+         , isAnyVersion, withinRange, simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.System
          ( Platform )
 import Distribution.Simple.Utils (comparing)
 import Distribution.Client.Utils (mergeBy, MergeResult(..))
+import Distribution.Text
+         ( display )
 
 import Data.List (maximumBy)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -201,6 +206,97 @@ interpretPackagesPreference selected (PackagesPreference defaultPref prefs) =
         -- latest version of foo, but the installed version of everything else
         if pkgname `Set.member` selected then PreferLatest
                                          else PreferInstalled
+
+-- ------------------------------------------------------------
+-- * Simple resolver that ignores dependencies
+-- ------------------------------------------------------------
+
+-- | A simplistic method of resolving a list of target package names to
+-- available packages.
+--
+-- Specifically, it does not consider package dependencies at all. Unlike
+-- 'resolveDependencies', no attempt is made to ensure that the selected
+-- packages have dependencies that are satisfiable or consistent with
+-- each other.
+--
+-- It is suitable for tasks such as selecting packages to download for user
+-- inspection. It is not suitable for selecting packages to install.
+--
+-- Note: if no installed package index is available, it is ok to pass 'mempty'.
+-- It simply means preferences for installed packages will be ignored.
+--
+resolveAvailablePackages
+  :: PackageIndex InstalledPackage
+  -> PackageIndex AvailablePackage
+  -> PackagesPreference
+  -> [PackageConstraint]
+  -> [PackageName]
+  -> Either [ResolveNoDepsError] [AvailablePackage]
+resolveAvailablePackages installed available preferences constraints targets =
+    collectEithers (map selectPackage targets)
+  where
+    selectPackage :: PackageName -> Either ResolveNoDepsError AvailablePackage
+    selectPackage pkgname
+      | null choices = Left  $! ResolveUnsatisfiable pkgname requiredVersions
+      | otherwise    = Right $! maximumBy bestByPrefs choices
+
+      where
+        -- Constraints
+        requiredVersions = packageConstraints pkgname
+        pkgDependency    = Dependency pkgname requiredVersions
+        choices          = PackageIndex.lookupDependency available pkgDependency
+
+        -- Preferences
+        PackagePreferences preferredVersions preferInstalled
+          = packagePreferences pkgname
+
+        bestByPrefs   = comparing $ \pkg ->
+                          (installPref pkg, versionPref pkg, packageVersion pkg)
+        installPref   = case preferInstalled of
+          PreferLatest    -> const False
+          PreferInstalled -> isJust . PackageIndex.lookupPackageId installed
+                           . packageId
+        versionPref   pkg = packageVersion pkg `withinRange` preferredVersions
+
+    packageConstraints :: PackageName -> VersionRange
+    packageConstraints pkgname =
+      Map.findWithDefault anyVersion pkgname packageVersionConstraintMap
+    packageVersionConstraintMap =
+      Map.fromList [ (name, range)
+                   | PackageVersionConstraint name range <- constraints ]
+
+    packagePreferences :: PackageName -> PackagePreferences
+    packagePreferences = interpretPackagesPreference (Set.fromList targets) preferences
+
+
+collectEithers :: [Either a b] -> Either [a] [b]
+collectEithers = collect . partitionEithers
+  where
+    collect ([], xs) = Right xs
+    collect (errs,_) = Left errs
+    partitionEithers :: [Either a b] -> ([a],[b])
+    partitionEithers = foldr (either left right) ([],[])
+     where
+       left  a (l, r) = (a:l, r)
+       right a (l, r) = (l, a:r)
+
+-- | Errors for 'resolveWithoutDependencies'.
+--
+data ResolveNoDepsError =
+
+     -- | A package name which cannot be resolved to a specific package.
+     -- Also gives the constraint on the version and whether there was
+     -- a constraint on the package being installed.
+     ResolveUnsatisfiable PackageName VersionRange
+
+instance Show ResolveNoDepsError where
+  show (ResolveUnsatisfiable name ver) =
+       "There is no available version of " ++ display name
+    ++ " that satisfies " ++ display (simplifyVersionRange ver)
+
+-- ------------------------------------------------------------
+-- * Finding upgradable packages
+-- ------------------------------------------------------------
 
 -- | Given the list of installed packages and available packages, figure
 -- out which packages can be upgraded.
