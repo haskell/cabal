@@ -29,6 +29,7 @@ import Distribution.Client.Types
 import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Client.Dependency as Dependency
          ( resolveDependenciesWithProgress
+         , resolveAvailablePackages
          , dependencyConstraints, dependencyTargets
          , PackagesPreference(..), PackagesPreferenceDefault(..)
          , PackagePreference(..) )
@@ -127,13 +128,14 @@ fetch verbosity _ _ _ _ [] =
 
 fetch verbosity packageDBs repos comp conf deps = do
 
+  installed <- getInstalledPackages verbosity comp packageDBs conf
   availableDb@(AvailablePackageDb available _)
         <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
 
-  pkgs <- do
-      installed <- getInstalledPackages verbosity comp packageDBs conf
-      resolveWithDependencies verbosity comp installed availableDb deps'
+  pkgs <- resolve verbosity
+            includeDependencies comp
+            installed availableDb deps'
 
   pkgs' <- filterM (fmap not . isFetched) pkgs
   when (null pkgs') $
@@ -143,25 +145,40 @@ fetch verbosity packageDBs repos comp conf deps = do
     [ fetchPackage verbosity repo pkgid
     | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- pkgs' ]
 
+  where
+     --TODO: we want an explicit --no-deps flag, see ticket #423
+     includeDependencies = False
 
-resolveWithDependencies :: Verbosity
-                        -> Compiler
-                        -> PackageIndex InstalledPackage
-                        -> AvailablePackageDb
-                        -> [UnresolvedDependency]
-                        -> IO [AvailablePackage]
-resolveWithDependencies verbosity comp
-  installed (AvailablePackageDb available availablePrefs) deps = do
 
-  notice verbosity "Resolving dependencies..."
-  plan <- foldProgress logMsg die return $
-            resolveDependenciesWithProgress
-              buildPlatform (compilerId comp)
-              installed' available
-              preferences constraints
-              targets
+resolve :: Verbosity
+        -> Bool
+        -> Compiler
+        -> PackageIndex InstalledPackage
+        -> AvailablePackageDb
+        -> [UnresolvedDependency]
+        -> IO [AvailablePackage]
+resolve verbosity includeDependencies comp
+  installed (AvailablePackageDb available availablePrefs) deps
 
-  return (selectPackagesToFetch plan)
+  | includeDependencies = do
+
+      notice verbosity "Resolving dependencies..."
+      plan <- foldProgress logMsg die return $
+                resolveDependenciesWithProgress
+                  buildPlatform (compilerId comp)
+                  installed' available
+                  preferences constraints
+                  targets
+
+      return (selectPackagesToFetch plan)
+
+  | otherwise = do
+
+    either (die . unlines . map show) return $
+      resolveAvailablePackages
+        installed   available
+        preferences constraints
+        targets
 
   where
     targets     = dependencyTargets     deps
@@ -177,6 +194,11 @@ resolveWithDependencies verbosity comp
     -- will decide that they need fetching, even if they're already
     -- installed. Sicne we want to get the source packages of things we might
     -- have installed (but not have the sources for).
+
+    -- TODO: to allow for preferences on selecting an available version
+    -- corresponding to a package we've got installed, instead of hiding the
+    -- installed instances, we should add a constraint on using an installed
+    -- instance.
     hideGivenDeps pkgs index =
       foldr PackageIndex.deletePackageName index
         [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
