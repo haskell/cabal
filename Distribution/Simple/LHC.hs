@@ -237,7 +237,7 @@ getInstalledPackages verbosity packagedbs conf = do
   pkgss <- getInstalledPackages' verbosity packagedbs conf
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
-  return $! hackRtsPackage (mconcat indexes)
+  return $! (mconcat indexes)
 
   where
     -- On Windows, various fields have $topdir/foo rather than full
@@ -246,12 +246,6 @@ getInstalledPackages verbosity packagedbs conf = do
     Just ghcProg = lookupProgram lhcProgram conf
     compilerDir  = takeDirectory (programPath ghcProg)
     topDir       = takeDirectory compilerDir
-
-    hackRtsPackage index =
-      case PackageIndex.lookupPackageName index (PackageName "rts") of
-        [(_,[rts])]
-           -> PackageIndex.insert (removeMingwIncludeDir rts) index
-        _  -> error "No (or multiple) rts package is registered!!"
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
