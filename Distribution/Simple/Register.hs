@@ -115,7 +115,7 @@ import System.IO.Error (try)
 import Control.Monad (when)
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
-import Data.List (partition)
+import Data.List (partition, nub)
 
 
 -- -----------------------------------------------------------------------------
@@ -146,8 +146,11 @@ register pkg@PackageDescription { library       = Just lib  }
     modeGenerateRegScript = fromFlag (regGenScript regFlags)
 
     inplace   = fromFlag (regInPlace regFlags)
-    packageDbs = withPackageDB lbi
-              ++ maybeToList (flagToMaybe  (regPackageDB regFlags))
+    -- FIXME: there's really no guarantee this will work.
+    -- registering into a totally different db stack can
+    -- fail if dependencies cannot be satisfied.
+    packageDbs = nub $ withPackageDB lbi
+                    ++ maybeToList (flagToMaybe  (regPackageDB regFlags))
     distPref  = fromFlag (regDistPref regFlags)
     verbosity = fromFlag (regVerbosity regFlags)
 
