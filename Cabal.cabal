@@ -1,5 +1,5 @@
 Name: Cabal
-Version: 1.8.0.4
+Version: 1.8.0.6
 Copyright: 2003-2006, Isaac Jones
            2005-2009, Duncan Coutts
 License: BSD3
@@ -32,7 +32,7 @@ source-repository head
 source-repository this
   type:     darcs
   location: http://darcs.haskell.org/cabal-branches/cabal-1.8/
-  tag: 1.8.0.4
+  tag: 1.8.0.6
 
 Flag base4
     Description: Choose the even newer, even smaller, split-up base package.
@@ -59,7 +59,7 @@ Library
   ghc-options: -Wall -fno-ignore-asserts
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
-  cpp-options: "-DCABAL_VERSION=1,8,0,4"
+  cpp-options: "-DCABAL_VERSION=1,8,0,6"
   nhc98-Options: -K4M
 
   Exposed-Modules:
