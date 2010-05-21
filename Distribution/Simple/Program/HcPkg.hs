@@ -178,7 +178,10 @@ registerInvocation' :: String
 registerInvocation' cmdname hcPkg verbosity packagedbs (Left pkgFile) =
     programInvocation hcPkg args
   where
-    args = [cmdname, pkgFile] ++ packageDbStackOpts packagedbs
+    args = [cmdname, pkgFile]
+        ++ (if legacyVersion hcPkg
+              then [packageDbOpts (last packagedbs)]
+              else packageDbStackOpts packagedbs)
         ++ verbosityOpts hcPkg verbosity
 
 registerInvocation' cmdname hcPkg verbosity packagedbs (Right pkgInfo) =
@@ -187,7 +190,10 @@ registerInvocation' cmdname hcPkg verbosity packagedbs (Right pkgInfo) =
       progInvokeInputEncoding = IOEncodingUTF8
     }
   where
-    args = [cmdname, "-"] ++ packageDbStackOpts packagedbs
+    args = [cmdname, "-"]
+        ++ (if legacyVersion hcPkg
+              then [packageDbOpts (last packagedbs)]
+              else packageDbStackOpts packagedbs)
         ++ verbosityOpts hcPkg verbosity
 
 
@@ -257,3 +263,8 @@ verbosityOpts hcPkg v
   | v >= deafening = ["-v2"]
   | v == silent    = ["-v0"]
   | otherwise      = []
+
+-- Handle quirks in ghc-pkg 6.8 and older
+legacyVersion :: ConfiguredProgram -> Bool
+legacyVersion hcPkg = programId hcPkg == "ghc-pkg"
+                   && programVersion hcPkg < Just (Version [6,9] [])
