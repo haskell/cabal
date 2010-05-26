@@ -282,7 +282,8 @@ data ConfigFlags = ConfigFlags {
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies
-    configConfigurationsFlags :: FlagAssignment
+    configConfigurationsFlags :: FlagAssignment,
+    configTests :: Flag Bool     -- ^Enable testsuite compilation
   }
   deriving Show
 
@@ -302,7 +303,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configUserInstall  = Flag False,           --TODO: reverse this
     configGHCiLib      = Flag True,
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
-    configStripExes    = Flag True
+    configStripExes    = Flag True,
+    configTests  = Flag False
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -455,6 +457,10 @@ configureOptions showOrParseArgs =
          (reqArg "DEPENDENCY"
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
                  (map (\x -> display x)))
+      ,option "" ["tests"]
+         "dependency checking and compilation for testsuites listed in the package description file."
+         configTests (\v flags -> flags { configTests = v })
+         (boolOpt [] [])
       ]
   where
     readFlagList :: String -> FlagAssignment
@@ -561,7 +567,8 @@ instance Monoid ConfigFlags where
     configExtraLibDirs  = mempty,
     configConstraints   = mempty,
     configExtraIncludeDirs    = mempty,
-    configConfigurationsFlags = mempty
+    configConfigurationsFlags = mempty,
+    configTests   = mempty
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -590,7 +597,8 @@ instance Monoid ConfigFlags where
     configExtraLibDirs  = combine configExtraLibDirs,
     configConstraints   = combine configConstraints,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
-    configConfigurationsFlags = combine configConfigurationsFlags
+    configConfigurationsFlags = combine configConfigurationsFlags,
+    configTests = combine configTests
   }
     where combine field = field a `mappend` field b
 
