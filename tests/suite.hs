@@ -22,6 +22,7 @@ import PackageTests.BuildDeps.InternalLibrary1.Check
 import PackageTests.BuildDeps.InternalLibrary2.Check
 import PackageTests.BuildDeps.InternalLibrary3.Check
 import PackageTests.BuildDeps.InternalLibrary4.Check
+import PackageTests.TestStanza.Check
 import Distribution.Text (display)
 import Distribution.Simple.Utils (cabalVersion)
 import Data.Version
@@ -34,7 +35,11 @@ tests cabalVersion = [
         hunit "PackageTests/BuildDeps/SameDepsAllRound/" PackageTests.BuildDeps.SameDepsAllRound.Check.suite,
         hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite,
         hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite,
-        hunit "PackageTests/BuildDeps/InternalLibrary0/" (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion)
+        hunit "PackageTests/BuildDeps/InternalLibrary0/" (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion),
+        hunit "PackageTests/TestStanza/"
+        (PackageTests.TestStanza.Check.suite cabalVersion)
+        -- ^ The Test stanza test will eventually be required
+        -- only for higher versions.
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if cabalVersion >= Version [1, 7] []

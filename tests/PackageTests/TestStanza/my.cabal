@@ -1,0 +1,19 @@
+name: TestStanza
+version: 0.1
+license: BSD3
+author: Thomas Tuegel
+stability: stable
+category: PackageTests
+build-type: Simple
+
+description:
+    Check that Cabal recognizes the Test stanza defined below.
+
+Library
+    exposed-modules: MyLibrary
+    build-depends: base
+
+Test dummy
+    test-is: dummy.hs
+    type: executable == 1
+    build-depends: base
