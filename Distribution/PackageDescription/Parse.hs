@@ -207,6 +207,30 @@ storeXFieldsExe (f@('x':'-':_), val) e@(Executable { buildInfo = bi }) =
 storeXFieldsExe _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
+-- The Testsuite type
+
+
+testsuiteFieldDescrs :: [FieldDescr Testsuite]
+testsuiteFieldDescrs =
+    [ simpleField "test"
+            showToken       parseTokenQ
+            testName        (\xs test -> test {testName=xs})
+    , simpleField "type"
+            disp            parse
+            testType        (\xs test -> test {testType=xs})
+    , simpleField "test-is"
+            showToken            parseTokenQ
+            testIs          (\xs test -> test {testIs=xs})
+    ]
+    ++ map biToTest binfoFieldDescrs
+    where biToTest = liftField testBuildInfo (\bi test -> test {testBuildInfo=bi})
+
+storeXFieldsTest :: UnrecFieldParser Testsuite
+storeXFieldsTest (f@('x':'-':_), val) t@(Testsuite { testBuildInfo = bi }) =
+    Just $ t {testBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
+storeXFieldsTest _ _ = Nothing
+
+-- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
 
@@ -507,14 +531,14 @@ parsePackageDescription file = do
 
           -- 'getBody' assumes that the remaining fields only consist of
           -- flags, lib and exe sections.
-        (repos, flags, mlib, exes) <- getBody
+        (repos, flags, mlib, exes, tests) <- getBody
         warnIfRest  -- warn if getBody did not parse up to the last field.
         when (not (oldSyntax fields0)) $  -- warn if we use new syntax
           maybeWarnCabalVersion pkg       -- without Cabal >= 1.2
-        checkForUndefinedFlags flags mlib exes
+        checkForUndefinedFlags flags mlib exes tests
         return $ GenericPackageDescription
                    pkg { sourceRepos = repos }
-                   flags mlib exes
+                   flags mlib exes tests
 
   where
     oldSyntax flds = all isSimpleField flds
@@ -598,13 +622,14 @@ parsePackageDescription file = do
         _ -> return (reverse acc)
 
     --
-    -- body ::= { repo | flag | library | executable }+   -- at most one lib
+    -- body ::= { repo | flag | library | executable | test }+   -- at most one lib
     --
     -- The body consists of an optional sequence of declarations of flags and
     -- an arbitrary number of executables and at most one library.
     getBody :: PM ([SourceRepo], [Flag]
                   ,Maybe (CondTree ConfVar [Dependency] Library)
-                  ,[(String, CondTree ConfVar [Dependency] Executable)])
+                  ,[(String, CondTree ConfVar [Dependency] Executable)]
+                  ,[(String, CondTree ConfVar [Dependency] Testsuite)])
     getBody = peekField >>= \mf -> case mf of
       Just (Section line_no sec_type sec_label sec_fields)
         | sec_type == "executable" -> do
@@ -613,18 +638,27 @@ parsePackageDescription file = do
             exename <- lift $ runP line_no "executable" parseTokenQ sec_label
             flds <- collectFields parseExeFields sec_fields
             skipField
-            (repos, flags, lib, exes) <- getBody
-            return (repos, flags, lib, exes ++ [(exename, flds)])
+            (repos, flags, lib, exes, tests) <- getBody
+            return (repos, flags, lib, exes ++ [(exename, flds)], tests)
+
+        | sec_type == "test" -> do
+            when (null sec_label) $ lift $ syntaxError line_no
+                "'test' needs one argument (the testsuite's name)"
+            testname <- lift $ runP line_no "test" parseTokenQ sec_label
+            flds <- collectFields parseTestFields sec_fields
+            skipField
+            (repos, flags, lib, exes, tests) <- getBody
+            return (repos, flags, lib, exes, tests ++ [(testname, flds)])
 
         | sec_type == "library" -> do
             when (not (null sec_label)) $ lift $
               syntaxError line_no "'library' expects no argument"
             flds <- collectFields parseLibFields sec_fields
             skipField
-            (repos, flags, lib, exes) <- getBody
+            (repos, flags, lib, exes, tests) <- getBody
             when (isJust lib) $ lift $ syntaxError line_no
               "There can only be one library section in a package description."
-            return (repos, flags, Just flds, exes)
+            return (repos, flags, Just flds, exes, tests)
 
         | sec_type == "flag" -> do
             when (null sec_label) $ lift $
@@ -635,8 +669,8 @@ parsePackageDescription file = do
                     (MkFlag (FlagName (lowercase sec_label)) "" True False)
                     sec_fields
             skipField
-            (repos, flags, lib, exes) <- getBody
-            return (repos, flag:flags, lib, exes)
+            (repos, flags, lib, exes, tests) <- getBody
+            return (repos, flag:flags, lib, exes, tests)
 
         | sec_type == "source-repository" -> do
             when (null sec_label) $ lift $ syntaxError line_no $
@@ -660,8 +694,8 @@ parsePackageDescription file = do
                     })
                     sec_fields
             skipField
-            (repos, flags, lib, exes) <- getBody
-            return (repo:repos, flags, lib, exes)
+            (repos, flags, lib, exes, tests) <- getBody
+            return (repo:repos, flags, lib, exes, tests)
 
         | otherwise -> do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
@@ -672,7 +706,7 @@ parsePackageDescription file = do
               "Construct not supported at this position: " ++ show f
             skipField
             getBody
-      Nothing -> return ([], [], Nothing, [])
+      Nothing -> return ([], [], Nothing, [], [])
 
     -- Extracts all fields in a block and returns a 'CondTree'.
     --
@@ -713,15 +747,20 @@ parsePackageDescription file = do
     parseExeFields :: [Field] -> PM Executable
     parseExeFields = lift . parseFields executableFieldDescrs storeXFieldsExe emptyExecutable
 
+    parseTestFields :: [Field] -> PM Testsuite
+    parseTestFields = lift . parseFields testsuiteFieldDescrs storeXFieldsTest emptyTestsuite
+
     checkForUndefinedFlags ::
         [Flag] ->
         Maybe (CondTree ConfVar [Dependency] Library) ->
         [(String, CondTree ConfVar [Dependency] Executable)] ->
+        [(String, CondTree ConfVar [Dependency] Testsuite)] ->
         PM ()
-    checkForUndefinedFlags flags mlib exes = do
+    checkForUndefinedFlags flags mlib exes tests = do
         let definedFlags = map flagName flags
         maybe (return ()) (checkCondTreeFlags definedFlags) mlib
         mapM_ (checkCondTreeFlags definedFlags . snd) exes
+        mapM_ (checkCondTreeFlags definedFlags . snd) tests
 
     checkCondTreeFlags :: [FlagName] -> CondTree ConfVar c a -> PM ()
     checkCondTreeFlags definedFlags ct = do

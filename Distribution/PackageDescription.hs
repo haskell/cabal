@@ -7,13 +7,14 @@
 -- Portability :  portable
 --
 -- This defines the data structure for the @.cabal@ file format. There are
--- several parts to this structure. It has top level info and then 'Library'
--- and 'Executable' sections each of which have associated 'BuildInfo' data
--- that's used to build the library or exe. To further complicate things there
--- is both a 'PackageDescription' and a 'GenericPackageDescription'. This
--- distinction relates to cabal configurations. When we initially read a
--- @.cabal@ file we get a 'GenericPackageDescription' which has all the
--- conditional sections. Before actually building a package we have to decide
+-- several parts to this structure. It has top level info and then 'Library',
+-- 'Executable', and 'Testsuite' sections each of which have associated
+-- 'BuildInfo' data that's used to build the library, exe, or test. To further
+-- complicate things there is both a 'PackageDescription' and a
+-- 'GenericPackageDescription'. This distinction relates to cabal
+-- configurations. When we initially read a @.cabal@ file we get a
+-- 'GenericPackageDescription' which has all the conditional sections.
+-- Before actually building a package we have to decide
 -- on each conditional. Once we've done that we get a 'PackageDescription'.
 -- It was done this way initially to avoid breaking too much stuff when the
 -- feature was introduced. It could probably do with being rationalised at some
@@ -70,6 +71,15 @@ module Distribution.PackageDescription (
         hasExes,
         exeModules,
 
+        -- * Tests
+        Testsuite(..),
+        TestType(..),
+        emptyTestsuite,
+        matchesType,
+        hasTests,
+        withTest,
+        testModules,
+
         -- * Build information
         BuildInfo(..),
         emptyBuildInfo,
@@ -99,8 +109,10 @@ import qualified Data.Char as Char (isAlphaNum, toLower)
 import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
          , Dependency, Package(..) )
-import Distribution.ModuleName (ModuleName)
-import Distribution.Version  (Version(Version), VersionRange, anyVersion)
+import Distribution.ModuleName (ModuleName, fromString)
+import Distribution.Version
+         ( Version(Version), VersionRange, anyVersion, noVersion
+         , intersectVersionRanges, isNoVersion)
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
@@ -144,6 +156,7 @@ data PackageDescription
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
+        testsuites     :: [Testsuite],
         dataFiles      :: [FilePath],
         dataDir        :: FilePath,
         extraSrcFiles  :: [FilePath],
@@ -179,6 +192,7 @@ emptyPackageDescription
                       customFieldsPD = [],
                       library      = Nothing,
                       executables  = [],
+                      testsuites   = [],
                       dataFiles    = [],
                       dataDir      = "",
                       extraSrcFiles = [],
@@ -309,6 +323,90 @@ withExe pkg_descr f =
 -- | Get all the module names from an exe
 exeModules :: Executable -> [ModuleName]
 exeModules exe = otherModules (buildInfo exe)
+
+-- ---------------------------------------------------------------------------
+-- The Testsuite type
+
+data Testsuite = Testsuite {
+        testName :: String,
+        testIs :: String,
+        testType :: TestType,
+        testBuildInfo :: BuildInfo
+    }
+    deriving (Show, Read, Eq)
+
+data TestType = ExeTest VersionRange | LibTest VersionRange
+    deriving (Show, Read, Eq)
+
+instance Text TestType where
+    disp (ExeTest v) = text "executable" <+> disp v
+    disp (LibTest v) = text "library" <+> disp v
+
+    parse = do t <- ident
+               Parse.skipSpaces
+               v <- parse Parse.<++ return noVersion
+               if t == "executable" then return (ExeTest v) else
+                   if t == "library" then return (LibTest v) else
+                   Parse.pfail
+
+instance Monoid Testsuite where
+    mempty = Testsuite {
+        testName = mempty,
+        testIs = mempty,
+        testType = ExeTest noVersion,
+        testBuildInfo = mempty
+    }
+
+    mappend a b = Testsuite {
+        testName = combine testName,
+        testIs = combine testIs,
+        testType = if testType b == ExeTest noVersion
+                    then testType a else testType b,
+        testBuildInfo = testBuildInfo a `mappend` testBuildInfo b
+    }
+        where combine f = case (f a, f b) of
+                        ("", x) -> x
+                        (x, "") -> x
+                        (x, y) -> error "Ambiguous values for test field: '"
+                            ++ x ++ "' and '" ++ y ++ "'"
+
+emptyTestsuite :: Testsuite
+emptyTestsuite = mempty
+
+-- | Do these test types match? Two test types match if they use the same
+-- constructor and have overlapping version ranges. 'matchesType' is used to
+-- determine if an action supports a particular test.
+matchesType :: TestType -> TestType -> Bool
+matchesType (ExeTest v1) (ExeTest v2) =
+    not $ isNoVersion $ intersectVersionRanges v1 v2
+matchesType (ExeTest _) _ = False
+matchesType (LibTest v1) (LibTest v2) =
+    not $ isNoVersion $ intersectVersionRanges v1 v2
+matchesType (LibTest _) _ = False
+
+-- | Does this package have any testsuites?
+hasTests :: PackageDescription -> Bool
+hasTests = any (buildable . testBuildInfo) . testsuites
+
+-- | Perform actions on each buildable 'Testsuite' in a package. For each
+-- 'Testsuite', all actions with matching 'TestType' are performed. If no
+-- action has a matching type, then an error message is produced.
+withTest :: PackageDescription -> [(TestType, Testsuite -> IO ())] -> IO ()
+withTest pkg_descr fs = flip mapM_ (testsuites pkg_descr) $ \test -> do
+    let handlers = map snd $ filter (matchesType (testType test) . fst) fs
+    if not $ buildable (testBuildInfo test)
+        then return ()
+        else if null handlers
+            then error $ "error in test " ++ testName test ++
+                ": no support for test type " ++ show (disp $ testType test)
+            else mapM_ (\f -> f test) handlers
+
+-- | Get all the module names from a testsuite.
+testModules :: Testsuite -> [ModuleName]
+testModules test = otherModules (testBuildInfo test) ++ libraryModule
+    where libraryModule = case testType test of
+            ExeTest _ -> []
+            LibTest _ -> [fromString $ testIs test]
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
@@ -585,7 +683,8 @@ data GenericPackageDescription =
         packageDescription :: PackageDescription,
         genPackageFlags       :: [Flag],
         condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
-        condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)]
+        condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)],
+        condTestsuites     :: [(String, CondTree ConfVar [Dependency] Testsuite)]
       }
     deriving (Show, Eq)
 
