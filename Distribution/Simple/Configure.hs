@@ -321,6 +321,10 @@ configure (pkg_descr0, pbi) cfg
                 not . null . PackageIndex.lookupDependency pkgs'
               where
                 pkgs' = PackageIndex.insert internalPackage installedPackageSet
+            pkg_descr0'' =
+                if fromFlag (configTests cfg)
+                    then pkg_descr0
+                    else pkg_descr0 { condTestsuites = [] }
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -329,7 +333,7 @@ configure (pkg_descr0, pbi) cfg
                        Distribution.System.buildPlatform
                        (compilerId comp)
                        (configConstraints cfg)
-                       pkg_descr0
+                       pkg_descr0''
                 of Right r -> return r
                    Left missing ->
                        die $ "At least the following dependencies are missing:\n"
