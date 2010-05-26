@@ -62,7 +62,7 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
-         , Library(..), withLib, libModules )
+         , Library(..), withLib, libModules, Testsuite(..), TestType(..), withTest )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -83,7 +83,7 @@ import Distribution.Simple.Program
 import Distribution.System
          ( OS(OSX, Windows), buildOS )
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
+         ( Version(..), anyVersion, orLaterVersion, thisVersion )
 import Distribution.Verbosity
 
 import Control.Monad (when, unless)
@@ -198,6 +198,20 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         preprocessFile (hsSourceDirs bi) exeDir forSDist
                          (dropExtensions (modulePath theExe))
                          verbosity builtinSuffixes biHandlers
+    unless (null (testsuites pkg_descr)) $
+        setupMessage verbosity "Preprocessing testsuites for" (packageId pkg_descr)
+    let testExeVer1 theTest = do
+            let bi = testBuildInfo theTest
+                biHandlers = localHandlers bi
+                testDir = buildDir lbi </> testName theTest </> testName theTest ++ "-tmp"
+            sequence_ [ preprocessFile (hsSourceDirs bi ++ [autogenModulesDir lbi])
+                                        testDir forSDist (ModuleName.toFilePath modu)
+                                        verbosity builtinSuffixes biHandlers
+                        | modu <- otherModules bi]
+            preprocessFile (hsSourceDirs bi) testDir forSDist
+                        (dropExtensions (testIs theTest))
+                        verbosity builtinSuffixes biHandlers
+    withTest pkg_descr [(ExeTest $ thisVersion $ Version [1] [], testExeVer1)]
   where hc = compilerFlavor (compiler lbi)
         builtinSuffixes
           | hc == NHC = ["hs", "lhs", "gc"]
