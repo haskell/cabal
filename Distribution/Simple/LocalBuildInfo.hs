@@ -50,6 +50,7 @@ module Distribution.Simple.LocalBuildInfo (
         inplacePackageId,
         withLibLBI,
         withExeLBI,
+        withTestLBI,
         ComponentLocalBuildInfo(..),
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
@@ -65,7 +66,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library, withExe
-         , Executable(exeName) )
+         , Executable(exeName), withTest, Testsuite(..), TestType(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..) )
 import Distribution.Simple.Compiler
@@ -95,6 +96,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ Where to put the result of the Hugs build.
         libraryConfig       :: Maybe ComponentLocalBuildInfo,
         executableConfigs   :: [(String, ComponentLocalBuildInfo)],
+        testsuiteConfigs    :: [(String, ComponentLocalBuildInfo)],
         installedPkgs :: PackageIndex,
                 -- ^ All the info about all installed packages.
         pkgDescrFile  :: Maybe FilePath,
@@ -162,6 +164,15 @@ withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
                     ++ exeName exe ++ " but there is no corresponding "
                     ++ "configuration data"
 
+withTestLBI :: PackageDescription -> LocalBuildInfo
+            -> [(TestType, Testsuite -> ComponentLocalBuildInfo -> IO ())] -> IO ()
+withTestLBI pkg_descr lbi fs =
+    let wrapper f test = case lookup (testName test) (testsuiteConfigs lbi) of
+            Just clbi -> f test clbi
+            Nothing -> die $ "internal error: the package contains a testsuite "
+                            ++ testName test ++ " but there is no corresponding "
+                            ++ "configuration data"
+    in withTest pkg_descr $ map (\(t, f) -> (t, wrapper f)) fs
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs

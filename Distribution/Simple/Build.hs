@@ -68,7 +68,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..)
-         , Library(..), Executable(..) )
+         , Library(..), Executable(..), Testsuite(..), TestType(..) )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
@@ -79,7 +79,7 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(compiler, buildDir, withPackageDB)
          , ComponentLocalBuildInfo, withLibLBI, withExeLBI
-         , inplacePackageId )
+         , inplacePackageId, withTestLBI )
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
 import Distribution.Simple.Register
@@ -87,6 +87,8 @@ import Distribution.Simple.Register
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, setupMessage )
+
+import Distribution.Version (Version(..), thisVersion)
 
 import Distribution.Verbosity
          ( Verbosity )
@@ -142,6 +144,12 @@ build pkg_descr lbi flags suffixes = do
     info verbosity $ "Building executable " ++ exeName exe ++ "..."
     buildExe verbosity pkg_descr lbi' exe clbi
 
+  let testExeVer1 test clbi = do
+        info verbosity $ "Building testsuite " ++ testName test ++ "..."
+        buildExeTest verbosity pkg_descr lbi' test clbi
+  withTestLBI pkg_descr lbi' [(ExeTest $ thisVersion $ Version [1] [], testExeVer1)]
+
+
 -- | Initialize a new package db file for libraries defined
 -- internally to the package.
 createInternalPackageDB :: FilePath -> IO PackageDB
@@ -173,6 +181,16 @@ buildExe verbosity pkg_descr lbi exe clbi =
     Hugs -> Hugs.buildExe verbosity pkg_descr lbi exe clbi
     NHC  -> NHC.buildExe  verbosity pkg_descr lbi exe clbi
     _    -> die "Building is not supported with this compiler."
+
+buildExeTest :: Verbosity -> PackageDescription -> LocalBuildInfo
+                          -> Testsuite -> ComponentLocalBuildInfo
+                          -> IO ()
+buildExeTest verbosity pkg_descr lbi test clbi =
+    buildExe verbosity pkg_descr lbi exe clbi
+    where exe = Executable { exeName = testName test
+                           , modulePath = testIs test
+                           , buildInfo = testBuildInfo test
+                           }
 
 initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> PackageDescription  -- ^mostly information from the .cabal file
