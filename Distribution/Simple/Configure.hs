@@ -81,7 +81,7 @@ import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , FlagName(..) )
+    , FlagName(..), Testsuite(..) )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
@@ -439,6 +439,8 @@ configure (pkg_descr0, pbi) cfg
         -- versions of the same package.
         let configLib lib = configComponent (libBuildInfo lib)
             configExe exe = (exeName exe, configComponent(buildInfo exe))
+            configTest test = (testName test,
+                    configComponent(testBuildInfo test))
             configComponent bi = ComponentLocalBuildInfo {
               componentPackageDeps =
                 if newPackageDepsBehaviour pkg_descr'
@@ -464,6 +466,7 @@ configure (pkg_descr0, pbi) cfg
                                             (configScratchDir cfg),
                     libraryConfig       = configLib `fmap` library pkg_descr',
                     executableConfigs   = configExe `fmap` executables pkg_descr',
+                    testsuiteConfigs    = configTest `fmap` testsuites pkg_descr',
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
