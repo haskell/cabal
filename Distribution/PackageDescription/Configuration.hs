@@ -426,13 +426,15 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], []) targets
             }
     untag (deps, Exe n e) (mlib, exes, tests)
         | any ((== n) . fst) exes = bug "Exe with same name found"
+        | any ((== n) . fst) tests = bug "Test sharing name of exe found"
         | otherwise = (mlib, exes ++ [(n, e')], tests)
       where
         e' = e {
                 buildInfo = (buildInfo e) { targetBuildDepends = fromDepMap deps }
             }
     untag (deps, Test n t) (mlib, exes, tests)
-        | any ((== n) . fst) tests = bug "Testsuite with same name found"
+        | any ((== n) . fst) tests = bug "Test with same name found"
+        | any ((== n) . fst) exes = bug "Test sharing name of exe found"
         | otherwise = (mlib, exes, tests ++ [(n, t')])
       where
         t' = t {
