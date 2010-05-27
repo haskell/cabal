@@ -1,0 +1,14 @@
+Building and running the test suite
+===================================
+
+You can build and run the test suite by running:
+
+    cabal configure && cabal build
+    cd tests
+    cabal configure --package-db=../dist/package.conf.inplace \
+        --constraint='Cabal == 1.9.1'
+    cabal build
+    ./dist/build/suite/suite
+
+Replace the Cabal constraint with whatever the current development
+version of Cabal.
