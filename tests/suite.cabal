@@ -16,7 +16,7 @@ Executable suite
     build-depends:
         base,
         test-framework,
-        test-framework-quickcheck2 == 0.2.2,
+        test-framework-quickcheck2,
         test-framework-hunit,
         HUnit,
         QuickCheck >= 2.1.0.1,
