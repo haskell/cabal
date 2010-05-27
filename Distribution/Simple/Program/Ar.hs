@@ -43,7 +43,9 @@ createArLibArchive verbosity ar target files =
   -- When we need to call ar multiple times we use "ar q" and for the last
   -- call on OSX we use "ar qs" so that it'll make the index.
 
-  let simpleArgs  = ["-r"]
+  let simpleArgs  = case buildOS of
+             OSX -> ["-r", "-s"]
+             _   -> ["-r"]
 
       initialArgs = ["-q"]
       finalArgs   = case buildOS of
