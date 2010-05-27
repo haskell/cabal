@@ -204,10 +204,17 @@ checkSanity pkg =
   , check (not (null exeDuplicates)) $
       PackageBuildImpossible $ "Duplicate executable sections "
         ++ commaSep exeDuplicates
+  , check (not (null testDuplicates)) $
+      PackageBuildImpossible $ "Duplicate test sections "
+        ++ commaSep testDuplicates
+  , check (not (null testsThatAreExes)) $
+      PackageBuildImpossible $ "These test sections share names with executable sections: "
+        ++ commaSep testsThatAreExes
   ]
 
   ++ maybe []  checkLibrary    (library pkg)
   ++ concatMap checkExecutable (executables pkg)
+  ++ concatMap checkTestsuite  (testsuites pkg)
 
   ++ catMaybes [
 
@@ -217,7 +224,11 @@ checkSanity pkg =
         ++ display requiredCabalVersion
   ]
   where
-    exeDuplicates = dups (map exeName (executables pkg))
+    exeNames = map exeName $ executables pkg
+    testNames = map testName $ testsuites pkg
+    exeDuplicates = dups exeNames
+    testDuplicates = dups testNames
+    testsThatAreExes = filter (flip elem exeNames) testNames
     requiredCabalVersion = descCabalVersion pkg
 
 checkLibrary :: Library -> [PackageCheck]
@@ -254,6 +265,17 @@ checkExecutable exe =
   ]
   where
     moduleDuplicates = dups (exeModules exe)
+
+checkTestsuite :: Testsuite -> [PackageCheck]
+checkTestsuite test =
+  catMaybes [
+
+    check (not $ null moduleDuplicates) $
+      PackageBuildWarning $
+        "Duplicate modules in testsuite '" ++ testName test ++ "': "
+        ++ commaSep (map display moduleDuplicates)
+  ]
+  where moduleDuplicates = dups $ testModules test
 
 -- ------------------------------------------------------------
 -- * Additional pure checks
