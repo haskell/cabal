@@ -86,7 +86,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageIdentifier, Package(..), PackageName(..) )
+         ( PackageIdentifier, Package(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
@@ -253,15 +253,6 @@ checkPackageDbStack (GlobalPackageDB:rest)
 checkPackageDbStack _ =
   die $ "GHC.getInstalledPackages: the global package db must be "
      ++ "specified first and cannot be specified multiple times"
-
--- GHC < 6.10 put "$topdir/include/mingw" in rts's installDirs. This
--- breaks when you want to use a different gcc, so we need to filter
--- it out.
-removeMingwIncludeDir :: InstalledPackageInfo -> InstalledPackageInfo
-removeMingwIncludeDir pkg =
-    let ids = InstalledPackageInfo.includeDirs pkg
-        ids' = filter (not . ("mingw" `isSuffixOf`)) ids
-    in pkg { InstalledPackageInfo.includeDirs = ids' }
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 --
