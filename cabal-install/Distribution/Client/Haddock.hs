@@ -52,10 +52,14 @@ regenerateHaddockIndex verbosity pkgs conf index = do
 
       createDirectoryIfMissing True destDir
 
-      withTempDirectory verbosity destDir "htemp" $ \tempDir -> do
+      withTempDirectory verbosity destDir "tmphaddock" $ \tempDir -> do
 
-        let flags = ["--gen-contents", "--gen-index", "--odir="++tempDir] 
-                    ++ map (\(i,h) -> "--read-interface=" ++ h ++ "," ++ i) paths
+        let flags = [ "--gen-contents"
+                    , "--gen-index"
+                    , "--odir=" ++ tempDir
+                    , "--title=Haskell modules on this system" ]
+                 ++ [ "--read-interface=" ++ html ++ "," ++ interface
+                    | (interface, html) <- paths ]
         rawSystemProgram verbosity confHaddock flags
         renameFile (tempDir </> "index.html") (tempDir </> destFile)
         installDirectoryContents verbosity tempDir destDir
@@ -71,7 +75,7 @@ regenerateHaddockIndex verbosity pkgs conf index = do
             $ pkgs
 
 haddockPackagePaths :: [InstalledPackageInfo]
-                       -> IO ([(FilePath, FilePath)], Maybe [Char])
+                       -> IO ([(FilePath, FilePath)], Maybe String)
 haddockPackagePaths pkgs = do
   interfaces <- sequence
     [ case interfaceAndHtmlPath pkg of
