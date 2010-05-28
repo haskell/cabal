@@ -20,7 +20,7 @@ module Distribution.Client.Setup
     , updateCommand
     , upgradeCommand
     , infoCommand, InfoFlags(..)
-    , fetchCommand
+    , fetchCommand, FetchFlags(..)
     , checkCommand
     , uploadCommand, UploadFlags(..)
     , reportCommand
@@ -50,7 +50,7 @@ import Distribution.Simple.Setup
          ( ConfigFlags(..) )
 import Distribution.Simple.Setup
          ( Flag(..), toFlag, fromFlag, flagToList, flagToMaybe
-         , optionVerbosity, trueArg )
+         , optionVerbosity, trueArg, falseArg )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Version
@@ -278,18 +278,59 @@ instance Monoid ConfigExFlags where
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
--- * Other commands
+-- * Fetch command
 -- ------------------------------------------------------------
 
-fetchCommand :: CommandUI (Flag Verbosity)
+data FetchFlags = FetchFlags {
+--    fetchOutput    :: Flag FilePath,
+      fetchDeps      :: Flag Bool,
+      fetchDryRun    :: Flag Bool,
+      fetchVerbosity :: Flag Verbosity
+    }
+
+defaultFetchFlags :: FetchFlags
+defaultFetchFlags = FetchFlags {
+--  fetchOutput    = mempty,
+    fetchDeps      = toFlag True,
+    fetchDryRun    = toFlag False,
+    fetchVerbosity = toFlag normal
+   }
+
+fetchCommand :: CommandUI FetchFlags
 fetchCommand = CommandUI {
     commandName         = "fetch",
     commandSynopsis     = "Downloads packages for later installation.",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "fetch",
-    commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbosity id const]
+    commandDefaultFlags = defaultFetchFlags,
+    commandOptions      = \_ -> [
+         optionVerbosity fetchVerbosity (\v flags -> flags { fetchVerbosity = v })
+
+--     , option "o" ["output"]
+--         "Put the package(s) somewhere specific rather than the usual cache."
+--         fetchOutput (\v flags -> flags { fetchOutput = v })
+--         (reqArgFlag "PATH")
+
+       , option [] ["dependencies", "deps"]
+           "Resolve and fetch dependencies (default)"
+           fetchDeps (\v flags -> flags { fetchDeps = v })
+           trueArg
+
+       , option [] ["no-dependencies", "no-deps"]
+           "Ignore dependencies"
+           fetchDeps (\v flags -> flags { fetchDeps = v })
+           falseArg
+
+       , option [] ["dry-run"]
+           "Do not install anything, only print what would be installed."
+           fetchDryRun (\v flags -> flags { fetchDryRun = v })
+           trueArg
+       ]
   }
+
+-- ------------------------------------------------------------
+-- * Other commands
+-- ------------------------------------------------------------
 
 updateCommand  :: CommandUI (Flag Verbosity)
 updateCommand = CommandUI {

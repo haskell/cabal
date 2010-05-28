@@ -19,7 +19,8 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), configureExCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
-         , fetchCommand, checkCommand
+         , FetchFlags(..), fetchCommand
+         , checkCommand
          , updateCommand
          , ListFlags(..), listCommand
          , InfoFlags(..), infoCommand
@@ -267,17 +268,17 @@ upgradeAction (configFlags, configExFlags, installFlags)
           [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
           | pkg <- pkgs ]
 
-fetchAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
-fetchAction verbosityFlag extraArgs globalFlags = do
+fetchAction :: FetchFlags -> [String] -> GlobalFlags -> IO ()
+fetchAction fetchFlags extraArgs globalFlags = do
   pkgs <- either die return (parsePackageArgs extraArgs)
-  let verbosity = fromFlag verbosityFlag
+  let verbosity = fromFlag (fetchVerbosity fetchFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags
   fetch verbosity
         (configPackageDB' configFlags) (globalRepos globalFlags')
-        comp conf
+        comp conf fetchFlags
         [ UnresolvedDependency pkg [] --TODO: flags?
         | pkg <- pkgs ]
 
