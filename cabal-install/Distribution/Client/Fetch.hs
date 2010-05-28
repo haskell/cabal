@@ -41,14 +41,19 @@ import Distribution.Client.IndexUtils as IndexUtils
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.HttpUtils
          ( downloadURI, isOldHackageURI )
+import Distribution.Client.Setup
+         ( FetchFlags(..) )
 
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
+         ( PackageIdentifier, packageId, packageName, packageVersion
+         , Dependency(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration )
+import Distribution.Simple.Setup
+         ( fromFlag )
 import Distribution.Simple.Utils
          ( die, notice, info, debug, setupMessage )
 import Distribution.System
@@ -121,43 +126,48 @@ fetch :: Verbosity
       -> [Repo]
       -> Compiler
       -> ProgramConfiguration
+      -> FetchFlags
       -> [UnresolvedDependency]
       -> IO ()
-fetch verbosity _ _ _ _ [] =
+fetch verbosity _ _ _ _ _ [] =
   notice verbosity "No packages requested. Nothing to do."
 
-fetch verbosity packageDBs repos comp conf deps = do
+fetch verbosity packageDBs repos comp conf flags deps = do
 
   installed <- getInstalledPackages verbosity comp packageDBs conf
   availableDb@(AvailablePackageDb available _)
         <- getAvailablePackages verbosity repos
   deps' <- IndexUtils.disambiguateDependencies available deps
 
-  pkgs <- resolve verbosity
-            includeDependencies comp
+  pkgs <- resolvePackages verbosity
+            includeDeps comp
             installed availableDb deps'
 
   pkgs' <- filterM (fmap not . isFetched) pkgs
   when (null pkgs') $
     notice verbosity $ "No packages need to be fetched. "
                     ++ "All the requested packages are already cached."
-  sequence_
-    [ fetchPackage verbosity repo pkgid
-    | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- pkgs' ]
-
+  if dryRun
+    then notice verbosity $ unlines $
+            "The following packages would be fetched:"
+          : map (display . packageId) pkgs'
+    else sequence_
+           [ fetchPackage verbosity repo pkgid
+           | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- pkgs' ]
   where
-     --TODO: we want an explicit --no-deps flag, see ticket #423
-     includeDependencies = False
+    includeDeps = fromFlag (fetchDeps flags)
+    dryRun      = fromFlag (fetchDryRun flags)
 
 
-resolve :: Verbosity
-        -> Bool
-        -> Compiler
-        -> PackageIndex InstalledPackage
-        -> AvailablePackageDb
-        -> [UnresolvedDependency]
-        -> IO [AvailablePackage]
-resolve verbosity includeDependencies comp
+resolvePackages
+  :: Verbosity
+  -> Bool
+  -> Compiler
+  -> PackageIndex InstalledPackage
+  -> AvailablePackageDb
+  -> [UnresolvedDependency]
+  -> IO [AvailablePackage]
+resolvePackages verbosity includeDependencies comp
   installed (AvailablePackageDb available availablePrefs) deps
 
   | includeDependencies = do
@@ -169,6 +179,8 @@ resolve verbosity includeDependencies comp
                   installed' available
                   preferences constraints
                   targets
+      --TODO: suggest using --no-deps, unpack or fetch -o
+      -- if cannot satisfy deps
 
       return (selectPackagesToFetch plan)
 
