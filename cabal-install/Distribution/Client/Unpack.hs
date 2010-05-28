@@ -18,16 +18,13 @@ module Distribution.Client.Unpack (
   ) where
 
 import Distribution.Package
-         ( PackageId, packageId, Dependency(..) )
-import Distribution.Client.PackageIndex as PackageIndex (lookupDependency)
+         ( PackageId, Dependency(..) )
 import Distribution.Simple.Setup(fromFlag, fromFlagOrDefault)
 import Distribution.Simple.Utils
          ( notice, die )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text(display)
-import Distribution.Version
-         ( anyVersion, intersectVersionRanges )
 
 import Distribution.Client.Setup(UnpackFlags(unpackVerbosity,
                                              unpackDestDir))
@@ -35,6 +32,11 @@ import Distribution.Client.Types(UnresolvedDependency(..),
                                  Repo, AvailablePackageSource(..),
                                  AvailablePackage(AvailablePackage),
                                  AvailablePackageDb(AvailablePackageDb))
+import Distribution.Client.Dependency as Dependency
+         ( resolveAvailablePackages
+         , dependencyConstraints, dependencyTargets
+         , PackagesPreference(..), PackagesPreferenceDefault(..)
+         , PackagePreference(..) )
 import Distribution.Client.Fetch
         ( fetchPackage )
 import Distribution.Client.HttpUtils
@@ -50,38 +52,35 @@ import System.IO
          ( openTempFile, hClose )
 import Control.Monad
          ( unless, when )
-import Data.Ord (comparing)
-import Data.List(maximumBy)
+import Data.Monoid
+         ( mempty )
 import System.FilePath
          ( (</>), addTrailingPathSeparator )
 import qualified Data.Map as Map
 
 unpack :: UnpackFlags -> [Repo] -> [Dependency] -> IO ()
-unpack flags repos deps 
-    | null deps = notice verbosity
-                  "No packages requested. Nothing to do."
-    | otherwise = do
+unpack flags _ [] =
+    notice verbosity "No packages requested. Nothing to do."
+  where
+    verbosity = fromFlag (unpackVerbosity flags)
+
+unpack flags repos deps = do
   db@(AvailablePackageDb available _)
             <- getAvailablePackages verbosity repos
-  deps' <- fmap (map dependency) 
-           . IndexUtils.disambiguateDependencies available 
-           . map toUnresolved $ deps
+  deps' <- IndexUtils.disambiguateDependencies available
+         . map toUnresolved $ deps
 
-  let pkgs = resolvePackages db deps'
+  pkgs <- resolvePackages db deps'
 
   unless (null prefix) $
          createDirectoryIfMissing True prefix
 
   flip mapM_ pkgs $ \pkg -> case pkg of
 
-    Left (Dependency name ver) ->
-      die $ "There is no available version of " ++ display name
-            ++ " that satisfies " ++ display ver
-
-    Right (AvailablePackage pkgid _ (LocalTarballPackage tarballPath)) ->
+    AvailablePackage pkgid _ (LocalTarballPackage tarballPath) ->
       unpackPackage verbosity prefix pkgid tarballPath
 
-    Right (AvailablePackage pkgid _ (RemoteTarballPackage tarballURL)) -> do
+    AvailablePackage pkgid _ (RemoteTarballPackage tarballURL) -> do
       tmp <- getTemporaryDirectory
       (tarballPath, hnd) <- openTempFile tmp (display pkgid)
       hClose hnd
@@ -91,11 +90,11 @@ unpack flags repos deps
       downloadURI verbosity tarballURL tarballPath
       unpackPackage verbosity prefix pkgid tarballPath
 
-    Right (AvailablePackage pkgid _ (RepoTarballPackage repo)) -> do
+    AvailablePackage pkgid _ (RepoTarballPackage repo) -> do
       tarballPath <- fetchPackage verbosity repo pkgid
       unpackPackage verbosity prefix pkgid tarballPath
 
-    Right (AvailablePackage _ _ (LocalUnpackedPackage _)) ->
+    AvailablePackage _ _ (LocalUnpackedPackage _) ->
       error "Distribution.Client.Unpack.unpack: the impossible happened."
 
     where
@@ -118,18 +117,22 @@ unpackPackage verbosity prefix pkgid pkgPath = do
     Tar.extractTarGzFile prefix pkgdirname pkgPath
 
 resolvePackages :: AvailablePackageDb
-                   -> [Dependency]
-                   -> [Either Dependency AvailablePackage]
-resolvePackages (AvailablePackageDb available prefs) deps =
-    map (\d -> best d (candidates d)) deps
-    where
-      candidates dep@(Dependency name ver) =
-          let [x,y] = map (PackageIndex.lookupDependency available)
-                      [ Dependency name
-                        (maybe anyVersion id (Map.lookup name prefs)
-                         `intersectVersionRanges` ver)
-                      , dep ]
-          in if null x then y else x
-      best d [] = Left d
-      best _ xs = Right $ maximumBy (comparing packageId) xs
+                -> [UnresolvedDependency]
+                -> IO [AvailablePackage]
+resolvePackages
+  (AvailablePackageDb available availablePrefs) deps =
 
+    either (die . unlines . map show) return $
+      resolveAvailablePackages
+        installed   available
+        preferences constraints
+        targets
+
+  where
+    installed   = mempty
+    targets     = dependencyTargets     deps
+    constraints = dependencyConstraints deps
+    preferences = PackagesPreference
+                    PreferLatestForSelected
+                    [ PackageVersionPreference name ver
+                    | (name, ver) <- Map.toList availablePrefs ]
