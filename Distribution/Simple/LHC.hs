@@ -338,6 +338,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
              ["-package-name", display pkgid ]
           ++ constructGHCCmdLine lbi libBi clbi libTargetDir verbosity
           ++ map display (libModules lib)
+      lhcWrap x = ("--build-library --ghc-opts=\"":x) ++ ["\""]
       ghcArgsProf = ghcArgs
           ++ ["-prof",
               "-hisuf", "p_hi",
@@ -351,9 +352,9 @@ buildLib verbosity pkg_descr lbi lib clbi = do
              ]
           ++ ghcSharedOptions libBi
   unless (null (libModules lib)) $
-    do ifVanillaLib forceVanillaLib (runGhcProg ghcArgs)
-       ifProfLib (runGhcProg ghcArgsProf)
-       ifSharedLib (runGhcProg ghcArgsShared)
+    do ifVanillaLib forceVanillaLib (runGhcProg $ lhcWrap ghcArgs)
+       ifProfLib (runGhcProg $ lhcWrap ghcArgsProf)
+       ifSharedLib (runGhcProg $ lhcWrap ghcArgsShared)
 
   -- build any C sources
   unless (null (cSources libBi)) $ do
@@ -512,6 +513,7 @@ buildExe verbosity _pkg_descr lbi
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
   let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
+  let lhcWrap x = ("--ghc-opts\"":x) ++ ["\""]
   let binArgs linkExe profExe =
              (if linkExe
                  then ["-o", targetDir </> exeNameReal]
@@ -536,7 +538,7 @@ buildExe verbosity _pkg_descr lbi
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
   when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
-     (runGhcProg (binArgs False False))
+     (runGhcProg $ lhcWrap (binArgs False False))
 
   runGhcProg (binArgs True (withProfExe lbi))
 
@@ -734,7 +736,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib = do
   ifVanilla $ copyModuleFiles "hi"
   ifProf    $ copyModuleFiles "p_hi"
   hcrFiles <- findModuleFiles (builtDir : hsSourceDirs (libBuildInfo lib)) ["hcr"] (libModules lib)
-  flip mapM_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["install", srcBase </> srcFile]
+  flip mapM_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["--install-library", srcBase </> srcFile]
 
   -- copy the built library files over:
   ifVanilla $ copy builtDir targetDir vanillaLibName
