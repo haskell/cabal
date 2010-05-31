@@ -345,7 +345,7 @@ updateCommand = CommandUI {
 upgradeCommand  :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
 upgradeCommand = configureCommand {
     commandName         = "upgrade",
-    commandSynopsis     = "Upgrades installed packages to the latest available version",
+    commandSynopsis     = "(command disabled, use install instead)",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "upgrade",
     commandDefaultFlags = (mempty, mempty, mempty),
@@ -515,6 +515,7 @@ data InstallFlags = InstallFlags {
     installHaddockIndex :: Flag PathTemplate,
     installDryRun       :: Flag Bool,
     installReinstall    :: Flag Bool,
+    installUpgradeDeps  :: Flag Bool,
     installOnly         :: Flag Bool,
     installRootCmd      :: Flag String,
     installSummaryFile  :: [PathTemplate],
@@ -530,6 +531,7 @@ defaultInstallFlags = InstallFlags {
     installHaddockIndex = Flag docIndexFile,
     installDryRun       = Flag False,
     installReinstall    = Flag False,
+    installUpgradeDeps  = Flag False,
     installOnly         = Flag False,
     installRootCmd      = mempty,
     installSummaryFile  = mempty,
@@ -594,6 +596,11 @@ installOptions showOrParseArgs =
           installReinstall (\v flags -> flags { installReinstall = v })
           trueArg
 
+      , option [] ["upgrade-dependencies"]
+          "Pick the latest version for all dependencies, rather than trying to pick an installed version."
+          installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
+          trueArg
+
       , option [] ["root-cmd"]
           "Command used to gain root privileges, when installing with --global."
           installRootCmd (\v flags -> flags { installRootCmd = v })
@@ -642,6 +649,7 @@ instance Monoid InstallFlags where
     installHaddockIndex = mempty,
     installDryRun       = mempty,
     installReinstall    = mempty,
+    installUpgradeDeps  = mempty,
     installOnly         = mempty,
     installRootCmd      = mempty,
     installSummaryFile  = mempty,
@@ -655,6 +663,7 @@ instance Monoid InstallFlags where
     installHaddockIndex = combine installHaddockIndex,
     installDryRun       = combine installDryRun,
     installReinstall    = combine installReinstall,
+    installUpgradeDeps  = combine installUpgradeDeps,
     installOnly         = combine installOnly,
     installRootCmd      = combine installRootCmd,
     installSummaryFile  = combine installSummaryFile,
