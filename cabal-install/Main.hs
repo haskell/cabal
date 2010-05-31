@@ -126,7 +126,6 @@ mainWorker args = topHandler $
       ,updateCommand          `commandAddAction` updateAction
       ,listCommand            `commandAddAction` listAction
       ,infoCommand            `commandAddAction` infoAction
-      ,upgradeCommand         `commandAddAction` upgradeAction
       ,fetchCommand           `commandAddAction` fetchAction
       ,unpackCommand          `commandAddAction` unpackAction
       ,checkCommand           `commandAddAction` checkAction
@@ -149,6 +148,7 @@ mainWorker args = topHandler $
                      regVerbosity      regDistPref
       ,wrapperAction testCommand
                      testVerbosity     testDistPref
+      ,upgradeCommand         `commandAddAction` upgradeAction
       ]
 
 wrapperAction :: Monoid flags

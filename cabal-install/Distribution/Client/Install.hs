@@ -51,7 +51,6 @@ import Distribution.Client.Dependency
          , PackageConstraint(..), dependencyConstraints, dependencyTargets
          , PackagesPreference(..), PackagesPreferenceDefault(..)
          , PackagePreference(..)
-         , upgradableDependencies
          , Progress(..), foldProgress, )
 import Distribution.Client.Fetch
          ( fetchPackage )
@@ -188,27 +187,28 @@ install verbosity packageDB repos comp conf
       | null targets = planLocalPackage verbosity
                          comp configFlags configExFlags
 
-      | otherwise    = planRepoPackages PreferLatestForSelected
+      | otherwise    = planRepoPackages defaultPref
                          comp globalFlags configFlags configExFlags
                          installFlags targets
 
+    defaultPref
+      | fromFlag (installUpgradeDeps installFlags) = PreferAllLatest
+      | otherwise                                  = PreferLatestForSelected
 
-upgrade verbosity packageDB repos comp conf
-  globalFlags configFlags configExFlags installFlags deps =
 
-    installWithPlanner verbosity context planner []
+upgrade _ _ _ _ _ _ _ _ _ _ = die $
+    "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
+ ++ "You can install the latest version of a package using 'cabal install'. "
+ ++ "The 'cabal upgrade' command has been removed because people found it "
+ ++ "confusing and it often led to broken packages.\n"
+ ++ "If you want the old upgrade behaviour then use the install command "
+ ++ "with the --upgrade-dependencies flag (but check first with --dry-run "
+ ++ "to see what would happen). This will try to pick the latest versions "
+ ++ "of all dependencies, rather than the usual behaviour of trying to pick "
+ ++ "installed versions of all dependencies. If you do use "
+ ++ "--upgrade-dependencies, it is recommended that you do not upgrade core "
+ ++ "packages (e.g. by using appropriate --constraint= flags)."
 
-  where
-    context :: InstallContext
-    context = (packageDB, repos, comp, conf,
-               globalFlags, configFlags, configExFlags, installFlags)
-
-    planner :: Planner
-    planner | null deps = planUpgradePackages
-                            comp configFlags configExFlags
-            | otherwise = planRepoPackages PreferAllLatest
-                            comp globalFlags configFlags configExFlags
-                            installFlags deps
 
 type Planner = PackageIndex InstalledPackage
             -> AvailablePackageDb
@@ -335,35 +335,6 @@ planRepoPackages defaultPref comp
         return (otherTargets ++ worldTargets)
       where
         worldFile = fromFlag $ globalWorldFile globalFlags
-
-
-planUpgradePackages :: Compiler
-                    -> ConfigFlags
-                    -> ConfigExFlags
-                    -> Planner
-planUpgradePackages _comp _configFlags _configExFlags installed
-  (AvailablePackageDb available _availablePrefs) = die $
-       "the 'upgrade' command (when used without any package arguments) has "
-    ++ "been disabled in this release. It has been disabled because it has "
-    ++ "frequently led people to accidentally break their set of installed "
-    ++ "packages. It will be re-enabled when it is safer to use.\n"
-    ++ "Below is the list of packages that it would have tried to upgrade. You "
-    ++ "can use the 'install' command to install the ones you want. Note that "
-    ++ "it is generally not recommended to upgrade core packages.\n"
-    ++ unlines [ display pkgid | Dependency pkgid _ <- deps ]
-
---TODO: improve upgrade so we can re-enable it
---  return $
---  resolveDependenciesWithProgress buildPlatform (compilerId comp)
---    (Just installed) available preferences constraints targets
-  where
-    deps        = upgradableDependencies installed available
---    preferences = mergePackagePrefs PreferAllLatest availablePrefs configExFlags
---    constraints = [ PackageVersionConstraint name ver
---                  | Dependency name ver <- deps ]
---               ++ [ PackageVersionConstraint name ver
---                  | Dependency name ver <- configConstraints configFlags ]
---    targets     = [ name | Dependency name _ <- deps ]
 
 
 mergePackagePrefs :: PackagesPreferenceDefault
