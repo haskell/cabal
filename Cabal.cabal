@@ -102,6 +102,7 @@ Library
         Distribution.Simple.Register,
         Distribution.Simple.Setup,
         Distribution.Simple.SrcDist,
+        Distribution.Simple.Test,
         Distribution.Simple.UHC,
         Distribution.Simple.UserHooks,
         Distribution.Simple.Utils,

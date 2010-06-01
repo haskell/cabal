@@ -66,7 +66,7 @@ import Distribution.Simple.PreProcess (PPSuffixHandler)
 import Distribution.Simple.Setup
          (ConfigFlags, BuildFlags, CleanFlags, CopyFlags,
           InstallFlags, SDistFlags, RegisterFlags, HscolourFlags,
-          HaddockFlags)
+          HaddockFlags, TestFlags)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
 
 type Args = [String]
@@ -79,8 +79,6 @@ type Args = [String]
 -- break in future releases.
 data UserHooks = UserHooks {
 
-    -- | Used for @.\/setup test@
-    runTests :: Args -> Bool -> PackageDescription -> LocalBuildInfo -> IO (),
     -- | Read the description file
     readDesc :: IO (Maybe GenericPackageDescription),
     -- | Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
@@ -161,14 +159,20 @@ data UserHooks = UserHooks {
     -- |Over-ride this hook to get different behavior during haddock.
     haddockHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> HaddockFlags -> IO (),
     -- |Hook to run after haddock command.  Second arg indicates verbosity level.
-    postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+    postHaddock :: Args -> HaddockFlags -> PackageDescription -> LocalBuildInfo -> IO (),
+
+    -- |Hook to run before test command.
+    preTest :: Args -> TestFlags -> IO HookedBuildInfo,
+    -- |Over-ride this hook to get different behavior during test.
+    testHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> TestFlags -> IO (),
+    -- |Hook to run after test command.
+    postTest :: Args -> TestFlags -> PackageDescription -> LocalBuildInfo -> IO ()
   }
 
 -- |Empty 'UserHooks' which do nothing.
 emptyUserHooks :: UserHooks
 emptyUserHooks
   = UserHooks {
-      runTests  = ru,
       readDesc  = return Nothing,
       hookedPreProcessors = [],
       hookedPrograms      = [],
@@ -201,7 +205,10 @@ emptyUserHooks
       postHscolour = ru,
       preHaddock   = rn,
       haddockHook  = ru,
-      postHaddock  = ru
+      postHaddock  = ru,
+      preTest = rn,
+      testHook = ru,
+      postTest = ru
     }
     where rn args  _ = noExtraFlags args >> return emptyHookedBuildInfo
           ru _ _ _ _ = return ()
