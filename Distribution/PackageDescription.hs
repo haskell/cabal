@@ -79,6 +79,7 @@ module Distribution.PackageDescription (
         hasTests,
         withTest,
         testModules,
+        matches,
 
         -- * Build information
         BuildInfo(..),
@@ -391,15 +392,17 @@ hasTests = any (buildable . testBuildInfo) . testsuites
 -- | Perform actions on each buildable 'Testsuite' in a package. For each
 -- 'Testsuite', all actions with matching 'TestType' are performed. If no
 -- action has a matching type, then an error message is produced.
-withTest :: PackageDescription -> [(TestType, Testsuite -> IO ())] -> IO ()
-withTest pkg_descr fs = flip mapM_ (testsuites pkg_descr) $ \test -> do
-    let handlers = map snd $ filter (matchesType (testType test) . fst) fs
-    if not $ buildable (testBuildInfo test)
-        then return ()
-        else if null handlers
-            then error $ "error in test " ++ testName test ++
-                ": no support for test type " ++ show (disp $ testType test)
-            else mapM_ (\f -> f test) handlers
+withTest :: PackageDescription -> (Testsuite -> IO ()) -> IO ()
+withTest pkg_descr f = mapM_ f $ testsuites pkg_descr
+
+-- | Do the given 'TestType's match, i.e., are they the same type with
+-- overlapping 'VersionRange's?
+matches :: TestType -> TestType -> Bool
+matches (ExeTest v) (ExeTest v') =
+    not $ isNoVersion $ intersectVersionRanges v v'
+matches (LibTest v) (LibTest v') =
+    not $ isNoVersion $ intersectVersionRanges v v'
+matches _ _ = False
 
 -- | Get all the module names from a testsuite.
 testModules :: Testsuite -> [ModuleName]
