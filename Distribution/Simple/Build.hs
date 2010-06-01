@@ -68,7 +68,8 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..)
-         , Library(..), Executable(..), Testsuite(..), TestType(..) )
+         , Library(..), Executable(..), Testsuite(..), TestType(..)
+         , matches )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
@@ -87,6 +88,8 @@ import Distribution.Simple.Register
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, setupMessage )
+
+import Distribution.Text
 
 import Distribution.Version (Version(..), thisVersion)
 
@@ -144,10 +147,13 @@ build pkg_descr lbi flags suffixes = do
     info verbosity $ "Building executable " ++ exeName exe ++ "..."
     buildExe verbosity pkg_descr lbi' exe clbi
 
-  let testExeVer1 test clbi = do
-        info verbosity $ "Building testsuite " ++ testName test ++ "..."
-        buildExeTest verbosity pkg_descr lbi' test clbi
-  withTestLBI pkg_descr lbi' [(ExeTest $ thisVersion $ Version [1] [], testExeVer1)]
+  withTestLBI pkg_descr lbi' $ \test clbi ->
+        if testType test `matches` (ExeTest $ thisVersion $ Version [1] [])
+            then do
+                info verbosity $ "Building testsuite " ++ testName test ++ "..."
+                buildExeTest verbosity pkg_descr lbi' test clbi
+            else die $ "No support for building test type: " ++
+                       show (disp $ testType test)
 
 
 -- | Initialize a new package db file for libraries defined

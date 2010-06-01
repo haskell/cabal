@@ -66,7 +66,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library, withExe
-         , Executable(exeName), withTest, Testsuite(..), TestType(..) )
+         , Executable(exeName), withTest, Testsuite(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..) )
 import Distribution.Simple.Compiler
@@ -165,14 +165,14 @@ withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
                     ++ "configuration data"
 
 withTestLBI :: PackageDescription -> LocalBuildInfo
-            -> [(TestType, Testsuite -> ComponentLocalBuildInfo -> IO ())] -> IO ()
-withTestLBI pkg_descr lbi fs =
-    let wrapper f test = case lookup (testName test) (testsuiteConfigs lbi) of
+            -> (Testsuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()
+withTestLBI pkg_descr lbi f =
+    let wrapper test = case lookup (testName test) (testsuiteConfigs lbi) of
             Just clbi -> f test clbi
             Nothing -> die $ "internal error: the package contains a testsuite "
                             ++ testName test ++ " but there is no corresponding "
                             ++ "configuration data"
-    in withTest pkg_descr $ map (\(t, f) -> (t, wrapper f)) fs
+    in withTest pkg_descr wrapper
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs
