@@ -87,7 +87,7 @@ import Distribution.Version
          , anyVersion, noVersion, thisVersion, laterVersion, earlierVersion
          , orLaterVersion, orEarlierVersion
          , unionVersionRanges, intersectVersionRanges
-         , asVersionIntervals, LowerBound(..), UpperBound(..) )
+         , asVersionIntervals, LowerBound(..), UpperBound(..), isNoVersion )
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
          , Dependency(..) )
@@ -315,6 +315,16 @@ checkFields pkg =
   , check (length (synopsis pkg) >= 80) $
       PackageDistSuspicious
         "The 'synopsis' field is rather long (max 80 chars is recommended)."
+
+    -- check use of impossible constraints "tested-with: GHC== 6.10 && ==6.12"
+  , check (not (null testedWithImpossibleRanges)) $
+      PackageDistInexcusable $
+           "Invalid 'tested-with' version range: "
+        ++ commaSep (map display testedWithImpossibleRanges)
+        ++ ". To indicate that you have tested a package with multiple "
+        ++ "different versions of the same compiler use multiple entries, "
+        ++ "for example 'tested-with: GHC==6.10.4, GHC==6.12.3' and not "
+        ++ "'tested-with: GHC==6.10.4 && ==6.12.3'."
   ]
   where
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
@@ -324,6 +334,12 @@ checkFields pkg =
       [ find ((==ext) . fst) Extension.deprecatedExtensions
       | bi <- allBuildInfo pkg
       , ext <- extensions bi ]
+
+    testedWithImpossibleRanges =
+      [ Dependency (PackageName (display compiler)) vr
+      | (compiler, vr) <- testedWith pkg
+      , isNoVersion vr ]
+
 
 checkLicense :: PackageDescription -> [PackageCheck]
 checkLicense pkg =
@@ -695,6 +711,26 @@ checkCabalVersion pkg =
            [ display (Dependency name (eliminateWildcardSyntax versionRange))
            | Dependency name versionRange <- depsUsingWildcardSyntax ]
 
+    -- check use of "tested-with: GHC (>= 1.0 && < 1.4) || >=1.8 " syntax
+  , checkVersion [1,8] (not (null testedWithVersionRangeExpressions)) $
+      PackageDistInexcusable $
+           "The package uses full version-range expressions "
+        ++ "in a 'tested-with' field: "
+        ++ commaSep (map display testedWithVersionRangeExpressions)
+        ++ ". To use this new syntax the package needs to specify at least "
+        ++ "'cabal-version: >= 1.8'."
+
+    -- check use of "tested-with: GHC == 6.12.*" syntax
+  , checkVersion [1,6] (not (null testedWithUsingWildcardSyntax)) $
+      PackageDistInexcusable $
+           "The package uses wildcard syntax in the 'tested-with' field: "
+        ++ commaSep (map display testedWithUsingWildcardSyntax)
+        ++ ". To use this new syntax the package need to specify at least "
+        ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatability "
+        ++ "is important then use: " ++ commaSep
+           [ display (Dependency name (eliminateWildcardSyntax versionRange))
+           | Dependency name versionRange <- testedWithUsingWildcardSyntax ]
+
     -- check use of "data-files: data/*.txt" syntax
   , checkVersion [1,6] (not (null dataFilesUsingGlobSyntax)) $
       PackageDistInexcusable $
@@ -770,8 +806,15 @@ checkCabalVersion pkg =
 
     versionRangeExpressions =
         [ dep | dep@(Dependency _ vr) <- buildDepends pkg
-              , depth vr > (2::Int) ]
-        where depth = foldVersionRange'
+              , versionExpDepth vr > 2 ]
+
+    testedWithVersionRangeExpressions =
+        [ Dependency (PackageName (display compiler)) vr
+        | (compiler, vr) <- testedWith pkg
+        , versionExpDepth vr > 2 ]
+
+    versionExpDepth :: VersionRange -> Int
+    versionExpDepth = foldVersionRange'
                         1 (const 1)
                         (const 1) (const 1)
                         (const 1) (const 1)
@@ -779,6 +822,10 @@ checkCabalVersion pkg =
                         (+) (+)
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
+                                    , usesWildcardSyntax vr ]
+
+    testedWithUsingWildcardSyntax = [ Dependency (PackageName (display compiler)) vr
+                                    | (compiler, vr) <- testedWith pkg
                                     , usesWildcardSyntax vr ]
 
     usesWildcardSyntax :: VersionRange -> Bool
