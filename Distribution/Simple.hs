@@ -104,6 +104,7 @@ import Distribution.Simple.Configure
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( srcPref)
+import Distribution.Simple.Test (test)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Utils
@@ -321,11 +322,11 @@ sdistAction hooks flags args = do
   where verbosity = fromFlag (sDistVerbosity flags)
 
 testAction :: UserHooks -> TestFlags -> Args -> IO ()
-testAction hooks flags args = do
-                let distPref = fromFlag $ testDistPref flags
-                localbuildinfo <- getBuildConfig hooks distPref
-                let pkg_descr = localPkgDescr localbuildinfo
-                runTests hooks args False pkg_descr localbuildinfo
+testAction hooks flags args
+    = do let distPref = fromFlag $ testDistPref flags
+         hookedAction preTest testHook postTest
+                      (getBuildConfig hooks distPref)
+                      hooks flags args
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args
@@ -417,6 +418,7 @@ simpleUserHooks =
        postConf  = finalChecks,
        buildHook = defaultBuildHook,
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
+       testHook = defaultTestHook,
        instHook  = defaultInstallHook,
        sDistHook = \p l h f -> sdist p l f srcPref (allSuffixHandlers h),
        cleanHook = \p _ _ f -> clean p f,
@@ -537,6 +539,11 @@ getHookedBuildInfo verbosity = do
     Just infoFile -> do
       info verbosity $ "Reading parameters from " ++ infoFile
       readHookedBuildInfo verbosity infoFile
+
+defaultTestHook :: PackageDescription -> LocalBuildInfo
+                -> UserHooks -> TestFlags -> IO ()
+defaultTestHook pkg_descr localbuildinfo _ flags =
+    test pkg_descr localbuildinfo flags
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()
