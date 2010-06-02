@@ -91,8 +91,12 @@ import Distribution.Version
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
          , Dependency(..) )
+
 import Distribution.Text
-         ( display )
+         ( display, disp )
+import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint ((<>), (<+>))
+
 import qualified Language.Haskell.Extension as Extension
 import Language.Haskell.Extension (Extension(..))
 import System.FilePath
@@ -694,7 +698,7 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The package uses full version-range expressions "
         ++ "in a 'build-depends' field: "
-        ++ commaSep (map display versionRangeExpressions)
+        ++ commaSep (map displayRawDependency versionRangeExpressions)
         ++ ". To use this new syntax the package needs to specify at least "
         ++ "'cabal-version: >= 1.8'. Alternatively, if broader compatibility "
         ++ "is important, then convert to conjunctive normal form, and use "
@@ -716,7 +720,7 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The package uses full version-range expressions "
         ++ "in a 'tested-with' field: "
-        ++ commaSep (map display testedWithVersionRangeExpressions)
+        ++ commaSep (map displayRawDependency testedWithVersionRangeExpressions)
         ++ ". To use this new syntax the package needs to specify at least "
         ++ "'cabal-version: >= 1.8'."
 
@@ -806,20 +810,24 @@ checkCabalVersion pkg =
 
     versionRangeExpressions =
         [ dep | dep@(Dependency _ vr) <- buildDepends pkg
-              , versionExpDepth vr > 2 ]
+              , usesNewVersionRangeSyntax vr ]
 
     testedWithVersionRangeExpressions =
         [ Dependency (PackageName (display compiler)) vr
         | (compiler, vr) <- testedWith pkg
-        , versionExpDepth vr > 2 ]
+        , usesNewVersionRangeSyntax vr ]
 
-    versionExpDepth :: VersionRange -> Int
-    versionExpDepth = foldVersionRange'
-                        1 (const 1)
-                        (const 1) (const 1)
-                        (const 1) (const 1)
-                        (const (const 1))
-                        (+) (+)
+    usesNewVersionRangeSyntax :: VersionRange -> Bool
+    usesNewVersionRangeSyntax =
+        (> 2) -- uses the new syntax if depth is more than 2
+      . foldVersionRange'
+          (1 :: Int)
+          (const 1)
+          (const 1) (const 1)
+          (const 1) (const 1)
+          (const (const 1))
+          (+) (+)
+          (const 3) -- uses new ()'s syntax
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]
@@ -835,7 +843,7 @@ checkCabalVersion pkg =
         (const False) (const False)
         (const False) (const False)
         (\_ _ -> True) -- the wildcard case
-        (||) (||)
+        (||) (||) id
 
     eliminateWildcardSyntax =
       foldVersionRange'
@@ -843,7 +851,7 @@ checkCabalVersion pkg =
         laterVersion earlierVersion
         orLaterVersion orEarlierVersion
         (\v v' -> intersectVersionRanges (orLaterVersion v) (earlierVersion v'))
-        intersectVersionRanges unionVersionRanges
+        intersectVersionRanges unionVersionRanges id
 
     compatLicenses = [ GPL Nothing, LGPL Nothing, BSD3, BSD4
                      , PublicDomain, AllRightsReserved, OtherLicense ]
@@ -881,6 +889,39 @@ checkCabalVersion pkg =
       , ExtendedDefaultRules, UnboxedTuples, DeriveDataTypeable
       , ConstrainedClassMethods
       ]
+
+-- | A variation on the normal 'Text' instance, shows any ()'s in the original
+-- textual syntax. We need to show these otherwise it's confusing to users when
+-- we complain of their presense but do not pretty print them!
+--
+displayRawVersionRange :: VersionRange -> String
+displayRawVersionRange =
+   Disp.render
+ . fst
+ . foldVersionRange'                         -- precedence:
+     -- All the same as the usual pretty printer, except for the parens
+     (         Disp.text "-any"                           , 0 :: Int)
+     (\v   -> (Disp.text "==" <> disp v                   , 0))
+     (\v   -> (Disp.char '>'  <> disp v                   , 0))
+     (\v   -> (Disp.char '<'  <> disp v                   , 0))
+     (\v   -> (Disp.text ">=" <> disp v                   , 0))
+     (\v   -> (Disp.text "<=" <> disp v                   , 0))
+     (\v _ -> (Disp.text "==" <> dispWild v               , 0))
+     (\(r1, p1) (r2, p2) -> (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
+     (\(r1, p1) (r2, p2) -> (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
+     (\(r,  _ )          -> (Disp.parens r, 0)) -- parens
+
+  where
+    dispWild (Version b _) =
+           Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
+        <> Disp.text ".*"
+    punct p p' | p < p'    = Disp.parens
+               | otherwise = id
+
+displayRawDependency :: Dependency -> String
+displayRawDependency (Dependency pkg vr) =
+  display pkg ++ " " ++ displayRawVersionRange vr
+
 
 -- ------------------------------------------------------------
 -- * Checks on the GenericPackageDescription
