@@ -338,7 +338,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
              ["-package-name", display pkgid ]
           ++ constructGHCCmdLine lbi libBi clbi libTargetDir verbosity
           ++ map display (libModules lib)
-      lhcWrap x = ("--build-library --ghc-opts=\"":x) ++ ["\""]
+      lhcWrap x = ["--build-library", "--ghc-opts=" ++ unwords x]
       ghcArgsProf = ghcArgs
           ++ ["-prof",
               "-hisuf", "p_hi",
