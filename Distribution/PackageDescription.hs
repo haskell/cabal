@@ -389,11 +389,11 @@ matchesType (LibTest _) _ = False
 hasTests :: PackageDescription -> Bool
 hasTests = any (buildable . testBuildInfo) . testsuites
 
--- | Perform actions on each buildable 'Testsuite' in a package. For each
--- 'Testsuite', all actions with matching 'TestType' are performed. If no
--- action has a matching type, then an error message is produced.
+-- | Perform an action on each buildable 'Testsuite' in a package.
 withTest :: PackageDescription -> (Testsuite -> IO ()) -> IO ()
-withTest pkg_descr f = mapM_ f $ testsuites pkg_descr
+withTest pkg_descr f =
+    mapM_ f $ filter (buildable . testBuildInfo) $
+        testsuites pkg_descr
 
 -- | Do the given 'TestType's match, i.e., are they the same type with
 -- overlapping 'VersionRange's?
