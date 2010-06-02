@@ -4,6 +4,9 @@ module Test.Distribution.Version (properties) where
 import Distribution.Version
 import Distribution.Text
 
+import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint ((<>), (<+>))
+
 import Test.QuickCheck
 import Test.QuickCheck.Utils
 import qualified Test.Laws as Laws
@@ -71,7 +74,9 @@ properties =
   , property prop_intersect_union_distributive
 
    -- parsing an pretty printing
-  , property prop_parse_disp
+  , property prop_parse_disp1
+  , property prop_parse_disp2
+  , property prop_parse_disp3
   ]
 
 instance Arbitrary Version where
@@ -103,6 +108,7 @@ instance Arbitrary VersionRange where
         , (1, liftM orEarlierVersion arbitrary)
         , (1, liftM orEarlierVersion' arbitrary)
         , (1, liftM withinVersion arbitrary)
+        , (2, liftM VersionRangeParens arbitrary)
         ] ++ if n == 0 then [] else
         [ (2, liftM2 unionVersionRanges     verRangeExp2 verRangeExp2)
         , (2, liftM2 intersectVersionRanges verRangeExp2 verRangeExp2)
@@ -194,6 +200,7 @@ prop_foldVersionRange range =
       UnionVersionRanges (expandWildcard v1) (expandWildcard v2)
     expandWildcard (IntersectVersionRanges v1 v2) =
       IntersectVersionRanges (expandWildcard v1) (expandWildcard v2)
+    expandWildcard (VersionRangeParens v) = expandWildcard v
     expandWildcard v = v
 
 
@@ -204,7 +211,7 @@ prop_foldVersionRange' range =
                        laterVersion earlierVersion
                        orLaterVersion orEarlierVersion
                        (\v _ -> withinVersion v)
-                       unionVersionRanges intersectVersionRanges
+                       unionVersionRanges intersectVersionRanges id
                        range
   where
     canonicalise (UnionVersionRanges (LaterVersion v)
@@ -219,6 +226,7 @@ prop_foldVersionRange' range =
       UnionVersionRanges (canonicalise v1) (canonicalise v2)
     canonicalise (IntersectVersionRanges v1 v2) =
       IntersectVersionRanges (canonicalise v1) (canonicalise v2)
+    canonicalise (VersionRangeParens v) = canonicalise v
     canonicalise v = v
 
 
@@ -280,6 +288,7 @@ prop_simplifyVersionRange2' r r' =
   r /= r' && simplifyVersionRange r == simplifyVersionRange r' ==>
     r `equivalentVersionRange` r'
 
+--FIXME: see equivalentVersionRange for details
 prop_simplifyVersionRange2'' :: VersionRange -> VersionRange -> Property
 prop_simplifyVersionRange2'' r r' =
   r /= r' && r `equivalentVersionRange` r' ==>
@@ -332,7 +341,7 @@ instance Arbitrary VersionIntervals' where
       doesNotTouch (UpperBound u ub) (LowerBound l lb) =
             u <  l
         || (u == l && ub == ExclusiveBound && lb == ExclusiveBound)
-      
+
       fixEmpty (LowerBound l _, UpperBound u _)
         | l == u = (LowerBound l InclusiveBound, UpperBound u InclusiveBound)
       fixEmpty i = i
@@ -510,6 +519,12 @@ prop_equivalentVersionRange range range' version =
   equivalentVersionRange range range' && range /= range' ==>
     withinRange version range == withinRange version range'
 
+--FIXME: this is wrong. consider version ranges "<=1" and "<1.0"
+--       this algorithm cannot distinguish them because there is no version
+--       that is included by one that is excluded by the other.
+--       Alternatively we must reconsider the semantics of '<' and '<='
+--       in version ranges / version intervals. Perhaps the canonical
+--       representation should use just < v and interpret "<= v" as "< v.0".
 equivalentVersionRange :: VersionRange -> VersionRange -> Bool
 equivalentVersionRange vr1 vr2 =
   let allVersionsUsed = nub (sort (versionsUsed vr1 ++ versionsUsed vr2))
@@ -556,9 +571,9 @@ adjacentVersions (Version v1 _) (Version v2 _) = v1 ++ [0] == v2
 -- Parsing and pretty printing
 --
 
-prop_parse_disp :: VersionRange -> Bool
-prop_parse_disp vr =
-  simpleParse (display vr) == Just (canonicalise vr)
+prop_parse_disp1 :: VersionRange -> Bool
+prop_parse_disp1 vr =
+  fmap stripParens (simpleParse (display vr)) == Just (canonicalise vr)
 
   where
     canonicalise = swizzle . swap
@@ -574,6 +589,7 @@ prop_parse_disp vr =
       UnionVersionRanges (swizzle v1) (swizzle v2)
     swizzle (IntersectVersionRanges v1 v2) =
       IntersectVersionRanges (swizzle v1) (swizzle v2)
+    swizzle (VersionRangeParens v) = swizzle v
     swizzle v = v
 
     isOrLaterVersion (ThisVersion  v) (LaterVersion v') = v == v'
@@ -587,4 +603,42 @@ prop_parse_disp vr =
                         laterVersion earlierVersion
                         orLaterVersion orEarlierVersion
                         (\v _ -> withinVersion v)
-                        unionVersionRanges intersectVersionRanges
+                        unionVersionRanges intersectVersionRanges id
+
+    stripParens :: VersionRange -> VersionRange
+    stripParens (VersionRangeParens v) = stripParens v
+    stripParens (UnionVersionRanges v1 v2) =
+      UnionVersionRanges (stripParens v1) (stripParens v2)
+    stripParens (IntersectVersionRanges v1 v2) =
+      IntersectVersionRanges (stripParens v1) (stripParens v2)
+    stripParens v = v
+
+prop_parse_disp2 :: VersionRange -> Bool
+prop_parse_disp2 vr =
+     fmap (display :: VersionRange -> String) (simpleParse (display vr))
+  == Just (display vr)
+
+prop_parse_disp3 :: VersionRange -> Bool
+prop_parse_disp3 vr =
+  fmap displayRaw (simpleParse (display vr)) == Just (display vr)
+
+displayRaw :: VersionRange -> String
+displayRaw =
+   Disp.render
+ . foldVersionRange'                         -- precedence:
+     -- All the same as the usual pretty printer, except for the parens
+     (          Disp.text "-any")
+     (\v     -> Disp.text "==" <> disp v)
+     (\v     -> Disp.char '>'  <> disp v)
+     (\v     -> Disp.char '<'  <> disp v)
+     (\v     -> Disp.text ">=" <> disp v)
+     (\v     -> Disp.text "<=" <> disp v)
+     (\v _   -> Disp.text "==" <> dispWild v)
+     (\r1 r2 -> r1 <+> Disp.text "||" <+> r2)
+     (\r1 r2 -> r1 <+> Disp.text "&&" <+> r2)
+     (\r     -> Disp.parens r) -- parens
+
+  where
+    dispWild (Version b _) =
+           Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
+        <> Disp.text ".*"

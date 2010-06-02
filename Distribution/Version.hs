@@ -113,8 +113,9 @@ data VersionRange
   | LaterVersion           Version -- > version  (NB. not >=)
   | EarlierVersion         Version -- < version
   | WildcardVersion        Version -- == ver.*   (same as >= ver && < ver+1)
-  | UnionVersionRanges      VersionRange VersionRange
-  | IntersectVersionRanges  VersionRange VersionRange
+  | UnionVersionRanges     VersionRange VersionRange
+  | IntersectVersionRanges VersionRange VersionRange
+  | VersionRangeParens     VersionRange -- just '(exp)' parentheses syntax
   deriving (Show,Read,Eq)
 
 {-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
@@ -253,7 +254,8 @@ foldVersionRange anyv this later earlier union intersect = fold
     fold (WildcardVersion v)            = fold (wildcard v)
     fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
     fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
-    
+    fold (VersionRangeParens v)         = fold v
+
     wildcard v = intersectVersionRanges
                    (orLaterVersion v)
                    (earlierVersion (wildcardUpperBound v))
@@ -275,9 +277,10 @@ foldVersionRange' :: a                         -- ^ @\"-any\"@ version
                                                -- range defined by the wildcard.
                   -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
                   -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
+                  -> (a -> a)                  -- ^ @\"(_)"\@ parentheses
                   -> VersionRange -> a
 foldVersionRange' anyv this later earlier orLater orEarlier
-                  wildcard union intersect = fold
+                  wildcard union intersect parens = fold
   where
     fold AnyVersion                     = anyv
     fold (ThisVersion v)                = this v
@@ -296,6 +299,7 @@ foldVersionRange' anyv this later earlier orLater orEarlier
     fold (WildcardVersion v)            = wildcard v (wildcardUpperBound v)
     fold (UnionVersionRanges v1 v2)     = union (fold v1) (fold v2)
     fold (IntersectVersionRanges v1 v2) = intersect (fold v1) (fold v2)
+    fold (VersionRangeParens v)         = parens (fold v)
 
 
 -- | Does this version fall within the given range?
@@ -676,6 +680,7 @@ instance Text VersionRange where
            (\v _ -> (Disp.text "==" <> dispWild v               , 0))
            (\(r1, p1) (r2, p2) -> (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
            (\(r1, p1) (r2, p2) -> (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
+           id
 
     where dispWild (Version b _) =
                Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
@@ -720,7 +725,7 @@ instance Text VersionRange where
                                  (Parse.char ')' >> Parse.skipSpaces)
                                  (do a <- p
                                      Parse.skipSpaces
-                                     return a)
+                                     return (VersionRangeParens a))
 
         digits = do
           first <- Parse.satisfy Char.isDigit
