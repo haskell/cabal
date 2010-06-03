@@ -80,6 +80,7 @@ module Distribution.PackageDescription (
         withTest,
         testModules,
         matches,
+        exeTestVer1,
 
         -- * Build information
         BuildInfo(..),
@@ -113,7 +114,7 @@ import Distribution.Package
 import Distribution.ModuleName (ModuleName, fromString)
 import Distribution.Version
          ( Version(Version), VersionRange, anyVersion, noVersion
-         , intersectVersionRanges, isNoVersion)
+         , intersectVersionRanges, isNoVersion, thisVersion )
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
@@ -403,6 +404,9 @@ matches (ExeTest v) (ExeTest v') =
 matches (LibTest v) (LibTest v') =
     not $ isNoVersion $ intersectVersionRanges v v'
 matches _ _ = False
+
+exeTestVer1 :: TestType
+exeTestVer1 = ExeTest $ thisVersion $ Version [1] []
 
 -- | Get all the module names from a testsuite.
 testModules :: Testsuite -> [ModuleName]
