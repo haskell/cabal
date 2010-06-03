@@ -43,15 +43,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Test ( test ) where
 
 import Distribution.PackageDescription
-        ( PackageDescription(..), Testsuite(..), TestType(..)
-        , hasTests, matches )
+        ( PackageDescription(..), Testsuite(..), hasTests, matches
+        , exeTestVer1 )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Setup ( TestFlags(..), fromFlag )
 import Distribution.Simple.Utils
 import Distribution.Text
 import Distribution.Verbosity ( Verbosity, silent )
-import Distribution.Version ( anyVersion, thisVersion, Version(..) )
 
 import Control.Monad ( unless )
 import System.FilePath ( (</>), (<.>) )
@@ -64,9 +63,8 @@ test :: PackageDescription  -- ^information from the .cabal file
      -> IO ()
 test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
-        exeTestType = (ExeTest $ thisVersion $ Version [1] [])
         doTest t =
-            if testType t `matches` exeTestType
+            if testType t `matches` exeTestVer1
                 then doExeTest t
                 else do
                     _ <- die $ "No support for running test type: " ++

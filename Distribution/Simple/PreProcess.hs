@@ -62,8 +62,8 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
-         , Library(..), withLib, libModules, Testsuite(..), TestType(..)
-         , withTest, matches )
+         , Library(..), withLib, libModules, Testsuite(..), withTest, matches
+         , exeTestVer1 )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -85,7 +85,7 @@ import Distribution.System
          ( OS(OSX, Windows), buildOS )
 import Distribution.Text
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion, thisVersion )
+         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.Verbosity
 
 import Control.Monad (when, unless)
@@ -203,7 +203,7 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
     unless (null (testsuites pkg_descr)) $
         setupMessage verbosity "Preprocessing testsuites for" (packageId pkg_descr)
     withTest pkg_descr $ \test ->
-        if testType test `matches` (ExeTest $ thisVersion $ Version [1] [])
+        if testType test `matches` exeTestVer1
             then do
                 let bi = testBuildInfo test
                     biHandlers = localHandlers bi
