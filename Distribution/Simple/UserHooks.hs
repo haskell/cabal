@@ -79,6 +79,8 @@ type Args = [String]
 -- break in future releases.
 data UserHooks = UserHooks {
 
+    -- | Used for @.\/setup test@
+    runTests :: Args -> Bool -> PackageDescription -> LocalBuildInfo -> IO (),
     -- | Read the description file
     readDesc :: IO (Maybe GenericPackageDescription),
     -- | Custom preprocessors in addition to and overriding 'knownSuffixHandlers'.
@@ -169,10 +171,13 @@ data UserHooks = UserHooks {
     postTest :: Args -> TestFlags -> PackageDescription -> LocalBuildInfo -> IO ()
   }
 
+{-# DEPRECATED runTests "Please use the new testing interface instead!" #-}
+
 -- |Empty 'UserHooks' which do nothing.
 emptyUserHooks :: UserHooks
 emptyUserHooks
   = UserHooks {
+      runTests  = ru,
       readDesc  = return Nothing,
       hookedPreProcessors = [],
       hookedPrograms      = [],
