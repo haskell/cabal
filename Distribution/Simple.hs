@@ -322,11 +322,17 @@ sdistAction hooks flags args = do
   where verbosity = fromFlag (sDistVerbosity flags)
 
 testAction :: UserHooks -> TestFlags -> Args -> IO ()
-testAction hooks flags args
-    = do let distPref = fromFlag $ testDistPref flags
-         hookedAction preTest testHook postTest
-                      (getBuildConfig hooks distPref)
-                      hooks flags args
+testAction hooks flags args = do
+    let distPref = fromFlag $ testDistPref flags
+    localBuildInfo <- getBuildConfig hooks distPref
+    let pkg_descr = localPkgDescr localBuildInfo
+    -- | It is safe to do 'runTests' before the new test handler because the
+    -- default action is a no-op and if the package uses the old test interface
+    -- the new handler will find no tests.
+    runTests hooks args False pkg_descr localBuildInfo
+    hookedAction preTest testHook postTest
+            (getBuildConfig hooks distPref)
+            hooks flags args
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args
