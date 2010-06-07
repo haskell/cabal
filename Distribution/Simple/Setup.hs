@@ -283,7 +283,7 @@ data ConfigFlags = ConfigFlags {
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies
     configConfigurationsFlags :: FlagAssignment,
-    configTests :: Flag Bool     -- ^Enable testsuite compilation
+    configTests :: Flag Bool     -- ^Enable test suite compilation
   }
   deriving Show
 
@@ -458,7 +458,7 @@ configureOptions showOrParseArgs =
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
                  (map (\x -> display x)))
       ,option "" ["tests"]
-         "dependency checking and compilation for testsuites listed in the package description file."
+         "dependency checking and compilation for test suites listed in the package description file."
          configTests (\v flags -> flags { configTests = v })
          (boolOpt [] [])
       ]

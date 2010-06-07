@@ -10,7 +10,7 @@
 -- Portability :  portable
 --
 -- This is the entry point into testing a built package. Performs the
--- \"@.\/setup test@\" action. It runs testsuites designated in the package
+-- \"@.\/setup test@\" action. It runs test suites designated in the package
 -- description and reports on the results.
 
 {- All rights reserved.
@@ -47,7 +47,7 @@ module Distribution.Simple.Test ( test ) where
 
 import Distribution.Package ( PackageName(..), PackageIdentifier(..) )
 import Distribution.PackageDescription
-        ( PackageDescription(..), Testsuite(..), hasTests, matches
+        ( PackageDescription(..), TestSuite(..), hasTests, matches
         , exeTestVer1 )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( exeExtension )
@@ -90,12 +90,12 @@ test pkg_descr lbi flags = do
                                                     ++ "-" ++ testName t
             case exit of
                 ExitSuccess -> do
-                    notice verbosity $ "Testsuite " ++ testName t ++
+                    notice verbosity $ "Test suite " ++ testName t ++
                                        " successful."
                     doOutput info outFile
                     return True
                 ExitFailure code -> do
-                    notice verbosity $ "Testsuite " ++ testName t ++
+                    notice verbosity $ "Test suite " ++ testName t ++
                                        " failure with exit code " ++
                                        show code ++ "!"
                     doOutput notice outFile
@@ -105,15 +105,15 @@ test pkg_descr lbi flags = do
                   doOutput :: (Verbosity -> String -> IO ())
                            -> String -> IO ()
                   doOutput f o =
-                    f verbosity $ "Testsuite " ++ testName t ++
+                    f verbosity $ "Test suite " ++ testName t ++
                                 " output logged to " ++ o
     unless (hasTests pkg_descr) $ notice verbosity
             "Package has no tests or was configured with tests disabled."
-    results <- mapM doTest $ testsuites pkg_descr
+    results <- mapM doTest $ testSuites pkg_descr
     let successful = length $ filter id results
-        total = length $ testsuites pkg_descr
+        total = length $ testSuites pkg_descr
     notice verbosity $ show successful ++ " of " ++ show total ++
-                       " testsuites successful."
+                       " test suites successful."
 
 runTmpOutput :: FilePath -> FilePath -> IO (FilePath, ExitCode)
 runTmpOutput cmd base = do

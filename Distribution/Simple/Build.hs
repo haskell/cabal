@@ -68,7 +68,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-         , Testsuite(..), matches, exeTestVer1 )
+         , TestSuite(..), matches, exeTestVer1 )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
@@ -145,7 +145,7 @@ build pkg_descr lbi flags suffixes = do
   withTestLBI pkg_descr lbi' $ \test clbi ->
         if testType test `matches` exeTestVer1
             then do
-                info verbosity $ "Building testsuite " ++ testName test ++ "..."
+                info verbosity $ "Building test suite " ++ testName test ++ "..."
                 buildExeTest verbosity pkg_descr lbi' test clbi
             else die $ "No support for building test type: " ++
                        show (disp $ testType test)
@@ -184,7 +184,7 @@ buildExe verbosity pkg_descr lbi exe clbi =
     _    -> die "Building is not supported with this compiler."
 
 buildExeTest :: Verbosity -> PackageDescription -> LocalBuildInfo
-                          -> Testsuite -> ComponentLocalBuildInfo
+                          -> TestSuite -> ComponentLocalBuildInfo
                           -> IO ()
 buildExeTest verbosity pkg_descr lbi test clbi =
     buildExe verbosity pkg_descr lbi exe clbi
