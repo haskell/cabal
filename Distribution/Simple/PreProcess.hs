@@ -62,7 +62,7 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
-         , Library(..), withLib, libModules, Testsuite(..), withTest, matches
+         , Library(..), withLib, libModules, TestSuite(..), withTest, matches
          , exeTestVer1 )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
@@ -200,8 +200,8 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         preprocessFile (hsSourceDirs bi) exeDir forSDist
                          (dropExtensions (modulePath theExe))
                          verbosity builtinSuffixes biHandlers
-    unless (null (testsuites pkg_descr)) $
-        setupMessage verbosity "Preprocessing testsuites for" (packageId pkg_descr)
+    unless (null (testSuites pkg_descr)) $
+        setupMessage verbosity "Preprocessing test suites for" (packageId pkg_descr)
     withTest pkg_descr $ \test ->
         if testType test `matches` exeTestVer1
             then do

@@ -63,7 +63,7 @@ import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
          , Flag(..), FlagName(..), FlagAssignment
-         , CondTree(..), ConfVar(..), Condition(..), Testsuite(..) )
+         , CondTree(..), ConfVar(..), Condition(..), TestSuite(..) )
 import Distribution.Version
          ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Compiler
@@ -415,7 +415,7 @@ constrainBy left extra =
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
 flattenTaggedTargets :: TargetSet PDTagged ->
-        (Maybe Library, [(String, Executable)], [(String, Testsuite)])
+        (Maybe Library, [(String, Executable)], [(String, TestSuite)])
 flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], []) targets
   where
     untag (_, Lib _) (Just _, _, _) = bug "Only one library expected"
@@ -448,7 +448,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], []) targets
 -- Convert GenericPackageDescription to PackageDescription
 --
 
-data PDTagged = Lib Library | Exe String Executable | Test String Testsuite | PDNull deriving Show
+data PDTagged = Lib Library | Exe String Executable | Test String TestSuite | PDNull deriving Show
 
 instance Monoid PDTagged where
     mempty = PDNull
@@ -498,7 +498,7 @@ finalizePackageDescription userflags satisfyDep (Platform arch os) impl constrai
       Right ((mlib, exes', tests'), targetSet, flagVals) ->
         Right ( pkg { library = mlib
                     , executables = exes'
-                    , testsuites = tests'
+                    , testSuites = tests'
                     , buildDepends = fromDepMap (overallDependencies targetSet)
                       --TODO: we need to find a way to avoid pulling in deps
                       -- for non-buildable components. However cannot simply
@@ -562,7 +562,7 @@ flattenPackageDescription :: GenericPackageDescription -> PackageDescription
 flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0 tests0) =
     pkg { library = mlib
         , executables = reverse exes
-        , testsuites = reverse tests
+        , testSuites = reverse tests
         , buildDepends = ldeps ++ reverse edeps ++ reverse tdeps
         }
   where
@@ -594,8 +594,8 @@ exeFillInDefaults :: Executable -> Executable
 exeFillInDefaults exe@(Executable { buildInfo = bi }) =
     exe { buildInfo = biFillInDefaults bi }
 
-testFillInDefaults :: Testsuite -> Testsuite
-testFillInDefaults tst@(Testsuite { testBuildInfo = bi }) =
+testFillInDefaults :: TestSuite -> TestSuite
+testFillInDefaults tst@(TestSuite { testBuildInfo = bi }) =
     tst { testBuildInfo = biFillInDefaults bi }
 
 biFillInDefaults :: BuildInfo -> BuildInfo

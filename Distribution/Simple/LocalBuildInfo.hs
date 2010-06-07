@@ -66,7 +66,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library, withExe
-         , Executable(exeName), withTest, Testsuite(..) )
+         , Executable(exeName), withTest, TestSuite(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..) )
 import Distribution.Simple.Compiler
@@ -96,7 +96,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ Where to put the result of the Hugs build.
         libraryConfig       :: Maybe ComponentLocalBuildInfo,
         executableConfigs   :: [(String, ComponentLocalBuildInfo)],
-        testsuiteConfigs    :: [(String, ComponentLocalBuildInfo)],
+        testSuiteConfigs    :: [(String, ComponentLocalBuildInfo)],
         installedPkgs :: PackageIndex,
                 -- ^ All the info about all installed packages.
         pkgDescrFile  :: Maybe FilePath,
@@ -165,11 +165,11 @@ withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
                     ++ "configuration data"
 
 withTestLBI :: PackageDescription -> LocalBuildInfo
-            -> (Testsuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()
+            -> (TestSuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()
 withTestLBI pkg_descr lbi f =
-    let wrapper test = case lookup (testName test) (testsuiteConfigs lbi) of
+    let wrapper test = case lookup (testName test) (testSuiteConfigs lbi) of
             Just clbi -> f test clbi
-            Nothing -> die $ "internal error: the package contains a testsuite "
+            Nothing -> die $ "internal error: the package contains a test suite "
                             ++ testName test ++ " but there is no corresponding "
                             ++ "configuration data"
     in withTest pkg_descr wrapper
