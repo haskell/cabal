@@ -214,7 +214,7 @@ checkSanity pkg =
 
   ++ maybe []  checkLibrary    (library pkg)
   ++ concatMap checkExecutable (executables pkg)
-  ++ concatMap checkTestsuite  (testsuites pkg)
+  ++ concatMap checkTestSuite  (testSuites pkg)
 
   ++ catMaybes [
 
@@ -225,7 +225,7 @@ checkSanity pkg =
   ]
   where
     exeNames = map exeName $ executables pkg
-    testNames = map testName $ testsuites pkg
+    testNames = map testName $ testSuites pkg
     exeDuplicates = dups exeNames
     testDuplicates = dups testNames
     testsThatAreExes = filter (flip elem exeNames) testNames
@@ -266,13 +266,13 @@ checkExecutable exe =
   where
     moduleDuplicates = dups (exeModules exe)
 
-checkTestsuite :: Testsuite -> [PackageCheck]
-checkTestsuite test =
+checkTestSuite :: TestSuite -> [PackageCheck]
+checkTestSuite test =
   catMaybes [
 
     check (not $ null moduleDuplicates) $
       PackageBuildWarning $
-        "Duplicate modules in testsuite '" ++ testName test ++ "': "
+        "Duplicate modules in test suite '" ++ testName test ++ "': "
         ++ commaSep (map display moduleDuplicates)
   ]
   where moduleDuplicates = dups $ testModules test

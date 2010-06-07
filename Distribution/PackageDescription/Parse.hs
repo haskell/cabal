@@ -207,11 +207,11 @@ storeXFieldsExe (f@('x':'-':_), val) e@(Executable { buildInfo = bi }) =
 storeXFieldsExe _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
--- The Testsuite type
+-- The TestSuite type
 
 
-testsuiteFieldDescrs :: [FieldDescr Testsuite]
-testsuiteFieldDescrs =
+testSuiteFieldDescrs :: [FieldDescr TestSuite]
+testSuiteFieldDescrs =
     [ simpleField "test"
             showToken       parseTokenQ
             testName        (\xs test -> test {testName=xs})
@@ -225,8 +225,8 @@ testsuiteFieldDescrs =
     ++ map biToTest binfoFieldDescrs
     where biToTest = liftField testBuildInfo (\bi test -> test {testBuildInfo=bi})
 
-storeXFieldsTest :: UnrecFieldParser Testsuite
-storeXFieldsTest (f@('x':'-':_), val) t@(Testsuite { testBuildInfo = bi }) =
+storeXFieldsTest :: UnrecFieldParser TestSuite
+storeXFieldsTest (f@('x':'-':_), val) t@(TestSuite { testBuildInfo = bi }) =
     Just $ t {testBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
 storeXFieldsTest _ _ = Nothing
 
@@ -629,7 +629,7 @@ parsePackageDescription file = do
     getBody :: PM ([SourceRepo], [Flag]
                   ,Maybe (CondTree ConfVar [Dependency] Library)
                   ,[(String, CondTree ConfVar [Dependency] Executable)]
-                  ,[(String, CondTree ConfVar [Dependency] Testsuite)])
+                  ,[(String, CondTree ConfVar [Dependency] TestSuite)])
     getBody = peekField >>= \mf -> case mf of
       Just (Section line_no sec_type sec_label sec_fields)
         | sec_type == "executable" -> do
@@ -643,7 +643,7 @@ parsePackageDescription file = do
 
         | sec_type == "test" -> do
             when (null sec_label) $ lift $ syntaxError line_no
-                "'test' needs one argument (the testsuite's name)"
+                "'test' needs one argument (the test suite's name)"
             testname <- lift $ runP line_no "test" parseTokenQ sec_label
             flds <- collectFields parseTestFields sec_fields
             skipField
@@ -747,14 +747,14 @@ parsePackageDescription file = do
     parseExeFields :: [Field] -> PM Executable
     parseExeFields = lift . parseFields executableFieldDescrs storeXFieldsExe emptyExecutable
 
-    parseTestFields :: [Field] -> PM Testsuite
-    parseTestFields = lift . parseFields testsuiteFieldDescrs storeXFieldsTest emptyTestsuite
+    parseTestFields :: [Field] -> PM TestSuite
+    parseTestFields = lift . parseFields testSuiteFieldDescrs storeXFieldsTest emptyTestSuite
 
     checkForUndefinedFlags ::
         [Flag] ->
         Maybe (CondTree ConfVar [Dependency] Library) ->
         [(String, CondTree ConfVar [Dependency] Executable)] ->
-        [(String, CondTree ConfVar [Dependency] Testsuite)] ->
+        [(String, CondTree ConfVar [Dependency] TestSuite)] ->
         PM ()
     checkForUndefinedFlags flags mlib exes tests = do
         let definedFlags = map flagName flags

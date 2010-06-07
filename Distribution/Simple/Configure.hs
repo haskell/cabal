@@ -81,7 +81,7 @@ import Distribution.PackageDescription as PD
     ( PackageDescription(..), GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , FlagName(..), Testsuite(..) )
+    , FlagName(..), TestSuite(..) )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription )
 import Distribution.PackageDescription.Check
@@ -324,7 +324,7 @@ configure (pkg_descr0, pbi) cfg
             pkg_descr0'' =
                 if fromFlag (configTests cfg)
                     then pkg_descr0
-                    else pkg_descr0 { condTestsuites = [] }
+                    else pkg_descr0 { condTestSuites = [] }
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -470,7 +470,7 @@ configure (pkg_descr0, pbi) cfg
                                             (configScratchDir cfg),
                     libraryConfig       = configLib `fmap` library pkg_descr',
                     executableConfigs   = configExe `fmap` executables pkg_descr',
-                    testsuiteConfigs    = configTest `fmap` testsuites pkg_descr',
+                    testSuiteConfigs    = configTest `fmap` testSuites pkg_descr',
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',

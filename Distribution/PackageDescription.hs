@@ -8,7 +8,7 @@
 --
 -- This defines the data structure for the @.cabal@ file format. There are
 -- several parts to this structure. It has top level info and then 'Library',
--- 'Executable', and 'Testsuite' sections each of which have associated
+-- 'Executable', and 'TestSuite' sections each of which have associated
 -- 'BuildInfo' data that's used to build the library, exe, or test. To further
 -- complicate things there is both a 'PackageDescription' and a
 -- 'GenericPackageDescription'. This distinction relates to cabal
@@ -72,9 +72,9 @@ module Distribution.PackageDescription (
         exeModules,
 
         -- * Tests
-        Testsuite(..),
+        TestSuite(..),
         TestType(..),
-        emptyTestsuite,
+        emptyTestSuite,
         matchesType,
         hasTests,
         withTest,
@@ -158,7 +158,7 @@ data PackageDescription
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
-        testsuites     :: [Testsuite],
+        testSuites     :: [TestSuite],
         dataFiles      :: [FilePath],
         dataDir        :: FilePath,
         extraSrcFiles  :: [FilePath],
@@ -194,7 +194,7 @@ emptyPackageDescription
                       customFieldsPD = [],
                       library      = Nothing,
                       executables  = [],
-                      testsuites   = [],
+                      testSuites   = [],
                       dataFiles    = [],
                       dataDir      = "",
                       extraSrcFiles = [],
@@ -327,9 +327,9 @@ exeModules :: Executable -> [ModuleName]
 exeModules exe = otherModules (buildInfo exe)
 
 -- ---------------------------------------------------------------------------
--- The Testsuite type
+-- The TestSuite type
 
-data Testsuite = Testsuite {
+data TestSuite = TestSuite {
         testName :: String,
         testIs :: String,
         testType :: TestType,
@@ -351,15 +351,15 @@ instance Text TestType where
                    if t == "library" then return (LibTest v) else
                    Parse.pfail
 
-instance Monoid Testsuite where
-    mempty = Testsuite {
+instance Monoid TestSuite where
+    mempty = TestSuite {
         testName = mempty,
         testIs = mempty,
         testType = ExeTest noVersion,
         testBuildInfo = mempty
     }
 
-    mappend a b = Testsuite {
+    mappend a b = TestSuite {
         testName = combine testName,
         testIs = combine testIs,
         testType = if testType b == ExeTest noVersion
@@ -372,8 +372,8 @@ instance Monoid Testsuite where
                         (x, y) -> error "Ambiguous values for test field: '"
                             ++ x ++ "' and '" ++ y ++ "'"
 
-emptyTestsuite :: Testsuite
-emptyTestsuite = mempty
+emptyTestSuite :: TestSuite
+emptyTestSuite = mempty
 
 -- | Do these test types match? Two test types match if they use the same
 -- constructor and have overlapping version ranges. 'matchesType' is used to
@@ -386,15 +386,15 @@ matchesType (LibTest v1) (LibTest v2) =
     not $ isNoVersion $ intersectVersionRanges v1 v2
 matchesType (LibTest _) _ = False
 
--- | Does this package have any testsuites?
+-- | Does this package have any test suites?
 hasTests :: PackageDescription -> Bool
-hasTests = any (buildable . testBuildInfo) . testsuites
+hasTests = any (buildable . testBuildInfo) . testSuites
 
--- | Perform an action on each buildable 'Testsuite' in a package.
-withTest :: PackageDescription -> (Testsuite -> IO ()) -> IO ()
+-- | Perform an action on each buildable 'TestSuite' in a package.
+withTest :: PackageDescription -> (TestSuite -> IO ()) -> IO ()
 withTest pkg_descr f =
     mapM_ f $ filter (buildable . testBuildInfo) $
-        testsuites pkg_descr
+        testSuites pkg_descr
 
 -- | Do the given 'TestType's match, i.e., are they the same type with
 -- overlapping 'VersionRange's?
@@ -408,8 +408,8 @@ matches _ _ = False
 exeTestVer1 :: TestType
 exeTestVer1 = ExeTest $ thisVersion $ Version [1] []
 
--- | Get all the module names from a testsuite.
-testModules :: Testsuite -> [ModuleName]
+-- | Get all the module names from a test suite.
+testModules :: TestSuite -> [ModuleName]
 testModules test = otherModules (testBuildInfo test) ++ libraryModule
     where libraryModule = case testType test of
             ExeTest _ -> []
@@ -691,7 +691,7 @@ data GenericPackageDescription =
         genPackageFlags       :: [Flag],
         condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)],
-        condTestsuites     :: [(String, CondTree ConfVar [Dependency] Testsuite)]
+        condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)]
       }
     deriving (Show, Eq)
 
