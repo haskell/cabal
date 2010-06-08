@@ -75,12 +75,11 @@ module Distribution.PackageDescription (
         TestSuite(..),
         TestType(..),
         emptyTestSuite,
-        matchesType,
         hasTests,
         withTest,
         testModules,
-        matches,
-        exeTestVer1,
+        unwrapTestModule,
+        unwrapMainIs,
 
         -- * Build information
         BuildInfo(..),
@@ -111,10 +110,9 @@ import qualified Data.Char as Char (isAlphaNum, toLower)
 import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
          , Dependency, Package(..) )
-import Distribution.ModuleName (ModuleName, fromString)
+import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
-         ( Version(Version), VersionRange, anyVersion, noVersion
-         , intersectVersionRanges, isNoVersion, thisVersion )
+         ( Version(Version), VersionRange, anyVersion )
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
@@ -331,13 +329,14 @@ exeModules exe = otherModules (buildInfo exe)
 
 data TestSuite = TestSuite {
         testName :: String,
-        testIs :: String,
+        mainIs :: Maybe String,
+        testModule :: Maybe ModuleName,
         testType :: TestType,
         testBuildInfo :: BuildInfo
     }
     deriving (Show, Read, Eq)
 
-data TestType = ExeTest VersionRange | LibTest VersionRange
+data TestType = ExeTest Version | LibTest Version
     deriving (Show, Read, Eq)
 
 instance Text TestType where
@@ -346,7 +345,7 @@ instance Text TestType where
 
     parse = do t <- ident
                Parse.skipSpaces
-               v <- parse Parse.<++ return noVersion
+               v <- parse
                if t == "executable" then return (ExeTest v) else
                    if t == "library" then return (LibTest v) else
                    Parse.pfail
@@ -354,15 +353,17 @@ instance Text TestType where
 instance Monoid TestSuite where
     mempty = TestSuite {
         testName = mempty,
-        testIs = mempty,
-        testType = ExeTest noVersion,
+        mainIs = Nothing,
+        testModule = Nothing,
+        testType = ExeTest $ Version [] [],
         testBuildInfo = mempty
     }
 
     mappend a b = TestSuite {
         testName = combine testName,
-        testIs = combine testIs,
-        testType = if testType b == ExeTest noVersion
+        mainIs = combine' mainIs,
+        testModule = combine' testModule,
+        testType = if testType b == ExeTest (Version [] [])
                     then testType a else testType b,
         testBuildInfo = testBuildInfo a `mappend` testBuildInfo b
     }
@@ -371,20 +372,12 @@ instance Monoid TestSuite where
                         (x, "") -> x
                         (x, y) -> error "Ambiguous values for test field: '"
                             ++ x ++ "' and '" ++ y ++ "'"
+              combine' f = case f b of
+                            Nothing -> f a
+                            _ -> f b
 
 emptyTestSuite :: TestSuite
 emptyTestSuite = mempty
-
--- | Do these test types match? Two test types match if they use the same
--- constructor and have overlapping version ranges. 'matchesType' is used to
--- determine if an action supports a particular test.
-matchesType :: TestType -> TestType -> Bool
-matchesType (ExeTest v1) (ExeTest v2) =
-    not $ isNoVersion $ intersectVersionRanges v1 v2
-matchesType (ExeTest _) _ = False
-matchesType (LibTest v1) (LibTest v2) =
-    not $ isNoVersion $ intersectVersionRanges v1 v2
-matchesType (LibTest _) _ = False
 
 -- | Does this package have any test suites?
 hasTests :: PackageDescription -> Bool
@@ -396,24 +389,24 @@ withTest pkg_descr f =
     mapM_ f $ filter (buildable . testBuildInfo) $
         testSuites pkg_descr
 
--- | Do the given 'TestType's match, i.e., are they the same type with
--- overlapping 'VersionRange's?
-matches :: TestType -> TestType -> Bool
-matches (ExeTest v) (ExeTest v') =
-    not $ isNoVersion $ intersectVersionRanges v v'
-matches (LibTest v) (LibTest v') =
-    not $ isNoVersion $ intersectVersionRanges v v'
-matches _ _ = False
+unwrapTestModule :: TestSuite -> ModuleName
+unwrapTestModule test = case testModule test of
+    Just m -> m
+    Nothing -> error $ "Required field 'test-module' not provided for library "
+            ++ "test suite " ++ testName test
 
-exeTestVer1 :: TestType
-exeTestVer1 = ExeTest $ thisVersion $ Version [1] []
+unwrapMainIs :: TestSuite -> FilePath
+unwrapMainIs test = case mainIs test of
+    Just f -> f
+    Nothing -> error $ "Required field 'main-is' not provided for executable "
+            ++ "test suite " ++ testName test
 
 -- | Get all the module names from a test suite.
 testModules :: TestSuite -> [ModuleName]
 testModules test = otherModules (testBuildInfo test) ++ libraryModule
     where libraryModule = case testType test of
             ExeTest _ -> []
-            LibTest _ -> [fromString $ testIs test]
+            LibTest _ -> [ unwrapTestModule test ]
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
