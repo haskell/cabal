@@ -13,7 +13,7 @@ Library
     exposed-modules: MyLibrary
     build-depends: base
 
-Test dummy
-    test-is: dummy.hs
-    type: executable == 1
+test-suite dummy
+    main-is: dummy.hs
+    type: executable 1.0
     build-depends: base

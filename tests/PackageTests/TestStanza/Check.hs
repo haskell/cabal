@@ -12,9 +12,9 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Package
         ( PackageIdentifier(..), PackageName(..), Dependency(..) )
 import Distribution.PackageDescription
-        ( PackageDescription(..), BuildInfo(..), Testsuite(..), Library(..)
+        ( PackageDescription(..), BuildInfo(..), TestSuite(..), Library(..)
         , TestType(..), emptyPackageDescription, emptyBuildInfo, emptyLibrary
-        , emptyTestsuite, BuildType(..) )
+        , emptyTestSuite, BuildType(..) )
 import Distribution.Verbosity (silent)
 import Distribution.License (License(..))
 import Distribution.ModuleName (fromString)
@@ -59,10 +59,11 @@ suite cabalVersion = TestCase $ do
                                 , hsSourceDirs = ["."]
                                 }
                         }
-                , testsuites = [ emptyTestsuite
+                , testSuites = [ emptyTestSuite
                         { testName = "dummy"
-                        , testIs = "dummy.hs"
-                        , testType = ExeTest (thisVersion $ Version [1] [])
+                        , mainIs = Just "dummy.hs"
+                        , testType = ExeTest $ Version [1,0] []
+                        , testModule = Nothing
                         , testBuildInfo = emptyBuildInfo
                                 { targetBuildDepends =
                                         [ Dependency (PackageName "base") anyVersion ]
