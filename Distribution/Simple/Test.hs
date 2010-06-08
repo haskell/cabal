@@ -48,16 +48,16 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Setup ( TestFlags(..), fromFlag )
-import Distribution.Simple.Utils ( die, info, notice )
+import Distribution.Simple.Utils ( die, notice )
 import Distribution.Text
-import Distribution.Verbosity ( Verbosity )
+import Distribution.Verbosity ( normal )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
 
-import Control.Monad ( unless )
+import Control.Monad ( unless, when )
 import System.Directory ( getTemporaryDirectory )
 import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( withFile, IOMode(..) )
+import System.IO ( withFile, IOMode(..), hFlush, stdout )
 import System.Process ( runProcess, waitForProcess )
 import System.Time ( getClockTime, toUTCTime, CalendarTime(..) )
 
@@ -81,27 +81,26 @@ test pkg_descr lbi flags = do
                             ++ show (disp $ testType t)
                     return False
         doExeTest t = do
+            when (verbosity >= normal) $ do
+                putStr $ testName t ++ ": "
+                hFlush stdout
             (outFile, exit) <- runTmpOutput exe $ "cabal-test-" ++ pkg_name
                                                     ++ "-" ++ testName t
             case exit of
                 ExitSuccess -> do
-                    notice verbosity $ "Test suite " ++ testName t ++
-                                       " successful."
-                    doOutput info outFile
+                    when (verbosity >= normal) $ do
+                        putStr $ "Passed! Output logged to: "
+                            ++ outFile ++ "\n"
+                        hFlush stdout
                     return True
                 ExitFailure code -> do
-                    notice verbosity $ "Test suite " ++ testName t ++
-                                       " failure with exit code " ++
-                                       show code ++ "!"
-                    doOutput notice outFile
+                    when (verbosity >= normal) $ do
+                        putStr $ "Failed with exit code: " ++ show code
+                            ++ "! Output logged to: " ++ outFile ++ "\n"
+                        hFlush stdout
                     return False
             where exe = buildDir lbi </> testName t </>
                         testName t <.> exeExtension
-                  doOutput :: (Verbosity -> String -> IO ())
-                           -> String -> IO ()
-                  doOutput f o =
-                    f verbosity $ "Test suite " ++ testName t ++
-                                " output logged to " ++ o
     unless (hasTests pkg_descr) $ notice verbosity
             "Package has no tests or was configured with tests disabled."
     results <- mapM doTest $ testSuites pkg_descr
