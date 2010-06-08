@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Test
@@ -60,14 +57,8 @@ import Control.Monad ( unless )
 import System.Directory ( getTemporaryDirectory )
 import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( openFile, hClose, IOMode(..) )
-#ifdef __GLASGOW_HASKELL__
-import System.Process
-        ( CreateProcess(..), createProcess, CmdSpec(..), StdStream(..)
-        , waitForProcess )
-#else
-import System.Cmd ( system )
-#endif
+import System.IO ( withFile, IOMode(..) )
+import System.Process ( runProcess, waitForProcess )
 import System.Time ( getClockTime, toUTCTime, CalendarTime(..) )
 
 -- |Perform the \"@.\/setup test@\" action.
@@ -125,29 +116,16 @@ runTmpOutput cmd base = do
     time <- getClockTime
     let timeString = formatTime $ toUTCTime time
         file = tmp </> base ++ "-" ++ timeString ++ ".log"
-    hOut <- openFile file WriteMode
-#ifdef __GLASGOW_HASKELL__
-    (Just hIn, _, _, proc) <- createProcess $ CreateProcess
-        { cmdspec = RawCommand cmd []
-        , cwd = Nothing
-        , env = Nothing
-        , std_in = CreatePipe
-        , std_out = UseHandle hOut
-        , std_err = UseHandle hOut
-        , close_fds = False
-        }
-    hClose hIn
-    exit <- waitForProcess proc
-    hClose hOut
-#else
-    exit <- system $ cmd ++ " >" ++ quote file ++ " 2>&1"
-#endif
-    return (file, exit)
+    withFile file WriteMode $ \hOut -> do
+        proc <- runProcess cmd [] Nothing Nothing Nothing
+                (Just hOut) (Just hOut)
+        exit <- waitForProcess proc
+        return (file, exit)
 
 formatTime :: CalendarTime -> String
 formatTime time =
     show (ctYear time)
-    ++ show (fromEnum $ ctMonth time)
+    ++ pad (fromEnum . ctMonth)
     ++ pad ctDay
     ++ "-"
     ++ pad ctHour
