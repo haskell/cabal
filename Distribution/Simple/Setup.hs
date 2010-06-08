@@ -393,14 +393,10 @@ configureOptions showOrParseArgs =
                               Flag NormalOptimisation  -> [Nothing]
                               Flag MaximumOptimisation -> [Just "2"]
                               _                        -> [])
-                 "O" ("enable-optimization": case showOrParseArgs of
-                      -- Allow British English spelling:
-                      ShowArgs -> []; ParseArgs -> ["enable-optimisation"])
+                 "O" ["enable-optimization","enable-optimisation"]
                  "Build with optimization (n is 0--2, default is 1)",
           noArg (Flag NoOptimisation) []
-                ("disable-optimization": case showOrParseArgs of
-                      -- Allow British English spelling:
-                      ShowArgs -> []; ParseArgs -> ["disable-optimisation"])
+                ["disable-optimization","disable-optimisation"]
                 "Build without optimization"
          ]
 
@@ -1028,7 +1024,7 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
          haddockCss (\v flags -> flags { haddockCss = v })
          (reqArgFlag "PATH")
 
-      ,option "" ["hyperlink-source"]
+      ,option "" ["hyperlink-source","hyperlink-sources"]
          "Hyperlink the documentation to the source code (using HsColour)"
          haddockHscolour (\v flags -> flags { haddockHscolour = v })
          trueArg

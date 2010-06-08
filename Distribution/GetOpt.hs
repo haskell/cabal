@@ -99,7 +99,7 @@ usageInfo :: String                    -- header
           -> String                    -- nicely formatted decription of options
 usageInfo header optDescr = unlines (header:table)
    where (ss,ls,ds) = unzip3 [ (sepBy ", " (map (fmtShort ad) sos)
-                               ,sepBy ", " (map (fmtLong  ad) los)
+                               ,concatMap (fmtLong  ad) (take 1 los)
                                ,d)
                              | Option sos los ad d <- optDescr ]
          ssWidth    = (maximum . map length) ss
