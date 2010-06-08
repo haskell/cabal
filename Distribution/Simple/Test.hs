@@ -47,14 +47,14 @@ module Distribution.Simple.Test ( test ) where
 
 import Distribution.Package ( PackageName(..), PackageIdentifier(..) )
 import Distribution.PackageDescription
-        ( PackageDescription(..), TestSuite(..), hasTests, matches
-        , exeTestVer1 )
+        ( PackageDescription(..), TestSuite(..), hasTests, TestType(..) )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Setup ( TestFlags(..), fromFlag )
 import Distribution.Simple.Utils ( die, info, notice )
 import Distribution.Text
 import Distribution.Verbosity ( Verbosity )
+import Distribution.Version ( Version(..), withinVersion, withinRange )
 
 import Control.Monad ( unless )
 import System.Directory ( getTemporaryDirectory )
@@ -78,12 +78,16 @@ test :: PackageDescription  -- ^information from the .cabal file
 test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
         PackageName pkg_name = pkgName $ package pkg_descr
-        doTest t =
-            if testType t `matches` exeTestVer1
+        doTest t = case testType t of
+            ExeTest v -> if withinRange v (withinVersion $ Version [1,0] [])
                 then doExeTest t
                 else do
-                    _ <- die $ "No support for running test type: " ++
-                               show (disp $ testType t)
+                    _ <- die $ "No support for running test suite type: "
+                            ++ show (disp $ testType t)
+                    return False
+            _ -> do
+                    _ <- die $ "No support for running test suite type: "
+                            ++ show (disp $ testType t)
                     return False
         doExeTest t = do
             (outFile, exit) <- runTmpOutput exe $ "cabal-test-" ++ pkg_name

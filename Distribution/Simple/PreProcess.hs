@@ -62,8 +62,8 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
-         , Library(..), withLib, libModules, TestSuite(..), withTest, matches
-         , exeTestVer1 )
+         , Library(..), withLib, libModules, TestSuite(..), withTest
+         , TestType(..), unwrapMainIs )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -85,7 +85,8 @@ import Distribution.System
          ( OS(OSX, Windows), buildOS )
 import Distribution.Text
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
+         ( Version(..), anyVersion, orLaterVersion, withinRange
+         , withinVersion )
 import Distribution.Verbosity
 
 import Control.Monad (when, unless)
@@ -203,20 +204,27 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
     unless (null (testSuites pkg_descr)) $
         setupMessage verbosity "Preprocessing test suites for" (packageId pkg_descr)
     withTest pkg_descr $ \test ->
-        if testType test `matches` exeTestVer1
-            then do
-                let bi = testBuildInfo test
-                    biHandlers = localHandlers bi
-                    testDir = buildDir lbi </> testName test </> testName test ++ "-tmp"
-                sequence_ [ preprocessFile (hsSourceDirs bi ++ [autogenModulesDir lbi])
-                                            testDir forSDist (ModuleName.toFilePath modu)
-                                            verbosity builtinSuffixes biHandlers
-                            | modu <- otherModules bi]
-                preprocessFile (hsSourceDirs bi) testDir forSDist
-                            (dropExtensions (testIs test))
-                            verbosity builtinSuffixes biHandlers
-            else die $ "No support for pre-processing test type: " ++
-                       show (disp $ testType test)
+        case testType test of
+            ExeTest v ->
+                if withinRange v (withinVersion $ Version [1,0] [])
+                    then do
+                        let bi = testBuildInfo test
+                            biHandlers = localHandlers bi
+                            testDir = buildDir lbi </> testName test
+                                    </> testName test ++ "-tmp"
+                            sourceDirs = hsSourceDirs bi
+                                    ++ [autogenModulesDir lbi]
+                        sequence_ [ preprocessFile sourceDirs testDir forSDist
+                                (ModuleName.toFilePath modu) verbosity
+                                builtinSuffixes biHandlers
+                                | modu <- otherModules bi]
+                        preprocessFile (hsSourceDirs bi) testDir forSDist
+                                    (dropExtensions (unwrapMainIs test))
+                                    verbosity builtinSuffixes biHandlers
+                    else die $ "No support for preprocessing test suite "
+                            ++ "type: " ++ show (disp $ testType test)
+            _ -> die $ "No support for preprocessing test suite type: "
+                    ++ show (disp $ testType test)
   where hc = compilerFlavor (compiler lbi)
         builtinSuffixes
           | hc == NHC = ["hs", "lhs", "gc"]

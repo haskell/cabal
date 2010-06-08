@@ -212,15 +212,18 @@ storeXFieldsExe _ _ = Nothing
 
 testSuiteFieldDescrs :: [FieldDescr TestSuite]
 testSuiteFieldDescrs =
-    [ simpleField "test"
+    [ simpleField "test-suite"
             showToken       parseTokenQ
             testName        (\xs test -> test {testName=xs})
     , simpleField "type"
             disp            parse
             testType        (\xs test -> test {testType=xs})
-    , simpleField "test-is"
-            showToken            parseTokenQ
-            testIs          (\xs test -> test {testIs=xs})
+    , simpleField "main-is"
+            (maybe empty showFilePath)    (fmap Just parseFilePathQ)
+            mainIs          (\xs test -> test {mainIs=xs})
+    , simpleField "test-module"
+            (maybe empty disp)            (fmap Just parseModuleNameQ)
+            testModule      (\xs test -> test {testModule=xs})
     ]
     ++ map biToTest binfoFieldDescrs
     where biToTest = liftField testBuildInfo (\bi test -> test {testBuildInfo=bi})
@@ -641,9 +644,9 @@ parsePackageDescription file = do
             (repos, flags, lib, exes, tests) <- getBody
             return (repos, flags, lib, exes ++ [(exename, flds)], tests)
 
-        | sec_type == "test" -> do
+        | sec_type == "test-suite" -> do
             when (null sec_label) $ lift $ syntaxError line_no
-                "'test' needs one argument (the test suite's name)"
+                "'test-suite' needs one argument (the test suite's name)"
             testname <- lift $ runP line_no "test" parseTokenQ sec_label
             flds <- collectFields parseTestFields sec_fields
             skipField
