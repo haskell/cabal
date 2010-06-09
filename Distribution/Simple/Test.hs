@@ -70,7 +70,7 @@ test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
         PackageName pkg_name = pkgName $ package pkg_descr
         doTest t = case testType t of
-            ExeTest v -> if withinRange v (withinVersion $ Version [1,0] [])
+            ExeTest v _ -> if withinRange v (withinVersion $ Version [1,0] [])
                 then doExeTest t
                 else do
                     _ <- die $ "No support for running test suite type: "
