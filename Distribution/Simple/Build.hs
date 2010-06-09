@@ -68,7 +68,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-         , TestSuite(..), TestType(..), unwrapMainIs )
+         , TestSuite(..), TestType(..) )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
@@ -145,10 +145,15 @@ build pkg_descr lbi flags suffixes = do
 
   withTestLBI pkg_descr lbi' $ \test clbi ->
     case testType test of
-        ExeTest v -> if withinRange v (withinVersion $ Version [1,0] [])
+        ExeTest v f -> if withinRange v (withinVersion $ Version [1,0] [])
             then do
+                let exe = Executable
+                        { exeName = testName test
+                        , modulePath = f
+                        , buildInfo = testBuildInfo test
+                        }
                 info verbosity $ "Building test suite " ++ testName test ++ "..."
-                buildExeTest verbosity pkg_descr lbi' test clbi
+                buildExe verbosity pkg_descr lbi' exe clbi
             else die $ "No support for building test suite type: "
                     ++ show (disp $ testType test)
         _ -> die $ "No support for building test suite type: "
@@ -186,17 +191,6 @@ buildExe verbosity pkg_descr lbi exe clbi =
     Hugs -> Hugs.buildExe verbosity pkg_descr lbi exe clbi
     NHC  -> NHC.buildExe  verbosity pkg_descr lbi exe clbi
     _    -> die "Building is not supported with this compiler."
-
-buildExeTest :: Verbosity -> PackageDescription -> LocalBuildInfo
-                          -> TestSuite -> ComponentLocalBuildInfo
-                          -> IO ()
-buildExeTest verbosity pkg_descr lbi test clbi = do
-    let exe = Executable
-            { exeName = testName test
-            , modulePath = unwrapMainIs test
-            , buildInfo = testBuildInfo test
-            }
-    buildExe verbosity pkg_descr lbi exe clbi
 
 initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> PackageDescription  -- ^mostly information from the .cabal file
