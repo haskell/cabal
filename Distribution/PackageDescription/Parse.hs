@@ -60,8 +60,9 @@ module Distribution.PackageDescription.Parse (
         showHookedBuildInfo,
   ) where
 
-import Data.Char  (isSpace)
+import Data.Char  (isSpace, isAlpha)
 import Data.Maybe (listToMaybe, isJust)
+import Data.Monoid ( Monoid(..) )
 import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless)
 import System.Directory (doesFileExist)
@@ -69,14 +70,16 @@ import System.Directory (doesFileExist)
 import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
+import qualified Distribution.Compat.ReadP as Parse
 
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..), Dependency(..)
          , packageName, packageVersion )
+import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
-        ( anyVersion, isAnyVersion, withinRange )
+        ( anyVersion, isAnyVersion, withinRange, Version(..) )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
@@ -209,29 +212,92 @@ storeXFieldsExe _ _ = Nothing
 -- ---------------------------------------------------------------------------
 -- The TestSuite type
 
+data TempTestType
+    = TempExeTest
+        { tempVersion :: (Maybe Version)
+        , tempMainIs :: (Maybe FilePath)
+        , tempTestModule :: (Maybe ModuleName)
+        }
+    | TempLibTest
+        { tempVersion :: (Maybe Version)
+        , tempMainIs :: (Maybe FilePath)
+        , tempTestModule :: (Maybe ModuleName)
+        }
+    deriving (Show, Read, Eq)
 
-testSuiteFieldDescrs :: [FieldDescr TestSuite]
+instance Monoid TempTestType where
+    mempty = TempExeTest Nothing Nothing Nothing
+
+    mappend a b = case tempVersion b of
+        Nothing -> a
+            { tempMainIs = tempMainIs a `orElse` tempMainIs b
+            , tempTestModule = tempTestModule a `orElse` tempTestModule b
+            }
+        Just _ -> b
+            { tempMainIs = tempMainIs a `orElse` tempMainIs b
+            , tempTestModule = tempTestModule a `orElse` tempTestModule b
+            }
+
+orElse :: Maybe a -> Maybe a -> Maybe a
+orElse a b = case a of
+    Nothing -> b
+    Just _ -> a
+
+instance Text TempTestType where
+    disp (TempExeTest Nothing _ _) = text "exitcode-stdio"
+    disp (TempLibTest Nothing _ _) = text "library"
+    disp (TempExeTest (Just v) _ _) = text "exitcode-stdio-" <> disp v
+    disp (TempLibTest (Just v) _ _) = text "library-" <> disp v
+
+    parse = do
+        t <- Parse.munch1 (\c -> isAlpha c || '-' == c || '_' == c)
+        v <- parse
+        if t == "exitcode-stdio-"
+            then return $ TempExeTest (Just v) Nothing Nothing
+            else if t == "library-"
+                then return $ TempLibTest (Just v) Nothing Nothing
+                else Parse.pfail
+
+testSuiteFieldDescrs :: [FieldDescr (TestSuite, TempTestType)]
 testSuiteFieldDescrs =
     [ simpleField "test-suite"
             showToken       parseTokenQ
-            testName        (\xs test -> test {testName=xs})
+            (testName . fst) (\xs (suite, tt) -> (suite {testName=xs}, tt))
     , simpleField "type"
             disp            parse
-            testType        (\xs test -> test {testType=xs})
+            snd             (\xs (suite, tt) -> (suite, tt `mappend` xs))
     , simpleField "main-is"
             (maybe empty showFilePath)    (fmap Just parseFilePathQ)
-            mainIs          (\xs test -> test {mainIs=xs})
+            (tempMainIs . snd)   (\xs (suite, tt) -> (suite, tt `mappend` TempExeTest Nothing xs Nothing))
     , simpleField "test-module"
             (maybe empty disp)            (fmap Just parseModuleNameQ)
-            testModule      (\xs test -> test {testModule=xs})
+            (tempTestModule . snd)   (\xs (suite, tt) -> (suite, tt `mappend` TempLibTest Nothing Nothing xs))
     ]
     ++ map biToTest binfoFieldDescrs
-    where biToTest = liftField testBuildInfo (\bi test -> test {testBuildInfo=bi})
+    where biToTest = liftField (testBuildInfo . fst) (\bi (suite, tt) -> (suite {testBuildInfo=bi}, tt))
 
-storeXFieldsTest :: UnrecFieldParser TestSuite
-storeXFieldsTest (f@('x':'-':_), val) t@(TestSuite { testBuildInfo = bi }) =
-    Just $ t {testBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
-storeXFieldsTest _ _ = Nothing
+storeXFieldsTest :: UnrecFieldParser (TestSuite, TempTestType)
+storeXFieldsTest (f@('x':'-':_), val) (t@(TestSuite { testBuildInfo = bi }), tt) =
+    Just $ (t {testBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}, tt)
+storeXFieldsTest _ x = Just x
+
+validateTestSuite :: LineNo -> (TestSuite, TempTestType) -> ParseResult TestSuite
+validateTestSuite line (suite, tt) =
+    case tt of
+        TempExeTest Nothing _ _ -> parseFail $ flip FromString (Just line)
+            $ "Required field 'type' not specified for test suite "
+            ++ testName suite
+        TempLibTest Nothing _ _ -> parseFail $ flip FromString (Just line)
+            $ "Required field 'type' not specified for test suite "
+            ++ testName suite
+        TempExeTest _ Nothing _ -> parseFail $ flip FromString (Just line)
+            $ "Required field 'main-is' not specified for test suite "
+            ++ testName suite ++ " in test type: " ++ show tt
+        TempExeTest (Just v) (Just f) _ -> return $ suite { testType = ExeTest v f }
+        TempLibTest _ _ Nothing -> parseFail $ flip FromString (Just line)
+            $ "Required field 'test-module' not specified for test suite "
+            ++ testName suite
+        TempLibTest (Just v) _ (Just m) -> return $ suite { testType = LibTest v m }
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
@@ -751,7 +817,10 @@ parsePackageDescription file = do
     parseExeFields = lift . parseFields executableFieldDescrs storeXFieldsExe emptyExecutable
 
     parseTestFields :: [Field] -> PM TestSuite
-    parseTestFields = lift . parseFields testSuiteFieldDescrs storeXFieldsTest emptyTestSuite
+    parseTestFields fields = do
+        x <- lift $ parseFields testSuiteFieldDescrs storeXFieldsTest
+                (emptyTestSuite, mempty) fields
+        lift $ validateTestSuite (lineNo $ head fields) x
 
     checkForUndefinedFlags ::
         [Flag] ->

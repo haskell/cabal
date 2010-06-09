@@ -78,8 +78,6 @@ module Distribution.PackageDescription (
         hasTests,
         withTest,
         testModules,
-        unwrapTestModule,
-        unwrapMainIs,
 
         -- * Build information
         BuildInfo(..),
@@ -105,7 +103,8 @@ import Data.List   (nub)
 import Data.Monoid (Monoid(mempty, mappend))
 import Text.PrettyPrint.HughesPJ as Disp
 import qualified Distribution.Compat.ReadP as Parse
-import qualified Data.Char as Char (isAlphaNum, toLower)
+import Distribution.ParseUtils ( parseFilePathQ, parseModuleNameQ )
+import qualified Data.Char as Char (isAlphaNum, toLower, isAlpha)
 
 import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
@@ -329,42 +328,46 @@ exeModules exe = otherModules (buildInfo exe)
 
 data TestSuite = TestSuite {
         testName :: String,
-        mainIs :: Maybe String,
-        testModule :: Maybe ModuleName,
         testType :: TestType,
         testBuildInfo :: BuildInfo
     }
     deriving (Show, Read, Eq)
 
-data TestType = ExeTest Version | LibTest Version
+data TestType = ExeTest Version FilePath | LibTest Version ModuleName
     deriving (Show, Read, Eq)
 
-instance Text TestType where
-    disp (ExeTest v) = text "executable" <+> disp v
-    disp (LibTest v) = text "library" <+> disp v
+instance Monoid TestType where
+    mempty = ExeTest (Version [] []) ""
+    mappend a b = if b == mempty then a else b
 
-    parse = do t <- ident
-               Parse.skipSpaces
-               v <- parse
-               if t == "executable" then return (ExeTest v) else
-                   if t == "library" then return (LibTest v) else
-                   Parse.pfail
+instance Text TestType where
+    disp (ExeTest v _) = text "exitcode-stdio-" <> disp v
+    disp (LibTest v _) = text "library-" <> disp v
+
+    parse = do
+        t <- Parse.munch1 (\c -> Char.isAlpha c || '-' == c || '_' == c)
+        v <- parse
+        Parse.skipSpaces
+        if t == "exitcode-stdio-"
+            then do
+                f <- parseFilePathQ
+                return $ ExeTest v f
+            else if t == "library-"
+                then do
+                    m <- parseModuleNameQ
+                    return $ LibTest v m
+                else Parse.pfail
 
 instance Monoid TestSuite where
     mempty = TestSuite {
         testName = mempty,
-        mainIs = Nothing,
-        testModule = Nothing,
-        testType = ExeTest $ Version [] [],
+        testType = mempty,
         testBuildInfo = mempty
     }
 
     mappend a b = TestSuite {
         testName = combine testName,
-        mainIs = combine' mainIs,
-        testModule = combine' testModule,
-        testType = if testType b == ExeTest (Version [] [])
-                    then testType a else testType b,
+        testType = testType a `mappend` testType b,
         testBuildInfo = testBuildInfo a `mappend` testBuildInfo b
     }
         where combine f = case (f a, f b) of
@@ -372,9 +375,6 @@ instance Monoid TestSuite where
                         (x, "") -> x
                         (x, y) -> error "Ambiguous values for test field: '"
                             ++ x ++ "' and '" ++ y ++ "'"
-              combine' f = case f b of
-                            Nothing -> f a
-                            _ -> f b
 
 emptyTestSuite :: TestSuite
 emptyTestSuite = mempty
@@ -389,24 +389,12 @@ withTest pkg_descr f =
     mapM_ f $ filter (buildable . testBuildInfo) $
         testSuites pkg_descr
 
-unwrapTestModule :: TestSuite -> ModuleName
-unwrapTestModule test = case testModule test of
-    Just m -> m
-    Nothing -> error $ "Required field 'test-module' not provided for library "
-            ++ "test suite " ++ testName test
-
-unwrapMainIs :: TestSuite -> FilePath
-unwrapMainIs test = case mainIs test of
-    Just f -> f
-    Nothing -> error $ "Required field 'main-is' not provided for executable "
-            ++ "test suite " ++ testName test
-
 -- | Get all the module names from a test suite.
 testModules :: TestSuite -> [ModuleName]
 testModules test = otherModules (testBuildInfo test) ++ libraryModule
     where libraryModule = case testType test of
-            ExeTest _ -> []
-            LibTest _ -> [ unwrapTestModule test ]
+            ExeTest _ _ -> []
+            LibTest _ m -> [ m ]
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type

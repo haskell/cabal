@@ -63,7 +63,7 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
          , Library(..), withLib, libModules, TestSuite(..), withTest
-         , TestType(..), unwrapMainIs )
+         , TestType(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -205,7 +205,7 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
         setupMessage verbosity "Preprocessing test suites for" (packageId pkg_descr)
     withTest pkg_descr $ \test ->
         case testType test of
-            ExeTest v ->
+            ExeTest v f ->
                 if withinRange v (withinVersion $ Version [1,0] [])
                     then do
                         let bi = testBuildInfo test
@@ -219,7 +219,7 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
                                 builtinSuffixes biHandlers
                                 | modu <- otherModules bi]
                         preprocessFile (hsSourceDirs bi) testDir forSDist
-                                    (dropExtensions (unwrapMainIs test))
+                                    (dropExtensions f)
                                     verbosity builtinSuffixes biHandlers
                     else die $ "No support for preprocessing test suite "
                             ++ "type: " ++ show (disp $ testType test)
