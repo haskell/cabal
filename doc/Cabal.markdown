@@ -132,7 +132,10 @@ when installed, is to make available either or both of:
 However having both a library and executables in a package does not work
 very well; if the executables depend on the library, they must
 explicitly list all the modules they directly or indirectly import from
-that library.
+that library.  Fortunately, starting with Cabal 1.8.0.4, executables can
+also declare the package that they are in as a dependency, and Cabal
+will treat them as if they were in another package that dependended on
+the library.
 
 Internally, the package may consist of much more than a bunch of Haskell
 modules: it may also have C source code and header files, source code
