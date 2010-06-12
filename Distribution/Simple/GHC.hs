@@ -84,9 +84,9 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Simple.PackageIndex (PackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..),
-           componentPackageDeps )
-import Distribution.Simple.InstallDirs
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
+         , absoluteInstallDirs )
+import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
@@ -541,6 +541,9 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       sharedLibFilePath  = libTargetDir </> mkSharedLibName pkgid
                                               (compilerId (compiler lbi))
       ghciLibFilePath    = libTargetDir </> mkGHCiLibName pkgid
+      libInstallPath = libdir $ absoluteInstallDirs pkg_descr lbi NoCopyDest
+      sharedLibInstallPath = libInstallPath </> mkSharedLibName pkgid
+                                              (compilerId (compiler lbi))
 
   stubObjs <- fmap catMaybes $ sequence
     [ findFileWithExtension [objExtension] [libTargetDir]
@@ -599,6 +602,11 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               "-shared",
               "-dynamic",
               "-o", sharedLibFilePath ]
+            -- For dynamic libs, Mac OS/X needs to know the install location
+            -- at build time.
+            ++ (if buildOS == OSX
+                then ["-dylib-install-name", sharedLibInstallPath]
+                else [])
             ++ dynamicObjectFiles
             ++ ["-package-name", display pkgid ]
             ++ ghcPackageFlags lbi clbi
