@@ -66,7 +66,9 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
     scan dir hierarchy = do
         entries <- getDirectoryContents (projectRoot </> dir)
         (files, dirs) <- liftM partitionEithers (mapM (tagIsDir dir) entries)
-        let modules = catMaybes [ guessModuleName hierarchy file | file <- files ]
+        let modules = catMaybes [ guessModuleName hierarchy file
+                                | file <- files
+                                , isUpper (head file) ]
         recMods <- mapM (scanRecursive dir hierarchy) dirs
         return $ concat (modules : recMods)
     tagIsDir parent entry = do
@@ -83,9 +85,11 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
         ext = case takeExtension entry of '.':e -> e; e -> e
     scanRecursive parent hierarchy entry
       | isUpper (head entry) = scan (parent </> entry) (entry : hierarchy)
-      | isLower (head entry) && entry /= "dist" =
+      | isLower (head entry) && not (ignoreDir entry) =
           scanForModulesIn projectRoot $ foldl (</>) srcRoot (entry : hierarchy)
       | otherwise = return []
+    ignoreDir ('.':_)  = True
+    ignoreDir dir      = dir `elem` ["dist", "_darcs"]
 
 -- Unfortunately we cannot use the version exported by Distribution.Simple.Program
 knownSuffixHandlers :: [(String,String)]
