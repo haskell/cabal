@@ -71,6 +71,7 @@ module Distribution.Simple.Setup (
                                                                unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
   TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
+  TestLogging(..),
   CopyDest(..),
   configureArgs, configureOptions,
   installDirsOptions,
@@ -1192,16 +1193,27 @@ instance Monoid BuildFlags where
 
 data TestFlags = TestFlags {
     testDistPref  :: Flag FilePath,
-    testVerbosity :: Flag Verbosity
+    testVerbosity :: Flag Verbosity,
+    testSuccessOut :: Flag TestLogging,
+    testFailOut :: Flag TestLogging
   }
   deriving Show
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
     testDistPref  = Flag defaultDistPref,
-    testVerbosity = Flag normal
+    testVerbosity = Flag normal,
+    testSuccessOut = Flag File,
+    testFailOut = Flag Both
   }
 
+data TestLogging = Terminal | File | Both | None | Empty
+    deriving (Enum, Eq, Show, Bounded)
+
+instance Monoid TestLogging where
+    mempty = Empty
+    mappend a Empty = a
+    mappend _ b = b
 testCommand :: CommandUI TestFlags
 testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
   where
@@ -1213,7 +1225,36 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
       ,optionDistPref
          testDistPref (\d flags -> flags { testDistPref = d })
          showOrParseArgs
+      ,optionTestLogging "log-success" "Log output from successful tests to"
+        testSuccessOut (\l flags -> flags { testSuccessOut = l })
+      ,optionTestLogging "log-failure" "Log output from failing tests to"
+        testFailOut (\l flags -> flags { testFailOut = l })
       ]
+
+optionTestLogging :: String -> String -> (TestFlags -> Flag TestLogging)
+                  -> (Flag TestLogging -> TestFlags -> TestFlags)
+                  -> OptionField TestFlags
+optionTestLogging name descrPrefix get set =
+    OptionField name $ [ choiceOpt
+        [ ( Flag Terminal
+          , ([], [name ++ "-terminal"])
+          , descrPrefix ++ " the terminal"
+          )
+        , ( Flag File
+          , ([], [name ++ "-file"])
+          , descrPrefix ++ " file"
+          )
+        , ( Flag Both
+          , ([], [name ++ "-both"])
+          , descrPrefix ++ " both the terminal and file"
+          )
+        , ( Flag None
+          , ([], [name ++ "-none"])
+          , descrPrefix ++ " nowhere"
+          )
+        ]
+        [] [] "" get set
+    ]
 
 emptyTestFlags :: TestFlags
 emptyTestFlags  = mempty
@@ -1221,11 +1262,15 @@ emptyTestFlags  = mempty
 instance Monoid TestFlags where
   mempty = TestFlags {
     testDistPref  = mempty,
-    testVerbosity = mempty
+    testVerbosity = mempty,
+    testSuccessOut = mempty,
+    testFailOut = mempty
   }
   mappend a b = TestFlags {
     testDistPref  = combine testDistPref,
-    testVerbosity = combine testVerbosity
+    testVerbosity = combine testVerbosity,
+    testSuccessOut = combine testSuccessOut,
+    testFailOut = combine testFailOut
   }
     where combine field = field a `mappend` field b
 
