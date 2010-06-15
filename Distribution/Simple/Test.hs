@@ -55,7 +55,7 @@ import Distribution.Version ( Version(..), withinVersion, withinRange )
 
 import Control.Monad ( unless, when )
 import System.Directory ( getTemporaryDirectory, removeFile )
-import System.Exit ( ExitCode(..) )
+import System.Exit ( ExitCode(..), exitFailure )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( withFile, IOMode(..), hFlush, stdout, hGetContents )
 import System.Process ( runProcess, waitForProcess )
@@ -117,6 +117,7 @@ test pkg_descr lbi flags = do
         total = length $ testSuites pkg_descr
     notice verbosity $ show successful ++ " of " ++ show total ++
                        " test suites successful."
+    when (successful < total) exitFailure
 
 runTmpOutput :: FilePath -> FilePath -> IO (FilePath, ExitCode)
 runTmpOutput cmd base = do
