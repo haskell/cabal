@@ -335,7 +335,7 @@ testAction hooks flags args = do
     let distPref = fromFlag $ testDistPref flags
     localBuildInfo <- getBuildConfig hooks distPref
     let pkg_descr = localPkgDescr localBuildInfo
-    -- | It is safe to do 'runTests' before the new test handler because the
+    -- It is safe to do 'runTests' before the new test handler because the
     -- default action is a no-op and if the package uses the old test interface
     -- the new handler will find no tests.
     runTests hooks args False pkg_descr localBuildInfo
