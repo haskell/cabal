@@ -54,6 +54,15 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
+{-
+Work around this warning:
+libraries/Cabal/Distribution/Simple.hs:78:0:
+    Warning: In the use of `runTests'
+             (imported from Distribution.Simple.UserHooks):
+             Deprecated: "Please use the new testing interface instead!"
+-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
+
 module Distribution.Simple (
         module Distribution.Package,
         module Distribution.Version,
