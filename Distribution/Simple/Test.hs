@@ -47,17 +47,17 @@ import Distribution.PackageDescription
         ( PackageDescription(..), TestSuite(..), hasTests, TestType(..) )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( exeExtension )
-import Distribution.Simple.Setup ( TestFlags(..), fromFlag )
+import Distribution.Simple.Setup ( TestFlags(..), fromFlag, TestLogging(..) )
 import Distribution.Simple.Utils ( die, notice )
 import Distribution.Text
 import Distribution.Verbosity ( normal )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
 
 import Control.Monad ( unless, when )
-import System.Directory ( getTemporaryDirectory )
+import System.Directory ( getTemporaryDirectory, removeFile )
 import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( withFile, IOMode(..), hFlush, stdout )
+import System.IO ( withFile, IOMode(..), hFlush, stdout, hGetContents )
 import System.Process ( runProcess, waitForProcess )
 import System.Time ( getClockTime, toUTCTime, CalendarTime(..) )
 
@@ -68,6 +68,8 @@ test :: PackageDescription  -- ^information from the .cabal file
      -> IO ()
 test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
+        successFlag = fromFlag $ testSuccessOut flags
+        failureFlag = fromFlag $ testFailOut flags
         PackageName pkg_name = pkgName $ package pkg_descr
         doTest t = case testType t of
             ExeTest v _ -> if withinRange v (withinVersion $ Version [1,0] [])
@@ -88,19 +90,26 @@ test pkg_descr lbi flags = do
                                                     ++ "-" ++ testName t
             case exit of
                 ExitSuccess -> do
-                    when (verbosity >= normal) $ do
-                        putStr $ "Passed! Output logged to: "
-                            ++ outFile ++ "\n"
-                        hFlush stdout
+                    go successFlag "Passed!" outFile
                     return True
                 ExitFailure code -> do
-                    when (verbosity >= normal) $ do
-                        putStr $ "Failed with exit code: " ++ show code
-                            ++ "! Output logged to: " ++ outFile ++ "\n"
-                        hFlush stdout
+                    go failureFlag ("Failed with exit code: "
+                        ++ show code ++ "!") outFile
                     return False
             where exe = buildDir lbi </> testName t </>
                         testName t <.> exeExtension
+                  go flag message outFile = do
+                    when (verbosity >= normal) $ do
+                        putStr $ message ++ " " ++
+                            if flag == File || flag == Both
+                                then "Output logged to: " ++ outFile ++ "\n"
+                                else "\n"
+                        when (flag == Terminal || flag == Both) $ do
+                            withFile outFile ReadMode $ \h -> do
+                                output <- hGetContents h
+                                putStrLn output
+                    unless (flag == File || flag == Both) $ removeFile outFile
+                    hFlush stdout
     unless (hasTests pkg_descr) $ notice verbosity
             "Package has no tests or was configured with tests disabled."
     results <- mapM doTest $ testSuites pkg_descr
