@@ -277,7 +277,7 @@ foldVersionRange' :: a                         -- ^ @\"-any\"@ version
                                                -- range defined by the wildcard.
                   -> (a -> a -> a)             -- ^ @\"_ || _\"@ union
                   -> (a -> a -> a)             -- ^ @\"_ && _\"@ intersection
-                  -> (a -> a)                  -- ^ @\"(_)"\@ parentheses
+                  -> (a -> a)                  -- ^ @\"(_)\"@ parentheses
                   -> VersionRange -> a
 foldVersionRange' anyv this later earlier orLater orEarlier
                   wildcard union intersect parens = fold
