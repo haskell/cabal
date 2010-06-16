@@ -813,8 +813,9 @@ parsePackageDescription file = do
     parseLibFields :: [Field] -> PM Library
     parseLibFields = lift . parseFields libFieldDescrs storeXFieldsLib emptyLibrary
 
+    -- Note: we don't parse the "executable" field here, hence the tail hack.
     parseExeFields :: [Field] -> PM Executable
-    parseExeFields = lift . parseFields executableFieldDescrs storeXFieldsExe emptyExecutable
+    parseExeFields = lift . parseFields (tail executableFieldDescrs) storeXFieldsExe emptyExecutable
 
     parseTestFields :: [Field] -> PM TestSuite
     parseTestFields fields = do
@@ -935,6 +936,8 @@ parseHookedBuildInfo inp = do
 writePackageDescription :: FilePath -> PackageDescription -> IO ()
 writePackageDescription fpath pkg = writeUTF8File fpath (showPackageDescription pkg)
 
+--TODO: make this use section syntax
+-- add equivalent for GenericPackageDescription
 showPackageDescription :: PackageDescription -> String
 showPackageDescription pkg = render $
      ppPackage pkg
