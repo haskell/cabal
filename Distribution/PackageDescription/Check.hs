@@ -729,8 +729,14 @@ checkCabalVersion :: PackageDescription -> [PackageCheck]
 checkCabalVersion pkg =
   catMaybes [
 
+    -- check use of test suite stanzas
+    checkVersion [1,9,2] (not (null $ testSuites pkg)) $
+      PackageDistInexcusable $
+           "The package uses test suite stanzas. To use this new syntax, "
+        ++ "the package needs to specify at least 'cabal-version: >= 1.9.2'."
+
     -- check use of "foo (>= 1.0 && < 1.4) || >=1.8 " version-range syntax
-    checkVersion [1,8] (not (null versionRangeExpressions)) $
+  , checkVersion [1,8] (not (null versionRangeExpressions)) $
       PackageDistInexcusable $
            "The package uses full version-range expressions "
         ++ "in a 'build-depends' field: "
