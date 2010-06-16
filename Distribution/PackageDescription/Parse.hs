@@ -260,10 +260,7 @@ instance Text TempTestType where
 
 testSuiteFieldDescrs :: [FieldDescr (TestSuite, TempTestType)]
 testSuiteFieldDescrs =
-    [ simpleField "test-suite"
-            showToken       parseTokenQ
-            (testName . fst) (\xs (suite, tt) -> (suite {testName=xs}, tt))
-    , simpleField "type"
+    [ simpleField "type"
             disp            parse
             snd             (\xs (suite, tt) -> (suite, tt `mappend` xs))
     , simpleField "main-is"
