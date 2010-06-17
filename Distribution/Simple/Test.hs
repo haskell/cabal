@@ -40,7 +40,10 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.Test ( test ) where
+module Distribution.Simple.Test
+    ( test
+    , runTests
+    ) where
 
 import Distribution.PackageDescription
         ( PackageDescription(..), TestSuite(..), TestType(..) )
@@ -52,6 +55,9 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Setup ( TestFlags(..), TestFilter(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
+import Distribution.TestSuite
+    ( Test(..) , Result(..), PureTestable(..), ImpureTestable(..)
+    , TestOptions(..) )
 import Distribution.Text
 import Distribution.Verbosity ( Verbosity, silent )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
@@ -162,3 +168,26 @@ test pkg_descr lbi flags = do
 showTestLog :: Verbosity -> FilePath -> IO ()
 showTestLog verbosity outFile = when (verbosity > silent) $ do
     withFile outFile ReadMode $ \hOut -> hGetContents hOut >>= putStrLn
+
+runTmpOutput :: FilePath -> FilePath -> IO (FilePath, ExitCode)
+runTmpOutput cmd base = do
+    tmp <- getTemporaryDirectory
+    time <- getClockTime
+    let timeString = formatTime $ toUTCTime time
+        file = tmp </> base ++ "-" ++ timeString ++ ".log"
+    withFile file WriteMode $ \hOut -> do
+        proc <- runProcess cmd [] Nothing Nothing Nothing
+                (Just hOut) (Just hOut)
+        exit <- waitForProcess proc
+        return (file, exit)
+
+formatTime :: CalendarTime -> String
+formatTime time =
+    show (ctYear time)
+    ++ pad (fromEnum . ctMonth)
+    ++ pad ctDay
+    ++ "-"
+    ++ pad ctHour
+    ++ pad ctMin
+    ++ pad ctSec
+    where pad f = (if f time < 10 then "0" else "") ++ show (f time)
