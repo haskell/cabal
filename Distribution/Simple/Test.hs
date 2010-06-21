@@ -62,15 +62,13 @@ import Distribution.Text
 import Distribution.Verbosity ( Verbosity, silent )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
 
-import Control.Exception ( bracket )
-import Control.Monad ( unless, when, foldM )
-import Data.Char ( toUpper )
-import System.Directory ( createDirectoryIfMissing, doesFileExist, removeFile )
+import Control.Monad ( unless, when )
+import System.Directory ( getTemporaryDirectory, removeFile )
 import System.Exit ( ExitCode(..), exitFailure )
 import System.FilePath ( (</>), (<.>) )
-import System.IO
-    ( hClose, hGetContents, hPutStr, IOMode(..), openTempFile , withFile )
+import System.IO ( withFile, IOMode(..), hFlush, stdout, hGetContents )
 import System.Process ( runProcess, waitForProcess )
+import System.Time ( getClockTime, toUTCTime, CalendarTime(..) )
 
 -- |Perform the \"@.\/setup test@\" action.
 test :: PackageDescription  -- ^information from the .cabal file
