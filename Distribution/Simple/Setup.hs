@@ -71,7 +71,6 @@ module Distribution.Simple.Setup (
                                                                unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
   TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
-  TestLogging(..),
   CopyDest(..),
   configureArgs, configureOptions,
   installDirsOptions,
@@ -1194,8 +1193,7 @@ instance Monoid BuildFlags where
 data TestFlags = TestFlags {
     testDistPref  :: Flag FilePath,
     testVerbosity :: Flag Verbosity,
-    testSuccessOut :: Flag TestLogging,
-    testFailOut :: Flag TestLogging
+    testLogFile :: Flag PathTemplate
   }
   deriving Show
 
@@ -1203,17 +1201,9 @@ defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
     testDistPref  = Flag defaultDistPref,
     testVerbosity = Flag normal,
-    testSuccessOut = Flag File,
-    testFailOut = Flag Both
+    testLogFile = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log"
   }
 
-data TestLogging = Terminal | File | Both | None | Empty
-    deriving (Enum, Eq, Show, Bounded)
-
-instance Monoid TestLogging where
-    mempty = Empty
-    mappend a Empty = a
-    mappend _ b = b
 testCommand :: CommandUI TestFlags
 testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
   where
@@ -1221,40 +1211,18 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
     shortDesc  = "Run the test suite, if any (configure with UserHooks)."
     longDesc   = Nothing
     options showOrParseArgs =
-      [optionVerbosity testVerbosity (\v flags -> flags { testVerbosity = v })
-      ,optionDistPref
-         testDistPref (\d flags -> flags { testDistPref = d })
-         showOrParseArgs
-      ,optionTestLogging "log-success" "Log output from successful tests to"
-        testSuccessOut (\l flags -> flags { testSuccessOut = l })
-      ,optionTestLogging "log-failure" "Log output from failing tests to"
-        testFailOut (\l flags -> flags { testFailOut = l })
+      [ optionVerbosity testVerbosity (\v flags -> flags { testVerbosity = v })
+      , optionDistPref
+            testDistPref (\d flags -> flags { testDistPref = d })
+            showOrParseArgs
+      , option [] ["test-log"]
+            ("Log all test suite results to file (name template can use "
+            ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result, $stdio)")
+            testLogFile (\v flags -> flags { testLogFile = v })
+            (reqArg' "TEMPLATE"
+                (toFlag . toPathTemplate)
+                (flagToList . fmap fromPathTemplate))
       ]
-
-optionTestLogging :: String -> String -> (TestFlags -> Flag TestLogging)
-                  -> (Flag TestLogging -> TestFlags -> TestFlags)
-                  -> OptionField TestFlags
-optionTestLogging name descrPrefix get set =
-    OptionField name $ [ choiceOpt
-        [ ( Flag Terminal
-          , ([], [name ++ "-terminal"])
-          , descrPrefix ++ " the terminal"
-          )
-        , ( Flag File
-          , ([], [name ++ "-file"])
-          , descrPrefix ++ " file"
-          )
-        , ( Flag Both
-          , ([], [name ++ "-both"])
-          , descrPrefix ++ " both the terminal and file"
-          )
-        , ( Flag None
-          , ([], [name ++ "-none"])
-          , descrPrefix ++ " nowhere"
-          )
-        ]
-        [] [] "" get set
-    ]
 
 emptyTestFlags :: TestFlags
 emptyTestFlags  = mempty
@@ -1263,14 +1231,12 @@ instance Monoid TestFlags where
   mempty = TestFlags {
     testDistPref  = mempty,
     testVerbosity = mempty,
-    testSuccessOut = mempty,
-    testFailOut = mempty
+    testLogFile = mempty
   }
   mappend a b = TestFlags {
     testDistPref  = combine testDistPref,
     testVerbosity = combine testVerbosity,
-    testSuccessOut = combine testSuccessOut,
-    testFailOut = combine testFailOut
+    testLogFile = combine testLogFile
   }
     where combine field = field a `mappend` field b
 
