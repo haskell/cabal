@@ -42,24 +42,28 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Test ( test ) where
 
-import Distribution.Package ( PackageName(..), PackageIdentifier(..) )
 import Distribution.PackageDescription
-        ( PackageDescription(..), TestSuite(..), hasTests, TestType(..) )
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+        ( PackageDescription(..), TestSuite(..), TestType(..) )
 import Distribution.Simple.BuildPaths ( exeExtension )
-import Distribution.Simple.Setup ( TestFlags(..), fromFlag, TestLogging(..) )
+import Distribution.Simple.Compiler ( Compiler(..) )
+import Distribution.Simple.InstallDirs
+    ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
+    , substPathTemplate , toPathTemplate, refersTo )
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.Setup ( TestFlags(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
 import Distribution.Text
-import Distribution.Verbosity ( normal )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
 
-import Control.Monad ( unless, when )
-import System.Directory ( getTemporaryDirectory, removeFile )
+import Control.Exception ( bracket )
+import Control.Monad ( unless, when, foldM )
+import Data.Char ( toUpper )
+import System.Directory ( createDirectoryIfMissing, doesFileExist, removeFile )
 import System.Exit ( ExitCode(..), exitFailure )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( withFile, IOMode(..), hFlush, stdout, hGetContents )
+import System.IO
+    ( hClose, hGetContents, hPutStr, IOMode(..), openTempFile , withFile )
 import System.Process ( runProcess, waitForProcess )
-import System.Time ( getClockTime, toUTCTime, CalendarTime(..) )
 
 -- |Perform the \"@.\/setup test@\" action.
 test :: PackageDescription  -- ^information from the .cabal file
@@ -68,76 +72,83 @@ test :: PackageDescription  -- ^information from the .cabal file
      -> IO ()
 test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
-        successFlag = fromFlag $ testSuccessOut flags
-        failureFlag = fromFlag $ testFailOut flags
-        PackageName pkg_name = pkgName $ package pkg_descr
-        doTest t = case testType t of
-            ExeTest v _ -> if withinRange v (withinVersion $ Version [1,0] [])
-                then doExeTest t
-                else do
-                    _ <- die $ "No support for running test suite type: "
-                            ++ show (disp $ testType t)
-                    return False
-            _ -> do
-                    _ <- die $ "No support for running test suite type: "
-                            ++ show (disp $ testType t)
-                    return False
-        doExeTest t = do
-            when (verbosity >= normal) $ do
-                putStr $ testName t ++ ": "
-                hFlush stdout
-            (outFile, exit) <- runTmpOutput exe $ "cabal-test-" ++ pkg_name
-                                                    ++ "-" ++ testName t
-            case exit of
-                ExitSuccess -> do
-                    go successFlag "Passed!" outFile
-                    return True
-                ExitFailure code -> do
-                    go failureFlag ("Failed with exit code: "
-                        ++ show code ++ "!") outFile
-                    return False
-            where exe = buildDir lbi </> testName t </>
-                        testName t <.> exeExtension
-                  go flag message outFile = do
-                    when (verbosity >= normal) $ do
-                        putStr $ message ++ " " ++
-                            if flag == File || flag == Both
-                                then "Output logged to: " ++ outFile ++ "\n"
-                                else "\n"
-                        when (flag == Terminal || flag == Both) $ do
-                            withFile outFile ReadMode $ \h -> do
-                                output <- hGetContents h
-                                putStrLn output
-                    unless (flag == File || flag == Both) $ removeFile outFile
-                    hFlush stdout
-    unless (hasTests pkg_descr) $ notice verbosity
-            "Package has no tests or was configured with tests disabled."
-    results <- mapM doTest $ testSuites pkg_descr
-    let successful = length $ filter id results
+        template = fromFlag $ testLogFile flags
+        distPref = fromFlag $ testDistPref flags
         total = length $ testSuites pkg_descr
-    notice verbosity $ show successful ++ " of " ++ show total ++
-                       " test suites successful."
+        doTest suite files = do
+            notice verbosity $ "Test suite " ++ testName suite ++ ": RUNNING..."
+            let pkgId = package pkg_descr
+                compId = compilerId $ compiler lbi
+                env m r = initialPathTemplateEnv pkgId compId
+                    ++ [ (TestSuiteNameVar, toPathTemplate $ testName suite)
+                       , (TestSuiteStdIoVar, toPathTemplate m)
+                       , (TestSuiteResultVar, toPathTemplate r)
+                       ]
+                path m r = distPref </> "test"
+                    </> fromPathTemplate (substPathTemplate (env m r) template)
+                cmd = buildDir lbi </> testName suite </>
+                    testName suite <.> exeExtension
+            bracket
+                (do
+                    (stdoutTemp, hStdout) <- openTempFile
+                        (distPref </> "test")
+                        (testName suite ++ "-stdout" <.> "log")
+                    if template `refersTo` TestSuiteStdIoVar
+                        then do
+                            (stderrTemp, hStderr) <- openTempFile
+                                (distPref </> "test")
+                                (testName suite ++ "-stderr" <.> "log")
+                            return (stdoutTemp, hStdout, stderrTemp, hStderr)
+                        else do
+                            return (stdoutTemp, hStdout, stdoutTemp, hStdout)
+                )
+                (\(stdoutTemp, hStdout, stderrTemp, hStderr) -> do
+                    hClose hStdout
+                    hClose hStderr
+                    removeFile stdoutTemp
+                    stderrExists <- doesFileExist stderrTemp
+                    when stderrExists $ removeFile stderrTemp
+                )
+                (\(stdoutTemp, hStdout, stderrTemp, hStderr) -> do
+                    result <- case testType suite of
+                        ExeTest v _ | withinRange v
+                            (withinVersion $ Version [1,0] []) -> do
+                            proc <- runProcess cmd [] Nothing Nothing Nothing
+                                (Just hStdout) (Just hStderr)
+                            exit <- waitForProcess proc
+                            return $ case exit of
+                                ExitSuccess -> True
+                                ExitFailure _ -> False
+                        _ -> do _ <- die $ "No support for running test suite "
+                                    ++ "type: " ++ show (disp $ testType suite)
+                                return False
+                    hClose hStdout
+                    hClose hStderr
+                    let rStr = if result then "pass" else "fail"
+                        stdoutFile = path "stdout" rStr
+                        stderrFile = path "stderr" rStr
+                        stdoutMode = if stdoutFile `elem` files
+                            then AppendMode else WriteMode
+                        stderrMode = if stderrFile `elem` files
+                            then AppendMode else WriteMode
+                    withFile stdoutTemp ReadMode $ \hTemp ->
+                        withFile stdoutFile stdoutMode $ \hOut ->
+                        hGetContents hTemp >>= hPutStr hOut
+                    unless (stdoutFile == stderrFile) $
+                        withFile stderrTemp ReadMode $ \hTemp ->
+                            withFile stderrFile stderrMode $ \hErr ->
+                            hGetContents hTemp >>= hPutStr hErr
+                    notice verbosity $ "Test suite " ++ testName suite
+                        ++ ": " ++ map toUpper rStr
+                    return (files ++ [stdoutFile, stderrFile], result)
+                )
+    createDirectoryIfMissing True $ distPref </> "test"
+    notice verbosity $ "Running " ++ show total ++ " test suites..."
+    (_, results) <- foldM (\(files, rs) t -> do
+        (files', r) <- doTest t files
+        return (files', rs ++ [r])
+        ) ([], []) $ testSuites pkg_descr
+    let successful = length $ filter id results
+    notice verbosity $ show successful ++ " of " ++ show total
+        ++ " test suites successful."
     when (successful < total) exitFailure
-
-runTmpOutput :: FilePath -> FilePath -> IO (FilePath, ExitCode)
-runTmpOutput cmd base = do
-    tmp <- getTemporaryDirectory
-    time <- getClockTime
-    let timeString = formatTime $ toUTCTime time
-        file = tmp </> base ++ "-" ++ timeString ++ ".log"
-    withFile file WriteMode $ \hOut -> do
-        proc <- runProcess cmd [] Nothing Nothing Nothing
-                (Just hOut) (Just hOut)
-        exit <- waitForProcess proc
-        return (file, exit)
-
-formatTime :: CalendarTime -> String
-formatTime time =
-    show (ctYear time)
-    ++ pad (fromEnum . ctMonth)
-    ++ pad ctDay
-    ++ "-"
-    ++ pad ctHour
-    ++ pad ctMin
-    ++ pad ctSec
-    where pad f = (if f time < 10 then "0" else "") ++ show (f time)
