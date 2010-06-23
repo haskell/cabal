@@ -100,7 +100,7 @@ class TestOptions t => ImpureTestable t where
     -- | Runs an impure test and returns the result.  Test frameworks
     -- implementing this class are responsible for converting any exceptions to
     -- the correct 'Result' value.
-    getResult :: t -> Options -> IO Result
+    runM :: t -> Options -> IO Result
 
 -- | Class abstracting pure tests.  Test frameworks should prefer to implement
 -- this class over 'ImpureTestable'.
@@ -108,7 +108,7 @@ class TestOptions t => PureTestable t where
     -- | The result of a pure test.  Test frameworks implementing this class
     -- are responsible for converting any exceptions to the correct 'Result'
     -- value.
-    result :: t -> Options -> Result
+    run :: t -> Options -> Result
 
 -- | 'Test' is a wrapper for pure and impure tests so that lists containing
 -- arbitrary test types can be constructed.
@@ -135,5 +135,5 @@ instance TestOptions Test where
     defaultOptions (ImpureTest p) = defaultOptions p
 
 instance ImpureTestable Test where
-    getResult (PureTest p) o = return $ result p o
-    getResult (ImpureTest i) o = getResult i o
+    runM (PureTest p) o = return $ run p o
+    runM (ImpureTest i) o = runM i o
