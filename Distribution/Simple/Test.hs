@@ -43,6 +43,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Test
     ( test
     , runTests
+    , writeSimpleTestStub
+    , stubFilePath
+    , stubName
     ) where
 
 import Distribution.PackageDescription
@@ -179,13 +182,15 @@ runTmpOutput cmd base = do
         exit <- waitForProcess proc
         return (file, exit)
 
-formatTime :: CalendarTime -> String
-formatTime time =
-    show (ctYear time)
-    ++ pad (fromEnum . ctMonth)
-    ++ pad ctDay
-    ++ "-"
-    ++ pad ctHour
-    ++ pad ctMin
-    ++ pad ctSec
-    where pad f = (if f time < 10 then "0" else "") ++ show (f time)
+writeSimpleTestStub :: TestSuite -> FilePath -> IO ()
+writeSimpleTestStub t dir = do
+    createDirectoryIfMissing True dir
+    let filename = dir </> stubFilePath t
+    withFile filename WriteMode $ \h -> do
+        hPutStr h $ unlines
+            [ "module Main ( main ) where"
+            , "import Distribution.Simple.Test ( runTests )"
+            , "import " ++ testName t ++ " ( tests )"
+            , "main :: IO ()"
+            , "main = runTests tests", ""
+            ]
