@@ -63,7 +63,8 @@ import qualified Distribution.Simple.Build.Macros      as Build.Macros
 import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 
 import Distribution.Package
-         ( Package(..) )
+         ( Package(..), PackageName(..), PackageIdentifier(..)
+         , thisPackageVersion )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
@@ -78,17 +79,19 @@ import Distribution.Simple.PreProcess
          ( preprocessSources, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(compiler, buildDir, withPackageDB)
-         , ComponentLocalBuildInfo, withLibLBI, withExeLBI
+         , ComponentLocalBuildInfo(..), withLibLBI, withExeLBI
          , inplacePackageId, withTestLBI )
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
 import Distribution.Simple.Register
          ( registerPackage, inplaceInstalledPackageInfo )
+import Distribution.Simple.Test ( stubFilePath, stubName )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, setupMessage )
 
-import Distribution.Version ( Version(..), withinRange, withinVersion )
+import Distribution.Version
+    ( Version(..), withinRange, withinVersion )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text
@@ -145,17 +148,58 @@ build pkg_descr lbi flags suffixes = do
 
   withTestLBI pkg_descr lbi' $ \test clbi ->
     case testType test of
-        ExeTest v f -> if withinRange v (withinVersion $ Version [1,0] [])
-            then do
-                let exe = Executable
-                        { exeName = testName test
-                        , modulePath = f
-                        , buildInfo = testBuildInfo test
+        ExeTest v f | withinRange v (withinVersion $ Version [1,0] []) -> do
+            let exe = Executable
+                    { exeName = testName test
+                    , modulePath = f
+                    , buildInfo = testBuildInfo test
+                    }
+            info verbosity $ "Building test suite " ++ testName test ++ "..."
+            buildExe verbosity pkg_descr lbi' exe clbi
+        LibTest v m | withinRange v (withinVersion $ Version [1,0] []) -> do
+            pwd <- getCurrentDirectory
+            let lib = Library
+                    { exposedModules = [ m ]
+                    , libExposed = True
+                    , libBuildInfo = testBuildInfo test
+                    }
+                pkg = pkg_descr
+                    { package = (package pkg_descr)
+                        { pkgName = PackageName $ testName test
                         }
-                info verbosity $ "Building test suite " ++ testName test ++ "..."
-                buildExe verbosity pkg_descr lbi' exe clbi
-            else die $ "No support for building test suite type: "
-                    ++ show (disp $ testType test)
+                    , buildDepends = targetBuildDepends $ testBuildInfo test
+                    , executables = []
+                    , testSuites = []
+                    , library = Just lib
+                    }
+                ipi = (inplaceInstalledPackageInfo
+                    pwd distPref pkg lib lbi clbi)
+                    { IPI.installedPackageId = inplacePackageId $ packageId ipi
+                    }
+                testDir = buildDir lbi' </> stubName test
+                    </> stubName test ++ "-tmp"
+                testLibDep = thisPackageVersion $ package pkg
+                exe = Executable
+                    { exeName = stubName test
+                    , modulePath = stubFilePath test
+                    , buildInfo = (testBuildInfo test)
+                        { hsSourceDirs = [ testDir ]
+                        , targetBuildDepends = testLibDep
+                            : (targetBuildDepends $ testBuildInfo test)
+                        }
+                    }
+                -- | The stub executable needs a new 'ComponentLocalBuildInfo'
+                -- that exposes the relevant test suite library.
+                exeClbi = clbi
+                    { componentPackageDeps =
+                        (IPI.installedPackageId ipi, packageId ipi)
+                        : (filter (\(_, x) -> let PackageName name = pkgName x in name == "Cabal" || name == "base")
+                            $ componentPackageDeps clbi)
+                    }
+            info verbosity $ "Building test suite " ++ testName test ++ "..."
+            buildLib verbosity pkg lbi' lib clbi
+            registerPackage verbosity ipi pkg lbi' True $ withPackageDB lbi'
+            buildExe verbosity pkg_descr lbi' exe exeClbi
         _ -> die $ "No support for building test suite type: "
                 ++ show (disp $ testType test)
 

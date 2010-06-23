@@ -63,7 +63,7 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
          , Library(..), withLib, libModules, TestSuite(..), withTest
-         , TestType(..) )
+         , TestType(..), testModules )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -81,6 +81,7 @@ import Distribution.Simple.Program
          , rawSystemProgramConf, rawSystemProgram
          , greencardProgram, cpphsProgram, hsc2hsProgram, c2hsProgram
          , happyProgram, alexProgram, haddockProgram, ghcProgram, gccProgram )
+import Distribution.Simple.Test ( writeSimpleTestStub, stubFilePath, stubName )
 import Distribution.System
          ( OS(OSX, Windows), buildOS )
 import Distribution.Text
@@ -203,33 +204,33 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
                          verbosity builtinSuffixes biHandlers
     unless (null (testSuites pkg_descr)) $
         setupMessage verbosity "Preprocessing test suites for" (packageId pkg_descr)
-    withTest pkg_descr $ \test ->
-        case testType test of
-            ExeTest v f ->
-                if withinRange v (withinVersion $ Version [1,0] [])
-                    then do
-                        let bi = testBuildInfo test
-                            biHandlers = localHandlers bi
-                            testDir = buildDir lbi </> testName test
-                                    </> testName test ++ "-tmp"
-                            sourceDirs = hsSourceDirs bi
-                                    ++ [autogenModulesDir lbi]
-                        sequence_ [ preprocessFile sourceDirs testDir forSDist
-                                (ModuleName.toFilePath modu) verbosity
-                                builtinSuffixes biHandlers
-                                | modu <- otherModules bi]
-                        preprocessFile (hsSourceDirs bi) testDir forSDist
-                                    (dropExtensions f)
-                                    verbosity builtinSuffixes biHandlers
-                    else die $ "No support for preprocessing test suite "
-                            ++ "type: " ++ show (disp $ testType test)
-            _ -> die $ "No support for preprocessing test suite type: "
-                    ++ show (disp $ testType test)
+    withTest pkg_descr $ \test -> case testType test of
+        ExeTest v f | withinRange v (withinVersion $ Version [1,0] []) ->
+            preProcessTest test f $ buildDir lbi </> testName test
+                </> testName test ++ "-tmp"
+        LibTest v _ | withinRange v (withinVersion $ Version [1,0] []) -> do
+            let testDir = buildDir lbi </> stubName test
+                    </> stubName test ++ "-tmp"
+            writeSimpleTestStub test testDir
+            preProcessTest test (stubFilePath test) testDir
+        _ -> die $ "No support for preprocessing test suite type: "
+                ++ show (disp $ testType test)
   where hc = compilerFlavor (compiler lbi)
         builtinSuffixes
           | hc == NHC = ["hs", "lhs", "gc"]
           | otherwise = ["hs", "lhs"]
         localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
+        preProcessTest test exePath testDir = do
+            let bi = testBuildInfo test
+                biHandlers = localHandlers bi
+                sourceDirs = hsSourceDirs bi ++ [ autogenModulesDir lbi ]
+            sequence_ [ preprocessFile sourceDirs (buildDir lbi) forSDist
+                    (ModuleName.toFilePath modu) verbosity builtinSuffixes
+                    biHandlers
+                    | modu <- testModules test ]
+            preprocessFile (testDir : (hsSourceDirs bi)) testDir forSDist
+                (dropExtensions $ exePath) verbosity
+                builtinSuffixes biHandlers
 
 --TODO: try to list all the modules that could not be found
 --      not just the first one. It's annoying and slow due to the need
