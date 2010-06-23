@@ -49,7 +49,6 @@ module Distribution.TestSuite
     , ImpureTestable(..)
     ) where
 
-import Control.Exception.Extensible ( SomeException )
 import Data.Dynamic ( Dynamic() )
 import Data.Function ( on )
 import Data.List ( unionBy )
@@ -68,16 +67,16 @@ instance Monoid Options where
     mappend (Options a) (Options b) = Options $ unionBy ((==) `on` fst) a b
 
 data Result
-    = Pass                  -- ^ The value indicating a successful test.
-    | Fail String           -- ^ The value indicating a test completed
-                            -- unsuccessfully.  The 'String' value should be a
-                            -- human-readable message indicating how the test
-                            -- failed.
-    | Error SomeException   -- ^ The value indicating a test that could not be
-                            -- completed due to some error.  The test framework
-                            -- should provide an exception indicating the
-                            -- nature of the error.
-    deriving Show
+    = Pass          -- ^ The value indicating a successful test.
+    | Fail String   -- ^ The value indicating a test completed
+                    -- unsuccessfully.  The 'String' value should be a
+                    -- human-readable message indicating how the test
+                    -- failed.
+    | Error String  -- ^ The value indicating a test that could not be
+                    -- completed due to some error.  The test framework
+                    -- should provide an exception indicating the
+                    -- nature of the error.
+    deriving (Read, Show)
 
 class TestOptions t where
     -- | The name of the test.
@@ -113,3 +112,13 @@ class TestOptions t => PureTestable t where
 data Test
     = forall p. PureTestable p => PureTest p
     | forall i. ImpureTestable i => ImpureTest i
+
+instance TestOptions Test where
+    name (PureTest p) = name p
+    name (ImpureTest i) = name i
+
+    options (PureTest p) = options p
+    options (ImpureTest i) = options i
+
+    defaultOptions (PureTest p) = defaultOptions p
+    defaultOptions (ImpureTest p) = defaultOptions p
