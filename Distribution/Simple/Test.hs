@@ -54,24 +54,81 @@ import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..) )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
-    , substPathTemplate , toPathTemplate, refersTo )
+    , substPathTemplate , toPathTemplate, refersTo, PathTemplate )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Setup ( TestFlags(..), TestFilter(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
 import Distribution.TestSuite
-    ( Test(..) , Result(..), PureTestable(..), ImpureTestable(..)
+    ( Test(..), Result(..), PureTestable(..), ImpureTestable(..)
     , TestOptions(..) )
 import Distribution.Text
-import Distribution.Verbosity ( Verbosity, silent )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
 
-import Control.Monad ( unless, when )
-import System.Directory ( getTemporaryDirectory, removeFile )
-import System.Exit ( ExitCode(..), exitFailure )
+import Control.Exception ( bracket )
+import Control.Monad ( unless, when, foldM, liftM )
+import Data.List ( union )
+import System.Directory ( createDirectoryIfMissing, doesFileExist, removeFile )
+import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( withFile, IOMode(..), hFlush, stdout, hGetContents )
-import System.Process ( runProcess, waitForProcess )
-import System.Time ( getClockTime, toUTCTime, CalendarTime(..) )
+import System.IO
+    ( Handle, hClose, hGetContents, hPutStr, IOMode(..), openTempFile
+    , withFile, hSetBinaryMode, hPutStrLn )
+import System.Process ( runInteractiveProcess, runProcess, waitForProcess )
+
+doTestOutput :: PathTemplate -- ^ Path template for log file
+             -> FilePath -- ^ File path for @dist@
+             -> (String -> String -> [(PathTemplateVariable, PathTemplate)])
+             -- ^ The 'PathTemplateEnv', given strings for the @$stdio@ and
+             -- @$result@ variables
+             -> [FilePath] -- ^ List of files to append instead of overwrite
+             -> (Handle -> Handle -> IO Result) -- ^ The action to log
+             -> IO ([FilePath], Result)
+             -- ^ The result of the logged action and paths to the files
+             -- where the action's output is logged.
+doTestOutput template distPref env files action = do
+    let path m r = distPref </> "test"
+            </> fromPathTemplate (substPathTemplate (env m r) template)
+    bracket
+        (do
+            (outTemp, hOutTemp) <- openTempFile
+                (distPref </> "test")
+                ("cabal-test-stdout" <.> "log")
+            if template `refersTo` TestSuiteStdIoVar
+                then do
+                    (errTemp, hErrTemp) <- openTempFile
+                        (distPref </> "test")
+                        ("cabal-test-stderr" <.> "log")
+                    return (outTemp, hOutTemp, errTemp, hErrTemp)
+                else do
+                    return (outTemp, hOutTemp, outTemp, hOutTemp)
+        )
+        (\(outTemp, hOutTemp, errTemp, hErrTemp) -> do
+            hClose hOutTemp
+            hClose hErrTemp
+            removeFile outTemp
+            errTempExists <- doesFileExist errTemp
+            when errTempExists $ removeFile errTemp
+        )
+        (\(outTemp, hOutTemp, errTemp, hErrTemp) -> do
+            r <- action hOutTemp hErrTemp
+            let rStr = case r of
+                    Pass -> "pass"
+                    Fail _ -> "fail"
+                    Error _ -> "error"
+                outFile = path "stdout" rStr
+                errFile = path "stderr" rStr
+                appendOrWrite file =
+                    if file `elem` files then AppendMode else WriteMode
+                rewriteTemp temp file = withFile temp ReadMode $ \hTemp ->
+                    withFile file (appendOrWrite file) $ \hFile ->
+                        hGetContents hTemp >>= hPutStr hFile
+            hClose hOutTemp
+            hClose hErrTemp
+            rewriteTemp outTemp outFile
+            unless (outFile == errFile)
+                $ rewriteTemp errTemp errFile
+            return (union [outFile] [errFile], r)
+        )
 
 -- |Perform the \"@.\/setup test@\" action.
 test :: PackageDescription  -- ^information from the .cabal file
@@ -84,6 +141,7 @@ test pkg_descr lbi flags = do
         distPref = fromFlag $ testDistPref flags
         filterFlag = fromFlag $ testFilter flags
         total = length $ testSuites pkg_descr
+        withinVersion1 = flip withinRange $ withinVersion $ Version [1,0] []
         doTest suite files = do
             notice verbosity $ "Test suite " ++ testName suite ++ ": RUNNING..."
             let pkgId = package pkg_descr
@@ -93,37 +151,14 @@ test pkg_descr lbi flags = do
                        , (TestSuiteStdIoVar, toPathTemplate m)
                        , (TestSuiteResultVar, toPathTemplate r)
                        ]
-                path m r = distPref </> "test"
-                    </> fromPathTemplate (substPathTemplate (env m r) template)
-                cmd = buildDir lbi </> testName suite </>
-                    testName suite <.> exeExtension
-            bracket
-                (do
-                    (stdoutTemp, hStdout) <- openTempFile
-                        (distPref </> "test")
-                        (testName suite ++ "-stdout" <.> "log")
-                    if template `refersTo` TestSuiteStdIoVar
-                        then do
-                            (stderrTemp, hStderr) <- openTempFile
-                                (distPref </> "test")
-                                (testName suite ++ "-stderr" <.> "log")
-                            return (stdoutTemp, hStdout, stderrTemp, hStderr)
-                        else do
-                            return (stdoutTemp, hStdout, stdoutTemp, hStdout)
-                )
-                (\(stdoutTemp, hStdout, stderrTemp, hStderr) -> do
-                    hClose hStdout
-                    hClose hStderr
-                    removeFile stdoutTemp
-                    stderrExists <- doesFileExist stderrTemp
-                    when stderrExists $ removeFile stderrTemp
-                )
-                (\(stdoutTemp, hStdout, stderrTemp, hStderr) -> do
-                    result <- case testType suite of
-                        ExeTest v _ | withinRange v
-                            (withinVersion $ Version [1,0] []) -> do
-                            proc <- runProcess cmd [] Nothing Nothing Nothing
-                                (Just hStdout) (Just hStderr)
+            case testType suite of
+                ExeTest v _ | withinVersion1 v ->
+                    doTestOutput template distPref env files $
+                        \hOut hErr -> do
+                            let cmd = buildDir lbi </> testName suite
+                                    </> testName suite <.> exeExtension
+                            proc <- runProcess cmd [] Nothing Nothing
+                                Nothing (Just hOut) (Just hErr)
                             exit <- waitForProcess proc
                             return $ case exit of
                                 ExitSuccess -> True
@@ -149,38 +184,24 @@ test pkg_descr lbi flags = do
                             hGetContents hTemp >>= hPutStr hErr
                     notice verbosity $ "Test suite " ++ testName suite
                         ++ ": " ++ map toUpper rStr
-                    when (filterFlag > Summary && not result) $
-                        showTestLog verbosity stdoutFile
-                    when (filterFlag > Failures && result) $
-                        showTestLog verbosity stdoutFile
                     return (files ++ [stdoutFile, stderrFile], result)
                 )
     createDirectoryIfMissing True $ distPref </> "test"
     notice verbosity $ "Running " ++ show total ++ " test suites..."
     (_, results) <- foldM (\(files, rs) t -> do
         (files', r) <- doTest t files
-        return (files', rs ++ [r])
+        return (files' ++ files, rs ++ [r])
         ) ([], []) $ testSuites pkg_descr
-    let successful = length $ filter id results
+    let successful = length $ flip filter results $ \x ->
+            case x of
+                Pass -> True
+                _ -> False
     notice verbosity $ show successful ++ " of " ++ show total
         ++ " test suites successful."
     when (successful < total) exitFailure
 
-showTestLog :: Verbosity -> FilePath -> IO ()
-showTestLog verbosity outFile = when (verbosity > silent) $ do
-    withFile outFile ReadMode $ \hOut -> hGetContents hOut >>= putStrLn
-
-runTmpOutput :: FilePath -> FilePath -> IO (FilePath, ExitCode)
-runTmpOutput cmd base = do
-    tmp <- getTemporaryDirectory
-    time <- getClockTime
-    let timeString = formatTime $ toUTCTime time
-        file = tmp </> base ++ "-" ++ timeString ++ ".log"
-    withFile file WriteMode $ \hOut -> do
-        proc <- runProcess cmd [] Nothing Nothing Nothing
-                (Just hOut) (Just hOut)
-        exit <- waitForProcess proc
-        return (file, exit)
+stubName :: TestSuite -> FilePath
+stubName t = testName t ++ "Stub"
 
 writeSimpleTestStub :: TestSuite -> FilePath -> IO ()
 writeSimpleTestStub t dir = do
