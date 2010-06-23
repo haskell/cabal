@@ -48,6 +48,7 @@ module Distribution.Simple.Test
     , stubName
     ) where
 
+import Distribution.Package ( PackageIdentifier(..), PackageName(..) )
 import Distribution.PackageDescription
         ( PackageDescription(..), TestSuite(..), TestType(..) )
 import Distribution.Simple.BuildPaths ( exeExtension )
@@ -66,7 +67,9 @@ import Distribution.Version ( Version(..), withinVersion, withinRange )
 import Control.Exception ( bracket )
 import Control.Monad ( unless, when, foldM, liftM )
 import Data.List ( union )
-import System.Directory ( createDirectoryIfMissing, doesFileExist, removeFile )
+import System.Directory
+    ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
+    , removeFile )
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO
@@ -135,6 +138,7 @@ test :: PackageDescription  -- ^information from the .cabal file
      -> TestFlags           -- ^flags sent to test
      -> IO ()
 test pkg_descr lbi flags = do
+    shellEnv <- dataDirEnv pkg_descr
     let verbosity = fromFlag $ testVerbosity flags
         template = fromFlag $ testLogFile flags
         distPref = fromFlag $ testDistPref flags
@@ -156,7 +160,7 @@ test pkg_descr lbi flags = do
                         \hOut hErr -> do
                             let cmd = buildDir lbi </> testName suite
                                     </> testName suite <.> exeExtension
-                            proc <- runProcess cmd [] Nothing Nothing
+                            proc <- runProcess cmd [] Nothing shellEnv
                                 Nothing (Just hOut) (Just hErr)
                             exit <- waitForProcess proc
                             return $ case exit of
@@ -214,3 +218,10 @@ writeSimpleTestStub t dir = do
             , "main :: IO ()"
             , "main = runTests tests", ""
             ]
+
+dataDirEnv :: PackageDescription -> IO (Maybe [(String, String)])
+dataDirEnv pkg_descr = do
+    pwd <- getCurrentDirectory
+    return $ Just [(n ++ "_datadir", pwd </> dataDir pkg_descr)]
+    where PackageName n' = pkgName $ package pkg_descr
+          n = map (\c -> if c == '-' then '_' else c) n'
