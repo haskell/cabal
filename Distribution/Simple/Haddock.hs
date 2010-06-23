@@ -68,6 +68,8 @@ import Distribution.Simple.Program
 import Distribution.Simple.PreProcess (ppCpp', ppUnlit,
                                 PPSuffixHandler, runSimplePreProcessor)
 import Distribution.Simple.Setup
+        ( defaultHscolourFlags, Flag(..), flagToMaybe, fromFlag
+        , HaddockFlags(..), HscolourFlags(..) )
 import Distribution.Simple.Build (initialBuildSteps)
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
                                         PathTemplateVariable(..),
