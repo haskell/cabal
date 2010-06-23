@@ -59,8 +59,7 @@ import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Setup ( TestFlags(..), TestFilter(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
 import Distribution.TestSuite
-    ( Test(..), Result(..), PureTestable(..), ImpureTestable(..)
-    , TestOptions(..) )
+    ( Test, Result(..), ImpureTestable(..), TestOptions(..) )
 import Distribution.Text
 import Distribution.Version ( Version(..), withinVersion, withinRange )
 

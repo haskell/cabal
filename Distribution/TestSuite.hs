@@ -41,7 +41,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.TestSuite
-    ( Test(..)
+    ( Test
+    , pure, impure
     , Options(..)
     , Result(..)
     , TestOptions(..)
@@ -109,9 +110,19 @@ class TestOptions t => PureTestable t where
     -- value.
     result :: t -> Options -> Result
 
+-- | 'Test' is a wrapper for pure and impure tests so that lists containing
+-- arbitrary test types can be constructed.
 data Test
     = forall p. PureTestable p => PureTest p
     | forall i. ImpureTestable i => ImpureTest i
+
+-- | A convenient function for wrapping pure tests into 'Test's.
+pure :: PureTestable p => p -> Test
+pure = PureTest
+
+-- | A convenient function for wrapping impure tests into 'Test's.
+impure :: ImpureTestable i => i -> Test
+impure = ImpureTest
 
 instance TestOptions Test where
     name (PureTest p) = name p
@@ -122,3 +133,7 @@ instance TestOptions Test where
 
     defaultOptions (PureTest p) = defaultOptions p
     defaultOptions (ImpureTest p) = defaultOptions p
+
+instance ImpureTestable Test where
+    getResult (PureTest p) o = return $ result p o
+    getResult (ImpureTest i) o = getResult i o
