@@ -77,7 +77,7 @@ data Result
                     -- completed due to some error.  The test framework
                     -- should provide an exception indicating the
                     -- nature of the error.
-    deriving (Read, Show)
+    deriving (Read, Show, Eq)
 
 class TestOptions t where
     -- | The name of the test.

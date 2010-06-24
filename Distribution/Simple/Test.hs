@@ -44,6 +44,7 @@ module Distribution.Simple.Test
     ( test
     , runTests
     , writeSimpleTestStub
+    , setStubExitCode
     , stubFilePath
     , stubName
     ) where
@@ -62,6 +63,7 @@ import Distribution.Simple.Utils ( die, notice )
 import Distribution.TestSuite
     ( Test, Result(..), ImpureTestable(..), TestOptions(..) )
 import Distribution.Text
+import Distribution.Verbosity ( Verbosity, silent )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
 
 import Control.Exception ( bracket )
@@ -73,10 +75,19 @@ import System.Directory
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO
-    ( Handle, hClose, hGetContents, hPutStr, IOMode(..), openTempFile
-    , withFile, hSetBinaryMode, hPutStrLn )
+    ( Handle, hClose, hGetContents, IOMode(..), openTempFile
+    , withFile, hPutStrLn )
 import System.Process ( runInteractiveProcess, runProcess, waitForProcess )
 
+-- | Log the output of a test action to file(s).  The action should take, as its
+-- arguments, two 'Handle's corresponding to @stdin@ and @stdout@, respectively.
+-- The log files are located in the directory @dist/test@ and are named based on
+-- a 'PathTemplate'.  To construct the actual 'FilePath', a function returning
+-- a 'PathTemplateEnv' given the values of several 'PathTemplateVariable's is
+-- required.  This function will overwrite test logs from previous invocations
+-- of \"@.\/setup test@\" if they have the same name.  Test logs from the
+-- current invocation with the same name will be appended; to select the correct
+-- 'IOMode', a list of files modified by the current invocation is required.
 doTestOutput :: PathTemplate -- ^ Path template for log file
              -> FilePath -- ^ File path for @dist@
              -> (String -> String -> [(PathTemplateVariable, PathTemplate)])
@@ -93,8 +104,7 @@ doTestOutput template distPref env files action = do
     bracket
         (do
             (outTemp, hOutTemp) <- openTempFile
-                (distPref </> "test")
-                ("cabal-test-stdout" <.> "log")
+                (distPref </> "test") ("cabal-test-stdout" <.> "log")
             if template `refersTo` TestSuiteStdIoVar
                 then do
                     (errTemp, hErrTemp) <- openTempFile
@@ -123,7 +133,7 @@ doTestOutput template distPref env files action = do
                     if file `elem` files then AppendMode else WriteMode
                 rewriteTemp temp file = withFile temp ReadMode $ \hTemp ->
                     withFile file (appendOrWrite file) $ \hFile ->
-                        hGetContents hTemp >>= hPutStr hFile
+                        hGetContents hTemp >>= hPutStrLn hFile
             hClose hOutTemp
             hClose hErrTemp
             rewriteTemp outTemp outFile
@@ -142,9 +152,12 @@ test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
         template = fromFlag $ testLogFile flags
         distPref = fromFlag $ testDistPref flags
-        filterFlag = fromFlag $ testFilter flags
         total = length $ testSuites pkg_descr
         withinVersion1 = flip withinRange $ withinVersion $ Version [1,0] []
+        onFailureOrAll r a = when
+            ((fromFlag (testFilter flags) > Summary && r /= Pass)
+            || (fromFlag (testFilter flags) > Failures && r == Pass)) a
+
         doTest suite files = do
             notice verbosity $ "Test suite " ++ testName suite ++ ": RUNNING..."
             let pkgId = package pkg_descr
@@ -155,70 +168,166 @@ test pkg_descr lbi flags = do
                        , (TestSuiteResultVar, toPathTemplate r)
                        ]
             case testType suite of
-                ExeTest v _ | withinVersion1 v ->
-                    doTestOutput template distPref env files $
+                ExeTest v _ | withinVersion1 v -> do
+                    (fs, r) <- doTestOutput template distPref env files $
                         \hOut hErr -> do
                             let cmd = buildDir lbi </> testName suite
                                     </> testName suite <.> exeExtension
                             proc <- runProcess cmd [] Nothing shellEnv
                                 Nothing (Just hOut) (Just hErr)
                             exit <- waitForProcess proc
-                            return $ case exit of
-                                ExitSuccess -> True
-                                ExitFailure _ -> False
-                        _ -> do _ <- die $ "No support for running test suite "
-                                    ++ "type: " ++ show (disp $ testType suite)
-                                return False
-                    hClose hStdout
-                    hClose hStderr
-                    let rStr = if result then "pass" else "fail"
-                        stdoutFile = path "stdout" rStr
-                        stderrFile = path "stderr" rStr
-                        stdoutMode = if stdoutFile `elem` files
-                            then AppendMode else WriteMode
-                        stderrMode = if stderrFile `elem` files
-                            then AppendMode else WriteMode
-                    withFile stdoutTemp ReadMode $ \hTemp ->
-                        withFile stdoutFile stdoutMode $ \hOut ->
-                        hGetContents hTemp >>= hPutStr hOut
-                    unless (stdoutFile == stderrFile) $
-                        withFile stderrTemp ReadMode $ \hTemp ->
-                            withFile stderrFile stderrMode $ \hErr ->
-                            hGetContents hTemp >>= hPutStr hErr
-                    notice verbosity $ "Test suite " ++ testName suite
-                        ++ ": " ++ map toUpper rStr
-                    return (files ++ [stdoutFile, stderrFile], result)
-                )
+                            let r = case exit of
+                                    ExitSuccess -> Pass
+                                    ExitFailure c -> Fail $ show c
+                            return r
+
+                    notice verbosity $ "Test suite "
+                        ++ testName suite ++ ": " ++
+                        ( case r of
+                            Pass -> "PASS"
+                            _ -> "FAIL"
+                        )
+                    onFailureOrAll r $ mapM_ (showTestLog verbosity) fs
+                    return (fs, r)
+
+                LibTest v _ | withinVersion1 v -> do
+                    let cmd = buildDir lbi </> stubName suite
+                            </> stubName suite <.> exeExtension
+                    (hIn, hOut, _, proc) <-
+                        runInteractiveProcess cmd [] Nothing shellEnv
+                    hPutStrLn hIn $ show $ TestStubOptions
+                        { stubEnv = initialPathTemplateEnv pkgId compId
+                            ++ [( TestSuiteNameVar
+                                , toPathTemplate $ testName suite
+                                )]
+                        , stubTemplate = template
+                        , stubDistPref = distPref
+                        , stubAppendFiles = files
+                        }
+                    hClose hIn
+                    exit <- waitForProcess proc
+                    (fs, rs) <- liftM read $ hGetContents hOut
+                    hClose hOut
+
+                    let r = case exit of
+                            ExitSuccess -> Pass
+                            ExitFailure x | x == 1 -> Fail ""
+                                          | otherwise -> Error ""
+                    onFailureOrAll r $ do
+                        mapM_ (showTestCase verbosity) rs
+                        mapM_ (showTestLog verbosity) fs
+                    notice verbosity $ "Test suite "
+                        ++ testName suite ++ ": " ++
+                        ( case r of
+                            Pass -> "PASS"
+                            Fail _ -> "FAIL"
+                            Error _ -> "ERROR"
+                        )
+                    return (fs, r)
+                _ -> do
+                    _ <- die $ "No support for running test suite "
+                        ++ "type: " ++ show (disp $ testType suite)
+                    return ([], Error "")
+
     createDirectoryIfMissing True $ distPref </> "test"
     notice verbosity $ "Running " ++ show total ++ " test suites..."
-    (_, results) <- foldM (\(files, rs) t -> do
-        (files', r) <- doTest t files
-        return (files' ++ files, rs ++ [r])
+    (_, results) <- foldM
+        (\(appendFiles, rs) t -> do
+            (filesWritten, r) <- doTest t appendFiles
+            return (union appendFiles filesWritten,  union rs [r])
         ) ([], []) $ testSuites pkg_descr
-    let successful = length $ flip filter results $ \x ->
-            case x of
-                Pass -> True
-                _ -> False
+    let successful = length $ filter (== Pass) results
     notice verbosity $ show successful ++ " of " ++ show total
         ++ " test suites successful."
     when (successful < total) exitFailure
 
+    where showTestCase :: Verbosity -> (String, Result) -> IO ()
+          showTestCase verbosity (n, r) = notice verbosity
+            $ "    Test case " ++ n ++ ": " ++ show r
+
+          showTestLog :: Verbosity -> FilePath -> IO ()
+          showTestLog verbosity outFile = when (verbosity > silent) $ do
+            withFile outFile ReadMode $ \hOut -> hGetContents hOut >>= putStrLn
+
+-- | 'TestStubOptions' encapsulates the options required by 'runTests' which are
+-- sent to the test stub.  The type exists for its 'Read' and 'Show'
+-- instances.
+data TestStubOptions = TestStubOptions
+    { stubEnv :: [(PathTemplateVariable, PathTemplate)]
+    -- ^ path template environment with all per-test-suite options supplied
+    , stubTemplate :: PathTemplate
+    -- ^ path template for naming log files
+    , stubDistPref :: FilePath
+    -- ^ location of @dist@; log files go in @dist/test@
+    , stubAppendFiles :: [FilePath]
+    -- ^ list of log files which should be appended instead of overwritten
+    }
+    deriving (Read, Show)
+
+-- | The test runner for library 'TestSuite' stub executables.  Runs a list of
+-- 'Test's.  The 'TestStubOptions' are read from @stdin@ by the stub executable.
+runTests :: [Test] -> TestStubOptions -> IO ([FilePath], [(String, Result)])
+runTests tests opts = do
+    (filesWritten, results) <- foldM
+        (\(appendFiles, rs) t -> do
+            let env m r = stubEnv opts
+                    ++ [ (TestSuiteStdIoVar, toPathTemplate m)
+                       , (TestSuiteResultVar, toPathTemplate r)
+                       ]
+            (filesWritten, r) <- doTestOutput
+                (stubTemplate opts) (stubDistPref opts) env appendFiles
+                $ \hOut _ -> do
+                    r <- defaultOptions t >>= runM t
+                    hPutStrLn hOut $ show (name t, r)
+                    return r
+            return (union appendFiles filesWritten, union rs [r])
+        ) (stubAppendFiles opts, []) tests
+    return (filesWritten, zip (map name tests) results)
+
+-- | The filename of the source file for the stub executable associated with a
+-- library 'TestSuite'.
+stubFilePath :: TestSuite -> FilePath
+stubFilePath t = stubName t <.> "hs"
+
+-- | The name of the stub executable associated with a library 'TestSuite'.
 stubName :: TestSuite -> FilePath
 stubName t = testName t ++ "Stub"
 
-writeSimpleTestStub :: TestSuite -> FilePath -> IO ()
+-- | Write the source file for a library 'TestSuite' stub executable.
+writeSimpleTestStub :: TestSuite    -- ^ library 'TestSuite' for which a stub
+                                    -- is being created
+                    -> FilePath     -- ^ path to directory where stub source
+                                    -- should be located
+                    -> IO ()
 writeSimpleTestStub t dir = do
     createDirectoryIfMissing True dir
     let filename = dir </> stubFilePath t
+        LibTest _ m = testType t
     withFile filename WriteMode $ \h -> do
-        hPutStr h $ unlines
+        hPutStrLn h $ unlines
             [ "module Main ( main ) where"
-            , "import Distribution.Simple.Test ( runTests )"
-            , "import " ++ testName t ++ " ( tests )"
+            , "import Distribution.Simple.Test ( runTests, setStubExitCode )"
+            , "import " ++ show (disp m) ++ " ( tests )"
             , "main :: IO ()"
-            , "main = runTests tests", ""
+            , "main = do"
+            , "    testsOutput <- getLine >>= runTests tests . read"
+            , "    putStrLn $ show testsOutput"
+            , "    setStubExitCode $ map snd $ snd testsOutput"
             ]
+-- | Set the stub exit code based on the individual tests' results.
+setStubExitCode :: [Result] -> IO ()
+setStubExitCode results = do
+    when (any isError results) $ exitWith $ ExitFailure 2
+    when (any isFail results) $ exitWith $ ExitFailure 1
+    exitSuccess
+    where
+        isFail (Fail _) = True
+        isFail _ = False
+        isError (Error _) = True
+        isError _ = False
 
+-- | Returns the shell environment for correctly running a test suite with
+-- in-place data files.
 dataDirEnv :: PackageDescription -> IO (Maybe [(String, String)])
 dataDirEnv pkg_descr = do
     pwd <- getCurrentDirectory
