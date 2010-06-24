@@ -71,6 +71,7 @@ module Distribution.Simple.Setup (
                                                                unregisterCommand,
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
   TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
+  TestFilter(..),
   CopyDest(..),
   configureArgs, configureOptions,
   installDirsOptions,
@@ -105,8 +106,9 @@ import Distribution.Simple.Program (Program(..), ProgramConfiguration,
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
-import Data.List (sort)
+import Data.List ( isPrefixOf, sort, stripPrefix )
 import Data.Char (isSpace)
+import Data.Maybe ( fromJust )
 import Data.Monoid (Monoid(..))
 import Distribution.Verbosity
 
@@ -1190,10 +1192,34 @@ instance Monoid BuildFlags where
 -- * Test flags
 -- ------------------------------------------------------------
 
+data TestFilter = Summary | Failures | All
+    deriving (Eq, Ord)
+
+instance Show TestFilter where
+    show Summary = "summary"
+    show Failures = "failures"
+    show All = "all"
+
+instance Read TestFilter where
+    readsPrec _ str
+        | "summary" `isPrefixOf` str =
+            -- The use of 'fromJust' here is safe because of the occurence of
+            -- 'isPrefixOf' in the guard.
+            [(Summary, fromJust $ stripPrefix "summary" str)]
+        | "failures" `isPrefixOf` str =
+            [(Failures, fromJust $ stripPrefix "failures" str)]
+        | "all" `isPrefixOf` str = [(All, fromJust $ stripPrefix "all" str)]
+        | otherwise = []
+
+instance Monoid TestFilter where
+    mempty = Summary
+    mappend a b = if a < b then b else a
+
 data TestFlags = TestFlags {
     testDistPref  :: Flag FilePath,
     testVerbosity :: Flag Verbosity,
-    testLogFile :: Flag PathTemplate
+    testLogFile :: Flag PathTemplate,
+    testFilter :: Flag TestFilter
   }
   deriving Show
 
@@ -1201,7 +1227,8 @@ defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
     testDistPref  = Flag defaultDistPref,
     testVerbosity = Flag normal,
-    testLogFile = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log"
+    testLogFile = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
+    testFilter = Flag Failures
   }
 
 testCommand :: CommandUI TestFlags
@@ -1222,6 +1249,12 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
             (reqArg' "TEMPLATE"
                 (toFlag . toPathTemplate)
                 (flagToList . fmap fromPathTemplate))
+      , option [] ["test-filter"]
+            ("'summary': display no test suite logs on the console. "
+            ++ "'failures': display test suite logs only for "
+            ++ "unsuccessful tests. 'all': display logs for all tests.")
+            testFilter (\v flags -> flags { testFilter = v })
+            (reqArg' "FILTER" (toFlag . read) (flagToList . fmap show))
       ]
 
 emptyTestFlags :: TestFlags
@@ -1231,12 +1264,14 @@ instance Monoid TestFlags where
   mempty = TestFlags {
     testDistPref  = mempty,
     testVerbosity = mempty,
-    testLogFile = mempty
+    testLogFile = mempty,
+    testFilter = mempty
   }
   mappend a b = TestFlags {
     testDistPref  = combine testDistPref,
     testVerbosity = combine testVerbosity,
-    testLogFile = combine testLogFile
+    testLogFile = combine testLogFile,
+    testFilter = combine testFilter
   }
     where combine field = field a `mappend` field b
 
