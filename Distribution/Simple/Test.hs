@@ -50,9 +50,10 @@ import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, refersTo )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Simple.Setup ( TestFlags(..), fromFlag )
+import Distribution.Simple.Setup ( TestFlags(..), TestFilter(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
 import Distribution.Text
+import Distribution.Verbosity ( Verbosity, silent )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
 
 import Control.Exception ( bracket )
@@ -74,6 +75,7 @@ test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
         template = fromFlag $ testLogFile flags
         distPref = fromFlag $ testDistPref flags
+        filterFlag = fromFlag $ testFilter flags
         total = length $ testSuites pkg_descr
         doTest suite files = do
             notice verbosity $ "Test suite " ++ testName suite ++ ": RUNNING..."
@@ -140,6 +142,10 @@ test pkg_descr lbi flags = do
                             hGetContents hTemp >>= hPutStr hErr
                     notice verbosity $ "Test suite " ++ testName suite
                         ++ ": " ++ map toUpper rStr
+                    when (filterFlag > Summary && not result) $
+                        showTestLog verbosity stdoutFile
+                    when (filterFlag > Failures && result) $
+                        showTestLog verbosity stdoutFile
                     return (files ++ [stdoutFile, stderrFile], result)
                 )
     createDirectoryIfMissing True $ distPref </> "test"
@@ -152,3 +158,7 @@ test pkg_descr lbi flags = do
     notice verbosity $ show successful ++ " of " ++ show total
         ++ " test suites successful."
     when (successful < total) exitFailure
+
+showTestLog :: Verbosity -> FilePath -> IO ()
+showTestLog verbosity outFile = when (verbosity > silent) $ do
+    withFile outFile ReadMode $ \hOut -> hGetContents hOut >>= putStrLn
