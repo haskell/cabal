@@ -61,9 +61,7 @@ suite cabalVersion = TestCase $ do
                         }
                 , testSuites = [ emptyTestSuite
                         { testName = "dummy"
-                        , mainIs = Just "dummy.hs"
-                        , testType = ExeTest $ Version [1,0] []
-                        , testModule = Nothing
+                        , testType = ExeTest (Version [1,0] []) "dummy.hs"
                         , testBuildInfo = emptyBuildInfo
                                 { targetBuildDepends =
                                         [ Dependency (PackageName "base") anyVersion ]

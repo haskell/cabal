@@ -15,5 +15,5 @@ Library
 
 test-suite dummy
     main-is: dummy.hs
-    type: executable 1.0
+    type: exitcode-stdio-1.0
     build-depends: base
