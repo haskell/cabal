@@ -135,7 +135,6 @@ import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
 -- * add --upgrade-deps flag
--- * add --only-deps flag
 -- * eliminate upgrade, replaced by --upgrade-deps and world target
 -- * assign flags to packages individually
 --   * complain about flags that do not apply to any package given as target
@@ -175,14 +174,16 @@ install, upgrade
 install verbosity packageDB repos comp conf
   globalFlags configFlags configExFlags installFlags targets =
 
-    installWithPlanner verbosity context planner targets
+    installWithPlanner verbosity context (planner onlyDeps) targets
 
   where
     context :: InstallContext
     context = (packageDB, repos, comp, conf,
                globalFlags, configFlags, configExFlags, installFlags)
 
-    planner :: Planner
+    onlyDeps = fromFlag (installOnlyDeps installFlags)
+
+    planner :: Bool -> Planner
     planner
       | null targets = planLocalPackage verbosity
                          comp configFlags configExFlags
@@ -261,8 +262,9 @@ planLocalPackage :: Verbosity
                  -> Compiler
                  -> ConfigFlags
                  -> ConfigExFlags
+                 -> Bool
                  -> Planner
-planLocalPackage verbosity comp configFlags configExFlags installed
+planLocalPackage verbosity comp configFlags configExFlags onlyDeps installed
   (AvailablePackageDb available availablePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
   let -- The trick is, we add the local package to the available index and
@@ -286,9 +288,16 @@ planLocalPackage verbosity comp configFlags configExFlags installed
       preferences = mergePackagePrefs PreferLatestForSelected
                                       availablePrefs configExFlags
 
-  return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
+      plan = resolveDependenciesWithProgress buildPlatform
+             (compilerId comp)
              installed' available' preferences constraints targets
 
+      isLocalPackage = (== localPackageName) . packageName
+      localPackageName = packageName pkg
+
+  -- If we only want dependencies, then remove the local package from
+  -- the install plan after we have built it.
+  return $ if onlyDeps then removeFromPlan isLocalPackage plan else plan
 
 -- | Make an 'InstallPlan' for the given dependencies.
 --
@@ -299,10 +308,11 @@ planRepoPackages :: PackagesPreferenceDefault
                  -> ConfigExFlags
                  -> InstallFlags
                  -> [UnresolvedDependency]
+                 -> Bool
                  -> Planner
 planRepoPackages defaultPref comp
   globalFlags configFlags configExFlags installFlags
-  deps installed (AvailablePackageDb available availablePrefs) = do
+  deps onlyDeps installed (AvailablePackageDb available availablePrefs) = do
 
   deps' <- addWorldPackages deps
        >>= IndexUtils.disambiguateDependencies available
@@ -316,12 +326,17 @@ planRepoPackages defaultPref comp
                  ++ [ PackageVersionConstraint name ver
                     | Dependency name ver <- configConstraints configFlags ]
       preferences = mergePackagePrefs defaultPref availablePrefs configExFlags
-  return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
+      plan = resolveDependenciesWithProgress buildPlatform (compilerId comp)
              installed' available preferences constraints targets
+  return $ if onlyDeps then removeFromPlan (isGivenDep deps) plan else plan
   where
     hideGivenDeps pkgs index =
-      foldr PackageIndex.deletePackageName index
+      foldr PackageIndex.deletePackageName index (givenDepNames pkgs)
+
+    givenDepNames pkgs =
         [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
+
+    isGivenDep pkgs = (`elem` givenDepNames pkgs) . packageName
 
     addWorldPackages :: [UnresolvedDependency] -> IO [UnresolvedDependency]
     addWorldPackages targets = case partition World.isWorldTarget targets of
@@ -336,6 +351,19 @@ planRepoPackages defaultPref comp
       where
         worldFile = fromFlag $ globalWorldFile globalFlags
 
+
+-- | Adapt InstallPlan.removePackages to work on Progress so that it
+-- can be integrated with the planners
+--
+removeFromPlan :: (InstallPlan.PlanPackage -> Bool)
+               -> Progress step String InstallPlan
+               -> Progress step String InstallPlan
+removeFromPlan shouldRemove =
+    foldProgress Step Fail $ \plan ->
+    case InstallPlan.removePackages shouldRemove plan of
+      Right plan'   -> Done plan'
+      Left problems ->
+          Fail $ unlines $ map InstallPlan.showPlanProblem problems
 
 mergePackagePrefs :: PackagesPreferenceDefault
                   -> Map.Map PackageName VersionRange
