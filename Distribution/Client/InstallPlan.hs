@@ -22,6 +22,7 @@ module Distribution.Client.InstallPlan (
   ready,
   completed,
   failed,
+  removePackages,
 
   -- ** Query functions
   planPlatform,
@@ -180,6 +181,20 @@ new platform compiler index =
 
 toList :: InstallPlan -> [PlanPackage]
 toList = PackageIndex.allPackages . planIndex
+
+-- | Remove packages from the install plan. This will result in an
+-- error if there are remaining packages that depend on any matching
+-- package. This is primarily useful for obtaining an install plan for
+-- the dependencies of a package or set of packages without actually
+-- installing the package itself, as when doing development.
+--
+removePackages :: (PlanPackage -> Bool) -> InstallPlan
+               -> Either [PlanProblem] InstallPlan
+removePackages shouldRemove plan =
+    new (planPlatform plan) (planCompiler plan) newIdx
+    where
+      newIdx =
+          PackageIndex.fromList $ filter (not . shouldRemove) $ toList plan
 
 -- | The packages that are ready to be installed. That is they are in the
 -- configured state and have all their dependencies installed already.

@@ -517,6 +517,7 @@ data InstallFlags = InstallFlags {
     installReinstall    :: Flag Bool,
     installUpgradeDeps  :: Flag Bool,
     installOnly         :: Flag Bool,
+    installOnlyDeps     :: Flag Bool,
     installRootCmd      :: Flag String,
     installSummaryFile  :: [PathTemplate],
     installLogFile      :: Flag PathTemplate,
@@ -533,6 +534,7 @@ defaultInstallFlags = InstallFlags {
     installReinstall    = Flag False,
     installUpgradeDeps  = Flag False,
     installOnly         = Flag False,
+    installOnlyDeps     = Flag False,
     installRootCmd      = mempty,
     installSummaryFile  = mempty,
     installLogFile      = mempty,
@@ -634,6 +636,12 @@ installOptions showOrParseArgs =
           "Do not record the packages in the world file."
           installOneShot (\v flags -> flags { installOneShot = v })
           trueArg
+
+      , option [] ["only-dependencies"]
+          "Install only the dependencies necessary to build the listed packages"
+          installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
+          trueArg
+
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
@@ -651,6 +659,7 @@ instance Monoid InstallFlags where
     installReinstall    = mempty,
     installUpgradeDeps  = mempty,
     installOnly         = mempty,
+    installOnlyDeps     = mempty,
     installRootCmd      = mempty,
     installSummaryFile  = mempty,
     installLogFile      = mempty,
@@ -665,6 +674,7 @@ instance Monoid InstallFlags where
     installReinstall    = combine installReinstall,
     installUpgradeDeps  = combine installUpgradeDeps,
     installOnly         = combine installOnly,
+    installOnlyDeps     = combine installOnlyDeps,
     installRootCmd      = combine installRootCmd,
     installSummaryFile  = combine installSummaryFile,
     installLogFile      = combine installLogFile,
