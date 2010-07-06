@@ -150,9 +150,8 @@ jhcProgram = (simpleProgram "jhc") {
         _         -> ""
   }
 
-uhcProgram :: Program
 uhcProgram = (simpleProgram "uhc") {
-    programFindVersion = findProgramVersion "--numeric-version" id
+    programFindVersion = findProgramVersion "--version-dotted" id
   }
 
 

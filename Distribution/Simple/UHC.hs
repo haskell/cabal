@@ -94,6 +94,15 @@ uhcLanguageExtensions =
     [(CPP, "--cpp"),
      (PolymorphicComponents, ""),
      (ExistentialQuantification, ""),
+     (ForeignFunctionInterface, ""),
+     (UndecidableInstances, ""),
+     (MultiParamTypeClasses, ""),
+     (Rank2Types, ""),
+     (PatternSignatures, ""),
+     (EmptyDataDecls, ""),
+     (NoImplicitPrelude, "--no-prelude"),
+     (TypeOperators, ""),
+     (OverlappingInstances, ""),
      (FlexibleInstances, "")]
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
@@ -132,8 +141,11 @@ packageDbPaths user system db =
 -- | Hack to add version numbers to UHC-builtin packages. This should sooner or
 -- later be fixed on the UHC side.
 addBuiltinVersions :: String -> String
+{-
+addBuiltinVersions "uhcbase"  = "uhcbase-1.0"
 addBuiltinVersions "base"  = "base-3.0"
 addBuiltinVersions "array" = "array-0.2"
+-}
 addBuiltinVersions xs      = xs
 
 -- | Name of the installed package config file.
@@ -199,6 +211,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
      -- packages
   ++ ["--hide-all-packages"]
   ++ uhcPackageDbOptions user system (withPackageDB lbi)
+  ++ ["--package=uhcbase"]
   ++ ["--package=" ++ display (pkgName pkgid) | (_, pkgid) <- componentPackageDeps clbi ]
      -- search paths
   ++ ["-i" ++ odir]
