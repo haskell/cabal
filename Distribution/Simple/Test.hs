@@ -72,6 +72,7 @@ import Data.List ( union )
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
     , removeFile )
+import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO
@@ -331,6 +332,7 @@ setStubExitCode results = do
 dataDirEnv :: PackageDescription -> IO (Maybe [(String, String)])
 dataDirEnv pkg_descr = do
     pwd <- getCurrentDirectory
-    return $ Just [(n ++ "_datadir", pwd </> dataDir pkg_descr)]
+    existingEnv <- getEnvironment
+    return $ Just $ (n ++ "_datadir", pwd </> dataDir pkg_descr) : existingEnv
     where PackageName n' = pkgName $ package pkg_descr
           n = map (\c -> if c == '-' then '_' else c) n'
