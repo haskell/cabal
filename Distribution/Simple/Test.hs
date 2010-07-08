@@ -44,31 +44,33 @@ module Distribution.Simple.Test
     ( test
     , runTests
     , writeSimpleTestStub
-    , setStubExitCode
     , stubFilePath
     , stubName
     ) where
 
+import Distribution.ModuleName ( ModuleName )
 import Distribution.Package ( PackageIdentifier(..), PackageName(..) )
 import Distribution.PackageDescription
-        ( PackageDescription(..), TestSuite(..), TestType(..) )
+    ( PackageDescription(..), TestSuite(..), TestType(..) )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..) )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
-    , substPathTemplate , toPathTemplate, refersTo, PathTemplate )
+    , substPathTemplate , toPathTemplate, PathTemplate )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Setup ( TestFlags(..), TestFilter(..), fromFlag )
-import Distribution.Simple.Utils ( die, notice )
+import Distribution.Simple.Utils ( notice )
 import Distribution.TestSuite
-    ( Test, Result(..), ImpureTestable(..), TestOptions(..) )
+    ( Test, Result(..), ImpureTestable(..), TestOptions(..), TestSuiteLog(..)
+    , suitePassed, suiteFailed, suiteError )
 import Distribution.Text
-import Distribution.Verbosity ( Verbosity, silent )
+import Distribution.Verbosity ( Verbosity )
 import Distribution.Version ( Version(..), withinVersion, withinRange )
+import Distribution.System ( buildPlatform )
 
 import Control.Exception ( bracket )
-import Control.Monad ( unless, when, foldM, liftM )
-import Data.List ( union )
+import Control.Monad ( when, foldM, liftM, unless )
+import Data.Char ( toUpper )
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
     , removeFile )
@@ -76,72 +78,9 @@ import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO
-    ( Handle, hClose, hGetContents, IOMode(..), openTempFile
-    , withFile, hPutStrLn )
-import System.Process ( runInteractiveProcess, runProcess, waitForProcess )
-
--- | Log the output of a test action to file(s).  The action should take, as its
--- arguments, two 'Handle's corresponding to @stdin@ and @stdout@, respectively.
--- The log files are located in the directory @dist/test@ and are named based on
--- a 'PathTemplate'.  To construct the actual 'FilePath', a function returning
--- a 'PathTemplateEnv' given the values of several 'PathTemplateVariable's is
--- required.  This function will overwrite test logs from previous invocations
--- of \"@.\/setup test@\" if they have the same name.  Test logs from the
--- current invocation with the same name will be appended; to select the correct
--- 'IOMode', a list of files modified by the current invocation is required.
-doTestOutput :: PathTemplate -- ^ Path template for log file
-             -> FilePath -- ^ File path for @dist@
-             -> (String -> String -> [(PathTemplateVariable, PathTemplate)])
-             -- ^ The 'PathTemplateEnv', given strings for the @$stdio@ and
-             -- @$result@ variables
-             -> [FilePath] -- ^ List of files to append instead of overwrite
-             -> (Handle -> Handle -> IO Result) -- ^ The action to log
-             -> IO ([FilePath], Result)
-             -- ^ The result of the logged action and paths to the files
-             -- where the action's output is logged.
-doTestOutput template distPref env files action = do
-    let path m r = distPref </> "test"
-            </> fromPathTemplate (substPathTemplate (env m r) template)
-    bracket
-        (do
-            (outTemp, hOutTemp) <- openTempFile
-                (distPref </> "test") ("cabal-test-stdout" <.> "log")
-            if template `refersTo` TestSuiteStdIoVar
-                then do
-                    (errTemp, hErrTemp) <- openTempFile
-                        (distPref </> "test")
-                        ("cabal-test-stderr" <.> "log")
-                    return (outTemp, hOutTemp, errTemp, hErrTemp)
-                else do
-                    return (outTemp, hOutTemp, outTemp, hOutTemp)
-        )
-        (\(outTemp, hOutTemp, errTemp, hErrTemp) -> do
-            hClose hOutTemp
-            hClose hErrTemp
-            removeFile outTemp
-            errTempExists <- doesFileExist errTemp
-            when errTempExists $ removeFile errTemp
-        )
-        (\(outTemp, hOutTemp, errTemp, hErrTemp) -> do
-            r <- action hOutTemp hErrTemp
-            let rStr = case r of
-                    Pass -> "pass"
-                    Fail _ -> "fail"
-                    Error _ -> "error"
-                outFile = path "stdout" rStr
-                errFile = path "stderr" rStr
-                appendOrWrite file =
-                    if file `elem` files then AppendMode else WriteMode
-                rewriteTemp temp file = withFile temp ReadMode $ \hTemp ->
-                    withFile file (appendOrWrite file) $ \hFile ->
-                        hGetContents hTemp >>= hPutStrLn hFile
-            hClose hOutTemp
-            hClose hErrTemp
-            rewriteTemp outTemp outFile
-            unless (outFile == errFile)
-                $ rewriteTemp errTemp errFile
-            return (union [outFile] [errFile], r)
-        )
+    ( Handle, hClose, hGetContents, hPutStrLn, IOMode(..)
+    , openTempFile, withFile )
+import System.Process ( runProcess, waitForProcess )
 
 -- |Perform the \"@.\/setup test@\" action.
 test :: PackageDescription  -- ^information from the .cabal file
@@ -149,141 +88,196 @@ test :: PackageDescription  -- ^information from the .cabal file
      -> TestFlags           -- ^flags sent to test
      -> IO ()
 test pkg_descr lbi flags = do
-    shellEnv <- dataDirEnv pkg_descr
     let verbosity = fromFlag $ testVerbosity flags
         template = fromFlag $ testLogFile flags
         distPref = fromFlag $ testDistPref flags
-        total = length $ testSuites pkg_descr
+        testLogDir = distPref </> "test"
         withinVersion1 = flip withinRange $ withinVersion $ Version [1,0] []
-        onFailureOrAll r a = when
-            ((fromFlag (testFilter flags) > Summary && r /= Pass)
-            || (fromFlag (testFilter flags) > Failures && r == Pass)) a
 
-        doTest suite files = do
+        doTest logs suite = do
             notice verbosity $ "Test suite " ++ testName suite ++ ": RUNNING..."
-            let pkgId = package pkg_descr
-                compId = compilerId $ compiler lbi
-                env m r = initialPathTemplateEnv pkgId compId
-                    ++ [ (TestSuiteNameVar, toPathTemplate $ testName suite)
-                       , (TestSuiteStdIoVar, toPathTemplate m)
-                       , (TestSuiteResultVar, toPathTemplate r)
-                       ]
+            let appendFiles = map logFile logs
+                run = runTestExe pkg_descr testLogDir
+                named = namedTestLog pkg_descr lbi testLogDir template
             case testType suite of
                 ExeTest v _ | withinVersion1 v -> do
-                    (fs, r) <- doTestOutput template distPref env files $
-                        \hOut hErr -> do
-                            let cmd = buildDir lbi </> testName suite
-                                    </> testName suite <.> exeExtension
-                            proc <- runProcess cmd [] Nothing shellEnv
-                                Nothing (Just hOut) (Just hErr)
-                            exit <- waitForProcess proc
-                            let r = case exit of
-                                    ExitSuccess -> Pass
-                                    ExitFailure c -> Fail $ show c
-                            return r
+                    let cmd = buildDir lbi </> testName suite
+                            </> testName suite <.> exeExtension
+                    testLog <- run cmd Nothing $ \exit out -> do
+                        let r = case exit of
+                                ExitSuccess -> Pass
+                                ExitFailure _ -> Fail out
+                            local = (localTestSuiteLog lbi suite)
+                                { suiteTests = [(testName suite, r)] }
+                        writeLog appendFiles $ named local
 
-                    notice verbosity $ "Test suite "
-                        ++ testName suite ++ ": " ++
-                        ( case r of
-                            Pass -> "PASS"
-                            _ -> "FAIL"
-                        )
-                    onFailureOrAll r $ mapM_ (showTestLog verbosity) fs
-                    return (fs, r)
+                    printResults flags testLog
+                    return $ testLog : logs
 
                 LibTest v _ | withinVersion1 v -> do
                     let cmd = buildDir lbi </> stubName suite
                             </> stubName suite <.> exeExtension
-                    (hIn, hOut, _, proc) <-
-                        runInteractiveProcess cmd [] Nothing shellEnv
-                    hPutStrLn hIn $ show $ TestStubOptions
-                        { stubEnv = initialPathTemplateEnv pkgId compId
-                            ++ [( TestSuiteNameVar
-                                , toPathTemplate $ testName suite
-                                )]
-                        , stubTemplate = template
-                        , stubDistPref = distPref
-                        , stubAppendFiles = files
-                        }
-                    hClose hIn
-                    exit <- waitForProcess proc
-                    (fs, rs) <- liftM read $ hGetContents hOut
-                    hClose hOut
+                    testLog <- withTestLog
+                        (localTestSuiteLog lbi suite) (distPref </> "test")
+                        $ \hIn -> run cmd (Just hIn) $ \_ out ->
+                            writeLog appendFiles $ named $ read out
 
-                    let r = case exit of
-                            ExitSuccess -> Pass
-                            ExitFailure x | x == 1 -> Fail ""
-                                          | otherwise -> Error ""
-                    onFailureOrAll r $ do
-                        mapM_ (showTestCase verbosity) rs
-                        mapM_ (showTestLog verbosity) fs
-                    notice verbosity $ "Test suite "
-                        ++ testName suite ++ ": " ++
-                        ( case r of
-                            Pass -> "PASS"
-                            Fail _ -> "FAIL"
-                            Error _ -> "ERROR"
-                        )
-                    return (fs, r)
+                    printResults flags testLog
+                    return $ testLog : logs
                 _ -> do
-                    _ <- die $ "No support for running test suite "
-                        ++ "type: " ++ show (disp $ testType suite)
-                    return ([], Error "")
+                    let dieLog = (localTestSuiteLog lbi suite)
+                            { suiteTests = [(testName suite, Error
+                                $ "No support for running test suite "
+                                ++ "type: " ++ show (disp $ testType suite))]
+                            }
+                    return $ dieLog : logs
 
-    createDirectoryIfMissing True $ distPref </> "test"
-    notice verbosity $ "Running " ++ show total ++ " test suites..."
-    (_, results) <- foldM
-        (\(appendFiles, rs) t -> do
-            (filesWritten, r) <- doTest t appendFiles
-            return (union appendFiles filesWritten,  union rs [r])
-        ) ([], []) $ testSuites pkg_descr
-    let successful = length $ filter (== Pass) results
-    notice verbosity $ show successful ++ " of " ++ show total
-        ++ " test suites successful."
-    when (successful < total) exitFailure
+    createDirectoryIfMissing True testLogDir
+    let totalSuites = length $ testSuites pkg_descr
+    notice verbosity $ "Running " ++ show totalSuites ++ " test suites..."
+    allOk <- foldM doTest [] (testSuites pkg_descr) >>= printSummary verbosity
+    unless allOk exitFailure
 
-    where showTestCase :: Verbosity -> (String, Result) -> IO ()
-          showTestCase verbosity (n, r) = notice verbosity
-            $ "    Test case " ++ n ++ ": " ++ show r
+-- | Print a summary to the console after all test suites have been run
+-- indicating the number of successful test suites and cases.  Returns 'True' if
+-- all test suites passed and 'False' otherwise.
+printSummary :: Verbosity -> [TestSuiteLog] -> IO Bool
+printSummary verbosity testLogs = do
+    notice verbosity $ show passedSuites ++ " of " ++ show totalSuites
+        ++ " test suites (" ++ show passedCases ++ " of "
+        ++ show totalCases ++ " test cases) passed."
+    return $ passedSuites == totalSuites
+    where cases = map snd $ concatMap suiteTests testLogs
+          passedCases = length $ filter (== Pass) cases
+          totalCases = length cases
+          passedSuites = length $ filter suitePassed testLogs
+          totalSuites = length testLogs
 
-          showTestLog :: Verbosity -> FilePath -> IO ()
-          showTestLog verbosity outFile = when (verbosity > silent) $ do
-            withFile outFile ReadMode $ \hOut -> hGetContents hOut >>= putStrLn
+-- | Print a description of the test suite results on the console.  The output
+-- depends on the verbosity and test filter settings.
+printResults :: TestFlags -> TestSuiteLog -> IO ()
+printResults flags testLog = do
+    when shouldPrint $ mapM_ printTestCase $ suiteTests testLog
+    notice verb $ "Test suite " ++ suiteName testLog ++ ": " ++ resStr
+    where
+        verb = fromFlag $ testVerbosity flags
+        filt = fromFlag $ testFilter flags
+        notPassed = not $ suitePassed testLog
+        shouldPrint = (filt > Summary && notPassed) || filt > Failures
+        resStr = map toUpper (resultString testLog)
+        printTestCase (n, r) = notice verb
+            $ "Test case " ++ n ++ ": " ++ show r
 
--- | 'TestStubOptions' encapsulates the options required by 'runTests' which are
--- sent to the test stub.  The type exists for its 'Read' and 'Show'
--- instances.
-data TestStubOptions = TestStubOptions
-    { stubEnv :: [(PathTemplateVariable, PathTemplate)]
-    -- ^ path template environment with all per-test-suite options supplied
-    , stubTemplate :: PathTemplate
-    -- ^ path template for naming log files
-    , stubDistPref :: FilePath
-    -- ^ location of @dist@; log files go in @dist/test@
-    , stubAppendFiles :: [FilePath]
-    -- ^ list of log files which should be appended instead of overwritten
-    }
-    deriving (Read, Show)
+-- | Creates a temporary file for writing, allowing an 'IO' action to access the
+-- file.  The temporary file is deleted after the action runs.
+withTempFile :: FilePath -- ^ directory where temporary file will be located
+             -> FilePath -- ^ template for temporary file name
+             -> ((FilePath, Handle) -> IO a)
+             -- ^ action using the temporary file
+             -> IO a
+withTempFile dir template go = bracket
+    (openTempFile dir template)
+    (\(actualPath, h) -> do
+        hClose h
+        tempExists <- doesFileExist actualPath
+        when tempExists $ removeFile actualPath
+    )
+    go
 
--- | The test runner for library 'TestSuite' stub executables.  Runs a list of
--- 'Test's.  The 'TestStubOptions' are read from @stdin@ by the stub executable.
-runTests :: [Test] -> TestStubOptions -> IO ([FilePath], [(String, Result)])
-runTests tests opts = do
-    (filesWritten, results) <- foldM
-        (\(appendFiles, rs) t -> do
-            let env m r = stubEnv opts
-                    ++ [ (TestSuiteStdIoVar, toPathTemplate m)
-                       , (TestSuiteResultVar, toPathTemplate r)
-                       ]
-            (filesWritten, r) <- doTestOutput
-                (stubTemplate opts) (stubDistPref opts) env appendFiles
-                $ \hOut _ -> do
-                    r <- defaultOptions t >>= runM t
-                    hPutStrLn hOut $ show (name t, r)
-                    return r
-            return (union appendFiles filesWritten, union rs [r])
-        ) (stubAppendFiles opts, []) tests
-    return (filesWritten, zip (map name tests) results)
+-- | Writes a 'TestSuiteLog' to file.  If the file is to be appended, reads the
+-- list of existing 'TestSuiteLog's from the file and overwrites the file with
+-- a new list, the new 'TestSuiteLog' being appended to the list.  Otherwise,
+-- overwrites the file with a list containing a single element, the new
+-- 'TestSuiteLog'.
+writeLog :: [FilePath]
+         -- ^ list of files to append, rather than overwrite
+         -> TestSuiteLog -- ^ test suite log to write to file
+         -> IO TestSuiteLog
+writeLog files testLog = do
+    if (logFile testLog) `elem` files
+        then do withFile (logFile testLog) ReadMode $ \hIn -> do
+                    existing <- liftM read $ hGetContents hIn
+                    withFile (logFile testLog) WriteMode
+                        $ \hOut -> hPutStrLn hOut $ show $ existing ++ [testLog]
+        else withFile (logFile testLog) WriteMode
+                $ \h -> hPutStrLn h $ show [testLog]
+    return testLog
+
+resultString :: TestSuiteLog -> String
+resultString l | suiteError l = "error"
+               | suiteFailed l = "fail"
+               | otherwise = "pass"
+
+-- | Runs an executable test suite, such as an @exitcode-stdio@ test suite, or
+-- the test stub for a detailed test suite.
+runTestExe :: PackageDescription
+           -- ^ the 'PackageDescription' of the package this test belongs to;
+           -- used to set the shell environment so the executable can find
+           -- the package's data files.
+           -> FilePath
+           -- ^ the directory where temporary files should be located
+           -> FilePath -- ^ the command to invoke
+           -> Maybe Handle
+           -- ^ maybe the handle to give the child process for standard input
+           -> (ExitCode -> String -> IO a)
+           -- ^ an 'IO' action on the process exit code and output
+           -> IO a
+runTestExe pkg_descr dir cmd mH go = do
+    shellEnv <- dataDirEnv pkg_descr
+    let prefix = "cabal-test-" <.> "log"
+    withTempFile dir prefix $ \(outFile, hOut) -> do
+        proc <- runProcess cmd [] Nothing shellEnv mH (Just hOut) (Just hOut)
+        exit <- waitForProcess proc
+        hClose hOut
+        withFile outFile ReadMode $ (>>= go exit) . hGetContents
+
+-- | The environment used for variable substitution for test log
+-- 'PathTemplate's.
+testPathTemplateEnv :: PackageDescription
+                    -- ^ the description of the package owning the test suite,
+                    -- used to resolve the package name
+                    -> LocalBuildInfo
+                    -- ^ used to resolve the platform information
+                    -> TestSuiteLog
+                    -- ^ used to resolve the test suite name and result
+                    -> [(PathTemplateVariable, PathTemplate)]
+testPathTemplateEnv pkg_descr lbi l =
+    initialPathTemplateEnv (package pkg_descr) (compilerId $ compiler lbi)
+        ++  [ (TestSuiteNameVar, toPathTemplate $ suiteName l)
+            , (TestSuiteResultVar, toPathTemplate $ resultString l)
+            ]
+
+-- | Modifies a 'TestSuiteLog' to include the final log file name based on
+-- a 'PathTemplate'.
+namedTestLog :: PackageDescription
+             -- ^ used to resolve the log file name
+             -> LocalBuildInfo
+             -- ^ used to resolve the log file name
+             -> FilePath
+             -- ^ directory where log file should be located
+             -> PathTemplate
+             -- ^ template for naming log file
+             -> TestSuiteLog
+             -- ^ 'TestSuiteLog' to be modified
+             -> TestSuiteLog
+namedTestLog pkg_descr lbi testDir template testLog =
+    let env = testPathTemplateEnv pkg_descr lbi testLog
+        logPath = fromPathTemplate $ substPathTemplate env template
+    in testLog
+        { logFile = testDir </> logPath }
+
+-- | Writes data to a temporary file for reading e.g., as standard input by a
+-- child process.
+withTestLog :: Show a => a -- ^ options
+            -> FilePath -- ^ temporary file name template
+            -> (Handle -> IO a) -- ^ action requiring options file
+            -> IO a
+withTestLog opts dir go =
+    withTempFile dir ("cabal-stub-" <.> "opts")
+        $ \(optsFile, hOpts) -> do
+            hPutStrLn hOpts (show opts)
+            hClose hOpts
+            withFile optsFile ReadMode go
 
 -- | The filename of the source file for the stub executable associated with a
 -- library 'TestSuite'.
@@ -305,27 +299,34 @@ writeSimpleTestStub t dir = do
     let filename = dir </> stubFilePath t
         LibTest _ m = testType t
     withFile filename WriteMode $ \h -> do
-        hPutStrLn h $ unlines
-            [ "module Main ( main ) where"
-            , "import Distribution.Simple.Test ( runTests, setStubExitCode )"
-            , "import " ++ show (disp m) ++ " ( tests )"
-            , "main :: IO ()"
-            , "main = do"
-            , "    testsOutput <- getLine >>= runTests tests . read"
-            , "    putStrLn $ show testsOutput"
-            , "    setStubExitCode $ map snd $ snd testsOutput"
-            ]
--- | Set the stub exit code based on the individual tests' results.
-setStubExitCode :: [Result] -> IO ()
-setStubExitCode results = do
-    when (any isError results) $ exitWith $ ExitFailure 2
-    when (any isFail results) $ exitWith $ ExitFailure 1
+        hPutStrLn h $ simpleTestStub m
+
+-- | Source code for library test suite stub executable
+simpleTestStub :: ModuleName -> String
+simpleTestStub m = unlines
+    [ "module Main ( main ) where"
+    , "import Control.Monad ( liftM )"
+    , "import Distribution.Simple.Test ( runTests )"
+    , "import " ++ show (disp m) ++ " ( tests )"
+    , "main :: IO ()"
+    , "main = runTests tests"
+    ]
+
+-- | The test runner for library 'TestSuite' stub executables.  Runs a list of
+-- 'Test's.  The 'TestStubOptions' are read from @stdin@ by the stub executable.
+runTests :: [Test] -> IO ()
+runTests tests = do
+    localLog <- liftM read getContents
+    testLog <- foldM go localLog tests
+    putStrLn $ show testLog
+    when (suiteError testLog) $ exitWith $ ExitFailure 2
+    when (suiteFailed testLog) $ exitWith $ ExitFailure 1
     exitSuccess
     where
-        isFail (Fail _) = True
-        isFail _ = False
-        isError (Error _) = True
-        isError _ = False
+        go :: TestSuiteLog -> Test -> IO TestSuiteLog
+        go l t = do
+            r <- defaultOptions t >>= runM t
+            return $ l { suiteTests = suiteTests l ++ [(name t, r)] }
 
 -- | Returns the shell environment for correctly running a test suite with
 -- in-place data files.
@@ -336,3 +337,15 @@ dataDirEnv pkg_descr = do
     return $ Just $ (n ++ "_datadir", pwd </> dataDir pkg_descr) : existingEnv
     where PackageName n' = pkgName $ package pkg_descr
           n = map (\c -> if c == '-' then '_' else c) n'
+
+-- | Fills in a 'TestSuiteLog' with data from the 'LocalBuildInfo' and the
+-- 'TestSuite' (all fields except the log file name and test case results).
+localTestSuiteLog :: LocalBuildInfo -> TestSuite -> TestSuiteLog
+localTestSuiteLog lbi suite = TestSuiteLog
+    { suitePkg = package $ localPkgDescr lbi
+    , suiteCompiler = compilerId $ compiler lbi
+    , suitePlatform = buildPlatform
+    , suiteName = testName suite
+    , suiteTests = []
+    , logFile = []
+    }
