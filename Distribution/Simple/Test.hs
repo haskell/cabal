@@ -51,7 +51,7 @@ module Distribution.Simple.Test
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Package ( PackageIdentifier(..), PackageName(..) )
 import Distribution.PackageDescription
-    ( PackageDescription(..), TestSuite(..), TestType(..) )
+    ( PackageDescription(..), TestSuite(..), TestType(..), testVersion1 )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..) )
 import Distribution.Simple.InstallDirs
@@ -65,7 +65,6 @@ import Distribution.TestSuite
     , suitePassed, suiteFailed, suiteError )
 import Distribution.Text
 import Distribution.Verbosity ( Verbosity )
-import Distribution.Version ( Version(..), withinVersion, withinRange )
 import Distribution.System ( buildPlatform )
 
 import Control.Exception ( bracket )
@@ -92,7 +91,6 @@ test pkg_descr lbi flags = do
         template = fromFlag $ testLogFile flags
         distPref = fromFlag $ testDistPref flags
         testLogDir = distPref </> "test"
-        withinVersion1 = flip withinRange $ withinVersion $ Version [1,0] []
 
         doTest logs suite = do
             notice verbosity $ "Test suite " ++ testName suite ++ ": RUNNING..."
@@ -100,7 +98,7 @@ test pkg_descr lbi flags = do
                 run = runTestExe pkg_descr testLogDir
                 named = namedTestLog pkg_descr lbi testLogDir template
             case testType suite of
-                ExeTest v _ | withinVersion1 v -> do
+                ExeTest v _ | testVersion1 v -> do
                     let cmd = buildDir lbi </> testName suite
                             </> testName suite <.> exeExtension
                     testLog <- run cmd Nothing $ \exit out -> do
@@ -114,7 +112,7 @@ test pkg_descr lbi flags = do
                     printResults flags testLog
                     return $ testLog : logs
 
-                LibTest v _ | withinVersion1 v -> do
+                LibTest v _ | testVersion1 v -> do
                     let cmd = buildDir lbi </> stubName suite
                             </> stubName suite <.> exeExtension
                     testLog <- withTestLog
