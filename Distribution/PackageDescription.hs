@@ -78,6 +78,7 @@ module Distribution.PackageDescription (
         hasTests,
         withTest,
         testModules,
+        testVersion1,
 
         -- * Build information
         BuildInfo(..),
@@ -111,7 +112,8 @@ import Distribution.Package
          , Dependency, Package(..) )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
-         ( Version(Version), VersionRange, anyVersion )
+         ( Version(Version), VersionRange, anyVersion, withinRange
+         , withinVersion )
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
@@ -395,6 +397,9 @@ testModules test = otherModules (testBuildInfo test) ++ libraryModule
     where libraryModule = case testType test of
             ExeTest _ _ -> []
             LibTest _ m -> [ m ]
+
+testVersion1 :: Version -> Bool
+testVersion1 = flip withinRange $ withinVersion $ Version [1,0] []
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type

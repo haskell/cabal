@@ -63,7 +63,7 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
          , Library(..), withLib, libModules, TestSuite(..), withTest
-         , TestType(..), testModules )
+         , TestType(..), testModules, testVersion1 )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -86,8 +86,7 @@ import Distribution.System
          ( OS(OSX, Windows), buildOS )
 import Distribution.Text
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion, withinRange
-         , withinVersion )
+         ( Version(..), anyVersion, orLaterVersion )
 import Distribution.Verbosity
 
 import Control.Monad (when, unless)
@@ -205,10 +204,10 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
     unless (null (testSuites pkg_descr)) $
         setupMessage verbosity "Preprocessing test suites for" (packageId pkg_descr)
     withTest pkg_descr $ \test -> case testType test of
-        ExeTest v f | withinRange v (withinVersion $ Version [1,0] []) ->
+        ExeTest v f | testVersion1 v ->
             preProcessTest test f $ buildDir lbi </> testName test
                 </> testName test ++ "-tmp"
-        LibTest v _ | withinRange v (withinVersion $ Version [1,0] []) -> do
+        LibTest v _ | testVersion1 v -> do
             let testDir = buildDir lbi </> stubName test
                     </> stubName test ++ "-tmp"
             writeSimpleTestStub test testDir

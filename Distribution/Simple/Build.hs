@@ -69,7 +69,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-         , TestSuite(..), TestType(..) )
+         , TestSuite(..), TestType(..), testVersion1 )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
@@ -90,8 +90,6 @@ import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, setupMessage )
 
-import Distribution.Version
-    ( Version(..), withinRange, withinVersion )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text
@@ -148,7 +146,7 @@ build pkg_descr lbi flags suffixes = do
 
   withTestLBI pkg_descr lbi' $ \test clbi ->
     case testType test of
-        ExeTest v f | withinRange v (withinVersion $ Version [1,0] []) -> do
+        ExeTest v f | testVersion1 v -> do
             let exe = Executable
                     { exeName = testName test
                     , modulePath = f
@@ -156,7 +154,7 @@ build pkg_descr lbi flags suffixes = do
                     }
             info verbosity $ "Building test suite " ++ testName test ++ "..."
             buildExe verbosity pkg_descr lbi' exe clbi
-        LibTest v m | withinRange v (withinVersion $ Version [1,0] []) -> do
+        LibTest v m | testVersion1 v -> do
             pwd <- getCurrentDirectory
             let lib = Library
                     { exposedModules = [ m ]
