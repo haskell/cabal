@@ -48,8 +48,6 @@ module Distribution.TestSuite
     , TestOptions(..)
     , PureTestable(..)
     , ImpureTestable(..)
-    , TestSuiteLog(..)
-    , suitePassed, suiteFailed, suiteError
     ) where
 
 import Data.Dynamic ( Dynamic() )
@@ -57,9 +55,6 @@ import Data.Function ( on )
 import Data.List ( unionBy )
 import Data.Monoid ( Monoid(..) )
 import Data.Typeable ( TypeRep )
-import Distribution.Package ( PackageId )
-import Distribution.Simple.Compiler ( CompilerId )
-import Distribution.System ( Platform )
 
 newtype Options = Options [(String, Dynamic)]
 
@@ -80,7 +75,7 @@ data Result
                     -- failed.
     | Error String  -- ^ The value indicating a test that could not be
                     -- completed due to some error.  The test framework
-                    -- should provide an exception indicating the
+                    -- should provide a message indicating the
                     -- nature of the error.
     deriving (Read, Show, Eq)
 
@@ -142,28 +137,3 @@ instance TestOptions Test where
 instance ImpureTestable Test where
     runM (PureTest p) o = return $ run p o
     runM (ImpureTest i) o = runM i o
-
--- | A data structure used for logging test suite results itemized by test case.
-data TestSuiteLog = TestSuiteLog
-    { suitePkg :: PackageId
-    , suiteName :: String
-    , suiteCompiler :: CompilerId
-    , suitePlatform :: Platform
-    , suiteTests :: [(String, Result)] -- ^ Test case 'Result's by name
-    , logFile :: FilePath
-    }
-    deriving (Read, Show)
-
--- | From a 'TestSuiteLog', determine if the test suite passed.
-suitePassed :: TestSuiteLog -> Bool
-suitePassed = all (== Pass) . map snd . suiteTests
-
--- | From a 'TestSuiteLog', determine if the test suite failed.
-suiteFailed :: TestSuiteLog -> Bool
-suiteFailed = any isFail . map snd . suiteTests
-    where isFail x = case x of Fail _ -> True; _ -> False
-
--- | From a 'TestSuiteLog', determine if the test suite encountered errors.
-suiteError :: TestSuiteLog -> Bool
-suiteError = any isError . map snd . suiteTests
-    where isError x = case x of Error _ -> True; _ -> False

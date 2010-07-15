@@ -1218,7 +1218,8 @@ instance Monoid TestFilter where
 data TestFlags = TestFlags {
     testDistPref  :: Flag FilePath,
     testVerbosity :: Flag Verbosity,
-    testLogFile :: Flag PathTemplate,
+    testHumanLog :: Flag PathTemplate,
+    testMachineLog :: Flag PathTemplate,
     testFilter :: Flag TestFilter
   }
   deriving Show
@@ -1227,7 +1228,8 @@ defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
     testDistPref  = Flag defaultDistPref,
     testVerbosity = Flag normal,
-    testLogFile = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
+    testHumanLog = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
+    testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log",
     testFilter = Flag Failures
   }
 
@@ -1242,10 +1244,17 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
       , optionDistPref
             testDistPref (\d flags -> flags { testDistPref = d })
             showOrParseArgs
-      , option [] ["test-log"]
+      , option [] ["human-log"]
             ("Log all test suite results to file (name template can use "
             ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result, $stdio)")
-            testLogFile (\v flags -> flags { testLogFile = v })
+            testHumanLog (\v flags -> flags { testHumanLog = v })
+            (reqArg' "TEMPLATE"
+                (toFlag . toPathTemplate)
+                (flagToList . fmap fromPathTemplate))
+      , option [] ["machine-log"]
+            ("Machine-readable log file (name template can use "
+            ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result, $stdio)")
+            testMachineLog (\v flags -> flags { testMachineLog = v })
             (reqArg' "TEMPLATE"
                 (toFlag . toPathTemplate)
                 (flagToList . fmap fromPathTemplate))
@@ -1264,13 +1273,15 @@ instance Monoid TestFlags where
   mempty = TestFlags {
     testDistPref  = mempty,
     testVerbosity = mempty,
-    testLogFile = mempty,
+    testHumanLog = mempty,
+    testMachineLog = mempty,
     testFilter = mempty
   }
   mappend a b = TestFlags {
     testDistPref  = combine testDistPref,
     testVerbosity = combine testVerbosity,
-    testLogFile = combine testLogFile,
+    testHumanLog = combine testHumanLog,
+    testMachineLog = combine testMachineLog,
     testFilter = combine testFilter
   }
     where combine field = field a `mappend` field b
