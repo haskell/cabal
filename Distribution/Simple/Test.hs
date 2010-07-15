@@ -66,7 +66,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Setup ( TestFlags(..), TestFilter(..), fromFlag )
 import Distribution.Simple.Utils ( notice )
 import qualified Distribution.TestSuite as TestSuite
-    ( Test, Result(..), ImpureTestable(..), TestOptions(..) )
+    ( Test, Result(..), ImpureTestable(..), TestOptions(..), Options(..) )
 import Distribution.Text
 import Distribution.Verbosity ( normal, Verbosity )
 import Distribution.System ( buildPlatform, Platform )
@@ -74,6 +74,7 @@ import Distribution.System ( buildPlatform, Platform )
 import Control.Exception ( bracket )
 import Control.Monad ( when, liftM, unless )
 import Data.Char ( toUpper )
+import Data.Monoid ( mempty )
 import System.Directory
     ( copyFile, createDirectoryIfMissing, doesFileExist, getCurrentDirectory
     , removeFile )
@@ -104,23 +105,30 @@ localPackageLog pkg_descr lbi = PackageLog
 
 data TestSuiteLog = TestSuiteLog
     { name :: String
-    , cases :: [(String, TestSuite.Result)]
+    , cases :: [Case]
     , logFile :: FilePath    -- Path to human-readable log file
+    }
+    deriving (Read, Show, Eq)
+
+data Case = Case
+    { caseName :: String
+    , caseOptions :: TestSuite.Options
+    , caseResult :: TestSuite.Result
     }
     deriving (Read, Show, Eq)
 
 -- | From a 'TestSuiteLog', determine if the test suite passed.
 suitePassed :: TestSuiteLog -> Bool
-suitePassed = all (== TestSuite.Pass) . map snd . cases
+suitePassed = all (== TestSuite.Pass) . map caseResult . cases
 
 -- | From a 'TestSuiteLog', determine if the test suite failed.
 suiteFailed :: TestSuiteLog -> Bool
-suiteFailed = any isFail . map snd . cases
+suiteFailed = any isFail . map caseResult . cases
     where isFail x = case x of TestSuite.Fail _ -> True; _ -> False
 
 -- | From a 'TestSuiteLog', determine if the test suite encountered errors.
 suiteError :: TestSuiteLog -> Bool
-suiteError = any isError . map snd . cases
+suiteError = any isError . map caseResult . cases
     where isError x = case x of TestSuite.Error _ -> True; _ -> False
 
 -- |Perform the \"@.\/setup test@\" action.
@@ -153,7 +161,7 @@ test pkg_descr lbi flags = do
                                     $ "exit code: " ++ show c
                         return $ TestSuiteLog
                             { name = PD.testName suite
-                            , cases = [(PD.testName suite, r)]
+                            , cases = [Case (PD.testName suite) mempty r]
                             , logFile = ""
                             }
 
@@ -183,9 +191,10 @@ test pkg_descr lbi flags = do
                 _ -> do
                     let dieLog = TestSuiteLog
                             { name = PD.testName suite
-                            , cases = [(PD.testName suite, TestSuite.Error
-                                $ "No support for running test suite "
-                                ++ "type: " ++ show (disp $ PD.testType suite))]
+                            , cases = [Case (PD.testName suite) mempty
+                                $ TestSuite.Error $ "No support for running "
+                                ++ "test suite type: "
+                                ++ show (disp $ PD.testType suite)]
                             , logFile = ""
                             }
                     return dieLog
@@ -207,7 +216,7 @@ test pkg_descr lbi flags = do
 -- all test suites passed and 'False' otherwise.
 summarizePackage :: Verbosity -> PackageLog -> IO Bool
 summarizePackage verbosity packageLog = do
-    let cases' = map snd $ concatMap cases $ testSuites packageLog
+    let cases' = map caseResult $ concatMap cases $ testSuites packageLog
         passedCases = length $ filter (== TestSuite.Pass) cases'
         totalCases = length cases'
         passedSuites = length $ filter suitePassed $ testSuites packageLog
@@ -219,11 +228,13 @@ summarizePackage verbosity packageLog = do
 
 -- | Print to the console a summary of a single test case's result, suppressing
 -- output for certain verbosity or test filter levels.
-summarizeCase :: Verbosity -> TestFilter -> (String, TestSuite.Result) -> IO ()
-summarizeCase verb filt (n, r) =
-    when shouldPrint $ notice verb $ "Test case " ++ n ++ ": " ++ show r
+summarizeCase :: Verbosity -> TestFilter -> Case -> IO ()
+summarizeCase verb filt t =
+    when shouldPrint $ notice verb $ "Test case " ++ caseName t
+        ++ ": " ++ show (caseResult t)
     where  shouldPrint =
-            (filt > Summary && r /= TestSuite.Pass) || filt > Failures
+            (filt > Summary && caseResult t /= TestSuite.Pass)
+            || filt > Failures
 
 -- | Print a description of the test suite results on the console, suppressing
 -- output for certain verbosity or test filter levels.
@@ -350,9 +361,14 @@ runTests tests = do
     when (suiteFailed testLog) $ exitWith $ ExitFailure 1
     exitSuccess
     where
-        go :: TestSuite.Test -> IO (String, TestSuite.Result)
+        go :: TestSuite.Test -> IO Case
         go t = do
-            r <- TestSuite.defaultOptions t >>= TestSuite.runM t
-            let ret = (TestSuite.name t, r)
+            o <- TestSuite.defaultOptions t
+            r <- TestSuite.runM t o
+            let ret = Case
+                    { caseName = TestSuite.name t
+                    , caseOptions = o
+                    , caseResult = r
+                    }
             summarizeCase normal All ret
             return ret
