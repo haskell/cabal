@@ -50,13 +50,13 @@ module Distribution.TestSuite
     , ImpureTestable(..)
     ) where
 
-import Data.Dynamic ( Dynamic() )
 import Data.Function ( on )
 import Data.List ( unionBy )
 import Data.Monoid ( Monoid(..) )
 import Data.Typeable ( TypeRep )
 
-newtype Options = Options [(String, Dynamic)]
+newtype Options = Options [(String, String)]
+    deriving (Read, Show, Eq)
 
 instance Monoid Options where
     mempty = Options []
