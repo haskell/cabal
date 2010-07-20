@@ -46,7 +46,9 @@ module Distribution.Simple.Test
     , writeSimpleTestStub
     , stubFilePath
     , stubName
+    , PackageLog(..)
     , TestSuiteLog(..)
+    , Case(..)
     , suitePassed, suiteFailed, suiteError
     ) where
 
