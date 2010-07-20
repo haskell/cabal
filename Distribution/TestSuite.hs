@@ -44,6 +44,7 @@ module Distribution.TestSuite
     ( Test
     , pure, impure
     , Options(..)
+    , optionLookup
     , Result(..)
     , TestOptions(..)
     , PureTestable(..)
@@ -92,6 +93,18 @@ class TestOptions t where
     -- random seed, if appropriate.
     defaultOptions :: t -> IO Options
 
+    -- | Try to parse the provided options.  Return the names of unparsable
+    -- options.  This allows test agents to detect bad user-specified options.f
+    check :: t -> Options -> [String]
+
+-- | Read an option from the specified set of 'Option's.  The option must be
+-- specified.
+optionLookup :: Read r => String -> Options -> r
+optionLookup n (Options opts) =
+    case lookup n opts of
+        Just str -> read str
+        Nothing -> error $ "test option not specified: " ++ n
+
 -- | Class abstracting impure tests.  Test frameworks should implement this
 -- class only as a last resort for test types which actually require 'IO'.
 -- In particular, tests that simply require pseudo-random number generation can
@@ -133,6 +146,9 @@ instance TestOptions Test where
 
     defaultOptions (PureTest p) = defaultOptions p
     defaultOptions (ImpureTest p) = defaultOptions p
+
+    check (PureTest p) = check p
+    check (ImpureTest p) = check p
 
 instance ImpureTestable Test where
     runM (PureTest p) o = return $ run p o
