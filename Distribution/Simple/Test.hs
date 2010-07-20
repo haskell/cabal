@@ -150,8 +150,8 @@ test pkg_descr lbi flags = do
         doTest suite = do
             notice verbosity
                 $ "Test suite " ++ PD.testName suite ++ ": RUNNING..."
-            let resolve = resolveTestPathTemplate humanTemplate pkg_descr lbi
-                run = runTestExe pkg_descr testLogDir resolve
+            let testLogPath = testSuiteLogPath humanTemplate pkg_descr lbi
+                run = runTestExe pkg_descr testLogDir testLogPath
             case PD.testType suite of
                 PD.ExeTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> PD.testName suite
@@ -207,8 +207,7 @@ test pkg_descr lbi flags = do
     suites <- mapM doTest $ PD.testSuites pkg_descr
     let packageLog = (localPackageLog pkg_descr lbi) { testSuites = suites }
         packageLogFile = (</>) testLogDir
-            $ resolveTestPathTemplate machineTemplate pkg_descr lbi
-            $ TestSuiteLog { name = "", cases = [], logFile = "" }
+            $ packageLogPath machineTemplate pkg_descr lbi
     allOk <- summarizePackage verbosity packageLog
     withFile packageLogFile WriteMode $ ($ show packageLog) . hPutStrLn
     unless allOk exitFailure
@@ -302,12 +301,12 @@ resultString l | suiteError l = "error"
                | suiteFailed l = "fail"
                | otherwise = "pass"
 
-resolveTestPathTemplate :: PathTemplate
-                        -> PD.PackageDescription
-                        -> LBI.LocalBuildInfo
-                        -> TestSuiteLog
-                        -> FilePath
-resolveTestPathTemplate template pkg_descr lbi testLog =
+testSuiteLogPath :: PathTemplate
+                 -> PD.PackageDescription
+                 -> LBI.LocalBuildInfo
+                 -> TestSuiteLog
+                 -> FilePath
+testSuiteLogPath template pkg_descr lbi testLog =
     fromPathTemplate $ substPathTemplate env template
     where
         env = initialPathTemplateEnv
@@ -316,6 +315,16 @@ resolveTestPathTemplate template pkg_descr lbi testLog =
                     , (TestSuiteResultVar, result)
                     ]
         result = toPathTemplate $ resultString testLog
+
+packageLogPath :: PathTemplate
+               -> PD.PackageDescription
+               -> LBI.LocalBuildInfo
+               -> FilePath
+packageLogPath template pkg_descr lbi =
+    fromPathTemplate $ substPathTemplate env template
+    where
+        env = initialPathTemplateEnv
+                (PD.package pkg_descr) (compilerId $ LBI.compiler lbi)
 
 -- | The filename of the source file for the stub executable associated with a
 -- library 'TestSuite'.
