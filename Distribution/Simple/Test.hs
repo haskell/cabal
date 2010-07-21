@@ -78,11 +78,11 @@ import Control.Monad ( when, liftM, unless )
 import Data.Char ( toUpper )
 import Data.Monoid ( mempty )
 import System.Directory
-    ( copyFile, createDirectoryIfMissing, doesFileExist, getCurrentDirectory
-    , removeFile )
+    ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
+    , getDirectoryContents, removeFile )
 import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
-import System.FilePath ( (</>), (<.>) )
+import System.FilePath ( (</>), (<.>), takeExtension )
 import System.IO
     ( Handle, hClose, hGetContents, hPutStrLn, IOMode(..), withFile )
 import System.Process ( runProcess, waitForProcess )
@@ -143,6 +143,7 @@ test :: PD.PackageDescription   -- ^information from the .cabal file
 test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
         filt = fromFlag $ testFilter flags
+        append = fromFlag $ testHumanAppend flags
         humanTemplate = fromFlag $ testHumanLog flags
         machineTemplate = fromFlag $ testMachineLog flags
         distPref = fromFlag $ testDistPref flags
@@ -230,6 +231,13 @@ test pkg_descr lbi flags = do
                     return dieLog
 
     createDirectoryIfMissing True testLogDir
+
+    -- | Remove existing human log files, unless they are to be appended.
+    -- The machine log file is always overwritten.
+    existingLogFiles <- liftM (filter $ (== ".log") . takeExtension)
+        $ getDirectoryContents testLogDir
+    unless append $ mapM_ (removeFile . (testLogDir </>)) existingLogFiles
+
     let totalSuites = length $ PD.testSuites pkg_descr
     notice verbosity $ "Running " ++ show totalSuites ++ " test suites..."
     suites <- mapM doTest $ PD.testSuites pkg_descr
@@ -323,8 +331,14 @@ runTestExe pkg_descr dir logPath cmd mH go = do
         hClose hOut
         suiteLog <- go exit
         let finalFile = dir </> logPath suiteLog
-        copyFile outFile finalFile
+        outFile `appendFileTo` finalFile
         return $ suiteLog { logFile = finalFile }
+
+appendFileTo :: FilePath -> FilePath -> IO ()
+appendFileTo inF outF =
+    withFile inF ReadMode $ \hIn -> do
+    withFile outF AppendMode $ \hOut -> do
+        hGetContents hIn >>= hPutStrLn hOut
 
 resultString :: TestSuiteLog -> String
 resultString l | suiteError l = "error"

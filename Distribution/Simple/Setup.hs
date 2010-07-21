@@ -1219,6 +1219,7 @@ data TestFlags = TestFlags {
     testDistPref  :: Flag FilePath,
     testVerbosity :: Flag Verbosity,
     testHumanLog :: Flag PathTemplate,
+    testHumanAppend :: Flag Bool,
     testMachineLog :: Flag PathTemplate,
     testFilter :: Flag TestFilter
   }
@@ -1229,6 +1230,7 @@ defaultTestFlags  = TestFlags {
     testDistPref  = Flag defaultDistPref,
     testVerbosity = Flag normal,
     testHumanLog = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
+    testHumanAppend = toFlag False,
     testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log",
     testFilter = Flag Failures
   }
@@ -1244,6 +1246,10 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
       , optionDistPref
             testDistPref (\d flags -> flags { testDistPref = d })
             showOrParseArgs
+      , option [] ["append-human-logs"]
+            ("Append test output to human-readable logs, instead of overwriting.")
+            testHumanAppend (\v flags -> flags { testHumanAppend = v })
+            trueArg
       , option [] ["human-log"]
             ("Log all test suite results to file (name template can use "
             ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result, $stdio)")
@@ -1274,6 +1280,7 @@ instance Monoid TestFlags where
     testDistPref  = mempty,
     testVerbosity = mempty,
     testHumanLog = mempty,
+    testHumanAppend = mempty,
     testMachineLog = mempty,
     testFilter = mempty
   }
@@ -1281,6 +1288,7 @@ instance Monoid TestFlags where
     testDistPref  = combine testDistPref,
     testVerbosity = combine testVerbosity,
     testHumanLog = combine testHumanLog,
+    testHumanAppend = combine testHumanAppend,
     testMachineLog = combine testMachineLog,
     testFilter = combine testFilter
   }
