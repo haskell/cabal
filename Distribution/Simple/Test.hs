@@ -177,11 +177,11 @@ test pkg_descr lbi flags = do
                             </> stubName suite <.> exeExtension
                     testLog <- withTempFile testLogDir "cabal-test-.log"
                         $ \(tempFile, hTemp) -> do
-                            -- ^ Communication between the parent Cabal process
+                            -- Communication between the parent Cabal process
                             -- and the stub executable takes place through the
                             -- temporary file, 'tempFile', created here.
 
-                            -- | An 'TestSuiteLog' is written to file without
+                            -- An 'TestSuiteLog' is written to file without
                             -- any results to inform the child process of the
                             -- test suite name.  The 'logFile' path indicates
                             -- the location of the temporary file used for
@@ -192,20 +192,20 @@ test pkg_descr lbi flags = do
                                 , cases = []
                                 , logFile = tempFile
                                 }
-                            -- | We are done writing to 'tempFile', so it will
+                            -- We are done writing to 'tempFile', so it will
                             -- be closed though we want to read from it later.
                             hClose hTemp
-                            -- | Reopen 'tempFile' for reading and use the
+                            -- Reopen 'tempFile' for reading and use the
                             -- handle as the standard input for the stub
                             -- executable.
                             withFile tempFile ReadMode
                                 $ \hIn -> run cmd (Just hIn) $ \_ -> do
-                                    -- ^ The stub executable replaces the
+                                    -- The stub executable replaces the
                                     -- 'TestSuiteLog' which was in 'tempFile'
                                     -- with a 'TestSuiteLog' with 'Case' results
                                     -- supplied.
 
-                                    -- | Using the 'hIn' handle for the stub
+                                    -- Using the 'hIn' handle for the stub
                                     -- executable's standard input leaves it in
                                     -- an indeterminate state, so 'tempFile' is
                                     -- closed and reopened again to read the
@@ -231,7 +231,7 @@ test pkg_descr lbi flags = do
 
     createDirectoryIfMissing True testLogDir
 
-    -- | Remove existing human log files, unless they are to be appended.
+    -- Remove existing human log files, unless they are to be appended.
     -- The machine log file is always overwritten.
     existingLogFiles <- liftM (filter $ (== ".log") . takeExtension)
         $ getDirectoryContents testLogDir
