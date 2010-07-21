@@ -44,7 +44,7 @@ module Distribution.TestSuite
     ( Test
     , pure, impure
     , Options(..)
-    , optionLookup
+    , lookupOption
     , Result(..)
     , TestOptions(..)
     , PureTestable(..)
@@ -99,8 +99,8 @@ class TestOptions t where
 
 -- | Read an option from the specified set of 'Option's.  The option must be
 -- specified.
-optionLookup :: Read r => String -> Options -> r
-optionLookup n (Options opts) =
+lookupOption :: Read r => String -> Options -> r
+lookupOption n (Options opts) =
     case lookup n opts of
         Just str -> read str
         Nothing -> error $ "test option not specified: " ++ n
