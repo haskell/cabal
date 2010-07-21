@@ -151,10 +151,9 @@ test pkg_descr lbi flags = do
 
         doTest :: PD.TestSuite -> IO TestSuiteLog
         doTest suite = do
-            notice verbosity
-                $ "Test suite " ++ PD.testName suite ++ ": RUNNING..."
+            summarizeSuiteStart (notice verbosity) $ PD.testName suite
             let testLogPath = testSuiteLogPath humanTemplate pkg_descr lbi
-                run = runTestExe pkg_descr testLogDir testLogPath
+                run = runTestExe pkg_descr suite testLogDir testLogPath
             case PD.testType suite of
                 PD.ExeTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> PD.testName suite
@@ -170,7 +169,7 @@ test pkg_descr lbi flags = do
                             , logFile = ""
                             }
 
-                    summarizeSuite verbosity testLog
+                    summarizeSuiteFinish (notice verbosity) testLog
                     return testLog
 
                 PD.LibTest v _ | PD.testVersion1 v -> do
@@ -217,7 +216,7 @@ test pkg_descr lbi flags = do
                                         (>>= (return $!) . read) . hGetContents
 
                     mapM_ (summarizeCase verbosity filt) $ cases testLog
-                    summarizeSuite verbosity testLog
+                    summarizeSuiteFinish (notice verbosity) testLog
                     return testLog
                 _ -> do
                     let dieLog = TestSuiteLog
@@ -275,10 +274,14 @@ summarizeCase verb filt t =
 
 -- | Print a summary of the test suite's results on the console, suppressing
 -- output for certain verbosity or test filter levels.
-summarizeSuite :: Verbosity -> TestSuiteLog -> IO ()
-summarizeSuite verb testLog =
-    notice verb $ "Test suite " ++ name testLog ++ ": " ++ resStr
+summarizeSuiteFinish :: (String -> IO ()) -> TestSuiteLog -> IO ()
+summarizeSuiteFinish printer testLog =
+    printer $ "Test suite " ++ name testLog ++ ": " ++ resStr
     where resStr = map toUpper (resultString testLog)
+
+summarizeSuiteStart :: (String -> IO ()) -> String -> IO ()
+summarizeSuiteStart printer n =
+    printer $ "Test suite " ++ n ++ ": RUNNING..."
 
 -- | Creates a temporary file for writing, allowing an 'IO' action to access the
 -- file.  The temporary file is deleted after the action runs.
@@ -302,6 +305,9 @@ runTestExe :: PD.PackageDescription
            -- ^ the 'PackageDescription' of the package this test belongs to;
            -- used to set the shell environment so the executable can find
            -- the package's data files.
+           -> PD.TestSuite
+           -- ^ the 'TestSuite' that is being run; the name is used in the
+           -- summary information.
            -> FilePath
            -- ^ the directory where temporary files should be located
            -> (TestSuiteLog -> FilePath)
@@ -314,7 +320,7 @@ runTestExe :: PD.PackageDescription
            -> (ExitCode -> IO TestSuiteLog)
            -- ^ an 'IO' action on the process exit code and output
            -> IO TestSuiteLog
-runTestExe pkg_descr dir logPath cmd mH go = do
+runTestExe pkg_descr suite dir logPath cmd mH go = do
     -- Determine the shell environment to set so the test executable can find
     -- package data files.
     pwd <- getCurrentDirectory
@@ -326,10 +332,14 @@ runTestExe pkg_descr dir logPath cmd mH go = do
         shellEnv = Just $ (dataDirModule, dataDirPath) : existingEnv
 
     withTempFile dir ("cabal-test-" <.> "log") $ \(outFile, hOut) -> do
-        proc <- runProcess cmd [] Nothing shellEnv mH (Just hOut) (Just hOut)
-        exit <- waitForProcess proc
+        summarizeSuiteStart (hPutStrLn hOut) $ PD.testName suite
         hClose hOut
+        proc <- withFile outFile AppendMode $ \h ->
+            runProcess cmd [] Nothing shellEnv mH (Just h) (Just h)
+        exit <- waitForProcess proc
         suiteLog <- go exit
+        withFile outFile AppendMode $ \h ->
+            summarizeSuiteFinish (hPutStrLn h) suiteLog
         let finalFile = dir </> logPath suiteLog
         outFile `appendFileTo` finalFile
         return $ suiteLog { logFile = finalFile }
