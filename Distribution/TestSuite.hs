@@ -41,14 +41,18 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.TestSuite
-    ( Test
-    , pure, impure
-    , Options(..)
+    ( -- * Example
+      -- $example
+      -- * Options
+      Options(..)
     , lookupOption
-    , Result(..)
     , TestOptions(..)
-    , PureTestable(..)
+      -- * Tests
+    , Test
+    , pure, impure
+    , Result(..)
     , ImpureTestable(..)
+    , PureTestable(..)
     ) where
 
 import Data.Function ( on )
@@ -56,36 +60,24 @@ import Data.List ( unionBy )
 import Data.Monoid ( Monoid(..) )
 import Data.Typeable ( TypeRep )
 
+-- | 'Options' are provided to pass options to test runners, making tests
+-- reproducable.  Each option is a @('String', 'String')@ of the form
+-- @(Name, Value)@.  Use 'mappend' to combine sets of 'Options'; if the same
+-- option is given different values, the value from the left argument of
+-- 'mappend' will be used.
 newtype Options = Options [(String, String)]
     deriving (Read, Show, Eq)
 
 instance Monoid Options where
     mempty = Options []
-
-    -- | Combine two sets of 'Options'.  If an option is named in only one of
-    -- the sets of 'Options', the associated value is used.  If an option is
-    -- named in both arguments, the value specified in the left argument is
-    -- used.
     mappend (Options a) (Options b) = Options $ unionBy ((==) `on` fst) a b
-
-data Result
-    = Pass          -- ^ The value indicating a successful test.
-    | Fail String   -- ^ The value indicating a test completed
-                    -- unsuccessfully.  The 'String' value should be a
-                    -- human-readable message indicating how the test
-                    -- failed.
-    | Error String  -- ^ The value indicating a test that could not be
-                    -- completed due to some error.  The test framework
-                    -- should provide a message indicating the
-                    -- nature of the error.
-    deriving (Read, Show, Eq)
 
 class TestOptions t where
     -- | The name of the test.
     name :: t -> String
 
     -- | A list of the options a test recognizes.  The name and 'TypeRep' are
-    -- provided so that test runners can ensure that user-specified options are
+    -- provided so that test agents can ensure that user-specified options are
     -- correctly typed.
     options :: t -> [(String, TypeRep)]
 
@@ -94,16 +86,30 @@ class TestOptions t where
     defaultOptions :: t -> IO Options
 
     -- | Try to parse the provided options.  Return the names of unparsable
-    -- options.  This allows test agents to detect bad user-specified options.f
+    -- options.  This allows test agents to detect bad user-specified options.
     check :: t -> Options -> [String]
 
--- | Read an option from the specified set of 'Option's.  The option must be
--- specified.
+-- | Read an option from the specified set of 'Options'.  It is an error to
+-- lookup an option that has not been specified.  For this reason, test agents
+-- should 'mappend' any 'Options' against the 'defaultOptions' for a test, so
+-- the default value specified by the test framework will be used for any
+-- otherwise-unspecified options.
 lookupOption :: Read r => String -> Options -> r
 lookupOption n (Options opts) =
     case lookup n opts of
         Just str -> read str
         Nothing -> error $ "test option not specified: " ++ n
+
+data Result
+    = Pass          -- ^ indicates a successful test
+    | Fail String   -- ^ indicates a test completed unsuccessfully;
+                    -- the 'String' value should be a human-readable message
+                    -- indicating how the test failed.
+    | Error String  -- ^ indicates a test that could not be
+                    -- completed due to some error; the test framework
+                    -- should provide a message indicating the
+                    -- nature of the error.
+    deriving (Read, Show, Eq)
 
 -- | Class abstracting impure tests.  Test frameworks should implement this
 -- class only as a last resort for test types which actually require 'IO'.
@@ -153,3 +159,100 @@ instance TestOptions Test where
 instance ImpureTestable Test where
     runM (PureTest p) o = return $ run p o
     runM (ImpureTest i) o = runM i o
+
+-- $example
+-- The following terms are used carefully throughout this file:
+--
+--  [test interface]    The interface provided by this module.
+--
+--  [test agent]    A program used by package users to coordinates the running
+--                  of tests and the reporting of their results.
+--
+--  [test framework]    A package used by software authors to specify tests,
+--                      such as QuickCheck or HUnit.
+--
+-- Test frameworks are obligated to supply, at least, instances of the
+-- 'TestOptions' and 'ImpureTestable' classes.  It is preferred that test
+-- frameworks implement 'PureTestable' whenever possible, so that test agents
+-- have an assurance that tests can be safely run in parallel.
+--
+-- Test agents that allow the user to specify options should avoid setting
+-- options not listed by the 'options' method.  Test agents should use 'check'
+-- before running tests with non-default options.  Test frameworks must
+-- implement a 'check' function that attempts to parse the given options safely.
+--
+-- The packages cabal-test-hunit, cabal-test-quickcheck1, and
+-- cabal-test-quickcheck2 provide simple interfaces to these popular test
+-- frameworks.  An example from cabal-test-quickcheck2 is shown below.  A
+-- better implementation would eliminate the console output from QuickCheck\'s
+-- built-in runner and provide an instance of 'PureTestable' instead of
+-- 'ImpureTestable'.
+--
+-- > import Control.Monad (liftM)
+-- > import Data.Maybe (catMaybes, fromJust, maybe)
+-- > import Data.Typeable (Typeable(..))
+-- > import qualified Distribution.TestSuite as Cabal
+-- > import System.Random (newStdGen, next, StdGen)
+-- > import qualified Test.QuickCheck as QC
+-- >
+-- > data QCTest = forall prop. QC.Testable prop => QCTest String prop
+-- >
+-- > test :: QC.Testable prop => String -> prop -> Cabal.Test
+-- > test n p = Cabal.impure $ QCTest n p
+-- >
+-- > instance Cabal.TestOptions QCTest where
+-- >     name (QCTest n _) = n
+-- >
+-- >     options _ =
+-- >         [ ("std-gen", typeOf (undefined :: String))
+-- >         , ("max-success", typeOf (undefined :: Int))
+-- >         , ("max-discard", typeOf (undefined :: Int))
+-- >         , ("size", typeOf (undefined :: Int))
+-- >         ]
+-- >
+-- >     defaultOptions _ = do
+-- >         rng <- newStdGen
+-- >         return $ Cabal.Options $
+-- >             [ ("std-gen", show rng)
+-- >             , ("max-success", show $ QC.maxSuccess QC.stdArgs)
+-- >             , ("max-discard", show $ QC.maxDiscard QC.stdArgs)
+-- >             , ("size", show $ QC.maxSize QC.stdArgs)
+-- >             ]
+-- >
+-- >     check t (Cabal.Options opts) = catMaybes
+-- >         [ maybeNothing "max-success" ([] :: [(Int, String)])
+-- >         , maybeNothing "max-discard" ([] :: [(Int, String)])
+-- >         , maybeNothing "size" ([] :: [(Int, String)])
+-- >         ]
+-- >         -- There is no need to check the parsability of "std-gen"
+-- >         -- because the Read instance for StdGen always succeeds.
+-- >         where
+-- >             maybeNothing n x =
+-- >                 maybe Nothing (\str ->
+-- >                     if reads str == x then Just n else Nothing)
+-- >                     $ lookup n opts
+-- >
+-- > instance Cabal.ImpureTestable QCTest where
+-- >     runM (QCTest _ prop) o =
+-- >         catch go (return . Cabal.Error . show)
+-- >         where
+-- >             go = do
+-- >                 result <- QC.quickCheckWithResult args prop
+-- >                 return $ case result of
+-- >                         QC.Success {} -> Cabal.Pass
+-- >                         QC.GaveUp {}->
+-- >                             Cabal.Fail $ "gave up after "
+-- >                                        ++ show (QC.numTests result)
+-- >                                        ++ " tests"
+-- >                         QC.Failure {} -> Cabal.Fail $ QC.reason result
+-- >                         QC.NoExpectedFailure {} ->
+-- >                             Cabal.Fail "passed (expected failure)"
+-- >             args = QC.Args
+-- >                 { QC.replay = Just
+-- >                     ( Cabal.lookupOption "std-gen" o
+-- >                     , Cabal.lookupOption "size" o
+-- >                     )
+-- >                 , QC.maxSuccess = Cabal.lookupOption "max-success" o
+-- >                 , QC.maxDiscard = Cabal.lookupOption "max-discard" o
+-- >                 , QC.maxSize = Cabal.lookupOption "size" o
+-- >                 }
