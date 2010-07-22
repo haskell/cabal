@@ -55,9 +55,10 @@ module Distribution.Simple.Test
 import Distribution.Compat.TempFile ( openTempFile )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Package
-    ( PackageIdentifier(..), PackageName(..), PackageId )
+    ( PackageId )
 import qualified Distribution.PackageDescription as PD
     ( PackageDescription(..), TestSuite(..), TestType(..), testVersion1 )
+import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..), CompilerId )
 import Distribution.Simple.InstallDirs
@@ -327,11 +328,9 @@ runTestExe pkg_descr suite dir logPath cmd mH go = do
     -- package data files.
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
-    let dataDirModule = packageName ++ "_datadir"
-        dataDirPath = pwd </> PD.dataDir pkg_descr
-        PackageName n = pkgName $ PD.package pkg_descr
-        packageName = map (\c -> if c == '-' then '_' else c) n
-        shellEnv = Just $ (dataDirModule, dataDirPath) : existingEnv
+    let dataDirPath = pwd </> PD.dataDir pkg_descr
+        shellEnv = Just $ (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
+                        : existingEnv
 
     withTempFile dir ("cabal-test-" <.> "log") $ \(outFile, hOut) -> do
         summarizeSuiteStart (hPutStrLn hOut) $ PD.testName suite
