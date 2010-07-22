@@ -15,7 +15,7 @@
 -- at runtime. This code should probably be split off into another module.
 --
 module Distribution.Simple.Build.PathsModule (
-    generate
+    generate, pkgPathEnvVar
   ) where
 
 import Distribution.System
@@ -142,10 +142,7 @@ generate pkg_descr lbi =
 
         mkGetEnvOr var expr = "catch (getEnv \""++var'++"\")"++
                               " (\\_ -> "++expr++")"
-          where var' = showPkgName (packageName pkg_descr) ++ "_" ++ var
-                showPkgName = map fixchar . display
-                fixchar '-' = '_'
-                fixchar c   = c
+          where var' = pkgPathEnvVar pkg_descr var
 
         -- In several cases we cannot make relocatable installations
         absolute =
@@ -175,6 +172,19 @@ generate pkg_descr lbi =
           compilerFlavor (compiler lbi) == GHC &&
             (compilerVersion (compiler lbi)
               `withinRange` orLaterVersion (Version [6,6,1] []))
+
+-- | Generates the name of the environment variable controlling the path
+-- component of interest.
+pkgPathEnvVar :: PackageDescription
+              -> String     -- ^ path component; one of \"bindir\", \"libdir\",
+                            -- \"datadir\" or \"libexecdir\"
+              -> String     -- ^ environment variable name
+pkgPathEnvVar pkg_descr var =
+    showPkgName (packageName pkg_descr) ++ "_" ++ var
+    where
+        showPkgName = map fixchar . display
+        fixchar '-' = '_'
+        fixchar c   = c
 
 get_prefix_win32 :: String
 get_prefix_win32 =
