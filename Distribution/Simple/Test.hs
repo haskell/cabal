@@ -87,7 +87,8 @@ import System.IO
     ( Handle, hClose, hGetContents, hPutStrLn, IOMode(..), withFile )
 import System.Process ( runProcess, waitForProcess )
 
--- | A data structure used for logging test suite results itemized by test case.
+-- | Logs all test results for a package, broken down first by test suite and
+-- then by test case.
 data PackageLog = PackageLog
     { package :: PackageId
     , compiler :: CompilerId
@@ -105,10 +106,11 @@ localPackageLog pkg_descr lbi = PackageLog
     , testSuites = []
     }
 
+-- | Logs test suite results, itemized by test case.
 data TestSuiteLog = TestSuiteLog
     { name :: String
     , cases :: [Case]
-    , logFile :: FilePath    -- Path to human-readable log file
+    , logFile :: FilePath    -- path to human-readable log file
     }
     deriving (Read, Show, Eq)
 
@@ -413,11 +415,11 @@ simpleTestStub m = unlines
     , "main = runTests tests"
     ]
 
--- | The test runner for library 'TestSuite' stub executables.  Runs a list of
--- 'Test's.  An executable calling this function is meant to be invoked as the
--- child of a Cabal process during @.\/setup test@.  A 'TestSuiteLog', provided
--- by Cabal, is read from the standard input; it supplies the name of the test
--- suite and the location of the machine-readable test suite log file.
+-- | The test runner used in library "TestSuite" stub executables.  Runs a list
+-- of 'Test's.  An executable calling this function is meant to be invoked as
+-- the child of a Cabal process during @.\/setup test@.  A 'TestSuiteLog',
+-- provided by Cabal, is read from the standard input; it supplies the name of
+-- the test suite and the location of the machine-readable test suite log file.
 -- Human-readable log information is written to the standard output for capture
 -- by the calling Cabal process.
 runTests :: [TestSuite.Test] -> IO ()
