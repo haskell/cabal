@@ -55,10 +55,12 @@ module Distribution.TestSuite
     , PureTestable(..)
     ) where
 
+import Control.OldException ( catch, evaluate )
 import Data.Function ( on )
 import Data.List ( unionBy )
 import Data.Monoid ( Monoid(..) )
 import Data.Typeable ( TypeRep )
+import Prelude hiding ( catch )
 
 -- | 'Options' are provided to pass options to test runners, making tests
 -- reproducable.  Each option is a @('String', 'String')@ of the form
@@ -122,11 +124,12 @@ class TestOptions t => ImpureTestable t where
     runM :: t -> Options -> IO Result
 
 -- | Class abstracting pure tests.  Test frameworks should prefer to implement
--- this class over 'ImpureTestable'.
+-- this class over 'ImpureTestable'.  A default instance exists so that any pure
+-- test can be lifted into an impure test; when lifted, any exceptions are
+-- automatically caught.  Test agents that lift pure tests themselves must
+-- handle exceptions.
 class TestOptions t => PureTestable t where
-    -- | The result of a pure test.  Test frameworks implementing this class
-    -- are responsible for converting any exceptions to the correct 'Result'
-    -- value.
+    -- | The result of a pure test.
     run :: t -> Options -> Result
 
 -- | 'Test' is a wrapper for pure and impure tests so that lists containing
@@ -157,7 +160,7 @@ instance TestOptions Test where
     check (ImpureTest p) = check p
 
 instance ImpureTestable Test where
-    runM (PureTest p) o = return $ run p o
+    runM (PureTest p) o = catch (evaluate $ run p o) (return . Error . show)
     runM (ImpureTest i) o = runM i o
 
 -- $example
