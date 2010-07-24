@@ -1259,7 +1259,7 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
                 (flagToList . fmap fromPathTemplate))
       , option [] ["machine-log"]
             ("Machine-readable log file (name template can use "
-            ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result, $stdio)")
+            ++ "$pkgid, $compiler, $os, $arch, $result, $stdio)")
             testMachineLog (\v flags -> flags { testMachineLog = v })
             (reqArg' "TEMPLATE"
                 (toFlag . toPathTemplate)
