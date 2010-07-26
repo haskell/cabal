@@ -1221,7 +1221,8 @@ data TestFlags = TestFlags {
     testHumanLog :: Flag PathTemplate,
     testHumanAppend :: Flag Bool,
     testMachineLog :: Flag PathTemplate,
-    testFilter :: Flag TestFilter
+    testFilter :: Flag TestFilter,
+    testList :: Flag [String]
   }
   deriving Show
 
@@ -1232,7 +1233,8 @@ defaultTestFlags  = TestFlags {
     testHumanLog = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
     testHumanAppend = toFlag False,
     testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log",
-    testFilter = Flag Failures
+    testFilter = Flag Failures,
+    testList = Flag []
   }
 
 testCommand :: CommandUI TestFlags
@@ -1282,7 +1284,8 @@ instance Monoid TestFlags where
     testHumanLog = mempty,
     testHumanAppend = mempty,
     testMachineLog = mempty,
-    testFilter = mempty
+    testFilter = mempty,
+    testList = mempty
   }
   mappend a b = TestFlags {
     testDistPref  = combine testDistPref,
@@ -1290,7 +1293,8 @@ instance Monoid TestFlags where
     testHumanLog = combine testHumanLog,
     testHumanAppend = combine testHumanAppend,
     testMachineLog = combine testMachineLog,
-    testFilter = combine testFilter
+    testFilter = combine testFilter,
+    testList = combine testList
   }
     where combine field = field a `mappend` field b
 

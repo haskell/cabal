@@ -211,7 +211,8 @@ emptyUserHooks
       preHaddock   = rn,
       haddockHook  = ru,
       postHaddock  = ru,
-      preTest = rn,
+      preTest = \_ _ -> return emptyHookedBuildInfo, -- same as rn, but without
+                                                     -- noExtraFlags
       testHook = ru,
       postTest = ru
     }
