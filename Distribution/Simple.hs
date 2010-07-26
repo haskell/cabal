@@ -345,9 +345,10 @@ testAction hooks flags args = do
     -- default action is a no-op and if the package uses the old test interface
     -- the new handler will find no tests.
     runTests hooks args False pkg_descr localBuildInfo
+    let flags' = flags { testList = Flag args }
     hookedAction preTest testHook postTest
             (getBuildConfig hooks verbosity distPref)
-            hooks flags args
+            hooks flags' args
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args
