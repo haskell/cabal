@@ -40,6 +40,22 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
+{-
+Work around these warnings:
+
+Distribution/TestSuite.hs:58:0:
+    Warning: Module `Control.OldException' is deprecated:
+               Future versions of base will not support the old exceptions
+               style. Please switch to extensible exceptions.
+
+Distribution/TestSuite.hs:58:30:
+    Warning: In the use of `catch'
+             (imported from Control.OldException):
+             Deprecated: "Future versions of base will not support the old
+             exceptions style. Please switch to extensible exceptions."
+-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
+
 module Distribution.TestSuite
     ( -- * Example
       -- $example
