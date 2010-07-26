@@ -67,7 +67,7 @@ import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..) )
 import Distribution.Simple.Setup ( TestFlags(..), TestFilter(..), fromFlag )
-import Distribution.Simple.Utils ( notice )
+import Distribution.Simple.Utils ( die, notice )
 import qualified Distribution.TestSuite as TestSuite
     ( Test, Result(..), ImpureTestable(..), TestOptions(..), Options(..) )
 import Distribution.Text
@@ -151,6 +151,7 @@ test pkg_descr lbi flags = do
         machineTemplate = fromFlag $ testMachineLog flags
         distPref = fromFlag $ testDistPref flags
         testLogDir = distPref </> "test"
+        testNames = fromFlag $ testList flags
 
         doTest :: PD.TestSuite -> IO TestSuiteLog
         doTest suite = do
@@ -232,6 +233,15 @@ test pkg_descr lbi flags = do
                             }
                     return dieLog
 
+    testsToRun <- case testNames of
+        [] -> return $ PD.testSuites pkg_descr
+        names -> flip mapM names $ \tName ->
+            let testMap = map (\x -> (PD.testName x, x))
+                              $ PD.testSuites pkg_descr
+            in case lookup tName testMap of
+                Just t -> return t
+                _ -> die $ "no such test: " ++ tName
+
     createDirectoryIfMissing True testLogDir
 
     -- Remove existing human log files, unless they are to be appended.
@@ -240,9 +250,9 @@ test pkg_descr lbi flags = do
         $ getDirectoryContents testLogDir
     unless append $ mapM_ (removeFile . (testLogDir </>)) existingLogFiles
 
-    let totalSuites = length $ PD.testSuites pkg_descr
+    let totalSuites = length testsToRun
     notice verbosity $ "Running " ++ show totalSuites ++ " test suites..."
-    suites <- mapM doTest $ PD.testSuites pkg_descr
+    suites <- mapM doTest testsToRun
     let packageLog = (localPackageLog pkg_descr lbi) { testSuites = suites }
         packageLogFile = (</>) testLogDir
             $ packageLogPath machineTemplate pkg_descr lbi
