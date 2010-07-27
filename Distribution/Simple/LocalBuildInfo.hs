@@ -82,8 +82,8 @@ import Distribution.Text
 
 import Data.List (nub)
 
--- |Data cached after configuration step.  See also
--- 'Distribution.Setup.ConfigFlags'.
+-- | Data cached after configuration step.  See also
+-- 'Distribution.Simple.Setup.ConfigFlags'.
 data LocalBuildInfo = LocalBuildInfo {
         configFlags   :: ConfigFlags,
         -- ^ Options passed to the configuration step.
