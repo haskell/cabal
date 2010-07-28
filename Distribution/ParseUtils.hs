@@ -597,16 +597,19 @@ parseVersionRangeQ = parseQuoted parse <++ parse
 
 parseOptVersion :: ReadP r Version
 parseOptVersion = parseQuoted ver <++ ver
-  where ver = parse <++ return noVersion
+  where ver :: ReadP r Version
+        ver = parse <++ return noVersion
         noVersion = Version{ versionBranch=[], versionTags=[] }
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw
-  where tw = do compiler <- parseCompilerFlavorCompat
-                skipSpaces
-                version <- parse <++ return anyVersion
-                skipSpaces
-                return (compiler,version)
+  where 
+    tw :: ReadP r (CompilerFlavor,VersionRange)
+    tw = do compiler <- parseCompilerFlavorCompat
+            skipSpaces
+            version <- parse <++ return anyVersion
+            skipSpaces
+            return (compiler,version)
 
 parseLicenseQ :: ReadP r License
 parseLicenseQ = parseQuoted parse <++ parse
