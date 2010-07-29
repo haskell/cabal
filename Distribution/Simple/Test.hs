@@ -288,8 +288,9 @@ summarizeCase verb filt t =
 -- | Print a summary of the test suite's results on the console, suppressing
 -- output for certain verbosity or test filter levels.
 summarizeSuiteFinish :: (String -> IO ()) -> TestSuiteLog -> IO ()
-summarizeSuiteFinish printer testLog =
+summarizeSuiteFinish printer testLog = do
     printer $ "Test suite " ++ name testLog ++ ": " ++ resStr
+    printer $ "Test suite logged to: " ++ logFile testLog
     where resStr = map toUpper (resultString testLog)
 
 summarizeSuiteStart :: (String -> IO ()) -> String -> IO ()
