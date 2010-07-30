@@ -66,7 +66,7 @@ import Distribution.Simple.InstallDirs
     , substPathTemplate , toPathTemplate, PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..) )
-import Distribution.Simple.Setup ( TestFlags(..), TestFilter(..), fromFlag )
+import Distribution.Simple.Setup ( TestFlags(..), TestShowDetails(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
 import qualified Distribution.TestSuite as TestSuite
     ( Test, Result(..), ImpureTestable(..), TestOptions(..), Options(..) )
@@ -145,7 +145,7 @@ test :: PD.PackageDescription   -- ^information from the .cabal file
      -> IO ()
 test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
-        filt = fromFlag $ testFilter flags
+        details = fromFlag $ testShowDetails flags
         append = fromFlag $ testHumanAppend flags
         humanTemplate = fromFlag $ testHumanLog flags
         machineTemplate = fromFlag $ testMachineLog flags
@@ -158,7 +158,7 @@ test pkg_descr lbi flags = do
             summarizeSuiteStart (notice verbosity) $ PD.testName suite
             let testLogPath = testSuiteLogPath humanTemplate pkg_descr lbi
                 run = runTestExe pkg_descr suite testLogDir testLogPath
-            case PD.testType suite of
+            testLog <- case PD.testType suite of
                 PD.ExeTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> PD.testName suite
                             </> PD.testName suite <.> exeExtension
@@ -173,7 +173,6 @@ test pkg_descr lbi flags = do
                             , logFile = ""
                             }
 
-                    summarizeSuiteFinish (notice verbosity) testLog
                     return testLog
 
                 PD.LibTest v _ | PD.testVersion1 v -> do
@@ -219,8 +218,7 @@ test pkg_descr lbi flags = do
                                     withFile tempFile ReadMode $
                                         (>>= (return $!) . read) . hGetContents
 
-                    mapM_ (summarizeCase verbosity filt) $ cases testLog
-                    summarizeSuiteFinish (notice verbosity) testLog
+                    mapM_ (summarizeCase verbosity details) $ cases testLog
                     return testLog
                 _ -> do
                     let dieLog = TestSuiteLog
@@ -232,6 +230,9 @@ test pkg_descr lbi flags = do
                             , logFile = ""
                             }
                     return dieLog
+
+            summarizeSuiteFinish (notice verbosity) testLog
+            return testLog
 
     testsToRun <- case testNames of
         [] -> return $ PD.testSuites pkg_descr
@@ -277,13 +278,12 @@ summarizePackage verbosity packageLog = do
 
 -- | Print a summary of a single test case's result to the console, supressing
 -- output for certain verbosity or test filter levels.
-summarizeCase :: Verbosity -> TestFilter -> Case -> IO ()
-summarizeCase verb filt t =
-    when shouldPrint $ notice verb $ "Test case " ++ caseName t
+summarizeCase :: Verbosity -> TestShowDetails -> Case -> IO ()
+summarizeCase verbosity details t =
+    when shouldPrint $ notice verbosity $ "Test case " ++ caseName t
         ++ ": " ++ show (caseResult t)
-    where  shouldPrint =
-            (filt > Summary && caseResult t /= TestSuite.Pass)
-            || filt > Failures
+    where shouldPrint = (details > Never) && (notPassed || details == Always)
+          notPassed = caseResult t /= TestSuite.Pass
 
 -- | Print a summary of the test suite's results on the console, suppressing
 -- output for certain verbosity or test filter levels.
@@ -452,5 +452,5 @@ runTests tests = do
                     , caseOptions = o
                     , caseResult = r
                     }
-            summarizeCase normal All ret
+            summarizeCase normal Always ret
             return ret
