@@ -162,7 +162,7 @@ test pkg_descr lbi flags = do
                 PD.ExeTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> PD.testName suite
                             </> PD.testName suite <.> exeExtension
-                    testLog <- run cmd Nothing $ \exit -> do
+                    run cmd Nothing $ \exit -> do
                         let r = case exit of
                                 ExitSuccess -> TestSuite.Pass
                                 ExitFailure c -> TestSuite.Fail
@@ -172,8 +172,6 @@ test pkg_descr lbi flags = do
                             , cases = [Case (PD.testName suite) mempty r]
                             , logFile = ""
                             }
-
-                    return testLog
 
                 PD.LibTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> stubName suite
@@ -231,6 +229,11 @@ test pkg_descr lbi flags = do
                             }
                     return dieLog
 
+            when (details > Never)
+                $ when (not (suitePassed testLog) || details == Always)
+                $ withFile (logFile testLog) ReadMode $ \h -> do
+                    msgLines <- liftM lines $ hGetContents h
+                    mapM_ (notice verbosity . (">>> " ++)) msgLines
             summarizeSuiteFinish (notice verbosity) testLog
             return testLog
 
@@ -345,10 +348,9 @@ runTestExe pkg_descr suite dir logPath cmd mH go = do
 
     withTempFile dir ("cabal-test-" <.> "log") $ \(outFile, hOut) -> do
         summarizeSuiteStart (hPutStrLn hOut) $ PD.testName suite
-        hClose hOut
-        proc <- withFile outFile AppendMode $ \h ->
-            runProcess cmd [] Nothing shellEnv mH (Just h) (Just h)
+        proc <- runProcess cmd [] Nothing shellEnv mH (Just hOut) (Just hOut)
         exit <- waitForProcess proc
+        hClose hOut
         suiteLog <- go exit
         let finalFile = dir </> logPath suiteLog
             suiteLog' = suiteLog { logFile = finalFile }
