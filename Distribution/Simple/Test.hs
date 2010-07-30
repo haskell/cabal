@@ -350,11 +350,12 @@ runTestExe pkg_descr suite dir logPath cmd mH go = do
             runProcess cmd [] Nothing shellEnv mH (Just h) (Just h)
         exit <- waitForProcess proc
         suiteLog <- go exit
-        withFile outFile AppendMode $ \h ->
-            summarizeSuiteFinish (hPutStrLn h) suiteLog
         let finalFile = dir </> logPath suiteLog
+            suiteLog' = suiteLog { logFile = finalFile }
+        withFile outFile AppendMode $ \h ->
+            summarizeSuiteFinish (hPutStrLn h) suiteLog'
         outFile `appendFileTo` finalFile
-        return $ suiteLog { logFile = finalFile }
+        return suiteLog'
 
 appendFileTo :: FilePath -> FilePath -> IO ()
 appendFileTo inF outF =
