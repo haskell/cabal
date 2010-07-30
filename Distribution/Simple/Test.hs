@@ -138,6 +138,91 @@ suiteError = any isError . map caseResult . cases
     where isError (TestSuite.Error _) = True
           isError _ = False
 
+-- | Run a test executable, logging the output and generating the appropriate
+-- summary messages.
+testController :: TestFlags
+               -- ^ flags Cabal was invoked with
+               -> PD.PackageDescription
+               -- ^ description of package the test suite belongs to
+               -> PD.TestSuite
+               -- ^ TestSuite being tested
+               -> (FilePath -> Handle -> IO ())
+               -- ^ prepare standard input for test executable
+               -> FilePath -- ^ executable name
+               -> (ExitCode -> Handle -> IO TestSuiteLog)
+               -- ^ generator for the TestSuiteLog
+               -> (TestSuiteLog -> FilePath)
+               -- ^ generator for final human-readable log filename
+               -> IO TestSuiteLog
+testController flags pkg_descr suite preTest cmd postTest logNamer = do
+    let distPref = fromFlag $ testDistPref flags
+        verbosity = fromFlag $ testVerbosity flags
+        testLogDir = distPref </> "test"
+
+    pwd <- getCurrentDirectory
+    existingEnv <- getEnvironment
+    let dataDirPath = pwd </> PD.dataDir pkg_descr
+        shellEnv = Just $ (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
+                        : existingEnv
+
+    bracket (openCabalTemp testLogDir) deleteIfExists $ \tempLog ->
+        bracket (openCabalTemp testLogDir) deleteIfExists $ \tempInput -> do
+
+            -- Write summary notices indicating start of test suite
+            notice verbosity $ summarizeSuiteStart $ PD.testName suite
+            appendFile tempLog $ summarizeSuiteStart $ PD.testName suite
+
+            -- Prepare standard input for test executable
+            withFile tempInput AppendMode $ \h ->
+                preTest tempInput h
+
+            -- Run test executable
+            exit <- withFile tempLog AppendMode $ \hLog ->
+                withFile tempInput ReadMode $ \hIn -> do
+                    proc <- runProcess cmd [] Nothing shellEnv
+                        (Just hIn) (Just hLog) (Just hLog)
+                    waitForProcess proc
+
+            -- Generate TestSuiteLog from executable exit code and a machine-
+            -- readable test log
+            suiteLog <- withFile tempInput ReadMode $ postTest exit
+
+            -- Generate final log file name
+            let finalLogName = testLogDir </> logNamer suiteLog
+                suiteLog' = suiteLog { logFile = finalLogName }
+
+            -- Write summary notice to log file indicating end of test suite
+            appendFile tempLog $ summarizeSuiteFinish suiteLog'
+
+            -- Append contents of temporary log file to the final human-
+            -- readable log file
+            readFile tempLog >>= appendFile (logFile suiteLog')
+
+            -- Show the contents of the human-readable log file on the terminal
+            -- if there is a failure and/or detailed output is requested
+            let details = fromFlag $ testShowDetails flags
+                whenPrinting = when $ (details > Never) &&
+                    (not (suitePassed suiteLog) || details == Always)
+            whenPrinting $ do
+                str <- readFile tempLog
+                mapM_ (\l -> notice verbosity $ ">>> " ++ l) $ lines str
+
+            -- Write summary notice to terminal indicating end of test suite
+            notice verbosity $ summarizeSuiteFinish suiteLog'
+
+            return suiteLog'
+    where
+        deleteIfExists file = do
+            exists <- doesFileExist file
+            when exists $ removeFile file
+
+        openCabalTemp :: FilePath -> IO FilePath
+        openCabalTemp testLogDir = do
+            (f, h) <- openTempFile testLogDir $ "cabal-test-" <.> "log"
+            hClose h
+            return f
+
+
 -- |Perform the \"@.\/setup test@\" action.
 test :: PD.PackageDescription   -- ^information from the .cabal file
      -> LBI.LocalBuildInfo      -- ^information from the configure step
@@ -145,7 +230,6 @@ test :: PD.PackageDescription   -- ^information from the .cabal file
      -> IO ()
 test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
-        details = fromFlag $ testShowDetails flags
         append = fromFlag $ testHumanAppend flags
         humanTemplate = fromFlag $ testHumanLog flags
         machineTemplate = fromFlag $ testMachineLog flags
@@ -155,69 +239,36 @@ test pkg_descr lbi flags = do
 
         doTest :: PD.TestSuite -> IO TestSuiteLog
         doTest suite = do
-            summarizeSuiteStart (notice verbosity) $ PD.testName suite
             let testLogPath = testSuiteLogPath humanTemplate pkg_descr lbi
-                run = runTestExe pkg_descr suite testLogDir testLogPath
-            testLog <- case PD.testType suite of
+                go pre cmd post = testController flags pkg_descr suite
+                                                 pre cmd post testLogPath
+            case PD.testType suite of
                 PD.ExeTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> PD.testName suite
                             </> PD.testName suite <.> exeExtension
-                    run cmd Nothing $ \exit -> do
-                        let r = case exit of
-                                ExitSuccess -> TestSuite.Pass
-                                ExitFailure c -> TestSuite.Fail
-                                    $ "exit code: " ++ show c
-                        return $ TestSuiteLog
-                            { name = PD.testName suite
-                            , cases = [Case (PD.testName suite) mempty r]
-                            , logFile = ""
-                            }
+                        preTest _ _ = return ()
+                        postTest exit _ = do
+                            let r = case exit of
+                                    ExitSuccess -> TestSuite.Pass
+                                    ExitFailure c -> TestSuite.Fail
+                                        $ "exit code: " ++ show c
+                            return $ TestSuiteLog
+                                { name = PD.testName suite
+                                , cases = [Case (PD.testName suite) mempty r]
+                                , logFile = ""
+                                }
+                    go preTest cmd postTest
 
                 PD.LibTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> stubName suite
                             </> stubName suite <.> exeExtension
-                    testLog <- withTempFile testLogDir "cabal-test-.log"
-                        $ \(tempFile, hTemp) -> do
-                            -- Communication between the parent Cabal process
-                            -- and the stub executable takes place through the
-                            -- temporary file, 'tempFile', created here.
-
-                            -- An 'TestSuiteLog' is written to file without
-                            -- any results to inform the child process of the
-                            -- test suite name.  The 'logFile' path indicates
-                            -- the location of the temporary file used for
-                            -- communication between the Cabal process and the
-                            -- stub executable.
-                            hPutStrLn hTemp $ show $ TestSuiteLog
-                                { name = PD.testName suite
-                                , cases = []
-                                , logFile = tempFile
-                                }
-                            -- We are done writing to 'tempFile', so it will
-                            -- be closed though we want to read from it later.
-                            hClose hTemp
-                            -- Reopen 'tempFile' for reading and use the
-                            -- handle as the standard input for the stub
-                            -- executable.
-                            withFile tempFile ReadMode
-                                $ \hIn -> run cmd (Just hIn) $ \_ -> do
-                                    -- The stub executable replaces the
-                                    -- 'TestSuiteLog' which was in 'tempFile'
-                                    -- with a 'TestSuiteLog' with 'Case' results
-                                    -- supplied.
-
-                                    -- Using the 'hIn' handle for the stub
-                                    -- executable's standard input leaves it in
-                                    -- an indeterminate state, so 'tempFile' is
-                                    -- closed and reopened again to read the
-                                    -- 'TestSuiteLog' generated by the stub
-                                    -- executable.
-                                    hClose hIn
-                                    withFile tempFile ReadMode $
-                                        (>>= (return $!) . read) . hGetContents
-
-                    mapM_ (summarizeCase verbosity details) $ cases testLog
-                    return testLog
+                        preTest f h = hPutStrLn h $ show $ TestSuiteLog
+                            { name = PD.testName suite
+                            , cases = []
+                            , logFile = f
+                            }
+                        postTest _ = (>>= (return $!) . read) . hGetContents
+                    go preTest cmd postTest
                 _ -> do
                     let dieLog = TestSuiteLog
                             { name = PD.testName suite
@@ -228,14 +279,6 @@ test pkg_descr lbi flags = do
                             , logFile = ""
                             }
                     return dieLog
-
-            when (details > Never)
-                $ when (not (suitePassed testLog) || details == Always)
-                $ withFile (logFile testLog) ReadMode $ \h -> do
-                    msgLines <- liftM lines $ hGetContents h
-                    mapM_ (notice verbosity . (">>> " ++)) msgLines
-            summarizeSuiteFinish (notice verbosity) testLog
-            return testLog
 
     testsToRun <- case testNames of
         [] -> return $ PD.testSuites pkg_descr
@@ -290,80 +333,15 @@ summarizeCase verbosity details t =
 
 -- | Print a summary of the test suite's results on the console, suppressing
 -- output for certain verbosity or test filter levels.
-summarizeSuiteFinish :: (String -> IO ()) -> TestSuiteLog -> IO ()
-summarizeSuiteFinish printer testLog = do
-    printer $ "Test suite " ++ name testLog ++ ": " ++ resStr
-    printer $ "Test suite logged to: " ++ logFile testLog
+summarizeSuiteFinish :: TestSuiteLog -> String
+summarizeSuiteFinish testLog = unlines
+    [ "Test suite " ++ name testLog ++ ": " ++ resStr
+    , "Test suite logged to: " ++ logFile testLog
+    ]
     where resStr = map toUpper (resultString testLog)
 
-summarizeSuiteStart :: (String -> IO ()) -> String -> IO ()
-summarizeSuiteStart printer n =
-    printer $ "Test suite " ++ n ++ ": RUNNING..."
-
--- | Creates a temporary file for writing, allowing an 'IO' action to access the
--- file.  The temporary file is deleted after the action runs.
-withTempFile :: FilePath -- ^ directory where temporary file will be located
-             -> FilePath -- ^ template for temporary file name
-             -> ((FilePath, Handle) -> IO a)
-             -- ^ action using the temporary file
-             -> IO a
-withTempFile dir template go =
-    bracket (openTempFile dir template) delete go
-    where
-        delete (actualPath, handle) = do
-            hClose handle
-            tempExists <- doesFileExist actualPath
-            when tempExists $ removeFile actualPath
-
--- | Runs an executable test suite, such as an @exitcode-stdio@ test suite, or
--- the test stub for a detailed test suite.  The standard error and standard
--- output of the executable are logged.
-runTestExe :: PD.PackageDescription
-           -- ^ the 'PackageDescription' of the package this test belongs to;
-           -- used to set the shell environment so the executable can find
-           -- the package's data files.
-           -> PD.TestSuite
-           -- ^ the 'TestSuite' that is being run; the name is used in the
-           -- summary information.
-           -> FilePath
-           -- ^ the directory where temporary files should be located
-           -> (TestSuiteLog -> FilePath)
-           -- ^ the function 'testSuiteLogPath' partially applied to the
-           -- 'PackageDescription' and 'LocalBuildInfo'; determines the
-           -- location of the log file.
-           -> FilePath -- ^ the command to invoke
-           -> Maybe Handle
-           -- ^ maybe the handle to give the child process for standard input
-           -> (ExitCode -> IO TestSuiteLog)
-           -- ^ an 'IO' action on the process exit code and output
-           -> IO TestSuiteLog
-runTestExe pkg_descr suite dir logPath cmd mH go = do
-    -- Determine the shell environment to set so the test executable can find
-    -- package data files.
-    pwd <- getCurrentDirectory
-    existingEnv <- getEnvironment
-    let dataDirPath = pwd </> PD.dataDir pkg_descr
-        shellEnv = Just $ (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                        : existingEnv
-
-    withTempFile dir ("cabal-test-" <.> "log") $ \(outFile, hOut) -> do
-        summarizeSuiteStart (hPutStrLn hOut) $ PD.testName suite
-        proc <- runProcess cmd [] Nothing shellEnv mH (Just hOut) (Just hOut)
-        exit <- waitForProcess proc
-        hClose hOut
-        suiteLog <- go exit
-        let finalFile = dir </> logPath suiteLog
-            suiteLog' = suiteLog { logFile = finalFile }
-        withFile outFile AppendMode $ \h ->
-            summarizeSuiteFinish (hPutStrLn h) suiteLog'
-        outFile `appendFileTo` finalFile
-        return suiteLog'
-
-appendFileTo :: FilePath -> FilePath -> IO ()
-appendFileTo inF outF =
-    withFile inF ReadMode $ \hIn -> do
-    withFile outF AppendMode $ \hOut -> do
-        hGetContents hIn >>= hPutStrLn hOut
+summarizeSuiteStart :: String -> String
+summarizeSuiteStart n = "Test suite " ++ n ++ ": RUNNING..."
 
 resultString :: TestSuiteLog -> String
 resultString l | suiteError l = "error"
