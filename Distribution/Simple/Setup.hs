@@ -1223,7 +1223,8 @@ data TestFlags = TestFlags {
     testHumanAppend :: Flag Bool,
     testMachineLog :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
-    testList :: Flag [String]
+    testList :: Flag [String],
+    testReplay :: Flag (Maybe FilePath)
   }
   deriving Show
 
@@ -1235,7 +1236,8 @@ defaultTestFlags  = TestFlags {
     testHumanAppend = toFlag False,
     testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
-    testList = Flag []
+    testList = Flag [],
+    testReplay = toFlag Nothing
   }
 
 testCommand :: CommandUI TestFlags
@@ -1273,6 +1275,11 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
              ++ "'failures': show results of failing test cases.")
             testShowDetails (\v flags -> flags { testShowDetails = v })
             (reqArg' "FILTER" (toFlag . read) (flagToList . fmap show))
+      , option [] ["replay"]
+            ("replay the test suites in the given machine-readable log file "
+            ++ "using the options therein")
+            testReplay (\v flags -> flags { testReplay = v })
+            (reqArg' "FILE" (toFlag . Just) (flagToList . fmap fromJust))
       ]
 
 emptyTestFlags :: TestFlags
@@ -1286,7 +1293,8 @@ instance Monoid TestFlags where
     testHumanAppend = mempty,
     testMachineLog = mempty,
     testShowDetails = mempty,
-    testList = mempty
+    testList = mempty,
+    testReplay = mempty
   }
   mappend a b = TestFlags {
     testDistPref  = combine testDistPref,
@@ -1295,7 +1303,8 @@ instance Monoid TestFlags where
     testHumanAppend = combine testHumanAppend,
     testMachineLog = combine testMachineLog,
     testShowDetails = combine testShowDetails,
-    testList = combine testList
+    testList = combine testList,
+    testReplay = combine testReplay
   }
     where combine field = field a `mappend` field b
 
