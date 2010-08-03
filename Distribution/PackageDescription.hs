@@ -344,7 +344,7 @@ instance Monoid TestType where
 
 instance Text TestType where
     disp (ExeTest v _) = text "exitcode-stdio-" <> disp v
-    disp (LibTest v _) = text "library-" <> disp v
+    disp (LibTest v _) = text "detailed-" <> disp v
 
     parse = do
         t <- Parse.munch1 (\c -> Char.isAlpha c || '-' == c || '_' == c)
@@ -354,7 +354,7 @@ instance Text TestType where
             then do
                 f <- parseFilePathQ
                 return $ ExeTest v f
-            else if t == "library-"
+            else if t == "detailed-"
                 then do
                     m <- parseModuleNameQ
                     return $ LibTest v m
