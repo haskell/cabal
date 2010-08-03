@@ -245,16 +245,16 @@ orElse a b = case a of
 
 instance Text TempTestType where
     disp (TempExeTest Nothing _ _) = text "exitcode-stdio"
-    disp (TempLibTest Nothing _ _) = text "library"
+    disp (TempLibTest Nothing _ _) = text "detailed"
     disp (TempExeTest (Just v) _ _) = text "exitcode-stdio-" <> disp v
-    disp (TempLibTest (Just v) _ _) = text "library-" <> disp v
+    disp (TempLibTest (Just v) _ _) = text "detailed-" <> disp v
 
     parse = do
         t <- Parse.munch1 (\c -> isAlpha c || '-' == c || '_' == c)
         v <- parse
         if t == "exitcode-stdio-"
             then return $ TempExeTest (Just v) Nothing Nothing
-            else if t == "library-"
+            else if t == "detailed-"
                 then return $ TempLibTest (Just v) Nothing Nothing
                 else Parse.pfail
 
