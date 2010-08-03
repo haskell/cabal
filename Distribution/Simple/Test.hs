@@ -121,6 +121,12 @@ data Case = Case
     }
     deriving (Read, Show, Eq)
 
+getReplayOptions :: TestSuite.Test -> TestSuiteLog -> IO TestSuite.Options
+getReplayOptions t l =
+    case filter ((== TestSuite.name t) . caseName) (cases l) of
+        (x:_) -> return $ caseOptions x
+        _ -> TestSuite.defaultOptions t
+
 -- | From a 'TestSuiteLog', determine if the test suite passed.
 suitePassed :: TestSuiteLog -> Bool
 suitePassed = all (== TestSuite.Pass) . map caseResult . cases
@@ -231,9 +237,11 @@ test pkg_descr lbi flags = do
         distPref = fromFlag $ testDistPref flags
         testLogDir = distPref </> "test"
         testNames = fromFlag $ testList flags
+        pkgTests = PD.testSuites pkg_descr
+        replay = fromFlag $ testReplay flags
 
-        doTest :: PD.TestSuite -> IO TestSuiteLog
-        doTest suite = do
+        doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
+        doTest (suite, mLog) = do
             let testLogPath = testSuiteLogPath humanTemplate pkg_descr lbi
                 go pre cmd post = testController flags pkg_descr suite
                                                  pre cmd post testLogPath
@@ -257,11 +265,14 @@ test pkg_descr lbi flags = do
                 PD.LibTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> stubName suite
                             </> stubName suite <.> exeExtension
-                        preTest f = show $ TestSuiteLog
-                            { name = PD.testName suite
-                            , cases = []
-                            , logFile = f
-                            }
+                        oldLog = case mLog of
+                            Nothing -> TestSuiteLog
+                                { name = PD.testName suite
+                                , cases = []
+                                , logFile = []
+                                }
+                            Just l -> l
+                        preTest f = show $ oldLog { logFile = f }
                         postTest _ = read
                     go preTest cmd postTest
                 _ -> do
@@ -275,14 +286,23 @@ test pkg_descr lbi flags = do
                             }
                     return dieLog
 
-    testsToRun <- case testNames of
-        [] -> return $ PD.testSuites pkg_descr
-        names -> flip mapM names $ \tName ->
-            let testMap = map (\x -> (PD.testName x, x))
-                              $ PD.testSuites pkg_descr
-            in case lookup tName testMap of
-                Just t -> return t
-                _ -> die $ "no such test: " ++ tName
+    testsToRun <- case replay of
+        Nothing -> case testNames of
+            [] -> return $ zip pkgTests $ repeat Nothing
+            names -> flip mapM names $ \tName ->
+                let testMap = map (\x -> (PD.testName x, x)) pkgTests
+                in case lookup tName testMap of
+                    Just t -> return (t, Nothing)
+                    _ -> die $ "no such test: " ++ tName
+        Just f -> do
+            notice verbosity $ "Replaying " ++ f ++ " ..."
+            pkgLog <- readFile f >>= (return . read)
+            let testSuiteNames = map name $ testSuites pkgLog
+                replayTests =
+                    filter (\t -> PD.testName t `elem` testSuiteNames) pkgTests
+                getLog t = Just $ head $ filter (\l -> PD.testName t == name l)
+                                       $ testSuites pkgLog
+            return $ zip replayTests $ map getLog replayTests
 
     createDirectoryIfMissing True testLogDir
 
@@ -410,16 +430,9 @@ simpleTestStub m = unlines
 runTests :: [TestSuite.Test] -> IO ()
 runTests tests = do
     testLogIn <- liftM read getContents
-    cases' <- mapM go tests
-    let testLog = testLogIn { cases = cases'}
-    writeFile (logFile testLog) $ show testLog
-    when (suiteError testLog) $ exitWith $ ExitFailure 2
-    when (suiteFailed testLog) $ exitWith $ ExitFailure 1
-    exitSuccess
-    where
-        go :: TestSuite.Test -> IO Case
+    let go :: TestSuite.Test -> IO Case
         go t = do
-            o <- TestSuite.defaultOptions t
+            o <- getReplayOptions t testLogIn
             r <- TestSuite.runM t o
             let ret = Case
                     { caseName = TestSuite.name t
@@ -428,3 +441,9 @@ runTests tests = do
                     }
             summarizeCase normal Always ret
             return ret
+    cases' <- mapM go tests
+    let testLog = testLogIn { cases = cases'}
+    writeFile (logFile testLog) $ show testLog
+    when (suiteError testLog) $ exitWith $ ExitFailure 2
+    when (suiteFailed testLog) $ exitWith $ ExitFailure 1
+    exitSuccess
