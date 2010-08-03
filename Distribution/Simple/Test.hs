@@ -84,8 +84,7 @@ import System.Directory
 import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
 import System.FilePath ( (</>), (<.>), takeExtension )
-import System.IO
-    ( Handle, hClose, hGetContents, hPutStrLn, IOMode(..), withFile )
+import System.IO ( hClose, IOMode(..), withFile )
 import System.Process ( runProcess, waitForProcess )
 
 -- | Logs all test results for a package, broken down first by test suite and
@@ -146,10 +145,10 @@ testController :: TestFlags
                -- ^ description of package the test suite belongs to
                -> PD.TestSuite
                -- ^ TestSuite being tested
-               -> (FilePath -> Handle -> IO ())
+               -> (FilePath -> String)
                -- ^ prepare standard input for test executable
                -> FilePath -- ^ executable name
-               -> (ExitCode -> Handle -> IO TestSuiteLog)
+               -> (ExitCode -> String -> TestSuiteLog)
                -- ^ generator for the TestSuiteLog
                -> (TestSuiteLog -> FilePath)
                -- ^ generator for final human-readable log filename
@@ -173,8 +172,7 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
             appendFile tempLog $ summarizeSuiteStart $ PD.testName suite
 
             -- Prepare standard input for test executable
-            withFile tempInput AppendMode $ \h ->
-                preTest tempInput h
+            appendFile tempInput $ preTest tempInput
 
             -- Run test executable
             exit <- withFile tempLog AppendMode $ \hLog ->
@@ -185,7 +183,7 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
 
             -- Generate TestSuiteLog from executable exit code and a machine-
             -- readable test log
-            suiteLog <- withFile tempInput ReadMode $ postTest exit
+            suiteLog <- readFile tempInput >>= return . postTest exit
 
             -- Generate final log file name
             let finalLogName = testLogDir </> logNamer suiteLog
@@ -203,9 +201,8 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
             let details = fromFlag $ testShowDetails flags
                 whenPrinting = when $ (details > Never) &&
                     (not (suitePassed suiteLog) || details == Always)
-            whenPrinting $ do
-                str <- readFile tempLog
-                mapM_ (\l -> notice verbosity $ ">>> " ++ l) $ lines str
+            whenPrinting $ readFile (logFile suiteLog') >>=
+                putStr . unlines . map (">>> " ++) . lines
 
             -- Write summary notice to terminal indicating end of test suite
             notice verbosity $ summarizeSuiteFinish suiteLog'
@@ -216,11 +213,9 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
             exists <- doesFileExist file
             when exists $ removeFile file
 
-        openCabalTemp :: FilePath -> IO FilePath
         openCabalTemp testLogDir = do
             (f, h) <- openTempFile testLogDir $ "cabal-test-" <.> "log"
-            hClose h
-            return f
+            hClose h >> return f
 
 
 -- |Perform the \"@.\/setup test@\" action.
@@ -246,13 +241,13 @@ test pkg_descr lbi flags = do
                 PD.ExeTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> PD.testName suite
                             </> PD.testName suite <.> exeExtension
-                        preTest _ _ = return ()
-                        postTest exit _ = do
+                        preTest _ = ""
+                        postTest exit _ =
                             let r = case exit of
                                     ExitSuccess -> TestSuite.Pass
                                     ExitFailure c -> TestSuite.Fail
                                         $ "exit code: " ++ show c
-                            return $ TestSuiteLog
+                            in TestSuiteLog
                                 { name = PD.testName suite
                                 , cases = [Case (PD.testName suite) mempty r]
                                 , logFile = ""
@@ -262,12 +257,12 @@ test pkg_descr lbi flags = do
                 PD.LibTest v _ | PD.testVersion1 v -> do
                     let cmd = LBI.buildDir lbi </> stubName suite
                             </> stubName suite <.> exeExtension
-                        preTest f h = hPutStrLn h $ show $ TestSuiteLog
+                        preTest f = show $ TestSuiteLog
                             { name = PD.testName suite
                             , cases = []
                             , logFile = f
                             }
-                        postTest _ = (>>= (return $!) . read) . hGetContents
+                        postTest _ = read
                     go preTest cmd postTest
                 _ -> do
                     let dieLog = TestSuiteLog
@@ -304,7 +299,7 @@ test pkg_descr lbi flags = do
         packageLogFile = (</>) testLogDir
             $ packageLogPath machineTemplate pkg_descr lbi
     allOk <- summarizePackage verbosity packageLog
-    withFile packageLogFile WriteMode $ ($ show packageLog) . hPutStrLn
+    writeFile packageLogFile $ show packageLog
     unless allOk exitFailure
 
 -- | Print a summary to the console after all test suites have been run
@@ -341,7 +336,7 @@ summarizeSuiteFinish testLog = unlines
     where resStr = map toUpper (resultString testLog)
 
 summarizeSuiteStart :: String -> String
-summarizeSuiteStart n = "Test suite " ++ n ++ ": RUNNING..."
+summarizeSuiteStart n = "Test suite " ++ n ++ ": RUNNING...\n"
 
 resultString :: TestSuiteLog -> String
 resultString l | suiteError l = "error"
@@ -392,8 +387,7 @@ writeSimpleTestStub t dir = do
     createDirectoryIfMissing True dir
     let filename = dir </> stubFilePath t
         PD.LibTest _ m = PD.testType t
-    withFile filename WriteMode $ \h -> do
-        hPutStrLn h $ simpleTestStub m
+    writeFile filename $ simpleTestStub m
 
 -- | Source code for library test suite stub executable
 simpleTestStub :: ModuleName -> String
@@ -418,8 +412,7 @@ runTests tests = do
     testLogIn <- liftM read getContents
     cases' <- mapM go tests
     let testLog = testLogIn { cases = cases'}
-    withFile (logFile testLog) WriteMode $ \h ->
-        hPutStrLn h $ show testLog
+    writeFile (logFile testLog) $ show testLog
     when (suiteError testLog) $ exitWith $ ExitFailure 2
     when (suiteFailed testLog) $ exitWith $ ExitFailure 1
     exitSuccess
