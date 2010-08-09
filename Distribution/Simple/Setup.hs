@@ -1224,7 +1224,8 @@ data TestFlags = TestFlags {
     testMachineLog :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     testList :: Flag [String],
-    testReplay :: Flag (Maybe FilePath)
+    testReplay :: Flag (Maybe FilePath),
+    testOptions :: Flag [String]
   }
   deriving Show
 
@@ -1237,7 +1238,8 @@ defaultTestFlags  = TestFlags {
     testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testList = Flag [],
-    testReplay = toFlag Nothing
+    testReplay = toFlag Nothing,
+    testOptions = Flag []
   }
 
 testCommand :: CommandUI TestFlags
@@ -1280,6 +1282,15 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
             ++ "using the options therein")
             testReplay (\v flags -> flags { testReplay = v })
             (reqArg' "FILE" (toFlag . Just) (flagToList . fmap fromJust))
+      , option [] ["test-options"]
+            "give extra options to test executables"
+            testOptions (\v flags -> flags { testOptions = v })
+            (reqArg' "OPTS" (toFlag . splitArgs) (fromFlagOrDefault []))
+      , option [] ["test-option"]
+            ("give extra option to test executables "
+            ++ "(no need to quote options containing spaces)")
+            testOptions (\v flags -> flags { testOptions = v })
+            (reqArg' "OPT" (\x -> toFlag [x]) (fromFlagOrDefault []))
       ]
 
 emptyTestFlags :: TestFlags
@@ -1294,7 +1305,8 @@ instance Monoid TestFlags where
     testMachineLog = mempty,
     testShowDetails = mempty,
     testList = mempty,
-    testReplay = mempty
+    testReplay = mempty,
+    testOptions = mempty
   }
   mappend a b = TestFlags {
     testDistPref  = combine testDistPref,
@@ -1304,7 +1316,8 @@ instance Monoid TestFlags where
     testMachineLog = combine testMachineLog,
     testShowDetails = combine testShowDetails,
     testList = combine testList,
-    testReplay = combine testReplay
+    testReplay = combine testReplay,
+    testOptions = combine testOptions
   }
     where combine field = field a `mappend` field b
 
