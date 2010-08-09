@@ -205,8 +205,9 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
             -- Show the contents of the human-readable log file on the terminal
             -- if there is a failure and/or detailed output is requested
             let details = fromFlag $ testShowDetails flags
-                whenPrinting = when $ (details > Never) &&
-                    (not (suitePassed suiteLog) || details == Always)
+                whenPrinting = when $ (details > Never)
+                    && (not (suitePassed suiteLog) || details == Always)
+                    && verbosity >= normal
             whenPrinting $ readFile (logFile suiteLog') >>=
                 putStr . unlines . map (">>> " ++) . lines
 
