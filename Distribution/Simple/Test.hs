@@ -163,6 +163,7 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
     let distPref = fromFlag $ testDistPref flags
         verbosity = fromFlag $ testVerbosity flags
         testLogDir = distPref </> "test"
+        options = fromFlag $ testOptions flags
 
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
@@ -183,7 +184,7 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
             -- Run test executable
             exit <- withFile tempLog AppendMode $ \hLog ->
                 withFile tempInput ReadMode $ \hIn -> do
-                    proc <- runProcess cmd [] Nothing shellEnv
+                    proc <- runProcess cmd options Nothing shellEnv
                         (Just hIn) (Just hLog) (Just hLog)
                     waitForProcess proc
 
