@@ -12,6 +12,7 @@ well as providing a library implementing these interfaces.
           + [Package properties](#package-properties)
           + [Library](#library)
           + [Executables](#executables)
+          + [Test suites](#test-suites)
           + [Build information](#build-information)
           + [Configurations](#configurations)
           + [Source Repositories](#source-repositories)
@@ -576,6 +577,141 @@ information](#build-information)).
     `.hs` filename that must be listed, even if that file is generated
     using a preprocessor. The source file must be relative to one of the
     directories listed in `hs-source-dirs`.
+
+### Test suites ###
+
+Test suite sections (if present) describe package test suites and must have an
+argument after the section label, which defines the name of the test suite.
+This is a freeform argument, but may not contain spaces.  It should be unique
+among the names of the package's other test suites, the package's executables,
+and the package itself.  Using test suite sections requires at least Cabal
+version 1.9.2.
+
+The test suite may be described using the following fields, as well as build
+information fields (see the section on [build
+information](#build-information)).
+
+`type:` _interface_ (required)
+:   The interface type and version of the test suite.  Cabal supports two test
+    suite interfaces, called `exitcode-stdio-1.0` and `detailed-1.0`.  Each of
+    these types may require or disallow other fields as described below.
+
+Test suites using the `exitcode-stdio-1.0` interface are executables
+that indicate test failure with a non-zero exit code when run; they may provide
+human-readable log information through the standard output and error channels.
+This interface is provided primarily for compatibility with existing test
+suites; it is preferred that new test suites be written for the `detailed-1.0`
+interface.  The `exitcode-stdio-1.0` type requires the `main-is` field.
+
+`main-is:` _filename_ (required: `exitcode-stdio-1.0`, disallowed: `detailed-1.0`)
+:   The name of the `.hs` or `.lhs` file containing the `Main` module. Note that it is the
+    `.hs` filename that must be listed, even if that file is generated
+    using a preprocessor. The source file must be relative to one of the
+    directories listed in `hs-source-dirs`.  This field is analogous to the
+    `main-is` field of an executable section.
+
+Test suites using the `detailed-1.0` interface are modules exporting the symbol
+`tests :: [Test]`.  The `Test` type is exported by the module
+`Distribution.TestSuite` provided by Cabal.  For more details, see the example below.
+
+The `detailed-1.0` interface allows Cabal and other test agents to inspect a
+test suite's results case by case, producing detailed human- and
+machine-readable log files.  The `detailed-1.0` interface requires the
+`test-module` field.
+
+`test-module:` _identifier_ (required: `detailed-1.0`, disallowed: `exitcode-stdio-1.0`)
+:   The module exporting the `tests` symbol.
+
+#### Example: Package using `exitcode-stdio-1.0` interface ####
+
+The example package description and executable source file below demonstrate
+the use of the `exitcode-stdio-1.0` interface.  For brevity, the example package
+does not include a library or any normal executables, but a real package would
+be required to have at least one library or executable.
+
+foo.cabal:
+
+~~~~~~~~~~~~~~~~
+Name:           foo
+Version:        1.0
+License:        BSD3
+Cabal-Version:  >= 1.9.2
+Build-Type:     Simple
+
+Test-Suite test-foo
+    type:       exitcode-stdio-1.0
+    main-is:    test-foo.hs
+    build-depends: base
+~~~~~~~~~~~~~~~~
+
+test-foo.hs:
+
+~~~~~~~~~~~~~~~~
+module Main where
+
+import System.Exit (exitFailure)
+
+main = do
+    putStrLn "This test always fails!"
+    exitFailure
+~~~~~~~~~~~~~~~~
+
+#### Example: Package using `detailed-1.0` interface ####
+
+The example package description and test module source file below demonstrate
+the use of the `detailed-1.0` interface.  For brevity, the example package does
+note include a library or any normal executables, but a real package would be
+required to have at least one library or executable.  The test module below
+also develops a simple implementation of the interface set by
+`Distribution.TestSuite`, but in actual usage the implementation would be
+provided by the library that provides the testing facility.
+
+bar.cabal:
+
+~~~~~~~~~~~~~~~~
+Name:           bar
+Version:        1.0
+License:        BSD3
+Cabal-Version:  >= 1.9.2
+Build-Type:     Simple
+
+Test-Suite test-bar
+    type:       detailed-1.0
+    test-module: Test.Bar
+    build-depends: base, Cabal >= 1.9.2
+~~~~~~~~~~~~~~~~
+
+Test/Bar.hs:
+
+~~~~~~~~~~~~~~~~
+{-# LANGUAGE FlexibleInstances #-}
+module Test.Bar ( tests ) where
+
+import Distribution.TestSuite
+
+instance TestOptions (String, Bool) where
+    name = fst
+    options = const []
+    defaultOptions _ = return (Options [])
+    check _ _ = []
+
+instance PureTestable (String, Bool) where
+    run (name, result) _ | result == True = Pass
+                         | result == False = Fail (name ++ " failed!")
+
+test :: (String, Bool) -> Test
+test = pure
+
+-- In actual usage, the instances 'TestOptions (String, Bool)' and
+-- 'PureTestable (String, Bool)', as well as the function 'test', would be
+-- provided by the test framework.
+
+tests :: [Test]
+tests =
+    [ test ("bar-1", True)
+    , test ("bar-2", False)
+    ]
+~~~~~~~~~~~~~~~~
 
 ### Build information ###
 
@@ -2099,9 +2235,49 @@ This command takes the following options:
 
 ## setup test ##
 
-Run the test suite specified by the `runTests` field of
-`Distribution.Simple.UserHooks`.  See [Distribution.Simple][dist-simple]
-for information about creating hooks and using `defaultMainWithHooks`.
+Run the test suites specified in the package description file.  Aside from
+the following flags, Cabal accepts the name of one or more test suites on the
+command line after `test`.  When supplied, Cabal will run only the named test
+suites, otherwise, Cabal will run all test suites in the package.
+
+`--builddir=`_dir_
+:   The directory where Cabal puts generated build files (default: `dist`).
+    Test logs will be located in the `test` subdirectory.
+
+`--append-human-logs`
+:   Append test output to human-readable logs.  By default, existing human-
+    readable test logs are overwritten at each invocation of `setup test`.
+
+`--human-log=`_path_
+:   The template used to name human-readable test logs; the path is relative
+    to `dist/test`.  By default, logs are named according to the template
+    `$pkgid-$test-suite.log`, so that each test suite will be logged to its own
+    human-readable log file.  Template variables allowed are: `$pkgid`,
+    `$compiler`, `$os`, `$arch`, `$test-suite`, and `$result`.
+
+`--machine-log=`_path_
+:   The path to the machine-readable log, relative to `dist/test`.  The default
+    template is `$pkgid.log`.  Template variables allowed are: `$pkgid`,
+    `$compiler`, `$os`, `$arch`, and `$result`.
+
+`--show-details=`_filter_
+:   Determines if the results of individual test cases are shown on the
+    terminal.  May be `always` (always show), `never` (never show), or
+    `failures` (show only the test cases of failing test suites).
+
+`--replay=`_path_
+:   Replay the test suites in the specified machine-readable log file, using
+    the saved options.  If the log file was created by running only a subset
+    of the package's tests, then only that subset will be run.  In particular,
+    specifying test suites not in the machine-readable log is an error.
+
+`--test-options=`_options_
+:   Give extra options to the test executables.
+
+`--test-option=`_option_
+:   give an extra option to the test executables.  There is no need to quote
+    options containing spaces because a single option is assumed, so options
+    will not be split on spaces.
 
 ## setup sdist ##
 
