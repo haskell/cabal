@@ -249,7 +249,7 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
     case psrcFiles of
         -- no preprocessor file exists, look for an ordinary source file
       Nothing -> do
-                 bsrcFiles <- findFileWithExtension builtinSuffixes searchLoc baseFile
+                 bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : searchLoc) baseFile
                  case bsrcFiles of
                   Nothing -> die $ "can't find source for " ++ baseFile
                                 ++ " in " ++ intercalate ", " searchLoc
