@@ -231,6 +231,10 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
           | otherwise = ["hs", "lhs"]
         localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
 
+--TODO: try to list all the modules that could not be found
+--      not just the first one. It's annoying and slow due to the need
+--      to reconfigure after editing the .cabal file each time.
+
 -- |Find the first extension of the file that exists, and preprocess it
 -- if required.
 preprocessFile
@@ -248,6 +252,12 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
     psrcFiles <- findFileWithExtension' (map fst handlers) searchLoc baseFile
     case psrcFiles of
         -- no preprocessor file exists, look for an ordinary source file
+        -- just to make sure one actually exists at all for this module.
+        -- Note: by looking in the target/output build dir too, we allow
+        -- source files to appear magically in the target build dir without
+        -- any corresponding "real" source file. This lets custom Setup.hs
+        -- files generate source modules directly into the build dir without
+        -- the rest of the build system being aware of it (somewhat dodgy)
       Nothing -> do
                  bsrcFiles <- findFileWithExtension builtinSuffixes (buildLoc : searchLoc) baseFile
                  case bsrcFiles of
