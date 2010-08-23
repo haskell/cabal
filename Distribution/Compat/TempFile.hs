@@ -75,7 +75,7 @@ openTempFile tmp_dir template
     (templateBase, templateExt) = splitExtension template
     findTempName :: Int -> IO (FilePath, Handle)
     findTempName x
-      = do let path = tmp_dir </> (templateBase ++ show x) <.> templateExt
+      = do let path = tmp_dir </> (templateBase ++ "-" ++ show x) <.> templateExt
            b  <- doesFileExist path
            if b then findTempName (x+1)
                 else do hnd <- openFile path ReadWriteMode
