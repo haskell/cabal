@@ -53,7 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Configure (configure,
                                       writePersistBuildConfig,
                                       getPersistBuildConfig,
-                                      checkPersistBuildConfig,
+                                      checkPersistBuildConfigOutdated,
                                       maybeGetPersistBuildConfig,
                                       localBuildInfoFile,
                                       getInstalledPackages,
@@ -246,12 +246,11 @@ parseHeader header = case words header of
 
 -- |Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
-checkPersistBuildConfig :: FilePath -> FilePath -> IO ()
-checkPersistBuildConfig distPref pkg_descr_file = do
+checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
+checkPersistBuildConfigOutdated distPref pkg_descr_file = do
   t0 <- getModificationTime pkg_descr_file
   t1 <- getModificationTime $ localBuildInfoFile distPref
-  when (t0 > t1) $
-    die (pkg_descr_file ++ " has been changed, please re-configure.")
+  return (t0 > t1)
 
 -- |@dist\/setup-config@
 localBuildInfoFile :: FilePath -> FilePath
@@ -462,6 +461,8 @@ configure (pkg_descr0, pbi) cfg
                 names = [ name | Dependency name _ <- targetBuildDepends bi ]
 
         let lbi = LocalBuildInfo{
+                    configFlags         = cfg,
+                    extraArgs           = [], -- Actual args would be put here in configureAction
                     installDirTemplates = installDirs,
                     compiler            = comp,
                     buildDir            = distPref </> "build",

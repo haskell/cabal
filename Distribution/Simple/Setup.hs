@@ -136,7 +136,7 @@ defaultDistPref = "dist"
 -- Its monoid instance gives us the behaviour where it starts out as
 -- 'NoFlag' and later flags override earlier ones.
 --
-data Flag a = Flag a | NoFlag deriving (Show, Eq)
+data Flag a = Flag a | NoFlag deriving (Show, Read, Eq)
 
 instance Functor Flag where
   fmap f (Flag x) = Flag (f x)
@@ -286,7 +286,7 @@ data ConfigFlags = ConfigFlags {
     configConfigurationsFlags :: FlagAssignment,
     configTests :: Flag Bool     -- ^Enable test suite compilation
   }
-  deriving Show
+  deriving (Read,Show)
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
