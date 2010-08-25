@@ -56,7 +56,7 @@ import Data.List (elemIndex)
 import Distribution.ReadE
 
 data Verbosity = Silent | Normal | Verbose | Deafening
-    deriving (Show, Eq, Ord, Enum, Bounded)
+    deriving (Show, Read, Eq, Ord, Enum, Bounded)
 
 -- We shouldn't print /anything/ unless an error occurs in silent mode
 silent :: Verbosity
