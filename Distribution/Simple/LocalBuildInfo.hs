@@ -75,6 +75,8 @@ import Distribution.Simple.PackageIndex
          ( PackageIndex )
 import Distribution.Simple.Utils
          ( die )
+import Distribution.Simple.Setup
+         ( ConfigFlags )
 import Distribution.Text
          ( display )
 
@@ -83,6 +85,12 @@ import Data.List (nub)
 -- |Data cached after configuration step.  See also
 -- 'Distribution.Setup.ConfigFlags'.
 data LocalBuildInfo = LocalBuildInfo {
+        configFlags   :: ConfigFlags,
+        -- ^ Options passed to the configuration step. 
+        -- Needed to re-run configuration when .cabal is out of date
+        extraArgs          :: [String],
+        -- ^ Extra args on the command line for the configuration step. 
+        -- Needed to re-run configuration when .cabal is out of date
         installDirTemplates :: InstallDirTemplates,
                 -- ^ The installation directories for the various differnt
                 -- kinds of files
