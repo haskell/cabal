@@ -181,6 +181,7 @@ resolvePackages verbosity includeDependencies comp
                   targets
       --TODO: suggest using --no-deps, unpack or fetch -o
       -- if cannot satisfy deps
+      --TODO: add commandline constraint and preference args for fetch
 
       return (selectPackagesToFetch plan)
 
