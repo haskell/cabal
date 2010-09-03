@@ -44,7 +44,7 @@ Library
     Build-Depends: directory  >= 1   && < 1.1,
                    process    >= 1   && < 1.1,
                    old-time   >= 1   && < 1.1,
-                   containers >= 0.1 && < 0.4,
+                   containers >= 0.1 && < 0.5,
                    array      >= 0.1 && < 0.4,
                    pretty     >= 1   && < 1.1
 
