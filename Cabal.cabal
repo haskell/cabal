@@ -41,7 +41,7 @@ Library
   if flag(base4) { build-depends: base >= 4 } else { build-depends: base < 4 }
   if flag(base3) { build-depends: base >= 3 } else { build-depends: base < 3 }
   if flag(base3)
-    Build-Depends: directory  >= 1   && < 1.1,
+    Build-Depends: directory  >= 1   && < 1.2,
                    process    >= 1   && < 1.1,
                    old-time   >= 1   && < 1.1,
                    containers >= 0.1 && < 0.5,
