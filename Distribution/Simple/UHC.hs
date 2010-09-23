@@ -48,7 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.UHC (
     configure, getInstalledPackages,
-    buildLib, installLib, registerPackage
+    buildLib, buildExe, installLib, registerPackage
   ) where
 
 import Control.Monad
@@ -197,6 +197,22 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   runUhcProg uhcArgs
   
   return ()
+
+buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> Executable         -> ComponentLocalBuildInfo -> IO ()
+buildExe verbosity _pkg_descr lbi exe clbi = do
+  systemPkgDir <- rawSystemProgramStdoutConf verbosity uhcProgram (withPrograms lbi) ["--meta-pkgdir-system"]
+  userPkgDir   <- getUserPackageDir
+  let runUhcProg = rawSystemProgramConf verbosity uhcProgram (withPrograms lbi)
+  let uhcArgs =    -- common flags lib/exe
+                   constructUHCCmdLine userPkgDir systemPkgDir
+                                       lbi (buildInfo exe) clbi
+                                       (buildDir lbi) verbosity
+                   -- output file
+                ++ ["--output", buildDir lbi </> exeName exe]
+                   -- main source module
+                ++ [modulePath exe]
+  runUhcProg uhcArgs
 
 constructUHCCmdLine :: FilePath -> FilePath
                     -> LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo

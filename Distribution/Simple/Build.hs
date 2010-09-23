@@ -190,6 +190,7 @@ buildExe verbosity pkg_descr lbi exe clbi =
     LHC  -> LHC.buildExe  verbosity pkg_descr lbi exe clbi
     Hugs -> Hugs.buildExe verbosity pkg_descr lbi exe clbi
     NHC  -> NHC.buildExe  verbosity pkg_descr lbi exe clbi
+    UHC  -> UHC.buildExe  verbosity pkg_descr lbi exe clbi
     _    -> die "Building is not supported with this compiler."
 
 initialBuildSteps :: FilePath -- ^"dist" prefix
