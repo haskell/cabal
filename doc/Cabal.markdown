@@ -384,17 +384,22 @@ describe the package as a whole:
     natural numbers separated by dots.
 
 `cabal-version:` _<, >=, etc. & numbers_
-:   The version of Cabal required for this package. Since, with Cabal
+:   The version of Cabal required for this package. Since with Cabal
     version 1.2 the syntax of package descriptions has changed, this is
     now a required field. List the field early in your `.cabal` file so
-    that it will appear as a syntax error before any others, since old
-    versions of Cabal unfortunately do not recognize this field.
+    that it will appear as an error before any others.
 
-    For compatibility, files written in the old syntax are still
-    recognized.  Thus if you don't require features introduced with or
-    after Cabal version 1.2, you may write your package description file
-    using the old syntax.  Please consult the user's guide of that Cabal
-    version for a description of that syntax.
+    Files written in the old syntax are still recognized, so if you don't
+    require features introduced with or after Cabal version 1.2, you may
+    write your package description file using the old syntax.  Please
+    consult the user's guide of an older Cabal version for a description
+    of that syntax.
+
+    Cabal strives to be compatible, so upper bounds are not usually
+    necessary, as syntax even several major versions old will likely
+    continue to be supported. Conversely, specifying too low a lower
+    bound may force Cabal to use deprecated or legacy behaviour, in order
+    to ensure that packages which rely on that behaviour continue to work.
 
 `build-type:` _identifier_
 :   The type of build used by this package. Build types are the
@@ -585,13 +590,20 @@ values for these fields.
 
     Dependencies like `foo >= 1.2 && < 1.3` turn out to be very common
     because it is recommended practise for package versions to
-    correspond to API versions. There is a special syntax to support this use:
+    correspond to API versions. As of Cabal 1.6, there is a special
+    syntax to support this use:
 
     ~~~~~~~~~~~~~~~~
     build-depends: foo ==1.2.*
     ~~~~~~~~~~~~~~~~
 
     It is only syntactic sugar. It is exactly equivalent to `foo >= 1.2 && < 1.3`.
+
+    Note: Prior to Cabal 1.8, build-depends specified in each section
+    were global to all sections. This was unintentional, but some packages
+    were written to depend on it, so if you need your build-depends to
+    be local to each section, you must specify at least
+    `Cabal-Version: >= 1.8` in your `.cabal` file.
 
 `other-modules:` _identifier list_
 :   A list of modules used by the component but not exposed to users.
