@@ -233,6 +233,7 @@ optsField name flavor get set =
         field name (hsep . map text)
                    (sepBy parseTokenQ' (munch1 isSpace))
   where
+        update _ opts l | and (map null opts)  = l
         update f opts [] = [(f,opts)]
         update f opts ((f',opts'):rest)
            | f == f'   = (f, opts' ++ opts) : rest
@@ -603,7 +604,7 @@ parseOptVersion = parseQuoted ver <++ ver
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw
-  where 
+  where
     tw :: ReadP r (CompilerFlavor,VersionRange)
     tw = do compiler <- parseCompilerFlavorCompat
             skipSpaces
@@ -674,4 +675,14 @@ showTestedWith (compiler, version) = text (show compiler) <+> disp version
 -- | Pretty-print free-format text, ensuring that it is vertically aligned,
 -- and with blank lines replaced by dots for correct re-parsing.
 showFreeText :: String -> Doc
-showFreeText s = vcat [text (if null l then "." else l) | l <- lines s]
+showFreeText "" = empty
+showFreeText s  = vcat [text (if null l then "." else l) | l <- lines_ s]
+
+-- | 'lines_' breaks a string up into a list of strings at newline
+-- characters.  The resulting strings do not contain newlines.
+lines_                   :: String -> [String]
+lines_ []                =  [""]
+lines_ s                 =  let (l, s') = break (== '\n') s
+                            in  l : case s' of
+                                        []    -> []
+                                        (_:s'') -> lines_ s''
