@@ -56,6 +56,8 @@ module Distribution.PackageDescription.Parse (
         -- ** Supplementary build information
         readHookedBuildInfo,
         parseHookedBuildInfo,
+	writeHookedBuildInfo,
+	showHookedBuildInfo,
 
         pkgDescrFieldDescrs,
         libFieldDescrs,
