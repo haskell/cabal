@@ -56,8 +56,14 @@ module Distribution.PackageDescription.Parse (
         -- ** Supplementary build information
         readHookedBuildInfo,
         parseHookedBuildInfo,
-        writeHookedBuildInfo,
-        showHookedBuildInfo,
+
+        pkgDescrFieldDescrs,
+        libFieldDescrs,
+        executableFieldDescrs,
+        binfoFieldDescrs,
+        sourceRepoFieldDescrs,
+        testSuiteFieldDescrs,
+        flagFieldDescrs
   ) where
 
 import Data.Char  (isSpace)
@@ -166,7 +172,8 @@ pkgDescrFieldDescrs =
 -- | Store any fields beginning with "x-" in the customFields field of
 --   a PackageDescription.  All other fields will generate a warning.
 storeXFieldsPD :: UnrecFieldParser PackageDescription
-storeXFieldsPD (f@('x':'-':_),val) pkg = Just pkg{ customFieldsPD = (f,val):(customFieldsPD pkg) }
+storeXFieldsPD (f@('x':'-':_),val) pkg = Just pkg{ customFieldsPD =
+                                                        (customFieldsPD pkg) ++ [(f,val)]}
 storeXFieldsPD _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -184,7 +191,7 @@ libFieldDescrs =
 
 storeXFieldsLib :: UnrecFieldParser Library
 storeXFieldsLib (f@('x':'-':_), val) l@(Library { libBuildInfo = bi }) =
-    Just $ l {libBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi) }}
+    Just $ l {libBuildInfo = bi{ customFieldsBI = (customFieldsBI bi) ++ [(f,val)]}}
 storeXFieldsLib _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -356,7 +363,7 @@ binfoFieldDescrs =
            ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
  , listField   "ghc-shared-options"
            text               parseTokenQ
-           ghcSharedOptions      (\val binfo -> binfo{ghcSharedOptions=val})
+           ghcProfOptions        (\val binfo -> binfo{ghcSharedOptions=val})
  , optsField   "ghc-options"  GHC
            options            (\path  binfo -> binfo{options=path})
  , optsField   "hugs-options" Hugs
@@ -730,7 +737,7 @@ parsePackageDescription file = do
             flds <- collectFields parseExeFields sec_fields
             skipField
             (repos, flags, lib, exes, tests) <- getBody
-            return (repos, flags, lib, exes ++ [(exename, flds)], tests)
+            return (repos, flags, lib, (exename, flds): exes, tests)
 
         | sec_type == "test-suite" -> do
             when (null sec_label) $ lift $ syntaxError line_no
@@ -739,7 +746,7 @@ parsePackageDescription file = do
             flds <- collectFields (parseTestFields line_no) sec_fields
             skipField
             (repos, flags, lib, exes, tests) <- getBody
-            return (repos, flags, lib, exes, tests ++ [(testname, flds)])
+            return (repos, flags, lib, exes, (testname, flds): tests)
 
         | sec_type == "library" -> do
             when (not (null sec_label)) $ lift $
