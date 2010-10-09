@@ -354,7 +354,7 @@ binfoFieldDescrs =
            ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
  , listField   "ghc-shared-options"
            text               parseTokenQ
-           ghcProfOptions        (\val binfo -> binfo{ghcSharedOptions=val})
+           ghcSharedOptions      (\val binfo -> binfo{ghcSharedOptions=val})
  , optsField   "ghc-options"  GHC
            options            (\path  binfo -> binfo{options=path})
  , optsField   "hugs-options" Hugs
