@@ -64,7 +64,7 @@ import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
          , Library(..), withLib, libModules
          , TestSuite(..), withTest, testModules
-         , TestSuiteInterface(..), testInterface, testType )
+         , TestSuiteInterface(..), testInterface )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
