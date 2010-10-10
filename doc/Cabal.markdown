@@ -383,23 +383,38 @@ describe the package as a whole:
 :   The package version number, usually consisting of a sequence of
     natural numbers separated by dots.
 
-`cabal-version:` _<, >=, etc. & numbers_
-:   The version of Cabal required for this package. Since with Cabal
-    version 1.2 the syntax of package descriptions has changed, this is
-    now a required field. List the field early in your `.cabal` file so
-    that it will appear as an error before any others.
+`cabal-version:`  _>= x.y_
+:   The version of the Cabal specification that this package description uses.
+    The Cabal specification does slowly evolve, intoducing new features and
+    occasionally changing the meaning of existing features. By specifying
+    which version of the spec you are using it enables programs which process
+    the package description to know what syntax to expect and what each part
+    means.
 
-    Files written in the old syntax are still recognized, so if you don't
-    require features introduced with or after Cabal version 1.2, you may
-    write your package description file using the old syntax.  Please
-    consult the user's guide of an older Cabal version for a description
-    of that syntax.
+    For historical reasons this is always expressed using _>=_ version range
+    syntax. No other kinds of version range make sense, in particular upper
+    bounds do not make sense. In future this field will specify just a version
+    number, rather than a version range.
 
-    Cabal strives to be compatible, so upper bounds are not usually
-    necessary, as syntax even several major versions old will likely
-    continue to be supported. Conversely, specifying too low a lower
-    bound may force Cabal to use deprecated or legacy behaviour, in order
-    to ensure that packages which rely on that behaviour continue to work.
+    The version number you specify will affect both compatability and
+    behaviour. Most tools (including the Cabal libray and cabal program)
+    understand a range of versions of the Cabal specification. Older tools
+    will of course only work with older versions of the Cabal specification.
+    Most of the time, tools that are too old will recognise this fact and
+    produce a suitable error message.
+
+    As for behaviour, new versions of the Cabal spec can change the meaning
+    of existing syntax. This means if you want to take advantage of the new
+    meaning or behaviour then you must specify the newer Cabal version.
+    Tools are expected to use the meaning and behaviour appropriate to the
+    version given in the package description.
+
+    In particular, the syntax of package descriptions changed significantly
+    with Cabal version 1.2 and the `cabal-version` field is now required.
+    Files written in the old syntax are still recognized, so if you require
+    compatability with very old Cabal versions then you may write your package
+    description file using the old syntax.  Please consult the user's guide of
+    an older Cabal version for a description of that syntax.
 
 `build-type:` _identifier_
 :   The type of build used by this package. Build types are the
