@@ -69,7 +69,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-         , TestSuite(..), TestType(..), testVersion1 )
+         , TestSuite(..), TestSuiteInterface(..), testInterface )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
@@ -93,7 +93,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text
-         ( display, disp )
+         ( display )
 
 import Data.Maybe
          ( maybeToList )
@@ -145,8 +145,8 @@ build pkg_descr lbi flags suffixes = do
     buildExe verbosity pkg_descr lbi' exe clbi
 
   withTestLBI pkg_descr lbi' $ \test clbi ->
-    case testType test of
-        ExeTest v f | testVersion1 v -> do
+    case testInterface test of
+        TestSuiteExeV10 _ f -> do
             let exe = Executable
                     { exeName = testName test
                     , modulePath = f
@@ -154,7 +154,7 @@ build pkg_descr lbi flags suffixes = do
                     }
             info verbosity $ "Building test suite " ++ testName test ++ "..."
             buildExe verbosity pkg_descr lbi' exe clbi
-        LibTest v m | testVersion1 v -> do
+        TestSuiteLibV09 _ m -> do
             pwd <- getCurrentDirectory
             let lib = Library
                     { exposedModules = [ m ]
@@ -198,8 +198,8 @@ build pkg_descr lbi flags suffixes = do
             buildLib verbosity pkg lbi' lib clbi
             registerPackage verbosity ipi pkg lbi' True $ withPackageDB lbi'
             buildExe verbosity pkg_descr lbi' exe exeClbi
-        _ -> die $ "No support for building test suite type: "
-                ++ show (disp $ testType test)
+        TestSuiteUnsupported tt -> die $ "No support for building test suite "
+                                      ++ "type " ++ display tt
 
 
 -- | Initialize a new package db file for libraries defined
@@ -211,6 +211,8 @@ createInternalPackageDB distPref = do
     writeFile dbFile "[]"
     return packageDB
 
+-- TODO: build separate libs in separate dirs so that we can build
+-- multiple libs, e.g. for 'LibTest' library-style testsuites
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi =

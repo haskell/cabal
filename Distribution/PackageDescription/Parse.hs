@@ -60,7 +60,7 @@ module Distribution.PackageDescription.Parse (
         showHookedBuildInfo,
   ) where
 
-import Data.Char  (isSpace, isAlpha)
+import Data.Char  (isSpace)
 import Data.Maybe (listToMaybe, isJust)
 import Data.Monoid ( Monoid(..) )
 import Data.List  (nub, unfoldr, partition, (\\))
@@ -70,7 +70,6 @@ import System.Directory (doesFileExist)
 import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
 import Text.PrettyPrint.HughesPJ
-import qualified Distribution.Compat.ReadP as Parse
 
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
@@ -79,7 +78,7 @@ import Distribution.Package
          , packageName, packageVersion )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
-        ( anyVersion, isAnyVersion, withinRange, Version(..) )
+        ( anyVersion, isAnyVersion, withinRange )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
@@ -212,89 +211,90 @@ storeXFieldsExe _ _ = Nothing
 -- ---------------------------------------------------------------------------
 -- The TestSuite type
 
-data TempTestType
-    = TempExeTest
-        { tempVersion :: (Maybe Version)
-        , tempMainIs :: (Maybe FilePath)
-        , tempTestModule :: (Maybe ModuleName)
-        }
-    | TempLibTest
-        { tempVersion :: (Maybe Version)
-        , tempMainIs :: (Maybe FilePath)
-        , tempTestModule :: (Maybe ModuleName)
-        }
-    deriving (Show, Read, Eq)
+-- | An intermediate type just used for parsing the test-suite stanza.
+-- After validation it is converted into the proper 'TestSuite' type.
+data TestSuiteStanza = TestSuiteStanza {
+       testStanzaTestType   :: Maybe TestType,
+       testStanzaMainIs     :: Maybe FilePath,
+       testStanzaTestModule :: Maybe ModuleName,
+       testStanzaBuildInfo  :: BuildInfo
+     }
 
-instance Monoid TempTestType where
-    mempty = TempExeTest Nothing Nothing Nothing
+emptyTestStanza :: TestSuiteStanza
+emptyTestStanza = TestSuiteStanza Nothing Nothing Nothing mempty
 
-    mappend a b = case tempVersion b of
-        Nothing -> a
-            { tempMainIs = tempMainIs a `orElse` tempMainIs b
-            , tempTestModule = tempTestModule a `orElse` tempTestModule b
-            }
-        Just _ -> b
-            { tempMainIs = tempMainIs a `orElse` tempMainIs b
-            , tempTestModule = tempTestModule a `orElse` tempTestModule b
-            }
-
-orElse :: Maybe a -> Maybe a -> Maybe a
-orElse a b = case a of
-    Nothing -> b
-    Just _ -> a
-
-instance Text TempTestType where
-    disp (TempExeTest Nothing _ _) = text "exitcode-stdio"
-    disp (TempLibTest Nothing _ _) = text "detailed"
-    disp (TempExeTest (Just v) _ _) = text "exitcode-stdio-" <> disp v
-    disp (TempLibTest (Just v) _ _) = text "detailed-" <> disp v
-
-    parse = do
-        t <- Parse.munch1 (\c -> isAlpha c || '-' == c || '_' == c)
-        v <- parse
-        if t == "exitcode-stdio-"
-            then return $ TempExeTest (Just v) Nothing Nothing
-            else if t == "detailed-"
-                then return $ TempLibTest (Just v) Nothing Nothing
-                else Parse.pfail
-
-testSuiteFieldDescrs :: [FieldDescr (TestSuite, TempTestType)]
+testSuiteFieldDescrs :: [FieldDescr TestSuiteStanza]
 testSuiteFieldDescrs =
     [ simpleField "type"
-            disp            parse
-            snd             (\xs (suite, tt) -> (suite, tt `mappend` xs))
+        (maybe empty disp)    (fmap Just parse)
+        testStanzaTestType    (\x suite -> suite { testStanzaTestType = x })
     , simpleField "main-is"
-            (maybe empty showFilePath)    (fmap Just parseFilePathQ)
-            (tempMainIs . snd)   (\xs (suite, tt) -> (suite, tt `mappend` TempExeTest Nothing xs Nothing))
+        (maybe empty showFilePath)  (fmap Just parseFilePathQ)
+        testStanzaMainIs      (\x suite -> suite { testStanzaMainIs = x })
     , simpleField "test-module"
-            (maybe empty disp)            (fmap Just parseModuleNameQ)
-            (tempTestModule . snd)   (\xs (suite, tt) -> (suite, tt `mappend` TempLibTest Nothing Nothing xs))
+        (maybe empty disp)    (fmap Just parseModuleNameQ)
+        testStanzaTestModule  (\x suite -> suite { testStanzaTestModule = x })
     ]
     ++ map biToTest binfoFieldDescrs
-    where biToTest = liftField (testBuildInfo . fst) (\bi (suite, tt) -> (suite {testBuildInfo=bi}, tt))
+  where
+    biToTest = liftField testStanzaBuildInfo
+                         (\bi suite -> suite { testStanzaBuildInfo = bi })
 
-storeXFieldsTest :: UnrecFieldParser (TestSuite, TempTestType)
-storeXFieldsTest (f@('x':'-':_), val) (t@(TestSuite { testBuildInfo = bi }), tt) =
-    Just $ (t {testBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}, tt)
-storeXFieldsTest _ x = Just x
+storeXFieldsTest :: UnrecFieldParser TestSuiteStanza
+storeXFieldsTest (f@('x':'-':_), val) t@(TestSuiteStanza { testStanzaBuildInfo = bi }) =
+    Just $ t {testStanzaBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
+storeXFieldsTest _ _ = Nothing
 
-validateTestSuite :: LineNo -> (TestSuite, TempTestType) -> ParseResult TestSuite
-validateTestSuite line (suite, tt) =
-    case tt of
-        TempExeTest Nothing _ _ -> parseFail $ flip FromString (Just line)
-            $ "Required field 'type' not specified for test suite "
-            ++ testName suite
-        TempLibTest Nothing _ _ -> parseFail $ flip FromString (Just line)
-            $ "Required field 'type' not specified for test suite "
-            ++ testName suite
-        TempExeTest _ Nothing _ -> parseFail $ flip FromString (Just line)
-            $ "Required field 'main-is' not specified for test suite "
-            ++ testName suite ++ " in test type: " ++ show tt
-        TempExeTest (Just v) (Just f) _ -> return $ suite { testType = ExeTest v f }
-        TempLibTest _ _ Nothing -> parseFail $ flip FromString (Just line)
-            $ "Required field 'test-module' not specified for test suite "
-            ++ testName suite
-        TempLibTest (Just v) _ (Just m) -> return $ suite { testType = LibTest v m }
+validateTestSuite :: LineNo -> TestSuiteStanza -> ParseResult TestSuite
+validateTestSuite line stanza =
+    case testStanzaTestType stanza of
+      Nothing ->
+        syntaxError line $
+             "The 'type' field is required for test suites. "
+          ++ "The available test types are: "
+          ++ intercalate ", " (map display knownTestTypes)
+
+      Just tt@(TestTypeUnknown _ _) ->
+        return emptyTestSuite {
+          testInterface = TestSuiteUnsupported tt,
+          testBuildInfo = testStanzaBuildInfo stanza
+        }
+
+      Just tt | tt `notElem` knownTestTypes ->
+        return emptyTestSuite {
+          testInterface = TestSuiteUnsupported tt,
+          testBuildInfo = testStanzaBuildInfo stanza
+        }
+
+      Just tt@(TestTypeExe ver) ->
+        case testStanzaMainIs stanza of
+          Nothing   -> syntaxError line (missingField "main-is" tt)
+          Just file -> do
+            when (isJust (testStanzaTestModule stanza)) $
+              warning (extraField "test-module" tt)
+            return emptyTestSuite {
+              testInterface = TestSuiteExeV10 ver file,
+              testBuildInfo = testStanzaBuildInfo stanza
+            }
+
+      Just tt@(TestTypeLib ver) ->
+        case testStanzaTestModule stanza of
+          Nothing      -> syntaxError line (missingField "test-module" tt)
+          Just module_ -> do
+            when (isJust (testStanzaMainIs stanza)) $
+              warning (extraField "main-is" tt)
+            return emptyTestSuite {
+              testInterface = TestSuiteLibV09 ver module_,
+              testBuildInfo = testStanzaBuildInfo stanza
+            }
+
+  where
+    missingField name tt = "The '" ++ name ++ "' field is required for the "
+                        ++ display tt ++ " test suite type."
+
+    extraField   name tt = "The '" ++ name ++ "' field is not used for the '"
+                        ++ display tt ++ "' test suite type."
+
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
@@ -711,7 +711,7 @@ parsePackageDescription file = do
             when (null sec_label) $ lift $ syntaxError line_no
                 "'test-suite' needs one argument (the test suite's name)"
             testname <- lift $ runP line_no "test" parseTokenQ sec_label
-            flds <- collectFields parseTestFields sec_fields
+            flds <- collectFields (parseTestFields line_no) sec_fields
             skipField
             (repos, flags, lib, exes, tests) <- getBody
             return (repos, flags, lib, exes, tests ++ [(testname, flds)])
@@ -814,11 +814,11 @@ parsePackageDescription file = do
     parseExeFields :: [Field] -> PM Executable
     parseExeFields = lift . parseFields (tail executableFieldDescrs) storeXFieldsExe emptyExecutable
 
-    parseTestFields :: [Field] -> PM TestSuite
-    parseTestFields fields = do
+    parseTestFields :: LineNo -> [Field] -> PM TestSuite
+    parseTestFields line fields = do
         x <- lift $ parseFields testSuiteFieldDescrs storeXFieldsTest
-                (emptyTestSuite, mempty) fields
-        lift $ validateTestSuite (lineNo $ head fields) x
+                                emptyTestStanza fields
+        lift $ validateTestSuite line x
 
     checkForUndefinedFlags ::
         [Flag] ->

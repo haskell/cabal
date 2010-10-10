@@ -62,8 +62,9 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
-         , Library(..), withLib, libModules, TestSuite(..), withTest
-         , TestType(..), testModules, testVersion1 )
+         , Library(..), withLib, libModules
+         , TestSuite(..), withTest, testModules
+         , TestSuiteInterface(..), testInterface, testType )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -203,17 +204,17 @@ preprocessSources pkg_descr lbi forSDist verbosity handlers = do
                          verbosity builtinSuffixes biHandlers
     unless (null (testSuites pkg_descr)) $
         setupMessage verbosity "Preprocessing test suites for" (packageId pkg_descr)
-    withTest pkg_descr $ \test -> case testType test of
-        ExeTest v f | testVersion1 v ->
+    withTest pkg_descr $ \test -> case testInterface test of
+        TestSuiteExeV10 _ f ->
             preProcessTest test f $ buildDir lbi </> testName test
                 </> testName test ++ "-tmp"
-        LibTest v _ | testVersion1 v -> do
+        TestSuiteLibV09 _ _ -> do
             let testDir = buildDir lbi </> stubName test
                     </> stubName test ++ "-tmp"
             writeSimpleTestStub test testDir
             preProcessTest test (stubFilePath test) testDir
-        _ -> die $ "No support for preprocessing test suite type: "
-                ++ show (disp $ testType test)
+        TestSuiteUnsupported tt -> die $ "No support for preprocessing test "
+                                      ++ "suite type " ++ display tt
   where hc = compilerFlavor (compiler lbi)
         builtinSuffixes
           | hc == NHC = ["hs", "lhs", "gc"]
