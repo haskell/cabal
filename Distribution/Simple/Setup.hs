@@ -1195,6 +1195,8 @@ instance Monoid BuildFlags where
 data TestShowDetails = Never | Failures | Always
     deriving (Eq, Ord)
 
+--TODO: use Text class for parsing, should derive read/show
+
 instance Show TestShowDetails where
     show Always = "always"
     show Failures = "failures"
@@ -1212,6 +1214,7 @@ instance Read TestShowDetails where
             [(Never, fromJust $ stripPrefix "never" str)]
         | otherwise = []
 
+--TODO: do we need this instance?
 instance Monoid TestShowDetails where
     mempty = Never
     mappend a b = if a < b then b else a
@@ -1220,11 +1223,15 @@ data TestFlags = TestFlags {
     testDistPref  :: Flag FilePath,
     testVerbosity :: Flag Verbosity,
     testHumanLog :: Flag PathTemplate,
+    --TODO: do we really need append?
     testHumanAppend :: Flag Bool,
     testMachineLog :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
+    --TODO: eliminate the test list and pass it directly as positional args to the testHook
     testList :: Flag [String],
+    -- TODO: do we need this feature?
     testReplay :: Flag (Maybe FilePath),
+    -- TODO: think about if/how options are passed to test exes
     testOptions :: Flag [String]
   }
   deriving Show
