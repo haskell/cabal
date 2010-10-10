@@ -86,10 +86,10 @@ import Data.List (nub)
 -- 'Distribution.Setup.ConfigFlags'.
 data LocalBuildInfo = LocalBuildInfo {
         configFlags   :: ConfigFlags,
-        -- ^ Options passed to the configuration step. 
+        -- ^ Options passed to the configuration step.
         -- Needed to re-run configuration when .cabal is out of date
-        extraArgs          :: [String],
-        -- ^ Extra args on the command line for the configuration step. 
+        extraConfigArgs     :: [String],
+        -- ^ Extra args on the command line for the configuration step.
         -- Needed to re-run configuration when .cabal is out of date
         installDirTemplates :: InstallDirTemplates,
                 -- ^ The installation directories for the various differnt
