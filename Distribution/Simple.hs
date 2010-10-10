@@ -194,7 +194,8 @@ defaultMainHelper hooks args = topHandler $
 
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
     commands =
-      [configureCommand progs `commandAddAction` configureAction    hooks
+      [configureCommand progs `commandAddAction` \fs as ->
+                                                 configureAction    hooks fs as >> return ()
       ,buildCommand     progs `commandAddAction` buildAction        hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
@@ -217,7 +218,7 @@ allSuffixHandlers hooks
       overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
       overridesPP = unionBy (\x y -> fst x == fst y)
 
-configureAction :: UserHooks -> ConfigFlags -> Args -> IO ()
+configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction hooks flags args = do
                 let distPref = fromFlag $ configDistPref flags
                 pbi <- preConf hooks args flags
@@ -239,6 +240,7 @@ configureAction hooks flags args = do
 
                 let pkg_descr = localPkgDescr localbuildinfo
                 postConf hooks args flags pkg_descr localbuildinfo
+                return localbuildinfo
               where
                 verbosity = fromFlag (configVerbosity flags)
                 confPkgDescr :: IO (Maybe FilePath, GenericPackageDescription)
@@ -396,18 +398,29 @@ getBuildConfig hooks verbosity distPref = do
     Just pkg_descr_file -> do
       outdated <- checkPersistBuildConfigOutdated distPref pkg_descr_file
       if outdated
-        then do warn verbosity $ pkg_descr_file ++ " has been changed.\n"
-                                 ++ "Re-configuring with most recently used options.\n" 
-                                 ++ "If this fails, please run configure manually.\n"
-                let cFlags = configFlags lbi
-                -- Since list of unconfigured programs is not serialized, restore it to the same value
-                -- as normally used at the beginning of conigure run
-                let cFlags' = cFlags { configPrograms = restoreProgramConfiguration
-                                                         (builtinPrograms ++ hookedPrograms hooks)
-                                                         (configPrograms cFlags) }
-                configureAction hooks cFlags' (extraArgs lbi)
-                getBuildConfig hooks verbosity distPref
+        then reconfigure pkg_descr_file lbi
         else return lbi
+
+  where
+    reconfigure :: FilePath -> LocalBuildInfo -> IO LocalBuildInfo
+    reconfigure pkg_descr_file lbi = do
+      notice verbosity $ pkg_descr_file ++ " has been changed. "
+                      ++ "Re-configuring with most recently used options. " 
+                      ++ "If this fails, please run configure manually.\n"
+      let cFlags = configFlags lbi
+      let cFlags' = cFlags {
+            -- Since the list of unconfigured programs is not serialized,
+            -- restore it to the same value as normally used at the beginning
+            -- of a conigure run:
+            configPrograms = restoreProgramConfiguration
+                               (builtinPrograms ++ hookedPrograms hooks)
+                               (configPrograms cFlags),
+
+            -- Use the current, not saved verbosity level:
+            configVerbosity = Flag verbosity
+          }
+      configureAction hooks cFlags' (extraArgs lbi)
+
 
 -- --------------------------------------------------------------------------
 -- Cleaning
