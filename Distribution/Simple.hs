@@ -234,8 +234,12 @@ configureAction hooks flags args = do
 
                 localbuildinfo0 <- confHook hooks epkg_descr flags
 
-                -- remember the .cabal filename if we know it and all the extra command line args
-                let localbuildinfo = localbuildinfo0{ pkgDescrFile = mb_pd_file, extraArgs = args }
+                -- remember the .cabal filename if we know it
+                -- and all the extra command line args
+                let localbuildinfo = localbuildinfo0 {
+                                       pkgDescrFile = mb_pd_file,
+                                       extraConfigArgs = args
+                                     }
                 writePersistBuildConfig distPref localbuildinfo
 
                 let pkg_descr = localPkgDescr localbuildinfo
@@ -422,7 +426,7 @@ getBuildConfig hooks verbosity distPref = do
             -- Use the current, not saved verbosity level:
             configVerbosity = Flag verbosity
           }
-      configureAction hooks cFlags' (extraArgs lbi)
+      configureAction hooks cFlags' (extraConfigArgs lbi)
 
 
 -- --------------------------------------------------------------------------
