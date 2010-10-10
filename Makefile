@@ -61,31 +61,19 @@ haddock: $(HADDOCK_STAMP)
 $(HADDOCK_STAMP) : $(CONFIG_STAMP) $(BUILD_STAMP)
 	./setup haddock
 
-XMLLINT=xmllint
-XMLLINT_OPTIONS=--nonet --noout --valid
-
-XSLTPROC=xsltproc
-XSLTPROC_HTML_OUTDIR=dist/doc/users-guide/
-XSLTPROC_HTML_DOCTYPE_PUBLIC="-//W3C//DTD HTML 4.01 Transitional//EN"
-XSLTPROC_HTML_DOCTYPE_SYSTEM="http://www.w3.org/TR/html4/loose.dtd"
-XSLTPROC_HTML_ENCODING=UTF-8
-XSLTPROC_HTML_CSS=Cabal.css
-XSLTPROC_HTML_PARAMS=\
-	--param use.id.as.filename 1 \
-	--param toc.section.depth 3 \
-	--stringparam base.dir $(XSLTPROC_HTML_OUTDIR) \
-	--stringparam chunker.output.doctype-public $(XSLTPROC_HTML_DOCTYPE_PUBLIC) \
-	--stringparam chunker.output.doctype-system $(XSLTPROC_HTML_DOCTYPE_SYSTEM) \
-	--stringparam chunker.output.encoding $(XSLTPROC_HTML_ENCODING) \
-	--stringparam html.stylesheet $(XSLTPROC_HTML_CSS)
-XSLTPROC_HTML_STYLESHEET=http://docbook.sourceforge.net/release/xsl/current/html/chunk.xsl
-XSLTPROC_OPTIONS=--nonet $(XSLTPROC_HTML_PARAMS) $(XSLTPROC_HTML_STYLESHEET)
+PANDOC=pandoc
+PANDOC_OPTIONS= \
+	--standalone \
+	--smart \
+	--css=$(PANDOC_HTML_CSS)
+PANDOC_HTML_OUTDIR=dist/doc/users-guide/
+PANDOC_HTML_CSS=Cabal.css
 
 users-guide: $(USERGUIDE_STAMP)
-$(USERGUIDE_STAMP) : doc/Cabal.xml
-	$(XMLLINT) $(XMLLINT_OPTIONS) $<
-	$(XSLTPROC) $(XSLTPROC_OPTIONS) $<
-	cp doc/$(XSLTPROC_HTML_CSS) $(XSLTPROC_HTML_OUTDIR)
+$(USERGUIDE_STAMP) : doc/Cabal.markdown
+	mkdir -p dist/doc/users-guide/
+	$(PANDOC) $(PANDOC_OPTIONS) --from=markdown --to=html $< --output $@
+	cp doc/$(PANDOC_HTML_CSS) $(PANDOC_HTML_OUTDIR)
 
 docs: haddock users-guide
 
