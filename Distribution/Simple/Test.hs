@@ -57,7 +57,8 @@ import Distribution.ModuleName ( ModuleName )
 import Distribution.Package
     ( PackageId )
 import qualified Distribution.PackageDescription as PD
-    ( PackageDescription(..), TestSuite(..), TestType(..), testVersion1 )
+         ( PackageDescription(..), TestSuite(..)
+         , TestSuiteInterface(..), testInterface, testType )
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..), CompilerId )
@@ -247,8 +248,8 @@ test pkg_descr lbi flags = do
             let testLogPath = testSuiteLogPath humanTemplate pkg_descr lbi
                 go pre cmd post = testController flags pkg_descr suite
                                                  pre cmd post testLogPath
-            case PD.testType suite of
-                PD.ExeTest v _ | PD.testVersion1 v -> do
+            case PD.testInterface suite of
+              PD.TestSuiteExeV10 _ _ -> do
                     let cmd = LBI.buildDir lbi </> PD.testName suite
                             </> PD.testName suite <.> exeExtension
                         preTest _ = ""
@@ -264,7 +265,7 @@ test pkg_descr lbi flags = do
                                 }
                     go preTest cmd postTest
 
-                PD.LibTest v _ | PD.testVersion1 v -> do
+              PD.TestSuiteLibV09 _ _ -> do
                     let cmd = LBI.buildDir lbi </> stubName suite
                             </> stubName suite <.> exeExtension
                         oldLog = case mLog of
@@ -277,8 +278,8 @@ test pkg_descr lbi flags = do
                         preTest f = show $ oldLog { logFile = f }
                         postTest _ = read
                     go preTest cmd postTest
-                _ -> do
-                    let dieLog = TestSuiteLog
+
+              _ -> return TestSuiteLog
                             { name = PD.testName suite
                             , cases = [Case (PD.testName suite) mempty
                                 $ TestSuite.Error $ "No support for running "
@@ -286,7 +287,6 @@ test pkg_descr lbi flags = do
                                 ++ show (disp $ PD.testType suite)]
                             , logFile = ""
                             }
-                    return dieLog
 
     testsToRun <- case replay of
         Nothing -> case testNames of
@@ -408,7 +408,7 @@ writeSimpleTestStub :: PD.TestSuite -- ^ library 'TestSuite' for which a stub
 writeSimpleTestStub t dir = do
     createDirectoryIfMissing True dir
     let filename = dir </> stubFilePath t
-        PD.LibTest _ m = PD.testType t
+        PD.TestSuiteLibV09 _ m = PD.testInterface t
     writeFile filename $ simpleTestStub m
 
 -- | Source code for library test suite stub executable
