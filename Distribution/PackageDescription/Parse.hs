@@ -533,6 +533,9 @@ peekField = get >>= return . listToMaybe
 skipField :: PM ()
 skipField = modify tail
 
+--FIXME: this should take a ByteString, not a String. We have to be able to
+-- decode UTF8 and handle the BOM.
+
 -- | Parses the given file into a 'GenericPackageDescription'.
 --
 -- In Cabal 1.2 the syntax for package descriptions was changed to a format
