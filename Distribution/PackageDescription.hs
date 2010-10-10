@@ -99,7 +99,10 @@ module Distribution.PackageDescription (
         CondTree(..), ConfVar(..), Condition(..),
 
         -- * Source repositories
-        SourceRepo(..), RepoKind(..), RepoType(..),
+        SourceRepo(..),
+        RepoKind(..),
+        RepoType(..),
+        knownRepoTypes,
   ) where
 
 import Data.List   (nub, intersperse)
