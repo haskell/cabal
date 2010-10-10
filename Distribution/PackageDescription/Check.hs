@@ -1128,26 +1128,11 @@ checkPackageContent ops pkg = do
   setupError      <- checkSetupExists     ops pkg
   configureError  <- checkConfigureExists ops pkg
   localPathErrors <- checkLocalPathsExist ops pkg
-  vcsLocation     <- vcsLocationMissingNote ops pkg
+  vcsLocation     <- checkMissingVcsInfo  ops pkg
 
   return $ catMaybes [licenseError, setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
-
-vcsLocationMissingNote :: Monad m => CheckPackageContentOps m
-                       -> PackageDescription
-                       -> m [PackageCheck]
-vcsLocationMissingNote ops pkg = do
-  if ( (not . null) (sourceRepos pkg)) then
-      return []
-    else do
-      vcsInUse <- mapM (doesDirectoryExist ops)
-                       [ ".cvs", ".svn", "_darcs", ".darcs", ".git", ".hg", ".bzr" ] 
-                  -- TODO glob for *.mtn for monotone repositories? 
-      if any id vcsInUse then
-        return [ PackageDistSuspicious "A 'source-repository' is not specified." ]
-        else return []
-
 
 checkLicenseExists :: Monad m => CheckPackageContentOps m
                    -> PackageDescription
@@ -1201,6 +1186,35 @@ checkLocalPathsExist ops pkg = do
                         ++ " directory does not exist."
            }
          | (dir, kind) <- missing ]
+
+checkMissingVcsInfo :: Monad m => CheckPackageContentOps m
+                    -> PackageDescription
+                    -> m [PackageCheck]
+checkMissingVcsInfo ops pkg | null (sourceRepos pkg) = do
+    vcsInUse <- liftM or $ mapM (doesDirectoryExist ops) repoDirnames
+    if vcsInUse
+      then return [ PackageDistSuspicious message ]
+      else return []
+  where
+    repoDirnames = [ dirname | repo    <- knownRepoTypes
+                             , dirname <- repoTypeDirname repo ]
+    message  = "When distributing packages it is encouraged to specify source "
+            ++ "control information in the .cabal file using one or more "
+            ++ "'source-repository' sections. See the Cabal user guide for "
+            ++ "details."
+
+checkMissingVcsInfo _ _ = return []
+
+repoTypeDirname :: RepoType -> [FilePath]
+repoTypeDirname Darcs      = ["_darcs"]
+repoTypeDirname Git        = [".git"]
+repoTypeDirname SVN        = [".svn"]
+repoTypeDirname CVS        = ["CVS"]
+repoTypeDirname Mercurial  = [".hg"]
+repoTypeDirname GnuArch    = [".arch-params"]
+repoTypeDirname Bazaar     = [".bzr"]
+repoTypeDirname Monotone   = ["_MTN"]
+repoTypeDirname _          = []
 
 -- ------------------------------------------------------------
 -- * Checks involving files in the package
