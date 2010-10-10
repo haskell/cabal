@@ -345,6 +345,8 @@ testAction hooks flags args = do
     -- default action is a no-op and if the package uses the old test interface
     -- the new handler will find no tests.
     runTests hooks args False pkg_descr localBuildInfo
+    --FIXME: this is a hack, passing the args inside the flags
+    -- it's because the args to not get passed to the main test hook
     let flags' = flags { testList = Flag args }
     hookedAction preTest testHook postTest
             (getBuildConfig hooks verbosity distPref)

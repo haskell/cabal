@@ -73,12 +73,14 @@ module Distribution.PackageDescription (
 
         -- * Tests
         TestSuite(..),
+        TestSuiteInterface(..),
         TestType(..),
+        testType,
+        knownTestTypes,
         emptyTestSuite,
         hasTests,
         withTest,
         testModules,
-        testVersion1,
 
         -- * Build information
         BuildInfo(..),
@@ -100,20 +102,18 @@ module Distribution.PackageDescription (
         SourceRepo(..), RepoKind(..), RepoType(..),
   ) where
 
-import Data.List   (nub)
+import Data.List   (nub, intersperse)
 import Data.Monoid (Monoid(mempty, mappend))
 import Text.PrettyPrint.HughesPJ as Disp
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.ParseUtils ( parseFilePathQ, parseModuleNameQ )
-import qualified Data.Char as Char (isAlphaNum, toLower, isAlpha)
+import qualified Data.Char as Char (isAlphaNum, isDigit, toLower)
 
 import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
          , Dependency, Package(..) )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
-         ( Version(Version), VersionRange, anyVersion, withinRange
-         , withinVersion )
+         ( Version(Version), VersionRange, anyVersion )
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
@@ -328,55 +328,64 @@ exeModules exe = otherModules (buildInfo exe)
 -- ---------------------------------------------------------------------------
 -- The TestSuite type
 
+-- | A \"test-suite\" stanza in a cabal file.
+--
 data TestSuite = TestSuite {
-        testName :: String,
-        testType :: TestType,
+        testName      :: String,
+        testInterface :: TestSuiteInterface,
         testBuildInfo :: BuildInfo
     }
     deriving (Show, Read, Eq)
 
-data TestType = ExeTest Version FilePath | LibTest Version ModuleName
-    deriving (Show, Read, Eq)
+-- | The test suite interfaces that are currently defined. Each test suite must
+-- specify which interface it supports.
+--
+-- More interfaces may be defined in future, either new revisions or totally
+-- new interfaces.
+--
+data TestSuiteInterface =
 
-instance Monoid TestType where
-    mempty = ExeTest (Version [] []) ""
-    mappend a b = if b == mempty then a else b
+     -- | Test interface \"exitcode-stdio-1.0\". The test-suite takes the form
+     -- of an executable. It returns a zero exit code for success, non-zero for
+     -- failure. The stdout and stderr channels may be logged. It takes no
+     -- command line parameters and nothing on stdin.
+     --
+     TestSuiteExeV10 Version FilePath
 
-instance Text TestType where
-    disp (ExeTest v _) = text "exitcode-stdio-" <> disp v
-    disp (LibTest v _) = text "detailed-" <> disp v
+     -- | Test interface \"detailed-0.9\". The test-suite takes the form of a
+     -- library containing a designated module that exports \"tests :: [Test]\".
+     --
+   | TestSuiteLibV09 Version ModuleName
 
-    parse = do
-        t <- Parse.munch1 (\c -> Char.isAlpha c || '-' == c || '_' == c)
-        v <- parse
-        Parse.skipSpaces
-        if t == "exitcode-stdio-"
-            then do
-                f <- parseFilePathQ
-                return $ ExeTest v f
-            else if t == "detailed-"
-                then do
-                    m <- parseModuleNameQ
-                    return $ LibTest v m
-                else Parse.pfail
+     -- | A test suite that does not conform to one of the above interfaces for
+     -- the given reason (e.g. unknown test type).
+     --
+   | TestSuiteUnsupported TestType
+   deriving (Eq, Read, Show)
 
 instance Monoid TestSuite where
     mempty = TestSuite {
-        testName = mempty,
-        testType = mempty,
+        testName      = mempty,
+        testInterface = mempty,
         testBuildInfo = mempty
     }
 
     mappend a b = TestSuite {
-        testName = combine testName,
-        testType = testType a `mappend` testType b,
-        testBuildInfo = testBuildInfo a `mappend` testBuildInfo b
+        testName      = combine' testName,
+        testInterface = combine  testInterface,
+        testBuildInfo = combine  testBuildInfo
     }
-        where combine f = case (f a, f b) of
+        where combine   field = field a `mappend` field b
+              combine' f = case (f a, f b) of
                         ("", x) -> x
                         (x, "") -> x
                         (x, y) -> error "Ambiguous values for test field: '"
                             ++ x ++ "' and '" ++ y ++ "'"
+
+instance Monoid TestSuiteInterface where
+    mempty  =  TestSuiteUnsupported (TestTypeUnknown mempty (Version [] []))
+    mappend a (TestSuiteUnsupported _) = a
+    mappend _ b                        = b
 
 emptyTestSuite :: TestSuite
 emptyTestSuite = mempty
@@ -393,13 +402,49 @@ withTest pkg_descr f =
 
 -- | Get all the module names from a test suite.
 testModules :: TestSuite -> [ModuleName]
-testModules test = otherModules (testBuildInfo test) ++ libraryModule
-    where libraryModule = case testType test of
-            ExeTest _ _ -> []
-            LibTest _ m -> [ m ]
+testModules test = (case testInterface test of
+                     TestSuiteLibV09 _ m -> [m]
+                     _                   -> [])
+                ++ otherModules (testBuildInfo test)
 
-testVersion1 :: Version -> Bool
-testVersion1 = flip withinRange $ withinVersion $ Version [1,0] []
+-- | The \"test-type\" field in the test suite stanza.
+--
+data TestType = TestTypeExe Version     -- ^ \"type: exitcode-stdio-x.y\"
+              | TestTypeLib Version     -- ^ \"type: detailed-x.y\"
+              | TestTypeUnknown String Version -- ^ Some unknown test type e.g. \"type: foo\"
+    deriving (Show, Read, Eq)
+
+knownTestTypes :: [TestType]
+knownTestTypes = [ TestTypeExe (Version [1,0] [])
+                 , TestTypeLib (Version [0,9] []) ]
+
+instance Text TestType where
+  disp (TestTypeExe ver)          = text "exitcode-stdio-" <> disp ver
+  disp (TestTypeLib ver)          = text "detailed-"       <> disp ver
+  disp (TestTypeUnknown name ver) = text name <> char '-' <> disp ver
+
+  parse = do
+    cs   <- Parse.sepBy1 component (Parse.char '-')
+    _    <- Parse.char '-'
+    ver  <- parse
+    let name = concat (intersperse "-" cs)
+    return $! case lowercase name of
+      "exitcode-stdio" -> TestTypeExe ver
+      "detailed"       -> TestTypeLib ver
+      _                -> TestTypeUnknown name ver
+
+    where
+      component = do
+        cs <- Parse.munch1 Char.isAlphaNum
+        if all Char.isDigit cs then Parse.pfail else return cs
+        -- each component must contain an alphabetic character, to avoid
+        -- ambiguity in identifiers like foo-1 (the 1 is the version number).
+
+testType :: TestSuite -> TestType
+testType test = case testInterface test of
+  TestSuiteExeV10 ver _         -> TestTypeExe ver
+  TestSuiteLibV09 ver _         -> TestTypeLib ver
+  TestSuiteUnsupported testtype -> testtype
 
 -- ---------------------------------------------------------------------------
 -- The BuildInfo type
@@ -495,6 +540,7 @@ allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
                       ++ [ bi | exe <- executables pkg_descr
                               , let bi = buildInfo exe
                               , buildable bi ]
+                      -- TODO: extend to test suite buildinfos (needed for check)
 
 type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 

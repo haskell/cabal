@@ -321,6 +321,8 @@ configure (pkg_descr0, pbi) cfg
               where
                 pkgs' = PackageIndex.insert internalPackage installedPackageSet
             pkg_descr0'' =
+                --TODO: avoid disabling tests entirely, we otherwise cannot
+                -- perform semantic checks
                 if fromFlag (configTests cfg)
                     then pkg_descr0
                     else pkg_descr0 { condTestSuites = [] }
