@@ -87,6 +87,7 @@ import Data.Tree as Tree (Tree(..), flatten)
 import qualified Data.Map as Map
 import Control.Monad (foldM)
 import System.FilePath (normalise)
+import Data.List (sortBy)
 
 -- -----------------------------------------------------------------------------
 
@@ -229,7 +230,7 @@ listField name showF readF get set =
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
 optsField name flavor get set =
    liftField (fromMaybe [] . lookup flavor . get)
-             (\opts b -> set (update flavor opts (get b)) b) $
+             (\opts b -> set (order (update flavor opts (get b))) b) $
         field name (hsep . map text)
                    (sepBy parseTokenQ' (munch1 isSpace))
   where
@@ -238,6 +239,7 @@ optsField name flavor get set =
         update f opts ((f',opts'):rest)
            | f == f'   = (f, opts' ++ opts) : rest
            | otherwise = (f',opts') : update f opts rest
+        order l = sortBy (\(f,_) (f2,_)-> compare f f2) l
 
 -- TODO: this is a bit smelly hack. It's because we want to parse bool fields
 --       liberally but not accept new parses. We cannot do that with ReadP
@@ -676,6 +678,7 @@ showTestedWith (compiler, version) = text (show compiler) <+> disp version
 -- and with blank lines replaced by dots for correct re-parsing.
 showFreeText :: String -> Doc
 showFreeText "" = empty
+showFreeText ('\n' :r)  = text " " $+$ text "." $+$ showFreeText r
 showFreeText s  = vcat [text (if null l then "." else l) | l <- lines_ s]
 
 -- | 'lines_' breaks a string up into a list of strings at newline

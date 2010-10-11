@@ -20,7 +20,7 @@ module Distribution.Text (
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
 
-import Data.Version (Version(Version))
+import Data.Version (showVersion, Version(Version))
 import qualified Data.Char as Char (isDigit, isAlphaNum, isSpace)
 
 class Text a where
@@ -52,8 +52,7 @@ instance Text Bool where
                           Parse.string "false") >> return False ]
 
 instance Text Version where
-  disp (Version branch _tags) -- Do not display the tags
-    = Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int branch))
+  disp v = Disp.text (showVersion v)
 
   parse = do
       branch <- Parse.sepBy1 digits (Parse.char '.')

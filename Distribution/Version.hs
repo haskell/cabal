@@ -76,7 +76,7 @@ module Distribution.Version (
 
   -- ** 'VersionIntervals' abstract type
   -- | The 'VersionIntervals' type and the accompanying functions are exposed
-  -- primarily for completeness and testing purposes. In practice 
+  -- primarily for completeness and testing purposes. In practice
   -- 'asVersionIntervals' is the main function to use to
   -- view a 'VersionRange' as a bunch of 'VersionInterval's.
   --
@@ -680,7 +680,7 @@ instance Text VersionRange where
            (\v _ -> (Disp.text "==" <> dispWild v               , 0))
            (\(r1, p1) (r2, p2) -> (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
            (\(r1, p1) (r2, p2) -> (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
-           id
+           (\(r, p)   -> (Disp.parens r, p))
 
     where dispWild (Version b _) =
                Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
