@@ -54,9 +54,8 @@ import Distribution.PackageDescription
         condExecutables, condLibrary, genPackageFlags, packageDescription,
         GenericPackageDescription(..))
 import Text.PrettyPrint
-       (comma, punctuate, fsep, sep, parens, char, nest,
-        empty, isEmpty, ($$), (<+>), colon, (<>), text, vcat, ($+$), Doc,
-        render)
+       (hsep, comma, punctuate, fsep, parens, char, nest, empty,
+        isEmpty, ($$), (<+>), colon, (<>), text, vcat, ($+$), Doc, render)
 import Distribution.Simple.Utils (writeUTF8File)
 import Distribution.ParseUtils (showFreeText, FieldDescr(..))
 import Distribution.PackageDescription.Parse (pkgDescrFieldDescrs,binfoFieldDescrs,libFieldDescrs,
@@ -187,11 +186,11 @@ ppTestSuites suites =
 ppCondition :: Condition ConfVar -> Doc
 ppCondition (Var x)                      = ppConfVar x
 ppCondition (Lit b)                      = text (show b)
-ppCondition (CNot c)                     = char '!' <> parens (ppCondition c)
-ppCondition (COr c1 c2)                  = parens $ sep [ppCondition c1, text "||"
-                                                         <+> ppCondition c2]
-ppCondition (CAnd c1 c2)                 = parens $ sep [ppCondition c1, text "&&"
-                                                         <+> ppCondition c2]
+ppCondition (CNot c)                     = char '!' <> (ppCondition c)
+ppCondition (COr c1 c2)                  = parens (hsep [ppCondition c1, text "||"
+                                                         <+> ppCondition c2])
+ppCondition (CAnd c1 c2)                 = parens (hsep [ppCondition c1, text "&&"
+                                                         <+> ppCondition c2])
 ppConfVar :: ConfVar -> Doc
 ppConfVar (OS os)                        = text "os"   <> parens (disp os)
 ppConfVar (Arch arch)                    = text "arch" <> parens (disp arch)
