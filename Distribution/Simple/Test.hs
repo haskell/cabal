@@ -58,7 +58,7 @@ import Distribution.Package
     ( PackageId )
 import qualified Distribution.PackageDescription as PD
          ( PackageDescription(..), TestSuite(..)
-         , TestSuiteInterface(..), testInterface, testType )
+         , TestSuiteInterface(..), testType )
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..), CompilerId )
