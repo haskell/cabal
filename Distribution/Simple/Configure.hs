@@ -83,7 +83,7 @@ import Distribution.PackageDescription as PD
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , FlagName(..), TestSuite(..) )
 import Distribution.PackageDescription.Configuration
-    ( finalizePackageDescription )
+    ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
 import Distribution.Simple.Program
@@ -321,7 +321,7 @@ configure (pkg_descr0, pbi) cfg
                 pkgs' = PackageIndex.insert internalPackage installedPackageSet
             pkg_descr0'' =
                 --TODO: avoid disabling tests entirely, we otherwise cannot
-                -- perform semantic checks
+                -- perform semantic checks, see also checkPackageProblems
                 if fromFlag (configTests cfg)
                     then pkg_descr0
                     else pkg_descr0 { condTestSuites = [] }
@@ -964,7 +964,7 @@ checkPackageProblems :: Verbosity
                      -> GenericPackageDescription
                      -> PackageDescription
                      -> IO ()
-checkPackageProblems verbosity gpkg pkg = do
+checkPackageProblems verbosity gpkg pkg0 = do
   ioChecks      <- checkPackageFiles pkg "."
   let pureChecks = checkPackage gpkg (Just pkg)
       errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
@@ -973,3 +973,16 @@ checkPackageProblems verbosity gpkg pkg = do
     then mapM_ (warn verbosity) warnings
     else do mapM_ (hPutStrLn stderr . ("Error: " ++)) errors
             exitWith (ExitFailure 1)
+  where
+    -- TODO: Sigh, this is a fairly unpleasent hack. The issue is that
+    -- we want to check test-suite sections even when tests are disabled.
+    -- When tests are disabled we have to exclude the test-suite sections
+    -- when resolving the conditionals. But the checks we do are done
+    -- on the post-resolved form! Ug. A better solution would be either
+    -- 1) to do the checks on the pre-resolved form
+    -- 2) to resolve in two steps: find a flag assignment, then apply it
+    --    that'd allow us to find the flag assingment ignoring tests
+    --    but then to apply it anyway.
+    -- In the meantime we stick the tests back in before checking by
+    -- flattening the pre-resovled form.
+    pkg = pkg0 { testSuites = testSuites (flattenPackageDescription gpkg) }
