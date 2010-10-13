@@ -69,6 +69,8 @@ import System.Directory (doesFileExist)
 
 import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
+import Distribution.Compat.ReadP
+         ((+++))
 import Text.PrettyPrint.HughesPJ
 
 import Distribution.ParseUtils hiding (parseFields)
@@ -78,7 +80,8 @@ import Distribution.Package
          , packageName, packageVersion )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
-        ( anyVersion, isAnyVersion, withinRange )
+        ( Version(Version), orLaterVersion
+        , LowerBound(..), asVersionIntervals )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Compiler  (CompilerFlavor(..))
 import Distribution.PackageDescription.Configuration (parseCondition, freeVars)
@@ -100,8 +103,8 @@ pkgDescrFieldDescrs =
            disp                   parse
            packageVersion         (\ver pkg -> pkg{package=(package pkg){pkgVersion=ver}})
  , simpleField "cabal-version"
-           disp                   parse
-           descCabalVersion       (\v pkg -> pkg{descCabalVersion=v})
+           (either disp disp)     (liftM Left parse +++ liftM Right parse)
+           specVersionRaw         (\v pkg -> pkg{specVersionRaw=v})
  , simpleField "build-type"
            (maybe empty disp)     (fmap Just parse)
            buildType              (\t pkg -> pkg{buildType=t})
@@ -562,10 +565,14 @@ parsePackageDescription file = do
                    _ -> parseFail err
 
     let cabalVersionNeeded =
-          head $ [ versionRange
+          head $ [ minVersionBound versionRange
                  | Just versionRange <- [ simpleParse v
                                         | F _ "cabal-version" v <- fields0 ] ]
-              ++ [anyVersion]
+              ++ [Version [0] []]
+        minVersionBound versionRange =
+          case asVersionIntervals versionRange of
+            []                            -> Version [0] []
+            ((LowerBound version _, _):_) -> version
 
     handleFutureVersionParseFailure cabalVersionNeeded $ do
 
@@ -602,8 +609,8 @@ parsePackageDescription file = do
           -- flags, lib and exe sections.
         (repos, flags, mlib, exes, tests) <- getBody
         warnIfRest  -- warn if getBody did not parse up to the last field.
-        when (not (oldSyntax fields0)) $  -- warn if we use new syntax
-          maybeWarnCabalVersion pkg       -- without Cabal >= 1.2
+          -- warn about using old/new syntax with wrong cabal-version:
+        maybeWarnCabalVersion (not $ oldSyntax fields0) pkg
         checkForUndefinedFlags flags mlib exes tests
         return $ GenericPackageDescription
                    pkg { sourceRepos = repos }
@@ -615,12 +622,32 @@ parsePackageDescription file = do
         syntaxError (fst (head tabs)) $
           "Do not use tabs for indentation (use spaces instead)\n"
           ++ "  Tabs were used at (line,column): " ++ show tabs
-    maybeWarnCabalVersion pkg =
-        when (packageName pkg /= PackageName "Cabal" -- supress warning for Cabal
-           && isAnyVersion (descCabalVersion pkg)) $
-          lift $ warning $
-            "A package using section syntax should require\n"
-            ++ "\"Cabal-Version: >= 1.2\" or equivalent."
+
+    maybeWarnCabalVersion _ pkg
+      | packageName pkg == PackageName "Cabal" -- supress warning for Cabal
+      = return ()
+
+    maybeWarnCabalVersion newsyntax pkg
+      | newsyntax && specVersion pkg < Version [1,2] []
+      = lift $ warning $
+             "A package using section syntax must specify at least\n"
+          ++ "'cabal-version: >= 1.2'."
+
+    maybeWarnCabalVersion newsyntax pkg
+      | not newsyntax && specVersion pkg >= Version [1,2] []
+      = lift $ warning $
+             "A package using 'cabal-version: "
+          ++ displaySpecVersion (specVersionRaw pkg)
+          ++ "' must use section syntax. See the Cabal user guide for details."
+      where
+        displaySpecVersion (Left version)       = display version
+        displaySpecVersion (Right versionRange) =
+          case asVersionIntervals versionRange of
+            [] {- impossible -}           -> display versionRange
+            ((LowerBound version _, _):_) -> display (orLaterVersion version)
+
+    maybeWarnCabalVersion _ _ = return ()
+
 
     handleFutureVersionParseFailure cabalVersionNeeded parseBody =
       (unless versionOk (warning message) >> parseBody)
@@ -628,8 +655,8 @@ parsePackageDescription file = do
         TabsError _   -> parseFail parseError
         _ | versionOk -> parseFail parseError
           | otherwise -> fail message
-      where versionOk = cabalVersion `withinRange` cabalVersionNeeded
-            message   = "This package requires Cabal version: "
+      where versionOk = cabalVersionNeeded <= cabalVersion
+            message   = "This package requires at least Cabal version "
                      ++ display cabalVersionNeeded
 
     -- "Sectionize" an old-style Cabal file.  A sectionized file has:

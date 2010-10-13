@@ -78,7 +78,7 @@ import Distribution.InstalledPackageInfo as Installed
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
-    ( PackageDescription(..), GenericPackageDescription(..)
+    ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..)
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , FlagName(..), TestSuite(..) )
@@ -110,8 +110,7 @@ import Distribution.Simple.Utils
 import Distribution.System
     ( OS(..), buildOS, buildPlatform )
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion
-         , LowerBound(..), asVersionIntervals )
+         ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
 
@@ -651,13 +650,8 @@ newPackageDepsBehaviourMinVersion = Version { versionBranch = [1,7,1], versionTa
 -- specified is >= a certain minimum. Otherwise, for compatibility we use the
 -- old behaviour.
 newPackageDepsBehaviour :: PackageDescription -> Bool
-newPackageDepsBehaviour pkg_descr =
-   minVersionRequired >= newPackageDepsBehaviourMinVersion
-  where
-    minVersionRequired =
-      case asVersionIntervals (descCabalVersion pkg_descr) of
-        []                      -> Version [0] []
-        ((LowerBound v _, _):_) -> v
+newPackageDepsBehaviour pkg =
+   specVersion pkg >= newPackageDepsBehaviourMinVersion
 
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
