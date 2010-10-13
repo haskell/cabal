@@ -382,6 +382,10 @@ checkFields pkg =
   , check (null (synopsis pkg) && not (null (description pkg))) $
       PackageDistSuspicious "No 'synopsis' field."
 
+    --TODO: recommend the bug reports url, author and homepage fields
+    --TODO: recommend not using the stability field
+    --TODO: recommend specifying a source repo
+
   , check (length (synopsis pkg) >= 80) $
       PackageDistSuspicious
         "The 'synopsis' field is rather long (max 80 chars is recommended)."
