@@ -54,6 +54,8 @@ module Distribution.PackageDescription (
         -- * Package descriptions
         PackageDescription(..),
         emptyPackageDescription,
+        specVersion,
+        descCabalVersion,
         BuildType(..),
         knownBuildTypes,
 
@@ -116,7 +118,8 @@ import Distribution.Package
          , Dependency, Package(..) )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
-         ( Version(Version), VersionRange, anyVersion )
+         ( Version(Version), VersionRange, anyVersion, orLaterVersion
+         , asVersionIntervals, LowerBound(..) )
 import Distribution.License  (License(AllRightsReserved))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
@@ -155,7 +158,11 @@ data PackageDescription
                                              -- with x-, stored in a
                                              -- simple assoc-list.
         buildDepends   :: [Dependency],
-        descCabalVersion :: VersionRange, -- ^If this package depends on a specific version of Cabal, give that here.
+        -- | The version of the Cabal spec that this package description uses.
+        -- For historical reasons this is specified with a version range but
+        -- only ranges of the form @>= v@ make sense. We are in the process of
+        -- transitioning to specifying just a single version, not a range.
+        specVersionRaw :: Either Version VersionRange,
         buildType      :: Maybe BuildType,
         -- components
         library        :: Maybe Library,
@@ -171,6 +178,32 @@ data PackageDescription
 instance Package PackageDescription where
   packageId = package
 
+-- | The version of the Cabal spec that this package should be interpreted
+-- against.
+--
+-- Historically we used a version range but we are switching to using a single
+-- version. Currently we accept either. This function converts into a single
+-- version by ignoring upper bounds in the version range.
+--
+specVersion :: PackageDescription -> Version
+specVersion pkg = case specVersionRaw pkg of
+  Left  version      -> version
+  Right versionRange -> case asVersionIntervals versionRange of
+                          []                            -> Version [0] []
+                          ((LowerBound version _, _):_) -> version
+
+-- | The range of versions of the Cabal tools that this package is intended to
+-- work with.
+--
+-- This function is deprecated and should not be used for new purposes, only to
+-- support old packages that rely on the old interpretation.
+--
+descCabalVersion :: PackageDescription -> VersionRange
+descCabalVersion pkg = case specVersionRaw pkg of
+  Left  version      -> orLaterVersion version
+  Right versionRange -> versionRange
+{-# DEPRECATED descCabalVersion "Use specVersion instead" #-}
+
 emptyPackageDescription :: PackageDescription
 emptyPackageDescription
     =  PackageDescription {
@@ -178,7 +211,7 @@ emptyPackageDescription
                                                        (Version [] []),
                       license      = AllRightsReserved,
                       licenseFile  = "",
-                      descCabalVersion = anyVersion,
+                      specVersionRaw = Right anyVersion,
                       buildType    = Nothing,
                       copyright    = "",
                       maintainer   = "",
