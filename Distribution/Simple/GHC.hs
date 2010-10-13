@@ -796,6 +796,9 @@ ghcOptions lbi bi clbi odir
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
            MaximumOptimisation -> ["-O2"])
+        -- GHC 7 defaults to Haskell2010, we stick with 98 for the moment.
+        -- We will introduce a new language field to control this.
+     ++ [ "-XHaskell98" | ghcVer >= Version [7] [] ]
      ++ hcOptions GHC bi
      ++ extensionsToFlags (compiler lbi) (extensions bi)
     where
