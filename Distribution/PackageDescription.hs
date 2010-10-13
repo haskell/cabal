@@ -576,7 +576,11 @@ allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
                       ++ [ bi | exe <- executables pkg_descr
                               , let bi = buildInfo exe
                               , buildable bi ]
-                      -- TODO: extend to test suite buildinfos (needed for check)
+                      ++ [ bi | tst <- testSuites pkg_descr
+                              , let bi = testBuildInfo tst
+                              , buildable bi ]
+  --FIXME: many of the places where this is used, we actually want to look at
+  --       unbuildable bits too, probably need separate functions
 
 type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 
