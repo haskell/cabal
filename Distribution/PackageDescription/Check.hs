@@ -84,11 +84,11 @@ import Distribution.Simple.Utils
 
 import Distribution.Version
          ( Version(..)
-         , VersionRange, withinRange, foldVersionRange'
+         , VersionRange(..), foldVersionRange'
          , anyVersion, noVersion, thisVersion, laterVersion, earlierVersion
          , orLaterVersion, orEarlierVersion
          , unionVersionRanges, intersectVersionRanges
-         , asVersionIntervals, LowerBound(..), UpperBound(..), isNoVersion )
+         , asVersionIntervals, UpperBound(..), isNoVersion )
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
          , Dependency(..) )
@@ -222,10 +222,11 @@ checkSanity pkg =
 
   ++ catMaybes [
 
-    check (not $ cabalVersion `withinRange` requiredCabalVersion) $
+    check (specVersion pkg > cabalVersion) $
       PackageBuildImpossible $
-           "This package requires Cabal version: "
-        ++ display requiredCabalVersion
+           "This package description follows version "
+        ++ display (specVersion pkg) ++ " of the Cabal specification. This "
+        ++ "tool only supports up to version " ++ display cabalVersion ++ "."
   ]
   where
     exeNames = map exeName $ executables pkg
@@ -233,7 +234,6 @@ checkSanity pkg =
     exeDuplicates = dups exeNames
     testDuplicates = dups testNames
     testsThatAreExes = filter (flip elem exeNames) testNames
-    requiredCabalVersion = descCabalVersion pkg
 
 checkLibrary :: Library -> [PackageCheck]
 checkLibrary lib =
@@ -752,15 +752,39 @@ checkPaths pkg =
 
 --TODO: use the tar path checks on all the above paths
 
--- | Check that if the package uses new syntax that it declares the
--- @\"cabal-version: >= x.y\"@ version correctly.
+-- | Check that the package declares the version in the @\"cabal-version\"@
+-- field correctly.
 --
 checkCabalVersion :: PackageDescription -> [PackageCheck]
 checkCabalVersion pkg =
   catMaybes [
 
+    -- check syntax of cabal-version field
+    check (specVersion pkg >= Version [1,10] []
+           && not simpleSpecVersionRangeSyntax) $
+      PackageBuildWarning $
+           "Packages relying on Cabal 1.10 or later must only specify a "
+        ++ "version range of the form 'cabal-version: >= x.y'. Use "
+        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
+
+    -- check syntax of cabal-version field
+  , check (specVersion pkg < Version [1,9] []
+           && not simpleSpecVersionRangeSyntax) $
+      PackageDistSuspicious $
+           "It is recommended that the 'cabal-version' field only specify a "
+        ++ "version range of the form '>= x.y'. Use "
+        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'. "
+        ++ "Tools based on Cabal 1.10 and later will ignore upper bounds."
+
+    -- check syntax of cabal-version field
+  , checkVersion [1,12] simpleSpecVersionSyntax $
+      PackageBuildWarning $
+           "With Cabal 1.10 or earlier, the 'cabal-version' field must use "
+        ++ "range syntax rather than a simple version number. Use "
+        ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
+
     -- check use of test suite stanzas
-    checkVersion [1,10] (not (null $ testSuites pkg)) $
+  , checkVersion [1,10] (not (null $ testSuites pkg)) $
       PackageDistInexcusable $
            "The package uses test suite stanzas. To use this new syntax, "
         ++ "the package needs to specify at least 'cabal-version: >= 1.10'."
@@ -829,7 +853,7 @@ checkCabalVersion pkg =
     -- check use of "source-repository" section
   , checkVersion [1,6] (not (null (sourceRepos pkg))) $
       PackageDistInexcusable $
-           "The 'source-repository' section is new in Cabal-1.6. "
+           "The 'source-repository' section is new in Cabal 1.6. "
         ++ "Unfortunately it messes up the parser in earlier Cabal versions "
         ++ "so you need to specify 'cabal-version: >= 1.6'."
 
@@ -861,18 +885,15 @@ checkCabalVersion pkg =
         ++ "use an equivalent compiler-specific flag."
   ]
   where
+    -- Perform a check on packages that use a version of the spec less than
+    -- the version given. This is for cases where a new Cabal version adds
+    -- a new feature and we want to check that it is not used prior to that
+    -- version.
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
     checkVersion ver cond pc
       | packageName pkg == PackageName "Cabal" = Nothing
-      | requiresAtLeast (Version ver []) = Nothing
-      | not cond  = Nothing
-      | otherwise = Just pc
-
-    requiresAtLeast :: Version -> Bool
-    requiresAtLeast = case cabalVersionIntervals of
-      (LowerBound ver' _,_):_ -> (ver' >=)
-      _                       -> const False
-     where cabalVersionIntervals = asVersionIntervals (descCabalVersion pkg)
+      | specVersion pkg >= Version ver []      = Nothing
+      | otherwise                              = check cond pc
 
     dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
     extraSrcFilesUsingGlobSyntax = filter usesGlobSyntax (extraSrcFiles pkg)
@@ -888,6 +909,23 @@ checkCabalVersion pkg =
         [ Dependency (PackageName (display compiler)) vr
         | (compiler, vr) <- testedWith pkg
         , usesNewVersionRangeSyntax vr ]
+
+    simpleSpecVersionRangeSyntax =
+        either (const True)
+               (foldVersionRange'
+                      False
+                      (\_ -> False)
+                      (\_ -> False) (\_ -> False)
+                      (\_ -> True)  -- >=
+                      (\_ -> False)
+                      (\_ _ -> False)
+                      (\_ _ -> False) (\_ _ -> False)
+                      id)
+               (specVersionRaw pkg)
+
+    -- is the cabal-version field a simple version number, rather than a range
+    simpleSpecVersionSyntax =
+      either (const True) (const False) (specVersionRaw pkg)
 
     usesNewVersionRangeSyntax :: VersionRange -> Bool
     usesNewVersionRangeSyntax =
