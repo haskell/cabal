@@ -516,8 +516,8 @@ checkGhcOptions pkg =
 
   , checkFlags ["-fasm"] $
       PackageDistInexcusable $
-           "'ghc-options: -fasm' is unnecessary and breaks on all "
-        ++ "arches except for x86, x86-64 and ppc."
+           "'ghc-options: -fasm' is unnecessary and will not work on CPU "
+        ++ "architectures other than x86, x86-64, ppc or sparc."
 
   , checkFlags ["-fvia-C"] $
       PackageDistSuspicious $
