@@ -123,3 +123,22 @@ Library
         Distribution.Simple.GHC.IPI642
 
   Extensions: CPP
+
+test-suite unit-tests
+  type: exitcode-stdio-1.0
+  main-is: suite.hs
+  hs-source-dirs: tests
+  build-depends:
+        base,
+        test-framework,
+        test-framework-quickcheck2,
+        test-framework-hunit,
+        HUnit,
+        QuickCheck >= 2.1.0.1,
+        Cabal,
+        process,
+        directory,
+        filepath,
+        extensible-exceptions,
+        bytestring,
+        unix
