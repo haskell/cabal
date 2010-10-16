@@ -26,14 +26,15 @@ import Distribution.Client.Types
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion, intersectVersionRanges
+         ( Version(..), VersionRange, anyVersion
+         , intersectVersionRanges, orLaterVersion
          , withinRange )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , packageVersion, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
-         , PackageDescription(..), BuildType(..) )
+         , PackageDescription(..), specVersion, BuildType(..) )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Configure
@@ -109,7 +110,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
       options'    = options {
                       useCabalVersion = intersectVersionRanges
                                           (useCabalVersion options)
-                                          (descCabalVersion pkg)
+                                          (orLaterVersion (specVersion pkg))
                     }
       buildType'  = fromMaybe Custom (buildType pkg)
       mkArgs cabalLibVersion = commandName cmd
