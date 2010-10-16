@@ -88,7 +88,10 @@ module Distribution.Simple.Setup (
 
 import Distribution.Compiler ()
 import Distribution.ReadE
-import Distribution.Text (display, Text(parse))
+import Distribution.Text
+         ( Text(..), display )
+import qualified Distribution.Compat.ReadP as Parse
+import qualified Text.PrettyPrint as Disp
 import Distribution.Package ( Dependency(..) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
@@ -98,7 +101,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
          , OptimisationLevel(..), flagToOptimisationLevel )
 import Distribution.Simple.Utils
-         ( wrapLine, lowercase )
+         ( wrapLine, lowercase, intercalate )
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              knownPrograms,
                              addKnownProgram, emptyProgramConfiguration,
@@ -106,11 +109,12 @@ import Distribution.Simple.Program (Program(..), ProgramConfiguration,
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
-import Data.List ( isPrefixOf, sort, stripPrefix )
-import Data.Char (isSpace)
-import Data.Maybe ( fromJust )
-import Data.Monoid (Monoid(..))
 import Distribution.Verbosity
+
+import Data.List   ( sort )
+import Data.Char   ( isSpace, isAlpha )
+import Data.Monoid ( Monoid(..) )
+import Data.Maybe  ( fromJust )
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -1193,26 +1197,21 @@ instance Monoid BuildFlags where
 -- ------------------------------------------------------------
 
 data TestShowDetails = Never | Failures | Always
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Enum, Bounded, Show)
 
---TODO: use Text class for parsing, should derive read/show
+knownTestShowDetails :: [TestShowDetails]
+knownTestShowDetails = [minBound..maxBound]
 
-instance Show TestShowDetails where
-    show Always = "always"
-    show Failures = "failures"
-    show Never = "never"
+instance Text TestShowDetails where
+    disp  = Disp.text . lowercase . show
 
-instance Read TestShowDetails where
-    readsPrec _ str
-        | "always" `isPrefixOf` str =
-            -- The use of 'fromJust' here is safe because of the occurence of
-            -- 'isPrefixOf' in the guard.
-            [(Always, fromJust $ stripPrefix "always" str)]
-        | "failures" `isPrefixOf` str =
-            [(Failures, fromJust $ stripPrefix "failures" str)]
-        | "never" `isPrefixOf` str =
-            [(Never, fromJust $ stripPrefix "never" str)]
-        | otherwise = []
+    parse = maybe Parse.pfail return . classify =<< ident
+      where
+        ident        = Parse.munch1 (\c -> isAlpha c || c == '_' || c == '-')
+        classify str = lookup (lowercase str) enumMap
+        enumMap     :: [(String, TestShowDetails)]
+        enumMap      = [ (display x, x)
+                       | x <- knownTestShowDetails ]
 
 --TODO: do we need this instance?
 instance Monoid TestShowDetails where
@@ -1234,7 +1233,6 @@ data TestFlags = TestFlags {
     -- TODO: think about if/how options are passed to test exes
     testOptions :: Flag [String]
   }
-  deriving Show
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
@@ -1283,7 +1281,12 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
              ++ "'never': never show results of individual test cases. "
              ++ "'failures': show results of failing test cases.")
             testShowDetails (\v flags -> flags { testShowDetails = v })
-            (reqArg' "FILTER" (toFlag . read) (flagToList . fmap show))
+            (reqArg "FILTER"
+                (readP_to_E (\_ -> "--show-details flag expects one of "
+                              ++ intercalate ", "
+                                   (map display knownTestShowDetails))
+                            (fmap toFlag parse))
+                (flagToList . fmap display))
       , option [] ["replay"]
             ("replay the test suites in the given machine-readable log file "
             ++ "using the options therein")
