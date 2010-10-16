@@ -76,8 +76,7 @@ import Text.PrettyPrint.HughesPJ
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier(..), Dependency(..)
-         , packageName, packageVersion )
+         ( PackageIdentifier(..), Dependency(..), packageName, packageVersion )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
         ( Version(Version), orLaterVersion
@@ -622,10 +621,6 @@ parsePackageDescription file = do
         syntaxError (fst (head tabs)) $
           "Do not use tabs for indentation (use spaces instead)\n"
           ++ "  Tabs were used at (line,column): " ++ show tabs
-
-    maybeWarnCabalVersion _ pkg
-      | packageName pkg == PackageName "Cabal" -- supress warning for Cabal
-      = return ()
 
     maybeWarnCabalVersion newsyntax pkg
       | newsyntax && specVersion pkg < Version [1,2] []

@@ -23,11 +23,10 @@ DISTLOC=dist/release
 DIST_STAMP=$(DISTLOC)/Cabal-$(VERSION).tar.gz
 
 COMMA=,
-VERSION_VALUE=$(subst .,$(COMMA),$(VERSION))
 
 setup: $(SOURCES) Setup.hs
 	-mkdir -p dist/setup
-	$(HC) $(GHCFLAGS) --make -DCABAL_VERSION=$(VERSION_VALUE) -i. -odir dist/setup -hidir dist/setup Setup.hs -o setup
+	$(HC) $(GHCFLAGS) --make -i. -odir dist/setup -hidir dist/setup Setup.hs -o setup
 
 Setup-nhc:
 	hmake -nhc98 -package base -prelude Setup
