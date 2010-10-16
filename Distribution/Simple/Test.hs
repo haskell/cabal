@@ -81,10 +81,10 @@ import Data.Char ( toUpper )
 import Data.Monoid ( mempty )
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
-    , getDirectoryContents, removeFile )
+    , removeFile )
 import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
-import System.FilePath ( (</>), (<.>), takeExtension )
+import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, IOMode(..), withFile )
 import System.Process ( runProcess, waitForProcess )
 
@@ -122,8 +122,8 @@ data Case = Case
     }
     deriving (Read, Show, Eq)
 
-getReplayOptions :: TestSuite.Test -> TestSuiteLog -> IO TestSuite.Options
-getReplayOptions t l =
+getTestOptions :: TestSuite.Test -> TestSuiteLog -> IO TestSuite.Options
+getTestOptions t l =
     case filter ((== TestSuite.name t) . caseName) (cases l) of
         (x:_) -> return $ caseOptions x
         _ -> TestSuite.defaultOptions t
@@ -234,14 +234,12 @@ test :: PD.PackageDescription   -- ^information from the .cabal file
      -> IO ()
 test pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
-        append = fromFlag $ testHumanAppend flags
         humanTemplate = fromFlag $ testHumanLog flags
         machineTemplate = fromFlag $ testMachineLog flags
         distPref = fromFlag $ testDistPref flags
         testLogDir = distPref </> "test"
         testNames = fromFlag $ testList flags
         pkgTests = PD.testSuites pkg_descr
-        replay = fromFlag $ testReplay flags
 
         doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
         doTest (suite, mLog) = do
@@ -288,31 +286,15 @@ test pkg_descr lbi flags = do
                             , logFile = ""
                             }
 
-    testsToRun <- case replay of
-        Nothing -> case testNames of
+    testsToRun <- case testNames of
             [] -> return $ zip pkgTests $ repeat Nothing
             names -> flip mapM names $ \tName ->
                 let testMap = map (\x -> (PD.testName x, x)) pkgTests
                 in case lookup tName testMap of
                     Just t -> return (t, Nothing)
                     _ -> die $ "no such test: " ++ tName
-        Just f -> do
-            notice verbosity $ "Replaying " ++ f ++ " ..."
-            pkgLog <- readFile f >>= (return . read)
-            let testSuiteNames = map name $ testSuites pkgLog
-                replayTests =
-                    filter (\t -> PD.testName t `elem` testSuiteNames) pkgTests
-                getLog t = Just $ head $ filter (\l -> PD.testName t == name l)
-                                       $ testSuites pkgLog
-            return $ zip replayTests $ map getLog replayTests
 
     createDirectoryIfMissing True testLogDir
-
-    -- Remove existing human log files, unless they are to be appended.
-    -- The machine log file is always overwritten.
-    existingLogFiles <- liftM (filter $ (== ".log") . takeExtension)
-        $ getDirectoryContents testLogDir
-    unless append $ mapM_ (removeFile . (testLogDir </>)) existingLogFiles
 
     let totalSuites = length testsToRun
     notice verbosity $ "Running " ++ show totalSuites ++ " test suites..."
@@ -434,7 +416,7 @@ runTests tests = do
     testLogIn <- liftM read getContents
     let go :: TestSuite.Test -> IO Case
         go t = do
-            o <- getReplayOptions t testLogIn
+            o <- getTestOptions t testLogIn
             r <- TestSuite.runM t o
             let ret = Case
                     { caseName = TestSuite.name t
