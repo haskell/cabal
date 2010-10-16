@@ -913,7 +913,7 @@ checkCabalVersion pkg =
     simpleSpecVersionRangeSyntax =
         either (const True)
                (foldVersionRange'
-                      False
+                      True
                       (\_ -> False)
                       (\_ -> False) (\_ -> False)
                       (\_ -> True)  -- >=
