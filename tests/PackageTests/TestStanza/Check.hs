@@ -13,6 +13,7 @@ import Distribution.Package
         ( PackageIdentifier(..), PackageName(..), Dependency(..) )
 import Distribution.PackageDescription
         ( PackageDescription(..), BuildInfo(..), TestSuite(..), Library(..)
+        , TestSuiteInterface(..)
         , TestType(..), emptyPackageDescription, emptyBuildInfo, emptyLibrary
         , emptyTestSuite, BuildType(..) )
 import Distribution.Verbosity (silent)
@@ -47,7 +48,7 @@ suite cabalVersion = TestCase $ do
                 , stability = "stable"
                 , description = "Check that Cabal recognizes the Test stanza defined below."
                 , category = "PackageTests"
-                , descCabalVersion = anyVersion
+                , specVersionRaw = Right anyVersion
                 , buildType = Just Simple
                 , buildDepends =
                     [ Dependency (PackageName "base") anyV ]
@@ -61,7 +62,7 @@ suite cabalVersion = TestCase $ do
                         }
                 , testSuites = [ emptyTestSuite
                         { testName = "dummy"
-                        , testType = ExeTest (Version [1,0] []) "dummy.hs"
+                        , testInterface = TestSuiteExeV10 (Version [1,0] []) "dummy.hs"
                         , testBuildInfo = emptyBuildInfo
                                 { targetBuildDepends =
                                         [ Dependency (PackageName "base") anyVersion ]
