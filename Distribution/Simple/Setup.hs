@@ -114,7 +114,6 @@ import Distribution.Verbosity
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
 import Data.Monoid ( Monoid(..) )
-import Data.Maybe  ( fromJust )
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -1222,14 +1221,10 @@ data TestFlags = TestFlags {
     testDistPref  :: Flag FilePath,
     testVerbosity :: Flag Verbosity,
     testHumanLog :: Flag PathTemplate,
-    --TODO: do we really need append?
-    testHumanAppend :: Flag Bool,
     testMachineLog :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     --TODO: eliminate the test list and pass it directly as positional args to the testHook
     testList :: Flag [String],
-    -- TODO: do we need this feature?
-    testReplay :: Flag (Maybe FilePath),
     -- TODO: think about if/how options are passed to test exes
     testOptions :: Flag [String]
   }
@@ -1239,11 +1234,9 @@ defaultTestFlags  = TestFlags {
     testDistPref  = Flag defaultDistPref,
     testVerbosity = Flag normal,
     testHumanLog = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
-    testHumanAppend = toFlag False,
     testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testList = Flag [],
-    testReplay = toFlag Nothing,
     testOptions = Flag []
   }
 
@@ -1258,10 +1251,6 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
       , optionDistPref
             testDistPref (\d flags -> flags { testDistPref = d })
             showOrParseArgs
-      , option [] ["append-human-logs"]
-            ("Append test output to human-readable logs, instead of overwriting.")
-            testHumanAppend (\v flags -> flags { testHumanAppend = v })
-            trueArg
       , option [] ["human-log"]
             ("Log all test suite results to file (name template can use "
             ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result)")
@@ -1287,11 +1276,6 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
                                    (map display knownTestShowDetails))
                             (fmap toFlag parse))
                 (flagToList . fmap display))
-      , option [] ["replay"]
-            ("replay the test suites in the given machine-readable log file "
-            ++ "using the options therein")
-            testReplay (\v flags -> flags { testReplay = v })
-            (reqArg' "FILE" (toFlag . Just) (flagToList . fmap fromJust))
       , option [] ["test-options"]
             "give extra options to test executables"
             testOptions (\v flags -> flags { testOptions = v })
@@ -1311,22 +1295,18 @@ instance Monoid TestFlags where
     testDistPref  = mempty,
     testVerbosity = mempty,
     testHumanLog = mempty,
-    testHumanAppend = mempty,
     testMachineLog = mempty,
     testShowDetails = mempty,
     testList = mempty,
-    testReplay = mempty,
     testOptions = mempty
   }
   mappend a b = TestFlags {
     testDistPref  = combine testDistPref,
     testVerbosity = combine testVerbosity,
     testHumanLog = combine testHumanLog,
-    testHumanAppend = combine testHumanAppend,
     testMachineLog = combine testMachineLog,
     testShowDetails = combine testShowDetails,
     testList = combine testList,
-    testReplay = combine testReplay,
     testOptions = combine testOptions
   }
     where combine field = field a `mappend` field b
