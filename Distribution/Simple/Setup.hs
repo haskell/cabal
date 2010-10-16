@@ -1251,7 +1251,7 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
       , optionDistPref
             testDistPref (\d flags -> flags { testDistPref = d })
             showOrParseArgs
-      , option [] ["human-log"]
+      , option [] ["log"]
             ("Log all test suite results to file (name template can use "
             ++ "$pkgid, $compiler, $os, $arch, $test-suite, $result)")
             testHumanLog (\v flags -> flags { testHumanLog = v })
@@ -1259,7 +1259,7 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
                 (toFlag . toPathTemplate)
                 (flagToList . fmap fromPathTemplate))
       , option [] ["machine-log"]
-            ("Machine-readable log file (name template can use "
+            ("Produce a machine-readable log file (name template can use "
             ++ "$pkgid, $compiler, $os, $arch, $result)")
             testMachineLog (\v flags -> flags { testMachineLog = v })
             (reqArg' "TEMPLATE"
