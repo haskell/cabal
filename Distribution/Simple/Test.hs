@@ -83,9 +83,9 @@ import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
     , removeFile )
 import System.Environment ( getEnvironment )
-import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
+import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( hClose, IOMode(..), withFile )
+import System.IO ( hClose, IOMode(..), openFile )
 import System.Process ( runProcess, waitForProcess )
 
 -- | Logs all test results for a package, broken down first by test suite and
@@ -183,11 +183,13 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
             appendFile tempInput $ preTest tempInput
 
             -- Run test executable
-            exit <- withFile tempLog AppendMode $ \hLog ->
-                withFile tempInput ReadMode $ \hIn -> do
-                    proc <- runProcess cmd options Nothing shellEnv
+            exit <- do
+              hLog <- openFile tempLog AppendMode
+              hIn  <- openFile tempInput ReadMode
+              -- these handles get closed by runProcess
+              proc <- runProcess cmd options Nothing shellEnv
                         (Just hIn) (Just hLog) (Just hLog)
-                    waitForProcess proc
+              waitForProcess proc
 
             -- Generate TestSuiteLog from executable exit code and a machine-
             -- readable test log
@@ -430,4 +432,4 @@ runTests tests = do
     writeFile (logFile testLog) $ show testLog
     when (suiteError testLog) $ exitWith $ ExitFailure 2
     when (suiteFailed testLog) $ exitWith $ ExitFailure 1
-    exitSuccess
+    exitWith ExitSuccess

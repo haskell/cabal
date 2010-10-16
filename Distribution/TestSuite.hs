@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE CPP, ExistentialQuantification #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.TestSuite
@@ -40,21 +40,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-{-
-Work around these warnings:
-
-Distribution/TestSuite.hs:58:0:
-    Warning: Module `Control.OldException' is deprecated:
-               Future versions of base will not support the old exceptions
-               style. Please switch to extensible exceptions.
-
-Distribution/TestSuite.hs:58:30:
-    Warning: In the use of `catch'
-             (imported from Control.OldException):
-             Deprecated: "Future versions of base will not support the old
-             exceptions style. Please switch to extensible exceptions."
--}
-{-# OPTIONS_GHC -fno-warn-deprecations #-}
+#if !(defined(__HUGS__) || (defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 610))
+#define NEW_EXCEPTION
+#endif
 
 module Distribution.TestSuite
     ( -- * Example
@@ -71,8 +59,23 @@ module Distribution.TestSuite
     , PureTestable(..)
     ) where
 
-import Control.OldException ( catch, evaluate )
-import Data.Function ( on )
+#ifdef NEW_EXCEPTION
+import Control.Exception ( evaluate, catch, throw, SomeException, fromException )
+#else
+import Control.Exception ( evaluate, catch, throw, Exception(IOException) )
+#endif
+
+--TODO: it is totally unreasonable that we have to import things from GHC.* here.
+--      see ghc ticket #3517
+#ifdef __GLASGOW_HASKELL__
+#if __GLASGOW_HASKELL__ >= 612
+import GHC.IO.Exception  ( IOErrorType(Interrupted) )
+#else
+import GHC.IOBase        ( IOErrorType(Interrupted) )
+#endif
+import System.IO.Error   ( ioeGetErrorType )
+#endif
+
 import Data.List ( unionBy )
 import Data.Monoid ( Monoid(..) )
 import Data.Typeable ( TypeRep )
@@ -88,7 +91,10 @@ newtype Options = Options [(String, String)]
 
 instance Monoid Options where
     mempty = Options []
-    mappend (Options a) (Options b) = Options $ unionBy ((==) `on` fst) a b
+    mappend (Options a) (Options b) = Options $ unionBy (equating fst) a b
+      where
+        equating p x y = p x == p y
+
 
 class TestOptions t where
     -- | The name of the test.
@@ -176,7 +182,34 @@ instance TestOptions Test where
     check (ImpureTest p) = check p
 
 instance ImpureTestable Test where
-    runM (PureTest p) o = catch (evaluate $ run p o) (return . Error . show)
+    runM (PureTest p) o = catch (evaluate $ run p o) handler
+
+    -- Because we have to handle old and new style exceptions, GHC and non-GHC
+    -- this code is totally horrible and really fragile. Has to be tested with
+    -- lots of ghc versions to check it is right, and with non-ghc too. :-(
+#ifdef NEW_EXCEPTION
+      where
+        handler :: SomeException -> IO Result
+        handler e = case fromException e of
+          Just ioe | isInterruptedError ioe -> throw e
+          _                                 -> return (Error (show e))
+#else
+      where
+        handler :: Exception -> IO Result
+        handler e = case e of
+          IOException ioe | isInterruptedError ioe -> throw e
+          _                                        -> return (Error (show e))
+#endif
+
+        -- We do not want to catch control-C here, but only GHC
+        -- defines the Interrupted exception type! (ticket #3517)
+        isInterruptedError ioe =
+#ifdef __GLASGOW_HASKELL__
+          ioeGetErrorType ioe == Interrupted
+#else
+          False
+#endif
+
     runM (ImpureTest i) o = runM i o
 
 -- $example
