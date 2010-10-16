@@ -26,6 +26,7 @@ import PackageTests.TestStanza.Check
 import Distribution.Text (display)
 import Distribution.Simple.Utils (cabalVersion)
 import Data.Version
+import System.Directory
 
 hunit :: TestName -> HUnit.Test -> Test
 hunit name test = testGroup name $ hUnitTestToTests test
