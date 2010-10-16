@@ -891,7 +891,6 @@ checkCabalVersion pkg =
     -- version.
     checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
     checkVersion ver cond pc
-      | packageName pkg == PackageName "Cabal" = Nothing
       | specVersion pkg >= Version ver []      = Nothing
       | otherwise                              = check cond pc
 

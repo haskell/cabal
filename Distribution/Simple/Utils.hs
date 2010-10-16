@@ -48,7 +48,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Utils (
         cabalVersion,
-        cabalBootstrapping,
 
         -- * logging and errors
         die,
@@ -196,19 +195,16 @@ import Distribution.Compat.Exception
          ( catchIO, catchExit, onException )
 import Distribution.Verbosity
 
--- We only get our own version number when we're building with ourselves
-cabalVersion :: Version
-#ifdef CABAL_VERSION
-cabalVersion = Version [CABAL_VERSION] []
-#else
-cabalVersion = error "Cabal was not bootstrapped correctly"
+#ifdef VERSION_base
+import qualified Paths_Cabal (version)
 #endif
 
-cabalBootstrapping :: Bool
-#ifdef CABAL_VERSION
-cabalBootstrapping = False
+-- We only get our own version number when we're building with ourselves
+cabalVersion :: Version
+#ifdef VERSION_base
+cabalVersion = Paths_Cabal.version
 #else
-cabalBootstrapping = True
+cabalVersion = Version [1,9999] []  --used when bootstrapping
 #endif
 
 -- ----------------------------------------------------------------------------

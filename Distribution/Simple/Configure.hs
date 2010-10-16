@@ -104,7 +104,7 @@ import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
-    , intercalate, cabalVersion, cabalBootstrapping
+    , intercalate, cabalVersion
     , withFileContents, writeFileAtomic 
     , withTempFile )
 import Distribution.System
@@ -222,9 +222,7 @@ showHeader pkgid =
   where
 
 currentCabalId :: PackageIdentifier
-currentCabalId = PackageIdentifier (PackageName "Cabal") currentVersion
-  where currentVersion | cabalBootstrapping = Version [0] []
-                       | otherwise          = cabalVersion
+currentCabalId = PackageIdentifier (PackageName "Cabal") cabalVersion
 
 currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
