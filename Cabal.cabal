@@ -55,7 +55,6 @@ Library
   ghc-options: -Wall -fno-ignore-asserts
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
-  cpp-options: "-DCABAL_VERSION=1,11,0"
   nhc98-Options: -K4M
 
   Exposed-Modules:
