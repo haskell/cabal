@@ -62,7 +62,8 @@ module Distribution.PackageDescription.Check (
         checkPackageFileNames,
   ) where
 
-import Data.Maybe (isNothing, catMaybes, maybeToList, fromMaybe)
+import Data.Maybe
+         ( isNothing, isJust, catMaybes, maybeToList, fromMaybe )
 import Data.List  (sort, group, isPrefixOf, nub, find)
 import Control.Monad
          ( filterM, liftM )
@@ -98,8 +99,9 @@ import Distribution.Text
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>), (<+>))
 
-import qualified Language.Haskell.Extension as Extension
-import Language.Haskell.Extension (Extension(..))
+import qualified Language.Haskell.Extension as Extension (deprecatedExtensions)
+import Language.Haskell.Extension
+         ( Language(UnknownLanguage), knownLanguages, Extension(..) )
 import System.FilePath
          ( (</>), takeExtension, isRelative, isAbsolute
          , splitDirectories,  splitPath )
@@ -354,9 +356,20 @@ checkFields pkg =
         "Unknown compiler " ++ commaSep (map quote unknownCompilers)
                             ++ " in 'tested-with' field."
 
+  , check (not (null unknownLanguages)) $
+      PackageBuildWarning $
+        "Unknown languages: " ++ commaSep unknownLanguages
+
   , check (not (null unknownExtensions)) $
       PackageBuildWarning $
         "Unknown extensions: " ++ commaSep unknownExtensions
+
+  , check (not (null languagesUsedAsExtensions)) $
+      PackageBuildWarning $
+           "Languages listed as extensions: "
+        ++ commaSep languagesUsedAsExtensions
+        ++ ". Languages must be specified in either the 'default-language' "
+        ++ " or the 'other-languages' field."
 
   , check (not (null deprecatedExtensions)) $
       PackageDistSuspicious $
@@ -402,12 +415,19 @@ checkFields pkg =
   ]
   where
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
+    unknownLanguages  = [ name | bi <- allBuildInfo pkg
+                               , UnknownLanguage name <- allLanguages bi ]
     unknownExtensions = [ name | bi <- allBuildInfo pkg
-                               , UnknownExtension name <- allExtensions bi ]
+                               , UnknownExtension name <- allExtensions bi
+                               , name `notElem` map display knownLanguages ]
     deprecatedExtensions = nub $ catMaybes
       [ find ((==ext) . fst) Extension.deprecatedExtensions
       | bi <- allBuildInfo pkg
       , ext <- allExtensions bi ]
+    languagesUsedAsExtensions =
+      [ name | bi <- allBuildInfo pkg
+             , UnknownExtension name <- allExtensions bi
+             , name `elem` map display knownLanguages ]
 
     testedWithImpossibleRanges =
       [ Dependency (PackageName (display compiler)) vr
@@ -793,6 +813,40 @@ checkCabalVersion pkg =
            "The package uses test suite stanzas. To use this new syntax, "
         ++ "the package needs to specify at least 'cabal-version: >= 1.10'."
 
+    -- check use of default-language field
+    -- note that we do not need to do an equivalent check for the
+    -- other-language field since that one does not change behaviour
+  , checkVersion [1,10] (any isJust (buildInfoField defaultLanguage)) $
+      PackageBuildWarning $
+           "To use the 'default-language' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 1.10'."
+
+  , check (specVersion pkg >= Version [1,10] []
+           && (any isNothing (buildInfoField defaultLanguage))) $
+      PackageBuildWarning $
+           "Packages using 'cabal-version: >= 1.10' must specify the "
+        ++ "'default-language' field for each component (e.g. Haskell98 or "
+        ++ "Haskell2010). If a component uses different languages in "
+        ++ "different modules then list the other ones in the "
+        ++ "'other-languages' field."
+
+    -- check use of default-extensions field
+    -- don't need to do the equivalent check for other-extensions
+  , checkVersion [1,10] (any (not . null) (buildInfoField defaultExtensions)) $
+      PackageBuildWarning $
+           "To use the 'default-extensions' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 1.10'."
+
+    -- check use of extensions field
+  , check (specVersion pkg >= Version [1,10] []
+           && (any (not . null) (buildInfoField oldExtensions))) $
+      PackageBuildWarning $
+           "For packages using 'cabal-version: >= 1.10' the 'extensions' "
+        ++ "field is deprecated. The new 'default-extensions' field lists "
+        ++ "extensions that are used in all modules in the component, while "
+        ++ "the 'other-extensions' field lists extensions that are used in "
+        ++ "some modules, e.g. via the {-# LANGUAGE #-} pragma."
+
     -- check use of "foo (>= 1.0 && < 1.4) || >=1.8 " version-range syntax
   , checkVersion [1,8] (not (null versionRangeExpressions)) $
       PackageDistInexcusable $
@@ -898,6 +952,7 @@ checkCabalVersion pkg =
       | specVersion pkg >= Version ver []      = Nothing
       | otherwise                              = check cond pc
 
+    buildInfoField field         = map field (allBuildInfo pkg)
     dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
     extraSrcFilesUsingGlobSyntax = filter usesGlobSyntax (extraSrcFiles pkg)
     usesGlobSyntax str = case parseFileGlob str of
