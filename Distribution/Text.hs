@@ -20,7 +20,7 @@ module Distribution.Text (
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
 
-import Data.Version (showVersion, Version(Version))
+import Data.Version (Version(Version))
 import qualified Data.Char as Char (isDigit, isAlphaNum, isSpace)
 
 class Text a where
@@ -52,12 +52,13 @@ instance Text Bool where
                           Parse.string "false") >> return False ]
 
 instance Text Version where
-  disp v = Disp.text (showVersion v)
+  disp (Version branch _tags)     -- Death to version tags!!
+    = Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int branch))
 
   parse = do
       branch <- Parse.sepBy1 digits (Parse.char '.')
       tags   <- Parse.many (Parse.char '-' >> Parse.munch1 Char.isAlphaNum)
-      return (Version branch tags)
+      return (Version branch tags)  --TODO: should we ignore the tags?
     where
       digits = do
         first <- Parse.satisfy Char.isDigit
