@@ -578,6 +578,8 @@ install verbosity lbi libDir installProgDir binDir targetProgDir buildPref (prog
         let hugsOptions = hcOptions Hugs (buildInfo exe)
                        ++ languageToFlags (compiler lbi) (defaultLanguage bi)
                        ++ extensionsToFlags (compiler lbi) (allExtensions bi)
+            --TODO: also need to consider options, extensions etc of deps
+            --      see ticket #43
         let baseExeFile = progprefix ++ (exeName exe) ++ progsuffix
         let exeFile = case buildOS of
                           Windows -> binDir </> baseExeFile <.> ".bat"
