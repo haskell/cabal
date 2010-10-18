@@ -6,7 +6,7 @@
 -- Maintainer  :  libraries@haskell.org
 -- Portability :  portable
 --
--- Haskell language extensions
+-- Haskell language dialects and extensions
 
 {- All rights reserved.
 
@@ -39,6 +39,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Language.Haskell.Extension (
+        Language(..),
+        knownLanguages,
+
         Extension(..),
         knownExtensions,
         deprecatedExtensions
@@ -51,6 +54,48 @@ import qualified Data.Char as Char (isAlphaNum)
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
 
 -- ------------------------------------------------------------
+-- * Language
+-- ------------------------------------------------------------
+
+-- | This represents a Haskell language dialect.
+--
+-- Language 'Extension's are interpreted relative to one of these base
+-- languages.
+--
+data Language =
+
+  -- | The Haskell 98 language as defined by the Haskell 98 report.
+  -- <http://haskell.org/onlinereport/>
+     Haskell98
+
+  -- | The Haskell 2010 language as defined by the Haskell 2010 report.
+  -- <http://www.haskell.org/onlinereport/haskell2010>
+  | Haskell2010
+
+  -- | An unknown language, identified by its name.
+  | UnknownLanguage String
+  deriving (Show, Read, Eq)
+
+knownLanguages :: [Language]
+knownLanguages = [Haskell98, Haskell2010]
+
+instance Text Language where
+  disp (UnknownLanguage other) = Disp.text other
+  disp other                   = Disp.text (show other)
+
+  parse = do
+    lang <- Parse.munch1 Char.isAlphaNum
+    return (classifyLanguage lang)
+
+classifyLanguage :: String -> Language
+classifyLanguage = \str -> case lookup str langTable of
+    Just lang -> lang
+    Nothing   -> UnknownLanguage str
+  where
+    langTable = [ (show lang, lang)
+                | lang <- knownLanguages ]
+
+-- ------------------------------------------------------------
 -- * Extension
 -- ------------------------------------------------------------
 
@@ -61,8 +106,9 @@ import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
 --
 -- * also to the 'knownExtensions' list below.
 
--- |This represents language extensions beyond Haskell 98 that are
--- supported by some implementations, usually in some special mode.
+-- | This represents language extensions beyond a base 'Language' definition
+-- (such as 'Haskell98') that are supported by some implementations, usually
+-- in some special mode.
 --
 -- Where applicable, references are given to an implementation's
 -- official documentation, e.g. \"GHC &#xa7; 7.2.1\" for an extension
