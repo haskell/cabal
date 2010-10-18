@@ -94,7 +94,7 @@ import Distribution.Simple.Utils
          , rawSystemStdInOut
          , die, info, notice )
 import Language.Haskell.Extension
-                                ( Extension(..) )
+         ( Language(Haskell98), Extension(..) )
 import System.FilePath          ( (</>), takeExtension, (<.>),
                                   searchPathSeparator, normalise, takeDirectory )
 import Distribution.System
@@ -134,6 +134,7 @@ configure verbosity hcPath _hcPkgPath conf = do
 
   let comp = Compiler {
         compilerId             = CompilerId Hugs version,
+        compilerLanguages      = hugsLanguages,
         compilerExtensions     = hugsLanguageExtensions
       }
   return (comp, conf'')
@@ -167,6 +168,9 @@ getVersion verbosity hugsPath = do
     convertMonth month = lookup month (zip months [1..])
     months = [ "January", "February", "March", "April", "May", "June", "July"
              , "August", "September", "October", "November", "December" ]
+
+hugsLanguages :: [(Language, Flag)]
+hugsLanguages = [(Haskell98, "")] --default is 98 mode
 
 -- | The flags for the supported extensions
 hugsLanguageExtensions :: [(Extension, Flag)]

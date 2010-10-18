@@ -73,7 +73,7 @@ import Distribution.Simple.Compiler
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Language.Haskell.Extension
-        ( Extension(..) )
+         ( Language(Haskell98), Extension(..) )
 import Distribution.Simple.Program
          ( ProgramConfiguration, userMaybeSpecifyPath, programPath
          , requireProgram, requireProgramVersion, lookupProgram
@@ -130,9 +130,13 @@ configure verbosity hcPath _hcPkgPath conf = do
 
   let comp = Compiler {
         compilerId         = CompilerId NHC nhcVersion,
+        compilerLanguages  = nhcLanguages,
         compilerExtensions = nhcLanguageExtensions
       }
   return (comp, conf'''')
+
+nhcLanguages :: [(Language, Flag)]
+nhcLanguages = [(Haskell98, "-98")]
 
 -- | The flags for the supported extensions
 nhcLanguageExtensions :: [(Extension, Flag)]

@@ -62,8 +62,9 @@ import Distribution.Simple.BuildPaths
                                 ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..)
-         , PackageDBStack, Flag, extensionsToFlags )
-import Language.Haskell.Extension (Extension(..))
+         , PackageDBStack, Flag, languageToFlags, extensionsToFlags )
+import Language.Haskell.Extension
+         ( Language(Haskell98), Extension(..))
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), jhcProgram, ProgramConfiguration
          , userMaybeSpecifyPath, requireProgramVersion, lookupProgram
@@ -103,9 +104,13 @@ configure verbosity hcPath _hcPkgPath conf = do
   let Just version = programVersion jhcProg
       comp = Compiler {
         compilerId             = CompilerId JHC version,
+        compilerLanguages      = jhcLanguages,
         compilerExtensions     = jhcLanguageExtensions
       }
   return (comp, conf')
+
+jhcLanguages :: [(Language, Flag)]
+jhcLanguages = [(Haskell98, "")]
 
 -- | The flags for the supported extensions
 jhcLanguageExtensions :: [(Extension, Flag)]

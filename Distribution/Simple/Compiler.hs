@@ -64,6 +64,8 @@ module Distribution.Simple.Compiler (
 
         -- * Support for language extensions
         Flag,
+        languageToFlags,
+        unsupportedLanguages,
         extensionsToFlags,
         unsupportedExtensions
   ) where
@@ -71,13 +73,14 @@ module Distribution.Simple.Compiler (
 import Distribution.Compiler
 import Distribution.Version (Version(..))
 import Distribution.Text (display)
-import Language.Haskell.Extension (Extension(..))
+import Language.Haskell.Extension (Language(Haskell98), Extension)
 
 import Data.List (nub)
 import Data.Maybe (catMaybes, isNothing)
 
 data Compiler = Compiler {
         compilerId              :: CompilerId,
+        compilerLanguages       :: [(Language, String)],
         compilerExtensions      :: [(Extension, String)]
     }
     deriving (Show, Read)
@@ -157,8 +160,22 @@ flagToOptimisationLevel (Just s) = case reads s of
   _             -> error $ "Can't parse optimisation level " ++ s
 
 -- ------------------------------------------------------------
--- * Extensions
+-- * Languages and Extensions
 -- ------------------------------------------------------------
+
+unsupportedLanguages :: Compiler -> [Language] -> [Language]
+unsupportedLanguages comp langs =
+  [ lang | lang <- langs
+         , isNothing (languageToFlag comp lang) ]
+
+languageToFlags :: Compiler -> Maybe Language -> [Flag]
+languageToFlags comp = filter (not . null)
+                     . catMaybes . map (languageToFlag comp)
+                     . maybe [Haskell98] (\x->[x])
+
+languageToFlag :: Compiler -> Language -> Maybe Flag
+languageToFlag comp ext = lookup ext (compilerLanguages comp)
+
 
 -- |For the given compiler, return the extensions it does not support.
 unsupportedExtensions :: Compiler -> [Extension] -> [Extension]
