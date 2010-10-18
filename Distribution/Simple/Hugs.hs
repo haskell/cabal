@@ -64,7 +64,8 @@ import Distribution.PackageDescription
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), CompilerId(..), Compiler(..), Flag
+         ( CompilerFlavor(..), CompilerId(..)
+         , Compiler(..), Flag, languageToFlags, extensionsToFlags
          , PackageDB(..), PackageDBStack )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -545,6 +546,7 @@ stripComments keepPragmas = stripCommentsLevel 0
 -- \<prefix>\/lib\/hugs\/programs\/\<exename>.
 install
     :: Verbosity -- ^verbosity
+    -> LocalBuildInfo
     -> FilePath  -- ^Library install location
     -> FilePath  -- ^Program install location
     -> FilePath  -- ^Executable install location
@@ -553,7 +555,8 @@ install
     -> (FilePath,FilePath)  -- ^Executable (prefix,suffix)
     -> PackageDescription
     -> IO ()
-install verbosity libDir installProgDir binDir targetProgDir buildPref (progprefix,progsuffix) pkg_descr = do
+--FIXME: this script should be generated at build time, just installed at this stage
+install verbosity lbi libDir installProgDir binDir targetProgDir buildPref (progprefix,progsuffix) pkg_descr = do
     removeDirectoryRecursive libDir `catchIO` \_ -> return ()
     withLib pkg_descr $ \ lib ->
       findModuleFiles [buildPref] hugsInstallSuffixes (libModules lib)
@@ -562,6 +565,7 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
     when (any (buildable . buildInfo) (executables pkg_descr)) $
         createDirectoryIfMissingVerbose verbosity True binDir
     withExe pkg_descr $ \ exe -> do
+        let bi = buildInfo exe
         let theBuildDir = buildProgDir </> exeName exe
         let installDir = installProgDir </> exeName exe
         let targetDir = targetProgDir </> exeName exe
@@ -571,9 +575,9 @@ install verbosity libDir installProgDir binDir targetProgDir buildPref (progpref
                                          : otherModules (buildInfo exe))
           >>= installOrdinaryFiles verbosity installDir
         let targetName = "\"" ++ (targetDir </> hugsMainFilename exe) ++ "\""
-        -- FIX (HUGS): use extensions, and options from file too?
-        -- see http://hackage.haskell.org/trac/hackage/ticket/43
         let hugsOptions = hcOptions Hugs (buildInfo exe)
+                       ++ languageToFlags (compiler lbi) (defaultLanguage bi)
+                       ++ extensionsToFlags (compiler lbi) (allExtensions bi)
         let baseExeFile = progprefix ++ (exeName exe) ++ progsuffix
         let exeFile = case buildOS of
                           Windows -> binDir </> baseExeFile <.> ".bat"
