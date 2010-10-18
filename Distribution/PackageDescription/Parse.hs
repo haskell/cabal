@@ -338,7 +338,8 @@ binfoFieldDescrs =
            cSources           (\paths binfo -> binfo{cSources=paths})
  , listField   "extensions"
            disp               parseExtensionQ
-           extensions         (\exts  binfo -> binfo{extensions=exts})
+           oldExtensions      (\exts  binfo -> binfo{oldExtensions=exts})
+
  , listField   "extra-libraries"
            showToken          parseTokenQ
            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})

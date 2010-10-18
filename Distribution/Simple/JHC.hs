@@ -50,7 +50,7 @@ module Distribution.Simple.JHC (
 
 import Distribution.PackageDescription as PD
        ( PackageDescription(..), BuildInfo(..), Executable(..)
-       , Library(..), libModules, hcOptions )
+       , Library(..), libModules, hcOptions, usedExtensions )
 import Distribution.InstalledPackageInfo
          ( emptyInstalledPackageInfo, )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -177,7 +177,7 @@ constructJHCCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
                     -> FilePath -> Verbosity -> [String]
 constructJHCCmdLine lbi bi clbi _odir verbosity =
         (if verbosity >= deafening then ["-v"] else [])
-     ++ extensionsToFlags (compiler lbi) (extensions bi)
+     ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
      ++ hcOptions JHC bi
      ++ ["--noauto","-i-"]
      ++ concat [["-i", l] | l <- nub (hsSourceDirs bi)]

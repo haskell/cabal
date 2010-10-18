@@ -79,7 +79,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
-    , Library(..), hasLibs, Executable(..), BuildInfo(..)
+    , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , FlagName(..), TestSuite(..) )
 import Distribution.PackageDescription.Configuration
@@ -408,7 +408,7 @@ configure (pkg_descr0, pbi) cfg
                             defaultDirs (configInstallDirs cfg)
 
         -- check extensions
-        let extlist = nub $ concatMap extensions (allBuildInfo pkg_descr)
+        let extlist = nub $ concatMap allExtensions (allBuildInfo pkg_descr)
         let exts = unsupportedExtensions comp extlist
         when (not (null exts)) $
           die $ "The package " ++ display (packageId pkg_descr0)
