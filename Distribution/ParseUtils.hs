@@ -77,7 +77,7 @@ import Distribution.ReadE
 import Distribution.Text
          ( Text(..) )
 import Distribution.Simple.Utils
-         ( intercalate, lowercase, normaliseLineEndings )
+         ( comparing, intercalate, lowercase, normaliseLineEndings )
 import Language.Haskell.Extension (Extension)
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
@@ -230,16 +230,16 @@ listField name showF readF get set =
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
 optsField name flavor get set =
    liftField (fromMaybe [] . lookup flavor . get)
-             (\opts b -> set (order (update flavor opts (get b))) b) $
+             (\opts b -> set (reorder (update flavor opts (get b))) b) $
         field name (hsep . map text)
                    (sepBy parseTokenQ' (munch1 isSpace))
   where
-        update _ opts l | and (map null opts)  = l
+        update _ opts l | all null opts = l  --empty opts as if no opts
         update f opts [] = [(f,opts)]
         update f opts ((f',opts'):rest)
            | f == f'   = (f, opts' ++ opts) : rest
            | otherwise = (f',opts') : update f opts rest
-        order l = sortBy (\(f,_) (f2,_)-> compare f f2) l
+        reorder = sortBy (comparing fst)
 
 -- TODO: this is a bit smelly hack. It's because we want to parse bool fields
 --       liberally but not accept new parses. We cannot do that with ReadP
