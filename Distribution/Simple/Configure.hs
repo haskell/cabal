@@ -66,7 +66,8 @@ module Distribution.Simple.Configure (configure,
 
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
-    , showCompilerId, unsupportedExtensions, PackageDB(..), PackageDBStack )
+    , showCompilerId, unsupportedLanguages, unsupportedExtensions
+    , PackageDB(..), PackageDBStack )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(PackageIdentifier), PackageId
     , packageName, packageVersion, Package(..)
@@ -126,7 +127,7 @@ import Control.Monad
 import Data.List
     ( nub, partition, isPrefixOf, inits )
 import Data.Maybe
-         ( isNothing )
+         ( isNothing, catMaybes )
 import Data.Monoid
     ( Monoid(..) )
 import System.Directory
@@ -407,7 +408,14 @@ configure (pkg_descr0, pbi) cfg
         let installDirs = combineInstallDirs fromFlagOrDefault
                             defaultDirs (configInstallDirs cfg)
 
-        -- check extensions
+        -- check languages and extensions
+        let langlist = nub $ catMaybes $ map defaultLanguage (allBuildInfo pkg_descr)
+        let langs = unsupportedLanguages comp langlist
+        when (not (null langs)) $
+          die $ "The package " ++ display (packageId pkg_descr0)
+             ++ " requires the following languages which are not "
+             ++ "supported by " ++ display (compilerId comp) ++ ": "
+             ++ intercalate ", " (map display langs)
         let extlist = nub $ concatMap allExtensions (allBuildInfo pkg_descr)
         let exts = unsupportedExtensions comp extlist
         when (not (null exts)) $
