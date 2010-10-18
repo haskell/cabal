@@ -59,8 +59,8 @@ import Distribution.InstalledPackageInfo
                                 , sourcePackageId )
          , parseInstalledPackageInfo, showInstalledPackageInfo )
 import Distribution.PackageDescription
-         ( PackageDescription(..), BuildInfo(..), hcOptions,
-           Executable(..), withExe, Library(..), withLib, libModules )
+         ( PackageDescription(..), BuildInfo(..), hcOptions, allExtensions
+         , Executable(..), withExe, Library(..), withLib, libModules )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Compiler
@@ -336,7 +336,7 @@ buildExe verbosity pkg_descr lbi
     srcMainFile <- findFile (hsSourceDirs bi) mainPath
     let exeDir = destDir </> exeName exe
     let destMainFile = exeDir </> hugsMainFilename exe
-    copyModule verbosity (CPP `elem` extensions bi) bi lbi srcMainFile destMainFile
+    copyModule verbosity (CPP `elem` allExtensions bi) bi lbi srcMainFile destMainFile
     let destPathsFile = exeDir </> paths_modulename
     copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
                               destPathsFile
@@ -358,7 +358,7 @@ compileBuildInfo :: Verbosity
 --TODO: should not be using mLibSrcDirs at all
 compileBuildInfo verbosity destDir mLibSrcDirs mods bi lbi = do
     -- Pass 1: copy or cpp files from build directory to scratch directory
-    let useCpp = CPP `elem` extensions bi
+    let useCpp = CPP `elem` allExtensions bi
     let srcDir = buildDir lbi
         srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
     info verbosity $ "Source directories: " ++ show srcDirs

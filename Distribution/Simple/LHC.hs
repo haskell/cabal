@@ -71,7 +71,7 @@ module Distribution.Simple.LHC (
 
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, hcOptions )
+         , Library(..), libModules, hcOptions, usedExtensions, allExtensions )
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo
                                 , parseInstalledPackageInfo )
@@ -336,7 +336,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
 
   let libTargetDir = pref
-      forceVanillaLib = TemplateHaskell `elem` extensions libBi
+      forceVanillaLib = TemplateHaskell `elem` allExtensions libBi
       -- TH always needs vanilla libs, even when building for profiling
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -544,7 +544,7 @@ buildExe verbosity _pkg_descr lbi
   -- with profiling. This is because the code that TH needs to
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
-  when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
+  when (withProfExe lbi && TemplateHaskell `elem` allExtensions exeBi)
      (runGhcProg $ lhcWrap (binArgs False False))
 
   runGhcProg (binArgs True (withProfExe lbi))
@@ -628,7 +628,7 @@ ghcOptions lbi bi clbi odir
            NormalOptimisation  -> ["-O"]
            MaximumOptimisation -> ["-O2"])
      ++ hcOptions GHC bi
-     ++ extensionsToFlags c (extensions bi)
+     ++ extensionsToFlags c (usedExtensions bi)
     where c = compiler lbi
 
 ghcPackageFlags :: LocalBuildInfo -> ComponentLocalBuildInfo -> [String]

@@ -227,7 +227,7 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
       else if verbosity >= normal    then []
       else                                ["-v0"])
      -- flags for language extensions
-  ++ extensionsToFlags (compiler lbi) (extensions bi)
+  ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
      -- packages
   ++ ["--hide-all-packages"]
   ++ uhcPackageDbOptions user system (withPackageDB lbi)

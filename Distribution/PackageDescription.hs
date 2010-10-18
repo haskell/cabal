@@ -88,6 +88,9 @@ module Distribution.PackageDescription (
         BuildInfo(..),
         emptyBuildInfo,
         allBuildInfo,
+        allLanguages,
+        allExtensions,
+        usedExtensions,
         hcOptions,
 
         -- ** Supplementary build information
@@ -108,7 +111,9 @@ module Distribution.PackageDescription (
   ) where
 
 import Data.List   (nub, intersperse)
+import Data.Maybe  (maybeToList)
 import Data.Monoid (Monoid(mempty, mappend))
+import Control.Monad (MonadPlus(mplus))
 import Text.PrettyPrint.HughesPJ as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Data.Char as Char (isAlphaNum, isDigit, toLower)
@@ -125,7 +130,8 @@ import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
 import Distribution.Text
          ( Text(..), display )
-import Language.Haskell.Extension (Extension)
+import Language.Haskell.Extension
+         ( Language, Extension )
 
 -- -----------------------------------------------------------------------------
 -- The PackageDescription type
@@ -497,7 +503,13 @@ data BuildInfo = BuildInfo {
         cSources          :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
-        extensions        :: [Extension],
+
+        defaultLanguage   :: Maybe Language,-- ^ language used when not explicitly specified
+        otherLanguages    :: [Language],    -- ^ other languages used within the package
+        defaultExtensions :: [Extension],   -- ^ language extensions used by all modules
+        otherExtensions   :: [Extension],   -- ^ other language extensions used within the package
+        oldExtensions     :: [Extension],   -- ^ the old extensions field, treated same as 'defaultExtensions'
+
         extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
@@ -525,7 +537,11 @@ instance Monoid BuildInfo where
     cSources          = [],
     hsSourceDirs      = [],
     otherModules      = [],
-    extensions        = [],
+    defaultLanguage   = Nothing,
+    otherLanguages    = [],
+    defaultExtensions = [],
+    otherExtensions   = [],
+    oldExtensions     = [],
     extraLibs         = [],
     extraLibDirs      = [],
     includeDirs       = [],
@@ -548,7 +564,11 @@ instance Monoid BuildInfo where
     cSources          = combineNub cSources,
     hsSourceDirs      = combineNub hsSourceDirs,
     otherModules      = combineNub otherModules,
-    extensions        = combineNub extensions,
+    defaultLanguage   = combineMby defaultLanguage,
+    otherLanguages    = combineNub otherLanguages,
+    defaultExtensions = combineNub defaultExtensions,
+    otherExtensions   = combineNub otherExtensions,
+    oldExtensions     = combineNub oldExtensions,
     extraLibs         = combine    extraLibs,
     extraLibDirs      = combineNub extraLibDirs,
     includeDirs       = combineNub includeDirs,
@@ -563,6 +583,7 @@ instance Monoid BuildInfo where
     where
       combine    field = field a `mappend` field b
       combineNub field = nub (combine field)
+      combineMby field = field b `mplus` field a
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = mempty
@@ -581,6 +602,24 @@ allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
                               , buildable bi ]
   --FIXME: many of the places where this is used, we actually want to look at
   --       unbuildable bits too, probably need separate functions
+
+-- | The 'Language's used by this component
+--
+allLanguages :: BuildInfo -> [Language]
+allLanguages bi = maybeToList (defaultLanguage bi)
+               ++ otherLanguages bi
+
+-- | The 'Extension's that are used somewhere by this component
+--
+allExtensions :: BuildInfo -> [Extension]
+allExtensions bi = usedExtensions bi
+                ++ otherExtensions bi
+
+-- | The 'Extensions' that are used by all modules in this component
+--
+usedExtensions :: BuildInfo -> [Extension]
+usedExtensions bi = oldExtensions bi
+                 ++ defaultExtensions bi
 
 type HookedBuildInfo = (Maybe BuildInfo, [(String, BuildInfo)])
 

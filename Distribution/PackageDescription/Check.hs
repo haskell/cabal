@@ -403,11 +403,11 @@ checkFields pkg =
   where
     unknownCompilers  = [ name | (OtherCompiler name, _) <- testedWith pkg ]
     unknownExtensions = [ name | bi <- allBuildInfo pkg
-                               , UnknownExtension name <- extensions bi ]
+                               , UnknownExtension name <- allExtensions bi ]
     deprecatedExtensions = nub $ catMaybes
       [ find ((==ext) . fst) Extension.deprecatedExtensions
       | bi <- allBuildInfo pkg
-      , ext <- extensions bi ]
+      , ext <- allExtensions bi ]
 
     testedWithImpossibleRanges =
       [ Dependency (PackageName (display compiler)) vr
@@ -870,19 +870,19 @@ checkCabalVersion pkg =
         ++ "compatability with earlier Cabal versions then use 'OtherLicense'."
 
     -- check for new language extensions
-  , checkVersion [1,2,3] (not (null usedExtensionsThatNeedCabal12)) $
+  , checkVersion [1,2,3] (not (null mentionedExtensionsThatNeedCabal12)) $
       PackageDistInexcusable $
            "Unfortunately the language extensions "
-        ++ commaSep (map (quote . display) usedExtensionsThatNeedCabal12)
+        ++ commaSep (map (quote . display) mentionedExtensionsThatNeedCabal12)
         ++ " break the parser in earlier Cabal versions so you need to "
         ++ "specify 'cabal-version: >= 1.2.3'. Alternatively if you require "
         ++ "compatability with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
 
-  , checkVersion [1,4] (not (null usedExtensionsThatNeedCabal14)) $
+  , checkVersion [1,4] (not (null mentionedExtensionsThatNeedCabal14)) $
       PackageDistInexcusable $
            "Unfortunately the language extensions "
-        ++ commaSep (map (quote . display) usedExtensionsThatNeedCabal14)
+        ++ commaSep (map (quote . display) mentionedExtensionsThatNeedCabal14)
         ++ " break the parser in earlier Cabal versions so you need to "
         ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
         ++ "compatability with earlier Cabal versions then you may be able to "
@@ -969,14 +969,15 @@ checkCabalVersion pkg =
     compatLicenses = [ GPL Nothing, LGPL Nothing, BSD3, BSD4
                      , PublicDomain, AllRightsReserved, OtherLicense ]
 
-    usedExtensions = [ ext | bi <- allBuildInfo pkg, ext <- extensions bi ]
-    usedExtensionsThatNeedCabal12 =
-      nub (filter (`elem` compatExtensionsExtra) usedExtensions)
+    mentionedExtensions = [ ext | bi <- allBuildInfo pkg
+                                , ext <- allExtensions bi ]
+    mentionedExtensionsThatNeedCabal12 =
+      nub (filter (`elem` compatExtensionsExtra) mentionedExtensions)
 
     -- As of Cabal-1.4 we can add new extensions without worrying about
     -- breaking old versions of cabal.
-    usedExtensionsThatNeedCabal14 =
-      nub (filter (`notElem` compatExtensions) usedExtensions)
+    mentionedExtensionsThatNeedCabal14 =
+      nub (filter (`notElem` compatExtensions) mentionedExtensions)
 
     -- The known extensions in Cabal-1.2.3
     compatExtensions =
