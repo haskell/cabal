@@ -84,9 +84,13 @@ configure verbosity hcPath _hcPkgPath conf = do
 
   let comp = Compiler {
                compilerId          =  CompilerId UHC uhcVersion,
+               compilerLanguages   =  uhcLanguages,
                compilerExtensions  =  uhcLanguageExtensions
              }
   return (comp, conf')
+
+uhcLanguages :: [(Language, C.Flag)]
+uhcLanguages = [(Haskell98, "")]
 
 -- | The flags for the supported extensions.
 uhcLanguageExtensions :: [(Extension, C.Flag)]

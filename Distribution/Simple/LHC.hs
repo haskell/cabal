@@ -109,7 +109,8 @@ import Distribution.System
 import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
-import Language.Haskell.Extension (Extension(..))
+import Language.Haskell.Extension
+         ( Language(Haskell98), Extension(..) )
 
 import Control.Monad            ( unless, when )
 import Data.List
@@ -145,11 +146,13 @@ configure verbosity hcPath hcPkgPath conf = do
     ++ programPath lhcProg ++ " is version " ++ display lhcVersion ++ " "
     ++ programPath lhcPkgProg ++ " is version " ++ display lhcPkgVersion
 
-  languageExtensions <- getLanguageExtensions verbosity lhcProg
+  languages  <- getLanguages  verbosity lhcProg
+  extensions <- getExtensions verbosity lhcProg
 
   let comp = Compiler {
         compilerId             = CompilerId LHC lhcVersion,
-        compilerExtensions     = languageExtensions
+        compilerLanguages      = languages,
+        compilerExtensions     = extensions
       }
       conf''' = configureToolchain lhcProg conf'' -- configure gcc and ld
   return (comp, conf''')
@@ -216,8 +219,12 @@ configureToolchain lhcProg =
         then return ["-x"]
         else return []
 
-getLanguageExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
-getLanguageExtensions verbosity lhcProg = do
+getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Flag)]
+getLanguages _ _ = return [(Haskell98, "")]
+--FIXME: does lhc support -XHaskell98 flag? from what version?
+
+getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
+getExtensions verbosity lhcProg = do
     exts <- rawSystemStdout verbosity (programPath lhcProg)
               ["--supported-languages"]
     -- GHC has the annoying habit of inverting some of the extensions

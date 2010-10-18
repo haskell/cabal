@@ -114,7 +114,7 @@ import Distribution.System
 import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
-import Language.Haskell.Extension (Extension(..))
+import Language.Haskell.Extension (Language(..), Extension(..))
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
@@ -155,11 +155,13 @@ configure verbosity hcPath hcPkgPath conf = do
     ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
     ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
 
-  languageExtensions <- getLanguageExtensions verbosity ghcProg
+  languages  <- getLanguages verbosity ghcProg
+  extensions <- getExtensions verbosity ghcProg
 
   let comp = Compiler {
         compilerId             = CompilerId GHC ghcVersion,
-        compilerExtensions     = languageExtensions
+        compilerLanguages      = languages,
+        compilerExtensions     = extensions
       }
       conf''' = configureToolchain ghcProg conf'' -- configure gcc and ld
   return (comp, conf''')
@@ -280,8 +282,17 @@ configureToolchain ghcProg =
         then return ["-x"]
         else return []
 
-getLanguageExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
-getLanguageExtensions verbosity ghcProg
+getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Flag)]
+getLanguages _ ghcProg
+  -- TODO: should be using --supported-languages rather than hard coding
+  | ghcVersion >= Version [7] [] = return [(Haskell98,   "-XHaskell98")
+                                          ,(Haskell2010, "-XHaskell2010")]
+  | otherwise                    = return [(Haskell98,   "")]
+  where
+    Just ghcVersion = programVersion ghcProg
+
+getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
+getExtensions verbosity ghcProg
   | ghcVersion >= Version [6,7] [] = do
 
     exts <- rawSystemStdout verbosity (programPath ghcProg)
