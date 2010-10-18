@@ -68,8 +68,9 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
         ( mkLibName, objExtension, exeExtension )
 import Distribution.Simple.Compiler
-        ( CompilerFlavor(..), CompilerId(..), Compiler(..)
-        , Flag, extensionsToFlags, PackageDB(..), PackageDBStack )
+         ( CompilerFlavor(..), CompilerId(..), Compiler(..)
+         , Flag, languageToFlags, extensionsToFlags
+         , PackageDB(..), PackageDBStack )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Language.Haskell.Extension
@@ -141,7 +142,6 @@ nhcLanguages = [(Haskell98, "-98")]
 -- | The flags for the supported extensions
 nhcLanguageExtensions :: [(Extension, Flag)]
 nhcLanguageExtensions =
-    -- TODO: use -98 when no extensions are specified.
     -- NHC doesn't enforce the monomorphism restriction at all.
     -- TODO: pattern guards in 1.20
     [(NoMonomorphismRestriction, "")
@@ -277,7 +277,8 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let bi = libBuildInfo lib
       modules = exposedModules lib ++ otherModules bi
       -- Unsupported extensions have already been checked by configure
-      extensionFlags = extensionsToFlags (compiler lbi) (usedExtensions bi)
+      languageFlags = languageToFlags (compiler lbi) (defaultLanguage bi)
+                   ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
   inFiles <- getModulePaths lbi bi modules
   let targetDir = buildDir lbi
       srcDirs  = nub (map takeDirectory inFiles)
@@ -287,9 +288,9 @@ buildLib verbosity pkg_descr lbi lib clbi = do
        ["-hc=" ++ programPath nhcProg]
     ++ nhcVerbosityOptions verbosity
     ++ ["-d", targetDir, "-hidir", targetDir]
-    ++ extensionFlags
     ++ maybe [] (hcOptions NHC . libBuildInfo)
                            (library pkg_descr)
+    ++ languageFlags
     ++ concat [ ["-package", display (packageName pkgid) ]
               | (_, pkgid) <- componentPackageDeps clbi ]
     ++ inFiles
@@ -341,7 +342,8 @@ buildExe verbosity pkg_descr lbi exe clbi = do
   let bi = buildInfo exe
       modules = otherModules bi
       -- Unsupported extensions have already been checked by configure
-      extensionFlags = extensionsToFlags (compiler lbi) (usedExtensions bi)
+      languageFlags = languageToFlags (compiler lbi) (defaultLanguage bi)
+                   ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
   inFiles <- getModulePaths lbi bi modules
   let targetDir = buildDir lbi </> exeName exe
       exeDir    = targetDir </> (exeName exe ++ "-tmp")
@@ -352,9 +354,9 @@ buildExe verbosity pkg_descr lbi exe clbi = do
        ["-hc=" ++ programPath nhcProg]
     ++ nhcVerbosityOptions verbosity
     ++ ["-d", targetDir, "-hidir", targetDir]
-    ++ extensionFlags
     ++ maybe [] (hcOptions NHC . libBuildInfo)
                            (library pkg_descr)
+    ++ languageFlags
     ++ concat [ ["-package", display (packageName pkgid) ]
               | (_, pkgid) <- componentPackageDeps clbi ]
     ++ inFiles

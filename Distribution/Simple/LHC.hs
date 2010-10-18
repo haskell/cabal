@@ -101,7 +101,7 @@ import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
-         , Flag, extensionsToFlags )
+         , Flag, languageToFlags, extensionsToFlags )
 import Distribution.Version
          ( Version(..), orLaterVersion )
 import Distribution.System
@@ -628,6 +628,7 @@ ghcOptions lbi bi clbi odir
            NormalOptimisation  -> ["-O"]
            MaximumOptimisation -> ["-O2"])
      ++ hcOptions GHC bi
+     ++ languageToFlags c (defaultLanguage bi)
      ++ extensionsToFlags c (usedExtensions bi)
     where c = compiler lbi
 
