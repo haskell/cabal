@@ -60,7 +60,7 @@ import Distribution.InstalledPackageInfo
          , emptyInstalledPackageInfo, parseInstalledPackageInfo )
 import Distribution.PackageDescription
         ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-        , hcOptions )
+        , hcOptions, usedExtensions )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.LocalBuildInfo
@@ -277,7 +277,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let bi = libBuildInfo lib
       modules = exposedModules lib ++ otherModules bi
       -- Unsupported extensions have already been checked by configure
-      extensionFlags = extensionsToFlags (compiler lbi) (extensions bi)
+      extensionFlags = extensionsToFlags (compiler lbi) (usedExtensions bi)
   inFiles <- getModulePaths lbi bi modules
   let targetDir = buildDir lbi
       srcDirs  = nub (map takeDirectory inFiles)
@@ -341,7 +341,7 @@ buildExe verbosity pkg_descr lbi exe clbi = do
   let bi = buildInfo exe
       modules = otherModules bi
       -- Unsupported extensions have already been checked by configure
-      extensionFlags = extensionsToFlags (compiler lbi) (extensions bi)
+      extensionFlags = extensionsToFlags (compiler lbi) (usedExtensions bi)
   inFiles <- getModulePaths lbi bi modules
   let targetDir = buildDir lbi </> exeName exe
       exeDir    = targetDir </> (exeName exe ++ "-tmp")

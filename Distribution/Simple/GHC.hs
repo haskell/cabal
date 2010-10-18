@@ -76,7 +76,7 @@ import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, hcOptions )
+         , Library(..), libModules, hcOptions, usedExtensions, allExtensions )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -505,7 +505,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
              comp (withProfLib lbi) (libBuildInfo lib)
 
   let libTargetDir = pref
-      forceVanillaLib = TemplateHaskell `elem` extensions libBi
+      forceVanillaLib = TemplateHaskell `elem` allExtensions libBi
       -- TH always needs vanilla libs, even when building for profiling
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -703,7 +703,7 @@ buildExe verbosity _pkg_descr lbi
   -- with profiling. This is because the code that TH needs to
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
-  when (withProfExe lbi && TemplateHaskell `elem` extensions exeBi)
+  when (withProfExe lbi && TemplateHaskell `elem` allExtensions exeBi)
      (runGhcProg (binArgs False False))
 
   runGhcProg (binArgs True (withProfExe lbi))
@@ -811,7 +811,7 @@ ghcOptions lbi bi clbi odir
         -- We will introduce a new language field to control this.
      ++ [ "-XHaskell98" | ghcVer >= Version [7] [] ]
      ++ hcOptions GHC bi
-     ++ extensionsToFlags (compiler lbi) (extensions bi)
+     ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
     where
       ghcVer = compilerVersion (compiler lbi)
 

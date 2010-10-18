@@ -55,9 +55,9 @@ import Distribution.Package
          ( PackageIdentifier, Package(..), packageName )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
-         (PackageDescription(..), BuildInfo(..),
-          Library(..), hasLibs, withLib,
-          Executable(..), withExe)
+         ( PackageDescription(..), BuildInfo(..), allExtensions
+         , Library(..), hasLibs, withLib
+         , Executable(..), withExe )
 import Distribution.Simple.Compiler
          ( Compiler(..), compilerVersion )
 import Distribution.Simple.GHC ( ghcLibDir )
@@ -256,7 +256,7 @@ prepareSources verbosity tmp lbi isVersion2 bi args@HaddockArgs{argTargets=files
                      removeFile targetFile
 
                  return hsFile
-            needsCpp = CPP `elem` extensions bi
+            needsCpp = CPP `elem` allExtensions bi
             defines | isVersion2 = []
                     | otherwise  = ["-D__HADDOCK__"]
 
