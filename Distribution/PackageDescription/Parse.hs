@@ -336,6 +336,19 @@ binfoFieldDescrs =
  , listField   "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})
+
+ , simpleField "default-language"
+           (maybe empty disp) (fmap Just parseLanguageQ)
+           defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})
+ , listField   "other-languages"
+           disp               parseLanguageQ
+           otherLanguages     (\langs binfo -> binfo{otherLanguages=langs})
+ , listField   "default-extensions"
+           disp               parseExtensionQ
+           defaultExtensions  (\exts  binfo -> binfo{defaultExtensions=exts})
+ , listField   "other-extensions"
+           disp               parseExtensionQ
+           otherExtensions    (\exts  binfo -> binfo{otherExtensions=exts})
  , listField   "extensions"
            disp               parseExtensionQ
            oldExtensions      (\exts  binfo -> binfo{oldExtensions=exts})

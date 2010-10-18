@@ -57,7 +57,7 @@ module Distribution.ParseUtils (
         parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
-        parseTestedWithQ, parseLicenseQ, parseExtensionQ,
+        parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, spaceListField, commaListField,
@@ -78,7 +78,8 @@ import Distribution.Text
          ( Text(..) )
 import Distribution.Simple.Utils
          ( comparing, intercalate, lowercase, normaliseLineEndings )
-import Language.Haskell.Extension (Extension)
+import Language.Haskell.Extension
+         ( Language, Extension )
 
 import Text.PrettyPrint.HughesPJ hiding (braces)
 import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
@@ -621,6 +622,9 @@ parseLicenseQ = parseQuoted parse <++ parse
 -- because the "compat" version of ReadP isn't quite powerful enough.  In
 -- particular, the type of <++ is ReadP r r -> ReadP r a -> ReadP r a
 -- Hence the trick above to make 'lic' polymorphic.
+
+parseLanguageQ :: ReadP r Language
+parseLanguageQ = parseQuoted parse <++ parse
 
 parseExtensionQ :: ReadP r Extension
 parseExtensionQ = parseQuoted parse <++ parse
