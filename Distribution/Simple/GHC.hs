@@ -106,7 +106,7 @@ import qualified Distribution.Simple.Program.Ld    as Ld
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
-         , Flag, extensionsToFlags )
+         , Flag, languageToFlags, extensionsToFlags )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
@@ -807,10 +807,8 @@ ghcOptions lbi bi clbi odir
            NoOptimisation      -> []
            NormalOptimisation  -> ["-O"]
            MaximumOptimisation -> ["-O2"])
-        -- GHC 7 defaults to Haskell2010, we stick with 98 for the moment.
-        -- We will introduce a new language field to control this.
-     ++ [ "-XHaskell98" | ghcVer >= Version [7] [] ]
      ++ hcOptions GHC bi
+     ++ languageToFlags   (compiler lbi) (defaultLanguage bi)
      ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
     where
       ghcVer = compilerVersion (compiler lbi)

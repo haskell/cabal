@@ -226,7 +226,9 @@ constructUHCCmdLine user system lbi bi clbi odir verbosity =
      (if      verbosity >= deafening then ["-v4"]
       else if verbosity >= normal    then []
       else                                ["-v0"])
+  ++ hcOptions UHC bi
      -- flags for language extensions
+  ++ languageToFlags   (compiler lbi) (defaultLanguage bi)
   ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
      -- packages
   ++ ["--hide-all-packages"]
