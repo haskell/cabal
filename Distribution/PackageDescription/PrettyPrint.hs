@@ -47,7 +47,8 @@ module Distribution.PackageDescription.PrettyPrint (
 ) where
 
 import Distribution.PackageDescription
-       (TestType(..), TestSuite(..), repoKind, SourceRepo(..),
+       ( TestSuite(..), TestSuiteInterface(..), testType
+       , SourceRepo(..), repoKind,
         customFieldsBI, CondTree(..), Condition(..), Condition,
         FlagName(..), ConfVar(..), Flag, Executable(..), Library(..),
         ConfVar, CondTree, Flag(..), PackageDescription(..),
@@ -63,7 +64,6 @@ import Distribution.PackageDescription.Parse (pkgDescrFieldDescrs,binfoFieldDesc
 import Distribution.Package (Dependency(..))
 import Distribution.Text (Text(..))
 import Data.Maybe (isJust, fromJust, isNothing)
-import Data.Version (showVersion)
 
 indentWith :: Int
 indentWith = 4
@@ -165,23 +165,31 @@ ppExecutables exes                       =
 
 ppTestSuites :: [(String, CondTree ConfVar [Dependency] TestSuite)] -> Doc
 ppTestSuites suites =
-    emptyLine $ vcat [text ("test-suite " ++ n)
-              $+$ nest indentWith (ppCondTree condTree Nothing ppTestSuite)| (n,condTree) <- suites]
+    emptyLine $ vcat [     text ("test-suite " ++ n)
+                       $+$ nest indentWith (ppCondTree condTree Nothing ppTestSuite)
+                     | (n,condTree) <- suites]
   where
-    ppTestSuite (TestSuite _ (ExeTest version filePath) buildInfo') Nothing =
-        (text "type:" <+> text ("exitcode-stdio-" ++ showVersion version))
-            $+$ (text "main-is:" <+> text filePath)
-            $+$ ppFields binfoFieldDescrs buildInfo'
-            $+$ ppCustomFields (customFieldsBI buildInfo')
-    ppTestSuite (TestSuite _ (LibTest version moduleName) buildInfo') Nothing =
-        (text "type:" <+> text ("library-" ++ showVersion version))
-            $+$ (text "test-module:" <+> disp moduleName)
-            $+$ ppFields binfoFieldDescrs buildInfo'
-            $+$ ppCustomFields (customFieldsBI buildInfo')
+    ppTestSuite testsuite Nothing =
+                text "type:" <+> disp (testType testsuite)
+            $+$ maybe empty (\f -> text "main-is:"     <+> text f)
+                            (testSuiteMainIs testsuite)
+            $+$ maybe empty (\m -> text "test-module:" <+> disp m)
+                            (testSuiteModule testsuite)
+            $+$ ppFields binfoFieldDescrs (testBuildInfo testsuite)
+            $+$ ppCustomFields (customFieldsBI (testBuildInfo testsuite))
+
     ppTestSuite (TestSuite _ _ buildInfo')
                     (Just (TestSuite _ _ buildInfo2)) =
             ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
             $+$ ppCustomFields (customFieldsBI buildInfo')
+
+    testSuiteMainIs test = case testInterface test of
+      TestSuiteExeV10 _ f -> Just f
+      _                   -> Nothing
+
+    testSuiteModule test = case testInterface test of
+      TestSuiteLibV09 _ m -> Just m
+      _                   -> Nothing
 
 ppCondition :: Condition ConfVar -> Doc
 ppCondition (Var x)                      = ppConfVar x
