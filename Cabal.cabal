@@ -18,7 +18,7 @@ Description:
         The Haskell Cabal is part of a larger infrastructure for distributing,
         organizing, and cataloging Haskell libraries and tools.
 Category: Distribution
-cabal-version: >=1.8
+cabal-version: >=1.10
 Build-Type: Custom
 -- Even though we do use the default Setup.lhs it's vital to bootstrapping
 -- that we build Setup.lhs using our own local Cabal source code.
