@@ -48,11 +48,10 @@ module Distribution.PackageDescription.PrettyPrint (
 
 import Distribution.PackageDescription
        ( TestSuite(..), TestSuiteInterface(..), testType
-       , SourceRepo(..), repoKind,
-        customFieldsBI, CondTree(..), Condition(..), Condition,
-        FlagName(..), ConfVar(..), Flag, Executable(..), Library(..),
-        ConfVar, CondTree, Flag(..), PackageDescription(..),
-        condExecutables, condLibrary, genPackageFlags, packageDescription,
+       , SourceRepo(..),
+        customFieldsBI, CondTree(..), Condition(..),
+        FlagName(..), ConfVar(..), Executable(..), Library(..),
+        Flag(..), PackageDescription(..),
         GenericPackageDescription(..))
 import Text.PrettyPrint
        (hsep, comma, punctuate, fsep, parens, char, nest, empty,
