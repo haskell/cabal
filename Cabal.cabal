@@ -124,7 +124,8 @@ Library
         Distribution.Simple.GHC.IPI642,
         Paths_Cabal
 
-  Extensions: CPP
+  Default-Language: Haskell98
+  Default-Extensions: CPP
 
 test-suite unit-tests
   type: exitcode-stdio-1.0
@@ -144,3 +145,4 @@ test-suite unit-tests
         extensible-exceptions,
         bytestring,
         unix
+  Default-Language: Haskell98
