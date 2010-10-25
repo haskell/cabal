@@ -256,7 +256,7 @@ prepareSources verbosity tmp lbi isVersion2 bi args@HaddockArgs{argTargets=files
                      removeFile targetFile
 
                  return hsFile
-            needsCpp = CPP `elem` allExtensions bi
+            needsCpp = EnableExtension CPP `elem` allExtensions bi
             defines | isVersion2 = []
                     | otherwise  = ["-D__HADDOCK__"]
 
