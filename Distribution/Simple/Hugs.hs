@@ -95,7 +95,7 @@ import Distribution.Simple.Utils
          , rawSystemStdInOut
          , die, info, notice )
 import Language.Haskell.Extension
-         ( Language(Haskell98), Extension(..) )
+         ( Language(Haskell98), Extension(..), KnownExtension(..) )
 import System.FilePath          ( (</>), takeExtension, (<.>),
                                   searchPathSeparator, normalise, takeDirectory )
 import Distribution.System
@@ -136,7 +136,8 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
         compilerId             = CompilerId Hugs version,
         compilerLanguages      = hugsLanguages,
-        compilerExtensions     = hugsLanguageExtensions
+        compilerExtensions  =  [ (EnableExtension ke, flag)
+                               | (ke, flag) <- hugsLanguageExtensions ]
       }
   return (comp, conf'')
 
@@ -174,7 +175,7 @@ hugsLanguages :: [(Language, Flag)]
 hugsLanguages = [(Haskell98, "")] --default is 98 mode
 
 -- | The flags for the supported extensions
-hugsLanguageExtensions :: [(Extension, Flag)]
+hugsLanguageExtensions :: [(KnownExtension, Flag)]
 hugsLanguageExtensions =
     [(OverlappingInstances       , "+o")
     ,(IncoherentInstances        , "+oO")
@@ -337,7 +338,7 @@ buildExe verbosity pkg_descr lbi
     srcMainFile <- findFile (hsSourceDirs bi) mainPath
     let exeDir = destDir </> exeName exe
     let destMainFile = exeDir </> hugsMainFilename exe
-    copyModule verbosity (CPP `elem` allExtensions bi) bi lbi srcMainFile destMainFile
+    copyModule verbosity (EnableExtension CPP `elem` allExtensions bi) bi lbi srcMainFile destMainFile
     let destPathsFile = exeDir </> paths_modulename
     copyFileVerbose verbosity (autogenModulesDir lbi </> paths_modulename)
                               destPathsFile
@@ -359,7 +360,7 @@ compileBuildInfo :: Verbosity
 --TODO: should not be using mLibSrcDirs at all
 compileBuildInfo verbosity destDir mLibSrcDirs mods bi lbi = do
     -- Pass 1: copy or cpp files from build directory to scratch directory
-    let useCpp = CPP `elem` allExtensions bi
+    let useCpp = EnableExtension CPP `elem` allExtensions bi
     let srcDir = buildDir lbi
         srcDirs = nub $ srcDir : hsSourceDirs bi ++ mLibSrcDirs
     info verbosity $ "Source directories: " ++ show srcDirs
@@ -387,7 +388,7 @@ copyModule verbosity cppAll bi lbi srcFile destFile = do
     createDirectoryIfMissingVerbose verbosity True (takeDirectory destFile)
     (exts, opts, _) <- getOptionsFromSource srcFile
     let ghcOpts = [ op | (GHC, ops) <- opts, op <- ops ]
-    if cppAll || CPP `elem` exts || "-cpp" `elem` ghcOpts then do
+    if cppAll || EnableExtension CPP `elem` exts || "-cpp" `elem` ghcOpts then do
         runSimplePreProcessor (ppCpp bi lbi) srcFile destFile verbosity
         return ()
       else

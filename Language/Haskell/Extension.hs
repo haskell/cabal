@@ -43,7 +43,7 @@ module Language.Haskell.Extension (
         knownLanguages,
 
         Extension(..),
-        knownExtensions,
+        KnownExtension(..),
         deprecatedExtensions
   ) where
 
@@ -99,13 +99,11 @@ classifyLanguage = \str -> case lookup str langTable of
 -- * Extension
 -- ------------------------------------------------------------
 
--- Note: if you add a new 'Extension':
+-- Note: if you add a new 'KnownExtension':
 --
 -- * also add it to the Distribution.Simple.X.languageExtensions lists
 --   (where X is each compiler: GHC, JHC, Hugs, NHC)
 --
--- * also to the 'knownExtensions' list below.
-
 -- | This represents language extensions beyond a base 'Language' definition
 -- (such as 'Haskell98') that are supported by some implementations, usually
 -- in some special mode.
@@ -115,7 +113,17 @@ classifyLanguage = \str -> case lookup str langTable of
 -- documented in section 7.2.1 of the GHC User's Guide.
 
 data Extension =
- 
+  -- | A known extension
+    EnableExtension KnownExtension
+
+  -- | An unknown extension, identified by the name of its @LANGUAGE@
+  -- pragma.
+  | UnknownExtension String
+
+  deriving (Show, Read, Eq)
+
+data KnownExtension =
+
   -- | [GHC &#xa7; 7.6.3.4] Allow overlapping class instances,
   -- provided there is a unique most specific instance for each use.
     OverlappingInstances
@@ -378,16 +386,12 @@ data Extension =
   -- paper \"Regular Expression Patterns\" by Niklas Broberg, Andreas Farre
   -- and Josef Svenningsson, from ICFP '04.
   | RegularPatterns
-
-  -- | An unknown extension, identified by the name of its @LANGUAGE@
-  -- pragma.
-  | UnknownExtension String
-  deriving (Show, Read, Eq)
+  deriving (Show, Read, Eq, Enum)
 
 -- | Extensions that have been deprecated, possibly paired with another
 -- extension that replaces it.
 --
-deprecatedExtensions :: [(Extension, Maybe Extension)]
+deprecatedExtensions :: [(KnownExtension, Maybe KnownExtension)]
 deprecatedExtensions =
   [ (RecordPuns, Just NamedFieldPuns)
   , (PatternSignatures, Just ScopedTypeVariables)
@@ -399,83 +403,27 @@ deprecatedExtensions =
 -- name to the old one for older compilers. Otherwise we are in danger
 -- of the scenario in ticket #689.
 
-knownExtensions :: [Extension]
-knownExtensions =
-  [ OverlappingInstances
-  , UndecidableInstances
-  , IncoherentInstances
-  , RecursiveDo
-  , ParallelListComp
-  , MultiParamTypeClasses
-  , NoMonomorphismRestriction
-  , FunctionalDependencies
-  , Rank2Types
-  , RankNTypes
-  , PolymorphicComponents
-  , ExistentialQuantification
-  , ScopedTypeVariables
-  , ImplicitParams
-  , FlexibleContexts
-  , FlexibleInstances
-  , EmptyDataDecls
-  , CPP
-
-  , KindSignatures
-  , BangPatterns
-  , TypeSynonymInstances
-  , TemplateHaskell
-  , ForeignFunctionInterface
-  , Arrows
-  , Generics
-  , NoImplicitPrelude
-  , NamedFieldPuns
-  , PatternGuards
-  , GeneralizedNewtypeDeriving
-
-  , ExtensibleRecords
-  , RestrictedTypeSynonyms
-  , HereDocuments
-  , MagicHash
-  , TypeFamilies
-  , StandaloneDeriving
-
-  , UnicodeSyntax
-  , PatternSignatures
-  , UnliftedFFITypes
-  , LiberalTypeSynonyms
-  , TypeOperators
---PArr -- not ready yet, and will probably be renamed to ParallelArrays
-  , RecordWildCards
-  , RecordPuns
-  , DisambiguateRecordFields
-  , OverloadedStrings
-  , GADTs
-  , NoMonoPatBinds
-  , RelaxedPolyRec
-  , ExtendedDefaultRules
-  , UnboxedTuples
-  , DeriveDataTypeable
-  , ConstrainedClassMethods
-  , PackageImports
-  , ImpredicativeTypes
-  , NewQualifiedOperators
-  , PostfixOperators
-  , QuasiQuotes
-  , TransformListComp
-  , ViewPatterns
-  , XmlSyntax
-  , RegularPatterns
-  ]
-
 instance Text Extension where
   disp (UnknownExtension other) = Disp.text other
-  disp other                    = Disp.text (show other)
+  disp (EnableExtension ke)     = Disp.text (show ke)
 
   parse = do
     extension <- Parse.munch1 Char.isAlphaNum
     return (classifyExtension extension)
 
--- | 'read' for 'Extension's is really really slow so for the Text instance
+instance Text KnownExtension where
+  disp ke = Disp.text (show ke)
+
+  parse = do
+    extension <- Parse.munch1 Char.isAlphaNum
+    case classifyExtension extension of
+        EnableExtension ke ->
+            return ke
+        UnknownExtension _ ->
+            fail ("Can't parse " ++ show extension ++ " as KnownExtension")
+
+-- | 'read' for 'KnownExtension's is really really slow so for the Text
+-- instance
 -- what we do is make a simple table indexed off the first letter in the
 -- extension name. The extension names actually cover the range @'A'-'Z'@
 -- pretty densely and the biggest bucket is 7 so it's not too bad. We just do
@@ -486,15 +434,16 @@ instance Text Extension where
 --
 classifyExtension :: String -> Extension
 classifyExtension string@(c:_)
-  | inRange (bounds extensionTable) c
-  = case lookup string (extensionTable ! c) of
-      Just extension    -> extension
+  | inRange (bounds knownExtensionTable) c
+  = case lookup string (knownExtensionTable ! c) of
+      Just extension    -> EnableExtension extension
       Nothing           -> UnknownExtension string
 classifyExtension string = UnknownExtension string
 
-extensionTable :: Array Char [(String, Extension)]
-extensionTable =
+knownExtensionTable :: Array Char [(String, KnownExtension)]
+knownExtensionTable =
   accumArray (flip (:)) [] ('A', 'Z')
     [ (head str, (str, extension))
-    | extension <- knownExtensions
+    | extension <- [toEnum 0 ..]
     , let str = show extension ]
+

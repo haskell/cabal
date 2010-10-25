@@ -114,7 +114,7 @@ import Distribution.System
 import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
-import Language.Haskell.Extension (Language(..), Extension(..))
+import Language.Haskell.Extension (Language(..), Extension(..), KnownExtension(..))
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
@@ -308,7 +308,8 @@ getExtensions verbosity ghcProg
           ++ [ (ext, "-X" ++ display ext)
              | Just ext <- map readExtension (lines exts) ]
 
-  | otherwise = return oldLanguageExtensions
+  | otherwise = return [ (EnableExtension ke, flag)
+                       | (ke, flag) <- oldLanguageExtensions ]
 
   where
     Just ghcVersion = programVersion ghcProg
@@ -317,12 +318,12 @@ getExtensions verbosity ghcProg
     -- NamedFieldPuns. We now encourage packages to use NamedFieldPuns so for
     -- compatability we fake support for it in ghc-6.8 by making it an alias
     -- for the old RecordPuns extension.
-    extensionHacks = [ (NamedFieldPuns, "-XRecordPuns")
+    extensionHacks = [ (EnableExtension NamedFieldPuns, "-XRecordPuns")
                      | ghcVersion >= Version [6,8]  []
                     && ghcVersion <  Version [6,10] [] ]
 
 -- | For GHC 6.6.x and earlier, the mapping from supported extensions to flags
-oldLanguageExtensions :: [(Extension, Flag)]
+oldLanguageExtensions :: [(KnownExtension, Flag)]
 oldLanguageExtensions =
     [(OverlappingInstances       , "-fallow-overlapping-instances")
     ,(TypeSynonymInstances       , "-fglasgow-exts")
@@ -505,7 +506,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
              comp (withProfLib lbi) (libBuildInfo lib)
 
   let libTargetDir = pref
-      forceVanillaLib = TemplateHaskell `elem` allExtensions libBi
+      forceVanillaLib = EnableExtension TemplateHaskell `elem` allExtensions libBi
       -- TH always needs vanilla libs, even when building for profiling
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -703,7 +704,7 @@ buildExe verbosity _pkg_descr lbi
   -- with profiling. This is because the code that TH needs to
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
-  when (withProfExe lbi && TemplateHaskell `elem` allExtensions exeBi)
+  when (withProfExe lbi && EnableExtension TemplateHaskell `elem` allExtensions exeBi)
      (runGhcProg (binArgs False False))
 
   runGhcProg (binArgs True (withProfExe lbi))

@@ -74,7 +74,7 @@ import Distribution.Simple.Compiler
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Language.Haskell.Extension
-         ( Language(Haskell98), Extension(..) )
+         ( Language(Haskell98), Extension(..), KnownExtension(..) )
 import Distribution.Simple.Program
          ( ProgramConfiguration, userMaybeSpecifyPath, programPath
          , requireProgram, requireProgramVersion, lookupProgram
@@ -132,7 +132,8 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
         compilerId         = CompilerId NHC nhcVersion,
         compilerLanguages  = nhcLanguages,
-        compilerExtensions = nhcLanguageExtensions
+        compilerExtensions     = [ (EnableExtension ke, flag)
+                                 | (ke, flag) <- nhcLanguageExtensions ]
       }
   return (comp, conf'''')
 
@@ -140,7 +141,7 @@ nhcLanguages :: [(Language, Flag)]
 nhcLanguages = [(Haskell98, "-98")]
 
 -- | The flags for the supported extensions
-nhcLanguageExtensions :: [(Extension, Flag)]
+nhcLanguageExtensions :: [(KnownExtension, Flag)]
 nhcLanguageExtensions =
     -- NHC doesn't enforce the monomorphism restriction at all.
     -- TODO: pattern guards in 1.20

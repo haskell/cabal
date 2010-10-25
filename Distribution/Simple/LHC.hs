@@ -110,7 +110,7 @@ import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
 import Language.Haskell.Extension
-         ( Language(Haskell98), Extension(..) )
+         ( Language(Haskell98), Extension(..), KnownExtension(..) )
 
 import Control.Monad            ( unless, when )
 import Data.List
@@ -336,7 +336,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
 
   let libTargetDir = pref
-      forceVanillaLib = TemplateHaskell `elem` allExtensions libBi
+      forceVanillaLib = EnableExtension TemplateHaskell `elem` allExtensions libBi
       -- TH always needs vanilla libs, even when building for profiling
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -544,7 +544,7 @@ buildExe verbosity _pkg_descr lbi
   -- with profiling. This is because the code that TH needs to
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
-  when (withProfExe lbi && TemplateHaskell `elem` allExtensions exeBi)
+  when (withProfExe lbi && EnableExtension TemplateHaskell `elem` allExtensions exeBi)
      (runGhcProg $ lhcWrap (binArgs False False))
 
   runGhcProg (binArgs True (withProfExe lbi))

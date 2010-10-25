@@ -101,7 +101,7 @@ import Text.PrettyPrint ((<>), (<+>))
 
 import qualified Language.Haskell.Extension as Extension (deprecatedExtensions)
 import Language.Haskell.Extension
-         ( Language(UnknownLanguage), knownLanguages, Extension(..) )
+         ( Language(UnknownLanguage), knownLanguages, Extension(..), KnownExtension(..) )
 import System.FilePath
          ( (</>), takeExtension, isRelative, isAbsolute
          , splitDirectories,  splitPath )
@@ -423,7 +423,7 @@ checkFields pkg =
     deprecatedExtensions = nub $ catMaybes
       [ find ((==ext) . fst) Extension.deprecatedExtensions
       | bi <- allBuildInfo pkg
-      , ext <- allExtensions bi ]
+      , EnableExtension ext <- allExtensions bi ]
     languagesUsedAsExtensions =
       [ name | bi <- allBuildInfo pkg
              , UnknownExtension name <- allExtensions bi
@@ -1025,7 +1025,7 @@ checkCabalVersion pkg =
                      , PublicDomain, AllRightsReserved, OtherLicense ]
 
     mentionedExtensions = [ ext | bi <- allBuildInfo pkg
-                                , ext <- allExtensions bi ]
+                                , EnableExtension ext <- allExtensions bi ]
     mentionedExtensionsThatNeedCabal12 =
       nub (filter (`elem` compatExtensionsExtra) mentionedExtensions)
 

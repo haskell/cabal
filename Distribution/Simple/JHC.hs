@@ -64,7 +64,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..)
          , PackageDBStack, Flag, languageToFlags, extensionsToFlags )
 import Language.Haskell.Extension
-         ( Language(Haskell98), Extension(..))
+         ( Language(Haskell98), Extension(..), KnownExtension(..))
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), jhcProgram, ProgramConfiguration
          , userMaybeSpecifyPath, requireProgramVersion, lookupProgram
@@ -105,7 +105,8 @@ configure verbosity hcPath _hcPkgPath conf = do
       comp = Compiler {
         compilerId             = CompilerId JHC version,
         compilerLanguages      = jhcLanguages,
-        compilerExtensions     = jhcLanguageExtensions
+        compilerExtensions     = [ (EnableExtension ke, flag)
+                                 | (ke, flag) <- jhcLanguageExtensions ]
       }
   return (comp, conf')
 
@@ -113,7 +114,7 @@ jhcLanguages :: [(Language, Flag)]
 jhcLanguages = [(Haskell98, "")]
 
 -- | The flags for the supported extensions
-jhcLanguageExtensions :: [(Extension, Flag)]
+jhcLanguageExtensions :: [(KnownExtension, Flag)]
 jhcLanguageExtensions =
     [(TypeSynonymInstances       , "")
     ,(ForeignFunctionInterface   , "")
