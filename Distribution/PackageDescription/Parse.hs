@@ -78,7 +78,7 @@ import System.Directory (doesFileExist)
 import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
 import Distribution.Compat.ReadP
-         ((+++))
+         ((+++), option)
 import Text.PrettyPrint.HughesPJ
 
 import Distribution.ParseUtils hiding (parseFields)
@@ -338,7 +338,7 @@ binfoFieldDescrs =
            cSources           (\paths binfo -> binfo{cSources=paths})
 
  , simpleField "default-language"
-           (maybe empty disp) (fmap Just parseLanguageQ)
+           (maybe empty disp) (option Nothing (fmap Just parseLanguageQ))
            defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})
  , listField   "other-languages"
            disp               parseLanguageQ
