@@ -62,7 +62,7 @@ import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
-import qualified Codec.Compression.GZip as GZip (decompress)
+import Distribution.Client.GZipUtils (maybeDecompress)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
@@ -218,7 +218,7 @@ readPackageIndexFile :: Package pkg
 readPackageIndexFile mkPkg indexFile = do
   pkgs <- either fail return
         . parseRepoIndex
-        . GZip.decompress
+        . maybeDecompress
       =<< BS.readFile indexFile
   
   evaluate $ PackageIndex.fromList
