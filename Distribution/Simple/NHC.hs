@@ -132,8 +132,7 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
         compilerId         = CompilerId NHC nhcVersion,
         compilerLanguages  = nhcLanguages,
-        compilerExtensions     = [ (EnableExtension ke, flag)
-                                 | (ke, flag) <- nhcLanguageExtensions ]
+        compilerExtensions     = nhcLanguageExtensions
       }
   return (comp, conf'''')
 
@@ -141,16 +140,29 @@ nhcLanguages :: [(Language, Flag)]
 nhcLanguages = [(Haskell98, "-98")]
 
 -- | The flags for the supported extensions
-nhcLanguageExtensions :: [(KnownExtension, Flag)]
+nhcLanguageExtensions :: [(Extension, Flag)]
 nhcLanguageExtensions =
-    -- NHC doesn't enforce the monomorphism restriction at all.
     -- TODO: pattern guards in 1.20
-    [(NoMonomorphismRestriction, "")
-    ,(ForeignFunctionInterface,  "")
-    ,(ExistentialQuantification, "")
-    ,(EmptyDataDecls,            "")
-    ,(NamedFieldPuns,            "-puns")
-    ,(CPP,                       "-cpp")
+     -- NHC doesn't enforce the monomorphism restriction at all.
+     -- Technically it therefore doesn't support MonomorphismRestriction,
+     -- but that would mean it doesn't support Haskell98, so we pretend
+     -- that it does.
+    [(EnableExtension  MonomorphismRestriction,   "")
+    ,(DisableExtension MonomorphismRestriction,   "")
+     -- Similarly, I assume the FFI is always on
+    ,(EnableExtension  ForeignFunctionInterface,  "")
+    ,(DisableExtension ForeignFunctionInterface,  "")
+     -- Similarly, I assume existential quantification is always on
+    ,(EnableExtension  ExistentialQuantification, "")
+    ,(DisableExtension ExistentialQuantification, "")
+     -- Similarly, I assume empty data decls is always on
+    ,(EnableExtension  EmptyDataDecls,            "")
+    ,(DisableExtension EmptyDataDecls,            "")
+    ,(EnableExtension  NamedFieldPuns,            "-puns")
+    ,(DisableExtension NamedFieldPuns,            "-nopuns")
+     -- CPP can't actually be turned off, but we pretend that it can
+    ,(EnableExtension  CPP,                       "-cpp")
+    ,(DisableExtension CPP,                       "")
     ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration

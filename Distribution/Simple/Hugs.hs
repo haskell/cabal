@@ -136,8 +136,7 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
         compilerId             = CompilerId Hugs version,
         compilerLanguages      = hugsLanguages,
-        compilerExtensions  =  [ (EnableExtension ke, flag)
-                               | (ke, flag) <- hugsLanguageExtensions ]
+        compilerExtensions     = hugsLanguageExtensions
       }
   return (comp, conf'')
 
@@ -175,28 +174,33 @@ hugsLanguages :: [(Language, Flag)]
 hugsLanguages = [(Haskell98, "")] --default is 98 mode
 
 -- | The flags for the supported extensions
-hugsLanguageExtensions :: [(KnownExtension, Flag)]
+hugsLanguageExtensions :: [(Extension, Flag)]
 hugsLanguageExtensions =
-    [(OverlappingInstances       , "+o")
-    ,(IncoherentInstances        , "+oO")
-    ,(HereDocuments              , "+H")
-    ,(TypeSynonymInstances       , "-98")
-    ,(RecursiveDo                , "-98")
-    ,(ParallelListComp           , "-98")
-    ,(MultiParamTypeClasses      , "-98")
-    ,(FunctionalDependencies     , "-98")
-    ,(Rank2Types                 , "-98")
-    ,(PolymorphicComponents      , "-98")
-    ,(ExistentialQuantification  , "-98")
-    ,(ScopedTypeVariables        , "-98")
-    ,(ImplicitParams             , "-98")
-    ,(ExtensibleRecords          , "-98")
-    ,(RestrictedTypeSynonyms     , "-98")
-    ,(FlexibleContexts           , "-98")
-    ,(FlexibleInstances          , "-98")
-    ,(ForeignFunctionInterface   , "")
-    ,(EmptyDataDecls             , "")
-    ,(CPP                        , "")
+    let doFlag (f, (enable, disable)) = [(EnableExtension  f, enable),
+                                         (DisableExtension f, disable)]
+        alwaysOn = ("", ""{- wrong -})
+        ext98 = ("-98", ""{- wrong -})
+    in concatMap doFlag
+    [(OverlappingInstances       , ("+o",  "-o"))
+    ,(IncoherentInstances        , ("+oO", "-O"))
+    ,(HereDocuments              , ("+H",  "-H"))
+    ,(TypeSynonymInstances       , ext98)
+    ,(RecursiveDo                , ext98)
+    ,(ParallelListComp           , ext98)
+    ,(MultiParamTypeClasses      , ext98)
+    ,(FunctionalDependencies     , ext98)
+    ,(Rank2Types                 , ext98)
+    ,(PolymorphicComponents      , ext98)
+    ,(ExistentialQuantification  , ext98)
+    ,(ScopedTypeVariables        , ext98)
+    ,(ImplicitParams             , ext98)
+    ,(ExtensibleRecords          , ext98)
+    ,(RestrictedTypeSynonyms     , ext98)
+    ,(FlexibleContexts           , ext98)
+    ,(FlexibleInstances          , ext98)
+    ,(ForeignFunctionInterface   , alwaysOn)
+    ,(EmptyDataDecls             , alwaysOn)
+    ,(CPP                        , alwaysOn)
     ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
