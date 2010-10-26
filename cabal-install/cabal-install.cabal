@@ -56,6 +56,7 @@ Executable cabal
         Distribution.Client.Dependency.TopDown.Types
         Distribution.Client.Dependency.Types
         Distribution.Client.Fetch
+        Distribution.Client.GZipUtils
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
         Distribution.Client.IndexUtils
