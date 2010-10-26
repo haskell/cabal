@@ -391,10 +391,10 @@ data KnownExtension =
 -- | Extensions that have been deprecated, possibly paired with another
 -- extension that replaces it.
 --
-deprecatedExtensions :: [(KnownExtension, Maybe KnownExtension)]
+deprecatedExtensions :: [(Extension, Maybe Extension)]
 deprecatedExtensions =
-  [ (RecordPuns, Just NamedFieldPuns)
-  , (PatternSignatures, Just ScopedTypeVariables)
+  [ (EnableExtension RecordPuns, Just (EnableExtension NamedFieldPuns))
+  , (EnableExtension PatternSignatures, Just (EnableExtension ScopedTypeVariables))
   ]
 -- NOTE: when adding deprecated extensions that have new alternatives
 -- we must be careful to make sure that the deprecation messages are

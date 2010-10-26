@@ -423,7 +423,7 @@ checkFields pkg =
     deprecatedExtensions = nub $ catMaybes
       [ find ((==ext) . fst) Extension.deprecatedExtensions
       | bi <- allBuildInfo pkg
-      , EnableExtension ext <- allExtensions bi ]
+      , ext <- allExtensions bi ]
     languagesUsedAsExtensions =
       [ name | bi <- allBuildInfo pkg
              , UnknownExtension name <- allExtensions bi
