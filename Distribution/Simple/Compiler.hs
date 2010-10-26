@@ -80,8 +80,8 @@ import Data.Maybe (catMaybes, isNothing)
 
 data Compiler = Compiler {
         compilerId              :: CompilerId,
-        compilerLanguages       :: [(Language, String)],
-        compilerExtensions      :: [(Extension, String)]
+        compilerLanguages       :: [(Language, Flag)],
+        compilerExtensions      :: [(Extension, Flag)]
     }
     deriving (Show, Read)
 
