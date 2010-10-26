@@ -379,8 +379,8 @@ data KnownExtension =
   | ViewPatterns
 
   -- | Allow concrete XML syntax to be used in expressions and patterns,
-  -- as per the Haskell Server Pages extension language: 
-  -- <http://www.haskell.org/haskellwiki/HSP>. The ideas behind it are 
+  -- as per the Haskell Server Pages extension language:
+  -- <http://www.haskell.org/haskellwiki/HSP>. The ideas behind it are
   -- discussed in the paper \"Haskell Server Pages through Dynamic Loading\"
   -- by Niklas Broberg, from Haskell Workshop '05.
   | XmlSyntax
