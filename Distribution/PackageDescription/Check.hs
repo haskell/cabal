@@ -647,23 +647,38 @@ checkGhcOptions pkg =
     checkFlags flags = check (any (`elem` flags) all_ghc_options)
 
     ghcExtension ('-':'f':name) = case name of
-      "allow-overlapping-instances" -> Just OverlappingInstances
-      "th"                          -> Just TemplateHaskell
-      "ffi"                         -> Just ForeignFunctionInterface
-      "fi"                          -> Just ForeignFunctionInterface
-      "no-monomorphism-restriction" -> Just NoMonomorphismRestriction
-      "no-mono-pat-binds"           -> Just NoMonoPatBinds
-      "allow-undecidable-instances" -> Just UndecidableInstances
-      "allow-incoherent-instances"  -> Just IncoherentInstances
-      "arrows"                      -> Just Arrows
-      "generics"                    -> Just Generics
-      "no-implicit-prelude"         -> Just NoImplicitPrelude
-      "implicit-params"             -> Just ImplicitParams
-      "bang-patterns"               -> Just BangPatterns
-      "scoped-type-variables"       -> Just ScopedTypeVariables
-      "extended-default-rules"      -> Just ExtendedDefaultRules
-      _                             -> Nothing
-    ghcExtension ('-':'c':"pp")     = Just CPP
+      "allow-overlapping-instances"    -> Just (EnableExtension  OverlappingInstances)
+      "no-allow-overlapping-instances" -> Just (DisableExtension OverlappingInstances)
+      "th"                             -> Just (EnableExtension  TemplateHaskell)
+      "no-th"                          -> Just (DisableExtension TemplateHaskell)
+      "ffi"                            -> Just (EnableExtension  ForeignFunctionInterface)
+      "no-ffi"                         -> Just (DisableExtension ForeignFunctionInterface)
+      "fi"                             -> Just (EnableExtension  ForeignFunctionInterface)
+      "no-fi"                          -> Just (DisableExtension ForeignFunctionInterface)
+      "monomorphism-restriction"       -> Just (EnableExtension  MonomorphismRestriction)
+      "no-monomorphism-restriction"    -> Just (DisableExtension MonomorphismRestriction)
+      "mono-pat-binds"                 -> Just (EnableExtension  MonoPatBinds)
+      "no-mono-pat-binds"              -> Just (DisableExtension MonoPatBinds)
+      "allow-undecidable-instances"    -> Just (EnableExtension  UndecidableInstances)
+      "no-allow-undecidable-instances" -> Just (DisableExtension UndecidableInstances)
+      "allow-incoherent-instances"     -> Just (EnableExtension  IncoherentInstances)
+      "no-allow-incoherent-instances"  -> Just (DisableExtension IncoherentInstances)
+      "arrows"                         -> Just (EnableExtension  Arrows)
+      "no-arrows"                      -> Just (DisableExtension Arrows)
+      "generics"                       -> Just (EnableExtension  Generics)
+      "no-generics"                    -> Just (DisableExtension Generics)
+      "implicit-prelude"               -> Just (EnableExtension  ImplicitPrelude)
+      "no-implicit-prelude"            -> Just (DisableExtension ImplicitPrelude)
+      "implicit-params"                -> Just (EnableExtension  ImplicitParams)
+      "no-implicit-params"             -> Just (DisableExtension ImplicitParams)
+      "bang-patterns"                  -> Just (EnableExtension  BangPatterns)
+      "no-bang-patterns"               -> Just (DisableExtension BangPatterns)
+      "scoped-type-variables"          -> Just (EnableExtension  ScopedTypeVariables)
+      "no-scoped-type-variables"       -> Just (DisableExtension ScopedTypeVariables)
+      "extended-default-rules"         -> Just (EnableExtension  ExtendedDefaultRules)
+      "no-extended-default-rules"      -> Just (DisableExtension ExtendedDefaultRules)
+      _                                -> Nothing
+    ghcExtension "-cpp"             = Just (EnableExtension CPP)
     ghcExtension _                  = Nothing
 
 checkCCOptions :: PackageDescription -> [PackageCheck]
@@ -1025,7 +1040,7 @@ checkCabalVersion pkg =
                      , PublicDomain, AllRightsReserved, OtherLicense ]
 
     mentionedExtensions = [ ext | bi <- allBuildInfo pkg
-                                , EnableExtension ext <- allExtensions bi ]
+                                , ext <- allExtensions bi ]
     mentionedExtensionsThatNeedCabal12 =
       nub (filter (`elem` compatExtensionsExtra) mentionedExtensions)
 
@@ -1036,28 +1051,34 @@ checkCabalVersion pkg =
 
     -- The known extensions in Cabal-1.2.3
     compatExtensions =
+      map EnableExtension
       [ OverlappingInstances, UndecidableInstances, IncoherentInstances
       , RecursiveDo, ParallelListComp, MultiParamTypeClasses
-      , NoMonomorphismRestriction, FunctionalDependencies, Rank2Types
+      , FunctionalDependencies, Rank2Types
       , RankNTypes, PolymorphicComponents, ExistentialQuantification
       , ScopedTypeVariables, ImplicitParams, FlexibleContexts
       , FlexibleInstances, EmptyDataDecls, CPP, BangPatterns
       , TypeSynonymInstances, TemplateHaskell, ForeignFunctionInterface
-      , Arrows, Generics, NoImplicitPrelude, NamedFieldPuns, PatternGuards
+      , Arrows, Generics, NamedFieldPuns, PatternGuards
       , GeneralizedNewtypeDeriving, ExtensibleRecords, RestrictedTypeSynonyms
-      , HereDocuments
-      ] ++ compatExtensionsExtra
+      , HereDocuments] ++
+      map DisableExtension
+      [MonomorphismRestriction, ImplicitPrelude] ++
+      compatExtensionsExtra
 
     -- The extra known extensions in Cabal-1.2.3 vs Cabal-1.1.6
     -- (Cabal-1.1.6 came with ghc-6.6. Cabal-1.2 came with ghc-6.8)
     compatExtensionsExtra =
+      map EnableExtension
       [ KindSignatures, MagicHash, TypeFamilies, StandaloneDeriving
       , UnicodeSyntax, PatternSignatures, UnliftedFFITypes, LiberalTypeSynonyms
       , TypeOperators, RecordWildCards, RecordPuns, DisambiguateRecordFields
-      , OverloadedStrings, GADTs, NoMonoPatBinds, RelaxedPolyRec
+      , OverloadedStrings, GADTs, RelaxedPolyRec
       , ExtendedDefaultRules, UnboxedTuples, DeriveDataTypeable
       , ConstrainedClassMethods
-      ]
+      ] ++
+      map DisableExtension
+      [MonoPatBinds]
 
 -- | A variation on the normal 'Text' instance, shows any ()'s in the original
 -- textual syntax. We need to show these otherwise it's confusing to users when

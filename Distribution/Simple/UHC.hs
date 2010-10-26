@@ -85,8 +85,7 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
                compilerId          =  CompilerId UHC uhcVersion,
                compilerLanguages   =  uhcLanguages,
-               compilerExtensions  =  [ (EnableExtension ke, flag)
-                                      | (ke, flag) <- uhcLanguageExtensions ]
+               compilerExtensions  =  uhcLanguageExtensions
              }
   return (comp, conf')
 
@@ -94,21 +93,25 @@ uhcLanguages :: [(Language, C.Flag)]
 uhcLanguages = [(Haskell98, "")]
 
 -- | The flags for the supported extensions.
-uhcLanguageExtensions :: [(KnownExtension, C.Flag)]
+uhcLanguageExtensions :: [(Extension, C.Flag)]
 uhcLanguageExtensions =
-    [(CPP, "--cpp"),
-     (PolymorphicComponents, ""),
-     (ExistentialQuantification, ""),
-     (ForeignFunctionInterface, ""),
-     (UndecidableInstances, ""),
-     (MultiParamTypeClasses, ""),
-     (Rank2Types, ""),
-     (PatternSignatures, ""),
-     (EmptyDataDecls, ""),
-     (NoImplicitPrelude, "--no-prelude"),
-     (TypeOperators, ""),
-     (OverlappingInstances, ""),
-     (FlexibleInstances, "")]
+    let doFlag (f, (enable, disable)) = [(EnableExtension  f, enable),
+                                         (DisableExtension f, disable)]
+        alwaysOn = ("", ""{- wrong -})
+    in concatMap doFlag
+    [(CPP,                          ("--cpp", ""{- wrong -})),
+     (PolymorphicComponents,        alwaysOn),
+     (ExistentialQuantification,    alwaysOn),
+     (ForeignFunctionInterface,     alwaysOn),
+     (UndecidableInstances,         alwaysOn),
+     (MultiParamTypeClasses,        alwaysOn),
+     (Rank2Types,                   alwaysOn),
+     (PatternSignatures,            alwaysOn),
+     (EmptyDataDecls,               alwaysOn),
+     (ImplicitPrelude,              ("", "--no-prelude"{- wrong -})),
+     (TypeOperators,                alwaysOn),
+     (OverlappingInstances,         alwaysOn),
+     (FlexibleInstances,            alwaysOn)]
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
                      -> IO PackageIndex

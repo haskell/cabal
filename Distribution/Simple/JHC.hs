@@ -105,8 +105,7 @@ configure verbosity hcPath _hcPkgPath conf = do
       comp = Compiler {
         compilerId             = CompilerId JHC version,
         compilerLanguages      = jhcLanguages,
-        compilerExtensions     = [ (EnableExtension ke, flag)
-                                 | (ke, flag) <- jhcLanguageExtensions ]
+        compilerExtensions     = jhcLanguageExtensions
       }
   return (comp, conf')
 
@@ -114,12 +113,16 @@ jhcLanguages :: [(Language, Flag)]
 jhcLanguages = [(Haskell98, "")]
 
 -- | The flags for the supported extensions
-jhcLanguageExtensions :: [(KnownExtension, Flag)]
+jhcLanguageExtensions :: [(Extension, Flag)]
 jhcLanguageExtensions =
-    [(TypeSynonymInstances       , "")
-    ,(ForeignFunctionInterface   , "")
-    ,(NoImplicitPrelude          , "--noprelude")
-    ,(CPP                        , "-fcpp")
+    [(EnableExtension  TypeSynonymInstances       , "")
+    ,(DisableExtension TypeSynonymInstances       , "")
+    ,(EnableExtension  ForeignFunctionInterface   , "")
+    ,(DisableExtension ForeignFunctionInterface   , "")
+    ,(EnableExtension  ImplicitPrelude            , "") -- Wrong
+    ,(DisableExtension ImplicitPrelude            , "--noprelude")
+    ,(EnableExtension  CPP                        , "-fcpp")
+    ,(DisableExtension CPP                        , "-fno-cpp")
     ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration

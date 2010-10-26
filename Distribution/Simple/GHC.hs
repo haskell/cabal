@@ -295,50 +295,65 @@ getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
 getExtensions verbosity ghcProg
   | ghcVersion >= Version [6,7] [] = do
 
-    exts <- rawSystemStdout verbosity (programPath ghcProg)
+    str <- rawSystemStdout verbosity (programPath ghcProg)
               ["--supported-languages"]
-    -- GHC has the annoying habit of inverting some of the extensions
-    -- so we have to try parsing ("No" ++ ghcExtensionName) first
-    let readExtension str = do
-          ext <- simpleParse ("No" ++ str)
-          case ext of
-            UnknownExtension _ -> simpleParse str
-            _                  -> return ext
-    return $ extensionHacks
-          ++ [ (ext, "-X" ++ display ext)
-             | Just ext <- map readExtension (lines exts) ]
+    let extStrs = if ghcVersion >= Version [7] []
+                  then lines str
+                  else -- Older GHCs only gave us either Foo or NoFoo,
+                       -- so we have to work out the other one ourselves
+                       [ extStr''
+                       | extStr <- lines str
+                       , let extStr' = case extStr of
+                                       'N' : 'o' : xs -> xs
+                                       _              -> "No" ++ extStr
+                       , extStr'' <- [extStr, extStr']
+                       ]
+    let extensions = [ (ext, "-X" ++ display ext)
+                     | Just ext <- map simpleParse extStrs ]
+        extensions' = if ghcVersion >= Version [6,8]  [] &&
+                         ghcVersion <  Version [6,10] []
+                      then -- ghc-6.8 introduced RecordPuns however it
+                           -- should have been NamedFieldPuns. We now
+                           -- encourage packages to use NamedFieldPuns
+                           -- so for compatability we fake support for
+                           -- it in ghc-6.8 by making it an alias for
+                           -- the old RecordPuns extension.
+                           (EnableExtension  NamedFieldPuns, "-XRecordPuns") :
+                           (DisableExtension NamedFieldPuns, "-XNoRecordPuns") :
+                           extensions
+                      else extensions
+    return $ extensions'
 
-  | otherwise = return [ (EnableExtension ke, flag)
-                       | (ke, flag) <- oldLanguageExtensions ]
+  | otherwise = return oldLanguageExtensions
 
   where
     Just ghcVersion = programVersion ghcProg
 
-    -- ghc-6.8 intorduced RecordPuns however it should have been
-    -- NamedFieldPuns. We now encourage packages to use NamedFieldPuns so for
-    -- compatability we fake support for it in ghc-6.8 by making it an alias
-    -- for the old RecordPuns extension.
-    extensionHacks = [ (EnableExtension NamedFieldPuns, "-XRecordPuns")
-                     | ghcVersion >= Version [6,8]  []
-                    && ghcVersion <  Version [6,10] [] ]
-
 -- | For GHC 6.6.x and earlier, the mapping from supported extensions to flags
-oldLanguageExtensions :: [(KnownExtension, Flag)]
+oldLanguageExtensions :: [(Extension, Flag)]
 oldLanguageExtensions =
-    [(OverlappingInstances       , "-fallow-overlapping-instances")
-    ,(TypeSynonymInstances       , "-fglasgow-exts")
-    ,(TemplateHaskell            , "-fth")
-    ,(ForeignFunctionInterface   , "-fffi")
-    ,(NoMonomorphismRestriction  , "-fno-monomorphism-restriction")
-    ,(NoMonoPatBinds             , "-fno-mono-pat-binds")
-    ,(UndecidableInstances       , "-fallow-undecidable-instances")
-    ,(IncoherentInstances        , "-fallow-incoherent-instances")
-    ,(Arrows                     , "-farrows")
-    ,(Generics                   , "-fgenerics")
-    ,(NoImplicitPrelude          , "-fno-implicit-prelude")
-    ,(ImplicitParams             , "-fimplicit-params")
-    ,(CPP                        , "-cpp")
-    ,(BangPatterns               , "-fbang-patterns")
+    let doFlag (f, (enable, disable)) = [(EnableExtension  f, enable),
+                                         (DisableExtension f, disable)]
+        fglasgowExts = ("-fglasgow-exts",
+                        "") -- This is wrong, but we don't want to turn
+                            -- all the extensions off when asked to just
+                            -- turn one off
+        fFlag flag = ("-f" ++ flag, "-fno-" ++ flag)
+    in concatMap doFlag
+    [(OverlappingInstances       , fFlag "allow-overlapping-instances")
+    ,(TypeSynonymInstances       , fglasgowExts)
+    ,(TemplateHaskell            , fFlag "th")
+    ,(ForeignFunctionInterface   , fFlag "ffi")
+    ,(MonomorphismRestriction    , fFlag "monomorphism-restriction")
+    ,(MonoPatBinds               , fFlag "mono-pat-binds")
+    ,(UndecidableInstances       , fFlag "allow-undecidable-instances")
+    ,(IncoherentInstances        , fFlag "allow-incoherent-instances")
+    ,(Arrows                     , fFlag "arrows")
+    ,(Generics                   , fFlag "generics")
+    ,(ImplicitPrelude            , fFlag "implicit-prelude")
+    ,(ImplicitParams             , fFlag "implicit-params")
+    ,(CPP                        , ("-cpp", ""{- Wrong -}))
+    ,(BangPatterns               , fFlag "bang-patterns")
     ,(KindSignatures             , fglasgowExts)
     ,(RecursiveDo                , fglasgowExts)
     ,(ParallelListComp           , fglasgowExts)
@@ -348,7 +363,7 @@ oldLanguageExtensions =
     ,(RankNTypes                 , fglasgowExts)
     ,(PolymorphicComponents      , fglasgowExts)
     ,(ExistentialQuantification  , fglasgowExts)
-    ,(ScopedTypeVariables        , "-fscoped-type-variables")
+    ,(ScopedTypeVariables        , fFlag "scoped-type-variables")
     ,(FlexibleContexts           , fglasgowExts)
     ,(FlexibleInstances          , fglasgowExts)
     ,(EmptyDataDecls             , fglasgowExts)
@@ -362,13 +377,11 @@ oldLanguageExtensions =
     ,(TypeOperators              , fglasgowExts)
     ,(GADTs                      , fglasgowExts)
     ,(RelaxedPolyRec             , fglasgowExts)
-    ,(ExtendedDefaultRules       , "-fextended-default-rules")
+    ,(ExtendedDefaultRules       , fFlag "extended-default-rules")
     ,(UnboxedTuples              , fglasgowExts)
     ,(DeriveDataTypeable         , fglasgowExts)
     ,(ConstrainedClassMethods    , fglasgowExts)
     ]
-    where
-      fglasgowExts = "-fglasgow-exts"
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                      -> IO PackageIndex

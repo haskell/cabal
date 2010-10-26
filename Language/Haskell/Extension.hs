@@ -113,8 +113,11 @@ classifyLanguage = \str -> case lookup str langTable of
 -- documented in section 7.2.1 of the GHC User's Guide.
 
 data Extension =
-  -- | A known extension
+  -- | Enable a known extension
     EnableExtension KnownExtension
+
+  -- | Disable a known extension
+  | DisableExtension KnownExtension
 
   -- | An unknown extension, identified by the name of its @LANGUAGE@
   -- pragma.
@@ -157,8 +160,8 @@ data KnownExtension =
   -- | [GHC &#xa7; 7.6.1.1] Allow multiple parameters in a type class.
   | MultiParamTypeClasses
 
-  -- | [GHC &#xa7; 7.17] Disable the dreaded monomorphism restriction.
-  | NoMonomorphismRestriction
+  -- | [GHC &#xa7; 7.17] Enable the dreaded monomorphism restriction.
+  | MonomorphismRestriction
 
   -- | [GHC &#xa7; 7.6.2] Allow a specification attached to a
   -- multi-parameter type class which indicates that some parameters
@@ -238,11 +241,11 @@ data KnownExtension =
   -- defined in terms of the algebraic structure of a type.
   | Generics
 
-  -- | [GHC &#xa7; 7.3.11] Disable the implicit importing of the module
-  -- @Prelude@.  When desugaring certain built-in syntax into ordinary
-  -- identifiers, use whatever is in scope rather than the @Prelude@
-  -- version.
-  | NoImplicitPrelude
+  -- | [GHC &#xa7; 7.3.11] Enable the implicit importing of the module
+  -- @Prelude@.  When disabled, when desugaring certain built-in syntax
+  -- into ordinary identifiers, use whatever is in scope rather than the
+  -- @Prelude@ -- version.
+  | ImplicitPrelude
 
   -- | [GHC &#xa7; 7.3.15] Enable syntax for implicitly binding local names
   -- corresponding to the field names of a record.  Puns bind specific
@@ -322,8 +325,8 @@ data KnownExtension =
   -- GADTs as well as ordinary algebraic types.
   | GADTs
 
-  -- | [GHC &#xa7; 7.17.2] Allow pattern bindings to be polymorphic.
-  | NoMonoPatBinds
+  -- | [GHC &#xa7; 7.17.2] Make pattern bindings monomorphic.
+  | MonoPatBinds
 
   -- | [GHC &#xa7; 7.8.8] Relax the requirements on mutually-recursive
   -- polymorphic functions.
@@ -406,6 +409,7 @@ deprecatedExtensions =
 instance Text Extension where
   disp (UnknownExtension other) = Disp.text other
   disp (EnableExtension ke)     = Disp.text (show ke)
+  disp (DisableExtension ke)    = Disp.text ("No" ++ show ke)
 
   parse = do
     extension <- Parse.munch1 Char.isAlphaNum
@@ -416,11 +420,23 @@ instance Text KnownExtension where
 
   parse = do
     extension <- Parse.munch1 Char.isAlphaNum
-    case classifyExtension extension of
-        EnableExtension ke ->
+    case classifyKnownExtension extension of
+        Just ke ->
             return ke
-        UnknownExtension _ ->
+        Nothing ->
             fail ("Can't parse " ++ show extension ++ " as KnownExtension")
+
+classifyExtension :: String -> Extension
+classifyExtension string
+  = case classifyKnownExtension string of
+    Just ext -> EnableExtension ext
+    Nothing ->
+        case string of
+        'N':'o':string' ->
+            case classifyKnownExtension string' of
+            Just ext -> DisableExtension ext
+            Nothing -> UnknownExtension string
+        _ -> UnknownExtension string
 
 -- | 'read' for 'KnownExtension's is really really slow so for the Text
 -- instance
@@ -432,13 +448,12 @@ instance Text KnownExtension where
 -- This gives an order of magnitude improvement in parsing speed, and it'll
 -- also allow us to do case insensitive matches in future if we prefer.
 --
-classifyExtension :: String -> Extension
-classifyExtension string@(c:_)
+classifyKnownExtension :: String -> Maybe KnownExtension
+classifyKnownExtension "" = Nothing
+classifyKnownExtension string@(c : _)
   | inRange (bounds knownExtensionTable) c
-  = case lookup string (knownExtensionTable ! c) of
-      Just extension    -> EnableExtension extension
-      Nothing           -> UnknownExtension string
-classifyExtension string = UnknownExtension string
+  = lookup string (knownExtensionTable ! c)
+  | otherwise = Nothing
 
 knownExtensionTable :: Array Char [(String, KnownExtension)]
 knownExtensionTable =
