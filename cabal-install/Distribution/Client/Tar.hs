@@ -68,6 +68,7 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
 import qualified Codec.Compression.GZip as GZip
+import qualified Distribution.Client.GZipUtils as GZipUtils
 
 import System.FilePath
          ( (</>) )
@@ -105,8 +106,8 @@ extractTarGzFile :: FilePath -- ^ Destination directory
                  -> FilePath -- ^ Expected subdir (to check for tarbombs)
                  -> FilePath -- ^ Tarball
                 -> IO ()
-extractTarGzFile dir expected tar =
-  unpack dir . checkTarbomb expected . read . GZip.decompress =<< BS.readFile tar
+extractTarGzFile dir expected tar = do
+  unpack dir . checkTarbomb expected . read . GZipUtils.maybeDecompress =<< BS.readFile tar
 
 --
 -- * Entry type
