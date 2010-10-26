@@ -35,7 +35,7 @@ import Distribution.Verbosity
 
 import qualified Data.ByteString.Lazy       as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
-import qualified Codec.Compression.GZip as GZip (decompress)
+import Distribution.Client.GZipUtils (maybeDecompress)
 import qualified Data.Map as Map
 import System.FilePath (dropExtension)
 import Data.Maybe      (fromMaybe)
@@ -58,7 +58,7 @@ updateRepo verbosity repo = case repoKind repo of
                     ++ remoteRepoName remoteRepo
     indexPath <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
     writeFileAtomic (dropExtension indexPath) . BS.Char8.unpack
-                                              . GZip.decompress
+                                              . maybeDecompress
                                             =<< BS.readFile indexPath
 
 checkForSelfUpgrade :: Verbosity -> [Repo] -> IO ()
