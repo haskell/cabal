@@ -356,7 +356,7 @@ data KnownExtension =
   | PackageImports
 
   -- | [GHC &#xa7; 7.8.6] Deprecated in GHC 6.12 and will be removed in
-  -- GHC 6.14.  Allow a type variable to be instantiated at a
+  -- GHC 7.  Allow a type variable to be instantiated at a
   -- polymorphic type.
   | ImpredicativeTypes
 
