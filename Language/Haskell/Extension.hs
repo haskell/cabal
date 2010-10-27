@@ -379,6 +379,46 @@ data Extension =
   -- and Josef Svenningsson, from ICFP '04.
   | RegularPatterns
 
+  -- | Enables the use of tuple sections, e.g. @(, True)@ desugars into
+  -- @\x -> (x, True)@.
+  | TupleSections
+
+  -- | Allows GHC primops, written in C--, to be imported into a Haskell
+  -- file.
+  | GHCForeignImportPrim
+
+  -- | Support for patterns of the form @n + k@, where @k@ is an
+  -- integer literal.
+  | NPlusKPatterns
+
+  -- | Improve the layout rule when @if@ expressions are used in a @do@
+  -- block.
+  | DoAndIfThenElse
+
+  -- | Makes much of the Haskell sugar be desugared into calls to the
+  -- function with a particular name that is in scope.
+  | RebindableSyntax
+
+  -- | Make @forall@ a keyword in types, which can be used to give the
+  -- generalisation explicitly.
+  | ExplicitForAll
+
+  -- | Allow contexts to be put on datatypes, e.g. the @Eq a@ in
+  -- @data Eq a => Set a = NilSet | ConsSet a (Set a)@.
+  | DatatypeContexts
+
+  -- | Local (@let@ and @where@) bindings are monomorphic.
+  | MonoLocalBinds
+
+  -- | Enable @deriving@ for the @Data.Functor.Functor@ class.
+  | DeriveFunctor
+
+  -- | Enable @deriving@ for the @Data.Traversable.Traversable@ class.
+  | DeriveTraversable
+
+  -- | Enable @deriving@ for the @Data.Foldable.Foldable@ class.
+  | DeriveFoldable
+
   -- | An unknown extension, identified by the name of its @LANGUAGE@
   -- pragma.
   | UnknownExtension String
@@ -398,6 +438,7 @@ knownExtensions =
   [ OverlappingInstances
   , UndecidableInstances
   , IncoherentInstances
+  , DoRec
   , RecursiveDo
   , ParallelListComp
   , MultiParamTypeClasses
@@ -459,6 +500,18 @@ knownExtensions =
   , ViewPatterns
   , XmlSyntax
   , RegularPatterns
+
+  , TupleSections
+  , GHCForeignImportPrim
+  , NPlusKPatterns
+  , DoAndIfThenElse
+  , RebindableSyntax
+  , ExplicitForAll
+  , DatatypeContexts
+  , MonoLocalBinds
+  , DeriveFunctor
+  , DeriveTraversable
+  , DeriveFoldable
   ]
 
 instance Text Extension where
