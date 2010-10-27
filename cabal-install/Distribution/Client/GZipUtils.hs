@@ -25,11 +25,17 @@ import Codec.Compression.Zlib.Internal
 -- that it is already decompressed. Caller should make sanity checks
 -- to verify that it is not, in fact, garbage.
 --
+-- This is to deal with http proxies that lie to us and transparently
+-- decompress without removing the content-encoding header. See:
+-- <http://hackage.haskell.org/trac/hackage/ticket/686>
+--
 maybeDecompress :: ByteString -> ByteString
 maybeDecompress bytes = foldStream $ decompressWithErrors gzipOrZlibFormat defaultDecompressParams bytes
   where
     -- DataError at the beginning of the stream probably means that stream is not compressed.
     -- Returning it as-is.
+    -- TODO: alternatively, we might consider looking for the two magic bytes
+    -- at the beginning of the gzip header.
     foldStream (StreamError DataError _) = bytes
     foldStream somethingElse = doFold somethingElse
 
