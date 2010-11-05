@@ -49,6 +49,8 @@ module Distribution.Simple.Command (
   -- * Command interface
   CommandUI(..),
   commandShowOptions,
+  CommandParse(..),
+  commandParseArgs,
 
   -- ** Constructing commands
   ShowOrParseArgs(..),
@@ -60,7 +62,6 @@ module Distribution.Simple.Command (
   noExtraFlags,
 
   -- ** Running commands
-  CommandParse(..),
   commandsRun,
 
 -- * Option Fields
@@ -403,8 +404,11 @@ addCommonFlags showOrParseArgs options =
         fmapArgDesc f (GetOpt.ReqArg s d) = GetOpt.ReqArg (f . s) d
         fmapArgDesc f (GetOpt.OptArg s d) = GetOpt.OptArg (f . s) d
 
-
-commandParseArgs :: CommandUI flags -> Bool -> [String]
+-- | Parse a bunch of command line arguments
+--
+commandParseArgs :: CommandUI flags
+                 -> Bool      -- ^ Is the command a global or subcommand?
+                 -> [String]
                  -> CommandParse (flags -> flags, [String])
 commandParseArgs command global args =
   let options = addCommonFlags ParseArgs
