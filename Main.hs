@@ -25,6 +25,7 @@ import Distribution.Client.Setup
          , ListFlags(..), listCommand
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
+         , ReportFlags(..), reportCommand
          , InitFlags, initCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..)
@@ -328,16 +329,19 @@ sdistAction sflags extraArgs _globalFlags = do
     die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   sdist sflags
 
-reportAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
-reportAction verbosityFlag extraArgs globalFlags = do
+reportAction :: ReportFlags -> [String] -> GlobalFlags -> IO ()
+reportAction reportFlags extraArgs globalFlags = do
   unless (null extraArgs) $ do
     die $ "'report' doesn't take any extra arguments: " ++ unwords extraArgs
 
-  let verbosity = fromFlag verbosityFlag
+  let verbosity = fromFlag (reportVerbosity reportFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
+      reportFlags' = savedReportFlags config `mappend` reportFlags
 
   Upload.report verbosity (globalRepos globalFlags')
+    (flagToMaybe $ reportUsername reportFlags')
+    (flagToMaybe $ reportPassword reportFlags')
 
 unpackAction :: UnpackFlags -> [String] -> GlobalFlags -> IO ()
 unpackAction flags extraArgs globalFlags = do

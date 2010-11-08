@@ -23,25 +23,28 @@ import System.FilePath.Posix
          ( (</>) )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.BuildReports.Anonymous (BuildReport)
+import Distribution.Text (display)
 
 type BuildReportId = URI
 type BuildLog = String
 
 uploadReports :: URI -> [(BuildReport, Maybe BuildLog)]
+              -> BrowserAction (HandleStream String) ()
               ->  BrowserAction (HandleStream BuildLog) ()
-uploadReports uri reports
-    = forM_ reports $ \(report, mbBuildLog) ->
-      do buildId <- postBuildReport uri report
-         case mbBuildLog of
-           Just buildLog -> putBuildLog buildId buildLog
-           Nothing       -> return ()
+uploadReports uri reports auth = do
+  auth
+  forM_ reports $ \(report, mbBuildLog) -> do
+     buildId <- postBuildReport uri report
+     case mbBuildLog of
+       Just buildLog -> putBuildLog buildId buildLog
+       Nothing       -> return ()
 
 postBuildReport :: URI -> BuildReport
                 -> BrowserAction (HandleStream BuildLog) BuildReportId
 postBuildReport uri buildReport = do
   setAllowRedirects False
   (_, response) <- request Request {
-    rqURI     = uri { uriPath = "/buildreports" },
+    rqURI     = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" },
     rqMethod  = POST,
     rqHeaders = [Header HdrContentType   ("text/plain"),
                  Header HdrContentLength (show (length body)),
@@ -61,7 +64,7 @@ putBuildLog :: BuildReportId -> BuildLog
 putBuildLog reportId buildLog = do
   --FIXME: do something if the request fails
   (_, response) <- request Request {
-      rqURI     = reportId{uriPath = uriPath reportId </> "buildlog"},
+      rqURI     = reportId{uriPath = uriPath reportId </> "log"},
       rqMethod  = PUT,
       rqHeaders = [Header HdrContentType   ("text/plain"),
                    Header HdrContentLength (show (length buildLog)),
