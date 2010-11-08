@@ -23,7 +23,7 @@ module Distribution.Client.Setup
     , fetchCommand, FetchFlags(..)
     , checkCommand
     , uploadCommand, UploadFlags(..)
-    , reportCommand
+    , reportCommand, ReportFlags(..)
     , unpackCommand, UnpackFlags(..)
     , initCommand, IT.InitFlags(..)
 
@@ -373,15 +373,61 @@ checkCommand = CommandUI {
     commandOptions      = \_ -> []
   }
 
-reportCommand :: CommandUI (Flag Verbosity)
+-- ------------------------------------------------------------
+-- * Report flags
+-- ------------------------------------------------------------
+
+data ReportFlags = ReportFlags {
+    reportUsername  :: Flag Username,
+    reportPassword  :: Flag Password,
+    reportVerbosity :: Flag Verbosity
+  }
+
+defaultReportFlags :: ReportFlags
+defaultReportFlags = ReportFlags {
+    reportUsername  = mempty,
+    reportPassword  = mempty,
+    reportVerbosity = toFlag normal
+  }
+
+reportCommand :: CommandUI ReportFlags
 reportCommand = CommandUI {
     commandName         = "report",
     commandSynopsis     = "Upload build reports to a remote server.",
-    commandDescription  = Nothing,
-    commandUsage        = \pname -> "Usage: " ++ pname ++ " report\n",
-    commandDefaultFlags = toFlag normal,
-    commandOptions      = \_ -> [optionVerbosity id const]
+    commandDescription  = Just $ \_ ->
+         "You can store your Hackage login in the ~/.cabal/config file\n",
+    commandUsage        = \pname -> "Usage: " ++ pname ++ " report [FLAGS]\n\n"
+      ++ "Flags for upload:",
+    commandDefaultFlags = defaultReportFlags,
+    commandOptions      = \_ ->
+      [optionVerbosity reportVerbosity (\v flags -> flags { reportVerbosity = v })
+
+      ,option ['u'] ["username"]
+        "Hackage username."
+        reportUsername (\v flags -> flags { reportUsername = v })
+        (reqArg' "USERNAME" (toFlag . Username)
+                            (flagToList . fmap unUsername))
+
+      ,option ['p'] ["password"]
+        "Hackage password."
+        reportPassword (\v flags -> flags { reportPassword = v })
+        (reqArg' "PASSWORD" (toFlag . Password)
+                            (flagToList . fmap unPassword))
+      ]
   }
+
+instance Monoid ReportFlags where
+  mempty = ReportFlags {
+    reportUsername  = mempty,
+    reportPassword  = mempty,
+    reportVerbosity = mempty
+  }
+  mappend a b = ReportFlags {
+    reportUsername  = combine reportUsername,
+    reportPassword  = combine reportPassword,
+    reportVerbosity = combine reportVerbosity
+  }
+    where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
 -- * Unpack flags

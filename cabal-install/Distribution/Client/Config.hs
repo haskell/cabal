@@ -34,6 +34,7 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
          , InstallFlags(..), installOptions, defaultInstallFlags
          , UploadFlags(..), uploadCommand
+         , ReportFlags(..), reportCommand
          , showRepo, parseRepo )
 
 import Distribution.Simple.Setup
@@ -101,7 +102,8 @@ data SavedConfig = SavedConfig {
     savedConfigureExFlags  :: ConfigExFlags,
     savedUserInstallDirs   :: InstallDirs (Flag PathTemplate),
     savedGlobalInstallDirs :: InstallDirs (Flag PathTemplate),
-    savedUploadFlags       :: UploadFlags
+    savedUploadFlags       :: UploadFlags,
+    savedReportFlags       :: ReportFlags
   }
 
 instance Monoid SavedConfig where
@@ -112,7 +114,8 @@ instance Monoid SavedConfig where
     savedConfigureExFlags  = mempty,
     savedUserInstallDirs   = mempty,
     savedGlobalInstallDirs = mempty,
-    savedUploadFlags       = mempty
+    savedUploadFlags       = mempty,
+    savedReportFlags       = mempty
   }
   mappend a b = SavedConfig {
     savedGlobalFlags       = combine savedGlobalFlags,
@@ -121,7 +124,8 @@ instance Monoid SavedConfig where
     savedConfigureExFlags  = combine savedConfigureExFlags,
     savedUserInstallDirs   = combine savedUserInstallDirs,
     savedGlobalInstallDirs = combine savedGlobalInstallDirs,
-    savedUploadFlags       = combine savedUploadFlags
+    savedUploadFlags       = combine savedUploadFlags,
+    savedReportFlags       = combine savedReportFlags
   }
     where combine field = field a `mappend` field b
 
@@ -324,7 +328,8 @@ commentSavedConfig = do
     },
     savedUserInstallDirs   = fmap toFlag userInstallDirs,
     savedGlobalInstallDirs = fmap toFlag globalInstallDirs,
-    savedUploadFlags       = commandDefaultFlags uploadCommand
+    savedUploadFlags       = commandDefaultFlags uploadCommand,
+    savedReportFlags       = commandDefaultFlags reportCommand
   }
 
 -- | All config file fields.
@@ -359,6 +364,10 @@ configFieldDescriptions =
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
        ["verbose", "check"] []
+
+  ++ toSavedConfig liftReportFlag
+       (commandOptions reportCommand ParseArgs)
+       ["verbose"] []
 
   where
     toSavedConfig lift options exclusions replacements =
@@ -429,6 +438,10 @@ liftInstallFlag = liftField
 liftUploadFlag :: FieldDescr UploadFlags -> FieldDescr SavedConfig
 liftUploadFlag = liftField
   savedUploadFlags (\flags conf -> conf { savedUploadFlags = flags })
+
+liftReportFlag :: FieldDescr ReportFlags -> FieldDescr SavedConfig
+liftReportFlag = liftField
+  savedReportFlags (\flags conf -> conf { savedReportFlags = flags })
 
 parseConfig :: SavedConfig -> String -> ParseResult SavedConfig
 parseConfig initial = \str -> do
