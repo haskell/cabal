@@ -63,27 +63,38 @@ upload verbosity repos mUsername mPassword paths = do
             handlePackage verbosity uploadURI auth path
   where
     targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
-    promptUsername :: IO Username
-    promptUsername = do
-      putStr "Hackage username: "
-      hFlush stdout
-      fmap Username getLine
 
-    promptPassword :: IO Password
-    promptPassword = do
-      putStr "Hackage password: "
-      hFlush stdout
-      -- save/restore the terminal echoing status
-      passwd <- bracket (hGetEcho stdin) (hSetEcho stdin) $ \_ -> do
-        hSetEcho stdin False  -- no echoing for entering the password
-        fmap Password getLine
-      putStrLn ""
-      return passwd
+promptUsername :: IO Username
+promptUsername = do
+  putStr "Hackage username: "
+  hFlush stdout
+  fmap Username getLine
 
-report :: Verbosity -> [Repo] -> IO ()
-report verbosity repos
-    = forM_ repos $ \repo ->
-      case repoKind repo of
+promptPassword :: IO Password
+promptPassword = do
+  putStr "Hackage password: "
+  hFlush stdout
+  -- save/restore the terminal echoing status
+  passwd <- bracket (hGetEcho stdin) (hSetEcho stdin) $ \_ -> do
+    hSetEcho stdin False  -- no echoing for entering the password
+    fmap Password getLine
+  putStrLn ""
+  return passwd
+
+report :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> IO ()
+report verbosity repos mUsername mPassword = do
+      let uploadURI = if isOldHackageURI targetRepoURI
+                      then legacyUploadURI
+                      else targetRepoURI{uriPath = ""}
+      Username username <- maybe promptUsername return mUsername
+      Password password <- maybe promptPassword return mPassword
+      let auth = addAuthority AuthBasic {
+                   auRealm    = "Hackage",
+                   auUsername = username,
+                   auPassword = password,
+                   auSite     = uploadURI
+                 }
+      forM_ repos $ \repo -> case repoKind repo of
         Left remoteRepo
             -> do dotCabal <- defaultCabalDir
                   let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
@@ -95,9 +106,11 @@ report verbosity repos
                            Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
                            Right report' ->
                                do info verbosity $ "Uploading report for " ++ display (BuildReport.package report')
-                                  browse $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)]
+                                  browse $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)] auth
                                   return ()
         Right{} -> return ()
+  where
+    targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
 
 check :: Verbosity -> [FilePath] -> IO ()
 check verbosity paths = do
