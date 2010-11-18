@@ -1,8 +1,48 @@
 -*-change-log-*-
 
-1.9.x (current development version)
+1.11.x (current development version)
 
-1.8.0.x (next stable release version)
+1.10.0.x (next stable release version)
+
+1.10.0.0 Duncan Coutts <duncan@haskell.org> November 2010
+	* New cabal test feature
+	* Initial support for UHC
+	* New default-language and other-languages fields (e.g. Haskell98/2010)
+	* New default-extensions and other-extensions fields
+	* Deprecated extensions field (for packages using cabal-version >=1.10)
+	* Cabal-version field must now only be of the form ">= x.y"
+	* Removed deprecated --copy-prefix= feature
+	* Auto-reconfigure when .cabal file changes
+	* Workaround for haddock overwriting .hi and .o files when using TH
+	* Extra cpp flags used with hsc2hs and c2hs (-D${os}_BUILD_OS etc)
+	* New cpp define VERSION_<package> gives string version of dependencies
+	* User guide source now in markdown format for easier editing
+	* Improved checks and error messages for C libraries and headers
+	* Removed BSD4 from the list of suggested licenses
+	* Updated list of known language extensions
+	* Fix for include paths to allow C code to import FFI stub.h files
+	* Fix for intra-package dependencies on OSX
+	* Stricter checks on various bits of .cabal file syntax
+	* Minor fixes for c2hs
+
+1.8.0.6 Duncan Coutts <duncan@haskell.org> June 2010
+	* Fix 'register --global/--user'
+
+1.8.0.4 Duncan Coutts <duncan@haskell.org> March 2010
+	* Set dylib-install-name for dynalic libs on OSX
+	* Stricter configure check that compiler supports a package's extensions
+	* More configure-time warnings
+	* Hugs can compile Cabal lib again
+	* Default datadir now follows prefix on Windows
+	* Support for finding installed packages for hugs
+	* Cabal version macros now have proper parenthesis
+	* Reverted change to filter out deps of non-buildable components
+	* Fix for registering implace when using a specific package db
+	* Fix mismatch between $os and $arch path template variables
+	* Fix for finding ar.exe on Windows, always pick ghc's version
+	* Fix for intra-package dependencies with ghc-6.12
+
+1.8.0.2 Duncan Coutts <duncan@haskell.org> December 2009
 	* Support for GHC-6.12
 	* New unique installed package IDs which use a package hash
 	* Allow executables to depend on the lib within the same package
