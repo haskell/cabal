@@ -51,7 +51,7 @@ CABAL_VER="1.10.0.0";   CABAL_VER_REGEXP="1\.10\."  # == 1.10.*
 MTL_VER="1.1.1.0";      MTL_VER_REGEXP="1\.1\."     # == 1.1.*
 HTTP_VER="4000.0.10";   HTTP_VER_REGEXP="4000\.0"   # == 4000.0.*
 ZLIB_VER="0.5.2.0";     ZLIB_VER_REGEXP="0\.[45]\." # == 0.4.* || ==0.5.*
-TIME_VER="1.2.0.3"      TIME_VER_REGEXP="0\.[12]\." # == 0.1.* || ==0.2.*
+TIME_VER="1.2.0.3"      TIME_VER_REGEXP="1\.[12]\." # == 0.1.* || ==0.2.*
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
 
