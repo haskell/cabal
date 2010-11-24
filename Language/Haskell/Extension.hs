@@ -430,6 +430,9 @@ data KnownExtension =
   -- | Enable @deriving@ for the @Data.Foldable.Foldable@ class.
   | DeriveFoldable
 
+  -- | Enable non-decreasing indentation for 'do' blocks.
+  | NondecreasingIndentation
+
   deriving (Show, Read, Eq, Enum)
 
 -- | Extensions that have been deprecated, possibly paired with another
