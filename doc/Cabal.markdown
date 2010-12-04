@@ -28,6 +28,7 @@ well as providing a library implementing these interfaces.
           + [Programs used for building](#programs-used-for-building)
           + [Installation paths](#installation-paths)
           + [Controlling Flag Assignments](#controlling-flag-assignments)
+          + [Building Test Suites](#building-test-suites)
           + [Miscellaneous options](#miscellaneous-options)
       - [setup build](#setup-build)
       - [setup haddock](#setup-haddock)
@@ -1876,6 +1877,19 @@ followingcommand line options.
     force a flag to `true`), optionally preceded by a `-` (to force a
     flag to `false`). For example, `--flags="debug -feature1 feature2"` is
     equivalent to `-fdebug -f-feature1 -ffeature2`.
+
+### Building Test Suites ###
+
+`--enable-tests`
+:   Build the test suites defined in the package description file during the
+    `build` stage. Check for dependencies required by the test suites. If the
+    package is configured with this option, it will be possible to run the test
+    suites with the `test` command after the package is built.
+
+`--disable-tests`
+:   (default) Do not build any test suites during the `build` stage.
+    Do not check for dependencies required only by the test suites. It will not
+    be possible to invoke the `test` command without reconfiguring the package.
 
 ### Miscellaneous options ##
 
