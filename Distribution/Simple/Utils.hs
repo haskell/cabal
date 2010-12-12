@@ -201,8 +201,10 @@ import qualified Paths_Cabal (version)
 
 -- We only get our own version number when we're building with ourselves
 cabalVersion :: Version
-#ifdef VERSION_base
+#if defined(VERSION_base)
 cabalVersion = Paths_Cabal.version
+#elif defined(CABAL_VERSION)
+cabalVersion = Version [CABAL_VERSION] []
 #else
 cabalVersion = Version [1,9999] []  --used when bootstrapping
 #endif
