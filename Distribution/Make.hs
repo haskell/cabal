@@ -90,6 +90,7 @@ module Distribution.Make (
   ) where
 
 -- local
+import Distribution.Compat.Exception
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.Simple.Program(defaultProgramConfiguration)
 import Distribution.PackageDescription
@@ -183,7 +184,7 @@ haddockAction :: HaddockFlags -> [String] -> IO ()
 haddockAction flags args = do
   noExtraFlags args
   rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["docs"]
-    `catch` \_ ->
+    `catchIO` \_ ->
     rawSystemExit (fromFlag $ haddockVerbosity flags) "make" ["doc"]
 
 buildAction :: BuildFlags -> [String] -> IO ()

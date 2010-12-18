@@ -229,7 +229,7 @@ die :: String -> IO a
 die msg = ioError (userError msg)
 
 topHandler :: IO a -> IO a
-topHandler prog = catch prog handle
+topHandler prog = catchIO prog handle
   where
     handle ioe = do
       hFlush stdout
@@ -858,7 +858,7 @@ writeFileAtomic targetFile content = do
 --
 rewriteFile :: FilePath -> String -> IO ()
 rewriteFile path newContent =
-  flip catch mightNotExist $ do
+  flip catchIO mightNotExist $ do
     existingContent <- readFile path
     _ <- evaluate (length existingContent)
     unless (existingContent == newContent) $
