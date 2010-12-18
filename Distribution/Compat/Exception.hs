@@ -10,7 +10,7 @@
 #endif
 
 module Distribution.Compat.Exception
-    (onException, catchIO, catchExit, throwIOIO)
+    (onException, catchIO, catchExit, throwIOIO, tryIO)
     where
 
 import System.Exit
@@ -29,6 +29,13 @@ throwIOIO :: Exception.IOException -> IO a
 throwIOIO = Exception.throwIO
 #else
 throwIOIO = Exception.throwIO . Exception.IOException
+#endif
+
+tryIO :: IO a -> IO (Either Exception.IOException a)
+#ifdef NEW_EXCEPTION
+tryIO = Exception.try
+#else
+tryIO = Exception.tryJust Exception.ioErrors
 #endif
 
 catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a
