@@ -321,9 +321,11 @@ data KnownExtension =
 
   -- | [GHC &#xa7; 7.4.6] Enable generalized algebraic data types, in
   -- which type variables may be instantiated on a per-constructor
-  -- basis.  Enables \"GADT syntax\" which can be used to declare
-  -- GADTs as well as ordinary algebraic types.
+  -- basis. Implies GADTSyntax.
   | GADTs
+
+  -- | Enable GADT syntax for declaring ordinary algebraic datatypes.
+  | GADTSyntax
 
   -- | [GHC &#xa7; 7.17.2] Make pattern bindings monomorphic.
   | MonoPatBinds
