@@ -72,12 +72,16 @@ generate pkg_descr lbi =
         "  ) where\n"++
         "\n"++
         foreign_imports++
+        "import qualified Control.Exception as Exception\n"++
         "import Data.Version (Version(..))\n"++
         "import System.Environment (getEnv)"++
         "\n"++
         "\nversion :: Version"++
         "\nversion = " ++ show (packageVersion pkg_descr)++
-        "\n"
+        "\n"++
+        "\n"++
+        "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
+        "catchIO = Exception.catch\n"
 
        body
         | absolute =
@@ -140,7 +144,7 @@ generate pkg_descr lbi =
         mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
         mkGetDir dir Nothing       = "return " ++ show dir
 
-        mkGetEnvOr var expr = "catch (getEnv \""++var'++"\")"++
+        mkGetEnvOr var expr = "catchIO (getEnv \""++var'++"\")"++
                               " (\\_ -> "++expr++")"
           where var' = pkgPathEnvVar pkg_descr var
 
