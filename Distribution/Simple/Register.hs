@@ -104,11 +104,12 @@ import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
 import Distribution.Compat.CopyFile
          ( setFileExecutable )
+import Distribution.Compat.Exception
+         ( tryIO )
 
 import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
          ( getCurrentDirectory, removeDirectoryRecursive )
-import System.IO.Error (try)
 
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
@@ -375,10 +376,10 @@ unregister pkg lbi regFlags = do
                   (invocationAsSystemScript buildOS invocation)
             else runProgramInvocation verbosity invocation
     Hugs -> do
-        _ <- try $ removeDirectoryRecursive (libdir installDirs)
+        _ <- tryIO $ removeDirectoryRecursive (libdir installDirs)
         return ()
     NHC -> do
-        _ <- try $ removeDirectoryRecursive (libdir installDirs)
+        _ <- tryIO $ removeDirectoryRecursive (libdir installDirs)
         return ()
     _ ->
         die ("only unregistering with GHC and Hugs is implemented")

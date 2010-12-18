@@ -27,7 +27,7 @@ import System.IO              (Handle, openTempFile, openBinaryTempFile)
 import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
                                o_BINARY, o_NONBLOCK, o_NOCTTY)
-import System.IO.Error        (try, isAlreadyExistsError)
+import System.IO.Error        (isAlreadyExistsError)
 #if __GLASGOW_HASKELL__ >= 611
 import System.Posix.Internals (withFilePath)
 #else
@@ -39,7 +39,7 @@ import GHC.IO.Handle.FD       (fdToHandle)
 #else
 import GHC.Handle             (fdToHandle)
 #endif
-import Distribution.Compat.Exception (onException)
+import Distribution.Compat.Exception (onException, tryIO)
 #endif
 import Foreign.C              (getErrno, errnoToIOError)
 
@@ -190,7 +190,7 @@ createTempDirectory dir template = do
   where
     findTempName x = do
       let dirpath = dir </> template ++ show x
-      r <- try $ mkPrivateDir dirpath
+      r <- tryIO $ mkPrivateDir dirpath
       case r of
         Right _ -> return dirpath
         Left  e | isAlreadyExistsError e -> findTempName (x+1)
