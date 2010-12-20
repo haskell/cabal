@@ -96,7 +96,7 @@ import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
          , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
-         , requireProgramVersion, requireProgram
+         , requireProgramVersion, requireProgram, getProgramOutput
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
          , gccProgram, stripProgram )
@@ -116,7 +116,7 @@ import Distribution.Text
          ( display, simpleParse )
 import Language.Haskell.Extension (Language(..), Extension(..), KnownExtension(..))
 
-import Control.Monad            ( unless, when )
+import Control.Monad            ( unless, when, liftM )
 import Data.Char                ( isSpace )
 import Data.List
 import Data.Maybe               ( catMaybes )
@@ -158,12 +158,22 @@ configure verbosity hcPath hcPkgPath conf = do
   languages  <- getLanguages verbosity ghcProg
   extensions <- getExtensions verbosity ghcProg
 
+  ghcInfo <- if ghcVersion >= Version [6,7] []
+             then do xs <- getProgramOutput verbosity ghcProg ["--info"]
+                     case reads xs of
+                         [(i, ss)]
+                          | all isSpace ss ->
+                             return i
+                         _ ->
+                             die "Can't parse --info output of GHC"
+             else return []
+
   let comp = Compiler {
         compilerId             = CompilerId GHC ghcVersion,
         compilerLanguages      = languages,
         compilerExtensions     = extensions
       }
-      conf''' = configureToolchain ghcProg conf'' -- configure gcc and ld
+      conf''' = configureToolchain ghcProg ghcInfo conf'' -- configure gcc and ld
   return (comp, conf''')
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
@@ -200,9 +210,10 @@ guessGhcPkgFromGhcPath ghcProg verbosity
 
 -- | Adjust the way we find and configure gcc and ld
 --
-configureToolchain :: ConfiguredProgram -> ProgramConfiguration
+configureToolchain :: ConfiguredProgram -> [(String, String)]
                                         -> ProgramConfiguration
-configureToolchain ghcProg =
+                                        -> ProgramConfiguration
+configureToolchain ghcProg ghcInfo =
     addKnownProgram gccProgram {
       programFindLocation = findProg gccProgram
                               [ if ghcVersion >= Version [6,12] []
@@ -246,8 +257,21 @@ configureToolchain ghcProg =
           if exists then return (Just f)
                     else look fs verbosity
 
+    ccFlags = getFlags "C compiler flags"
+    ldFlags = getFlags "Linker flags"
+
+    getFlags key = case lookup key ghcInfo of
+                   Nothing -> []
+                   Just flags ->
+                       case reads flags of
+                       [(args, "")] -> args
+                       _ -> [] -- XXX Should should be an error really
+
     configureGcc :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
-    configureGcc
+    configureGcc v cp = liftM (++ ccFlags) $ configureGcc' v cp
+
+    configureGcc' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+    configureGcc'
       | isWindows = \_ gccProg -> case programLocation gccProg of
           -- if it's found on system then it means we're using the result
           -- of programFindLocation above rather than a user-supplied path
@@ -260,9 +284,12 @@ configureToolchain ghcProg =
           _ -> return []
       | otherwise = \_ _   -> return []
 
-    -- we need to find out if ld supports the -x flag
     configureLd :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
-    configureLd verbosity ldProg = do
+    configureLd v cp = liftM (++ ldFlags) $ configureLd' v cp
+
+    -- we need to find out if ld supports the -x flag
+    configureLd' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+    configureLd' verbosity ldProg = do
       tempDir <- getTemporaryDirectory
       ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
              withTempFile tempDir ".o" $ \testofile testohnd -> do
