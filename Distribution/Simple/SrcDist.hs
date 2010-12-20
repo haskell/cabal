@@ -78,7 +78,7 @@ import Distribution.Version
          ( Version(versionBranch) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , copyFiles, copyFileVerbose
+         , installOrdinaryFile, installOrdinaryFiles
          , findFile, findFileWithExtension, matchFileGlob
          , withTempDirectory, defaultPackageDesc
          , die, warn, notice, setupMessage )
@@ -340,6 +340,12 @@ copyFileTo verbosity dir file = do
   let targetFile = dir </> file
   createDirectoryIfMissingVerbose verbosity True (takeDirectory targetFile)
   copyFileVerbose verbosity file targetFile
+
+copyFileVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
+copyFileVerbose = installOrdinaryFile
+
+copyFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
+copyFiles = installOrdinaryFiles
 
 printPackageProblems :: Verbosity -> PackageDescription -> IO ()
 printPackageProblems verbosity pkg_descr = do
