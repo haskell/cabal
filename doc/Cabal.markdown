@@ -2258,10 +2258,6 @@ suites, otherwise, Cabal will run all test suites in the package.
 :   The directory where Cabal puts generated build files (default: `dist`).
     Test logs will be located in the `test` subdirectory.
 
-`--append-human-logs`
-:   Append test output to human-readable logs.  By default, existing human-
-    readable test logs are overwritten at each invocation of `setup test`.
-
 `--human-log=`_path_
 :   The template used to name human-readable test logs; the path is relative
     to `dist/test`.  By default, logs are named according to the template
@@ -2278,12 +2274,6 @@ suites, otherwise, Cabal will run all test suites in the package.
 :   Determines if the results of individual test cases are shown on the
     terminal.  May be `always` (always show), `never` (never show), or
     `failures` (show only the test cases of failing test suites).
-
-`--replay=`_path_
-:   Replay the test suites in the specified machine-readable log file, using
-    the saved options.  If the log file was created by running only a subset
-    of the package's tests, then only that subset will be run.  In particular,
-    specifying test suites not in the machine-readable log is an error.
 
 `--test-options=`_options_
 :   Give extra options to the test executables.
