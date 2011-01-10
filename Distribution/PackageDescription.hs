@@ -83,6 +83,7 @@ module Distribution.PackageDescription (
         hasTests,
         withTest,
         testModules,
+        enabledTests,
 
         -- * Build information
         BuildInfo(..),
@@ -375,7 +376,13 @@ exeModules exe = otherModules (buildInfo exe)
 data TestSuite = TestSuite {
         testName      :: String,
         testInterface :: TestSuiteInterface,
-        testBuildInfo :: BuildInfo
+        testBuildInfo :: BuildInfo,
+        testEnabled   :: Bool
+        -- TODO: By having a 'testEnabled' field in the PackageDescription, we
+        -- are mixing build status information (i.e., arguments to 'configure')
+        -- with static package description information. This is undesirable, but
+        -- a better solution is waiting on the next overhaul to the
+        -- GenericPackageDescription -> PackageDescription resolution process.
     }
     deriving (Show, Read, Eq)
 
@@ -409,13 +416,15 @@ instance Monoid TestSuite where
     mempty = TestSuite {
         testName      = mempty,
         testInterface = mempty,
-        testBuildInfo = mempty
+        testBuildInfo = mempty,
+        testEnabled   = False
     }
 
     mappend a b = TestSuite {
         testName      = combine' testName,
         testInterface = combine  testInterface,
-        testBuildInfo = combine  testBuildInfo
+        testBuildInfo = combine  testBuildInfo,
+        testEnabled   = if testEnabled a then True else testEnabled b
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -436,11 +445,14 @@ emptyTestSuite = mempty
 hasTests :: PackageDescription -> Bool
 hasTests = any (buildable . testBuildInfo) . testSuites
 
+-- | Get all the enabled test suites from a package.
+enabledTests :: PackageDescription -> [TestSuite]
+enabledTests = filter testEnabled . testSuites
+
 -- | Perform an action on each buildable 'TestSuite' in a package.
 withTest :: PackageDescription -> (TestSuite -> IO ()) -> IO ()
 withTest pkg_descr f =
-    mapM_ f $ filter (buildable . testBuildInfo) $
-        testSuites pkg_descr
+    mapM_ f $ filter (buildable . testBuildInfo) $ enabledTests pkg_descr
 
 -- | Get all the module names from a test suite.
 testModules :: TestSuite -> [ModuleName]
