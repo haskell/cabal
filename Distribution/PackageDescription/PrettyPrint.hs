@@ -177,8 +177,8 @@ ppTestSuites suites =
             $+$ ppFields binfoFieldDescrs (testBuildInfo testsuite)
             $+$ ppCustomFields (customFieldsBI (testBuildInfo testsuite))
 
-    ppTestSuite (TestSuite _ _ buildInfo')
-                    (Just (TestSuite _ _ buildInfo2)) =
+    ppTestSuite (TestSuite _ _ buildInfo' _)
+                    (Just (TestSuite _ _ buildInfo2 _)) =
             ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
             $+$ ppCustomFields (customFieldsBI buildInfo')
 

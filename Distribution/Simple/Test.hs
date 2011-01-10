@@ -58,7 +58,7 @@ import Distribution.Package
     ( PackageId )
 import qualified Distribution.PackageDescription as PD
          ( PackageDescription(..), TestSuite(..)
-         , TestSuiteInterface(..), testType )
+         , TestSuiteInterface(..), testType, hasTests )
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..), CompilerId )
@@ -83,7 +83,7 @@ import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
     , removeFile )
 import System.Environment ( getEnvironment )
-import System.Exit ( ExitCode(..), exitFailure, exitWith )
+import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, IOMode(..), openFile )
 import System.Process ( runProcess, waitForProcess )
@@ -242,6 +242,7 @@ test pkg_descr lbi flags = do
         testLogDir = distPref </> "test"
         testNames = fromFlag $ testList flags
         pkgTests = PD.testSuites pkg_descr
+        enabledTests = filter PD.testEnabled pkgTests
 
         doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
         doTest (suite, mLog) = do
@@ -288,13 +289,26 @@ test pkg_descr lbi flags = do
                             , logFile = ""
                             }
 
+    when (not $ PD.hasTests pkg_descr) $ do
+        notice verbosity "Package has no test suites."
+        exitSuccess
+
+    when (PD.hasTests pkg_descr && null enabledTests) $
+        die $ "No test suites enabled. Did you remember to configure with "
+              ++ "\'--enable-tests\'?"
+
     testsToRun <- case testNames of
-            [] -> return $ zip pkgTests $ repeat Nothing
+            [] -> return $ zip enabledTests $ repeat Nothing
             names -> flip mapM names $ \tName ->
-                let testMap = map (\x -> (PD.testName x, x)) pkgTests
+                let testMap = zip enabledNames enabledTests
+                    enabledNames = map PD.testName enabledTests
+                    allNames = map PD.testName pkgTests
                 in case lookup tName testMap of
                     Just t -> return (t, Nothing)
-                    _ -> die $ "no such test: " ++ tName
+                    _ | tName `elem` allNames ->
+                          die $ "Package configured with test suite "
+                                ++ tName ++ " disabled."
+                      | otherwise -> die $ "no such test: " ++ tName
 
     createDirectoryIfMissing True testLogDir
 

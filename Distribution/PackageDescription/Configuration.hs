@@ -235,16 +235,16 @@ data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 -- This would require some sort of SAT solving, though, thus it's not
 -- implemented unless we really need it.
 --
-resolveWithFlags :: Monoid a =>
+resolveWithFlags ::
      [(FlagName,[Bool])]
         -- ^ Domain for each flag name, will be tested in order.
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
   -> CompilerId -- ^ Compiler flavour + version
   -> [Dependency]  -- ^ Additional constraints
-  -> [CondTree ConfVar [Dependency] a]
+  -> [CondTree ConfVar [Dependency] PDTagged]
   -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
-  -> Either [Dependency] (TargetSet a, FlagAssignment)
+  -> Either [Dependency] (TargetSet PDTagged, FlagAssignment)
        -- ^ Either the missing dependencies (error case), or a pair of
        -- (set of build targets with dependencies, chosen flag assignments)
 resolveWithFlags dom os arch impl constrs trees checkDeps =
@@ -392,10 +392,15 @@ newtype TargetSet a = TargetSet [(DependencyMap, a)]
 
 -- | Combine the target-specific dependencies in a TargetSet to give the
 -- dependencies for the package as a whole.
-overallDependencies :: Monoid a => TargetSet a -> DependencyMap
+overallDependencies :: TargetSet PDTagged -> DependencyMap
 overallDependencies (TargetSet targets) = mconcat depss
   where
-    (depss, _) = unzip targets
+    (depss, _) = unzip $ filter (removeDisabledTests . snd) targets
+    removeDisabledTests :: PDTagged -> Bool
+    removeDisabledTests (Lib _) = True
+    removeDisabledTests (Exe _ _) = True
+    removeDisabledTests (Test _ t) = testEnabled t
+    removeDisabledTests PDNull = True
 
 -- Apply extra constraints to a dependency map.
 -- Combines dependencies where the result will only contain keys from the left
