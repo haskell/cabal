@@ -1237,7 +1237,7 @@ data TestFlags = TestFlags {
     --TODO: eliminate the test list and pass it directly as positional args to the testHook
     testList :: Flag [String],
     -- TODO: think about if/how options are passed to test exes
-    testOptions :: Flag [String]
+    testOptions :: Flag [PathTemplate]
   }
 
 defaultTestFlags :: TestFlags
@@ -1288,14 +1288,18 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
                             (fmap toFlag parse))
                 (flagToList . fmap display))
       , option [] ["test-options"]
-            "give extra options to test executables"
+            ("give extra options to test executables "
+             ++ "(name templates can use $test-suite)")
             testOptions (\v flags -> flags { testOptions = v })
-            (reqArg' "OPTS" (toFlag . splitArgs) (fromFlagOrDefault []))
+            (reqArg' "TEMPLATES" (toFlag . map toPathTemplate . splitArgs)
+                (map fromPathTemplate . fromFlagOrDefault []))
       , option [] ["test-option"]
             ("give extra option to test executables "
-            ++ "(no need to quote options containing spaces)")
+             ++ "(no need to quote options containing spaces, "
+             ++ "name template can use $test-suite)")
             testOptions (\v flags -> flags { testOptions = v })
-            (reqArg' "OPT" (\x -> toFlag [x]) (fromFlagOrDefault []))
+            (reqArg' "TEMPLATE" (\x -> toFlag [toPathTemplate x])
+                (map fromPathTemplate . fromFlagOrDefault []))
       ]
 
 emptyTestFlags :: TestFlags
