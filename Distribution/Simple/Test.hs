@@ -164,7 +164,8 @@ testController flags pkg_descr suite preTest cmd postTest logNamer = do
     let distPref = fromFlag $ testDistPref flags
         verbosity = fromFlag $ testVerbosity flags
         testLogDir = distPref </> "test"
-        options = fromFlag $ testOptions flags
+        optionTemplates = fromFlag $ testOptions flags
+        options = map (testOption suite) optionTemplates
 
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
@@ -377,6 +378,15 @@ testSuiteLogPath template pkg_descr lbi testLog =
                     , (TestSuiteResultVar, result)
                     ]
         result = toPathTemplate $ resultString testLog
+
+-- TODO: This is abusing the notion of a 'PathTemplate'.  The result
+-- isn't neccesarily a path.
+testOption :: PD.TestSuite
+           -> PathTemplate
+           -> String
+testOption suite template =
+    fromPathTemplate $ substPathTemplate
+    [(TestSuiteNameVar, toPathTemplate $ PD.testName suite)] template
 
 packageLogPath :: PathTemplate
                -> PD.PackageDescription
