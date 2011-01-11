@@ -106,7 +106,8 @@ data LocalBuildInfo = LocalBuildInfo {
         executableConfigs   :: [(String, ComponentLocalBuildInfo)],
         testSuiteConfigs    :: [(String, ComponentLocalBuildInfo)],
         installedPkgs :: PackageIndex,
-                -- ^ All the info about all installed packages.
+                -- ^ All the info about the installed packages that the
+                -- current package depends on (directly or indirectly).
         pkgDescrFile  :: Maybe FilePath,
                 -- ^ the filename containing the .cabal file, if available
         localPkgDescr :: PackageDescription,
