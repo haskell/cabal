@@ -1289,14 +1289,16 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
                 (flagToList . fmap display))
       , option [] ["test-options"]
             ("give extra options to test executables "
-             ++ "(name templates can use $test-suite)")
+             ++ "(name templates can use $pkgid, $compiler, "
+             ++ "$os, $arch, $test-suite)")
             testOptions (\v flags -> flags { testOptions = v })
             (reqArg' "TEMPLATES" (toFlag . map toPathTemplate . splitArgs)
                 (map fromPathTemplate . fromFlagOrDefault []))
       , option [] ["test-option"]
             ("give extra option to test executables "
              ++ "(no need to quote options containing spaces, "
-             ++ "name template can use $test-suite)")
+             ++ "name template can use $pkgid, $compiler, "
+             ++ "$os, $arch, $test-suite)")
             testOptions (\v flags -> flags { testOptions = v })
             (reqArg' "TEMPLATE" (\x -> toFlag [toPathTemplate x])
                 (map fromPathTemplate . fromFlagOrDefault []))

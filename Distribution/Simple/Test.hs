@@ -150,6 +150,8 @@ testController :: TestFlags
                -- ^ flags Cabal was invoked with
                -> PD.PackageDescription
                -- ^ description of package the test suite belongs to
+               -> LBI.LocalBuildInfo
+               -- ^ information from the configure step
                -> PD.TestSuite
                -- ^ TestSuite being tested
                -> (FilePath -> String)
@@ -160,12 +162,12 @@ testController :: TestFlags
                -> (TestSuiteLog -> FilePath)
                -- ^ generator for final human-readable log filename
                -> IO TestSuiteLog
-testController flags pkg_descr suite preTest cmd postTest logNamer = do
+testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
     let distPref = fromFlag $ testDistPref flags
         verbosity = fromFlag $ testVerbosity flags
         testLogDir = distPref </> "test"
         optionTemplates = fromFlag $ testOptions flags
-        options = map (testOption suite) optionTemplates
+        options = map (testOption pkg_descr lbi suite) optionTemplates
 
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
@@ -248,7 +250,7 @@ test pkg_descr lbi flags = do
         doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
         doTest (suite, mLog) = do
             let testLogPath = testSuiteLogPath humanTemplate pkg_descr lbi
-                go pre cmd post = testController flags pkg_descr suite
+                go pre cmd post = testController flags pkg_descr lbi suite
                                                  pre cmd post testLogPath
             case PD.testInterface suite of
               PD.TestSuiteExeV10 _ _ -> do
@@ -381,12 +383,17 @@ testSuiteLogPath template pkg_descr lbi testLog =
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result
 -- isn't neccesarily a path.
-testOption :: PD.TestSuite
+testOption :: PD.PackageDescription
+           -> LBI.LocalBuildInfo
+           -> PD.TestSuite
            -> PathTemplate
            -> String
-testOption suite template =
-    fromPathTemplate $ substPathTemplate
-    [(TestSuiteNameVar, toPathTemplate $ PD.testName suite)] template
+testOption pkg_descr lbi suite template =
+    fromPathTemplate $ substPathTemplate env template
+  where
+    env = initialPathTemplateEnv
+          (PD.package pkg_descr) (compilerId $ LBI.compiler lbi) ++
+          [(TestSuiteNameVar, toPathTemplate $ PD.testName suite)]
 
 packageLogPath :: PathTemplate
                -> PD.PackageDescription
