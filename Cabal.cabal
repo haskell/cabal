@@ -131,6 +131,19 @@ Library
 test-suite unit-tests
   type: exitcode-stdio-1.0
   main-is: suite.hs
+  other-modules: PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check,
+                 PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check,
+                 PackageTests.BuildDeps.InternalLibrary0.Check,
+                 PackageTests.BuildDeps.InternalLibrary1.Check,
+                 PackageTests.BuildDeps.InternalLibrary2.Check,
+                 PackageTests.BuildDeps.InternalLibrary3.Check,
+                 PackageTests.BuildDeps.InternalLibrary4.Check,
+                 PackageTests.BuildDeps.TargetSpecificDeps1.Check,
+                 PackageTests.BuildDeps.TargetSpecificDeps2.Check,
+                 PackageTests.BuildDeps.TargetSpecificDeps3.Check,
+                 PackageTests.BuildDeps.SameDepsAllRound.Check,
+                 PackageTests.TestStanza.Check,
+                 PackageTests.PackageTester
   hs-source-dirs: tests
   build-depends:
         base,

@@ -105,8 +105,16 @@ cabal_install spec = do
 
 -- | Returns the command that was issued, the return code, and hte output text
 cabal :: PackageSpec -> [String] -> IO (String, ExitCode, String)
-cabal spec cabalArgs =
-    run (Just $ directory spec) "runghc" (["Setup.hs"] ++ cabalArgs)
+cabal spec cabalArgs = do
+    wd <- getCurrentDirectory
+    r <- run (Just $ directory spec) "ghc"
+             [ "--make"
+             , "-fhpc"
+             , "-package-conf " ++ wd </> "../dist/package.conf.inplace"
+             , "Setup.hs"
+             ]
+    requireSuccess r
+    run (Just $ directory spec) (wd </> directory spec </> "Setup") cabalArgs
 
 -- | Returns the command that was issued, the return code, and hte output text
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
