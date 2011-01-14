@@ -143,6 +143,7 @@ test-suite unit-tests
                  PackageTests.BuildDeps.TargetSpecificDeps3.Check,
                  PackageTests.BuildDeps.SameDepsAllRound.Check,
                  PackageTests.TestStanza.Check,
+                 PackageTests.TestSuiteExeV10.Check,
                  PackageTests.PackageTester
   hs-source-dirs: tests
   build-depends:

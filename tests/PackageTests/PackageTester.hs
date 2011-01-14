@@ -4,6 +4,7 @@ module PackageTests.PackageTester (
         Result(..),
         cabal_configure,
         cabal_build,
+        cabal_test,
         cabal_install,
         unregister,
         run
@@ -31,7 +32,7 @@ data PackageSpec =
         configOpts :: [String]
     }
 
-data Success = Failure | ConfigureSuccess | BuildSuccess | InstallSuccess deriving (Eq, Show)
+data Success = Failure | ConfigureSuccess | BuildSuccess | InstallSuccess | TestSuccess deriving (Eq, Show)
 
 data Result = Result {
         successful :: Bool,
@@ -102,6 +103,13 @@ cabal_install spec = do
             return buildResult
     record spec res
     return res
+
+cabal_test :: PackageSpec -> IO Result
+cabal_test spec = do
+    res <- cabal spec ["test"]
+    let r = recordRun res TestSuccess nullResult
+    record spec r
+    return r
 
 -- | Returns the command that was issued, the return code, and hte output text
 cabal :: PackageSpec -> [String] -> IO (String, ExitCode, String)
