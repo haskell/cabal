@@ -5,7 +5,7 @@ Copyright: 2003-2006, Isaac Jones
 License: BSD3
 License-File: LICENSE
 Author: Isaac Jones <ijones@syntaxpolice.org>
-        Duncan Coutts <duncan@haskell.org>
+        Duncan Coutts <duncan@community.haskell.org>
 Maintainer: cabal-devel@haskell.org
 Homepage: http://www.haskell.org/cabal/
 bug-reports: http://hackage.haskell.org/trac/hackage/
