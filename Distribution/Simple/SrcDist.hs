@@ -167,7 +167,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref tmpDir pps = do
     files <- matchFileGlob (dataDir pkg_descr </> filename)
     let dir = takeDirectory (dataDir pkg_descr </> filename)
     createDirectoryIfMissingVerbose verbosity True (targetDir </> dir)
-    sequence_ [ copyFileVerbose verbosity file (targetDir </> file)
+    sequence_ [ installOrdinaryFile verbosity file (targetDir </> file)
               | file <- files ]
 
   when (not (null (licenseFile pkg_descr))) $
@@ -202,7 +202,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref tmpDir pps = do
                 "main = defaultMain"]
   -- the description file itself
   descFile <- defaultPackageDesc verbosity
-  copyFileVerbose verbosity descFile (targetDir </> descFile)
+  installOrdinaryFile verbosity descFile (targetDir </> descFile)
   return targetDir
 
   where
@@ -329,7 +329,7 @@ prepareDir verbosity _pkg _distPref inPref pps modules bi
            | module_ <- modules ++ otherModules bi ]
 
          let allSources = sources ++ catMaybes bootFiles ++ cSources bi
-         copyFiles verbosity inPref (zip (repeat []) allSources)
+         installOrdinaryFiles verbosity inPref (zip (repeat []) allSources)
 
     where suffixes = ppSuffixes pps ++ ["hs", "lhs"]
           notFound m = die $ "Error: Could not find module: " ++ display m
@@ -339,13 +339,7 @@ copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileTo verbosity dir file = do
   let targetFile = dir </> file
   createDirectoryIfMissingVerbose verbosity True (takeDirectory targetFile)
-  copyFileVerbose verbosity file targetFile
-
-copyFileVerbose :: Verbosity -> FilePath -> FilePath -> IO ()
-copyFileVerbose = installOrdinaryFile
-
-copyFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
-copyFiles = installOrdinaryFiles
+  installOrdinaryFile verbosity file targetFile
 
 printPackageProblems :: Verbosity -> PackageDescription -> IO ()
 printPackageProblems verbosity pkg_descr = do
