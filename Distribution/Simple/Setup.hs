@@ -104,7 +104,6 @@ import Distribution.Simple.Utils
          ( wrapLine, lowercase, intercalate )
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              requireProgram,
-                             userSpecifyPaths, userSpecifyArgss,
                              programInvocation, progInvokePath, progInvokeArgs,
                              knownPrograms,
                              addKnownProgram, emptyProgramConfiguration,
@@ -112,7 +111,6 @@ import Distribution.Simple.Program (Program(..), ProgramConfiguration,
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
-import Distribution.Simple.Program
 import Distribution.Verbosity
 
 import Data.List   ( sort )
