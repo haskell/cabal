@@ -73,7 +73,7 @@ module Distribution.Simple.Setup (
   TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
   TestShowDetails(..),
   CopyDest(..),
-  configureArgs, configureOptions,
+  configureArgs, configureOptions, configureCCompiler, configureLinker,
   installDirsOptions,
 
   defaultDistPref,
@@ -103,12 +103,16 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Utils
          ( wrapLine, lowercase, intercalate )
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
+                             requireProgram,
+                             userSpecifyPaths, userSpecifyArgss,
+                             programInvocation, progInvokePath, progInvokeArgs,
                              knownPrograms,
                              addKnownProgram, emptyProgramConfiguration,
-                             haddockProgram, ghcProgram)
+                             haddockProgram, ghcProgram, gccProgram, ldProgram)
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
+import Distribution.Simple.Program
 import Distribution.Verbosity
 
 import Data.List   ( sort )
@@ -1445,6 +1449,18 @@ configureArgs bcHack flags
         optFlag' name config_field = optFlag name (fmap fromPathTemplate
                                                  . config_field
                                                  . configInstallDirs)
+
+configureCCompiler :: Verbosity -> ProgramConfiguration -> IO (FilePath, [String])
+configureCCompiler verbosity lbi = configureProg verbosity lbi gccProgram
+
+configureLinker :: Verbosity -> ProgramConfiguration -> IO (FilePath, [String])
+configureLinker verbosity lbi = configureProg verbosity lbi ldProgram
+
+configureProg :: Verbosity -> ProgramConfiguration -> Program -> IO (FilePath, [String])
+configureProg verbosity programConfig prog = do
+    (p, _) <- requireProgram verbosity prog programConfig
+    let pInv = programInvocation p []
+    return (progInvokePath pInv, progInvokeArgs pInv)
 
 -- | Helper function to split a string into a list of arguments.
 -- It's supposed to handle quoted things sensibly, eg:

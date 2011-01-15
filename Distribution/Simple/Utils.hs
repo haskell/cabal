@@ -58,6 +58,7 @@ module Distribution.Simple.Utils (
 
         -- * running programs
         rawSystemExit,
+        rawSystemExitWithEnv,
         rawSystemStdout,
         rawSystemStdInOut,
         maybeExit,
@@ -178,6 +179,7 @@ import Distribution.Version
     (Version(..))
 
 import Control.Exception (evaluate)
+import System.Process (runProcess)
 
 #ifdef __GLASGOW_HASKELL__
 import Control.Concurrent (forkIO)
@@ -344,6 +346,17 @@ printRawCommandAndArgs verbosity path args
  | verbosity >= verbose   = putStrLn $ unwords (path : args)
  | otherwise              = return ()
 
+printRawCommandAndArgsAndEnv :: Verbosity
+                             -> FilePath
+                             -> [String]
+                             -> [(String, String)]
+                             -> IO ()
+printRawCommandAndArgsAndEnv verbosity path args env
+ | verbosity >= deafening = do putStrLn ("Environment: " ++ show env)
+                               print (path, args)
+ | verbosity >= verbose   = putStrLn $ unwords (path : args)
+ | otherwise              = return ()
+
 -- Exit with the same exitcode if the subcommand fails
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
 rawSystemExit verbosity path args = do
@@ -353,6 +366,20 @@ rawSystemExit verbosity path args = do
   unless (exitcode == ExitSuccess) $ do
     debug verbosity $ path ++ " returned " ++ show exitcode
     exitWith exitcode
+
+rawSystemExitWithEnv :: Verbosity
+                     -> FilePath
+                     -> [String]
+                     -> [(String, String)]
+                     -> IO ()
+rawSystemExitWithEnv verbosity path args env = do
+    printRawCommandAndArgsAndEnv verbosity path args env
+    hFlush stdout
+    ph <- runProcess path args Nothing (Just env) Nothing Nothing Nothing
+    exitcode <- waitForProcess ph
+    unless (exitcode == ExitSuccess) $ do
+        debug verbosity $ path ++ " returned " ++ show exitcode
+        exitWith exitcode
 
 -- | Run a command and return its output.
 --
