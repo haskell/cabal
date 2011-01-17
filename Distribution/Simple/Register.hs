@@ -93,7 +93,7 @@ import Distribution.InstalledPackageInfo
          , showInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
-         ( writeUTF8File, writeFileAtomic
+         ( writeUTF8File, writeFileAtomic, setFileExecutable
          , die, notice, setupMessage )
 import Distribution.System
          ( OS(..), buildOS )
@@ -102,8 +102,6 @@ import Distribution.Text
 import Distribution.Version ( Version(..) )
 import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
-import Distribution.Compat.CopyFile
-         ( setFileExecutable )
 import Distribution.Compat.Exception
          ( tryIO )
 

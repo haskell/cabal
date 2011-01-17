@@ -89,7 +89,8 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Setup
          ( CopyDest(..) )
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, installOrdinaryFiles
+         ( createDirectoryIfMissingVerbose
+         , installOrdinaryFiles, setFileExecutable
          , withUTF8FileContents, writeFileAtomic, writeUTF8File
          , copyFileVerbose, findFile, findFileWithExtension, findModuleFiles
          , rawSystemStdInOut
@@ -116,8 +117,6 @@ import System.Directory
          , removeDirectoryRecursive, getHomeDirectory )
 import System.Exit
          ( ExitCode(ExitSuccess) )
-import Distribution.Compat.CopyFile
-         ( setFileExecutable )
 import Distribution.Compat.Exception
 
 -- -----------------------------------------------------------------------------

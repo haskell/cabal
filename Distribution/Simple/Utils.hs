@@ -79,6 +79,10 @@ module Distribution.Simple.Utils (
         installOrdinaryFiles,
         installDirectoryContents,
 
+        -- * File permissions
+        setFileOrdinary,
+        setFileExecutable,
+
         -- * file names
         currentDir,
 
@@ -190,7 +194,8 @@ import System.Directory (getTemporaryDirectory)
 #endif
 
 import Distribution.Compat.CopyFile
-         ( copyFile, copyOrdinaryFile, copyExecutableFile )
+         ( copyFile, copyOrdinaryFile, copyExecutableFile
+         , setFileOrdinary, setFileExecutable )
 import Distribution.Compat.TempFile
          ( openTempFile, openNewBinaryFile, createTempDirectory )
 import Distribution.Compat.Exception
