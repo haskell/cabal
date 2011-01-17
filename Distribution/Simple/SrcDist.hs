@@ -78,7 +78,7 @@ import Distribution.Version
          ( Version(versionBranch) )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , installOrdinaryFile, installOrdinaryFiles
+         , installOrdinaryFile, installOrdinaryFiles, setFileExecutable
          , findFile, findFileWithExtension, matchFileGlob
          , withTempDirectory, defaultPackageDesc
          , die, warn, notice, setupMessage )
@@ -98,7 +98,6 @@ import Data.Maybe (isNothing, catMaybes)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
 import System.Directory
          ( doesFileExist, Permissions(executable), getPermissions )
-import Distribution.Compat.CopyFile (setFileExecutable)
 import Distribution.Verbosity (Verbosity)
 import System.FilePath
          ( (</>), (<.>), takeDirectory, dropExtension, isAbsolute )
