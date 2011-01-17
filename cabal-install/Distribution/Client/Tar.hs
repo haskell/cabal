@@ -59,10 +59,10 @@ module Distribution.Client.Tar (
 
 import Data.Char     (ord)
 import Data.Int      (Int64)
-import Data.Bits     (Bits, shiftL)
+import Data.Bits     (Bits, shiftL, testBit)
 import Data.List     (foldl')
 import Numeric       (readOct, showOct)
-import Control.Monad (MonadPlus(mplus))
+import Control.Monad (MonadPlus(mplus), when)
 
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -80,6 +80,8 @@ import System.Directory
          , getPermissions, createDirectoryIfMissing, copyFile )
 import qualified System.Directory as Permissions
          ( Permissions(executable) )
+import Distribution.Compat.FilePerms
+         ( setFileExecutable )
 import System.Posix.Types
          ( FileMode )
 import System.Time
@@ -212,6 +214,9 @@ executableFilePermissions = 0o0755
 -- | @rwxr-xr-x@ for directories
 directoryPermissions :: Permissions
 directoryPermissions  = 0o0755
+
+isExecutable :: Permissions -> Bool
+isExecutable p = testBit p 0 || testBit p 6 -- user or other exectuable
 
 -- | An 'Entry' with all default values except for the file name and type. It
 -- uses the portable USTAR/POSIX format (see 'UstarHeader').
@@ -741,7 +746,7 @@ unpack baseDir entries = unpackEntries [] (checkSecurity entries)
     unpackEntries _     (Fail err)      = fail err
     unpackEntries links Done            = return links
     unpackEntries links (Next entry es) = case entryContent entry of
-      NormalFile file _ -> extractFile path file
+      NormalFile file _ -> extractFile entry path file
                         >> unpackEntries links es
       Directory         -> extractDir path
                         >> unpackEntries links es
@@ -751,12 +756,14 @@ unpack baseDir entries = unpackEntries [] (checkSecurity entries)
       where
         path = entryPath entry
 
-    extractFile path content = do
+    extractFile entry path content = do
       -- Note that tar archives do not make sure each directory is created
       -- before files they contain, indeed we may have to create several
       -- levels of directory.
       createDirectoryIfMissing True absDir
       BS.writeFile absPath content
+      when (isExecutable (entryPermissions entry))
+           (setFileExecutable absPath)
       where
         absDir  = baseDir </> FilePath.Native.takeDirectory path
         absPath = baseDir </> path
