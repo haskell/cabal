@@ -96,7 +96,9 @@ import Data.Char (toLower)
 import Data.List (partition, isPrefixOf)
 import Data.Maybe (isNothing, catMaybes)
 import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
-import System.Directory (doesFileExist)
+import System.Directory
+         ( doesFileExist, Permissions(executable), getPermissions )
+import Distribution.Compat.CopyFile (setFileExecutable)
 import Distribution.Verbosity (Verbosity)
 import System.FilePath
          ( (</>), (<.>), takeDirectory, dropExtension, isAbsolute )
@@ -174,7 +176,13 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref tmpDir pps = do
     copyFileTo verbosity targetDir (licenseFile pkg_descr)
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
     files <- matchFileGlob fpath
-    sequence_ [ copyFileTo verbosity targetDir file | file <- files ]
+    sequence_
+      [ do copyFileTo verbosity targetDir file
+           -- preserve executable bit on extra-src-files like ./configure
+           perms <- getPermissions file
+           when (executable perms) --only checks user x bit
+                (setFileExecutable (targetDir </> file))
+      | file <- files ]
 
   -- copy the install-include files
   withLib $ \ l -> do
