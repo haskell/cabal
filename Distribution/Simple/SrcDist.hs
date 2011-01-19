@@ -67,7 +67,8 @@ module Distribution.Simple.SrcDist (
   )  where
 
 import Distribution.PackageDescription
-         ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..) )
+         ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..)
+         , TestSuite(..), TestSuiteInterface(..) )
 import Distribution.PackageDescription.Check
          ( PackageCheck(..), checkConfiguredPackage, checkPackageFiles )
 import Distribution.Package
@@ -165,6 +166,24 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref tmpDir pps = do
         Nothing -> findFile (hsSourceDirs exeBi) mainPath
         Just pp -> return pp
     copyFileTo verbosity targetDir srcMainFile
+  -- move the test suites into place
+  withTest $ \t -> do
+    let bi = testBuildInfo t
+        prep = prepareDir verbosity pkg_descr distPref targetDir pps
+    case testInterface t of
+        TestSuiteExeV10 _ mainPath -> do
+            prep [] bi
+            srcMainFile <- do
+                ppFile <- findFileWithExtension (ppSuffixes pps)
+                                                (hsSourceDirs bi)
+                                                (dropExtension mainPath)
+                case ppFile of
+                    Nothing -> findFile (hsSourceDirs bi) mainPath
+                    Just pp -> return pp
+            copyFileTo verbosity targetDir srcMainFile
+        TestSuiteLibV09 _ m -> do
+            prep [m] bi
+        TestSuiteUnsupported tp -> die $ "Unsupported test suite type: " ++ show tp
   flip mapM_ (dataFiles pkg_descr) $ \ filename -> do
     files <- matchFileGlob (dataDir pkg_descr </> filename)
     let dir = takeDirectory (dataDir pkg_descr </> filename)
@@ -230,6 +249,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref tmpDir pps = do
     -- versions of these functions that ignore the 'buildable' attribute:
     withLib action = maybe (return ()) action (library pkg_descr)
     withExe action = mapM_ action (executables pkg_descr)
+    withTest action = mapM_ action (testSuites pkg_descr)
 
 -- | Prepare a directory tree of source files for a snapshot version.
 -- It is expected that the appropriate snapshot version has already been set
