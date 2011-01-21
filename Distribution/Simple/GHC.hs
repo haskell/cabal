@@ -335,9 +335,9 @@ getExtensions verbosity ghcProg
                                        _              -> "No" ++ extStr
                        , extStr'' <- [extStr, extStr']
                        ]
-    let extensions = [ (ext, "-X" ++ display ext)
-                     | Just ext <- map simpleParse extStrs ]
-        extensions' = if ghcVersion >= Version [6,8]  [] &&
+    let extensions0 = [ (ext, "-X" ++ display ext)
+                      | Just ext <- map simpleParse extStrs ]
+        extensions1 = if ghcVersion >= Version [6,8]  [] &&
                          ghcVersion <  Version [6,10] []
                       then -- ghc-6.8 introduced RecordPuns however it
                            -- should have been NamedFieldPuns. We now
@@ -347,9 +347,17 @@ getExtensions verbosity ghcProg
                            -- the old RecordPuns extension.
                            (EnableExtension  NamedFieldPuns, "-XRecordPuns") :
                            (DisableExtension NamedFieldPuns, "-XNoRecordPuns") :
-                           extensions
-                      else extensions
-    return $ extensions'
+                           extensions0
+                      else extensions0
+        extensions2 = if ghcVersion <  Version [7,1] []
+                      then -- ghc-7.2 split NondecreasingIndentation off
+                           -- into a proper extension. Before that it
+                           -- was always on.
+                           (EnableExtension  NondecreasingIndentation, "") :
+                           (DisableExtension NondecreasingIndentation, "") :
+                           extensions1
+                      else extensions1
+    return extensions2
 
   | otherwise = return oldLanguageExtensions
 
