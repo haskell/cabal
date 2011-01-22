@@ -467,7 +467,7 @@ finaliseSelectedPackages pref selected constraints =
           Nothing   -> \_ -> False
           Just ipkg -> \p -> packageId p `elem` depends ipkg
         -- If there is no upper bound on the version range then we apply a
-        -- preferred version acording to the hackage or user's suggested
+        -- preferred version according to the hackage or user's suggested
         -- version constraints. TODO: distinguish hacks from prefs
         bounded = boundedAbove versionRange
         isPreferred p
