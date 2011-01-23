@@ -54,7 +54,7 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
 
 import Data.Maybe  (catMaybes, fromMaybe)
-import Data.List   (isPrefixOf)
+import Data.List   (isPrefixOf, find)
 import Data.Monoid (Monoid(..))
 import qualified Data.Map as Map
 import Control.Monad (MonadPlus(mplus), when)
@@ -291,9 +291,19 @@ disambiguateDependencies index deps = do
 disambiguatePackageName :: PackageIndex AvailablePackage
                         -> PackageName
                         -> Either PackageName [PackageName]
-disambiguatePackageName index (PackageName name) =
-    case PackageIndex.searchByName index name of
-      PackageIndex.None              -> Right []
-      PackageIndex.Unambiguous pkgs  -> Left (pkgName (packageId (head pkgs)))
-      PackageIndex.Ambiguous   pkgss -> Right [ pkgName (packageId pkg)
-                                           | (pkg:_) <- pkgss ]
+disambiguatePackageName index pkgname@(PackageName name) =
+    case checkAmbiguity pkgname (map fst $ PackageIndex.searchByName index name) of
+      None               -> Right []
+      Unambiguous name'  -> Left name'
+      Ambiguous   names' -> Right names'
+
+checkAmbiguity :: PackageName -> [PackageName] -> MaybeAmbigious PackageName
+checkAmbiguity name names =
+    case names of
+      []           -> None
+      [name']      -> Unambiguous name'
+      _            -> case find (name==) names of
+                        Just name' -> Unambiguous name'
+                        Nothing    -> Ambiguous names
+
+data MaybeAmbigious a = None | Unambiguous a | Ambiguous [a]

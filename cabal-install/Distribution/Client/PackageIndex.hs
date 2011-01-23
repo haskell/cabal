@@ -59,7 +59,7 @@ import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
-import Data.List (groupBy, sortBy, nub, find, isInfixOf)
+import Data.List (groupBy, sortBy, nub, isInfixOf)
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isNothing, fromMaybe)
 
@@ -283,16 +283,14 @@ lookupDependency index (Dependency name versionRange) =
 -- packages. The list of ambiguous results is split by exact package name. So
 -- it is a non-empty list of non-empty lists.
 --
-searchByName :: Package pkg => PackageIndex pkg -> String -> SearchResult [pkg]
+searchByName :: Package pkg => PackageIndex pkg
+             -> String -> [(PackageName, [pkg])]
 searchByName (PackageIndex m) name =
-  case [ pkgs | pkgs@(PackageName name',_) <- Map.toList m
-              , lowercase name' == lname ] of
-    []              -> None
-    [(_,pkgs)]      -> Unambiguous pkgs
-    pkgss           -> case find ((PackageName name==) . fst) pkgss of
-      Just (_,pkgs) -> Unambiguous pkgs
-      Nothing       -> Ambiguous (map snd pkgss)
-  where lname = lowercase name
+    [ pkgs
+    | pkgs@(PackageName name',_) <- Map.toList m
+    , lowercase name' == lname ]
+  where
+    lname = lowercase name
 
 data SearchResult a = None | Unambiguous a | Ambiguous [a]
 
@@ -300,13 +298,14 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 --
 -- That is, all packages that contain the given string in their name.
 --
-searchByNameSubstring :: Package pkg => PackageIndex pkg -> String -> [pkg]
+searchByNameSubstring :: Package pkg => PackageIndex pkg
+                      -> String -> [(PackageName, [pkg])]
 searchByNameSubstring (PackageIndex m) searchterm =
-  [ pkg
-  | (PackageName name, pkgs) <- Map.toList m
-  , lsearchterm `isInfixOf` lowercase name
-  , pkg <- pkgs ]
-  where lsearchterm = lowercase searchterm
+    [ pkgs
+    | pkgs@(PackageName name, _) <- Map.toList m
+    , lsearchterm `isInfixOf` lowercase name ]
+  where
+    lsearchterm = lowercase searchterm
 
 --
 -- * Special queries
