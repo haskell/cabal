@@ -4,7 +4,7 @@
 -- Copyright   :  (c) Duncan Coutts 2008
 -- License     :  BSD-like
 --
--- Maintainer  :  duncan@haskell.org
+-- Maintainer  :  duncan@community.haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
 --
