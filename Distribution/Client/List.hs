@@ -76,9 +76,8 @@ list verbosity packageDBs repos comp conf listFlags pats = do
     AvailablePackageDb available _ <- getAvailablePackages verbosity repos
     let pkgs | null pats = (PackageIndex.allPackages installed
                            ,PackageIndex.allPackages available)
-             | otherwise =
-                 (concatMap (PackageIndex.searchByNameSubstring installed) pats
-                 ,concatMap (PackageIndex.searchByNameSubstring available) pats)
+             | otherwise = (matchingPackages installed
+                           ,matchingPackages available)
         matches = installedFilter
                 . map (uncurry mergePackageInfo)
                 $ uncurry mergePackages pkgs
@@ -101,6 +100,12 @@ list verbosity packageDBs repos comp conf listFlags pats = do
       | otherwise     = id
     onlyInstalled = fromFlag (listInstalled listFlags)
     simpleOutput  = fromFlag (listSimpleOutput listFlags)
+
+    matchingPackages index =
+      [ pkg
+      | pat <- pats
+      , (_, pkgs) <- PackageIndex.searchByNameSubstring index pat
+      , pkg <- pkgs ]
 
 info :: Verbosity
      -> PackageDBStack
