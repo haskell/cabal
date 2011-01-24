@@ -257,8 +257,9 @@ configureToolchain ghcProg ghcInfo =
           if exists then return (Just f)
                     else look fs verbosity
 
-    ccFlags = getFlags "C compiler flags"
-    ldFlags = getFlags "Linker flags"
+    ccFlags        = getFlags "C compiler flags"
+    gccLinkerFlags = getFlags "Gcc Linker flags"
+    ldLinkerFlags  = getFlags "Ld Linker flags"
 
     getFlags key = case lookup key ghcInfo of
                    Nothing -> []
@@ -268,7 +269,8 @@ configureToolchain ghcProg ghcInfo =
                        _ -> [] -- XXX Should should be an error really
 
     configureGcc :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
-    configureGcc v cp = liftM (++ ccFlags) $ configureGcc' v cp
+    configureGcc v cp = liftM (++ (ccFlags ++ gccLinkerFlags))
+                      $ configureGcc' v cp
 
     configureGcc' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
     configureGcc'
@@ -285,7 +287,7 @@ configureToolchain ghcProg ghcInfo =
       | otherwise = \_ _   -> return []
 
     configureLd :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
-    configureLd v cp = liftM (++ ldFlags) $ configureLd' v cp
+    configureLd v cp = liftM (++ ldLinkerFlags) $ configureLd' v cp
 
     -- we need to find out if ld supports the -x flag
     configureLd' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
