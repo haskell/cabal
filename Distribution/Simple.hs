@@ -573,11 +573,15 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   env <- getEnvironment
   let programConfig = withPrograms lbi
   (ccProg, ccFlags) <- configureCCompiler verbosity programConfig
-  (ldProg, ldFlags) <- configureLinker    verbosity programConfig
+  -- The C compiler's compilation and linker flags (e.g.
+  -- "C compiler flags" and "Gcc Linker flags" from GHC) have already
+  -- been merged into ccFlags, so we set both CFLAGS and LDFLAGS
+  -- to ccFlags
+  -- We don't try and tell configure which ld to use, as we don't have
+  -- a way to pass its flags too
   let env' = appendToEnvironment ("CFLAGS",  unwords ccFlags)
-           $ appendToEnvironment ("LDFLAGS", unwords ldFlags)
              env
-      args' = args ++ ["--with-gcc=" ++ ccProg, "--with-ld=" ++ ldProg]
+      args' = args ++ ["--with-gcc=" ++ ccProg]
   handleNoWindowsSH $
     rawSystemExitWithEnv verbosity "sh" args' env'
 
