@@ -98,7 +98,8 @@ import Distribution.Simple.Program
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , requireProgramVersion, requireProgram, getProgramOutput
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
-         , ghcProgram, ghcPkgProgram, arProgram, ranlibProgram, ldProgram
+         , ghcProgram, ghcPkgProgram, hsc2hsProgram
+         , arProgram, ranlibProgram, ldProgram
          , gccProgram, stripProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
@@ -134,26 +135,32 @@ import Distribution.Compat.Exception (catchExit, catchIO)
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
-configure verbosity hcPath hcPkgPath conf = do
+configure verbosity hcPath hcPkgPath conf0 = do
 
-  (ghcProg, ghcVersion, conf') <-
+  (ghcProg, ghcVersion, conf1) <-
     requireProgramVersion verbosity ghcProgram
       (orLaterVersion (Version [6,4] []))
-      (userMaybeSpecifyPath "ghc" hcPath conf)
+      (userMaybeSpecifyPath "ghc" hcPath conf0)
 
   -- This is slightly tricky, we have to configure ghc first, then we use the
   -- location of ghc to help find ghc-pkg in the case that the user did not
   -- specify the location of ghc-pkg directly:
-  (ghcPkgProg, ghcPkgVersion, conf'') <-
+  (ghcPkgProg, ghcPkgVersion, conf2) <-
     requireProgramVersion verbosity ghcPkgProgram {
       programFindLocation = guessGhcPkgFromGhcPath ghcProg
     }
-    anyVersion (userMaybeSpecifyPath "ghc-pkg" hcPkgPath conf')
+    anyVersion (userMaybeSpecifyPath "ghc-pkg" hcPkgPath conf1)
 
   when (ghcVersion /= ghcPkgVersion) $ die $
        "Version mismatch between ghc and ghc-pkg: "
     ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
     ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
+
+  -- Likewise we try to find the matching hsc2hs program.
+  let hsc2hsProgram' = hsc2hsProgram {
+                           programFindLocation = guessHsc2hsFromGhcPath ghcProg
+                       }
+      conf3 = addKnownProgram hsc2hsProgram' conf2
 
   languages  <- getLanguages verbosity ghcProg
   extensions <- getExtensions verbosity ghcProg
@@ -173,31 +180,36 @@ configure verbosity hcPath hcPkgPath conf = do
         compilerLanguages      = languages,
         compilerExtensions     = extensions
       }
-      conf''' = configureToolchain ghcProg ghcInfo conf'' -- configure gcc and ld
-  return (comp, conf''')
+      conf4 = configureToolchain ghcProg ghcInfo conf3 -- configure gcc and ld
+  return (comp, conf4)
 
--- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
--- corresponding ghc-pkg, we try looking for both a versioned and unversioned
--- ghc-pkg in the same dir, that is:
+-- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
+-- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
+-- for a versioned or unversioned ghc-pkg in the same dir, that is:
 --
+-- > /usr/local/bin/ghc-pkg-ghc-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg(.exe)
 --
-guessGhcPkgFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
-guessGhcPkgFromGhcPath ghcProg verbosity
-  = do let path            = programPath ghcProg
-           dir             = takeDirectory path
-           versionSuffix   = takeVersionSuffix (dropExeExtension path)
-           guessNormal     = dir </> "ghc-pkg" <.> exeExtension
-           guessVersioned  = dir </> ("ghc-pkg" ++ versionSuffix) <.> exeExtension
+guessToolFromGhcPath :: FilePath -> ConfiguredProgram -> Verbosity
+                     -> IO (Maybe FilePath)
+guessToolFromGhcPath tool ghcProg verbosity
+  = do let path              = programPath ghcProg
+           dir               = takeDirectory path
+           versionSuffix     = takeVersionSuffix (dropExeExtension path)
+           guessNormal       = dir </> tool <.> exeExtension
+           guessGhcVersioned = dir </> (tool ++ "-ghc" ++ versionSuffix) <.> exeExtension
+           guessVersioned    = dir </> (tool ++ versionSuffix) <.> exeExtension
            guesses | null versionSuffix = [guessNormal]
-                   | otherwise          = [guessVersioned, guessNormal]
-       info verbosity $ "looking for package tool: ghc-pkg near compiler in " ++ dir
+                   | otherwise          = [guessGhcVersioned,
+                                           guessVersioned,
+                                           guessNormal]
+       info verbosity $ "looking for tool " ++ show tool ++ " near compiler in " ++ dir
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
          [] -> return Nothing
-         (pkgtool:_) -> do info verbosity $ "found package tool in " ++ pkgtool
-                           return (Just pkgtool)
+         (fp:_) -> do info verbosity $ "found " ++ tool ++ " in " ++ fp
+                      return (Just fp)
 
   where takeVersionSuffix :: FilePath -> String
         takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") . reverse
@@ -207,6 +219,28 @@ guessGhcPkgFromGhcPath ghcProg verbosity
           case splitExtension filepath of
             (filepath', extension) | extension == exeExtension -> filepath'
                                    | otherwise                 -> filepath
+
+-- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
+-- corresponding ghc-pkg, we try looking for both a versioned and unversioned
+-- ghc-pkg in the same dir, that is:
+--
+-- > /usr/local/bin/ghc-pkg-ghc-6.6.1(.exe)
+-- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
+-- > /usr/local/bin/ghc-pkg(.exe)
+--
+guessGhcPkgFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
+guessGhcPkgFromGhcPath = guessToolFromGhcPath "ghc-pkg"
+
+-- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
+-- corresponding hsc2hs, we try looking for both a versioned and unversioned
+-- hsc2hs in the same dir, that is:
+--
+-- > /usr/local/bin/hsc2hs-ghc-6.6.1(.exe)
+-- > /usr/local/bin/hsc2hs-6.6.1(.exe)
+-- > /usr/local/bin/hsc2hs(.exe)
+--
+guessHsc2hsFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
+guessHsc2hsFromGhcPath = guessToolFromGhcPath "hsc2hs"
 
 -- | Adjust the way we find and configure gcc and ld
 --
