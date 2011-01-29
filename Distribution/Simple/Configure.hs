@@ -82,9 +82,9 @@ import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , FlagName(..), TestSuite(..), mapTreeData )
+    , FlagName(..), TestSuite(..) )
 import Distribution.PackageDescription.Configuration
-    ( finalizePackageDescription )
+    ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
 import Distribution.Simple.Program
