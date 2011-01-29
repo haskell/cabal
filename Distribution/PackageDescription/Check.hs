@@ -803,11 +803,13 @@ checkCabalVersion pkg =
         ++ "range syntax rather than a simple version number. Use "
         ++ "'cabal-version: >= " ++ display (specVersion pkg) ++ "'."
 
-    -- check use of test suite stanzas
-  , checkVersion [1,10] (not (null $ testSuites pkg)) $
+    -- check use of test suite sections
+  , checkVersion [1,8] (not (null $ testSuites pkg)) $
       PackageDistInexcusable $
-           "The package uses test suite stanzas. To use this new syntax, "
-        ++ "the package needs to specify at least 'cabal-version: >= 1.10'."
+           "The 'test-suite' section is new in Cabal 1.10. "
+        ++ "Unfortunately it messes up the parser in older Cabal versions "
+        ++ "so you must specify at least 'cabal-version: >= 1.8', but note"
+        ++ "that only Cabal 1.10 and later can actually run such test suites."
 
     -- check use of default-language field
     -- note that we do not need to do an equivalent check for the
