@@ -57,5 +57,6 @@ tests cabalVersion = [
 
 main = do
     putStrLn $ "Cabal test suite - testing cabal version "++display cabalVersion
+    setCurrentDirectory "tests"
     defaultMain (tests cabalVersion)
 

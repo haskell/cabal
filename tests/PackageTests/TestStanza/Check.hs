@@ -38,42 +38,20 @@ suite cabalVersion = TestCase $ do
     genPD <- readPackageDescription silent pdFile
     let compiler = CompilerId GHC $ Version [6, 12, 2] []
         anyV = intersectVersionRanges anyVersion anyVersion
-        anticipatedFinalPD = emptyPackageDescription
-                { package = PackageIdentifier
-                        { pkgName = PackageName "TestStanza"
-                        , pkgVersion = Version [0, 1] []
-                        }
-                , license = BSD3
-                , author = "Thomas Tuegel"
-                , stability = "stable"
-                , description = "Check that Cabal recognizes the Test stanza defined below."
-                , category = "PackageTests"
-                , specVersionRaw = Right anyVersion
-                , buildType = Just Simple
-                , buildDepends =
-                    [ Dependency (PackageName "base") anyV ]
-                , library = Just emptyLibrary
-                        { exposedModules = [fromString "MyLibrary"]
-                        , libBuildInfo = emptyBuildInfo
-                                { targetBuildDepends =
-                                        [ Dependency (PackageName "base") anyVersion ]
-                                , hsSourceDirs = ["."]
-                                }
-                        }
-                , testSuites = [ emptyTestSuite
-                        { testName = "dummy"
-                        , testInterface = TestSuiteExeV10 (Version [1,0] []) "dummy.hs"
-                        , testBuildInfo = emptyBuildInfo
-                                { targetBuildDepends =
-                                        [ Dependency (PackageName "base") anyVersion ]
-                                , hsSourceDirs = ["."]
-                                }
-                        }
-                                ]
-                }
+        anticipatedTestSuite = emptyTestSuite
+            { testName = "dummy"
+            , testInterface = TestSuiteExeV10 (Version [1,0] []) "dummy.hs"
+            , testBuildInfo = emptyBuildInfo
+                    { targetBuildDepends =
+                            [ Dependency (PackageName "base") anyVersion ]
+                    , hsSourceDirs = ["."]
+                    }
+            , testEnabled = False
+            }
     case finalizePackageDescription [] (const True) buildPlatform compiler [] genPD of
         Left xs -> let depMessage = "should not have missing dependencies:\n" ++
                                     (unlines $ map (show . disp) xs)
                    in assertEqual depMessage True False
-        Right (f, _) -> assertEqual "parsed package description does not match anticipated"
-                                f anticipatedFinalPD
+        Right (f, _) -> let gotTest = head $ testSuites f
+                        in assertEqual "parsed test-suite stanza does not match anticipated"
+                                gotTest anticipatedTestSuite

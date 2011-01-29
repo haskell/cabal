@@ -84,7 +84,7 @@ import Distribution.PackageDescription as PD
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , FlagName(..), TestSuite(..) )
 import Distribution.PackageDescription.Configuration
-    ( finalizePackageDescription, flattenPackageDescription )
+    ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
 import Distribution.Simple.Program
@@ -318,12 +318,10 @@ configure (pkg_descr0, pbi) cfg
                 not . null . PackageIndex.lookupDependency pkgs'
               where
                 pkgs' = PackageIndex.insert internalPackage installedPackageSet
-            pkg_descr0'' =
-                --TODO: avoid disabling tests entirely, we otherwise cannot
-                -- perform semantic checks, see also checkPackageProblems
-                if fromFlag (configTests cfg)
-                    then pkg_descr0
-                    else pkg_descr0 { condTestSuites = [] }
+            enableTest t = t { testEnabled = fromFlag (configTests cfg) }
+            flaggedTests = map (\(n, t) -> (n, mapTreeData enableTest t))
+                               (condTestSuites pkg_descr0)
+            pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests }
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -480,7 +478,7 @@ configure (pkg_descr0, pbi) cfg
                                             (configScratchDir cfg),
                     libraryConfig       = configLib `fmap` library pkg_descr',
                     executableConfigs   = configExe `fmap` executables pkg_descr',
-                    testSuiteConfigs    = configTest `fmap` testSuites pkg_descr',
+                    testSuiteConfigs    = configTest `fmap` filter testEnabled (testSuites pkg_descr'),
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
@@ -970,7 +968,7 @@ checkPackageProblems :: Verbosity
                      -> GenericPackageDescription
                      -> PackageDescription
                      -> IO ()
-checkPackageProblems verbosity gpkg pkg0 = do
+checkPackageProblems verbosity gpkg pkg = do
   ioChecks      <- checkPackageFiles pkg "."
   let pureChecks = checkPackage gpkg (Just pkg)
       errors   = [ e | PackageBuildImpossible e <- pureChecks ++ ioChecks ]
@@ -979,16 +977,3 @@ checkPackageProblems verbosity gpkg pkg0 = do
     then mapM_ (warn verbosity) warnings
     else do mapM_ (hPutStrLn stderr . ("Error: " ++)) errors
             exitWith (ExitFailure 1)
-  where
-    -- TODO: Sigh, this is a fairly unpleasent hack. The issue is that
-    -- we want to check test-suite sections even when tests are disabled.
-    -- When tests are disabled we have to exclude the test-suite sections
-    -- when resolving the conditionals. But the checks we do are done
-    -- on the post-resolved form! Ug. A better solution would be either
-    -- 1) to do the checks on the pre-resolved form
-    -- 2) to resolve in two steps: find a flag assignment, then apply it
-    --    that'd allow us to find the flag assingment ignoring tests
-    --    but then to apply it anyway.
-    -- In the meantime we stick the tests back in before checking by
-    -- flattening the pre-resovled form.
-    pkg = pkg0 { testSuites = testSuites (flattenPackageDescription gpkg) }
