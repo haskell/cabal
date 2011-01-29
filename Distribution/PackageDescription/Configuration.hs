@@ -56,6 +56,10 @@ module Distribution.PackageDescription.Configuration (
     -- Utils
     parseCondition,
     freeVars,
+    mapCondTree,
+    mapTreeData,
+    mapTreeConds,
+    mapTreeConstrs,
   ) where
 
 import Distribution.Package
