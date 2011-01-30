@@ -65,13 +65,13 @@ PANDOC_OPTIONS= \
 	--standalone \
 	--smart \
 	--css=$(PANDOC_HTML_CSS)
-PANDOC_HTML_OUTDIR=dist/doc/users-guide/
+PANDOC_HTML_OUTDIR=dist/doc/users-guide
 PANDOC_HTML_CSS=Cabal.css
 
-users-guide: $(USERGUIDE_STAMP)
-$(USERGUIDE_STAMP) : doc/Cabal.markdown
-	mkdir -p dist/doc/users-guide/
-	$(PANDOC) $(PANDOC_OPTIONS) --from=markdown --to=html $< --output $@
+users-guide: $(USERGUIDE_STAMP) doc/*.markdown
+$(USERGUIDE_STAMP): doc/*.markdown
+	mkdir -p $(PANDOC_HTML_OUTDIR)
+	for file in $^; do $(PANDOC) $(PANDOC_OPTIONS) --from=markdown --to=html --output $(PANDOC_HTML_OUTDIR)/$$(basename $${file} .markdown).html $${file}; done
 	cp doc/$(PANDOC_HTML_CSS) $(PANDOC_HTML_OUTDIR)
 
 docs: haddock users-guide
