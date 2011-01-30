@@ -82,6 +82,7 @@ Library
         Distribution.Simple.GHC,
         Distribution.Simple.LHC,
         Distribution.Simple.Haddock,
+        Distribution.Simple.Hpc,
         Distribution.Simple.Hugs,
         Distribution.Simple.Install,
         Distribution.Simple.InstallDirs,

@@ -62,6 +62,7 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..), CompilerId )
+import Distribution.Simple.Hpc ( doHpcMarkup, findTixFiles, tixDir )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, PathTemplate )
@@ -173,10 +174,19 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
     existingEnv <- getEnvironment
     let dataDirPath = pwd </> PD.dataDir pkg_descr
         shellEnv = Just $ (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
+                        : ("HPCTIXDIR", pwd </> tixDir distPref suite)
                         : existingEnv
 
     bracket (openCabalTemp testLogDir) deleteIfExists $ \tempLog ->
         bracket (openCabalTemp testLogDir) deleteIfExists $ \tempInput -> do
+
+            -- Create directory for HPC files.
+            createDirectoryIfMissing True $ tixDir distPref suite
+
+            -- Remove old .tix files if appropriate.
+            tixFiles <- findTixFiles distPref suite
+            unless (fromFlag $ testKeepTix flags)
+                $ mapM_ deleteIfExists tixFiles
 
             -- Write summary notices indicating start of test suite
             notice verbosity $ summarizeSuiteStart $ PD.testName suite
@@ -220,6 +230,8 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
 
             -- Write summary notice to terminal indicating end of test suite
             notice verbosity $ summarizeSuiteFinish suiteLog'
+
+            doHpcMarkup verbosity distPref (display $ PD.package pkg_descr) suite
 
             return suiteLog'
     where
