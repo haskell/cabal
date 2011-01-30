@@ -622,6 +622,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
      info verbosity "Building C Sources..."
      sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi clbi pref
                                                         filename verbosity
+                                                        False
                                                         (withProfLib lbi)
                    createDirectoryIfMissingVerbose verbosity True odir
                    runGhcProg args
@@ -756,7 +757,7 @@ buildExe verbosity _pkg_descr lbi
    info verbosity "Building C Sources."
    sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi clbi
                                           exeDir filename verbosity
-                                          (withProfExe lbi)
+                                          (withDynExe lbi) (withProfExe lbi)
                  createDirectoryIfMissingVerbose verbosity True odir
                  runGhcProg args
              | filename <- cSources exeBi]
@@ -764,7 +765,7 @@ buildExe verbosity _pkg_descr lbi
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
   let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
-  let binArgs linkExe profExe =
+  let binArgs linkExe dynExe profExe =
              "--make"
           :  (if linkExe
                  then ["-o", targetDir </> exeNameReal]
@@ -776,6 +777,9 @@ buildExe verbosity _pkg_descr lbi
           ++ ["-l"++lib | lib <- extraLibs exeBi]
           ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
           ++ concat [["-framework", f] | f <- PD.frameworks exeBi]
+          ++ if dynExe
+                then ["-dynamic"]
+                else []
           ++ if profExe
                 then ["-prof",
                       "-hisuf", "p_hi",
@@ -789,9 +793,9 @@ buildExe verbosity _pkg_descr lbi
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
   when (withProfExe lbi && EnableExtension TemplateHaskell `elem` allExtensions exeBi)
-     (runGhcProg (binArgs False False))
+     (runGhcProg (binArgs False (withDynExe lbi) False))
 
-  runGhcProg (binArgs True (withProfExe lbi))
+  runGhcProg (binArgs True (withDynExe lbi) (withProfExe lbi))
 
 -- | Filter the "-threaded" flag when profiling as it does not
 --   work with ghc-6.8 and older.
@@ -921,9 +925,9 @@ ghcPackageDbOptions dbstack = case dbstack of
     ierror     = error ("internal error: unexpected package db stack: " ++ show dbstack)
 
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
-                   -> FilePath -> FilePath -> Verbosity -> Bool
+                   -> FilePath -> FilePath -> Verbosity -> Bool -> Bool
                    ->(FilePath,[String])
-constructCcCmdLine lbi bi clbi pref filename verbosity profiling
+constructCcCmdLine lbi bi clbi pref filename verbosity dynamic profiling
   =  let odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
               | otherwise = pref </> takeDirectory filename
                         -- ghc 6.4.1 fixed a bug in -odir handling
@@ -937,6 +941,7 @@ constructCcCmdLine lbi bi clbi pref filename verbosity profiling
          -- option to ghc here when compiling C code, so that the PROFILING
          -- macro gets defined. The macro is used in ghc's Rts.h in the
          -- definitions of closure layouts (Closures.h).
+         ++ ["-dynamic" | dynamic]
          ++ ["-prof" | profiling])
 
 ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo

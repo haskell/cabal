@@ -489,6 +489,7 @@ configure (pkg_descr0, pbi) cfg
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
                     withProfLib         = fromFlag $ configProfLib cfg,
                     withSharedLib       = fromFlag $ configSharedLib cfg,
+                    withDynExe          = fromFlag $ configDynExe cfg,
                     withProfExe         = fromFlag $ configProfExe cfg,
                     withOptimization    = fromFlag $ configOptimization cfg,
                     withGHCiLib         = fromFlag $ configGHCiLib cfg,

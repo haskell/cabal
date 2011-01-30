@@ -270,6 +270,7 @@ data ConfigFlags = ConfigFlags {
     configVanillaLib    :: Flag Bool,     -- ^Enable vanilla library
     configProfLib       :: Flag Bool,     -- ^Enable profiling in the library
     configSharedLib     :: Flag Bool,     -- ^Build shared library
+    configDynExe        :: Flag Bool,     -- ^Enable dynamic linking of the executables.
     configProfExe       :: Flag Bool,     -- ^Enable profiling in the executables.
     configConfigureArgs :: [String],      -- ^Extra arguments to @configure@
     configOptimization  :: Flag OptimisationLevel,  -- ^Enable optimization.
@@ -302,6 +303,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configVanillaLib   = Flag True,
     configProfLib      = Flag False,
     configSharedLib    = Flag False,
+    configDynExe       = Flag False,
     configProfExe      = Flag False,
     configOptimization = Flag NormalOptimisation,
     configProgPrefix   = Flag (toPathTemplate ""),
@@ -390,10 +392,16 @@ configureOptions showOrParseArgs =
          configSharedLib (\v flags -> flags { configSharedLib = v })
          (boolOpt [] [])
 
+      ,option "" ["executable-dynamic"]
+         "Executable dynamic linking"
+         configDynExe (\v flags -> flags { configDynExe = v })
+         (boolOpt [] [])
+
       ,option "" ["executable-profiling"]
          "Executable profiling"
          configProfExe (\v flags -> flags { configProfExe = v })
          (boolOpt [] [])
+
       ,multiOption "optimization"
          configOptimization (\v flags -> flags { configOptimization = v })
          [optArg' "n" (Flag . flagToOptimisationLevel)
@@ -559,6 +567,7 @@ instance Monoid ConfigFlags where
     configVanillaLib    = mempty,
     configProfLib       = mempty,
     configSharedLib     = mempty,
+    configDynExe        = mempty,
     configProfExe       = mempty,
     configConfigureArgs = mempty,
     configOptimization  = mempty,
@@ -590,6 +599,7 @@ instance Monoid ConfigFlags where
     configVanillaLib    = combine configVanillaLib,
     configProfLib       = combine configProfLib,
     configSharedLib     = combine configSharedLib,
+    configDynExe        = combine configDynExe,
     configProfExe       = combine configProfExe,
     configConfigureArgs = combine configConfigureArgs,
     configOptimization  = combine configOptimization,
