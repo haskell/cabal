@@ -290,7 +290,8 @@ data ConfigFlags = ConfigFlags {
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies
     configConfigurationsFlags :: FlagAssignment,
-    configTests :: Flag Bool     -- ^Enable test suite compilation
+    configTests :: Flag Bool,     -- ^Enable test suite compilation
+    configLibCoverage :: Flag Bool    -- ^ Enable test suite program coverage
   }
   deriving (Read,Show)
 
@@ -311,7 +312,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configGHCiLib      = Flag True,
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = Flag True,
-    configTests  = Flag False
+    configTests  = Flag False,
+    configLibCoverage = Flag False
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -464,6 +466,10 @@ configureOptions showOrParseArgs =
          "dependency checking and compilation for test suites listed in the package description file."
          configTests (\v flags -> flags { configTests = v })
          (boolOpt [] [])
+      ,option "" ["library-coverage"]
+         "build library and test suites with Haskell Program Coverage enabled. (GHC only)"
+         configLibCoverage (\v flags -> flags { configLibCoverage = v })
+         (boolOpt [] [])
       ]
   where
     readFlagList :: String -> FlagAssignment
@@ -571,7 +577,8 @@ instance Monoid ConfigFlags where
     configConstraints   = mempty,
     configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty,
-    configTests   = mempty
+    configTests   = mempty,
+    configLibCoverage = mempty
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -601,7 +608,8 @@ instance Monoid ConfigFlags where
     configConstraints   = combine configConstraints,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags,
-    configTests = combine configTests
+    configTests = combine configTests,
+    configLibCoverage = combine configLibCoverage
   }
     where combine field = field a `mappend` field b
 
@@ -1234,6 +1242,7 @@ data TestFlags = TestFlags {
     testHumanLog :: Flag PathTemplate,
     testMachineLog :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
+    testKeepTix :: Flag Bool,
     --TODO: eliminate the test list and pass it directly as positional args to the testHook
     testList :: Flag [String],
     -- TODO: think about if/how options are passed to test exes
@@ -1247,6 +1256,7 @@ defaultTestFlags  = TestFlags {
     testHumanLog = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
     testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
+    testKeepTix = toFlag False,
     testList = Flag [],
     testOptions = Flag []
   }
@@ -1287,6 +1297,10 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
                                    (map display knownTestShowDetails))
                             (fmap toFlag parse))
                 (flagToList . fmap display))
+      , option [] ["keep-tix-files"]
+            "keep .tix files for HPC between test runs"
+            testKeepTix (\v flags -> flags { testKeepTix = v})
+            trueArg
       , option [] ["test-options"]
             ("give extra options to test executables "
              ++ "(name templates can use $pkgid, $compiler, "
@@ -1314,6 +1328,7 @@ instance Monoid TestFlags where
     testHumanLog = mempty,
     testMachineLog = mempty,
     testShowDetails = mempty,
+    testKeepTix = mempty,
     testList = mempty,
     testOptions = mempty
   }
@@ -1323,6 +1338,7 @@ instance Monoid TestFlags where
     testHumanLog = combine testHumanLog,
     testMachineLog = combine testMachineLog,
     testShowDetails = combine testShowDetails,
+    testKeepTix = combine testKeepTix,
     testList = combine testList,
     testOptions = combine testOptions
   }
