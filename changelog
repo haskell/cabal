@@ -4,6 +4,17 @@
 
 1.10.0.x (next stable release version)
 
+1.10.1.0 Duncan Coutts <duncan@community.haskell.org> January 2011
+	* Improved error messages when test suites are not enabled
+	* Template parameters allowed in test --test-option(s) flag
+	* Improved documentation of the test feature
+	* Relaxed QA check on cabal-version when using test-suite sections
+	* haddock command now allows both --hoogle and --html at the same time
+	* Find ghc-version-specific instances of the hsc2hs program
+	* Preserve file executable permissions in sdist tarballs
+	* Pass gcc location and flags to ./configure scripts
+	* Get default gcc flags from ghc
+
 1.10.0.0 Duncan Coutts <duncan@haskell.org> November 2010
 	* New cabal test feature
 	* Initial support for UHC
