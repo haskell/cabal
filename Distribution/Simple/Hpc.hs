@@ -74,6 +74,10 @@ import System.Process ( runProcess, waitForProcess )
 
 -- | Conditionally enable Haskell Program Coverage by adding the necessary
 -- GHC options to a PackageDescription.
+--
+-- TODO: do this differently in the build stage by constructing local build
+-- info, not by modifying the original PackageDescription.
+--
 enableCoverage :: Bool                  -- ^ Enable coverage?
                -> String                -- ^ \"dist/\" prefix
                -> PackageDescription
@@ -148,6 +152,7 @@ doHpcMarkup verbosity distPref libName suite = do
                             ]
                             ++ hpcOptions
             excluded = testModules suite ++ [ main ]
+            --TODO: use standard process utilities from D.S.Utils
             runHpc opts h = runProcess "hpc" opts Nothing Nothing Nothing
                                        (Just h) (Just h)
         bracket (openHpcTemp $ tixDir distPref suite) deleteIfExists
