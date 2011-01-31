@@ -104,6 +104,7 @@ toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
     Current.stability          = stability ipi,
     Current.homepage           = homepage ipi,
     Current.pkgUrl             = pkgUrl ipi,
+    Current.synopsis           = "",
     Current.description        = description ipi,
     Current.category           = category ipi,
     Current.exposed            = exposed ipi,

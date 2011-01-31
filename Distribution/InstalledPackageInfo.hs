@@ -98,6 +98,7 @@ data InstalledPackageInfo_ m
         stability         :: String,
         homepage          :: String,
         pkgUrl            :: String,
+        synopsis          :: String,
         description       :: String,
         category          :: String,
         -- these parts are required by an installed package only:
@@ -139,6 +140,7 @@ emptyInstalledPackageInfo
         stability         = "",
         homepage          = "",
         pkgUrl            = "",
+        synopsis          = "",
         description       = "",
         category          = "",
         exposed           = False,
@@ -214,6 +216,9 @@ basicFieldDescrs =
  , simpleField "package-url"
                            showFreeText           parseFreeText
                            pkgUrl                 (\val pkg -> pkg{pkgUrl=val})
+ , simpleField "synopsis"
+                           showFreeText           parseFreeText
+                           synopsis               (\val pkg -> pkg{synopsis=val})
  , simpleField "description"
                            showFreeText           parseFreeText
                            description            (\val pkg -> pkg{description=val})

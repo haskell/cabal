@@ -269,6 +269,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
     IPI.stability          = stability   pkg,
     IPI.homepage           = homepage    pkg,
     IPI.pkgUrl             = pkgUrl      pkg,
+    IPI.synopsis           = synopsis    pkg,
     IPI.description        = description pkg,
     IPI.category           = category    pkg,
     IPI.exposed            = libExposed  lib,
