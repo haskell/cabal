@@ -230,13 +230,15 @@ hideInvocation hcPkg verbosity packagedb pkgid =
 
 dumpInvocation :: ConfiguredProgram
                -> Verbosity -> PackageDB -> ProgramInvocation
-dumpInvocation hcPkg verbosity packagedb =
+dumpInvocation hcPkg _verbosity packagedb =
     (programInvocation hcPkg args) {
       progInvokeOutputEncoding = IOEncodingUTF8
     }
   where
     args = ["dump", packageDbOpts packagedb]
-        ++ verbosityOpts hcPkg verbosity
+        ++ verbosityOpts hcPkg silent
+           -- We use verbosity level 'silent' because it is important that we
+           -- do not contaminate the output with info/debug messages.
 
 
 packageDbStackOpts :: PackageDBStack -> [String]
