@@ -51,6 +51,8 @@ import Distribution.Verbosity
 import Distribution.Compat.Exception
          ( catchExit )
 
+import Data.Char
+         ( isSpace )
 import Control.Monad
          ( liftM )
 
@@ -135,8 +137,12 @@ dump verbosity hcPkg packagedb = do
     --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
     -- and converting back and forth with lines/unlines.
     splitPkgs :: String -> [String]
-    splitPkgs = map unlines . splitWith ("---" ==) . lines
+    splitPkgs = checkEmpty . map unlines . splitWith ("---" ==) . lines
       where
+        -- Handle the case of there being no packages at all.
+        checkEmpty [s] | all isSpace s = []
+        checkEmpty ss                  = ss
+
         splitWith :: (a -> Bool) -> [a] -> [[a]]
         splitWith p xs = ys : case zs of
                            []   -> []
