@@ -23,9 +23,6 @@ module Distribution.Client.IndexUtils (
 
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.Types
-         ( UnresolvedDependency(..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo(..), RemoteRepo(..)
-         , AvailablePackageDb(..), InstalledPackage(..) )
 
 import Distribution.Package
          ( PackageId, PackageIdentifier(..), PackageName(..), Package(..)

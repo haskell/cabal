@@ -2,13 +2,14 @@
 -- |
 -- Module      :  Distribution.Client.Types
 -- Copyright   :  (c) David Himmelstrup 2005
+--                    Duncan Coutts 2011
 -- License     :  BSD-like
 --
--- Maintainer  :  lemmih@gmail.com
+-- Maintainer  :  cabal-devel@haskell.org
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- All data types for the entire cabal-install system gathered here to avoid some .hs-boot files.
+-- Various common data types for the entire cabal-install system
 -----------------------------------------------------------------------------
 module Distribution.Client.Types where
 
@@ -44,6 +45,10 @@ data AvailablePackageDb = AvailablePackageDb {
   packageIndex       :: PackageIndex AvailablePackage,
   packagePreferences :: Map PackageName VersionRange
 }
+
+-- ------------------------------------------------------------
+-- * Various kinds of information about packages
+-- ------------------------------------------------------------
 
 -- | TODO: This is a hack to help us transition from Cabal-1.6 to 1.8.
 -- What is new in 1.8 is that installed packages and dependencies between
@@ -94,13 +99,17 @@ instance PackageFixedDeps ConfiguredPackage where
 data AvailablePackage = AvailablePackage {
     packageInfoId      :: PackageId,
     packageDescription :: GenericPackageDescription,
-    packageSource      :: AvailablePackageSource
+    packageSource      :: PackageLocation
   }
   deriving Show
 
 instance Package AvailablePackage where packageId = packageInfoId
 
-data AvailablePackageSource =
+-- ------------------------------------------------------------
+-- * Package locations and repositories
+-- ------------------------------------------------------------
+
+data PackageLocation =
 
     -- | An unpacked package in the given dir, or current dir
     LocalUnpackedPackage FilePath
@@ -117,6 +126,8 @@ data AvailablePackageSource =
     -- locally cached copy. ie a package available from hackage
   | RepoTarballPackage Repo
 
+--TODO:
+--  * add support for darcs and other SCM style remote repos with a local cache
 --  | ScmPackage
   deriving Show
 
@@ -137,6 +148,10 @@ data Repo = Repo {
     repoLocalDir :: FilePath
   }
   deriving (Show,Eq)
+
+-- ------------------------------------------------------------
+-- * Unresolved dependencies
+-- ------------------------------------------------------------
 
 data UnresolvedDependency
     = UnresolvedDependency
@@ -197,6 +212,9 @@ instance Text UnresolvedDependency where
             return (c:cs)
         
 
+-- ------------------------------------------------------------
+-- * Build results
+-- ------------------------------------------------------------
 
 type BuildResult  = Either BuildFailure BuildSuccess
 data BuildFailure = DependentFailed PackageId
