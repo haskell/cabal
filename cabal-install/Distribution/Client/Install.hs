@@ -52,8 +52,8 @@ import Distribution.Client.Dependency
          , PackagesPreference(..), PackagesPreferenceDefault(..)
          , PackagePreference(..)
          , Progress(..), foldProgress, )
-import Distribution.Client.Fetch
-         ( fetchPackage )
+import Distribution.Client.FetchUtils
+         ( fetchRepoTarball )
 import Distribution.Client.HttpUtils
          ( downloadURI )
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
@@ -791,7 +791,7 @@ installAvailablePackage verbosity pkgid
 
 installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg =
   onFailure DownloadFailed $ do
-    tarballPath <- fetchPackage verbosity repo pkgid
+    tarballPath <- fetchRepoTarball verbosity repo pkgid
     tmp <- getTemporaryDirectory
     withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
       installLocalTarballPackage verbosity pkgid

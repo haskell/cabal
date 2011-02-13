@@ -37,8 +37,8 @@ import Distribution.Client.Dependency as Dependency
          , dependencyConstraints, dependencyTargets
          , PackagesPreference(..), PackagesPreferenceDefault(..)
          , PackagePreference(..) )
-import Distribution.Client.Fetch
-        ( fetchPackage )
+import Distribution.Client.FetchUtils
+        ( fetchRepoTarball )
 import Distribution.Client.HttpUtils
         ( downloadURI )
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
@@ -91,7 +91,7 @@ unpack flags repos deps = do
       unpackPackage verbosity prefix pkgid tarballPath
 
     AvailablePackage pkgid _ (RepoTarballPackage repo) -> do
-      tarballPath <- fetchPackage verbosity repo pkgid
+      tarballPath <- fetchRepoTarball verbosity repo pkgid
       unpackPackage verbosity prefix pkgid tarballPath
 
     AvailablePackage _ _ (LocalUnpackedPackage _) ->
