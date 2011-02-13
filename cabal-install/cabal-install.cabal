@@ -75,6 +75,7 @@ Executable cabal
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist
         Distribution.Client.Tar
+        Distribution.Client.Targets
         Distribution.Client.Types
         Distribution.Client.Unpack
         Distribution.Client.Update
