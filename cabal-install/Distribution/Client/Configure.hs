@@ -143,7 +143,7 @@ planLocalPackage verbosity comp configFlags configExFlags installed
       localPkg = AvailablePackage {
         packageInfoId                = packageId pkg,
         Available.packageDescription = pkg,
-        packageSource                = LocalUnpackedPackage Nothing
+        packageSource                = LocalUnpackedPackage "."
       }
       targets     = [packageName pkg]
       constraints = [PackageVersionConstraint (packageName pkg)
