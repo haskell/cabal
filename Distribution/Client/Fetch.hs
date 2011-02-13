@@ -83,7 +83,7 @@ fetch verbosity packageDBs repos comp conf flags deps = do
             includeDeps comp
             installed availableDb deps'
 
-  pkgs' <- filterM (fmap not . isFetched) pkgs
+  pkgs' <- filterM (fmap not . isFetched . packageSource) pkgs
   when (null pkgs') $
     notice verbosity $ "No packages need to be fetched. "
                     ++ "All the requested packages are already cached."
@@ -93,7 +93,7 @@ fetch verbosity packageDBs repos comp conf flags deps = do
           : map (display . packageId) pkgs'
     else sequence_
            [ fetchRepoTarball verbosity repo pkgid
-           | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- pkgs' ]
+           | (AvailablePackage pkgid _ (RepoTarballPackage repo _ _)) <- pkgs' ]
   where
     includeDeps = fromFlag (fetchDeps flags)
     dryRun      = fromFlag (fetchDryRun flags)

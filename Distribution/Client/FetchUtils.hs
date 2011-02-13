@@ -36,6 +36,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
+import Data.Maybe
 import System.Directory
          ( doesFileExist, createDirectoryIfMissing )
 import System.FilePath
@@ -52,12 +53,12 @@ import Network.URI
 -- | Returns @True@ if the package has already been fetched
 -- or does not need fetching.
 --
-isFetched :: AvailablePackage -> IO Bool
-isFetched (AvailablePackage pkgid _ source) = case source of
-  LocalUnpackedPackage _  -> return True
-  LocalTarballPackage  _  -> return True
-  RemoteTarballPackage _  -> return False --TODO: ad-hoc download caching
-  RepoTarballPackage repo -> doesFileExist (packageFile repo pkgid)
+isFetched :: PackageLocation (Maybe FilePath) -> IO Bool
+isFetched loc = case loc of
+    LocalUnpackedPackage _dir       -> return True
+    LocalTarballPackage  _file      -> return True
+    RemoteTarballPackage _uri local -> return (isJust local)
+    RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
 
 -- | Fetch a repo package if we don't have it already.
 --
