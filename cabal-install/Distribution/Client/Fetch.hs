@@ -16,26 +16,18 @@ module Distribution.Client.Fetch (
   ) where
 
 import Distribution.Client.Types
-import Distribution.Client.FetchUtils
+import Distribution.Client.Targets
+import Distribution.Client.FetchUtils hiding (fetchPackage)
+import Distribution.Client.Dependency
 import Distribution.Client.PackageIndex (PackageIndex)
-import Distribution.Client.Dependency as Dependency
-         ( resolveDependenciesWithProgress
-         , resolveAvailablePackages
-         , dependencyConstraints, dependencyTargets
-         , PackagesPreference(..), PackagesPreferenceDefault(..)
-         , PackagePreference(..) )
-import Distribution.Client.Dependency.Types
-         ( foldProgress )
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, disambiguateDependencies
-         , getInstalledPackages )
+         ( getAvailablePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
-         ( FetchFlags(..) )
+         ( GlobalFlags(..), FetchFlags(..) )
 
 import Distribution.Package
-         ( packageId, Dependency(..) )
-import qualified Distribution.Client.PackageIndex as PackageIndex
+         ( packageId )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
 import Distribution.Simple.Program
@@ -51,13 +43,22 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
-import qualified Data.Map as Map
 import Control.Monad
-         ( when, filterM )
+         ( filterM )
 
 -- ------------------------------------------------------------
 -- * The fetch command
 -- ------------------------------------------------------------
+
+--TODO:
+-- * add fetch -o support
+-- * support tarball URLs via ad-hoc download cache (or in -o mode?)
+-- * suggest using --no-deps, unpack or fetch -o if deps cannot be satisfied
+-- * Port various flags from install:
+--   * --updage-dependencies
+--   * --constraint and --preference
+--   * --only-dependencies, but note it conflicts with --no-deps
+
 
 -- | Fetch a list of packages and their dependencies.
 --
@@ -66,101 +67,105 @@ fetch :: Verbosity
       -> [Repo]
       -> Compiler
       -> ProgramConfiguration
+      -> GlobalFlags
       -> FetchFlags
-      -> [UnresolvedDependency]
+      -> [UserTarget]
       -> IO ()
-fetch verbosity _ _ _ _ _ [] =
-  notice verbosity "No packages requested. Nothing to do."
+fetch verbosity _ _ _ _ _ _ [] =
+    notice verbosity "No packages requested. Nothing to do."
 
-fetch verbosity packageDBs repos comp conf flags deps = do
+fetch verbosity packageDBs repos comp conf
+      globalFlags fetchFlags userTargets = do
 
-  installed <- getInstalledPackages verbosity comp packageDBs conf
-  availableDb@(AvailablePackageDb available _)
-        <- getAvailablePackages verbosity repos
-  deps' <- IndexUtils.disambiguateDependencies available deps
+    mapM_ checkTarget userTargets
 
-  pkgs <- resolvePackages verbosity
-            includeDeps comp
-            installed availableDb deps'
+    installed     <- getInstalledPackages verbosity comp packageDBs conf
+    availableDb   <- getAvailablePackages verbosity repos
 
-  pkgs' <- filterM (fmap not . isFetched . packageSource) pkgs
-  when (null pkgs') $
-    notice verbosity $ "No packages need to be fetched. "
-                    ++ "All the requested packages are already cached."
-  if dryRun
-    then notice verbosity $ unlines $
-            "The following packages would be fetched:"
-          : map (display . packageId) pkgs'
-    else sequence_
-           [ fetchRepoTarball verbosity repo pkgid
-           | (AvailablePackage pkgid _ (RepoTarballPackage repo _ _)) <- pkgs' ]
+    pkgSpecifiers <- resolveUserTargets verbosity
+                       globalFlags (packageIndex availableDb) userTargets
+
+    pkgs  <- planPackages
+               verbosity comp fetchFlags
+               installed availableDb pkgSpecifiers
+
+    pkgs' <- filterM (fmap not . isFetched . packageSource) pkgs
+    if null pkgs'
+      --TODO: when we add support for remote tarballs then this message
+      -- will need to be changed because for remote tarballs we fetch them
+      -- at the earlier phase.
+      then notice verbosity $ "No packages need to be fetched. "
+                           ++ "All the requested packages are already local "
+                           ++ "or cached locally."
+      else if dryRun
+             then notice verbosity $ unlines $
+                     "The following packages would be fetched:"
+                   : map (display . packageId) pkgs'
+
+             else mapM_ (fetchPackage verbosity . packageSource) pkgs'
+
   where
-    includeDeps = fromFlag (fetchDeps flags)
-    dryRun      = fromFlag (fetchDryRun flags)
+    dryRun = fromFlag (fetchDryRun fetchFlags)
 
-
-resolvePackages
-  :: Verbosity
-  -> Bool
-  -> Compiler
-  -> PackageIndex InstalledPackage
-  -> AvailablePackageDb
-  -> [UnresolvedDependency]
-  -> IO [AvailablePackage]
-resolvePackages verbosity includeDependencies comp
-  installed (AvailablePackageDb available availablePrefs) deps
+planPackages :: Verbosity
+             -> Compiler
+             -> FetchFlags
+             -> PackageIndex InstalledPackage
+             -> AvailablePackageDb
+             -> [PackageSpecifier AvailablePackage]
+             -> IO [AvailablePackage]
+planPackages verbosity comp fetchFlags
+             installed availableDb pkgSpecifiers
 
   | includeDependencies = do
-
       notice verbosity "Resolving dependencies..."
-      plan <- foldProgress logMsg die return $
-                resolveDependenciesWithProgress
-                  buildPlatform (compilerId comp)
-                  installed' available
-                  preferences constraints
-                  targets
-      --TODO: suggest using --no-deps, unpack or fetch -o
-      -- if cannot satisfy deps
-      --TODO: add commandline constraint and preference args for fetch
+      installPlan <- foldProgress logMsg die return $
+                       resolveDependencies
+                         buildPlatform (compilerId comp)
+                         resolverParams
 
-      return (selectPackagesToFetch plan)
+      -- The packages we want to fetch are those packages the 'InstallPlan'
+      -- that are in the 'InstallPlan.Configured' state.
+      return
+        [ pkg
+        | (InstallPlan.Configured (InstallPlan.ConfiguredPackage pkg _ _))
+            <- InstallPlan.toList installPlan ]
 
-  | otherwise = do
-
-    either (die . unlines . map show) return $
-      resolveAvailablePackages
-        installed   available
-        preferences constraints
-        targets
+  | otherwise =
+      either (die . unlines . map show) return $
+        resolveWithoutDependencies resolverParams
 
   where
-    targets     = dependencyTargets     deps
-    constraints = dependencyConstraints deps
-    preferences = PackagesPreference
-                    PreferLatestForSelected
-                    [ PackageVersionPreference name ver
-                    | (name, ver) <- Map.toList availablePrefs ]
+    resolverParams =
 
-    installed'  = hideGivenDeps deps installed
+        -- Reinstall the targets given on the command line so that the dep
+        -- resolver will decide that they need fetching, even if they're
+        -- already installed. Sicne we want to get the source packages of
+        -- things we might have installed (but not have the sources for).
+        reinstallTargets
 
-    -- Hide the packages given on the command line so that the dep resolver
-    -- will decide that they need fetching, even if they're already
-    -- installed. Sicne we want to get the source packages of things we might
-    -- have installed (but not have the sources for).
+      $ standardInstallPolicy installed availableDb pkgSpecifiers
 
-    -- TODO: to allow for preferences on selecting an available version
-    -- corresponding to a package we've got installed, instead of hiding the
-    -- installed instances, we should add a constraint on using an installed
-    -- instance.
-    hideGivenDeps pkgs index =
-      foldr PackageIndex.deletePackageName index
-        [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
-
-    -- The packages we want to fetch are those packages the 'InstallPlan' that
-    -- are in the 'InstallPlan.Configured' state.
-    selectPackagesToFetch :: InstallPlan.InstallPlan -> [AvailablePackage]
-    selectPackagesToFetch plan =
-      [ pkg | (InstallPlan.Configured (InstallPlan.ConfiguredPackage pkg _ _))
-                 <- InstallPlan.toList plan ]
-
+    includeDependencies = fromFlag (fetchDeps fetchFlags)
     logMsg message rest = info verbosity message >> rest
+
+
+checkTarget :: UserTarget -> IO ()
+checkTarget target = case target of
+    UserTargetRemoteTarball _uri
+      -> die $ "The 'fetch' command does not yet support remote tarballs. "
+            ++ "In the meantime you can use the 'unpack' commands."
+    _ -> return ()
+
+fetchPackage :: Verbosity -> PackageLocation a -> IO ()
+fetchPackage verbosity pkgsrc = case pkgsrc of
+    LocalUnpackedPackage _dir  -> return ()
+    LocalTarballPackage  _file -> return ()
+
+    RemoteTarballPackage _uri _ ->
+      die $ "The 'fetch' command does not yet support remote tarballs. "
+         ++ "In the meantime you can use the 'unpack' commands."
+
+    RepoTarballPackage repo pkgid _ -> do
+      _ <- fetchRepoTarball verbosity repo pkgid
+      return ()

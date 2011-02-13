@@ -2,6 +2,7 @@
 -- |
 -- Module      :  Distribution.Client.Unpack
 -- Copyright   :  (c) Andrea Vezzosi 2008
+--                    Duncan Coutts 2011
 -- License     :  BSD-like
 --
 -- Maintainer  :  cabal-devel@haskell.org
@@ -18,86 +19,92 @@ module Distribution.Client.Unpack (
   ) where
 
 import Distribution.Package
-         ( PackageId, Dependency(..) )
-import Distribution.Simple.Setup(fromFlag, fromFlagOrDefault)
+         ( PackageId, packageId )
+import Distribution.Simple.Setup
+         ( fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( notice, die )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text(display)
 
-import Distribution.Client.Setup(UnpackFlags(unpackVerbosity,
-                                             unpackDestDir))
+import Distribution.Client.Setup
+         ( GlobalFlags(..), UnpackFlags(..) )
 import Distribution.Client.Types
-import Distribution.Client.Dependency as Dependency
-         ( resolveAvailablePackages
-         , dependencyConstraints, dependencyTargets
-         , PackagesPreference(..), PackagesPreferenceDefault(..)
-         , PackagePreference(..) )
+import Distribution.Client.Targets
+import Distribution.Client.Dependency
 import Distribution.Client.FetchUtils
-        ( fetchRepoTarball )
-import Distribution.Client.HttpUtils
-        ( downloadURI )
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
-    (getAvailablePackages, disambiguateDependencies)
+        ( getAvailablePackages )
 
 import System.Directory
-         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
-         , getTemporaryDirectory )
-import System.IO
-         ( openTempFile, hClose )
+         ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
 import Control.Monad
          ( unless, when )
 import Data.Monoid
          ( mempty )
 import System.FilePath
          ( (</>), addTrailingPathSeparator )
-import qualified Data.Map as Map
 
-unpack :: UnpackFlags -> [Repo] -> [Dependency] -> IO ()
-unpack flags _ [] =
+
+unpack :: Verbosity
+       -> [Repo]
+       -> GlobalFlags
+       -> UnpackFlags
+       -> [UserTarget] 
+       -> IO ()
+unpack verbosity _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
-  where
-    verbosity = fromFlag (unpackVerbosity flags)
 
-unpack flags repos deps = do
-  db@(AvailablePackageDb available _)
-            <- getAvailablePackages verbosity repos
-  deps' <- IndexUtils.disambiguateDependencies available
-         . map toUnresolved $ deps
+unpack verbosity repos globalFlags unpackFlags userTargets = do
+  mapM_ checkTarget userTargets
 
-  pkgs <- resolvePackages db deps'
+  availableDb   <- getAvailablePackages verbosity repos
+
+  pkgSpecifiers <- resolveUserTargets verbosity
+                     globalFlags (packageIndex availableDb) userTargets
+
+  pkgs <- either (die . unlines . map show) return $
+            resolveWithoutDependencies
+              (resolverParams availableDb pkgSpecifiers)
 
   unless (null prefix) $
          createDirectoryIfMissing True prefix
 
-  flip mapM_ pkgs $ \pkg -> case pkg of
+  flip mapM_ pkgs $ \pkg -> do
+    location <- fetchPackage verbosity (packageSource pkg)
+    let pkgid = packageId pkg
+    case location of
+      LocalTarballPackage tarballPath ->
+        unpackPackage verbosity prefix pkgid tarballPath
 
-    AvailablePackage pkgid _ (LocalTarballPackage tarballPath) ->
-      unpackPackage verbosity prefix pkgid tarballPath
+      RemoteTarballPackage _tarballURL tarballPath ->
+        unpackPackage verbosity prefix pkgid tarballPath
 
-    AvailablePackage pkgid _ (RemoteTarballPackage tarballURL _) -> do
-      tmp <- getTemporaryDirectory
-      (tarballPath, hnd) <- openTempFile tmp (display pkgid)
-      hClose hnd
-      --TODO: perhaps we've already had to download this to a local cache
-      --      so we even know what package version it is. So might be able
-      --      to get it from the local cache rather than from remote.
-      downloadURI verbosity tarballURL tarballPath
-      unpackPackage verbosity prefix pkgid tarballPath
+      RepoTarballPackage _repo _pkgid tarballPath ->
+        unpackPackage verbosity prefix pkgid tarballPath
 
-    AvailablePackage pkgid _ (RepoTarballPackage repo _ _) -> do
-      tarballPath <- fetchRepoTarball verbosity repo pkgid
-      unpackPackage verbosity prefix pkgid tarballPath
+      LocalUnpackedPackage _ ->
+        error "Distribution.Client.Unpack.unpack: the impossible happened."
 
-    AvailablePackage _ _ (LocalUnpackedPackage _) ->
-      error "Distribution.Client.Unpack.unpack: the impossible happened."
+  where
+    resolverParams availableDb pkgSpecifiers =
+        --TODO: add commandline constraint and preference args for unpack
 
-    where
-      verbosity = fromFlag (unpackVerbosity flags)
-      prefix = fromFlagOrDefault "" (unpackDestDir flags)
-      toUnresolved d = UnresolvedDependency d []
+        standardInstallPolicy mempty availableDb pkgSpecifiers
+
+    prefix = fromFlagOrDefault "" (unpackDestDir unpackFlags)
+
+checkTarget :: UserTarget -> IO ()
+checkTarget target = case target of
+    UserTargetLocalDir       dir  -> die (notTarball dir)
+    UserTargetLocalCabalFile file -> die (notTarball file)
+    _                             -> return ()
+  where
+    notTarball t =
+        "The 'unpack' command is for tarball packages. "
+     ++ "The target '" ++ t ++ "' is not a tarball."
 
 unpackPackage :: Verbosity -> FilePath -> PackageId -> FilePath -> IO ()
 unpackPackage verbosity prefix pkgid pkgPath = do
@@ -112,24 +119,3 @@ unpackPackage verbosity prefix pkgid pkgPath = do
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
     notice verbosity $ "Unpacking to " ++ pkgdir'
     Tar.extractTarGzFile prefix pkgdirname pkgPath
-
-resolvePackages :: AvailablePackageDb
-                -> [UnresolvedDependency]
-                -> IO [AvailablePackage]
-resolvePackages
-  (AvailablePackageDb available availablePrefs) deps =
-
-    either (die . unlines . map show) return $
-      resolveAvailablePackages
-        installed   available
-        preferences constraints
-        targets
-
-  where
-    installed   = mempty
-    targets     = dependencyTargets     deps
-    constraints = dependencyConstraints deps
-    preferences = PackagesPreference
-                    PreferLatestForSelected
-                    [ PackageVersionPreference name ver
-                    | (name, ver) <- Map.toList availablePrefs ]
