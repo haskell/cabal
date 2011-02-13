@@ -15,21 +15,15 @@
 module Distribution.Client.Dependency (
     -- * The main package dependency resolver
     resolveDependencies,
-    resolveDependenciesWithProgress,
     Progress(..),
     foldProgress,
 
     -- * Alternate, simple resolver that does not do dependencies recursively
     resolveWithoutDependencies,
-    resolveAvailablePackages,
-
-    dependencyConstraints,
-    dependencyTargets,
 
     -- * Constructing resolver policies
     DepResolverParams(..),
     PackageConstraint(..),
-    PackagesPreference(..),
     PackagesPreferenceDefault(..),
     PackagePreference(..),
     InstalledPreference(..),
@@ -51,9 +45,6 @@ module Distribution.Client.Dependency (
     addAvailablePackages,
     hideInstalledPackagesSpecific,
     hideInstalledPackagesAllVersions,
-
-    -- deprecated
-    upgradableDependencies,
   ) where
 
 import Distribution.Client.Dependency.TopDown (topDownResolver)
@@ -63,24 +54,22 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
          ( AvailablePackageDb(AvailablePackageDb)
-         , UnresolvedDependency(..), AvailablePackage(..), InstalledPackage )
+         , AvailablePackage(..), InstalledPackage )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 import Distribution.Client.Targets
 import Distribution.Package
-         ( PackageIdentifier(..), PackageId, PackageName(..), packageVersion, packageName
-         , Dependency(Dependency), Package(..) )
+         ( PackageName(..), PackageId, Package(..), packageVersion
+         , Dependency(Dependency))
 import Distribution.Version
-         ( VersionRange, anyVersion, orLaterVersion
-         , isAnyVersion, withinRange, simplifyVersionRange )
+         ( VersionRange, anyVersion, withinRange, simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.System
          ( Platform )
 import Distribution.Simple.Utils (comparing)
-import Distribution.Client.Utils (mergeBy, MergeResult(..))
 import Distribution.Text
          ( display )
 
@@ -108,25 +97,6 @@ data DepResolverParams = DepResolverParams {
        depResolverAvailable         :: PackageIndex AvailablePackage
      }
 
--- | Global policy for the versions of all packages.
---
-data PackagesPreference = PackagesPreference
-       PackagesPreferenceDefault
-       [PackagePreference]
-
-dependencyConstraints :: [UnresolvedDependency] -> [PackageConstraint]
-dependencyConstraints deps =
-     [ PackageVersionConstraint name versionRange
-     | UnresolvedDependency (Dependency name versionRange) _ <- deps
-     , not (isAnyVersion versionRange) ]
-
-  ++ [ PackageFlagsConstraint name flags
-     | UnresolvedDependency (Dependency name _) flags <- deps
-     , not (null flags) ]
-
-dependencyTargets :: [UnresolvedDependency] -> [PackageName]
-dependencyTargets deps =
-  [ name | UnresolvedDependency (Dependency name _) _ <- deps ]
 
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.
@@ -307,24 +277,6 @@ standardInstallPolicy
 defaultResolver :: DependencyResolver
 defaultResolver = topDownResolver
 
-resolveDependenciesWithProgress :: Platform
-                                -> CompilerId
-                                -> PackageIndex InstalledPackage
-                                -> PackageIndex AvailablePackage
-                                -> PackagesPreference
-                                -> [PackageConstraint]
-                                -> [PackageName]
-                                -> Progress String String InstallPlan
-resolveDependenciesWithProgress platform comp installed available
-                                (PackagesPreference defpref prefs)
-                                constraints targets =
-    resolveDependencies
-      platform comp
-      (DepResolverParams
-        targets constraints
-        prefs defpref
-        installed available)
-
 -- | Run the dependency solver.
 --
 -- Since this is potentially an expensive operation, the result is wrapped in a
@@ -422,19 +374,6 @@ interpretPackagesPreference selected defaultPref prefs =
 -- Note: if no installed package index is available, it is ok to pass 'mempty'.
 -- It simply means preferences for installed packages will be ignored.
 --
-resolveAvailablePackages
-  :: PackageIndex InstalledPackage
-  -> PackageIndex AvailablePackage
-  -> PackagesPreference
-  -> [PackageConstraint]
-  -> [PackageName]
-  -> Either [ResolveNoDepsError] [AvailablePackage]
-resolveAvailablePackages installed available
-    (PackagesPreference defpref prefs) constraints targets =
-
-    resolveWithoutDependencies
-      (DepResolverParams targets constraints prefs defpref installed available)
-
 resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [AvailablePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
@@ -500,26 +439,3 @@ instance Show ResolveNoDepsError where
   show (ResolveUnsatisfiable name ver) =
        "There is no available version of " ++ display name
     ++ " that satisfies " ++ display (simplifyVersionRange ver)
-
--- ------------------------------------------------------------
--- * Finding upgradable packages
--- ------------------------------------------------------------
-
--- | Given the list of installed packages and available packages, figure
--- out which packages can be upgraded.
---
-upgradableDependencies :: PackageIndex InstalledPackage
-                       -> PackageIndex AvailablePackage
-                       -> [Dependency]
-upgradableDependencies installed available =
-  [ Dependency name (orLaterVersion latestVersion)
-    -- This is really quick (linear time). The trick is that we're doing a
-    -- merge join of two tables. We can do it as a merge because they're in
-    -- a comparable order because we're getting them from the package indexs.
-  | InBoth latestInstalled allAvailable
-      <- mergeBy (\a (b:_) -> packageName a `compare` packageName b)
-                 [ maximumBy (comparing packageVersion) pkgs
-                 | pkgs <- PackageIndex.allPackagesByName installed ]
-                 (PackageIndex.allPackagesByName available)
-  , let (PackageIdentifier name latestVersion) = packageId latestInstalled
-  , any (\p -> packageVersion p > latestVersion) allAvailable ]
