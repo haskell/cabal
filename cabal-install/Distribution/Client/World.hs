@@ -27,19 +27,12 @@ module Distribution.Client.World (
     insert,
     delete,
     getContents,
-
-    worldPkg,
-    isWorldTarget,
-    isGoodWorldTarget,
   ) where
 
-import Distribution.Client.Types
-    ( UnresolvedDependency(..) )
 import Distribution.Package
-         ( PackageName(..), Dependency(..) )
+         ( Dependency(..) )
 import Distribution.PackageDescription
          ( FlagAssignment, FlagName(FlagName) )
-import Distribution.Version( anyVersion )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
@@ -129,26 +122,6 @@ getContents world = do
       handler e | isDoesNotExistError e = return B.empty
                 | otherwise             = ioError e
 
-
--- | A dummy package that represents the world file.
-worldPkg :: PackageName
-worldPkg = PackageName "world"
-
--- | Currently we have a silly way of representing the world target as
--- an 'UnresolvedDependency' so we need a way to recognise it.
---
--- We should be using a structured type with various target kinds, like
--- local file, repo package etc.
---
-isWorldTarget :: UnresolvedDependency -> Bool
-isWorldTarget (UnresolvedDependency (Dependency pkg _) _) =
-  pkg == worldPkg
-
-isGoodWorldTarget :: UnresolvedDependency -> Bool
-isGoodWorldTarget (UnresolvedDependency (Dependency pkg ver) flags) =
-     pkg == worldPkg
-  && ver == anyVersion
-  && null flags
 
 instance Text WorldPkgInfo where
   disp (WorldPkgInfo dep flags) = disp dep <+> dispFlags flags
