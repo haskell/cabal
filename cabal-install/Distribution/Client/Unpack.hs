@@ -77,7 +77,7 @@ unpack flags repos deps = do
     AvailablePackage pkgid _ (LocalTarballPackage tarballPath) ->
       unpackPackage verbosity prefix pkgid tarballPath
 
-    AvailablePackage pkgid _ (RemoteTarballPackage tarballURL) -> do
+    AvailablePackage pkgid _ (RemoteTarballPackage tarballURL _) -> do
       tmp <- getTemporaryDirectory
       (tarballPath, hnd) <- openTempFile tmp (display pkgid)
       hClose hnd
@@ -87,7 +87,7 @@ unpack flags repos deps = do
       downloadURI verbosity tarballURL tarballPath
       unpackPackage verbosity prefix pkgid tarballPath
 
-    AvailablePackage pkgid _ (RepoTarballPackage repo) -> do
+    AvailablePackage pkgid _ (RepoTarballPackage repo _ _) -> do
       tarballPath <- fetchRepoTarball verbosity repo pkgid
       unpackPackage verbosity prefix pkgid tarballPath
 

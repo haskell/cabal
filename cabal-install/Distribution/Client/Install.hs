@@ -743,7 +743,7 @@ executeInstallPlan plan installPkg = case InstallPlan.ready plan of
 --
 installConfiguredPackage :: Platform -> CompilerId
                          ->  ConfigFlags -> ConfiguredPackage
-                         -> (ConfigFlags -> PackageLocation
+                         -> (ConfigFlags -> PackageLocation (Maybe FilePath)
                                          -> PackageDescription -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
@@ -761,7 +761,7 @@ installConfiguredPackage platform comp configFlags
 
 
 installAvailablePackage
-  :: Verbosity -> PackageIdentifier -> PackageLocation
+  :: Verbosity -> PackageIdentifier -> PackageLocation (Maybe FilePath)
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
 installAvailablePackage _ _ (LocalUnpackedPackage dir) installPkg =
@@ -775,7 +775,7 @@ installAvailablePackage verbosity pkgid
                                tarballPath tmpDirPath installPkg
 
 installAvailablePackage verbosity pkgid
-                        (RemoteTarballPackage tarballURL) installPkg = do
+                        (RemoteTarballPackage tarballURL _) installPkg = do
   tmp <- getTemporaryDirectory
   withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
     onFailure DownloadFailed $ do
@@ -787,7 +787,7 @@ installAvailablePackage verbosity pkgid
       installLocalTarballPackage verbosity pkgid
                                  tarballPath tmpDirPath installPkg
 
-installAvailablePackage verbosity pkgid (RepoTarballPackage repo) installPkg =
+installAvailablePackage verbosity pkgid (RepoTarballPackage repo _ _) installPkg =
   onFailure DownloadFailed $ do
     tarballPath <- fetchRepoTarball verbosity repo pkgid
     tmp <- getTemporaryDirectory

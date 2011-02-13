@@ -93,7 +93,7 @@ instance PackageFixedDeps ConfiguredPackage where
 data AvailablePackage = AvailablePackage {
     packageInfoId      :: PackageId,
     packageDescription :: GenericPackageDescription,
-    packageSource      :: PackageLocation
+    packageSource      :: PackageLocation (Maybe FilePath)
   }
   deriving Show
 
@@ -103,7 +103,7 @@ instance Package AvailablePackage where packageId = packageInfoId
 -- * Package locations and repositories
 -- ------------------------------------------------------------
 
-data PackageLocation =
+data PackageLocation local =
 
     -- | An unpacked package in the given dir, or current dir
     LocalUnpackedPackage FilePath
@@ -112,21 +112,25 @@ data PackageLocation =
   | LocalTarballPackage FilePath
 
     -- | A package as a tarball from a remote URI
-  | RemoteTarballPackage URI
+  | RemoteTarballPackage URI local
 
     -- | A package available as a tarball from a repository.
     --
     -- It may be from a local repository or from a remote repository, with a
     -- locally cached copy. ie a package available from hackage
-  | RepoTarballPackage Repo
+  | RepoTarballPackage Repo PackageId local
 
 --TODO:
 --  * add support for darcs and other SCM style remote repos with a local cache
 --  | ScmPackage
   deriving Show
 
---TODO:
---  * add support for darcs and other SCM style remote repos with a local cache
+instance Functor PackageLocation where
+  fmap _ (LocalUnpackedPackage dir)      = LocalUnpackedPackage dir
+  fmap _ (LocalTarballPackage  file)     = LocalTarballPackage  file
+  fmap f (RemoteTarballPackage uri x)    = RemoteTarballPackage uri    (f x)
+  fmap f (RepoTarballPackage repo pkg x) = RepoTarballPackage repo pkg (f x)
+
 
 data LocalRepo = LocalRepo
   deriving (Show,Eq)
