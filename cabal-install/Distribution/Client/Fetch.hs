@@ -16,9 +16,6 @@ module Distribution.Client.Fetch (
   ) where
 
 import Distribution.Client.Types
-         ( UnresolvedDependency (..), AvailablePackage(..)
-         , AvailablePackageSource(..), AvailablePackageDb(..)
-         , Repo(..), InstalledPackage )
 import Distribution.Client.FetchUtils
 import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Client.Dependency as Dependency

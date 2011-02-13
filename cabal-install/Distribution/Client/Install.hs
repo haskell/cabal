@@ -71,12 +71,6 @@ import Distribution.Client.Config
          ( defaultCabalDir )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Available
-         ( UnresolvedDependency(..), AvailablePackage(..)
-         , AvailablePackageSource(..), AvailablePackageDb(..)
-         , Repo(..), ConfiguredPackage(..)
-         , BuildResult, BuildFailure(..), BuildSuccess(..)
-         , DocsResult(..), TestsResult(..), RemoteRepo(..)
-         , InstalledPackage )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.SetupWrapper
@@ -745,7 +739,7 @@ executeInstallPlan plan installPkg = case InstallPlan.ready plan of
 --
 installConfiguredPackage :: Platform -> CompilerId
                          ->  ConfigFlags -> ConfiguredPackage
-                         -> (ConfigFlags -> AvailablePackageSource
+                         -> (ConfigFlags -> PackageLocation
                                          -> PackageDescription -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
@@ -763,7 +757,7 @@ installConfiguredPackage platform comp configFlags
 
 
 installAvailablePackage
-  :: Verbosity -> PackageIdentifier -> AvailablePackageSource
+  :: Verbosity -> PackageIdentifier -> PackageLocation
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
 installAvailablePackage _ _ (LocalUnpackedPackage dir) installPkg =

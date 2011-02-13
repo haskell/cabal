@@ -31,8 +31,6 @@ import Distribution.Client.IndexUtils as IndexUtils
 import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
 import Distribution.Client.Types as Available
-         ( AvailablePackage(..), AvailablePackageSource(..), Repo(..)
-         , AvailablePackageDb(..), ConfiguredPackage(..), InstalledPackage )
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 

@@ -26,8 +26,6 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.BuildReports.Anonymous (BuildReport)
 
 import Distribution.Client.Types
-         ( ConfiguredPackage(..), AvailablePackage(..)
-         , AvailablePackageSource(..), Repo(..), RemoteRepo(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( InstallPlan )
