@@ -28,10 +28,7 @@ import Distribution.Text(display)
 
 import Distribution.Client.Setup(UnpackFlags(unpackVerbosity,
                                              unpackDestDir))
-import Distribution.Client.Types(UnresolvedDependency(..),
-                                 Repo, AvailablePackageSource(..),
-                                 AvailablePackage(AvailablePackage),
-                                 AvailablePackageDb(AvailablePackageDb))
+import Distribution.Client.Types
 import Distribution.Client.Dependency as Dependency
          ( resolveAvailablePackages
          , dependencyConstraints, dependencyTargets
