@@ -16,9 +16,6 @@ module Distribution.Client.IndexUtils (
 
   readPackageIndexFile,
   parseRepoIndex,
-
-  disambiguatePackageName,
-  disambiguateDependencies
   ) where
 
 import qualified Distribution.Client.Tar as Tar
@@ -46,12 +43,13 @@ import Distribution.ParseUtils
 import Distribution.Version
          ( Version(Version), intersectVersionRanges )
 import Distribution.Text
-         ( display, simpleParse )
+         ( simpleParse )
 import Distribution.Verbosity (Verbosity)
-import Distribution.Simple.Utils (die, warn, info, intercalate, fromUTF8)
+import Distribution.Simple.Utils
+         ( warn, info, fromUTF8 )
 
 import Data.Maybe  (catMaybes, fromMaybe)
-import Data.List   (isPrefixOf, find)
+import Data.List   (isPrefixOf)
 import Data.Monoid (Monoid(..))
 import qualified Data.Map as Map
 import Control.Monad (MonadPlus(mplus), when)
@@ -256,51 +254,3 @@ foldlTarball f z = either Left (Right . foldl f z) . check [] . Tar.read
     check _  (Tar.Fail err)  = Left  err
     check ok Tar.Done        = Right ok
     check ok (Tar.Next e es) = check (e:ok) es
-
--- | Disambiguate a set of packages using 'disambiguatePackage' and report any
--- ambiguities to the user.
---
-disambiguateDependencies :: PackageIndex AvailablePackage
-                         -> [UnresolvedDependency]
-                         -> IO [UnresolvedDependency]
-disambiguateDependencies index deps = do
-  let names = [ (name, disambiguatePackageName index name)
-              | UnresolvedDependency (Dependency name _) _ <- deps ]
-   in case [ (name, matches) | (name, Right matches) <- names ] of
-        []        -> return
-          [ UnresolvedDependency (Dependency name vrange) flags
-          | (UnresolvedDependency (Dependency _ vrange) flags,
-             (_, Left name)) <- zip deps names ]
-        ambigious -> die $ unlines
-          [ if null matches
-              then "There is no package named " ++ display name ++ ". "
-                ++ "Perhaps you need to run 'cabal update' first?"
-              else "The package name " ++ display name ++ "is ambigious. "
-                ++ "It could be: " ++ intercalate ", " (map display matches)
-          | (name, matches) <- ambigious ]
-
--- | Given an index of known packages and a package name, figure out which one it
--- might be referring to. If there is an exact case-sensitive match then that's
--- ok. If it matches just one package case-insensitively then that's also ok.
--- The only problem is if it matches multiple packages case-insensitively, in
--- that case it is ambigious.
---
-disambiguatePackageName :: PackageIndex AvailablePackage
-                        -> PackageName
-                        -> Either PackageName [PackageName]
-disambiguatePackageName index pkgname@(PackageName name) =
-    case checkAmbiguity pkgname (map fst $ PackageIndex.searchByName index name) of
-      None               -> Right []
-      Unambiguous name'  -> Left name'
-      Ambiguous   names' -> Right names'
-
-checkAmbiguity :: PackageName -> [PackageName] -> MaybeAmbigious PackageName
-checkAmbiguity name names =
-    case names of
-      []           -> None
-      [name']      -> Unambiguous name'
-      _            -> case find (name==) names of
-                        Just name' -> Unambiguous name'
-                        Nothing    -> Ambiguous names
-
-data MaybeAmbigious a = None | Unambiguous a | Ambiguous [a]
