@@ -16,6 +16,7 @@ module Distribution.Client.FetchUtils (
     -- * fetching packages
     fetchPackage,
     isFetched,
+    checkFetched,
 
     -- ** specifically for repo packages
     fetchRepoTarball,
@@ -62,6 +63,27 @@ isFetched loc = case loc of
     LocalTarballPackage  _file      -> return True
     RemoteTarballPackage _uri local -> return (isJust local)
     RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
+
+
+checkFetched :: PackageLocation (Maybe FilePath)
+             -> IO (Maybe (PackageLocation FilePath))
+checkFetched loc = case loc of
+    LocalUnpackedPackage dir  ->
+      return (Just $ LocalUnpackedPackage dir)
+    LocalTarballPackage  file ->
+      return (Just $ LocalTarballPackage  file)
+    RemoteTarballPackage uri (Just file) ->
+      return (Just $ RemoteTarballPackage uri file)
+    RepoTarballPackage repo pkgid (Just file) ->
+      return (Just $ RepoTarballPackage repo pkgid file)
+
+    RemoteTarballPackage _uri Nothing -> return Nothing
+    RepoTarballPackage repo pkgid Nothing -> do
+      let file = packageFile repo pkgid
+      exists <- doesFileExist file
+      if exists
+        then return (Just $ RepoTarballPackage repo pkgid file)
+        else return Nothing
 
 
 -- | Fetch a package if we don't have it already.
