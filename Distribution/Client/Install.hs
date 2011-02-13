@@ -106,7 +106,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, warn, die, intercalate, withTempDirectory )
+         ( notice, info, debug, warn, die, intercalate, withTempDirectory )
 import Distribution.Client.Utils
          ( inDir, mergeBy, MergeResult(..) )
 import Distribution.System
@@ -180,7 +180,7 @@ install verbosity packageDBs repos comp conf
                globalFlags, configFlags, configExFlags, installFlags)
 
     dryRun      = fromFlag (installDryRun installFlags)
-    logMsg message rest = info verbosity message >> rest
+    logMsg message rest = debug verbosity message >> rest
 
 
 upgrade _ _ _ _ _ _ _ _ _ _ = die $
