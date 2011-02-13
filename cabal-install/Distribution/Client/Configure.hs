@@ -14,16 +14,7 @@ module Distribution.Client.Configure (
     configure,
   ) where
 
-import Data.Monoid
-         ( Monoid(mempty) )
-import qualified Data.Map as Map
-
 import Distribution.Client.Dependency
-         ( resolveDependenciesWithProgress
-         , PackageConstraint(..)
-         , PackagesPreference(..), PackagesPreferenceDefault(..)
-         , PackagePreference(..)
-         , Progress(..), foldProgress, )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
@@ -40,19 +31,17 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), toFlag, flagToMaybe, fromFlagOrDefault )
-import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import Distribution.Package
-         ( PackageName, packageName, packageVersion
-         , Package(..), Dependency(..), thisPackageVersion )
+         ( Package(..), packageName, Dependency(..), thisPackageVersion )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Version
-         ( VersionRange, anyVersion, thisVersion )
+         ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
          ( notice, info, die )
 import Distribution.System
@@ -130,45 +119,38 @@ planLocalPackage :: Verbosity -> Compiler
                  -> AvailablePackageDb
                  -> IO (Progress String String InstallPlan)
 planLocalPackage verbosity comp configFlags configExFlags installed
-  (AvailablePackageDb _ availablePrefs) = do
+  availabledb = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
-  let -- The trick is, we add the local package to the available index and
-      -- remove it from the installed index. Then we ask to resolve a
-      -- dependency on exactly that package. So the resolver ends up having
-      -- to pick the local package.
-      available' = PackageIndex.insert localPkg mempty
-      installed' = PackageIndex.deletePackageId (packageId localPkg) installed
+
+  let -- We create a local package and ask to resolve a dependency on it
       localPkg = AvailablePackage {
         packageInfoId                = packageId pkg,
         Available.packageDescription = pkg,
         packageSource                = LocalUnpackedPackage "."
       }
-      targets     = [packageName pkg]
-      constraints = [PackageVersionConstraint (packageName pkg)
-                       (thisVersion (packageVersion pkg))
-                    ,PackageFlagsConstraint   (packageName pkg)
-                       (configConfigurationsFlags configFlags)]
-                 ++ [ PackageVersionConstraint name ver
-                    | Dependency name ver <- configConstraints configFlags ]
-      preferences = mergePackagePrefs PreferLatestForSelected
-                                      availablePrefs configExFlags
 
-  return $ resolveDependenciesWithProgress buildPlatform (compilerId comp)
-             installed' available' preferences constraints targets
+      resolverParams =
 
+          addPreferences
+            -- preferences from the config file or command line
+            [ PackageVersionPreference name ver
+            | Dependency name ver <- configPreferences configExFlags ]
 
-mergePackagePrefs :: PackagesPreferenceDefault
-                  -> Map.Map PackageName VersionRange
-                  -> ConfigExFlags
-                  -> PackagesPreference
-mergePackagePrefs defaultPref availablePrefs configExFlags =
-  PackagesPreference defaultPref $
-       -- The preferences that come from the hackage index
-       [ PackageVersionPreference name ver
-       | (name, ver) <- Map.toList availablePrefs ]
-       -- additional preferences from the config file or command line
-    ++ [ PackageVersionPreference name ver
-       | Dependency name ver <- configPreferences configExFlags ]
+        . addConstraints
+            -- version constraints from the config file or command line
+            [ PackageVersionConstraint name ver
+            | Dependency name ver <- configConstraints configFlags ]
+
+        . addConstraints
+            -- package flags from the config file or command line
+            [ PackageFlagsConstraint (packageName pkg)
+                                     (configConfigurationsFlags configFlags) ]
+
+        $ standardInstallPolicy installed availabledb
+                                [SpecificSourcePackage localPkg]
+
+  return (resolveDependencies buildPlatform (compilerId comp) resolverParams)
+
 
 -- | Call an installer for an 'AvailablePackage' but override the configure
 -- flags with the ones given by the 'ConfiguredPackage'. In particular the

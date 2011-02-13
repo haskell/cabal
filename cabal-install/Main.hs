@@ -28,8 +28,7 @@ import Distribution.Client.Setup
          , ReportFlags(..), reportCommand
          , InitFlags, initCommand
          , reportCommand
-         , unpackCommand, UnpackFlags(..)
-         , parsePackageArgs )
+         , unpackCommand, UnpackFlags(..) )
 import Distribution.Simple.Setup
          ( BuildFlags(..), buildCommand
          , HaddockFlags(..), haddockCommand
@@ -41,8 +40,6 @@ import Distribution.Simple.Setup
          , TestFlags(..), testCommand
          , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 
-import Distribution.Client.Types
-         ( UnresolvedDependency(UnresolvedDependency) )
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
@@ -196,8 +193,8 @@ installAction (configFlags, _, installFlags) _ _globalFlags
 
 installAction (configFlags, configExFlags, installFlags)
               extraArgs globalFlags = do
-  pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+  targets <- readUserTargets verbosity extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall configFlags)
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
@@ -209,8 +206,7 @@ installAction (configFlags, configExFlags, installFlags)
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags'
-          [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
-          | pkg <- pkgs ]
+          targets
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
@@ -257,8 +253,8 @@ upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags)
               -> [String] -> GlobalFlags -> IO ()
 upgradeAction (configFlags, configExFlags, installFlags)
               extraArgs globalFlags = do
-  pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+  targets <- readUserTargets verbosity extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall configFlags)
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
@@ -270,22 +266,20 @@ upgradeAction (configFlags, configExFlags, installFlags)
   upgrade verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags'
-          [ UnresolvedDependency pkg (configConfigurationsFlags configFlags')
-          | pkg <- pkgs ]
+          targets
 
 fetchAction :: FetchFlags -> [String] -> GlobalFlags -> IO ()
 fetchAction fetchFlags extraArgs globalFlags = do
-  pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlag (fetchVerbosity fetchFlags)
+  targets <- readUserTargets verbosity extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
   (comp, conf) <- configCompilerAux configFlags
   fetch verbosity
         (configPackageDB' configFlags) (globalRepos globalFlags')
-        comp conf fetchFlags
-        [ UnresolvedDependency pkg [] --TODO: flags?
-        | pkg <- pkgs ]
+        comp conf globalFlags' fetchFlags
+        targets
 
 uploadAction :: UploadFlags -> [String] -> GlobalFlags -> IO ()
 uploadAction uploadFlags extraArgs globalFlags = do
@@ -348,11 +342,16 @@ reportAction reportFlags extraArgs globalFlags = do
     (flagToMaybe $ reportPassword reportFlags')
 
 unpackAction :: UnpackFlags -> [String] -> GlobalFlags -> IO ()
-unpackAction flags extraArgs globalFlags = do
-  pkgs <- either die return (parsePackageArgs extraArgs)
-  let verbosity = fromFlag (unpackVerbosity flags)
+unpackAction unpackFlags extraArgs globalFlags = do
+  let verbosity = fromFlag (unpackVerbosity unpackFlags)
+  targets <- readUserTargets verbosity extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
-  unpack flags (globalRepos (savedGlobalFlags config)) pkgs
+  let globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  unpack verbosity
+         (globalRepos (savedGlobalFlags config))
+         globalFlags'
+         unpackFlags
+         targets
 
 initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
 initAction flags _extraArgs _globalFlags = do
