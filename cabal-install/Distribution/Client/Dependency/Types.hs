@@ -66,6 +66,7 @@ data PackageConstraint
    = PackageVersionConstraint   PackageName VersionRange
    | PackageInstalledConstraint PackageName
    | PackageFlagsConstraint     PackageName FlagAssignment
+  deriving (Show,Eq)
 
 -- | A per-package preference on the version. It is a soft constraint that the
 -- 'DependencyResolver' should try to respect where possible. It consists of
