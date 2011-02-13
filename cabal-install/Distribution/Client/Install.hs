@@ -53,9 +53,6 @@ import Distribution.Client.Dependency
          , PackagePreference(..)
          , Progress(..), foldProgress, )
 import Distribution.Client.FetchUtils
-         ( fetchRepoTarball )
-import Distribution.Client.HttpUtils
-         ( downloadURI )
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 -- import qualified Distribution.Client.Info as Info
 import Distribution.Client.IndexUtils as IndexUtils
@@ -658,10 +655,11 @@ performInstallations verbosity
   executeInstallPlan installPlan $ \cpkg ->
     installConfiguredPackage platform compid configFlags
                              cpkg $ \configFlags' src pkg ->
-      installAvailablePackage verbosity (packageId pkg) src $ \mpath ->
-        installUnpackedPackage verbosity (setupScriptOptions installed)
-                               miscOptions configFlags' installFlags
-                               compid pkg mpath useLogFile
+      fetchAvailablePackage verbosity src $ \src' ->
+        installLocalPackage verbosity (packageId pkg) src' $ \mpath ->
+          installUnpackedPackage verbosity (setupScriptOptions installed)
+                                 miscOptions configFlags' installFlags
+                                 compid pkg mpath useLogFile
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -759,59 +757,57 @@ installConfiguredPackage platform comp configFlags
       Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
       Right (desc, _) -> desc
 
+fetchAvailablePackage
+  :: Verbosity
+  -> PackageLocation (Maybe FilePath)
+  -> (PackageLocation FilePath -> IO BuildResult)
+  -> IO BuildResult
+fetchAvailablePackage verbosity src installPkg = do
+  fetched <- checkFetched src
+  case fetched of
+    Just src' -> installPkg src'
+    Nothing   -> onFailure DownloadFailed $
+                   fetchPackage verbosity src >>= installPkg
 
-installAvailablePackage
-  :: Verbosity -> PackageIdentifier -> PackageLocation (Maybe FilePath)
+
+installLocalPackage
+  :: Verbosity -> PackageIdentifier -> PackageLocation FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installAvailablePackage _ _ (LocalUnpackedPackage dir) installPkg =
-  installPkg (Just dir)
+installLocalPackage verbosity pkgid location installPkg = case location of
 
-installAvailablePackage verbosity pkgid
-                        (LocalTarballPackage tarballPath) installPkg = do
-  tmp <- getTemporaryDirectory
-  withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
-    installLocalTarballPackage verbosity pkgid
-                               tarballPath tmpDirPath installPkg
+    LocalUnpackedPackage dir ->
+      installPkg (Just dir)
 
-installAvailablePackage verbosity pkgid
-                        (RemoteTarballPackage tarballURL _) installPkg = do
-  tmp <- getTemporaryDirectory
-  withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
-    onFailure DownloadFailed $ do
-      let tarballPath = tmpDirPath </> display pkgid <.> "tar.gz"
-      --TODO: perhaps we've already had to download this to a local cache
-      --      so we even know what package version it is. So might be able
-      --      to get it from the local cache rather than from remote.
-      downloadURI verbosity tarballURL tarballPath
-      installLocalTarballPackage verbosity pkgid
-                                 tarballPath tmpDirPath installPkg
+    LocalTarballPackage tarballPath ->
+      installLocalTarballPackage verbosity pkgid tarballPath installPkg
 
-installAvailablePackage verbosity pkgid (RepoTarballPackage repo _ _) installPkg =
-  onFailure DownloadFailed $ do
-    tarballPath <- fetchRepoTarball verbosity repo pkgid
-    tmp <- getTemporaryDirectory
-    withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
-      installLocalTarballPackage verbosity pkgid
-                                 tarballPath tmpDirPath installPkg
+    RemoteTarballPackage _ tarballPath ->
+      installLocalTarballPackage verbosity pkgid tarballPath installPkg
+
+    RepoTarballPackage _ _ tarballPath ->
+      installLocalTarballPackage verbosity pkgid tarballPath installPkg
+
 
 installLocalTarballPackage
-  :: Verbosity -> PackageIdentifier -> FilePath -> FilePath
+  :: Verbosity -> PackageIdentifier -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installLocalTarballPackage verbosity pkgid tarballPath tmpDirPath installPkg =
-  onFailure UnpackFailed $ do
-    info verbosity $ "Extracting " ++ tarballPath
-                  ++ " to " ++ tmpDirPath ++ "..."
-    let relUnpackedPath = display pkgid
-        absUnpackedPath = tmpDirPath </> relUnpackedPath
-        descFilePath = absUnpackedPath
-                   </> display (packageName pkgid) <.> "cabal"
-    extractTarGzFile tmpDirPath relUnpackedPath tarballPath
-    exists <- doesFileExist descFilePath
-    when (not exists) $
-      die $ "Package .cabal file not found: " ++ show descFilePath
-    installPkg (Just absUnpackedPath)
+installLocalTarballPackage verbosity pkgid tarballPath installPkg = do
+  tmp <- getTemporaryDirectory
+  withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
+    onFailure UnpackFailed $ do
+      info verbosity $ "Extracting " ++ tarballPath
+                    ++ " to " ++ tmpDirPath ++ "..."
+      let relUnpackedPath = display pkgid
+          absUnpackedPath = tmpDirPath </> relUnpackedPath
+          descFilePath = absUnpackedPath
+                     </> display (packageName pkgid) <.> "cabal"
+      extractTarGzFile tmpDirPath relUnpackedPath tarballPath
+      exists <- doesFileExist descFilePath
+      when (not exists) $
+        die $ "Package .cabal file not found: " ++ show descFilePath
+      installPkg (Just absUnpackedPath)
 
 
 installUnpackedPackage :: Verbosity
