@@ -344,7 +344,8 @@ mergePackageInfo installedPkgs availablePkgs =
 --
 updateFileSystemPackageDetails :: PackageDisplayInfo -> IO PackageDisplayInfo
 updateFileSystemPackageDetails pkginfo = do
-  fetched   <- maybe (return False) isFetched (latestAvailable pkginfo)
+  fetched   <- maybe (return False) (isFetched . packageSource)
+                     (latestAvailable pkginfo)
   docsExist <- doesDirectoryExist (haddockHtml pkginfo)
   return pkginfo {
     haveTarball = fetched,

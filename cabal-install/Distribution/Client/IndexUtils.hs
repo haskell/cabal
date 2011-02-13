@@ -150,7 +150,7 @@ readRepoIndex verbosity repo = handleNotFound $ do
     [ AvailablePackage {
         packageInfoId      = pkgid,
         packageDescription = pkg,
-        packageSource      = RepoTarballPackage repo
+        packageSource      = RepoTarballPackage repo pkgid Nothing
       }
     | (pkgid, pkg) <- pkgs]
 
