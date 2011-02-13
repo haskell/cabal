@@ -51,9 +51,12 @@ module Distribution.Client.Tar (
 
   -- ** Sequences of tar entries
   Entries(..),
-  foldEntries,
-  unfoldEntries,
+  foldrEntries,
+  foldlEntries,
+  unfoldrEntries,
   mapEntries,
+  filterEntries,
+  entriesIndex,
 
   ) where
 
@@ -63,7 +66,7 @@ import Data.Bits     (Bits, shiftL, testBit)
 import Data.List     (foldl')
 import Numeric       (readOct, showOct)
 import Control.Monad (MonadPlus(mplus), when)
-
+import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.ByteString.Lazy (ByteString)
@@ -387,24 +390,49 @@ data Entries = Next Entry Entries
              | Done
              | Fail String
 
-unfoldEntries :: (a -> Either String (Maybe (Entry, a))) -> a -> Entries
-unfoldEntries f = unfold
+unfoldrEntries :: (a -> Either String (Maybe (Entry, a))) -> a -> Entries
+unfoldrEntries f = unfold
   where
     unfold x = case f x of
       Left err             -> Fail err
       Right Nothing        -> Done
       Right (Just (e, x')) -> Next e (unfold x')
 
-foldEntries :: (Entry -> a -> a) -> a -> (String -> a) -> Entries -> a
-foldEntries next done fail' = fold
+foldrEntries :: (Entry -> a -> a) -> a -> (String -> a) -> Entries -> a
+foldrEntries next done fail' = fold
   where
     fold (Next e es) = next e (fold es)
     fold Done        = done
     fold (Fail err)  = fail' err
 
-mapEntries :: (Entry -> Either String Entry) -> Entries -> Entries
-mapEntries f =
-  foldEntries (\entry rest -> either Fail (flip Next rest) (f entry)) Done Fail
+foldlEntries :: (a -> Entry -> a) -> a -> Entries -> Either String a
+foldlEntries f = fold
+  where
+    fold a (Next e es) = (fold $! f a e) es
+    fold a Done        = Right a
+    fold _ (Fail err)  = Left err
+
+mapEntries :: (Entry -> Entry) -> Entries -> Entries
+mapEntries f = foldrEntries (Next . f) Done Fail
+
+filterEntries :: (Entry -> Bool) -> Entries -> Entries
+filterEntries p =
+  foldrEntries
+    (\entry rest -> if p entry
+                      then Next entry rest
+                      else rest)
+    Done Fail
+
+checkEntries :: (Entry -> Maybe String) -> Entries -> Entries
+checkEntries checkEntry =
+  foldrEntries
+    (\entry rest -> case checkEntry entry of
+                      Nothing  -> Next entry rest
+                      Just err -> Fail err)
+    Done Fail
+
+entriesIndex :: Entries -> Either String (Map.Map TarPath Entry)
+entriesIndex = foldlEntries (\m e -> Map.insert (entryTarPath e) e m) Map.empty
 
 --
 -- * Checking
@@ -468,16 +496,13 @@ checkEntryTarbomb expectedTopDir entry =
     _ -> Just $ "File in tar archive is not in the expected directory "
              ++ show expectedTopDir
 
-checkEntries :: (Entry -> Maybe String) -> Entries -> Entries
-checkEntries checkEntry =
-  mapEntries (\entry -> maybe (Right entry) Left (checkEntry entry))
 
 --
 -- * Reading
 --
 
 read :: ByteString -> Entries
-read = unfoldEntries getEntry
+read = unfoldrEntries getEntry
 
 getEntry :: ByteString -> Either String (Maybe (Entry, ByteString))
 getEntry bs
