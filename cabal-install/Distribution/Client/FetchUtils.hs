@@ -31,7 +31,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
 import Distribution.Simple.Utils
-         ( notice, info, debug, setupMessage )
+         ( notice, info, setupMessage )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -104,21 +104,18 @@ fetchRepoTarball verbosity repo pkgid = do
     then do info verbosity $ display pkgid ++ " has already been downloaded."
             return (packageFile repo pkgid)
     else do setupMessage verbosity "Downloading" pkgid
-            downloadPackage verbosity repo pkgid
+            downloadRepoPackage
+  where
+    downloadRepoPackage = case repoKind repo of
+      Right LocalRepo -> return (packageFile repo pkgid)
 
--- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
-downloadPackage :: Verbosity -> Repo -> PackageId -> IO String
-downloadPackage _ repo@Repo{ repoKind = Right LocalRepo } pkgid =
-  return (packageFile repo pkgid)
-
-downloadPackage verbosity repo@Repo{ repoKind = Left remoteRepo } pkgid = do
-  let uri  = packageURI remoteRepo pkgid
-      dir  = packageDir       repo pkgid
-      path = packageFile      repo pkgid
-  debug verbosity $ "GET " ++ show uri
-  createDirectoryIfMissing True dir
-  downloadURI verbosity uri path
-  return path
+      Left remoteRepo -> do
+        let uri  = packageURI remoteRepo pkgid
+            dir  = packageDir       repo pkgid
+            path = packageFile      repo pkgid
+        createDirectoryIfMissing True dir
+        downloadURI verbosity uri path
+        return path
 
 -- | Downloads an index file to [config-dir/packages/serv-id].
 --
