@@ -276,7 +276,7 @@ planLocalPackage verbosity comp configFlags configExFlags onlyDeps installed
       localPkg = AvailablePackage {
         packageInfoId                = packageId pkg,
         Available.packageDescription = pkg,
-        packageSource                = LocalUnpackedPackage Nothing
+        packageSource                = LocalUnpackedPackage "."
       }
       targets     = [packageName pkg]
       constraints = [PackageVersionConstraint (packageName pkg)
@@ -767,7 +767,7 @@ installAvailablePackage
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
 installAvailablePackage _ _ (LocalUnpackedPackage dir) installPkg =
-  installPkg dir
+  installPkg (Just dir)
 
 installAvailablePackage verbosity pkgid
                         (LocalTarballPackage tarballPath) installPkg = do

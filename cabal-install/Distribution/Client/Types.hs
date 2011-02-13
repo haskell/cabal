@@ -103,7 +103,7 @@ instance Package AvailablePackage where packageId = packageInfoId
 data AvailablePackageSource =
 
     -- | An unpacked package in the given dir, or current dir
-    LocalUnpackedPackage (Maybe FilePath)
+    LocalUnpackedPackage FilePath
 
     -- | A package as a tarball that's available as a local tarball
   | LocalTarballPackage FilePath
