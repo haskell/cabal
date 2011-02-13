@@ -14,6 +14,7 @@
 module Distribution.Client.FetchUtils (
 
     -- * fetching packages
+    fetchPackage,
     isFetched,
 
     -- ** specifically for repo packages
@@ -30,7 +31,7 @@ import Distribution.Client.HttpUtils
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
 import Distribution.Simple.Utils
-         ( info, debug, setupMessage )
+         ( notice, info, debug, setupMessage )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -38,7 +39,9 @@ import Distribution.Verbosity
 
 import Data.Maybe
 import System.Directory
-         ( doesFileExist, createDirectoryIfMissing )
+         ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+import System.IO
+         ( openTempFile, hClose )
 import System.FilePath
          ( (</>), (<.>) )
 import qualified System.FilePath.Posix as FilePath.Posix
@@ -59,6 +62,38 @@ isFetched loc = case loc of
     LocalTarballPackage  _file      -> return True
     RemoteTarballPackage _uri local -> return (isJust local)
     RepoTarballPackage repo pkgid _ -> doesFileExist (packageFile repo pkgid)
+
+
+-- | Fetch a package if we don't have it already.
+--
+fetchPackage :: Verbosity
+             -> PackageLocation (Maybe FilePath)
+             -> IO (PackageLocation FilePath)
+fetchPackage verbosity loc = case loc of
+    LocalUnpackedPackage dir  ->
+      return (LocalUnpackedPackage dir)
+    LocalTarballPackage  file ->
+      return (LocalTarballPackage  file)
+    RemoteTarballPackage uri (Just file) ->
+      return (RemoteTarballPackage uri file)
+    RepoTarballPackage repo pkgid (Just file) ->
+      return (RepoTarballPackage repo pkgid file)
+
+    RemoteTarballPackage uri Nothing -> do
+      path <- downloadTarballPackage uri
+      return (RemoteTarballPackage uri path)
+    RepoTarballPackage repo pkgid Nothing -> do
+      local <- fetchRepoTarball verbosity repo pkgid
+      return (RepoTarballPackage repo pkgid local)
+  where
+    downloadTarballPackage uri = do
+      notice verbosity ("Downloading " ++ show uri)
+      tmpdir <- getTemporaryDirectory
+      (path, hnd) <- openTempFile tmpdir "cabal-.tar.gz"
+      hClose hnd
+      downloadURI verbosity uri path
+      return path
+
 
 -- | Fetch a repo package if we don't have it already.
 --
