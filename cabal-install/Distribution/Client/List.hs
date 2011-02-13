@@ -2,7 +2,7 @@
 -- |
 -- Module      :  Distribution.Client.List
 -- Copyright   :  (c) David Himmelstrup 2005
---                    Duncan Coutts 2008-2009
+--                    Duncan Coutts 2008-2011
 -- License     :  BSD-like
 --
 -- Maintainer  :  cabal-devel@haskell.org
@@ -14,8 +14,8 @@ module Distribution.Client.List (
   ) where
 
 import Distribution.Package
-         ( PackageName(..), packageName, packageVersion
-         , Dependency(..), thisPackageVersion, depends )
+         ( PackageName(..), Package(..), packageName, packageVersion
+         , Dependency(..), thisPackageVersion, depends, simplifyDependency )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -28,31 +28,39 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Compiler
         ( Compiler, PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.Simple.Utils (equating, comparing, notice)
+import Distribution.Simple.Utils
+        ( equating, comparing, die, notice )
 import Distribution.Simple.Setup (fromFlag)
 import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Version   (Version)
+import Distribution.Version
+         ( Version(..), VersionRange, withinRange, anyVersion
+         , intersectVersionRanges, simplifyVersionRange )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text
          ( Text(disp), display )
 
 import Distribution.Client.Types
          ( AvailablePackage(..), Repo, AvailablePackageDb(..)
-         , UnresolvedDependency(..), InstalledPackage(..) )
+         , InstalledPackage(..) )
+import Distribution.Client.Dependency.Types
+         ( PackageConstraint(..) )
+import Distribution.Client.Targets
+         ( UserTarget, resolveUserTargets, PackageSpecifier(..) )
 import Distribution.Client.Setup
-         ( ListFlags(..), InfoFlags(..) )
+         ( GlobalFlags(..), ListFlags(..), InfoFlags(..) )
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, disambiguateDependencies
-         , getInstalledPackages )
+         ( getAvailablePackages, getInstalledPackages )
 import Distribution.Client.FetchUtils
          ( isFetched )
 
 import Data.List
-         ( sortBy, groupBy, sort, nub, intersperse, maximumBy )
+         ( sortBy, groupBy, sort, nub, intersperse, maximumBy, partition )
 import Data.Maybe
-         ( listToMaybe, fromJust, fromMaybe, isJust, isNothing )
+         ( listToMaybe, fromJust, fromMaybe, isJust )
+import qualified Data.Map as Map
+import Data.Tree as Tree
 import Control.Monad
          ( MonadPlus(mplus), join )
 import Control.Exception
@@ -72,32 +80,47 @@ list :: Verbosity
      -> [String]
      -> IO ()
 list verbosity packageDBs repos comp conf listFlags pats = do
-    installed <- getInstalledPackages verbosity comp packageDBs conf
-    AvailablePackageDb available _ <- getAvailablePackages verbosity repos
-    let pkgs | null pats = (PackageIndex.allPackages installed
-                           ,PackageIndex.allPackages available)
-             | otherwise = (matchingPackages installed
-                           ,matchingPackages available)
-        matches = installedFilter
-                . map (uncurry mergePackageInfo)
-                $ uncurry mergePackages pkgs
+
+    installed   <- getInstalledPackages verbosity comp packageDBs conf
+    availableDb <- getAvailablePackages verbosity repos
+    let available  = packageIndex availableDb
+        prefs name = fromMaybe anyVersion
+                       (Map.lookup name (packagePreferences availableDb))
+
+        pkgsInfo :: [(PackageName, [InstalledPackage], [AvailablePackage])]
+        pkgsInfo
+            -- gather info for all packages
+          | null pats = mergePackages (PackageIndex.allPackages installed)
+                                      (PackageIndex.allPackages available)
+
+            -- gather info for packages matching search term
+          | otherwise = mergePackages (matchingPackages installed)
+                                      (matchingPackages available)
+
+        matches :: [PackageDisplayInfo]
+        matches = [ mergePackageInfo pref
+                      installedPkgs availablePkgs selectedPkg False
+                  | (pkgname, installedPkgs, availablePkgs) <- pkgsInfo
+                  , not onlyInstalled || not (null installedPkgs)
+                  , let pref        = prefs pkgname
+                        selectedPkg = latestWithPref pref availablePkgs ]
 
     if simpleOutput
       then putStr $ unlines
-             [ display (pkgname pkg) ++ " " ++ display version
+             [ display (pkgName pkg) ++ " " ++ display version
              | pkg <- matches
              , version <- if onlyInstalled
                             then              installedVersions pkg
                             else nub . sort $ installedVersions pkg
                                            ++ availableVersions pkg ]
+             -- Note: this only works because for 'list', one cannot currently
+             -- specify any version constraints, so listing all installed
+             -- and available ones works.
       else
         if null matches
             then notice verbosity "No matches found."
             else putStr $ unlines (map showPackageSummaryInfo matches)
   where
-    installedFilter
-      | onlyInstalled = filter (not . null . installedVersions)
-      | otherwise     = id
     onlyInstalled = fromFlag (listInstalled listFlags)
     simpleOutput  = fromFlag (listSimpleOutput listFlags)
 
@@ -112,31 +135,86 @@ info :: Verbosity
      -> [Repo]
      -> Compiler
      -> ProgramConfiguration
+     -> GlobalFlags
      -> InfoFlags
-     -> [UnresolvedDependency] --FIXME: just package names? or actually use the constraint
+     -> [UserTarget]
      -> IO ()
-info verbosity packageDBs repos comp conf _listFlags deps = do
-  AvailablePackageDb available _ <- getAvailablePackages verbosity repos
-  deps' <- IndexUtils.disambiguateDependencies available deps
-  installed <- getInstalledPackages verbosity comp packageDBs conf
-  let deps'' = [ name | UnresolvedDependency (Dependency name _) _ <- deps' ]
-  let pkgs = (concatMap (PackageIndex.lookupPackageName installed) deps''
-             ,concatMap (PackageIndex.lookupPackageName available) deps'')
-      pkgsinfo = map (uncurry mergePackageInfo)
-               $ uncurry mergePackages pkgs
+info verbosity packageDBs repos comp conf
+     globalFlags _listFlags userTargets = do
 
-  pkgsinfo' <- mapM updateFileSystemPackageDetails pkgsinfo
-  putStr $ unlines (map showPackageDetailedInfo pkgsinfo')
+    installed     <- getInstalledPackages verbosity comp packageDBs conf
+    availableDb   <- getAvailablePackages verbosity repos
+    let available  = packageIndex availableDb
+        prefs name = fromMaybe anyVersion
+                       (Map.lookup name (packagePreferences availableDb))
+
+        -- Users may specify names of packages that are only installed, not
+        -- just available source packages, so we must resolve targets using
+        -- the combination of installed and available packages.
+    let available' = PackageIndex.fromList
+                   $ map packageId (PackageIndex.allPackages installed)
+                  ++ map packageId (PackageIndex.allPackages available)
+    pkgSpecifiers <- resolveUserTargets verbosity
+                       globalFlags available' userTargets
+
+    pkgsinfo      <- sequence
+                       [ do pkginfo <- either die return $
+                                         gatherPkgInfo prefs
+                                           installed available pkgSpecifier
+                            updateFileSystemPackageDetails pkginfo
+                       | pkgSpecifier <- pkgSpecifiers ]
+
+    putStr $ unlines (map showPackageDetailedInfo pkgsinfo)
+
+  where
+    gatherPkgInfo prefs installed available (NamedPackage name constraints)
+      | null (selectedInstalledPkgs) && null (selectedAvailablePkgs)
+      = Left $ "There is no available version of " ++ display name
+            ++ " that satisfies "
+            ++ display (simplifyVersionRange verConstraint)
+
+      | otherwise
+      = Right $ mergePackageInfo pref installedPkgs
+                                 availablePkgs  selectedAvailablePkg
+                                 showPkgVersion
+      where
+        pref           = prefs name
+        installedPkgs  = PackageIndex.lookupPackageName installed name
+        availablePkgs  = PackageIndex.lookupPackageName available name
+
+        selectedInstalledPkgs = PackageIndex.lookupDependency installed
+                                    (Dependency name verConstraint)
+        selectedAvailablePkgs = PackageIndex.lookupDependency available
+                                    (Dependency name verConstraint)
+        selectedAvailablePkg  = latestWithPref pref selectedAvailablePkgs
+
+                         -- display a specific package version if the user
+                         -- supplied a non-trivial version constraint
+        showPkgVersion = not (null verConstraints)
+        verConstraint  = foldr intersectVersionRanges anyVersion verConstraints
+        verConstraints = [ vr | PackageVersionConstraint _ vr <- constraints ]
+
+    gatherPkgInfo prefs installed available (SpecificSourcePackage pkg) =
+        Right $ mergePackageInfo pref installedPkgs availablePkgs
+                                 selectedPkg True
+      where
+        name          = packageName pkg
+        pref          = prefs name
+        installedPkgs = PackageIndex.lookupPackageName installed name
+        availablePkgs = PackageIndex.lookupPackageName available name
+        selectedPkg   = Just pkg
+
 
 -- | The info that we can display for each package. It is information per
 -- package name and covers all installed and avilable versions.
 --
 data PackageDisplayInfo = PackageDisplayInfo {
-    pkgname           :: PackageName,
-    allInstalled      :: [InstalledPackage],
-    allAvailable      :: [AvailablePackage],
-    latestInstalled   :: Maybe InstalledPackage,
-    latestAvailable   :: Maybe AvailablePackage,
+    pkgName           :: PackageName,
+    selectedVersion   :: Maybe Version,
+    selectedAvailable :: Maybe AvailablePackage,
+    installedVersions :: [Version],
+    availableVersions :: [Version],
+    preferredVersions :: VersionRange,
     homepage          :: String,
     bugReports        :: String,
     sourceRepo        :: String,
@@ -144,7 +222,6 @@ data PackageDisplayInfo = PackageDisplayInfo {
     description       :: String,
     category          :: String,
     license           :: License,
---    copyright         :: String, --TODO: is this useful?
     author            :: String,
     maintainer        :: String,
     dependencies      :: [Dependency],
@@ -157,28 +234,23 @@ data PackageDisplayInfo = PackageDisplayInfo {
     haveTarball       :: Bool
   }
 
-installedVersions :: PackageDisplayInfo -> [Version]
-installedVersions = map packageVersion . allInstalled
-
-availableVersions :: PackageDisplayInfo -> [Version]
-availableVersions = map packageVersion . allAvailable
-
 showPackageSummaryInfo :: PackageDisplayInfo -> String
 showPackageSummaryInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
-     char '*' <+> disp (pkgname pkginfo)
+     char '*' <+> disp (pkgName pkginfo)
      $+$
      (nest 4 $ vcat [
        maybeShow (synopsis pkginfo) "Synopsis:" reflowParagraphs
-     , text "Latest version available:" <+>
-       case latestAvailable pkginfo of
-         Nothing  -> text "[ Not available from server ]"
+     , text "Default available version:" <+>
+       case selectedAvailable pkginfo of
+         Nothing  -> text "[ Not available from any configured repository ]"
          Just pkg -> disp (packageVersion pkg)
-     , text "Latest version installed:" <+>
-       case latestInstalled pkginfo of
-         Nothing  | hasLib pkginfo -> text "[ Not installed ]"
-                  | otherwise      -> text "[ Unknown ]"
-         Just pkg -> disp (packageVersion pkg)
+     , text "Installed versions:" <+>
+       case installedVersions pkginfo of
+         []  | hasLib pkginfo -> text "[ Not installed ]"
+             | otherwise      -> text "[ Unknown ]"
+         versions             -> dispTopVersions 4
+                                   (preferredVersions pkginfo) versions
      , maybeShow (homepage pkginfo) "Homepage:" text
      , text "License: " <+> text (display (license pkginfo))
      ])
@@ -190,22 +262,23 @@ showPackageSummaryInfo pkginfo =
 showPackageDetailedInfo :: PackageDisplayInfo -> String
 showPackageDetailedInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
-   char '*' <+> disp (pkgname pkginfo)
-            <+> text (replicate (16 - length (display (pkgname pkginfo))) ' ')
+   char '*' <+> disp (pkgName pkginfo)
+            <>  maybe empty (\v -> char '-' <> disp v) (selectedVersion pkginfo)
+            <+> text (replicate (16 - length (display (pkgName pkginfo))) ' ')
             <>  parens pkgkind
    $+$
    (nest 4 $ vcat [
-     entry "Synopsis"      synopsis     alwaysShow     reflowParagraphs
-   , entry "Latest version available" latestAvailable
-           (altText isNothing "[ Not available from server ]")
-           (disp . packageVersion . fromJust)
-   , entry "Latest version installed" latestInstalled
-           (altText isNothing (if hasLib pkginfo then "[ Not installed ]"
-                                                 else "[ Unknown ]"))
-           (disp . packageVersion . fromJust)
+     entry "Synopsis"      synopsis     hideIfNull     reflowParagraphs
+   , entry "Versions available" availableVersions
+           (altText null "[ Not available from server ]")
+           (dispTopVersions 9 (preferredVersions pkginfo))
+   , entry "Versions installed" installedVersions
+           (altText null (if hasLib pkginfo then "[ Not installed ]"
+                                            else "[ Unknown ]"))
+           (dispTopVersions 4 (preferredVersions pkginfo))
    , entry "Homepage"      homepage     orNotSpecified text
    , entry "Bug reports"   bugReports   orNotSpecified text
-   , entry "Description"   description  alwaysShow     reflowParagraphs
+   , entry "Description"   description  hideIfNull     reflowParagraphs
    , entry "Category"      category     hideIfNull     text
    , entry "License"       license      alwaysShow     disp
    , entry "Author"        author       hideIfNull     reflowLines
@@ -257,6 +330,7 @@ showPackageDetailedInfo pkginfo =
             | hasExe pkginfo                   = text "program"
             | otherwise                        = empty
 
+
 reflowParagraphs :: String -> Doc
 reflowParagraphs =
     vcat
@@ -276,18 +350,24 @@ reflowLines = vcat . map text . lines
 -- the input package info records are all supposed to refer to the same
 -- package name.
 --
-mergePackageInfo :: [InstalledPackage]
+mergePackageInfo :: VersionRange
+                 -> [InstalledPackage]
                  -> [AvailablePackage]
+                 -> Maybe AvailablePackage
+                 -> Bool
                  -> PackageDisplayInfo
-mergePackageInfo installedPkgs availablePkgs =
+mergePackageInfo versionPref installedPkgs availablePkgs selectedPkg showVer =
   assert (length installedPkgs + length availablePkgs > 0) $
   PackageDisplayInfo {
-    pkgname      = combine packageName available
-                           packageName installed,
-    allInstalled = installedPkgs,
-    allAvailable = availablePkgs,
-    latestInstalled = latest installedPkgs,
-    latestAvailable = latest availablePkgs,
+    pkgName           = combine packageName available
+                                packageName installed,
+    selectedVersion   = if showVer then fmap packageVersion selectedPkg
+                                   else Nothing,
+    selectedAvailable = availableSelected,
+    installedVersions = map packageVersion installedPkgs,
+    availableVersions = map packageVersion availablePkgs,
+    preferredVersions = versionPref,
+
     license      = combine Available.license    available
                            Installed.license    installed,
     maintainer   = combine Available.maintainer available
@@ -302,8 +382,8 @@ mergePackageInfo installedPkgs availablePkgs =
                        . sortBy (comparing Available.repoKind)
                        . Available.sourceRepos)
                  $ available,
-    synopsis     = combine Available.synopsis    available
-                           Installed.description installed,
+                    --TODO: installed package info is missing synopsis
+    synopsis     = maybe "" Available.synopsis   available,
     description  = combine Available.description available
                            Installed.description installed,
     category     = combine Available.category    available
@@ -318,7 +398,8 @@ mergePackageInfo installedPkgs availablePkgs =
     modules      = combine Installed.exposedModules installed
                            (maybe [] Available.exposedModules
                                    . Available.library) available,
-    dependencies = combine Available.buildDepends available
+    dependencies = map simplifyDependency
+                 $ combine Available.buildDepends available
                            (map thisPackageVersion . depends) installed',
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)
@@ -327,16 +408,19 @@ mergePackageInfo installedPkgs availablePkgs =
   }
   where
     combine f x g y  = fromJust (fmap f x `mplus` fmap g y)
-    installed'       = latest installedPkgs
+    installed'       = latestWithPref versionPref installedPkgs
     installed        = fmap (\(InstalledPackage p _) -> p) installed'
-    availableGeneric = fmap packageDescription (latest availablePkgs)
+
+    availableSelected
+      | isJust selectedPkg = selectedPkg
+      | otherwise          = latestWithPref versionPref availablePkgs
+    availableGeneric = fmap packageDescription availableSelected
     available        = fmap flattenPackageDescription availableGeneric
-    latest []        = Nothing
-    latest pkgs      = Just (maximumBy (comparing packageVersion) pkgs)
 
     uncons :: b -> (a -> b) -> [a] -> b
     uncons z _ []    = z
     uncons _ f (x:_) = f x
+
 
 -- | Not all the info is pure. We have to check if the docs really are
 -- installed, because the registered package info lies. Similarly we have to
@@ -345,30 +429,100 @@ mergePackageInfo installedPkgs availablePkgs =
 updateFileSystemPackageDetails :: PackageDisplayInfo -> IO PackageDisplayInfo
 updateFileSystemPackageDetails pkginfo = do
   fetched   <- maybe (return False) (isFetched . packageSource)
-                     (latestAvailable pkginfo)
+                     (selectedAvailable pkginfo)
   docsExist <- doesDirectoryExist (haddockHtml pkginfo)
   return pkginfo {
     haveTarball = fetched,
     haddockHtml = if docsExist then haddockHtml pkginfo else ""
   }
 
+latestWithPref :: Package pkg => VersionRange -> [pkg] -> Maybe pkg
+latestWithPref _    []   = Nothing
+latestWithPref pref pkgs = Just (maximumBy (comparing prefThenVersion) pkgs)
+  where
+    prefThenVersion pkg = let ver = packageVersion pkg
+                           in (withinRange ver pref, ver)
+
+
 -- | Rearrange installed and available packages into groups referring to the
 -- same package by name. In the result pairs, the lists are guaranteed to not
 -- both be empty.
 --
-mergePackages ::   [InstalledPackage] -> [AvailablePackage]
-              -> [([InstalledPackage],   [AvailablePackage])]
+mergePackages :: [InstalledPackage]
+              -> [AvailablePackage]
+              -> [( PackageName
+                  , [InstalledPackage]
+                  , [AvailablePackage] )]
 mergePackages installed available =
     map collect
   $ mergeBy (\i a -> fst i `compare` fst a)
             (groupOn packageName installed)
             (groupOn packageName available)
   where
-    collect (OnlyInLeft  (_,is)       ) = (is, [])
-    collect (    InBoth  (_,is) (_,as)) = (is, as)
-    collect (OnlyInRight        (_,as)) = ([], as)
+    collect (OnlyInLeft  (name,is)         ) = (name, is, [])
+    collect (    InBoth  (_,is)   (name,as)) = (name, is, as)
+    collect (OnlyInRight          (name,as)) = (name, [], as)
 
 groupOn :: Ord key => (a -> key) -> [a] -> [(key,[a])]
 groupOn key = map (\xs -> (key (head xs), xs))
             . groupBy (equating key)
             . sortBy (comparing key)
+
+dispTopVersions :: Int -> VersionRange -> [Version] -> Doc
+dispTopVersions n pref vs =
+         (Disp.fsep . Disp.punctuate (Disp.char ',')
+        . map (\ver -> if ispref ver then disp ver else parens (disp ver))
+        . sort . take n . interestingVersions ispref
+        $ vs)
+    <+> trailingMessage
+
+  where
+    ispref ver = withinRange ver pref
+    extra = length vs - n
+    trailingMessage
+      | extra <= 0 = Disp.empty
+      | otherwise  = Disp.parens $ Disp.text "and"
+                               <+> Disp.int (length vs - n)
+                               <+> if extra == 1 then Disp.text "other"
+                                                 else Disp.text "others"
+
+-- | Reorder a bunch of versions to put the most interesting / significant
+-- versions first. A preferred version range is taken into account.
+--
+-- This may be used in a user interface to select a small number of versions
+-- to present to the user, e.g.
+--
+-- > let selectVersions = sort . take 5 . interestingVersions pref
+--
+interestingVersions :: (Version -> Bool) -> [Version] -> [Version]
+interestingVersions pref =
+      map ((\ns -> Version ns []) . fst) . filter snd
+    . concat  . Tree.levels
+    . swizzleTree
+    . reorderTree (\(Node (v,_) _) -> pref (Version v []))
+    . reverseTree
+    . mkTree
+    . map versionBranch
+
+  where
+    swizzleTree = unfoldTree (spine [])
+      where
+        spine ts' (Node x [])     = (x, ts')
+        spine ts' (Node x (t:ts)) = spine (Node x ts:ts') t
+
+    reorderTree _ (Node x []) = Node x []
+    reorderTree p (Node x ts) = Node x (ts' ++ ts'')
+      where
+        (ts',ts'') = partition p (map (reorderTree p) ts)
+
+    reverseTree (Node x cs) = Node x (reverse (map reverseTree cs))
+
+    mkTree xs = unfoldTree step (False, [], xs)
+      where
+        step (node,ns,vs) =
+          ( (reverse ns, node)
+          , [ (any null vs', n:ns, filter (not . null) vs')
+            | (n, vs') <- groups vs ]
+          )
+        groups = map (\g -> (head (head g), map tail g))
+               . groupBy (equating head)
