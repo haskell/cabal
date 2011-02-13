@@ -35,7 +35,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup
          ( fromFlag )
 import Distribution.Simple.Utils
-         ( die, notice, info )
+         ( die, notice, debug )
 import Distribution.System
          ( buildPlatform )
 import Distribution.Text
@@ -147,7 +147,7 @@ planPackages verbosity comp fetchFlags
       $ standardInstallPolicy installed availableDb pkgSpecifiers
 
     includeDependencies = fromFlag (fetchDeps fetchFlags)
-    logMsg message rest = info verbosity message >> rest
+    logMsg message rest = debug verbosity message >> rest
 
 
 checkTarget :: UserTarget -> IO ()

@@ -43,7 +43,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, die )
+         ( notice, info, debug, die )
 import Distribution.System
          ( Platform, buildPlatform )
 import Distribution.Verbosity as Verbosity
@@ -69,8 +69,8 @@ configure verbosity packageDBs repos comp conf
                                installed available
 
   notice verbosity "Resolving dependencies..."
-  maybePlan <- foldProgress (\message rest -> info verbosity message >> rest)
-                            (return . Left) (return . Right) progress
+  maybePlan <- foldProgress logMsg (return . Left) (return . Right)
+                            progress
   case maybePlan of
     Left message -> do
       info verbosity message
@@ -109,6 +109,8 @@ configure verbosity packageDBs repos comp conf
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
+
+    logMsg message rest = debug verbosity message >> rest
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
