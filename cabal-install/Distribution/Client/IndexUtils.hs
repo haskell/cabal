@@ -44,7 +44,8 @@ import Distribution.Version
          ( Version(Version), intersectVersionRanges )
 import Distribution.Text
          ( simpleParse )
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity
+         ( Verbosity, lessVerbose )
 import Distribution.Simple.Utils
          ( warn, info, fromUTF8 )
 
@@ -71,8 +72,12 @@ getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
                      -> IO (PackageIndex InstalledPackage)
 getInstalledPackages verbosity comp packageDbs conf =
-  fmap convert (Configure.getInstalledPackages verbosity comp packageDbs conf)
+    fmap convert (Configure.getInstalledPackages verbosity'
+                                                 comp packageDbs conf)
   where
+    --FIXME: make getInstalledPackages use sensible verbosity in the first place
+    verbosity'  = lessVerbose verbosity
+
     convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
     convert index = PackageIndex.fromList $
       reverse -- because later ones mask earlier ones, but

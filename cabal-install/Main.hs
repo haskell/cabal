@@ -61,8 +61,9 @@ import Distribution.Client.Init             (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
 import Distribution.Simple.Compiler
-         ( PackageDB(..), PackageDBStack )
-import Distribution.Simple.Program (defaultProgramConfiguration)
+         ( Compiler, PackageDB(..), PackageDBStack )
+import Distribution.Simple.Program
+         ( ProgramConfiguration, defaultProgramConfiguration )
 import Distribution.Simple.Command
 import Distribution.Simple.Configure (configCompilerAux)
 import Distribution.Simple.Utils
@@ -70,7 +71,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-       ( Verbosity, normal, intToVerbosity )
+       ( Verbosity, normal, intToVerbosity, lessVerbose )
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
@@ -202,7 +203,7 @@ installAction (configFlags, configExFlags, installFlags)
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux configFlags'
+  (comp, conf) <- configCompilerAux' configFlags'
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags'
@@ -214,7 +215,7 @@ listAction listFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux configFlags
+  (comp, conf) <- configCompilerAux' configFlags
   list verbosity
        (configPackageDB' configFlags)
        (globalRepos globalFlags')
@@ -262,7 +263,7 @@ upgradeAction (configFlags, configExFlags, installFlags)
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux configFlags'
+  (comp, conf) <- configCompilerAux' configFlags'
   upgrade verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags'
@@ -275,7 +276,7 @@ fetchAction fetchFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux configFlags
+  (comp, conf) <- configCompilerAux' configFlags
   fetch verbosity
         (configPackageDB' configFlags) (globalRepos globalFlags')
         comp conf globalFlags' fetchFlags
@@ -393,3 +394,10 @@ configPackageDB' cfg =
   implicitPackageDbStack userInstall (flagToMaybe (configPackageDB cfg))
   where
     userInstall = fromFlagOrDefault True (configUserInstall cfg)
+
+configCompilerAux' :: ConfigFlags
+                   -> IO (Compiler, ProgramConfiguration)
+configCompilerAux' configFlags =
+  configCompilerAux configFlags
+    --FIXME: make configCompilerAux use a sensible verbosity
+    { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
