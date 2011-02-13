@@ -47,6 +47,9 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile )
+import Distribution.Client.Targets
+         ( readUserTargets )
+
 import Distribution.Client.List             (list, info)
 import Distribution.Client.Install          (install, upgrade)
 import Distribution.Client.Configure        (configure)
@@ -226,8 +229,8 @@ listAction listFlags extraArgs globalFlags = do
 
 infoAction :: InfoFlags -> [String] -> GlobalFlags -> IO ()
 infoAction infoFlags extraArgs globalFlags = do
-  pkgs <- either die return (parsePackageArgs extraArgs)
   let verbosity = fromFlag (infoVerbosity infoFlags)
+  targets <- readUserTargets verbosity extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
@@ -237,8 +240,9 @@ infoAction infoFlags extraArgs globalFlags = do
        (globalRepos globalFlags')
        comp
        conf
+       globalFlags'
        infoFlags
-       [ UnresolvedDependency pkg []  | pkg <- pkgs ]
+       targets
 
 updateAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
 updateAction verbosityFlag extraArgs globalFlags = do
