@@ -603,6 +603,13 @@ installOptions showOrParseArgs =
           installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
           trueArg
 
+
+      , option [] ["only-dependencies"]
+          "Install only the dependencies necessary to build the given packages"
+          installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
+          trueArg
+
+
       , option [] ["root-cmd"]
           "Command used to gain root privileges, when installing with --global."
           installRootCmd (\v flags -> flags { installRootCmd = v })
@@ -636,12 +643,6 @@ installOptions showOrParseArgs =
           "Do not record the packages in the world file."
           installOneShot (\v flags -> flags { installOneShot = v })
           trueArg
-
-      , option [] ["only-dependencies"]
-          "Install only the dependencies necessary to build the listed packages"
-          installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
-          trueArg
-
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
