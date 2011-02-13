@@ -46,7 +46,7 @@ import Distribution.Client.Utils
 import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies
          , getInstalledPackages )
-import Distribution.Client.Fetch
+import Distribution.Client.FetchUtils
          ( isFetched )
 
 import Data.List

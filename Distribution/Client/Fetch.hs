@@ -2,30 +2,24 @@
 -- |
 -- Module      :  Distribution.Client.Fetch
 -- Copyright   :  (c) David Himmelstrup 2005
+--                    Duncan Coutts 2011
 -- License     :  BSD-like
 --
--- Maintainer  :  lemmih@gmail.com
+-- Maintainer  :  cabal-devel@gmail.com
 -- Stability   :  provisional
 -- Portability :  portable
 --
---
+-- The cabal fetch command
 -----------------------------------------------------------------------------
 module Distribution.Client.Fetch (
-
-    -- * Commands
     fetch,
-
-    -- * Utilities
-    fetchPackage,
-    isFetched,
-    downloadIndex,
   ) where
 
 import Distribution.Client.Types
          ( UnresolvedDependency (..), AvailablePackage(..)
          , AvailablePackageSource(..), AvailablePackageDb(..)
-         , Repo(..), RemoteRepo(..), LocalRepo(..)
-         , InstalledPackage )
+         , Repo(..), InstalledPackage )
+import Distribution.Client.FetchUtils
 import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Client.Dependency as Dependency
          ( resolveDependenciesWithProgress
@@ -39,14 +33,11 @@ import Distribution.Client.IndexUtils as IndexUtils
          ( getAvailablePackages, disambiguateDependencies
          , getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.HttpUtils
-         ( downloadURI, isOldHackageURI )
 import Distribution.Client.Setup
          ( FetchFlags(..) )
 
 import Distribution.Package
-         ( PackageIdentifier, packageId, packageName, packageVersion
-         , Dependency(..) )
+         ( packageId, Dependency(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
@@ -55,7 +46,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup
          ( fromFlag )
 import Distribution.Simple.Utils
-         ( die, notice, info, debug, setupMessage )
+         ( die, notice, info )
 import Distribution.System
          ( buildPlatform )
 import Distribution.Text
@@ -66,61 +57,13 @@ import Distribution.Verbosity
 import qualified Data.Map as Map
 import Control.Monad
          ( when, filterM )
-import System.Directory
-         ( doesFileExist, createDirectoryIfMissing )
-import System.FilePath
-         ( (</>), (<.>) )
-import qualified System.FilePath.Posix as FilePath.Posix
-         ( combine, joinPath )
-import Network.URI
-         ( URI(uriPath) )
 
+-- ------------------------------------------------------------
+-- * The fetch command
+-- ------------------------------------------------------------
 
--- Downloads a package to [config-dir/packages/package-id] and returns the path to the package.
-downloadPackage :: Verbosity -> Repo -> PackageIdentifier -> IO String
-downloadPackage _ repo@Repo{ repoKind = Right LocalRepo } pkgid =
-  return (packageFile repo pkgid)
-
-downloadPackage verbosity repo@Repo{ repoKind = Left remoteRepo } pkgid = do
-  let uri  = packageURI remoteRepo pkgid
-      dir  = packageDir       repo pkgid
-      path = packageFile      repo pkgid
-  debug verbosity $ "GET " ++ show uri
-  createDirectoryIfMissing True dir
-  downloadURI verbosity uri path
-  return path
-
--- Downloads an index file to [config-dir/packages/serv-id].
-downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO FilePath
-downloadIndex verbosity repo cacheDir = do
-  let uri = (remoteRepoURI repo) {
-              uriPath = uriPath (remoteRepoURI repo)
-                          `FilePath.Posix.combine` "00-index.tar.gz"
-            }
-      path = cacheDir </> "00-index" <.> "tar.gz"
-  createDirectoryIfMissing True cacheDir
-  downloadURI verbosity uri path
-  return path
-
--- |Returns @True@ if the package has already been fetched.
-isFetched :: AvailablePackage -> IO Bool
-isFetched (AvailablePackage pkgid _ source) = case source of
-  LocalUnpackedPackage _  -> return True
-  LocalTarballPackage  _  -> return True
-  RemoteTarballPackage _  -> return False --TODO: ad-hoc download caching
-  RepoTarballPackage repo -> doesFileExist (packageFile repo pkgid)
-
--- |Fetch a package if we don't have it already.
-fetchPackage :: Verbosity -> Repo -> PackageIdentifier -> IO String
-fetchPackage verbosity repo pkgid = do
-  fetched <- doesFileExist (packageFile repo pkgid)
-  if fetched
-    then do info verbosity $ display pkgid ++ " has already been downloaded."
-            return (packageFile repo pkgid)
-    else do setupMessage verbosity "Downloading" pkgid
-            downloadPackage verbosity repo pkgid
-
--- |Fetch a list of packages and their dependencies.
+-- | Fetch a list of packages and their dependencies.
+--
 fetch :: Verbosity
       -> PackageDBStack
       -> [Repo]
@@ -152,7 +95,7 @@ fetch verbosity packageDBs repos comp conf flags deps = do
             "The following packages would be fetched:"
           : map (display . packageId) pkgs'
     else sequence_
-           [ fetchPackage verbosity repo pkgid
+           [ fetchRepoTarball verbosity repo pkgid
            | (AvailablePackage pkgid _ (RepoTarballPackage repo)) <- pkgs' ]
   where
     includeDeps = fromFlag (fetchDeps flags)
@@ -224,36 +167,3 @@ resolvePackages verbosity includeDependencies comp
                  <- InstallPlan.toList plan ]
 
     logMsg message rest = info verbosity message >> rest
-
-
--- |Generate the full path to the locally cached copy of
--- the tarball for a given @PackageIdentifer@.
-packageFile :: Repo -> PackageIdentifier -> FilePath
-packageFile repo pkgid = packageDir repo pkgid
-                     </> display pkgid
-                     <.> "tar.gz"
-
--- |Generate the full path to the directory where the local cached copy of
--- the tarball for a given @PackageIdentifer@ is stored.
-packageDir :: Repo -> PackageIdentifier -> FilePath
-packageDir repo pkgid = repoLocalDir repo
-                    </> display (packageName    pkgid)
-                    </> display (packageVersion pkgid)
-
--- | Generate the URI of the tarball for a given package.
-packageURI :: RemoteRepo -> PackageIdentifier -> URI
-packageURI repo pkgid | isOldHackageURI (remoteRepoURI repo) =
-  (remoteRepoURI repo) {
-    uriPath = FilePath.Posix.joinPath
-      [uriPath (remoteRepoURI repo)
-      ,display (packageName    pkgid)
-      ,display (packageVersion pkgid)
-      ,display pkgid <.> "tar.gz"]
-  }
-packageURI repo pkgid =
-  (remoteRepoURI repo) {
-    uriPath = FilePath.Posix.joinPath
-      [uriPath (remoteRepoURI repo)
-      ,"package"
-      ,display pkgid <.> "tar.gz"]
-  }
