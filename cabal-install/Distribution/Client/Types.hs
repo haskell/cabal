@@ -14,8 +14,7 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..)
-         , PackageFixedDeps(..), Dependency )
+         ( PackageName, PackageId, Package(..), PackageFixedDeps(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -146,18 +145,6 @@ data Repo = Repo {
     repoLocalDir :: FilePath
   }
   deriving (Show,Eq)
-
--- ------------------------------------------------------------
--- * Unresolved dependencies
--- ------------------------------------------------------------
-
-data UnresolvedDependency
-    = UnresolvedDependency
-    { dependency :: Dependency
-    , depFlags   :: FlagAssignment
-    }
-  deriving (Show,Eq)
-
 
 -- ------------------------------------------------------------
 -- * Build results
