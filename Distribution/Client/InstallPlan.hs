@@ -22,7 +22,7 @@ module Distribution.Client.InstallPlan (
   ready,
   completed,
   failed,
-  removePackages,
+  remove,
 
   -- ** Query functions
   planPlatform,
@@ -188,13 +188,14 @@ toList = PackageIndex.allPackages . planIndex
 -- the dependencies of a package or set of packages without actually
 -- installing the package itself, as when doing development.
 --
-removePackages :: (PlanPackage -> Bool) -> InstallPlan
-               -> Either [PlanProblem] InstallPlan
-removePackages shouldRemove plan =
-    new (planPlatform plan) (planCompiler plan) newIdx
-    where
-      newIdx =
-          PackageIndex.fromList $ filter (not . shouldRemove) $ toList plan
+remove :: (PlanPackage -> Bool)
+       -> InstallPlan
+       -> Either [PlanProblem] InstallPlan
+remove shouldRemove plan =
+    new (planPlatform plan) (planCompiler plan) newIndex
+  where
+    newIndex = PackageIndex.fromList $
+                 filter (not . shouldRemove) (toList plan)
 
 -- | The packages that are ready to be installed. That is they are in the
 -- configured state and have all their dependencies installed already.

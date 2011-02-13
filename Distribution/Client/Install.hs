@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Install
@@ -18,10 +19,9 @@ module Distribution.Client.Install (
   ) where
 
 import Data.List
-         ( unfoldr, find, nub, sort, partition )
+         ( unfoldr, find, nub, sort )
 import Data.Maybe
          ( isJust, fromMaybe )
-import qualified Data.Map as Map
 import Control.Exception as Exception
          ( handleJust )
 #if MIN_VERSION_base(4,0,0)
@@ -46,18 +46,13 @@ import System.IO
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
+import Distribution.Client.Targets
 import Distribution.Client.Dependency
-         ( resolveDependenciesWithProgress
-         , PackageConstraint(..), dependencyConstraints, dependencyTargets
-         , PackagesPreference(..), PackagesPreferenceDefault(..)
-         , PackagePreference(..)
-         , Progress(..), foldProgress, )
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 -- import qualified Distribution.Client.Info as Info
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, disambiguateDependencies
-         , getInstalledPackages )
+         ( getAvailablePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
@@ -95,23 +90,21 @@ import Distribution.Simple.Setup
 import qualified Distribution.Simple.Setup as Cabal
          ( installCommand, InstallFlags(..), emptyInstallFlags )
 import Distribution.Simple.Utils
-         ( defaultPackageDesc, rawSystemExit, comparing )
+         ( rawSystemExit, comparing )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier, packageName, packageVersion
+         ( PackageIdentifier, packageName, packageVersion
          , Package(..), PackageFixedDeps(..)
          , Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription )
-import Distribution.PackageDescription.Parse
-         ( readPackageDescription )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Version
-         ( Version, VersionRange, anyVersion, thisVersion )
+         ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, die, intercalate, withTempDirectory )
 import Distribution.Client.Utils
@@ -125,8 +118,6 @@ import Distribution.Verbosity as Verbosity
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
--- * add --upgrade-deps flag
--- * eliminate upgrade, replaced by --upgrade-deps and world target
 -- * assign flags to packages individually
 --   * complain about flags that do not apply to any package given as target
 --     so flags do not apply to dependencies, only listed, can use flag
@@ -142,12 +133,6 @@ import Distribution.Simple.BuildPaths ( exeExtension )
 -- * Top level user actions
 -- ------------------------------------------------------------
 
--- | An installation target given by the user. At the moment this
--- is just a named package, possibly with a version constraint.
--- It should be generalised to handle other targets like http or dirs.
---
-type InstallTarget = UnresolvedDependency
-
 -- | Installs the packages needed to satisfy a list of dependencies.
 --
 install, upgrade
@@ -160,32 +145,42 @@ install, upgrade
   -> ConfigFlags
   -> ConfigExFlags
   -> InstallFlags
-  -> [InstallTarget]
+  -> [UserTarget]
   -> IO ()
-install verbosity packageDB repos comp conf
-  globalFlags configFlags configExFlags installFlags targets =
+install verbosity packageDBs repos comp conf
+  globalFlags configFlags configExFlags installFlags userTargets0 = do
 
-    installWithPlanner verbosity context (planner onlyDeps) targets
+    installed     <- getInstalledPackages verbosity comp packageDBs conf
+    availableDb   <- getAvailablePackages verbosity repos
+
+    let -- For install, if no target is given it means we use the
+        -- current directory as the single target
+        userTargets | null userTargets0 = [UserTargetLocalDir "."]
+                    | otherwise         = userTargets0
+
+    pkgSpecifiers <- resolveUserTargets verbosity
+                       globalFlags (packageIndex availableDb) userTargets
+
+    notice verbosity "Resolving dependencies..."
+    installPlan   <- foldProgress logMsg die return $
+                       planPackages
+                         comp configFlags configExFlags installFlags
+                         installed availableDb pkgSpecifiers
+
+    printPlanMessages verbosity installed installPlan dryRun
+
+    unless dryRun $ do
+      installPlan' <- performInstallations verbosity
+                        context installed installPlan
+      postInstallActions verbosity context userTargets installPlan'
 
   where
     context :: InstallContext
-    context = (packageDB, repos, comp, conf,
+    context = (packageDBs, repos, comp, conf,
                globalFlags, configFlags, configExFlags, installFlags)
 
-    onlyDeps = fromFlag (installOnlyDeps installFlags)
-
-    planner :: Bool -> Planner
-    planner
-      | null targets = planLocalPackage verbosity
-                         comp configFlags configExFlags
-
-      | otherwise    = planRepoPackages defaultPref
-                         comp globalFlags configFlags configExFlags
-                         installFlags targets
-
-    defaultPref
-      | fromFlag (installUpgradeDeps installFlags) = PreferAllLatest
-      | otherwise                                  = PreferLatestForSelected
+    dryRun      = fromFlag (installDryRun installFlags)
+    logMsg message rest = info verbosity message >> rest
 
 
 upgrade _ _ _ _ _ _ _ _ _ _ = die $
@@ -201,11 +196,6 @@ upgrade _ _ _ _ _ _ _ _ _ _ = die $
  ++ "--upgrade-dependencies, it is recommended that you do not upgrade core "
  ++ "packages (e.g. by using appropriate --constraint= flags)."
 
-
-type Planner = PackageIndex InstalledPackage
-            -> AvailablePackageDb
-            -> IO (Progress String String InstallPlan)
-
 type InstallContext = ( PackageDBStack
                       , [Repo]
                       , Compiler
@@ -215,162 +205,85 @@ type InstallContext = ( PackageDBStack
                       , ConfigExFlags
                       , InstallFlags )
 
--- | Top-level orchestration. Installs the packages generated by a planner.
---
-installWithPlanner :: Verbosity
-                   -> InstallContext
-                   -> Planner
-                   -> [UnresolvedDependency]
-                   -> IO ()
-installWithPlanner verbosity
-  context@(packageDBs, repos, comp, conf, _, _, _, installFlags)
-  planner targets = do
-
-  installed   <- getInstalledPackages verbosity comp packageDBs conf
-  available   <- getAvailablePackages verbosity repos
-
-  notice verbosity "Resolving dependencies..."
-  installPlan <- foldProgress logMsg die return =<< planner installed available
-
-  printPlanMessages verbosity installed installPlan dryRun
-
-  unless dryRun $
-        performInstallations verbosity context installed installPlan
-    >>= postInstallActions verbosity context targets
-
-  where
-    dryRun = fromFlag (installDryRun installFlags)
-    logMsg message rest = info verbosity message >> rest
-
 -- ------------------------------------------------------------
 -- * Installation planning
 -- ------------------------------------------------------------
 
--- | Make an 'InstallPlan' for the unpacked package in the current directory,
--- and all its dependencies.
---
-planLocalPackage :: Verbosity
-                 -> Compiler
-                 -> ConfigFlags
-                 -> ConfigExFlags
-                 -> Bool
-                 -> Planner
-planLocalPackage verbosity comp configFlags configExFlags onlyDeps installed
-  (AvailablePackageDb available availablePrefs) = do
-  pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
-  let -- The trick is, we add the local package to the available index and
-      -- remove it from the installed index. Then we ask to resolve a
-      -- dependency on exactly that package. So the resolver ends up having
-      -- to pick the local package.
-      available' = PackageIndex.insert localPkg available
-      installed' = PackageIndex.deletePackageId (packageId localPkg) installed
-      localPkg = AvailablePackage {
-        packageInfoId                = packageId pkg,
-        Available.packageDescription = pkg,
-        packageSource                = LocalUnpackedPackage "."
-      }
-      targets     = [packageName pkg]
-      constraints = [PackageVersionConstraint (packageName pkg)
-                       (thisVersion (packageVersion pkg))
-                    ,PackageFlagsConstraint   (packageName pkg)
-                       (configConfigurationsFlags configFlags)]
-                 ++ [ PackageVersionConstraint name ver
-                    | Dependency name ver <- configConstraints configFlags ]
-      preferences = mergePackagePrefs PreferLatestForSelected
-                                      availablePrefs configExFlags
+planPackages :: Compiler
+             -> ConfigFlags
+             -> ConfigExFlags
+             -> InstallFlags
+             -> PackageIndex InstalledPackage
+             -> AvailablePackageDb
+             -> [PackageSpecifier AvailablePackage]
+             -> Progress String String InstallPlan
+planPackages comp configFlags configExFlags installFlags
+             installed availableDb pkgSpecifiers =
 
-      plan = resolveDependenciesWithProgress buildPlatform
-             (compilerId comp)
-             installed' available' preferences constraints targets
+        resolveDependencies
+          buildPlatform (compilerId comp)
+          resolverParams
 
-      isLocalPackage = (== localPackageName) . packageName
-      localPackageName = packageName pkg
+    >>= if onlyDeps then adjustPlanOnlyDeps else return
 
-  -- If we only want dependencies, then remove the local package from
-  -- the install plan after we have built it.
-  return $ if onlyDeps then removeFromPlan isLocalPackage plan else plan
-
--- | Make an 'InstallPlan' for the given dependencies.
---
-planRepoPackages :: PackagesPreferenceDefault
-                 -> Compiler
-                 -> GlobalFlags
-                 -> ConfigFlags
-                 -> ConfigExFlags
-                 -> InstallFlags
-                 -> [UnresolvedDependency]
-                 -> Bool
-                 -> Planner
-planRepoPackages defaultPref comp
-  globalFlags configFlags configExFlags installFlags
-  deps onlyDeps installed (AvailablePackageDb available availablePrefs) = do
-
-  deps' <- addWorldPackages deps
-       >>= IndexUtils.disambiguateDependencies available
-
-  let installed'
-        | fromFlag (installReinstall installFlags)
-                    = hideGivenDeps deps' installed
-        | otherwise = installed
-      targets     = dependencyTargets deps'
-      constraints = dependencyConstraints deps'
-                 ++ [ PackageVersionConstraint name ver
-                    | Dependency name ver <- configConstraints configFlags ]
-      preferences = mergePackagePrefs defaultPref availablePrefs configExFlags
-      plan = resolveDependenciesWithProgress buildPlatform (compilerId comp)
-             installed' available preferences constraints targets
-  return $ if onlyDeps then removeFromPlan (isGivenDep deps) plan else plan
   where
-    hideGivenDeps pkgs index =
-      foldr PackageIndex.deletePackageName index (givenDepNames pkgs)
+    resolverParams =
 
-    givenDepNames pkgs =
-        [ name | UnresolvedDependency (Dependency name _) _ <- pkgs ]
+        setPreferenceDefault (if upgradeDeps then PreferAllLatest
+                                             else PreferLatestForSelected)
 
-    isGivenDep pkgs = (`elem` givenDepNames pkgs) . packageName
+      . addPreferences
+          -- preferences from the config file or command line
+          [ PackageVersionPreference name ver
+          | Dependency name ver <- configPreferences configExFlags ]
 
-    addWorldPackages :: [UnresolvedDependency] -> IO [UnresolvedDependency]
-    addWorldPackages targets = case partition World.isWorldTarget targets of
-      ([], _)               -> return targets
-      (world, otherTargets) -> do
-        unless (all World.isGoodWorldTarget world) $
-          die $ "The virtual package 'world' does not take any version "
-             ++ "or configuration flags."
-        worldTargets <- World.getContents worldFile
-        --TODO: should we warn if there are no world targets?
-        return $ otherTargets
-              ++ [ UnresolvedDependency dep flags
-                 | World.WorldPkgInfo dep flags <- worldTargets ]
+      . addConstraints
+          -- version constraints from the config file or command line
+          [ PackageVersionConstraint name ver
+          | Dependency name ver <- configConstraints configFlags ]
+
+      . addConstraints
+          --FIXME: this just applies all flags to all targets which
+          -- is silly. We should check if the flags are appropriate
+          [ PackageFlagsConstraint (pkgSpecifierTarget pkgSpecifier) flags
+          | let flags = configConfigurationsFlags configFlags
+          , not (null flags)
+          , pkgSpecifier <- pkgSpecifiers ]
+
+      . (if reinstall then reinstallTargets else id)
+
+      $ standardInstallPolicy installed availableDb pkgSpecifiers
+
+    --TODO: this is a general feature and should be moved to D.C.Dependency
+    -- Also, the InstallPlan.remove should return info more precise to the
+    -- problem, rather than the very general PlanProblem type.
+    adjustPlanOnlyDeps :: InstallPlan -> Progress String String InstallPlan
+    adjustPlanOnlyDeps =
+        either (Fail . explain) Done
+      . InstallPlan.remove isTarget
       where
-        worldFile = fromFlag $ globalWorldFile globalFlags
+        isTarget pkg = packageName pkg `elem` targetnames
+        targetnames  = map pkgSpecifierTarget pkgSpecifiers
+        
+        explain :: [InstallPlan.PlanProblem] -> String
+        explain problems =
+            "Cannot select only the dependencies (as requested by the "
+         ++ "'--only-dependencies' flag), "
+         ++ (case pkgids of
+               [pkgid] -> "the package " ++ display pkgid ++ " is "
+               _       -> "the packages "
+                       ++ intercalate ", " (map display pkgids) ++ " are ")
+         ++ "required by a dependency of one of the other targets."
+          where
+            pkgids =
+              nub [ depid
+                  | InstallPlan.PackageMissingDeps _ depids <- problems
+                  , depid <- depids
+                  , packageName depid `elem` targetnames ]
 
-
--- | Adapt InstallPlan.removePackages to work on Progress so that it
--- can be integrated with the planners
---
-removeFromPlan :: (InstallPlan.PlanPackage -> Bool)
-               -> Progress step String InstallPlan
-               -> Progress step String InstallPlan
-removeFromPlan shouldRemove =
-    foldProgress Step Fail $ \plan ->
-    case InstallPlan.removePackages shouldRemove plan of
-      Right plan'   -> Done plan'
-      Left problems ->
-          Fail $ unlines $ map InstallPlan.showPlanProblem problems
-
-mergePackagePrefs :: PackagesPreferenceDefault
-                  -> Map.Map PackageName VersionRange
-                  -> ConfigExFlags
-                  -> PackagesPreference
-mergePackagePrefs defaultPref availablePrefs configExFlags =
-  PackagesPreference defaultPref $
-       -- The preferences that come from the hackage index
-       [ PackageVersionPreference name ver
-       | (name, ver) <- Map.toList availablePrefs ]
-       -- additional preferences from the config file or command line
-    ++ [ PackageVersionPreference name ver
-       | Dependency name ver <- configPreferences configExFlags ]
-
+    reinstall   = fromFlag (installReinstall installFlags)
+    upgradeDeps = fromFlag (installUpgradeDeps installFlags)
+    onlyDeps    = fromFlag (installOnlyDeps installFlags)
 
 -- ------------------------------------------------------------
 -- * Informational messages
@@ -452,7 +365,7 @@ printDryRun verbosity installed plan = case unfoldr next plan of
 --
 postInstallActions :: Verbosity
                    -> InstallContext
-                   -> [InstallTarget]
+                   -> [UserTarget]
                    -> InstallPlan
                    -> IO ()
 postInstallActions verbosity
@@ -461,9 +374,9 @@ postInstallActions verbosity
 
   unless oneShot $
     World.insert verbosity worldFile
-      [ World.WorldPkgInfo dep flags
-      | udep@(UnresolvedDependency dep flags) <- targets
-      , not (World.isWorldTarget udep) ]
+      --FIXME: does not handle flags
+      [ World.WorldPkgInfo dep []
+      | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan installPlan
   BuildReports.storeLocal (installSummaryFile installFlags) buildReports
