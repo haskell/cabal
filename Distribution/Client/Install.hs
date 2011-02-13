@@ -341,7 +341,9 @@ planRepoPackages defaultPref comp
              ++ "or configuration flags."
         worldTargets <- World.getContents worldFile
         --TODO: should we warn if there are no world targets?
-        return (otherTargets ++ worldTargets)
+        return $ otherTargets
+              ++ [ UnresolvedDependency dep flags
+                 | World.WorldPkgInfo dep flags <- worldTargets ]
       where
         worldFile = fromFlag $ globalWorldFile globalFlags
 
@@ -461,7 +463,10 @@ postInstallActions verbosity
   targets installPlan = do
 
   unless oneShot $
-    World.insert verbosity worldFile targets'
+    World.insert verbosity worldFile
+      [ World.WorldPkgInfo dep flags
+      | udep@(UnresolvedDependency dep flags) <- targets
+      , not (World.isWorldTarget udep) ]
 
   let buildReports = BuildReports.fromInstallPlan installPlan
   BuildReports.storeLocal (installSummaryFile installFlags) buildReports
@@ -482,7 +487,6 @@ postInstallActions verbosity
     logsDir        = fromFlag (globalLogsDir globalFlags)
     oneShot        = fromFlag (installOneShot installFlags)
     worldFile      = fromFlag $ globalWorldFile globalFlags
-    targets'       = filter (not . World.isWorldTarget) targets
 
 storeDetailedBuildReports :: Verbosity -> FilePath
                           -> [(BuildReports.BuildReport, Repo)] -> IO ()
