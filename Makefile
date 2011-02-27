@@ -3,7 +3,7 @@ VERSION=1.10.1.0
 
 #KIND=devel
 KIND=rc
-#KIND=latest
+#KIND=cabal-latest
 
 PREFIX=/usr/local
 HC=ghc
@@ -120,8 +120,8 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	@echo "Release fileset prepared: $(DISTLOC)/"
 
 release: $(DIST_STAMP)
-	scp -r $(DISTLOC) www.haskell.org:/home/haskell/cabal/release/cabal-$(VERSION)
-	ssh www.haskell.org 'cd /home/haskell/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
+	scp -r $(DISTLOC) haskell.org:/srv/web/haskell.org/cabal/release/cabal-$(VERSION)
+	ssh haskell.org 'cd /srv/web/haskell.org/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
 
 # tags...
 
