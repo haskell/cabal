@@ -84,6 +84,7 @@ Executable cabal
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Compat.Exception
+        Distribution.Compat.FilePerms
         Paths_cabal_install
 
     build-depends: base     >= 2        && < 5,
