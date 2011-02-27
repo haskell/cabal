@@ -78,7 +78,7 @@ GHC_PKG_VER=`${GHC_PKG} --version | cut -d' ' -f 5`
 
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
-${GHC_PKG} list > ghc-pkg.list \
+${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} > ghc-pkg.list \
   || die "running '${GHC_PKG} list' failed"
 
 # Will we need to install this package, or is a suitable version installed?
