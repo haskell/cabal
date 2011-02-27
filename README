@@ -19,7 +19,7 @@ debian or ubuntu it is in "libghc6-network-dev".
 
 It requires a few other Haskell packages that are not always installed:
 
- * Cabal  (version 1.8  or later)
+ * Cabal  (version 1.10 or later)
  * HTTP   (version 4000 or later)
  * zlib   (version 0.4  or later)
 
