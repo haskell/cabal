@@ -183,20 +183,20 @@ do_pkg () {
 
 # Actually do something!
 
+info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 info_pkg "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
-info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 info_pkg "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
 info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 
+do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 do_pkg   "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
-do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 do_pkg   "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
 do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
