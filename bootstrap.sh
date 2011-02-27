@@ -48,7 +48,7 @@ done
 # The version regex says what existing installed versions are ok.
 PARSEC_VER="3.1.1";    PARSEC_VER_REGEXP="[23]\."  # == 2.* || == 3.*
 NETWORK_VER="2.3.0.2"; NETWORK_VER_REGEXP="2\."    # == 2.*
-CABAL_VER="1.10.1.0";  CABAL_VER_REGEXP="1\.10\."  # == 1.10.*
+CABAL_VER="1.10.1.0";  CABAL_VER_REGEXP="1\.10\.[^0]"  # == 1.10.* && >= 1.10.1
 TRANS_VER="0.2.2.0";   TRANS_VER_REGEXP="0\.2\."   # == 0.2.*
 MTL_VER="2.0.1.0";     MTL_VER_REGEXP="[12]\."     # == 1.* || == 2.*
 HTTP_VER="4000.1.1";   HTTP_VER_REGEXP="4000\.[01]\." # == 4000.0.* || 4000.1.*
