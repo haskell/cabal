@@ -1,5 +1,26 @@
 -*-change-log-*-
 
+0.10.0 Duncan Coutts <duncan@community.haskell.org> February 2011
+	* New package targets: local dirs, local and remote tarballs
+	* Initial support for a "world" package target
+	* Partial fix for situation where user packages mask global ones
+	* Removed cabal upgrade, new --upgrade-dependencies flag
+	* New cabal install --only-dependencies flag
+	* New cabal fetch --no-dependencies and --dry-run flags
+	* Improved output for cabal info
+	* Simpler and faster bash command line completion
+	* Fix for broken proxies that decompress wrongly
+	* Fix for cabal unpack to preserve executable permissions
+	* Adjusted the output for the -v verbosity level in a few places
+
+0.8.2 Duncan Coutts <duncan@community.haskell.org> March 2010
+	* Fix for cabal update on Windows
+	* On windows switch to per-user installs (rather than global)
+	* Handle intra-package dependencies in dependency planning
+	* Minor tweaks to cabal init feature
+	* Fix various -Wall warnings
+	* Fix for cabal sdist --snapshot
+
 0.8.0 Duncan Coutts <duncan@haskell.org> Dec 2009
 	* Works with ghc-6.12
 	* New "cabal init" command for making initial project .cabal file
