@@ -19,7 +19,7 @@ Copyright:          2005 Lemmih <lemmih@gmail.com>
                     2006 Paolo Martini <paolo@nemail.it>
                     2007 Bjorn Bringert <bjorn@bringert.net>
                     2007 Isaac Potoczny-Jones <ijones@syntaxpolice.org>
-                    2007-2010 Duncan Coutts <duncan@community.haskell.org>
+                    2007-2011 Duncan Coutts <duncan@community.haskell.org>
 Category:           Distribution
 Build-type:         Simple
 Extra-Source-Files: README bash-completion/cabal bootstrap.sh
