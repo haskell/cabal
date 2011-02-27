@@ -4,7 +4,7 @@
 
 1.10.0.x (next stable release version)
 
-1.10.1.0 Duncan Coutts <duncan@community.haskell.org> January 2011
+1.10.1.0 Duncan Coutts <duncan@community.haskell.org> February 2011
 	* Improved error messages when test suites are not enabled
 	* Template parameters allowed in test --test-option(s) flag
 	* Improved documentation of the test feature
