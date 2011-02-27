@@ -16,6 +16,7 @@ GHC=${GHC:-ghc}
 GHC_PKG=${GHC_PKG:-ghc-pkg}
 WGET=${WGET:-wget}
 CURL=${CURL:-curl}
+FETCH=${FETCH:-fetch}
 TAR=${TAR:-tar}
 GUNZIP=${GUNZIP:-gunzip}
 SCOPE_OF_INSTALLATION="--user"
@@ -134,8 +135,11 @@ fetch_pkg () {
   elif which ${WGET} > /dev/null
   then
     ${WGET} -c ${URL} || die "Failed to download ${PKG}."
+  elif which ${FETCH} > /dev/null
+ 	then
+ 	  ${FETCH} ${URL} || die "Failed to download ${PKG}."
   else
-    die "Failed to find a downloader. 'wget' or 'curl' is required."
+    die "Failed to find a downloader. 'curl', 'wget' or 'fetch' is required."
   fi
   [ -f "${PKG}-${VER}.tar.gz" ] \
     || die "Downloading ${URL} did not create ${PKG}-${VER}.tar.gz"
