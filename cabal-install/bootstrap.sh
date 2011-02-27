@@ -38,7 +38,7 @@ do
       echo
       echo "options:"
       echo "   --user    Install for the local user (default)"
-      echo "   --global  Install systemwide"
+      echo "   --global  Install systemwide (must be run as root)"
       exit;;
   esac
 done
@@ -107,23 +107,6 @@ info_pkg () {
   fi
 }
 
-dep_pkg () {
-  PKG=$1
-  VER_MATCH=$2
-  if need_pkg ${PKG} ${VER_MATCH}
-  then
-    echo
-    echo "The Haskell package '${PKG}' is required but it is not installed."
-    echo "If you are using a ghc package provided by your operating system"
-    echo "then install the corresponding packages for 'parsec' and 'network'."
-    echo "If you built ghc from source with only the core libraries then you"
-    echo "should install these extra packages. You can get them from hackage."
-    die "The Haskell package '${PKG}' is required but it is not installed."
-  else
-    echo "${PKG} is already installed and the version is ok."
-  fi
-}
-
 fetch_pkg () {
   PKG=$1
   VER=$2
@@ -131,7 +114,7 @@ fetch_pkg () {
   URL=${HACKAGE_URL}/${PKG}/${VER}/${PKG}-${VER}.tar.gz
   if which ${CURL} > /dev/null
   then
-    ${CURL} -C - -O ${URL} || die "Failed to download ${PKG}."
+    ${CURL} --fail -C - -O ${URL} || die "Failed to download ${PKG}."
   elif which ${WGET} > /dev/null
   then
     ${WGET} -c ${URL} || die "Failed to download ${PKG}."
