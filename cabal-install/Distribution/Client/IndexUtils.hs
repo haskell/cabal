@@ -22,7 +22,8 @@ import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.Types
 
 import Distribution.Package
-         ( PackageId, PackageIdentifier(..), PackageName(..), Package(..)
+         ( PackageId, PackageIdentifier(..), PackageName(..)
+         , Package(..), packageVersion
          , Dependency(Dependency), InstalledPackageId(..) )
 import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -47,10 +48,10 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, lessVerbose )
 import Distribution.Simple.Utils
-         ( warn, info, fromUTF8 )
+         ( warn, info, fromUTF8, equating )
 
 import Data.Maybe  (catMaybes, fromMaybe)
-import Data.List   (isPrefixOf)
+import Data.List   (isPrefixOf, groupBy)
 import Data.Monoid (Monoid(..))
 import qualified Data.Map as Map
 import Control.Monad (MonadPlus(mplus), when)
@@ -79,13 +80,16 @@ getInstalledPackages verbosity comp packageDbs conf =
     verbosity'  = lessVerbose verbosity
 
     convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
-    convert index = PackageIndex.fromList $
-      reverse -- because later ones mask earlier ones, but
-              -- InstalledPackageIndex.allPackages gives us the most preferred
-              -- instances first, when packages share a package id, like when
-              -- the same package is installed in the global & user dbs.
+    convert index = PackageIndex.fromList
+      -- There can be multiple installed instances of each package version,
+      -- like when the same package is installed in the global & user dbs.
+      -- InstalledPackageIndex.allPackagesByName gives us the installed
+      -- packages with the most preferred instances first, so by picking the
+      -- first we should get the user one. This is almost but not quite the
+      -- same as what ghc does.
       [ InstalledPackage ipkg (sourceDeps index ipkg)
-      | ipkg <- InstalledPackageIndex.allPackages index ]
+      | ipkgs <- InstalledPackageIndex.allPackagesByName index
+      , (ipkg:_) <- groupBy (equating packageVersion) ipkgs ]
 
     -- The InstalledPackageInfo only lists dependencies by the
     -- InstalledPackageId, which means we do not directly know the corresponding
