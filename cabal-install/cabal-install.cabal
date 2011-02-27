@@ -29,6 +29,11 @@ source-repository head
   type:     darcs
   location: http://darcs.haskell.org/cabal-install/
 
+source-repository this
+  type:     darcs
+  location: http://darcs.haskell.org/cabal-branches/cabal-install-0.10/
+  tag:      0.10.0
+
 flag old-base
   description: Old, monolithic base
   default: False
