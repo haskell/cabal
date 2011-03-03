@@ -181,6 +181,11 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
     bracket (openCabalTemp testLogDir) deleteIfExists $ \tempLog ->
         bracket (openCabalTemp testLogDir) deleteIfExists $ \tempInput -> do
 
+            -- Check that the test executable exists.
+            exists <- doesFileExist cmd
+            unless exists $ die $ "Error: Could not find test program \"" ++ cmd
+                                  ++ "\". Did you build the package first?"
+
             -- Create directory for HPC files.
             createDirectoryIfMissing True $ tixDir distPref suite
 
