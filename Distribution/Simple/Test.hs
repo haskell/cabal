@@ -76,12 +76,12 @@ import Distribution.Verbosity ( normal, Verbosity )
 import Distribution.System ( buildPlatform, Platform )
 
 import Control.Exception ( bracket )
-import Control.Monad ( when, liftM, unless )
+import Control.Monad ( when, liftM, unless, filterM )
 import Data.Char ( toUpper )
 import Data.Monoid ( mempty )
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
-    , removeFile )
+    , removeFile, getDirectoryContents )
 import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>), (<.>) )
@@ -314,6 +314,11 @@ test pkg_descr lbi flags = do
                       | otherwise -> die $ "no such test: " ++ tName
 
     createDirectoryIfMissing True testLogDir
+
+    -- Delete ordinary files from test log directory.
+    getDirectoryContents testLogDir
+        >>= filterM doesFileExist . map (testLogDir </>)
+        >>= mapM_ removeFile
 
     let totalSuites = length testsToRun
     notice verbosity $ "Running " ++ show totalSuites ++ " test suites..."
