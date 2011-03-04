@@ -202,13 +202,17 @@ data UserTargetProblem
    | UserTargetUnexpectedUriScheme String
    | UserTargetUnrecognisedUri     String
    | UserTargetUnrecognised        String
+   | UserTargetBadWorldPkg
   deriving Show
 
 readUserTarget :: String -> IO (Either UserTargetProblem UserTarget)
 readUserTarget targetstr =
     case testNamedTargets targetstr of
-      Just target -> return target
-      Nothing     -> do
+      Just (Dependency (PackageName "world") verrange)
+        | verrange == anyVersion -> return (Right UserTargetWorld)
+        | otherwise              -> return (Left  UserTargetBadWorldPkg)
+      Just dep                   -> return (Right (UserTargetNamed dep))
+      Nothing -> do
         fileTarget <- testFileTargets targetstr
         case fileTarget of
           Just target -> return target
@@ -217,8 +221,7 @@ readUserTarget targetstr =
               Just target -> return target
               Nothing     -> return (Left (UserTargetUnrecognised targetstr))
   where
-    testNamedTargets = fmap (Right . UserTargetNamed)
-                     . readPToMaybe parseDependencyOrPackageId
+    testNamedTargets = readPToMaybe parseDependencyOrPackageId
 
     testFileTargets filename = do
       isDir  <- doesDirectoryExist filename
@@ -291,6 +294,10 @@ reportUserTargetProblems problems = do
              ++ " - the special 'world' target\n"
              ++ " - cabal files 'pkgname.cabal' or package directories 'pkgname/'\n"
              ++ " - package tarballs 'pkgname.tar.gz' or 'http://example.com/pkgname.tar.gz'"
+
+    case [ () | UserTargetBadWorldPkg <- problems ] of
+      [] -> return ()
+      _  -> die "The special 'world' target does not take any version."
 
     case [ target | UserTargetNonexistantFile target <- problems ] of
       []     -> return ()
