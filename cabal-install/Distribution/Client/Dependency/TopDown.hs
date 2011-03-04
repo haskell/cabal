@@ -22,7 +22,7 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( PlanPackage(..) )
 import Distribution.Client.Types
-         ( AvailablePackage(..), ConfiguredPackage(..), InstalledPackage(..) )
+         ( SourcePackage(..), ConfiguredPackage(..), InstalledPackage(..) )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
@@ -105,9 +105,9 @@ explore pref (ChoiceNode _ choices)  =
         (_, node') = maximumBy (bestByPref pkgname) choice
   where
     topSortNumber choice = case fst (head choice) of
-      InstalledOnly           (InstalledPackageEx  _ i _) -> i
-      AvailableOnly           (UnconfiguredPackage _ i _) -> i
-      InstalledAndAvailable _ (UnconfiguredPackage _ i _) -> i
+      InstalledOnly        (InstalledPackageEx  _ i _) -> i
+      SourceOnly           (UnconfiguredPackage _ i _) -> i
+      InstalledAndSource _ (UnconfiguredPackage _ i _) -> i
 
     bestByPref pkgname = case packageInstalledPreference of
         PreferLatest    ->
@@ -115,8 +115,8 @@ explore pref (ChoiceNode _ choices)  =
         PreferInstalled ->
           comparing (\(p,_) -> (isInstalled p, isPreferred p, packageId p))
       where
-        isInstalled (AvailableOnly _) = False
-        isInstalled _                 = True
+        isInstalled (SourceOnly _) = False
+        isInstalled _              = True
         isPreferred p = packageVersion p `withinRange` preferredVersions
         (PackagePreferences preferredVersions packageInstalledPreference)
           = pref pkgname
@@ -181,11 +181,11 @@ searchSpace configure constraints selected changes next =
 
 packageConstraints :: SelectedPackage -> [TaggedDependency]
 packageConstraints = either installedConstraints availableConstraints
-                   . preferAvailable
+                   . preferSource
   where
-    preferAvailable (InstalledOnly           pkg) = Left pkg
-    preferAvailable (AvailableOnly           pkg) = Right pkg
-    preferAvailable (InstalledAndAvailable _ pkg) = Right pkg
+    preferSource (InstalledOnly        pkg) = Left pkg
+    preferSource (SourceOnly           pkg) = Right pkg
+    preferSource (InstalledAndSource _ pkg) = Right pkg
     installedConstraints (InstalledPackageEx    _ _ deps) =
       [ TaggedDependency InstalledConstraint (thisPackageVersion dep)
       | dep <- deps ]
@@ -235,12 +235,12 @@ topDownResolver = ((((((mapMessages .).).).).).) . topDownResolver'
 --
 topDownResolver' :: Platform -> CompilerId
                  -> PackageIndex InstalledPackage
-                 -> PackageIndex AvailablePackage
+                 -> PackageIndex SourcePackage
                  -> (PackageName -> PackagePreferences)
                  -> [PackageConstraint]
                  -> [PackageName]
                  -> Progress Log Failure [PlanPackage]
-topDownResolver' platform comp installed available
+topDownResolver' platform comp installedPkgIndex sourcePkgIndex
                  preferences constraints targets =
       fmap (uncurry finalise)
     . (\cs -> search configure preferences cs initialPkgNames)
@@ -250,17 +250,17 @@ topDownResolver' platform comp installed available
     configure   = configurePackage platform comp
     constraintSet :: Constraints
     constraintSet = Constraints.empty
-      (annotateInstalledPackages             topSortNumber installed')
-      (annotateAvailablePackages constraints topSortNumber available')
-    (installed', available') = selectNeededSubset installed available
-                                                  initialPkgNames
-    topSortNumber = topologicalSortNumbering installed' available'
+      (annotateInstalledPackages          topSortNumber installedPkgIndex')
+      (annotateSourcePackages constraints topSortNumber sourcePkgIndex')
+    (installedPkgIndex', sourcePkgIndex') =
+      selectNeededSubset installedPkgIndex sourcePkgIndex initialPkgNames
+    topSortNumber = topologicalSortNumbering installedPkgIndex' sourcePkgIndex'
 
     initialPkgNames = Set.fromList targets
 
     finalise selected' constraints' =
         PackageIndex.allPackages
-      . fst . improvePlan installed' constraints'
+      . fst . improvePlan installedPkgIndex' constraints'
       . PackageIndex.fromList
       $ finaliseSelectedPackages preferences selected' constraints'
 
@@ -293,12 +293,12 @@ addTopLevelConstraints (PackageInstalledConstraint pkg:deps) cs =
 
 configurePackage :: Platform -> CompilerId -> ConfigurePackage
 configurePackage platform comp available spkg = case spkg of
-  InstalledOnly         ipkg      -> Right (InstalledOnly ipkg)
-  AvailableOnly              apkg -> fmap AvailableOnly (configure apkg)
-  InstalledAndAvailable ipkg apkg -> fmap (InstalledAndAvailable ipkg)
-                                          (configure apkg)
+  InstalledOnly      ipkg      -> Right (InstalledOnly ipkg)
+  SourceOnly              apkg -> fmap SourceOnly (configure apkg)
+  InstalledAndSource ipkg apkg -> fmap (InstalledAndSource ipkg)
+                                       (configure apkg)
   where
-  configure (UnconfiguredPackage apkg@(AvailablePackage _ p _) _ flags) =
+  configure (UnconfiguredPackage apkg@(SourcePackage _ p _) _ flags) =
     case finalizePackageDescription flags dependencySatisfiable
                                     platform comp [] p of
       Left missing        -> Left missing
@@ -326,14 +326,15 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
 -- | Annotate each available packages with its topological sort number and any
 -- user-supplied partial flag assignment.
 --
-annotateAvailablePackages :: [PackageConstraint]
-                          -> (PackageName -> TopologicalSortNumber)
-                          -> PackageIndex AvailablePackage
-                          -> PackageIndex UnconfiguredPackage
-annotateAvailablePackages constraints dfsNumber available = PackageIndex.fromList
-  [ UnconfiguredPackage pkg (dfsNumber name) (flagsFor name)
-  | pkg <- PackageIndex.allPackages available
-  , let name = packageName pkg ]
+annotateSourcePackages :: [PackageConstraint]
+                       -> (PackageName -> TopologicalSortNumber)
+                       -> PackageIndex SourcePackage
+                       -> PackageIndex UnconfiguredPackage
+annotateSourcePackages constraints dfsNumber sourcePkgIndex =
+    PackageIndex.fromList
+      [ UnconfiguredPackage pkg (dfsNumber name) (flagsFor name)
+      | pkg <- PackageIndex.allPackages sourcePkgIndex
+      , let name = packageName pkg ]
   where
     flagsFor = fromMaybe [] . flip Map.lookup flagsMap
     flagsMap = Map.fromList
@@ -352,7 +353,7 @@ annotateAvailablePackages constraints dfsNumber available = PackageIndex.fromLis
 -- one possible choice for B in which case we pick that immediately).
 --
 -- To construct these topological sort numbers we combine and flatten the
--- installed and available package sets. We consider only dependencies between
+-- installed and source package sets. We consider only dependencies between
 -- named packages, not including versions and for not-yet-configured packages
 -- we look at all the possible dependencies, not just those under any single
 -- flag assignment. This means we can actually get impossible combinations of
@@ -360,9 +361,9 @@ annotateAvailablePackages constraints dfsNumber available = PackageIndex.fromLis
 -- heuristic.
 --
 topologicalSortNumbering :: PackageIndex InstalledPackage
-                         -> PackageIndex AvailablePackage
+                         -> PackageIndex SourcePackage
                          -> (PackageName -> TopologicalSortNumber)
-topologicalSortNumbering installed available =
+topologicalSortNumbering installedPkgIndex sourcePkgIndex =
     \pkgname -> let Just vertex = toVertex pkgname
                  in topologicalSortNumbers Array.! vertex
   where
@@ -370,14 +371,14 @@ topologicalSortNumbering installed available =
                                          (zip (Graph.topSort graph) [0..])
     (graph, _, toVertex)   = Graph.graphFromEdges $
          [ ((), packageName pkg, nub deps)
-         | pkgs@(pkg:_) <- PackageIndex.allPackagesByName installed
+         | pkgs@(pkg:_) <- PackageIndex.allPackagesByName installedPkgIndex
          , let deps = [ packageName dep
                       | pkg' <- pkgs
                       , dep  <- depends pkg' ] ]
       ++ [ ((), packageName pkg, nub deps)
-         | pkgs@(pkg:_) <- PackageIndex.allPackagesByName available
+         | pkgs@(pkg:_) <- PackageIndex.allPackagesByName sourcePkgIndex
          , let deps = [ depName
-                      | AvailablePackage _ pkg' _ <- pkgs
+                      | SourcePackage _ pkg' _ <- pkgs
                       , Dependency depName _ <-
                           buildDepends (flattenPackageDescription pkg') ] ]
 
@@ -387,24 +388,24 @@ topologicalSortNumbering installed available =
 -- and looking at the names of all possible dependencies.
 --
 selectNeededSubset :: PackageIndex InstalledPackage
-                   -> PackageIndex AvailablePackage
+                   -> PackageIndex SourcePackage
                    -> Set PackageName
                    -> (PackageIndex InstalledPackage
-                      ,PackageIndex AvailablePackage)
-selectNeededSubset installed available = select mempty mempty
+                      ,PackageIndex SourcePackage)
+selectNeededSubset installedPkgIndex sourcePkgIndex = select mempty mempty
   where
     select :: PackageIndex InstalledPackage
-           -> PackageIndex AvailablePackage
+           -> PackageIndex SourcePackage
            -> Set PackageName
            -> (PackageIndex InstalledPackage
-              ,PackageIndex AvailablePackage)
-    select installed' available' remaining
-      | Set.null remaining = (installed', available')
-      | otherwise = select installed'' available'' remaining''
+              ,PackageIndex SourcePackage)
+    select installedPkgIndex' sourcePkgIndex' remaining
+      | Set.null remaining = (installedPkgIndex', sourcePkgIndex')
+      | otherwise = select installedPkgIndex'' sourcePkgIndex'' remaining''
       where
         (next, remaining') = Set.deleteFindMin remaining
-        moreInstalled = PackageIndex.lookupPackageName installed next
-        moreAvailable = PackageIndex.lookupPackageName available next
+        moreInstalled = PackageIndex.lookupPackageName installedPkgIndex next
+        moreSource    = PackageIndex.lookupPackageName sourcePkgIndex next
         moreRemaining = -- we filter out packages already included in the indexes
                         -- this avoids an infinite loop if a package depends on itself
                         -- like base-3.0.3.0 with base-4.0.0.0
@@ -413,14 +414,18 @@ selectNeededSubset installed available = select mempty mempty
                         | pkg <- moreInstalled
                         , dep <- depends pkg ]
                      ++ [ name
-                        | AvailablePackage _ pkg _ <- moreAvailable
+                        | SourcePackage _ pkg _ <- moreSource
                         , Dependency name _ <-
                             buildDepends (flattenPackageDescription pkg) ]
-        installed''   = foldl' (flip PackageIndex.insert) installed' moreInstalled
-        available''   = foldl' (flip PackageIndex.insert) available' moreAvailable
-        remaining''   = foldl' (flip         Set.insert) remaining' moreRemaining
-        notAlreadyIncluded name = null (PackageIndex.lookupPackageName installed' name)
-                                  && null (PackageIndex.lookupPackageName available' name)
+        installedPkgIndex'' = foldl' (flip PackageIndex.insert)
+                                     installedPkgIndex' moreInstalled
+        sourcePkgIndex''    = foldl' (flip PackageIndex.insert)
+                                     sourcePkgIndex' moreSource
+        remaining''         = foldl' (flip          Set.insert)
+                                     remaining' moreRemaining
+        notAlreadyIncluded name =
+            null (PackageIndex.lookupPackageName installedPkgIndex' name)
+         && null (PackageIndex.lookupPackageName sourcePkgIndex' name)
 
 -- ------------------------------------------------------------
 -- * Post processing the solution
@@ -434,17 +439,17 @@ finaliseSelectedPackages pref selected constraints =
   map finaliseSelected (PackageIndex.allPackages selected)
   where
     remainingChoices = Constraints.choices constraints
-    finaliseSelected (InstalledOnly         ipkg     ) = finaliseInstalled ipkg
-    finaliseSelected (AvailableOnly              apkg) = finaliseAvailable Nothing apkg
-    finaliseSelected (InstalledAndAvailable ipkg apkg) =
+    finaliseSelected (InstalledOnly      ipkg     ) = finaliseInstalled ipkg
+    finaliseSelected (SourceOnly              apkg) = finaliseSource Nothing apkg
+    finaliseSelected (InstalledAndSource ipkg apkg) =
       case PackageIndex.lookupPackageId remainingChoices (packageId ipkg) of
         Nothing                          -> impossible --picked package not in constraints
-        Just (AvailableOnly _)           -> impossible --to constrain to avail only
-        Just (InstalledOnly _)           -> finaliseInstalled ipkg
-        Just (InstalledAndAvailable _ _) -> finaliseAvailable (Just ipkg) apkg
+        Just (SourceOnly _)           -> impossible --to constrain to avail only
+        Just (InstalledOnly _)        -> finaliseInstalled ipkg
+        Just (InstalledAndSource _ _) -> finaliseSource (Just ipkg) apkg
 
     finaliseInstalled (InstalledPackageEx pkg _ _) = InstallPlan.PreExisting pkg
-    finaliseAvailable mipkg (SemiConfiguredPackage pkg flags deps) =
+    finaliseSource mipkg (SemiConfiguredPackage pkg flags deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags deps')
       where
         deps' = map (packageId . pickRemaining mipkg) deps
@@ -689,9 +694,9 @@ showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
               : [ display (packageVersion s') ++ " " ++ kind s'
                 | s' <- ss ]
 
-    kind (InstalledOnly _)           = "(installed)"
-    kind (AvailableOnly _)           = "(hackage)"
-    kind (InstalledAndAvailable _ _) = "(installed or hackage)"
+    kind (InstalledOnly _)        = "(installed)"
+    kind (SourceOnly _)           = "(source)"
+    kind (InstalledAndSource _ _) = "(installed or source)"
 
     discardedMsg = case discarded of
       []  -> ""

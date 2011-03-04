@@ -12,7 +12,7 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.IndexUtils (
   getInstalledPackages,
-  getAvailablePackages,
+  getSourcePackages,
 
   readPackageIndexFile,
   parseRepoIndex,
@@ -112,20 +112,20 @@ getInstalledPackages verbosity comp packageDbs conf =
 -- | Read a repository index from disk, from the local files specified by
 -- a list of 'Repo's.
 --
--- All the 'AvailablePackage's are marked as having come from the appropriate
+-- All the 'SourcePackage's are marked as having come from the appropriate
 -- 'Repo'.
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
-getAvailablePackages :: Verbosity -> [Repo] -> IO AvailablePackageDb
-getAvailablePackages verbosity [] = do
+getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
+getSourcePackages verbosity [] = do
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
-  return AvailablePackageDb {
+  return SourcePackageDb {
     packageIndex       = mempty,
     packagePreferences = mempty
   }
-getAvailablePackages verbosity repos = do
+getSourcePackages verbosity repos = do
   info verbosity "Reading available packages..."
   pkgss <- mapM (readRepoIndex verbosity) repos
   let (pkgs, prefs) = mconcat pkgss
@@ -133,7 +133,7 @@ getAvailablePackages verbosity repos = do
                  [ (name, range) | Dependency name range <- prefs ]
   _ <- evaluate pkgs
   _ <- evaluate prefs'
-  return AvailablePackageDb {
+  return SourcePackageDb {
     packageIndex       = pkgs,
     packagePreferences = prefs'
   }
@@ -141,12 +141,12 @@ getAvailablePackages verbosity repos = do
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
 --
--- All the 'AvailablePackage's are marked as having come from the given 'Repo'.
+-- All the 'SourcePackage's are marked as having come from the given 'Repo'.
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
 readRepoIndex :: Verbosity -> Repo
-              -> IO (PackageIndex AvailablePackage, [Dependency])
+              -> IO (PackageIndex SourcePackage, [Dependency])
 readRepoIndex verbosity repo = handleNotFound $ do
   let indexFile = repoLocalDir repo </> "00-index.tar"
   (pkgs, prefs) <- either fail return
@@ -154,7 +154,7 @@ readRepoIndex verbosity repo = handleNotFound $ do
                =<< BS.readFile indexFile
 
   pkgIndex <- evaluate $ PackageIndex.fromList
-    [ AvailablePackage {
+    [ SourcePackage {
         packageInfoId      = pkgid,
         packageDescription = pkg,
         packageSource      = RepoTarballPackage repo pkgid Nothing

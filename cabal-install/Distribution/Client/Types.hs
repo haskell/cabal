@@ -34,8 +34,8 @@ newtype Password = Password { unPassword :: String }
 
 -- | This is the information we get from a @00-index.tar.gz@ hackage index.
 --
-data AvailablePackageDb = AvailablePackageDb {
-  packageIndex       :: PackageIndex AvailablePackage,
+data SourcePackageDb = SourcePackageDb {
+  packageIndex       :: PackageIndex SourcePackage,
   packagePreferences :: Map PackageName VersionRange
 }
 
@@ -72,7 +72,7 @@ instance PackageFixedDeps InstalledPackage where
 -- final configure process will be independent of the environment.
 --
 data ConfiguredPackage = ConfiguredPackage
-       AvailablePackage    -- package info, including repo
+       SourcePackage       -- package info, including repo
        FlagAssignment      -- complete flag assignment for the package
        [PackageId]         -- set of exact dependencies. These must be
                            -- consistent with the 'buildDepends' in the
@@ -87,16 +87,16 @@ instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ deps) = deps
 
 
--- | We re-use @GenericPackageDescription@ and use the @package-url@
--- field to store the tarball URI.
-data AvailablePackage = AvailablePackage {
+-- | A package description along with the location of the package sources.
+--
+data SourcePackage = SourcePackage {
     packageInfoId      :: PackageId,
     packageDescription :: GenericPackageDescription,
     packageSource      :: PackageLocation (Maybe FilePath)
   }
   deriving Show
 
-instance Package AvailablePackage where packageId = packageInfoId
+instance Package SourcePackage where packageId = packageInfoId
 
 -- ------------------------------------------------------------
 -- * Package locations and repositories

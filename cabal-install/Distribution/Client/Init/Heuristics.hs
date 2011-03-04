@@ -28,7 +28,7 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Utils
          ( intercalate )
 
-import Distribution.Client.Types ( packageDescription, AvailablePackageDb(..) )
+import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
 import Control.Monad (liftM )
 import Data.Char   ( isUpper, isLower, isSpace )
 #if MIN_VERSION_base(3,0,3)
@@ -134,9 +134,9 @@ guessAuthorNameMail =
     authorRepoFile  = "_darcs" </> "prefs" </> "author"
 
 -- |Get list of categories used in hackage. NOTE: Very slow, needs to be cached
-knownCategories :: AvailablePackageDb -> [String]
-knownCategories (AvailablePackageDb available _) = nubSet $
-    [ cat | pkg <- map head (allPackagesByName available)
+knownCategories :: SourcePackageDb -> [String]
+knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet $
+    [ cat | pkg <- map head (allPackagesByName sourcePkgIndex)
           , let catList = (PD.category . PD.packageDescription . packageDescription) pkg
           , cat <- splitString ',' catList
     ]

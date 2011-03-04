@@ -21,7 +21,7 @@ import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
 import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, getInstalledPackages )
+         ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FetchFlags(..) )
@@ -79,15 +79,15 @@ fetch verbosity packageDBs repos comp conf
 
     mapM_ checkTarget userTargets
 
-    installed     <- getInstalledPackages verbosity comp packageDBs conf
-    availableDb   <- getAvailablePackages verbosity repos
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+    sourcePkgDb       <- getSourcePackages    verbosity repos
 
     pkgSpecifiers <- resolveUserTargets verbosity
-                       globalFlags (packageIndex availableDb) userTargets
+                       globalFlags (packageIndex sourcePkgDb) userTargets
 
     pkgs  <- planPackages
                verbosity comp fetchFlags
-               installed availableDb pkgSpecifiers
+               installedPkgIndex sourcePkgDb pkgSpecifiers
 
     pkgs' <- filterM (fmap not . isFetched . packageSource) pkgs
     if null pkgs'
@@ -111,11 +111,11 @@ planPackages :: Verbosity
              -> Compiler
              -> FetchFlags
              -> PackageIndex InstalledPackage
-             -> AvailablePackageDb
-             -> [PackageSpecifier AvailablePackage]
-             -> IO [AvailablePackage]
+             -> SourcePackageDb
+             -> [PackageSpecifier SourcePackage]
+             -> IO [SourcePackage]
 planPackages verbosity comp fetchFlags
-             installed availableDb pkgSpecifiers
+             installedPkgIndex sourcePkgDb pkgSpecifiers
 
   | includeDependencies = do
       notice verbosity "Resolving dependencies..."
@@ -144,7 +144,7 @@ planPackages verbosity comp fetchFlags
         -- things we might have installed (but not have the sources for).
         reinstallTargets
 
-      $ standardInstallPolicy installed availableDb pkgSpecifiers
+      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
 
     includeDependencies = fromFlag (fetchDeps fetchFlags)
     logMsg message rest = debug verbosity message >> rest
