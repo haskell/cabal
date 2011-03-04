@@ -49,6 +49,8 @@ import Distribution.System
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 
+import Data.Monoid (Monoid(..))
+
 -- | Configure the package found in the local directory
 configure :: Verbosity
           -> PackageDBStack
@@ -121,7 +123,7 @@ planLocalPackage :: Verbosity -> Compiler
                  -> AvailablePackageDb
                  -> IO (Progress String String InstallPlan)
 planLocalPackage verbosity comp configFlags configExFlags installed
-  availabledb = do
+  (AvailablePackageDb _ availablePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
 
   let -- We create a local package and ask to resolve a dependency on it
@@ -148,8 +150,10 @@ planLocalPackage verbosity comp configFlags configExFlags installed
             [ PackageFlagsConstraint (packageName pkg)
                                      (configConfigurationsFlags configFlags) ]
 
-        $ standardInstallPolicy installed availabledb
-                                [SpecificSourcePackage localPkg]
+        $ standardInstallPolicy
+            installed
+            (AvailablePackageDb mempty availablePrefs)
+            [SpecificSourcePackage localPkg]
 
   return (resolveDependencies buildPlatform (compilerId comp) resolverParams)
 
