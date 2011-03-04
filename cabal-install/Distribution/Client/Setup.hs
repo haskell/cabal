@@ -90,7 +90,7 @@ data GlobalFlags = GlobalFlags {
     globalVersion        :: Flag Bool,
     globalNumericVersion :: Flag Bool,
     globalConfigFile     :: Flag FilePath,
-    globalRemoteRepos    :: [RemoteRepo],     -- ^Available Hackage servers.
+    globalRemoteRepos    :: [RemoteRepo],     -- ^ Available Hackage servers.
     globalCacheDir       :: Flag FilePath,
     globalLocalRepos     :: [FilePath],
     globalLogsDir        :: Flag FilePath,

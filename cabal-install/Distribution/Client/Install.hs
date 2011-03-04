@@ -52,7 +52,7 @@ import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 -- import qualified Distribution.Client.Info as Info
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, getInstalledPackages )
+         ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
@@ -62,7 +62,7 @@ import Distribution.Client.Setup
 import Distribution.Client.Config
          ( defaultCabalDir )
 import Distribution.Client.Tar (extractTarGzFile)
-import Distribution.Client.Types as Available
+import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.SetupWrapper
@@ -150,8 +150,8 @@ install, upgrade
 install verbosity packageDBs repos comp conf
   globalFlags configFlags configExFlags installFlags userTargets0 = do
 
-    installed     <- getInstalledPackages verbosity comp packageDBs conf
-    availableDb   <- getAvailablePackages verbosity repos
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+    sourcePkgDb       <- getSourcePackages    verbosity repos
 
     let -- For install, if no target is given it means we use the
         -- current directory as the single target
@@ -159,19 +159,19 @@ install verbosity packageDBs repos comp conf
                     | otherwise         = userTargets0
 
     pkgSpecifiers <- resolveUserTargets verbosity
-                       globalFlags (packageIndex availableDb) userTargets
+                       globalFlags (packageIndex sourcePkgDb) userTargets
 
     notice verbosity "Resolving dependencies..."
     installPlan   <- foldProgress logMsg die return $
                        planPackages
                          comp configFlags configExFlags installFlags
-                         installed availableDb pkgSpecifiers
+                         installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    printPlanMessages verbosity installed installPlan dryRun
+    printPlanMessages verbosity installedPkgIndex installPlan dryRun
 
     unless dryRun $ do
       installPlan' <- performInstallations verbosity
-                        context installed installPlan
+                        context installedPkgIndex installPlan
       postInstallActions verbosity context userTargets installPlan'
 
   where
@@ -214,11 +214,11 @@ planPackages :: Compiler
              -> ConfigExFlags
              -> InstallFlags
              -> PackageIndex InstalledPackage
-             -> AvailablePackageDb
-             -> [PackageSpecifier AvailablePackage]
+             -> SourcePackageDb
+             -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
 planPackages comp configFlags configExFlags installFlags
-             installed availableDb pkgSpecifiers =
+             installedPkgIndex sourcePkgDb pkgSpecifiers =
 
         resolveDependencies
           buildPlatform (compilerId comp)
@@ -252,7 +252,7 @@ planPackages comp configFlags configExFlags installFlags
 
       . (if reinstall then reinstallTargets else id)
 
-      $ standardInstallPolicy installed availableDb pkgSpecifiers
+      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
 
     --TODO: this is a general feature and should be moved to D.C.Dependency
     -- Also, the InstallPlan.remove should return info more precise to the
@@ -313,7 +313,7 @@ printDryRun :: Verbosity
             -> PackageIndex InstalledPackage
             -> InstallPlan
             -> IO ()
-printDryRun verbosity installed plan = case unfoldr next plan of
+printDryRun verbosity installedPkgIndex plan = case unfoldr next plan of
   []   -> return ()
   pkgs
     | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
@@ -332,7 +332,8 @@ printDryRun verbosity installed plan = case unfoldr next plan of
               -- pretending that each package is installed
 
     showPkgAndReason pkg' = display (packageId pkg') ++ " " ++
-          case PackageIndex.lookupPackageName installed (packageName pkg') of
+          case PackageIndex.lookupPackageName installedPkgIndex
+                                              (packageName pkg') of
             [] -> "(new package)"
             ps ->  case find ((==packageId pkg') . packageId) ps of
               Nothing  -> "(new version)"
@@ -458,8 +459,8 @@ regenerateHaddockIndex verbosity packageDBs comp conf
      "Updating documentation index " ++ indexFile
 
   --TODO: might be nice if the install plan gave us the new InstalledPackageInfo
-  installed <- getInstalledPackages verbosity comp packageDBs conf
-  Haddock.regenerateHaddockIndex verbosity installed conf indexFile
+  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+  Haddock.regenerateHaddockIndex verbosity installedPkgIndex conf indexFile
 
   | otherwise = return ()
   where
@@ -563,14 +564,15 @@ performInstallations :: Verbosity
 performInstallations verbosity
   (packageDBs, _, comp, conf,
    globalFlags, configFlags, configExFlags, installFlags)
-  installed installPlan = do
+  installedPkgIndex installPlan = do
 
   executeInstallPlan installPlan $ \cpkg ->
     installConfiguredPackage platform compid configFlags
                              cpkg $ \configFlags' src pkg ->
-      fetchAvailablePackage verbosity src $ \src' ->
+      fetchSourcePackage verbosity src $ \src' ->
         installLocalPackage verbosity (packageId pkg) src' $ \mpath ->
-          installUnpackedPackage verbosity (setupScriptOptions installed)
+          installUnpackedPackage verbosity
+                                 (setupScriptOptions installedPkgIndex)
                                  miscOptions configFlags' installFlags
                                  compid pkg mpath useLogFile
 
@@ -646,7 +648,7 @@ executeInstallPlan plan installPkg = case InstallPlan.ready plan of
         -- which kind of means it was not their fault.
 
 
--- | Call an installer for an 'AvailablePackage' but override the configure
+-- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ConfiguredPackage'. In particular the
 -- 'ConfiguredPackage' specifies an exact 'FlagAssignment' and exactly
 -- versioned package dependencies. So we ignore any previous partial flag
@@ -658,7 +660,7 @@ installConfiguredPackage :: Platform -> CompilerId
                                          -> PackageDescription -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
-  (ConfiguredPackage (AvailablePackage _ gpkg source) flags deps)
+  (ConfiguredPackage (SourcePackage _ gpkg source) flags deps)
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
     configConstraints = map thisPackageVersion deps
@@ -670,12 +672,12 @@ installConfiguredPackage platform comp configFlags
       Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
       Right (desc, _) -> desc
 
-fetchAvailablePackage
+fetchSourcePackage
   :: Verbosity
   -> PackageLocation (Maybe FilePath)
   -> (PackageLocation FilePath -> IO BuildResult)
   -> IO BuildResult
-fetchAvailablePackage verbosity src installPkg = do
+fetchSourcePackage verbosity src installPkg = do
   fetched <- checkFetched src
   case fetched of
     Just src' -> installPkg src'

@@ -40,7 +40,7 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( AvailablePackage(..), ConfiguredPackage(..) )
+         ( SourcePackage(..), ConfiguredPackage(..) )
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -132,7 +132,7 @@ symlinkBinaries configFlags installFlags plan =
       , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
 
     pkgDescription :: ConfiguredPackage -> PackageDescription
-    pkgDescription (ConfiguredPackage (AvailablePackage _ pkg _) flags _) =
+    pkgDescription (ConfiguredPackage (SourcePackage _ pkg _) flags _) =
       case finalizePackageDescription flags
              (const True)
              platform compilerId [] pkg of

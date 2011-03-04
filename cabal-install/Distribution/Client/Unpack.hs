@@ -36,7 +36,7 @@ import Distribution.Client.Dependency
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
-        ( getAvailablePackages )
+        ( getSourcePackages )
 
 import System.Directory
          ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
@@ -60,14 +60,14 @@ unpack verbosity _ _ _ [] =
 unpack verbosity repos globalFlags unpackFlags userTargets = do
   mapM_ checkTarget userTargets
 
-  availableDb   <- getAvailablePackages verbosity repos
+  sourcePkgDb   <- getSourcePackages verbosity repos
 
   pkgSpecifiers <- resolveUserTargets verbosity
-                     globalFlags (packageIndex availableDb) userTargets
+                     globalFlags (packageIndex sourcePkgDb) userTargets
 
   pkgs <- either (die . unlines . map show) return $
             resolveWithoutDependencies
-              (resolverParams availableDb pkgSpecifiers)
+              (resolverParams sourcePkgDb pkgSpecifiers)
 
   unless (null prefix) $
          createDirectoryIfMissing True prefix
@@ -89,10 +89,10 @@ unpack verbosity repos globalFlags unpackFlags userTargets = do
         error "Distribution.Client.Unpack.unpack: the impossible happened."
 
   where
-    resolverParams availableDb pkgSpecifiers =
+    resolverParams sourcePkgDb pkgSpecifiers =
         --TODO: add commandline constraint and preference args for unpack
 
-        standardInstallPolicy mempty availableDb pkgSpecifiers
+        standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
 
     prefix = fromFlagOrDefault "" (unpackDestDir unpackFlags)
 

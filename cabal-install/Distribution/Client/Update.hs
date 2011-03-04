@@ -15,12 +15,12 @@ module Distribution.Client.Update
     ) where
 
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), LocalRepo(..), AvailablePackageDb(..) )
+         ( Repo(..), RemoteRepo(..), LocalRepo(..), SourcePackageDb(..) )
 import Distribution.Client.FetchUtils
          ( downloadIndex )
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
-         ( getAvailablePackages )
+         ( getSourcePackages )
 import qualified Paths_cabal_install
          ( version )
 
@@ -63,14 +63,14 @@ updateRepo verbosity repo = case repoKind repo of
 
 checkForSelfUpgrade :: Verbosity -> [Repo] -> IO ()
 checkForSelfUpgrade verbosity repos = do
-  AvailablePackageDb available prefs <- getAvailablePackages verbosity repos
+  SourcePackageDb sourcePkgIndex prefs <- getSourcePackages verbosity repos
 
   let self = PackageName "cabal-install"
       preferredVersionRange  = fromMaybe anyVersion (Map.lookup self prefs)
       currentVersion         = Paths_cabal_install.version
       laterPreferredVersions =
         [ packageVersion pkg
-        | pkg <- PackageIndex.lookupPackageName available self
+        | pkg <- PackageIndex.lookupPackageName sourcePkgIndex self
         , let version = packageVersion pkg
         , version > currentVersion
         , version `withinRange` preferredVersionRange ]

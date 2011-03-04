@@ -13,7 +13,7 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( AvailablePackage(..), InstalledPackage )
+         ( SourcePackage(..), InstalledPackage )
 
 import Distribution.Package
          ( PackageIdentifier, Dependency
@@ -26,15 +26,15 @@ import Distribution.PackageDescription
 -- ------------------------------------------------------------
 
 type SelectablePackage
-   = InstalledOrAvailable InstalledPackageEx UnconfiguredPackage
+   = InstalledOrSource InstalledPackageEx UnconfiguredPackage
 
 type SelectedPackage
-   = InstalledOrAvailable InstalledPackageEx SemiConfiguredPackage
+   = InstalledOrSource InstalledPackageEx SemiConfiguredPackage
 
-data InstalledOrAvailable installed available
-   = InstalledOnly         installed
-   | AvailableOnly                   available
-   | InstalledAndAvailable installed available
+data InstalledOrSource installed available
+   = InstalledOnly      installed
+   | SourceOnly                   available
+   | InstalledAndSource installed available
 
 type TopologicalSortNumber = Int
 
@@ -46,13 +46,13 @@ data InstalledPackageEx
 
 data UnconfiguredPackage
    = UnconfiguredPackage
-       AvailablePackage
+       SourcePackage
        !TopologicalSortNumber
        FlagAssignment
 
 data SemiConfiguredPackage
    = SemiConfiguredPackage
-       AvailablePackage  -- package info
+       SourcePackage     -- package info
        FlagAssignment    -- total flag assignment for the package
        [Dependency]      -- dependencies we end up with when we apply
                          -- the flag assignment
@@ -70,10 +70,10 @@ instance Package SemiConfiguredPackage where
   packageId (SemiConfiguredPackage p _ _) = packageId p
 
 instance (Package installed, Package available)
-      => Package (InstalledOrAvailable installed available) where
-  packageId (InstalledOnly         p  ) = packageId p
-  packageId (AvailableOnly         p  ) = packageId p
-  packageId (InstalledAndAvailable p _) = packageId p
+      => Package (InstalledOrSource installed available) where
+  packageId (InstalledOnly      p  ) = packageId p
+  packageId (SourceOnly         p  ) = packageId p
+  packageId (InstalledAndSource p _) = packageId p
 
 -- ------------------------------------------------------------
 -- * Tagged Dependency type

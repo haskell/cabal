@@ -18,10 +18,10 @@ import Distribution.Client.Dependency
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
-         ( getAvailablePackages, getInstalledPackages )
+         ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.Setup
          ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
-import Distribution.Client.Types as Available
+import Distribution.Client.Types as Source
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 
@@ -64,11 +64,11 @@ configure :: Verbosity
 configure verbosity packageDBs repos comp conf
   configFlags configExFlags extraArgs = do
 
-  installed <- getInstalledPackages verbosity comp packageDBs conf
-  available <- getAvailablePackages verbosity repos
+  installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+  sourcePkgDb       <- getSourcePackages    verbosity repos
 
   progress <- planLocalPackage verbosity comp configFlags configExFlags
-                               installed available
+                               installedPkgIndex sourcePkgDb
 
   notice verbosity "Resolving dependencies..."
   maybePlan <- foldProgress logMsg (return . Left) (return . Right)
@@ -76,15 +76,15 @@ configure verbosity packageDBs repos comp conf
   case maybePlan of
     Left message -> do
       info verbosity message
-      setupWrapper verbosity (setupScriptOptions installed) Nothing
+      setupWrapper verbosity (setupScriptOptions installedPkgIndex) Nothing
         configureCommand (const configFlags) extraArgs
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [pkg@(ConfiguredPackage (AvailablePackage _ _ (LocalUnpackedPackage _)) _ _)] ->
+      [pkg@(ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _)) _ _)] ->
         configurePackage verbosity
           (InstallPlan.planPlatform installPlan)
           (InstallPlan.planCompiler installPlan)
-          (setupScriptOptions installed)
+          (setupScriptOptions installedPkgIndex)
           configFlags pkg extraArgs
 
       _ -> die $ "internal error: configure install plan should have exactly "
@@ -120,17 +120,17 @@ configure verbosity packageDBs repos comp conf
 planLocalPackage :: Verbosity -> Compiler
                  -> ConfigFlags -> ConfigExFlags
                  -> PackageIndex InstalledPackage
-                 -> AvailablePackageDb
+                 -> SourcePackageDb
                  -> IO (Progress String String InstallPlan)
-planLocalPackage verbosity comp configFlags configExFlags installed
-  (AvailablePackageDb _ availablePrefs) = do
+planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
+  (SourcePackageDb _ packagePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
 
   let -- We create a local package and ask to resolve a dependency on it
-      localPkg = AvailablePackage {
-        packageInfoId                = packageId pkg,
-        Available.packageDescription = pkg,
-        packageSource                = LocalUnpackedPackage "."
+      localPkg = SourcePackage {
+        packageInfoId             = packageId pkg,
+        Source.packageDescription = pkg,
+        packageSource             = LocalUnpackedPackage "."
       }
 
       resolverParams =
@@ -151,14 +151,14 @@ planLocalPackage verbosity comp configFlags configExFlags installed
                                      (configConfigurationsFlags configFlags) ]
 
         $ standardInstallPolicy
-            installed
-            (AvailablePackageDb mempty availablePrefs)
+            installedPkgIndex
+            (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
   return (resolveDependencies buildPlatform (compilerId comp) resolverParams)
 
 
--- | Call an installer for an 'AvailablePackage' but override the configure
+-- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ConfiguredPackage'. In particular the
 -- 'ConfiguredPackage' specifies an exact 'FlagAssignment' and exactly
 -- versioned package dependencies. So we ignore any previous partial flag
@@ -172,7 +172,7 @@ configurePackage :: Verbosity
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-  (ConfiguredPackage (AvailablePackage _ gpkg _) flags deps) extraArgs =
+  (ConfiguredPackage (SourcePackage _ gpkg _) flags deps) extraArgs =
 
   setupWrapper verbosity
     scriptOptions (Just pkg) configureCommand configureFlags extraArgs

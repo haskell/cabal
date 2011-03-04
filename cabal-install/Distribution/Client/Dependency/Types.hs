@@ -22,7 +22,7 @@ module Distribution.Client.Dependency.Types (
   ) where
 
 import Distribution.Client.Types
-         ( AvailablePackage(..), InstalledPackage )
+         ( SourcePackage(..), InstalledPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.PackageDescription
@@ -51,7 +51,7 @@ import Prelude hiding (fail)
 type DependencyResolver = Platform
                        -> CompilerId
                        -> PackageIndex InstalledPackage
-                       -> PackageIndex AvailablePackage
+                       -> PackageIndex SourcePackage
                        -> (PackageName -> PackagePreferences)
                        -> [PackageConstraint]
                        -> [PackageName]

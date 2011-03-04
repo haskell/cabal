@@ -44,7 +44,7 @@ import Distribution.Package
          , PackageIdentifier(..), packageName, packageVersion
          , Dependency(Dependency) )
 import Distribution.Client.Types
-         ( AvailablePackage(..), PackageLocation(..) )
+         ( SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..) )
 
@@ -344,7 +344,7 @@ resolveUserTargets :: Package pkg
                    -> GlobalFlags
                    -> PackageIndex pkg
                    -> [UserTarget]
-                   -> IO [PackageSpecifier AvailablePackage]
+                   -> IO [PackageSpecifier SourcePackage]
 resolveUserTargets verbosity globalFlags available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
@@ -452,7 +452,7 @@ fetchPackageTarget verbosity target = case target of
 --
 readPackageTarget :: Verbosity
                   -> PackageTarget (PackageLocation FilePath)
-                  -> IO (PackageTarget AvailablePackage)
+                  -> IO (PackageTarget SourcePackage)
 readPackageTarget verbosity target = case target of
 
     PackageTargetNamed pkgname constraints userTarget ->
@@ -466,7 +466,7 @@ readPackageTarget verbosity target = case target of
       LocalUnpackedPackage dir -> do
         pkg <- readPackageDescription verbosity =<< findPackageDesc dir
         return $ PackageTargetLocation $
-                   AvailablePackage {
+                   SourcePackage {
                      packageInfoId      = packageId pkg,
                      packageDescription = pkg,
                      packageSource      = fmap Just location
@@ -491,7 +491,7 @@ readPackageTarget verbosity target = case target of
                        ++ filename ++ " in " ++ tarballFile
         Just pkg ->
           return $ PackageTargetLocation $
-                     AvailablePackage {
+                     SourcePackage {
                        packageInfoId      = packageId pkg,
                        packageDescription = pkg,
                        packageSource      = fmap Just location
@@ -552,14 +552,14 @@ disambiguatePackageTargets :: Package pkg'
                            -> [PackageTarget pkg]
                            -> ( [PackageTargetProblem]
                               , [PackageSpecifier pkg] )
-disambiguatePackageTargets available availableExtra targets =
+disambiguatePackageTargets availablePkgIndex availableExtra targets =
     partitionEithers (map disambiguatePackageTarget targets)
   where
     disambiguatePackageTarget packageTarget = case packageTarget of
       PackageTargetLocation pkg -> Right (SpecificSourcePackage pkg)
 
       PackageTargetNamed pkgname constraints userTarget
-        | null (PackageIndex.lookupPackageName available pkgname)
+        | null (PackageIndex.lookupPackageName availablePkgIndex pkgname)
                     -> Left (PackageNameUnknown pkgname userTarget)
         | otherwise -> Right (NamedPackage pkgname constraints)
 
@@ -573,7 +573,7 @@ disambiguatePackageTargets available availableExtra targets =
 
     -- use any extra specific available packages to help us disambiguate
     packageNameEnv :: PackageNameEnv
-    packageNameEnv = mappend (indexPackageNameEnv available)
+    packageNameEnv = mappend (indexPackageNameEnv availablePkgIndex)
                              (extraPackageNameEnv availableExtra)
 
 
@@ -642,10 +642,10 @@ instance Monoid PackageNameEnv where
     PackageNameEnv (\name -> lookupA name ++ lookupB name)
 
 indexPackageNameEnv :: Package pkg => PackageIndex pkg -> PackageNameEnv
-indexPackageNameEnv index = PackageNameEnv pkgNameLookup
+indexPackageNameEnv pkgIndex = PackageNameEnv pkgNameLookup
   where
     pkgNameLookup (PackageName name) =
-      map fst (PackageIndex.searchByName index name)
+      map fst (PackageIndex.searchByName pkgIndex name)
 
 extraPackageNameEnv :: [PackageName] -> PackageNameEnv
 extraPackageNameEnv names = PackageNameEnv pkgNameLookup
