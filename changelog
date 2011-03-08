@@ -1,5 +1,9 @@
 -*-change-log-*-
 
+0.10.2 Duncan Coutts <duncan@community.haskell.org> March 2011
+	* Fix assertion failure in cabal configure
+	* Fix command line handling for "world" target
+
 0.10.0 Duncan Coutts <duncan@community.haskell.org> February 2011
 	* New package targets: local dirs, local and remote tarballs
 	* Initial support for a "world" package target
