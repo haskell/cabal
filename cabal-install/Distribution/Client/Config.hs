@@ -367,7 +367,11 @@ configFieldDescriptions =
 
   ++ toSavedConfig liftReportFlag
        (commandOptions reportCommand ParseArgs)
-       ["verbose"] []
+       ["verbose", "username", "password"] []
+       --FIXME: this is a hack, hiding the username and password.
+       -- But otherwise it masks the upload ones. Either need to
+       -- share the options or make then distinct. In any case
+       -- they should probably be per-server.
 
   where
     toSavedConfig lift options exclusions replacements =
