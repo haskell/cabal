@@ -31,10 +31,11 @@ type SelectablePackage
 type SelectedPackage
    = InstalledOrSource InstalledPackageEx SemiConfiguredPackage
 
-data InstalledOrSource installed available
+data InstalledOrSource installed source
    = InstalledOnly      installed
-   | SourceOnly                   available
-   | InstalledAndSource installed available
+   | SourceOnly                   source
+   | InstalledAndSource installed source
+  deriving Eq
 
 type TopologicalSortNumber = Int
 

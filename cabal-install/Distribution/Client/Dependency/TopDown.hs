@@ -32,7 +32,7 @@ import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Package
          ( PackageName(..), PackageId, Package(..), packageVersion, packageName
-         , Dependency(Dependency), thisPackageVersion, notThisPackageVersion
+         , Dependency(Dependency), thisPackageVersion
          , simplifyDependency, PackageFixedDeps(depends) )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
@@ -566,51 +566,57 @@ improvePlan installed constraints0 selected0 =
 addPackageSelectConstraint :: PackageId -> Constraints
                            -> Satisfiable Constraints
                                 [PackageId] ExclusionReason
-addPackageSelectConstraint pkgid constraints =
-  Constraints.constrain dep reason constraints
+addPackageSelectConstraint pkgid =
+    Constraints.constrain pkgname constraint reason
   where
-    dep    = TaggedDependency NoInstalledConstraint (thisPackageVersion pkgid)
-    reason = SelectedOther pkgid
+    pkgname          = packageName pkgid
+    constraint ver _ = ver == packageVersion pkgid
+    reason           = SelectedOther pkgid
 
 addPackageExcludeConstraint :: PackageId -> Constraints
                             -> Satisfiable Constraints
                                  [PackageId] ExclusionReason
-addPackageExcludeConstraint pkgid constraints =
-  Constraints.constrain dep reason constraints
+addPackageExcludeConstraint pkgid =
+  Constraints.constrain pkgname constraint reason
   where
-    dep    = TaggedDependency NoInstalledConstraint
-               (notThisPackageVersion pkgid)
+    pkgname = packageName pkgid
+    constraint ver installed
+      | ver == packageVersion pkgid = installed
+      | otherwise                   = True
     reason = ExcludedByConfigureFail
 
 addPackageDependencyConstraint :: PackageId -> TaggedDependency -> Constraints
                                -> Satisfiable Constraints
                                     [PackageId] ExclusionReason
-addPackageDependencyConstraint pkgid dep constraints =
-  Constraints.constrain dep reason constraints
+addPackageDependencyConstraint pkgid dep =
+    Constraints.constrain pkgname constraint reason
   where
+    constraint ver installed = ver `withinRange` verrange
+                            && case installedConstraint of
+                                 InstalledConstraint   -> installed
+                                 NoInstalledConstraint -> True
     reason = ExcludedByPackageDependency pkgid dep
+    TaggedDependency installedConstraint (Dependency pkgname verrange) = dep
 
 addTopLevelVersionConstraint :: PackageName -> VersionRange
                              -> Constraints
                              -> Satisfiable Constraints
                                   [PackageId] ExclusionReason
-addTopLevelVersionConstraint pkg ver constraints =
-  Constraints.constrain taggedDep reason constraints
+addTopLevelVersionConstraint pkgname verrange =
+    Constraints.constrain pkgname constraint reason
   where
-    dep       = Dependency pkg ver
-    taggedDep = TaggedDependency NoInstalledConstraint dep
-    reason    = ExcludedByTopLevelDependency dep
+    constraint ver _installed = ver `withinRange` verrange
+    reason = ExcludedByTopLevelDependency (Dependency pkgname verrange)
 
 addTopLevelInstalledConstraint :: PackageName
                                -> Constraints
                                -> Satisfiable Constraints
                                     [PackageId] ExclusionReason
-addTopLevelInstalledConstraint pkg constraints =
-  Constraints.constrain taggedDep reason constraints
+addTopLevelInstalledConstraint pkgname =
+    Constraints.constrain pkgname constraint reason
   where
-    dep       = Dependency pkg anyVersion
-    taggedDep = TaggedDependency InstalledConstraint dep
-    reason    = ExcludedByTopLevelDependency dep
+    constraint _ver installed = installed
+    reason = ExcludedByTopLevelDependency (Dependency pkgname anyVersion)
 
 -- ------------------------------------------------------------
 -- * Reasons for constraints
