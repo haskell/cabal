@@ -31,7 +31,7 @@ import Distribution.Client.Dependency.Types
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier, Package(packageId), packageVersion, packageName
+         ( PackageName(..), PackageId, Package(..), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion, notThisPackageVersion
          , PackageFixedDeps(depends) )
 import Distribution.PackageDescription
@@ -135,7 +135,7 @@ type ConfigurePackage = PackageIndex SelectablePackage
                      -> Either [Dependency] SelectedPackage
 
 -- | (packages selected, packages discarded)
-type SelectionChanges = ([SelectedPackage], [PackageIdentifier])
+type SelectionChanges = ([SelectedPackage], [PackageId])
 
 searchSpace :: ConfigurePackage
             -> Constraints
@@ -193,8 +193,8 @@ packageConstraints = either installedConstraints availableConstraints
       [ TaggedDependency NoInstalledConstraint dep | dep <- deps ]
 
 constrainDeps :: SelectedPackage -> [TaggedDependency] -> Constraints
-              -> [PackageIdentifier]
-              -> Either Failure (Constraints, [PackageIdentifier])
+              -> [PackageId]
+              -> Either Failure (Constraints, [PackageId])
 constrainDeps pkg []         cs discard =
   case addPackageSelectConstraint (packageId pkg) cs of
     Satisfiable cs' discard' -> Right (cs', discard' ++ discard)
@@ -317,7 +317,7 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
   [ InstalledPackageEx pkg (dfsNumber (packageName pkg)) (transitiveDepends pkg)
   | pkg <- PackageIndex.allPackages installed ]
   where
-    transitiveDepends :: InstalledPackage -> [PackageIdentifier]
+    transitiveDepends :: InstalledPackage -> [PackageId]
     transitiveDepends = map (packageId . toPkg) . tail . Graph.reachable graph
                       . fromJust . toVertex . packageId
     (graph, toPkg, toVertex) = PackageIndex.dependencyGraph installed
@@ -552,7 +552,7 @@ improvePlan installed constraints0 selected0 =
         dep = TaggedDependency InstalledConstraint (thisPackageVersion pkgid')
 
     reverseTopologicalOrder :: PackageFixedDeps pkg
-                            => PackageIndex pkg -> [PackageIdentifier]
+                            => PackageIndex pkg -> [PackageId]
     reverseTopologicalOrder index = map (packageId . toPkg)
                                   . Graph.topSort
                                   . Graph.transposeG
@@ -563,18 +563,18 @@ improvePlan installed constraints0 selected0 =
 -- * Adding and recording constraints
 -- ------------------------------------------------------------
 
-addPackageSelectConstraint :: PackageIdentifier -> Constraints
+addPackageSelectConstraint :: PackageId -> Constraints
                            -> Satisfiable Constraints
-                                [PackageIdentifier] ExclusionReason
+                                [PackageId] ExclusionReason
 addPackageSelectConstraint pkgid constraints =
   Constraints.constrain dep reason constraints
   where
     dep    = TaggedDependency NoInstalledConstraint (thisPackageVersion pkgid)
     reason = SelectedOther pkgid
 
-addPackageExcludeConstraint :: PackageIdentifier -> Constraints
+addPackageExcludeConstraint :: PackageId -> Constraints
                             -> Satisfiable Constraints
-                                 [PackageIdentifier] ExclusionReason
+                                 [PackageId] ExclusionReason
 addPackageExcludeConstraint pkgid constraints =
   Constraints.constrain dep reason constraints
   where
@@ -582,9 +582,9 @@ addPackageExcludeConstraint pkgid constraints =
                (notThisPackageVersion pkgid)
     reason = ExcludedByConfigureFail
 
-addPackageDependencyConstraint :: PackageIdentifier -> TaggedDependency -> Constraints
+addPackageDependencyConstraint :: PackageId -> TaggedDependency -> Constraints
                                -> Satisfiable Constraints
-                                    [PackageIdentifier] ExclusionReason
+                                    [PackageId] ExclusionReason
 addPackageDependencyConstraint pkgid dep constraints =
   Constraints.constrain dep reason constraints
   where
@@ -593,7 +593,7 @@ addPackageDependencyConstraint pkgid dep constraints =
 addTopLevelVersionConstraint :: PackageName -> VersionRange
                              -> Constraints
                              -> Satisfiable Constraints
-                                  [PackageIdentifier] ExclusionReason
+                                  [PackageId] ExclusionReason
 addTopLevelVersionConstraint pkg ver constraints =
   Constraints.constrain taggedDep reason constraints
   where
@@ -604,7 +604,7 @@ addTopLevelVersionConstraint pkg ver constraints =
 addTopLevelInstalledConstraint :: PackageName
                                -> Constraints
                                -> Satisfiable Constraints
-                                    [PackageIdentifier] ExclusionReason
+                                    [PackageId] ExclusionReason
 addTopLevelInstalledConstraint pkg constraints =
   Constraints.constrain taggedDep reason constraints
   where
@@ -624,7 +624,7 @@ data ExclusionReason =
 
      -- | We selected this other version of the package. That means we exclude
      -- all the other versions.
-     SelectedOther PackageIdentifier
+     SelectedOther PackageId
 
      -- | We excluded this version of the package because it failed to
      -- configure probably because of unsatisfiable deps.
@@ -632,7 +632,7 @@ data ExclusionReason =
 
      -- | We excluded this version of the package because another package that
      -- we selected imposed a dependency which this package did not satisfy.
-   | ExcludedByPackageDependency PackageIdentifier TaggedDependency
+   | ExcludedByPackageDependency PackageId TaggedDependency
 
      -- | We excluded this version of the package because it did not satisfy
      -- a dependency given as an original top level input.
@@ -642,7 +642,7 @@ data ExclusionReason =
 -- | Given an excluded package and the reason it was excluded, produce a human
 -- readable explanation.
 --
-showExclusionReason :: PackageIdentifier -> ExclusionReason -> String
+showExclusionReason :: PackageId -> ExclusionReason -> String
 showExclusionReason pkgid (SelectedOther pkgid') =
   display pkgid ++ " was excluded because " ++
   display pkgid' ++ " was selected instead"
@@ -660,22 +660,22 @@ showExclusionReason pkgid (ExcludedByTopLevelDependency dep) =
 -- * Logging progress and failures
 -- ------------------------------------------------------------
 
-data Log = Select [SelectedPackage] [PackageIdentifier]
+data Log = Select [SelectedPackage] [PackageId]
 data Failure
    = ConfigureFailed
        SelectablePackage
-       [(Dependency, [(PackageIdentifier, [ExclusionReason])])]
+       [(Dependency, [(PackageId, [ExclusionReason])])]
    | DependencyConflict
        SelectedPackage TaggedDependency
-       [(PackageIdentifier, [ExclusionReason])]
+       [(PackageId, [ExclusionReason])]
    | TopLevelVersionConstraintConflict
        PackageName VersionRange
-       [(PackageIdentifier, [ExclusionReason])]
+       [(PackageId, [ExclusionReason])]
    | TopLevelVersionConstraintUnsatisfiable
        PackageName VersionRange
    | TopLevelInstallConstraintConflict
        PackageName
-       [(PackageIdentifier, [ExclusionReason])]
+       [(PackageId, [ExclusionReason])]
    | TopLevelInstallConstraintUnsatisfiable
        PackageName
 
