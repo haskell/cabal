@@ -194,7 +194,7 @@ info verbosity packageDBs repos comp conf
                          -- supplied a non-trivial version constraint
         showPkgVersion = not (null verConstraints)
         verConstraint  = foldr intersectVersionRanges anyVersion verConstraints
-        verConstraints = [ vr | PackageVersionConstraint _ vr <- constraints ]
+        verConstraints = [ vr | PackageConstraintVersion _ vr <- constraints ]
 
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex (SpecificSourcePackage pkg) =
         Right $ mergePackageInfo pref installedPkgs sourcePkgs

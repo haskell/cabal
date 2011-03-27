@@ -176,7 +176,7 @@ pkgSpecifierConstraints :: Package pkg
                         => PackageSpecifier pkg -> [PackageConstraint]
 pkgSpecifierConstraints (NamedPackage _ constraints) = constraints
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
-  [PackageVersionConstraint (packageName pkg)
+  [PackageConstraintVersion (packageName pkg)
                             (thisVersion (packageVersion pkg))]
 
 
@@ -393,7 +393,7 @@ expandUserTarget :: FilePath
 expandUserTarget worldFile userTarget = case userTarget of
 
     UserTargetNamed (Dependency name vrange) ->
-      let constraints = [ PackageVersionConstraint name vrange
+      let constraints = [ PackageConstraintVersion name vrange
                         | not (isAnyVersion vrange) ]
       in  return [PackageTargetNamedFuzzy name constraints userTarget]
 
@@ -402,9 +402,9 @@ expandUserTarget worldFile userTarget = case userTarget of
       --TODO: should we warn if there are no world targets?
       return [ PackageTargetNamed name constraints userTarget
              | World.WorldPkgInfo (Dependency name vrange) flags <- worldPkgs
-             , let constraints = [ PackageVersionConstraint name vrange
+             , let constraints = [ PackageConstraintVersion name vrange
                                  | not (isAnyVersion vrange) ]
-                              ++ [ PackageFlagsConstraint name flags
+                              ++ [ PackageConstraintFlags name flags
                                  | not (null flags) ] ]
 
     UserTargetLocalDir dir ->
