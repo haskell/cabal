@@ -185,7 +185,7 @@ dontUpgradeBasePackage params =
     addConstraints extraConstraints params
   where
     extraConstraints =
-      [ PackageInstalledConstraint pkgname
+      [ PackageConstraintInstalled pkgname
       | all (/=PackageName "base") (depResolverTargets params)
       , pkgname <-  [ PackageName "base", PackageName "ghc-prim" ]
       , isInstalled pkgname ]
@@ -416,7 +416,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
       Map.findWithDefault anyVersion pkgname packageVersionConstraintMap
     packageVersionConstraintMap =
       Map.fromList [ (name, range)
-                   | PackageVersionConstraint name range <- constraints ]
+                   | PackageConstraintVersion name range <- constraints ]
 
     packagePreferences :: PackageName -> PackagePreferences
     packagePreferences = interpretPackagesPreference

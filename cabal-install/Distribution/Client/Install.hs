@@ -241,13 +241,13 @@ planPackages comp configFlags configExFlags installFlags
 
       . addConstraints
           -- version constraints from the config file or command line
-          [ PackageVersionConstraint name ver
+          [ PackageConstraintVersion name ver
           | Dependency name ver <- configConstraints configFlags ]
 
       . addConstraints
           --FIXME: this just applies all flags to all targets which
           -- is silly. We should check if the flags are appropriate
-          [ PackageFlagsConstraint (pkgSpecifierTarget pkgSpecifier) flags
+          [ PackageConstraintFlags (pkgSpecifierTarget pkgSpecifier) flags
           | let flags = configConfigurationsFlags configFlags
           , not (null flags)
           , pkgSpecifier <- pkgSpecifiers ]

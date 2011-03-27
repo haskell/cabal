@@ -295,10 +295,10 @@ addTopLevelTargets (pkg:pkgs) cs =
 addTopLevelConstraints :: [PackageConstraint] -> Constraints
                        -> Progress Log Failure Constraints
 addTopLevelConstraints []                                      cs = Done cs
-addTopLevelConstraints (PackageFlagsConstraint   _   _  :deps) cs =
+addTopLevelConstraints (PackageConstraintFlags   _   _  :deps) cs =
   addTopLevelConstraints deps cs
 
-addTopLevelConstraints (PackageVersionConstraint pkg ver:deps) cs =
+addTopLevelConstraints (PackageConstraintVersion pkg ver:deps) cs =
   case addTopLevelVersionConstraint pkg ver cs of
     Satisfiable cs' pkgids  ->
       foldr (Step . Exclude) (addTopLevelConstraints deps cs') pkgids
@@ -309,7 +309,7 @@ addTopLevelConstraints (PackageVersionConstraint pkg ver:deps) cs =
     ConflictsWith conflicts ->
       Fail (TopLevelVersionConstraintConflict pkg ver conflicts)
 
-addTopLevelConstraints (PackageInstalledConstraint pkg:deps) cs =
+addTopLevelConstraints (PackageConstraintInstalled pkg:deps) cs =
   case addTopLevelInstalledConstraint pkg cs of
     Satisfiable cs' pkgids  ->
       foldr (Step . Exclude) (addTopLevelConstraints deps cs') pkgids
@@ -417,7 +417,7 @@ annotateSourcePackages constraints dfsNumber sourcePkgIndex =
     flagsFor = fromMaybe [] . flip Map.lookup flagsMap
     flagsMap = Map.fromList
       [ (name, flags)
-      | PackageFlagsConstraint name flags <- constraints ]
+      | PackageConstraintFlags name flags <- constraints ]
 
 -- | One of the heuristics we use when guessing which path to take in the
 -- search space is an ordering on the choices we make. It's generally better

@@ -142,12 +142,12 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
 
         . addConstraints
             -- version constraints from the config file or command line
-            [ PackageVersionConstraint name ver
+            [ PackageConstraintVersion name ver
             | Dependency name ver <- configConstraints configFlags ]
 
         . addConstraints
             -- package flags from the config file or command line
-            [ PackageFlagsConstraint (packageName pkg)
+            [ PackageConstraintFlags (packageName pkg)
                                      (configConfigurationsFlags configFlags) ]
 
         $ standardInstallPolicy

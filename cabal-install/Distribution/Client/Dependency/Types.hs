@@ -63,9 +63,9 @@ type DependencyResolver = Platform
 -- range or inconsistent flag assignment).
 --
 data PackageConstraint
-   = PackageVersionConstraint   PackageName VersionRange
-   | PackageInstalledConstraint PackageName
-   | PackageFlagsConstraint     PackageName FlagAssignment
+   = PackageConstraintVersion   PackageName VersionRange
+   | PackageConstraintInstalled PackageName
+   | PackageConstraintFlags     PackageName FlagAssignment
   deriving (Show,Eq)
 
 -- | A per-package preference on the version. It is a soft constraint that the
