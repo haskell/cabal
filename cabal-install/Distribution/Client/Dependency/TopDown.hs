@@ -293,15 +293,15 @@ addTopLevelTargets (pkg:pkgs) cs =
 
 
 addTopLevelConstraints :: [PackageConstraint] -> Constraints
-                       -> Progress a Failure Constraints
+                       -> Progress Log Failure Constraints
 addTopLevelConstraints []                                      cs = Done cs
 addTopLevelConstraints (PackageFlagsConstraint   _   _  :deps) cs =
   addTopLevelConstraints deps cs
 
 addTopLevelConstraints (PackageVersionConstraint pkg ver:deps) cs =
   case addTopLevelVersionConstraint pkg ver cs of
-    Satisfiable cs' _       ->
-      addTopLevelConstraints deps cs'
+    Satisfiable cs' pkgids  ->
+      foldr (Step . Exclude) (addTopLevelConstraints deps cs') pkgids
 
     Unsatisfiable           ->
       Fail (TopLevelVersionConstraintUnsatisfiable pkg ver)
@@ -311,7 +311,8 @@ addTopLevelConstraints (PackageVersionConstraint pkg ver:deps) cs =
 
 addTopLevelConstraints (PackageInstalledConstraint pkg:deps) cs =
   case addTopLevelInstalledConstraint pkg cs of
-    Satisfiable cs' _       -> addTopLevelConstraints deps cs'
+    Satisfiable cs' pkgids  ->
+      foldr (Step . Exclude) (addTopLevelConstraints deps cs') pkgids
 
     Unsatisfiable           ->
       Fail (TopLevelInstallConstraintUnsatisfiable pkg)
