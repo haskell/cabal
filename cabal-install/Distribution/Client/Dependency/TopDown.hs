@@ -54,7 +54,7 @@ import Distribution.Text
          ( display )
 
 import Data.List
-         ( foldl', maximumBy, minimumBy, nub, sort, groupBy )
+         ( foldl', maximumBy, minimumBy, nub, sort, sortBy, groupBy )
 import Data.Maybe
          ( fromJust, fromMaybe, catMaybes )
 import Data.Monoid
@@ -258,6 +258,7 @@ topDownResolver' platform comp installedPkgIndex sourcePkgIndex
                  preferences constraints targets =
       fmap (uncurry finalise)
     . (\cs -> search configure preferences cs initialPkgNames)
+  =<< pruneBottomUp platform comp
   =<< addTopLevelConstraints constraints
   =<< addTopLevelTargets targets emptyConstraintSet
 
@@ -317,6 +318,55 @@ addTopLevelConstraints (PackageInstalledConstraint pkg:deps) cs =
 
     ConflictsWith conflicts ->
       Fail (TopLevelInstallConstraintConflict pkg conflicts)
+
+
+-- | Add exclusion on available packages that cannot be configured.
+--
+pruneBottomUp :: Platform -> CompilerId
+              -> Constraints -> Progress Log Failure Constraints
+pruneBottomUp platform comp constraints =
+    foldr prune Done (initialPackages constraints) constraints
+
+  where
+    prune pkgs rest cs = foldr addExcludeConstraint rest unconfigurable cs
+      where
+        unconfigurable =
+          [ (pkg, missing) -- if necessary we could look up missing reasons
+          | (Just pkg', pkg) <- zip (map getSourcePkg pkgs) pkgs
+          , Left missing <- [configure cs pkg'] ]
+
+    addExcludeConstraint (pkg, missing) rest cs =
+      let reason = ExcludedByConfigureFail missing in
+      case addPackageExcludeConstraint (packageId pkg) reason cs of
+        Satisfiable cs' [pkgid]| packageId pkg == pkgid
+                         -> Step (Exclude pkgid) (rest cs')
+        Satisfiable _ _  -> impossible
+        Unsatisfiable    -> impossible
+        ConflictsWith _  -> Fail $ ConfigureFailed pkg
+                              [ (dep, Constraints.conflicting cs dep)
+                              | dep <- missing ]
+
+    configure cs (UnconfiguredPackage (SourcePackage _ pkg _) _ flags) =
+      finalizePackageDescription flags (dependencySatisfiable cs)
+                                 platform comp [] pkg
+    dependencySatisfiable cs =
+      not . null . PackageIndex.lookupDependency (Constraints.choices cs)
+
+    -- collect each group of packages (by name) in reverse topsort order
+    initialPackages =
+        reverse
+      . sortBy (comparing (topSortNumber . head))
+      . PackageIndex.allPackagesByName
+      . Constraints.choices
+
+    topSortNumber (InstalledOnly        (InstalledPackageEx  _ i _)) = i
+    topSortNumber (SourceOnly           (UnconfiguredPackage _ i _)) = i
+    topSortNumber (InstalledAndSource _ (UnconfiguredPackage _ i _)) = i
+
+    getSourcePkg (InstalledOnly      _     ) = Nothing
+    getSourcePkg (SourceOnly           spkg) = Just spkg
+    getSourcePkg (InstalledAndSource _ spkg) = Just spkg
+
 
 configurePackage :: Platform -> CompilerId -> ConfigurePackage
 configurePackage platform comp available spkg = case spkg of
@@ -601,17 +651,17 @@ addPackageSelectConstraint pkgid =
     constraint ver _ = ver == packageVersion pkgid
     reason           = SelectedOther pkgid
 
-addPackageExcludeConstraint :: PackageId -> Constraints
+addPackageExcludeConstraint :: PackageId -> ExclusionReason
+                            -> Constraints
                             -> Satisfiable Constraints
-                                 [PackageId] ExclusionReason
-addPackageExcludeConstraint pkgid =
-  Constraints.constrain pkgname constraint reason
+                                           [PackageId] ExclusionReason
+addPackageExcludeConstraint pkgid reason =
+    Constraints.constrain pkgname constraint reason
   where
     pkgname = packageName pkgid
     constraint ver installed
       | ver == packageVersion pkgid = installed
       | otherwise                   = True
-    reason = ExcludedByConfigureFail
 
 addPackageDependencyConstraint :: PackageId -> Dependency -> InstalledConstraint
                                -> Constraints
@@ -665,7 +715,7 @@ data ExclusionReason =
 
      -- | We excluded this version of the package because it failed to
      -- configure probably because of unsatisfiable deps.
-   | ExcludedByConfigureFail
+   | ExcludedByConfigureFail [Dependency]
 
      -- | We excluded this version of the package because another package that
      -- we selected imposed a dependency which this package did not satisfy.
@@ -684,8 +734,9 @@ showExclusionReason :: PackageId -> ExclusionReason -> String
 showExclusionReason pkgid (SelectedOther pkgid') =
   display pkgid ++ " was excluded because " ++
   display pkgid' ++ " was selected instead"
-showExclusionReason pkgid ExcludedByConfigureFail =
-  display pkgid ++ " was excluded because it could not be configured"
+showExclusionReason pkgid (ExcludedByConfigureFail missingDeps) =
+  display pkgid ++ " was excluded because it could not be configured. "
+  ++ "It requires " ++ listOf displayDep missingDeps
 showExclusionReason pkgid (ExcludedByPackageDependency pkgid' dep _) =
   display pkgid ++ " was excluded because " ++
   display pkgid' ++ " requires " ++ displayDep dep
@@ -705,6 +756,7 @@ showExclusionReason pkgid (ExcludedByTopLevelDependency dep _) =
 -- ------------------------------------------------------------
 
 data Log = Select [SelectedPackage] [PackageId]
+         | Exclude PackageId
 data Failure
    = NoSuchPackage
        PackageName
@@ -726,6 +778,7 @@ data Failure
        PackageName
 
 showLog :: Log -> String
+showLog (Exclude excluded) = "excluding " ++ display excluded
 showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
   ("", y) -> y
   (x, "") -> x
