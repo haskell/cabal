@@ -834,8 +834,8 @@ showFailure (DependencyConflict pkg dep _ conflicts) =
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
 showFailure (TopLevelVersionConstraintConflict name ver conflicts) =
-     "constraints conflict: "
-  ++ "top level constraint " ++ displayDep (Dependency name ver) ++ " however\n"
+     "constraints conflict: we have the top level constraint "
+  ++ displayDep (Dependency name ver) ++ ", but\n"
   ++ unlines [ showExclusionReason (packageId pkg') reason
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
