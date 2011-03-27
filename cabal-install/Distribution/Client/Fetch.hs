@@ -83,7 +83,9 @@ fetch verbosity packageDBs repos comp conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
     pkgSpecifiers <- resolveUserTargets verbosity
-                       globalFlags (packageIndex sourcePkgDb) userTargets
+                       (fromFlag $ globalWorldFile globalFlags)
+                       (packageIndex sourcePkgDb)
+                       userTargets
 
     pkgs  <- planPackages
                verbosity comp fetchFlags

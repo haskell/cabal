@@ -159,7 +159,9 @@ install verbosity packageDBs repos comp conf
                     | otherwise         = userTargets0
 
     pkgSpecifiers <- resolveUserTargets verbosity
-                       globalFlags (packageIndex sourcePkgDb) userTargets
+                       (fromFlag $ globalWorldFile globalFlags)
+                       (packageIndex sourcePkgDb)
+                       userTargets
 
     notice verbosity "Resolving dependencies..."
     installPlan   <- foldProgress logMsg die return $

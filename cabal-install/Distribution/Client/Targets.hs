@@ -58,10 +58,6 @@ import Distribution.PackageDescription
          ( GenericPackageDescription )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription, parsePackageDescription, ParseResult(..) )
-import Distribution.Simple.Setup
-         ( fromFlag )
-import Distribution.Client.Setup
-         ( GlobalFlags(..) )
 import Distribution.Version
          ( Version(Version), thisVersion, anyVersion, isAnyVersion )
 import Distribution.Text
@@ -341,17 +337,17 @@ reportUserTargetProblems problems = do
 --
 resolveUserTargets :: Package pkg
                    => Verbosity
-                   -> GlobalFlags
+                   -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
                    -> IO [PackageSpecifier SourcePackage]
-resolveUserTargets verbosity globalFlags available userTargets = do
+resolveUserTargets verbosity worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
     -- package references
     packageTargets <- mapM (readPackageTarget verbosity)
                   =<< mapM (fetchPackageTarget verbosity) . concat
-                  =<< mapM (expandUserTarget globalFlags) userTargets
+                  =<< mapM (expandUserTarget worldFile) userTargets
 
     -- users are allowed to give package names case-insensitively, so we must
     -- disambiguate named package references
@@ -391,10 +387,10 @@ data PackageTarget pkg =
 -- | Given a user-specified target, expand it to a bunch of package targets
 -- (each of which refers to only one package).
 --
-expandUserTarget :: GlobalFlags
+expandUserTarget :: FilePath
                  -> UserTarget
                  -> IO [PackageTarget (PackageLocation ())]
-expandUserTarget globalFlags userTarget = case userTarget of
+expandUserTarget worldFile userTarget = case userTarget of
 
     UserTargetNamed (Dependency name vrange) ->
       let constraints = [ PackageVersionConstraint name vrange
@@ -424,8 +420,6 @@ expandUserTarget globalFlags userTarget = case userTarget of
 
     UserTargetRemoteTarball tarballURL ->
       return [ PackageTargetLocation (RemoteTarballPackage tarballURL ()) ]
-  where
-    worldFile = fromFlag $ globalWorldFile globalFlags
 
 
 -- ------------------------------------------------------------
