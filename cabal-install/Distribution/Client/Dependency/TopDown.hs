@@ -33,7 +33,7 @@ import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Package
          ( PackageName(..), PackageId, Package(..), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion, notThisPackageVersion
-         , PackageFixedDeps(depends) )
+         , simplifyDependency, PackageFixedDeps(depends) )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
 import Distribution.Client.PackageUtils
@@ -756,9 +756,6 @@ displayVer = display . simplifyVersionRange
 displayDep :: Dependency -> String
 displayDep = display . simplifyDependency
 
-simplifyDependency :: Dependency -> Dependency
-simplifyDependency (Dependency name range) =
-  Dependency name (simplifyVersionRange range)
 
 -- ------------------------------------------------------------
 -- * Utils
