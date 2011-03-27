@@ -179,14 +179,13 @@ searchSpace configure constraints selected changes next =
                     (PackageIndex.lookupPackageId available pkgid')
 
           newPkgs   = [ name'
-                      | dep <- newDeps
-                      , let (Dependency name' _) = untagDependency dep
+                      | (Dependency name' _, _) <- newDeps
                       , null (PackageIndex.lookupPackageName selected' name') ]
           newDeps   = concatMap packageConstraints newSelected
           next'     = Set.delete name
                     $ foldl' (flip Set.insert) next newPkgs
 
-packageConstraints :: SelectedPackage -> [TaggedDependency]
+packageConstraints :: SelectedPackage -> [(Dependency, InstalledConstraint)]
 packageConstraints = either installedConstraints availableConstraints
                    . preferSource
   where
@@ -194,10 +193,10 @@ packageConstraints = either installedConstraints availableConstraints
     preferSource (SourceOnly           pkg) = Right pkg
     preferSource (InstalledAndSource _ pkg) = Right pkg
     installedConstraints (InstalledPackageEx    _ _ deps) =
-      [ TaggedDependency InstalledConstraint (thisPackageVersion dep)
+      [ (thisPackageVersion dep, InstalledConstraint)
       | dep <- deps ]
     availableConstraints (SemiConfiguredPackage _ _ deps) =
-      [ TaggedDependency NoInstalledConstraint dep | dep <- deps ]
+      [ (dep, NoInstalledConstraint) | dep <- deps ]
 
 addDeps :: Constraints -> [PackageName] -> Constraints
 addDeps =
@@ -206,19 +205,19 @@ addDeps =
               Satisfiable cs' () -> cs'
               _                  -> impossible
 
-constrainDeps :: SelectedPackage -> [TaggedDependency] -> Constraints
+constrainDeps :: SelectedPackage -> [(Dependency, InstalledConstraint)] -> Constraints
               -> [PackageId]
               -> Either Failure (Constraints, [PackageId])
 constrainDeps pkg []         cs discard =
   case addPackageSelectConstraint (packageId pkg) cs of
     Satisfiable cs' discard' -> Right (cs', discard' ++ discard)
     _                        -> impossible
-constrainDeps pkg (dep:deps) cs discard =
-  case addPackageDependencyConstraint (packageId pkg) dep cs of
+constrainDeps pkg ((dep, installedConstraint):deps) cs discard =
+  case addPackageDependencyConstraint (packageId pkg) dep installedConstraint cs of
     Satisfiable cs' discard' -> constrainDeps pkg deps cs' (discard' ++ discard)
     Unsatisfiable            -> impossible
     ConflictsWith conflicts  ->
-      Left (DependencyConflict pkg dep conflicts)
+      Left (DependencyConflict pkg dep installedConstraint conflicts)
 
 -- ------------------------------------------------------------
 -- * The main algorithm
@@ -572,11 +571,12 @@ improvePlan installed constraints0 selected0 =
 
     constraintsOk _     []              constraints = Just constraints
     constraintsOk pkgid (pkgid':pkgids) constraints =
-      case addPackageDependencyConstraint pkgid dep constraints of
+      case addPackageDependencyConstraint
+             pkgid dep InstalledConstraint constraints of
         Satisfiable constraints' _ -> constraintsOk pkgid pkgids constraints'
         _                          -> Nothing
       where
-        dep = TaggedDependency InstalledConstraint (thisPackageVersion pkgid')
+        dep = thisPackageVersion pkgid'
 
     reverseTopologicalOrder :: PackageFixedDeps pkg
                             => PackageIndex pkg -> [PackageId]
@@ -612,18 +612,19 @@ addPackageExcludeConstraint pkgid =
       | otherwise                   = True
     reason = ExcludedByConfigureFail
 
-addPackageDependencyConstraint :: PackageId -> TaggedDependency -> Constraints
+addPackageDependencyConstraint :: PackageId -> Dependency -> InstalledConstraint
+                               -> Constraints
                                -> Satisfiable Constraints
                                     [PackageId] ExclusionReason
-addPackageDependencyConstraint pkgid dep =
+addPackageDependencyConstraint pkgid dep@(Dependency pkgname verrange)
+                                     installedConstraint =
     Constraints.constrain pkgname constraint reason
   where
     constraint ver installed = ver `withinRange` verrange
                             && case installedConstraint of
                                  InstalledConstraint   -> installed
                                  NoInstalledConstraint -> True
-    reason = ExcludedByPackageDependency pkgid dep
-    TaggedDependency installedConstraint (Dependency pkgname verrange) = dep
+    reason = ExcludedByPackageDependency pkgid dep installedConstraint
 
 addTopLevelVersionConstraint :: PackageName -> VersionRange
                              -> Constraints
@@ -665,7 +666,7 @@ data ExclusionReason =
 
      -- | We excluded this version of the package because another package that
      -- we selected imposed a dependency which this package did not satisfy.
-   | ExcludedByPackageDependency PackageId TaggedDependency
+   | ExcludedByPackageDependency PackageId Dependency InstalledConstraint
 
      -- | We excluded this version of the package because it did not satisfy
      -- a dependency given as an original top level input.
@@ -681,9 +682,9 @@ showExclusionReason pkgid (SelectedOther pkgid') =
   display pkgid' ++ " was selected instead"
 showExclusionReason pkgid ExcludedByConfigureFail =
   display pkgid ++ " was excluded because it could not be configured"
-showExclusionReason pkgid (ExcludedByPackageDependency pkgid' dep) =
+showExclusionReason pkgid (ExcludedByPackageDependency pkgid' dep _) =
   display pkgid ++ " was excluded because " ++
-  display pkgid' ++ " requires " ++ displayDep (untagDependency dep)
+  display pkgid' ++ " requires " ++ displayDep dep
 showExclusionReason pkgid (ExcludedByTopLevelDependency dep) =
   display pkgid ++ " was excluded because of the top level dependency " ++
   displayDep dep
@@ -701,7 +702,7 @@ data Failure
        SelectablePackage
        [(Dependency, [(PackageId, [ExclusionReason])])]
    | DependencyConflict
-       SelectedPackage TaggedDependency
+       SelectedPackage Dependency InstalledConstraint
        [(PackageId, [ExclusionReason])]
    | TopLevelVersionConstraintConflict
        PackageName VersionRange
@@ -762,7 +763,7 @@ showFailure (ConfigureFailed pkg missingDeps) =
 
       where pkgs = map fst conflicts
 
-showFailure (DependencyConflict pkg (TaggedDependency _ dep) conflicts) =
+showFailure (DependencyConflict pkg dep _ conflicts) =
      "dependencies conflict: "
   ++ displayPkg pkg ++ " requires " ++ displayDep dep ++ " however\n"
   ++ unlines [ showExclusionReason (packageId pkg') reason

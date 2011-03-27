@@ -76,19 +76,12 @@ instance (Package installed, Package available)
   packageId (SourceOnly         p  ) = packageId p
   packageId (InstalledAndSource p _) = packageId p
 
--- ------------------------------------------------------------
--- * Tagged Dependency type
--- ------------------------------------------------------------
 
--- | Installed packages can only depend on other installed packages while
--- packages that are not yet installed but which we plan to install can depend
--- on installed or other not-yet-installed packages.
+-- | We can have constraints on selecting just installed packages.
 --
--- This makes life more complex as we have to remember these constraints.
+-- In particular, installed packages can only depend on other installed
+-- packages while packages that are not yet installed but which we plan to
+-- install can depend on installed or other not-yet-installed packages.
 --
-data TaggedDependency = TaggedDependency InstalledConstraint Dependency
 data InstalledConstraint = InstalledConstraint | NoInstalledConstraint
   deriving Eq
-
-untagDependency :: TaggedDependency -> Dependency
-untagDependency (TaggedDependency _ dep) = dep
