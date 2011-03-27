@@ -42,6 +42,7 @@ import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Version
          ( VersionRange, anyVersion, withinRange, simplifyVersionRange
+         , isAnyVersion
          , UpperBound(..), asVersionIntervals )
 import Distribution.Compiler
          ( CompilerId )
@@ -635,6 +636,7 @@ addTopLevelVersionConstraint pkgname verrange =
   where
     constraint ver _installed = ver `withinRange` verrange
     reason = ExcludedByTopLevelDependency (Dependency pkgname verrange)
+                                          NoInstalledConstraint
 
 addTopLevelInstalledConstraint :: PackageName
                                -> Constraints
@@ -645,6 +647,7 @@ addTopLevelInstalledConstraint pkgname =
   where
     constraint _ver installed = installed
     reason = ExcludedByTopLevelDependency (Dependency pkgname anyVersion)
+                                          InstalledConstraint
 
 -- ------------------------------------------------------------
 -- * Reasons for constraints
@@ -671,7 +674,8 @@ data ExclusionReason =
      -- | We excluded this version of the package because it did not satisfy
      -- a dependency given as an original top level input.
      --
-   | ExcludedByTopLevelDependency Dependency
+   | ExcludedByTopLevelDependency Dependency InstalledConstraint
+  deriving Eq
 
 -- | Given an excluded package and the reason it was excluded, produce a human
 -- readable explanation.
@@ -685,8 +689,14 @@ showExclusionReason pkgid ExcludedByConfigureFail =
 showExclusionReason pkgid (ExcludedByPackageDependency pkgid' dep _) =
   display pkgid ++ " was excluded because " ++
   display pkgid' ++ " requires " ++ displayDep dep
-showExclusionReason pkgid (ExcludedByTopLevelDependency dep) =
-  display pkgid ++ " was excluded because of the top level dependency " ++
+showExclusionReason pkgid (ExcludedByTopLevelDependency
+                            (Dependency pkgname verRange) InstalledConstraint)
+  | isAnyVersion verRange
+  = display pkgid ++ " was excluded because only installed instances of "
+ ++ display pkgname ++ " can be selected."
+
+showExclusionReason pkgid (ExcludedByTopLevelDependency dep _) =
+  display pkgid ++ " was excluded because of the top level constraint " ++
   displayDep dep
 
 
