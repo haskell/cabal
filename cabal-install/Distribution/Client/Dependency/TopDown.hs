@@ -145,6 +145,10 @@ searchSpace :: ConfigurePackage
             -> SearchSpace (SelectedPackages, Constraints, SelectionChanges)
                            SelectablePackage
 searchSpace configure constraints selected changes next =
+  assert (Set.null (selectedSet `Set.intersection` next)) $
+  assert (selectedSet `Set.isSubsetOf` Constraints.packages constraints) $
+  assert (next `Set.isSubsetOf` Constraints.packages constraints) $
+
   ChoiceNode (selected, constraints, changes)
     [ [ (pkg, select name pkg)
       | pkg <- PackageIndex.lookupPackageName available name ]
@@ -152,15 +156,18 @@ searchSpace configure constraints selected changes next =
   where
     available = Constraints.choices constraints
 
+    selectedSet = Set.fromList (map packageName (PackageIndex.allPackages selected))
+
     select name pkg = case configure available pkg of
       Left missing -> Failure $ ConfigureFailed pkg
                         [ (dep, Constraints.conflicting constraints dep)
                         | dep <- missing ]
-      Right pkg' -> case constrainDeps pkg' newDeps constraints [] of
-        Left failure       -> Failure failure
-        Right (constraints', newDiscarded) ->
-          searchSpace configure
-            constraints' selected' (newSelected, newDiscarded) next'
+      Right pkg' ->
+        case constrainDeps pkg' newDeps (addDeps constraints newPkgs) [] of
+          Left failure       -> Failure failure
+          Right (constraints', newDiscarded) ->
+            searchSpace configure
+              constraints' selected' (newSelected, newDiscarded) next'
         where
           selected' = foldl' (flip PackageIndex.insert) selected newSelected
           newSelected =
@@ -191,6 +198,13 @@ packageConstraints = either installedConstraints availableConstraints
       | dep <- deps ]
     availableConstraints (SemiConfiguredPackage _ _ deps) =
       [ TaggedDependency NoInstalledConstraint dep | dep <- deps ]
+
+addDeps :: Constraints -> [PackageName] -> Constraints
+addDeps =
+  foldr $ \pkgname cs ->
+            case Constraints.addTarget pkgname cs of
+              Satisfiable cs' () -> cs'
+              _                  -> impossible
 
 constrainDeps :: SelectedPackage -> [TaggedDependency] -> Constraints
               -> [PackageId]
@@ -244,12 +258,13 @@ topDownResolver' platform comp installedPkgIndex sourcePkgIndex
                  preferences constraints targets =
       fmap (uncurry finalise)
     . (\cs -> search configure preferences cs initialPkgNames)
-  =<< addTopLevelConstraints constraints constraintSet
+  =<< addTopLevelConstraints constraints
+  =<< addTopLevelTargets targets emptyConstraintSet
 
   where
     configure   = configurePackage platform comp
-    constraintSet :: Constraints
-    constraintSet = Constraints.empty
+    emptyConstraintSet :: Constraints
+    emptyConstraintSet = Constraints.empty
       (annotateInstalledPackages          topSortNumber installedPkgIndex')
       (annotateSourcePackages constraints topSortNumber sourcePkgIndex')
     (installedPkgIndex', sourcePkgIndex') =
@@ -263,6 +278,18 @@ topDownResolver' platform comp installedPkgIndex sourcePkgIndex
       . fst . improvePlan installedPkgIndex' constraints'
       . PackageIndex.fromList
       $ finaliseSelectedPackages preferences selected' constraints'
+
+
+addTopLevelTargets :: [PackageName]
+                   -> Constraints
+                   -> Progress a Failure Constraints
+addTopLevelTargets []         cs = Done cs
+addTopLevelTargets (pkg:pkgs) cs =
+  case Constraints.addTarget pkg cs of
+    Satisfiable cs' ()       -> addTopLevelTargets pkgs cs'
+    Unsatisfiable            -> Fail (NoSuchPackage pkg)
+    ConflictsWith _conflicts -> impossible
+
 
 addTopLevelConstraints :: [PackageConstraint] -> Constraints
                        -> Progress a Failure Constraints
@@ -668,7 +695,9 @@ showExclusionReason pkgid (ExcludedByTopLevelDependency dep) =
 
 data Log = Select [SelectedPackage] [PackageId]
 data Failure
-   = ConfigureFailed
+   = NoSuchPackage
+       PackageName
+   | ConfigureFailed
        SelectablePackage
        [(Dependency, [(PackageId, [ExclusionReason])])]
    | DependencyConflict
@@ -712,6 +741,8 @@ showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
         , element <- display pkgid : map (display . packageVersion) pkgids ]
 
 showFailure :: Failure -> String
+showFailure (NoSuchPackage pkgname) =
+     "The package " ++ display pkgname ++ " is unknown."
 showFailure (ConfigureFailed pkg missingDeps) =
      "cannot configure " ++ displayPkg pkg ++ ". It requires "
   ++ listOf (displayDep . fst) missingDeps
