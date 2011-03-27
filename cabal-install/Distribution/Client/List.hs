@@ -155,7 +155,8 @@ info verbosity packageDBs repos comp conf
                     $ map packageId (PackageIndex.allPackages installedPkgIndex)
                    ++ map packageId (PackageIndex.allPackages sourcePkgIndex)
     pkgSpecifiers <- resolveUserTargets verbosity
-                       globalFlags sourcePkgs' userTargets
+                       (fromFlag $ globalWorldFile globalFlags)
+                       sourcePkgs' userTargets
 
     pkgsinfo      <- sequence
                        [ do pkginfo <- either die return $

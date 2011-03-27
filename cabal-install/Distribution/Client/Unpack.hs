@@ -21,7 +21,7 @@ module Distribution.Client.Unpack (
 import Distribution.Package
          ( PackageId, packageId )
 import Distribution.Simple.Setup
-         ( fromFlagOrDefault )
+         ( fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( notice, die )
 import Distribution.Verbosity
@@ -63,7 +63,9 @@ unpack verbosity repos globalFlags unpackFlags userTargets = do
   sourcePkgDb   <- getSourcePackages verbosity repos
 
   pkgSpecifiers <- resolveUserTargets verbosity
-                     globalFlags (packageIndex sourcePkgDb) userTargets
+                     (fromFlag $ globalWorldFile globalFlags)
+                     (packageIndex sourcePkgDb)
+                     userTargets
 
   pkgs <- either (die . unlines . map show) return $
             resolveWithoutDependencies
