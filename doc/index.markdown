@@ -27,6 +27,7 @@ builders and users to work with Cabal packages.
           + [Configurations](developing-packages.html#configurations)
           + [Source Repositories](developing-packages.html#source-repositories)
       - [Accessing data files from package code](developing-packages.html#accessing-data-files-from-package-code)
+          + [Accessing the package version](developing-packages.html#accessing-the-package-version)
       - [System-dependent parameters](developing-packages.html#system-dependent-parameters)
       - [Conditional compilation](developing-packages.html#conditional-compilation)
       - [More complex packages](developing-packages.html#more-complex-packages)
