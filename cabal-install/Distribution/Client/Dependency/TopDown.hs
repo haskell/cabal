@@ -320,6 +320,17 @@ addTopLevelConstraints (PackageConstraintInstalled pkg:deps) cs =
     ConflictsWith conflicts ->
       Fail (TopLevelInstallConstraintConflict pkg conflicts)
 
+addTopLevelConstraints (PackageConstraintSource pkg:deps) cs =
+  case addTopLevelSourceConstraint pkg cs of
+    Satisfiable cs' pkgids  ->
+      foldr (Step . Exclude) (addTopLevelConstraints deps cs') pkgids
+
+    Unsatisfiable           ->
+      Fail (TopLevelInstallConstraintUnsatisfiable pkg)
+
+    ConflictsWith conflicts ->
+      Fail (TopLevelInstallConstraintConflict pkg conflicts)
+
 
 -- | Add exclusion on available packages that cannot be configured.
 --
@@ -675,6 +686,7 @@ addPackageDependencyConstraint pkgid dep@(Dependency pkgname verrange)
     constraint ver installed = ver `withinRange` verrange
                             && case installedConstraint of
                                  InstalledConstraint   -> installed
+                                 SourceConstraint      -> not installed
                                  NoInstalledConstraint -> True
     reason = ExcludedByPackageDependency pkgid dep installedConstraint
 
@@ -699,6 +711,17 @@ addTopLevelInstalledConstraint pkgname =
     constraint _ver installed = installed
     reason = ExcludedByTopLevelDependency (Dependency pkgname anyVersion)
                                           InstalledConstraint
+
+addTopLevelSourceConstraint :: PackageName
+                            -> Constraints
+                            -> Satisfiable Constraints
+                                 [PackageId] ExclusionReason
+addTopLevelSourceConstraint pkgname =
+    Constraints.constrain pkgname constraint reason
+  where
+    constraint _ver installed = not installed
+    reason = ExcludedByTopLevelDependency (Dependency pkgname anyVersion)
+                                          SourceConstraint
 
 -- ------------------------------------------------------------
 -- * Reasons for constraints

@@ -70,18 +70,21 @@ instance Package UnconfiguredPackage where
 instance Package SemiConfiguredPackage where
   packageId (SemiConfiguredPackage p _ _) = packageId p
 
-instance (Package installed, Package available)
-      => Package (InstalledOrSource installed available) where
+instance (Package installed, Package source)
+      => Package (InstalledOrSource installed source) where
   packageId (InstalledOnly      p  ) = packageId p
   packageId (SourceOnly         p  ) = packageId p
   packageId (InstalledAndSource p _) = packageId p
 
 
--- | We can have constraints on selecting just installed packages.
+-- | We can have constraints on selecting just installed or just source
+-- packages.
 --
 -- In particular, installed packages can only depend on other installed
 -- packages while packages that are not yet installed but which we plan to
 -- install can depend on installed or other not-yet-installed packages.
 --
-data InstalledConstraint = InstalledConstraint | NoInstalledConstraint
-  deriving Eq
+data InstalledConstraint = NoInstalledConstraint
+                         | InstalledConstraint
+                         | SourceConstraint
+  deriving (Eq, Show)

@@ -65,6 +65,7 @@ type DependencyResolver = Platform
 data PackageConstraint
    = PackageConstraintVersion   PackageName VersionRange
    | PackageConstraintInstalled PackageName
+   | PackageConstraintSource    PackageName
    | PackageConstraintFlags     PackageName FlagAssignment
   deriving (Show,Eq)
 
