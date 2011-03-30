@@ -84,7 +84,7 @@ import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
     , removeFile, getDirectoryContents )
 import System.Environment ( getEnvironment )
-import System.Exit ( ExitCode(..), exitFailure, exitSuccess, exitWith )
+import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, IOMode(..), openFile )
 import System.Process ( runProcess, waitForProcess )
@@ -306,7 +306,7 @@ test pkg_descr lbi flags = do
 
     when (not $ PD.hasTests pkg_descr) $ do
         notice verbosity "Package has no test suites."
-        exitSuccess
+        exitWith ExitSuccess
 
     when (PD.hasTests pkg_descr && null enabledTests) $
         die $ "No test suites enabled. Did you remember to configure with "
