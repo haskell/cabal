@@ -40,12 +40,15 @@ import Foreign
 #endif /* __GLASGOW_HASKELL__ */
 
 #ifndef mingw32_HOST_OS
+#if __GLASGOW_HASKELL__ >= 611
+import System.Posix.Internals (withFilePath)
+#else
+import Foreign.C              (withCString)
+#endif
 import System.Posix.Types
          ( FileMode )
 import System.Posix.Internals
          ( c_chmod )
-import Foreign.C
-         ( withCString )
 #if __GLASGOW_HASKELL__ >= 608
 import Foreign.C
          ( throwErrnoPathIfMinus1_ )
@@ -66,7 +69,11 @@ setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
 
 setFileMode :: FilePath -> FileMode -> IO ()
 setFileMode name m =
+#if __GLASGOW_HASKELL__ >= 611
+  withFilePath name $ \s -> do
+#else
   withCString name $ \s -> do
+#endif
 #if __GLASGOW_HASKELL__ >= 608
     throwErrnoPathIfMinus1_ "setFileMode" name (c_chmod s m)
 #else
