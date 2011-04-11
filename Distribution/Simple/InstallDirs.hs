@@ -560,13 +560,13 @@ shGetFolderPath n =
 # if __HUGS__
   return Nothing
 # else
-  allocaBytes long_path_size $ \pPath -> do
+  allocaArray long_path_size $ \pPath -> do
      r <- c_SHGetFolderPath nullPtr n nullPtr 0 pPath
      if (r /= 0)
         then return Nothing
-        else do s <- peekCString pPath; return (Just s)
+        else do s <- peekCWString pPath; return (Just s)
   where
-    long_path_size      = 1024
+    long_path_size      = 1024 -- MAX_PATH is 260, this should be plenty
 # endif
 
 csidl_PROGRAM_FILES :: CInt
@@ -574,12 +574,12 @@ csidl_PROGRAM_FILES = 0x0026
 -- csidl_PROGRAM_FILES_COMMON :: CInt
 -- csidl_PROGRAM_FILES_COMMON = 0x002b
 
-foreign import stdcall unsafe "shlobj.h SHGetFolderPathA"
+foreign import stdcall unsafe "shlobj.h SHGetFolderPathW"
             c_SHGetFolderPath :: Ptr ()
                               -> CInt
                               -> Ptr ()
                               -> CInt
-                              -> CString
+                              -> CWString
                               -> IO CInt
 #endif
 
