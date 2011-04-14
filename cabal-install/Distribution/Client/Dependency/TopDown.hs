@@ -41,8 +41,7 @@ import Distribution.Client.PackageUtils
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Version
-         ( VersionRange, anyVersion, withinRange, simplifyVersionRange
-         , isAnyVersion
+         ( VersionRange, withinRange, simplifyVersionRange
          , UpperBound(..), asVersionIntervals )
 import Distribution.Compiler
          ( CompilerId )
@@ -186,7 +185,7 @@ searchSpace configure constraints selected changes next =
           next'     = Set.delete name
                     $ foldl' (flip Set.insert) next newPkgs
 
-packageConstraints :: SelectedPackage -> [(Dependency, InstalledConstraint)]
+packageConstraints :: SelectedPackage -> [(Dependency, Bool)]
 packageConstraints = either installedConstraints availableConstraints
                    . preferSource
   where
@@ -194,10 +193,10 @@ packageConstraints = either installedConstraints availableConstraints
     preferSource (SourceOnly           pkg) = Right pkg
     preferSource (InstalledAndSource _ pkg) = Right pkg
     installedConstraints (InstalledPackageEx    _ _ deps) =
-      [ (thisPackageVersion dep, InstalledConstraint)
+      [ (thisPackageVersion dep, True)
       | dep <- deps ]
     availableConstraints (SemiConfiguredPackage _ _ deps) =
-      [ (dep, NoInstalledConstraint) | dep <- deps ]
+      [ (dep, False) | dep <- deps ]
 
 addDeps :: Constraints -> [PackageName] -> Constraints
 addDeps =
@@ -206,7 +205,7 @@ addDeps =
               Satisfiable cs' () -> cs'
               _                  -> impossible
 
-constrainDeps :: SelectedPackage -> [(Dependency, InstalledConstraint)] -> Constraints
+constrainDeps :: SelectedPackage -> [(Dependency, Bool)] -> Constraints
               -> [PackageId]
               -> Either Failure (Constraints, [PackageId])
 constrainDeps pkg []         cs discard =
@@ -301,7 +300,8 @@ addTopLevelConstraints (PackageConstraintFlags   _   _  :deps) cs =
 addTopLevelConstraints (PackageConstraintVersion pkg ver:deps) cs =
   case addTopLevelVersionConstraint pkg ver cs of
     Satisfiable cs' pkgids  ->
-      foldr (Step . Exclude) (addTopLevelConstraints deps cs') pkgids
+      Step (AppliedVersionConstraint pkg ver pkgids)
+           (addTopLevelConstraints deps cs')
 
     Unsatisfiable           ->
       Fail (TopLevelVersionConstraintUnsatisfiable pkg ver)
@@ -312,25 +312,26 @@ addTopLevelConstraints (PackageConstraintVersion pkg ver:deps) cs =
 addTopLevelConstraints (PackageConstraintInstalled pkg:deps) cs =
   case addTopLevelInstalledConstraint pkg cs of
     Satisfiable cs' pkgids  ->
-      foldr (Step . Exclude) (addTopLevelConstraints deps cs') pkgids
+      Step (AppliedInstalledConstraint pkg InstalledConstraint pkgids)
+           (addTopLevelConstraints deps cs')
 
     Unsatisfiable           ->
-      Fail (TopLevelInstallConstraintUnsatisfiable pkg)
+      Fail (TopLevelInstallConstraintUnsatisfiable pkg InstalledConstraint)
 
     ConflictsWith conflicts ->
-      Fail (TopLevelInstallConstraintConflict pkg conflicts)
+      Fail (TopLevelInstallConstraintConflict pkg InstalledConstraint conflicts)
 
 addTopLevelConstraints (PackageConstraintSource pkg:deps) cs =
   case addTopLevelSourceConstraint pkg cs of
     Satisfiable cs' pkgids  ->
-      foldr (Step . Exclude) (addTopLevelConstraints deps cs') pkgids
+      Step (AppliedInstalledConstraint pkg SourceConstraint pkgids)
+            (addTopLevelConstraints deps cs')
 
     Unsatisfiable           ->
-      Fail (TopLevelInstallConstraintUnsatisfiable pkg)
+      Fail (TopLevelInstallConstraintUnsatisfiable pkg SourceConstraint)
 
     ConflictsWith conflicts ->
-      Fail (TopLevelInstallConstraintConflict pkg conflicts)
-
+      Fail (TopLevelInstallConstraintConflict pkg SourceConstraint conflicts)
 
 -- | Add exclusion on available packages that cannot be configured.
 --
@@ -351,7 +352,7 @@ pruneBottomUp platform comp constraints =
       let reason = ExcludedByConfigureFail missing in
       case addPackageExcludeConstraint (packageId pkg) reason cs of
         Satisfiable cs' [pkgid]| packageId pkg == pkgid
-                         -> Step (Exclude pkgid) (rest cs')
+                         -> Step (ExcludeUnconfigurable pkgid) (rest cs')
         Satisfiable _ _  -> impossible
         Unsatisfiable    -> impossible
         ConflictsWith _  -> Fail $ ConfigureFailed pkg
@@ -634,8 +635,7 @@ improvePlan installed constraints0 selected0 =
 
     constraintsOk _     []              constraints = Just constraints
     constraintsOk pkgid (pkgid':pkgids) constraints =
-      case addPackageDependencyConstraint
-             pkgid dep InstalledConstraint constraints of
+      case addPackageDependencyConstraint pkgid dep True constraints of
         Satisfiable constraints' _ -> constraintsOk pkgid pkgids constraints'
         _                          -> Nothing
       where
@@ -675,7 +675,7 @@ addPackageExcludeConstraint pkgid reason =
       | ver == packageVersion pkgid = installed
       | otherwise                   = True
 
-addPackageDependencyConstraint :: PackageId -> Dependency -> InstalledConstraint
+addPackageDependencyConstraint :: PackageId -> Dependency -> Bool
                                -> Constraints
                                -> Satisfiable Constraints
                                     [PackageId] ExclusionReason
@@ -684,10 +684,7 @@ addPackageDependencyConstraint pkgid dep@(Dependency pkgname verrange)
     Constraints.constrain pkgname constraint reason
   where
     constraint ver installed = ver `withinRange` verrange
-                            && case installedConstraint of
-                                 InstalledConstraint   -> installed
-                                 SourceConstraint      -> not installed
-                                 NoInstalledConstraint -> True
+                            && if installedConstraint then installed else True
     reason = ExcludedByPackageDependency pkgid dep installedConstraint
 
 addTopLevelVersionConstraint :: PackageName -> VersionRange
@@ -698,30 +695,25 @@ addTopLevelVersionConstraint pkgname verrange =
     Constraints.constrain pkgname constraint reason
   where
     constraint ver _installed = ver `withinRange` verrange
-    reason = ExcludedByTopLevelDependency (Dependency pkgname verrange)
-                                          NoInstalledConstraint
+    reason = ExcludedByTopLevelConstraintVersion pkgname verrange
 
-addTopLevelInstalledConstraint :: PackageName
-                               -> Constraints
-                               -> Satisfiable Constraints
-                                    [PackageId] ExclusionReason
+addTopLevelInstalledConstraint,
+  addTopLevelSourceConstraint :: PackageName
+                              -> Constraints
+                              -> Satisfiable Constraints
+                                   [PackageId] ExclusionReason
 addTopLevelInstalledConstraint pkgname =
     Constraints.constrain pkgname constraint reason
   where
     constraint _ver installed = installed
-    reason = ExcludedByTopLevelDependency (Dependency pkgname anyVersion)
-                                          InstalledConstraint
+    reason = ExcludedByTopLevelConstraintInstalled pkgname
 
-addTopLevelSourceConstraint :: PackageName
-                            -> Constraints
-                            -> Satisfiable Constraints
-                                 [PackageId] ExclusionReason
 addTopLevelSourceConstraint pkgname =
     Constraints.constrain pkgname constraint reason
   where
     constraint _ver installed = not installed
-    reason = ExcludedByTopLevelDependency (Dependency pkgname anyVersion)
-                                          SourceConstraint
+    reason = ExcludedByTopLevelConstraintSource pkgname
+
 
 -- ------------------------------------------------------------
 -- * Reasons for constraints
@@ -743,12 +735,15 @@ data ExclusionReason =
 
      -- | We excluded this version of the package because another package that
      -- we selected imposed a dependency which this package did not satisfy.
-   | ExcludedByPackageDependency PackageId Dependency InstalledConstraint
+   | ExcludedByPackageDependency PackageId Dependency Bool
 
      -- | We excluded this version of the package because it did not satisfy
      -- a dependency given as an original top level input.
      --
-   | ExcludedByTopLevelDependency Dependency InstalledConstraint
+   | ExcludedByTopLevelConstraintVersion   PackageName VersionRange
+   | ExcludedByTopLevelConstraintInstalled PackageName
+   | ExcludedByTopLevelConstraintSource    PackageName
+
   deriving Eq
 
 -- | Given an excluded package and the reason it was excluded, produce a human
@@ -761,18 +756,21 @@ showExclusionReason pkgid (SelectedOther pkgid') =
 showExclusionReason pkgid (ExcludedByConfigureFail missingDeps) =
   display pkgid ++ " was excluded because it could not be configured. "
   ++ "It requires " ++ listOf displayDep missingDeps
-showExclusionReason pkgid (ExcludedByPackageDependency pkgid' dep _) =
-  display pkgid ++ " was excluded because " ++
-  display pkgid' ++ " requires " ++ displayDep dep
-showExclusionReason pkgid (ExcludedByTopLevelDependency
-                            (Dependency pkgname verRange) InstalledConstraint)
-  | isAnyVersion verRange
-  = display pkgid ++ " was excluded because only installed instances of "
- ++ display pkgname ++ " can be selected."
-
-showExclusionReason pkgid (ExcludedByTopLevelDependency dep _) =
+showExclusionReason pkgid (ExcludedByPackageDependency pkgid' dep installedConstraint)
+  = display pkgid ++ " was excluded because " ++ display pkgid' ++ " requires "
+ ++ (if installedConstraint then "an installed instance of " else "")
+ ++ displayDep dep
+showExclusionReason pkgid (ExcludedByTopLevelConstraintVersion pkgname verRange) =
   display pkgid ++ " was excluded because of the top level constraint " ++
-  displayDep dep
+  displayDep (Dependency pkgname verRange)
+showExclusionReason pkgid (ExcludedByTopLevelConstraintInstalled pkgname)
+  = display pkgid ++ " was excluded because of the top level constraint '"
+ ++ display pkgname ++ " installed' which means that only installed instances "
+ ++ "of the package may be selected."
+showExclusionReason pkgid (ExcludedByTopLevelConstraintSource pkgname)
+  = display pkgid ++ " was excluded because of the top level constraint '"
+ ++ display pkgname ++ " source' which means that only source versions "
+ ++ "of the package may be selected."
 
 
 -- ------------------------------------------------------------
@@ -780,7 +778,10 @@ showExclusionReason pkgid (ExcludedByTopLevelDependency dep _) =
 -- ------------------------------------------------------------
 
 data Log = Select [SelectedPackage] [PackageId]
-         | Exclude PackageId
+         | AppliedVersionConstraint   PackageName VersionRange [PackageId]
+         | AppliedInstalledConstraint PackageName InstalledConstraint [PackageId]
+         | ExcludeUnconfigurable PackageId
+
 data Failure
    = NoSuchPackage
        PackageName
@@ -788,7 +789,7 @@ data Failure
        SelectablePackage
        [(Dependency, [(PackageId, [ExclusionReason])])]
    | DependencyConflict
-       SelectedPackage Dependency InstalledConstraint
+       SelectedPackage Dependency Bool
        [(PackageId, [ExclusionReason])]
    | TopLevelVersionConstraintConflict
        PackageName VersionRange
@@ -796,13 +797,12 @@ data Failure
    | TopLevelVersionConstraintUnsatisfiable
        PackageName VersionRange
    | TopLevelInstallConstraintConflict
-       PackageName
+       PackageName InstalledConstraint
        [(PackageId, [ExclusionReason])]
    | TopLevelInstallConstraintUnsatisfiable
-       PackageName
+       PackageName InstalledConstraint
 
 showLog :: Log -> String
-showLog (Exclude excluded) = "excluding " ++ display excluded
 showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
   ("", y) -> y
   (x, "") -> x
@@ -827,6 +827,19 @@ showLog (Select selected discarded) = case (selectedMsg, discardedMsg) of
         [ element
         | (pkgid:pkgids) <- groupBy (equating packageName) (sort discarded)
         , element <- display pkgid : map (display . packageVersion) pkgids ]
+showLog (AppliedVersionConstraint pkgname ver pkgids) =
+     "applying constraint " ++ display (Dependency pkgname ver)
+  ++ if null pkgids
+       then ""
+       else "which excludes " ++ listOf display pkgids
+showLog (AppliedInstalledConstraint pkgname inst pkgids) =
+     "applying constraint " ++ display pkgname ++ " '"
+  ++ (case inst of InstalledConstraint -> "installed"; _ -> "source") ++ "' "
+  ++ if null pkgids
+       then ""
+       else "which excludes " ++ listOf display pkgids
+showLog (ExcludeUnconfigurable pkgid) =
+     "excluding " ++ display pkgid ++ " (it cannot be configured)"
 
 showFailure :: Failure -> String
 showFailure (NoSuchPackage pkgname) =
@@ -850,9 +863,11 @@ showFailure (ConfigureFailed pkg missingDeps) =
 
       where pkgs = map fst conflicts
 
-showFailure (DependencyConflict pkg dep _ conflicts) =
+showFailure (DependencyConflict pkg dep installedConstraint conflicts) =
      "dependencies conflict: "
-  ++ displayPkg pkg ++ " requires " ++ displayDep dep ++ " however\n"
+  ++ displayPkg pkg ++ " requires "
+  ++ (if installedConstraint then "an installed instance of " else "")
+  ++ displayDep dep ++ " however:\n"
   ++ unlines [ showExclusionReason (packageId pkg') reason
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
@@ -866,14 +881,23 @@ showFailure (TopLevelVersionConstraintUnsatisfiable name ver) =
      "There is no available version of " ++ display name
       ++ " that satisfies " ++ displayVer ver
 
-showFailure (TopLevelInstallConstraintConflict name conflicts) =
+showFailure (TopLevelInstallConstraintConflict name InstalledConstraint conflicts) =
      "constraints conflict: "
-  ++ "top level constraint " ++ display name ++ "-installed however\n"
+  ++ "top level constraint '" ++ display name ++ " installed' however\n"
   ++ unlines [ showExclusionReason (packageId pkg') reason
              | (pkg', reasons) <- conflicts, reason <- reasons ]
 
-showFailure (TopLevelInstallConstraintUnsatisfiable name) =
+showFailure (TopLevelInstallConstraintUnsatisfiable name InstalledConstraint) =
      "There is no installed version of " ++ display name
+
+showFailure (TopLevelInstallConstraintConflict name SourceConstraint conflicts) =
+     "constraints conflict: "
+  ++ "top level constraint '" ++ display name ++ " source' however\n"
+  ++ unlines [ showExclusionReason (packageId pkg') reason
+             | (pkg', reasons) <- conflicts, reason <- reasons ]
+
+showFailure (TopLevelInstallConstraintUnsatisfiable name SourceConstraint) =
+     "There is no available source version of " ++ display name
 
 displayVer :: VersionRange -> String
 displayVer = display . simplifyVersionRange
