@@ -24,6 +24,8 @@ import Distribution.Client.Setup
 import Distribution.Client.Types as Source
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
+import Distribution.Client.Targets
+         ( userToPackageConstraint )
 
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId)
@@ -142,8 +144,9 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
 
         . addConstraints
             -- version constraints from the config file or command line
-            [ PackageConstraintVersion name ver
-            | Dependency name ver <- configConstraints configFlags ]
+            -- TODO: should warn or error on constraints that are not on direct deps
+            -- or flag constraints not on the package in question.
+            (map userToPackageConstraint (configExConstraints configExFlags))
 
         . addConstraints
             -- package flags from the config file or command line
