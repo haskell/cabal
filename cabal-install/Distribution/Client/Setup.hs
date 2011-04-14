@@ -39,6 +39,8 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
+import Distribution.Client.Targets
+         ( UserConstraint, readUserConstraint )
 
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
@@ -60,7 +62,7 @@ import Distribution.Package
 import Distribution.Text
          ( Text(parse), display )
 import Distribution.ReadE
-         ( readP_to_E, succeedReadE )
+         ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, readP_to_S, char, munch1, pfail, (+++) )
 import Distribution.Verbosity
@@ -231,6 +233,7 @@ filterConfigureFlags flags cabalLibVersion
 --
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
+    configExConstraints:: [UserConstraint],
     configPreferences  :: [Dependency]
   }
 
@@ -241,7 +244,8 @@ configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 configureExCommand = configureCommand {
     commandDefaultFlags = (mempty, defaultConfigExFlags),
     commandOptions      = \showOrParseArgs ->
-         liftOptions fst setFst (configureOptions   showOrParseArgs)
+         liftOptions fst setFst (filter ((/="constraint") . optionName) $
+                                 configureOptions   showOrParseArgs)
       ++ liftOptions snd setSnd (configureExOptions showOrParseArgs)
   }
   where
@@ -257,22 +261,31 @@ configureExOptions _showOrParseArgs =
       (reqArg "VERSION" (readP_to_E ("Cannot parse cabal lib version: "++)
                                     (fmap toFlag parse))
                         (map display . flagToList))
+  , option [] ["constraint"]
+      "Specify constraints on a package (version, installed/source, flags)"
+      configExConstraints (\v flags -> flags { configExConstraints = v })
+      (reqArg "CONSTRAINT"
+              (fmap (\x -> [x]) (ReadE readUserConstraint))
+              (map display))
 
   , option [] ["preference"]
       "Specify preferences (soft constraints) on the version of a package"
       configPreferences (\v flags -> flags { configPreferences = v })
-      (reqArg "DEPENDENCY"
-        (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
-                                        (map (\x -> display x)))
+      (reqArg "CONSTRAINT"
+              (readP_to_E (const "dependency expected")
+                          (fmap (\x -> [x]) parse))
+              (map display))
   ]
 
 instance Monoid ConfigExFlags where
   mempty = ConfigExFlags {
     configCabalVersion = mempty,
+    configExConstraints= mempty,
     configPreferences  = mempty
   }
   mappend a b = ConfigExFlags {
     configCabalVersion = combine configCabalVersion,
+    configExConstraints= combine configExConstraints,
     configPreferences  = combine configPreferences
   }
     where combine field = field a `mappend` field b
@@ -612,7 +625,8 @@ installCommand = CommandUI {
      ++ "    Constrained package version\n",
   commandDefaultFlags = (mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
-       liftOptions get1 set1 (configureOptions   showOrParseArgs)
+       liftOptions get1 set1 (filter ((/="constraint") . optionName) $
+                              configureOptions   showOrParseArgs)
     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
     ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
   }

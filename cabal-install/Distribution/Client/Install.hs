@@ -241,8 +241,7 @@ planPackages comp configFlags configExFlags installFlags
 
       . addConstraints
           -- version constraints from the config file or command line
-          [ PackageConstraintVersion name ver
-          | Dependency name ver <- configConstraints configFlags ]
+            (map userToPackageConstraint (configExConstraints configExFlags))
 
       . addConstraints
           --FIXME: this just applies all flags to all targets which

@@ -37,6 +37,11 @@ module Distribution.Client.Targets (
   disambiguatePackageTargets,
   disambiguatePackageName,
 
+  -- * User constraints
+  UserConstraint(..),
+  readUserConstraint,
+  userToPackageConstraint
+
   ) where
 
 import Distribution.Package
@@ -55,13 +60,14 @@ import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
 
 import Distribution.PackageDescription
-         ( GenericPackageDescription )
+         ( GenericPackageDescription, FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription, parsePackageDescription, ParseResult(..) )
 import Distribution.Version
-         ( Version(Version), thisVersion, anyVersion, isAnyVersion )
+         ( Version(Version), thisVersion, anyVersion, isAnyVersion
+         , VersionRange )
 import Distribution.Text
-         ( Text(parse), display )
+         ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
          ( die, warn, intercalate, findPackageDesc, fromUTF8, lowercase )
@@ -80,9 +86,13 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Distribution.Client.GZipUtils as GZipUtils
 import Control.Monad (liftM)
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, readP_to_S, (+++) )
+import Distribution.Compat.ReadP
+         ( (+++), (<++) )
+import qualified Text.PrettyPrint as Disp
+import Text.PrettyPrint
+         ( (<>), (<+>) )
 import Data.Char
-         ( isSpace )
+         ( isSpace, isAlphaNum )
 import System.FilePath
          ( takeExtension, dropExtension, takeDirectory, splitPath )
 import System.Directory
@@ -265,16 +275,17 @@ readUserTarget targetstr =
                       && takeExtension (dropExtension f) == ".tar"
 
     parseDependencyOrPackageId :: Parse.ReadP r Dependency
-    parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
+    parseDependencyOrPackageId = parse
+                             +++ liftM pkgidToDependency parse
       where
         pkgidToDependency :: PackageIdentifier -> Dependency
         pkgidToDependency p = case packageVersion p of
           Version [] _ -> Dependency (packageName p) anyVersion
           version      -> Dependency (packageName p) (thisVersion version)
 
-    readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
-    readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
-                                         , all isSpace s ]
+readPToMaybe :: Parse.ReadP a a -> String -> Maybe a
+readPToMaybe p str = listToMaybe [ r | (r,s) <- Parse.readP_to_S p str
+                                     , all isSpace s ]
 
 
 reportUserTargetProblems :: [UserTargetProblem] -> IO ()
@@ -649,3 +660,75 @@ extraPackageNameEnv names = PackageNameEnv pkgNameLookup
       | let lname = lowercase name
       , PackageName name' <- names
       , lowercase name' == lname ]
+
+
+-- ------------------------------------------------------------
+-- * Package constraints
+-- ------------------------------------------------------------
+
+data UserConstraint =
+     UserConstraintVersion   PackageName VersionRange
+   | UserConstraintInstalled PackageName
+   | UserConstraintSource    PackageName
+   | UserConstraintFlags     PackageName FlagAssignment
+  deriving (Show,Eq)
+
+
+userToPackageConstraint :: UserConstraint -> PackageConstraint
+-- At the moment, the types happen to be directly equivalent
+userToPackageConstraint uc = case uc of
+  UserConstraintVersion   name ver   -> PackageConstraintVersion    name ver
+  UserConstraintInstalled name       -> PackageConstraintInstalled  name
+  UserConstraintSource    name       -> PackageConstraintSource     name
+  UserConstraintFlags     name flags -> PackageConstraintFlags      name flags
+
+readUserConstraint :: String -> Either String UserConstraint
+readUserConstraint str =
+    case readPToMaybe parse str of
+      Nothing -> Left msgCannotParse
+      Just c  -> Right c
+  where
+    msgCannotParse =
+         "expected a package name followed by a constraint, which is "
+      ++ "either a version range, 'installed', 'source' or flags"
+
+--FIXME: use Text instance for FlagName and FlagAssignment
+instance Text UserConstraint where
+  disp (UserConstraintVersion   pkgname verrange) = disp pkgname <+> disp verrange
+  disp (UserConstraintInstalled pkgname)          = disp pkgname <+> Disp.text "installed"
+  disp (UserConstraintSource    pkgname)          = disp pkgname <+> Disp.text "source"
+  disp (UserConstraintFlags     pkgname flags)    = disp pkgname <+> dispFlagAssignment flags
+    where
+      dispFlagAssignment = Disp.hsep . map dispFlagValue
+      dispFlagValue (f, True)   = Disp.char '+' <> dispFlagName f
+      dispFlagValue (f, False)  = Disp.char '-' <> dispFlagName f
+      dispFlagName (FlagName f) = Disp.text f
+
+  parse = parse >>= parseConstraint
+    where
+      parseConstraint pkgname =
+            (parse >>= return . UserConstraintVersion pkgname)
+        +++ (do Parse.skipSpaces
+                _ <- Parse.string "installed"
+                return (UserConstraintInstalled pkgname))
+        +++ (do Parse.skipSpaces
+                _ <- Parse.string "source"
+                return (UserConstraintSource pkgname))
+        <++ (parseFlagAssignment >>= (return . UserConstraintFlags pkgname))
+
+      parseFlagAssignment = Parse.many1 (Parse.skipSpaces >> parseFlagValue)
+      parseFlagValue =
+            (do Parse.optional (Parse.char '+')
+                f <- parseFlagName
+                return (f, True))
+        +++ (do _ <- Parse.char '-'
+                f <- parseFlagName
+                return (f, False))
+      parseFlagName = liftM FlagName ident
+
+      ident :: Parse.ReadP r String
+      ident = Parse.munch1 identChar >>= \s -> check s >> return s
+        where
+          identChar c   = isAlphaNum c || c == '_' || c == '-'
+          check ('-':_) = Parse.pfail
+          check _       = return ()
