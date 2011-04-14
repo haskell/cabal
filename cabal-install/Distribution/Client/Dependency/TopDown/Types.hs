@@ -84,7 +84,6 @@ instance (Package installed, Package source)
 -- packages while packages that are not yet installed but which we plan to
 -- install can depend on installed or other not-yet-installed packages.
 --
-data InstalledConstraint = NoInstalledConstraint
-                         | InstalledConstraint
+data InstalledConstraint = InstalledConstraint
                          | SourceConstraint
   deriving (Eq, Show)
