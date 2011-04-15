@@ -83,7 +83,7 @@ import Distribution.Simple.Utils
          , findFile, findFileWithExtension, matchFileGlob
          , withTempDirectory, defaultPackageDesc
          , die, warn, notice, setupMessage )
-import Distribution.Simple.Setup (SDistFlags(..), fromFlag)
+import Distribution.Simple.Setup (SDistFlags(..), fromFlag, flagToMaybe)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.BuildPaths ( autogenModuleName )
@@ -111,9 +111,6 @@ sdist :: PackageDescription -- ^information from the tarball
       -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
       -> IO ()
 sdist pkg mb_lbi flags mkTmpDir pps = do
-  let distPref = fromFlag $ sDistDistPref flags
-      targetPref = distPref
-      tmpTargetDir = mkTmpDir distPref
 
   -- do some QA
   printPackageProblems verbosity pkg
@@ -121,25 +118,38 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
   when (isNothing mb_lbi) $
     warn verbosity "Cannot run preprocessors. Run 'configure' command first."
 
-  createDirectoryIfMissingVerbose verbosity True tmpTargetDir
-  withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
+  date <- toCalendarTime =<< getClockTime
+  let pkg' | snapshot  = snapshotPackage date pkg
+           | otherwise = pkg
 
-    date <- toCalendarTime =<< getClockTime
-    let pkg' | snapshot  = snapshotPackage date pkg
-             | otherwise = pkg
-    setupMessage verbosity "Building source dist for" (packageId pkg')
+  case flagToMaybe (sDistDirectory flags) of
+    Just targetDir -> do
+      generateSourceDir targetDir pkg'
+      notice verbosity $ "Source directory created: " ++ targetDir
 
-    -- FIXME This looks a bit suspicious. Should createArchive be passed
-    -- the result of prepareSnapshotTree/prepareTree?
-    _ <- if snapshot
-      then prepareSnapshotTree verbosity pkg' mb_lbi distPref tmpDir pps
-      else prepareTree         verbosity pkg' mb_lbi distPref tmpDir pps
-    targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
-    notice verbosity $ "Source tarball created: " ++ targzFile
+    Nothing -> do
+      createDirectoryIfMissingVerbose verbosity True tmpTargetDir
+      withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
+        let targetDir = tmpDir </> tarBallName pkg'
+        generateSourceDir targetDir pkg'
+        targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
+        notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
+    generateSourceDir targetDir pkg' = do
+
+      setupMessage verbosity "Building source dist for" (packageId pkg')
+      prepareTree verbosity pkg' mb_lbi distPref targetDir pps
+      when snapshot $
+        overwriteSnapshotPackageDesc verbosity pkg' targetDir
+
     verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
+
+    distPref     = fromFlag $ sDistDistPref flags
+    targetPref   = distPref
+    tmpTargetDir = mkTmpDir distPref
+
 
 -- |Prepare a directory tree of source files.
 prepareTree :: Verbosity          -- ^verbosity
@@ -148,10 +158,8 @@ prepareTree :: Verbosity          -- ^verbosity
             -> FilePath           -- ^dist dir
             -> FilePath           -- ^source tree to populate
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
-            -> IO FilePath        -- ^the name of the dir created and populated
-
-prepareTree verbosity pkg_descr0 mb_lbi distPref tmpDir pps = do
-  let targetDir = tmpDir </> tarBallName pkg_descr
+            -> IO ()
+prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   createDirectoryIfMissingVerbose verbosity True targetDir
   -- maybe move the library files into place
   withLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
@@ -229,7 +237,6 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref tmpDir pps = do
   -- the description file itself
   descFile <- defaultPackageDesc verbosity
   installOrdinaryFile verbosity descFile (targetDir </> descFile)
-  return targetDir
 
   where
     pkg_descr = mapAllBuildInfo filterAutogenModule pkg_descr0
@@ -260,21 +267,24 @@ prepareSnapshotTree :: Verbosity          -- ^verbosity
                     -> FilePath           -- ^dist dir
                     -> FilePath           -- ^source tree to populate
                     -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
-                    -> IO FilePath        -- ^the resulting temp dir
-prepareSnapshotTree verbosity pkg mb_lbi distPref tmpDir pps = do
-  targetDir <- prepareTree verbosity pkg mb_lbi distPref tmpDir pps
-  overwriteSnapshotPackageDesc (packageVersion pkg) targetDir
-  return targetDir
+                    -> IO ()
+prepareSnapshotTree verbosity pkg mb_lbi distPref targetDir pps = do
+  prepareTree verbosity pkg mb_lbi distPref targetDir pps
+  overwriteSnapshotPackageDesc verbosity pkg targetDir
+
+overwriteSnapshotPackageDesc :: Verbosity          -- ^verbosity
+                             -> PackageDescription -- ^info from the cabal file
+                             -> FilePath           -- ^source tree
+                             -> IO ()
+overwriteSnapshotPackageDesc verbosity pkg targetDir = do
+    -- We could just writePackageDescription targetDescFile pkg_descr,
+    -- but that would lose comments and formatting.
+    descFile <- defaultPackageDesc verbosity
+    withUTF8FileContents descFile $
+      writeUTF8File (targetDir </> descFile)
+        . unlines . map (replaceVersion (packageVersion pkg)) . lines
 
   where
-    overwriteSnapshotPackageDesc version targetDir = do
-      -- We could just writePackageDescription targetDescFile pkg_descr,
-      -- but that would lose comments and formatting.
-      descFile <- defaultPackageDesc verbosity
-      withUTF8FileContents descFile $
-        writeUTF8File (targetDir </> descFile)
-          . unlines . map (replaceVersion version) . lines
-
     replaceVersion :: Version -> String -> String
     replaceVersion version line
       | "version:" `isPrefixOf` map toLower line
