@@ -354,8 +354,7 @@ pruneBottomUp platform comp constraints =
         Satisfiable cs' [pkgid]| packageId pkg == pkgid
                          -> Step (ExcludeUnconfigurable pkgid) (rest cs')
         Satisfiable _ _  -> impossible
-        Unsatisfiable    -> impossible
-        ConflictsWith _  -> Fail $ ConfigureFailed pkg
+        _                -> Fail $ ConfigureFailed pkg
                               [ (dep, Constraints.conflicting cs dep)
                               | dep <- missing ]
 
