@@ -250,11 +250,8 @@ storeXFieldsTest _ _ = Nothing
 validateTestSuite :: LineNo -> TestSuiteStanza -> ParseResult TestSuite
 validateTestSuite line stanza =
     case testStanzaTestType stanza of
-      Nothing ->
-        syntaxError line $
-             "The 'type' field is required for test suites. "
-          ++ "The available test types are: "
-          ++ intercalate ", " (map display knownTestTypes)
+      Nothing -> return $
+        emptyTestSuite { testBuildInfo = testStanzaBuildInfo stanza }
 
       Just tt@(TestTypeUnknown _ _) ->
         return emptyTestSuite {
@@ -748,9 +745,48 @@ parsePackageDescription file = do
                 "'test-suite' needs one argument (the test suite's name)"
             testname <- lift $ runP line_no "test" parseTokenQ sec_label
             flds <- collectFields (parseTestFields line_no) sec_fields
-            skipField
-            (repos, flags, lib, exes, tests) <- getBody
-            return (repos, flags, lib, exes, tests ++ [(testname, flds)])
+
+            -- Check that a valid test suite type has been chosen. A type
+            -- field may be given inside a conditional block, so we must
+            -- check for that before complaining that a type field has not
+            -- been given. The test suite must always have a valid type, so
+            -- we need to check both the 'then' and 'else' blocks, though
+            -- the blocks need not have the same type.
+            let checkTestType ts ct =
+                    let ts' = mappend ts $ condTreeData ct
+                        -- If a conditional has only a 'then' block and no
+                        -- 'else' block, then it cannot have a valid type
+                        -- in every branch, unless the type is specified at
+                        -- a higher level in the tree.
+                        checkComponent (_, _, Nothing) = False
+                        -- If a conditional has a 'then' block and an 'else'
+                        -- block, both must specify a test type, unless the
+                        -- type is specified higher in the tree.
+                        checkComponent (_, t, Just e) =
+                            checkTestType ts' t && checkTestType ts' e
+                        -- Does the current node specify a test type?
+                        hasTestType = testInterface ts'
+                            /= testInterface emptyTestSuite
+                        components = condTreeComponents ct
+                    -- If the current level of the tree specifies a type,
+                    -- then we are done. If not, then one of the conditional
+                    -- branches below the current node must specify a type.
+                    -- Each node may have multiple immediate children; we
+                    -- only need one to specify a type because the
+                    -- configure step uses 'mappend' to join together the
+                    -- results of flag resolution.
+                    in hasTestType || (any checkComponent components)
+            if checkTestType emptyTestSuite flds
+                then do
+                    skipField
+                    (repos, flags, lib, exes, tests) <- getBody
+                    return (repos, flags, lib, exes, (testname, flds) : tests)
+                else lift $ syntaxError line_no $
+                        "Test suite \"" ++ testname
+                     ++ "\" is missing required field \"type\" or the field "
+                     ++ "is not present in all conditional branches. The "
+                     ++ "available test types are: "
+                     ++ intercalate ", " (map display knownTestTypes)
 
         | sec_type == "library" -> do
             when (not (null sec_label)) $ lift $
