@@ -203,7 +203,7 @@ addDeps =
   foldr $ \pkgname cs ->
             case Constraints.addTarget pkgname cs of
               Satisfiable cs' () -> cs'
-              _                  -> impossible
+              _                  -> impossible "addDeps unsatisfiable"
 
 constrainDeps :: SelectedPackage -> [(Dependency, Bool)] -> Constraints
               -> [PackageId]
@@ -211,11 +211,11 @@ constrainDeps :: SelectedPackage -> [(Dependency, Bool)] -> Constraints
 constrainDeps pkg []         cs discard =
   case addPackageSelectConstraint (packageId pkg) cs of
     Satisfiable cs' discard' -> Right (cs', discard' ++ discard)
-    _                        -> impossible
+    _                        -> impossible "constrainDeps unsatisfiable(1)"
 constrainDeps pkg ((dep, installedConstraint):deps) cs discard =
   case addPackageDependencyConstraint (packageId pkg) dep installedConstraint cs of
     Satisfiable cs' discard' -> constrainDeps pkg deps cs' (discard' ++ discard)
-    Unsatisfiable            -> impossible
+    Unsatisfiable            -> impossible "constrainDeps unsatisfiable(2)"
     ConflictsWith conflicts  ->
       Left (DependencyConflict pkg dep installedConstraint conflicts)
 
@@ -288,7 +288,7 @@ addTopLevelTargets (pkg:pkgs) cs =
   case Constraints.addTarget pkg cs of
     Satisfiable cs' ()       -> addTopLevelTargets pkgs cs'
     Unsatisfiable            -> Fail (NoSuchPackage pkg)
-    ConflictsWith _conflicts -> impossible
+    ConflictsWith _conflicts -> impossible "addTopLevelTargets conflicts"
 
 
 addTopLevelConstraints :: [PackageConstraint] -> Constraints
@@ -353,7 +353,7 @@ pruneBottomUp platform comp constraints =
       case addPackageExcludeConstraint (packageId pkg) reason cs of
         Satisfiable cs' [pkgid]| packageId pkg == pkgid
                          -> Step (ExcludeUnconfigurable pkgid) (rest cs')
-        Satisfiable _ _  -> impossible
+        Satisfiable _ _  -> impossible "pruneBottomUp satisfiable"
         _                -> Fail $ ConfigureFailed pkg
                               [ (dep, Constraints.conflicting cs dep)
                               | dep <- missing ]
@@ -532,8 +532,10 @@ finaliseSelectedPackages pref selected constraints =
     finaliseSelected (SourceOnly              apkg) = finaliseSource Nothing apkg
     finaliseSelected (InstalledAndSource ipkg apkg) =
       case PackageIndex.lookupPackageId remainingChoices (packageId ipkg) of
-        Nothing                          -> impossible --picked package not in constraints
-        Just (SourceOnly _)           -> impossible --to constrain to avail only
+                                        --picked package not in constraints
+        Nothing                       -> impossible "finaliseSelected no pkg"
+                                        -- to constrain to avail only:
+        Just (SourceOnly _)           -> impossible "finaliseSelected src only"
         Just (InstalledOnly _)        -> finaliseInstalled ipkg
         Just (InstalledAndSource _ _) -> finaliseSource (Just ipkg) apkg
 
@@ -545,7 +547,7 @@ finaliseSelectedPackages pref selected constraints =
 
     pickRemaining mipkg dep@(Dependency _name versionRange) =
           case PackageIndex.lookupDependency remainingChoices dep of
-            []        -> impossible
+            []        -> impossible "pickRemaining no pkg"
             [pkg']    -> pkg'
             remaining -> assert (checkIsPaired remaining)
                        $ maximumBy bestByPref remaining
@@ -909,8 +911,8 @@ displayDep = display . simplifyDependency
 -- * Utils
 -- ------------------------------------------------------------
 
-impossible :: a
-impossible = internalError "impossible"
+impossible :: String -> a
+impossible msg = internalError $ "assertion failure: " ++ msg
 
 internalError :: String -> a
 internalError msg = error $ "internal error: " ++ msg
