@@ -100,9 +100,9 @@ import Distribution.Package
          , Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
-         ( PackageDescription )
+         ( PackageDescription, GenericPackageDescription(..), TestSuite(..) )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription )
+         ( finalizePackageDescription, mapTreeData )
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
@@ -249,11 +249,24 @@ planPackages comp configFlags configExFlags installFlags
           [ PackageConstraintFlags (pkgSpecifierTarget pkgSpecifier) flags
           | let flags = configConfigurationsFlags configFlags
           , not (null flags)
-          , pkgSpecifier <- pkgSpecifiers ]
+          , pkgSpecifier <- pkgSpecifiers' ]
 
       . (if reinstall then reinstallTargets else id)
 
-      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers'
+
+    -- Mark test suites as enabled if invoked with '--enable-tests'. This
+    -- ensures that test suite dependencies are included.
+    pkgSpecifiers' = map enableTests pkgSpecifiers
+    testsEnabled = fromFlagOrDefault False $ configTests configFlags
+    enableTests (SpecificSourcePackage pkg) =
+        let pkgDescr = Source.packageDescription pkg
+            suites = condTestSuites pkgDescr
+            enable = mapTreeData (\t -> t { testEnabled = testsEnabled })
+        in SpecificSourcePackage $ pkg { Source.packageDescription = pkgDescr
+            { condTestSuites = map (\(n, t) -> (n, enable t)) suites } }
+    enableTests x = x
+
 
     --TODO: this is a general feature and should be moved to D.C.Dependency
     -- Also, the InstallPlan.remove should return info more precise to the
