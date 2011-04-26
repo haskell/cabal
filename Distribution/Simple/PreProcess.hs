@@ -454,7 +454,9 @@ ppHsc2hs bi lbi =
        ++ [ "--cflag=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
-                ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
+                ++ [         opt | opt <- Installed.ccOptions   pkg ]
+                ++ [ "-I" ++ autogenModulesDir lbi,
+                     "-include", autogenModulesDir lbi </> cppHeaderName ] ]
        ++ [ "--lflag=" ++ opt
           | pkg <- pkgs
           , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
