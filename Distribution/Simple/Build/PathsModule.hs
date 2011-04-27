@@ -191,6 +191,7 @@ pkgPathEnvVar pkg_descr var =
 
 get_prefix_win32 :: String
 get_prefix_win32 =
+  "getPrefixDirRel :: FilePath -> IO FilePath\n"++
   "getPrefixDirRel dirRel = try_size 2048 -- plenty, PATH_MAX is 512 under Win32.\n"++
   "  where\n"++
   "    try_size size = allocaArray (fromIntegral size) $ \\buf -> do\n"++
