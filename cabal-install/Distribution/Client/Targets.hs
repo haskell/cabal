@@ -612,7 +612,7 @@ reportPackageTargetProblems verbosity problems = do
                  "The following 'world' packages will be ignored because "
               ++ "they refer to packages that cannot be found: "
               ++ intercalate ", " (map display pkgs) ++ "\n"
-              ++ "You can surpress this warning by correcting the world file."
+              ++ "You can suppress this warning by correcting the world file."
   where
     isUserTagetWorld UserTargetWorld = True; isUserTagetWorld _ = False
 
