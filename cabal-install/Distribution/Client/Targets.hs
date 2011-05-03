@@ -574,7 +574,9 @@ disambiguatePackageTargets availablePkgIndex availableExtra targets =
                                           pkgname userTarget)
           Ambiguous   pkgnames -> Left  (PackageNameAmbigious
                                           pkgname pkgnames userTarget)
-          Unambiguous pkgname' -> Right (NamedPackage pkgname' constraints)
+          Unambiguous pkgname' -> Right (NamedPackage pkgname' constraints')
+            where
+              constraints' = map (renamePackageConstraint pkgname') constraints
 
     -- use any extra specific available packages to help us disambiguate
     packageNameEnv :: PackageNameEnv
@@ -681,6 +683,13 @@ userToPackageConstraint uc = case uc of
   UserConstraintInstalled name       -> PackageConstraintInstalled  name
   UserConstraintSource    name       -> PackageConstraintSource     name
   UserConstraintFlags     name flags -> PackageConstraintFlags      name flags
+
+renamePackageConstraint :: PackageName -> PackageConstraint -> PackageConstraint
+renamePackageConstraint name pc = case pc of
+  PackageConstraintVersion   _ ver   -> PackageConstraintVersion    name ver
+  PackageConstraintInstalled _       -> PackageConstraintInstalled  name
+  PackageConstraintSource    _       -> PackageConstraintSource     name
+  PackageConstraintFlags     _ flags -> PackageConstraintFlags      name flags
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =
