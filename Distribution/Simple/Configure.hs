@@ -14,7 +14,7 @@
 -- tools are available (including version checks if appropriate); checks for
 -- any required @pkg-config@ packages (updating the 'BuildInfo' with the
 -- results)
--- 
+--
 -- Then based on all this it saves the info in the 'LocalBuildInfo' and writes
 -- it out to the @dist\/setup-config@ file. It also displays various details to
 -- the user, the amount of information displayed depending on the verbosity
@@ -69,7 +69,7 @@ import Distribution.Simple.Compiler
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack )
 import Distribution.Package
-    ( PackageName(PackageName), PackageIdentifier(PackageIdentifier), PackageId
+    ( PackageName(PackageName), PackageIdentifier(..), PackageId
     , packageName, packageVersion, Package(..)
     , Dependency(Dependency), simplifyDependency
     , InstalledPackageId(..) )
@@ -82,7 +82,8 @@ import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , FlagName(..), TestSuite(..) )
+    , FlagName(..), TestSuite(..)
+    , allComponentsBy, Component(..), compSel )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
@@ -107,7 +108,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
     , intercalate, cabalVersion
-    , withFileContents, writeFileAtomic 
+    , withFileContents, writeFileAtomic
     , withTempFile )
 import Distribution.System
     ( OS(..), buildOS, buildPlatform )
@@ -124,13 +125,15 @@ import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
 
 import Control.Monad
-    ( when, unless, foldM, filterM )
+    ( when, unless, foldM, filterM, forM )
 import Data.List
-    ( nub, partition, isPrefixOf, inits )
+    ( nub, partition, isPrefixOf, inits, find )
 import Data.Maybe
-         ( isNothing, catMaybes )
+    ( isNothing, catMaybes, mapMaybe )
 import Data.Monoid
     ( Monoid(..) )
+import Data.Graph
+    ( SCC(..), graphFromEdges, transposeG, vertices, stronglyConnCompR )
 import System.Directory
     ( doesFileExist, getModificationTime, createDirectoryIfMissing, getTemporaryDirectory )
 import System.Exit
@@ -437,7 +440,7 @@ configure (pkg_descr0, pbi) cfg
 
         programsConfig''' <-
               configureAllKnownPrograms (lessVerbose verbosity) programsConfig''
-          >>= configureRequiredPrograms verbosity requiredBuildTools 
+          >>= configureRequiredPrograms verbosity requiredBuildTools
 
         (pkg_descr', programsConfig'''') <-
           configurePkgconfigPackages verbosity pkg_descr programsConfig'''
@@ -458,7 +461,7 @@ configure (pkg_descr0, pbi) cfg
         -- needs. Note, this only works because we cannot yet depend on two
         -- versions of the same package.
         let configLib lib = configComponent (libBuildInfo lib)
-            configExe exe = (exeName exe, configComponent(buildInfo exe))
+            configExe exe = (exeName exe, configComponent (buildInfo exe))
             configTest test = (testName test,
                     configComponent(testBuildInfo test))
             configComponent bi = ComponentLocalBuildInfo {
@@ -477,20 +480,49 @@ configure (pkg_descr0, pbi) cfg
               where
                 names = [ name | Dependency name _ <- targetBuildDepends bi ]
 
-        let lbi = LocalBuildInfo{
+        -- Obtains the intrapackage dependencies for the given component
+        let ipDeps component =
+                 mapMaybe exeDepToComp (buildTools bi)
+              ++ mapMaybe libDepToComp (targetBuildDepends bi)
+              where
+                bi = compSel libBuildInfo buildInfo testBuildInfo $ component
+                exeDepToComp (Dependency (PackageName name) _) =
+                  CExe `fmap` find ((==) name . exeName)
+                                (executables pkg_descr')
+                libDepToComp (Dependency pn _)
+                  | pn `elem` map packageName internalPkgDeps =
+                    CLib `fmap` library pkg_descr'
+                libDepToComp _ = Nothing
+
+        let sccs = (stronglyConnCompR . map lkup . vertices . transposeG) g
+              where (g, lkup, _) = graphFromEdges
+                                 $ allComponentsBy pkg_descr'
+                                 $ \c -> (c, key c, map key (ipDeps c))
+                    key          = compSel (const "library") exeName testName
+
+        -- check for cycles in the dependency graph
+        buildOrder <- forM sccs $ \scc -> case scc of
+          AcyclicSCC (c,_,_) -> return c
+          CyclicSCC vs ->
+            die $ "Found cycle in intrapackage dependency graph:\n  "
+                ++ intercalate " depends on "
+                     (map (\(_,k,_) -> "'" ++ k ++ "'") (vs ++ [head vs]))
+
+        let lbi = LocalBuildInfo {
                     configFlags         = cfg,
                     extraConfigArgs     = [],  -- Currently configure does not
                                                -- take extra args, but if it
                                                -- did they would go here.
                     installDirTemplates = installDirs,
                     compiler            = comp,
-                    buildDir            = buildDir', 
+                    buildDir            = buildDir',
                     scratchDir          = fromFlagOrDefault
                                             (distPref </> "scratch")
                                             (configScratchDir cfg),
                     libraryConfig       = configLib `fmap` library pkg_descr',
                     executableConfigs   = configExe `fmap` executables pkg_descr',
                     testSuiteConfigs    = configTest `fmap` filter testEnabled (testSuites pkg_descr'),
+                    compBuildOrder      = buildOrder,
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
@@ -543,9 +575,9 @@ configure (pkg_descr0, pbi) cfg
       addInternalExe bd exe =
         let nm = exeName exe in
         addKnownProgram Program {
-          programName         = nm, 
+          programName         = nm,
           programFindLocation = \_ -> return $ Just $ bd </> nm </> nm,
-          programFindVersion  = \_ _ -> return Nothing, 
+          programFindVersion  = \_ _ -> return Nothing,
           programPostConf     = \_ _ -> return []
         }
 

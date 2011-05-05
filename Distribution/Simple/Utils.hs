@@ -88,6 +88,7 @@ module Distribution.Simple.Utils (
 
         -- * finding files
         findFile,
+        findFirstFile,
         findFileWithExtension,
         findFileWithExtension',
         findModuleFile,

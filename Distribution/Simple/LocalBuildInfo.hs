@@ -50,6 +50,7 @@ module Distribution.Simple.LocalBuildInfo (
         inplacePackageId,
         withLibLBI,
         withExeLBI,
+        withComponentsLBI,
         withTestLBI,
         ComponentLocalBuildInfo(..),
         -- * Installation directories
@@ -66,7 +67,8 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library, withExe
-         , Executable(exeName), withTest, TestSuite(..) )
+         , Executable(exeName), withTest, TestSuite(..)
+         , Component(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..) )
 import Distribution.Simple.Compiler
@@ -104,6 +106,9 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ Where to put the result of the Hugs build.
         libraryConfig       :: Maybe ComponentLocalBuildInfo,
         executableConfigs   :: [(String, ComponentLocalBuildInfo)],
+        compBuildOrder :: [Component],
+                -- ^ All the components to build, ordered by topological sort
+                -- over the intrapackage dependency graph
         testSuiteConfigs    :: [(String, ComponentLocalBuildInfo)],
         installedPkgs :: PackageIndex,
                 -- ^ All the info about the installed packages that the
@@ -173,6 +178,32 @@ withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
     Nothing   -> die $ "internal error: the package contains an executable "
                     ++ exeName exe ++ " but there is no corresponding "
                     ++ "configuration data"
+
+-- | Perform the action on each buildable 'Library' or 'Executable' (Component)
+-- in the PackageDescription, subject to the build order specified by the
+-- 'compBuildOrder' field of the given 'LocalBuildInfo'
+withComponentsLBI :: LocalBuildInfo
+                  -> (Component -> ComponentLocalBuildInfo -> IO ())
+                  -> IO ()
+withComponentsLBI lbi f = mapM_ compF (compBuildOrder lbi)
+  where
+    compF l@(CLib _lib) =
+      case libraryConfig lbi of
+        Just clbi -> f l clbi
+        Nothing   -> die $ "internal error: the package contains a library "
+                        ++ "but there is no corresponding configuration data"
+    compF r@(CExe exe) =
+      case lookup (exeName exe) (executableConfigs lbi) of
+        Just clbi -> f r clbi
+        Nothing   -> die $ "internal error: the package contains an executable "
+                        ++ exeName exe ++ " but there is no corresponding "
+                        ++ "configuration data"
+    compF t@(CTst test) =
+      case lookup (testName test) (testSuiteConfigs lbi) of
+        Just clbi -> f t clbi
+        Nothing -> die $ "internal error: the package contains a test suite "
+                        ++ testName test ++ " but there is no corresponding "
+                        ++ "configuration data"
 
 withTestLBI :: PackageDescription -> LocalBuildInfo
             -> (TestSuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()
