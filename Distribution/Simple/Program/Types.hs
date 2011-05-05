@@ -17,6 +17,7 @@
 module Distribution.Simple.Program.Types (
     -- * Program and functions for constructing them
     Program(..),
+    internalProgram,
     simpleProgram,
 
     -- * Configured program and related functions
@@ -26,8 +27,11 @@ module Distribution.Simple.Program.Types (
     ProgramLocation(..),
   ) where
 
+import Data.List (nub) 
+import System.FilePath ((</>))
+
 import Distribution.Simple.Utils
-         ( findProgramLocation )
+         ( findProgramLocation, findFirstFile )
 import Distribution.Version
          ( Version )
 import Distribution.Verbosity
@@ -104,3 +108,15 @@ simpleProgram name = Program {
     programFindVersion  = \_ _ -> return Nothing,
     programPostConf     = \_ _ -> return []
   }
+
+-- | Make a simple 'internal' program; that is, one that was built as an
+-- executable already and is expected to be found in the build directory
+internalProgram :: [FilePath] -> String -> Program
+internalProgram paths name = Program {
+  programName         = name,
+  programFindLocation = \_v ->
+    findFirstFile id [ path </> name | path <- nub paths ],
+    programFindVersion  = \_ _ -> return Nothing,
+    programPostConf     = \_ _ -> return []
+  }
+

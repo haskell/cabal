@@ -38,8 +38,7 @@ tests cabalVersion = [
         hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite,
         hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite,
         hunit "PackageTests/BuildDeps/InternalLibrary0/" (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion),
-        hunit "PackageTests/TestStanza/"
-        (PackageTests.TestStanza.Check.suite cabalVersion),
+        hunit "PackageTests/TestStanza/" (PackageTests.TestStanza.Check.suite cabalVersion),
         -- ^ The Test stanza test will eventually be required
         -- only for higher versions.
         hunit "PackageTests/TestSuiteExeV10/Test"

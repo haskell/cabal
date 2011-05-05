@@ -69,18 +69,18 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-         , TestSuite(..), TestSuiteInterface(..) )
+         , TestSuite(..), TestSuiteInterface(..), Component(..) )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
 import Distribution.Simple.Setup
          ( BuildFlags(..), fromFlag )
 import Distribution.Simple.PreProcess
-         ( preprocessSources, PPSuffixHandler )
+         ( preprocessComponent, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(compiler, buildDir, withPackageDB)
-         , ComponentLocalBuildInfo(..), withLibLBI, withExeLBI
-         , inplacePackageId, withTestLBI )
+         , ComponentLocalBuildInfo(..), withComponentsLBI
+         , inplacePackageId )
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
 import Distribution.Simple.Register
@@ -107,100 +107,102 @@ import System.Directory
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
 
-build    :: PackageDescription  -- ^mostly information from the .cabal file
-         -> LocalBuildInfo -- ^Configuration information
-         -> BuildFlags -- ^Flags that the user passed to build
-         -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
+build    :: PackageDescription  -- ^ Mostly information from the .cabal file
+         -> LocalBuildInfo      -- ^ Configuration information
+         -> BuildFlags          -- ^ Flags that the user passed to build
+         -> [ PPSuffixHandler ] -- ^ preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi flags suffixes = do
   let distPref  = fromFlag (buildDistPref flags)
       verbosity = fromFlag (buildVerbosity flags)
-  initialBuildSteps distPref pkg_descr lbi verbosity suffixes
+  initialBuildSteps distPref pkg_descr lbi verbosity
   setupMessage verbosity "Building" (packageId pkg_descr)
 
   internalPackageDB <- createInternalPackageDB distPref
 
-  withLibLBI pkg_descr lbi $ \lib clbi -> do
-    info verbosity "Building library..."
-    buildLib verbosity pkg_descr lbi lib clbi
+  let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
+      lbi'  = lbi {withPackageDB = withPackageDB lbi ++ [internalPackageDB]}
+              -- Use the internal package DB for the exes.
+  withComponentsLBI lbi $ \comp clbi -> do
+    pre comp
+    case comp of
+      CLib lib -> do
+        info verbosity "Building library..."
+        buildLib verbosity pkg_descr lbi lib clbi
 
-    -- Register the library in-place, so exes can depend
-    -- on internally defined libraries.
-    pwd <- getCurrentDirectory
-    let installedPkgInfo =
-          (inplaceInstalledPackageInfo pwd distPref pkg_descr lib lbi clbi) {
-            -- The inplace registration uses the "-inplace" suffix,
-            -- not an ABI hash.
-            IPI.installedPackageId = inplacePackageId (packageId installedPkgInfo)
-          }
-    registerPackage verbosity
-      installedPkgInfo pkg_descr lbi True -- True meaning inplace
-      (withPackageDB lbi ++ [internalPackageDB])
+        -- Register the library in-place, so exes can depend
+        -- on internally defined libraries.
+        pwd <- getCurrentDirectory
+        let installedPkgInfo =
+              (inplaceInstalledPackageInfo pwd distPref pkg_descr lib lbi clbi) {
+                -- The inplace registration uses the "-inplace" suffix,
+                -- not an ABI hash.
+                IPI.installedPackageId = inplacePackageId (packageId installedPkgInfo)
+              }
+        registerPackage verbosity
+          installedPkgInfo pkg_descr lbi True -- True meaning inplace
+          (withPackageDB lbi ++ [internalPackageDB])
 
-  -- Use the internal package db for the exes.
-  let lbi' = lbi { withPackageDB = withPackageDB lbi ++ [internalPackageDB] }
+      CExe exe -> do
+        info verbosity $ "Building executable " ++ exeName exe ++ "..."
+        buildExe verbosity pkg_descr lbi' exe clbi
 
-  withExeLBI pkg_descr lbi' $ \exe clbi -> do
-    info verbosity $ "Building executable " ++ exeName exe ++ "..."
-    buildExe verbosity pkg_descr lbi' exe clbi
-
-  withTestLBI pkg_descr lbi' $ \test clbi ->
-    case testInterface test of
-        TestSuiteExeV10 _ f -> do
-            let exe = Executable
-                    { exeName = testName test
-                    , modulePath = f
-                    , buildInfo = testBuildInfo test
-                    }
-            info verbosity $ "Building test suite " ++ testName test ++ "..."
-            buildExe verbosity pkg_descr lbi' exe clbi
-        TestSuiteLibV09 _ m -> do
-            pwd <- getCurrentDirectory
-            let lib = Library
-                    { exposedModules = [ m ]
-                    , libExposed = True
-                    , libBuildInfo = testBuildInfo test
-                    }
-                pkg = pkg_descr
-                    { package = (package pkg_descr)
-                        { pkgName = PackageName $ testName test
+      CTst test -> do
+        case testInterface test of
+            TestSuiteExeV10 _ f -> do
+                let exe = Executable
+                        { exeName = testName test
+                        , modulePath = f
+                        , buildInfo = testBuildInfo test
                         }
-                    , buildDepends = targetBuildDepends $ testBuildInfo test
-                    , executables = []
-                    , testSuites = []
-                    , library = Just lib
-                    }
-                ipi = (inplaceInstalledPackageInfo
-                    pwd distPref pkg lib lbi clbi)
-                    { IPI.installedPackageId = inplacePackageId $ packageId ipi
-                    }
-                testDir = buildDir lbi' </> stubName test
-                    </> stubName test ++ "-tmp"
-                testLibDep = thisPackageVersion $ package pkg
-                exe = Executable
-                    { exeName = stubName test
-                    , modulePath = stubFilePath test
-                    , buildInfo = (testBuildInfo test)
-                        { hsSourceDirs = [ testDir ]
-                        , targetBuildDepends = testLibDep
-                            : (targetBuildDepends $ testBuildInfo test)
+                info verbosity $ "Building test suite " ++ testName test ++ "..."
+                buildExe verbosity pkg_descr lbi' exe clbi
+            TestSuiteLibV09 _ m -> do
+                pwd <- getCurrentDirectory
+                let lib = Library
+                        { exposedModules = [ m ]
+                        , libExposed = True
+                        , libBuildInfo = testBuildInfo test
                         }
-                    }
-                -- | The stub executable needs a new 'ComponentLocalBuildInfo'
-                -- that exposes the relevant test suite library.
-                exeClbi = clbi
-                    { componentPackageDeps =
-                        (IPI.installedPackageId ipi, packageId ipi)
-                        : (filter (\(_, x) -> let PackageName name = pkgName x in name == "Cabal" || name == "base")
-                            $ componentPackageDeps clbi)
-                    }
-            info verbosity $ "Building test suite " ++ testName test ++ "..."
-            buildLib verbosity pkg lbi' lib clbi
-            registerPackage verbosity ipi pkg lbi' True $ withPackageDB lbi'
-            buildExe verbosity pkg_descr lbi' exe exeClbi
-        TestSuiteUnsupported tt -> die $ "No support for building test suite "
-                                      ++ "type " ++ display tt
-
+                    pkg = pkg_descr
+                        { package = (package pkg_descr)
+                            { pkgName = PackageName $ testName test
+                            }
+                        , buildDepends = targetBuildDepends $ testBuildInfo test
+                        , executables = []
+                        , testSuites = []
+                        , library = Just lib
+                        }
+                    ipi = (inplaceInstalledPackageInfo
+                        pwd distPref pkg lib lbi clbi)
+                        { IPI.installedPackageId = inplacePackageId $ packageId ipi
+                        }
+                    testDir = buildDir lbi' </> stubName test
+                        </> stubName test ++ "-tmp"
+                    testLibDep = thisPackageVersion $ package pkg
+                    exe = Executable
+                        { exeName = stubName test
+                        , modulePath = stubFilePath test
+                        , buildInfo = (testBuildInfo test)
+                            { hsSourceDirs = [ testDir ]
+                            , targetBuildDepends = testLibDep
+                                : (targetBuildDepends $ testBuildInfo test)
+                            }
+                        }
+                    -- | The stub executable needs a new 'ComponentLocalBuildInfo'
+                    -- that exposes the relevant test suite library.
+                    exeClbi = clbi
+                        { componentPackageDeps =
+                            (IPI.installedPackageId ipi, packageId ipi)
+                            : (filter (\(_, x) -> let PackageName name = pkgName x in name == "Cabal" || name == "base")
+                                $ componentPackageDeps clbi)
+                        }
+                info verbosity $ "Building test suite " ++ testName test ++ "..."
+                buildLib verbosity pkg lbi' lib clbi
+                registerPackage verbosity ipi pkg lbi' True $ withPackageDB lbi'
+                buildExe verbosity pkg_descr lbi' exe exeClbi
+            TestSuiteUnsupported tt -> die $ "No support for building test suite "
+                                          ++ "type " ++ display tt
 
 -- | Initialize a new package db file for libraries defined
 -- internally to the package.
@@ -241,9 +243,8 @@ initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> PackageDescription  -- ^mostly information from the .cabal file
                   -> LocalBuildInfo -- ^Configuration information
                   -> Verbosity -- ^The verbosity to use
-                  -> [ PPSuffixHandler ] -- ^preprocessors to run before compiling
                   -> IO ()
-initialBuildSteps _distPref pkg_descr lbi verbosity suffixes = do
+initialBuildSteps _distPref pkg_descr lbi verbosity = do
   -- check that there's something to build
   let buildInfos =
           map libBuildInfo (maybeToList (library pkg_descr)) ++
@@ -255,8 +256,6 @@ initialBuildSteps _distPref pkg_descr lbi verbosity suffixes = do
   createDirectoryIfMissingVerbose verbosity True (buildDir lbi)
 
   writeAutogenFiles verbosity pkg_descr lbi
-
-  preprocessSources pkg_descr lbi False verbosity suffixes
 
 -- | Generate and write out the Paths_<pkg>.hs and cabal_macros.h files
 --

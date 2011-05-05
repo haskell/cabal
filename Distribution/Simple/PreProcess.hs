@@ -47,7 +47,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
-module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
+module Distribution.Simple.PreProcess (preprocessComponent, knownSuffixHandlers,
                                 ppSuffixes, PPSuffixHandler, PreProcessor(..),
                                 mkSimplePreProcessor, runSimplePreProcessor,
                                 ppCpp, ppCpp', ppGreenCard, ppC2hs, ppHsc2hs,
@@ -56,15 +56,18 @@ module Distribution.Simple.PreProcess (preprocessSources, knownSuffixHandlers,
     where
 
 
+import Control.Monad
 import Distribution.Simple.PreProcess.Unlit (unlit)
 import Distribution.Package
          ( Package(..), PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(..), Executable(..), withExe
-         , Library(..), withLib, libModules
-         , TestSuite(..), withTest, testModules
-         , TestSuiteInterface(..) )
+         ( PackageDescription(..), BuildInfo(..)
+         , Executable(..)
+         , Library(..), libModules
+         , TestSuite(..), testModules
+         , TestSuiteInterface(..)
+         , Component(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -90,7 +93,6 @@ import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.Verbosity
 
-import Control.Monad (when, unless)
 import Data.Maybe (fromMaybe)
 import Data.List (nub)
 import System.Directory (getModificationTime, doesFileExist)
@@ -171,66 +173,62 @@ runSimplePreProcessor pp inFile outFile verbosity =
 type PPSuffixHandler
     = (String, BuildInfo -> LocalBuildInfo -> PreProcessor)
 
--- |Apply preprocessors to the sources from 'hsSourceDirs', to obtain
--- a Haskell source file for each module.
-preprocessSources :: PackageDescription
-                  -> LocalBuildInfo
-                  -> Bool               -- ^ Build for SDist
-                  -> Verbosity          -- ^ verbosity
-                  -> [PPSuffixHandler]  -- ^ preprocessors to try
-                  -> IO ()
-
-preprocessSources pkg_descr lbi forSDist verbosity handlers = do
-    withLib pkg_descr $ \ lib -> do
-        setupMessage verbosity "Preprocessing library" (packageId pkg_descr)
-        let bi = libBuildInfo lib
-        let biHandlers = localHandlers bi
-        sequence_ [ preprocessFile (hsSourceDirs bi ++ [autogenModulesDir lbi]) (buildDir lbi) forSDist
-                                   (ModuleName.toFilePath modu) verbosity
-                                   builtinSuffixes biHandlers
-                  | modu <- libModules lib ]
-    unless (null (executables pkg_descr)) $
-        setupMessage verbosity "Preprocessing executables for" (packageId pkg_descr)
-    withExe pkg_descr $ \ theExe -> do
-        let bi = buildInfo theExe
-        let biHandlers = localHandlers bi
-        let exeDir = buildDir lbi </> exeName theExe </> exeName theExe ++ "-tmp"
-        sequence_ [ preprocessFile (hsSourceDirs bi ++ [autogenModulesDir lbi]) exeDir forSDist
-                                   (ModuleName.toFilePath modu) verbosity
-                                   builtinSuffixes biHandlers
-                  | modu <- otherModules bi]
-        preprocessFile (hsSourceDirs bi) exeDir forSDist
-                         (dropExtensions (modulePath theExe))
-                         verbosity builtinSuffixes biHandlers
-    unless (null (testSuites pkg_descr)) $
-        setupMessage verbosity "Preprocessing test suites for" (packageId pkg_descr)
-    withTest pkg_descr $ \test -> case testInterface test of
-        TestSuiteExeV10 _ f ->
-            preProcessTest test f $ buildDir lbi </> testName test
-                </> testName test ++ "-tmp"
-        TestSuiteLibV09 _ _ -> do
-            let testDir = buildDir lbi </> stubName test
-                    </> stubName test ++ "-tmp"
-            writeSimpleTestStub test testDir
-            preProcessTest test (stubFilePath test) testDir
-        TestSuiteUnsupported tt -> die $ "No support for preprocessing test "
-                                      ++ "suite type " ++ display tt
-  where hc = compilerFlavor (compiler lbi)
-        builtinSuffixes
-          | hc == NHC = ["hs", "lhs", "gc"]
-          | otherwise = ["hs", "lhs"]
-        localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
-        preProcessTest test exePath testDir = do
-            let bi = testBuildInfo test
-                biHandlers = localHandlers bi
-                sourceDirs = hsSourceDirs bi ++ [ autogenModulesDir lbi ]
-            sequence_ [ preprocessFile sourceDirs (buildDir lbi) forSDist
-                    (ModuleName.toFilePath modu) verbosity builtinSuffixes
-                    biHandlers
-                    | modu <- testModules test ]
-            preprocessFile (testDir : (hsSourceDirs bi)) testDir forSDist
-                (dropExtensions $ exePath) verbosity
-                builtinSuffixes biHandlers
+-- | Apply preprocessors to the sources from 'hsSourceDirs' for a given
+-- component (lib, exe, or test suite).
+preprocessComponent :: PackageDescription
+                    -> Component
+                    -> LocalBuildInfo
+                    -> Bool
+                    -> Verbosity
+                    -> [PPSuffixHandler]
+                    -> IO ()
+preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
+  (CLib lib@Library{ libBuildInfo = bi }) -> do
+    let dirs = hsSourceDirs bi ++ [autogenModulesDir lbi]
+    setupMessage verbosity "Preprocessing library" (packageId pd)
+    forM_ (map ModuleName.toFilePath $ libModules lib) $
+      pre dirs (buildDir lbi) (localHandlers bi)
+  (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
+    let exeDir = buildDir lbi </> nm </> nm ++ "-tmp"
+        dirs   = hsSourceDirs bi ++ [autogenModulesDir lbi]
+    unless (null (executables pd)) $
+      setupMessage verbosity ("Preprocessing executable '" ++ nm ++ "' for") (packageId pd)
+    forM_ (map ModuleName.toFilePath $ otherModules bi) $
+      pre dirs exeDir (localHandlers bi)
+    pre (hsSourceDirs bi) exeDir (localHandlers bi) $
+      dropExtensions (modulePath exe)
+  CTst test -> do
+    unless (null (testSuites pd)) $
+      setupMessage verbosity "Preprocessing test suites for" (packageId pd)
+    case testInterface test of
+      TestSuiteExeV10 _ f ->
+          preProcessTest test f $ buildDir lbi </> testName test
+              </> testName test ++ "-tmp"
+      TestSuiteLibV09 _ _ -> do
+          let testDir = buildDir lbi </> stubName test
+                  </> stubName test ++ "-tmp"
+          writeSimpleTestStub test testDir
+          preProcessTest test (stubFilePath test) testDir
+      TestSuiteUnsupported tt -> die $ "No support for preprocessing test "
+                                    ++ "suite type " ++ display tt
+  where
+    builtinSuffixes
+      | NHC == compilerFlavor (compiler lbi) = ["hs", "lhs", "gc"]
+      | otherwise                            = ["hs", "lhs"]
+    localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
+    pre dirs dir lhndlrs fp =
+      preprocessFile dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs
+    preProcessTest test exePath testDir = do
+        let bi = testBuildInfo test
+            biHandlers = localHandlers bi
+            sourceDirs = hsSourceDirs bi ++ [ autogenModulesDir lbi ]
+        sequence_ [ preprocessFile sourceDirs (buildDir lbi) isSrcDist
+                (ModuleName.toFilePath modu) verbosity builtinSuffixes
+                biHandlers
+                | modu <- testModules test ]
+        preprocessFile (testDir : (hsSourceDirs bi)) testDir isSrcDist
+            (dropExtensions $ exePath) verbosity
+            builtinSuffixes biHandlers
 
 --TODO: try to list all the modules that could not be found
 --      not just the first one. It's annoying and slow due to the need

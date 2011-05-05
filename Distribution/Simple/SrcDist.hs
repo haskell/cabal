@@ -84,8 +84,8 @@ import Distribution.Simple.Utils
          , withTempDirectory, defaultPackageDesc
          , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag, flagToMaybe)
-import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessSources)
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessComponent)
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), withComponentsLBI )
 import Distribution.Simple.BuildPaths ( autogenModuleName )
 import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
                               rawSystemProgram, tarProgram )
@@ -161,9 +161,11 @@ prepareTree :: Verbosity          -- ^verbosity
             -> IO ()
 prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   createDirectoryIfMissingVerbose verbosity True targetDir
+
   -- maybe move the library files into place
   withLib $ \Library { exposedModules = modules, libBuildInfo = libBi } ->
     prepareDir verbosity pkg_descr distPref targetDir pps modules libBi
+
   -- move the executables into place
   withExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
     prepareDir verbosity pkg_descr distPref targetDir pps [] exeBi
@@ -173,6 +175,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
         Nothing -> findFile (hsSourceDirs exeBi) mainPath
         Just pp -> return pp
     copyFileTo verbosity targetDir srcMainFile
+
   -- move the test suites into place
   withTest $ \t -> do
     let bi = testBuildInfo t
@@ -191,6 +194,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
         TestSuiteLibV09 _ m -> do
             prep [m] bi
         TestSuiteUnsupported tp -> die $ "Unsupported test suite type: " ++ show tp
+
   flip mapM_ (dataFiles pkg_descr) $ \ filename -> do
     files <- matchFileGlob (dataDir pkg_descr </> filename)
     let dir = takeDirectory (dataDir pkg_descr </> filename)
@@ -221,9 +225,10 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   -- if the package was configured then we can run platform independent
   -- pre-processors and include those generated files
   case mb_lbi of
-    Just lbi | not (null pps)
-      -> preprocessSources pkg_descr (lbi { buildDir = targetDir </> buildDir lbi })
-                             True verbosity pps
+    Just lbi | not (null pps) -> do
+      let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }   
+      withComponentsLBI lbi' $ \c _ ->
+        preprocessComponent pkg_descr c lbi' True verbosity pps
     _ -> return ()
 
   -- setup isn't listed in the description file.
