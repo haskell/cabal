@@ -979,7 +979,7 @@ findPackageDesc dir
     multiDesc :: [String] -> IO a
     multiDesc l = die $ "Multiple cabal files found.\n"
                     ++ "Please use only one of: "
-                    ++ show l
+                    ++ intercalate ", " l
 
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)
