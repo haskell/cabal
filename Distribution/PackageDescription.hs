@@ -642,6 +642,7 @@ allComponentsBy pkg_descr f = [ f (CLib l) | Just l <- [library pkg_descr]
                               ++
                               [ f (CTst t) | t <- testSuites pkg_descr
                                            , buildable (testBuildInfo t)
+                                           , testEnabled t
                               ]
 
 -- | The 'Language's used by this component

@@ -521,7 +521,7 @@ configure (pkg_descr0, pbi) cfg
                                             (configScratchDir cfg),
                     libraryConfig       = configLib `fmap` library pkg_descr',
                     executableConfigs   = configExe `fmap` executables pkg_descr',
-                    testSuiteConfigs    = configTest `fmap` filter testEnabled (testSuites pkg_descr'),
+                    testSuiteConfigs    = configTest `fmap` testSuites pkg_descr',
                     compBuildOrder      = buildOrder,
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
