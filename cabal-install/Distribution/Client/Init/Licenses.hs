@@ -12,7 +12,7 @@ type License = String
 
 bsd3 :: String -> String -> License
 bsd3 authors year = unlines
-    [ "Copyright (c)" ++ year ++ ", " ++ authors
+    [ "Copyright (c) " ++ year ++ ", " ++ authors
     , ""
     , "All rights reserved."
     , ""
