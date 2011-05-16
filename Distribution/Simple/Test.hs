@@ -57,7 +57,8 @@ import Distribution.ModuleName ( ModuleName )
 import Distribution.Package
     ( PackageId )
 import qualified Distribution.PackageDescription as PD
-         ( PackageDescription(..), TestSuite(..)
+         ( PackageDescription(..), BuildInfo(buildable)
+         , TestSuite(..)
          , TestSuiteInterface(..), testType, hasTests )
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
@@ -257,7 +258,9 @@ test pkg_descr lbi flags = do
         testLogDir = distPref </> "test"
         testNames = fromFlag $ testList flags
         pkgTests = PD.testSuites pkg_descr
-        enabledTests = filter PD.testEnabled pkgTests
+        enabledTests = [ t | t <- pkgTests
+                           , PD.testEnabled t
+                           , PD.buildable (PD.testBuildInfo t) ]
 
         doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
         doTest (suite, mLog) = do
