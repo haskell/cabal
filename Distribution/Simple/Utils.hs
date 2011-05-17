@@ -153,14 +153,15 @@ import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
     ( normalise, (</>), (<.>), takeDirectory, splitFileName
-    , splitExtension, splitExtensions )
+    , splitExtension, splitExtensions, splitDirectories )
 import System.Directory
-    ( createDirectoryIfMissing, renameFile, removeDirectoryRecursive )
+    ( createDirectory, renameFile, removeDirectoryRecursive )
 import System.IO
     ( Handle, openFile, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
-    ( isDoesNotExistError, ioeSetFileName, ioeGetFileName, ioeGetErrorString )
+    ( try, isDoesNotExistError, isAlreadyExistsError
+    , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
 #if !(defined(__HUGS__) || (defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ < 608))
 import System.IO.Error
     ( ioeSetLocation, ioeGetLocation )
@@ -190,11 +191,12 @@ import System.Directory (getTemporaryDirectory)
 #endif
 
 import Distribution.Compat.CopyFile
-         ( copyFile, copyOrdinaryFile, copyExecutableFile )
+         ( copyFile, copyOrdinaryFile, copyExecutableFile
+         , setDirOrdinary )
 import Distribution.Compat.TempFile
          ( openTempFile, openNewBinaryFile, createTempDirectory )
 import Distribution.Compat.Exception
-         ( catchIO, catchExit, onException )
+         ( IOException, throwIOIO, catchIO, catchExit, onException )
 import Distribution.Verbosity
 
 #ifdef VERSION_base
@@ -700,11 +702,49 @@ matchDirFileGlob dir filepath = case parseFileGlob filepath of
 
 -- | Same as 'createDirectoryIfMissing' but logs at higher verbosity levels.
 --
-createDirectoryIfMissingVerbose :: Verbosity -> Bool -> FilePath -> IO ()
-createDirectoryIfMissingVerbose verbosity parentsToo dir = do
-  let msgParents = if parentsToo then " (and its parents)" else ""
-  info verbosity ("Creating " ++ dir ++ msgParents)
-  createDirectoryIfMissing parentsToo dir
+createDirectoryIfMissingVerbose :: Verbosity
+                                -> Bool     -- ^ Create its parents too?
+                                -> FilePath
+                                -> IO ()
+createDirectoryIfMissingVerbose verbosity create_parents path0
+  | create_parents = createDirs (parents path0)
+  | otherwise      = createDirs (take 1 (parents path0))
+  where
+    parents = reverse . scanl1 (</>) . splitDirectories . normalise
+
+    createDirs []         = return ()
+    createDirs (dir:[])   = createDir dir throwIOIO
+    createDirs (dir:dirs) =
+      createDir dir $ \_ -> do
+        createDirs dirs
+        createDir dir throwIOIO
+
+    createDir :: FilePath -> (IOException -> IO ()) -> IO ()
+    createDir dir notExistHandler = do
+      r <- try $ createDirectoryVerbose verbosity dir
+      case (r :: Either IOException ()) of
+        Right ()                   -> return ()
+        Left  e
+          | isDoesNotExistError  e -> notExistHandler e
+          -- createDirectory (and indeed POSIX mkdir) does not distinguish
+          -- between a dir already existing and a file already existing. So we
+          -- check for it here. Unfortunately there is a slight race condition
+          -- here, but we think it is benign. It could report an exeption in
+          -- the case that the dir did exist but another process deletes the
+          -- directory and creates a file in its place before we can check
+          -- that the directory did indeed exist.
+          | isAlreadyExistsError e -> (do
+              isDir <- doesDirectoryExist dir
+              if isDir then return ()
+                       else throwIOIO e
+              ) `catch` ((\_ -> return ()) :: IOException -> IO ())
+          | otherwise              -> throwIOIO e
+
+createDirectoryVerbose :: Verbosity -> FilePath -> IO ()
+createDirectoryVerbose verbosity dir = do
+  info verbosity $ "creating " ++ dir
+  createDirectory dir
+  setDirOrdinary dir
 
 -- | Copies a file without copying file permissions. The target file is created
 -- with default permissions. Any existing target file is replaced.

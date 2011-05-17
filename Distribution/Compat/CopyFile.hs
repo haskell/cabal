@@ -11,6 +11,7 @@ module Distribution.Compat.CopyFile (
   copyExecutableFile,
   setFileOrdinary,
   setFileExecutable,
+  setDirOrdinary,
   ) where
 
 #ifdef __GLASGOW_HASKELL__
@@ -59,7 +60,7 @@ copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> IO ()
 copyOrdinaryFile   src dest = copyFile src dest >> setFileOrdinary   dest
 copyExecutableFile src dest = copyFile src dest >> setFileExecutable dest
 
-setFileOrdinary,  setFileExecutable  :: FilePath -> IO ()
+setFileOrdinary,  setFileExecutable, setDirOrdinary  :: FilePath -> IO ()
 #ifndef mingw32_HOST_OS
 setFileOrdinary   path = setFileMode path 0o644 -- file perms -rw-r--r--
 setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
@@ -76,6 +77,8 @@ setFileMode name m =
 setFileOrdinary   _ = return ()
 setFileExecutable _ = return ()
 #endif
+-- This happens to be true on Unix and currently on Windows too:
+setDirOrdinary = setFileExecutable
 
 copyFile :: FilePath -> FilePath -> IO ()
 #ifdef __GLASGOW_HASKELL__

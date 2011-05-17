@@ -10,7 +10,7 @@
 #endif
 
 module Distribution.Compat.Exception
-    (onException, catchIO, catchExit, throwIOIO)
+    (Exception.IOException, onException, catchIO, catchExit, throwIOIO)
     where
 
 import System.Exit
