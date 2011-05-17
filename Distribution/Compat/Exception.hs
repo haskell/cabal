@@ -9,9 +9,14 @@
 #define NEW_EXCEPTION
 #endif
 
-module Distribution.Compat.Exception
-    (onException, catchIO, catchExit, throwIOIO, tryIO)
-    where
+module Distribution.Compat.Exception (
+     Exception.IOException,
+     onException,
+     catchIO,
+     catchExit,
+     throwIOIO,
+     tryIO,
+  ) where
 
 import System.Exit
 import qualified Control.Exception as Exception
