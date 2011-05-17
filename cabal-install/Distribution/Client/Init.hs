@@ -301,9 +301,9 @@ promptDefault' parser pretty pr def = do
 -- | Create a prompt from a prompt string and a String representation
 --   of an optional default value.
 mkDefPrompt :: String -> Maybe String -> String
-mkDefPrompt pr def = pr ++ defStr def ++ "? "
-  where defStr Nothing  = ""
-        defStr (Just s) = " [default \"" ++ s ++ "\"]"
+mkDefPrompt pr def = pr ++ "?" ++ defStr def
+  where defStr Nothing  = " "
+        defStr (Just s) = " [default \"" ++ s ++ "\"] "
 
 -- | Create a prompt from a list of items.
 promptList :: (Text t, Eq t)
