@@ -44,6 +44,7 @@ module Language.Haskell.Extension (
 
         Extension(..),
         KnownExtension(..),
+        knownExtensions,
         deprecatedExtensions
   ) where
 
@@ -435,7 +436,12 @@ data KnownExtension =
   -- | Enable non-decreasing indentation for 'do' blocks.
   | NondecreasingIndentation
 
-  deriving (Show, Read, Eq, Enum)
+  deriving (Show, Read, Eq, Enum, Bounded)
+
+{-# DEPRECATED knownExtensions
+   "KnownExtension is an instance of Enum and Bounded, use those instead." #-}
+knownExtensions :: [KnownExtension]
+knownExtensions = [minBound..maxBound]
 
 -- | Extensions that have been deprecated, possibly paired with another
 -- extension that replaces it.
