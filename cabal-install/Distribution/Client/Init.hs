@@ -94,6 +94,7 @@ extendFlags =  getPackageName
            >=> getSynopsis
            >=> getCategory
            >=> getLibOrExec
+           >=> getGenComments
            >=> getSrcDir
            >=> getModulesAndBuildTools
 
@@ -206,6 +207,14 @@ getLibOrExec flags = do
 
   return $ flags { packageType = maybeToFlag isLib }
 
+-- | Ask whether to generate explanitory comments.
+getGenComments :: InitFlags -> IO InitFlags
+getGenComments flags = do
+  genComments <-     return (flagToMaybe $ noComments flags)
+                 ?>> maybePrompt flags (promptYesNo "Include documentation on what each field means y/n" (Just False))
+                 ?>> return (Just False)
+  return $ flags { noComments = maybeToFlag (fmap not genComments) }
+
 -- | Try to guess the source root directory (don't prompt the user).
 getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
@@ -253,6 +262,18 @@ maybePrompt flags p =
 --   String.
 promptStr :: String -> Maybe String -> IO String
 promptStr = promptDefault' Just id
+
+-- | Create a yes/no prompt with optional default value.
+--
+promptYesNo :: String -> Maybe Bool -> IO Bool
+promptYesNo =
+    promptDefault' recogniseYesNo showYesNo
+  where
+    recogniseYesNo s | s == "y" || s == "Y" = Just True
+                     | s == "n" || s == "N" = Just False
+                     | otherwise            = Nothing
+    showYesNo True  = "y"
+    showYesNo False = "n"
 
 -- | Create a prompt with optional default value that returns a value
 --   of some Text instance.
