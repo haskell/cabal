@@ -210,7 +210,7 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
 
             -- Generate TestSuiteLog from executable exit code and a machine-
             -- readable test log
-            suiteLog <- readFile tempInput >>= return . postTest exit
+            suiteLog <- fmap (postTest exit $!) $ readFile tempInput
 
             -- Generate final log file name
             let finalLogName = testLogDir </> logNamer suiteLog
