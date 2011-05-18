@@ -87,7 +87,7 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
 import Distribution.Package --must not specify imports, since we're exporting moule.
 import Distribution.PackageDescription
-         ( PackageDescription(..), GenericPackageDescription
+         ( PackageDescription(..), GenericPackageDescription, Executable(..)
          , updatePackageDescription, hasLibs
          , HookedBuildInfo, emptyHookedBuildInfo )
 import Distribution.PackageDescription.Parse
@@ -138,7 +138,7 @@ import System.IO.Error   (isDoesNotExistError)
 import Distribution.Compat.Exception (catchIO, throwIOIO)
 
 import Control.Monad   (when)
-import Data.List       (intersperse, unionBy)
+import Data.List       (intersperse, unionBy, nub, (\\))
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -302,6 +302,9 @@ cleanAction hooks flags args = do
                 pdfile <- defaultPackageDesc verbosity
                 ppd <- readPackageDescription verbosity pdfile
                 let pkg_descr0 = flattenPackageDescription ppd
+                -- We don't sanity check for clean as an error
+                -- here would prevent cleaning:
+                --sanityCheckHookedBuildInfo pkg_descr0 pbi
                 let pkg_descr = updatePackageDescription pbi pkg_descr0
 
                 cleanHook hooks pkg_descr () hooks flags
@@ -333,6 +336,7 @@ sdistAction hooks flags args = do
                 pdfile <- defaultPackageDesc verbosity
                 ppd <- readPackageDescription verbosity pdfile
                 let pkg_descr0 = flattenPackageDescription ppd
+                sanityCheckHookedBuildInfo pkg_descr0 pbi
                 let pkg_descr = updatePackageDescription pbi pkg_descr0
 
                 sDistHook hooks pkg_descr mlbi hooks flags
@@ -384,11 +388,31 @@ hookedAction pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    localbuildinfo <- get_build_config
    let pkg_descr0 = localPkgDescr localbuildinfo
    --pkg_descr0 <- get_pkg_descr (get_verbose flags)
+   sanityCheckHookedBuildInfo pkg_descr0 pbi
    let pkg_descr = updatePackageDescription pbi pkg_descr0
    -- TODO: should we write the modified package descr back to the
    -- localbuildinfo?
    cmd_hook hooks pkg_descr localbuildinfo hooks flags
    post_hook hooks args flags pkg_descr localbuildinfo
+  where
+
+sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
+sanityCheckHookedBuildInfo PackageDescription { library = Nothing } (Just _,_)
+    = die $ "The buildinfo contains info for a library, "
+         ++ "but the package does not have a library."
+
+sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
+    | not (null nonExistant)
+    = die $ "The buildinfo contains info for an executable called '"
+         ++ head nonExistant ++ "' but the package does not have a "
+         ++ "executable with that name."
+  where
+    pkgExeNames  = nub (map exeName (executables pkg_descr))
+    hookExeNames = nub (map fst hookExes)
+    nonExistant  = hookExeNames \\ pkgExeNames
+
+sanityCheckHookedBuildInfo _ _ = return ()
+
 
 getBuildConfig :: UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
 getBuildConfig hooks verbosity distPref = do
@@ -524,6 +548,7 @@ defaultUserHooks = autoconfUserHooks {
                          backwardsCompatHack flags lbi
 
                    pbi <- getHookedBuildInfo verbosity
+                   sanityCheckHookedBuildInfo pkg_descr pbi
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
                    postConf simpleUserHooks args flags pkg_descr' lbi
 
@@ -554,6 +579,7 @@ autoconfUserHooks
                      else die "configure script not found."
 
                    pbi <- getHookedBuildInfo verbosity
+                   sanityCheckHookedBuildInfo pkg_descr pbi
                    let pkg_descr' = updatePackageDescription pbi pkg_descr
                    postConf simpleUserHooks args flags pkg_descr' lbi
 
