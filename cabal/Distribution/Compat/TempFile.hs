@@ -89,7 +89,7 @@ openBinaryTempFile tmp_dir template
     (templateBase, templateExt) = splitExtension template
     findTempName :: Int -> IO (FilePath, Handle)
     findTempName x
-      = do let path = tmp_dir </> (templateBase ++ show x) <.> templateExt
+      = do let path = tmp_dir </> (templateBase ++ "-" ++ show x) <.> templateExt
            b  <- doesFileExist path
            if b then findTempName (x+1)
                 else do hnd <- openBinaryFile path ReadWriteMode
@@ -189,7 +189,7 @@ createTempDirectory dir template = do
   findTempName pid
   where
     findTempName x = do
-      let dirpath = dir </> template ++ show x
+      let dirpath = dir </> template ++ "-" ++ show x
       r <- tryIO $ mkPrivateDir dirpath
       case r of
         Right _ -> return dirpath
