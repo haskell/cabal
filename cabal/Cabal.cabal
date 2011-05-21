@@ -142,6 +142,7 @@ test-suite unit-tests
                  PackageTests.BuildDeps.TargetSpecificDeps2.Check,
                  PackageTests.BuildDeps.TargetSpecificDeps3.Check,
                  PackageTests.BuildDeps.SameDepsAllRound.Check,
+                 PackageTests.TestOptions.Check,
                  PackageTests.TestStanza.Check,
                  PackageTests.TestSuiteExeV10.Check,
                  PackageTests.PackageTester
