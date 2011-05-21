@@ -1326,7 +1326,7 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
              ++ "$os, $arch, $test-suite)")
             testOptions (\v flags -> flags { testOptions = v })
             (reqArg' "TEMPLATES" (map toPathTemplate . splitArgs)
-                (map fromPathTemplate))
+                (const []))
       , option [] ["test-option"]
             ("give extra option to test executables "
              ++ "(no need to quote options containing spaces, "
