@@ -29,7 +29,7 @@ import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
 import Data.List
-  ( intersperse )
+  ( intersperse, (\\) )
 import Data.Maybe
   ( fromMaybe, isJust )
 import Data.Traversable
@@ -38,7 +38,7 @@ import Control.Monad
   ( when )
 #if MIN_VERSION_base(3,0,0)
 import Control.Monad
-  ( (>=>) )
+  ( (>=>), join )
 #endif
 
 import Text.PrettyPrint.HughesPJ hiding (mode, cat)
@@ -139,11 +139,13 @@ getVersion flags = do
 getLicense :: InitFlags -> IO InitFlags
 getLicense flags = do
   lic <-     return (flagToMaybe $ license flags)
-         ?>> fmap (fmap (either UnknownLicense id))
+         ?>> fmap (fmap (either UnknownLicense id) . join)
                   (maybePrompt flags
-                    (promptList "Please choose a license"
-                                knownLicenses (Just BSD3) True))
+                    (promptListOptional "Please choose a license" listedLicenses))
   return $ flags { license = maybeToFlag lic }
+  where
+    listedLicenses =
+      knownLicenses \\ [GPL Nothing, LGPL Nothing, OtherLicense]
 
 -- | The author's name and email. Prompt, or try to guess from an existing
 --   darcs repo.
@@ -191,8 +193,8 @@ getSynopsis flags = do
 getCategory :: InitFlags -> IO InitFlags
 getCategory flags = do
   cat <-     return (flagToMaybe $ category flags)
-         ?>> maybePrompt flags (promptList "Project category" [Codec ..]
-                                                              Nothing True)
+         ?>> fmap join (maybePrompt flags
+                         (promptListOptional "Project category" [Codec ..]))
   return $ flags { category = maybeToFlag cat }
 
 -- | Ask whether the project builds a library or executable.
@@ -202,7 +204,7 @@ getLibOrExec flags = do
            ?>> maybePrompt flags (either (const Library) id `fmap`
                                    (promptList "What does the package build"
                                                [Library, Executable]
-                                               Nothing False))
+                                               Nothing display False))
            ?>> return (Just Library)
 
   return $ flags { packageType = maybeToFlag isLib }
@@ -211,9 +213,11 @@ getLibOrExec flags = do
 getGenComments :: InitFlags -> IO InitFlags
 getGenComments flags = do
   genComments <-     return (flagToMaybe $ noComments flags)
-                 ?>> maybePrompt flags (promptYesNo "Include documentation on what each field means y/n" (Just False))
+                 ?>> maybePrompt flags (promptYesNo promptMsg (Just False))
                  ?>> return (Just False)
   return $ flags { noComments = maybeToFlag (fmap not genComments) }
+  where
+    promptMsg = "Include documentation on what each field means y/n"
 
 -- | Try to guess the source root directory (don't prompt the user).
 getSrcDir :: InitFlags -> IO InitFlags
@@ -303,32 +307,44 @@ promptDefault' parser pretty pr def = do
 mkDefPrompt :: String -> Maybe String -> String
 mkDefPrompt pr def = pr ++ "?" ++ defStr def
   where defStr Nothing  = " "
-        defStr (Just s) = " [default \"" ++ s ++ "\"] "
+        defStr (Just s) = " [default: " ++ s ++ "] "
+
+promptListOptional :: (Text t, Eq t)
+                   => String            -- ^ prompt
+                   -> [t]               -- ^ choices
+                   -> IO (Maybe (Either String t))
+promptListOptional pr choices =
+    fmap rearrange
+  $ promptList pr (Nothing : map Just choices) (Just Nothing)
+               (maybe "(none)" display) True
+  where
+    rearrange = either (Just . Left) (maybe Nothing (Just . Right))
 
 -- | Create a prompt from a list of items.
-promptList :: (Text t, Eq t)
+promptList :: Eq t
            => String            -- ^ prompt
            -> [t]               -- ^ choices
            -> Maybe t           -- ^ optional default value
+           -> (t -> String)     -- ^ show an item
            -> Bool              -- ^ whether to allow an 'other' option
            -> IO (Either String t)
-promptList pr choices def other = do
+promptList pr choices def displayItem other = do
   putStrLn $ pr ++ ":"
-  let options1 = map (\c -> (Just c == def, display c)) choices
+  let options1 = map (\c -> (Just c == def, displayItem c)) choices
       options2 = zip ([1..]::[Int])
                      (options1 ++ if other then [(False, "Other (specify)")]
                                            else [])
   mapM_ (putStrLn . \(n,(i,s)) -> showOption n i ++ s) options2
-  promptList' (length options2) choices def other
+  promptList' displayItem (length options2) choices def other
  where showOption n i | n < 10 = " " ++ star i ++ " " ++ rest
                       | otherwise = " " ++ star i ++ rest
                   where rest = show n ++ ") "
                         star True = "*"
                         star False = " "
 
-promptList' :: Text t => Int -> [t] -> Maybe t -> Bool -> IO (Either String t)
-promptList' numChoices choices def other = do
-  putStr $ mkDefPrompt "Your choice" (display `fmap` def)
+promptList' :: (t -> String) -> Int -> [t] -> Maybe t -> Bool -> IO (Either String t)
+promptList' displayItem numChoices choices def other = do
+  putStr $ mkDefPrompt "Your choice" (displayItem `fmap` def)
   inp <- getLine
   case (inp, def) of
     ("", Just d) -> return $ Right d
@@ -336,7 +352,7 @@ promptList' numChoices choices def other = do
             Nothing -> invalidChoice inp
             Just n  -> getChoice n
  where invalidChoice inp = do putStrLn $ inp ++ " is not a valid choice."
-                              promptList' numChoices choices def other
+                              promptList' displayItem numChoices choices def other
        getChoice n | n < 1 || n > numChoices = invalidChoice (show n)
                    | n < numChoices ||
                      (n == numChoices && not other)
@@ -482,9 +498,9 @@ generateCabalFile fileName c =
 
        , fieldS "extra-source-files" NoFlag
                 (Just "Extra files to be distributed with the package, such as examples or a README.")
-                True
+                False
 
-       , field  "cabal-version" (Flag $ orLaterVersion (Version [1,2] []))
+       , field  "cabal-version" (Flag $ orLaterVersion (Version [1,8] []))
                 (Just "Constraint on the version of Cabal needed to build this package.")
                 False
 
@@ -493,35 +509,37 @@ generateCabalFile fileName c =
              text "\nexecutable" <+> text (fromMaybe "" . flagToMaybe $ packageName c) $$ (nest 2 $ vcat
              [ fieldS "main-is" NoFlag (Just ".hs or .lhs file containing the Main module.") True
 
-             , generateBuildInfo c
+             , generateBuildInfo Executable c
              ])
            Flag Library    -> text "\nlibrary" $$ (nest 2 $ vcat
              [ fieldS "exposed-modules" (listField (exposedModules c))
                       (Just "Modules exported by the library.")
                       True
 
-             , generateBuildInfo c
+             , generateBuildInfo Library c
              ])
            _               -> empty
        ]
  where
-   generateBuildInfo :: InitFlags -> Doc
-   generateBuildInfo c' = vcat
-     [ fieldS "build-depends" (listField (dependencies c'))
-              (Just "Packages needed in order to build this package.")
+   generateBuildInfo :: PackageType -> InitFlags -> Doc
+   generateBuildInfo pkgtype c' = vcat
+     [ fieldS "other-modules" (listField (otherModules c'))
+              (Just $ case pkgtype of
+                 Library    -> "Modules included in this library but not exported."
+                 Executable -> "Modules included in this executable, other than Main.")
               True
 
-     , fieldS "other-modules" (listField (otherModules c'))
-              (Just "Modules not exported by this package.")
+     , fieldS "build-depends" (listField (dependencies c'))
+              (Just "Other library packages from which modules are imported.")
               True
 
      , fieldS "hs-source-dirs" (listFieldS (sourceDirs c'))
-              (Just "Directories other than the root containing source files.")
+              (Just "Directories containing source files.")
               False
 
      , fieldS "build-tools" (listFieldS (buildTools c'))
               (Just "Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.")
-              True
+              False
      ]
 
    listField :: Text s => Maybe [s] -> Flag String
