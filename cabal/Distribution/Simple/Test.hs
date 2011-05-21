@@ -168,8 +168,7 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
     let distPref = fromFlag $ testDistPref flags
         verbosity = fromFlag $ testVerbosity flags
         testLogDir = distPref </> "test"
-        optionTemplates = fromFlag $ testOptions flags
-        options = map (testOption pkg_descr lbi suite) optionTemplates
+        options = map (testOption pkg_descr lbi suite) $ testOptions flags
 
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
