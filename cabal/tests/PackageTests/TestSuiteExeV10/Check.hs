@@ -20,7 +20,7 @@ checkTest cabalVersion = TestCase $ do
     buildResult <- cabal_build spec
     let buildMessage = "\'setup build\' should succeed"
     assertEqual buildMessage True $ successful buildResult
-    testResult <- cabal_test spec
+    testResult <- cabal_test spec []
     let testMessage = "\'setup test\' should succeed"
     assertEqual testMessage True $ successful testResult
 
@@ -32,7 +32,7 @@ checkTestWithHpc cabalVersion = TestCase $ do
     buildResult <- cabal_build spec
     let buildMessage = "\'setup build\' should succeed"
     assertEqual buildMessage True $ successful buildResult
-    testResult <- cabal_test spec
+    testResult <- cabal_test spec []
     let testMessage = "\'setup test\' should succeed"
     assertEqual testMessage True $ successful testResult
     let dummy = emptyTestSuite { testName = "test-Foo" }
