@@ -104,9 +104,9 @@ cabal_install spec = do
     record spec res
     return res
 
-cabal_test :: PackageSpec -> IO Result
-cabal_test spec = do
-    res <- cabal spec ["test"]
+cabal_test :: PackageSpec -> [String] -> IO Result
+cabal_test spec extraArgs = do
+    res <- cabal spec $ "test" : extraArgs
     let r = recordRun res TestSuccess nullResult
     record spec r
     return r

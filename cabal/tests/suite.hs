@@ -22,6 +22,7 @@ import PackageTests.BuildDeps.InternalLibrary1.Check
 import PackageTests.BuildDeps.InternalLibrary2.Check
 import PackageTests.BuildDeps.InternalLibrary3.Check
 import PackageTests.BuildDeps.InternalLibrary4.Check
+import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
 import Distribution.Text (display)
@@ -44,7 +45,8 @@ tests cabalVersion = [
         hunit "PackageTests/TestSuiteExeV10/Test"
         (PackageTests.TestSuiteExeV10.Check.checkTest cabalVersion),
         hunit "PackageTests/TestSuiteExeV10/TestWithHpc"
-        (PackageTests.TestSuiteExeV10.Check.checkTestWithHpc cabalVersion)
+        (PackageTests.TestSuiteExeV10.Check.checkTestWithHpc cabalVersion),
+        hunit "PackageTests/TestOptions" PackageTests.TestOptions.Check.suite
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if cabalVersion >= Version [1, 7] []
