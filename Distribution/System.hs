@@ -58,16 +58,23 @@ data ClassificationStrictness = Permissive | Compat | Strict
 -- * Operating System
 -- ------------------------------------------------------------
 
-data OS = Linux | Windows | OSX
-        | FreeBSD | OpenBSD | NetBSD
-        | Solaris | AIX | HPUX | IRIX
+data OS = Linux | Windows | OSX        -- teir 1 desktop OSs
+        | FreeBSD | OpenBSD | NetBSD   -- other free unix OSs
+        | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
+        | HaLVM                        -- bare metal / VMs / hypervisors
         | OtherOS String
   deriving (Eq, Ord, Show, Read)
+
+--TODO: decide how to handle Android and iOS.
+-- They are like Linux and OSX but with some differences.
+-- Should they be separate from linux/osx, or a subtype?
+-- e.g. should we have os(linux) && os(android) true simultaneously?
 
 knownOSs :: [OS]
 knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD
-           ,Solaris, AIX, HPUX, IRIX]
+           ,Solaris, AIX, HPUX, IRIX
+           ,HaLVM]
 
 osAliases :: ClassificationStrictness -> OS -> [String]
 osAliases Permissive Windows = ["mingw32", "cygwin32"]
