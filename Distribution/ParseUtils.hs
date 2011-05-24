@@ -52,8 +52,8 @@ module Distribution.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
         Field(..), fName, lineNo,
-        FieldDescr(..), ppField, ppFields, readFields,
-        showFields, showSingleNamedField, parseFields,
+        FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
+        showFields, showSingleNamedField, parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
@@ -278,7 +278,14 @@ showSingleNamedField fields f =
 
 parseFields :: [FieldDescr a] -> a -> String -> ParseResult a
 parseFields fields initial = \str ->
-  readFields str >>= foldM setField initial
+  readFields str >>= accumFields fields initial
+
+parseFieldsFlat :: [FieldDescr a] -> a -> String -> ParseResult a
+parseFieldsFlat fields initial = \str ->
+  readFieldsFlat str >>= accumFields fields initial
+
+accumFields :: [FieldDescr a] -> a -> [Field] -> ParseResult a
+accumFields fields = foldM setField
   where
     fieldMap = Map.fromList
       [ (name, f) | f@(FieldDescr name _ _) <- fields ]
@@ -355,6 +362,12 @@ readFields input = ifelse
   where ls = (lines . normaliseLineEndings) input
         tokens = (concatMap tokeniseLine . trimLines) ls
 
+readFieldsFlat :: String -> ParseResult [Field]
+readFieldsFlat input = mapM (mkField 0)
+                   =<< mkTree tokens
+  where ls = (lines . normaliseLineEndings) input
+        tokens = (concatMap tokeniseLineFlat . trimLines) ls
+
 -- attach line number and determine indentation
 trimLines :: [String] -> [(LineNo, Indent, HasTabs, String)]
 trimLines ls = [ (lineno, indent, hastabs, (trimTrailing l'))
@@ -427,6 +440,13 @@ tokeniseLine (n0, i, t, l) = case split n0 l of
         mkspan n s ss | null s'   =             ss
                       | otherwise = Span n s' : ss
           where s' = trimTrailing (trimLeading s)
+
+tokeniseLineFlat :: (LineNo, Indent, HasTabs, String) -> [Token]
+tokeniseLineFlat (n0, i, t, l)
+  | null l'   = []
+  | otherwise = [Line n0 i t l']
+  where
+    l' = trimTrailing (trimLeading l)
 
 trimLeading, trimTrailing :: String -> String
 trimLeading  = dropWhile isSpace

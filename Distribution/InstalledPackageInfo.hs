@@ -66,7 +66,7 @@ module Distribution.InstalledPackageInfo (
 import Distribution.ParseUtils
          ( FieldDescr(..), ParseResult(..), PError(..), PWarning
          , simpleField, listField, parseLicenseQ
-         , showFields, showSingleNamedField, parseFields
+         , showFields, showSingleNamedField, parseFieldsFlat
          , parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ
          , showFilePath, showToken, boolField, parseOptVersion
          , parseFreeText, showFreeText )
@@ -170,7 +170,7 @@ noVersion = Version{ versionBranch=[], versionTags=[] }
 -- Parsing
 
 parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
-parseInstalledPackageInfo = parseFields all_fields emptyInstalledPackageInfo
+parseInstalledPackageInfo = parseFieldsFlat all_fields emptyInstalledPackageInfo
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
