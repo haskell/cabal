@@ -742,7 +742,7 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
               isDir <- doesDirectoryExist dir
               if isDir then return ()
                        else throwIOIO e
-              ) `catch` ((\_ -> return ()) :: IOException -> IO ())
+              ) `catchIO` ((\_ -> return ()) :: IOException -> IO ())
           | otherwise              -> throwIOIO e
 
 createDirectoryVerbose :: Verbosity -> FilePath -> IO ()
