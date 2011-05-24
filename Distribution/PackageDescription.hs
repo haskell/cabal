@@ -816,7 +816,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
       updateLibrary :: Maybe BuildInfo -> Maybe Library -> Maybe Library
       updateLibrary (Just bi) (Just lib) = Just (lib{libBuildInfo = bi `mappend` libBuildInfo lib})
       updateLibrary Nothing   mb_lib     = mb_lib
-      updateLibrary (Just bi) Nothing    = Nothing
+      updateLibrary (Just _)  Nothing    = Nothing
 
       updateExecutables :: [(String, BuildInfo)] -- ^[(exeName, new buildinfo)]
                         -> [Executable]          -- ^list of executables to update
