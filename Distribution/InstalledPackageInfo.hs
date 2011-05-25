@@ -61,6 +61,7 @@ module Distribution.InstalledPackageInfo (
         parseInstalledPackageInfo,
         showInstalledPackageInfo,
         showInstalledPackageInfoField,
+        fieldsInstalledPackageInfo,
   ) where
 
 import Distribution.ParseUtils
@@ -170,22 +171,23 @@ noVersion = Version{ versionBranch=[], versionTags=[] }
 -- Parsing
 
 parseInstalledPackageInfo :: String -> ParseResult InstalledPackageInfo
-parseInstalledPackageInfo = parseFieldsFlat all_fields emptyInstalledPackageInfo
+parseInstalledPackageInfo =
+    parseFieldsFlat fieldsInstalledPackageInfo emptyInstalledPackageInfo
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
 
 showInstalledPackageInfo :: InstalledPackageInfo -> String
-showInstalledPackageInfo = showFields all_fields
+showInstalledPackageInfo = showFields fieldsInstalledPackageInfo
 
 showInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
-showInstalledPackageInfoField = showSingleNamedField all_fields
+showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
 
-all_fields :: [FieldDescr InstalledPackageInfo]
-all_fields = basicFieldDescrs ++ installedFieldDescrs
+fieldsInstalledPackageInfo :: [FieldDescr InstalledPackageInfo]
+fieldsInstalledPackageInfo = basicFieldDescrs ++ installedFieldDescrs
 
 basicFieldDescrs :: [FieldDescr InstalledPackageInfo]
 basicFieldDescrs =
