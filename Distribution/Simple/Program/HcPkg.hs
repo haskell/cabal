@@ -30,9 +30,9 @@ import Distribution.Package
          ( PackageId, InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, InstalledPackageInfo_(..)
-         , showInstalledPackageInfo, parseInstalledPackageInfo )
+         , showInstalledPackageInfo
+         , emptyInstalledPackageInfo, fieldsInstalledPackageInfo )
 import Distribution.ParseUtils
-         ( ParseResult(..) )
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program.Types
@@ -53,8 +53,14 @@ import Distribution.Compat.Exception
 
 import Data.Char
          ( isSpace )
-import Control.Monad
-         ( liftM )
+import Data.Maybe
+         ( fromMaybe )
+import Data.List
+         ( stripPrefix )
+import System.FilePath as FilePath
+         ( (</>), splitPath, splitDirectories, joinPath, isPathSeparator )
+import qualified System.FilePath.Posix as FilePath.Posix
+
 
 -- | Call @hc-pkg@ to register a package.
 --
@@ -128,11 +134,27 @@ dump verbosity hcPkg packagedb = do
 
   where
     parsePackages str =
-      let parse  = liftM setInstalledPackageId . parseInstalledPackageInfo
-          parsed = map parse (splitPkgs str)
+      let parsed = map parseInstalledPackageInfo' (splitPkgs str)
        in case [ msg | ParseFailed msg <- parsed ] of
-            []   -> Left [ pkg | ParseOk _ pkg <- parsed ]
+            []   -> Left [   setInstalledPackageId
+                           . maybe id mungePackagePaths pkgroot
+                           $ pkg
+                         | ParseOk _ (pkgroot, pkg) <- parsed ]
             msgs -> Right msgs
+
+    parseInstalledPackageInfo' =
+        parseFieldsFlat fields (Nothing, emptyInstalledPackageInfo)
+      where
+        fields =     liftFieldFst pkgrootField
+               : map liftFieldSnd fieldsInstalledPackageInfo
+
+        pkgrootField =
+          simpleField "pkgroot"
+            showFilePath    parseFilePathQ
+            (fromMaybe "")  (\x _ -> Just x)
+
+        liftFieldFst = liftField fst (\x (_x,y) -> (x,y))
+        liftFieldSnd = liftField snd (\y (x,_y) -> (x,y))
 
     --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
     -- and converting back and forth with lines/unlines.
@@ -148,6 +170,43 @@ dump verbosity hcPkg packagedb = do
                            []   -> []
                            _:ws -> splitWith p ws
           where (ys,zs) = break p xs
+
+mungePackagePaths :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
+-- Perform path/URL variable substitution as per the Cabal ${pkgroot} spec
+-- (http://www.haskell.org/pipermail/libraries/2009-May/011772.html)
+-- Paths/URLs can be relative to ${pkgroot} or ${pkgrooturl}.
+-- The "pkgroot" is the directory containing the package database.
+mungePackagePaths pkgroot pkginfo =
+    pkginfo {
+      importDirs        = mungePaths (importDirs  pkginfo),
+      includeDirs       = mungePaths (includeDirs pkginfo),
+      libraryDirs       = mungePaths (libraryDirs pkginfo),
+      frameworkDirs     = mungePaths (frameworkDirs pkginfo),
+      haddockInterfaces = mungePaths (haddockInterfaces pkginfo),
+      haddockHTMLs      = mungeUrls  (haddockHTMLs pkginfo)
+    }
+  where
+    mungePaths = map mungePath
+    mungeUrls  = map mungeUrl
+
+    mungePath p = case stripVarPrefix "${pkgroot}" p of
+      Just p' -> pkgroot </> p'
+      Nothing -> p
+
+    mungeUrl p = case stripVarPrefix "${pkgrooturl}" p of
+      Just p' -> toUrlPath pkgroot p'
+      Nothing -> p
+
+    toUrlPath r p = "file:///"
+                 -- URLs always use posix style '/' separators:
+                 ++ FilePath.Posix.joinPath (r : FilePath.splitDirectories p)
+
+    stripVarPrefix var p =
+      case splitPath p of
+        (root:path') -> case stripPrefix var root of
+          Just [sep] | isPathSeparator sep -> Just (joinPath path')
+          _                                -> Nothing
+        _                                  -> Nothing
 
 
 -- Older installed package info files did not have the installedPackageId
