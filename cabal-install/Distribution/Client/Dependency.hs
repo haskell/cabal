@@ -48,6 +48,7 @@ module Distribution.Client.Dependency (
   ) where
 
 import Distribution.Client.Dependency.TopDown (topDownResolver)
+import Distribution.Client.Dependency.Modular.IndexConversion ()
 import Distribution.Client.Dependency.Modular.Solver ()
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.PackageIndex (PackageIndex)
