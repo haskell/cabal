@@ -8,11 +8,27 @@ module Distribution.Client.Dependency.Modular where
 -- and finally, we have to convert back the resulting install
 -- plan.
 
-import Distribution.Client.Dependency.Types
-
 import Distribution.Client.Dependency.Modular.IndexConversion
+         ( convPIs )
+import Distribution.Client.Dependency.Modular.Log
+         ( logToProgress )
 import Distribution.Client.Dependency.Modular.Solver
+         ( defaultSolver )
+import Distribution.Client.Dependency.Types
+         ( DependencyResolver )
+import Distribution.System
+         ( Platform(..) )
 
 modularSolver :: DependencyResolver
 modularSolver (Platform arch os) cid iidx sidx pprefs pcs pns =
-  undefined
+  fmap undefined $ -- convert install plan
+  logToProgress $
+  defaultSolver idx gprefs uprefs goals gcs gfcs lfcs
+    where
+      idx    = convPIs os arch cid undefined sidx
+      gprefs = undefined
+      uprefs = undefined
+      goals  = undefined
+      gcs    = undefined
+      gfcs   = undefined
+      lfcs   = undefined
