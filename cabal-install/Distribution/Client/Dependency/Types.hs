@@ -22,6 +22,12 @@ module Distribution.Client.Dependency.Types (
     foldProgress,
   ) where
 
+import Control.Applicative
+         ( Applicative(..), Alternative(..) )
+
+import Data.Monoid
+         ( Monoid(..) )
+
 import Distribution.Client.Types
          ( SourcePackage(..), InstalledPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -139,3 +145,11 @@ instance Functor (Progress step fail) where
 instance Monad (Progress step fail) where
   return a = Done a
   p >>= f  = foldProgress Step Fail f p
+
+instance Applicative (Progress step fail) where
+  pure a  = Done a
+  p <*> x = foldProgress Step Fail (flip fmap x) p
+
+instance Monoid fail => Alternative (Progress step fail) where
+  empty   = Fail mempty
+  p <|> q = foldProgress Step (const q) Done p
