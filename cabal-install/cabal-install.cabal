@@ -54,6 +54,7 @@ Executable cabal
         Distribution.Client.Dependency.TopDown.Constraints
         Distribution.Client.Dependency.TopDown.Types
         Distribution.Client.Dependency.Types
+        Distribution.Client.Dependency.Modular
         Distribution.Client.Dependency.Modular.Assignment
         Distribution.Client.Dependency.Modular.Builder
         Distribution.Client.Dependency.Modular.Configured
