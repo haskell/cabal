@@ -58,6 +58,7 @@ import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
+         , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
 import Distribution.Client.Targets
 import Distribution.Package
@@ -96,31 +97,6 @@ data DepResolverParams = DepResolverParams {
        depResolverInstalledPkgIndex :: PackageIndex InstalledPackage,
        depResolverSourcePkgIndex    :: PackageIndex SourcePackage
      }
-
-
--- | Global policy for all packages to say if we prefer package versions that
--- are already installed locally or if we just prefer the latest available.
---
-data PackagesPreferenceDefault =
-
-     -- | Always prefer the latest version irrespective of any existing
-     -- installed version.
-     --
-     -- * This is the standard policy for upgrade.
-     --
-     PreferAllLatest
-
-     -- | Always prefer the installed versions over ones that would need to be
-     -- installed. Secondarily, prefer latest versions (eg the latest installed
-     -- version or if there are none then the latest source version).
-   | PreferAllInstalled
-
-     -- | Prefer the latest version for packages that are explicitly requested
-     -- but prefers the installed version for any other packages.
-     --
-     -- * This is the standard policy for install.
-     --
-   | PreferLatestForSelected
 
 
 -- | A package selection preference for a particular package.
