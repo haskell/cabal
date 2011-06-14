@@ -9,7 +9,7 @@ module Distribution.Client.Dependency.Modular where
 -- plan.
 
 import Data.Map as M
-         ( empty )
+         ( empty, fromList )
 import Distribution.Client.Dependency.Modular.Assignment
          ( Assignment, toCPs )
 import Distribution.Client.Dependency.Modular.Dependency
@@ -20,10 +20,12 @@ import Distribution.Client.Dependency.Modular.IndexConversion
          ( convPIs )
 import Distribution.Client.Dependency.Modular.Log
          ( logToProgress )
+import Distribution.Client.Dependency.Modular.Package
+         ( PN )
 import Distribution.Client.Dependency.Modular.Solver
          ( defaultSolver )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver )
+         ( DependencyResolver, PackageConstraint(..) )
 import Distribution.Client.InstallPlan
          ( PlanPackage )
 import Distribution.System
@@ -33,14 +35,18 @@ modularResolver :: DependencyResolver
 modularResolver (Platform arch os) cid iidx sidx pprefs pcs pns =
   fmap (uncurry postprocess) $ -- convert install plan
   logToProgress $
-  defaultSolver idx gprefs uprefs goals gcs gfcs lfcs
+  defaultSolver idx gprefs uprefs gcs pns gfcs
     where
       idx    = convPIs os arch cid iidx sidx
       gprefs = M.empty  -- global preferences
       uprefs = M.empty  -- user preferences
-      goals  = pns      -- goals/targets
-      gcs    = []       -- global constraints
+      gcs    = M.fromList (map (\ pc -> (pcName pc, pc)) pcs)
+                        -- user constraints
       gfcs   = M.empty  -- global flag choices
-      lfcs   = M.empty  -- local flag choices
       postprocess :: Assignment -> RevDepMap -> [PlanPackage]
       postprocess a rdm = map (convCP iidx sidx) (toCPs a rdm)
+      pcName :: PackageConstraint -> PN
+      pcName (PackageConstraintVersion   pn _) = pn
+      pcName (PackageConstraintInstalled pn  ) = pn
+      pcName (PackageConstraintSource    pn  ) = pn
+      pcName (PackageConstraintFlags     pn _) = pn
