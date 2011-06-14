@@ -8,6 +8,14 @@ module Distribution.Client.Dependency.Modular where
 -- and finally, we have to convert back the resulting install
 -- plan.
 
+import Data.Map as M
+         ( empty )
+import Distribution.Client.Dependency.Modular.Assignment
+         ( Assignment, toCPs )
+import Distribution.Client.Dependency.Modular.Dependency
+         ( RevDepMap )
+import Distribution.Client.Dependency.Modular.ConfiguredConversion
+         ( convCP )
 import Distribution.Client.Dependency.Modular.IndexConversion
          ( convPIs )
 import Distribution.Client.Dependency.Modular.Log
@@ -21,16 +29,18 @@ import Distribution.Client.InstallPlan
 import Distribution.System
          ( Platform(..) )
 
-modularSolver :: DependencyResolver
-modularSolver (Platform arch os) cid iidx sidx pprefs pcs pns =
-  fmap undefined $ -- convert install plan
+modularResolver :: DependencyResolver
+modularResolver (Platform arch os) cid iidx sidx pprefs pcs pns =
+  fmap (uncurry postprocess) $ -- convert install plan
   logToProgress $
   defaultSolver idx gprefs uprefs goals gcs gfcs lfcs
     where
-      idx    = convPIs os arch cid undefined sidx
-      gprefs = undefined
-      uprefs = undefined
-      goals  = undefined
-      gcs    = undefined
-      gfcs   = undefined
-      lfcs   = undefined
+      idx    = convPIs os arch cid iidx sidx
+      gprefs = M.empty  -- global preferences
+      uprefs = M.empty  -- user preferences
+      goals  = pns      -- goals/targets
+      gcs    = []       -- global constraints
+      gfcs   = M.empty  -- global flag choices
+      lfcs   = M.empty  -- local flag choices
+      postprocess :: Assignment -> RevDepMap -> [PlanPackage]
+      postprocess a rdm = map (convCP iidx sidx) (toCPs a rdm)
