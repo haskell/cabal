@@ -93,7 +93,7 @@ import Control.Exception
 --
 -- Installed packages have fixed dependencies. They have already been built and
 -- we know exactly what packages they were built against, including their exact
--- versions. 
+-- versions.
 --
 -- Source package have somewhat flexible dependencies. They are specified as
 -- version ranges, though really they're predicates. To make matters worse they
