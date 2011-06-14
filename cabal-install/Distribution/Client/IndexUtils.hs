@@ -78,10 +78,9 @@ import System.Time
 
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
-                     -> IO (PackageIndex InstalledPackage)
+                     -> IO InstalledPackageIndex.PackageIndex
 getInstalledPackages verbosity comp packageDbs conf =
-    fmap convert (Configure.getInstalledPackages verbosity'
-                                                 comp packageDbs conf)
+    Configure.getInstalledPackages verbosity' comp packageDbs conf
   where
     --FIXME: make getInstalledPackages use sensible verbosity in the first place
     verbosity'  = lessVerbose verbosity
@@ -115,11 +114,6 @@ getInstalledPackages verbosity comp packageDbs conf =
 
     brokenPackageId (InstalledPackageId str) =
       PackageIdentifier (PackageName (str ++ "-broken")) (Version [] [])
-
-
-------------------------------------------------------------------------
--- Reading the source package index
---
 
 -- | Read a repository index from disk, from the local files specified by
 -- a list of 'Repo's.

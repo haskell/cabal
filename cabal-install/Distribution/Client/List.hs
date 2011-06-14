@@ -15,7 +15,8 @@ module Distribution.Client.List (
 
 import Distribution.Package
          ( PackageName(..), Package(..), packageName, packageVersion
-         , Dependency(..), thisPackageVersion, depends, simplifyDependency )
+         , Dependency(..), InstalledPackageId()
+         , thisPackageVersion, depends, simplifyDependency )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -31,6 +32,7 @@ import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils
         ( equating, comparing, die, notice )
 import Distribution.Simple.Setup (fromFlag)
+import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Version
          ( Version(..), VersionRange, withinRange, anyVersion
@@ -43,7 +45,7 @@ import Distribution.Client.Types
          ( SourcePackage(..), Repo, SourcePackageDb(..)
          , InstalledPackage(..) )
 import Distribution.Client.Dependency.Types
-         ( PackageConstraint(..) )
+         ( PackageConstraint(..), ExtDependency(..) )
 import Distribution.Client.Targets
          ( UserTarget, resolveUserTargets, PackageSpecifier(..) )
 import Distribution.Client.Setup
@@ -87,15 +89,15 @@ list verbosity packageDBs repos comp conf listFlags pats = do
         prefs name = fromMaybe anyVersion
                        (Map.lookup name (packagePreferences sourcePkgDb))
 
-        pkgsInfo :: [(PackageName, [InstalledPackage], [SourcePackage])]
+        pkgsInfo :: [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage])]
         pkgsInfo
             -- gather info for all packages
-          | null pats = mergePackages (PackageIndex.allPackages installedPkgIndex)
-                                      (PackageIndex.allPackages sourcePkgIndex)
+          | null pats = mergePackages (InstalledPackageIndex.allPackages installedPkgIndex)
+                                      (         PackageIndex.allPackages sourcePkgIndex)
 
             -- gather info for packages matching search term
-          | otherwise = mergePackages (matchingPackages installedPkgIndex)
-                                      (matchingPackages sourcePkgIndex)
+          | otherwise = mergePackages (matchingPackages InstalledPackageIndex.searchByNameSubstring installedPkgIndex)
+                                      (matchingPackages (\ idx n -> concatMap snd (PackageIndex.searchByNameSubstring idx n)) sourcePkgIndex)
 
         matches :: [PackageDisplayInfo]
         matches = [ mergePackageInfo pref
@@ -124,11 +126,10 @@ list verbosity packageDBs repos comp conf listFlags pats = do
     onlyInstalled = fromFlag (listInstalled listFlags)
     simpleOutput  = fromFlag (listSimpleOutput listFlags)
 
-    matchingPackages index =
+    matchingPackages search index =
       [ pkg
       | pat <- pats
-      , (_, pkgs) <- PackageIndex.searchByNameSubstring index pat
-      , pkg <- pkgs ]
+      , pkg <- search index pat ]
 
 info :: Verbosity
      -> PackageDBStack
@@ -152,8 +153,8 @@ info verbosity packageDBs repos comp conf
         -- just available source packages, so we must resolve targets using
         -- the combination of installed and source packages.
     let sourcePkgs' = PackageIndex.fromList
-                    $ map packageId (PackageIndex.allPackages installedPkgIndex)
-                   ++ map packageId (PackageIndex.allPackages sourcePkgIndex)
+                    $ map packageId (InstalledPackageIndex.allPackages installedPkgIndex)
+                   ++ map packageId (         PackageIndex.allPackages sourcePkgIndex)
     pkgSpecifiers <- resolveUserTargets verbosity
                        (fromFlag $ globalWorldFile globalFlags)
                        sourcePkgs' userTargets
@@ -169,6 +170,11 @@ info verbosity packageDBs repos comp conf
     putStr $ unlines (map showPackageDetailedInfo pkgsinfo)
 
   where
+    gatherPkgInfo :: (PackageName -> VersionRange) ->
+                     InstalledPackageIndex.PackageIndex ->
+                     PackageIndex.PackageIndex SourcePackage ->
+                     PackageSpecifier SourcePackage ->
+                     Either String PackageDisplayInfo
     gatherPkgInfo prefs installedPkgIndex sourcePkgIndex (NamedPackage name constraints)
       | null (selectedInstalledPkgs) && null (selectedSourcePkgs)
       = Left $ "There is no available version of " ++ display name
@@ -181,12 +187,12 @@ info verbosity packageDBs repos comp conf
                                  showPkgVersion
       where
         pref           = prefs name
-        installedPkgs  = PackageIndex.lookupPackageName installedPkgIndex name
-        sourcePkgs     = PackageIndex.lookupPackageName sourcePkgIndex name
+        installedPkgs  = concatMap snd (InstalledPackageIndex.lookupPackageName installedPkgIndex name)
+        sourcePkgs     =                         PackageIndex.lookupPackageName sourcePkgIndex name
 
-        selectedInstalledPkgs = PackageIndex.lookupDependency installedPkgIndex
+        selectedInstalledPkgs = InstalledPackageIndex.lookupDependency installedPkgIndex
                                     (Dependency name verConstraint)
-        selectedSourcePkgs    = PackageIndex.lookupDependency sourcePkgIndex
+        selectedSourcePkgs    =          PackageIndex.lookupDependency sourcePkgIndex
                                     (Dependency name verConstraint)
         selectedSourcePkg     = latestWithPref pref selectedSourcePkgs
 
@@ -202,8 +208,8 @@ info verbosity packageDBs repos comp conf
       where
         name          = packageName pkg
         pref          = prefs name
-        installedPkgs = PackageIndex.lookupPackageName installedPkgIndex name
-        sourcePkgs    = PackageIndex.lookupPackageName sourcePkgIndex name
+        installedPkgs = concatMap snd (InstalledPackageIndex.lookupPackageName installedPkgIndex name)
+        sourcePkgs    =                         PackageIndex.lookupPackageName sourcePkgIndex name
         selectedPkg   = Just pkg
 
 
@@ -226,7 +232,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
     license           :: License,
     author            :: String,
     maintainer        :: String,
-    dependencies      :: [Dependency],
+    dependencies      :: [ExtDependency],
     flags             :: [Flag],
     hasLib            :: Bool,
     hasExe            :: Bool,
@@ -353,7 +359,7 @@ reflowLines = vcat . map text . lines
 -- package name.
 --
 mergePackageInfo :: VersionRange
-                 -> [InstalledPackage]
+                 -> [Installed.InstalledPackageInfo]
                  -> [SourcePackage]
                  -> Maybe SourcePackage
                  -> Bool
@@ -400,9 +406,8 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     modules      = combine Installed.exposedModules installed
                            (maybe [] Source.exposedModules
                                    . Source.library) source,
-    dependencies = map simplifyDependency
-                 $ combine Source.buildDepends source
-                           (map thisPackageVersion . depends) installed',
+    dependencies = combine (map (SourceDependency . simplifyDependency) . Source.buildDepends) source
+                           (map InstalledDependency . Installed.depends) installed,
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)
                  $ installed,
@@ -410,8 +415,8 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
   }
   where
     combine f x g y  = fromJust (fmap f x `mplus` fmap g y)
-    installed'       = latestWithPref versionPref installedPkgs
-    installed        = fmap (\(InstalledPackage p _) -> p) installed'
+    installed :: Maybe Installed.InstalledPackageInfo
+    installed = latestWithPref versionPref installedPkgs
 
     sourceSelected
       | isJust selectedPkg = selectedPkg
@@ -450,10 +455,10 @@ latestWithPref pref pkgs = Just (maximumBy (comparing prefThenVersion) pkgs)
 -- same package by name. In the result pairs, the lists are guaranteed to not
 -- both be empty.
 --
-mergePackages :: [InstalledPackage]
+mergePackages :: [Installed.InstalledPackageInfo]
               -> [SourcePackage]
               -> [( PackageName
-                  , [InstalledPackage]
+                  , [Installed.InstalledPackageInfo]
                   , [SourcePackage] )]
 mergePackages installedPkgs sourcePkgs =
     map collect

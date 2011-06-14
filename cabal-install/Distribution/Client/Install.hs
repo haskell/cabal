@@ -74,6 +74,7 @@ import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
+import qualified Distribution.InstalledPackageInfo as Installed
 import Paths_cabal_install (getBinDir)
 
 import Distribution.Simple.Compiler
@@ -81,8 +82,8 @@ import Distribution.Simple.Compiler
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Client.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
@@ -218,7 +219,7 @@ planPackages :: Compiler
              -> ConfigFlags
              -> ConfigExFlags
              -> InstallFlags
-             -> PackageIndex InstalledPackage
+             -> PackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
@@ -293,7 +294,7 @@ planPackages comp configFlags configExFlags installFlags
       where
         isTarget pkg = packageName pkg `elem` targetnames
         targetnames  = map pkgSpecifierTarget pkgSpecifiers
-        
+
         explain :: [InstallPlan.PlanProblem] -> String
         explain problems =
             "Cannot select only the dependencies (as requested by the "
@@ -319,7 +320,7 @@ planPackages comp configFlags configExFlags installFlags
 -- ------------------------------------------------------------
 
 printPlanMessages :: Verbosity
-                  -> PackageIndex InstalledPackage
+                  -> PackageIndex
                   -> InstallPlan
                   -> Bool
                   -> IO ()
@@ -339,7 +340,7 @@ printPlanMessages verbosity installed installPlan dryRun = do
 
 
 printDryRun :: Verbosity
-            -> PackageIndex InstalledPackage
+            -> PackageIndex
             -> InstallPlan
             -> IO ()
 printDryRun verbosity installedPkgIndex plan = case unfoldr next plan of
@@ -364,11 +365,14 @@ printDryRun verbosity installedPkgIndex plan = case unfoldr next plan of
           case PackageIndex.lookupPackageName installedPkgIndex
                                               (packageName pkg') of
             [] -> "(new package)"
-            ps ->  case find ((==packageId pkg') . packageId) ps of
+            ps ->  case find ((==packageId pkg') . Installed.sourcePackageId) (concatMap snd ps) of
               Nothing  -> "(new version)"
               Just pkg -> "(reinstall)" ++ case changes pkg pkg' of
                 []   -> ""
                 diff -> " changes: "  ++ intercalate ", " diff
+    changes :: Installed.InstalledPackageInfo -> ConfiguredPackage -> [String]
+    changes _ _ = []
+{-
     changes pkg pkg' = map change . filter changed
                      $ mergeBy (comparing packageName)
                          (nub . sort . depends $ pkg)
@@ -379,6 +383,7 @@ printDryRun verbosity installedPkgIndex plan = case unfoldr next plan of
     change (OnlyInRight      pkgid') = display pkgid' ++ " added"
     changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
     changed _                        = True
+-}
 
 -- ------------------------------------------------------------
 -- * Post installation stuff
@@ -587,7 +592,7 @@ data InstallMisc = InstallMisc {
 
 performInstallations :: Verbosity
                      -> InstallContext
-                     -> PackageIndex InstalledPackage
+                     -> PackageIndex
                      -> InstallPlan
                      -> IO InstallPlan
 performInstallations verbosity

@@ -11,6 +11,8 @@
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency.Types (
+    ExtDependency(..),
+
     DependencyResolver,
 
     PackageConstraint(..),
@@ -32,20 +34,38 @@ import Distribution.Client.Types
          ( SourcePackage(..), InstalledPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
+import Distribution.Compat.ReadP
+         ( (<++) )
+
 import Distribution.PackageDescription
          ( FlagAssignment )
-import Distribution.Client.PackageIndex
+import qualified Distribution.Client.PackageIndex as PackageIndex
+         ( PackageIndex )
+import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
          ( PackageIndex )
 import Distribution.Package
-         ( PackageName )
+         ( Dependency, PackageName, InstalledPackageId )
 import Distribution.Version
          ( VersionRange )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
          ( Platform )
+import Distribution.Text
+         ( Text(..) )
 
 import Prelude hiding (fail)
+
+-- | Covers source dependencies and installed dependencies in
+-- one type.
+data ExtDependency = SourceDependency Dependency
+                   | InstalledDependency InstalledPackageId
+
+instance Text ExtDependency where
+  disp (SourceDependency    dep) = disp dep
+  disp (InstalledDependency dep) = disp dep
+
+  parse = (SourceDependency `fmap` parse) <++ (InstalledDependency `fmap` parse)
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to
@@ -57,8 +77,8 @@ import Prelude hiding (fail)
 --
 type DependencyResolver = Platform
                        -> CompilerId
-                       -> PackageIndex InstalledPackage
-                       -> PackageIndex SourcePackage
+                       -> InstalledPackageIndex.PackageIndex
+                       ->          PackageIndex.PackageIndex SourcePackage
                        -> (PackageName -> PackagePreferences)
                        -> [PackageConstraint]
                        -> [PackageName]
