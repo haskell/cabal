@@ -76,7 +76,7 @@ data ConfiguredPackage = ConfiguredPackage
        FlagAssignment      -- complete flag assignment for the package
        [PackageId]         -- set of exact dependencies. These must be
                            -- consistent with the 'buildDepends' in the
-                           -- 'PackageDescrption' that you'd get by applying
+                           -- 'PackageDescription' that you'd get by applying
                            -- the flag assignment.
   deriving Show
 

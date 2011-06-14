@@ -239,7 +239,7 @@ search configure pref constraints =
 -- the standard 'DependencyResolver' interface.
 --
 topDownResolver :: DependencyResolver
-topDownResolver = ((((((mapMessages .).).).).).) . topDownResolver'
+topDownResolver = undefined -- ((((((mapMessages .).).).).).) . topDownResolver'
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
     mapMessages = foldProgress (Step . showLog) (Fail . showFailure) Done

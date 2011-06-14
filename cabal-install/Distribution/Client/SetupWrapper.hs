@@ -51,8 +51,8 @@ import Distribution.Simple.Command
          ( CommandUI(..), commandShowOptions )
 import Distribution.Simple.GHC
          ( ghcVerbosityOptions )
-import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Client.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Client.IndexUtils
          ( getInstalledPackages )
 import Distribution.Simple.Utils
@@ -79,7 +79,7 @@ data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion  :: VersionRange,
     useCompiler      :: Maybe Compiler,
     usePackageDB     :: PackageDBStack,
-    usePackageIndex  :: Maybe (PackageIndex InstalledPackage),
+    usePackageIndex  :: Maybe PackageIndex,
     useProgramConfig :: ProgramConfiguration,
     useDistPref      :: FilePath,
     useLoggingHandle :: Maybe Handle,
@@ -222,7 +222,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       []   -> die $ "The package requires Cabal library version "
                  ++ display (useCabalVersion options)
                  ++ " but no suitable version is installed."
-      pkgs -> return $ bestVersion (map packageVersion pkgs)
+      pkgs -> return $ bestVersion (map fst pkgs)
     where
       bestVersion          = maximumBy (comparing preference)
       preference version   = (sameVersion, sameMajorVersion

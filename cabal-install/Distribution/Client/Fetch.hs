@@ -19,7 +19,6 @@ import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
-import Distribution.Client.PackageIndex (PackageIndex)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -30,6 +29,7 @@ import Distribution.Package
          ( packageId )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
+import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
@@ -112,7 +112,7 @@ fetch verbosity packageDBs repos comp conf
 planPackages :: Verbosity
              -> Compiler
              -> FetchFlags
-             -> PackageIndex InstalledPackage
+             -> PackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> IO [SourcePackage]

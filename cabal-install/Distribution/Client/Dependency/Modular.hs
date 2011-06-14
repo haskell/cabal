@@ -16,6 +16,8 @@ import Distribution.Client.Dependency.Modular.Solver
          ( defaultSolver )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver )
+import Distribution.Client.InstallPlan
+         ( PlanPackage )
 import Distribution.System
          ( Platform(..) )
 

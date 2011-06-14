@@ -43,28 +43,30 @@ module Distribution.Client.Dependency (
     addPreferences,
     setPreferenceDefault,
     addSourcePackages,
-    hideInstalledPackagesSpecific,
+    hideInstalledPackagesSpecificByInstalledPackageId,
+    hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
   ) where
 
 import Distribution.Client.Dependency.TopDown (topDownResolver)
 import Distribution.Client.Dependency.Modular ()
 import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Client.PackageIndex (PackageIndex)
+import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
-         , SourcePackage(..), InstalledPackage )
+         , SourcePackage(..) )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
 import Distribution.Client.Targets
+import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageName(..), PackageId, Package(..), packageVersion
-         , Dependency(Dependency))
+         , InstalledPackageId, Dependency(Dependency))
 import Distribution.Version
          ( VersionRange, anyVersion, withinRange, simplifyVersionRange )
 import Distribution.Compiler
@@ -76,11 +78,10 @@ import Distribution.Text
          ( display )
 
 import Data.List (maximumBy, foldl')
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Set (Set)
-
 
 -- ------------------------------------------------------------
 -- * High level planner policy
@@ -95,8 +96,8 @@ data DepResolverParams = DepResolverParams {
        depResolverConstraints       :: [PackageConstraint],
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
-       depResolverInstalledPkgIndex :: PackageIndex InstalledPackage,
-       depResolverSourcePkgIndex    :: PackageIndex SourcePackage
+       depResolverInstalledPkgIndex :: InstalledPackageIndex.PackageIndex,
+       depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage
      }
 
 
@@ -114,8 +115,8 @@ data PackagePreference =
      -- | If we prefer versions of packages that are already installed.
    | PackageInstalledPreference PackageName InstalledPreference
 
-basicDepResolverParams :: PackageIndex InstalledPackage
-                       -> PackageIndex SourcePackage
+basicDepResolverParams :: InstalledPackageIndex.PackageIndex
+                       -> PackageIndex.PackageIndex SourcePackage
                        -> DepResolverParams
 basicDepResolverParams installedPkgIndex sourcePkgIndex =
     DepResolverParams {
@@ -170,7 +171,7 @@ dontUpgradeBasePackage params =
     -- below when there are no targets and thus no dep on base.
     -- Need to refactor contraints separate from needing packages.
     isInstalled = not . null
-                . PackageIndex.lookupPackageName
+                . InstalledPackageIndex.lookupPackageName
                                  (depResolverInstalledPkgIndex params)
 
 addSourcePackages :: [SourcePackage]
@@ -182,13 +183,23 @@ addSourcePackages pkgs params =
               (depResolverSourcePkgIndex params) pkgs
     }
 
-hideInstalledPackagesSpecific :: [PackageId]
-                              -> DepResolverParams -> DepResolverParams
-hideInstalledPackagesSpecific pkgids params =
+hideInstalledPackagesSpecificByInstalledPackageId :: [InstalledPackageId]
+                                                     -> DepResolverParams -> DepResolverParams
+hideInstalledPackagesSpecificByInstalledPackageId pkgids params =
     --TODO: this should work using exclude constraints instead
     params {
       depResolverInstalledPkgIndex =
-        foldl' (flip PackageIndex.deletePackageId)
+        foldl' (flip InstalledPackageIndex.deleteInstalledPackageId)
+               (depResolverInstalledPkgIndex params) pkgids
+    }
+
+hideInstalledPackagesSpecificBySourcePackageId :: [PackageId]
+                                                  -> DepResolverParams -> DepResolverParams
+hideInstalledPackagesSpecificBySourcePackageId pkgids params =
+    --TODO: this should work using exclude constraints instead
+    params {
+      depResolverInstalledPkgIndex =
+        foldl' (flip InstalledPackageIndex.deleteSourcePackageId)
                (depResolverInstalledPkgIndex params) pkgids
     }
 
@@ -198,20 +209,20 @@ hideInstalledPackagesAllVersions pkgnames params =
     --TODO: this should work using exclude constraints instead
     params {
       depResolverInstalledPkgIndex =
-        foldl' (flip PackageIndex.deletePackageName)
+        foldl' (flip InstalledPackageIndex.deletePackageName)
                (depResolverInstalledPkgIndex params) pkgnames
     }
 
 
 hideBrokenInstalledPackages :: DepResolverParams -> DepResolverParams
 hideBrokenInstalledPackages params =
-    hideInstalledPackagesSpecific pkgids params
+    hideInstalledPackagesSpecificByInstalledPackageId pkgids params
   where
-    pkgids = map packageId
-           . PackageIndex.reverseDependencyClosure
+    pkgids = map Installed.installedPackageId
+           . InstalledPackageIndex.reverseDependencyClosure
                             (depResolverInstalledPkgIndex params)
-           . map (packageId . fst)
-           . PackageIndex.brokenPackages
+           . map (Installed.installedPackageId . fst)
+           . InstalledPackageIndex.brokenPackages
            $ depResolverInstalledPkgIndex params
 
 
@@ -224,7 +235,7 @@ reinstallTargets params =
     hideInstalledPackagesAllVersions (depResolverTargets params) params
 
 
-standardInstallPolicy :: PackageIndex InstalledPackage
+standardInstallPolicy :: InstalledPackageIndex.PackageIndex
                       -> SourcePackageDb
                       -> [PackageSpecifier SourcePackage]
                       -> DepResolverParams
@@ -242,7 +253,7 @@ standardInstallPolicy
   . addTargets
       (map pkgSpecifierTarget pkgSpecifiers)
 
-  . hideInstalledPackagesSpecific
+  . hideInstalledPackagesSpecificBySourcePackageId
       [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
 
   . addSourcePackages
@@ -383,7 +394,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                           (installPref pkg, versionPref pkg, packageVersion pkg)
         installPref   = case preferInstalled of
           PreferLatest    -> const False
-          PreferInstalled -> isJust . PackageIndex.lookupPackageId
+          PreferInstalled -> not . null . InstalledPackageIndex.lookupSourcePackageId
                                                      installedPkgIndex
                            . packageId
         versionPref   pkg = packageVersion pkg `withinRange` preferredVersions

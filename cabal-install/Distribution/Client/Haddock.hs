@@ -10,7 +10,7 @@
 -- Interfacing with Haddock
 --
 -----------------------------------------------------------------------------
-module Distribution.Client.Haddock 
+module Distribution.Client.Haddock
     (
      regenerateHaddockIndex
     )
@@ -28,24 +28,22 @@ import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
 import Distribution.Version (Version(Version), orLaterVersion)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text (display)
-import Distribution.Client.PackageIndex(PackageIndex, allPackages,
-                                        allPackagesByName, fromList)
+import Distribution.Simple.PackageIndex (PackageIndex, allPackages,
+                                         allPackagesByName, fromList)
 import Distribution.Simple.Utils
          ( comparing, intercalate, debug
          , installDirectoryContents, withTempDirectory )
-import Distribution.InstalledPackageInfo as InstalledPackageInfo 
+import Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo
          , InstalledPackageInfo_(haddockHTMLs, haddockInterfaces, exposed) )
-import Distribution.Client.Types
-         ( InstalledPackage(..) )
 
-regenerateHaddockIndex :: Verbosity -> PackageIndex InstalledPackage -> ProgramConfiguration -> FilePath -> IO ()
+regenerateHaddockIndex :: Verbosity -> PackageIndex -> ProgramConfiguration -> FilePath -> IO ()
 regenerateHaddockIndex verbosity pkgs conf index = do
       (paths,warns) <- haddockPackagePaths pkgs'
       case warns of
         Nothing -> return ()
         Just m  -> debug verbosity m
-      
+
       (confHaddock, _, _) <-
           requireProgramVersion verbosity haddockProgram
                                     (orLaterVersion (Version [0,6] [])) conf
@@ -63,14 +61,13 @@ regenerateHaddockIndex verbosity pkgs conf index = do
         rawSystemProgram verbosity confHaddock flags
         renameFile (tempDir </> "index.html") (tempDir </> destFile)
         installDirectoryContents verbosity tempDir destDir
-      
-  where 
+
+  where
     (destDir,destFile) = splitFileName index
-    pkgs' = map (maximumBy $ comparing packageId) 
-            . allPackagesByName 
+    pkgs' = map (maximumBy $ comparing packageId)
+            . allPackagesByName
             . fromList
             . filter exposed
-            . map (\(InstalledPackage pkg _) -> pkg)
             . allPackages
             $ pkgs
 
