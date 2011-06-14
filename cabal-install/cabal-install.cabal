@@ -58,6 +58,7 @@ Executable cabal
         Distribution.Client.Dependency.Modular.Assignment
         Distribution.Client.Dependency.Modular.Builder
         Distribution.Client.Dependency.Modular.Configured
+        Distribution.Client.Dependency.Modular.ConfiguredConversion
         Distribution.Client.Dependency.Modular.Dependency
         Distribution.Client.Dependency.Modular.Explore
         Distribution.Client.Dependency.Modular.Flag
