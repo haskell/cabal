@@ -26,6 +26,7 @@ showMessages = go 0
     -- complex patterns
     go l (TryP pi : Enter : Failure fr : Leave : ms) = (atLevel l $ "rejecting: " ++ showPI pi ++ showFR fr) : go l ms
     go l (TryF qfn b : Enter : Failure fr : Leave : ms) = (atLevel l $ "rejecting: " ++ showQFNBool qfn b ++ showFR fr) : go l ms
+    go l (Next (Goal (Simple (Dep _ _)) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel l $ "trying: " ++ showPI pi ++ showGR gr) : go l ms
     -- standard display
     go l (Enter      : ms) = go (l+1) ms
     go l (Leave      : ms) = go (l-1) ms
