@@ -9,7 +9,7 @@ module Distribution.Client.Dependency.Modular where
 -- plan.
 
 import Data.Map as M
-         ( empty, fromList )
+         ( fromList )
 import Distribution.Client.Dependency.Modular.Assignment
          ( Assignment, toCPs )
 import Distribution.Client.Dependency.Modular.Dependency
@@ -31,20 +31,24 @@ import Distribution.Client.InstallPlan
 import Distribution.System
          ( Platform(..) )
 
+-- | Ties the two worlds together: classic cabal-install vs. the modular
+-- solver. Performs the necessary translations before and after.
 modularResolver :: DependencyResolver
 modularResolver (Platform arch os) cid iidx sidx pprefs pcs pns =
   fmap (uncurry postprocess) $ -- convert install plan
-  logToProgress $
-  defaultSolver idx gprefs uprefs gcs pns gfcs
+  logToProgress $              -- convert log format into progress format
+  defaultSolver idx pprefs gcs pns
     where
+      -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cid iidx sidx
-      gprefs = M.empty  -- global preferences
-      uprefs = M.empty  -- user preferences
+      -- Constraints have to be converted into a finite map indexed by PN.
       gcs    = M.fromList (map (\ pc -> (pcName pc, pc)) pcs)
-                        -- user constraints
-      gfcs   = M.empty  -- global flag choices
+
+      -- Results have to be converted into an install plan.
       postprocess :: Assignment -> RevDepMap -> [PlanPackage]
       postprocess a rdm = map (convCP iidx sidx) (toCPs a rdm)
+
+      -- Helper function to extract the PN from a constraint.
       pcName :: PackageConstraint -> PN
       pcName (PackageConstraintVersion   pn _) = pn
       pcName (PackageConstraintInstalled pn  ) = pn

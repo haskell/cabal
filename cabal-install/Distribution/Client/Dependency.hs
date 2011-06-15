@@ -48,7 +48,7 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesAllVersions,
   ) where
 
-import Distribution.Client.Dependency.TopDown (topDownResolver)
+-- import Distribution.Client.Dependency.TopDown (topDownResolver)
 import Distribution.Client.Dependency.Modular (modularResolver)
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
