@@ -27,7 +27,7 @@ defaultSolverConfig :: SolverConfig
 defaultSolverConfig = SolverConfig {
   preferEasyGoalChoices = True,
   pStrategy             = PreferLatestForSelected, -- latest for goals only
-  avoidReinstalls       = True
+  avoidReinstalls       = False
 }
 
 originalSolve :: SolverConfig ->   -- solver parameters
