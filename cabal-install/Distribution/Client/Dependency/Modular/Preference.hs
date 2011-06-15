@@ -51,8 +51,13 @@ preferPackagePreferences pcs = packageOrderFor (const True) preference
       in  preferredVersionsOrdering vr v1 v2 `mappend` -- combines lexically
           locationsOrdering ipref i1 i2
 
-    locationsOrdering PreferInstalled = preferInstalledOrdering
-    locationsOrdering PreferLatest    = preferLatestOrdering
+    -- Note that we always rank installed before uninstalled, and later
+    -- versions before earlier, but we can change the priority of the
+    -- two orderings.
+    locationsOrdering PreferInstalled v1 v2 =
+      preferInstalledOrdering v1 v2 `mappend` preferLatestOrdering v1 v2
+    locationsOrdering PreferLatest v1 v2 =
+      preferLatestOrdering v1 v2 `mappend` preferInstalledOrdering v1 v2
 
 -- | Ordering that treats installed instances as greater than uninstalled ones.
 preferInstalledOrdering :: I -> I -> Ordering
