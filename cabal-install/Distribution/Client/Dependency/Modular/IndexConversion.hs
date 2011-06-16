@@ -2,6 +2,7 @@ module Distribution.Client.Dependency.Modular.IndexConversion where
 
 import Data.List as L
 import Data.Map as M
+import Data.Maybe
 import Prelude hiding (pi)
 
 import qualified Distribution.Client.PackageIndex as CI
@@ -24,33 +25,40 @@ import Distribution.Client.Dependency.Modular.Version
 convPIs :: OS -> Arch -> CompilerId ->
            SI.PackageIndex -> CI.PackageIndex SourcePackage -> Index
 convPIs os arch cid iidx sidx =
-  mkIndex (L.map (convIP iidx)        (SI.allPackages iidx) ++
-           L.map (convSP os arch cid) (CI.allPackages sidx))
+  mkIndex (L.concatMap (convIP iidx)        (SI.allPackages iidx) ++
+           L.map       (convSP os arch cid) (CI.allPackages sidx))
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
 convIPI :: SI.PackageIndex -> Index
-convIPI idx = mkIndex . L.map (convIP idx) . SI.allPackages $ idx
+convIPI idx = mkIndex . L.concatMap (convIP idx) . SI.allPackages $ idx
 
 -- | Convert a single installed package into the solver-specific format.
-convIP :: SI.PackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
+--
+-- May return the empty list if the installed package is broken.
+convIP :: SI.PackageIndex -> InstalledPackageInfo -> [(PN, I, PInfo)]
 convIP idx ipi =
   let ipid = installedPackageId ipi
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
-  in  (pn, i, PInfo (concatMap (convIPId idx) (IPI.depends ipi)) M.empty [])
-
+  in  maybeToList $ do
+        fds <- mapM (convIPId idx) (IPI.depends ipi)
+        return (pn, i, PInfo fds M.empty [])
 -- TODO: Installed packages should also store their encapsulations!
 
 -- | Convert dependencies specified by an installed package id into
 -- flagged dependencies of the solver.
-convIPId :: SI.PackageIndex -> InstalledPackageId -> [FlaggedDep PN]
+--
+-- May return Nothing if the package can't be found in the index. That
+-- indicates that the original package having this dependency is broken
+-- and should be ignored.
+convIPId :: SI.PackageIndex -> InstalledPackageId -> Maybe (FlaggedDep PN)
 convIPId idx ipid =
   case SI.lookupInstalledPackageId idx ipid of
-    Nothing  -> [] -- TODO: package is broken, ignore it; we currently let it always succeed; this is VERY DANGEROUS.
+    Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)
-                in  [D.Simple (Dep pn (Fixed i))]
+                in  Just (D.Simple (Dep pn (Fixed i)))
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
