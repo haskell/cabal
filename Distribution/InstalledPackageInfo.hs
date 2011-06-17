@@ -106,6 +106,7 @@ data InstalledPackageInfo_ m
         exposed           :: Bool,
         exposedModules    :: [m],
         hiddenModules     :: [m],
+        trusted           :: Bool,
         importDirs        :: [FilePath],  -- contain sources in case of Hugs
         libraryDirs       :: [FilePath],
         hsLibraries       :: [String],
@@ -147,6 +148,7 @@ emptyInstalledPackageInfo
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
+        trusted           = False,
         importDirs        = [],
         libraryDirs       = [],
         hsLibraries       = [],
@@ -242,6 +244,8 @@ installedFieldDescrs = [
  , listField   "hidden-modules"
         disp               parseModuleNameQ
         hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
+ , boolField   "trusted"
+        trusted            (\val pkg -> pkg{trusted=val})
  , listField   "import-dirs"
         showFilePath       parseFilePathQ
         importDirs         (\xs pkg -> pkg{importDirs=xs})

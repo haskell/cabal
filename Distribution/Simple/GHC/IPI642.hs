@@ -145,6 +145,7 @@ toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map convertModuleName (exposedModules ipi),
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
+    Current.trusted            = False,
     Current.importDirs         = importDirs ipi,
     Current.libraryDirs        = libraryDirs ipi,
     Current.hsLibraries        = hsLibraries ipi,
