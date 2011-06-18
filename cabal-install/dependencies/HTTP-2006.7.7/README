@@ -1,0 +1,25 @@
+DESCRIPTION
+
+This is the Haskell HTTP and Browser module package. It was originally
+written by Wariick Gray and the original version is still available
+from: http://homepages.paradise.net.nz/warrickg/haskell/http/
+
+REQUIREMENTS
+
+* A Haskell implementation such as GHC (http://www.haskell.org/ghc/)
+or Hugs (http://www.haskell.org/hugs/) with support for Cabal.
+
+INSTALLATION
+
+
+* Configure:
+
+$ runhaskell Setup.lhs configure
+
+* Compile:
+
+$ runhaskell Setup.lhs build
+
+* Install (as root):
+
+# runhaskell Setup.lhs install

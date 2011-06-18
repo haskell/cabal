@@ -1,0 +1,30 @@
+
+    CabalInstall, what happens under the hood.
+
+  FetchCmd:
+    cabal-install stores packages in [config-dir]/packages/ by their package id.
+    This can lead to clashes if there's two identical (same name, same version)
+    packages from two servers with different functionality.
+  CleanCmd:
+    Removes all fetched packages.
+  UpdateCmd:
+    Queries all known servers for their packages and stores it in [cfg-dir]/pkg.list.
+  InstallCmd:
+    Installed packages are determined, and dependencies of the to-be-installed packages
+    are resolved and fetched.
+    The fetched tarballs are moved to a temporary directory (usually /tmp) and extracted.
+    Then cabal-install finds any files with a ".cabal" extension and picks the shortest (eg.
+    "myPkg/pkg.cabal" will be chosen over "myPkg/subdir/somefile.cabal"). Cabal-get looks
+    for "Setup.lhs" and "Setup.hs" (in that order) in the directory where the .cabal file
+    was found. Runhaskell is then called with user specified arguments. The user can
+    only pass arguments to the 'configure' phase of the installation. '--user' is only passed
+    to 'runhaskell install' when the '--user' flag is given to cabal-install.
+  InfoCmd:
+    To be written.
+
+
+  Files used by cabal-install:
+    [cfg-dir]/serv.list        list of servers in the format of :: [String]
+    [cfg-dir]/pkg.list         list of packages available from the servers.
+                               Format: [(ServerURL,[(PackageIdentifier,[Dependency])])] where ServerURL = String
+    [cfg-dir]/packages/        directory containing all fetched packages.
