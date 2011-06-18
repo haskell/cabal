@@ -4,6 +4,12 @@
 
 1.10.0.x (next stable release version)
 
+1.10.2.0 Duncan Coutts <duncan@community.haskell.org> June 2011
+	* Include test suites in cabal sdist
+	* Fix for conditionals in test suite stanzas in .cabal files
+	* Fix permissions of directories created during install
+	* Fix for global builds when $HOME env var is not set
+
 1.10.1.0 Duncan Coutts <duncan@community.haskell.org> February 2011
 	* Improved error messages when test suites are not enabled
 	* Template parameters allowed in test --test-option(s) flag
