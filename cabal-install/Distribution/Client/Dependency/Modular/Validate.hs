@@ -162,7 +162,7 @@ extractNewFlagDeps qfn b fa deps = do
     Simple _             -> mzero
     Flagged qfn' _ td fd
       | qfn == qfn'      -> if b then extractDeps fa td else extractDeps fa fd
-      | otherwise        -> case M.lookup qfn fa of
+      | otherwise        -> case M.lookup qfn' fa of
                               Nothing    -> mzero
                               Just True  -> extractNewFlagDeps qfn b fa td
                               Just False -> extractNewFlagDeps qfn b fa fd
