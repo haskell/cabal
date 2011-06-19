@@ -21,7 +21,7 @@ module Distribution.Client.Install (
 import Data.List
          ( unfoldr, find, nub, sort )
 import Data.Maybe
-         ( isJust, fromMaybe )
+         ( isJust, fromMaybe, maybeToList )
 import Control.Exception as Exception
          ( handleJust )
 #if MIN_VERSION_base(4,0,0)
@@ -371,11 +371,14 @@ printDryRun verbosity installedPkgIndex plan = case unfoldr next plan of
                 []   -> ""
                 diff -> " changes: "  ++ intercalate ", " diff
     changes :: Installed.InstalledPackageInfo -> ConfiguredPackage -> [String]
-    changes _ _ = []
-{-
     changes pkg pkg' = map change . filter changed
                      $ mergeBy (comparing packageName)
-                         (nub . sort . depends $ pkg)
+                         -- get dependencies of installed package (convert to source pkg ids via index)
+                         (nub . sort . concatMap (maybeToList .
+                                                  fmap Installed.sourcePackageId .
+                                                  PackageIndex.lookupInstalledPackageId installedPkgIndex) .
+                                                  Installed.depends $ pkg)
+                         -- get dependencies of configured package
                          (nub . sort . depends $ pkg')
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
@@ -383,7 +386,6 @@ printDryRun verbosity installedPkgIndex plan = case unfoldr next plan of
     change (OnlyInRight      pkgid') = display pkgid' ++ " added"
     changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
     changed _                        = True
--}
 
 -- ------------------------------------------------------------
 -- * Post installation stuff
