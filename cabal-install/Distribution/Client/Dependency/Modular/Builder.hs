@@ -60,10 +60,10 @@ scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
 
 data BuildType = Goals | OneGoal Goal | Instance QPN I PInfo
 
-build :: BuildState -> Tree Info
+build :: BuildState -> Tree Scope
 build = ana go
   where
-    go :: BuildState -> TreeF Info BuildState
+    go :: BuildState -> TreeF Scope BuildState
 
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
@@ -111,7 +111,7 @@ build = ana go
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> [PN] -> Tree Info
+buildTree :: Index -> [PN] -> Tree Scope
 buildTree idx igs =
     build (BS idx emptyScope
                   (M.fromList (L.map (\ qpn -> (qpn, []))                                               qpns))

@@ -12,13 +12,6 @@ import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Version
 
--- | All sorts of helpful information we can store in a tree.
-type Info = Scope -- for the time being
-
--- | Type of variables.
-data Var = PVar QPN | FVar QFN
-  deriving (Eq, Show)
-
 -- | Goals are qualified flagged dependencies, together with a reason for
 -- their presence.
 data Goal = Goal (FlaggedDep QPN) GoalReason
