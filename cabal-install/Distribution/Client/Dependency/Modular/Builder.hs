@@ -34,6 +34,8 @@ extendOpen qpn' gs s@(BS { goals = gs', open = o' }) = go gs' o' gs
     go g o []                                         = s { goals = g, open = o }
     go g o (ng@(Goal (Flagged _ _ _ _)    _gr) : ngs) = go g (cons ng () o) ngs
     go g o (ng@(Goal (Simple (Dep qpn _)) _gr) : ngs)
+      | qpn == qpn'                                   = go                       g              o  ngs
+                                       -- we ignore self-dependencies at this point; TODO: more care may be needed
       | qpn `M.member` g                              = go (M.adjust (qpn':) qpn g)             o  ngs
       | otherwise                                     = go (M.insert qpn [qpn']  g) (cons ng () o) ngs
                                        -- code above is correct; insert/adjust have different arg order
