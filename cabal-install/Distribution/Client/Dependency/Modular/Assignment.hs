@@ -26,7 +26,7 @@ type PAssignment    = Map QPN I
 -- are associated with constrained instances. Constrained instances
 -- record constraints about the instances that can still be chosen,
 -- and in the extreme case fix a concrete instance.
-type PPreAssignment = Map QPN CI
+type PPreAssignment = Map QPN (CI QPN)
 type FAssignment    = Map QFN Bool
 
 -- | A (partial) assignment of variables.
@@ -43,14 +43,14 @@ data PreAssignment = PA PPreAssignment FAssignment
 -- or the successfully extended assignment.
 extend :: PPreAssignment -> [Dep QPN] -> Either (Dep QPN) PPreAssignment
 extend pa qa = foldM (\ a (Dep qpn ci) ->
-                      let ci' = M.findWithDefault (Constrained anyVR) qpn a
+                      let ci' = M.findWithDefault (Constrained []) qpn a
                       in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
                             Nothing -> Left  (Dep qpn (mostInformative ci ci'))
                             Just x  -> Right x)
                      pa qa
   where
-    mostInformative (Fixed _) c = c
-    mostInformative c         _ = c
+    mostInformative (Fixed _ _) c = c
+    mostInformative c           _ = c
 
 -- | Delievers an ordered list of fully configured packages.
 --

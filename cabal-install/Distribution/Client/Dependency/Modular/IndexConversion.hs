@@ -42,7 +42,7 @@ convIP idx ipi =
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
   in  maybeToList $ do
-        fds <- mapM (convIPId idx) (IPI.depends ipi)
+        fds <- mapM (convIPId pn idx) (IPI.depends ipi)
         return (pn, i, PInfo fds M.empty [])
 -- TODO: Installed packages should also store their encapsulations!
 
@@ -52,13 +52,13 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: SI.PackageIndex -> InstalledPackageId -> Maybe (FlaggedDep PN)
-convIPId idx ipid =
+convIPId :: PN -> SI.PackageIndex -> InstalledPackageId -> Maybe (FlaggedDep PN)
+convIPId pn' idx ipid =
   case SI.lookupInstalledPackageId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)
-                in  Just (D.Simple (Dep pn (Fixed i)))
+                in  Just (D.Simple (Dep pn (Fixed i pn')))
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
@@ -103,8 +103,8 @@ flagDefaults = M.fromList . L.map (\ (MkFlag fn _ b _) -> (fn, b))
 convCondTree :: OS -> Arch -> CompilerId -> PI PN -> FlagDefaults ->
                 (a -> Bool) -> -- how to detect if a branch is active
                 CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-convCondTree os arch cid pi fds p (CondNode info ds branches)
-  | p info    = L.map (D.Simple . convDep) ds  -- unconditional dependencies
+convCondTree os arch cid pi@(PI pn _) fds p (CondNode info ds branches)
+  | p info    = L.map (D.Simple . convDep pn) ds  -- unconditional dependencies
               ++ concatMap (convBranch os arch cid pi fds p) branches
   | otherwise = []
 
@@ -145,9 +145,9 @@ convBranch os arch cid@(CompilerId cf cv) pi fds p (c', t', mf') =
       | otherwise      = f
 
 -- | Convert a Cabal dependency to a solver-specific dependency.
-convDep :: Dependency -> Dep PN
-convDep (Dependency pn vr) = Dep pn (Constrained vr)
+convDep :: PN -> Dependency -> Dep PN
+convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, P pn')])
 
 -- | Convert a Cabal package identifier to a solver-specific dependency.
-convPI :: PackageIdentifier -> Dep PN
-convPI (PackageIdentifier pn v) = Dep pn (Constrained (eqVR v))
+convPI :: PN -> PackageIdentifier -> Dep PN
+convPI pn' (PackageIdentifier pn v) = Dep pn (Constrained [(eqVR v, P pn')])

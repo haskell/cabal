@@ -13,7 +13,6 @@ import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
-import Distribution.Client.Dependency.Modular.Version
 
 -- | The state needed during the build phase of the search tree.
 data BuildState = BS {
@@ -115,8 +114,8 @@ build = ana go
 buildTree :: Index -> [PN] -> Tree Info
 buildTree idx igs =
     build (BS idx emptyScope
-                  (M.fromList (L.map (\ qpn -> (qpn, []))                                                  qpns))
-                  (P.fromList (L.map (\ qpn -> (Goal (Simple (Dep qpn (Constrained anyVR))) UserGoal, ())) qpns))
+                  (M.fromList (L.map (\ qpn -> (qpn, []))                                               qpns))
+                  (P.fromList (L.map (\ qpn -> (Goal (Simple (Dep qpn (Constrained []))) UserGoal, ())) qpns))
                   Goals)
   where
     qpns = L.map (qualify emptyScope) igs

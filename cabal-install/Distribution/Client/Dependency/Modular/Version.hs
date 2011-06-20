@@ -29,6 +29,9 @@ eqVR = CV.thisVersion
 (.&&.) :: VR -> VR -> VR
 (.&&.) = CV.intersectVersionRanges
 
+-- | Simplify a version range.
+simplifyVR :: VR -> VR
+simplifyVR = CV.simplifyVersionRange
 
 -- | Checking a version against a version range.
 checkVR :: VR -> Ver -> Bool
