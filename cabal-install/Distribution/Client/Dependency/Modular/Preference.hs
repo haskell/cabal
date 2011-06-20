@@ -75,40 +75,40 @@ preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 -- | Traversal that tries to establish various kinds of user constraints. Works
 -- by selectively disabling choices that have been rules out by global user
 -- constraints.
-enforcePackageConstraints :: M.Map PN PackageConstraint -> Tree a -> Tree a
+enforcePackageConstraints :: M.Map PN PackageConstraint -> Tree GoalReason -> Tree GoalReason
 enforcePackageConstraints pcs = cata go
   where
-    go x@(PChoiceF qpn@(Q _ pn)               sc   ts) =
+    go x@(PChoiceF qpn@(Q _ pn)               gr   ts) =
       case M.lookup pn pcs of
         Just (PackageConstraintVersion _ vr) ->
-          PChoice qpn sc
+          PChoice qpn gr
             (P.mapWithKey (\ (I v _) r -> if checkVR vr v
                                             then r
-                                            else Fail [P qpn] (GlobalConstraintVersion vr)) -- TODO: add goal reason to conflict set
+                                            else Fail (P qpn : goalReasonToVars gr) (GlobalConstraintVersion vr))
                           ts)
         Just (PackageConstraintInstalled _) ->
-          PChoice qpn sc
+          PChoice qpn gr
             (P.mapWithKey (\ i r -> if instI i
                                       then r
-                                      else Fail [P qpn] GlobalConstraintInstalled) -- TODO: add goal reason to conflict set
+                                      else Fail (P qpn : goalReasonToVars gr) GlobalConstraintInstalled)
                           ts)
         Just (PackageConstraintSource    _) ->
-          PChoice qpn sc
+          PChoice qpn gr
             (P.mapWithKey (\ i r -> if not (instI i)
                                       then r
-                                      else Fail [P qpn] GlobalConstraintSource) -- TODO: add goal reason to conflict set
+                                      else Fail (P qpn : goalReasonToVars gr) GlobalConstraintSource)
                           ts)
         _ -> inn x
-    go x@(FChoiceF qfn@(FN (PI (Q _ pn) _) f) sc tr ts) =
+    go x@(FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr ts) =
       case M.lookup pn pcs of
         Just (PackageConstraintFlags _ fa) ->
           case L.lookup f fa of
             Nothing -> inn x
             Just b  ->
-              FChoice qfn sc tr
+              FChoice qfn gr tr
                 (P.mapWithKey (\ b' r -> if b == b'
                                            then r
-                                           else Fail [F qfn] GlobalConstraintFlag) -- TODO: add goal reason to conflict set
+                                           else Fail (F qfn : goalReasonToVars gr) GlobalConstraintFlag)
                               ts)
         _ -> inn x
     go x = inn x
@@ -130,15 +130,15 @@ preferLatest :: Tree a -> Tree a
 preferLatest = preferLatestFor (const True)
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree a -> Tree a
+requireInstalled :: (PN -> Bool) -> Tree (GoalReason, a) -> Tree (GoalReason, a)
 requireInstalled p = cata go
   where
-    go (PChoiceF v@(Q _ pn) r cs)
-      | p pn      = PChoice v r (P.mapWithKey installed cs)
-      | otherwise = PChoice v r                         cs
+    go (PChoiceF v@(Q _ pn) i@(gr, _) cs)
+      | p pn      = PChoice v i (P.mapWithKey installed cs)
+      | otherwise = PChoice v i                         cs
       where
         installed (I _ (Inst _)) x = x
-        installed _              _ = Fail [P v] CannotInstall -- TODO: add goal reason to conflict set
+        installed _              _ = Fail (P v : goalReasonToVars gr) CannotInstall
     go x          = inn x
 
 -- | Avoid reinstalls.
@@ -154,19 +154,19 @@ requireInstalled p = cata go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree a -> Tree a
+avoidReinstalls :: (PN -> Bool) -> Tree (GoalReason, a) -> Tree (GoalReason, a)
 avoidReinstalls p = cata go
   where
-    go (PChoiceF qpn@(Q _ pn) r cs)
-      | p pn      = PChoice qpn r disableReinstalls
-      | otherwise = PChoice qpn r cs
+    go (PChoiceF qpn@(Q _ pn) i@(gr, _) cs)
+      | p pn      = PChoice qpn i disableReinstalls
+      | otherwise = PChoice qpn i cs
       where
         disableReinstalls =
           let installed = [ v | (I v (Inst _), _) <- toList cs ]
           in  P.mapWithKey (notReinstall installed) cs
 
         notReinstall vs (I v InRepo) _
-          | v `elem` vs                = Fail [P qpn] CannotReinstall -- TODO: add goal reason to conflict set
+          | v `elem` vs                = Fail (P qpn : goalReasonToVars gr) CannotReinstall
         notReinstall _  _            x = x
     go x          = inn x
 

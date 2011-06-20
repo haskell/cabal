@@ -60,10 +60,10 @@ scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
 
 data BuildType = Goals | OneGoal Goal | Instance QPN I PInfo
 
-build :: BuildState -> Tree Scope
+build :: BuildState -> Tree (GoalReason, Scope)
 build = ana go
   where
-    go :: BuildState -> TreeF Scope BuildState
+    go :: BuildState -> TreeF (GoalReason, Scope) BuildState
 
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
@@ -81,17 +81,17 @@ build = ana go
     go bs@(BS { index = idx, scope = sc, next = OneGoal (Goal (Simple (Dep qpn@(Q _ pn) _)) gr) }) =
       case M.lookup pn idx of
         Nothing  -> FailF (P qpn : goalReasonToVars gr) (BuildFailureNotInIndex pn)
-        Just pis -> PChoiceF qpn sc (P.fromList (L.map (\ (i, info) ->
-                                                       (i, bs { next = Instance qpn i  info }))
-                                                       (M.toList pis)))
+        Just pis -> PChoiceF qpn (gr, sc) (P.fromList (L.map (\ (i, info) ->
+                                                           (i, bs { next = Instance qpn i  info }))
+                                                         (M.toList pis)))
           -- TODO: data structure conversion is rather ugly here
 
     -- For a flag, we create only two subtrees, and we create them in the order
     -- that is indicated by the flag default.
     --
     -- TODO: Should we include the flag default in the tree?
-    go bs@(BS { scope = sc, next = OneGoal (Goal (Flagged qfn b t f) _) }) =
-      FChoiceF qfn sc trivial (P.fromList (reorder b
+    go bs@(BS { scope = sc, next = OneGoal (Goal (Flagged qfn b t f) gr) }) =
+      FChoiceF qfn (gr, sc) trivial (P.fromList (reorder b
         [(True,  (extendOpen (getPN qfn) (L.map (flip Goal (FDependency qfn b)) t) bs) { next = Goals }),
          (False, (extendOpen (getPN qfn) (L.map (flip Goal (FDependency qfn b)) f) bs) { next = Goals })]))
       where
@@ -110,7 +110,7 @@ build = ana go
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> [PN] -> Tree Scope
+buildTree :: Index -> [PN] -> Tree (GoalReason, Scope)
 buildTree idx igs =
     build (BS idx emptyScope
                   (M.fromList (L.map (\ qpn -> (qpn, []))                                               qpns))
