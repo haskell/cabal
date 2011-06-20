@@ -80,21 +80,21 @@ data ValidateState = VS {
 
 type Validate = Reader ValidateState
 
-validate :: Tree Scope -> Validate (Tree ())
+validate :: Tree (GoalReason, Scope) -> Validate (Tree GoalReason)
 validate = cata go
   where
-    go :: TreeF Scope (Validate (Tree ())) -> Validate (Tree ())
+    go :: TreeF (GoalReason, Scope) (Validate (Tree GoalReason)) -> Validate (Tree GoalReason)
 
-    go (PChoiceF qpn sc   ts) = PChoice qpn ()   <$> sequence (P.mapWithKey (goP qpn sc) ts)
-    go (FChoiceF qfn sc b ts) = FChoice qfn () b <$> sequence (P.mapWithKey (goF qfn sc) ts)
+    go (PChoiceF qpn (gr, sc)   ts) = PChoice qpn gr   <$> sequence (P.mapWithKey (goP qpn sc) ts)
+    go (FChoiceF qfn (gr, sc) b ts) = FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn sc) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
-    go (GoalChoiceF       ts) = GoalChoice       <$> sequence ts
-    go (DoneF    rdm        ) = pure (Done rdm)
-    go (FailF    c fr       ) = pure (Fail c fr)
+    go (GoalChoiceF             ts) = GoalChoice       <$> sequence ts
+    go (DoneF    rdm              ) = pure (Done rdm)
+    go (FailF    c fr             ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> Scope -> I -> Validate (Tree ()) -> Validate (Tree ())
+    goP :: QPN -> Scope -> I -> Validate (Tree GoalReason) -> Validate (Tree GoalReason)
     goP qpn@(Q _pp pn) sc i r = do
       PA ppa pfa <- asks pa    -- obtain current preassignment
       idx        <- asks index -- obtain the index
@@ -115,7 +115,7 @@ validate = cata go
                        local (\ s -> s { pa = PA nppa pfa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
-    goF :: QFN -> Scope -> Bool -> Validate (Tree ()) -> Validate (Tree ())
+    goF :: QFN -> Scope -> Bool -> Validate (Tree GoalReason) -> Validate (Tree GoalReason)
     goF qfn@(FN (PI qpn _i) _f) _sc b r = do
       PA ppa pfa <- asks pa -- obtain current preassignment
       svd <- asks saved     -- obtain saved dependencies
@@ -171,5 +171,5 @@ extractNewFlagDeps qfn b fa deps = do
                               Just False -> extractNewFlagDeps qfn b fa fd
 
 -- | Interface.
-validateTree :: Index -> Tree Scope -> Tree ()
+validateTree :: Index -> Tree (GoalReason, Scope) -> Tree GoalReason
 validateTree idx t = runReader (validate t) (VS idx M.empty (PA M.empty M.empty))
