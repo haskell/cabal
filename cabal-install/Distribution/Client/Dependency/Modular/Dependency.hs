@@ -22,6 +22,12 @@ instance Functor Var where
   fmap f (P n)  = P (f n)
   fmap f (F fn) = F (fmap f fn)
 
+class ResetVar f where
+  resetVar :: Var qpn -> f qpn -> f qpn
+
+instance ResetVar Var where
+  resetVar = const
+
 -- | Constrained instance. If the choice has already been made, this is
 -- a fixed instance, and we record the package name for which the choice
 -- is for convenience. Otherwise, it is a list of version ranges paired with
@@ -32,6 +38,10 @@ data CI qpn = Fixed I qpn | Constrained [VROrigin qpn]
 instance Functor CI where
   fmap f (Fixed i n)       = Fixed i (f n)
   fmap f (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, fmap f y)) vrs)
+
+instance ResetVar CI where
+  resetVar v (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetVar v y)) vrs)
+  resetVar v x                 = x
 
 type VROrigin qpn = (VR, Var qpn)
 
@@ -86,6 +96,9 @@ showDep (Dep qpn ci) = showQPN qpn ++ showCI ci
 
 instance Functor Dep where
   fmap f (Dep x y) = Dep (f x) (fmap f y)
+
+instance ResetVar Dep where
+  resetVar v (Dep qpn ci) = Dep qpn (resetVar v ci)
 
 -- | A map containing reverse dependencies between qualified
 -- package names.
