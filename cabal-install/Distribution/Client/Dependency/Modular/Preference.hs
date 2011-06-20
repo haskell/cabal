@@ -5,6 +5,7 @@ module Distribution.Client.Dependency.Modular.Preference where
 import Control.Applicative
 import qualified Data.List as L
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Data.Monoid
 import Data.Ord
 
@@ -84,19 +85,19 @@ enforcePackageConstraints pcs = cata go
           PChoice qpn gr
             (P.mapWithKey (\ (I v _) r -> if checkVR vr v
                                             then r
-                                            else Fail (P qpn : goalReasonToVars gr) (GlobalConstraintVersion vr))
+                                            else Fail (P qpn `S.insert` goalReasonToVars gr) (GlobalConstraintVersion vr))
                           ts)
         Just (PackageConstraintInstalled _) ->
           PChoice qpn gr
             (P.mapWithKey (\ i r -> if instI i
                                       then r
-                                      else Fail (P qpn : goalReasonToVars gr) GlobalConstraintInstalled)
+                                      else Fail (P qpn `S.insert` goalReasonToVars gr) GlobalConstraintInstalled)
                           ts)
         Just (PackageConstraintSource    _) ->
           PChoice qpn gr
             (P.mapWithKey (\ i r -> if not (instI i)
                                       then r
-                                      else Fail (P qpn : goalReasonToVars gr) GlobalConstraintSource)
+                                      else Fail (P qpn `S.insert` goalReasonToVars gr) GlobalConstraintSource)
                           ts)
         _ -> inn x
     go x@(FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr ts) =
@@ -108,7 +109,7 @@ enforcePackageConstraints pcs = cata go
               FChoice qfn gr tr
                 (P.mapWithKey (\ b' r -> if b == b'
                                            then r
-                                           else Fail (F qfn : goalReasonToVars gr) GlobalConstraintFlag)
+                                           else Fail (F qfn `S.insert` goalReasonToVars gr) GlobalConstraintFlag)
                               ts)
         _ -> inn x
     go x = inn x
@@ -138,7 +139,7 @@ requireInstalled p = cata go
       | otherwise = PChoice v i                         cs
       where
         installed (I _ (Inst _)) x = x
-        installed _              _ = Fail (P v : goalReasonToVars gr) CannotInstall
+        installed _              _ = Fail (P v `S.insert` goalReasonToVars gr) CannotInstall
     go x          = inn x
 
 -- | Avoid reinstalls.
@@ -166,7 +167,7 @@ avoidReinstalls p = cata go
           in  P.mapWithKey (notReinstall installed) cs
 
         notReinstall vs (I v InRepo) _
-          | v `elem` vs                = Fail (P qpn : goalReasonToVars gr) CannotReinstall
+          | v `elem` vs                = Fail (P qpn `S.insert` goalReasonToVars gr) CannotReinstall
         notReinstall _  _            x = x
     go x          = inn x
 

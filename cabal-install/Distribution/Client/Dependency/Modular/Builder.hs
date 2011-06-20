@@ -5,6 +5,7 @@ module Distribution.Client.Dependency.Modular.Builder where
 import Control.Monad.Reader hiding (sequence, mapM)
 import Data.List as L
 import Data.Map as M
+import Data.Set as S
 import Prelude hiding (sequence, mapM)
 
 import Distribution.Client.Dependency.Modular.Dependency
@@ -80,7 +81,7 @@ build = ana go
     -- and then handle each instance in turn.
     go bs@(BS { index = idx, scope = sc, next = OneGoal (Goal (Simple (Dep qpn@(Q _ pn) _)) gr) }) =
       case M.lookup pn idx of
-        Nothing  -> FailF (P qpn : goalReasonToVars gr) (BuildFailureNotInIndex pn)
+        Nothing  -> FailF (P qpn `S.insert` goalReasonToVars gr) (BuildFailureNotInIndex pn)
         Just pis -> PChoiceF qpn (gr, sc) (P.fromList (L.map (\ (i, info) ->
                                                            (i, bs { next = Instance qpn i  info }))
                                                          (M.toList pis)))

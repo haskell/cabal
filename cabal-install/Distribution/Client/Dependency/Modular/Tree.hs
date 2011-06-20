@@ -3,6 +3,7 @@ module Distribution.Client.Dependency.Modular.Tree where
 import Control.Applicative
 import Control.Monad hiding (mapM)
 import Data.Foldable
+import Data.Set as S
 import Data.Traversable
 import Prelude hiding (foldr, mapM)
 
@@ -21,10 +22,10 @@ data Goal = Goal (FlaggedDep QPN) GoalReason
 data GoalReason = UserGoal | PDependency (PI QPN) | FDependency QFN Bool
   deriving (Eq, Show)
 
-goalReasonToVars :: GoalReason -> [Var QPN]
-goalReasonToVars UserGoal                 = []
-goalReasonToVars (PDependency (PI qpn _)) = [P qpn]
-goalReasonToVars (FDependency qfn _)      = [F qfn]
+goalReasonToVars :: GoalReason -> ConflictSet QPN
+goalReasonToVars UserGoal                 = S.empty
+goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
+goalReasonToVars (FDependency qfn _)      = S.singleton (F qfn)
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
@@ -32,7 +33,7 @@ data Tree a =
   | FChoice     QFN a Bool (PSQ Bool (Tree a)) -- Bool indicates whether it's trivial
   | GoalChoice             (PSQ Goal (Tree a)) -- PSQ should never be empty
   | Done        RevDepMap
-  | Fail        [Var QPN] FailReason
+  | Fail        (ConflictSet QPN) FailReason
   deriving (Eq, Show)
 
 data FailReason = InconsistentInitialConstraints
@@ -54,7 +55,7 @@ data TreeF a b =
   | FChoiceF    QFN a Bool (PSQ Bool b)
   | GoalChoiceF            (PSQ Goal b)
   | DoneF       RevDepMap
-  | FailF       [Var QPN] FailReason
+  | FailF       (ConflictSet QPN) FailReason
 
 out :: Tree a -> TreeF a (Tree a)
 out (PChoice    p i   ts) = PChoiceF    p i   ts
