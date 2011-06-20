@@ -80,19 +80,21 @@ data ValidateState = VS {
 
 type Validate = Reader ValidateState
 
-validate :: Tree Scope -> Validate (Tree Scope)
+validate :: Tree Scope -> Validate (Tree ())
 validate = cata go
   where
-    go :: TreeF Scope (Validate (Tree Scope)) -> Validate (Tree Scope)
+    go :: TreeF Scope (Validate (Tree ())) -> Validate (Tree ())
 
-    go (PChoiceF qpn sc   ts) = PChoice qpn sc   <$> sequence (P.mapWithKey (goP qpn sc) ts)
-    go (FChoiceF qfn sc b ts) = FChoice qfn sc b <$> sequence (P.mapWithKey (goF qfn sc) ts)
+    go (PChoiceF qpn sc   ts) = PChoice qpn ()   <$> sequence (P.mapWithKey (goP qpn sc) ts)
+    go (FChoiceF qfn sc b ts) = FChoice qfn () b <$> sequence (P.mapWithKey (goF qfn sc) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
-    go t = inn <$> sequence t
+    go (GoalChoiceF  _    ts) = GoalChoice  ()   <$> sequence ts
+    go (DoneF    rdm        ) = pure (Done rdm)
+    go (FailF    c fr       ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> Scope -> I -> Validate (Tree Scope) -> Validate (Tree Scope)
+    goP :: QPN -> Scope -> I -> Validate (Tree ()) -> Validate (Tree ())
     goP qpn@(Q _pp pn) sc i r = do
       PA ppa pfa <- asks pa    -- obtain current preassignment
       idx        <- asks index -- obtain the index
@@ -113,7 +115,7 @@ validate = cata go
                        local (\ s -> s { pa = PA nppa pfa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
-    goF :: QFN -> Scope -> Bool -> Validate (Tree Scope) -> Validate (Tree Scope)
+    goF :: QFN -> Scope -> Bool -> Validate (Tree ()) -> Validate (Tree ())
     goF qfn@(FN (PI qpn _i) _f) _sc b r = do
       PA ppa pfa <- asks pa -- obtain current preassignment
       svd <- asks saved     -- obtain saved dependencies
@@ -169,5 +171,5 @@ extractNewFlagDeps qfn b fa deps = do
                               Just False -> extractNewFlagDeps qfn b fa fd
 
 -- | Interface.
-validateTree :: Index -> Tree Scope -> Tree Scope
+validateTree :: Index -> Tree Scope -> Tree ()
 validateTree idx t = runReader (validate t) (VS idx M.empty (PA M.empty M.empty))
