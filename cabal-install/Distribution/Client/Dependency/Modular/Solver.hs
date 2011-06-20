@@ -44,7 +44,7 @@ solve sc idx userPrefs userConstraints userGoals =
   prunePhase       $
   buildPhase
   where
-    explorePhase = exploreTreeLog
+    explorePhase = exploreTreeLog . backjump
     heuristicsPhase = if preferEasyGoalChoices sc
                         then P.deferDefaultFlagChoices . P.preferEasyGoalChoices
                         else id
