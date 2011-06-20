@@ -107,10 +107,10 @@ validate = cata go
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
       case mnppa of
-        Left d     -> -- We have an inconsistency. We can stop.
-                      return (Fail (Conflicting d))
-        Right nppa -> -- We have an updated partial assignment for the recursive validation.
-                      local (\ s -> s { pa = PA nppa pfa, saved = nsvd }) r
+        Left (c, d) -> -- We have an inconsistency. We can stop.
+                       return (Fail c (Conflicting d))
+        Right nppa  -> -- We have an updated partial assignment for the recursive validation.
+                       local (\ s -> s { pa = PA nppa pfa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
     goF :: QFN -> Scope -> Bool -> Validate (Tree Scope) -> Validate (Tree Scope)
@@ -127,7 +127,7 @@ validate = cata go
       -- First, we should check that our flag choice itself is consistent. Unlike for
       -- package nodes, we do not guarantee that a flag choice occurs exactly once.
       case M.lookup qfn pfa of
-        Just rb | rb /= b -> return (Fail ConflictingFlag)
+        Just rb | rb /= b -> return (Fail [F qfn] ConflictingFlag)
         _                 -> do
           -- Extend the flag assignment
           let npfa = M.insert qfn b pfa
@@ -136,8 +136,8 @@ validate = cata go
           let newactives = extractNewFlagDeps qfn b npfa qdeps
           -- As in the package case, we try to extend the partial assignment.
           case extend (F qfn) ppa newactives of
-            Left d     -> return (Fail (Conflicting d)) -- inconsistency found
-            Right nppa -> local (\ s -> s { pa = PA nppa npfa }) r
+            Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
+            Right nppa  -> local (\ s -> s { pa = PA nppa npfa }) r
 
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
