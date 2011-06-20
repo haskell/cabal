@@ -30,7 +30,7 @@ goalReasonToVars (FDependency qfn _)      = [F qfn]
 data Tree a =
     PChoice     QPN a      (PSQ I    (Tree a))
   | FChoice     QFN a Bool (PSQ Bool (Tree a)) -- Bool indicates whether it's trivial
-  | GoalChoice      a      (PSQ Goal (Tree a)) -- PSQ should never be empty
+  | GoalChoice             (PSQ Goal (Tree a)) -- PSQ should never be empty
   | Done        RevDepMap
   | Fail        [Var QPN] FailReason
   deriving (Eq, Show)
@@ -52,42 +52,42 @@ data FailReason = InconsistentInitialConstraints
 data TreeF a b =
     PChoiceF    QPN a      (PSQ I    b)
   | FChoiceF    QFN a Bool (PSQ Bool b)
-  | GoalChoiceF     a      (PSQ Goal b)
+  | GoalChoiceF            (PSQ Goal b)
   | DoneF       RevDepMap
   | FailF       [Var QPN] FailReason
 
 out :: Tree a -> TreeF a (Tree a)
 out (PChoice    p i   ts) = PChoiceF    p i   ts
 out (FChoice    p i b ts) = FChoiceF    p i b ts
-out (GoalChoice   i   ts) = GoalChoiceF   i   ts
+out (GoalChoice       ts) = GoalChoiceF       ts
 out (Done       x       ) = DoneF       x
 out (Fail       c x     ) = FailF       c x
 
 inn :: TreeF a (Tree a) -> (Tree a)
 inn (PChoiceF    p i   ts) = PChoice    p i   ts
 inn (FChoiceF    p i b ts) = FChoice    p i b ts
-inn (GoalChoiceF   i   ts) = GoalChoice   i   ts
+inn (GoalChoiceF       ts) = GoalChoice       ts
 inn (DoneF       x       ) = Done       x
 inn (FailF       c x     ) = Fail       c x
 
 instance Functor (TreeF a) where
   fmap f (PChoiceF    p i   ts) = PChoiceF    p i   (fmap f ts)
   fmap f (FChoiceF    p i b ts) = FChoiceF    p i b (fmap f ts)
-  fmap f (GoalChoiceF   i   ts) = GoalChoiceF   i   (fmap f ts)
+  fmap f (GoalChoiceF       ts) = GoalChoiceF       (fmap f ts)
   fmap _ (DoneF       x       ) = DoneF       x
   fmap _ (FailF       c x     ) = FailF       c x
 
 instance Foldable (TreeF a) where
   foldr op e (PChoiceF    _ _   ts) = foldr op e ts
   foldr op e (FChoiceF    _ _ _ ts) = foldr op e ts
-  foldr op e (GoalChoiceF   _   ts) = foldr op e ts
+  foldr op e (GoalChoiceF       ts) = foldr op e ts
   foldr _  e (DoneF       _       ) = e
   foldr _  e (FailF       _ _     ) = e
 
 instance Traversable (TreeF a) where
   traverse f (PChoiceF    p i   ts) = PChoiceF    <$> pure p <*> pure i <*>            traverse f ts
   traverse f (FChoiceF    p i b ts) = FChoiceF    <$> pure p <*> pure i <*> pure b <*> traverse f ts
-  traverse f (GoalChoiceF   i   ts) = GoalChoiceF <$>            pure i <*>            traverse f ts
+  traverse f (GoalChoiceF       ts) = GoalChoiceF <$>                                  traverse f ts
   traverse _ (DoneF       x       ) = DoneF       <$> pure x
   traverse _ (FailF       c x     ) = FailF       <$> pure c <*> pure x
 
@@ -101,7 +101,7 @@ active _          = True
 choices :: Tree a -> Int
 choices (PChoice    _ _   ts) = P.length (P.filter active ts)
 choices (FChoice    _ _ _ ts) = P.length (P.filter active ts)
-choices (GoalChoice   _   _ ) = 1
+choices (GoalChoice       _ ) = 1
 choices (Done       _       ) = 1
 choices (Fail       _ _     ) = 0
 
@@ -110,7 +110,7 @@ choices (Fail       _ _     ) = 0
 lchoices :: Tree a -> Int
 lchoices (PChoice    _ _   ts) = P.llength (P.filter active ts)
 lchoices (FChoice    _ _ _ ts) = P.llength (P.filter active ts)
-lchoices (GoalChoice   _   _ ) = 1
+lchoices (GoalChoice       _ ) = 1
 lchoices (Done       _       ) = 1
 lchoices (Fail       _ _     ) = 0
 

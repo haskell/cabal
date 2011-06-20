@@ -192,14 +192,14 @@ enforceFlagChoices gfs lfs = cata go
 -- | Always choose the first goal in the list next, abandoning all
 -- other choices.
 --
--- This should be unnecessary for the default search strategy,
--- but may still make sense to just reduce the tree size a bit, so
--- that it becomes more feasible to explore the *entire* search tree.
+-- This is unnecessary for the default search strategy, because
+-- it descends only into the first goal choice anyway,
+-- but may still make sense to just reduce the tree size a bit.
 firstGoal :: Tree a -> Tree a
 firstGoal = cata go
   where
-    go (GoalChoiceF i xs) = casePSQ xs (GoalChoice i xs) (\ _ t _ -> t)
-    go x                  = inn x
+    go (GoalChoiceF xs) = casePSQ xs (GoalChoice xs) (\ _ t _ -> t)
+    go x                = inn x
     -- Note that we keep empty choice nodes, because they mean success.
 
 -- | Transformation that sorts choice nodes so that
@@ -210,16 +210,16 @@ firstGoal = cata go
 preferEasyGoalChoices :: Tree a -> Tree a
 preferEasyGoalChoices = cata go
   where
-    go (GoalChoiceF i xs) = GoalChoice i (P.sortBy (comparing choices) xs)
-    go x                  = inn x
+    go (GoalChoiceF xs) = GoalChoice (P.sortBy (comparing choices) xs)
+    go x                = inn x
 
 -- | Transformation that tries to avoid making inconsequential
 -- flag choices early.
 deferDefaultFlagChoices :: Tree a -> Tree a
 deferDefaultFlagChoices = cata go
   where
-    go (GoalChoiceF i xs) = GoalChoice i (P.sortBy defer xs)
-    go x                  = inn x
+    go (GoalChoiceF xs) = GoalChoice (P.sortBy defer xs)
+    go x                = inn x
 
     defer :: Tree a -> Tree a -> Ordering
     defer (FChoice _ _ True _) _ = GT
@@ -233,8 +233,8 @@ deferDefaultFlagChoices = cata go
 lpreferEasyGoalChoices :: Tree a -> Tree a
 lpreferEasyGoalChoices = cata go
   where
-    go (GoalChoiceF i xs) = GoalChoice i (P.sortBy (comparing lchoices) xs)
-    go x                  = inn x
+    go (GoalChoiceF xs) = GoalChoice (P.sortBy (comparing lchoices) xs)
+    go x                = inn x
 
 -- | Variant of 'preferEasyGoalChoices'.
 --
@@ -243,6 +243,6 @@ lpreferEasyGoalChoices = cata go
 preferEasyGoalChoices' :: Tree a -> Tree a
 preferEasyGoalChoices' = para go
   where
-    go (GoalChoiceF i xs) = GoalChoice i (P.map fst (P.sortBy (comparing (choices . snd)) xs))
-    go x                  = inn (fmap fst x)
+    go (GoalChoiceF xs) = GoalChoice (P.map fst (P.sortBy (comparing (choices . snd)) xs))
+    go x                = inn (fmap fst x)
 
