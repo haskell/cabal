@@ -2,6 +2,7 @@ module Distribution.Client.Dependency.Modular.Dependency where
 
 import Data.List as L
 import Data.Map as M
+import Data.Set as S
 
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
@@ -16,7 +17,7 @@ import Distribution.Client.Dependency.Modular.Version
 -- TODO: This isn't the ideal location to declare the type,
 -- but we need them for constrained instances.
 data Var qpn = P qpn | F (FN qpn)
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 showVar :: Var QPN -> String
 showVar (P qpn) = showQPN qpn
@@ -31,6 +32,8 @@ class ResetVar f where
 
 instance ResetVar Var where
   resetVar = const
+
+type ConflictSet qpn = Set (Var qpn)
 
 -- | Constrained instance. If the choice has already been made, this is
 -- a fixed instance, and we record the package name for which the choice
@@ -64,16 +67,16 @@ showCI (Constrained vr) = showVR (collapse vr)
 --
 -- TODO: In fact, we only return the first pair of inconsistent fragments
 -- now. It might be better to return them all, but I don't know.
-merge :: CI qpn -> CI qpn -> Either ([Var qpn], (CI qpn, CI qpn)) (CI qpn)
+merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
 merge c@(Fixed i p1)       d@(Fixed j p2)
   | i == j                                   = Right c
-  | otherwise                                = Left ([P p1, P p2], (c, d))
+  | otherwise                                = Left (S.fromList [P p1, P p2], (c, d))
 merge c@(Fixed (I v _) p)   (Constrained rs) = go rs
   where
     go []              = Right c
     go ((vr, o) : vrs)
       | checkVR vr v   = go vrs
-      | otherwise      = Left ([P p, o], (c, Constrained [(vr, o)]))
+      | otherwise      = Left (S.fromList [P p, o], (c, Constrained [(vr, o)]))
 merge c@(Constrained _)   d@(Fixed _ _)      = merge d c
 merge   (Constrained rs)    (Constrained ss) = Right (Constrained (rs ++ ss))
 

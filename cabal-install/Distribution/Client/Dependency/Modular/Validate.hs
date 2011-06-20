@@ -10,6 +10,7 @@ import Control.Applicative
 import Control.Monad.Reader hiding (sequence)
 import Data.List as L
 import Data.Map as M
+import Data.Set as S
 import Data.Traversable
 import Prelude hiding (sequence)
 
@@ -85,13 +86,13 @@ validate = cata go
   where
     go :: TreeF (GoalReason, Scope) (Validate (Tree GoalReason)) -> Validate (Tree GoalReason)
 
-    go (PChoiceF qpn (gr, sc)   ts) = PChoice qpn gr   <$> sequence (P.mapWithKey (goP qpn sc) ts)
-    go (FChoiceF qfn (gr, sc) b ts) = FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn sc) ts)
+    go (PChoiceF qpn (gr,  sc)   ts) = PChoice qpn gr   <$> sequence (P.mapWithKey (goP qpn sc) ts)
+    go (FChoiceF qfn (gr, _sc) b ts) = FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn gr) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
-    go (GoalChoiceF             ts) = GoalChoice       <$> sequence ts
-    go (DoneF    rdm              ) = pure (Done rdm)
-    go (FailF    c fr             ) = pure (Fail c fr)
+    go (GoalChoiceF              ts) = GoalChoice       <$> sequence ts
+    go (DoneF    rdm               ) = pure (Done rdm)
+    go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
     goP :: QPN -> Scope -> I -> Validate (Tree GoalReason) -> Validate (Tree GoalReason)
@@ -115,8 +116,8 @@ validate = cata go
                        local (\ s -> s { pa = PA nppa pfa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
-    goF :: QFN -> Scope -> Bool -> Validate (Tree GoalReason) -> Validate (Tree GoalReason)
-    goF qfn@(FN (PI qpn _i) _f) _sc b r = do
+    goF :: QFN -> GoalReason -> Bool -> Validate (Tree GoalReason) -> Validate (Tree GoalReason)
+    goF qfn@(FN (PI qpn _i) _f) gr b r = do
       PA ppa pfa <- asks pa -- obtain current preassignment
       svd <- asks saved     -- obtain saved dependencies
       -- Note that there should be saved dependencies for the package in question,
@@ -129,7 +130,7 @@ validate = cata go
       -- First, we should check that our flag choice itself is consistent. Unlike for
       -- package nodes, we do not guarantee that a flag choice occurs exactly once.
       case M.lookup qfn pfa of
-        Just rb | rb /= b -> return (Fail [F qfn] ConflictingFlag)
+        Just rb | rb /= b -> return (Fail (F qfn `S.insert` goalReasonToVars gr) ConflictingFlag)
         _                 -> do
           -- Extend the flag assignment
           let npfa = M.insert qfn b pfa
@@ -138,7 +139,7 @@ validate = cata go
           let newactives = extractNewFlagDeps qfn b npfa qdeps
           -- As in the package case, we try to extend the partial assignment.
           case extend (F qfn) ppa newactives of
-            Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
+            Left (c, d) -> return (Fail (c `S.union` goalReasonToVars gr) (Conflicting d)) -- inconsistency found
             Right nppa  -> local (\ s -> s { pa = PA nppa npfa }) r
 
 -- | We try to extract as many concrete dependencies from the given flagged
