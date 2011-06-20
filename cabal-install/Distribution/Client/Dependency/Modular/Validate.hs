@@ -103,7 +103,7 @@ validate = cata go
       -- plus the dependency information we have for that instance
       let newactives = Dep qpn (Fixed i qpn) : extractDeps pfa qdeps
       -- We now try to extend the partial assignment with the new active constraints.
-      let mnppa = extend ppa newactives
+      let mnppa = extend (P qpn) ppa newactives
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
       case mnppa of
@@ -135,7 +135,7 @@ validate = cata go
           -- we have chosen a new flag.
           let newactives = extractNewFlagDeps qfn b npfa qdeps
           -- As in the package case, we try to extend the partial assignment.
-          case extend ppa newactives of
+          case extend (F qfn) ppa newactives of
             Left d     -> return (Fail (Conflicting d)) -- inconsistency found
             Right nppa -> local (\ s -> s { pa = PA nppa npfa }) r
 
@@ -169,14 +169,5 @@ extractNewFlagDeps qfn b fa deps = do
                               Just False -> extractNewFlagDeps qfn b fa fd
 
 -- | Interface.
---
--- TODO. We currently do not allow to pass in flag constraints, and we also
--- do not allow constraints for qualified names (but we might just want that).
--- It might also be better to do this via a separate pass.
-validateTree :: Index -> [Dep PN] -> Tree Scope -> Tree Scope
-validateTree idx deps t =
-  case extend M.empty qdeps of
-    Left _    -> Fail InconsistentInitialConstraints
-    Right ppa -> runReader (validate t) (VS idx M.empty (PA ppa M.empty))
-  where
-    qdeps = L.map (fmap (qualify emptyScope)) deps
+validateTree :: Index -> Tree Scope -> Tree Scope
+validateTree idx t = runReader (validate t) (VS idx M.empty (PA M.empty M.empty))

@@ -18,6 +18,10 @@ import Distribution.Client.Dependency.Modular.Version
 data Var qpn = P qpn | F (FN qpn)
   deriving (Eq, Show)
 
+showVar :: Var QPN -> String
+showVar (P qpn) = showQPN qpn
+showVar (F qfn) = showQFN qfn
+
 instance Functor Var where
   fmap f (P n)  = P (f n)
   fmap f (F fn) = F (fmap f fn)
@@ -41,7 +45,7 @@ instance Functor CI where
 
 instance ResetVar CI where
   resetVar v (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetVar v y)) vrs)
-  resetVar v x                 = x
+  resetVar _ x                 = x
 
 type VROrigin qpn = (VR, Var qpn)
 
@@ -50,23 +54,28 @@ type VROrigin qpn = (VR, Var qpn)
 collapse :: [VROrigin qpn] -> VR
 collapse = simplifyVR . foldr (.&&.) anyVR . L.map fst
 
-showCI :: CI qpn -> String
+showCI :: CI QPN -> String
 showCI (Fixed i _)      = "==" ++ showI i
 showCI (Constrained vr) = showVR (collapse vr)
 
 -- | Merge constrained instances. We currently adopt a lazy strategy for
 -- merging, i.e., we only perform actual checking if one of the two choices
--- is fixed. We return the failing version range and origin if the merge
--- fails.
-merge :: CI qpn -> CI qpn -> Maybe (CI qpn)
-merge c@(Fixed i _) (Fixed j _)
-  | i == j                              = Just c
-  | otherwise                           = Nothing
-merge c@(Fixed (I v _) _)(Constrained rs)
-  | checkVR (collapse rs) v             = Just c
-  | otherwise                           = Nothing
-merge c@(Constrained _) d@(Fixed _ _)   = merge d c
-merge (Constrained rs) (Constrained ss) = Just (Constrained (rs ++ ss))
+-- is fixed. We return the two inconsistent fragment if the merge fails.
+--
+-- TODO: In fact, we only return the first pair of inconsistent fragments
+-- now. It might be better to return them all, but I don't know.
+merge :: CI qpn -> CI qpn -> Either (CI qpn, CI qpn) (CI qpn)
+merge c@(Fixed i _)       d@(Fixed j _)
+  | i == j                                   = Right c
+  | otherwise                                = Left (c, d)
+merge c@(Fixed (I v _) _)   (Constrained rs) = go rs
+  where
+    go []              = Right c
+    go ((vr, o) : vrs)
+      | checkVR vr v   = go vrs
+      | otherwise      = Left (c, Constrained [(vr, o)])
+merge c@(Constrained _)   d@(Fixed _ _)      = merge d c
+merge   (Constrained rs)    (Constrained ss) = Right (Constrained (rs ++ ss))
 
 
 type FlaggedDeps qpn = [FlaggedDep qpn]
@@ -92,7 +101,8 @@ data Dep qpn = Dep qpn (CI qpn)
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
-showDep (Dep qpn ci) = showQPN qpn ++ showCI ci
+showDep (Dep qpn (Constrained [(vr, o)])) = showQPN qpn ++ showVR vr ++ " introduced by " ++ showVar o
+showDep (Dep qpn ci                     ) = showQPN qpn ++ showCI ci
 
 instance Functor Dep where
   fmap f (Dep x y) = Dep (f x) (fmap f y)

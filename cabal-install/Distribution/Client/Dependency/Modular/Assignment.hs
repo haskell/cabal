@@ -41,16 +41,17 @@ data PreAssignment = PA PPreAssignment FAssignment
 --
 -- Either returns a witness of the conflict that would arise during the merge,
 -- or the successfully extended assignment.
-extend :: PPreAssignment -> [Dep QPN] -> Either (Dep QPN) PPreAssignment
-extend pa qa = foldM (\ a (Dep qpn ci) ->
-                      let ci' = M.findWithDefault (Constrained []) qpn a
-                      in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
-                            Nothing -> Left  (Dep qpn (mostInformative ci ci'))
-                            Just x  -> Right x)
-                     pa qa
+extend :: Var QPN -> PPreAssignment -> [Dep QPN] -> Either (Dep QPN) PPreAssignment
+extend var pa qa = foldM (\ a (Dep qpn ci) ->
+                     let ci' = M.findWithDefault (Constrained []) qpn a
+                     in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
+                           Left (d, d') -> Left  (Dep qpn (mostInformative d d'))
+                           Right x      -> Right x)
+                    pa qa
   where
-    mostInformative (Fixed _ _) c = c
-    mostInformative c           _ = c
+    mostInformative (Fixed _ qpn)             c | P qpn == var = c
+    mostInformative (Constrained [(_, var')]) c | var'  == var = c
+    mostInformative c                         _                = c
 
 -- | Delievers an ordered list of fully configured packages.
 --
