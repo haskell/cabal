@@ -29,7 +29,7 @@ explore = cata go
       P.mapWithKey                                -- when descending ...
         (\ k r -> r (A pa (M.insert qfn k fa))) $ -- record the flag choice
       ts
-    go (GoalChoiceF  _   ts) a           =
+    go (GoalChoiceF      ts) a           =
       casePSQ ts A.empty                      -- empty goal choice is an internal error
         (\ _k v _xs -> v a)                   -- commit to the first goal choice
 
@@ -51,7 +51,7 @@ exploreLog = cata go
         (\ k r -> tryWith (TryF qfn k) $          -- log and ...
                     r (A pa (M.insert qfn k fa))) -- record the pkg choice
       ts
-    go (GoalChoiceF  _   ts) a           =
+    go (GoalChoiceF      ts) a           =
       casePSQ ts
         (failWith (Failure EmptyGoalChoice))   -- empty goal choice is an internal error
         (\ k v _xs -> continueWith (Next k) (v a)) -- commit to the first goal choice

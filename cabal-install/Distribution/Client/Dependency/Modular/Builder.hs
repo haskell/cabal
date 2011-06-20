@@ -70,8 +70,7 @@ build = ana go
     -- it from the queue of open goals.
     go bs@(BS { goals = rdeps, open = gs, next = Goals })
       | P.null gs = DoneF rdeps
-      | otherwise = GoalChoiceF (scope bs)
-                                (P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
+      | otherwise = GoalChoiceF (P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
                                               (P.splits gs))
 
     -- If we have already picked a goal, then the choice depends on the kind

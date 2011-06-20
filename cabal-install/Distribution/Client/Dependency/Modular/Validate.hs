@@ -89,7 +89,7 @@ validate = cata go
     go (FChoiceF qfn sc b ts) = FChoice qfn () b <$> sequence (P.mapWithKey (goF qfn sc) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
-    go (GoalChoiceF  _    ts) = GoalChoice  ()   <$> sequence ts
+    go (GoalChoiceF       ts) = GoalChoice       <$> sequence ts
     go (DoneF    rdm        ) = pure (Done rdm)
     go (FailF    c fr       ) = pure (Fail c fr)
 
