@@ -11,6 +11,7 @@ import Data.Ord
 import Distribution.Client.Dependency.Types
   ( PackageConstraint(..), PackagePreferences(..), InstalledPreference(..) )
 
+import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
@@ -83,19 +84,19 @@ enforcePackageConstraints pcs = cata go
           PChoice qpn sc
             (P.mapWithKey (\ (I v _) r -> if checkVR vr v
                                             then r
-                                            else Fail (GlobalConstraintVersion vr))
+                                            else Fail [P qpn] (GlobalConstraintVersion vr)) -- TODO: add goal reason to conflict set
                           ts)
         Just (PackageConstraintInstalled _) ->
           PChoice qpn sc
             (P.mapWithKey (\ i r -> if instI i
                                       then r
-                                      else Fail GlobalConstraintInstalled)
+                                      else Fail [P qpn] GlobalConstraintInstalled) -- TODO: add goal reason to conflict set
                           ts)
         Just (PackageConstraintSource    _) ->
           PChoice qpn sc
             (P.mapWithKey (\ i r -> if not (instI i)
                                       then r
-                                      else Fail GlobalConstraintSource)
+                                      else Fail [P qpn] GlobalConstraintSource) -- TODO: add goal reason to conflict set
                           ts)
         _ -> inn x
     go x@(FChoiceF qfn@(FN (PI (Q _ pn) _) f) sc tr ts) =
@@ -107,7 +108,7 @@ enforcePackageConstraints pcs = cata go
               FChoice qfn sc tr
                 (P.mapWithKey (\ b' r -> if b == b'
                                            then r
-                                           else Fail GlobalConstraintFlag)
+                                           else Fail [F qfn] GlobalConstraintFlag) -- TODO: add goal reason to conflict set
                               ts)
         _ -> inn x
     go x = inn x
@@ -135,10 +136,10 @@ requireInstalled p = cata go
     go (PChoiceF v@(Q _ pn) r cs)
       | p pn      = PChoice v r (P.mapWithKey installed cs)
       | otherwise = PChoice v r                         cs
+      where
+        installed (I _ (Inst _)) x = x
+        installed _              _ = Fail [P v] CannotInstall -- TODO: add goal reason to conflict set
     go x          = inn x
-
-    installed (I _ (Inst _)) x = x
-    installed _              _ = Fail CannotInstall
 
 -- | Avoid reinstalls.
 --
@@ -156,18 +157,18 @@ requireInstalled p = cata go
 avoidReinstalls :: (PN -> Bool) -> Tree a -> Tree a
 avoidReinstalls p = cata go
   where
-    go (PChoiceF v@(Q _ pn) r cs)
-      | p pn      = PChoice v r (disableReinstalls cs)
-      | otherwise = PChoice v r                    cs
+    go (PChoiceF qpn@(Q _ pn) r cs)
+      | p pn      = PChoice qpn r disableReinstalls
+      | otherwise = PChoice qpn r cs
+      where
+        disableReinstalls =
+          let installed = [ v | (I v (Inst _), _) <- toList cs ]
+          in  P.mapWithKey (notReinstall installed) cs
+
+        notReinstall vs (I v InRepo) _
+          | v `elem` vs                = Fail [P qpn] CannotReinstall -- TODO: add goal reason to conflict set
+        notReinstall _  _            x = x
     go x          = inn x
-
-    disableReinstalls cs =
-      let installed = [ v | (I v (Inst _), _) <- toList cs ]
-      in  P.mapWithKey (notReinstall installed) cs
-
-    notReinstall vs (I v InRepo) _
-      | v `elem` vs                = Fail CannotReinstall
-    notReinstall _  _            x = x
 
 type GlobalFlags = M.Map Flag    Bool
 type LocalFlags  = M.Map (FN PN) Bool

@@ -79,9 +79,9 @@ build = ana go
     --
     -- For a package, we look up the instances available in the global info,
     -- and then handle each instance in turn.
-    go bs@(BS { index = idx, scope = sc, next = OneGoal (Goal (Simple (Dep qpn@(Q _ pn) _)) _) }) =
+    go bs@(BS { index = idx, scope = sc, next = OneGoal (Goal (Simple (Dep qpn@(Q _ pn) _)) gr) }) =
       case M.lookup pn idx of
-        Nothing  -> FailF (BuildFailureNotInIndex pn)
+        Nothing  -> FailF (P qpn : goalReasonToVars gr) (BuildFailureNotInIndex pn)
         Just pis -> PChoiceF qpn sc (P.fromList (L.map (\ (i, info) ->
                                                        (i, bs { next = Instance qpn i  info }))
                                                        (M.toList pis)))

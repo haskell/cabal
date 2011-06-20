@@ -17,7 +17,7 @@ import Distribution.Client.Dependency.Modular.Tree
 explore :: Alternative m => Tree a -> (Assignment -> m (Assignment, RevDepMap))
 explore = cata go
   where
-    go (FailF _)             _           = A.empty
+    go (FailF _ _)           _           = A.empty
     go (DoneF rdm)           a           = pure (a, rdm)
     go (PChoiceF qpn _   ts) (A pa fa)   =
       asum $                                      -- try children in order,
@@ -37,7 +37,7 @@ explore = cata go
 exploreLog :: Tree a -> (Assignment -> Log Message (Assignment, RevDepMap))
 exploreLog = cata go
   where
-    go (FailF fr)            _           = failWith (Failure fr)
+    go (FailF _ fr)          _           = failWith (Failure fr)
     go (DoneF rdm)           a           = succeedWith Success (a, rdm)
     go (PChoiceF qpn _   ts) (A pa fa)   =
       asum $                                      -- try children in order,
