@@ -2,6 +2,7 @@ module Distribution.Client.Dependency.Modular.Explore where
 
 import Control.Applicative as A
 import Data.Foldable
+import Data.List as L
 import Data.Map as M
 
 import Distribution.Client.Dependency.Modular.Assignment
@@ -11,6 +12,34 @@ import Distribution.Client.Dependency.Modular.Message
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
+
+-- | Backjumping.
+backjump :: Tree a -> Tree (Maybe [Var QPN])
+backjump = snd . cata go
+  where
+    go (FailF c fr) = (Just c, Fail c fr)
+    go (DoneF rdm ) = (Nothing, Done rdm)
+    go (PChoiceF qpn _   ts) = (c, PChoice qpn c   (P.fromList ts'))
+      where
+        ~(c, ts') = combine (P qpn) (P.toList ts) []
+    go (FChoiceF qfn _ b ts) = (c, FChoice qfn c b (P.fromList ts'))
+      where
+        ~(c, ts') = combine (F qfn) (P.toList ts) []
+    go (GoalChoiceF      ts) = (c, GoalChoice      (P.fromList ts'))
+      where
+        ~(cs, ts') = unzip $ L.map (\ (k, (x, v)) -> (x, (k, v))) $ P.toList ts
+        c          = case cs of []    -> Nothing
+                                d : _ -> d
+
+-- | TODO: This needs documentation. It's a horribly tricky function, mainly w.r.t.
+-- laziness.
+combine :: Var QPN -> [(a, (Maybe [Var QPN], b))] -> [Var QPN] -> (Maybe [Var QPN], [(a, b)])
+combine var []                      c = (Just c, [])
+combine var ((k, (     d, v)) : xs) c = (\ ~(e, ys) -> (e, (k, v) : ys)) $
+                                        case d of
+                                          Just e | not (var `L.elem` e) -> (Just e, [])
+                                                 | otherwise            -> combine var xs (e ++ c)
+                                          Nothing                       -> (Nothing, snd $ combine var xs [])
 
 -- | Naive backtracking exploration of the search tree. This will yield correct
 -- assignments only once the tree itself is validated.
