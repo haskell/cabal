@@ -30,44 +30,6 @@ defaultSolverConfig = SolverConfig {
   avoidReinstalls       = False
 }
 
-originalSolve :: SolverConfig ->   -- solver parameters
-                 Index ->          -- all available packages as an index
-                 Preferences ->    -- global preferences
-                 Preferences ->    -- user preferences (override the global preferences)
-                 [PN] ->           -- global goals
-                 [Dep PN] ->       -- global constraints
-                 P.GlobalFlags ->  -- global flag choices
-                 P.LocalFlags ->   -- local flag choices
-                 Log Message (Assignment, RevDepMap)
-originalSolve sc idx globalPrefs userPrefs userGoals userDeps globalFlags localFlags =
-  explorePhase     $
-  heuristicsPhase  $
-  preferencesPhase $
-  pStrategyPhase   $
-  validationPhase  $
-  prunePhase       $
-  buildPhase
-  where
-    explorePhase = exploreTreeLog
-    heuristicsPhase = if preferEasyGoalChoices sc
-                        then P.deferDefaultFlagChoices . P.preferEasyGoalChoices
-                        else id
-    preferencesPhase = P.preferPreferences   userPrefs .
-                       P.preferPreferences globalPrefs
-    pStrategyPhase = case pStrategy sc of
-                       PreferAllLatest ->
-                         P.preferLatest . P.preferInstalled
-                       PreferLatestForSelected ->
-                         P.preferLatestFor (`elem` userGoals) .
-                         P.preferInstalled . P.preferLatest
-                       PreferAllInstalled ->
-                         P.preferInstalled . P.preferLatest
-    validationPhase = P.enforceFlagChoices globalFlags localFlags .
-                      validateTree idx userDeps
-    prunePhase = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
-                 P.requireInstalled (== PackageName "base") -- never try to install a new "base"
-    buildPhase = buildTree idx userGoals
-
 solve :: SolverConfig ->   -- solver parameters
          Index ->          -- all available packages as an index
          (PN -> PackagePreferences) -> -- preferences
@@ -88,7 +50,7 @@ solve sc idx userPrefs userConstraints userGoals =
                         else id
     preferencesPhase = P.preferPackagePreferences userPrefs
     validationPhase = P.enforcePackageConstraints userConstraints .
-                      validateTree idx []
+                      validateTree idx
     prunePhase = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
                  P.requireInstalled (== PackageName "base") -- never try to install a new "base"
     buildPhase = buildTree idx userGoals
@@ -100,14 +62,3 @@ defaultSolver :: Index ->          -- all available packages as an index
                  [PN] ->                       -- global goals
                  Log Message (Assignment, RevDepMap)
 defaultSolver = solve defaultSolverConfig
-
--- | For the standalone command-line interface (temporary).
-otherSolver ::   Index ->          -- all available packages as an index
-                 Preferences ->    -- global preferences
-                 Preferences ->    -- user preferences (override the global preferences)
-                 [PN] ->           -- global goals
-                 [Dep PN] ->       -- global constraints
-                 P.GlobalFlags ->  -- global flag choices
-                 P.LocalFlags ->   -- local flag choices
-                 Log Message (Assignment, RevDepMap)
-otherSolver = originalSolve defaultSolverConfig
