@@ -63,28 +63,6 @@ instI _              = False
 instance Functor PI where
   fmap f (PI x y) = PI (f x) y
 
--- | Constrained instance. Currently, this is a version range, or
--- a fixed instance (for choices already made).
-data CI = Fixed I | Constrained VR
-  deriving (Eq, Show)
-
-showCI :: CI -> String
-showCI (Fixed i)        = "==" ++ showI i
-showCI (Constrained vr) = showVR vr
-
--- | Merge constrained instances. We currently adopt a lazy strategy for
--- merging, i.e., we only perform actual checking if one of the two choices
--- is fixed.
-merge :: CI -> CI -> Maybe CI
-merge c@(Fixed i) (Fixed j)
-  | i == j                              = Just c
-  | otherwise                           = Nothing
-merge c@(Fixed (I v _))(Constrained rs)
-  | checkVR rs v                        = Just c
-  | otherwise                           = Nothing
-merge c@(Constrained _) d@(Fixed _)     = merge d c
-merge (Constrained rs) (Constrained ss) = Just (Constrained (rs .&&. ss))
-
 -- | Package path. (Stored in "reverse" order.)
 type PP = [PN]
 

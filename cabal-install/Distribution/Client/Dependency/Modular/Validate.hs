@@ -101,7 +101,7 @@ validate = cata go
       let qdeps = L.map (fmap (qualify sc)) deps -- qualify the deps in the current scope
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
-      let newactives = Dep qpn (Fixed i) : extractDeps pfa qdeps
+      let newactives = Dep qpn (Fixed i qpn) : extractDeps pfa qdeps
       -- We now try to extend the partial assignment with the new active constraints.
       let mnppa = extend ppa newactives
       -- In case we continue, we save the scoped dependencies
