@@ -86,8 +86,8 @@ validate = cata go
   where
     go :: TreeF (GoalReasons, Scope) (Validate (Tree GoalReasons)) -> Validate (Tree GoalReasons)
 
-    go (PChoiceF qpn (gr,  sc)   ts) = PChoice qpn gr   <$> sequence (P.mapWithKey (goP qpn sc) ts)
-    go (FChoiceF qfn (gr, _sc) b ts) = FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn gr) ts)
+    go (PChoiceF qpn (gr,  sc)   ts) = PChoice qpn gr   <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
+    go (FChoiceF qfn (gr, _sc) b ts) = FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn gr   ) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
     go (GoalChoiceF              ts) = GoalChoice       <$> sequence ts
@@ -95,8 +95,8 @@ validate = cata go
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> Scope -> I -> Validate (Tree GoalReasons) -> Validate (Tree GoalReasons)
-    goP qpn@(Q _pp pn) sc i r = do
+    goP :: QPN -> GoalReasons -> Scope -> I -> Validate (Tree GoalReasons) -> Validate (Tree GoalReasons)
+    goP qpn@(Q _pp pn) gr sc i r = do
       PA ppa pfa <- asks pa    -- obtain current preassignment
       idx        <- asks index -- obtain the index
       svd        <- asks saved -- obtain saved dependencies
@@ -111,7 +111,7 @@ validate = cata go
       let nsvd = M.insert qpn qdeps svd
       case mnppa of
         Left (c, d) -> -- We have an inconsistency. We can stop.
-                       return (Fail c (Conflicting d))
+                       return (Fail (c `S.union` goalReasonsToVars gr) (Conflicting d))
         Right nppa  -> -- We have an updated partial assignment for the recursive validation.
                        local (\ s -> s { pa = PA nppa pfa, saved = nsvd }) r
 
