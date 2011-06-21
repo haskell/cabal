@@ -15,6 +15,10 @@ import Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
 
 -- | Backjumping.
+--
+-- A tree traversal that tries to propagate conflict sets
+-- up the tree from the leaves, and thereby cut branches.
+-- All the tricky things are done in the function 'combine'.
 backjump :: Tree a -> Tree (Maybe (ConflictSet QPN))
 backjump = snd . cata go
   where
@@ -32,9 +36,30 @@ backjump = snd . cata go
         c          = case cs of []    -> Nothing
                                 d : _ -> d
 
--- | TODO: This needs documentation. It's a horribly tricky function, mainly w.r.t.
--- laziness.
-combine :: Var QPN -> [(a, (Maybe (ConflictSet QPN), b))] -> ConflictSet QPN -> (Maybe (ConflictSet QPN), [(a, b)])
+-- | The 'combine' function is at the heart of backjumping. It takes
+-- the variable we're currently considering, and a list of children
+-- annotated with their respective conflict sets, and an accumulator
+-- for the result conflict set. It returns a combined conflict set
+-- for the parent node, and a (potentially shortened) list of children
+-- with the annotations removed.
+--
+-- It is *essential* that we produce the results as early as possible.
+-- In particular, we have to produce the list of children prior to
+-- traversing the entire list -- otherwise we lose the desired behaviour
+-- of being able to traverse the tree from left to right incrementally.
+--
+-- We can shorten the list of children if we find an individual conflict
+-- set that does not contain the current variable. In this case, we can
+-- just lift the conflict set to the current level, because the current
+-- level cannot possibly have contributed to this conflict, so no other
+-- choice at the current level would avoid the conflict.
+--
+-- If any of the children might contain a successful solution
+-- (indicated by Nothing), then Nothing will be the combined
+-- conflict set. If all children contain conflict sets, we can
+-- take the union as the combined conflict set.
+combine :: Var QPN -> [(a, (Maybe (ConflictSet QPN), b))] ->
+           ConflictSet QPN -> (Maybe (ConflictSet QPN), [(a, b)])
 combine _   []                      c = (Just c, [])
 combine var ((k, (     d, v)) : xs) c = (\ ~(e, ys) -> (e, (k, v) : ys)) $
                                         case d of
