@@ -1,6 +1,6 @@
 module Distribution.Client.Dependency.Modular.Message where
 
-import qualified Data.Set as S
+import qualified Data.List as L
 import Prelude hiding (pi)
 
 import Distribution.Text -- from Cabal
@@ -25,7 +25,7 @@ showMessages = go 0
     go :: Int -> [Message] -> [String]
     go _ []                  = []
     -- complex patterns
-    go l (TryP pi : Enter : Failure c fr : Leave : ms) = (atLevel l $ "rejecting: " ++ showPI pi ++ showFR c fr) : go l ms
+    go l (TryP (PI qpn i) : Enter : Failure c fr : Leave : ms) = goPReject l qpn [i] c fr ms
     go l (TryF qfn b : Enter : Failure c fr : Leave : ms) = (atLevel l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) : go l ms
     go l (Next (Goal (Simple (Dep _ _)) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel l $ "trying: " ++ showPI pi ++ showGRs gr) : go l ms
     go l (Failure c Backjump : ms@(Leave : Failure c' Backjump : _)) | c == c' = go l ms
@@ -38,6 +38,11 @@ showMessages = go 0
     go l (Next _       : ms) = go l ms -- ignore flag goals in the log
     go l (Success      : ms) = (atLevel l $ "done") : go l ms
     go l (Failure c fr : ms) = (atLevel l $ "fail" ++ showFR c fr) : go l ms
+
+    -- special handler for many subsequent package rejections
+    goPReject :: Int -> QPN -> [I] -> ConflictSet QPN -> FailReason -> [Message] -> [String]
+    goPReject l qpn is c fr (TryP (PI qpn' i) : Enter : Failure _ fr' : Leave : ms) | qpn == qpn' && fr == fr' = goPReject l qpn (i : is) c fr ms
+    goPReject l qpn is c fr ms = (atLevel l $ "rejecting: " ++ showQPN qpn ++ "-" ++ L.intercalate ", " (map showI (reverse is)) ++ showFR c fr) : go l ms
 
     atLevel l x = let s = show l
                   in  "[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x
