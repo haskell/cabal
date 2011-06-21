@@ -26,19 +26,23 @@ showMessages = go 0
     -- complex patterns
     go l (TryP pi : Enter : Failure fr : Leave : ms) = (atLevel l $ "rejecting: " ++ showPI pi ++ showFR fr) : go l ms
     go l (TryF qfn b : Enter : Failure fr : Leave : ms) = (atLevel l $ "rejecting: " ++ showQFNBool qfn b ++ showFR fr) : go l ms
-    go l (Next (Goal (Simple (Dep _ _)) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel l $ "trying: " ++ showPI pi ++ showGR gr) : go l ms
+    go l (Next (Goal (Simple (Dep _ _)) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel l $ "trying: " ++ showPI pi ++ showGRs gr) : go l ms
     -- standard display
     go l (Enter      : ms) = go (l+1) ms
     go l (Leave      : ms) = go (l-1) ms
     go l (TryP pi    : ms) = (atLevel l $ "trying: " ++ showPI pi) : go l ms
     go l (TryF qfn b : ms) = (atLevel l $ "trying: " ++ showQFNBool qfn b) : go l ms
-    go l (Next (Goal (Simple (Dep qpn _)) gr) : ms) = (atLevel l $ "next goal: " ++ showQPN qpn ++ showGR gr) : go l ms
+    go l (Next (Goal (Simple (Dep qpn _)) gr) : ms) = (atLevel l $ "next goal: " ++ showQPN qpn ++ showGRs gr) : go l ms
     go l (Next _     : ms) = go l ms -- ignore flag goals in the log
     go l (Success    : ms) = (atLevel l $ "done") : go l ms
     go l (Failure fr : ms) = (atLevel l $ "fail" ++ showFR fr) : go l ms
 
     atLevel l x = let s = show l
                   in  "[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x
+
+showGRs :: GoalReasons -> String
+showGRs (gr : _) = showGR gr
+showGRs []       = ""
 
 showGR :: GoalReason -> String
 showGR UserGoal            = " (user goal)"
