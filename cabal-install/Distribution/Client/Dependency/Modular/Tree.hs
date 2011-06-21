@@ -55,6 +55,7 @@ data FailReason = InconsistentInitialConstraints
                 | GlobalConstraintFlag
                 | BuildFailureNotInIndex PN
                 | EmptyGoalChoice
+                | Backjump
   deriving (Eq, Show)
 
 -- | Functor for the tree type.

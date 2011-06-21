@@ -89,18 +89,20 @@ explore = cata go
         (\ _k v _xs -> v a)                   -- commit to the first goal choice
 
 -- | Version of 'explore' that returns a 'Log'.
-exploreLog :: Tree a -> (Assignment -> Log Message (Assignment, RevDepMap))
+exploreLog :: Tree (Maybe (ConflictSet QPN)) -> (Assignment -> Log Message (Assignment, RevDepMap))
 exploreLog = cata go
   where
-    go (FailF _ fr)          _           = failWith (Failure fr)
+    go (FailF c fr)          _           = failWith (Failure c fr)
     go (DoneF rdm)           a           = succeedWith Success (a, rdm)
-    go (PChoiceF qpn _   ts) (A pa fa)   =
+    go (PChoiceF qpn c   ts) (A pa fa)   =
+      backjumpInfo c $
       asum $                                      -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryP (PI qpn k)) $     -- log and ...
                     r (A (M.insert qpn k pa) fa)) -- record the pkg choice
       ts
-    go (FChoiceF qfn _ _ ts) (A pa fa)   =
+    go (FChoiceF qfn c _ ts) (A pa fa)   =
+      backjumpInfo c $
       asum $                                      -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryF qfn k) $          -- log and ...
@@ -108,13 +110,24 @@ exploreLog = cata go
       ts
     go (GoalChoiceF      ts) a           =
       casePSQ ts
-        (failWith (Failure EmptyGoalChoice))   -- empty goal choice is an internal error
-        (\ k v _xs -> continueWith (Next k) (v a)) -- commit to the first goal choice
+        (failWith (Failure S.empty EmptyGoalChoice))   -- empty goal choice is an internal error
+        (\ k v _xs -> continueWith (Next k) (v a))     -- commit to the first goal choice
+
+-- | Add in information about pruned trees.
+--
+-- TODO: This isn't quite optimal, because we do not merely report the shape of the
+-- tree, but rather make assumptions about where that shape originated from. It'd be
+-- better if the pruning itself would leave information that we could pick up at this
+-- point.
+backjumpInfo :: Maybe (ConflictSet QPN) -> Log Message a -> Log Message a
+backjumpInfo c m = m <|> case c of -- important to produce 'm' before matching on 'c'!
+                           Nothing -> A.empty
+                           Just cs -> failWith (Failure cs Backjump)
 
 -- | Interface.
 exploreTree :: Alternative m => Tree a -> m (Assignment, RevDepMap)
 exploreTree t = explore t (A M.empty M.empty)
 
 -- | Interface.
-exploreTreeLog :: Tree a -> Log Message (Assignment, RevDepMap)
+exploreTreeLog :: Tree (Maybe (ConflictSet QPN)) -> Log Message (Assignment, RevDepMap)
 exploreTreeLog t = exploreLog t (A M.empty M.empty)
