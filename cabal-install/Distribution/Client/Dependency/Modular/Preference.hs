@@ -76,7 +76,7 @@ preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 -- | Traversal that tries to establish various kinds of user constraints. Works
 -- by selectively disabling choices that have been rules out by global user
 -- constraints.
-enforcePackageConstraints :: M.Map PN PackageConstraint -> Tree GoalReason -> Tree GoalReason
+enforcePackageConstraints :: M.Map PN PackageConstraint -> Tree GoalReasons -> Tree GoalReasons
 enforcePackageConstraints pcs = cata go
   where
     go x@(PChoiceF qpn@(Q _ pn)               gr   ts) =
@@ -85,19 +85,19 @@ enforcePackageConstraints pcs = cata go
           PChoice qpn gr
             (P.mapWithKey (\ (I v _) r -> if checkVR vr v
                                             then r
-                                            else Fail (P qpn `S.insert` goalReasonToVars gr) (GlobalConstraintVersion vr))
+                                            else Fail (P qpn `S.insert` goalReasonsToVars gr) (GlobalConstraintVersion vr))
                           ts)
         Just (PackageConstraintInstalled _) ->
           PChoice qpn gr
             (P.mapWithKey (\ i r -> if instI i
                                       then r
-                                      else Fail (P qpn `S.insert` goalReasonToVars gr) GlobalConstraintInstalled)
+                                      else Fail (P qpn `S.insert` goalReasonsToVars gr) GlobalConstraintInstalled)
                           ts)
         Just (PackageConstraintSource    _) ->
           PChoice qpn gr
             (P.mapWithKey (\ i r -> if not (instI i)
                                       then r
-                                      else Fail (P qpn `S.insert` goalReasonToVars gr) GlobalConstraintSource)
+                                      else Fail (P qpn `S.insert` goalReasonsToVars gr) GlobalConstraintSource)
                           ts)
         _ -> inn x
     go x@(FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr ts) =
@@ -109,7 +109,7 @@ enforcePackageConstraints pcs = cata go
               FChoice qfn gr tr
                 (P.mapWithKey (\ b' r -> if b == b'
                                            then r
-                                           else Fail (F qfn `S.insert` goalReasonToVars gr) GlobalConstraintFlag)
+                                           else Fail (F qfn `S.insert` goalReasonsToVars gr) GlobalConstraintFlag)
                               ts)
         _ -> inn x
     go x = inn x
@@ -131,7 +131,7 @@ preferLatest :: Tree a -> Tree a
 preferLatest = preferLatestFor (const True)
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree (GoalReason, a) -> Tree (GoalReason, a)
+requireInstalled :: (PN -> Bool) -> Tree (GoalReasons, a) -> Tree (GoalReasons, a)
 requireInstalled p = cata go
   where
     go (PChoiceF v@(Q _ pn) i@(gr, _) cs)
@@ -139,7 +139,7 @@ requireInstalled p = cata go
       | otherwise = PChoice v i                         cs
       where
         installed (I _ (Inst _)) x = x
-        installed _              _ = Fail (P v `S.insert` goalReasonToVars gr) CannotInstall
+        installed _              _ = Fail (P v `S.insert` goalReasonsToVars gr) CannotInstall
     go x          = inn x
 
 -- | Avoid reinstalls.
@@ -155,7 +155,7 @@ requireInstalled p = cata go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree (GoalReason, a) -> Tree (GoalReason, a)
+avoidReinstalls :: (PN -> Bool) -> Tree (GoalReasons, a) -> Tree (GoalReasons, a)
 avoidReinstalls p = cata go
   where
     go (PChoiceF qpn@(Q _ pn) i@(gr, _) cs)
@@ -167,7 +167,7 @@ avoidReinstalls p = cata go
           in  P.mapWithKey (notReinstall installed) cs
 
         notReinstall vs (I v InRepo) _
-          | v `elem` vs                = Fail (P qpn `S.insert` goalReasonToVars gr) CannotReinstall
+          | v `elem` vs                = Fail (P qpn `S.insert` goalReasonsToVars gr) CannotReinstall
         notReinstall _  _            x = x
     go x          = inn x
 
