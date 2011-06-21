@@ -50,7 +50,7 @@ establishScope (Q pp pn) ecs s =
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
-scopedExtendOpen :: QPN -> I -> GoalReason -> FlaggedDeps PN -> FlagDefaults ->
+scopedExtendOpen :: QPN -> I -> GoalReasons -> FlaggedDeps PN -> FlagDefaults ->
                     BuildState -> BuildState
 scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
   where
@@ -59,12 +59,12 @@ scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
     qfdefs = L.map (\ (fn, b) -> Flagged (FN (PI qpn i) fn) b [] []) $ M.toList fdefs
     gs     = L.map (flip Goal gr) (qfdeps ++ qfdefs)
 
-data BuildType = Goals | OneGoal Goal | Instance QPN I PInfo
+data BuildType = Goals | OneGoal Goal | Instance QPN I PInfo GoalReasons
 
-build :: BuildState -> Tree (GoalReason, Scope)
+build :: BuildState -> Tree (GoalReasons, Scope)
 build = ana go
   where
-    go :: BuildState -> TreeF (GoalReason, Scope) BuildState
+    go :: BuildState -> TreeF (GoalReasons, Scope) BuildState
 
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
@@ -81,9 +81,9 @@ build = ana go
     -- and then handle each instance in turn.
     go bs@(BS { index = idx, scope = sc, next = OneGoal (Goal (Simple (Dep qpn@(Q _ pn) _)) gr) }) =
       case M.lookup pn idx of
-        Nothing  -> FailF (P qpn `S.insert` goalReasonToVars gr) (BuildFailureNotInIndex pn)
+        Nothing  -> FailF (P qpn `S.insert` goalReasonsToVars gr) (BuildFailureNotInIndex pn)
         Just pis -> PChoiceF qpn (gr, sc) (P.fromList (L.map (\ (i, info) ->
-                                                           (i, bs { next = Instance qpn i  info }))
+                                                           (i, bs { next = Instance qpn i info gr }))
                                                          (M.toList pis)))
           -- TODO: data structure conversion is rather ugly here
 
@@ -93,8 +93,8 @@ build = ana go
     -- TODO: Should we include the flag default in the tree?
     go bs@(BS { scope = sc, next = OneGoal (Goal (Flagged qfn b t f) gr) }) =
       FChoiceF qfn (gr, sc) trivial (P.fromList (reorder b
-        [(True,  (extendOpen (getPN qfn) (L.map (flip Goal (FDependency qfn b)) t) bs) { next = Goals }),
-         (False, (extendOpen (getPN qfn) (L.map (flip Goal (FDependency qfn b)) f) bs) { next = Goals })]))
+        [(True,  (extendOpen (getPN qfn) (L.map (flip Goal (FDependency qfn b : gr)) t) bs) { next = Goals }),
+         (False, (extendOpen (getPN qfn) (L.map (flip Goal (FDependency qfn b : gr)) f) bs) { next = Goals })]))
       where
         reorder True  = id
         reorder False = reverse
@@ -104,18 +104,18 @@ build = ana go
     -- and furthermore we update the set of goals.
     --
     -- TODO: We could inline this above.
-    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs ecs) }) =
+    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs ecs) gr }) =
       go ((establishScope qpn ecs
-             (scopedExtendOpen qpn i (PDependency (PI qpn i)) fdeps fdefs bs))
+             (scopedExtendOpen qpn i (PDependency (PI qpn i) : gr) fdeps fdefs bs))
              { next = Goals })
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> [PN] -> Tree (GoalReason, Scope)
+buildTree :: Index -> [PN] -> Tree (GoalReasons, Scope)
 buildTree idx igs =
     build (BS idx emptyScope
                   (M.fromList (L.map (\ qpn -> (qpn, []))                                               qpns))
-                  (P.fromList (L.map (\ qpn -> (Goal (Simple (Dep qpn (Constrained []))) UserGoal, ())) qpns))
+                  (P.fromList (L.map (\ qpn -> (Goal (Simple (Dep qpn (Constrained []))) [UserGoal], ())) qpns))
                   Goals)
   where
     qpns = L.map (qualify emptyScope) igs

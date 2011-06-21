@@ -35,7 +35,7 @@ backjump = snd . cata go
 -- | TODO: This needs documentation. It's a horribly tricky function, mainly w.r.t.
 -- laziness.
 combine :: Var QPN -> [(a, (Maybe (ConflictSet QPN), b))] -> ConflictSet QPN -> (Maybe (ConflictSet QPN), [(a, b)])
-combine var []                      c = (Just c, [])
+combine _   []                      c = (Just c, [])
 combine var ((k, (     d, v)) : xs) c = (\ ~(e, ys) -> (e, (k, v) : ys)) $
                                         case d of
                                           Just e | not (var `S.member` e) -> (Just e, [])

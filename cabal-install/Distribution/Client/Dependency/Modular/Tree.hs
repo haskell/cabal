@@ -3,7 +3,8 @@ module Distribution.Client.Dependency.Modular.Tree where
 import Control.Applicative
 import Control.Monad hiding (mapM)
 import Data.Foldable
-import Data.Set as S
+import qualified Data.List as L
+import qualified Data.Set as S
 import Data.Traversable
 import Prelude hiding (foldr, mapM)
 
@@ -15,17 +16,24 @@ import Distribution.Client.Dependency.Modular.Version
 
 -- | Goals are qualified flagged dependencies, together with a reason for
 -- their presence.
-data Goal = Goal (FlaggedDep QPN) GoalReason
+data Goal = Goal (FlaggedDep QPN) GoalReasons
   deriving (Eq, Show)
 
 -- | Reasons why a goal can be added to a goal set.
 data GoalReason = UserGoal | PDependency (PI QPN) | FDependency QFN Bool
   deriving (Eq, Show)
 
+-- | The first element is the immediate reason. The rest are the reasons
+-- for the reasons ...
+type GoalReasons = [GoalReason]
+
 goalReasonToVars :: GoalReason -> ConflictSet QPN
 goalReasonToVars UserGoal                 = S.empty
 goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
 goalReasonToVars (FDependency qfn _)      = S.singleton (F qfn)
+
+goalReasonsToVars :: GoalReasons -> ConflictSet QPN
+goalReasonsToVars = S.unions . L.map goalReasonToVars
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
