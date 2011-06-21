@@ -35,6 +35,9 @@ instance ResetVar Var where
 
 type ConflictSet qpn = Set (Var qpn)
 
+showCS :: ConflictSet QPN -> String
+showCS = intercalate ", " . L.map showVar . S.toList
+
 -- | Constrained instance. If the choice has already been made, this is
 -- a fixed instance, and we record the package name for which the choice
 -- is for convenience. Otherwise, it is a list of version ranges paired with
