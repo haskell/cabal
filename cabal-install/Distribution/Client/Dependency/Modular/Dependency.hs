@@ -119,3 +119,26 @@ instance ResetVar Dep where
 -- | A map containing reverse dependencies between qualified
 -- package names.
 type RevDepMap = Map QPN [QPN]
+
+-- | Goals are qualified flagged dependencies, together with a reason for
+-- their presence.
+data Goal = Goal (FlaggedDep QPN) GoalReasons
+  deriving (Eq, Show)
+
+-- | Reasons why a goal can be added to a goal set.
+data GoalReason = UserGoal | PDependency (PI QPN) | FDependency QFN Bool
+  deriving (Eq, Show)
+
+-- | The first element is the immediate reason. The rest are the reasons
+-- for the reasons ...
+type GoalReasons = [GoalReason]
+
+goalReasonToVars :: GoalReason -> ConflictSet QPN
+goalReasonToVars UserGoal                 = S.empty
+goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
+goalReasonToVars (FDependency qfn _)      = S.singleton (F qfn)
+
+goalReasonsToVars :: GoalReasons -> ConflictSet QPN
+goalReasonsToVars = S.unions . L.map goalReasonToVars
+
+
