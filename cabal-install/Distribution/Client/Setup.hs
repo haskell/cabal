@@ -570,36 +570,38 @@ instance Monoid InfoFlags where
 -- | Install takes the same flags as configure along with a few extras.
 --
 data InstallFlags = InstallFlags {
-    installDocumentation:: Flag Bool,
-    installHaddockIndex :: Flag PathTemplate,
-    installDryRun       :: Flag Bool,
-    installReinstall    :: Flag Bool,
-    installUpgradeDeps  :: Flag Bool,
-    installOnly         :: Flag Bool,
-    installOnlyDeps     :: Flag Bool,
-    installRootCmd      :: Flag String,
-    installSummaryFile  :: [PathTemplate],
-    installLogFile      :: Flag PathTemplate,
-    installBuildReports :: Flag ReportLevel,
-    installSymlinkBinDir:: Flag FilePath,
-    installOneShot      :: Flag Bool
+    installDocumentation   :: Flag Bool,
+    installHaddockIndex    :: Flag PathTemplate,
+    installDryRun          :: Flag Bool,
+    installReinstall       :: Flag Bool,
+    installAvoidReinstalls :: Flag Bool,
+    installUpgradeDeps     :: Flag Bool,
+    installOnly            :: Flag Bool,
+    installOnlyDeps        :: Flag Bool,
+    installRootCmd         :: Flag String,
+    installSummaryFile     :: [PathTemplate],
+    installLogFile         :: Flag PathTemplate,
+    installBuildReports    :: Flag ReportLevel,
+    installSymlinkBinDir   :: Flag FilePath,
+    installOneShot         :: Flag Bool
   }
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
-    installDocumentation= Flag False,
-    installHaddockIndex = Flag docIndexFile,
-    installDryRun       = Flag False,
-    installReinstall    = Flag False,
-    installUpgradeDeps  = Flag False,
-    installOnly         = Flag False,
-    installOnlyDeps     = Flag False,
-    installRootCmd      = mempty,
-    installSummaryFile  = mempty,
-    installLogFile      = mempty,
-    installBuildReports = Flag NoReports,
-    installSymlinkBinDir= mempty,
-    installOneShot      = Flag False
+    installDocumentation   = Flag False,
+    installHaddockIndex    = Flag docIndexFile,
+    installDryRun          = Flag False,
+    installReinstall       = Flag False,
+    installAvoidReinstalls = Flag False,
+    installUpgradeDeps     = Flag False,
+    installOnly            = Flag False,
+    installOnlyDeps        = Flag False,
+    installRootCmd         = mempty,
+    installSummaryFile     = mempty,
+    installLogFile         = mempty,
+    installBuildReports    = Flag NoReports,
+    installSymlinkBinDir   = mempty,
+    installOneShot         = Flag False
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
@@ -678,6 +680,11 @@ installOptions showOrParseArgs =
           installReinstall (\v flags -> flags { installReinstall = v })
           trueArg
 
+      , option [] ["avoid-reinstalls"]
+          "Do not select versions that would destructively overwrite installed packages."
+          installAvoidReinstalls (\v flags -> flags { installAvoidReinstalls = v })
+          trueArg
+
       , option [] ["upgrade-dependencies"]
           "Pick the latest version for all dependencies, rather than trying to pick an installed version."
           installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
@@ -734,34 +741,36 @@ installOptions showOrParseArgs =
 
 instance Monoid InstallFlags where
   mempty = InstallFlags {
-    installDocumentation= mempty,
-    installHaddockIndex = mempty,
-    installDryRun       = mempty,
-    installReinstall    = mempty,
-    installUpgradeDeps  = mempty,
-    installOnly         = mempty,
-    installOnlyDeps     = mempty,
-    installRootCmd      = mempty,
-    installSummaryFile  = mempty,
-    installLogFile      = mempty,
-    installBuildReports = mempty,
-    installSymlinkBinDir= mempty,
-    installOneShot      = mempty
+    installDocumentation   = mempty,
+    installHaddockIndex    = mempty,
+    installDryRun          = mempty,
+    installReinstall       = mempty,
+    installAvoidReinstalls = mempty,
+    installUpgradeDeps     = mempty,
+    installOnly            = mempty,
+    installOnlyDeps        = mempty,
+    installRootCmd         = mempty,
+    installSummaryFile     = mempty,
+    installLogFile         = mempty,
+    installBuildReports    = mempty,
+    installSymlinkBinDir   = mempty,
+    installOneShot         = mempty
   }
   mappend a b = InstallFlags {
-    installDocumentation= combine installDocumentation,
-    installHaddockIndex = combine installHaddockIndex,
-    installDryRun       = combine installDryRun,
-    installReinstall    = combine installReinstall,
-    installUpgradeDeps  = combine installUpgradeDeps,
-    installOnly         = combine installOnly,
-    installOnlyDeps     = combine installOnlyDeps,
-    installRootCmd      = combine installRootCmd,
-    installSummaryFile  = combine installSummaryFile,
-    installLogFile      = combine installLogFile,
-    installBuildReports = combine installBuildReports,
-    installSymlinkBinDir= combine installSymlinkBinDir,
-    installOneShot      = combine installOneShot
+    installDocumentation   = combine installDocumentation,
+    installHaddockIndex    = combine installHaddockIndex,
+    installDryRun          = combine installDryRun,
+    installReinstall       = combine installReinstall,
+    installAvoidReinstalls = combine installAvoidReinstalls,
+    installUpgradeDeps     = combine installUpgradeDeps,
+    installOnly            = combine installOnly,
+    installOnlyDeps        = combine installOnlyDeps,
+    installRootCmd         = combine installRootCmd,
+    installSummaryFile     = combine installSummaryFile,
+    installLogFile         = combine installLogFile,
+    installBuildReports    = combine installBuildReports,
+    installSymlinkBinDir   = combine installSymlinkBinDir,
+    installOneShot         = combine installOneShot
   }
     where combine field = field a `mappend` field b
 
