@@ -23,11 +23,11 @@ data SolverConfig = SolverConfig {
   avoidReinstalls       :: Bool
 }
 
-defaultSolverConfig :: SolverConfig
-defaultSolverConfig = SolverConfig {
+defaultSolverConfig :: Bool -> SolverConfig
+defaultSolverConfig ar = SolverConfig {
   preferEasyGoalChoices = True,
   pStrategy             = PreferLatestForSelected, -- latest for goals only
-  avoidReinstalls       = False
+  avoidReinstalls       = ar
 }
 
 solve :: SolverConfig ->   -- solver parameters
@@ -56,9 +56,10 @@ solve sc idx userPrefs userConstraints userGoals =
     buildPhase = buildTree idx userGoals
 
 -- | For cabal-install integration.
-defaultSolver :: Index ->          -- all available packages as an index
+defaultSolver :: Bool ->
+                 Index ->          -- all available packages as an index
                  (PN -> PackagePreferences) -> -- preferences
                  Map PN PackageConstraint ->   -- global constraints
                  [PN] ->                       -- global goals
                  Log Message (Assignment, RevDepMap)
-defaultSolver = solve defaultSolverConfig
+defaultSolver ar = solve (defaultSolverConfig ar)
