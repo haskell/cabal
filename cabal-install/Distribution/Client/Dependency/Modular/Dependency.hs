@@ -10,7 +10,7 @@ import Distribution.Client.Dependency.Modular.Version
 
 -- | The type of variables that play a role in the solver.
 -- Note that the tree currently does not use this type directly,
--- and rather has to separate tree nodes for the two types of
+-- and rather has two separate tree nodes for the two types of
 -- variables. This fits better with the fact that in most cases,
 -- these have to be treated differently.
 --
