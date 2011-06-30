@@ -33,11 +33,11 @@ import Distribution.System
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
-modularResolver :: DependencyResolver
-modularResolver (Platform arch os) cid iidx sidx pprefs pcs pns =
+modularResolver :: Bool -> DependencyResolver
+modularResolver ar (Platform arch os) cid iidx sidx pprefs pcs pns =
   fmap (uncurry postprocess) $ -- convert install plan
   logToProgress $              -- convert log format into progress format
-  defaultSolver idx pprefs gcs pns
+  defaultSolver ar idx pprefs gcs pns
     where
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cid iidx sidx

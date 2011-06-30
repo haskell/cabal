@@ -42,6 +42,7 @@ module Distribution.Client.Dependency (
     addConstraints,
     addPreferences,
     setPreferenceDefault,
+    setAvoidReinstalls,
     addSourcePackages,
     hideInstalledPackagesSpecificByInstalledPackageId,
     hideInstalledPackagesSpecificBySourcePackageId,
@@ -97,7 +98,8 @@ data DepResolverParams = DepResolverParams {
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex.PackageIndex,
-       depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage
+       depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
+       depResolverAvoidReinstalls   :: Bool
      }
 
 
@@ -125,7 +127,8 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverPreferences       = [],
        depResolverPreferenceDefault = PreferLatestForSelected,
        depResolverInstalledPkgIndex = installedPkgIndex,
-       depResolverSourcePkgIndex    = sourcePkgIndex
+       depResolverSourcePkgIndex    = sourcePkgIndex,
+       depResolverAvoidReinstalls   = False
      }
 
 addTargets :: [PackageName]
@@ -156,6 +159,12 @@ setPreferenceDefault :: PackagesPreferenceDefault
 setPreferenceDefault preferenceDefault params =
     params {
       depResolverPreferenceDefault = preferenceDefault
+    }
+
+setAvoidReinstalls :: Bool -> DepResolverParams -> DepResolverParams
+setAvoidReinstalls b params =
+    params {
+      depResolverAvoidReinstalls = b
     }
 
 dontUpgradeBasePackage :: DepResolverParams -> DepResolverParams
@@ -267,7 +276,7 @@ standardInstallPolicy
 -- * Interface to the standard resolver
 -- ------------------------------------------------------------
 
-defaultResolver :: DependencyResolver
+defaultResolver :: Bool -> DependencyResolver
 defaultResolver = modularResolver
 
 -- | Run the dependency solver.
@@ -289,16 +298,18 @@ resolveDependencies platform comp params
 resolveDependencies platform comp params =
 
     fmap (mkInstallPlan platform comp)
-  $ defaultResolver platform comp installedPkgIndex sourcePkgIndex
+  $ defaultResolver avoidReinstalls
+                    platform comp installedPkgIndex sourcePkgIndex
                     preferences constraints targets
   where
     DepResolverParams
       targets constraints
       prefs defpref
       installedPkgIndex
-      sourcePkgIndex = dontUpgradeBasePackage
-                     . hideBrokenInstalledPackages
-                     $ params
+      sourcePkgIndex
+      avoidReinstalls = dontUpgradeBasePackage
+                      . hideBrokenInstalledPackages
+                      $ params
 
     preferences = interpretPackagesPreference
                     (Set.fromList targets) defpref prefs
@@ -371,7 +382,8 @@ interpretPackagesPreference selected defaultPref prefs =
 resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [SourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
-                              prefs defpref installedPkgIndex sourcePkgIndex) =
+                              prefs defpref installedPkgIndex sourcePkgIndex
+                              _avoidReinstalls) =
     collectEithers (map selectPackage targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError SourcePackage

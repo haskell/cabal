@@ -235,7 +235,9 @@ planPackages comp configFlags configExFlags installFlags
   where
     resolverParams =
 
-        setPreferenceDefault (if upgradeDeps then PreferAllLatest
+        setAvoidReinstalls avoidReinstalls
+
+      . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)
 
       . addPreferences
@@ -311,9 +313,10 @@ planPackages comp configFlags configExFlags installFlags
                   , depid <- depids
                   , packageName depid `elem` targetnames ]
 
-    reinstall   = fromFlag (installReinstall installFlags)
-    upgradeDeps = fromFlag (installUpgradeDeps installFlags)
-    onlyDeps    = fromFlag (installOnlyDeps installFlags)
+    reinstall       = fromFlag (installReinstall       installFlags)
+    avoidReinstalls = fromFlag (installAvoidReinstalls installFlags)
+    upgradeDeps     = fromFlag (installUpgradeDeps     installFlags)
+    onlyDeps        = fromFlag (installOnlyDeps        installFlags)
 
 -- ------------------------------------------------------------
 -- * Informational messages
