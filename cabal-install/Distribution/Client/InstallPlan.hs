@@ -28,7 +28,7 @@ module Distribution.Client.InstallPlan (
   planPlatform,
   planCompiler,
 
-  -- * Checking valididy of plans
+  -- * Checking validity of plans
   valid,
   closed,
   consistent,
@@ -120,7 +120,7 @@ import Control.Exception
 
 -- Note that plans do not necessarily compose. You might have a valid plan for
 -- package A and a valid plan for package B. That does not mean the composition
--- is simultaniously valid for A and B. In particular you're most likely to
+-- is simultaneously valid for A and B. In particular you're most likely to
 -- have problems with inconsistent dependencies.
 -- On the other hand it is true that every closed sub plan is valid.
 
