@@ -1,4 +1,5 @@
-module Distribution.Client.Dependency.Modular where
+module Distribution.Client.Dependency.Modular
+         ( modularResolver, SolverConfig(..)) where
 
 -- Here, we try to map between the external cabal-install solver
 -- interface and the internal interface that the solver actually
@@ -23,7 +24,7 @@ import Distribution.Client.Dependency.Modular.Log
 import Distribution.Client.Dependency.Modular.Package
          ( PN )
 import Distribution.Client.Dependency.Modular.Solver
-         ( defaultSolver )
+         ( SolverConfig(..), solve )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..) )
 import Distribution.Client.InstallPlan
@@ -33,11 +34,11 @@ import Distribution.System
 
 -- | Ties the two worlds together: classic cabal-install vs. the modular
 -- solver. Performs the necessary translations before and after.
-modularResolver :: Bool -> DependencyResolver
-modularResolver ar (Platform arch os) cid iidx sidx pprefs pcs pns =
+modularResolver :: SolverConfig -> DependencyResolver
+modularResolver sc (Platform arch os) cid iidx sidx pprefs pcs pns =
   fmap (uncurry postprocess) $ -- convert install plan
   logToProgress $              -- convert log format into progress format
-  defaultSolver ar idx pprefs gcs pns
+  solve sc idx pprefs gcs pns
     where
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cid iidx sidx
