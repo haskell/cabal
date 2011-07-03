@@ -81,7 +81,7 @@ build = ana go
     -- and then handle each instance in turn.
     go bs@(BS { index = idx, scope = sc, next = OneGoal (OpenGoal (Simple (Dep qpn@(Q _ pn) _)) gr) }) =
       case M.lookup pn idx of
-        Nothing  -> FailF (P qpn `S.insert` goalReasonsToVars gr) (BuildFailureNotInIndex pn)
+        Nothing  -> FailF (toConflictSet (Goal (P qpn) gr)) (BuildFailureNotInIndex pn)
         Just pis -> PChoiceF qpn (gr, sc) (P.fromList (L.map (\ (i, info) ->
                                                            (i, bs { next = Instance qpn i info gr }))
                                                          (M.toList pis)))
