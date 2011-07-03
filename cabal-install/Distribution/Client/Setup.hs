@@ -576,6 +576,7 @@ data InstallFlags = InstallFlags {
     installReinstall       :: Flag Bool,
     installAvoidReinstalls :: Flag Bool,
     installUpgradeDeps     :: Flag Bool,
+    installReorderGoals    :: Flag Bool,
     installOnly            :: Flag Bool,
     installOnlyDeps        :: Flag Bool,
     installRootCmd         :: Flag String,
@@ -594,6 +595,7 @@ defaultInstallFlags = InstallFlags {
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag False,
     installUpgradeDeps     = Flag False,
+    installReorderGoals    = Flag False,
     installOnly            = Flag False,
     installOnlyDeps        = Flag False,
     installRootCmd         = mempty,
@@ -690,6 +692,10 @@ installOptions showOrParseArgs =
           installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
           trueArg
 
+      , option [] ["reorder-goals"]
+          "Experimental: Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
+          installReorderGoals (\v flags -> flags { installReorderGoals = v })
+          trueArg
 
       , option [] ["only-dependencies"]
           "Install only the dependencies necessary to build the given packages"
@@ -747,6 +753,7 @@ instance Monoid InstallFlags where
     installReinstall       = mempty,
     installAvoidReinstalls = mempty,
     installUpgradeDeps     = mempty,
+    installReorderGoals    = mempty,
     installOnly            = mempty,
     installOnlyDeps        = mempty,
     installRootCmd         = mempty,
@@ -763,6 +770,7 @@ instance Monoid InstallFlags where
     installReinstall       = combine installReinstall,
     installAvoidReinstalls = combine installAvoidReinstalls,
     installUpgradeDeps     = combine installUpgradeDeps,
+    installReorderGoals    = combine installReorderGoals,
     installOnly            = combine installOnly,
     installOnlyDeps        = combine installOnlyDeps,
     installRootCmd         = combine installRootCmd,

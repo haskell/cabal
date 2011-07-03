@@ -235,7 +235,9 @@ planPackages comp configFlags configExFlags installFlags
   where
     resolverParams =
 
-        setAvoidReinstalls avoidReinstalls
+        setReorderGoals reorderGoals
+
+      . setAvoidReinstalls avoidReinstalls
 
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)
@@ -314,6 +316,7 @@ planPackages comp configFlags configExFlags installFlags
                   , packageName depid `elem` targetnames ]
 
     reinstall       = fromFlag (installReinstall       installFlags)
+    reorderGoals    = fromFlag (installReorderGoals    installFlags)
     avoidReinstalls = fromFlag (installAvoidReinstalls installFlags)
     upgradeDeps     = fromFlag (installUpgradeDeps     installFlags)
     onlyDeps        = fromFlag (installOnlyDeps        installFlags)

@@ -19,15 +19,7 @@ import Distribution.Client.Dependency.Modular.Validate
 
 data SolverConfig = SolverConfig {
   preferEasyGoalChoices :: Bool,
-  pStrategy             :: PackagesPreferenceDefault,
   avoidReinstalls       :: Bool
-}
-
-defaultSolverConfig :: Bool -> SolverConfig
-defaultSolverConfig ar = SolverConfig {
-  preferEasyGoalChoices = False,
-  pStrategy             = PreferLatestForSelected, -- latest for goals only
-  avoidReinstalls       = ar
 }
 
 solve :: SolverConfig ->   -- solver parameters
@@ -54,12 +46,3 @@ solve sc idx userPrefs userConstraints userGoals =
     prunePhase = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
                  P.requireInstalled (== PackageName "base") -- never try to install a new "base"
     buildPhase = buildTree idx userGoals
-
--- | For cabal-install integration.
-defaultSolver :: Bool ->
-                 Index ->          -- all available packages as an index
-                 (PN -> PackagePreferences) -> -- preferences
-                 Map PN PackageConstraint ->   -- global constraints
-                 [PN] ->                       -- global goals
-                 Log Message (Assignment, RevDepMap)
-defaultSolver ar = solve (defaultSolverConfig ar)

@@ -42,6 +42,7 @@ module Distribution.Client.Dependency (
     addConstraints,
     addPreferences,
     setPreferenceDefault,
+    setReorderGoals,
     setAvoidReinstalls,
     addSourcePackages,
     hideInstalledPackagesSpecificByInstalledPackageId,
@@ -50,7 +51,8 @@ module Distribution.Client.Dependency (
   ) where
 
 -- import Distribution.Client.Dependency.TopDown (topDownResolver)
-import Distribution.Client.Dependency.Modular (modularResolver)
+import Distribution.Client.Dependency.Modular
+         ( modularResolver, SolverConfig(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -99,6 +101,7 @@ data DepResolverParams = DepResolverParams {
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex.PackageIndex,
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
+       depResolverReorderGoals      :: Bool,
        depResolverAvoidReinstalls   :: Bool
      }
 
@@ -128,6 +131,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverPreferenceDefault = PreferLatestForSelected,
        depResolverInstalledPkgIndex = installedPkgIndex,
        depResolverSourcePkgIndex    = sourcePkgIndex,
+       depResolverReorderGoals      = False,
        depResolverAvoidReinstalls   = False
      }
 
@@ -159,6 +163,12 @@ setPreferenceDefault :: PackagesPreferenceDefault
 setPreferenceDefault preferenceDefault params =
     params {
       depResolverPreferenceDefault = preferenceDefault
+    }
+
+setReorderGoals :: Bool -> DepResolverParams -> DepResolverParams
+setReorderGoals b params =
+    params {
+      depResolverReorderGoals = b
     }
 
 setAvoidReinstalls :: Bool -> DepResolverParams -> DepResolverParams
@@ -276,7 +286,7 @@ standardInstallPolicy
 -- * Interface to the standard resolver
 -- ------------------------------------------------------------
 
-defaultResolver :: Bool -> DependencyResolver
+defaultResolver :: SolverConfig -> DependencyResolver
 defaultResolver = modularResolver
 
 -- | Run the dependency solver.
@@ -298,7 +308,7 @@ resolveDependencies platform comp params
 resolveDependencies platform comp params =
 
     fmap (mkInstallPlan platform comp)
-  $ defaultResolver avoidReinstalls
+  $ defaultResolver (SolverConfig reorderGoals noReinstalls)
                     platform comp installedPkgIndex sourcePkgIndex
                     preferences constraints targets
   where
@@ -307,7 +317,8 @@ resolveDependencies platform comp params =
       prefs defpref
       installedPkgIndex
       sourcePkgIndex
-      avoidReinstalls = dontUpgradeBasePackage
+      reorderGoals
+      noReinstalls    = dontUpgradeBasePackage
                       . hideBrokenInstalledPackages
                       $ params
 
@@ -383,7 +394,7 @@ resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [SourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
-                              _avoidReinstalls) =
+                              _reorderGoals _avoidReinstalls) =
     collectEithers (map selectPackage targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError SourcePackage
