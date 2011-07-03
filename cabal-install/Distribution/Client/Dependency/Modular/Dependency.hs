@@ -74,9 +74,9 @@ showCI (Constrained vr) = showVR (collapse vr)
 -- order in which we check the constraints.
 merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
 merge c@(Fixed i g1)       d@(Fixed j g2)
-  | i == j                                   = Right c
-  | otherwise                                = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, d))
-merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs
+  | i == j                                    = Right c
+  | otherwise                                 = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, d))
+merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" here, but it seems to slow things down ...
   where
     go []              = Right c
     go (d@(vr, g2) : vrs)
