@@ -109,8 +109,13 @@ data Dep qpn = Dep qpn (CI qpn)
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
-showDep (Dep qpn (Constrained [(vr, Goal v _)])) = showQPN qpn ++ showVR vr ++ " introduced by " ++ showVar v
-showDep (Dep qpn ci                            ) = showQPN qpn ++ showCI ci
+showDep (Dep qpn (Fixed i (Goal v _))          ) =
+  (if P qpn /= v then showVar v ++ " => " else "") ++
+  showQPN qpn ++ "==" ++ showI i
+showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
+  showVar v ++ " => " ++ showQPN qpn ++ showVR vr
+showDep (Dep qpn ci                            ) =
+  showQPN qpn ++ showCI ci
 
 instance Functor Dep where
   fmap f (Dep x y) = Dep (f x) (fmap f y)

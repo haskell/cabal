@@ -5,7 +5,6 @@ module Distribution.Client.Dependency.Modular.Preference where
 import Control.Applicative
 import qualified Data.List as L
 import qualified Data.Map as M
-import qualified Data.Set as S
 import Data.Monoid
 import Data.Ord
 

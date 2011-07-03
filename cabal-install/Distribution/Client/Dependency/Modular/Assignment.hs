@@ -41,21 +41,21 @@ data PreAssignment = PA PPreAssignment FAssignment
 --
 -- Either returns a witness of the conflict that would arise during the merge,
 -- or the successfully extended assignment.
---
--- TODO: Check again if we couldn't actually do better in providing user
--- feedback. There is far more information now compared to when 'mostInformative'
--- was implemented.
-extend :: Var QPN -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, Dep QPN) PPreAssignment
+extend :: Var QPN -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
 extend var pa qa = foldM (\ a (Dep qpn ci) ->
                      let ci' = M.findWithDefault (Constrained []) qpn a
                      in  case (\ x -> M.insert qpn x a) <$> merge ci' ci of
-                           Left (c, (d, d')) -> Left  (c, Dep qpn (mostInformative d d'))
+                           Left (c, (d, d')) -> Left  (c, L.map (Dep qpn) (simplify (P qpn) d d'))
                            Right x           -> Right x)
                     pa qa
   where
-    mostInformative (Fixed _ (Goal var' _))          c | var' == var = c
-    mostInformative (Constrained [(_, Goal var' _)]) c | var' == var = c
-    mostInformative c                                _               = c
+    -- We're trying to remove trivial elements of the conflict. If we're just
+    -- making a choice pkg == instance, and pkg => pkg == instance is a part
+    -- of the conflict, then this info is clear from the context and does not
+    -- have to be repeated.
+    simplify v (Fixed _ (Goal var' _)) c | v == var && var' == var = [c]
+    simplify v c (Fixed _ (Goal var' _)) | v == var && var' == var = [c]
+    simplify _ c                       d                           = [c, d]
 
 -- | Delivers an ordered list of fully configured packages.
 --

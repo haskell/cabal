@@ -24,7 +24,7 @@ data Tree a =
   deriving (Eq, Show)
 
 data FailReason = InconsistentInitialConstraints
-                | Conflicting (Dep QPN)
+                | Conflicting [Dep QPN]
                 | ConflictingFlag
                 | CannotInstall
                 | CannotReinstall
