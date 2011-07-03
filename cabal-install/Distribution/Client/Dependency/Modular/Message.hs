@@ -58,7 +58,7 @@ showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b ++ ")"
 
 showFR :: ConflictSet QPN -> FailReason -> String
 showFR _ InconsistentInitialConstraints = " (inconsistent initial constraints)"
-showFR _ (Conflicting d)                = " (conflicts with " ++ showDep d ++ ")"
+showFR _ (Conflicting ds)               = " (conflict: " ++ L.intercalate ", " (map showDep ds) ++ ")"
 showFR _ ConflictingFlag                = " (conflicts with previous choice of same flag)"
 showFR _ CannotInstall                  = " (only already installed versions can be used)"
 showFR _ CannotReinstall                = " (avoiding to reinstall a package with same version but new dependencies)"
@@ -67,5 +67,8 @@ showFR _ GlobalConstraintInstalled      = " (global constraint requires installe
 showFR _ GlobalConstraintSource         = " (global constraint requires source instance)"
 showFR _ GlobalConstraintFlag           = " (global constraint requires opposite flag selection)"
 showFR c Backjump                       = " (backjumping, conflict set: " ++ showCS c ++ ")"
+-- The following are internal failures. They should not occur. In the
+-- interest of not crashing unnecessarily, we still just print an error
+-- message though.
 showFR _ (BuildFailureNotInIndex pn)    = " (BUILD FAILURE: NOT IN INDEX: " ++ display pn ++ ")"
 showFR _ EmptyGoalChoice                = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
