@@ -25,7 +25,7 @@ data SolverConfig = SolverConfig {
 
 defaultSolverConfig :: Bool -> SolverConfig
 defaultSolverConfig ar = SolverConfig {
-  preferEasyGoalChoices = True,
+  preferEasyGoalChoices = False,
   pStrategy             = PreferLatestForSelected, -- latest for goals only
   avoidReinstalls       = ar
 }
