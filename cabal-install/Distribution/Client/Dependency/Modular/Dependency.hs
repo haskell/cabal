@@ -27,12 +27,6 @@ instance Functor Var where
   fmap f (P n)  = P (f n)
   fmap f (F fn) = F (fmap f fn)
 
-class ResetVar f where
-  resetVar :: Var qpn -> f qpn -> f qpn
-
-instance ResetVar Var where
-  resetVar = const
-
 type ConflictSet qpn = Set (Var qpn)
 
 showCS :: ConflictSet QPN -> String
@@ -42,18 +36,18 @@ showCS = intercalate ", " . L.map showVar . S.toList
 -- a fixed instance, and we record the package name for which the choice
 -- is for convenience. Otherwise, it is a list of version ranges paired with
 -- the goals / variables that introduced them.
-data CI qpn = Fixed I qpn | Constrained [VROrigin qpn]
+data CI qpn = Fixed I (Goal qpn) | Constrained [VROrigin qpn]
   deriving (Eq, Show)
 
 instance Functor CI where
-  fmap f (Fixed i n)       = Fixed i (f n)
+  fmap f (Fixed i g)       = Fixed i (fmap f g)
   fmap f (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, fmap f y)) vrs)
 
-instance ResetVar CI where
-  resetVar v (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetVar v y)) vrs)
-  resetVar _ x                 = x
+instance ResetGoal CI where
+  resetGoal g (Fixed i _)       = Fixed i g
+  resetGoal g (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetGoal g y)) vrs)
 
-type VROrigin qpn = (VR, Var qpn)
+type VROrigin qpn = (VR, Goal qpn)
 
 -- | Helper function to collapse a list of version ranges with origins into
 -- a single, simplified, version range.
@@ -66,22 +60,30 @@ showCI (Constrained vr) = showVR (collapse vr)
 
 -- | Merge constrained instances. We currently adopt a lazy strategy for
 -- merging, i.e., we only perform actual checking if one of the two choices
--- is fixed. We return the two inconsistent fragment if the merge fails.
+-- is fixed. If the merge fails, we return a conflict set indicating the
+-- variables responsible for the failure, as well as the two conflicting
+-- fragments.
 --
--- TODO: In fact, we only return the first pair of inconsistent fragments
--- now. It might be better to return them all, but I don't know.
+-- Note that while there may be more than one conflicting pair of version
+-- ranges, we only return the first we find.
+--
+-- TODO: Different pairs might have different conflict sets. We're
+-- obviously interested to return a conflict that has a "better" conflict
+-- set in the sense the it contains variables that allow us to backjump
+-- further. We might apply some heuristics here, such as to change the
+-- order in which we check the constraints.
 merge :: Ord qpn => CI qpn -> CI qpn -> Either (ConflictSet qpn, (CI qpn, CI qpn)) (CI qpn)
-merge c@(Fixed i p1)       d@(Fixed j p2)
+merge c@(Fixed i g1)       d@(Fixed j g2)
   | i == j                                   = Right c
-  | otherwise                                = Left (S.fromList [P p1, P p2], (c, d))
-merge c@(Fixed (I v _) p)   (Constrained rs) = go rs
+  | otherwise                                = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, d))
+merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs
   where
     go []              = Right c
-    go ((vr, o) : vrs)
+    go (d@(vr, g2) : vrs)
       | checkVR vr v   = go vrs
-      | otherwise      = Left (S.fromList [P p, o], (c, Constrained [(vr, o)]))
-merge c@(Constrained _)   d@(Fixed _ _)      = merge d c
-merge   (Constrained rs)    (Constrained ss) = Right (Constrained (rs ++ ss))
+      | otherwise      = Left (S.union (toConflictSet g1) (toConflictSet g2), (c, Constrained [d]))
+merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
+merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
 
 type FlaggedDeps qpn = [FlaggedDep qpn]
@@ -107,38 +109,68 @@ data Dep qpn = Dep qpn (CI qpn)
   deriving (Eq, Show)
 
 showDep :: Dep QPN -> String
-showDep (Dep qpn (Constrained [(vr, o)])) = showQPN qpn ++ showVR vr ++ " introduced by " ++ showVar o
-showDep (Dep qpn ci                     ) = showQPN qpn ++ showCI ci
+showDep (Dep qpn (Constrained [(vr, Goal v _)])) = showQPN qpn ++ showVR vr ++ " introduced by " ++ showVar v
+showDep (Dep qpn ci                            ) = showQPN qpn ++ showCI ci
 
 instance Functor Dep where
   fmap f (Dep x y) = Dep (f x) (fmap f y)
 
-instance ResetVar Dep where
-  resetVar v (Dep qpn ci) = Dep qpn (resetVar v ci)
+instance ResetGoal Dep where
+  resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
 
 -- | A map containing reverse dependencies between qualified
 -- package names.
 type RevDepMap = Map QPN [QPN]
 
--- | Goals are qualified flagged dependencies, together with a reason for
--- their presence.
-data Goal = Goal (FlaggedDep QPN) GoalReasons
+-- | Goals are solver variables paired with information about
+-- why they have been introduced.
+data Goal qpn = Goal (Var qpn) (GoalReasons qpn)
+  deriving (Eq, Show)
+
+instance Functor Goal where
+  fmap f (Goal v gr) = Goal (fmap f v) (fmap (fmap f) gr)
+
+class ResetGoal f where
+  resetGoal :: Goal qpn -> f qpn -> f qpn
+
+instance ResetGoal Goal where
+  resetGoal = const
+
+-- | For open goals as they occur during the build phase, we need to store
+-- additional information about flags.
+data OpenGoal = OpenGoal (FlaggedDep QPN) QGoalReasons
   deriving (Eq, Show)
 
 -- | Reasons why a goal can be added to a goal set.
-data GoalReason = UserGoal | PDependency (PI QPN) | FDependency QFN Bool
+data GoalReason qpn = UserGoal | PDependency (PI qpn) | FDependency (FN qpn) Bool
   deriving (Eq, Show)
+
+instance Functor GoalReason where
+  fmap f UserGoal           = UserGoal
+  fmap f (PDependency pi)   = PDependency (fmap f pi)
+  fmap f (FDependency fn b) = FDependency (fmap f fn) b
 
 -- | The first element is the immediate reason. The rest are the reasons
 -- for the reasons ...
-type GoalReasons = [GoalReason]
+type GoalReasons qpn = [GoalReason qpn]
 
-goalReasonToVars :: GoalReason -> ConflictSet QPN
+type QGoalReasons = GoalReasons QPN
+
+goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = S.empty
 goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
 goalReasonToVars (FDependency qfn _)      = S.singleton (F qfn)
 
-goalReasonsToVars :: GoalReasons -> ConflictSet QPN
+goalReasonsToVars :: Ord qpn => GoalReasons qpn -> ConflictSet qpn
 goalReasonsToVars = S.unions . L.map goalReasonToVars
 
+-- | Closes a goal, i.e., removes all the extraneous information that we
+-- need only during the build phase.
+close :: OpenGoal -> Goal QPN
+close (OpenGoal (Simple (Dep qpn _)) gr) = Goal (P qpn) gr
+close (OpenGoal (Flagged qfn _ _ _ ) gr) = Goal (F qfn) gr
 
+-- | Compute a conflic set from a goal. The conflict set contains the
+-- closure of goal reasons as well as the variable of the goal itself.
+toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
+toConflictSet (Goal g gr) = S.insert g (goalReasonsToVars gr)

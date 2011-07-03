@@ -41,6 +41,10 @@ data PreAssignment = PA PPreAssignment FAssignment
 --
 -- Either returns a witness of the conflict that would arise during the merge,
 -- or the successfully extended assignment.
+--
+-- TODO: Check again if we couldn't actually do better in providing user
+-- feedback. There is far more information now compared to when 'mostInformative'
+-- was implemented.
 extend :: Var QPN -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, Dep QPN) PPreAssignment
 extend var pa qa = foldM (\ a (Dep qpn ci) ->
                      let ci' = M.findWithDefault (Constrained []) qpn a
@@ -49,11 +53,11 @@ extend var pa qa = foldM (\ a (Dep qpn ci) ->
                            Right x           -> Right x)
                     pa qa
   where
-    mostInformative (Fixed _ qpn)             c | P qpn == var = c
-    mostInformative (Constrained [(_, var')]) c | var'  == var = c
-    mostInformative c                         _                = c
+    mostInformative (Fixed _ (Goal var' _))          c | var' == var = c
+    mostInformative (Constrained [(_, Goal var' _)]) c | var' == var = c
+    mostInformative c                                _               = c
 
--- | Delievers an ordered list of fully configured packages.
+-- | Delivers an ordered list of fully configured packages.
 --
 -- TODO: This function is (sort of) ok. However, there's an open bug
 -- w.r.t. unqualification. There might be several different instances

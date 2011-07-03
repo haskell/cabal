@@ -15,7 +15,7 @@ data Message =
   | Leave         -- ^ decrease indentation level
   | TryP (PI QPN)
   | TryF QFN Bool
-  | Next Goal
+  | Next (Goal QPN)
   | Success
   | Failure (ConflictSet QPN) FailReason
 
@@ -27,14 +27,14 @@ showMessages = go 0
     -- complex patterns
     go l (TryP (PI qpn i) : Enter : Failure c fr : Leave : ms) = goPReject l qpn [i] c fr ms
     go l (TryF qfn b : Enter : Failure c fr : Leave : ms) = (atLevel l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) : go l ms
-    go l (Next (Goal (Simple (Dep _ _)) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel l $ "trying: " ++ showPI pi ++ showGRs gr) : go l ms
+    go l (Next (Goal (P _) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel l $ "trying: " ++ showPI pi ++ showGRs gr) : go l ms
     go l (Failure c Backjump : ms@(Leave : Failure c' Backjump : _)) | c == c' = go l ms
     -- standard display
     go l (Enter        : ms) = go (l+1) ms
     go l (Leave        : ms) = go (l-1) ms
     go l (TryP pi      : ms) = (atLevel l $ "trying: " ++ showPI pi) : go l ms
     go l (TryF qfn b   : ms) = (atLevel l $ "trying: " ++ showQFNBool qfn b) : go l ms
-    go l (Next (Goal (Simple (Dep qpn _)) gr) : ms) = (atLevel l $ "next goal: " ++ showQPN qpn ++ showGRs gr) : go l ms
+    go l (Next (Goal (P qpn) gr) : ms) = (atLevel l $ "next goal: " ++ showQPN qpn ++ showGRs gr) : go l ms
     go l (Next _       : ms) = go l ms -- ignore flag goals in the log
     go l (Success      : ms) = (atLevel l $ "done") : go l ms
     go l (Failure c fr : ms) = (atLevel l $ "fail" ++ showFR c fr) : go l ms
@@ -47,11 +47,11 @@ showMessages = go 0
     atLevel l x = let s = show l
                   in  "[" ++ replicate (3 - length s) '_' ++ s ++ "] " ++ x
 
-showGRs :: GoalReasons -> String
+showGRs :: QGoalReasons -> String
 showGRs (gr : _) = showGR gr
 showGRs []       = ""
 
-showGR :: GoalReason -> String
+showGR :: GoalReason QPN -> String
 showGR UserGoal            = " (user goal)"
 showGR (PDependency pi)    = " (dependency of " ++ showPI pi         ++ ")"
 showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b ++ ")"

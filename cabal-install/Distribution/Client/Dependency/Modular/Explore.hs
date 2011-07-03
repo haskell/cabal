@@ -111,7 +111,7 @@ exploreLog = cata go
     go (GoalChoiceF      ts) a           =
       casePSQ ts
         (failWith (Failure S.empty EmptyGoalChoice))   -- empty goal choice is an internal error
-        (\ k v _xs -> continueWith (Next k) (v a))     -- commit to the first goal choice
+        (\ k v _xs -> continueWith (Next (close k)) (v a))     -- commit to the first goal choice
 
 -- | Add in information about pruned trees.
 --
