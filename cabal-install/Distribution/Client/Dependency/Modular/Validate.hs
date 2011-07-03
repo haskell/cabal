@@ -81,10 +81,10 @@ data ValidateState = VS {
 
 type Validate = Reader ValidateState
 
-validate :: Tree (GoalReasons, Scope) -> Validate (Tree GoalReasons)
+validate :: Tree (QGoalReasons, Scope) -> Validate (Tree QGoalReasons)
 validate = cata go
   where
-    go :: TreeF (GoalReasons, Scope) (Validate (Tree GoalReasons)) -> Validate (Tree GoalReasons)
+    go :: TreeF (QGoalReasons, Scope) (Validate (Tree QGoalReasons)) -> Validate (Tree QGoalReasons)
 
     go (PChoiceF qpn (gr,  sc)   ts) = PChoice qpn gr   <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
     go (FChoiceF qfn (gr, _sc) b ts) = FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn gr   ) ts)
@@ -95,7 +95,7 @@ validate = cata go
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> GoalReasons -> Scope -> I -> Validate (Tree GoalReasons) -> Validate (Tree GoalReasons)
+    goP :: QPN -> QGoalReasons -> Scope -> I -> Validate (Tree QGoalReasons) -> Validate (Tree QGoalReasons)
     goP qpn@(Q _pp pn) gr sc i r = do
       PA ppa pfa <- asks pa    -- obtain current preassignment
       idx        <- asks index -- obtain the index
@@ -104,19 +104,20 @@ validate = cata go
       let qdeps = L.map (fmap (qualify sc)) deps -- qualify the deps in the current scope
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
-      let newactives = Dep qpn (Fixed i qpn) : extractDeps pfa qdeps
+      let goal = Goal (P qpn) gr
+      let newactives = Dep qpn (Fixed i goal) : L.map (resetGoal goal) (extractDeps pfa qdeps)
       -- We now try to extend the partial assignment with the new active constraints.
       let mnppa = extend (P qpn) ppa newactives
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
       case mnppa of
         Left (c, d) -> -- We have an inconsistency. We can stop.
-                       return (Fail (c `S.union` goalReasonsToVars gr) (Conflicting d))
+                       return (Fail c (Conflicting d))
         Right nppa  -> -- We have an updated partial assignment for the recursive validation.
                        local (\ s -> s { pa = PA nppa pfa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
-    goF :: QFN -> GoalReasons -> Bool -> Validate (Tree GoalReasons) -> Validate (Tree GoalReasons)
+    goF :: QFN -> QGoalReasons -> Bool -> Validate (Tree QGoalReasons) -> Validate (Tree QGoalReasons)
     goF qfn@(FN (PI qpn _i) _f) gr b r = do
       PA ppa pfa <- asks pa -- obtain current preassignment
       svd <- asks saved     -- obtain saved dependencies
@@ -127,19 +128,19 @@ validate = cata go
       -- We take the *saved* dependencies, because these have been qualified in the
       -- correct scope.
       --
-      -- First, we should check that our flag choice itself is consistent. Unlike for
+      -- First, we should check if our flag choice itself is consistent. Unlike for
       -- package nodes, we do not guarantee that a flag choice occurs exactly once.
       case M.lookup qfn pfa of
-        Just rb | rb /= b -> return (Fail (F qfn `S.insert` goalReasonsToVars gr) ConflictingFlag)
+        Just rb | rb /= b -> return (Fail (toConflictSet (Goal (F qfn) gr)) ConflictingFlag)
         _                 -> do
           -- Extend the flag assignment
           let npfa = M.insert qfn b pfa
           -- We now try to get the new active dependencies we might learn about because
           -- we have chosen a new flag.
-          let newactives = extractNewFlagDeps qfn b npfa qdeps
+          let newactives = extractNewFlagDeps qfn gr b npfa qdeps
           -- As in the package case, we try to extend the partial assignment.
           case extend (F qfn) ppa newactives of
-            Left (c, d) -> return (Fail (c `S.union` goalReasonsToVars gr) (Conflicting d)) -- inconsistency found
+            Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
             Right nppa  -> local (\ s -> s { pa = PA nppa npfa }) r
 
 -- | We try to extract as many concrete dependencies from the given flagged
@@ -158,19 +159,21 @@ extractDeps fa deps = do
 -- | We try to find new dependencies that become available due to the given
 -- flag choice. We therefore look for the flag in question, and then call
 -- 'extractDeps' for everything underneath.
-extractNewFlagDeps :: QFN -> Bool -> FAssignment -> FlaggedDeps QPN -> [Dep QPN]
-extractNewFlagDeps qfn b fa deps = do
-  d <- deps
-  case d of
-    Simple _             -> mzero
-    Flagged qfn' _ td fd
-      | qfn == qfn'      -> L.map (resetVar (F qfn)) $
-                            if b then extractDeps fa td else extractDeps fa fd
-      | otherwise        -> case M.lookup qfn' fa of
-                              Nothing    -> mzero
-                              Just True  -> extractNewFlagDeps qfn b fa td
-                              Just False -> extractNewFlagDeps qfn b fa fd
+extractNewFlagDeps :: QFN -> QGoalReasons -> Bool -> FAssignment -> FlaggedDeps QPN -> [Dep QPN]
+extractNewFlagDeps qfn gr b fa = go
+  where
+    go deps = do
+      d <- deps
+      case d of
+        Simple _             -> mzero
+        Flagged qfn' _ td fd
+          | qfn == qfn'      -> L.map (resetGoal (Goal (F qfn) gr)) $
+                                if b then extractDeps fa td else extractDeps fa fd
+          | otherwise        -> case M.lookup qfn' fa of
+                                  Nothing    -> mzero
+                                  Just True  -> go td
+                                  Just False -> go fd
 
 -- | Interface.
-validateTree :: Index -> Tree (GoalReasons, Scope) -> Tree GoalReasons
+validateTree :: Index -> Tree (QGoalReasons, Scope) -> Tree QGoalReasons
 validateTree idx t = runReader (validate t) (VS idx M.empty (PA M.empty M.empty))

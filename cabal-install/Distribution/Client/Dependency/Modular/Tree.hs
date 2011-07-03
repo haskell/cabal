@@ -16,9 +16,9 @@ import Distribution.Client.Dependency.Modular.Version
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
-    PChoice     QPN a      (PSQ I    (Tree a))
-  | FChoice     QFN a Bool (PSQ Bool (Tree a)) -- Bool indicates whether it's trivial
-  | GoalChoice             (PSQ Goal (Tree a)) -- PSQ should never be empty
+    PChoice     QPN a      (PSQ I        (Tree a))
+  | FChoice     QFN a Bool (PSQ Bool     (Tree a)) -- Bool indicates whether it's trivial
+  | GoalChoice             (PSQ OpenGoal (Tree a)) -- PSQ should never be empty
   | Done        RevDepMap
   | Fail        (ConflictSet QPN) FailReason
   deriving (Eq, Show)
@@ -39,9 +39,9 @@ data FailReason = InconsistentInitialConstraints
 
 -- | Functor for the tree type.
 data TreeF a b =
-    PChoiceF    QPN a      (PSQ I    b)
-  | FChoiceF    QFN a Bool (PSQ Bool b)
-  | GoalChoiceF            (PSQ Goal b)
+    PChoiceF    QPN a      (PSQ I        b)
+  | FChoiceF    QFN a Bool (PSQ Bool     b)
+  | GoalChoiceF            (PSQ OpenGoal b)
   | DoneF       RevDepMap
   | FailF       (ConflictSet QPN) FailReason
 
