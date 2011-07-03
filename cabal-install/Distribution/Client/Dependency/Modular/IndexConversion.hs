@@ -58,7 +58,7 @@ convIPId pn' idx ipid =
     Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)
-                in  Just (D.Simple (Dep pn (Fixed i pn')))
+                in  Just (D.Simple (Dep pn (Fixed i (Goal (P pn') []))))
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
@@ -146,8 +146,8 @@ convBranch os arch cid@(CompilerId cf cv) pi fds p (c', t', mf') =
 
 -- | Convert a Cabal dependency to a solver-specific dependency.
 convDep :: PN -> Dependency -> Dep PN
-convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, P pn')])
+convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, Goal (P pn') [])])
 
 -- | Convert a Cabal package identifier to a solver-specific dependency.
 convPI :: PN -> PackageIdentifier -> Dep PN
-convPI pn' (PackageIdentifier pn v) = Dep pn (Constrained [(eqVR v, P pn')])
+convPI pn' (PackageIdentifier pn v) = Dep pn (Constrained [(eqVR v, Goal (P pn') [])])
