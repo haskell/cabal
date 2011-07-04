@@ -36,13 +36,13 @@ solve sc idx userPrefs userConstraints userGoals =
   prunePhase       $
   buildPhase
   where
-    explorePhase = exploreTreeLog . backjump
-    heuristicsPhase = if preferEasyGoalChoices sc
-                        then P.deferDefaultFlagChoices . P.lpreferEasyGoalChoices
-                        else id
+    explorePhase     = exploreTreeLog . backjump
+    heuristicsPhase  = if preferEasyGoalChoices sc
+                         then P.deferDefaultFlagChoices . P.lpreferEasyGoalChoices
+                         else id
     preferencesPhase = P.preferPackagePreferences userPrefs
-    validationPhase = P.enforcePackageConstraints userConstraints .
-                      validateTree idx
-    prunePhase = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
-                 P.requireInstalled (== PackageName "base") -- never try to install a new "base"
-    buildPhase = buildTree idx userGoals
+    validationPhase  = P.enforcePackageConstraints userConstraints .
+                       validateTree idx
+    prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
+                       P.requireInstalled (== PackageName "base") -- never try to install a new "base"
+    buildPhase       = buildTree idx userGoals
