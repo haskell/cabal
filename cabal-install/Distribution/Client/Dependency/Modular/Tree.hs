@@ -112,7 +112,7 @@ lchoices (Fail       _ _     ) = 0
 cata :: (TreeF a b -> b) -> Tree a -> b
 cata phi x = (phi . fmap (cata phi) . out) x
 
-trav :: (TreeF a (Tree a) -> TreeF a (Tree a)) -> Tree a -> Tree a
+trav :: (TreeF a (Tree b) -> TreeF b (Tree b)) -> Tree a -> Tree b
 trav psi x = cata (inn . psi) x
 
 -- | Paramorphism on trees.
