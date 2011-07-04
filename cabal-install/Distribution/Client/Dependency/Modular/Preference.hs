@@ -22,7 +22,7 @@ import Distribution.Client.Dependency.Modular.Version
 -- | Generic abstraction for strategies that just rearrange the package order.
 -- Only packages that match the given predicate are reordered.
 packageOrderFor :: (PN -> Bool) -> (PN -> I -> I -> Ordering) -> Tree a -> Tree a
-packageOrderFor p cmp = cata (inn . go)
+packageOrderFor p cmp = trav go
   where
     go (PChoiceF v@(Q _ pn) r cs)
       | p pn                        = PChoiceF v r (P.sortByKeys (flip (cmp pn)) cs)
@@ -76,7 +76,7 @@ preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 -- by selectively disabling choices that have been rules out by global user
 -- constraints.
 enforcePackageConstraints :: M.Map PN PackageConstraint -> Tree QGoalReasons -> Tree QGoalReasons
-enforcePackageConstraints pcs = cata (inn . go)
+enforcePackageConstraints pcs = trav go
   where
     go x@(PChoiceF qpn@(Q _ pn)               gr   ts) =
       let c = toConflictSet (Goal (P qpn) gr) in
@@ -133,7 +133,7 @@ preferLatest = preferLatestFor (const True)
 
 -- | Require installed packages.
 requireInstalled :: (PN -> Bool) -> Tree (QGoalReasons, a) -> Tree (QGoalReasons, a)
-requireInstalled p = cata (inn . go)
+requireInstalled p = trav go
   where
     go (PChoiceF v@(Q _ pn) i@(gr, _) cs)
       | p pn      = PChoiceF v i (P.mapWithKey installed cs)
@@ -157,7 +157,7 @@ requireInstalled p = cata (inn . go)
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
 avoidReinstalls :: (PN -> Bool) -> Tree (QGoalReasons, a) -> Tree (QGoalReasons, a)
-avoidReinstalls p = cata (inn . go)
+avoidReinstalls p = trav go
   where
     go (PChoiceF qpn@(Q _ pn) i@(gr, _) cs)
       | p pn      = PChoiceF qpn i disableReinstalls
@@ -180,7 +180,7 @@ type LocalFlags  = M.Map (FN PN) Bool
 -- flexibility we allow both global and local choices, where local
 -- choices override the global ones.
 enforceFlagChoices :: GlobalFlags -> LocalFlags -> Tree a -> Tree a
-enforceFlagChoices gfs lfs = cata (inn . go)
+enforceFlagChoices gfs lfs = trav go
   where
     go (FChoiceF qfn@(FN _ f) r tr cs) =
       case M.lookup (fmap unQualify qfn) lfs <|> M.lookup f gfs of -- find flag in either map
@@ -198,7 +198,7 @@ enforceFlagChoices gfs lfs = cata (inn . go)
 -- it descends only into the first goal choice anyway,
 -- but may still make sense to just reduce the tree size a bit.
 firstGoal :: Tree a -> Tree a
-firstGoal = cata (inn . go)
+firstGoal = trav go
   where
     go (GoalChoiceF xs) = casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t)
     go x                = x
@@ -210,7 +210,7 @@ firstGoal = cata (inn . go)
 -- are immediately considered inconsistent), and choices with 1
 -- branch will also be preferred (as they don't involve choice).
 preferEasyGoalChoices :: Tree a -> Tree a
-preferEasyGoalChoices = cata (inn . go)
+preferEasyGoalChoices = trav go
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing choices) xs)
     go x                = x
@@ -218,7 +218,7 @@ preferEasyGoalChoices = cata (inn . go)
 -- | Transformation that tries to avoid making inconsequential
 -- flag choices early.
 deferDefaultFlagChoices :: Tree a -> Tree a
-deferDefaultFlagChoices = cata (inn . go)
+deferDefaultFlagChoices = trav go
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy defer xs)
     go x                = x
@@ -233,7 +233,7 @@ deferDefaultFlagChoices = cata (inn . go)
 -- Only approximates the number of choices in the branches. Less accurate,
 -- more efficient.
 lpreferEasyGoalChoices :: Tree a -> Tree a
-lpreferEasyGoalChoices = cata (inn . go)
+lpreferEasyGoalChoices = trav go
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing lchoices) xs)
     go x                = x

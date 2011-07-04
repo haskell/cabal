@@ -3,8 +3,6 @@ module Distribution.Client.Dependency.Modular.Tree where
 import Control.Applicative
 import Control.Monad hiding (mapM)
 import Data.Foldable
-import qualified Data.List as L
-import qualified Data.Set as S
 import Data.Traversable
 import Prelude hiding (foldr, mapM)
 
@@ -105,7 +103,10 @@ lchoices (Fail       _ _     ) = 0
 
 -- | Catamorphism on trees.
 cata :: (TreeF a b -> b) -> Tree a -> b
-cata phi = phi . fmap (cata phi) . out
+cata phi x = (phi . fmap (cata phi) . out) x
+
+trav :: (TreeF a (Tree a) -> TreeF a (Tree a)) -> Tree a -> Tree a
+trav psi x = cata (inn . psi) x
 
 -- | Paramorphism on trees.
 para :: (TreeF a (b, Tree a) -> b) -> Tree a -> b
