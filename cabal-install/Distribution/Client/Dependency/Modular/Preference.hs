@@ -22,12 +22,12 @@ import Distribution.Client.Dependency.Modular.Version
 -- | Generic abstraction for strategies that just rearrange the package order.
 -- Only packages that match the given predicate are reordered.
 packageOrderFor :: (PN -> Bool) -> (PN -> I -> I -> Ordering) -> Tree a -> Tree a
-packageOrderFor p cmp = cata go
+packageOrderFor p cmp = cata (inn . go)
   where
     go (PChoiceF v@(Q _ pn) r cs)
-      | p pn                        = PChoice v r (P.sortByKeys (flip (cmp pn)) cs)
-      | otherwise                   = PChoice v r                               cs
-    go x                            = inn x
+      | p pn                        = PChoiceF v r (P.sortByKeys (flip (cmp pn)) cs)
+      | otherwise                   = PChoiceF v r                               cs
+    go x                            = x
 
 -- | Reorder according to global preferences.
 preferPreferences :: Preferences -> Tree a -> Tree a
@@ -76,44 +76,44 @@ preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 -- by selectively disabling choices that have been rules out by global user
 -- constraints.
 enforcePackageConstraints :: M.Map PN PackageConstraint -> Tree QGoalReasons -> Tree QGoalReasons
-enforcePackageConstraints pcs = cata go
+enforcePackageConstraints pcs = cata (inn . go)
   where
     go x@(PChoiceF qpn@(Q _ pn)               gr   ts) =
       let c = toConflictSet (Goal (P qpn) gr) in
       case M.lookup pn pcs of
         Just (PackageConstraintVersion _ vr) ->
-          PChoice qpn gr
+          PChoiceF qpn gr
             (P.mapWithKey (\ (I v _) r -> if checkVR vr v
                                             then r
                                             else Fail c (GlobalConstraintVersion vr))
                           ts)
         Just (PackageConstraintInstalled _) ->
-          PChoice qpn gr
+          PChoiceF qpn gr
             (P.mapWithKey (\ i r -> if instI i
                                       then r
                                       else Fail c GlobalConstraintInstalled)
                           ts)
         Just (PackageConstraintSource    _) ->
-          PChoice qpn gr
+          PChoiceF qpn gr
             (P.mapWithKey (\ i r -> if not (instI i)
                                       then r
                                       else Fail c GlobalConstraintSource)
                           ts)
-        _ -> inn x
+        _ -> x
     go x@(FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr ts) =
       let c = toConflictSet (Goal (F qfn) gr) in
       case M.lookup pn pcs of
         Just (PackageConstraintFlags _ fa) ->
           case L.lookup f fa of
-            Nothing -> inn x
+            Nothing -> x
             Just b  ->
-              FChoice qfn gr tr
+              FChoiceF qfn gr tr
                 (P.mapWithKey (\ b' r -> if b == b'
-                                           then r
-                                           else Fail c GlobalConstraintFlag)
+                                            then r
+                                            else Fail c GlobalConstraintFlag)
                               ts)
-        _ -> inn x
-    go x = inn x
+        _ -> x
+    go x = x
 
 -- | Prefer installed packages over non-installed packages, generally.
 -- All installed packages or non-installed packages are treated as
@@ -133,15 +133,15 @@ preferLatest = preferLatestFor (const True)
 
 -- | Require installed packages.
 requireInstalled :: (PN -> Bool) -> Tree (QGoalReasons, a) -> Tree (QGoalReasons, a)
-requireInstalled p = cata go
+requireInstalled p = cata (inn . go)
   where
     go (PChoiceF v@(Q _ pn) i@(gr, _) cs)
-      | p pn      = PChoice v i (P.mapWithKey installed cs)
-      | otherwise = PChoice v i                         cs
+      | p pn      = PChoiceF v i (P.mapWithKey installed cs)
+      | otherwise = PChoiceF v i                         cs
       where
         installed (I _ (Inst _)) x = x
         installed _              _ = Fail (toConflictSet (Goal (P v) gr)) CannotInstall
-    go x          = inn x
+    go x          = x
 
 -- | Avoid reinstalls.
 --
@@ -157,11 +157,11 @@ requireInstalled p = cata go
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
 avoidReinstalls :: (PN -> Bool) -> Tree (QGoalReasons, a) -> Tree (QGoalReasons, a)
-avoidReinstalls p = cata go
+avoidReinstalls p = cata (inn . go)
   where
     go (PChoiceF qpn@(Q _ pn) i@(gr, _) cs)
-      | p pn      = PChoice qpn i disableReinstalls
-      | otherwise = PChoice qpn i cs
+      | p pn      = PChoiceF qpn i disableReinstalls
+      | otherwise = PChoiceF qpn i cs
       where
         disableReinstalls =
           let installed = [ v | (I v (Inst _), _) <- toList cs ]
@@ -170,7 +170,7 @@ avoidReinstalls p = cata go
         notReinstall vs (I v InRepo) _
           | v `elem` vs                = Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
         notReinstall _  _            x = x
-    go x          = inn x
+    go x          = x
 
 type GlobalFlags = M.Map Flag    Bool
 type LocalFlags  = M.Map (FN PN) Bool
@@ -180,13 +180,13 @@ type LocalFlags  = M.Map (FN PN) Bool
 -- flexibility we allow both global and local choices, where local
 -- choices override the global ones.
 enforceFlagChoices :: GlobalFlags -> LocalFlags -> Tree a -> Tree a
-enforceFlagChoices gfs lfs = cata go
+enforceFlagChoices gfs lfs = cata (inn . go)
   where
     go (FChoiceF qfn@(FN _ f) r tr cs) =
       case M.lookup (fmap unQualify qfn) lfs <|> M.lookup f gfs of -- find flag in either map
-         Nothing -> FChoice qfn r tr            cs  -- if nothing specified, use old node
-         Just b  -> FChoice qfn r tr (enforce b cs) -- keep only the chosen variant
-    go x = inn x
+         Nothing -> FChoiceF qfn r tr            cs  -- if nothing specified, use old node
+         Just b  -> FChoiceF qfn r tr (enforce b cs) -- keep only the chosen variant
+    go x = x
 
     enforce :: Bool -> PSQ Bool (Tree a) -> PSQ Bool (Tree a)
     enforce b = P.filterKeys (== b)
@@ -198,10 +198,10 @@ enforceFlagChoices gfs lfs = cata go
 -- it descends only into the first goal choice anyway,
 -- but may still make sense to just reduce the tree size a bit.
 firstGoal :: Tree a -> Tree a
-firstGoal = cata go
+firstGoal = cata (inn . go)
   where
-    go (GoalChoiceF xs) = casePSQ xs (GoalChoice xs) (\ _ t _ -> t)
-    go x                = inn x
+    go (GoalChoiceF xs) = casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t)
+    go x                = x
     -- Note that we keep empty choice nodes, because they mean success.
 
 -- | Transformation that sorts choice nodes so that
@@ -210,18 +210,18 @@ firstGoal = cata go
 -- are immediately considered inconsistent), and choices with 1
 -- branch will also be preferred (as they don't involve choice).
 preferEasyGoalChoices :: Tree a -> Tree a
-preferEasyGoalChoices = cata go
+preferEasyGoalChoices = cata (inn . go)
   where
-    go (GoalChoiceF xs) = GoalChoice (P.sortBy (comparing choices) xs)
-    go x                = inn x
+    go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing choices) xs)
+    go x                = x
 
 -- | Transformation that tries to avoid making inconsequential
 -- flag choices early.
 deferDefaultFlagChoices :: Tree a -> Tree a
-deferDefaultFlagChoices = cata go
+deferDefaultFlagChoices = cata (inn . go)
   where
-    go (GoalChoiceF xs) = GoalChoice (P.sortBy defer xs)
-    go x                = inn x
+    go (GoalChoiceF xs) = GoalChoiceF (P.sortBy defer xs)
+    go x                = x
 
     defer :: Tree a -> Tree a -> Ordering
     defer (FChoice _ _ True _) _ = GT
@@ -233,18 +233,18 @@ deferDefaultFlagChoices = cata go
 -- Only approximates the number of choices in the branches. Less accurate,
 -- more efficient.
 lpreferEasyGoalChoices :: Tree a -> Tree a
-lpreferEasyGoalChoices = cata go
+lpreferEasyGoalChoices = cata (inn . go)
   where
-    go (GoalChoiceF xs) = GoalChoice (P.sortBy (comparing lchoices) xs)
-    go x                = inn x
+    go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing lchoices) xs)
+    go x                = x
 
 -- | Variant of 'preferEasyGoalChoices'.
 --
 -- I first thought that using a paramorphism might be faster here,
 -- but it doesn't seem to make any difference.
 preferEasyGoalChoices' :: Tree a -> Tree a
-preferEasyGoalChoices' = para go
+preferEasyGoalChoices' = para (inn . go)
   where
-    go (GoalChoiceF xs) = GoalChoice (P.map fst (P.sortBy (comparing (choices . snd)) xs))
-    go x                = inn (fmap fst x)
+    go (GoalChoiceF xs) = GoalChoiceF (P.map fst (P.sortBy (comparing (choices . snd)) xs))
+    go x                = fmap fst x
 
