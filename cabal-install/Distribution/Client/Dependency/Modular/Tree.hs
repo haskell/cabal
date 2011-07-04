@@ -52,7 +52,7 @@ out (GoalChoice       ts) = GoalChoiceF       ts
 out (Done       x       ) = DoneF       x
 out (Fail       c x     ) = FailF       c x
 
-inn :: TreeF a (Tree a) -> (Tree a)
+inn :: TreeF a (Tree a) -> Tree a
 inn (PChoiceF    p i   ts) = PChoice    p i   ts
 inn (FChoiceF    p i b ts) = FChoice    p i b ts
 inn (GoalChoiceF       ts) = GoalChoice       ts
