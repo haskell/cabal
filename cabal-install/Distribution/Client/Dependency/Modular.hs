@@ -37,7 +37,7 @@ import Distribution.System
 modularResolver :: SolverConfig -> DependencyResolver
 modularResolver sc (Platform arch os) cid iidx sidx pprefs pcs pns =
   fmap (uncurry postprocess) $ -- convert install plan
-  logToProgress $              -- convert log format into progress format
+  logToProgress (Just 100)   $ -- convert log format into progress format, TODO: make backjump max configurable
   solve sc idx pprefs gcs pns
     where
       -- Indices have to be converted into solver-specific uniform index.
