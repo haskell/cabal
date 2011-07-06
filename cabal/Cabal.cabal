@@ -43,14 +43,14 @@ Library
   if flag(base3) { build-depends: base >= 3 } else { build-depends: base < 3 }
   if flag(base3)
     Build-Depends: directory  >= 1   && < 1.2,
-                   process    >= 1   && < 1.1,
+                   process    >= 1   && < 1.2,
                    old-time   >= 1   && < 1.1,
                    containers >= 0.1 && < 0.5,
                    array      >= 0.1 && < 0.4,
-                   pretty     >= 1   && < 1.1
+                   pretty     >= 1   && < 1.2
 
   if !os(windows)
-    Build-Depends: unix       >= 2.0 && < 2.5
+    Build-Depends: unix       >= 2.0 && < 2.6
 
   ghc-options: -Wall -fno-ignore-asserts
   if impl(ghc >= 6.8)
