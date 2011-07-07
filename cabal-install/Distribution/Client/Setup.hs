@@ -65,7 +65,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, readP_to_S, char, munch1, pfail, (+++) )
+         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, (+++) )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -575,6 +575,7 @@ data InstallFlags = InstallFlags {
     installDryRun          :: Flag Bool,
     installReinstall       :: Flag Bool,
     installAvoidReinstalls :: Flag Bool,
+    installMaxBackjumps    :: Flag Int,
     installUpgradeDeps     :: Flag Bool,
     installReorderGoals    :: Flag Bool,
     installOnly            :: Flag Bool,
@@ -594,6 +595,7 @@ defaultInstallFlags = InstallFlags {
     installDryRun          = Flag False,
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag False,
+    installMaxBackjumps    = Flag defaultMaxBackjumps,
     installUpgradeDeps     = Flag False,
     installReorderGoals    = Flag False,
     installOnly            = Flag False,
@@ -608,7 +610,7 @@ defaultInstallFlags = InstallFlags {
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
 
-installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
+installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
 installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Installs a list of packages.",
@@ -687,6 +689,13 @@ installOptions showOrParseArgs =
           installAvoidReinstalls (\v flags -> flags { installAvoidReinstalls = v })
           trueArg
 
+      , option [] ["max-backjumps"]
+          ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
+          installMaxBackjumps (\v flags -> flags { installMaxBackjumps = v })
+          (reqArg "NUM" (readP_to_E ("Cannot parse number: "++)
+                                    (fmap toFlag (Parse.readS_to_P reads)))
+                        (map show . flagToList))
+
       , option [] ["upgrade-dependencies"]
           "Pick the latest version for all dependencies, rather than trying to pick an installed version."
           installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
@@ -752,6 +761,7 @@ instance Monoid InstallFlags where
     installDryRun          = mempty,
     installReinstall       = mempty,
     installAvoidReinstalls = mempty,
+    installMaxBackjumps    = mempty,
     installUpgradeDeps     = mempty,
     installReorderGoals    = mempty,
     installOnly            = mempty,
@@ -769,6 +779,7 @@ instance Monoid InstallFlags where
     installDryRun          = combine installDryRun,
     installReinstall       = combine installReinstall,
     installAvoidReinstalls = combine installAvoidReinstalls,
+    installMaxBackjumps    = combine installMaxBackjumps,
     installUpgradeDeps     = combine installUpgradeDeps,
     installReorderGoals    = combine installReorderGoals,
     installOnly            = combine installOnly,
