@@ -232,7 +232,10 @@ planPackages comp configFlags configExFlags installFlags
   where
     resolverParams =
 
-        setReorderGoals reorderGoals
+        setMaxBackjumps (if maxBackjumps < 0 then Nothing
+                                             else Just maxBackjumps)
+
+      . setReorderGoals reorderGoals
 
       . setAvoidReinstalls avoidReinstalls
 
@@ -303,6 +306,7 @@ planPackages comp configFlags configExFlags installFlags
     reinstall       = fromFlag (installReinstall       installFlags)
     reorderGoals    = fromFlag (installReorderGoals    installFlags)
     avoidReinstalls = fromFlag (installAvoidReinstalls installFlags)
+    maxBackjumps    = fromFlag (installMaxBackjumps    installFlags)
     upgradeDeps     = fromFlag (installUpgradeDeps     installFlags)
     onlyDeps        = fromFlag (installOnlyDeps        installFlags)
 

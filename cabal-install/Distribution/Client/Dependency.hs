@@ -44,6 +44,7 @@ module Distribution.Client.Dependency (
     setPreferenceDefault,
     setReorderGoals,
     setAvoidReinstalls,
+    setMaxBackjumps,
     addSourcePackages,
     hideInstalledPackagesSpecificByInstalledPackageId,
     hideInstalledPackagesSpecificBySourcePackageId,
@@ -102,7 +103,8 @@ data DepResolverParams = DepResolverParams {
        depResolverInstalledPkgIndex :: InstalledPackageIndex.PackageIndex,
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
        depResolverReorderGoals      :: Bool,
-       depResolverAvoidReinstalls   :: Bool
+       depResolverAvoidReinstalls   :: Bool,
+       depResolverMaxBackjumps      :: Maybe Int
      }
 
 
@@ -132,7 +134,8 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverInstalledPkgIndex = installedPkgIndex,
        depResolverSourcePkgIndex    = sourcePkgIndex,
        depResolverReorderGoals      = False,
-       depResolverAvoidReinstalls   = False
+       depResolverAvoidReinstalls   = False,
+       depResolverMaxBackjumps      = Nothing
      }
 
 addTargets :: [PackageName]
@@ -175,6 +178,12 @@ setAvoidReinstalls :: Bool -> DepResolverParams -> DepResolverParams
 setAvoidReinstalls b params =
     params {
       depResolverAvoidReinstalls = b
+    }
+
+setMaxBackjumps :: Maybe Int -> DepResolverParams -> DepResolverParams
+setMaxBackjumps n params =
+    params {
+      depResolverMaxBackjumps = n
     }
 
 dontUpgradeBasePackage :: DepResolverParams -> DepResolverParams
@@ -308,7 +317,7 @@ resolveDependencies platform comp params
 resolveDependencies platform comp params =
 
     fmap (mkInstallPlan platform comp)
-  $ defaultResolver (SolverConfig reorderGoals noReinstalls)
+  $ defaultResolver (SolverConfig reorderGoals noReinstalls maxBkjumps)
                     platform comp installedPkgIndex sourcePkgIndex
                     preferences constraints targets
   where
@@ -318,7 +327,8 @@ resolveDependencies platform comp params =
       installedPkgIndex
       sourcePkgIndex
       reorderGoals
-      noReinstalls    = dontUpgradeBasePackage
+      noReinstalls
+      maxBkjumps      = dontUpgradeBasePackage
                       . hideBrokenInstalledPackages
                       $ params
 
@@ -394,7 +404,7 @@ resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [SourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
-                              _reorderGoals _avoidReinstalls) =
+                              _reorderGoals _avoidReinstalls _maxBackjumps) =
     collectEithers (map selectPackage targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError SourcePackage

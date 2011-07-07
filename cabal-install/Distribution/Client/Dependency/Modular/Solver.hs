@@ -19,7 +19,8 @@ import Distribution.Client.Dependency.Modular.Validate
 
 data SolverConfig = SolverConfig {
   preferEasyGoalChoices :: Bool,
-  avoidReinstalls       :: Bool
+  avoidReinstalls       :: Bool,
+  maxBackjumps          :: Maybe Int
 }
 
 solve :: SolverConfig ->   -- solver parameters
