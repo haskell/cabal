@@ -394,7 +394,6 @@ hookedAction pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    -- localbuildinfo?
    cmd_hook hooks pkg_descr localbuildinfo hooks flags
    post_hook hooks args flags pkg_descr localbuildinfo
-  where
 
 sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
 sanityCheckHookedBuildInfo PackageDescription { library = Nothing } (Just _,_)
