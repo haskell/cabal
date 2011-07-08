@@ -191,15 +191,13 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let exeDir = buildDir lbi </> nm </> nm ++ "-tmp"
         dirs   = hsSourceDirs bi ++ [autogenModulesDir lbi]
-    unless (null (executables pd)) $
-      setupMessage verbosity ("Preprocessing executable '" ++ nm ++ "' for") (packageId pd)
+    setupMessage verbosity ("Preprocessing executable '" ++ nm ++ "' for") (packageId pd)
     forM_ (map ModuleName.toFilePath $ otherModules bi) $
       pre dirs exeDir (localHandlers bi)
     pre (hsSourceDirs bi) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
-  CTest test -> do
-    unless (null (testSuites pd)) $
-      setupMessage verbosity "Preprocessing test suites for" (packageId pd)
+  CTest test@TestSuite{ testName = nm } -> do
+    setupMessage verbosity ("Preprocessing test suite '" ++ nm ++ "' for") (packageId pd)
     case testInterface test of
       TestSuiteExeV10 _ f ->
           preProcessTest test f $ buildDir lbi </> testName test
