@@ -82,8 +82,7 @@ import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , FlagName(..), TestSuite(..)
-    , allComponentsBy, Component(..), compSel )
+    , FlagName(..), TestSuite(..) )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
@@ -102,7 +101,8 @@ import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-    , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId )
+    , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
+    , allComponentsBy, Component(..), foldComponent, ComponentName(..) )
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
@@ -485,7 +485,7 @@ configure (pkg_descr0, pbi) cfg
                  mapMaybe exeDepToComp (buildTools bi)
               ++ mapMaybe libDepToComp (targetBuildDepends bi)
               where
-                bi = compSel libBuildInfo buildInfo testBuildInfo $ component
+                bi = foldComponent libBuildInfo buildInfo testBuildInfo component
                 exeDepToComp (Dependency (PackageName name) _) =
                   CExe `fmap` find ((==) name . exeName)
                                 (executables pkg_descr')
@@ -498,11 +498,14 @@ configure (pkg_descr0, pbi) cfg
               where (g, lkup, _) = graphFromEdges
                                  $ allComponentsBy pkg_descr'
                                  $ \c -> (c, key c, map key (ipDeps c))
-                    key          = compSel (const "library") exeName testName
+                    key          = foldComponent (const "library") exeName testName
 
         -- check for cycles in the dependency graph
         buildOrder <- forM sccs $ \scc -> case scc of
-          AcyclicSCC (c,_,_) -> return c
+          AcyclicSCC (c,_,_) -> return (foldComponent (const CLibName)
+                                                      (CExeName . exeName)
+                                                      (CTestName . testName)
+                                                      c)
           CyclicSCC vs ->
             die $ "Found cycle in intrapackage dependency graph:\n  "
                 ++ intercalate " depends on "

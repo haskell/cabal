@@ -66,14 +66,14 @@ import Distribution.PackageDescription as PD
          , Executable(..)
          , Library(..), libModules
          , TestSuite(..), testModules
-         , TestSuiteInterface(..)
-         , Component(..) )
+         , TestSuiteInterface(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
+import Distribution.Simple.LocalBuildInfo
+         ( LocalBuildInfo(..), Component(..) )
 import Distribution.Simple.BuildPaths (autogenModulesDir,cppHeaderName)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
@@ -197,7 +197,7 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
       pre dirs exeDir (localHandlers bi)
     pre (hsSourceDirs bi) exeDir (localHandlers bi) $
       dropExtensions (modulePath exe)
-  CTst test -> do
+  CTest test -> do
     unless (null (testSuites pd)) $
       setupMessage verbosity "Preprocessing test suites for" (packageId pd)
     case testInterface test of
