@@ -15,8 +15,7 @@ module Distribution.Client.List (
 
 import Distribution.Package
          ( PackageName(..), Package(..), packageName, packageVersion
-         , Dependency(..), InstalledPackageId()
-         , thisPackageVersion, depends, simplifyDependency )
+         , Dependency(..), simplifyDependency )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -42,8 +41,7 @@ import Distribution.Text
          ( Text(disp), display )
 
 import Distribution.Client.Types
-         ( SourcePackage(..), Repo, SourcePackageDb(..)
-         , InstalledPackage(..) )
+         ( SourcePackage(..), Repo, SourcePackageDb(..) )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..), ExtDependency(..) )
 import Distribution.Client.Targets
@@ -183,7 +181,7 @@ info verbosity packageDBs repos comp conf
 
       | otherwise
       = Right $ mergePackageInfo pref installedPkgs
-                                 sourcePkgs  selectedSourcePkg
+                                 sourcePkgs  selectedSourcePkg'
                                  showPkgVersion
       where
         pref           = prefs name
@@ -194,7 +192,7 @@ info verbosity packageDBs repos comp conf
                                     (Dependency name verConstraint)
         selectedSourcePkgs    =          PackageIndex.lookupDependency sourcePkgIndex
                                     (Dependency name verConstraint)
-        selectedSourcePkg     = latestWithPref pref selectedSourcePkgs
+        selectedSourcePkg'    = latestWithPref pref selectedSourcePkgs
 
                          -- display a specific package version if the user
                          -- supplied a non-trivial version constraint
