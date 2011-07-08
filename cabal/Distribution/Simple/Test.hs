@@ -194,9 +194,8 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
             unless (fromFlag $ testKeepTix flags)
                 $ mapM_ deleteIfExists tixFiles
 
-            -- Write summary notices indicating start of test suite
+            -- Write summary notice to console indicating start of test suite
             notice verbosity $ summarizeSuiteStart $ PD.testName suite
-            appendFile tempLog $ summarizeSuiteStart $ PD.testName suite
 
             -- Prepare standard input for test executable
             appendFile tempInput $ preTest tempInput
@@ -218,12 +217,15 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
             let finalLogName = testLogDir </> logNamer suiteLog
                 suiteLog' = suiteLog { logFile = finalLogName }
 
-            -- Write summary notice to log file indicating end of test suite
-            appendFile tempLog $ summarizeSuiteFinish suiteLog'
+            -- Write summary notice to log file indicating start of test suite
+            appendFile (logFile suiteLog') $ summarizeSuiteStart $ PD.testName suite
 
             -- Append contents of temporary log file to the final human-
             -- readable log file
             readFile tempLog >>= appendFile (logFile suiteLog')
+
+            -- Write end-of-suite summary notice to log file
+            appendFile (logFile suiteLog') $ summarizeSuiteFinish suiteLog'
 
             -- Show the contents of the human-readable log file on the terminal
             -- if there is a failure and/or detailed output is requested
@@ -231,8 +233,8 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
                 whenPrinting = when $ (details > Never)
                     && (not (suitePassed suiteLog) || details == Always)
                     && verbosity >= normal
-            whenPrinting $ readFile (logFile suiteLog') >>=
-                putStr . unlines . map (">>> " ++) . lines
+            whenPrinting $ readFile tempLog >>=
+                putStr . unlines . lines
 
             -- Write summary notice to terminal indicating end of test suite
             notice verbosity $ summarizeSuiteFinish suiteLog'
