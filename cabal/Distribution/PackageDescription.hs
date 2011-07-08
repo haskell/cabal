@@ -470,7 +470,9 @@ data TestType = TestTypeExe Version     -- ^ \"type: exitcode-stdio-x.y\"
 
 knownTestTypes :: [TestType]
 knownTestTypes = [ TestTypeExe (Version [1,0] [])
-                 , TestTypeLib (Version [0,9] []) ]
+                   -- 'detailed-0.9' test type is disabled in Cabal-1.10.x
+                   -- needs more work on the details of the library interface
+              {- , TestTypeLib (Version [0,9] []) -} ]
 
 instance Text TestType where
   disp (TestTypeExe ver)          = text "exitcode-stdio-" <> disp ver
