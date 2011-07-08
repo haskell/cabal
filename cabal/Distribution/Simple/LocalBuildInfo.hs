@@ -48,11 +48,18 @@ module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
         externalPackageDeps,
         inplacePackageId,
+
+        -- * Buildable package components
+        Component(..),
+        foldComponent,
+        allComponentsBy,
+        ComponentName(..),
+        ComponentLocalBuildInfo(..),
+        withComponentsLBI,
         withLibLBI,
         withExeLBI,
-        withComponentsLBI,
         withTestLBI,
-        ComponentLocalBuildInfo(..),
+
         -- * Installation directories
         module Distribution.Simple.InstallDirs,
         absoluteInstallDirs, prefixRelativeInstallDirs,
@@ -66,9 +73,9 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
-         ( PackageDescription(..), withLib, Library, withExe
-         , Executable(exeName), withTest, TestSuite(..)
-         , Component(..) )
+         ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
+         , Executable(exeName, buildInfo), withTest, TestSuite(..)
+         , BuildInfo(buildable) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..) )
 import Distribution.Simple.Compiler
@@ -82,7 +89,7 @@ import Distribution.Simple.Setup
 import Distribution.Text
          ( display )
 
-import Data.List (nub)
+import Data.List (nub, find)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -106,7 +113,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ Where to put the result of the Hugs build.
         libraryConfig       :: Maybe ComponentLocalBuildInfo,
         executableConfigs   :: [(String, ComponentLocalBuildInfo)],
-        compBuildOrder :: [Component],
+        compBuildOrder :: [ComponentName],
                 -- ^ All the components to build, ordered by topological sort
                 -- over the intrapackage dependency graph
         testSuiteConfigs    :: [(String, ComponentLocalBuildInfo)],
@@ -133,15 +140,6 @@ data LocalBuildInfo = LocalBuildInfo {
         progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
   } deriving (Read, Show)
 
-data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
-    -- | Resolved internal and external package dependencies for this component.
-    -- The 'BuildInfo' specifies a set of build dependencies that must be
-    -- satisfied in terms of version ranges. This field fixes those dependencies
-    -- to the specific versions available on this machine for this compiler.
-    componentPackageDeps :: [(InstalledPackageId, PackageId)]
-  }
-  deriving (Read, Show)
-
 -- | External package dependencies for the package as a whole, the union of the
 -- individual 'targetPackageDeps'.
 externalPackageDeps :: LocalBuildInfo -> [(InstalledPackageId, PackageId)]
@@ -156,6 +154,51 @@ externalPackageDeps lbi = nub $
 inplacePackageId :: PackageId -> InstalledPackageId
 inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 
+-- -----------------------------------------------------------------------------
+-- Buildable components
+
+data Component = CLib  Library
+               | CExe  Executable
+               | CTest TestSuite
+               deriving (Show, Eq, Read)
+
+data ComponentName = CLibName  -- currently only a single lib
+                   | CExeName  String
+                   | CTestName String
+                   deriving (Show, Eq, Read)
+
+data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
+    -- | Resolved internal and external package dependencies for this component.
+    -- The 'BuildInfo' specifies a set of build dependencies that must be
+    -- satisfied in terms of version ranges. This field fixes those dependencies
+    -- to the specific versions available on this machine for this compiler.
+    componentPackageDeps :: [(InstalledPackageId, PackageId)]
+  }
+  deriving (Read, Show)
+
+foldComponent :: (Library -> a)
+              -> (Executable -> a)
+              -> (TestSuite -> a)
+              -> Component
+              -> a
+foldComponent f _ _ (CLib  lib) = f lib
+foldComponent _ f _ (CExe  exe) = f exe
+foldComponent _ _ f (CTest tst) = f tst
+
+-- | Obtains all components (libs, exes, or test suites), transformed by the
+-- given function.  Useful for gathering dependencies with component context.
+allComponentsBy :: PackageDescription
+                -> (Component -> a)
+                -> [a]
+allComponentsBy pkg_descr f =
+    [ f (CLib  lib) | Just lib <- [library pkg_descr]
+                    , buildable (libBuildInfo lib) ]
+ ++ [ f (CExe  exe) | exe <- executables pkg_descr
+                    , buildable (buildInfo exe) ]
+ ++ [ f (CTest tst) | tst <- testSuites pkg_descr
+                    , buildable (testBuildInfo tst)
+                    , testEnabled tst ]
+
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.  Extended version of
 -- 'withLib' that also gives corresponding build info.
@@ -164,8 +207,7 @@ withLibLBI :: PackageDescription -> LocalBuildInfo
 withLibLBI pkg_descr lbi f = withLib pkg_descr $ \lib ->
   case libraryConfig lbi of
     Just clbi -> f lib clbi
-    Nothing   -> die $ "internal error: the package contains a library "
-                    ++ "but there is no corresponding configuration data"
+    Nothing   -> die missingLibConf
 
 -- | Perform the action on each buildable 'Executable' in the package
 -- description.  Extended version of 'withExe' that also gives corresponding
@@ -175,45 +217,63 @@ withExeLBI :: PackageDescription -> LocalBuildInfo
 withExeLBI pkg_descr lbi f = withExe pkg_descr $ \exe ->
   case lookup (exeName exe) (executableConfigs lbi) of
     Just clbi -> f exe clbi
-    Nothing   -> die $ "internal error: the package contains an executable "
-                    ++ exeName exe ++ " but there is no corresponding "
-                    ++ "configuration data"
+    Nothing   -> die (missingExeConf (exeName exe))
+
+withTestLBI :: PackageDescription -> LocalBuildInfo
+            -> (TestSuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()
+withTestLBI pkg_descr lbi f = withTest pkg_descr $ \test ->
+  case lookup (testName test) (testSuiteConfigs lbi) of
+    Just clbi -> f test clbi
+    Nothing -> die (missingTestConf (testName test))
 
 -- | Perform the action on each buildable 'Library' or 'Executable' (Component)
 -- in the PackageDescription, subject to the build order specified by the
 -- 'compBuildOrder' field of the given 'LocalBuildInfo'
-withComponentsLBI :: LocalBuildInfo
+withComponentsLBI :: PackageDescription -> LocalBuildInfo
                   -> (Component -> ComponentLocalBuildInfo -> IO ())
                   -> IO ()
-withComponentsLBI lbi f = mapM_ compF (compBuildOrder lbi)
+withComponentsLBI pkg_descr lbi f = mapM_ compF (compBuildOrder lbi)
   where
-    compF l@(CLib _lib) =
-      case libraryConfig lbi of
-        Just clbi -> f l clbi
-        Nothing   -> die $ "internal error: the package contains a library "
-                        ++ "but there is no corresponding configuration data"
-    compF r@(CExe exe) =
-      case lookup (exeName exe) (executableConfigs lbi) of
-        Just clbi -> f r clbi
-        Nothing   -> die $ "internal error: the package contains an executable "
-                        ++ exeName exe ++ " but there is no corresponding "
-                        ++ "configuration data"
-    compF t@(CTst test) =
-      case lookup (testName test) (testSuiteConfigs lbi) of
-        Just clbi -> f t clbi
-        Nothing -> die $ "internal error: the package contains a test suite "
-                        ++ testName test ++ " but there is no corresponding "
-                        ++ "configuration data"
+    compF CLibName =
+        case library pkg_descr of
+          Nothing  -> die missinglib
+          Just lib -> case libraryConfig lbi of
+                        Nothing   -> die missingLibConf
+                        Just clbi -> f (CLib lib) clbi
+      where
+        missinglib  = "internal error: component list includes a library "
+                   ++ "but the package description contains no library"
 
-withTestLBI :: PackageDescription -> LocalBuildInfo
-            -> (TestSuite -> ComponentLocalBuildInfo -> IO ()) -> IO ()
-withTestLBI pkg_descr lbi f =
-    let wrapper test = case lookup (testName test) (testSuiteConfigs lbi) of
-            Just clbi -> f test clbi
-            Nothing -> die $ "internal error: the package contains a test suite "
-                            ++ testName test ++ " but there is no corresponding "
-                            ++ "configuration data"
-    in withTest pkg_descr wrapper
+    compF (CExeName name) =
+        case find (\exe -> exeName exe == name) (executables pkg_descr) of
+          Nothing  -> die missingexe
+          Just exe -> case lookup name (executableConfigs lbi) of
+                        Nothing   -> die (missingExeConf name)
+                        Just clbi -> f (CExe exe) clbi
+      where
+        missingexe  = "internal error: component list includes an executable "
+                   ++ name ++ " but the package contains no such executable."
+
+    compF (CTestName name) =
+        case find (\tst -> testName tst == name) (testSuites pkg_descr) of
+          Nothing  -> die missingtest
+          Just tst -> case lookup name (testSuiteConfigs lbi) of
+                        Nothing   -> die (missingTestConf name)
+                        Just clbi -> f (CTest tst) clbi
+      where
+        missingtest = "internal error: component list includes a test suite "
+                   ++ name ++ " but the package contains no such test suite."
+
+missingLibConf :: String
+missingExeConf, missingTestConf :: String -> String
+
+missingLibConf       = "internal error: the package contains a library "
+                    ++ "but there is no corresponding configuration data"
+missingExeConf  name = "internal error: the package contains an executable "
+                    ++ name ++ " but there is no corresponding configuration data"
+missingTestConf name = "internal error: the package contains a test suite "
+                    ++ name ++ " but there is no corresponding configuration data"
+
 
 -- -----------------------------------------------------------------------------
 -- Wrappers for a couple functions from InstallDirs

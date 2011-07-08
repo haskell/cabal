@@ -59,10 +59,6 @@ module Distribution.PackageDescription (
         BuildType(..),
         knownBuildTypes,
 
-        -- ** Primary Components
-        Component(..),
-        compSel,
-
         -- ** Libraries
         Library(..),
         emptyLibrary,
@@ -93,7 +89,6 @@ module Distribution.PackageDescription (
         BuildInfo(..),
         emptyBuildInfo,
         allBuildInfo,
-        allComponentsBy,
         allLanguages,
         allExtensions,
         usedExtensions,
@@ -608,42 +603,18 @@ emptyBuildInfo = mempty
 -- | The 'BuildInfo' for the library (if there is one and it's buildable), and
 -- all buildable executables and test suites.  Useful for gathering dependencies.
 allBuildInfo :: PackageDescription -> [BuildInfo]
-allBuildInfo = flip allComponentsBy
-             $ compSel libBuildInfo buildInfo testBuildInfo
+allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
+                              , let bi = libBuildInfo lib
+                              , buildable bi ]
+                      ++ [ bi | exe <- executables pkg_descr
+                              , let bi = buildInfo exe
+                              , buildable bi ]
+                      ++ [ bi | tst <- testSuites pkg_descr
+                              , let bi = testBuildInfo tst
+                              , buildable bi
+                              , testEnabled tst ]
   --FIXME: many of the places where this is used, we actually want to look at
   --       unbuildable bits too, probably need separate functions
-
-data Component = CLib Library
-               | CExe Executable
-               | CTst TestSuite
-               deriving (Show, Eq, Read)
-
-compSel :: (Library -> a)
-        -> (Executable -> a)
-        -> (TestSuite -> a)
-        -> Component
-        -> a
-compSel f _ _ (CLib l) = f l
-compSel _ f _ (CExe e) = f e
-compSel _ _ f (CTst t) = f t
-
--- | Obtains all components (libs, exes, or test suites), transformed by the
--- given function.  Useful for gathering dependencies with component context.
-allComponentsBy :: PackageDescription
-                -> (Component -> a)
-                -> [a]
-allComponentsBy pkg_descr f = [ f (CLib l) | Just l <- [library pkg_descr]
-                                           , buildable (libBuildInfo l)
-                              ]
-                              ++
-                              [ f (CExe e) | e <- executables pkg_descr
-                                           , buildable (buildInfo e)
-                              ]
-                              ++
-                              [ f (CTst t) | t <- testSuites pkg_descr
-                                           , buildable (testBuildInfo t)
-                                           , testEnabled t
-                              ]
 
 -- | The 'Language's used by this component
 --

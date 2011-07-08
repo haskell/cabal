@@ -56,7 +56,7 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), allExtensions
-         , Library(..), hasLibs, Executable(..), Component(..) )
+         , Library(..), hasLibs, Executable(..) )
 import Distribution.Simple.Compiler
          ( Compiler(..), compilerVersion )
 import Distribution.Simple.GHC ( ghcLibDir )
@@ -78,7 +78,7 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
                                         initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), externalPackageDeps
-         , ComponentLocalBuildInfo(..), withComponentsLBI )
+         , Component(..), ComponentLocalBuildInfo(..), withComponentsLBI )
 import Distribution.Simple.BuildPaths ( haddockName,
                                         hscolourPref, autogenModulesDir,
                                         )
@@ -201,7 +201,7 @@ haddock pkg_descr lbi suffixes flags = do
             , fromPackageDescription pkg_descr ]
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
-    withComponentsLBI lbi $ \comp clbi -> do
+    withComponentsLBI pkg_descr lbi $ \comp clbi -> do
       pre comp
       case comp of
         CLib lib -> do
@@ -505,7 +505,7 @@ hscolour' pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref distPref pkg_descr
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
-    withComponentsLBI lbi $ \comp _ -> do
+    withComponentsLBI pkg_descr lbi $ \comp _ -> do
       pre comp
       case comp of
         CLib lib -> do

@@ -69,7 +69,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-         , TestSuite(..), TestSuiteInterface(..), Component(..) )
+         , TestSuite(..), TestSuiteInterface(..) )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
@@ -79,7 +79,7 @@ import Distribution.Simple.PreProcess
          ( preprocessComponent, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(compiler, buildDir, withPackageDB)
-         , ComponentLocalBuildInfo(..), withComponentsLBI
+         , Component(..), ComponentLocalBuildInfo(..), withComponentsLBI
          , inplacePackageId )
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName )
@@ -123,7 +123,7 @@ build pkg_descr lbi flags suffixes = do
   let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
       lbi'  = lbi {withPackageDB = withPackageDB lbi ++ [internalPackageDB]}
               -- Use the internal package DB for the exes.
-  withComponentsLBI lbi $ \comp clbi -> do
+  withComponentsLBI pkg_descr lbi $ \comp clbi -> do
     pre comp
     case comp of
       CLib lib -> do
@@ -147,7 +147,7 @@ build pkg_descr lbi flags suffixes = do
         info verbosity $ "Building executable " ++ exeName exe ++ "..."
         buildExe verbosity pkg_descr lbi' exe clbi
 
-      CTst test -> do
+      CTest test -> do
         case testInterface test of
             TestSuiteExeV10 _ f -> do
                 let exe = Executable

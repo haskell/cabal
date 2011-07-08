@@ -227,7 +227,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   case mb_lbi of
     Just lbi | not (null pps) -> do
       let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }   
-      withComponentsLBI lbi' $ \c _ ->
+      withComponentsLBI pkg_descr lbi' $ \c _ ->
         preprocessComponent pkg_descr c lbi' True verbosity pps
     _ -> return ()
 
