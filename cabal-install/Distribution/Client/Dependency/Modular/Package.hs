@@ -95,6 +95,11 @@ type Scope = Map PN PP
 emptyScope :: Scope
 emptyScope = M.empty
 
+-- | Create artificial parents for each of the package names, making
+-- them all independent.
+makeIndependent :: [PN] -> Scope
+makeIndependent ps = L.foldl (\ sc (n, p) -> M.insert p [PackageName (show n)] sc) emptyScope (zip ([0..] :: [Int]) ps)
+
 qualify :: Scope -> PN -> QPN
 qualify sc pn = Q (findWithDefault [] pn sc) pn
 

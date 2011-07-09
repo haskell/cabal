@@ -19,6 +19,7 @@ import Distribution.Client.Dependency.Modular.Validate
 
 data SolverConfig = SolverConfig {
   preferEasyGoalChoices :: Bool,
+  independentGoals      :: Bool,
   avoidReinstalls       :: Bool,
   maxBackjumps          :: Maybe Int
 }
@@ -46,4 +47,4 @@ solve sc idx userPrefs userConstraints userGoals =
                        validateTree idx
     prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
                        P.requireInstalled (== PackageName "base") -- never try to install a new "base"
-    buildPhase       = buildTree idx userGoals
+    buildPhase       = buildTree idx (independentGoals sc) userGoals
