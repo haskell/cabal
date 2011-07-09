@@ -5,7 +5,6 @@ module Distribution.Client.Dependency.Modular.Builder where
 import Control.Monad.Reader hiding (sequence, mapM)
 import Data.List as L
 import Data.Map as M
-import Data.Set as S
 import Prelude hiding (sequence, mapM)
 
 import Distribution.Client.Dependency.Modular.Dependency
@@ -111,11 +110,13 @@ build = ana go
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> [PN] -> Tree (QGoalReasons, Scope)
-buildTree idx igs =
-    build (BS idx emptyScope
+buildTree :: Index -> Bool -> [PN] -> Tree (QGoalReasons, Scope)
+buildTree idx ind igs =
+    build (BS idx sc
                   (M.fromList (L.map (\ qpn -> (qpn, []))                                                     qpns))
                   (P.fromList (L.map (\ qpn -> (OpenGoal (Simple (Dep qpn (Constrained []))) [UserGoal], ())) qpns))
                   Goals)
   where
-    qpns = L.map (qualify emptyScope) igs
+    sc | ind       = makeIndependent igs
+       | otherwise = emptyScope
+    qpns           = L.map (qualify sc) igs
