@@ -570,22 +570,23 @@ instance Monoid InfoFlags where
 -- | Install takes the same flags as configure along with a few extras.
 --
 data InstallFlags = InstallFlags {
-    installDocumentation   :: Flag Bool,
-    installHaddockIndex    :: Flag PathTemplate,
-    installDryRun          :: Flag Bool,
-    installReinstall       :: Flag Bool,
-    installAvoidReinstalls :: Flag Bool,
-    installMaxBackjumps    :: Flag Int,
-    installUpgradeDeps     :: Flag Bool,
-    installReorderGoals    :: Flag Bool,
-    installOnly            :: Flag Bool,
-    installOnlyDeps        :: Flag Bool,
-    installRootCmd         :: Flag String,
-    installSummaryFile     :: [PathTemplate],
-    installLogFile         :: Flag PathTemplate,
-    installBuildReports    :: Flag ReportLevel,
-    installSymlinkBinDir   :: Flag FilePath,
-    installOneShot         :: Flag Bool
+    installDocumentation    :: Flag Bool,
+    installHaddockIndex     :: Flag PathTemplate,
+    installDryRun           :: Flag Bool,
+    installReinstall        :: Flag Bool,
+    installAvoidReinstalls  :: Flag Bool,
+    installMaxBackjumps     :: Flag Int,
+    installUpgradeDeps      :: Flag Bool,
+    installReorderGoals     :: Flag Bool,
+    installIndependentGoals :: Flag Bool,
+    installOnly             :: Flag Bool,
+    installOnlyDeps         :: Flag Bool,
+    installRootCmd          :: Flag String,
+    installSummaryFile      :: [PathTemplate],
+    installLogFile          :: Flag PathTemplate,
+    installBuildReports     :: Flag ReportLevel,
+    installSymlinkBinDir    :: Flag FilePath,
+    installOneShot          :: Flag Bool
   }
 
 defaultInstallFlags :: InstallFlags
@@ -598,6 +599,7 @@ defaultInstallFlags = InstallFlags {
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installUpgradeDeps     = Flag False,
     installReorderGoals    = Flag False,
+    installIndependentGoals= Flag False,
     installOnly            = Flag False,
     installOnlyDeps        = Flag False,
     installRootCmd         = mempty,
@@ -702,8 +704,13 @@ installOptions showOrParseArgs =
           trueArg
 
       , option [] ["reorder-goals"]
-          "Experimental: Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
+          "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
           installReorderGoals (\v flags -> flags { installReorderGoals = v })
+          trueArg
+
+      , option [] ["independent-goals"]
+          "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
+          installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
           trueArg
 
       , option [] ["only-dependencies"]
@@ -764,6 +771,7 @@ instance Monoid InstallFlags where
     installMaxBackjumps    = mempty,
     installUpgradeDeps     = mempty,
     installReorderGoals    = mempty,
+    installIndependentGoals= mempty,
     installOnly            = mempty,
     installOnlyDeps        = mempty,
     installRootCmd         = mempty,
@@ -782,6 +790,7 @@ instance Monoid InstallFlags where
     installMaxBackjumps    = combine installMaxBackjumps,
     installUpgradeDeps     = combine installUpgradeDeps,
     installReorderGoals    = combine installReorderGoals,
+    installIndependentGoals= combine installIndependentGoals,
     installOnly            = combine installOnly,
     installOnlyDeps        = combine installOnlyDeps,
     installRootCmd         = combine installRootCmd,

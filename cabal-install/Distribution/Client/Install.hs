@@ -238,6 +238,8 @@ planPackages comp configFlags configExFlags installFlags
         setMaxBackjumps (if maxBackjumps < 0 then Nothing
                                              else Just maxBackjumps)
 
+      . setIndependentGoals independentGoals
+
       . setReorderGoals reorderGoals
 
       . setAvoidReinstalls avoidReinstalls
@@ -318,12 +320,13 @@ planPackages comp configFlags configExFlags installFlags
                   , depid <- depids
                   , packageName depid `elem` targetnames ]
 
-    reinstall       = fromFlag (installReinstall       installFlags)
-    reorderGoals    = fromFlag (installReorderGoals    installFlags)
-    avoidReinstalls = fromFlag (installAvoidReinstalls installFlags)
-    maxBackjumps    = fromFlag (installMaxBackjumps    installFlags)
-    upgradeDeps     = fromFlag (installUpgradeDeps     installFlags)
-    onlyDeps        = fromFlag (installOnlyDeps        installFlags)
+    reinstall        = fromFlag (installReinstall        installFlags)
+    reorderGoals     = fromFlag (installReorderGoals     installFlags)
+    independentGoals = fromFlag (installIndependentGoals installFlags)
+    avoidReinstalls  = fromFlag (installAvoidReinstalls  installFlags)
+    maxBackjumps     = fromFlag (installMaxBackjumps     installFlags)
+    upgradeDeps      = fromFlag (installUpgradeDeps      installFlags)
+    onlyDeps         = fromFlag (installOnlyDeps         installFlags)
 
 -- ------------------------------------------------------------
 -- * Informational messages
