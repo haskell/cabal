@@ -36,9 +36,9 @@ checkTestWithHpc cabalVersion = TestCase $ do
     let testMessage = "\'setup test\' should succeed"
     assertEqual testMessage True $ successful testResult
     let dummy = emptyTestSuite { testName = "test-Foo" }
-        tixFile = tixFilePath (dir </> "dist") dummy
+        tixFile = tixFilePath (dir </> "dist") $ testName dummy
         tixFileMessage = ".tix file should exist"
-        markupDir = tixDir (dir </> "dist") dummy
+        markupDir = htmlDir (dir </> "dist") $ testName dummy
         markupFile = markupDir </> "hpc_index" <.> "html"
         markupFileMessage = "HPC markup file should exist"
     tixFileExists <- doesFileExist tixFile
