@@ -63,7 +63,8 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..), CompilerId )
-import Distribution.Simple.Hpc ( markupTest, tixDir, tixFilePath )
+import Distribution.Simple.Hpc
+    ( markupPackage, markupTest, tixDir, tixFilePath )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, PathTemplate )
@@ -175,7 +176,8 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
     existingEnv <- getEnvironment
     let dataDirPath = pwd </> PD.dataDir pkg_descr
         shellEnv = Just $ (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                        : ("HPCTIXFILE", pwd </> tixFilePath distPref suite)
+                        : ("HPCTIXFILE", (</>) pwd
+                            $ tixFilePath distPref $ PD.testName suite)
                         : existingEnv
 
     bracket (openCabalTemp testLogDir) deleteIfExists $ \tempLog ->
@@ -183,12 +185,12 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
 
             -- Remove old .tix files if appropriate.
             unless (fromFlag $ testKeepTix flags) $ do
-                let tDir = tixDir distPref suite
+                let tDir = tixDir distPref $ PD.testName suite
                 exists <- doesDirectoryExist tDir
                 when exists $ removeDirectoryRecursive tDir
 
             -- Create directory for HPC files.
-            createDirectoryIfMissing True $ tixDir distPref suite
+            createDirectoryIfMissing True $ tixDir distPref $ PD.testName suite
 
             -- Write summary notices indicating start of test suite
             notice verbosity $ summarizeSuiteStart $ PD.testName suite
@@ -347,6 +349,10 @@ test pkg_descr lbi flags = do
             $ packageLogPath machineTemplate pkg_descr lbi
     allOk <- summarizePackage verbosity packageLog
     writeFile packageLogFile $ show packageLog
+
+    markupPackage verbosity lbi distPref (display $ PD.package pkg_descr)
+        $ map fst testsToRun
+
     unless allOk exitFailure
 
 -- | Print a summary to the console after all test suites have been run
