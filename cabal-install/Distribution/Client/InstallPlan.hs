@@ -20,6 +20,7 @@ module Distribution.Client.InstallPlan (
   new,
   toList,
   ready,
+  processing,
   completed,
   failed,
   remove,
@@ -126,18 +127,21 @@ import Control.Exception
 
 data PlanPackage = PreExisting InstalledPackage
                  | Configured  ConfiguredPackage
+                 | Processing  ConfiguredPackage
                  | Installed   ConfiguredPackage BuildSuccess
                  | Failed      ConfiguredPackage BuildFailure
 
 instance Package PlanPackage where
   packageId (PreExisting pkg) = packageId pkg
   packageId (Configured  pkg) = packageId pkg
+  packageId (Processing pkg)  = packageId pkg
   packageId (Installed pkg _) = packageId pkg
   packageId (Failed    pkg _) = packageId pkg
 
 instance PackageFixedDeps PlanPackage where
   depends (PreExisting pkg) = depends pkg
   depends (Configured  pkg) = depends pkg
+  depends (Processing pkg)  = depends pkg
   depends (Installed pkg _) = depends pkg
   depends (Failed    pkg _) = depends pkg
 
@@ -203,13 +207,16 @@ remove shouldRemove plan =
 ready :: InstallPlan -> [ConfiguredPackage]
 ready plan = assert check readyPackages
   where
-    check = if null readyPackages then null configuredPackages else True
-    configuredPackages =
-      [ pkg | Configured pkg <- PackageIndex.allPackages (planIndex plan) ]
+    check = if null readyPackages && null processingPackages
+              then null configuredPackages
+              else True
+    configuredPackages = [ pkg | Configured pkg <- toList plan ]
+    processingPackages = [ pkg | Processing pkg <- toList plan]
     readyPackages = filter (all isInstalled . depends) configuredPackages
     isInstalled pkg =
       case PackageIndex.lookupPackageId (planIndex plan) pkg of
         Just (Configured  _) -> False
+        Just (Processing  _) -> False
         Just (Failed    _ _) -> internalError depOnFailed
         Just (PreExisting _) -> True
         Just (Installed _ _) -> True
@@ -217,10 +224,22 @@ ready plan = assert check readyPackages
     incomplete  = "install plan is not closed"
     depOnFailed = "configured package depends on failed package"
 
+-- | Marks packages in the graph as currently processing (e.g. building).
+--
+-- * The package must exist in the graph and be in the configured state.
+--
+processing :: [ConfiguredPackage] -> InstallPlan -> InstallPlan
+processing pkgs plan = assert (invariant plan') plan'
+  where
+    plan' = plan {
+              planIndex = PackageIndex.merge (planIndex plan) processingPkgs
+            }
+    processingPkgs = PackageIndex.fromList [Processing pkg | pkg <- pkgs]
+
 -- | Marks a package in the graph as completed. Also saves the build result for
 -- the completed package in the plan.
 --
--- * The package must exist in the graph.
+-- * The package must exist in the graph and be in the processing state.
 -- * The package must have had no uninstalled dependent packages.
 --
 completed :: PackageIdentifier
@@ -231,12 +250,13 @@ completed pkgid buildResult plan = assert (invariant plan') plan'
     plan'     = plan {
                   planIndex = PackageIndex.insert installed (planIndex plan)
                 }
-    installed = Installed (lookupConfiguredPackage plan pkgid) buildResult
+    installed = Installed (lookupProcessingPackage plan pkgid) buildResult
 
 -- | Marks a package in the graph as having failed. It also marks all the
 -- packages that depended on it as having failed.
 --
--- * The package must exist in the graph and be in the configured state.
+-- * The package must exist in the graph and be in the processing
+-- state.
 --
 failed :: PackageIdentifier -- ^ The id of the package that failed to install
        -> BuildFailure      -- ^ The build result to use for the failed package
@@ -248,14 +268,14 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
     plan'    = plan {
                  planIndex = PackageIndex.merge (planIndex plan) failures
                }
-    pkg      = lookupConfiguredPackage plan pkgid
+    pkg      = lookupProcessingPackage plan pkgid
     failures = PackageIndex.fromList
              $ Failed pkg buildResult
              : [ Failed pkg' buildResult'
                | Just pkg' <- map checkConfiguredPackage
                             $ packagesThatDependOn plan pkgid ]
 
--- | lookup the reachable packages in the reverse dependency graph
+-- | Lookup the reachable packages in the reverse dependency graph.
 --
 packagesThatDependOn :: InstallPlan
                      -> PackageIdentifier -> [PlanPackage]
@@ -264,16 +284,16 @@ packagesThatDependOn plan = map (planPkgOf plan)
                           . Graph.reachable (planGraphRev plan)
                           . planVertexOf plan
 
--- | lookup a package that we expect to be in the configured state
+-- | Lookup a package that we expect to be in the processing state.
 --
-lookupConfiguredPackage :: InstallPlan
+lookupProcessingPackage :: InstallPlan
                         -> PackageIdentifier -> ConfiguredPackage
-lookupConfiguredPackage plan pkgid =
+lookupProcessingPackage plan pkgid =
   case PackageIndex.lookupPackageId (planIndex plan) pkgid of
-    Just (Configured pkg) -> pkg
-    _  -> internalError $ "not configured or no such pkg " ++ display pkgid
+    Just (Processing pkg) -> pkg
+    _  -> internalError $ "not in processing state or no such pkg " ++ display pkgid
 
--- | check a package that we expect to be in the configured or failed state
+-- | Check a package that we expect to be in the configured or failed state.
 --
 checkConfiguredPackage :: PlanPackage -> Maybe ConfiguredPackage
 checkConfiguredPackage (Configured pkg) = Just pkg
@@ -334,6 +354,7 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
   where
     showPlanState (PreExisting _) = "pre-existing"
     showPlanState (Configured  _) = "configured"
+    showPlanState (Processing _)  = "processing"
     showPlanState (Installed _ _) = "installed"
     showPlanState (Failed    _ _) = "failed"
 
@@ -409,7 +430,11 @@ stateDependencyRelation (PreExisting _) (PreExisting _) = True
 
 stateDependencyRelation (Configured  _) (PreExisting _) = True
 stateDependencyRelation (Configured  _) (Configured  _) = True
+stateDependencyRelation (Configured  _) (Processing  _) = True
 stateDependencyRelation (Configured  _) (Installed _ _) = True
+
+stateDependencyRelation (Processing  _) (PreExisting _) = True
+stateDependencyRelation (Processing  _) (Installed _ _) = True
 
 stateDependencyRelation (Installed _ _) (PreExisting _) = True
 stateDependencyRelation (Installed _ _) (Installed _ _) = True
@@ -419,6 +444,7 @@ stateDependencyRelation (Failed    _ _) (PreExisting _) = True
 -- several other packages and if one of the deps fail then we fail
 -- but we still depend on the other ones that did not fail:
 stateDependencyRelation (Failed    _ _) (Configured  _) = True
+stateDependencyRelation (Failed    _ _) (Processing _)  = True
 stateDependencyRelation (Failed    _ _) (Installed _ _) = True
 stateDependencyRelation (Failed    _ _) (Failed    _ _) = True
 
