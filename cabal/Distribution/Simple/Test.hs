@@ -63,7 +63,7 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( Compiler(..), CompilerId )
-import Distribution.Simple.Hpc ( doHpcMarkup, findTixFiles, tixDir )
+import Distribution.Simple.Hpc ( markupTest, tixDir, tixFilePath )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, PathTemplate )
@@ -82,8 +82,9 @@ import Control.Monad ( when, liftM, unless, filterM )
 import Data.Char ( toUpper )
 import Data.Monoid ( mempty )
 import System.Directory
-    ( createDirectoryIfMissing, doesFileExist, getCurrentDirectory
-    , removeFile, getDirectoryContents )
+    ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
+    , getCurrentDirectory, getDirectoryContents, removeDirectoryRecursive
+    , removeFile )
 import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>), (<.>) )
@@ -174,26 +175,22 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
     existingEnv <- getEnvironment
     let dataDirPath = pwd </> PD.dataDir pkg_descr
         shellEnv = Just $ (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                        : ("HPCTIXDIR", pwd </> tixDir distPref suite)
+                        : ("HPCTIXFILE", pwd </> tixFilePath distPref suite)
                         : existingEnv
 
     bracket (openCabalTemp testLogDir) deleteIfExists $ \tempLog ->
         bracket (openCabalTemp testLogDir) deleteIfExists $ \tempInput -> do
 
-            -- Check that the test executable exists.
-            exists <- doesFileExist cmd
-            unless exists $ die $ "Error: Could not find test program \"" ++ cmd
-                                  ++ "\". Did you build the package first?"
+            -- Remove old .tix files if appropriate.
+            unless (fromFlag $ testKeepTix flags) $ do
+                let tDir = tixDir distPref suite
+                exists <- doesDirectoryExist tDir
+                when exists $ removeDirectoryRecursive tDir
 
             -- Create directory for HPC files.
             createDirectoryIfMissing True $ tixDir distPref suite
 
-            -- Remove old .tix files if appropriate.
-            tixFiles <- findTixFiles distPref suite
-            unless (fromFlag $ testKeepTix flags)
-                $ mapM_ deleteIfExists tixFiles
-
-            -- Write summary notice to console indicating start of test suite
+            -- Write summary notices indicating start of test suite
             notice verbosity $ summarizeSuiteStart $ PD.testName suite
 
             -- Prepare standard input for test executable
@@ -238,7 +235,8 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
             -- Write summary notice to terminal indicating end of test suite
             notice verbosity $ summarizeSuiteFinish suiteLog'
 
-            doHpcMarkup verbosity distPref (display $ PD.package pkg_descr) suite
+            markupTest verbosity lbi distPref
+                (display $ PD.package pkg_descr) suite
 
             return suiteLog'
     where
