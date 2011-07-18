@@ -42,8 +42,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Hpc
     ( enableCoverage
+    , htmlDir
     , tixDir
     , tixFilePath
+    , markupPackage
     , markupTest
     ) where
 
@@ -59,11 +61,11 @@ import Distribution.PackageDescription
     )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Program ( hpcProgram, requireProgram )
-import Distribution.Simple.Program.Hpc ( markup )
+import Distribution.Simple.Program.Hpc ( markup, union )
 import Distribution.Simple.Utils ( notice )
 import Distribution.Text
 import Distribution.Verbosity ( Verbosity() )
-import System.Directory ( doesFileExist )
+import System.Directory ( createDirectoryIfMissing, doesFileExist )
 import System.FilePath
 
 -- -------------------------------------------------------------------------
@@ -111,15 +113,20 @@ mixDir :: FilePath  -- ^ \"dist/\" prefix
 mixDir distPref name = hpcDir distPref </> "mix" </> name
 
 tixDir :: FilePath  -- ^ \"dist/\" prefix
-       -> TestSuite -- ^ Test suite
+       -> FilePath  -- ^ Component name
        -> FilePath  -- ^ Directory containing test suite's .tix files
-tixDir distPref suite = hpcDir distPref </> "tix" </> testName suite
+tixDir distPref name = hpcDir distPref </> "tix" </> name
 
 -- | Path to the .tix file containing a test suite's sum statistics.
 tixFilePath :: FilePath     -- ^ \"dist/\" prefix
-            -> TestSuite    -- ^ Test suite
-            -> FilePath     -- Path to test suite's .tix file
-tixFilePath distPref suite = tixDir distPref suite </> testName suite <.> "tix"
+            -> FilePath     -- ^ Component name
+            -> FilePath     -- ^ Path to test suite's .tix file
+tixFilePath distPref name = tixDir distPref name </> name <.> "tix"
+
+htmlDir :: FilePath     -- ^ \"dist/\" prefix
+        -> FilePath     -- ^ Component name
+        -> FilePath     -- ^ Path to test suite's HTML markup directory
+htmlDir distPref name = hpcDir distPref </> "html" </> name
 
 -- | Generate the HTML markup for a test suite.
 markupTest :: Verbosity
@@ -129,12 +136,35 @@ markupTest :: Verbosity
            -> TestSuite
            -> IO ()
 markupTest verbosity lbi distPref libName suite = do
-    tixFileExists <- doesFileExist $ tixFilePath distPref suite
+    tixFileExists <- doesFileExist $ tixFilePath distPref $ testName suite
     when tixFileExists $ do
         (hpc, _) <- requireProgram verbosity hpcProgram $ withPrograms lbi
-        markup hpc verbosity (tixFilePath distPref suite)
+        markup hpc verbosity (tixFilePath distPref $ testName suite)
                              (mixDir distPref libName)
-                             (htmlDir distPref suite)
+                             (htmlDir distPref $ testName suite)
                              (testModules suite ++ [ main ])
         notice verbosity $ "Test coverage report written to "
-                            ++ htmlDir distPref suite </> "hpc_index" <.> "html"
+                            ++ htmlDir distPref (testName suite)
+                            </> "hpc_index" <.> "html"
+
+-- | Generate the HTML markup for all of a package's test suites.
+markupPackage :: Verbosity
+              -> LocalBuildInfo
+              -> FilePath       -- ^ \"dist/\" prefix
+              -> String         -- ^ Library name
+              -> [TestSuite]
+              -> IO ()
+markupPackage verbosity lbi distPref libName suites = do
+    let tixFiles = map (tixFilePath distPref . testName) suites
+    tixFilesExist <- mapM doesFileExist tixFiles
+    when (and tixFilesExist) $ do
+        (hpc, _) <- requireProgram verbosity hpcProgram $ withPrograms lbi
+        let outFile = tixFilePath distPref libName
+            mixDir' = mixDir distPref libName
+            htmlDir' = htmlDir distPref libName
+            excluded = concatMap testModules suites ++ [ main ]
+        createDirectoryIfMissing True $ takeDirectory outFile
+        union hpc verbosity tixFiles outFile excluded
+        markup hpc verbosity outFile mixDir' htmlDir' excluded
+        notice verbosity $ "Package coverage report written to "
+                           ++ htmlDir' </> "hpc_index.html"
