@@ -97,6 +97,7 @@ Library
         Distribution.Simple.Program.Builtin,
         Distribution.Simple.Program.Db,
         Distribution.Simple.Program.HcPkg,
+        Distribution.Simple.Program.Hpc,
         Distribution.Simple.Program.Ld,
         Distribution.Simple.Program.Run,
         Distribution.Simple.Program.Script,

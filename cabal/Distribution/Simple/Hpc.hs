@@ -41,16 +41,13 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Hpc
-    ( hpcDir
-    , enableCoverage
+    ( enableCoverage
     , tixDir
     , tixFilePath
-    , doHpcMarkup
-    , findTixFiles
+    , markupTest
     ) where
 
-import Control.Exception ( bracket )
-import Control.Monad ( unless, when )
+import Control.Monad ( when )
 import Distribution.Compiler ( CompilerFlavor(..) )
 import Distribution.ModuleName ( main )
 import Distribution.PackageDescription
@@ -60,14 +57,14 @@ import Distribution.PackageDescription
     , TestSuite(..)
     , testModules
     )
-import Distribution.Simple.Utils ( die, notice )
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.Program ( hpcProgram, requireProgram )
+import Distribution.Simple.Program.Hpc ( markup )
+import Distribution.Simple.Utils ( notice )
 import Distribution.Text
 import Distribution.Verbosity ( Verbosity() )
-import System.Directory ( doesFileExist, getDirectoryContents, removeFile )
-import System.Exit ( ExitCode(..) )
+import System.Directory ( doesFileExist )
 import System.FilePath
-import System.IO ( hClose, IOMode(..), openFile, openTempFile )
-import System.Process ( runProcess, waitForProcess )
 
 -- -------------------------------------------------------------------------
 -- Haskell Program Coverage
@@ -95,7 +92,7 @@ enableCoverage True distPref p =
                              Just xs -> (GHC, hpcOpts ++ xs)
                              _ -> (GHC, hpcOpts)
             newOptions = (:) newGHCOpts $ filter ((== GHC) . fst) oldOptions
-            hpcOpts = ["-fhpc", "-hpcdir", hpcDir distPref name]
+            hpcOpts = ["-fhpc", "-hpcdir", mixDir distPref name]
         in oldBI { options = newOptions }
     enableLibCoverage l =
         l { libBuildInfo = enableBICoverage (display $ package p)
@@ -105,14 +102,18 @@ enableCoverage True distPref p =
         t { testBuildInfo = enableBICoverage (testName t) (testBuildInfo t) }
 
 hpcDir :: FilePath  -- ^ \"dist/\" prefix
-       -> FilePath  -- ^ Component subdirectory name
        -> FilePath  -- ^ Directory containing component's HPC .mix files
-hpcDir distPref name = distPref </> "hpc" </> name
+hpcDir distPref = distPref </> "hpc"
+
+mixDir :: FilePath  -- ^ \"dist/\" prefix
+       -> FilePath  -- ^ Component name
+       -> FilePath  -- ^ Directory containing test suite's .mix files
+mixDir distPref name = hpcDir distPref </> "mix" </> name
 
 tixDir :: FilePath  -- ^ \"dist/\" prefix
        -> TestSuite -- ^ Test suite
        -> FilePath  -- ^ Directory containing test suite's .tix files
-tixDir distPref suite = distPref </> "test" </> testName suite
+tixDir distPref suite = hpcDir distPref </> "tix" </> testName suite
 
 -- | Path to the .tix file containing a test suite's sum statistics.
 tixFilePath :: FilePath     -- ^ \"dist/\" prefix
@@ -120,66 +121,20 @@ tixFilePath :: FilePath     -- ^ \"dist/\" prefix
             -> FilePath     -- Path to test suite's .tix file
 tixFilePath distPref suite = tixDir distPref suite </> testName suite <.> "tix"
 
--- | Returns a list of all the .tix files in a test suite's .tix file
--- directory. Returned paths are the complete relative path to each file.
-findTixFiles :: FilePath        -- ^ \"dist/\" prefix
-             -> TestSuite       -- ^ Test suite
-             -> IO [FilePath]   -- ^ All .tix files belonging to test suite
-findTixFiles distPref suite = do
-    files <- getDirectoryContents $ tixDir distPref suite
-    let tixFiles = flip filter files $ \x -> takeExtension x == ".tix"
-    return $ map (tixDir distPref suite </>) tixFiles
-
 -- | Generate the HTML markup for a test suite.
-doHpcMarkup :: Verbosity
-            -> FilePath     -- ^ \"dist/\" prefix
-            -> String       -- ^ Library name
-            -> TestSuite
-            -> IO ()
-doHpcMarkup verbosity distPref libName suite = do
-    tixFiles <- findTixFiles distPref suite
-    when (not $ null tixFiles) $ do
-        let hpcOptions = map (\x -> "--exclude=" ++ display x) excluded
-            unionOptions = [ "sum"
-                           , "--union"
-                           , "--output=" ++ tixFilePath distPref suite
-                           ]
-                           ++ hpcOptions ++ tixFiles
-            markupOptions = [ "markup"
-                            , tixFilePath distPref suite
-                            , "--hpcdir=" ++ hpcDir distPref libName
-                            , "--destdir=" ++ tixDir distPref suite
-                            ]
-                            ++ hpcOptions
-            excluded = testModules suite ++ [ main ]
-            --TODO: use standard process utilities from D.S.Utils
-            runHpc opts h = runProcess "hpc" opts Nothing Nothing Nothing
-                                       (Just h) (Just h)
-        bracket (openHpcTemp $ tixDir distPref suite) deleteIfExists
-            $ \hpcOut -> do
-            hUnion <- openFile hpcOut AppendMode
-            procUnion <- runHpc unionOptions hUnion
-            exitUnion <- waitForProcess procUnion
-            success <- case exitUnion of
-                ExitSuccess -> do
-                    hMarkup <- openFile hpcOut AppendMode
-                    procMarkup <- runHpc markupOptions hMarkup
-                    exitMarkup <- waitForProcess procMarkup
-                    case exitMarkup of
-                        ExitSuccess -> return True
-                        _ -> return False
-                _ -> return False
-            unless success $ do
-                errs <- readFile hpcOut
-                die $ "HPC failed:\n" ++ errs
-            when success $ notice verbosity
-                $ "Test coverage report written to "
-                  ++ tixDir distPref suite </> "hpc_index"
-                  <.> "html"
-            return ()
-  where openHpcTemp dir = do
-            (f, h) <- openTempFile dir $ "cabal-test-hpc-" <.> "log"
-            hClose h >> return f
-        deleteIfExists path = do
-            exists <- doesFileExist path
-            when exists $ removeFile path
+markupTest :: Verbosity
+           -> LocalBuildInfo
+           -> FilePath     -- ^ \"dist/\" prefix
+           -> String       -- ^ Library name
+           -> TestSuite
+           -> IO ()
+markupTest verbosity lbi distPref libName suite = do
+    tixFileExists <- doesFileExist $ tixFilePath distPref suite
+    when tixFileExists $ do
+        (hpc, _) <- requireProgram verbosity hpcProgram $ withPrograms lbi
+        markup hpc verbosity (tixFilePath distPref suite)
+                             (mixDir distPref libName)
+                             (htmlDir distPref suite)
+                             (testModules suite ++ [ main ])
+        notice verbosity $ "Test coverage report written to "
+                            ++ htmlDir distPref suite </> "hpc_index" <.> "html"

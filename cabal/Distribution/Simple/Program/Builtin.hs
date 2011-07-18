@@ -42,6 +42,7 @@ module Distribution.Simple.Program.Builtin (
     tarProgram,
     cppProgram,
     pkgConfigProgram,
+    hpcProgram,
   ) where
 
 import Distribution.Simple.Program.Types
@@ -69,6 +70,7 @@ builtinPrograms =
     , lhcProgram
     , lhcPkgProgram
     , uhcProgram
+    , hpcProgram
     -- preprocessors
     , hscolourProgram
     , haddockProgram
@@ -155,6 +157,14 @@ uhcProgram = (simpleProgram "uhc") {
     programFindVersion = findProgramVersion "--version-dotted" id
   }
 
+hpcProgram :: Program
+hpcProgram = (simpleProgram "hpc")
+    {
+        programFindVersion = findProgramVersion "version" $ \str ->
+            case words str of
+                (_ : _ : _ : ver : _) -> ver
+                _ -> ""
+    }
 
 -- AArgh! Finding the version of hugs or ffihugs is almost impossible.
 hugsProgram :: Program
