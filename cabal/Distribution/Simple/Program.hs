@@ -110,6 +110,7 @@ module Distribution.Simple.Program (
     , tarProgram
     , cppProgram
     , pkgConfigProgram
+    , hpcProgram
 
     -- * deprecated
     , rawSystemProgram
