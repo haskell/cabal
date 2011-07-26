@@ -42,13 +42,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Test
     ( test
-    , runTests
+    , stubMain
     , writeSimpleTestStub
     , stubFilePath
     , stubName
     , PackageLog(..)
     , TestSuiteLog(..)
-    , Case(..)
+    , TestLogs(..)
     , suitePassed, suiteFailed, suiteError
     ) where
 
@@ -72,16 +72,16 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..) )
 import Distribution.Simple.Setup ( TestFlags(..), TestShowDetails(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
-import qualified Distribution.TestSuite as TestSuite
-    ( Test, Result(..), ImpureTestable(..), TestOptions(..), Options(..) )
+import Distribution.TestSuite
+    ( Options, Progress(..), Result(..), TestInstance(..), Tests(..) )
 import Distribution.Text
 import Distribution.Verbosity ( normal, Verbosity )
 import Distribution.System ( buildPlatform, Platform )
 
 import Control.Exception ( bracket )
-import Control.Monad ( when, liftM, unless, filterM )
+import Control.Monad ( when, unless, filterM )
 import Data.Char ( toUpper )
-import Data.Monoid ( mempty )
+import Data.Either ( partitionEithers )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, getDirectoryContents, removeDirectoryRecursive
@@ -113,40 +113,66 @@ localPackageLog pkg_descr lbi = PackageLog
 
 -- | Logs test suite results, itemized by test case.
 data TestSuiteLog = TestSuiteLog
-    { name :: String
-    , cases :: [Case]
+    { testSuiteName :: String
+    , testLogs :: TestLogs
     , logFile :: FilePath    -- path to human-readable log file
     }
     deriving (Read, Show, Eq)
 
-data Case = Case
-    { caseName :: String
-    , caseOptions :: TestSuite.Options
-    , caseResult :: TestSuite.Result
-    }
+data TestLogs
+    = TestLog
+        { testName              :: String
+        , testOptionsReturned   :: Options
+        , testResult            :: Result
+        }
+    | GroupLogs String [TestLogs]
     deriving (Read, Show, Eq)
 
-getTestOptions :: TestSuite.Test -> TestSuiteLog -> IO TestSuite.Options
-getTestOptions t l =
-    case filter ((== TestSuite.name t) . caseName) (cases l) of
-        (x:_) -> return $ caseOptions x
-        _ -> TestSuite.defaultOptions t
+-- | Extract the options from the log of a previously-run test suite.
+loggedOptions :: TestLogs -> OptionTree
+loggedOptions t@(TestLog {}) =
+    TestOptions (testName t) (testOptionsReturned t)
+loggedOptions (GroupLogs n ts) =
+    GroupOptions n $ map loggedOptions ts
+
+-- | Count the number of pass, fail, and error test results in a 'TestLogs'
+-- tree.
+countTestResults :: TestLogs
+                 -> (Int, Int, Int) -- ^ Passes, fails, and errors,
+                                    -- respectively.
+countTestResults = go (0, 0, 0)
+  where
+    go (p, f, e) (TestLog { testResult = r }) =
+        case r of
+            Pass -> (p + 1, f, e)
+            Fail _ -> (p, f + 1, e)
+            Error _ -> (p, f, e + 1)
+    go (p, f, e) (GroupLogs _ ts) = foldl go (p, f, e) ts
 
 -- | From a 'TestSuiteLog', determine if the test suite passed.
 suitePassed :: TestSuiteLog -> Bool
-suitePassed = all (== TestSuite.Pass) . map caseResult . cases
+suitePassed l =
+    case countTestResults (testLogs l) of
+        (_, 0, 0) -> True
+        _ -> False
 
 -- | From a 'TestSuiteLog', determine if the test suite failed.
 suiteFailed :: TestSuiteLog -> Bool
-suiteFailed = any isFail . map caseResult . cases
-    where isFail (TestSuite.Fail _) = True
-          isFail _ = False
+suiteFailed l =
+    case countTestResults (testLogs l) of
+        (_, 0, _) -> False
+        _ -> True
 
 -- | From a 'TestSuiteLog', determine if the test suite encountered errors.
 suiteError :: TestSuiteLog -> Bool
-suiteError = any isError . map caseResult . cases
-    where isError (TestSuite.Error _) = True
-          isError _ = False
+suiteError l =
+    case countTestResults (testLogs l) of
+        (_, _, 0) -> False
+        _ -> True
+
+data OptionTree = TestOptions String Options
+                | GroupOptions String [OptionTree]
+  deriving (Eq, Read, Show)
 
 -- | Run a test executable, logging the output and generating the appropriate
 -- summary messages.
@@ -285,12 +311,16 @@ test pkg_descr lbi flags = do
                         preTest _ = ""
                         postTest exit _ =
                             let r = case exit of
-                                    ExitSuccess -> TestSuite.Pass
-                                    ExitFailure c -> TestSuite.Fail
+                                    ExitSuccess -> Pass
+                                    ExitFailure c -> Fail
                                         $ "exit code: " ++ show c
                             in TestSuiteLog
-                                { name = PD.testName suite
-                                , cases = [Case (PD.testName suite) mempty r]
+                                { testSuiteName = PD.testName suite
+                                , testLogs = TestLog
+                                    { testName = PD.testName suite
+                                    , testOptionsReturned = []
+                                    , testResult = r
+                                    }
                                 , logFile = ""
                                 }
                     go preTest cmd postTest
@@ -298,23 +328,22 @@ test pkg_descr lbi flags = do
               PD.TestSuiteLibV09 _ _ -> do
                     let cmd = LBI.buildDir lbi </> stubName suite
                             </> stubName suite <.> exeExtension
-                        oldLog = case mLog of
-                            Nothing -> TestSuiteLog
-                                { name = PD.testName suite
-                                , cases = []
-                                , logFile = []
-                                }
-                            Just l -> l
-                        preTest f = show $ oldLog { logFile = f }
+                        preTest f = show ( f
+                                         , PD.testName suite
+                                         , fmap (loggedOptions . testLogs) mLog
+                                         )
                         postTest _ = read
                     go preTest cmd postTest
 
               _ -> return TestSuiteLog
-                            { name = PD.testName suite
-                            , cases = [Case (PD.testName suite) mempty
-                                $ TestSuite.Error $ "No support for running "
-                                ++ "test suite type: "
-                                ++ show (disp $ PD.testType suite)]
+                            { testSuiteName = PD.testName suite
+                            , testLogs = TestLog
+                                { testName = PD.testName suite
+                                , testOptionsReturned = []
+                                , testResult = Error $
+                                    "No support for running test suite type: "
+                                    ++ show (disp $ PD.testType suite)
+                                }
                             , logFile = ""
                             }
 
@@ -365,30 +394,33 @@ test pkg_descr lbi flags = do
 -- all test suites passed and 'False' otherwise.
 summarizePackage :: Verbosity -> PackageLog -> IO Bool
 summarizePackage verbosity packageLog = do
-    let cases' = map caseResult $ concatMap cases $ testSuites packageLog
-        passedCases = length $ filter (== TestSuite.Pass) cases'
-        totalCases = length cases'
+    let counts = map (countTestResults . testLogs) $ testSuites packageLog
+        (passed, failed, errors) = foldl1 addTriple counts
+        totalCases = passed + failed + errors
         passedSuites = length $ filter suitePassed $ testSuites packageLog
         totalSuites = length $ testSuites packageLog
     notice verbosity $ show passedSuites ++ " of " ++ show totalSuites
-        ++ " test suites (" ++ show passedCases ++ " of "
+        ++ " test suites (" ++ show passed ++ " of "
         ++ show totalCases ++ " test cases) passed."
     return $! passedSuites == totalSuites
+  where
+    addTriple (p1, f1, e1) (p2, f2, e2) = (p1 + p2, f1 + f2, e1 + e2)
 
 -- | Print a summary of a single test case's result to the console, supressing
 -- output for certain verbosity or test filter levels.
-summarizeCase :: Verbosity -> TestShowDetails -> Case -> IO ()
-summarizeCase verbosity details t =
-    when shouldPrint $ notice verbosity $ "Test case " ++ caseName t
-        ++ ": " ++ show (caseResult t)
+summarizeTest :: Verbosity -> TestShowDetails -> TestLogs -> IO ()
+summarizeTest _ _ (GroupLogs {}) = return ()
+summarizeTest verbosity details t =
+    when shouldPrint $ notice verbosity $ "Test case " ++ testName t
+        ++ ": " ++ show (testResult t)
     where shouldPrint = (details > Never) && (notPassed || details == Always)
-          notPassed = caseResult t /= TestSuite.Pass
+          notPassed = testResult t /= Pass
 
 -- | Print a summary of the test suite's results on the console, suppressing
 -- output for certain verbosity or test filter levels.
 summarizeSuiteFinish :: TestSuiteLog -> String
 summarizeSuiteFinish testLog = unlines
-    [ "Test suite " ++ name testLog ++ ": " ++ resStr
+    [ "Test suite " ++ testSuiteName testLog ++ ": " ++ resStr
     , "Test suite logged to: " ++ logFile testLog
     ]
     where resStr = map toUpper (resultString testLog)
@@ -411,7 +443,7 @@ testSuiteLogPath template pkg_descr lbi testLog =
     where
         env = initialPathTemplateEnv
                 (PD.package pkg_descr) (compilerId $ LBI.compiler lbi)
-                ++  [ (TestSuiteNameVar, toPathTemplate $ name testLog)
+                ++  [ (TestSuiteNameVar, toPathTemplate $ testSuiteName testLog)
                     , (TestSuiteResultVar, result)
                     ]
         result = toPathTemplate $ resultString testLog
@@ -465,12 +497,20 @@ writeSimpleTestStub t dir = do
 simpleTestStub :: ModuleName -> String
 simpleTestStub m = unlines
     [ "module Main ( main ) where"
-    , "import Control.Monad ( liftM )"
-    , "import Distribution.Simple.Test ( runTests )"
+    , "import Distribution.Simple.Test ( stubMain )"
     , "import " ++ show (disp m) ++ " ( tests )"
     , "main :: IO ()"
-    , "main = runTests tests"
+    , "main = stubMain tests"
     ]
+
+-- | Main function for test stubs. Once, it was written directly into the stub,
+-- but minimizing the amount of code actually in the stub maximizes the number
+-- of detectable errors when Cabal is compiled.
+stubMain :: IO Tests -> IO ()
+stubMain tests = do
+    (f, n, mOpts) <- fmap read getContents
+    fmap (maybe Right (flip applyOptionTree) mOpts) tests
+        >>= either die ((>>= stubWriteLog f n) . stubRunTests)
 
 -- | The test runner used in library "TestSuite" stub executables.  Runs a list
 -- of 'Test's.  An executable calling this function is meant to be invoked as
@@ -479,23 +519,63 @@ simpleTestStub m = unlines
 -- the test suite and the location of the machine-readable test suite log file.
 -- Human-readable log information is written to the standard output for capture
 -- by the calling Cabal process.
-runTests :: [TestSuite.Test] -> IO ()
-runTests tests = do
-    testLogIn <- liftM read getContents
-    let go :: TestSuite.Test -> IO Case
-        go t = do
-            o <- getTestOptions t testLogIn
-            r <- TestSuite.runM t o
-            let ret = Case
-                    { caseName = TestSuite.name t
-                    , caseOptions = o
-                    , caseResult = r
-                    }
-            summarizeCase normal Always ret
-            return ret
-    cases' <- mapM go tests
-    let testLog = testLogIn { cases = cases'}
+stubRunTests :: Tests -> IO TestLogs
+stubRunTests (Test t) = do
+    l <- run t >>= finish
+    summarizeTest normal Always l
+    return l
+  where
+    finish (Finished opts result) =
+        return TestLog
+            { testName = name t
+            , testOptionsReturned = opts
+            , testResult = result
+            }
+    finish (Progress _ next) = next >>= finish
+stubRunTests g@(Group {}) = do
+    logs <- mapM stubRunTests $ groupTests g
+    return $ GroupLogs (groupName g) logs
+stubRunTests (ExtraOptions _ t) = stubRunTests t
+
+-- | From a test stub, write the 'TestSuiteLog' to temporary file for the calling
+-- Cabal process to read.
+stubWriteLog :: FilePath -> String -> TestLogs -> IO ()
+stubWriteLog f n logs = do
+    let testLog = TestSuiteLog { testSuiteName = n, testLogs = logs, logFile = f }
     writeFile (logFile testLog) $ show testLog
     when (suiteError testLog) $ exitWith $ ExitFailure 2
     when (suiteFailed testLog) $ exitWith $ ExitFailure 1
     exitWith ExitSuccess
+
+-- | Apply options, represented as an 'OptionTree', to a tree of 'Tests'.
+applyOptionTree :: Tests -> OptionTree -> Either String Tests
+applyOptionTree (Test t) (TestOptions n opts)
+    | name t /= n = Left $ optTreeError ("test", name t) ("test", n)
+    | otherwise   = either Left (Right . Test)
+                        $ foldr set (Right t) opts
+  where
+    set _ (Left msg) = Left msg
+    set (optName, opt) (Right t') = setOption t' optName opt
+
+applyOptionTree g@(Group {}) (GroupOptions n os)
+    | n /= groupName g = Left $ optTreeError ("group", groupName g) ("group", n)
+    | otherwise =
+        let applys = zipWith applyOptionTree (groupTests g) os
+        in case partitionEithers applys of
+            ([], ts) -> Right $ g { groupTests = ts }
+            (msgs, _) -> Left $ unlines msgs
+
+applyOptionTree (ExtraOptions _ t) o = applyOptionTree t o
+
+applyOptionTree (Test t) (GroupOptions n _) =
+    Left $ optTreeError ("test", name t) ("group", n)
+
+applyOptionTree (Group { groupName = t }) (TestOptions n _) =
+    Left $ optTreeError ("group", t) ("test", n)
+
+
+optTreeError :: (String, String) -> (String, String) -> String
+optTreeError (exType, exName) (foType, foName) = unwords
+    [ "Expected options for", exType, "\"", exName, "\""
+    , "but found options for", foType, "\"", foName, "\"."
+    ]
