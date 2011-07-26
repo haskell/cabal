@@ -14,8 +14,8 @@ module Distribution.Simple.Program.Hpc
     ) where
 
 import Distribution.ModuleName ( ModuleName )
-import Distribution.Simple.Program ( getProgramInvocationOutput )
-import Distribution.Simple.Program.Run ( ProgramInvocation, programInvocation )
+import Distribution.Simple.Program.Run
+         ( ProgramInvocation, programInvocation, runProgramInvocation )
 import Distribution.Simple.Program.Types ( ConfiguredProgram )
 import Distribution.Text ( display )
 import Distribution.Verbosity ( Verbosity )
@@ -27,10 +27,9 @@ markup :: ConfiguredProgram
        -> FilePath            -- ^ Path where html output should be located
        -> [ModuleName]        -- ^ List of modules to exclude from report
        -> IO ()
-markup hpc verbosity tixFile hpcDir destDir excluded = do
-    _ <- getProgramInvocationOutput verbosity
-        (markupInvocation hpc tixFile hpcDir destDir excluded)
-    return ()
+markup hpc verbosity tixFile hpcDir destDir excluded =
+    runProgramInvocation verbosity
+      (markupInvocation hpc tixFile hpcDir destDir excluded)
 
 markupInvocation :: ConfiguredProgram
                  -> FilePath            -- ^ Path to .tix file
@@ -44,7 +43,9 @@ markupInvocation hpc tixFile hpcDir destDir excluded =
     let args = [ "markup", tixFile
                , "--hpcdir=" ++ hpcDir
                , "--destdir=" ++ destDir
-               ] ++ exclude excluded
+               ]
+            ++ ["--exclude=" ++ display moduleName
+               | moduleName <- excluded ]
     in programInvocation hpc args
 
 union :: ConfiguredProgram
@@ -53,10 +54,9 @@ union :: ConfiguredProgram
       -> FilePath           -- ^ Path to resultant .tix file
       -> [ModuleName]       -- ^ List of modules to exclude from union
       -> IO ()
-union hpc verbosity tixFiles outFile excluded = do
-    _ <- getProgramInvocationOutput verbosity
-        $ unionInvocation hpc tixFiles outFile excluded
-    return ()
+union hpc verbosity tixFiles outFile excluded =
+    runProgramInvocation verbosity
+      (unionInvocation hpc tixFiles outFile excluded)
 
 unionInvocation :: ConfiguredProgram
                 -> [FilePath]       -- ^ Paths to .tix files
@@ -68,10 +68,6 @@ unionInvocation hpc tixFiles outFile excluded =
         [ ["sum", "--union"]
         , tixFiles
         , ["--output=" ++ outFile]
-        , exclude excluded
+        , ["--exclude=" ++ display moduleName
+          | moduleName <- excluded ]
         ]
-
--- | Turn a list of modules to be excluded from coverage results into a list
--- of command line options to hpc.
-exclude :: [ModuleName] -> [String]
-exclude = map (("--exclude=" ++) . display)
