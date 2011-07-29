@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP, ExistentialQuantification #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.TestSuite
