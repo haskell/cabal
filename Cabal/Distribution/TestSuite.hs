@@ -44,7 +44,7 @@ module Distribution.TestSuite
     , OptionDescr(..)
     , OptionType(..)
     , Test(..)
-    , Options(..)
+    , Options
     , Progress(..)
     , Result(..)
     ) where
