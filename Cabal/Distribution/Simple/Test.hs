@@ -196,7 +196,7 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
     let distPref = fromFlag $ testDistPref flags
         verbosity = fromFlag $ testVerbosity flags
         testLogDir = distPref </> "test"
-        options = map (testOption pkg_descr lbi suite) $ testOptions flags
+        opts = map (testOption pkg_descr lbi suite) $ testOptions flags
 
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
@@ -217,8 +217,8 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
             -- Remove old .tix files if appropriate.
             unless (fromFlag $ testKeepTix flags) $ do
                 let tDir = tixDir distPref $ PD.testName suite
-                exists <- doesDirectoryExist tDir
-                when exists $ removeDirectoryRecursive tDir
+                exists' <- doesDirectoryExist tDir
+                when exists' $ removeDirectoryRecursive tDir
 
             -- Create directory for HPC files.
             createDirectoryIfMissing True $ tixDir distPref $ PD.testName suite
@@ -234,7 +234,7 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
               hLog <- openFile tempLog AppendMode
               hIn  <- openFile tempInput ReadMode
               -- these handles get closed by runProcess
-              proc <- runProcess cmd options Nothing shellEnv
+              proc <- runProcess cmd opts Nothing shellEnv
                         (Just hIn) (Just hLog) (Just hLog)
               waitForProcess proc
 
