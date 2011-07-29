@@ -73,7 +73,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Setup ( TestFlags(..), TestShowDetails(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
 import Distribution.TestSuite
-    ( Options, Progress(..), Result(..), TestInstance(..), Tests(..) )
+    ( Options, Progress(..), Result(..), TestInstance(..), Test(..) )
 import Distribution.Text
 import Distribution.Verbosity ( normal, Verbosity )
 import Distribution.System ( buildPlatform, Platform )
@@ -506,7 +506,7 @@ simpleTestStub m = unlines
 -- | Main function for test stubs. Once, it was written directly into the stub,
 -- but minimizing the amount of code actually in the stub maximizes the number
 -- of detectable errors when Cabal is compiled.
-stubMain :: IO Tests -> IO ()
+stubMain :: IO Test -> IO ()
 stubMain tests = do
     (f, n, mOpts) <- fmap read getContents
     fmap (maybe Right (flip applyOptionTree) mOpts) tests
@@ -519,7 +519,7 @@ stubMain tests = do
 -- the test suite and the location of the machine-readable test suite log file.
 -- Human-readable log information is written to the standard output for capture
 -- by the calling Cabal process.
-stubRunTests :: Tests -> IO TestLogs
+stubRunTests :: Test -> IO TestLogs
 stubRunTests (Test t) = do
     l <- run t >>= finish
     summarizeTest normal Always l
@@ -548,7 +548,7 @@ stubWriteLog f n logs = do
     exitWith ExitSuccess
 
 -- | Apply options, represented as an 'OptionTree', to a tree of 'Tests'.
-applyOptionTree :: Tests -> OptionTree -> Either String Tests
+applyOptionTree :: Test -> OptionTree -> Either String Test
 applyOptionTree (Test t) (TestOptions n opts)
     | name t /= n = Left $ optTreeError ("test", name t) ("test", n)
     | otherwise   = either Left (Right . Test)
