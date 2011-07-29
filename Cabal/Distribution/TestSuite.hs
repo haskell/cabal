@@ -81,7 +81,6 @@ data OptionType
         }
     | OptionString
         { optionStringMultiline :: Bool
-        , optionStringDescription :: String
         }
     | OptionNumber
         { optionNumberIsInt     :: Bool
