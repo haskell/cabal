@@ -44,7 +44,7 @@ module Distribution.TestSuite
     ( TestInstance(..)
     , OptionDescr(..)
     , OptionType(..)
-    , Tests(..)
+    , Test(..)
     , Options(..)
     , Progress(..)
     , Result(..)
@@ -94,16 +94,16 @@ data OptionType
     | OptionRngSeed
   deriving (Eq, Read, Show)
 
-data Tests
+data Test
     = Test TestInstance
     | Group
         { groupName     :: String
         , concurrently  :: Bool     -- ^ If true, then the child 'Test's or
                                     -- 'Group's can safely be run concurrently;
                                     -- otherwise, they must be run in series.
-        , groupTests    :: [Tests]
+        , groupTests    :: [Test]
         }
-    | ExtraOptions [OptionDescr] Tests
+    | ExtraOptions [OptionDescr] Test
 
 type Options = [(String, String)]
 
