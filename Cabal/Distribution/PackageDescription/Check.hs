@@ -180,6 +180,7 @@ checkConfiguredPackage pkg =
  ++ checkSourceRepos pkg
  ++ checkGhcOptions pkg
  ++ checkCCOptions pkg
+ ++ checkCPPOptions pkg
  ++ checkPaths pkg
  ++ checkCabalVersion pkg
 
@@ -754,6 +755,15 @@ checkCCOptions pkg =
 
         checkCCFlags :: [String] -> PackageCheck -> Maybe PackageCheck
         checkCCFlags flags = check (any (`elem` flags) all_ccOptions)
+
+checkCPPOptions :: PackageDescription -> [PackageCheck]
+checkCPPOptions pkg =
+  catMaybes [
+    checkAlternatives "cpp-options" "include-dirs"
+      [ (flag, dir) | flag@('-':'I':dir) <- all_cppOptions]
+    ]
+  where all_cppOptions = [ opts | bi <- allBuildInfo pkg
+                                , opts <- cppOptions bi ]
 
 checkAlternatives :: String -> String -> [(String, String)] -> Maybe PackageCheck
 checkAlternatives badField goodField flags =
