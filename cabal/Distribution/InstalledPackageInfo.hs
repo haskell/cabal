@@ -148,7 +148,7 @@ emptyInstalledPackageInfo
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
-        trusted           = False,
+        trusted           = True,
         importDirs        = [],
         libraryDirs       = [],
         hsLibraries       = [],
