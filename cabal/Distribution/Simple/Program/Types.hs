@@ -17,7 +17,6 @@
 module Distribution.Simple.Program.Types (
     -- * Program and functions for constructing them
     Program(..),
-    internalProgram,
     simpleProgram,
 
     -- * Configured program and related functions
@@ -25,19 +24,21 @@ module Distribution.Simple.Program.Types (
     programPath,
     ProgArg,
     ProgramLocation(..),
+    simpleConfiguredProgram,
   ) where
 
-import Data.List (nub) 
-import System.FilePath ((</>))
-
 import Distribution.Simple.Utils
-         ( findProgramLocation, findFirstFile )
+         ( findProgramLocation )
 import Distribution.Version
          ( Version )
 import Distribution.Verbosity
          ( Verbosity )
 
 -- | Represents a program which can be configured.
+--
+-- Note: rather than constructing this directly, start with 'simpleProgram' and
+-- override any extra fields.
+--
 data Program = Program {
        -- | The simple name of the program, eg. ghc
        programName :: String,
@@ -59,6 +60,12 @@ data Program = Program {
 
 type ProgArg = String
 
+-- | Represents a program which has been configured and is thus ready to be run.
+--
+-- These are usually made by configuring a 'Program', but if you have to
+-- construct one directly then start with 'simpleConfiguredProgram' and
+-- override any extra fields.
+--
 data ConfiguredProgram = ConfiguredProgram {
        -- | Just the name again
        programId :: String,
@@ -87,7 +94,7 @@ data ProgramLocation
       -- ^The user gave the path to this program,
       -- eg. --ghc-path=\/usr\/bin\/ghc-6.6
     | FoundOnSystem { locationPath :: FilePath }
-      -- ^The location of the program, as located by searching PATH.
+      -- ^The program was found automatically.
       deriving (Read, Show, Eq)
 
 -- | The full path of a configured program.
@@ -109,14 +116,15 @@ simpleProgram name = Program {
     programPostConf     = \_ _ -> return []
   }
 
--- | Make a simple 'internal' program; that is, one that was built as an
--- executable already and is expected to be found in the build directory
-internalProgram :: [FilePath] -> String -> Program
-internalProgram paths name = Program {
-  programName         = name,
-  programFindLocation = \_v ->
-    findFirstFile id [ path </> name | path <- nub paths ],
-    programFindVersion  = \_ _ -> return Nothing,
-    programPostConf     = \_ _ -> return []
+-- | Make a simple 'ConfiguredProgram'.
+--
+-- > simpleConfiguredProgram "foo" (FoundOnSystem path)
+--
+simpleConfiguredProgram :: String -> ProgramLocation -> ConfiguredProgram
+simpleConfiguredProgram name loc = ConfiguredProgram {
+     programId           = name,
+     programVersion      = Nothing,
+     programDefaultArgs  = [],
+     programOverrideArgs = [],
+     programLocation     = loc
   }
-
