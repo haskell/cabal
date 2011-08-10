@@ -436,6 +436,24 @@ data KnownExtension =
   -- | Enable non-decreasing indentation for 'do' blocks.
   | NondecreasingIndentation
 
+  -- | [GHC &#xa7; 7.20.3] Allow imports to be qualified with a safe
+  -- keyword that requires the imported module be trusted as according
+  -- to the Safe Haskell definition of trust.
+  --
+  -- > import safe Network.Socket
+  | SafeImports
+
+  -- | [GHC &#xa7; 7.20] Compile a module in the Safe, Safe Haskell
+  -- mode -- a restricted form of the Haskell language to ensure
+  -- type safety.
+  | Safe
+
+  -- | [GHC &#xa7; 7.20] Compile a module in the Trustworthy, Safe
+  -- Haskell mode -- no restrictions apply but the module is marked
+  -- as trusted as long as the package the module resides in is
+  -- trusted.
+  | Trustworthy
+
   deriving (Show, Read, Eq, Enum, Bounded)
 
 {-# DEPRECATED knownExtensions
