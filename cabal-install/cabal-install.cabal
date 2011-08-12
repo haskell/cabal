@@ -27,7 +27,8 @@ Cabal-Version:      >= 1.6
 
 source-repository head
   type:     darcs
-  location: http://darcs.haskell.org/cabal-install/
+  location: http://darcs.haskell.org/cabal/
+  subdir:   cabal-install
 
 flag old-base
   description: Old, monolithic base
