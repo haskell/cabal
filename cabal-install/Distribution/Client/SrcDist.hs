@@ -4,6 +4,8 @@
 module Distribution.Client.SrcDist (
          sdist
   )  where
+
+
 import Distribution.Simple.SrcDist
          ( printPackageProblems, prepareTree, snapshotPackage )
 import Distribution.Client.Tar (createTarGzFile)
@@ -15,16 +17,20 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Utils
-         ( defaultPackageDesc, warn, notice, setupMessage
+         ( defaultPackageDesc, die, warn, notice, setupMessage
          , createDirectoryIfMissingVerbose, withTempDirectory
          , withUTF8FileContents, writeUTF8File )
+import Distribution.Client.Setup
+         ( SDistFlags(..), SDistExFlags(..), ArchiveFormat(..) )
 import Distribution.Simple.Setup
-         ( SDistFlags(..), fromFlag, flagToMaybe )
+         ( fromFlag, flagToMaybe )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.PreProcess (knownSuffixHandlers)
 import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Configure(maybeGetPersistBuildConfig)
 import Distribution.PackageDescription.Configuration ( flattenPackageDescription )
+import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
+import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Text
          ( display )
 import Distribution.Version
@@ -32,14 +38,17 @@ import Distribution.Version
 
 import System.Time (getClockTime, toCalendarTime)
 import System.FilePath ((</>), (<.>))
-import Control.Monad (when)
+import Control.Monad (when, unless)
 import Data.Maybe (isNothing)
 import Data.Char (toLower)
 import Data.List (isPrefixOf)
+import System.Directory (doesFileExist, removeFile, canonicalizePath)
+import System.Process (runProcess, waitForProcess)
+import System.Exit    (ExitCode(..))
 
 -- |Create a source distribution.
-sdist :: SDistFlags -> IO ()
-sdist flags = do
+sdist :: SDistFlags -> SDistExFlags -> IO ()
+sdist flags exflags = do
   pkg <- return . flattenPackageDescription
      =<< readPackageDescription verbosity
      =<< defaultPackageDesc verbosity
@@ -65,7 +74,7 @@ sdist flags = do
       withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
         let targetDir = tmpDir </> tarBallName pkg'
         generateSourceDir targetDir pkg' mb_lbi
-        targzFile <- createArchive verbosity pkg' tmpDir targetPref
+        targzFile <- createArchive verbosity format pkg' tmpDir targetPref
         notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
@@ -78,6 +87,7 @@ sdist flags = do
 
     verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
+    format    = fromFlag (sDistFormat exflags)
     pps       = knownSuffixHandlers
     distPref     = fromFlag $ sDistDistPref flags
     targetPref   = distPref
@@ -105,14 +115,46 @@ overwriteSnapshotPackageDesc verbosity pkg targetDir = do
                   = "version: " ++ display version
       | otherwise = line
 
--- |Create an archive from a tree of source files, and clean up the tree.
+-- | Create an archive from a tree of source files.
+--
 createArchive :: Verbosity
+              -> ArchiveFormat
               -> PackageDescription
               -> FilePath
               -> FilePath
               -> IO FilePath
-createArchive _verbosity pkg tmpDir targetPref = do
+createArchive _verbosity TargzFormat pkg tmpDir targetPref = do
     createTarGzFile tarBallFilePath tmpDir (tarBallName pkg)
     return tarBallFilePath
   where
     tarBallFilePath = targetPref </> tarBallName pkg <.> "tar.gz"
+
+createArchive verbosity ZipFormat pkg tmpDir targetPref = do
+    createZipFile verbosity zipFilePath tmpDir (tarBallName pkg)
+    return zipFilePath
+  where
+    zipFilePath = targetPref </> tarBallName pkg <.> "zip"
+
+createZipFile :: Verbosity -> FilePath -> FilePath -> FilePath -> IO ()
+createZipFile verbosity zipfile base dir = do
+    (zipProg, _) <- requireProgram verbosity zipProgram emptyProgramDb
+
+    -- zip has an annoying habbit of updating the target rather than creating
+    -- it from scratch. While that might sound like an optimisation, it doesn't
+    -- remove files already in the archive that are no longer present in the
+    -- uncompressed tree.
+    alreadyExists <- doesFileExist zipfile
+    when alreadyExists $ removeFile zipfile
+
+    -- we call zip with a different CWD, so have to make the path absolute
+    zipfileAbs <- canonicalizePath zipfile
+
+    --TODO: use runProgramInvocation, but has to be able to set CWD
+    hnd <- runProcess (programPath zipProg) ["-q", "-r", zipfileAbs, dir] (Just base)
+                      Nothing Nothing Nothing Nothing
+    exitCode <- waitForProcess hnd
+    unless (exitCode == ExitSuccess) $
+      die $ "Generating the zip file failed "
+         ++ "(zip returned exit code " ++ show exitCode ++ ")"
+  where
+    zipProgram = simpleProgram "zip"
