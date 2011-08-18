@@ -26,6 +26,7 @@ module Distribution.Client.Setup
     , reportCommand, ReportFlags(..)
     , unpackCommand, UnpackFlags(..)
     , initCommand, IT.InitFlags(..)
+    , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -47,9 +48,9 @@ import Distribution.Simple.Program
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
-         ( configureCommand )
+         ( configureCommand, sdistCommand )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..) )
+         ( ConfigFlags(..), SDistFlags(..) )
 import Distribution.Simple.Setup
          ( Flag(..), toFlag, fromFlag, flagToList, flagToMaybe
          , optionVerbosity, trueArg, falseArg )
@@ -958,6 +959,57 @@ initCommand = CommandUI {
   where readMaybe s = case reads s of
                         [(x,"")]  -> Just x
                         _         -> Nothing
+
+-- ------------------------------------------------------------
+-- * SDist flags
+-- ------------------------------------------------------------
+
+-- | Extra flags to @sdist@ beyond runghc Setup sdist
+--
+data SDistExFlags = SDistExFlags {
+    sDistFormat    :: Flag ArchiveFormat
+  }
+  deriving Show
+
+data ArchiveFormat = TargzFormat | ZipFormat -- | ...
+  deriving (Show, Eq)
+
+defaultSDistExFlags :: SDistExFlags
+defaultSDistExFlags = SDistExFlags {
+    sDistFormat  = Flag TargzFormat
+  }
+
+sdistCommand :: CommandUI (SDistFlags, SDistExFlags)
+sdistCommand = Cabal.sdistCommand {
+    commandDefaultFlags = (commandDefaultFlags Cabal.sdistCommand, defaultSDistExFlags),
+    commandOptions      = \showOrParseArgs ->
+         liftOptions fst setFst (commandOptions Cabal.sdistCommand showOrParseArgs)
+      ++ liftOptions snd setSnd sdistExOptions
+  }
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+    sdistExOptions =
+      [option [] ["archive-format"] "archive-format"
+         sDistFormat (\v flags -> flags { sDistFormat = v })
+         (choiceOpt
+            [ (Flag TargzFormat, ([], ["targz"]),
+                 "Produce a '.tar.gz' format archive (default and required for uploading to hackage)")
+            , (Flag ZipFormat,   ([], ["zip"]),
+                 "Produce a '.zip' format archive")
+            ])
+      ]
+
+instance Monoid SDistExFlags where
+  mempty = SDistExFlags {
+    sDistFormat  = mempty
+  }
+  mappend a b = SDistExFlags {
+    sDistFormat  = combine sDistFormat
+  }
+    where
+      combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils

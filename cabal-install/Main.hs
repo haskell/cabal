@@ -27,6 +27,7 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , InitFlags, initCommand
+         , SDistFlags(..), SDistExFlags(..), sdistCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
 import Distribution.Simple.Setup
@@ -36,7 +37,6 @@ import Distribution.Simple.Setup
          , CopyFlags(..), copyCommand
          , RegisterFlags(..), registerCommand
          , CleanFlags(..), cleanCommand
-         , SDistFlags(..), sdistCommand
          , TestFlags(..), testCommand
          , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 
@@ -322,11 +322,11 @@ checkAction verbosityFlag extraArgs _globalFlags = do
   unless allOk exitFailure
 
 
-sdistAction :: SDistFlags -> [String] -> GlobalFlags -> IO ()
-sdistAction sflags extraArgs _globalFlags = do
+sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> GlobalFlags -> IO ()
+sdistAction (sdistFlags, sdistExFlags) extraArgs _globalFlags = do
   unless (null extraArgs) $ do
     die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
-  sdist sflags
+  sdist sdistFlags sdistExFlags
 
 reportAction :: ReportFlags -> [String] -> GlobalFlags -> IO ()
 reportAction reportFlags extraArgs globalFlags = do
