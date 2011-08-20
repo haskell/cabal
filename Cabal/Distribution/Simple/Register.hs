@@ -317,9 +317,10 @@ inplaceInstalledPackageInfo :: FilePath -- ^ top of the build tree
                             -> ComponentLocalBuildInfo
                             -> InstalledPackageInfo
 inplaceInstalledPackageInfo inplaceDir distPref pkg lib lbi clbi =
-    generalInstalledPackageInfo adjustReativeIncludeDirs pkg lib clbi installDirs
+    generalInstalledPackageInfo adjustRelativeIncludeDirs pkg lib clbi
+    installDirs
   where
-    adjustReativeIncludeDirs = map (inplaceDir </>)
+    adjustRelativeIncludeDirs = map (inplaceDir </>)
     installDirs =
       (absoluteInstallDirs pkg lbi NoCopyDest) {
         libdir     = inplaceDir </> buildDir lbi,
