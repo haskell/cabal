@@ -146,7 +146,7 @@ import System.IO
     ( hPutStrLn, stderr, hClose )
 import Distribution.Text
     ( Text(disp), display, simpleParse )
-import Text.PrettyPrint.HughesPJ
+import Text.PrettyPrint
     ( comma, punctuate, render, nest, sep )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 

@@ -41,7 +41,7 @@ import Control.Monad
   ( (>=>), join )
 #endif
 
-import Text.PrettyPrint.HughesPJ hiding (mode, cat)
+import Text.PrettyPrint hiding (mode, cat)
 
 import Data.Version
   ( Version(..) )

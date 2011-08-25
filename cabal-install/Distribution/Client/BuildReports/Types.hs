@@ -19,7 +19,7 @@ import qualified Distribution.Text as Text
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
-import qualified Text.PrettyPrint.HughesPJ as Disp
+import qualified Text.PrettyPrint as Disp
          ( text )
 
 import Data.Char as Char
