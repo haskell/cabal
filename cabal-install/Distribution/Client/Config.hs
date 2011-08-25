@@ -76,9 +76,9 @@ import Control.Monad
 import qualified Data.Map as Map
 import qualified Distribution.Compat.ReadP as Parse
          ( option )
-import qualified Text.PrettyPrint.HughesPJ as Disp
+import qualified Text.PrettyPrint as Disp
          ( Doc, render, text, colon, vcat, empty, isEmpty, nest )
-import Text.PrettyPrint.HughesPJ
+import Text.PrettyPrint
          ( (<>), (<+>), ($$), ($+$) )
 import System.Directory
          ( createDirectoryIfMissing, getAppUserDataDirectory )

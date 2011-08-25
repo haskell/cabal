@@ -79,7 +79,7 @@ import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
 import Distribution.Compat.ReadP
          ((+++), option)
-import Text.PrettyPrint.HughesPJ
+import Text.PrettyPrint
 
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription

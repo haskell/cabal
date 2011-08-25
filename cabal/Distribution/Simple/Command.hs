@@ -94,7 +94,7 @@ import Distribution.Text
 import Distribution.ParseUtils
 import Distribution.ReadE
 import Distribution.Simple.Utils (die, intercalate)
-import Text.PrettyPrint.HughesPJ    ( punctuate, cat, comma, text, empty)
+import Text.PrettyPrint    ( punctuate, cat, comma, text, empty)
 
 data CommandUI flags = CommandUI {
     -- | The name of the command as it would be entered on the command line.
