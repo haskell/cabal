@@ -51,7 +51,7 @@ import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.Simple.Utils (intercalate)
 import Language.Haskell.Extension (Extension)
 
-import Text.PrettyPrint.HughesPJ hiding (braces)
+import Text.PrettyPrint hiding (braces)
 import Data.Char (isSpace, isUpper, toLower, isAlphaNum, isSymbol, isDigit)
 import Data.Maybe	(fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)

@@ -65,7 +65,7 @@ import Control.Monad
          ( MonadPlus(mplus), join )
 import Control.Exception
          ( assert )
-import Text.PrettyPrint.HughesPJ as Disp
+import Text.PrettyPrint as Disp
 import System.Directory
          ( doesDirectoryExist )
 

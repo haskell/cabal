@@ -56,9 +56,9 @@ import Distribution.Simple.Utils
 
 import qualified Distribution.Compat.ReadP as Parse
          ( ReadP, pfail, munch1, skipSpaces )
-import qualified Text.PrettyPrint.HughesPJ as Disp
+import qualified Text.PrettyPrint as Disp
          ( Doc, render, char, text )
-import Text.PrettyPrint.HughesPJ
+import Text.PrettyPrint
          ( (<+>), (<>) )
 
 import Data.List
