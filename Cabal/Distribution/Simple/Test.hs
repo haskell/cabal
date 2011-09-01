@@ -330,7 +330,6 @@ test pkg_descr lbi flags = do
                             </> stubName suite <.> exeExtension
                         preTest f = show ( f
                                          , PD.testName suite
-                                         , fmap (loggedOptions . testLogs) mLog
                                          )
                         postTest _ = read
                     go preTest cmd postTest
@@ -506,11 +505,10 @@ simpleTestStub m = unlines
 -- | Main function for test stubs. Once, it was written directly into the stub,
 -- but minimizing the amount of code actually in the stub maximizes the number
 -- of detectable errors when Cabal is compiled.
-stubMain :: IO Test -> IO ()
+stubMain :: IO [Test] -> IO ()
 stubMain tests = do
-    (f, n, mOpts) <- fmap read getContents
-    fmap (maybe Right (flip applyOptionTree) mOpts) tests
-        >>= either die ((>>= stubWriteLog f n) . stubRunTests)
+    (f, n) <- fmap read getContents
+    tests >>= stubRunTests >>= stubWriteLog f n
 
 -- | The test runner used in library "TestSuite" stub executables.  Runs a list
 -- of 'Test's.  An executable calling this function is meant to be invoked as
@@ -519,23 +517,27 @@ stubMain tests = do
 -- the test suite and the location of the machine-readable test suite log file.
 -- Human-readable log information is written to the standard output for capture
 -- by the calling Cabal process.
-stubRunTests :: Test -> IO TestLogs
-stubRunTests (Test t) = do
-    l <- run t >>= finish
-    summarizeTest normal Always l
-    return l
+stubRunTests :: [Test] -> IO TestLogs
+stubRunTests tests = do
+    logs <- mapM stubRunTests' tests
+    return $ GroupLogs "Default" logs
   where
-    finish (Finished opts result) =
-        return TestLog
-            { testName = name t
-            , testOptionsReturned = opts
-            , testResult = result
-            }
-    finish (Progress _ next) = next >>= finish
-stubRunTests g@(Group {}) = do
-    logs <- mapM stubRunTests $ groupTests g
-    return $ GroupLogs (groupName g) logs
-stubRunTests (ExtraOptions _ t) = stubRunTests t
+    stubRunTests' (Test t) = do
+        l <- run t >>= finish
+        summarizeTest normal Always l
+        return l
+      where
+        finish (Finished opts result) =
+            return TestLog
+                { testName = name t
+                , testOptionsReturned = opts
+                , testResult = result
+                }
+        finish (Progress _ next) = next >>= finish
+    stubRunTests' g@(Group {}) = do
+        logs <- mapM stubRunTests' $ groupTests g
+        return $ GroupLogs (groupName g) logs
+    stubRunTests' (ExtraOptions _ t) = stubRunTests' t
 
 -- | From a test stub, write the 'TestSuiteLog' to temporary file for the calling
 -- Cabal process to read.
