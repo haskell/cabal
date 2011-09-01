@@ -34,7 +34,8 @@ import Distribution.Package
          , packageVersion, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
-         , PackageDescription(..), specVersion, BuildType(..) )
+         , PackageDescription(..), specVersion
+         , BuildType(..), knownBuildTypes )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Configure
@@ -56,7 +57,7 @@ import Distribution.Client.IndexUtils
          ( getInstalledPackages )
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, findPackageDesc, comparing
-         , createDirectoryIfMissingVerbose, rewriteFile )
+         , createDirectoryIfMissingVerbose, rewriteFile, intercalate )
 import Distribution.Client.Utils
          ( moreRecentFile, inDir )
 import Distribution.Text
@@ -116,11 +117,17 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
       mkArgs cabalLibVersion = commandName cmd
                              : commandShowOptions cmd (flags cabalLibVersion)
                             ++ extraArgs
+  checkBuildType buildType'
   setupMethod verbosity options' (packageId pkg) buildType' mkArgs
   where
     getPkg = findPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readPackageDescription verbosity
          >>= return . packageDescription
+
+    checkBuildType (UnknownBuildType name) =
+      die $ "The build-type '" ++ name ++ "' is not known. Use one of: "
+         ++ intercalate ", " (map display knownBuildTypes) ++ "."
+    checkBuildType _ = return ()
 
 -- | Decide if we're going to be able to do a direct internal call to the
 -- entry point in the Cabal library or if we're going to have to compile
