@@ -827,7 +827,7 @@ checkCabalVersion pkg =
       PackageDistInexcusable $
            "The 'test-suite' section is new in Cabal 1.10. "
         ++ "Unfortunately it messes up the parser in older Cabal versions "
-        ++ "so you must specify at least 'cabal-version: >= 1.8', but note"
+        ++ "so you must specify at least 'cabal-version: >= 1.8', but note "
         ++ "that only Cabal 1.10 and later can actually run such test suites."
 
     -- check use of default-language field
