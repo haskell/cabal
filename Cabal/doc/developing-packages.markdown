@@ -521,7 +521,7 @@ interface.  The `exitcode-stdio-1.0` type requires the `main-is` field.
     `main-is` field of an executable section.
 
 Test suites using the `detailed-1.0` interface are modules exporting the symbol
-`tests :: [Test]`.  The `Test` type is exported by the module
+`tests :: IO [Test]`.  The `Test` type is exported by the module
 `Distribution.TestSuite` provided by Cabal.  For more details, see the example below.
 
 The `detailed-1.0` interface allows Cabal and other test agents to inspect a
@@ -587,40 +587,34 @@ Build-Type:     Simple
 
 Test-Suite test-bar
     type:       detailed-1.0
-    test-module: Test.Bar
+    test-module: Bar
     build-depends: base, Cabal >= 1.9.2
 ~~~~~~~~~~~~~~~~
 
-Test/Bar.hs:
+Bar.hs:
 
 ~~~~~~~~~~~~~~~~
-{-# LANGUAGE FlexibleInstances #-}
-module Test.Bar ( tests ) where
+module Bar ( tests ) where
 
 import Distribution.TestSuite
 
-instance TestOptions (String, Bool) where
-    name = fst
-    options = const []
-    defaultOptions _ = return (Options [])
-    check _ _ = []
-
-instance PureTestable (String, Bool) where
-    run (name, result) _ | result == True = Pass
-                         | result == False = Fail (name ++ " failed!")
-
-test :: (String, Bool) -> Test
-test = pure
-
--- In actual usage, the instances 'TestOptions (String, Bool)' and
--- 'PureTestable (String, Bool)', as well as the function 'test', would be
--- provided by the test framework.
-
-tests :: [Test]
-tests =
-    [ test ("bar-1", True)
-    , test ("bar-2", False)
-    ]
+tests :: IO [Test]
+tests = return [ Test succeeds, Test fails ]
+  where
+    succeeds = TestInstance
+        { run = return $ Finished Pass
+        , name = "succeeds"
+        , tags = []
+        , options = []
+        , setOption = \_ _ -> Right succeeds
+        }
+    fails = TestInstance
+        { run = return $ Finished $ Fail "Always fails!"
+        , name = "fails"
+        , tags = []
+        , options = []
+        , setOption = \_ _ -> Right fails
+        }
 ~~~~~~~~~~~~~~~~
 
 #### Running test suites ####
