@@ -47,6 +47,7 @@ module Distribution.TestSuite
     , Options
     , Progress(..)
     , Result(..)
+    , testGroup
     ) where
 
 data TestInstance = TestInstance
@@ -117,3 +118,8 @@ data Result = Pass
             | Fail String
             | Error String
   deriving (Eq, Read, Show)
+
+-- | Create a named group of tests, which are assumed to be safe to run in
+-- parallel.
+testGroup :: String -> [Test] -> Test
+testGroup n ts = Group { groupName = n, concurrently = True, groupTests = ts }
