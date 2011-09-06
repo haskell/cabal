@@ -81,7 +81,6 @@ import Distribution.System ( buildPlatform, Platform )
 import Control.Exception ( bracket )
 import Control.Monad ( when, unless, filterM )
 import Data.Char ( toUpper )
-import Data.Either ( partitionEithers )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, getDirectoryContents, removeDirectoryRecursive
@@ -128,13 +127,6 @@ data TestLogs
     | GroupLogs String [TestLogs]
     deriving (Read, Show, Eq)
 
--- | Extract the options from the log of a previously-run test suite.
-loggedOptions :: TestLogs -> OptionTree
-loggedOptions t@(TestLog {}) =
-    TestOptions (testName t) (testOptionsReturned t)
-loggedOptions (GroupLogs n ts) =
-    GroupOptions n $ map loggedOptions ts
-
 -- | Count the number of pass, fail, and error test results in a 'TestLogs'
 -- tree.
 countTestResults :: TestLogs
@@ -169,10 +161,6 @@ suiteError l =
     case countTestResults (testLogs l) of
         (_, _, 0) -> False
         _ -> True
-
-data OptionTree = TestOptions String Options
-                | GroupOptions String [OptionTree]
-  deriving (Eq, Read, Show)
 
 -- | Run a test executable, logging the output and generating the appropriate
 -- summary messages.
@@ -300,7 +288,7 @@ test pkg_descr lbi flags = do
                            , PD.buildable (PD.testBuildInfo t) ]
 
         doTest :: (PD.TestSuite, Maybe TestSuiteLog) -> IO TestSuiteLog
-        doTest (suite, mLog) = do
+        doTest (suite, _) = do
             let testLogPath = testSuiteLogPath humanTemplate pkg_descr lbi
                 go pre cmd post = testController flags pkg_descr lbi suite
                                                  pre cmd post testLogPath
@@ -549,35 +537,3 @@ stubWriteLog f n logs = do
     when (suiteFailed testLog) $ exitWith $ ExitFailure 1
     exitWith ExitSuccess
 
--- | Apply options, represented as an 'OptionTree', to a tree of 'Tests'.
-applyOptionTree :: Test -> OptionTree -> Either String Test
-applyOptionTree (Test t) (TestOptions n opts)
-    | name t /= n = Left $ optTreeError ("test", name t) ("test", n)
-    | otherwise   = either Left (Right . Test)
-                        $ foldr set (Right t) opts
-  where
-    set _ (Left msg) = Left msg
-    set (optName, opt) (Right t') = setOption t' optName opt
-
-applyOptionTree g@(Group {}) (GroupOptions n os)
-    | n /= groupName g = Left $ optTreeError ("group", groupName g) ("group", n)
-    | otherwise =
-        let applys = zipWith applyOptionTree (groupTests g) os
-        in case partitionEithers applys of
-            ([], ts) -> Right $ g { groupTests = ts }
-            (msgs, _) -> Left $ unlines msgs
-
-applyOptionTree (ExtraOptions _ t) o = applyOptionTree t o
-
-applyOptionTree (Test t) (GroupOptions n _) =
-    Left $ optTreeError ("test", name t) ("group", n)
-
-applyOptionTree (Group { groupName = t }) (TestOptions n _) =
-    Left $ optTreeError ("group", t) ("test", n)
-
-
-optTreeError :: (String, String) -> (String, String) -> String
-optTreeError (exType, exName) (foType, foName) = unwords
-    [ "Expected options for", exType, "\"", exName, "\""
-    , "but found options for", foType, "\"", foName, "\"."
-    ]
