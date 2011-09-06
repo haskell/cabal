@@ -454,6 +454,12 @@ data KnownExtension =
   -- trusted.
   | Trustworthy
 
+  -- | [GHC &#xa7; 7.40] Allow type class/implicit parameter/equality
+  -- constraints to be used as types with the special kind Constraint.
+  -- Also generalise the (ctxt => ty) syntax so that any type of kind
+  -- Constraint can occur before the arrow.
+  | ConstraintKind
+
   deriving (Show, Read, Eq, Enum, Bounded)
 
 {-# DEPRECATED knownExtensions
