@@ -96,9 +96,14 @@ data Test
     = Test TestInstance
     | Group
         { groupName     :: String
-        , concurrently  :: Bool     -- ^ If true, then the child 'Test's or
-                                    -- 'Group's can safely be run concurrently;
-                                    -- otherwise, they must be run in series.
+        , concurrently  :: Bool
+            -- ^ If true, then children of this group may be run in parallel.
+            -- Note that this setting is not inherited by children. In
+            -- particular, consider a group F with "concurrently = False" that
+            -- has some children, including a group T with "concurrently =
+            -- True". The children of group T may be run concurrently with each
+            -- other, as long as none are run at the same time as any of the
+            -- direct children of group F.
         , groupTests    :: [Test]
         }
     | ExtraOptions [OptionDescr] Test
