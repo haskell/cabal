@@ -73,7 +73,8 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Setup ( TestFlags(..), TestShowDetails(..), fromFlag )
 import Distribution.Simple.Utils ( die, notice )
 import Distribution.TestSuite
-    ( Options, Progress(..), Result(..), TestInstance(..), Test(..) )
+    ( OptionDescr(..), Options, Progress(..), Result(..), TestInstance(..)
+    , Test(..) )
 import Distribution.Text
 import Distribution.Verbosity ( normal, Verbosity )
 import Distribution.System ( buildPlatform, Platform )
@@ -81,6 +82,7 @@ import Distribution.System ( buildPlatform, Platform )
 import Control.Exception ( bracket )
 import Control.Monad ( when, unless, filterM )
 import Data.Char ( toUpper )
+import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, getDirectoryContents, removeDirectoryRecursive
@@ -515,10 +517,10 @@ stubRunTests tests = do
         summarizeTest normal Always l
         return l
       where
-        finish (Finished opts result) =
+        finish (Finished result) =
             return TestLog
                 { testName = name t
-                , testOptionsReturned = opts
+                , testOptionsReturned = defaultOptions t
                 , testResult = result
                 }
         finish (Progress _ next) = next >>= finish
@@ -526,6 +528,9 @@ stubRunTests tests = do
         logs <- mapM stubRunTests' $ groupTests g
         return $ GroupLogs (groupName g) logs
     stubRunTests' (ExtraOptions _ t) = stubRunTests' t
+    maybeDefaultOption opt =
+        maybe Nothing (\d -> Just (optionName opt, d)) $ optionDefault opt
+    defaultOptions testInst = mapMaybe maybeDefaultOption $ options testInst
 
 -- | From a test stub, write the 'TestSuiteLog' to temporary file for the calling
 -- Cabal process to read.

@@ -105,10 +105,7 @@ data Test
 
 type Options = [(String, String)]
 
-data Progress = Finished Options Result
-                -- ^ The options used must be returned when the test is finished,
-                -- or it will not be possible to recreate tests taking a random
-                -- seed.
+data Progress = Finished Result
               | Progress String (IO Progress)
 
 data Result = Pass
