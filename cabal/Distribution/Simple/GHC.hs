@@ -585,6 +585,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       ifSharedLib = when (withSharedLib lbi)
       ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
       comp = compiler lbi
+      ghcVersion = compilerVersion comp
 
   libBi <- hackThreadedFlag verbosity
              comp (withProfLib lbi) (libBuildInfo lib)
@@ -645,15 +646,18 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   stubObjs <- fmap catMaybes $ sequence
     [ findFileWithExtension [objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules lib ]
+    | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+    , x <- libModules lib ]
   stubProfObjs <- fmap catMaybes $ sequence
     [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules lib ]
+    | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+    , x <- libModules lib ]
   stubSharedObjs <- fmap catMaybes $ sequence
     [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
         (ModuleName.toFilePath x ++"_stub")
-    | x <- libModules lib ]
+    | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+    , x <- libModules lib ]
 
   hObjs     <- getHaskellObjects lib lbi
                     pref objExtension True
