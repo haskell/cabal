@@ -411,8 +411,10 @@ mapAllBuildInfo :: (BuildInfo -> BuildInfo)
                 -> (PackageDescription -> PackageDescription)
 mapAllBuildInfo f pkg = pkg {
     library     = fmap mapLibBi (library pkg),
-    executables = fmap mapExeBi (executables pkg)
+    executables = fmap mapExeBi (executables pkg),
+    testSuites  = fmap mapTestBi (testSuites pkg)
   }
   where
     mapLibBi lib = lib { libBuildInfo = f (libBuildInfo lib) }
     mapExeBi exe = exe { buildInfo    = f (buildInfo exe) }
+    mapTestBi t  = t   { testBuildInfo = f (testBuildInfo t) }
