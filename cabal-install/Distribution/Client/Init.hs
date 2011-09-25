@@ -554,7 +554,10 @@ generateCabalFile fileName c =
                 True
 
        , field  "version"       (version       c)
-                (Just "The package version.  See the Haskell package versioning policy (http://www.haskell.org/haskellwiki/Package_versioning_policy) for standards guiding when and how versions should be incremented.")
+                (Just $ "The package version.  See the Haskell package versioning policy (PVP) for standards guiding when and how versions should be incremented.\nhttp://www.haskell.org/haskellwiki/Package_versioning_policy\n"
+                ++ "PVP summary:      +-+------- breaking API changes\n"
+                ++ "                  | | +----- non-breaking API additions\n"
+                ++ "                  | | | +--- code changes with no API change")
                 True
 
        , fieldS "synopsis"      (synopsis      c)
@@ -683,8 +686,16 @@ generateCabalFile fileName c =
                             lineLength = 76,
                             ribbonsPerLine = 1.05
                           }
-                        . fsep . map text . words $ t
+                        . vcat
+                        . map (fcat . map text . breakLine)
+                        . lines
+                        $ t
    showComment Nothing  = text ""
+
+   breakLine  [] = []
+   breakLine  cs = case break (==' ') cs of (w,cs') -> w : breakLine' cs'
+   breakLine' [] = []
+   breakLine' cs = case span (==' ') cs of (w,cs') -> w : breakLine cs'
 
 -- | Generate warnings for missing fields etc.
 generateWarnings :: InitFlags -> IO ()
