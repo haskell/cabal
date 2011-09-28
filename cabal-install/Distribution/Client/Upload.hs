@@ -4,7 +4,7 @@
 module Distribution.Client.Upload (check, upload, report) where
 
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
-import Distribution.Client.HttpUtils (proxy, isOldHackageURI)
+import Distribution.Client.HttpUtils (isOldHackageURI, cabalBrowse)
 
 import Distribution.Simple.Utils (debug, notice, warn, info)
 import Distribution.Verbosity (Verbosity)
@@ -15,9 +15,8 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
 import Network.Browser
-         ( BrowserAction, browse, request
-         , Authority(..), addAuthority, setAuthorityGen
-         , setOutHandler, setErrHandler, setProxy )
+         ( BrowserAction, request
+         , Authority(..), addAuthority )
 import Network.HTTP
          ( Header(..), HeaderName(..), findHeader
          , Request(..), RequestMethod(..), Response(..) )
@@ -106,7 +105,7 @@ report verbosity repos mUsername mPassword = do
                            Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
                            Right report' ->
                                do info verbosity $ "Uploading report for " ++ display (BuildReport.package report')
-                                  browse $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)] auth
+                                  cabalBrowse verbosity auth $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                                   return ()
         Right{} -> return ()
   where
@@ -122,15 +121,8 @@ handlePackage :: Verbosity -> URI -> BrowserAction (HandleStream String) ()
               -> FilePath -> IO ()
 handlePackage verbosity uri auth path =
   do req <- mkRequest uri path
-     p   <- proxy verbosity
      debug verbosity $ "\n" ++ show req
-     (_,resp) <- browse $ do
-                   setProxy p
-                   setErrHandler (warn verbosity . ("http error: "++))
-                   setOutHandler (debug verbosity)
-                   auth
-                   setAuthorityGen (\_ _ -> return Nothing)
-                   request req
+     (_,resp) <- cabalBrowse verbosity auth $ request req
      debug verbosity $ show resp
      case rspCode resp of
        (2,0,0) -> do notice verbosity "Ok"
