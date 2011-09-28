@@ -5,6 +5,7 @@
 module Distribution.Client.HttpUtils (
     downloadURI,
     getHTTP,
+    cabalBrowse,
     proxy,
     isOldHackageURI
   ) where
@@ -17,10 +18,10 @@ import Network.URI
 import Network.Stream
          ( Result, ConnError(..) )
 import Network.Browser
-         ( Proxy (..), Authority (..), browse
-         , setOutHandler, setErrHandler, setProxy, request)
+         ( Proxy (..), Authority (..), BrowserAction, browse
+         , setOutHandler, setErrHandler, setProxy, setAuthorityGen, request)
 import Control.Monad
-         ( mplus, join, liftM2 )
+         ( mplus, join, liftM, liftM2 )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy (ByteString)
 #ifdef WIN32
@@ -151,15 +152,22 @@ mkRequest uri = Request{ rqURI     = uri
 
 -- |Carry out a GET request, using the local proxy settings
 getHTTP :: Verbosity -> URI -> IO (Result (Response ByteString))
-getHTTP verbosity uri = do
-                 p   <- proxy verbosity
-                 let req = mkRequest uri
-                 (_, resp) <- browse $ do
-                                setErrHandler (warn verbosity . ("http error: "++))
-                                setOutHandler (debug verbosity)
-                                setProxy p
-                                request req
-                 return (Right resp)
+getHTTP verbosity uri = liftM (\(_, resp) -> Right resp) $
+                              cabalBrowse verbosity (return ()) (request (mkRequest uri))
+
+cabalBrowse :: Verbosity
+            -> BrowserAction s ()
+            -> BrowserAction s a
+            -> IO a
+cabalBrowse verbosity auth act = do
+    p   <- proxy verbosity
+    browse $ do
+        setProxy p
+        setErrHandler (warn verbosity . ("http error: "++))
+        setOutHandler (debug verbosity)
+        auth
+        setAuthorityGen (\_ _ -> return Nothing)
+        act
 
 downloadURI :: Verbosity
             -> URI      -- ^ What to download
