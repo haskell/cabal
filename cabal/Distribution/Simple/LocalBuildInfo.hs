@@ -75,7 +75,7 @@ import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
-         , BuildInfo(buildable) )
+         , BuildInfo(buildable), Benchmark(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..) )
 import Distribution.Simple.Compiler
@@ -117,6 +117,7 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ All the components to build, ordered by topological sort
                 -- over the intrapackage dependency graph
         testSuiteConfigs    :: [(String, ComponentLocalBuildInfo)],
+        benchmarkConfigs    :: [(String, ComponentLocalBuildInfo)],
         installedPkgs :: PackageIndex,
                 -- ^ All the info about the installed packages that the
                 -- current package depends on (directly or indirectly).
@@ -161,14 +162,16 @@ inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 -- -----------------------------------------------------------------------------
 -- Buildable components
 
-data Component = CLib  Library
-               | CExe  Executable
-               | CTest TestSuite
+data Component = CLib   Library
+               | CExe   Executable
+               | CTest  TestSuite
+               | CBench Benchmark
                deriving (Show, Eq, Read)
 
-data ComponentName = CLibName  -- currently only a single lib
-                   | CExeName  String
-                   | CTestName String
+data ComponentName = CLibName   -- currently only a single lib
+                   | CExeName   String
+                   | CTestName  String
+                   | CBenchName String
                    deriving (Show, Eq, Read)
 
 data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
@@ -183,11 +186,13 @@ data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
 foldComponent :: (Library -> a)
               -> (Executable -> a)
               -> (TestSuite -> a)
+              -> (Benchmark -> a)
               -> Component
               -> a
-foldComponent f _ _ (CLib  lib) = f lib
-foldComponent _ f _ (CExe  exe) = f exe
-foldComponent _ _ f (CTest tst) = f tst
+foldComponent f _ _ _ (CLib   lib) = f lib
+foldComponent _ f _ _ (CExe   exe) = f exe
+foldComponent _ _ f _ (CTest  tst) = f tst
+foldComponent _ _ _ f (CBench bch) = f bch
 
 -- | Obtains all components (libs, exes, or test suites), transformed by the
 -- given function.  Useful for gathering dependencies with component context.
@@ -268,14 +273,26 @@ withComponentsLBI pkg_descr lbi f = mapM_ compF (compBuildOrder lbi)
         missingtest = "internal error: component list includes a test suite "
                    ++ name ++ " but the package contains no such test suite."
 
+    compF (CBenchName name) =
+        case find (\bch -> benchmarkName bch == name) (benchmarks pkg_descr) of
+          Nothing  -> die missingbench
+          Just bch -> case lookup name (benchmarkConfigs lbi) of
+                        Nothing   -> die (missingBenchConf name)
+                        Just clbi -> f (CBench bch) clbi
+      where
+        missingbench = "internal error: component list includes a benchmark "
+                       ++ name ++ " but the package contains no such benchmark."
+
 missingLibConf :: String
-missingExeConf, missingTestConf :: String -> String
+missingExeConf, missingTestConf, missingBenchConf :: String -> String
 
 missingLibConf       = "internal error: the package contains a library "
                     ++ "but there is no corresponding configuration data"
 missingExeConf  name = "internal error: the package contains an executable "
                     ++ name ++ " but there is no corresponding configuration data"
 missingTestConf name = "internal error: the package contains a test suite "
+                    ++ name ++ " but there is no corresponding configuration data"
+missingBenchConf name = "internal error: the package contains a benchmark "
                     ++ name ++ " but there is no corresponding configuration data"
 
 
