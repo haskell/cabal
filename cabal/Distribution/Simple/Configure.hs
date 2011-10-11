@@ -82,7 +82,7 @@ import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , FlagName(..), TestSuite(..) )
+    , FlagName(..), TestSuite(..), Benchmark(..) )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
@@ -326,7 +326,11 @@ configure (pkg_descr0, pbi) cfg
             enableTest t = t { testEnabled = fromFlag (configTests cfg) }
             flaggedTests = map (\(n, t) -> (n, mapTreeData enableTest t))
                                (condTestSuites pkg_descr0)
-            pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests }
+            enableBenchmark bm = bm { benchmarkEnabled = fromFlag (configBenchmarks cfg) }
+            flaggedBenchmarks = map (\(n, bm) -> (n, mapTreeData enableBenchmark bm))
+                               (condBenchmarks pkg_descr0)
+            pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
+                                      , condBenchmarks = flaggedBenchmarks }
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -469,6 +473,8 @@ configure (pkg_descr0, pbi) cfg
             configExe exe = (exeName exe, configComponent (buildInfo exe))
             configTest test = (testName test,
                     configComponent(testBuildInfo test))
+            configBenchmark bm = (benchmarkName bm,
+                    configComponent(benchmarkBuildInfo bm))
             configComponent bi = ComponentLocalBuildInfo {
               componentPackageDeps =
                 if newPackageDepsBehaviour pkg_descr'
@@ -490,7 +496,8 @@ configure (pkg_descr0, pbi) cfg
                  mapMaybe exeDepToComp (buildTools bi)
               ++ mapMaybe libDepToComp (targetBuildDepends bi)
               where
-                bi = foldComponent libBuildInfo buildInfo testBuildInfo component
+                bi = foldComponent libBuildInfo buildInfo testBuildInfo
+                     benchmarkBuildInfo component
                 exeDepToComp (Dependency (PackageName name) _) =
                   CExe `fmap` find ((==) name . exeName)
                                 (executables pkg_descr')
@@ -503,13 +510,15 @@ configure (pkg_descr0, pbi) cfg
               where (g, lkup, _) = graphFromEdges
                                  $ allComponentsBy pkg_descr'
                                  $ \c -> (c, key c, map key (ipDeps c))
-                    key          = foldComponent (const "library") exeName testName
+                    key          = foldComponent (const "library") exeName
+                                   testName benchmarkName
 
         -- check for cycles in the dependency graph
         buildOrder <- forM sccs $ \scc -> case scc of
           AcyclicSCC (c,_,_) -> return (foldComponent (const CLibName)
                                                       (CExeName . exeName)
                                                       (CTestName . testName)
+                                                      (CBenchName . benchmarkName)
                                                       c)
           CyclicSCC vs ->
             die $ "Found cycle in intrapackage dependency graph:\n  "
@@ -530,6 +539,7 @@ configure (pkg_descr0, pbi) cfg
                     libraryConfig       = configLib `fmap` library pkg_descr',
                     executableConfigs   = configExe `fmap` executables pkg_descr',
                     testSuiteConfigs    = configTest `fmap` testSuites pkg_descr',
+                    benchmarkConfigs    = configBenchmark `fmap` benchmarks pkg_descr',
                     compBuildOrder      = buildOrder,
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
