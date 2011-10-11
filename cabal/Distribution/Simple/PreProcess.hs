@@ -66,7 +66,8 @@ import Distribution.PackageDescription as PD
          , Executable(..)
          , Library(..), libModules
          , TestSuite(..), testModules
-         , TestSuiteInterface(..) )
+         , TestSuiteInterface(..)
+         , Benchmark(..), benchmarkModules, BenchmarkInterface(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -209,6 +210,14 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
           preProcessTest test (stubFilePath test) testDir
       TestSuiteUnsupported tt -> die $ "No support for preprocessing test "
                                     ++ "suite type " ++ display tt
+  CBench bm@Benchmark{ benchmarkName = nm } -> do
+    setupMessage verbosity ("Preprocessing benchmark '" ++ nm ++ "' for") (packageId pd)
+    case benchmarkInterface bm of
+      BenchmarkExeV10 _ f ->
+          preProcessBench bm f $ buildDir lbi </> benchmarkName bm
+              </> benchmarkName bm ++ "-tmp"
+      BenchmarkUnsupported tt -> die $ "No support for preprocessing benchmark "
+                                 ++ "type " ++ display tt
   where
     builtinSuffixes
       | NHC == compilerFlavor (compiler lbi) = ["hs", "lhs", "gc"]
@@ -216,15 +225,18 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
     localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
     pre dirs dir lhndlrs fp =
       preprocessFile dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs
-    preProcessTest test exePath testDir = do
-        let bi = testBuildInfo test
-            biHandlers = localHandlers bi
+    preProcessTest test = preProcessComponent (testBuildInfo test)
+                          (testModules test)
+    preProcessBench bm = preProcessComponent (benchmarkBuildInfo bm)
+                         (benchmarkModules bm)
+    preProcessComponent bi modules exePath dir = do
+        let biHandlers = localHandlers bi
             sourceDirs = hsSourceDirs bi ++ [ autogenModulesDir lbi ]
         sequence_ [ preprocessFile sourceDirs (buildDir lbi) isSrcDist
                 (ModuleName.toFilePath modu) verbosity builtinSuffixes
                 biHandlers
-                | modu <- testModules test ]
-        preprocessFile (testDir : (hsSourceDirs bi)) testDir isSrcDist
+                | modu <- modules ]
+        preprocessFile (dir : (hsSourceDirs bi)) dir isSrcDist
             (dropExtensions $ exePath) verbosity
             builtinSuffixes biHandlers
 
