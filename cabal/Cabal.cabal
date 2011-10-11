@@ -147,6 +147,7 @@ test-suite unit-tests
                  PackageTests.TestOptions.Check,
                  PackageTests.TestStanza.Check,
                  PackageTests.TestSuiteExeV10.Check,
+                 PackageTests.BenchmarkStanza.Check,
                  PackageTests.PackageTester
   hs-source-dirs: tests
   build-depends:
