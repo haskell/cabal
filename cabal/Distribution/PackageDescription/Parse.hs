@@ -305,6 +305,80 @@ validateTestSuite line stanza =
 
 
 -- ---------------------------------------------------------------------------
+-- The Benchmark type
+
+-- | An intermediate type just used for parsing the benchmark stanza.
+-- After validation it is converted into the proper 'Benchmark' type.
+data BenchmarkStanza = BenchmarkStanza {
+       benchmarkStanzaBenchmarkType   :: Maybe BenchmarkType,
+       benchmarkStanzaMainIs          :: Maybe FilePath,
+       benchmarkStanzaBenchmarkModule :: Maybe ModuleName,
+       benchmarkStanzaBuildInfo       :: BuildInfo
+     }
+
+emptyBenchmarkStanza :: BenchmarkStanza
+emptyBenchmarkStanza = BenchmarkStanza Nothing Nothing Nothing mempty
+
+benchmarkFieldDescrs :: [FieldDescr BenchmarkStanza]
+benchmarkFieldDescrs =
+    [ simpleField "type"
+        (maybe empty disp)    (fmap Just parse)
+        benchmarkStanzaBenchmarkType
+        (\x suite -> suite { benchmarkStanzaBenchmarkType = x })
+    , simpleField "main-is"
+        (maybe empty showFilePath)  (fmap Just parseFilePathQ)
+        benchmarkStanzaMainIs
+        (\x suite -> suite { benchmarkStanzaMainIs = x })
+    ]
+    ++ map biToBenchmark binfoFieldDescrs
+  where
+    biToBenchmark = liftField benchmarkStanzaBuildInfo
+                    (\bi suite -> suite { benchmarkStanzaBuildInfo = bi })
+
+storeXFieldsBenchmark :: UnrecFieldParser BenchmarkStanza
+storeXFieldsBenchmark (f@('x':'-':_), val)
+    t@(BenchmarkStanza { benchmarkStanzaBuildInfo = bi }) =
+        Just $ t {benchmarkStanzaBuildInfo =
+                       bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
+storeXFieldsBenchmark _ _ = Nothing
+
+validateBenchmark :: LineNo -> BenchmarkStanza -> ParseResult Benchmark
+validateBenchmark line stanza =
+    case benchmarkStanzaBenchmarkType stanza of
+      Nothing -> return $
+        emptyBenchmark { benchmarkBuildInfo = benchmarkStanzaBuildInfo stanza }
+
+      Just tt@(BenchmarkTypeUnknown _ _) ->
+        return emptyBenchmark {
+          benchmarkInterface = BenchmarkUnsupported tt,
+          benchmarkBuildInfo = benchmarkStanzaBuildInfo stanza
+        }
+
+      Just tt | tt `notElem` knownBenchmarkTypes ->
+        return emptyBenchmark {
+          benchmarkInterface = BenchmarkUnsupported tt,
+          benchmarkBuildInfo = benchmarkStanzaBuildInfo stanza
+        }
+
+      Just tt@(BenchmarkTypeExe ver) ->
+        case benchmarkStanzaMainIs stanza of
+          Nothing   -> syntaxError line (missingField "main-is" tt)
+          Just file -> do
+            when (isJust (benchmarkStanzaBenchmarkModule stanza)) $
+              warning (extraField "benchmark-module" tt)
+            return emptyBenchmark {
+              benchmarkInterface = BenchmarkExeV10 ver file,
+              benchmarkBuildInfo = benchmarkStanzaBuildInfo stanza
+            }
+
+  where
+    missingField name tt = "The '" ++ name ++ "' field is required for the "
+                        ++ display tt ++ " benchmark type."
+
+    extraField   name tt = "The '" ++ name ++ "' field is not used for the '"
+                        ++ display tt ++ "' benchmark type."
+
+-- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
 
@@ -626,14 +700,14 @@ parsePackageDescription file = do
 
           -- 'getBody' assumes that the remaining fields only consist of
           -- flags, lib and exe sections.
-        (repos, flags, mlib, exes, tests) <- getBody
+        (repos, flags, mlib, exes, tests, bms) <- getBody
         warnIfRest  -- warn if getBody did not parse up to the last field.
           -- warn about using old/new syntax with wrong cabal-version:
         maybeWarnCabalVersion (not $ oldSyntax fields0) pkg
         checkForUndefinedFlags flags mlib exes tests
         return $ GenericPackageDescription
                    pkg { sourceRepos = repos }
-                   flags mlib exes tests
+                   flags mlib exes tests bms
 
   where
     oldSyntax flds = all isSimpleField flds
@@ -740,7 +814,8 @@ parsePackageDescription file = do
     getBody :: PM ([SourceRepo], [Flag]
                   ,Maybe (CondTree ConfVar [Dependency] Library)
                   ,[(String, CondTree ConfVar [Dependency] Executable)]
-                  ,[(String, CondTree ConfVar [Dependency] TestSuite)])
+                  ,[(String, CondTree ConfVar [Dependency] TestSuite)]
+                  ,[(String, CondTree ConfVar [Dependency] Benchmark)])
     getBody = peekField >>= \mf -> case mf of
       Just (Section line_no sec_type sec_label sec_fields)
         | sec_type == "executable" -> do
@@ -749,8 +824,8 @@ parsePackageDescription file = do
             exename <- lift $ runP line_no "executable" parseTokenQ sec_label
             flds <- collectFields parseExeFields sec_fields
             skipField
-            (repos, flags, lib, exes, tests) <- getBody
-            return (repos, flags, lib, (exename, flds): exes, tests)
+            (repos, flags, lib, exes, tests, bms) <- getBody
+            return (repos, flags, lib, (exename, flds): exes, tests, bms)
 
         | sec_type == "test-suite" -> do
             when (null sec_label) $ lift $ syntaxError line_no
@@ -791,8 +866,8 @@ parsePackageDescription file = do
             if checkTestType emptyTestSuite flds
                 then do
                     skipField
-                    (repos, flags, lib, exes, tests) <- getBody
-                    return (repos, flags, lib, exes, (testname, flds) : tests)
+                    (repos, flags, lib, exes, tests, bms) <- getBody
+                    return (repos, flags, lib, exes, (testname, flds) : tests, bms)
                 else lift $ syntaxError line_no $
                          "Test suite \"" ++ testname
                       ++ "\" is missing required field \"type\" or the field "
@@ -800,15 +875,63 @@ parsePackageDescription file = do
                       ++ "available test types are: "
                       ++ intercalate ", " (map display knownTestTypes)
 
+        | sec_type == "benchmark" -> do
+            when (null sec_label) $ lift $ syntaxError line_no
+                "'benchmark' needs one argument (the benchmark's name)"
+            benchname <- lift $ runP line_no "benchmark" parseTokenQ sec_label
+            flds <- collectFields (parseBenchmarkFields line_no) sec_fields
+
+            -- Check that a valid benchmark type has been chosen. A type
+            -- field may be given inside a conditional block, so we must
+            -- check for that before complaining that a type field has not
+            -- been given. The benchmark must always have a valid type, so
+            -- we need to check both the 'then' and 'else' blocks, though
+            -- the blocks need not have the same type.
+            let checkBenchmarkType ts ct =
+                    let ts' = mappend ts $ condTreeData ct
+                        -- If a conditional has only a 'then' block and no
+                        -- 'else' block, then it cannot have a valid type
+                        -- in every branch, unless the type is specified at
+                        -- a higher level in the tree.
+                        checkComponent (_, _, Nothing) = False
+                        -- If a conditional has a 'then' block and an 'else'
+                        -- block, both must specify a benchmark type, unless the
+                        -- type is specified higher in the tree.
+                        checkComponent (_, t, Just e) =
+                            checkBenchmarkType ts' t && checkBenchmarkType ts' e
+                        -- Does the current node specify a benchmark type?
+                        hasBenchmarkType = benchmarkInterface ts'
+                            /= benchmarkInterface emptyBenchmark
+                        components = condTreeComponents ct
+                    -- If the current level of the tree specifies a type,
+                    -- then we are done. If not, then one of the conditional
+                    -- branches below the current node must specify a type.
+                    -- Each node may have multiple immediate children; we
+                    -- only one need one to specify a type because the
+                    -- configure step uses 'mappend' to join together the
+                    -- results of flag resolution.
+                    in hasBenchmarkType || (any checkComponent components)
+            if checkBenchmarkType emptyBenchmark flds
+                then do
+                    skipField
+                    (repos, flags, lib, exes, tests, bms) <- getBody
+                    return (repos, flags, lib, exes, tests, (benchname, flds) : bms)
+                else lift $ syntaxError line_no $
+                         "Benchmark \"" ++ benchname
+                      ++ "\" is missing required field \"type\" or the field "
+                      ++ "is not present in all conditional branches. The "
+                      ++ "available benchmark types are: "
+                      ++ intercalate ", " (map display knownBenchmarkTypes)
+
         | sec_type == "library" -> do
             when (not (null sec_label)) $ lift $
               syntaxError line_no "'library' expects no argument"
             flds <- collectFields parseLibFields sec_fields
             skipField
-            (repos, flags, lib, exes, tests) <- getBody
+            (repos, flags, lib, exes, tests, bms) <- getBody
             when (isJust lib) $ lift $ syntaxError line_no
               "There can only be one library section in a package description."
-            return (repos, flags, Just flds, exes, tests)
+            return (repos, flags, Just flds, exes, tests, bms)
 
         | sec_type == "flag" -> do
             when (null sec_label) $ lift $
@@ -819,8 +942,8 @@ parsePackageDescription file = do
                     (MkFlag (FlagName (lowercase sec_label)) "" True False)
                     sec_fields
             skipField
-            (repos, flags, lib, exes, tests) <- getBody
-            return (repos, flag:flags, lib, exes, tests)
+            (repos, flags, lib, exes, tests, bms) <- getBody
+            return (repos, flag:flags, lib, exes, tests, bms)
 
         | sec_type == "source-repository" -> do
             when (null sec_label) $ lift $ syntaxError line_no $
@@ -844,8 +967,8 @@ parsePackageDescription file = do
                     })
                     sec_fields
             skipField
-            (repos, flags, lib, exes, tests) <- getBody
-            return (repo:repos, flags, lib, exes, tests)
+            (repos, flags, lib, exes, tests, bms) <- getBody
+            return (repo:repos, flags, lib, exes, tests, bms)
 
         | otherwise -> do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
@@ -856,7 +979,7 @@ parsePackageDescription file = do
               "Construct not supported at this position: " ++ show f
             skipField
             getBody
-      Nothing -> return ([], [], Nothing, [], [])
+      Nothing -> return ([], [], Nothing, [], [], [])
 
     -- Extracts all fields in a block and returns a 'CondTree'.
     --
@@ -903,6 +1026,12 @@ parsePackageDescription file = do
         x <- lift $ parseFields testSuiteFieldDescrs storeXFieldsTest
                                 emptyTestStanza fields
         lift $ validateTestSuite line x
+
+    parseBenchmarkFields :: LineNo -> [Field] -> PM Benchmark
+    parseBenchmarkFields line fields = do
+        x <- lift $ parseFields benchmarkFieldDescrs storeXFieldsBenchmark
+                                emptyBenchmarkStanza fields
+        lift $ validateBenchmark line x
 
     checkForUndefinedFlags ::
         [Flag] ->
