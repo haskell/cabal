@@ -292,6 +292,7 @@ data ConfigFlags = ConfigFlags {
                                        -- dependencies
     configConfigurationsFlags :: FlagAssignment,
     configTests :: Flag Bool,     -- ^Enable test suite compilation
+    configBenchmarks :: Flag Bool,     -- ^Enable benchmark compilation
     configLibCoverage :: Flag Bool    -- ^ Enable test suite program coverage
   }
   deriving (Read,Show)
@@ -315,6 +316,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = Flag True,
     configTests  = Flag False,
+    configBenchmarks   = Flag False,
     configLibCoverage = Flag False
   }
 
@@ -478,6 +480,10 @@ configureOptions showOrParseArgs =
          "build library and test suites with Haskell Program Coverage enabled. (GHC only)"
          configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
+      ,option "" ["benchmarks"]
+         "dependency checking and compilation for benchmarkss listed in the package description file."
+         configBenchmarks (\v flags -> flags { configBenchmarks = v })
+         (boolOpt [] [])
       ]
   where
     readFlagList :: String -> FlagAssignment
@@ -587,7 +593,8 @@ instance Monoid ConfigFlags where
     configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty,
     configTests   = mempty,
-    configLibCoverage = mempty
+    configLibCoverage = mempty,
+    configBenchmarks    = mempty
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -619,7 +626,8 @@ instance Monoid ConfigFlags where
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests = combine configTests,
-    configLibCoverage = combine configLibCoverage
+    configLibCoverage = combine configLibCoverage,
+    configBenchmarks    = combine configBenchmarks
   }
     where combine field = field a `mappend` field b
 
