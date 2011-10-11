@@ -92,7 +92,10 @@ module Distribution.PackageDescription (
         benchmarkType,
         knownBenchmarkTypes,
         emptyBenchmark,
+        hasBenchmarks,
+        withBenchmark,
         benchmarkModules,
+        enabledBenchmarks,
 
         -- * Build information
         BuildInfo(..),
@@ -184,6 +187,7 @@ data PackageDescription
         library        :: Maybe Library,
         executables    :: [Executable],
         testSuites     :: [TestSuite],
+        benchmarks     :: [Benchmark],
         dataFiles      :: [FilePath],
         dataDir        :: FilePath,
         extraSrcFiles  :: [FilePath],
@@ -246,6 +250,7 @@ emptyPackageDescription
                       library      = Nothing,
                       executables  = [],
                       testSuites   = [],
+                      benchmarks   = [],
                       dataFiles    = [],
                       dataDir      = "",
                       extraSrcFiles = [],
@@ -575,6 +580,19 @@ instance Monoid BenchmarkInterface where
 emptyBenchmark :: Benchmark
 emptyBenchmark = mempty
 
+-- | Does this package have any benchmarks?
+hasBenchmarks :: PackageDescription -> Bool
+hasBenchmarks = any (buildable . benchmarkBuildInfo) . benchmarks
+
+-- | Get all the enabled benchmarks from a package.
+enabledBenchmarks :: PackageDescription -> [Benchmark]
+enabledBenchmarks = filter benchmarkEnabled . benchmarks
+
+-- | Perform an action on each buildable 'Benchmark' in a package.
+withBenchmark :: PackageDescription -> (Benchmark -> IO ()) -> IO ()
+withBenchmark pkg_descr f =
+    mapM_ f $ filter (buildable . benchmarkBuildInfo) $ enabledBenchmarks pkg_descr
+
 -- | Get all the module names from a benchmark.
 benchmarkModules :: Benchmark -> [ModuleName]
 benchmarkModules benchmark = otherModules (benchmarkBuildInfo benchmark)
@@ -716,7 +734,8 @@ emptyBuildInfo :: BuildInfo
 emptyBuildInfo = mempty
 
 -- | The 'BuildInfo' for the library (if there is one and it's buildable), and
--- all buildable executables and test suites.  Useful for gathering dependencies.
+-- all buildable executables, test suites and benchmarks.  Useful for gathering
+-- dependencies.
 allBuildInfo :: PackageDescription -> [BuildInfo]
 allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
                               , let bi = libBuildInfo lib
@@ -728,6 +747,10 @@ allBuildInfo pkg_descr = [ bi | Just lib <- [library pkg_descr]
                               , let bi = testBuildInfo tst
                               , buildable bi
                               , testEnabled tst ]
+                      ++ [ bi | tst <- benchmarks pkg_descr
+                              , let bi = benchmarkBuildInfo tst
+                              , buildable bi
+                              , benchmarkEnabled tst ]
   --FIXME: many of the places where this is used, we actually want to look at
   --       unbuildable bits too, probably need separate functions
 
@@ -926,7 +949,8 @@ data GenericPackageDescription =
         genPackageFlags       :: [Flag],
         condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)],
-        condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)]
+        condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
+        condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]
       }
     deriving (Show, Eq)
 

@@ -68,7 +68,8 @@ import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
          , Library(..), Executable(..), BuildInfo(..)
          , Flag(..), FlagName(..), FlagAssignment
-         , CondTree(..), ConfVar(..), Condition(..), TestSuite(..) )
+         , Benchmark(..), CondTree(..), ConfVar(..), Condition(..)
+         , TestSuite(..) )
 import Distribution.Version
          ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Compiler
@@ -399,12 +400,13 @@ newtype TargetSet a = TargetSet [(DependencyMap, a)]
 overallDependencies :: TargetSet PDTagged -> DependencyMap
 overallDependencies (TargetSet targets) = mconcat depss
   where
-    (depss, _) = unzip $ filter (removeDisabledTests . snd) targets
-    removeDisabledTests :: PDTagged -> Bool
-    removeDisabledTests (Lib _) = True
-    removeDisabledTests (Exe _ _) = True
-    removeDisabledTests (Test _ t) = testEnabled t
-    removeDisabledTests PDNull = True
+    (depss, _) = unzip $ filter (removeDisabledSections . snd) targets
+    removeDisabledSections :: PDTagged -> Bool
+    removeDisabledSections (Lib _) = True
+    removeDisabledSections (Exe _ _) = True
+    removeDisabledSections (Test _ t) = testEnabled t
+    removeDisabledSections (Bench _ b) = benchmarkEnabled b
+    removeDisabledSections PDNull = True
 
 -- Apply extra constraints to a dependency map.
 -- Combines dependencies where the result will only contain keys from the left
@@ -425,30 +427,44 @@ constrainBy left extra =
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
 flattenTaggedTargets :: TargetSet PDTagged ->
-        (Maybe Library, [(String, Executable)], [(String, TestSuite)])
-flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], []) targets
+        (Maybe Library, [(String, Executable)], [(String, TestSuite)]
+        , [(String, Benchmark)])
+flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) targets
   where
-    untag (_, Lib _) (Just _, _, _) = bug "Only one library expected"
-    untag (deps, Lib l) (Nothing, exes, tests) = (Just l', exes, tests)
+    untag (_, Lib _) (Just _, _, _, _) = bug "Only one library expected"
+    untag (deps, Lib l) (Nothing, exes, tests, bms) =
+        (Just l', exes, tests, bms)
       where
         l' = l {
                 libBuildInfo = (libBuildInfo l) { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, Exe n e) (mlib, exes, tests)
+    untag (deps, Exe n e) (mlib, exes, tests, bms)
         | any ((== n) . fst) exes = bug "Exe with same name found"
         | any ((== n) . fst) tests = bug "Test sharing name of exe found"
-        | otherwise = (mlib, exes ++ [(n, e')], tests)
+        | any ((== n) . fst) bms = bug "Benchmark sharing name of exe found"
+        | otherwise = (mlib, exes ++ [(n, e')], tests, bms)
       where
         e' = e {
                 buildInfo = (buildInfo e) { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, Test n t) (mlib, exes, tests)
+    untag (deps, Test n t) (mlib, exes, tests, bms)
         | any ((== n) . fst) tests = bug "Test with same name found"
         | any ((== n) . fst) exes = bug "Test sharing name of exe found"
-        | otherwise = (mlib, exes, tests ++ [(n, t')])
+        | any ((== n) . fst) bms = bug "Test sharing name of benchmark found"
+        | otherwise = (mlib, exes, tests ++ [(n, t')], bms)
       where
         t' = t {
             testBuildInfo = (testBuildInfo t)
+                { targetBuildDepends = fromDepMap deps }
+            }
+    untag (deps, Bench n b) (mlib, exes, tests, bms)
+        | any ((== n) . fst) bms = bug "Benchmark with same name found"
+        | any ((== n) . fst) exes = bug "Benchmark sharing name of exe found"
+        | any ((== n) . fst) tests = bug "Benchmark sharing name of test found"
+        | otherwise = (mlib, exes, tests, bms ++ [(n, b')])
+      where
+        b' = b {
+            benchmarkBuildInfo = (benchmarkBuildInfo b)
                 { targetBuildDepends = fromDepMap deps }
             }
     untag (_, PDNull) x = x  -- actually this should not happen, but let's be liberal
@@ -458,7 +474,12 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], []) targets
 -- Convert GenericPackageDescription to PackageDescription
 --
 
-data PDTagged = Lib Library | Exe String Executable | Test String TestSuite | PDNull deriving Show
+data PDTagged = Lib Library
+              | Exe String Executable
+              | Test String TestSuite
+              | Bench String Benchmark
+              | PDNull
+              deriving Show
 
 instance Monoid PDTagged where
     mempty = PDNull
@@ -467,6 +488,7 @@ instance Monoid PDTagged where
     Lib l `mappend` Lib l' = Lib (l `mappend` l')
     Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
     Test n t `mappend` Test n' t' | n == n' = Test n (t `mappend` t')
+    Bench n b `mappend` Bench n' b' | n == n' = Bench n (b `mappend` b')
     _ `mappend` _ = bug "Cannot combine incompatible tags"
 
 -- | Create a package description with all configurations resolved.
@@ -503,12 +525,13 @@ finalizePackageDescription ::
              -- ^ Either missing dependencies or the resolved package
              -- description along with the flag assignments chosen.
 finalizePackageDescription userflags satisfyDep (Platform arch os) impl constraints
-        (GenericPackageDescription pkg flags mlib0 exes0 tests0) =
+        (GenericPackageDescription pkg flags mlib0 exes0 tests0 bms0) =
     case resolveFlags of
-      Right ((mlib, exes', tests'), targetSet, flagVals) ->
+      Right ((mlib, exes', tests', bms'), targetSet, flagVals) ->
         Right ( pkg { library = mlib
                     , executables = exes'
                     , testSuites = tests'
+                    , benchmarks = bms'
                     , buildDepends = fromDepMap (overallDependencies targetSet)
                       --TODO: we need to find a way to avoid pulling in deps
                       -- for non-buildable components. However cannot simply
@@ -523,14 +546,16 @@ finalizePackageDescription userflags satisfyDep (Platform arch os) impl constrai
     condTrees = maybeToList (fmap (mapTreeData Lib) mlib0 )
                 ++ map (\(name,tree) -> mapTreeData (Exe name) tree) exes0
                 ++ map (\(name,tree) -> mapTreeData (Test name) tree) tests0
+                ++ map (\(name,tree) -> mapTreeData (Bench name) tree) bms0
 
     resolveFlags =
         case resolveWithFlags flagChoices os arch impl constraints condTrees check of
           Right (targetSet, fs) ->
-              let (mlib, exes, tests) = flattenTaggedTargets targetSet in
+              let (mlib, exes, tests, bms) = flattenTaggedTargets targetSet in
               Right ( (fmap libFillInDefaults mlib,
                        map (\(n,e) -> (exeFillInDefaults e) { exeName = n }) exes,
-                       map (\(n,t) -> (testFillInDefaults t) { testName = n }) tests),
+                       map (\(n,t) -> (testFillInDefaults t) { testName = n }) tests,
+                       map (\(n,b) -> (benchFillInDefaults b) { benchmarkName = n }) bms),
                      targetSet, fs)
           Left missing      -> Left missing
 
@@ -569,11 +594,12 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- default path will be missing from the package description returned by this
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
-flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0 tests0) =
+flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0 tests0 bms0) =
     pkg { library = mlib
         , executables = reverse exes
         , testSuites = reverse tests
-        , buildDepends = ldeps ++ reverse edeps ++ reverse tdeps
+        , benchmarks = reverse bms
+        , buildDepends = ldeps ++ reverse edeps ++ reverse tdeps ++ reverse bdeps
         }
   where
     (mlib, ldeps) = case mlib0 of
@@ -582,12 +608,16 @@ flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0 tests0) =
         Nothing -> (Nothing, [])
     (exes, edeps) = foldr flattenExe ([],[]) exes0
     (tests, tdeps) = foldr flattenTst ([],[]) tests0
+    (bms, bdeps) = foldr flattenBm ([],[]) bms0
     flattenExe (n, t) (es, ds) =
         let (e, ds') = ignoreConditions t in
         ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds )
     flattenTst (n, t) (es, ds) =
         let (e, ds') = ignoreConditions t in
         ( (testFillInDefaults $ e { testName = n }) : es, ds' ++ ds )
+    flattenBm (n, t) (es, ds) =
+        let (e, ds') = ignoreConditions t in
+        ( (benchFillInDefaults $ e { benchmarkName = n }) : es, ds' ++ ds )
 
 -- This is in fact rather a hack.  The original version just overrode the
 -- default values, however, when adding conditions we had to switch to a
@@ -607,6 +637,10 @@ exeFillInDefaults exe@(Executable { buildInfo = bi }) =
 testFillInDefaults :: TestSuite -> TestSuite
 testFillInDefaults tst@(TestSuite { testBuildInfo = bi }) =
     tst { testBuildInfo = biFillInDefaults bi }
+
+benchFillInDefaults :: Benchmark -> Benchmark
+benchFillInDefaults bm@(Benchmark { benchmarkBuildInfo = bi }) =
+    bm { benchmarkBuildInfo = biFillInDefaults bi }
 
 biFillInDefaults :: BuildInfo -> BuildInfo
 biFillInDefaults bi =
