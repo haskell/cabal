@@ -207,6 +207,9 @@ allComponentsBy pkg_descr f =
  ++ [ f (CTest tst) | tst <- testSuites pkg_descr
                     , buildable (testBuildInfo tst)
                     , testEnabled tst ]
+ ++ [ f (CBench bm) | bm <- benchmarks pkg_descr
+                    , buildable (benchmarkBuildInfo bm)
+                    , benchmarkEnabled bm ]
 
 -- |If the package description has a library section, call the given
 --  function with the library build info as argument.  Extended version of
