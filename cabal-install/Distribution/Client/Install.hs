@@ -100,7 +100,8 @@ import Distribution.Package
          , Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
-         ( PackageDescription, GenericPackageDescription(..), TestSuite(..) )
+         ( Benchmark(..), PackageDescription, GenericPackageDescription(..)
+         , TestSuite(..) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, mapTreeData )
 import Distribution.Version
@@ -249,11 +250,11 @@ planPackages comp configFlags configExFlags installFlags
           [ PackageConstraintFlags (pkgSpecifierTarget pkgSpecifier) flags
           | let flags = configConfigurationsFlags configFlags
           , not (null flags)
-          , pkgSpecifier <- pkgSpecifiers' ]
+          , pkgSpecifier <- pkgSpecifiers'' ]
 
       . (if reinstall then reinstallTargets else id)
 
-      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers'
+      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers''
 
     -- Mark test suites as enabled if invoked with '--enable-tests'. This
     -- ensures that test suite dependencies are included.
@@ -267,6 +268,18 @@ planPackages comp configFlags configExFlags installFlags
             { condTestSuites = map (\(n, t) -> (n, enable t)) suites } }
     enableTests x = x
 
+    -- Mark benchmarks as enabled if invoked with
+    -- '--enable-benchmarks'. This ensures that benchmark dependencies
+    -- are included.
+    pkgSpecifiers'' = map enableBenchmarks pkgSpecifiers'
+    benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
+    enableBenchmarks (SpecificSourcePackage pkg) =
+        let pkgDescr = Source.packageDescription pkg
+            bms = condBenchmarks pkgDescr
+            enable = mapTreeData (\t -> t { benchmarkEnabled = benchmarksEnabled })
+        in SpecificSourcePackage $ pkg { Source.packageDescription = pkgDescr
+            { condBenchmarks = map (\(n, t) -> (n, enable t)) bms } }
+    enableBenchmarks x = x
 
     --TODO: this is a general feature and should be moved to D.C.Dependency
     -- Also, the InstallPlan.remove should return info more precise to the
