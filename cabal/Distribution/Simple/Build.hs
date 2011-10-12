@@ -69,7 +69,8 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
-         , TestSuite(..), TestSuiteInterface(..) )
+         , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
+         , BenchmarkInterface(..) )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 
@@ -229,6 +230,26 @@ build pkg_descr lbi flags suffixes = do
                 registerPackage verbosity ipi pkg lbi' True $ withPackageDB lbi'
                 buildExe verbosity pkg_descr lbi' exe exeClbi
             TestSuiteUnsupported tt -> die $ "No support for building test suite "
+                                          ++ "type " ++ display tt
+
+      CBench bm -> do
+        case benchmarkInterface bm of
+            BenchmarkExeV10 _ f -> do
+                let bi  = benchmarkBuildInfo bm
+                    exe = Executable
+                        { exeName = benchmarkName bm
+                        , modulePath = f
+                        , buildInfo  = bi
+                        }
+                    progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+                    lbi'   = lbi {
+                               withPrograms  = progs',
+                               withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+                             }
+                pre comp lbi'
+                info verbosity $ "Building benchmark " ++ benchmarkName bm ++ "..."
+                buildExe verbosity pkg_descr lbi' exe clbi
+            BenchmarkUnsupported tt -> die $ "No support for building benchmark "
                                           ++ "type " ++ display tt
 
 -- | Initialize a new package db file for libraries defined
