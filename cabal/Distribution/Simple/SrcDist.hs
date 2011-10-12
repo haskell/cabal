@@ -68,7 +68,8 @@ module Distribution.Simple.SrcDist (
 
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..)
-         , TestSuite(..), TestSuiteInterface(..) )
+         , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
+         , BenchmarkInterface(..) )
 import Distribution.PackageDescription.Check
          ( PackageCheck(..), checkConfiguredPackage, checkPackageFiles )
 import Distribution.Package
@@ -195,6 +196,23 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
             prep [m] bi
         TestSuiteUnsupported tp -> die $ "Unsupported test suite type: " ++ show tp
 
+  -- move the benchmarks into place
+  withBenchmark $ \bm -> do
+    let bi = benchmarkBuildInfo bm
+        prep = prepareDir verbosity pkg_descr distPref targetDir pps
+    case benchmarkInterface bm of
+        BenchmarkExeV10 _ mainPath -> do
+            prep [] bi
+            srcMainFile <- do
+                ppFile <- findFileWithExtension (ppSuffixes pps)
+                                                (hsSourceDirs bi)
+                                                (dropExtension mainPath)
+                case ppFile of
+                    Nothing -> findFile (hsSourceDirs bi) mainPath
+                    Just pp -> return pp
+            copyFileTo verbosity targetDir srcMainFile
+        BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: " ++ show tp
+
   flip mapM_ (dataFiles pkg_descr) $ \ filename -> do
     files <- matchFileGlob (dataDir pkg_descr </> filename)
     let dir = takeDirectory (dataDir pkg_descr </> filename)
@@ -261,6 +279,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
     withLib action = maybe (return ()) action (library pkg_descr)
     withExe action = mapM_ action (executables pkg_descr)
     withTest action = mapM_ action (testSuites pkg_descr)
+    withBenchmark action = mapM_ action (benchmarks pkg_descr)
 
 -- | Prepare a directory tree of source files for a snapshot version.
 -- It is expected that the appropriate snapshot version has already been set
@@ -412,9 +431,11 @@ mapAllBuildInfo :: (BuildInfo -> BuildInfo)
 mapAllBuildInfo f pkg = pkg {
     library     = fmap mapLibBi (library pkg),
     executables = fmap mapExeBi (executables pkg),
-    testSuites  = fmap mapTestBi (testSuites pkg)
+    testSuites  = fmap mapTestBi (testSuites pkg),
+    benchmarks  = fmap mapBenchBi (benchmarks pkg)
   }
   where
-    mapLibBi lib = lib { libBuildInfo = f (libBuildInfo lib) }
-    mapExeBi exe = exe { buildInfo    = f (buildInfo exe) }
-    mapTestBi t  = t   { testBuildInfo = f (testBuildInfo t) }
+    mapLibBi lib  = lib { libBuildInfo       = f (libBuildInfo lib) }
+    mapExeBi exe  = exe { buildInfo          = f (buildInfo exe) }
+    mapTestBi t   = t   { testBuildInfo      = f (testBuildInfo t) }
+    mapBenchBi bm = bm  { benchmarkBuildInfo = f (benchmarkBuildInfo bm) }
