@@ -112,6 +112,7 @@ import Distribution.Simple.Configure
          , configure, checkForeignDeps )
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.Bench (bench)
 import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Test (test)
 import Distribution.Simple.Install (install)
@@ -206,6 +207,7 @@ defaultMainHelper hooks args = topHandler $
       ,registerCommand        `commandAddAction` registerAction     hooks
       ,unregisterCommand      `commandAddAction` unregisterAction   hooks
       ,testCommand            `commandAddAction` testAction         hooks
+      ,benchmarkCommand       `commandAddAction` benchAction        hooks
       ]
 
 -- | Combine the preprocessors in the given hooks with the
@@ -360,6 +362,14 @@ testAction hooks flags args = do
             (getBuildConfig hooks verbosity distPref)
             hooks flags' args
 
+benchAction :: UserHooks -> BenchmarkFlags -> Args -> IO ()
+benchAction hooks flags args = do
+    let distPref  = fromFlag $ benchmarkDistPref flags
+        verbosity = fromFlag $ benchmarkVerbosity flags
+    hookedActionWithArgs preBench benchHook postBench
+            (getBuildConfig hooks verbosity distPref)
+            hooks flags args
+
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args
     = do let distPref  = fromFlag $ regDistPref flags
@@ -383,7 +393,17 @@ hookedAction :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
                       -> LocalBuildInfo -> IO ())
         -> IO LocalBuildInfo
         -> UserHooks -> flags -> Args -> IO ()
-hookedAction pre_hook cmd_hook post_hook get_build_config hooks flags args = do
+hookedAction pre_hook cmd_hook =
+    hookedActionWithArgs pre_hook (\h _ pd lbi uh flags -> cmd_hook h pd lbi uh flags)
+
+hookedActionWithArgs :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
+        -> (UserHooks -> Args -> PackageDescription -> LocalBuildInfo
+                      -> UserHooks -> flags -> IO ())
+        -> (UserHooks -> Args -> flags -> PackageDescription
+                      -> LocalBuildInfo -> IO ())
+        -> IO LocalBuildInfo
+        -> UserHooks -> flags -> Args -> IO ()
+hookedActionWithArgs pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    pbi <- pre_hook hooks args flags
    localbuildinfo <- get_build_config
    let pkg_descr0 = localPkgDescr localbuildinfo
@@ -392,7 +412,7 @@ hookedAction pre_hook cmd_hook post_hook get_build_config hooks flags args = do
    let pkg_descr = updatePackageDescription pbi pkg_descr0
    -- TODO: should we write the modified package descr back to the
    -- localbuildinfo?
-   cmd_hook hooks pkg_descr localbuildinfo hooks flags
+   cmd_hook hooks args pkg_descr localbuildinfo hooks flags
    post_hook hooks args flags pkg_descr localbuildinfo
 
 sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
@@ -499,6 +519,7 @@ simpleUserHooks =
        buildHook = defaultBuildHook,
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
        testHook = defaultTestHook,
+       benchHook = defaultBenchHook,
        instHook  = defaultInstallHook,
        sDistHook = \p l h f -> sdist p l f srcPref (allSuffixHandlers h),
        cleanHook = \p _ _ f -> clean p f,
@@ -644,6 +665,11 @@ defaultTestHook :: PackageDescription -> LocalBuildInfo
                 -> UserHooks -> TestFlags -> IO ()
 defaultTestHook pkg_descr localbuildinfo _ flags =
     test pkg_descr localbuildinfo flags
+
+defaultBenchHook :: Args -> PackageDescription -> LocalBuildInfo
+                 -> UserHooks -> BenchmarkFlags -> IO ()
+defaultBenchHook args pkg_descr localbuildinfo _ flags =
+    bench args pkg_descr localbuildinfo flags
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()

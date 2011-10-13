@@ -72,6 +72,7 @@ module Distribution.Simple.Setup (
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
   TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
   TestShowDetails(..),
+  BenchmarkFlags(..), emptyBenchmarkFlags, defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   installDirsOptions,
@@ -1379,6 +1380,67 @@ instance Monoid TestFlags where
     testKeepTix = combine testKeepTix,
     testList = combine testList,
     testOptions = combine testOptions
+  }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Benchmark flags
+-- ------------------------------------------------------------
+
+data BenchmarkFlags = BenchmarkFlags {
+    benchmarkDistPref  :: Flag FilePath,
+    benchmarkVerbosity :: Flag Verbosity,
+    benchmarkOptions :: [PathTemplate]
+  }
+
+defaultBenchmarkFlags :: BenchmarkFlags
+defaultBenchmarkFlags  = BenchmarkFlags {
+    benchmarkDistPref  = Flag defaultDistPref,
+    benchmarkVerbosity = Flag normal,
+    benchmarkOptions = []
+  }
+
+benchmarkCommand :: CommandUI BenchmarkFlags
+benchmarkCommand = makeCommand name shortDesc longDesc defaultBenchmarkFlags options
+  where
+    name       = "bench"
+    shortDesc  = "Run the benchmark, if any (configure with UserHooks)."
+    longDesc   = Nothing
+    options showOrParseArgs =
+      [ optionVerbosity benchmarkVerbosity (\v flags -> flags { benchmarkVerbosity = v })
+      , optionDistPref
+            benchmarkDistPref (\d flags -> flags { benchmarkDistPref = d })
+            showOrParseArgs
+      , option [] ["benchmark-options"]
+            ("give extra options to benchmark executables "
+             ++ "(name templates can use $pkgid, $compiler, "
+             ++ "$os, $arch, $benchmark)")
+            benchmarkOptions (\v flags -> flags { benchmarkOptions = v })
+            (reqArg' "TEMPLATES" (map toPathTemplate . splitArgs)
+                (const []))
+      , option [] ["benchmark-option"]
+            ("give extra option to benchmark executables "
+             ++ "(no need to quote options containing spaces, "
+             ++ "name template can use $pkgid, $compiler, "
+             ++ "$os, $arch, $benchmark)")
+            benchmarkOptions (\v flags -> flags { benchmarkOptions = v })
+            (reqArg' "TEMPLATE" (\x -> [toPathTemplate x])
+                (map fromPathTemplate))
+      ]
+
+emptyBenchmarkFlags :: BenchmarkFlags
+emptyBenchmarkFlags = mempty
+
+instance Monoid BenchmarkFlags where
+  mempty = BenchmarkFlags {
+    benchmarkDistPref  = mempty,
+    benchmarkVerbosity = mempty,
+    benchmarkOptions = mempty
+  }
+  mappend a b = BenchmarkFlags {
+    benchmarkDistPref  = combine benchmarkDistPref,
+    benchmarkVerbosity = combine benchmarkVerbosity,
+    benchmarkOptions = combine benchmarkOptions
   }
     where combine field = field a `mappend` field b
 
