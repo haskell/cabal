@@ -66,7 +66,7 @@ import Distribution.Simple.PreProcess (PPSuffixHandler)
 import Distribution.Simple.Setup
          (ConfigFlags, BuildFlags, CleanFlags, CopyFlags,
           InstallFlags, SDistFlags, RegisterFlags, HscolourFlags,
-          HaddockFlags, TestFlags)
+          HaddockFlags, TestFlags, BenchmarkFlags)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
 
 type Args = [String]
@@ -168,7 +168,14 @@ data UserHooks = UserHooks {
     -- |Over-ride this hook to get different behavior during test.
     testHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> TestFlags -> IO (),
     -- |Hook to run after test command.
-    postTest :: Args -> TestFlags -> PackageDescription -> LocalBuildInfo -> IO ()
+    postTest :: Args -> TestFlags -> PackageDescription -> LocalBuildInfo -> IO (),
+
+    -- |Hook to run before bench command.
+    preBench :: Args -> BenchmarkFlags -> IO HookedBuildInfo,
+    -- |Over-ride this hook to get different behavior during bench.
+    benchHook :: Args -> PackageDescription -> LocalBuildInfo -> UserHooks -> BenchmarkFlags -> IO (),
+    -- |Hook to run after bench command.
+    postBench :: Args -> BenchmarkFlags -> PackageDescription -> LocalBuildInfo -> IO ()
   }
 
 {-# DEPRECATED runTests "Please use the new testing interface instead!" #-}
@@ -214,7 +221,11 @@ emptyUserHooks
       preTest = \_ _ -> return emptyHookedBuildInfo, -- same as rn, but without
                                                      -- noExtraFlags
       testHook = ru,
-      postTest = ru
+      postTest = ru,
+      preBench = \_ _ -> return emptyHookedBuildInfo, -- same as rn, but without
+                                                      -- noExtraFlags
+      benchHook = \_ -> ru,
+      postBench = ru
     }
     where rn args  _ = noExtraFlags args >> return emptyHookedBuildInfo
           ru _ _ _ _ = return ()
