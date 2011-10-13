@@ -61,6 +61,7 @@ import Distribution.Text
 
 import Control.Monad ( when, unless )
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
+import System.Directory ( doesFileExist )
 import System.FilePath ( (</>), (<.>) )
 
 -- | Perform the \"@.\/setup bench@\" action.
@@ -87,6 +88,12 @@ bench args pkg_descr lbi flags = do
                       options = map (benchOption pkg_descr lbi bm) $
                                 benchmarkOptions flags
                       name = PD.benchmarkName bm
+                  -- Check that the benchmark executable exists.
+                  exists <- doesFileExist cmd
+                  unless exists $ die $
+                      "Error: Could not find benchmark program \""
+                      ++ cmd ++ "\". Did you build the package first?"
+
                   notice verbosity $ startMessage name
                   -- This will redirect the child process
                   -- stdout/stderr to the parent process.
