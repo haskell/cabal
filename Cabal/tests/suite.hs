@@ -11,6 +11,7 @@ import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
 import qualified Test.HUnit as HUnit
 import PackageTests.BenchmarkExeV10.Check
+import PackageTests.BenchmarkOptions.Check
 import PackageTests.BenchmarkStanza.Check
 import PackageTests.BuildDeps.SameDepsAllRound.Check
 import PackageTests.BuildDeps.TargetSpecificDeps1.Check
@@ -50,10 +51,11 @@ tests cabalVersion = [
         (PackageTests.TestSuiteExeV10.Check.checkTestWithHpc cabalVersion),
         hunit "PackageTests/TestOptions" PackageTests.TestOptions.Check.suite,
         hunit "PackageTests/BenchmarkStanza/" (PackageTests.BenchmarkStanza.Check.suite cabalVersion),
-        hunit "PackageTests/BenchmarkExeV10/Test"
-        (PackageTests.BenchmarkExeV10.Check.checkBenchmark cabalVersion)
         -- ^ The benchmark stanza test will eventually be required
         -- only for higher versions.
+        hunit "PackageTests/BenchmarkExeV10/Test"
+        (PackageTests.BenchmarkExeV10.Check.checkBenchmark cabalVersion),
+        hunit "PackageTests/BenchmarkOptions" PackageTests.BenchmarkOptions.Check.suite
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if cabalVersion >= Version [1, 7] []
