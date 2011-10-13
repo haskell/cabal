@@ -77,6 +77,7 @@ Library
         Distribution.Simple.Build.Macros,
         Distribution.Simple.Build.PathsModule,
         Distribution.Simple.BuildPaths,
+        Distribution.Simple.Bench,
         Distribution.Simple.Command,
         Distribution.Simple.Compiler,
         Distribution.Simple.Configure,
