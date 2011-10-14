@@ -24,7 +24,9 @@ module Distribution.Client.Init (
 import System.IO
   ( hSetBuffering, stdout, BufferMode(..) )
 import System.Directory
-  ( getCurrentDirectory )
+  ( getCurrentDirectory, doesDirectoryExist )
+import System.FilePath
+  ( (</>) )
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
@@ -223,14 +225,20 @@ getGenComments flags = do
 getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
   srcDirs <-     return (sourceDirs flags)
-             ?>> guessSourceDirs
+             ?>> Just `fmap` (guessSourceDirs flags)
 
   return $ flags { sourceDirs = srcDirs }
 
--- XXX
--- | Try to guess source directories.
-guessSourceDirs :: IO (Maybe [String])
-guessSourceDirs = return Nothing
+-- | Try to guess source directories.  Could try harder; for the
+--   moment just looks to see whether there is a directory called 'src'.
+guessSourceDirs :: InitFlags -> IO [String]
+guessSourceDirs flags = do
+  dir      <- fromMaybe getCurrentDirectory
+                (fmap return . flagToMaybe $ packageDir flags)
+  srcIsDir <- doesDirectoryExist (dir </> "src")
+  if srcIsDir
+    then return ["src"]
+    else return []
 
 -- | Get the list of exposed modules and extra tools needed to build them.
 getModulesAndBuildTools :: InitFlags -> IO InitFlags
