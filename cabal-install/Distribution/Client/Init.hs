@@ -169,7 +169,7 @@ getHomepage :: InitFlags -> IO InitFlags
 getHomepage flags = do
   hp  <- queryHomepage
   hp' <-     return (flagToMaybe $ homepage flags)
-         ?>> maybePrompt flags (promptStr "Project homepage/repo URL" hp)
+         ?>> maybePrompt flags (promptStr "Project homepage URL" hp)
          ?>> return hp
 
   return $ flags { homepage = maybeToFlag hp' }
