@@ -217,7 +217,7 @@ getGenComments flags = do
                  ?>> return (Just False)
   return $ flags { noComments = maybeToFlag (fmap not genComments) }
   where
-    promptMsg = "Include documentation on what each field means y/n"
+    promptMsg = "Include documentation on what each field means (y/n)"
 
 -- | Try to guess the source root directory (don't prompt the user).
 getSrcDir :: InitFlags -> IO InitFlags
