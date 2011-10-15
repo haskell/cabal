@@ -48,9 +48,9 @@ import Distribution.Simple.Program
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
-         ( configureCommand, sdistCommand )
+         ( configureCommand, sdistCommand, haddockCommand )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), SDistFlags(..) )
+         ( ConfigFlags(..), SDistFlags(..), HaddockFlags(..) )
 import Distribution.Simple.Setup
          ( Flag(..), toFlag, fromFlag, flagToList, flagToMaybe
          , optionVerbosity, trueArg, falseArg )
@@ -225,7 +225,6 @@ filterConfigureFlags flags cabalLibVersion
     -- older Cabal does not grok the constraints flag:
   | otherwise = flags { configConstraints = [] }
 
-
 -- ------------------------------------------------------------
 -- * Config extra flags
 -- ------------------------------------------------------------
@@ -356,13 +355,13 @@ updateCommand = CommandUI {
     commandOptions      = \_ -> [optionVerbosity id const]
   }
 
-upgradeCommand  :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
+upgradeCommand  :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 upgradeCommand = configureCommand {
     commandName         = "upgrade",
     commandSynopsis     = "(command disabled, use install instead)",
     commandDescription  = Nothing,
     commandUsage        = usagePackages "upgrade",
-    commandDefaultFlags = (mempty, mempty, mempty),
+    commandDefaultFlags = (mempty, mempty, mempty, mempty),
     commandOptions      = commandOptions installCommand
   }
 
@@ -605,7 +604,7 @@ defaultInstallFlags = InstallFlags {
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
 
-installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
+installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Installs a list of packages.",
@@ -624,17 +623,36 @@ installCommand = CommandUI {
      ++ "    Specific version of a package\n"
      ++ "  " ++ pname ++ " install 'foo < 2'       "
      ++ "    Constrained package version\n",
-  commandDefaultFlags = (mempty, mempty, mempty),
+  commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1 (filter ((/="constraint") . optionName) $
                               configureOptions   showOrParseArgs)
     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
     ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
+    ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
   }
   where
-    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
-    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
-    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
+    get1 (a,_,_,_) = a; set1 a (_,b,c,d) = (a,b,c,d)
+    get2 (_,b,_,_) = b; set2 b (a,_,c,d) = (a,b,c,d)
+    get3 (_,_,c,_) = c; set3 c (a,b,_,d) = (a,b,c,d)
+    get4 (_,_,_,d) = d; set4 d (a,b,c,_) = (a,b,c,d)
+
+    haddockOptions showOrParseArgs
+      = [ opt { optionName = "haddock-" ++ name,
+                optionDescr = [ fmapOptFlags (\(_, lflags) -> ([], map ("haddock-" ++) lflags)) descr
+                              | descr <- optionDescr opt] }
+        | opt <- commandOptions Cabal.haddockCommand showOrParseArgs
+        , let name = optionName opt
+        , name `elem` ["hoogle", "html", "html-location",
+                       "executables", "internal", "css",
+                       "hyperlink-source", "hscolour-css"]
+        ]
+
+    fmapOptFlags :: (OptFlags -> OptFlags) -> OptDescr a -> OptDescr a
+    fmapOptFlags modify (ReqArg d f p r w)    = ReqArg d (modify f) p r w
+    fmapOptFlags modify (OptArg d f p r i w)  = OptArg d (modify f) p r i w
+    fmapOptFlags modify (ChoiceOpt xs)        = ChoiceOpt [(d, modify f, i, w) | (d, f, i, w) <- xs]
+    fmapOptFlags modify (BoolOpt d f1 f2 r w) = BoolOpt d (modify f1) (modify f2) r w
 
 installOptions ::  ShowOrParseArgs -> [OptionField InstallFlags]
 installOptions showOrParseArgs =
