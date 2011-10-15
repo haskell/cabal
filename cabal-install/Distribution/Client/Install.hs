@@ -85,7 +85,7 @@ import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
-         ( haddockCommand, HaddockFlags(..), emptyHaddockFlags
+         ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.Setup as Cabal
@@ -147,10 +147,11 @@ install, upgrade
   -> ConfigFlags
   -> ConfigExFlags
   -> InstallFlags
+  -> HaddockFlags
   -> [UserTarget]
   -> IO ()
 install verbosity packageDBs repos comp conf
-  globalFlags configFlags configExFlags installFlags userTargets0 = do
+  globalFlags configFlags configExFlags installFlags haddockFlags userTargets0 = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
@@ -181,13 +182,13 @@ install verbosity packageDBs repos comp conf
   where
     context :: InstallContext
     context = (packageDBs, repos, comp, conf,
-               globalFlags, configFlags, configExFlags, installFlags)
+               globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
 
     dryRun      = fromFlag (installDryRun installFlags)
     logMsg message rest = debug verbosity message >> rest
 
 
-upgrade _ _ _ _ _ _ _ _ _ _ = die $
+upgrade _ _ _ _ _ _ _ _ _ _ _ = die $
     "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
  ++ "You can install the latest version of a package using 'cabal install'. "
  ++ "The 'cabal upgrade' command has been removed because people found it "
@@ -207,7 +208,8 @@ type InstallContext = ( PackageDBStack
                       , GlobalFlags
                       , ConfigFlags
                       , ConfigExFlags
-                      , InstallFlags )
+                      , InstallFlags
+                      , HaddockFlags )
 
 -- ------------------------------------------------------------
 -- * Installation planning
@@ -456,7 +458,7 @@ postInstallActions :: Verbosity
                    -> InstallPlan
                    -> IO ()
 postInstallActions verbosity
-  (packageDBs, _, comp, conf, globalFlags, configFlags, _, installFlags)
+  (packageDBs, _, comp, conf, globalFlags, configFlags, _, installFlags, _)
   targets installPlan = do
 
   unless oneShot $
@@ -649,7 +651,7 @@ performInstallations :: Verbosity
                      -> IO InstallPlan
 performInstallations verbosity
   (packageDBs, _, comp, conf,
-   globalFlags, configFlags, configExFlags, installFlags)
+   globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
   executeInstallPlan installPlan $ \cpkg ->
@@ -659,7 +661,7 @@ performInstallations verbosity
         installLocalPackage verbosity (packageId pkg) src' $ \mpath ->
           installUnpackedPackage verbosity
                                  (setupScriptOptions installedPkgIndex)
-                                 miscOptions configFlags' installFlags
+                                 miscOptions configFlags' installFlags haddockFlags
                                  compid pkg mpath useLogFile
 
   where
@@ -816,13 +818,14 @@ installUnpackedPackage :: Verbosity
                    -> InstallMisc
                    -> ConfigFlags
                    -> InstallFlags
+                   -> HaddockFlags
                    -> CompilerId
                    -> PackageDescription
                    -> Maybe FilePath -- ^ Directory to change to before starting the installation.
                    -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
                    -> IO BuildResult
 installUnpackedPackage verbosity scriptOptions miscOptions
-                       configFlags installConfigFlags
+                       configFlags installConfigFlags haddockFlags
                        compid pkg workingDir useLogFile =
 
   -- Configure phase
@@ -835,7 +838,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions
 
   -- Doc generation phase
       docsResult <- if shouldHaddock
-        then (do setup haddockCommand haddockFlags
+        then (do setup haddockCommand haddockFlags'
                  return DocsOk)
                `catchIO`   (\_ -> return DocsFailed)
                `catchExit` (\_ -> return DocsFailed)
@@ -862,8 +865,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions
       buildVerbosity = toFlag verbosity'
     }
     shouldHaddock    = fromFlag (installDocumentation installConfigFlags)
-    haddockFlags _   = emptyHaddockFlags {
-      haddockDistPref  = configDistPref configFlags,
+    haddockFlags' _   = haddockFlags {
       haddockVerbosity = toFlag verbosity'
     }
     installFlags _   = Cabal.emptyInstallFlags {

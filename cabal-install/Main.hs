@@ -184,15 +184,15 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
             (configPackageDB' configFlags') (globalRepos globalFlags')
             comp conf configFlags' configExFlags' extraArgs
 
-installAction :: (ConfigFlags, ConfigExFlags, InstallFlags)
+installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
-installAction (configFlags, _, installFlags) _ _globalFlags
+installAction (configFlags, _, installFlags, _) _ _globalFlags
   | fromFlagOrDefault False (installOnly installFlags)
   = let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
     in setupWrapper verbosity defaultSetupScriptOptions Nothing
          installCommand (const mempty) []
 
-installAction (configFlags, configExFlags, installFlags)
+installAction (configFlags, configExFlags, installFlags, haddockFlags)
               extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   targets <- readUserTargets verbosity extraArgs
@@ -206,7 +206,7 @@ installAction (configFlags, configExFlags, installFlags)
   (comp, conf) <- configCompilerAux' configFlags'
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf globalFlags' configFlags' configExFlags' installFlags'
+          comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
           targets
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
@@ -250,9 +250,9 @@ updateAction verbosityFlag extraArgs globalFlags = do
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   update verbosity (globalRepos globalFlags')
 
-upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags)
+upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
-upgradeAction (configFlags, configExFlags, installFlags)
+upgradeAction (configFlags, configExFlags, installFlags, haddockFlags)
               extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   targets <- readUserTargets verbosity extraArgs
@@ -266,7 +266,7 @@ upgradeAction (configFlags, configExFlags, installFlags)
   (comp, conf) <- configCompilerAux' configFlags'
   upgrade verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf globalFlags' configFlags' configExFlags' installFlags'
+          comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
           targets
 
 fetchAction :: FetchFlags -> [String] -> GlobalFlags -> IO ()
