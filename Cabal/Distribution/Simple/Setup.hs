@@ -1010,6 +1010,7 @@ data HaddockFlags = HaddockFlags {
     haddockCss          :: Flag FilePath,
     haddockHscolour     :: Flag Bool,
     haddockHscolourCss  :: Flag FilePath,
+    haddockContents     :: Flag PathTemplate,
     haddockDistPref     :: Flag FilePath,
     haddockVerbosity    :: Flag Verbosity
   }
@@ -1027,6 +1028,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockCss          = NoFlag,
     haddockHscolour     = Flag False,
     haddockHscolourCss  = NoFlag,
+    haddockContents     = NoFlag,
     haddockDistPref     = Flag defaultDistPref,
     haddockVerbosity    = Flag normal
   }
@@ -1082,6 +1084,13 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
          "Use PATH as the HsColour stylesheet"
          haddockHscolourCss (\v flags -> flags { haddockHscolourCss = v })
          (reqArgFlag "PATH")
+      
+      ,option "" ["contents-location"]
+         "Bake URL in as the location for the contents page"
+         haddockContents (\v flags -> flags { haddockContents = v })
+         (reqArg' "URL"
+                (toFlag . toPathTemplate)
+                (flagToList . fmap fromPathTemplate))
       ]
       ++ programConfigurationPaths   progConf ParseArgs
              haddockProgramPaths (\v flags -> flags { haddockProgramPaths = v})
@@ -1106,6 +1115,7 @@ instance Monoid HaddockFlags where
     haddockCss          = mempty,
     haddockHscolour     = mempty,
     haddockHscolourCss  = mempty,
+    haddockContents     = mempty,
     haddockDistPref     = mempty,
     haddockVerbosity    = mempty
   }
@@ -1120,6 +1130,7 @@ instance Monoid HaddockFlags where
     haddockCss          = combine haddockCss,
     haddockHscolour     = combine haddockHscolour,
     haddockHscolourCss  = combine haddockHscolourCss,
+    haddockContents     = combine haddockContents,
     haddockDistPref     = combine haddockDistPref,
     haddockVerbosity    = combine haddockVerbosity
   }
