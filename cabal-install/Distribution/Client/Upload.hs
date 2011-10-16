@@ -32,7 +32,7 @@ import System.Random    (randomRIO)
 import System.FilePath  ((</>), takeExtension, takeFileName)
 import qualified System.FilePath.Posix as FilePath.Posix (combine)
 import System.Directory
-import Control.Monad (forM_)
+import Control.Monad (forM_, when)
 
 
 --FIXME: how do we find this path for an arbitrary hackage server?
@@ -97,16 +97,19 @@ report verbosity repos mUsername mPassword = do
         Left remoteRepo
             -> do dotCabal <- defaultCabalDir
                   let srcDir = dotCabal </> "reports" </> remoteRepoName remoteRepo
-                  contents <- getDirectoryContents srcDir
-                  forM_ (filter (\c -> takeExtension c == ".log") contents) $ \logFile ->
-                      do inp <- readFile (srcDir </> logFile)
-                         let (reportStr, buildLog) = read inp :: (String,String)
-                         case BuildReport.parse reportStr of
-                           Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
-                           Right report' ->
-                               do info verbosity $ "Uploading report for " ++ display (BuildReport.package report')
-                                  cabalBrowse verbosity auth $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)]
-                                  return ()
+                  -- We don't want to bomb out just because we haven't built any packages from this repo yet
+                  srcExists <- doesDirectoryExist srcDir
+                  when srcExists $ do
+                    contents <- getDirectoryContents srcDir
+                    forM_ (filter (\c -> takeExtension c == ".log") contents) $ \logFile ->
+                        do inp <- readFile (srcDir </> logFile)
+                           let (reportStr, buildLog) = read inp :: (String,String)
+                           case BuildReport.parse reportStr of
+                             Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
+                             Right report' ->
+                                 do info verbosity $ "Uploading report for " ++ display (BuildReport.package report')
+                                    cabalBrowse verbosity auth $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)]
+                                    return ()
         Right{} -> return ()
   where
     targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
