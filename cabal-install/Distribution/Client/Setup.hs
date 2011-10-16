@@ -645,7 +645,8 @@ installCommand = CommandUI {
         , let name = optionName opt
         , name `elem` ["hoogle", "html", "html-location",
                        "executables", "internal", "css",
-                       "hyperlink-source", "hscolour-css"]
+                       "hyperlink-source", "hscolour-css",
+                       "contents-location"]
         ]
 
     fmapOptFlags :: (OptFlags -> OptFlags) -> OptDescr a -> OptDescr a
