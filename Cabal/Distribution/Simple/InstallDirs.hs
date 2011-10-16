@@ -60,6 +60,7 @@ module Distribution.Simple.InstallDirs (
 
         PathTemplate,
         PathTemplateVariable(..),
+        PathTemplateEnv,
         toPathTemplate,
         fromPathTemplate,
         substPathTemplate,

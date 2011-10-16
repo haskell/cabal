@@ -71,7 +71,7 @@ import Distribution.Simple.Setup
         ( defaultHscolourFlags, Flag(..), flagToMaybe, fromFlag
         , HaddockFlags(..), HscolourFlags(..) )
 import Distribution.Simple.Build (initialBuildSteps)
-import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplate,
+import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplateEnv, PathTemplate,
                                         PathTemplateVariable(..),
                                         toPathTemplate, fromPathTemplate,
                                         substPathTemplate,
@@ -122,6 +122,7 @@ data HaddockArgs = HaddockArgs {
  argIgnoreExports :: Any,                         -- ^ ingore export lists in modules?
  argLinkSource :: Flag (Template,Template),       -- ^ (template for modules, template for symbols)
  argCssFile :: Flag FilePath,                     -- ^ optinal custom css file.
+ argContents :: Flag String,                      -- ^ optional url to contents page
  argVerbose :: Any,
  argOutput :: Flag [Output],                      -- ^ Html or Hoogle doc or both?                                   required.
  argInterfaces :: [(FilePath, Maybe FilePath)],   -- ^ [(interface file, path to the html docs for links)]
@@ -197,7 +198,7 @@ haddock pkg_descr lbi suffixes flags = do
             [ getInterfaces verbosity lbi (flagToMaybe (haddockHtmlLocation flags))
             , getGhcLibDir  verbosity lbi isVersion2 ]
            ++ map return
-            [ fromFlags flags
+            [ fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
             , fromPackageDescription pkg_descr ]
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
@@ -265,8 +266,8 @@ prepareSources verbosity tmp lbi isVersion2 bi args@HaddockArgs{argTargets=files
 --------------------------------------------------------------------------------------------------
 -- constributions to HaddockArgs
 
-fromFlags :: HaddockFlags -> HaddockArgs
-fromFlags flags =
+fromFlags :: PathTemplateEnv -> HaddockFlags -> HaddockArgs
+fromFlags env flags =
     mempty {
       argHideModules = (maybe mempty (All . not) $ flagToMaybe (haddockInternal flags), mempty),
       argLinkSource = if fromFlag (haddockHscolour flags)
@@ -274,6 +275,7 @@ fromFlags flags =
                                          ,"src/%{MODULE/./-}.html#%{NAME}")
                                else NoFlag,
       argCssFile = haddockCss flags,
+      argContents = fmap (fromPathTemplate . substPathTemplate env) (haddockContents flags),
       argVerbose = maybe mempty (Any . (>= deafening)) . flagToMaybe $ haddockVerbosity flags,
       argOutput = 
           Flag $ case [ Html | Flag True <- [haddockHtml flags] ] ++
@@ -414,6 +416,7 @@ renderPureArgs version args = concat
      maybe [] (\(m,e) -> ["--source-module=" ++ m
                          ,"--source-entity=" ++ e]) . flagToMaybe . argLinkSource $ args,
      maybe [] ((:[]).("--css="++)) . flagToMaybe . argCssFile $ args,
+     maybe [] ((:[]).("--use-contents="++)) . flagToMaybe . argContents $ args,
      bool [] [verbosityFlag] . getAny . argVerbose $ args,
      map (\o -> case o of Hoogle -> "--hoogle"; Html -> "--html") . fromFlag . argOutput $ args,
      renderInterfaces . argInterfaces $ args,
@@ -474,8 +477,11 @@ haddockPackageFlags lbi htmlTemplate = do
       return (interface, html)
 
       where expandTemplateVars = fromPathTemplate . substPathTemplate env
-            env = (PrefixVar, prefix (installDirTemplates lbi))
-                : initialPathTemplateEnv (packageId pkg) (compilerId (compiler lbi))
+            env = haddockTemplateEnv lbi (packageId pkg)
+
+haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
+haddockTemplateEnv lbi pkg_id = (PrefixVar, prefix (installDirTemplates lbi))
+                                : initialPathTemplateEnv pkg_id (compilerId (compiler lbi))
 
 -- --------------------------------------------------------------------------
 -- hscolour support
@@ -596,6 +602,7 @@ instance Monoid HaddockArgs where
                 argIgnoreExports = mempty,
                 argLinkSource = mempty,
                 argCssFile = mempty,
+                argContents = mempty,
                 argVerbose = mempty,
                 argOutput = mempty,
                 argInterfaces = mempty,
@@ -613,6 +620,7 @@ instance Monoid HaddockArgs where
                 argIgnoreExports = mult argIgnoreExports,
                 argLinkSource = mult argLinkSource,
                 argCssFile = mult argCssFile,
+                argContents = mult argContents,
                 argVerbose = mult argVerbose,
                 argOutput = mult argOutput,
                 argInterfaces = mult argInterfaces,
