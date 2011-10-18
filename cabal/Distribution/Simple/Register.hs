@@ -275,7 +275,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
     IPI.exposed            = libExposed  lib,
     IPI.exposedModules     = exposedModules lib,
     IPI.hiddenModules      = otherModules bi,
-    IPI.trusted            = True,
+    IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],
     IPI.libraryDirs        = if hasLibrary
                                then libdir installDirs : extraLibDirs bi
