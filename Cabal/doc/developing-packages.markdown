@@ -623,6 +623,75 @@ tests =
     ]
 ~~~~~~~~~~~~~~~~
 
+### Benchmarks ###
+
+Benchmark sections (if present) describe benchmarks contained in the package and
+must have an argument after the section label, which defines the name of the
+benchmark.  This is a freeform argument, but may not contain spaces.  It should
+be unique among the names of the package's other benchmarks, the package's test
+suites, the package's executables, and the package itself.  Using benchmark
+sections requires at least Cabal version 1.9.2.
+
+The benchmark may be described using the following fields, as well as build
+information fields (see the section on [build information](#build-information)).
+
+`type:` _interface_ (required)
+:   The interface type and version of the benchmark.  At the moment Cabal only
+    support one benchmark interface, called `exitcode-stdio-1.0`.
+
+Test suites using the `exitcode-stdio-1.0` interface are executables that
+indicate failure to run the benchmark with a non-zero exit code when run; they
+may provide human-readable information through the standard output and error
+channels.
+
+`main-is:` _filename_ (required: `exitcode-stdio-1.0`)
+:   The name of the `.hs` or `.lhs` file containing the `Main` module. Note that it is the
+    `.hs` filename that must be listed, even if that file is generated
+    using a preprocessor. The source file must be relative to one of the
+    directories listed in `hs-source-dirs`.  This field is analogous to the
+    `main-is` field of an executable section.
+
+#### Example: Package using `exitcode-stdio-1.0` interface ####
+
+The example package description and executable source file below demonstrate
+the use of the `exitcode-stdio-1.0` interface.  For brevity, the example package
+does not include a library or any normal executables, but a real package would
+be required to have at least one library or executable.
+
+foo.cabal:
+
+~~~~~~~~~~~~~~~~
+Name:           foo
+Version:        1.0
+License:        BSD3
+Cabal-Version:  >= 1.9.2
+Build-Type:     Simple
+
+Benchmark bench-foo
+    type:       exitcode-stdio-1.0
+    main-is:    bench-foo.hs
+    build-depends: base
+~~~~~~~~~~~~~~~~
+
+bench-foo.hs:
+
+~~~~~~~~~~~~~~~~
+{-# LANGUAGE BangPatterns #-}
+module Main where
+
+import Data.Time.Clock
+
+fib 0 = 1
+fib 1 = 1
+fib n = fib (n-1) + fib (n-2)
+
+main = do
+    start <- getCurrentTime
+    let !r = fib 20
+    end <- getCurrentTime
+    putStrLn $ "fib 20 took " ++ show (diffUTCTime end start)
+~~~~~~~~~~~~~~~~
+
 ### Build information ###
 
 The following fields may be optionally present in a library or
