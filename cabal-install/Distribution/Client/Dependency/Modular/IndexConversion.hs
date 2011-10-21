@@ -84,14 +84,15 @@ convGPD :: OS -> Arch -> CompilerId ->
            PI PN -> GenericPackageDescription -> PInfo
 convGPD os arch cid
         pi@(PI _pn _i)
-        (GenericPackageDescription _ flags libs exes tests) =
+        (GenericPackageDescription _ flags libs exes tests benchs) =
   let
     fds = flagDefaults flags
   in
     PInfo
-      (maybe []  (convCondTree os arch cid pi fds (const True))          libs   ++
-       concatMap (convCondTree os arch cid pi fds (const True) . snd)    exes   ++
-       concatMap (convCondTree os arch cid pi fds testEnabled  . snd)    tests)
+      (maybe []  (convCondTree os arch cid pi fds (const True)          ) libs   ++
+       concatMap (convCondTree os arch cid pi fds (const True)     . snd) exes   ++
+       concatMap (convCondTree os arch cid pi fds testEnabled      . snd) tests  ++
+       concatMap (convCondTree os arch cid pi fds benchmarkEnabled . snd) benchs)
       fds
       [] -- TODO: add encaps
 
