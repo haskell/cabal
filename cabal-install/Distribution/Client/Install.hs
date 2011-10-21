@@ -345,46 +345,62 @@ printPlanMessages verbosity installed installPlan dryRun = do
       ++ "already installed.\n If you want to reinstall anyway then use "
       ++ "the --reinstall flag."
 
-  when (dryRun || verbosity >= verbose) $
-    printDryRun verbosity installed installPlan
+  let lPlan = linearizeInstallPlan installed installPlan
+  let containsReinstalls = any (isReinstall . snd) lPlan
+  let adaptedVerbosity | containsReinstalls = verbose `max` verbosity
+                       | otherwise          = verbosity
+
+  when (dryRun || adaptedVerbosity >= verbose) $
+    printDryRun adaptedVerbosity lPlan
+
+  when containsReinstalls $
+    (if dryRun then notice adaptedVerbosity else die) $
+         "The install plan contains reinstalls which can break your "
+      ++ "GHC installation."
+  -- TODO: Add pointers to flags once implemented.
 
   where
     nothingToInstall = null (InstallPlan.ready installPlan)
 
-
-printDryRun :: Verbosity
-            -> PackageIndex
-            -> InstallPlan
-            -> IO ()
-printDryRun verbosity installedPkgIndex plan = case unfoldr next plan of
-  []   -> return ()
-  pkgs
-    | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
-        "In order, the following would be installed:"
-      : map showPkgAndReason pkgs
-    | otherwise -> notice verbosity $ unlines $
-        "In order, the following would be installed (use -v for more details):"
-      : map (display . packageId) pkgs
+linearizeInstallPlan :: PackageIndex
+                     -> InstallPlan
+                     -> [(ConfiguredPackage, PackageStatus)]
+linearizeInstallPlan installedPkgIndex plan = unfoldr next plan
   where
     next plan' = case InstallPlan.ready plan' of
       []      -> Nothing
-      (pkg:_) -> Just (pkg, InstallPlan.completed pkgid result plan')
-        where pkgid = packageId pkg
+      (pkg:_) -> Just ((pkg, status), InstallPlan.completed pkgid result plan')
+        where pkgid  = packageId pkg
+              status = packageStatus installedPkgIndex pkg
               result = BuildOk DocsNotTried TestsNotTried
               --FIXME: This is a bit of a hack,
               -- pretending that each package is installed
 
-    showPkgAndReason pkg' = display (packageId pkg') ++ " " ++
-          case PackageIndex.lookupPackageName installedPkgIndex
-                                              (packageName pkg') of
-            [] -> "(new package)"
-            ps ->  case find ((==packageId pkg') . Installed.sourcePackageId) (concatMap snd ps) of
-              Nothing  -> "(new version)"
-              Just pkg -> "(reinstall)" ++ case changes pkg pkg' of
-                []   -> ""
-                diff -> " changes: "  ++ intercalate ", " diff
-    changes :: Installed.InstalledPackageInfo -> ConfiguredPackage -> [String]
-    changes pkg pkg' = map change . filter changed
+data PackageStatus = NewPackage
+                   | NewVersion [Version]
+                   | Reinstall  [PackageChange]
+
+type PackageChange = MergeResult PackageIdentifier PackageIdentifier
+
+isReinstall :: PackageStatus -> Bool
+isReinstall (Reinstall _) = True
+isReinstall _             = False
+
+packageStatus :: PackageIndex -> ConfiguredPackage -> PackageStatus
+packageStatus installedPkgIndex cpkg =
+  case PackageIndex.lookupPackageName installedPkgIndex
+                                      (packageName cpkg) of
+    [] -> NewPackage
+    ps ->  case find ((==packageId cpkg) . Installed.sourcePackageId) (concatMap snd ps) of
+      Nothing  -> NewVersion (map fst ps)
+      Just pkg -> Reinstall (changes pkg cpkg)
+
+  where
+
+    changes :: Installed.InstalledPackageInfo
+            -> ConfiguredPackage
+            -> [MergeResult PackageIdentifier PackageIdentifier]
+    changes pkg pkg' = filter changed
                      $ mergeBy (comparing packageName)
                          -- get dependencies of installed package (convert to source pkg ids via index)
                          (nub . sort . concatMap (maybeToList .
@@ -393,12 +409,35 @@ printDryRun verbosity installedPkgIndex plan = case unfoldr next plan of
                                                   Installed.depends $ pkg)
                          -- get dependencies of configured package
                          (nub . sort . depends $ pkg')
+
+    changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
+    changed _                        = True
+
+printDryRun :: Verbosity
+            -> [(ConfiguredPackage, PackageStatus)]
+            -> IO ()
+printDryRun verbosity plan = case plan of
+  []   -> return ()
+  pkgs
+    | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
+        "In order, the following would be installed:"
+      : map showPkgAndReason pkgs
+    | otherwise -> notice verbosity $ unlines $
+        "In order, the following would be installed (use -v for more details):"
+      : map (display . packageId) (map fst pkgs)
+  where
+    showPkgAndReason (pkg', pr) = display (packageId pkg') ++ " " ++
+          case pr of
+            NewPackage   -> "(new package)"
+            NewVersion _ -> "(new version)"
+            Reinstall cs -> "(reinstall)" ++ case cs of
+                []   -> ""
+                diff -> " changes: "  ++ intercalate ", " (map change diff)
+
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
                                     ++ display (packageVersion pkgid')
     change (OnlyInRight      pkgid') = display pkgid' ++ " added"
-    changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
-    changed _                        = True
 
 -- ------------------------------------------------------------
 -- * Post installation stuff
