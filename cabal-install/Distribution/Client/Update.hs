@@ -20,7 +20,7 @@ import Distribution.Client.FetchUtils
          ( downloadIndex )
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
-         ( getSourcePackages )
+         ( getSourcePackages, updateRepoIndexCache )
 import qualified Paths_cabal_install
          ( version )
 
@@ -60,6 +60,7 @@ updateRepo verbosity repo = case repoKind repo of
     writeFileAtomic (dropExtension indexPath) . BS.Char8.unpack
                                               . maybeDecompress
                                             =<< BS.readFile indexPath
+    updateRepoIndexCache verbosity repo
 
 checkForSelfUpgrade :: Verbosity -> [Repo] -> IO ()
 checkForSelfUpgrade verbosity repos = do
