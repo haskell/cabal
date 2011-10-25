@@ -639,7 +639,7 @@ information fields (see the section on [build information](#build-information)).
 :   The interface type and version of the benchmark.  At the moment Cabal only
     support one benchmark interface, called `exitcode-stdio-1.0`.
 
-Test suites using the `exitcode-stdio-1.0` interface are executables that
+Benchmarks using the `exitcode-stdio-1.0` interface are executables that
 indicate failure to run the benchmark with a non-zero exit code when run; they
 may provide human-readable information through the standard output and error
 channels.
