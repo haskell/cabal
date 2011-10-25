@@ -670,7 +670,7 @@ Build-Type:     Simple
 Benchmark bench-foo
     type:       exitcode-stdio-1.0
     main-is:    bench-foo.hs
-    build-depends: base
+    build-depends: base, time
 ~~~~~~~~~~~~~~~~
 
 bench-foo.hs:
