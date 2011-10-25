@@ -612,7 +612,10 @@ defaultInstallFlags = InstallFlags {
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
 
-installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags)
+defaultMaxBackjumps :: Int
+defaultMaxBackjumps = 200
+
+installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Installs a list of packages.",
