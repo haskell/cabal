@@ -26,7 +26,7 @@ import Distribution.Client.Setup
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
-         , InitFlags, initCommand
+         , InitFlags(initVerbosity), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
@@ -359,8 +359,16 @@ unpackAction unpackFlags extraArgs globalFlags = do
          targets
 
 initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
-initAction flags _extraArgs _globalFlags = do
-  initCabal flags
+initAction initFlags _extraArgs globalFlags = do
+  let verbosity = fromFlag (initVerbosity initFlags)
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
+  let configFlags  = savedConfigureFlags config
+  (comp, conf) <- configCompilerAux' configFlags
+  initCabal verbosity
+            (configPackageDB' configFlags)
+            comp
+            conf
+            initFlags
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
