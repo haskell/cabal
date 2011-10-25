@@ -46,5 +46,7 @@ solve sc idx userPrefs userConstraints userGoals =
     validationPhase  = P.enforcePackageConstraints userConstraints .
                        validateTree idx
     prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
-                       P.requireInstalled (== PackageName "base") -- never try to install a new "base"
+                       -- packages that can never be "upgraded":
+                       P.requireInstalled (`elem` [PackageName "base",
+                                                   PackageName "ghc-prim"])
     buildPhase       = buildTree idx (independentGoals sc) userGoals
