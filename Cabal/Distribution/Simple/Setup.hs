@@ -482,7 +482,7 @@ configureOptions showOrParseArgs =
          configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
       ,option "" ["benchmarks"]
-         "dependency checking and compilation for benchmarkss listed in the package description file."
+         "dependency checking and compilation for benchmarks listed in the package description file."
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
          (boolOpt [] [])
       ]
