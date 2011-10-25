@@ -905,7 +905,7 @@ emptyInitFlags :: IT.InitFlags
 emptyInitFlags  = mempty
 
 defaultInitFlags :: IT.InitFlags
-defaultInitFlags  = emptyInitFlags
+defaultInitFlags  = emptyInitFlags { IT.initVerbosity = toFlag normal }
 
 initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
@@ -1039,6 +1039,8 @@ initCommand = CommandUI {
         IT.buildTools (\v flags -> flags { IT.buildTools = v })
         (reqArg' "TOOL" (Just . (:[]))
                         (fromMaybe []))
+
+      , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
       ]
   }
   where readMaybe s = case reads s of

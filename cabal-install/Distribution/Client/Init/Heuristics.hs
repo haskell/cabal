@@ -19,8 +19,10 @@ module Distribution.Client.Init.Heuristics (
     guessAuthorNameMail,
     knownCategories,
 ) where
-import Distribution.Simple.Setup(Flag(..))
-import Distribution.ModuleName ( ModuleName, fromString )
+import Distribution.Text         (simpleParse)
+import Distribution.Simple.Setup (Flag(..))
+import Distribution.ModuleName
+    ( ModuleName, fromString, toFilePath )
 import Distribution.Client.PackageIndex
     ( allPackagesByName )
 import qualified Distribution.PackageDescription as PD
@@ -34,6 +36,7 @@ import Data.Char   ( isUpper, isLower, isSpace )
 #if MIN_VERSION_base(3,0,3)
 import Data.Either ( partitionEithers )
 #endif
+import Data.List   ( isPrefixOf )
 import Data.Maybe  ( catMaybes )
 import Data.Monoid ( mempty, mappend )
 import qualified Data.Set as Set ( fromList, toList )
@@ -41,7 +44,7 @@ import System.Directory ( getDirectoryContents, doesDirectoryExist, doesFileExis
                           getHomeDirectory, canonicalizePath )
 import System.Environment ( getEnvironment )
 import System.FilePath ( takeExtension, takeBaseName, dropExtension,
-                         (</>), splitDirectories, makeRelative )
+                         (</>), (<.>), splitDirectories, makeRelative )
 
 -- |Guess the package name based on the given root directory
 guessPackageName :: FilePath -> IO String
@@ -50,9 +53,14 @@ guessPackageName = liftM (last . splitDirectories) . canonicalizePath
 -- |Data type of source files found in the working directory
 data SourceFileEntry = SourceFileEntry
     { relativeSourcePath :: FilePath
-    , moduleName :: ModuleName
-    , fileExtension :: String
+    , moduleName         :: ModuleName
+    , fileExtension      :: String
+    , imports            :: [ModuleName]
     } deriving Show
+
+sfToFileName :: FilePath -> SourceFileEntry -> FilePath
+sfToFileName projectRoot (SourceFileEntry relPath m ext _)
+  = projectRoot </> relPath </> toFilePath m <.> ext
 
 -- |Search for source files in the given directory
 -- and return pairs of guessed haskell source path and
@@ -69,14 +77,15 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
         let modules = catMaybes [ guessModuleName hierarchy file
                                 | file <- files
                                 , isUpper (head file) ]
+        modules' <- mapM (findImports projectRoot) modules
         recMods <- mapM (scanRecursive dir hierarchy) dirs
-        return $ concat (modules : recMods)
+        return $ concat (modules' : recMods)
     tagIsDir parent entry = do
         isDir <- doesDirectoryExist (parent </> entry)
         return $ (if isDir then Right else Left) entry
     guessModuleName hierarchy entry
         | takeBaseName entry == "Setup" = Nothing
-        | ext `elem` sourceExtensions = Just $ SourceFileEntry relRoot modName ext
+        | ext `elem` sourceExtensions = Just $ SourceFileEntry relRoot modName ext []
         | otherwise = Nothing
       where
         relRoot = makeRelative projectRoot srcRoot
@@ -90,6 +99,35 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
       | otherwise = return []
     ignoreDir ('.':_)  = True
     ignoreDir dir      = dir `elem` ["dist", "_darcs"]
+
+findImports :: FilePath -> SourceFileEntry -> IO SourceFileEntry
+findImports projectRoot sf = do
+  s <- readFile (sfToFileName projectRoot sf)
+
+  let modules = catMaybes
+              . map ( getModName
+                    . drop 1
+                    . filter (not . null)
+                    . dropWhile (/= "import")
+                    . words
+                    )
+              . filter (not . ("--" `isPrefixOf`)) -- poor man's comment filtering
+              . lines
+              $ s
+
+      -- XXX we should probably make a better attempt at parsing
+      -- comments above.  Unfortunately we can't use a full-fledged
+      -- Haskell parser since cabal's dependencies must be kept at a
+      -- minimum.
+
+  return sf { imports = modules }
+
+ where getModName :: [String] -> Maybe ModuleName
+       getModName []               = Nothing
+       getModName ("qualified":ws) = getModName ws
+       getModName (ms:_)           = simpleParse ms
+
+
 
 -- Unfortunately we cannot use the version exported by Distribution.Simple.Program
 knownSuffixHandlers :: [(String,String)]
