@@ -623,6 +623,20 @@ tests =
     ]
 ~~~~~~~~~~~~~~~~
 
+#### Running test suites ####
+
+You can have Cabal run your test suites using its built-in test
+runner:
+
+~~~~~~~~~~~~~~~~
+$ cabal configure --enable-tests
+$ cabal build
+$ cabal test
+~~~~~~~~~~~~~~~~
+
+See the output of `cabal help test` for a list of options you can pass
+to `cabal test`.
+
 ### Benchmarks ###
 
 Benchmark sections (if present) describe benchmarks contained in the package and
@@ -691,6 +705,19 @@ main = do
     end <- getCurrentTime
     putStrLn $ "fib 20 took " ++ show (diffUTCTime end start)
 ~~~~~~~~~~~~~~~~
+
+#### Running benchmarks ####
+
+You can have Cabal run your benchmark using its built-in benchmark runner:
+
+~~~~~~~~~~~~~~~~
+$ cabal configure --enable-benchmarks
+$ cabal build
+$ cabal bench
+~~~~~~~~~~~~~~~~
+
+See the output of `cabal help bench` for a list of options you can
+pass to `cabal bench`.
 
 ### Build information ###
 
