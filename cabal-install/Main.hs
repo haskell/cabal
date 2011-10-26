@@ -38,6 +38,7 @@ import Distribution.Simple.Setup
          , RegisterFlags(..), registerCommand
          , CleanFlags(..), cleanCommand
          , TestFlags(..), testCommand
+         , BenchmarkFlags(..), benchmarkCommand
          , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 
 import Distribution.Client.SetupWrapper
@@ -150,6 +151,8 @@ mainWorker args = topHandler $
                      regVerbosity      regDistPref
       ,wrapperAction testCommand
                      testVerbosity     testDistPref
+      ,wrapperAction benchmarkCommand
+                     benchmarkVerbosity     benchmarkDistPref
       ,upgradeCommand         `commandAddAction` upgradeAction
       ]
 
