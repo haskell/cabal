@@ -142,7 +142,7 @@ planPackages verbosity comp fetchFlags
 
         -- Reinstall the targets given on the command line so that the dep
         -- resolver will decide that they need fetching, even if they're
-        -- already installed. Sicne we want to get the source packages of
+        -- already installed. Since we want to get the source packages of
         -- things we might have installed (but not have the sources for).
         reinstallTargets
 

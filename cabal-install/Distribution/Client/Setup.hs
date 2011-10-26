@@ -575,6 +575,7 @@ data InstallFlags = InstallFlags {
     installDryRun           :: Flag Bool,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag Bool,
+    installOverrideReinstall :: Flag Bool,
     installMaxBackjumps     :: Flag Int,
     installUpgradeDeps      :: Flag Bool,
     installReorderGoals     :: Flag Bool,
@@ -596,6 +597,7 @@ defaultInstallFlags = InstallFlags {
     installDryRun          = Flag False,
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag False,
+    installOverrideReinstall = Flag False,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installUpgradeDeps     = Flag False,
     installReorderGoals    = Flag False,
@@ -694,6 +696,11 @@ installOptions showOrParseArgs =
           installAvoidReinstalls (\v flags -> flags { installAvoidReinstalls = v })
           trueArg
 
+      , option [] ["override-reinstall-check"]
+          "Use to override the check that prevents reinstalling already installed versions of package dependencies."
+          installOverrideReinstall (\v flags -> flags { installOverrideReinstall = v })
+          trueArg
+
       , option [] ["max-backjumps"]
           ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
           installMaxBackjumps (\v flags -> flags { installMaxBackjumps = v })
@@ -771,6 +778,7 @@ instance Monoid InstallFlags where
     installDryRun          = mempty,
     installReinstall       = mempty,
     installAvoidReinstalls = mempty,
+    installOverrideReinstall = mempty,
     installMaxBackjumps    = mempty,
     installUpgradeDeps     = mempty,
     installReorderGoals    = mempty,
@@ -790,6 +798,7 @@ instance Monoid InstallFlags where
     installDryRun          = combine installDryRun,
     installReinstall       = combine installReinstall,
     installAvoidReinstalls = combine installAvoidReinstalls,
+    installOverrideReinstall = combine installOverrideReinstall,
     installMaxBackjumps    = combine installMaxBackjumps,
     installUpgradeDeps     = combine installUpgradeDeps,
     installReorderGoals    = combine installReorderGoals,

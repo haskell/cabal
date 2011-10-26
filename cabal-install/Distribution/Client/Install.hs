@@ -172,7 +172,7 @@ install verbosity packageDBs repos comp conf
                          comp configFlags configExFlags installFlags
                          installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    printPlanMessages verbosity installedPkgIndex installPlan dryRun
+    checkPrintPlan verbosity installedPkgIndex installPlan installFlags
 
     unless dryRun $ do
       installPlan' <- performInstallations verbosity
@@ -332,12 +332,12 @@ planPackages comp configFlags configExFlags installFlags
 -- * Informational messages
 -- ------------------------------------------------------------
 
-printPlanMessages :: Verbosity
-                  -> PackageIndex
-                  -> InstallPlan
-                  -> Bool
-                  -> IO ()
-printPlanMessages verbosity installed installPlan dryRun = do
+checkPrintPlan :: Verbosity
+               -> PackageIndex
+               -> InstallPlan
+               -> InstallFlags
+               -> IO ()
+checkPrintPlan verbosity installed installPlan installFlags = do
 
   when nothingToInstall $
     notice verbosity $
@@ -354,13 +354,18 @@ printPlanMessages verbosity installed installPlan dryRun = do
     printDryRun adaptedVerbosity lPlan
 
   when containsReinstalls $
-    (if dryRun then notice adaptedVerbosity else die) $
-         "The install plan contains reinstalls which can break your "
-      ++ "GHC installation."
-  -- TODO: Add pointers to flags once implemented.
+    (if dryRun || overrideReinstall then notice adaptedVerbosity else die) $
+         "The install plan contains reinstalls which can break "
+      ++ "your GHC installation.\nYou can use the --avoid-reinstalls option "
+      ++ "to try to avoid this or try\nto ghc-pkg unregister the version of "
+      ++ "the package version to see its effect\non reverse dependencies.  " 
+      ++ "If you know what you are doing you can use\nthe " 
+      ++ "--override-reinstall-check option to override this reinstall check."
 
   where
     nothingToInstall = null (InstallPlan.ready installPlan)
+    dryRun = fromFlag (installDryRun installFlags)
+    overrideReinstall = fromFlag (installOverrideReinstall installFlags)
 
 linearizeInstallPlan :: PackageIndex
                      -> InstallPlan
