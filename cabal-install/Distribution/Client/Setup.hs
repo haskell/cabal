@@ -38,6 +38,8 @@ import Distribution.Client.Types
          ( Username(..), Password(..), Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
+import Distribution.Client.Dependency.Types
+         ( Solver(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -73,6 +75,8 @@ import Distribution.Simple.Utils
 
 import Data.Char
          ( isSpace, isAlphaNum )
+import Data.List
+         ( intercalate )
 import Data.Maybe
          ( listToMaybe, maybeToList, fromMaybe )
 import Data.Monoid
@@ -573,6 +577,7 @@ data InstallFlags = InstallFlags {
     installDocumentation    :: Flag Bool,
     installHaddockIndex     :: Flag PathTemplate,
     installDryRun           :: Flag Bool,
+    installSolver           :: Flag Solver,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag Bool,
     installOverrideReinstall :: Flag Bool,
@@ -595,6 +600,7 @@ defaultInstallFlags = InstallFlags {
     installDocumentation   = Flag False,
     installHaddockIndex    = Flag docIndexFile,
     installDryRun          = Flag False,
+    installSolver          = Flag defaultSolver,
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag False,
     installOverrideReinstall = Flag False,
@@ -616,6 +622,12 @@ defaultInstallFlags = InstallFlags {
 
 defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 200
+
+defaultSolver :: Solver
+defaultSolver = TopDown
+
+allSolvers :: String
+allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [Solver]))
 
 installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installCommand = CommandUI {
@@ -685,6 +697,13 @@ installOptions showOrParseArgs =
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
           trueArg
+
+      , option [] ["solver"]
+          ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ".")
+          installSolver (\v flags -> flags { installSolver = v })
+          (reqArg "SOLVER" (readP_to_E (const $ "solver must be one of: " ++ allSolvers)
+                                       (toFlag `fmap` parse))
+                           (flagToList . fmap display))
 
       , option [] ["reinstall"]
           "Install even if it means installing the same version again."
@@ -776,6 +795,7 @@ instance Monoid InstallFlags where
     installDocumentation   = mempty,
     installHaddockIndex    = mempty,
     installDryRun          = mempty,
+    installSolver          = mempty,
     installReinstall       = mempty,
     installAvoidReinstalls = mempty,
     installOverrideReinstall = mempty,
@@ -796,6 +816,7 @@ instance Monoid InstallFlags where
     installDocumentation   = combine installDocumentation,
     installHaddockIndex    = combine installHaddockIndex,
     installDryRun          = combine installDryRun,
+    installSolver          = combine installSolver,
     installReinstall       = combine installReinstall,
     installAvoidReinstalls = combine installAvoidReinstalls,
     installOverrideReinstall = combine installOverrideReinstall,

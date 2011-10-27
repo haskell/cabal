@@ -19,6 +19,8 @@ import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Types
+         ( Solver(..) )
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -124,6 +126,7 @@ planPackages verbosity comp fetchFlags
       installPlan <- foldProgress logMsg die return $
                        resolveDependencies
                          buildPlatform (compilerId comp)
+                         Modular
                          resolverParams
 
       -- The packages we want to fetch are those packages the 'InstallPlan'
