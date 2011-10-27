@@ -26,6 +26,9 @@ instance Foldable (PSQ k) where
 instance Traversable (PSQ k) where
   traverse f (PSQ xs) = PSQ <$> traverse (\ (k, v) -> (\ x -> (k, x)) <$> f v) xs
 
+lookup :: Eq k => k -> PSQ k v -> Maybe v
+lookup k (PSQ xs) = S.lookup k xs
+
 map :: (v1 -> v2) -> PSQ k v1 -> PSQ k v2
 map f (PSQ xs) = PSQ (fmap (\ (k, v) -> (k, f v)) xs)
 
