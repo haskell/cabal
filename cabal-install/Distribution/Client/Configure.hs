@@ -15,6 +15,8 @@ module Distribution.Client.Configure (
   ) where
 
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Types
+         ( Solver(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
@@ -158,7 +160,7 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-  return (resolveDependencies buildPlatform (compilerId comp) resolverParams)
+  return (resolveDependencies buildPlatform (compilerId comp) Modular resolverParams)
 
 
 -- | Call an installer for an 'SourcePackage' but override the configure

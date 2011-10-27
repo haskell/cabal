@@ -228,6 +228,7 @@ planPackages comp configFlags configExFlags installFlags
 
         resolveDependencies
           buildPlatform (compilerId comp)
+          solver
           resolverParams
 
     >>= if onlyDeps then adjustPlanOnlyDeps else return
@@ -320,6 +321,7 @@ planPackages comp configFlags configExFlags installFlags
                   , depid <- depids
                   , packageName depid `elem` targetnames ]
 
+    solver           = fromFlag (installSolver           installFlags)
     reinstall        = fromFlag (installReinstall        installFlags)
     reorderGoals     = fromFlag (installReorderGoals     installFlags)
     independentGoals = fromFlag (installIndependentGoals installFlags)

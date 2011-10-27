@@ -13,6 +13,7 @@
 module Distribution.Client.Dependency.Types (
     ExtDependency(..),
 
+    Solver(..),
     DependencyResolver,
 
     PackageConstraint(..),
@@ -27,16 +28,20 @@ module Distribution.Client.Dependency.Types (
 import Control.Applicative
          ( Applicative(..), Alternative(..) )
 
+import Data.Char
+         ( isAlpha, toLower )
 import Data.Monoid
          ( Monoid(..) )
 
 import Distribution.Client.Types
-         ( SourcePackage(..), InstalledPackage )
+         ( SourcePackage(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Compat.ReadP
          ( (<++) )
 
+import qualified Distribution.Compat.ReadP as Parse
+         ( pfail, munch1 )
 import Distribution.PackageDescription
          ( FlagAssignment )
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -54,6 +59,9 @@ import Distribution.System
 import Distribution.Text
          ( Text(..) )
 
+import Text.PrettyPrint
+         ( text )
+
 import Prelude hiding (fail)
 
 -- | Covers source dependencies and installed dependencies in
@@ -66,6 +74,20 @@ instance Text ExtDependency where
   disp (InstalledDependency dep) = disp dep
 
   parse = (SourceDependency `fmap` parse) <++ (InstalledDependency `fmap` parse)
+
+-- | All the solvers that can be selected.
+data Solver = TopDown | Modular
+  deriving (Eq, Ord, Show, Bounded, Enum)
+
+instance Text Solver where
+  disp TopDown = text "topdown"
+  disp Modular = text "modular"
+  parse = do
+    name <- Parse.munch1 isAlpha
+    case map toLower name of
+      "topdown" -> return TopDown
+      "modular" -> return Modular
+      _         -> Parse.pfail
 
 -- | A dependency resolver is a function that works out an installation plan
 -- given the set of installed and available packages and a set of deps to

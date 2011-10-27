@@ -64,7 +64,7 @@ import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
          , SourcePackage(..) )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, PackageConstraint(..)
+         ( Solver(..), DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
@@ -305,8 +305,9 @@ standardInstallPolicy
 -- * Interface to the standard resolver
 -- ------------------------------------------------------------
 
-defaultResolver :: SolverConfig -> DependencyResolver
-defaultResolver = modularResolver -- const topDownResolver
+runSolver :: Solver -> SolverConfig -> DependencyResolver
+runSolver TopDown = const topDownResolver -- TODO: warn about unsuported options
+runSolver Modular = modularResolver
 
 -- | Run the dependency solver.
 --
@@ -316,20 +317,21 @@ defaultResolver = modularResolver -- const topDownResolver
 --
 resolveDependencies :: Platform
                     -> CompilerId
+                    -> Solver
                     -> DepResolverParams
                     -> Progress String String InstallPlan
 
     --TODO: is this needed here? see dontUpgradeBasePackage
-resolveDependencies platform comp params
+resolveDependencies platform comp _solver params
   | null (depResolverTargets params)
   = return (mkInstallPlan platform comp [])
 
-resolveDependencies platform comp params =
+resolveDependencies platform comp  solver params =
 
     fmap (mkInstallPlan platform comp)
-  $ defaultResolver (SolverConfig reorderGoals indGoals noReinstalls maxBkjumps)
-                    platform comp installedPkgIndex sourcePkgIndex
-                    preferences constraints targets
+  $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls maxBkjumps)
+                     platform comp installedPkgIndex sourcePkgIndex
+                     preferences constraints targets
   where
     DepResolverParams
       targets constraints

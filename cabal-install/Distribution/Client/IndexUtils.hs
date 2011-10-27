@@ -87,15 +87,15 @@ getInstalledPackages verbosity comp packageDbs conf =
     verbosity'  = lessVerbose verbosity
 
 convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
-convert index = PackageIndex.fromList
+convert index' = PackageIndex.fromList
   -- There can be multiple installed instances of each package version,
   -- like when the same package is installed in the global & user dbs.
   -- InstalledPackageIndex.allPackagesByName gives us the installed
   -- packages with the most preferred instances first, so by picking the
   -- first we should get the user one. This is almost but not quite the
   -- same as what ghc does.
-  [ InstalledPackage ipkg (sourceDeps index ipkg)
-  | ipkgs <- InstalledPackageIndex.allPackagesByName index
+  [ InstalledPackage ipkg (sourceDeps index' ipkg)
+  | ipkgs <- InstalledPackageIndex.allPackagesByName index'
   , (ipkg:_) <- groupBy (equating packageVersion) ipkgs ]
   where
     -- The InstalledPackageInfo only lists dependencies by the
