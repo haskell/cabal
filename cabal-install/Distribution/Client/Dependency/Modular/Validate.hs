@@ -85,11 +85,23 @@ validate = cata go
   where
     go :: TreeF (QGoalReasons, Scope) (Validate (Tree QGoalReasons)) -> Validate (Tree QGoalReasons)
 
-    go (PChoiceF qpn (gr,  sc)   ts) = PChoice qpn gr   <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
-    go (FChoiceF qfn (gr, _sc) b ts) = FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn gr   ) ts)
+    go (PChoiceF qpn (gr,  sc)   ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
+    go (FChoiceF qfn (gr, _sc) b ts) =
+      do
+        -- Flag choices may occur repeatedly (because they can introduce new constraints
+        -- in various places). However, subsequent choices must be consistent. We thereby
+        -- collapse repeated flag choice nodes.
+        PA _ pfa <- asks pa -- obtain current flag-preassignment
+        case M.lookup qfn pfa of
+          Just rb -> -- flag has already been assigned; collapse choice to the correct branch
+                     case P.lookup rb ts of
+                       Just t  -> goF qfn gr rb t
+                       Nothing -> return $ Fail (toConflictSet (Goal (F qfn) gr)) (MalformedFlagChoice qfn)
+          Nothing -> -- flag choice is new, follow both branches
+                     FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn gr) ts)
 
     -- We don't need to do anything for goal choices or failure nodes.
-    go (GoalChoiceF              ts) = GoalChoice       <$> sequence ts
+    go (GoalChoiceF              ts) = GoalChoice <$> sequence ts
     go (DoneF    rdm               ) = pure (Done rdm)
     go (FailF    c fr              ) = pure (Fail c fr)
 
@@ -127,20 +139,15 @@ validate = cata go
       -- We take the *saved* dependencies, because these have been qualified in the
       -- correct scope.
       --
-      -- First, we should check if our flag choice itself is consistent. Unlike for
-      -- package nodes, we do not guarantee that a flag choice occurs exactly once.
-      case M.lookup qfn pfa of
-        Just rb | rb /= b -> return (Fail (toConflictSet (Goal (F qfn) gr)) ConflictingFlag)
-        _                 -> do
-          -- Extend the flag assignment
-          let npfa = M.insert qfn b pfa
-          -- We now try to get the new active dependencies we might learn about because
-          -- we have chosen a new flag.
-          let newactives = extractNewFlagDeps qfn gr b npfa qdeps
-          -- As in the package case, we try to extend the partial assignment.
-          case extend (F qfn) ppa newactives of
-            Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
-            Right nppa  -> local (\ s -> s { pa = PA nppa npfa }) r
+      -- Extend the flag assignment
+      let npfa = M.insert qfn b pfa
+      -- We now try to get the new active dependencies we might learn about because
+      -- we have chosen a new flag.
+      let newactives = extractNewFlagDeps qfn gr b npfa qdeps
+      -- As in the package case, we try to extend the partial assignment.
+      case extend (F qfn) ppa newactives of
+        Left (c, d) -> return (Fail c (Conflicting d)) -- inconsistency found
+        Right nppa  -> local (\ s -> s { pa = PA nppa npfa }) r
 
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
