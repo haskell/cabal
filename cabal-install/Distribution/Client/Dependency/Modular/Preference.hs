@@ -2,7 +2,6 @@ module Distribution.Client.Dependency.Modular.Preference where
 
 -- Reordering or pruning the tree in order to prefer or make certain choices.
 
-import Control.Applicative
 import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Monoid
@@ -175,25 +174,6 @@ avoidReinstalls p = trav go
           | v `elem` vs                = Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
         notReinstall _  _            x = x
     go x          = x
-
-type GlobalFlags = M.Map Flag    Bool
-type LocalFlags  = M.Map (FN PN) Bool
-
--- | Enforce flag choices explicitly given by some outer context,
--- for example by the user on the command line. For maximum
--- flexibility we allow both global and local choices, where local
--- choices override the global ones.
-enforceFlagChoices :: GlobalFlags -> LocalFlags -> Tree a -> Tree a
-enforceFlagChoices gfs lfs = trav go
-  where
-    go (FChoiceF qfn@(FN _ f) r tr cs) =
-      case M.lookup (fmap unQualify qfn) lfs <|> M.lookup f gfs of -- find flag in either map
-         Nothing -> FChoiceF qfn r tr            cs  -- if nothing specified, use old node
-         Just b  -> FChoiceF qfn r tr (enforce b cs) -- keep only the chosen variant
-    go x = x
-
-    enforce :: Bool -> PSQ Bool (Tree a) -> PSQ Bool (Tree a)
-    enforce b = P.filterKeys (== b)
 
 -- | Always choose the first goal in the list next, abandoning all
 -- other choices.
