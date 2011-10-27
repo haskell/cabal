@@ -715,17 +715,19 @@ instance Text UserConstraint where
 
   parse = parse >>= parseConstraint
     where
+      spaces = Parse.satisfy isSpace >> Parse.skipSpaces
+
       parseConstraint pkgname =
             (parse >>= return . UserConstraintVersion pkgname)
-        +++ (do Parse.skipSpaces
+        +++ (do spaces
                 _ <- Parse.string "installed"
                 return (UserConstraintInstalled pkgname))
-        +++ (do Parse.skipSpaces
+        +++ (do spaces
                 _ <- Parse.string "source"
                 return (UserConstraintSource pkgname))
         <++ (parseFlagAssignment >>= (return . UserConstraintFlags pkgname))
 
-      parseFlagAssignment = Parse.many1 (Parse.skipSpaces >> parseFlagValue)
+      parseFlagAssignment = Parse.many1 (spaces >> parseFlagValue)
       parseFlagValue =
             (do Parse.optional (Parse.char '+')
                 f <- parseFlagName
