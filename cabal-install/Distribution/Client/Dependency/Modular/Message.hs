@@ -75,7 +75,6 @@ showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b ++ ")"
 showFR :: ConflictSet QPN -> FailReason -> String
 showFR _ InconsistentInitialConstraints = " (inconsistent initial constraints)"
 showFR _ (Conflicting ds)               = " (conflict: " ++ L.intercalate ", " (map showDep ds) ++ ")"
-showFR _ ConflictingFlag                = " (conflicts with previous choice of same flag)"
 showFR _ CannotInstall                  = " (only already installed versions can be used)"
 showFR _ CannotReinstall                = " (avoiding to reinstall a package with same version but new dependencies)"
 showFR _ (GlobalConstraintVersion vr)   = " (global constraint requires " ++ display vr ++ ")"
@@ -87,4 +86,5 @@ showFR c Backjump                       = " (backjumping, conflict set: " ++ sho
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.
 showFR _ (BuildFailureNotInIndex pn)    = " (BUILD FAILURE: NOT IN INDEX: " ++ display pn ++ ")"
+showFR _ (MalformedFlagChoice qfn)      = " (INTERNAL ERROR: MALFORMED FLAG CHOICE: " ++ showQFN qfn ++ ")"
 showFR _ EmptyGoalChoice                = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"

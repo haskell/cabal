@@ -30,7 +30,6 @@ instance Functor Tree where
 
 data FailReason = InconsistentInitialConstraints
                 | Conflicting [Dep QPN]
-                | ConflictingFlag
                 | CannotInstall
                 | CannotReinstall
                 | GlobalConstraintVersion VR
@@ -38,6 +37,7 @@ data FailReason = InconsistentInitialConstraints
                 | GlobalConstraintSource
                 | GlobalConstraintFlag
                 | BuildFailureNotInIndex PN
+                | MalformedFlagChoice QFN
                 | EmptyGoalChoice
                 | Backjump
   deriving (Eq, Show)
