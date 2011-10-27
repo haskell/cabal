@@ -18,8 +18,8 @@ import Distribution.Client.Dependency.Modular.Tree
 data BuildState = BS {
   index :: Index,           -- ^ information about packages and their dependencies
   scope :: Scope,           -- ^ information about encapsulations
-  goals :: RevDepMap,       -- ^ set of all package goals, completed and open, with reverse dependencies
-  open  :: PSQ OpenGoal (), -- ^ set of still open goals
+  rdeps :: RevDepMap,       -- ^ set of all package goals, completed and open, with reverse dependencies
+  open  :: PSQ OpenGoal (), -- ^ set of still open goals (flag and package goals)
   next  :: BuildType        -- ^ kind of node to generate next
 }
 
@@ -28,9 +28,9 @@ data BuildState = BS {
 -- We also adjust the map of overall goals, and keep track of the
 -- reverse dependencies of each of the goals.
 extendOpen :: QPN -> [OpenGoal] -> BuildState -> BuildState
-extendOpen qpn' gs s@(BS { goals = gs', open = o' }) = go gs' o' gs
+extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
   where
-    go g o []                                             = s { goals = g, open = o }
+    go g o []                                             = s { rdeps = g, open = o }
     go g o (ng@(OpenGoal (Flagged _ _ _ _)    _gr) : ngs) = go g (cons ng () o) ngs
     go g o (ng@(OpenGoal (Simple (Dep qpn _)) _gr) : ngs)
       | qpn == qpn'                                       = go                       g              o  ngs
@@ -68,8 +68,8 @@ build = ana go
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
     -- it from the queue of open goals.
-    go bs@(BS { goals = rdeps, open = gs, next = Goals })
-      | P.null gs = DoneF rdeps
+    go bs@(BS { rdeps = rds, open = gs, next = Goals })
+      | P.null gs = DoneF rds
       | otherwise = GoalChoiceF (P.mapWithKey (\ g (_sc, gs') -> bs { next = OneGoal g, open = gs' })
                                               (P.splits gs))
 
