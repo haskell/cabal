@@ -10,7 +10,7 @@ module Distribution.Client.Dependency.Modular
 -- plan.
 
 import Data.Map as M
-         ( fromList )
+         ( fromListWith )
 import Distribution.Client.Dependency.Modular.Assignment
          ( Assignment, toCPs )
 import Distribution.Client.Dependency.Modular.Dependency
@@ -43,7 +43,7 @@ modularResolver sc (Platform arch os) cid iidx sidx pprefs pcs pns =
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cid iidx sidx
       -- Constraints have to be converted into a finite map indexed by PN.
-      gcs    = M.fromList (map (\ pc -> (pcName pc, pc)) pcs)
+      gcs    = M.fromListWith (++) (map (\ pc -> (pcName pc, [pc])) pcs)
 
       -- Results have to be converted into an install plan.
       postprocess :: Assignment -> RevDepMap -> [PlanPackage]

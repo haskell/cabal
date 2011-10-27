@@ -71,48 +71,52 @@ preferInstalledOrdering _              _              = EQ
 preferLatestOrdering :: I -> I -> Ordering
 preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 
+-- | Helper function that tries to enforce a single package constraint on a
+-- given instance for a P-node. Translates the constraint into a
+-- tree-transformer that either leaves the subtree untouched, or replaces it
+-- with an appropriate failure node.
+processPackageConstraintP :: ConflictSet QPN -> I -> PackageConstraint -> Tree a -> Tree a
+processPackageConstraintP c (I v _) (PackageConstraintVersion _ vr) r
+  | checkVR vr v  = r
+  | otherwise     = Fail c (GlobalConstraintVersion vr)
+processPackageConstraintP c i       (PackageConstraintInstalled _)  r
+  | instI i       = r
+  | otherwise     = Fail c GlobalConstraintInstalled
+processPackageConstraintP c i       (PackageConstraintSource    _)  r
+  | not (instI i) = r
+  | otherwise     = Fail c GlobalConstraintSource
+processPackageConstraintP _ _       _                               r = r
+
+-- | Helper function that tries to enforce a single package constraint on a
+-- given flag setting for an F-node. Translates the constraint into a
+-- tree-transformer that either leaves the subtree untouched, or replaces it
+-- with an appropriate failure node.
+processPackageConstraintF :: Flag -> ConflictSet QPN -> Bool -> PackageConstraint -> Tree a -> Tree a
+processPackageConstraintF f c b' (PackageConstraintFlags _ fa) r =
+  case L.lookup f fa of
+    Nothing            -> r
+    Just b | b == b'   -> r
+           | otherwise -> Fail c GlobalConstraintFlag
+processPackageConstraintF _ _ _  _                             r = r
 
 -- | Traversal that tries to establish various kinds of user constraints. Works
 -- by selectively disabling choices that have been rules out by global user
 -- constraints.
-enforcePackageConstraints :: M.Map PN PackageConstraint -> Tree QGoalReasons -> Tree QGoalReasons
+enforcePackageConstraints :: M.Map PN [PackageConstraint] -> Tree QGoalReasons -> Tree QGoalReasons
 enforcePackageConstraints pcs = trav go
   where
-    go x@(PChoiceF qpn@(Q _ pn)               gr   ts) =
-      let c = toConflictSet (Goal (P qpn) gr) in
-      case M.lookup pn pcs of
-        Just (PackageConstraintVersion _ vr) ->
-          PChoiceF qpn gr
-            (P.mapWithKey (\ (I v _) r -> if checkVR vr v
-                                            then r
-                                            else Fail c (GlobalConstraintVersion vr))
-                          ts)
-        Just (PackageConstraintInstalled _) ->
-          PChoiceF qpn gr
-            (P.mapWithKey (\ i r -> if instI i
-                                      then r
-                                      else Fail c GlobalConstraintInstalled)
-                          ts)
-        Just (PackageConstraintSource    _) ->
-          PChoiceF qpn gr
-            (P.mapWithKey (\ i r -> if not (instI i)
-                                      then r
-                                      else Fail c GlobalConstraintSource)
-                          ts)
-        _ -> x
-    go x@(FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr ts) =
-      let c = toConflictSet (Goal (F qfn) gr) in
-      case M.lookup pn pcs of
-        Just (PackageConstraintFlags _ fa) ->
-          case L.lookup f fa of
-            Nothing -> x
-            Just b  ->
-              FChoiceF qfn gr tr
-                (P.mapWithKey (\ b' r -> if b == b'
-                                            then r
-                                            else Fail c GlobalConstraintFlag)
-                              ts)
-        _ -> x
+    go (PChoiceF qpn@(Q _ pn)               gr    ts) =
+      let c = toConflictSet (Goal (P qpn) gr)
+          -- compose the transformation functions for each of the relevant constraint
+          g = \ i -> foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
+                           (M.findWithDefault [] pn pcs)
+      in PChoiceF qpn gr    (P.mapWithKey g ts)
+    go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr ts) =
+      let c = toConflictSet (Goal (F qfn) gr)
+          -- compose the transformation functions for each of the relevant constraint
+          g = \ b -> foldl (\ h pc -> h . processPackageConstraintF f c b pc) id
+                           (M.findWithDefault [] pn pcs)
+      in FChoiceF qfn gr tr (P.mapWithKey g ts)
     go x = x
 
 -- | Prefer installed packages over non-installed packages, generally.
