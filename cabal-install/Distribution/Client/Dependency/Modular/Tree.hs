@@ -22,11 +22,11 @@ data Tree a =
   deriving (Eq, Show)
 
 instance Functor Tree where
-  fmap f (PChoice qpn i   xs) = PChoice qpn (f i)   (fmap (fmap f) xs)
-  fmap f (FChoice qpn i b xs) = FChoice qpn (f i) b (fmap (fmap f) xs)
-  fmap f (GoalChoice      xs) = GoalChoice          (fmap (fmap f) xs)
-  fmap f (Done    rdm       ) = Done    rdm
-  fmap f (Fail    cs fr     ) = Fail    cs fr
+  fmap  f (PChoice qpn i   xs) = PChoice qpn (f i)   (fmap (fmap f) xs)
+  fmap  f (FChoice qpn i b xs) = FChoice qpn (f i) b (fmap (fmap f) xs)
+  fmap  f (GoalChoice      xs) = GoalChoice          (fmap (fmap f) xs)
+  fmap _f (Done    rdm       ) = Done    rdm
+  fmap _f (Fail    cs fr     ) = Fail    cs fr
 
 data FailReason = InconsistentInitialConstraints
                 | Conflicting [Dep QPN]
