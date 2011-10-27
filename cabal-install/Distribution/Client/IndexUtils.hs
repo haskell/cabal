@@ -13,6 +13,7 @@
 module Distribution.Client.IndexUtils (
   getInstalledPackages,
   getSourcePackages,
+  convert,
 
   readPackageIndexFile,
   parsePackageIndex,
@@ -84,6 +85,36 @@ getInstalledPackages verbosity comp packageDbs conf =
   where
     --FIXME: make getInstalledPackages use sensible verbosity in the first place
     verbosity'  = lessVerbose verbosity
+
+convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
+convert index = PackageIndex.fromList
+  -- There can be multiple installed instances of each package version,
+  -- like when the same package is installed in the global & user dbs.
+  -- InstalledPackageIndex.allPackagesByName gives us the installed
+  -- packages with the most preferred instances first, so by picking the
+  -- first we should get the user one. This is almost but not quite the
+  -- same as what ghc does.
+  [ InstalledPackage ipkg (sourceDeps index ipkg)
+  | ipkgs <- InstalledPackageIndex.allPackagesByName index
+  , (ipkg:_) <- groupBy (equating packageVersion) ipkgs ]
+  where
+    -- The InstalledPackageInfo only lists dependencies by the
+    -- InstalledPackageId, which means we do not directly know the corresponding
+    -- source dependency. The only way to find out is to lookup the
+    -- InstalledPackageId to get the InstalledPackageInfo and look at its
+    -- source PackageId. But if the package is broken because it depends on
+    -- other packages that do not exist then we have a problem we cannot find
+    -- the original source package id. Instead we make up a bogus package id.
+    -- This should have the same effect since it should be a dependency on a
+    -- non-existant package.
+    sourceDeps index ipkg =
+      [ maybe (brokenPackageId depid) packageId mdep
+      | let depids = InstalledPackageInfo.depends ipkg
+            getpkg = InstalledPackageIndex.lookupInstalledPackageId index
+      , (depid, mdep) <- zip depids (map getpkg depids) ]
+
+    brokenPackageId (InstalledPackageId str) =
+      PackageIdentifier (PackageName (str ++ "-broken")) (Version [] [])
 
 ------------------------------------------------------------------------
 -- Reading the source package index
