@@ -52,7 +52,8 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesAllVersions,
   ) where
 
--- import Distribution.Client.Dependency.TopDown (topDownResolver)
+import Distribution.Client.Dependency.TopDown
+         ( topDownResolver )
 import Distribution.Client.Dependency.Modular
          ( modularResolver, SolverConfig(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -305,7 +306,7 @@ standardInstallPolicy
 -- ------------------------------------------------------------
 
 defaultResolver :: SolverConfig -> DependencyResolver
-defaultResolver = modularResolver
+defaultResolver = modularResolver -- const topDownResolver
 
 -- | Run the dependency solver.
 --

@@ -18,6 +18,8 @@ import Distribution.Client.Dependency.TopDown.Types
 import qualified Distribution.Client.Dependency.TopDown.Constraints as Constraints
 import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
+import Distribution.Client.IndexUtils
+         ( convert )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( PlanPackage(..) )
@@ -239,7 +241,11 @@ search configure pref constraints =
 -- the standard 'DependencyResolver' interface.
 --
 topDownResolver :: DependencyResolver
-topDownResolver = undefined -- ((((((mapMessages .).).).).).) . topDownResolver'
+topDownResolver platform comp installedPkgIndex sourcePkgIndex
+                preferences constraints targets =
+    mapMessages (topDownResolver' platform comp
+                                  (convert installedPkgIndex) sourcePkgIndex
+                                  preferences constraints targets)
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
     mapMessages = foldProgress (Step . showLog) (Fail . showFailure) Done
