@@ -321,7 +321,7 @@ planPackages comp configFlags configExFlags installFlags
                   , depid <- depids
                   , packageName depid `elem` targetnames ]
 
-    solver           = fromFlag (installSolver           installFlags)
+    solver           = fromFlag (configSolver            configExFlags)
     reinstall        = fromFlag (installReinstall        installFlags)
     reorderGoals     = fromFlag (installReorderGoals     installFlags)
     independentGoals = fromFlag (installIndependentGoals installFlags)
