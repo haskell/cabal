@@ -16,7 +16,7 @@ module Main (main) where
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, globalRepos
          , ConfigFlags(..)
-         , ConfigExFlags(..), configureExCommand
+         , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
@@ -202,7 +202,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags)
                                  (configUserInstall configFlags)
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
-      configExFlags' = savedConfigureExFlags config `mappend` configExFlags
+      configExFlags' = defaultConfigExFlags         `mappend`
+                       savedConfigureExFlags config `mappend` configExFlags
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
