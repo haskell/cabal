@@ -48,14 +48,13 @@ import Distribution.Client.Targets
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Command hiding (boolOpt)
-import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
          ( configureCommand, sdistCommand, haddockCommand )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), SDistFlags(..), HaddockFlags(..) )
 import Distribution.Simple.Setup
-         ( Flag(..), toFlag, fromFlag, flagToList, flagToMaybe
-         , optionVerbosity, trueArg, falseArg )
+         ( Flag(..), toFlag, fromFlag, flagToList
+         , optionVerbosity, boolOpt, trueArg, falseArg )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Version
@@ -238,11 +237,12 @@ filterConfigureFlags flags cabalLibVersion
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [UserConstraint],
-    configPreferences  :: [Dependency]
+    configPreferences  :: [Dependency],
+    configSolver       :: Flag Solver
   }
 
 defaultConfigExFlags :: ConfigExFlags
-defaultConfigExFlags = mempty
+defaultConfigExFlags = mempty { configSolver = Flag defaultSolver }
 
 configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 configureExCommand = configureCommand {
@@ -279,18 +279,22 @@ configureExOptions _showOrParseArgs =
               (readP_to_E (const "dependency expected")
                           (fmap (\x -> [x]) parse))
               (map display))
+
+  , optionSolver configSolver (\v flags -> flags { configSolver = v })
   ]
 
 instance Monoid ConfigExFlags where
   mempty = ConfigExFlags {
     configCabalVersion = mempty,
     configExConstraints= mempty,
-    configPreferences  = mempty
+    configPreferences  = mempty,
+    configSolver       = mempty
   }
   mappend a b = ConfigExFlags {
     configCabalVersion = combine configCabalVersion,
     configExConstraints= combine configExConstraints,
-    configPreferences  = combine configPreferences
+    configPreferences  = combine configPreferences,
+    configSolver       = combine configSolver
   }
     where combine field = field a `mappend` field b
 
@@ -302,6 +306,10 @@ data FetchFlags = FetchFlags {
 --    fetchOutput    :: Flag FilePath,
       fetchDeps      :: Flag Bool,
       fetchDryRun    :: Flag Bool,
+      fetchSolver           :: Flag Solver,
+      fetchMaxBackjumps     :: Flag Int,
+      fetchReorderGoals     :: Flag Bool,
+      fetchIndependentGoals :: Flag Bool,
       fetchVerbosity :: Flag Verbosity
     }
 
@@ -310,6 +318,10 @@ defaultFetchFlags = FetchFlags {
 --  fetchOutput    = mempty,
     fetchDeps      = toFlag True,
     fetchDryRun    = toFlag False,
+    fetchSolver           = Flag defaultSolver,
+    fetchMaxBackjumps     = Flag defaultMaxBackjumps,
+    fetchReorderGoals     = Flag False,
+    fetchIndependentGoals = Flag False,
     fetchVerbosity = toFlag normal
    }
 
@@ -342,7 +354,14 @@ fetchCommand = CommandUI {
            "Do not install anything, only print what would be installed."
            fetchDryRun (\v flags -> flags { fetchDryRun = v })
            trueArg
-       ]
+
+       ] ++
+
+       optionSolver      fetchSolver           (\v flags -> flags { fetchSolver           = v }) :
+       optionSolverFlags fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
+                         fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
+                         fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
+
   }
 
 -- ------------------------------------------------------------
@@ -578,13 +597,13 @@ data InstallFlags = InstallFlags {
     installHaddockIndex     :: Flag PathTemplate,
     installDryRun           :: Flag Bool,
     installSolver           :: Flag Solver,
+    installMaxBackjumps     :: Flag Int,
+    installReorderGoals     :: Flag Bool,
+    installIndependentGoals :: Flag Bool,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag Bool,
     installOverrideReinstall :: Flag Bool,
-    installMaxBackjumps     :: Flag Int,
     installUpgradeDeps      :: Flag Bool,
-    installReorderGoals     :: Flag Bool,
-    installIndependentGoals :: Flag Bool,
     installOnly             :: Flag Bool,
     installOnlyDeps         :: Flag Bool,
     installRootCmd          :: Flag String,
@@ -601,13 +620,13 @@ defaultInstallFlags = InstallFlags {
     installHaddockIndex    = Flag docIndexFile,
     installDryRun          = Flag False,
     installSolver          = Flag defaultSolver,
+    installMaxBackjumps    = Flag defaultMaxBackjumps,
+    installReorderGoals    = Flag False,
+    installIndependentGoals= Flag False,
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag False,
     installOverrideReinstall = Flag False,
-    installMaxBackjumps    = Flag defaultMaxBackjumps,
     installUpgradeDeps     = Flag False,
-    installReorderGoals    = Flag False,
-    installIndependentGoals= Flag False,
     installOnly            = Flag False,
     installOnlyDeps        = Flag False,
     installRootCmd         = mempty,
@@ -624,7 +643,7 @@ defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 200
 
 defaultSolver :: Solver
-defaultSolver = TopDown
+defaultSolver = Modular
 
 allSolvers :: String
 allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [Solver]))
@@ -697,15 +716,13 @@ installOptions showOrParseArgs =
           "Do not install anything, only print what would be installed."
           installDryRun (\v flags -> flags { installDryRun = v })
           trueArg
+      ] ++
 
-      , option [] ["solver"]
-          ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ".")
-          installSolver (\v flags -> flags { installSolver = v })
-          (reqArg "SOLVER" (readP_to_E (const $ "solver must be one of: " ++ allSolvers)
-                                       (toFlag `fmap` parse))
-                           (flagToList . fmap display))
+      optionSolverFlags installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
+                        installReorderGoals     (\v flags -> flags { installReorderGoals     = v })
+                        installIndependentGoals (\v flags -> flags { installIndependentGoals = v }) ++
 
-      , option [] ["reinstall"]
+      [ option [] ["reinstall"]
           "Install even if it means installing the same version again."
           installReinstall (\v flags -> flags { installReinstall = v })
           trueArg
@@ -720,26 +737,9 @@ installOptions showOrParseArgs =
           installOverrideReinstall (\v flags -> flags { installOverrideReinstall = v })
           trueArg
 
-      , option [] ["max-backjumps"]
-          ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
-          installMaxBackjumps (\v flags -> flags { installMaxBackjumps = v })
-          (reqArg "NUM" (readP_to_E ("Cannot parse number: "++)
-                                    (fmap toFlag (Parse.readS_to_P reads)))
-                        (map show . flagToList))
-
       , option [] ["upgrade-dependencies"]
           "Pick the latest version for all dependencies, rather than trying to pick an installed version."
           installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
-          trueArg
-
-      , option [] ["reorder-goals"]
-          "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
-          installReorderGoals (\v flags -> flags { installReorderGoals = v })
-          trueArg
-
-      , option [] ["independent-goals"]
-          "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
-          installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
           trueArg
 
       , option [] ["only-dependencies"]
@@ -1104,9 +1104,6 @@ instance Monoid SDistExFlags where
 -- * GetOpt Utils
 -- ------------------------------------------------------------
 
-boolOpt :: SFlags -> SFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
-boolOpt  = Command.boolOpt  flagToMaybe Flag
-
 reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
               (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
 reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
@@ -1114,6 +1111,40 @@ reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
 liftOptions :: (b -> a) -> (a -> b -> b)
             -> [OptionField a] -> [OptionField b]
 liftOptions get set = map (liftOption get set)
+
+optionSolver :: (flags -> Flag Solver)
+             -> (Flag Solver -> flags -> flags)
+             -> OptionField flags
+optionSolver get set =
+  option [] ["solver"]
+    ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ".")
+    get set
+    (reqArg "SOLVER" (readP_to_E (const $ "solver must be one of: " ++ allSolvers)
+                                 (toFlag `fmap` parse))
+                     (flagToList . fmap display))
+
+optionSolverFlags :: (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
+                  -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
+                  -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
+                  -> [OptionField flags]
+optionSolverFlags getmbj setmbj getrg setrg getig setig =
+  [ option [] ["max-backjumps"]
+      ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
+      getmbj setmbj
+      (reqArg "NUM" (readP_to_E ("Cannot parse number: "++)
+                                (fmap toFlag (Parse.readS_to_P reads)))
+                    (map show . flagToList))
+  , option [] ["reorder-goals"]
+      "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
+      getrg setrg
+      trueArg
+
+  , option [] ["independent-goals"]
+      "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
+      getig setig
+      trueArg
+  ]
+
 
 usagePackages :: String -> String -> String
 usagePackages name pname =
