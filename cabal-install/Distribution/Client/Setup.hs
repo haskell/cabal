@@ -667,7 +667,7 @@ installCommand = CommandUI {
      ++ "    Specific version of a package\n"
      ++ "  " ++ pname ++ " install 'foo < 2'       "
      ++ "    Constrained package version\n",
-  commandDefaultFlags = (mempty, mempty, mempty, mempty),
+  commandDefaultFlags = (mempty, defaultConfigExFlags, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1 (filter ((/="constraint") . optionName) $
                               configureOptions   showOrParseArgs)
