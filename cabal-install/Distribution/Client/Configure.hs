@@ -15,8 +15,6 @@ module Distribution.Client.Configure (
   ) where
 
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types
-         ( Solver(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
@@ -34,7 +32,7 @@ import Distribution.Simple.Compiler
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), toFlag, flagToMaybe, fromFlagOrDefault )
+         ( ConfigFlags(..), fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
@@ -137,6 +135,8 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
         packageSource             = LocalUnpackedPackage "."
       }
 
+      solver = fromFlag $ configSolver configExFlags
+
       resolverParams =
 
           addPreferences
@@ -160,7 +160,7 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-  return (resolveDependencies buildPlatform (compilerId comp) Modular resolverParams)
+  return (resolveDependencies buildPlatform (compilerId comp) solver resolverParams)
 
 
 -- | Call an installer for an 'SourcePackage' but override the configure
