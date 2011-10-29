@@ -188,6 +188,20 @@ firstGoal = trav go
     go x                = x
     -- Note that we keep empty choice nodes, because they mean success.
 
+-- | Transformation that tries to make a decision on base as early as
+-- possible. In nearly all cases, there's a single choice for the base
+-- package. Also, fixing base early should lead to better error messages.
+preferBaseGoalChoice :: Tree a -> Tree a
+preferBaseGoalChoice = trav go
+  where
+    go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys preferBase xs)
+    go x                = x
+
+    preferBase :: OpenGoal -> OpenGoal -> Ordering
+    preferBase (OpenGoal (Simple (Dep (Q [] pn) _)) _) _ | unPN pn == "base" = LT
+    preferBase _ (OpenGoal (Simple (Dep (Q [] pn) _)) _) | unPN pn == "base" = GT
+    preferBase _ _                                                           = EQ
+
 -- | Transformation that sorts choice nodes so that
 -- child nodes with a small branching degree are preferred. As a
 -- special case, choices with 0 branches will be preferred (as they
