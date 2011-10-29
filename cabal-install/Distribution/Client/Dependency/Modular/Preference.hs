@@ -12,7 +12,6 @@ import Distribution.Client.Dependency.Types
 
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
-import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
@@ -27,13 +26,6 @@ packageOrderFor p cmp = trav go
       | p pn                        = PChoiceF v r (P.sortByKeys (flip (cmp pn)) cs)
       | otherwise                   = PChoiceF v r                               cs
     go x                            = x
-
--- | Reorder according to global preferences.
-preferPreferences :: Preferences -> Tree a -> Tree a
-preferPreferences prefs = packageOrderFor (`M.member` prefs) preference
-  where
-    preference pn (I v1 _) (I v2 _) = preferredVersionsOrdering preferred v1 v2
-      where preferred   = M.findWithDefault anyVR pn prefs
 
 -- | Ordering that treats preferred versions as greater than non-preferred
 -- versions.
