@@ -92,8 +92,8 @@ build = ana go
     -- TODO: Should we include the flag default in the tree?
     go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Flagged qfn b t f) gr) }) =
       FChoiceF qfn (gr, sc) trivial (P.fromList (reorder b
-        [(True,  (extendOpen (getPN qfn) (L.map (flip OpenGoal (FDependency qfn b : gr)) t) bs) { next = Goals }),
-         (False, (extendOpen (getPN qfn) (L.map (flip OpenGoal (FDependency qfn b : gr)) f) bs) { next = Goals })]))
+        [(True,  (extendOpen (getPN qfn) (L.map (flip OpenGoal (FDependency qfn True  : gr)) t) bs) { next = Goals }),
+         (False, (extendOpen (getPN qfn) (L.map (flip OpenGoal (FDependency qfn False : gr)) f) bs) { next = Goals })]))
       where
         reorder True  = id
         reorder False = reverse
