@@ -360,8 +360,8 @@ checkPrintPlan verbosity installed installPlan installFlags = do
          "The install plan contains reinstalls which can break "
       ++ "your GHC installation.\nYou can use the --avoid-reinstalls option "
       ++ "to try to avoid this or try\nto ghc-pkg unregister the version of "
-      ++ "the package version to see its effect\non reverse dependencies.  " 
-      ++ "If you know what you are doing you can use\nthe " 
+      ++ "the package version to see its effect\non reverse dependencies.  "
+      ++ "If you know what you are doing you can use\nthe "
       ++ "--override-reinstall-check option to override this reinstall check."
 
   where
