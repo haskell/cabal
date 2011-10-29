@@ -7,7 +7,6 @@ import Prelude hiding (pi)
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
-import Distribution.Client.Dependency.Modular.Version
 
 -- | An index contains information about package instances. This is a nested
 -- dictionary. Package names are mapped to instances, which in turn is mapped
@@ -18,9 +17,6 @@ type Index = Map PN (Map I PInfo)
 -- Currently, dependencies, flags and encapsulations.
 data PInfo = PInfo (FlaggedDeps PN) FlagDefaults Encaps
   deriving (Show)
-
--- | A separate index just containing preference constraints for packages.
-type Preferences = Map PN VR
 
 -- | Encapsulations. A list of package names.
 type Encaps = [PN]
