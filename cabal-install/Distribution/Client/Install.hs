@@ -19,7 +19,7 @@ module Distribution.Client.Install (
   ) where
 
 import Data.List
-         ( unfoldr, find, nub, sort )
+         ( unfoldr, find, nub, sort, (\\) )
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Control.Exception as Exception
@@ -102,7 +102,7 @@ import Distribution.Package
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( Benchmark(..), PackageDescription, GenericPackageDescription(..)
-         , TestSuite(..) )
+         , TestSuite(..), Flag(..), FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, mapTreeData )
 import Distribution.Version
@@ -433,13 +433,30 @@ printDryRun verbosity plan = case plan of
         "In order, the following would be installed (use -v for more details):"
       : map (display . packageId) (map fst pkgs)
   where
-    showPkgAndReason (pkg', pr) = display (packageId pkg') ++ " " ++
+    showPkgAndReason (pkg', pr) = display (packageId pkg') ++
+          showFlagAssignment (nonDefaultFlags pkg') ++ " " ++
           case pr of
             NewPackage   -> "(new package)"
             NewVersion _ -> "(new version)"
             Reinstall cs -> "(reinstall)" ++ case cs of
                 []   -> ""
                 diff -> " changes: "  ++ intercalate ", " (map change diff)
+
+    toFlagAssignment :: [Flag] -> FlagAssignment
+    toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
+
+    nonDefaultFlags :: ConfiguredPackage -> FlagAssignment
+    nonDefaultFlags (ConfiguredPackage spkg fa _) =
+      let defaultAssignment =
+            toFlagAssignment
+             (genPackageFlags (Source.packageDescription spkg))
+      in  fa \\ defaultAssignment
+
+    -- FIXME: this should be a proper function in a proper place
+    showFlagAssignment = concatMap ((' ' :) . showFlagValue)
+    showFlagValue (f, True)   = '+' : showFlagName f
+    showFlagValue (f, False)  = '-' : showFlagName f
+    showFlagName (FlagName f) = f
 
     change (OnlyInLeft pkgid)        = display pkgid ++ " removed"
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
