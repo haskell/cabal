@@ -643,7 +643,7 @@ defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 200
 
 defaultSolver :: Solver
-defaultSolver = Modular
+defaultSolver = TopDown
 
 allSolvers :: String
 allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [Solver]))
