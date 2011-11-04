@@ -743,7 +743,7 @@ putString :: FieldWidth -> String -> String
 putString n s = take n s ++ fill (n - length s) '\NUL'
 
 --TODO: check integer widths, eg for large file sizes
-putOct :: Integral a => FieldWidth -> a -> String
+putOct :: (Show a, Integral a) => FieldWidth -> a -> String
 putOct n x =
   let octStr = take (n-1) $ showOct x ""
    in fill (n - length octStr - 1) '0'
