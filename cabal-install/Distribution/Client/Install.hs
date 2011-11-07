@@ -48,6 +48,8 @@ import System.IO.Error
 
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Types
+         ( Solver(..) )
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 -- import qualified Distribution.Client.Info as Info
@@ -172,7 +174,7 @@ install verbosity packageDBs repos comp conf
                          comp configFlags configExFlags installFlags
                          installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    checkPrintPlan verbosity installedPkgIndex installPlan installFlags
+    checkPrintPlan verbosity installedPkgIndex installPlan installFlags solver
 
     unless dryRun $ do
       installPlan' <- performInstallations verbosity
@@ -185,6 +187,7 @@ install verbosity packageDBs repos comp conf
                globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
 
     dryRun      = fromFlag (installDryRun installFlags)
+    solver      = fromFlag (configSolver  configExFlags)
     logMsg message rest = debug verbosity message >> rest
 
 
@@ -338,8 +341,9 @@ checkPrintPlan :: Verbosity
                -> PackageIndex
                -> InstallPlan
                -> InstallFlags
+               -> Solver
                -> IO ()
-checkPrintPlan verbosity installed installPlan installFlags = do
+checkPrintPlan verbosity installed installPlan installFlags solver = do
 
   when nothingToInstall $
     notice verbosity $
@@ -358,11 +362,17 @@ checkPrintPlan verbosity installed installPlan installFlags = do
   when (containsReinstalls && not overrideReinstall) $
     (if dryRun then notice adaptedVerbosity else die) $
          "The install plan contains reinstalls which can break "
-      ++ "your GHC installation.\nYou can use the --avoid-reinstalls option "
-      ++ "to try to avoid this or try\nto ghc-pkg unregister the version of "
-      ++ "the package version to see its effect\non reverse dependencies.  "
-      ++ "If you know what you are doing you can use\nthe "
-      ++ "--override-reinstall-check option to override this reinstall check."
+      ++ "your GHC installation. "
+      ++ (if solver /= Modular
+          then "You can try --solver=modular for the new modular solver that "
+            ++ "chooses such reinstalls less often and also offers the "
+            ++ "--avoid-reinstalls option. "
+          else "You can use the --avoid-reinstalls option to try to find an "
+            ++ "install plan without such reinstalls. ")
+      ++ "You can also ghc-pkg unregister the affected packages and run "
+      ++ "ghc-pkg check to see the effect on reverse dependencies. "
+      ++ "If you know what you are doing you can use the "
+      ++ "--force-reinstalls option to override this reinstall check."
 
   where
     nothingToInstall = null (InstallPlan.ready installPlan)

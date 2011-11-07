@@ -596,7 +596,6 @@ data InstallFlags = InstallFlags {
     installDocumentation    :: Flag Bool,
     installHaddockIndex     :: Flag PathTemplate,
     installDryRun           :: Flag Bool,
-    installSolver           :: Flag Solver,
     installMaxBackjumps     :: Flag Int,
     installReorderGoals     :: Flag Bool,
     installIndependentGoals :: Flag Bool,
@@ -619,7 +618,6 @@ defaultInstallFlags = InstallFlags {
     installDocumentation   = Flag False,
     installHaddockIndex    = Flag docIndexFile,
     installDryRun          = Flag False,
-    installSolver          = Flag defaultSolver,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installReorderGoals    = Flag False,
     installIndependentGoals= Flag False,
@@ -732,7 +730,7 @@ installOptions showOrParseArgs =
           installAvoidReinstalls (\v flags -> flags { installAvoidReinstalls = v })
           trueArg
 
-      , option [] ["override-reinstall-check"]
+      , option [] ["force-reinstalls"]
           "Use to override the check that prevents reinstalling already installed versions of package dependencies."
           installOverrideReinstall (\v flags -> flags { installOverrideReinstall = v })
           trueArg
@@ -795,7 +793,6 @@ instance Monoid InstallFlags where
     installDocumentation   = mempty,
     installHaddockIndex    = mempty,
     installDryRun          = mempty,
-    installSolver          = mempty,
     installReinstall       = mempty,
     installAvoidReinstalls = mempty,
     installOverrideReinstall = mempty,
@@ -816,7 +813,6 @@ instance Monoid InstallFlags where
     installDocumentation   = combine installDocumentation,
     installHaddockIndex    = combine installHaddockIndex,
     installDryRun          = combine installDryRun,
-    installSolver          = combine installSolver,
     installReinstall       = combine installReinstall,
     installAvoidReinstalls = combine installAvoidReinstalls,
     installOverrideReinstall = combine installOverrideReinstall,
