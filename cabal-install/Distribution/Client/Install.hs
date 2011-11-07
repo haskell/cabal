@@ -355,8 +355,8 @@ checkPrintPlan verbosity installed installPlan installFlags = do
   when (dryRun || adaptedVerbosity >= verbose) $
     printDryRun adaptedVerbosity lPlan
 
-  when containsReinstalls $
-    (if dryRun || overrideReinstall then notice adaptedVerbosity else die) $
+  when (containsReinstalls && not overrideReinstall) $
+    (if dryRun then notice adaptedVerbosity else die) $
          "The install plan contains reinstalls which can break "
       ++ "your GHC installation.\nYou can use the --avoid-reinstalls option "
       ++ "to try to avoid this or try\nto ghc-pkg unregister the version of "
