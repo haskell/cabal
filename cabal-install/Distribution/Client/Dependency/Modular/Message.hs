@@ -75,7 +75,7 @@ showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b ++ ")"
 showFR :: ConflictSet QPN -> FailReason -> String
 showFR _ InconsistentInitialConstraints = " (inconsistent initial constraints)"
 showFR _ (Conflicting ds)               = " (conflict: " ++ L.intercalate ", " (map showDep ds) ++ ")"
-showFR _ CannotInstall                  = " (only already installed versions can be used)"
+showFR _ CannotInstall                  = " (only already installed instances can be used)"
 showFR _ CannotReinstall                = " (avoiding to reinstall a package with same version but new dependencies)"
 showFR _ (GlobalConstraintVersion vr)   = " (global constraint requires " ++ display vr ++ ")"
 showFR _ GlobalConstraintInstalled      = " (global constraint requires installed instance)"
