@@ -10,6 +10,17 @@ the `cabal-install` package in addition to this library.
 Installation instructions for the Cabal library
 ===============================================
 
+If you have the `cabal` program already
+---------------------------------------
+
+In this case it's simple, just
+
+    cabal install
+
+Of course, if you don't have an existing version of the `cabal` program
+then to get one you'd first need to install the Cabal library! To avoid
+this bootstrapping problem, you can install the Cabal library directly:
+
 Installing as a user (no root or administer access)
 ---------------------------------------------------
 
