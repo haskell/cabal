@@ -148,6 +148,8 @@ externalPackageDeps lbi = filter (not . internal . snd) $ nub $
   -- TODO:  what about non-buildable components?
        maybe [] componentPackageDeps (libraryConfig lbi)
     ++ concatMap (componentPackageDeps . snd) (executableConfigs lbi)
+    ++ concatMap (componentPackageDeps . snd) (testSuiteConfigs lbi)
+    ++ concatMap (componentPackageDeps . snd) (benchmarkConfigs lbi)
   where
     -- True if this dependency is an internal one (depends on the library
     -- defined in the same package).
