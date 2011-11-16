@@ -194,11 +194,10 @@ haddock pkg_descr lbi suffixes flags = do
     when (flag haddockHscolour) $ hscolour' pkg_descr lbi suffixes $
          defaultHscolourFlags `mappend` haddockToHscolour flags
 
-    args <- fmap mconcat . sequence $
-            [ getInterfaces verbosity lbi (flagToMaybe (haddockHtmlLocation flags))
-            , getGhcLibDir  verbosity lbi isVersion2 ]
-           ++ map return
-            [ fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
+    libdirArgs <- getGhcLibDir  verbosity lbi isVersion2
+    let commonArgs = mconcat
+            [ libdirArgs
+            , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
             , fromPackageDescription pkg_descr ]
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
@@ -208,21 +207,22 @@ haddock pkg_descr lbi suffixes flags = do
         CLib lib -> do
           withTempDirectory verbosity (buildDir lbi) "tmp" $ \tmp -> do
             let bi = libBuildInfo lib
-            libArgs  <- fromLibrary tmp lbi lib clbi
+            libArgs  <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
             libArgs' <- prepareSources verbosity tmp
-                          lbi isVersion2 bi (args `mappend` libArgs)
+                          lbi isVersion2 bi (commonArgs `mappend` libArgs)
             runHaddock verbosity confHaddock libArgs'
         CExe exe -> when (flag haddockExecutables) $ do
           withTempDirectory verbosity (buildDir lbi) "tmp" $ \tmp -> do
             let bi = buildInfo exe
-            exeArgs  <- fromExecutable tmp lbi exe clbi
+            exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
             exeArgs' <- prepareSources verbosity tmp
-                          lbi isVersion2 bi (args `mappend` exeArgs)
+                          lbi isVersion2 bi (commonArgs `mappend` exeArgs)
             runHaddock verbosity confHaddock exeArgs'
         _ -> return ()
   where
     verbosity = flag haddockVerbosity
     flag f    = fromFlag $ f flags
+    htmlTemplate = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $ flags
 
 -- | performs cpp and unlit preprocessing where needed on the files in
 -- | argTargets, which must have an .hs or .lhs extension.
@@ -300,12 +300,15 @@ fromPackageDescription pkg_descr =
         subtitle | null (synopsis pkg_descr) = ""
                  | otherwise                 = ": " ++ synopsis pkg_descr
 
-fromLibrary :: FilePath
+fromLibrary :: Verbosity
+            -> FilePath
             -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
+            -> Maybe PathTemplate -- ^ template for html location
             -> IO HaddockArgs
-fromLibrary tmp lbi lib clbi =
+fromLibrary verbosity tmp lbi lib clbi htmlTemplate =
             do inFiles <- map snd `fmap` getLibSourceFiles lbi lib
-               return $ mempty {
+               ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
+               return $ ifaceArgs {
                             argHideModules = (mempty,otherModules $ bi),
                             argGhcFlags = ghcOptions lbi bi clbi (buildDir lbi)
                                        -- Noooooooooo!!!!!111
@@ -319,12 +322,15 @@ fromLibrary tmp lbi lib clbi =
     where
       bi = libBuildInfo lib
 
-fromExecutable :: FilePath
+fromExecutable :: Verbosity
+               -> FilePath
                -> LocalBuildInfo -> Executable -> ComponentLocalBuildInfo
+               -> Maybe PathTemplate -- ^ template for html location
                -> IO HaddockArgs
-fromExecutable tmp lbi exe clbi =
+fromExecutable verbosity tmp lbi exe clbi htmlTemplate =
             do inFiles <- map snd `fmap` getExeSourceFiles lbi exe
-               return $ mempty {
+               ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
+               return $ ifaceArgs {
                             argGhcFlags = ghcOptions lbi bi clbi (buildDir lbi)
                                        -- Noooooooooo!!!!!111
                                        -- haddock stomps on our precious .hi
@@ -340,12 +346,12 @@ fromExecutable tmp lbi exe clbi =
       bi = buildInfo exe
 
 getInterfaces :: Verbosity
-                 -> LocalBuildInfo
-                 -> Maybe String -- ^ template for html location
-                 -> IO HaddockArgs
-getInterfaces verbosity lbi location = do
-    let htmlTemplate = fmap toPathTemplate $ location
-    (packageFlags, warnings) <- haddockPackageFlags lbi htmlTemplate
+              -> LocalBuildInfo
+              -> ComponentLocalBuildInfo
+              -> Maybe PathTemplate -- ^ template for html location
+              -> IO HaddockArgs
+getInterfaces verbosity lbi clbi htmlTemplate = do
+    (packageFlags, warnings) <- haddockPackageFlags lbi clbi htmlTemplate
     maybe (return ()) (warn verbosity) warnings
     return $ mempty {
                  argInterfaces = packageFlags
@@ -439,11 +445,12 @@ renderPureArgs version args = concat
 -----------------------------------------------------------------------------------------------------------
 
 haddockPackageFlags :: LocalBuildInfo
+                    -> ComponentLocalBuildInfo
                     -> Maybe PathTemplate
                     -> IO ([(FilePath,Maybe FilePath)], Maybe String)
-haddockPackageFlags lbi htmlTemplate = do
+haddockPackageFlags lbi clbi htmlTemplate = do
   let allPkgs = installedPkgs lbi
-      directDeps = map fst (externalPackageDeps lbi)
+      directDeps = map fst (componentPackageDeps clbi)
   transitiveDeps <- case dependencyClosure allPkgs directDeps of
     Left x    -> return x
     Right inf -> die $ "internal error when calculating transative "
