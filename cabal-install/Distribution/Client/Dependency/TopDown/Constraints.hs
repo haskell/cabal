@@ -71,8 +71,7 @@ import Control.Exception
 -- Adding a new target package can fail if that package already has conflicting
 -- constraints.
 --
-data (Package installed, Package source)
-  => Constraints installed source reason
+data Constraints installed source reason
    = Constraints
 
        -- | Targets that we know we need. This is the set for which we
