@@ -78,7 +78,7 @@ import Distribution.Simple.Utils (lowercase, equating, comparing)
 --
 -- It can be searched effeciently by package name and version.
 --
-newtype Package pkg => PackageIndex pkg = PackageIndex
+newtype PackageIndex pkg = PackageIndex
   -- This index package names to all the package records matching that package
   -- name case-sensitively. It includes all versions.
   --
