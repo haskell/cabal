@@ -177,6 +177,7 @@ data PackageDescription
                                              -- with x-, stored in a
                                              -- simple assoc-list.
         buildDepends   :: [Dependency],
+        encapsulations :: [PackageName], -- ^ Encapsulated packages (private dependencies)
         -- | The version of the Cabal spec that this package description uses.
         -- For historical reasons this is specified with a version range but
         -- only ranges of the form @>= v@ make sense. We are in the process of
@@ -239,6 +240,7 @@ emptyPackageDescription
                       stability    = "",
                       testedWith   = [],
                       buildDepends = [],
+                      encapsulations = [],
                       homepage     = "",
                       pkgUrl       = "",
                       bugReports   = "",

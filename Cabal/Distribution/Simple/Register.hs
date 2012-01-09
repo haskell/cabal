@@ -286,6 +286,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
     IPI.includes           = includes bi,
     IPI.depends            = map fst (componentPackageDeps clbi),
+    IPI.encapsulations     = encapsulations pkg,
     IPI.hugsOptions        = hcOptions Hugs bi,
     IPI.ccOptions          = [], -- Note. NOT ccOptions bi!
                                  -- We don't want cc-options to be propagated

@@ -41,10 +41,10 @@ convIP idx ipi =
   let ipid = installedPackageId ipi
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
+      ecs = IPI.encapsulations ipi
   in  maybeToList $ do
         fds <- mapM (convIPId pn idx) (IPI.depends ipi)
-        return (pn, i, PInfo fds M.empty [])
--- TODO: Installed packages should also store their encapsulations!
+        return (pn, i, PInfo fds M.empty ecs)
 
 -- | Convert dependencies specified by an installed package id into
 -- flagged dependencies of the solver.
@@ -84,7 +84,7 @@ convGPD :: OS -> Arch -> CompilerId ->
            PI PN -> GenericPackageDescription -> PInfo
 convGPD os arch cid
         pi@(PI _pn _i)
-        (GenericPackageDescription _ flags libs exes tests benchs) =
+        (GenericPackageDescription pd flags libs exes tests benchs) =
   let
     fds = flagDefaults flags
   in
@@ -94,7 +94,7 @@ convGPD os arch cid
        concatMap (convCondTree os arch cid pi fds testEnabled      . snd) tests  ++
        concatMap (convCondTree os arch cid pi fds benchmarkEnabled . snd) benchs)
       fds
-      [] -- TODO: add encaps
+      (PD.encapsulations pd)
 
 -- | Convert flag information.
 flagDefaults :: [PD.Flag] -> FlagDefaults

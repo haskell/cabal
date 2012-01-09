@@ -130,6 +130,9 @@ pkgDescrFieldDescrs =
  , commaListField  "build-depends"
            disp                   parse
            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
+ , listField "encapsulations"
+           disp                   parse
+           encapsulations         (\xs pkg -> pkg{encapsulations=xs})
  , simpleField "stability"
            showFreeText           parseFreeText
            stability              (\val pkg -> pkg{stability=val})

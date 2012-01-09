@@ -115,6 +115,7 @@ data InstalledPackageInfo_ m
         includeDirs       :: [FilePath],
         includes          :: [String],
         depends           :: [InstalledPackageId],
+        encapsulations    :: [PackageName],
         hugsOptions       :: [String],
         ccOptions         :: [String],
         ldOptions         :: [String],
@@ -157,6 +158,7 @@ emptyInstalledPackageInfo
         includeDirs       = [],
         includes          = [],
         depends           = [],
+        encapsulations    = [],
         hugsOptions       = [],
         ccOptions         = [],
         ldOptions         = [],
@@ -270,6 +272,9 @@ installedFieldDescrs = [
  , listField   "depends"
         disp               parse
         depends            (\xs pkg -> pkg{depends=xs})
+ , listField   "encapsulations"
+        disp               parse
+        encapsulations     (\xs pkg -> pkg{encapsulations=xs})
  , listField   "hugs-options"
         showToken          parseTokenQ
         hugsOptions        (\path  pkg -> pkg{hugsOptions=path})
