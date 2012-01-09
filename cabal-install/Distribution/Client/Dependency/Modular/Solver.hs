@@ -15,8 +15,7 @@ import Distribution.Client.Dependency.Modular.Package
 import qualified Distribution.Client.Dependency.Modular.Preference as P
 import Distribution.Client.Dependency.Modular.Validate
 
--- Configurable interface to the solver.
-
+-- | Various options for the modular solver.
 data SolverConfig = SolverConfig {
   preferEasyGoalChoices :: Bool,
   independentGoals      :: Bool,
