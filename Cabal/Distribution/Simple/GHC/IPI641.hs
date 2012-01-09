@@ -43,7 +43,7 @@ module Distribution.Simple.GHC.IPI641 (
   ) where
 
 import qualified Distribution.InstalledPackageInfo as Current
-import qualified Distribution.Package as Current hiding (depends)
+import qualified Distribution.Package as Current hiding (depends, encapsulations)
 import Distribution.Text (display)
 
 import Distribution.Simple.GHC.IPI642

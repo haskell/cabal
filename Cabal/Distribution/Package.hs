@@ -191,3 +191,4 @@ instance Package PackageIdentifier where
 --
 class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> [PackageIdentifier]
+  encapsulations :: pkg -> [PackageName]

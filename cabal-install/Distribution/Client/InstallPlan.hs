@@ -141,6 +141,10 @@ instance PackageFixedDeps PlanPackage where
   depends (Configured  pkg) = depends pkg
   depends (Installed pkg _) = depends pkg
   depends (Failed    pkg _) = depends pkg
+  encapsulations (PreExisting pkg) = encapsulations pkg
+  encapsulations (Configured  pkg) = encapsulations pkg
+  encapsulations (Installed pkg _) = encapsulations pkg
+  encapsulations (Failed    pkg _) = encapsulations pkg
 
 data InstallPlan = InstallPlan {
     planIndex    :: PackageIndex PlanPackage,

@@ -61,7 +61,7 @@ import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
-import Data.List (groupBy, sortBy, nub, isInfixOf)
+import Data.List (group, sort, groupBy, sortBy, nub, isInfixOf)
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isJust, isNothing, fromMaybe)
 
@@ -392,6 +392,22 @@ reverseTopologicalOrder index = map toPkgId
                               $ graph
   where (graph, toPkgId, _) = dependencyGraph index
 
+visibility :: PackageFixedDeps pkg
+           => PackageIndex pkg
+           -> PackageIdentifier
+           -> [pkg]
+visibility index pkg =
+    map toPkgId
+  . concatMap Tree.flatten
+  . Graph.dfs cgraph
+  $ [fromMaybe noSuchPkgId (fromPkgId pkg)]
+  where
+    (graph, toPkgId, fromPkgId) = dependencyGraph index
+    rgraph = Graph.transposeG graph
+    encaps = map (fromMaybe noSuchPkgId . fromPkgId . packageId) (filter ((packageName pkg `elem`) . encapsulations) (allPackages index))
+    cgraph = rgraph Array.// zip encaps (repeat [])
+    noSuchPkgId = error "visibility: package is not in the graph"
+
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
 -- if the dependencies within it use consistent versions of each package.
@@ -423,20 +439,29 @@ dependencyInconsistencies index =
                      . groupBy (equating snd)
                      . sortBy (comparing snd)
 
+        visibilitiesDisjoint :: PackageName -> [Version] -> Bool
+        visibilitiesDisjoint pn vs = null
+                                   . filter (\ gr -> length gr > 1)
+                                   . group
+                                   . sort
+                                   . concatMap (map packageId . visibility index)
+                                   $ [ PackageIdentifier pn v | v <- vs ]
+
         reallyIsInconsistent :: PackageName -> [Version] -> Bool
         reallyIsInconsistent _    []       = False
         reallyIsInconsistent name [v1, v2] =
           case (mpkg1, mpkg2) of
             (Just pkg1, Just pkg2) -> pkgid1 `notElem` depends pkg2
                                    && pkgid2 `notElem` depends pkg1
-            _ -> True
+                                   && not (visibilitiesDisjoint name [v1, v2])
+            _ -> visibilitiesDisjoint name [v1, v2]
           where
             pkgid1 = PackageIdentifier name v1
             pkgid2 = PackageIdentifier name v2
             mpkg1 = lookupPackageId index pkgid1
             mpkg2 = lookupPackageId index pkgid2
 
-        reallyIsInconsistent _ _ = True
+        reallyIsInconsistent pn vs = visibilitiesDisjoint pn vs
 
 -- | Find if there are any cycles in the dependency graph. If there are no
 -- cycles the result is @[]@.

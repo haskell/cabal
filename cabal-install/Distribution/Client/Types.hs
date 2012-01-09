@@ -15,8 +15,10 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..), PackageFixedDeps(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+import Distribution.InstalledPackageInfo as IPI
+         ( InstalledPackageInfo, encapsulations )
+import qualified Distribution.PackageDescription as P
+         ( packageDescription, encapsulations )
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagAssignment )
 import Distribution.Client.PackageIndex
@@ -65,6 +67,7 @@ instance Package InstalledPackage where
   packageId (InstalledPackage pkg _) = packageId pkg
 instance PackageFixedDeps InstalledPackage where
   depends (InstalledPackage _ deps) = deps
+  encapsulations (InstalledPackage ipi _) = IPI.encapsulations ipi
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -85,6 +88,8 @@ instance Package ConfiguredPackage where
 
 instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ deps) = deps
+  encapsulations (ConfiguredPackage pkg _ _) =
+    P.encapsulations (P.packageDescription (packageDescription pkg))
 
 
 -- | A package description along with the location of the package sources.

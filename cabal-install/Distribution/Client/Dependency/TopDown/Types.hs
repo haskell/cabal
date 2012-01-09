@@ -17,7 +17,7 @@ import Distribution.Client.Types
 
 import Distribution.Package
          ( PackageIdentifier, Dependency
-         , Package(packageId), PackageFixedDeps(depends) )
+         , Package(packageId), PackageFixedDeps(..) )
 import Distribution.PackageDescription
          ( FlagAssignment )
 
@@ -63,6 +63,7 @@ instance Package InstalledPackageEx where
 
 instance PackageFixedDeps InstalledPackageEx where
   depends (InstalledPackageEx _ _ deps) = deps
+  encapsulations (InstalledPackageEx p _ _) = encapsulations p
 
 instance Package UnconfiguredPackage where
   packageId (UnconfiguredPackage p _ _) = packageId p
