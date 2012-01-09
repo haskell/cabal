@@ -107,11 +107,12 @@ validate = cata go
 
     -- What to do for package nodes ...
     goP :: QPN -> QGoalReasons -> Scope -> I -> Validate (Tree QGoalReasons) -> Validate (Tree QGoalReasons)
-    goP qpn@(Q _pp pn) gr sc i r = do
+    goP qpn@(Q _pp pn) gr sc' i r = do
       PA ppa pfa <- asks pa    -- obtain current preassignment
       idx        <- asks index -- obtain the index
       svd        <- asks saved -- obtain saved dependencies
-      let (PInfo deps _ _) = idx ! pn ! i -- obtain dependencies introduced by the choice
+      let (PInfo deps _ ecs) = idx ! pn ! i -- obtain dependencies introduced by the choice
+      let sc = extendScope qpn ecs sc' -- re-extend scope (slightly ugly, this has been done during building already, but we can't get hold of it here)
       let qdeps = L.map (fmap (qualify sc)) deps -- qualify the deps in the current scope
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance

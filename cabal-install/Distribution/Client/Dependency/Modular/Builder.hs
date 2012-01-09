@@ -42,10 +42,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
 -- | Update the current scope by taking into account the encapsulations that
 -- are defined for the current package.
 establishScope :: QPN -> Encaps -> BuildState -> BuildState
-establishScope (Q pp pn) ecs s =
-    s { scope = L.foldl (\ m e -> M.insert e pp' m) (scope s) ecs }
-  where
-    pp' = pn : pp -- new path
+establishScope qpn ecs bs = bs { scope = extendScope qpn ecs (scope bs) }
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
@@ -104,8 +101,7 @@ build = ana go
     --
     -- TODO: We could inline this above.
     go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs ecs) gr }) =
-      go ((establishScope qpn ecs
-             (scopedExtendOpen qpn i (PDependency (PI qpn i) : gr) fdeps fdefs bs))
+      go (scopedExtendOpen qpn i (PDependency (PI qpn i) : gr) fdeps fdefs (establishScope qpn ecs bs)
              { next = Goals })
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,

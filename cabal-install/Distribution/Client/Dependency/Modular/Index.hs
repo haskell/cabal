@@ -18,9 +18,6 @@ type Index = Map PN (Map I PInfo)
 data PInfo = PInfo (FlaggedDeps PN) FlagDefaults Encaps
   deriving (Show)
 
--- | Encapsulations. A list of package names.
-type Encaps = [PN]
-
 mkIndex :: [(PN, I, PInfo)] -> Index
 mkIndex xs = M.map M.fromList (groupMap (L.map (\ (pn, i, pi) -> (pn, (i, pi))) xs))
 

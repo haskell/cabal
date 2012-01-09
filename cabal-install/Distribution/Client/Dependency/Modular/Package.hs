@@ -95,6 +95,16 @@ type Scope = Map PN PP
 emptyScope :: Scope
 emptyScope = M.empty
 
+-- | Encapsulations. A list of package names.
+type Encaps = [PN]
+
+-- | Extend a scope. Takes the "current" package and a list of
+-- encapsulated packages.
+extendScope :: QPN -> Encaps -> Scope -> Scope
+extendScope (Q pp pn) ecs s = L.foldl (\ m e -> M.insert e pp' m) s ecs
+  where
+    pp' = pn : pp -- new path
+
 -- | Create artificial parents for each of the package names, making
 -- them all independent.
 makeIndependent :: [PN] -> Scope
