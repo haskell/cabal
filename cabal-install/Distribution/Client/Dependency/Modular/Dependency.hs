@@ -52,7 +52,7 @@ type VROrigin qpn = (VR, Goal qpn)
 -- | Helper function to collapse a list of version ranges with origins into
 -- a single, simplified, version range.
 collapse :: [VROrigin qpn] -> VR
-collapse = simplifyVR . foldr (.&&.) anyVR . L.map fst
+collapse = simplifyVR . L.foldr (.&&.) anyVR . L.map fst
 
 showCI :: CI QPN -> String
 showCI (Fixed i _)      = "==" ++ showI i
