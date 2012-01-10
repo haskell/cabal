@@ -411,22 +411,27 @@ visibility index pkg =
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
 -- if the dependencies within it use consistent versions of each package.
--- Return all cases where multiple packages depend on different versions of
--- some other package.
+-- Currently, an inconsistency arises if one package can see two versions
+-- of a dependency at the same time. Visibility is affected by encapsulations.
+-- If one package encapsulates another, then the encapsulated package cannot
+-- be seen from the outside.
 --
 -- Each element in the result is a package name along with the packages that
 -- depend on it and the versions they require. These are guaranteed to be
--- distinct.
+-- distinct. In addition, a list of packages is returned that can see multiple
+-- versions of this package.
 --
 dependencyInconsistencies :: PackageFixedDeps pkg
                           => PackageIndex pkg
-                          -> [(PackageName, [(PackageIdentifier, Version)])]
+                          -> [(PackageName, [(PackageIdentifier, Version)], [PackageIdentifier])]
 dependencyInconsistencies index =
-  [ (name, inconsistencies)
+  [ (name, inconsistencies, visibilities)
   | (name, uses) <- Map.toList inverseIndex
   , let inconsistencies = duplicatesBy uses
-        versions = map snd inconsistencies
-  , reallyIsInconsistent name (nub versions) ]
+        versions = nub (map snd inconsistencies)
+        visibilities = visibilitiesDisjoint name versions
+  , reallyIsInconsistent name versions
+  , not (null (visibilities)) ]
 
   where inverseIndex = Map.fromListWith (++)
           [ (packageName dep, [(packageId pkg, packageVersion dep)])
@@ -439,9 +444,10 @@ dependencyInconsistencies index =
                      . groupBy (equating snd)
                      . sortBy (comparing snd)
 
-        visibilitiesDisjoint :: PackageName -> [Version] -> Bool
-        visibilitiesDisjoint pn vs = null
-                                   . filter (\ gr -> length gr > 1)
+        -- Checks if all versions of the given package are visible in disjoint
+        -- sets. Returns package ids that can see several versions at once.
+        visibilitiesDisjoint :: PackageName -> [Version] -> [PackageIdentifier]
+        visibilitiesDisjoint pn vs = (\ xs -> [ x | (x:_:_) <- xs ]) -- filter duplicates
                                    . group
                                    . sort
                                    . concatMap (map packageId . visibility index)
@@ -453,15 +459,14 @@ dependencyInconsistencies index =
           case (mpkg1, mpkg2) of
             (Just pkg1, Just pkg2) -> pkgid1 `notElem` depends pkg2
                                    && pkgid2 `notElem` depends pkg1
-                                   && not (visibilitiesDisjoint name [v1, v2])
-            _ -> visibilitiesDisjoint name [v1, v2]
+            _ -> True
           where
             pkgid1 = PackageIdentifier name v1
             pkgid2 = PackageIdentifier name v2
             mpkg1 = lookupPackageId index pkgid1
             mpkg2 = lookupPackageId index pkgid2
 
-        reallyIsInconsistent pn vs = visibilitiesDisjoint pn vs
+        reallyIsInconsistent _ _ = True
 
 -- | Find if there are any cycles in the dependency graph. If there are no
 -- cycles the result is @[]@.

@@ -303,7 +303,7 @@ data PlanProblem =
      PackageInvalid       ConfiguredPackage [PackageProblem]
    | PackageMissingDeps   PlanPackage [PackageIdentifier]
    | PackageCycle         [PlanPackage]
-   | PackageInconsistency PackageName [(PackageIdentifier, Version)]
+   | PackageInconsistency PackageName [(PackageIdentifier, Version)] [PackageIdentifier]
    | PackageStateInvalid  PlanPackage PlanPackage
 
 showPlanProblem :: PlanProblem -> String
@@ -322,10 +322,9 @@ showPlanProblem (PackageCycle cycleGroup) =
      "The following packages are involved in a dependency cycle "
   ++ intercalate ", " (map (display.packageId) cycleGroup)
 
-showPlanProblem (PackageInconsistency name inconsistencies) =
-     "Package " ++ display name
-  ++ " is required by several packages,"
-  ++ " but they require inconsistent versions:\n"
+showPlanProblem (PackageInconsistency name inconsistencies vpkgs) =
+     "Packages " ++ intercalate ", " (map (display.packageId) vpkgs)
+  ++ " can see inconsistent versions of package " ++ display name ++ ":\n"
   ++ unlines [ "  package " ++ display pkg ++ " requires "
                             ++ display (PackageIdentifier name ver)
              | (pkg, ver) <- inconsistencies ]
@@ -360,8 +359,8 @@ problems platform comp index =
   ++ [ PackageCycle cycleGroup
      | cycleGroup <- PackageIndex.dependencyCycles index ]
 
-  ++ [ PackageInconsistency name inconsistencies
-     | (name, inconsistencies) <- PackageIndex.dependencyInconsistencies index ]
+  ++ [ PackageInconsistency name inconsistencies vpkgs
+     | (name, inconsistencies, vpkgs) <- PackageIndex.dependencyInconsistencies index ]
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
