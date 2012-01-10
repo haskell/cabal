@@ -33,6 +33,10 @@ type FlagDefaults = Map Flag FDefault
 -- | Qualified flag name.
 type QFN = FN QPN
 
+-- | Unqualify a qualified flag.
+unQualifyFN :: QFN -> FN PN
+unQualifyFN (FN (PI qpn i) f) = FN (PI (unQualify qpn) i) f
+
 showQFNBool :: QFN -> Bool -> String
 showQFNBool qfn@(FN pi _f) b = showPI pi ++ ":" ++ showFBool qfn b
 
