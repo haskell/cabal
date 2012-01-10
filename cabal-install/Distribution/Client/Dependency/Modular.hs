@@ -22,7 +22,7 @@ import Distribution.Client.Dependency.Modular.IndexConversion
 import Distribution.Client.Dependency.Modular.Log
          ( logToProgress )
 import Distribution.Client.Dependency.Modular.Package
-         ( PN )
+         ( PN, QPN )
 import Distribution.Client.Dependency.Modular.Solver
          ( SolverConfig(..), solve )
 import Distribution.Client.Dependency.Types
@@ -46,7 +46,7 @@ modularResolver sc (Platform arch os) cid iidx sidx pprefs pcs pns =
       gcs    = M.fromListWith (++) (map (\ pc -> (pcName pc, [pc])) pcs)
 
       -- Results have to be converted into an install plan.
-      postprocess :: Assignment -> RevDepMap -> [PlanPackage]
+      postprocess :: Assignment QPN -> RevDepMap -> [PlanPackage]
       postprocess a rdm = map (convCP iidx sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.

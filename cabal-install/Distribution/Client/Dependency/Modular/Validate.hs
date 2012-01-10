@@ -153,7 +153,7 @@ validate = cata go
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
 -- already acquired.
-extractDeps :: FAssignment -> FlaggedDeps QPN -> [Dep QPN]
+extractDeps :: Ord qpn => FAssignment qpn -> FlaggedDeps qpn -> [Dep qpn]
 extractDeps fa deps = do
   d <- deps
   case d of
@@ -166,7 +166,7 @@ extractDeps fa deps = do
 -- | We try to find new dependencies that become available due to the given
 -- flag choice. We therefore look for the flag in question, and then call
 -- 'extractDeps' for everything underneath.
-extractNewFlagDeps :: QFN -> QGoalReasons -> Bool -> FAssignment -> FlaggedDeps QPN -> [Dep QPN]
+extractNewFlagDeps :: QFN -> QGoalReasons -> Bool -> FAssignment QPN -> FlaggedDeps QPN -> [Dep QPN]
 extractNewFlagDeps qfn gr b fa = go
   where
     go deps = do

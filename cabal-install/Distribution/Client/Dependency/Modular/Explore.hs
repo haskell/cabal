@@ -69,7 +69,7 @@ combine var ((k, (     d, v)) : xs) c = (\ ~(e, ys) -> (e, (k, v) : ys)) $
 
 -- | Naive backtracking exploration of the search tree. This will yield correct
 -- assignments only once the tree itself is validated.
-explore :: Alternative m => Tree a -> (Assignment -> m (Assignment, RevDepMap))
+explore :: Alternative m => Tree a -> (Assignment QPN -> m (Assignment QPN, RevDepMap))
 explore = cata go
   where
     go (FailF _ _)           _           = A.empty
@@ -89,7 +89,7 @@ explore = cata go
         (\ _k v _xs -> v a)                   -- commit to the first goal choice
 
 -- | Version of 'explore' that returns a 'Log'.
-exploreLog :: Tree (Maybe (ConflictSet QPN)) -> (Assignment -> Log Message (Assignment, RevDepMap))
+exploreLog :: Tree (Maybe (ConflictSet QPN)) -> (Assignment QPN -> Log Message (Assignment QPN, RevDepMap))
 exploreLog = cata go
   where
     go (FailF c fr)          _           = failWith (Failure c fr)
@@ -125,9 +125,9 @@ backjumpInfo c m = m <|> case c of -- important to produce 'm' before matching o
                            Just cs -> failWith (Failure cs Backjump)
 
 -- | Interface.
-exploreTree :: Alternative m => Tree a -> m (Assignment, RevDepMap)
+exploreTree :: Alternative m => Tree a -> m (Assignment QPN, RevDepMap)
 exploreTree t = explore t (A M.empty M.empty)
 
 -- | Interface.
-exploreTreeLog :: Tree (Maybe (ConflictSet QPN)) -> Log Message (Assignment, RevDepMap)
+exploreTreeLog :: Tree (Maybe (ConflictSet QPN)) -> Log Message (Assignment QPN, RevDepMap)
 exploreTreeLog t = exploreLog t (A M.empty M.empty)

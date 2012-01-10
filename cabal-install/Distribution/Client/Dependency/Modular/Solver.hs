@@ -28,7 +28,7 @@ solve :: SolverConfig ->   -- solver parameters
          (PN -> PackagePreferences) -> -- preferences
          Map PN [PackageConstraint] -> -- global constraints
          [PN] ->                       -- global goals
-         Log Message (Assignment, RevDepMap)
+         Log Message (Assignment QPN, RevDepMap)
 solve sc idx userPrefs userConstraints userGoals =
   explorePhase     $
   heuristicsPhase  $

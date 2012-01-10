@@ -20,22 +20,22 @@ import Distribution.Client.Dependency.Modular.Version
 
 -- | A (partial) package assignment. Qualified package names
 -- are associated with instances.
-type PAssignment    = Map QPN I
+type PAssignment    qpn = Map qpn I
 
 -- | A (partial) package preassignment. Qualified package names
 -- are associated with constrained instances. Constrained instances
 -- record constraints about the instances that can still be chosen,
 -- and in the extreme case fix a concrete instance.
-type PPreAssignment = Map QPN (CI QPN)
-type FAssignment    = Map QFN Bool
+type PPreAssignment     = Map QPN (CI QPN)
+type FAssignment    qpn = Map (FN qpn) Bool
 
 -- | A (partial) assignment of variables.
-data Assignment = A PAssignment FAssignment
+data Assignment     qpn = A (PAssignment qpn) (FAssignment qpn)
   deriving (Show, Eq)
 
 -- | A preassignment comprises knowledge about variables, but not
 -- necessarily fixed values.
-data PreAssignment = PA PPreAssignment FAssignment
+data PreAssignment = PA PPreAssignment (FAssignment QPN)
 
 -- | Extend a package preassignment.
 --
@@ -63,7 +63,7 @@ extend var pa qa = foldM (\ a (Dep qpn ci) ->
 -- w.r.t. unqualification. There might be several different instances
 -- of one package version chosen by the solver, which will lead to
 -- clashes.
-toCPs :: Assignment -> RevDepMap -> [CP QPN]
+toCPs :: Assignment QPN -> RevDepMap -> [CP QPN]
 toCPs (A pa fa) rdm =
   let
     -- get hold of the graph
@@ -105,7 +105,7 @@ toCPs (A pa fa) rdm =
 -- | Finalize an assignment and a reverse dependency map.
 --
 -- This is preliminary, and geared towards output right now.
-finalize :: Index -> Assignment -> RevDepMap -> IO ()
+finalize :: Index -> Assignment QPN -> RevDepMap -> IO ()
 finalize idx (A pa fa) rdm =
   let
     -- get hold of the graph
