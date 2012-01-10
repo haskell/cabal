@@ -38,9 +38,10 @@ solve sc idx userPrefs userConstraints userGoals =
   buildPhase
   where
     explorePhase     = exploreTreeLog . backjump
-    heuristicsPhase  = if preferEasyGoalChoices sc
-                         then P.preferBaseGoalChoice . P.deferDefaultFlagChoices . P.lpreferEasyGoalChoices
-                         else P.preferBaseGoalChoice
+    heuristicsPhase  = P.preferRelatedGoalsEqual . P.preferBaseGoalChoice .
+                       if preferEasyGoalChoices sc
+                         then P.deferDefaultFlagChoices . P.lpreferEasyGoalChoices
+                         else id
     preferencesPhase = P.preferPackagePreferences userPrefs
     validationPhase  = P.enforcePackageConstraints userConstraints .
                        validateTree idx

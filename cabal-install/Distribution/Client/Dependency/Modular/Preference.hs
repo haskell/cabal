@@ -2,14 +2,19 @@ module Distribution.Client.Dependency.Modular.Preference where
 
 -- Reordering or pruning the tree in order to prefer or make certain choices.
 
+import Control.Applicative
+import Control.Monad.Reader hiding (sequence)
 import qualified Data.List as L
 import qualified Data.Map as M
 import Data.Monoid
 import Data.Ord
+import Data.Traversable
+import Prelude hiding (sequence)
 
 import Distribution.Client.Dependency.Types
   ( PackageConstraint(..), PackagePreferences(..), InstalledPreference(..) )
 
+import Distribution.Client.Dependency.Modular.Assignment
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
@@ -166,6 +171,49 @@ avoidReinstalls p = trav go
           | v `elem` vs                = Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
         notReinstall _  _            x = x
     go x          = x
+
+-- | Related goals should be chosen to be the same package if possible.
+--
+-- Even if private dependencies allow us to choose different versions of a single
+-- package in one install plan, we generally prefer to have them the same if possible.
+preferRelatedGoalsEqual :: Tree a -> Tree a
+preferRelatedGoalsEqual t = runReader (cata go t) (A M.empty M.empty)
+  where
+    go :: TreeF a (Reader (Assignment PN) (Tree a)) -> Reader (Assignment PN) (Tree a)
+    go (PChoiceF qpn a   ts) = ask >>= \ pa -> PChoice qpn a   <$> sequence (P.mapWithKey (goP qpn) (sortP pa qpn ts))
+    go (FChoiceF qfn a b ts) = ask >>= \ fa -> FChoice qfn a b <$> sequence (P.mapWithKey (goF qfn) (sortF fa qfn ts))
+    go (GoalChoiceF      ts) = GoalChoice <$> sequence ts
+    go (DoneF    rdm       ) = pure (Done rdm)
+    go (FailF    c fr      ) = pure (Fail c fr)
+
+    sortP :: Assignment PN -> QPN -> PSQ I (Reader (Assignment PN) (Tree a)) -> PSQ I (Reader (Assignment PN) (Tree a))
+    sortP (A pa _) qpn ts =
+      let mi = M.lookup (unQualify qpn) pa
+      in  case mi of
+            Nothing -> ts
+            Just i  -> P.sortByKeys (preferKeyOrdering i) ts
+
+    sortF :: Assignment PN -> QFN -> PSQ Bool (Reader (Assignment PN) (Tree a)) -> PSQ Bool (Reader (Assignment PN) (Tree a))
+    sortF (A _ fa) qfn ts =
+      let mi = M.lookup (unQualifyFN qfn) fa
+      in  case mi of
+            Nothing -> ts
+            Just b  -> P.sortByKeys (preferKeyOrdering b) ts
+
+    goP :: QPN -> I -> Reader (Assignment PN) (Tree a) -> Reader (Assignment PN) (Tree a)
+    goP qpn i = local (\ (A pa fa) -> A (M.insert (unQualify qpn) i pa) fa)
+
+    goF :: QFN -> Bool -> Reader (Assignment PN) (Tree a) -> Reader (Assignment PN) (Tree a)
+    goF qfn b = local (\ (A pa fa) -> A pa (M.insert (unQualifyFN qfn) b fa))
+
+preferKeyOrdering :: Eq k => k -> k -> k -> Ordering
+preferKeyOrdering x k1 k2 =
+  let x1 = k1 == x
+      x2 = k2 == x
+  in  if x1 then if x2 then EQ
+                       else LT
+            else if x2 then GT
+                       else EQ
 
 -- | Always choose the first goal in the list next, abandoning all
 -- other choices.
