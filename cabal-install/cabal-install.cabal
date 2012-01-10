@@ -106,12 +106,12 @@ Executable cabal
         Paths_cabal_install
 
     build-depends: base     >= 2        && < 5,
-                   Cabal    >= 1.13.3   && < 1.14,
-                   filepath >= 1.0      && < 1.3,
+                   Cabal    >= 1.13.3   && < 1.15,
+                   filepath >= 1.0      && < 1.4,
                    network  >= 1        && < 3,
                    HTTP     >= 4000.0.2 && < 4001,
                    zlib     >= 0.4      && < 0.6,
-                   time     >= 1.1      && < 1.3,
+                   time     >= 1.1      && < 1.5,
                    mtl      >= 2.0      && < 3
 
     if flag(old-base)
@@ -123,8 +123,8 @@ Executable cabal
                      pretty     >= 1   && < 1.2,
                      random     >= 1   && < 1.1,
                      containers >= 0.1 && < 0.5,
-                     array      >= 0.1 && < 0.4,
-                     old-time   >= 1   && < 1.1
+                     array      >= 0.1 && < 0.5,
+                     old-time   >= 1   && < 1.2
 
     if flag(bytestring-in-base)
       build-depends: base >= 2.0 && < 2.2
