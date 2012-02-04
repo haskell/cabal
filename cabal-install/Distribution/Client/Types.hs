@@ -179,8 +179,9 @@ data BuildFailure = DependentFailed PackageId
                   | UnpackFailed    SomeException
                   | ConfigureFailed SomeException
                   | BuildFailed     SomeException
+                  | TestsFailed     SomeException
                   | InstallFailed   SomeException
 data BuildSuccess = BuildOk         DocsResult TestsResult
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
-data TestsResult = TestsNotTried | TestsFailed | TestsOk
+data TestsResult = TestsNotTried | TestsOk
