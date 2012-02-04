@@ -112,6 +112,7 @@ data InstallOutcome
    | SetupFailed
    | ConfigureFailed
    | BuildFailed
+   | TestsFailed
    | InstallFailed
    | InstallOk
   deriving Eq
@@ -143,6 +144,7 @@ new os' arch' comp (ConfiguredPackage pkg flags _ deps) result =
       Left  (BR.UnpackFailed    _) -> UnpackFailed
       Left  (BR.ConfigureFailed _) -> ConfigureFailed
       Left  (BR.BuildFailed     _) -> BuildFailed
+      Left  (BR.TestsFailed     _) -> TestsFailed
       Left  (BR.InstallFailed   _) -> InstallFailed
       Right (BR.BuildOk       _ _) -> InstallOk
     convertDocsOutcome = case result of
@@ -151,9 +153,9 @@ new os' arch' comp (ConfiguredPackage pkg flags _ deps) result =
       Right (BR.BuildOk BR.DocsFailed _)    -> Failed
       Right (BR.BuildOk BR.DocsOk _)        -> Ok
     convertTestsOutcome = case result of
+      Left  (BR.TestsFailed _)              -> Failed
       Left _                                -> NotTried
       Right (BR.BuildOk _ BR.TestsNotTried) -> NotTried
-      Right (BR.BuildOk _ BR.TestsFailed)   -> Failed
       Right (BR.BuildOk _ BR.TestsOk)       -> Ok
 
 cabalInstallID :: PackageIdentifier

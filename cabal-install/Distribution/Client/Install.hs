@@ -91,7 +91,8 @@ import Distribution.Simple.Setup
          , buildCommand, BuildFlags(..), emptyBuildFlags
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.Setup as Cabal
-         ( installCommand, InstallFlags(..), emptyInstallFlags )
+         ( installCommand, InstallFlags(..), emptyInstallFlags
+         , emptyTestFlags, testCommand )
 import Distribution.Simple.Utils
          ( rawSystemExit, comparing )
 import Distribution.Simple.InstallDirs as InstallDirs
@@ -675,6 +676,8 @@ printBuildFailures plan =
                         ++ " The exception was:\n  " ++ show e
       BuildFailed     e -> " failed during the building phase."
                         ++ " The exception was:\n  " ++ show e
+      TestsFailed     e -> " failed during the tests phase."
+                        ++ " The exception was:\n  " ++ show e
       InstallFailed   e -> " failed during the final install step."
                         ++ " The exception was:\n  " ++ show e
 
@@ -891,15 +894,19 @@ installUnpackedPackage verbosity scriptOptions miscOptions
         else return DocsNotTried
 
   -- Tests phase
-      testsResult <- return TestsNotTried  --TODO: add optional tests
+      onFailure TestsFailed $ do
+        when shouldTest $ setup Cabal.testCommand testFlags
 
-  -- Install phase
-      onFailure InstallFailed $
-        withWin32SelfUpgrade verbosity configFlags compid pkg $ do
-          case rootCmd miscOptions of
-            (Just cmd) -> reexec cmd
-            Nothing    -> setup Cabal.installCommand installFlags
-          return (Right (BuildOk docsResult testsResult))
+        let testsResult | shouldTest = TestsOk
+                        | otherwise = TestsNotTried
+
+      -- Install phase
+        onFailure InstallFailed $
+          withWin32SelfUpgrade verbosity configFlags compid pkg $ do
+            case rootCmd miscOptions of
+              (Just cmd) -> reexec cmd
+              Nothing    -> setup Cabal.installCommand installFlags
+            return (Right (BuildOk docsResult testsResult))
 
   where
     configureFlags   = filterConfigureFlags configFlags {
@@ -914,6 +921,8 @@ installUnpackedPackage verbosity scriptOptions miscOptions
     haddockFlags' _   = haddockFlags {
       haddockVerbosity = toFlag verbosity'
     }
+    shouldTest = fromFlag (configTests configFlags)
+    testFlags _ = Cabal.emptyTestFlags
     installFlags _   = Cabal.emptyInstallFlags {
       Cabal.installDistPref  = configDistPref configFlags,
       Cabal.installVerbosity = toFlag verbosity'
