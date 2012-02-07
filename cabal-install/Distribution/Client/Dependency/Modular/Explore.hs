@@ -74,15 +74,15 @@ explore = cata go
   where
     go (FailF _ _)           _           = A.empty
     go (DoneF rdm)           a           = pure (a, rdm)
-    go (PChoiceF qpn _   ts) (A pa fa)   =
+    go (PChoiceF qpn _   ts) (A pa fa sa)   =
       asum $                                      -- try children in order,
       P.mapWithKey                                -- when descending ...
-        (\ k r -> r (A (M.insert qpn k pa) fa)) $ -- record the pkg choice
+        (\ k r -> r (A (M.insert qpn k pa) fa sa)) $ -- record the pkg choice
       ts
-    go (FChoiceF qfn _ _ ts) (A pa fa)   =
+    go (FChoiceF qfn _ _ ts) (A pa fa sa)   =
       asum $                                      -- try children in order,
       P.mapWithKey                                -- when descending ...
-        (\ k r -> r (A pa (M.insert qfn k fa))) $ -- record the flag choice
+        (\ k r -> r (A pa (M.insert qfn k fa) sa)) $ -- record the flag choice
       ts
     go (GoalChoiceF      ts) a           =
       casePSQ ts A.empty                      -- empty goal choice is an internal error
@@ -94,19 +94,19 @@ exploreLog = cata go
   where
     go (FailF c fr)          _           = failWith (Failure c fr)
     go (DoneF rdm)           a           = succeedWith Success (a, rdm)
-    go (PChoiceF qpn c   ts) (A pa fa)   =
+    go (PChoiceF qpn c   ts) (A pa fa sa)   =
       backjumpInfo c $
       asum $                                      -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryP (PI qpn k)) $     -- log and ...
-                    r (A (M.insert qpn k pa) fa)) -- record the pkg choice
+                    r (A (M.insert qpn k pa) fa sa)) -- record the pkg choice
       ts
-    go (FChoiceF qfn c _ ts) (A pa fa)   =
+    go (FChoiceF qfn c _ ts) (A pa fa sa)   =
       backjumpInfo c $
       asum $                                      -- try children in order,
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryF qfn k) $          -- log and ...
-                    r (A pa (M.insert qfn k fa))) -- record the pkg choice
+                    r (A pa (M.insert qfn k fa) sa)) -- record the pkg choice
       ts
     go (GoalChoiceF      ts) a           =
       casePSQ ts
@@ -126,8 +126,8 @@ backjumpInfo c m = m <|> case c of -- important to produce 'm' before matching o
 
 -- | Interface.
 exploreTree :: Alternative m => Tree a -> m (Assignment, RevDepMap)
-exploreTree t = explore t (A M.empty M.empty)
+exploreTree t = explore t (A M.empty M.empty M.empty)
 
 -- | Interface.
 exploreTreeLog :: Tree (Maybe (ConflictSet QPN)) -> Log Message (Assignment, RevDepMap)
-exploreTreeLog t = exploreLog t (A M.empty M.empty)
+exploreTreeLog t = exploreLog t (A M.empty M.empty M.empty)
