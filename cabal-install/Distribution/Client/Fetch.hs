@@ -131,7 +131,7 @@ planPackages verbosity comp fetchFlags
       -- that are in the 'InstallPlan.Configured' state.
       return
         [ pkg
-        | (InstallPlan.Configured (InstallPlan.ConfiguredPackage pkg _ _))
+        | (InstallPlan.Configured (InstallPlan.ConfiguredPackage pkg _ _ _))
             <- InstallPlan.toList installPlan ]
 
   | otherwise =

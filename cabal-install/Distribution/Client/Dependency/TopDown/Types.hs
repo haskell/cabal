@@ -13,7 +13,7 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( SourcePackage(..), InstalledPackage )
+         ( SourcePackage(..), InstalledPackage, OptionalStanza )
 
 import Distribution.Package
          ( PackageIdentifier, Dependency
@@ -50,11 +50,13 @@ data UnconfiguredPackage
        SourcePackage
        !TopologicalSortNumber
        FlagAssignment
+       [OptionalStanza]
 
 data SemiConfiguredPackage
    = SemiConfiguredPackage
        SourcePackage     -- package info
        FlagAssignment    -- total flag assignment for the package
+       [OptionalStanza]  -- enabled optional stanzas
        [Dependency]      -- dependencies we end up with when we apply
                          -- the flag assignment
 
@@ -65,10 +67,10 @@ instance PackageFixedDeps InstalledPackageEx where
   depends (InstalledPackageEx _ _ deps) = deps
 
 instance Package UnconfiguredPackage where
-  packageId (UnconfiguredPackage p _ _) = packageId p
+  packageId (UnconfiguredPackage p _ _ _) = packageId p
 
 instance Package SemiConfiguredPackage where
-  packageId (SemiConfiguredPackage p _ _) = packageId p
+  packageId (SemiConfiguredPackage p _ _ _) = packageId p
 
 instance (Package installed, Package source)
       => Package (InstalledOrSource installed source) where

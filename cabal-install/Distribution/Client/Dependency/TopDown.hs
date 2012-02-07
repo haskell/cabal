@@ -24,7 +24,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( PlanPackage(..) )
 import Distribution.Client.Types
-         ( SourcePackage(..), ConfiguredPackage(..), InstalledPackage(..) )
+         ( SourcePackage(..), ConfiguredPackage(..), InstalledPackage(..)
+         , enableStanzas )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
@@ -108,8 +109,8 @@ explore pref (ChoiceNode _ choices)  =
   where
     topSortNumber choice = case fst (head choice) of
       InstalledOnly        (InstalledPackageEx  _ i _) -> i
-      SourceOnly           (UnconfiguredPackage _ i _) -> i
-      InstalledAndSource _ (UnconfiguredPackage _ i _) -> i
+      SourceOnly           (UnconfiguredPackage _ i _ _) -> i
+      InstalledAndSource _ (UnconfiguredPackage _ i _ _) -> i
 
     bestByPref pkgname = case packageInstalledPreference of
         PreferLatest    ->
@@ -197,7 +198,7 @@ packageConstraints = either installedConstraints availableConstraints
     installedConstraints (InstalledPackageEx    _ _ deps) =
       [ (thisPackageVersion dep, True)
       | dep <- deps ]
-    availableConstraints (SemiConfiguredPackage _ _ deps) =
+    availableConstraints (SemiConfiguredPackage _ _ _ deps) =
       [ (dep, False) | dep <- deps ]
 
 addDeps :: Constraints -> [PackageName] -> Constraints
@@ -339,6 +340,9 @@ addTopLevelConstraints (PackageConstraintSource pkg:deps) cs =
     ConflictsWith conflicts ->
       Fail (TopLevelInstallConstraintConflict pkg SourceConstraint conflicts)
 
+addTopLevelConstraints (PackageConstraintStanzas _ _ : deps) cs =
+    addTopLevelConstraints deps cs
+
 -- | Add exclusion on available packages that cannot be configured.
 --
 pruneBottomUp :: Platform -> CompilerId
@@ -364,9 +368,9 @@ pruneBottomUp platform comp constraints =
                               [ (dep, Constraints.conflicting cs dep)
                               | dep <- missing ]
 
-    configure cs (UnconfiguredPackage (SourcePackage _ pkg _) _ flags) =
+    configure cs (UnconfiguredPackage (SourcePackage _ pkg _) _ flags stanzas) =
       finalizePackageDescription flags (dependencySatisfiable cs)
-                                 platform comp [] pkg
+                                 platform comp [] (enableStanzas stanzas pkg)
     dependencySatisfiable cs =
       not . null . PackageIndex.lookupDependency (Constraints.choices cs)
 
@@ -378,8 +382,8 @@ pruneBottomUp platform comp constraints =
       . Constraints.choices
 
     topSortNumber (InstalledOnly        (InstalledPackageEx  _ i _)) = i
-    topSortNumber (SourceOnly           (UnconfiguredPackage _ i _)) = i
-    topSortNumber (InstalledAndSource _ (UnconfiguredPackage _ i _)) = i
+    topSortNumber (SourceOnly           (UnconfiguredPackage _ i _ _)) = i
+    topSortNumber (InstalledAndSource _ (UnconfiguredPackage _ i _ _)) = i
 
     getSourcePkg (InstalledOnly      _     ) = Nothing
     getSourcePkg (SourceOnly           spkg) = Just spkg
@@ -393,12 +397,12 @@ configurePackage platform comp available spkg = case spkg of
   InstalledAndSource ipkg apkg -> fmap (InstalledAndSource ipkg)
                                        (configure apkg)
   where
-  configure (UnconfiguredPackage apkg@(SourcePackage _ p _) _ flags) =
+  configure (UnconfiguredPackage apkg@(SourcePackage _ p _) _ flags stanzas) =
     case finalizePackageDescription flags dependencySatisfiable
-                                    platform comp [] p of
+                                    platform comp [] (enableStanzas stanzas p) of
       Left missing        -> Left missing
       Right (pkg, flags') -> Right $
-        SemiConfiguredPackage apkg flags' (externalBuildDepends pkg)
+        SemiConfiguredPackage apkg flags' stanzas (externalBuildDepends pkg)
 
   dependencySatisfiable = not . null . PackageIndex.lookupDependency available
 
@@ -427,7 +431,7 @@ annotateSourcePackages :: [PackageConstraint]
                        -> PackageIndex UnconfiguredPackage
 annotateSourcePackages constraints dfsNumber sourcePkgIndex =
     PackageIndex.fromList
-      [ UnconfiguredPackage pkg (dfsNumber name) (flagsFor name)
+      [ UnconfiguredPackage pkg (dfsNumber name) (flagsFor name) (stanzasFor name)
       | pkg <- PackageIndex.allPackages sourcePkgIndex
       , let name = packageName pkg ]
   where
@@ -435,6 +439,10 @@ annotateSourcePackages constraints dfsNumber sourcePkgIndex =
     flagsMap = Map.fromList
       [ (name, flags)
       | PackageConstraintFlags name flags <- constraints ]
+    stanzasFor = fromMaybe [] . flip Map.lookup stanzasMap
+    stanzasMap = Map.fromList
+        [ (name, stanzas)
+        | PackageConstraintStanzas name stanzas <- constraints ]
 
 -- | One of the heuristics we use when guessing which path to take in the
 -- search space is an ordering on the choices we make. It's generally better
@@ -546,8 +554,8 @@ finaliseSelectedPackages pref selected constraints =
         Just (InstalledAndSource _ _) -> finaliseSource (Just ipkg) apkg
 
     finaliseInstalled (InstalledPackageEx pkg _ _) = InstallPlan.PreExisting pkg
-    finaliseSource mipkg (SemiConfiguredPackage pkg flags deps) =
-      InstallPlan.Configured (ConfiguredPackage pkg flags deps')
+    finaliseSource mipkg (SemiConfiguredPackage pkg flags stanzas deps) =
+      InstallPlan.Configured (ConfiguredPackage pkg flags stanzas deps')
       where
         deps' = map (packageId . pickRemaining mipkg) deps
 

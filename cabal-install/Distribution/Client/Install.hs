@@ -103,10 +103,10 @@ import Distribution.Package
          , Dependency(..), thisPackageVersion )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
-         ( Benchmark(..), PackageDescription, GenericPackageDescription(..)
-         , TestSuite(..), Flag(..), FlagName(..), FlagAssignment )
+         ( PackageDescription, GenericPackageDescription(..), Flag(..)
+         , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription, mapTreeData )
+         ( finalizePackageDescription )
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
@@ -266,36 +266,22 @@ planPackages comp configFlags configExFlags installFlags
           [ PackageConstraintFlags (pkgSpecifierTarget pkgSpecifier) flags
           | let flags = configConfigurationsFlags configFlags
           , not (null flags)
-          , pkgSpecifier <- pkgSpecifiers'' ]
+          , pkgSpecifier <- pkgSpecifiers ]
+
+      . addConstraints
+          [ PackageConstraintStanzas (pkgSpecifierTarget pkgSpecifier) stanzas
+          | pkgSpecifier <- pkgSpecifiers ]
 
       . (if reinstall then reinstallTargets else id)
 
-      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers''
+      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    -- Mark test suites as enabled if invoked with '--enable-tests'. This
-    -- ensures that test suite dependencies are included.
-    pkgSpecifiers' = map enableTests pkgSpecifiers
+    stanzas = concat
+        [ if testsEnabled then [TestStanzas] else []
+        , if benchmarksEnabled then [BenchStanzas] else []
+        ]
     testsEnabled = fromFlagOrDefault False $ configTests configFlags
-    enableTests (SpecificSourcePackage pkg) =
-        let pkgDescr = Source.packageDescription pkg
-            suites = condTestSuites pkgDescr
-            enable = mapTreeData (\t -> t { testEnabled = testsEnabled })
-        in SpecificSourcePackage $ pkg { Source.packageDescription = pkgDescr
-            { condTestSuites = map (\(n, t) -> (n, enable t)) suites } }
-    enableTests x = x
-
-    -- Mark benchmarks as enabled if invoked with
-    -- '--enable-benchmarks'. This ensures that benchmark dependencies
-    -- are included.
-    pkgSpecifiers'' = map enableBenchmarks pkgSpecifiers'
     benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
-    enableBenchmarks (SpecificSourcePackage pkg) =
-        let pkgDescr = Source.packageDescription pkg
-            bms = condBenchmarks pkgDescr
-            enable = mapTreeData (\t -> t { benchmarkEnabled = benchmarksEnabled })
-        in SpecificSourcePackage $ pkg { Source.packageDescription = pkgDescr
-            { condBenchmarks = map (\(n, t) -> (n, enable t)) bms } }
-    enableBenchmarks x = x
 
     --TODO: this is a general feature and should be moved to D.C.Dependency
     -- Also, the InstallPlan.remove should return info more precise to the
@@ -456,7 +442,7 @@ printDryRun verbosity plan = case plan of
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
     nonDefaultFlags :: ConfiguredPackage -> FlagAssignment
-    nonDefaultFlags (ConfiguredPackage spkg fa _) =
+    nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
       let defaultAssignment =
             toFlagAssignment
              (genPackageFlags (Source.packageDescription spkg))
@@ -782,15 +768,17 @@ installConfiguredPackage :: Platform -> CompilerId
                                          -> PackageDescription -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
-  (ConfiguredPackage (SourcePackage _ gpkg source) flags deps)
+  (ConfiguredPackage (SourcePackage _ gpkg source) flags stanzas deps)
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
-    configConstraints = map thisPackageVersion deps
+    configConstraints = map thisPackageVersion deps,
+    configBenchmarks = toFlag (BenchStanzas `elem` stanzas),
+    configTests = toFlag (TestStanzas `elem` stanzas)
   } source pkg
   where
     pkg = case finalizePackageDescription flags
            (const True)
-           platform comp [] gpkg of
+           platform comp [] (enableStanzas stanzas gpkg) of
       Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
       Right (desc, _) -> desc
 

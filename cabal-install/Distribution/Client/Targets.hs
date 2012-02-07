@@ -690,6 +690,7 @@ renamePackageConstraint name pc = case pc of
   PackageConstraintInstalled _       -> PackageConstraintInstalled  name
   PackageConstraintSource    _       -> PackageConstraintSource     name
   PackageConstraintFlags     _ flags -> PackageConstraintFlags      name flags
+  PackageConstraintStanzas   _ stanzas -> PackageConstraintStanzas   name stanzas
 
 readUserConstraint :: String -> Either String UserConstraint
 readUserConstraint str =
