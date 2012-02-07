@@ -10,6 +10,7 @@ import Data.Graph
 import Prelude hiding (pi)
 
 import Distribution.PackageDescription (FlagAssignment) -- from Cabal
+import Distribution.Client.Types (OptionalStanza)
 
 import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Dependency
@@ -28,9 +29,10 @@ type PAssignment    = Map QPN I
 -- and in the extreme case fix a concrete instance.
 type PPreAssignment = Map QPN (CI QPN)
 type FAssignment    = Map QFN Bool
+type SAssignment    = Map QPN [OptionalStanza]
 
 -- | A (partial) assignment of variables.
-data Assignment = A PAssignment FAssignment
+data Assignment = A PAssignment FAssignment SAssignment
   deriving (Show, Eq)
 
 -- | A preassignment comprises knowledge about variables, but not
@@ -64,7 +66,7 @@ extend var pa qa = foldM (\ a (Dep qpn ci) ->
 -- of one package version chosen by the solver, which will lead to
 -- clashes.
 toCPs :: Assignment -> RevDepMap -> [CP QPN]
-toCPs (A pa fa) rdm =
+toCPs (A pa fa sa) rdm =
   let
     -- get hold of the graph
     g   :: Graph
@@ -99,6 +101,7 @@ toCPs (A pa fa) rdm =
   in
     L.map (\ pi@(PI qpn _) -> CP pi
                                  (M.findWithDefault [] qpn fapp)
+                                 (M.findWithDefault [] qpn sa)
                                  (depp qpn))
           ps
 
@@ -106,7 +109,7 @@ toCPs (A pa fa) rdm =
 --
 -- This is preliminary, and geared towards output right now.
 finalize :: Index -> Assignment -> RevDepMap -> IO ()
-finalize idx (A pa fa) rdm =
+finalize idx (A pa fa _) rdm =
   let
     -- get hold of the graph
     g  :: Graph

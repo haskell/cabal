@@ -21,7 +21,7 @@ mkPlan plat comp iidx sidx cps =
 
 convCP :: SI.PackageIndex -> CI.PackageIndex SourcePackage ->
           CP QPN -> PlanPackage
-convCP iidx sidx (CP qpi fa ds) =
+convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting $ InstalledPackage
                   (fromJust $ SI.lookupInstalledPackageId iidx pi)
@@ -29,6 +29,7 @@ convCP iidx sidx (CP qpi fa ds) =
     Right pi -> Configured $ ConfiguredPackage
                   (fromJust $ CI.lookupPackageId sidx pi)
                   fa
+                  es
                   (map convPI' ds)
 
 convPI :: PI QPN -> Either InstalledPackageId PackageId
