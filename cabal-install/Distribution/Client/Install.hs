@@ -772,7 +772,7 @@ installConfiguredPackage platform comp configFlags
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
     configConstraints = map thisPackageVersion deps,
-    configBenchmarks = toFlag (BenchStanzas `elem` stanzas),
+    configBenchmarks = toFlag False,
     configTests = toFlag (TestStanzas `elem` stanzas)
   } source pkg
   where
