@@ -34,7 +34,7 @@ import Data.Monoid
          ( Monoid(..) )
 
 import Distribution.Client.Types
-         ( SourcePackage(..) )
+         ( OptionalStanza, SourcePackage(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Compat.ReadP
@@ -116,6 +116,7 @@ data PackageConstraint
    | PackageConstraintInstalled PackageName
    | PackageConstraintSource    PackageName
    | PackageConstraintFlags     PackageName FlagAssignment
+   | PackageConstraintStanzas   PackageName [OptionalStanza]
   deriving (Show,Eq)
 
 -- | A per-package preference on the version. It is a soft constraint that the

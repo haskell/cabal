@@ -46,8 +46,7 @@ module Distribution.Client.InstallPlan (
 
 import Distribution.Client.Types
          ( SourcePackage(packageDescription), ConfiguredPackage(..)
-         , InstalledPackage
-         , BuildFailure, BuildSuccess )
+         , InstalledPackage, BuildFailure, BuildSuccess, enableStanzas )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , PackageFixedDeps(..), Dependency(..) )
@@ -472,7 +471,7 @@ showPackageProblem (InvalidDep dep pkgid) =
 configuredPackageProblems :: Platform -> CompilerId
                           -> ConfiguredPackage -> [PackageProblem]
 configuredPackageProblems platform comp
-  (ConfiguredPackage pkg specifiedFlags specifiedDeps) =
+  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps) =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
@@ -506,6 +505,6 @@ configuredPackageProblems platform comp
          (const True)
          platform comp
          []
-         (packageDescription pkg) of
+         (enableStanzas stanzas $ packageDescription pkg) of
         Right (resolvedPkg, _) -> externalBuildDepends resolvedPkg
         Left  _ -> error "configuredPackageInvalidDeps internal error"
