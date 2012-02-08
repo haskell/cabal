@@ -18,9 +18,10 @@ import Distribution.Package
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
-         ( GenericPackageDescription, FlagAssignment )
+         ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
+         , TestSuite(..) )
 import Distribution.PackageDescription.Configuration
-         ( enableBenchmarks, enableTests )
+         ( mapTreeData )
 import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Version
@@ -110,9 +111,15 @@ enableStanzas
     :: [OptionalStanza]
     -> GenericPackageDescription
     -> GenericPackageDescription
-enableStanzas stanzas
-    = enableTests (TestStanzas `elem` stanzas)
-    . enableBenchmarks (BenchStanzas `elem` stanzas)
+enableStanzas stanzas gpkg = gpkg
+    { condBenchmarks = flagBenchmarks $ condBenchmarks gpkg
+    , condTestSuites = flagTests $ condTestSuites gpkg
+    }
+  where
+    enableTest t = t { testEnabled = TestStanzas `elem` stanzas }
+    enableBenchmark bm = bm { benchmarkEnabled = BenchStanzas `elem` stanzas }
+    flagBenchmarks = map (\(n, bm) -> (n, mapTreeData enableBenchmark bm))
+    flagTests = map (\(n, t) -> (n, mapTreeData enableTest t))
 
 -- ------------------------------------------------------------
 -- * Package locations and repositories
