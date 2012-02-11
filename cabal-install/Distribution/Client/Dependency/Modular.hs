@@ -55,3 +55,4 @@ modularResolver sc (Platform arch os) cid iidx sidx pprefs pcs pns =
       pcName (PackageConstraintInstalled pn  ) = pn
       pcName (PackageConstraintSource    pn  ) = pn
       pcName (PackageConstraintFlags     pn _) = pn
+      pcName (PackageConstraintStanzas   pn _) = pn
