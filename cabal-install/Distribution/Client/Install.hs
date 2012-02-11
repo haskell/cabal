@@ -430,7 +430,8 @@ printDryRun verbosity plan = case plan of
       : map (display . packageId) (map fst pkgs)
   where
     showPkgAndReason (pkg', pr) = display (packageId pkg') ++
-          showFlagAssignment (nonDefaultFlags pkg') ++ " " ++
+          showFlagAssignment (nonDefaultFlags pkg') ++
+          showStanzas (stanzas pkg') ++ " " ++
           case pr of
             NewPackage   -> "(new package)"
             NewVersion _ -> "(new version)"
@@ -448,7 +449,16 @@ printDryRun verbosity plan = case plan of
              (genPackageFlags (Source.packageDescription spkg))
       in  fa \\ defaultAssignment
 
+    stanzas :: ConfiguredPackage -> [OptionalStanza]
+    stanzas (ConfiguredPackage _ _ sts _) = sts
+
+    showStanzas :: [OptionalStanza] -> String
+    showStanzas = concatMap ((' ' :) . showStanza)
+    showStanza TestStanzas  = "*test"
+    showStanza BenchStanzas = "*bench"
+
     -- FIXME: this should be a proper function in a proper place
+    showFlagAssignment :: FlagAssignment -> String
     showFlagAssignment = concatMap ((' ' :) . showFlagValue)
     showFlagValue (f, True)   = '+' : showFlagName f
     showFlagValue (f, False)  = '-' : showFlagName f
