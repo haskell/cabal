@@ -15,6 +15,7 @@ data Message =
   | Leave           -- ^ decrease indentation level
   | TryP (PI QPN)
   | TryF QFN Bool
+  | TryS QSN Bool
   | Next (Goal QPN)
   | Success
   | Failure (ConflictSet QPN) FailReason
@@ -39,6 +40,7 @@ showMessages p sl = go [] 0
     -- complex patterns
     go v l (TryP (PI qpn i) : Enter : Failure c fr : Leave : ms) = goPReject v l qpn [i] c fr ms
     go v l (TryF qfn b : Enter : Failure c fr : Leave : ms) = (atLevel (F qfn : v) l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go v l ms)
+    go v l (TryS qsn b : Enter : Failure c fr : Leave : ms) = (atLevel (S qsn : v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
     go v l (Next (Goal (P qpn) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel (P qpn : v) l $ "trying: " ++ showPI pi ++ showGRs gr) (go (P qpn : v) l ms)
     go v l (Failure c Backjump : ms@(Leave : Failure c' Backjump : _)) | c == c' = go v l ms
     -- standard display
@@ -46,6 +48,7 @@ showMessages p sl = go [] 0
     go v l (Leave                  : ms) = go (drop 1 v) (l-1) ms
     go v l (TryP pi@(PI qpn _)     : ms) = (atLevel (P qpn : v) l $ "trying: " ++ showPI pi) (go (P qpn : v) l ms)
     go v l (TryF qfn b             : ms) = (atLevel (F qfn : v) l $ "trying: " ++ showQFNBool qfn b) (go (F qfn : v) l ms)
+    go v l (TryS qsn b             : ms) = (atLevel (S qsn : v) l $ "trying: " ++ showQSNBool qsn b) (go (S qsn : v) l ms)
     go v l (Next (Goal (P qpn) gr) : ms) = (atLevel (P qpn : v) l $ "next goal: " ++ showQPN qpn ++ showGRs gr) (go v l ms)
     go v l (Next _                 : ms) = go v l ms -- ignore flag goals in the log
     go v l (Success                : ms) = (atLevel v l $ "done") (go v l ms)
@@ -69,8 +72,9 @@ showGRs []       = ""
 
 showGR :: GoalReason QPN -> String
 showGR UserGoal            = " (user goal)"
-showGR (PDependency pi)    = " (dependency of " ++ showPI pi         ++ ")"
-showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b ++ ")"
+showGR (PDependency pi)    = " (dependency of " ++ showPI pi            ++ ")"
+showGR (FDependency qfn b) = " (dependency of " ++ showQFNBool qfn b    ++ ")"
+showGR (SDependency qsn)   = " (dependency of " ++ showQSNBool qsn True ++ ")"
 
 showFR :: ConflictSet QPN -> FailReason -> String
 showFR _ InconsistentInitialConstraints = " (inconsistent initial constraints)"

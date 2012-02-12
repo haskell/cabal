@@ -32,6 +32,7 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
   where
     go g o []                                             = s { rdeps = g, open = o }
     go g o (ng@(OpenGoal (Flagged _ _ _ _)    _gr) : ngs) = go g (cons ng () o) ngs
+    go g o (ng@(OpenGoal (Stanza  _   _  )    _gr) : ngs) = go g (cons ng () o) ngs
     go g o (ng@(OpenGoal (Simple (Dep qpn _)) _gr) : ngs)
       | qpn == qpn'                                       = go                       g              o  ngs
                                        -- we ignore self-dependencies at this point; TODO: more care may be needed
@@ -90,14 +91,21 @@ build = ana go
     -- that is indicated by the flag default.
     --
     -- TODO: Should we include the flag default in the tree?
-    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Flagged qfn b t f) gr) }) =
+    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) b t f) gr) }) =
       FChoiceF qfn (gr, sc) trivial (P.fromList (reorder b
-        [(True,  (extendOpen (getPN qfn) (L.map (flip OpenGoal (FDependency qfn True  : gr)) t) bs) { next = Goals }),
-         (False, (extendOpen (getPN qfn) (L.map (flip OpenGoal (FDependency qfn False : gr)) f) bs) { next = Goals })]))
+        [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True  : gr)) t) bs) { next = Goals }),
+         (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False : gr)) f) bs) { next = Goals })]))
       where
         reorder True  = id
         reorder False = reverse
         trivial = L.null t && L.null f
+
+    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
+      SChoiceF qsn (gr, sc) trivial (P.fromList
+        [(False,                                                                        bs  { next = Goals }),
+         (True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn : gr)) t) bs) { next = Goals })])
+      where
+        trivial = L.null t
 
     -- For a particular instance, we change the state: we update the scope,
     -- and furthermore we update the set of goals.

@@ -9,6 +9,8 @@ import Data.Ord
 
 import Distribution.Client.Dependency.Types
   ( PackageConstraint(..), PackagePreferences(..), InstalledPreference(..) )
+import Distribution.Client.Types
+  ( OptionalStanza(..) )
 
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
@@ -90,8 +92,18 @@ processPackageConstraintF f c b' (PackageConstraintFlags _ fa) r =
            | otherwise -> Fail c GlobalConstraintFlag
 processPackageConstraintF _ _ _  _                             r = r
 
+-- | Helper function that tries to enforce a single package constraint on a
+-- given flag setting for an F-node. Translates the constraint into a
+-- tree-transformer that either leaves the subtree untouched, or replaces it
+-- with an appropriate failure node.
+processPackageConstraintS :: OptionalStanza -> ConflictSet QPN -> Bool -> PackageConstraint -> Tree a -> Tree a
+processPackageConstraintS s c b' (PackageConstraintStanzas _ ss) r =
+  if not b' && s `elem` ss then Fail c GlobalConstraintFlag
+                           else r
+processPackageConstraintS _ _ _  _                             r = r
+
 -- | Traversal that tries to establish various kinds of user constraints. Works
--- by selectively disabling choices that have been rules out by global user
+-- by selectively disabling choices that have been ruled out by global user
 -- constraints.
 enforcePackageConstraints :: M.Map PN [PackageConstraint] -> Tree QGoalReasons -> Tree QGoalReasons
 enforcePackageConstraints pcs = trav go
@@ -108,6 +120,12 @@ enforcePackageConstraints pcs = trav go
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintF f c b pc) id
                            (M.findWithDefault [] pn pcs)
       in FChoiceF qfn gr tr (P.mapWithKey g ts)
+    go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) gr tr ts) =
+      let c = toConflictSet (Goal (S qsn) gr)
+          -- compose the transformation functions for each of the relevant constraint
+          g = \ b -> foldl (\ h pc -> h . processPackageConstraintS f c b pc) id
+                           (M.findWithDefault [] pn pcs)
+      in SChoiceF qsn gr tr (P.mapWithKey g ts)
     go x = x
 
 -- | Prefer installed packages over non-installed packages, generally.
