@@ -174,7 +174,8 @@ install verbosity packageDBs repos comp conf
                          comp configFlags configExFlags installFlags
                          installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    checkPrintPlan verbosity installedPkgIndex installPlan installFlags solver
+    checkPrintPlan verbosity installedPkgIndex installPlan installFlags
+      pkgSpecifiers solver
 
     unless dryRun $ do
       installPlan' <- performInstallations verbosity
@@ -289,11 +290,8 @@ planPackages comp configFlags configExFlags installFlags
     adjustPlanOnlyDeps :: InstallPlan -> Progress String String InstallPlan
     adjustPlanOnlyDeps =
         either (Fail . explain) Done
-      . InstallPlan.remove isTarget
+      . InstallPlan.remove (isTarget pkgSpecifiers)
       where
-        isTarget pkg = packageName pkg `elem` targetnames
-        targetnames  = map pkgSpecifierTarget pkgSpecifiers
-
         explain :: [InstallPlan.PlanProblem] -> String
         explain problems =
             "Cannot select only the dependencies (as requested by the "
@@ -309,6 +307,9 @@ planPackages comp configFlags configExFlags installFlags
                   | InstallPlan.PackageMissingDeps _ depids <- problems
                   , depid <- depids
                   , packageName depid `elem` targetnames ]
+
+        targetnames  = map pkgSpecifierTarget pkgSpecifiers
+
 
     solver           = fromFlag (configSolver            configExFlags)
     reinstall        = fromFlag (installReinstall        installFlags)
@@ -327,9 +328,10 @@ checkPrintPlan :: Verbosity
                -> PackageIndex
                -> InstallPlan
                -> InstallFlags
+               -> [PackageSpecifier SourcePackage]
                -> Solver
                -> IO ()
-checkPrintPlan verbosity installed installPlan installFlags solver = do
+checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers solver = do
 
   when nothingToInstall $
     notice verbosity $
@@ -338,7 +340,12 @@ checkPrintPlan verbosity installed installPlan installFlags solver = do
       ++ "the --reinstall flag."
 
   let lPlan = linearizeInstallPlan installed installPlan
-  let containsReinstalls = any (isReinstall . snd) lPlan
+  -- The following check is for packages contained in the install plan
+  -- that are destructive reinstalls. We exclude packages that are specified
+  -- targets as long as --reinstall is specified.
+  let containsReinstalls = any (\ (p, s) -> isReinstall s &&
+                                            (not (reinstall && isTarget pkgSpecifiers p)))
+                               lPlan
   let adaptedVerbosity | containsReinstalls = verbose `max` verbosity
                        | otherwise          = verbosity
 
@@ -362,7 +369,9 @@ checkPrintPlan verbosity installed installPlan installFlags solver = do
 
   where
     nothingToInstall = null (InstallPlan.ready installPlan)
-    dryRun = fromFlag (installDryRun installFlags)
+
+    reinstall         = fromFlag (installReinstall         installFlags)
+    dryRun            = fromFlag (installDryRun            installFlags)
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
 
 linearizeInstallPlan :: PackageIndex
@@ -384,6 +393,11 @@ data PackageStatus = NewPackage
                    | Reinstall  [PackageChange]
 
 type PackageChange = MergeResult PackageIdentifier PackageIdentifier
+
+isTarget :: Package pkg => [PackageSpecifier SourcePackage] -> pkg -> Bool
+isTarget pkgSpecifiers pkg = packageName pkg `elem` targetnames
+  where
+    targetnames  = map pkgSpecifierTarget pkgSpecifiers
 
 isReinstall :: PackageStatus -> Bool
 isReinstall (Reinstall _) = True
