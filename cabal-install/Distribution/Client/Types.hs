@@ -105,7 +105,7 @@ instance Package SourcePackage where packageId = packageInfoId
 data OptionalStanza
     = TestStanzas
     | BenchStanzas
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 enableStanzas
     :: [OptionalStanza]
