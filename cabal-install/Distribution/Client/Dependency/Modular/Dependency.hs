@@ -1,5 +1,7 @@
 module Distribution.Client.Dependency.Modular.Dependency where
 
+import Prelude hiding (pi)
+
 import Data.List as L
 import Data.Map as M
 import Data.Set as S
@@ -10,22 +12,24 @@ import Distribution.Client.Dependency.Modular.Version
 
 -- | The type of variables that play a role in the solver.
 -- Note that the tree currently does not use this type directly,
--- and rather has two separate tree nodes for the two types of
+-- and rather has separate tree nodes for the different types of
 -- variables. This fits better with the fact that in most cases,
 -- these have to be treated differently.
 --
 -- TODO: This isn't the ideal location to declare the type,
 -- but we need them for constrained instances.
-data Var qpn = P qpn | F (FN qpn)
+data Var qpn = P qpn | F (FN qpn) | S (SN qpn)
   deriving (Eq, Ord, Show)
 
 showVar :: Var QPN -> String
 showVar (P qpn) = showQPN qpn
 showVar (F qfn) = showQFN qfn
+showVar (S qsn) = showQSN qsn
 
 instance Functor Var where
   fmap f (P n)  = P (f n)
   fmap f (F fn) = F (fmap f fn)
+  fmap f (S sn) = S (fmap f sn)
 
 type ConflictSet qpn = Set (Var qpn)
 
@@ -92,12 +96,14 @@ type FlaggedDeps qpn = [FlaggedDep qpn]
 -- or flag-dependent dependency trees.
 data FlaggedDep qpn =
     Flagged (FN qpn) FDefault (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
+  | Stanza  (SN qpn)          (TrueFlaggedDeps qpn)
   | Simple (Dep qpn)
   deriving (Eq, Show)
 
 instance Functor FlaggedDep where
   fmap f (Flagged x y tt ff) = Flagged (fmap f x) y
                                        (fmap (fmap f) tt) (fmap (fmap f) ff)
+  fmap f (Stanza x tt)       = Stanza (fmap f x) (fmap (fmap f) tt)
   fmap f (Simple d)          = Simple (fmap f d)
 
 type TrueFlaggedDeps  qpn = FlaggedDeps qpn
@@ -147,13 +153,18 @@ data OpenGoal = OpenGoal (FlaggedDep QPN) QGoalReasons
   deriving (Eq, Show)
 
 -- | Reasons why a goal can be added to a goal set.
-data GoalReason qpn = UserGoal | PDependency (PI qpn) | FDependency (FN qpn) Bool
+data GoalReason qpn =
+    UserGoal
+  | PDependency (PI qpn)
+  | FDependency (FN qpn) Bool
+  | SDependency (SN qpn)
   deriving (Eq, Show)
 
 instance Functor GoalReason where
-  fmap f UserGoal           = UserGoal
+  fmap _ UserGoal           = UserGoal
   fmap f (PDependency pi)   = PDependency (fmap f pi)
   fmap f (FDependency fn b) = FDependency (fmap f fn) b
+  fmap f (SDependency sn)   = SDependency (fmap f sn)
 
 -- | The first element is the immediate reason. The rest are the reasons
 -- for the reasons ...
@@ -165,6 +176,7 @@ goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = S.empty
 goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
 goalReasonToVars (FDependency qfn _)      = S.singleton (F qfn)
+goalReasonToVars (SDependency qsn)        = S.singleton (S qsn)
 
 goalReasonsToVars :: Ord qpn => GoalReasons qpn -> ConflictSet qpn
 goalReasonsToVars = S.unions . L.map goalReasonToVars
@@ -174,6 +186,7 @@ goalReasonsToVars = S.unions . L.map goalReasonToVars
 close :: OpenGoal -> Goal QPN
 close (OpenGoal (Simple (Dep qpn _)) gr) = Goal (P qpn) gr
 close (OpenGoal (Flagged qfn _ _ _ ) gr) = Goal (F qfn) gr
+close (OpenGoal (Stanza  qsn _)      gr) = Goal (S qsn) gr
 
 -- | Compute a conflic set from a goal. The conflict set contains the
 -- closure of goal reasons as well as the variable of the goal itself.

@@ -30,6 +30,9 @@ backjump = snd . cata go
     go (FChoiceF qfn _ b ts) = (c, FChoice qfn c b (P.fromList ts'))
       where
         ~(c, ts') = combine (F qfn) (P.toList ts) S.empty
+    go (SChoiceF qsn _ b ts) = (c, SChoice qsn c b (P.fromList ts'))
+      where
+        ~(c, ts') = combine (S qsn) (P.toList ts) S.empty
     go (GoalChoiceF      ts) = (c, GoalChoice      (P.fromList ts'))
       where
         ~(cs, ts') = unzip $ L.map (\ (k, (x, v)) -> (x, (k, v))) $ P.toList ts
@@ -84,6 +87,11 @@ explore = cata go
       P.mapWithKey                                -- when descending ...
         (\ k r -> r (A pa (M.insert qfn k fa) sa)) $ -- record the flag choice
       ts
+    go (SChoiceF qsn _ _ ts) (A pa fa sa)   =
+      asum $                                      -- try children in order,
+      P.mapWithKey                                -- when descending ...
+        (\ k r -> r (A pa fa (M.insert qsn k sa))) $ -- record the flag choice
+      ts
     go (GoalChoiceF      ts) a           =
       casePSQ ts A.empty                      -- empty goal choice is an internal error
         (\ _k v _xs -> v a)                   -- commit to the first goal choice
@@ -107,6 +115,13 @@ exploreLog = cata go
       P.mapWithKey                                -- when descending ...
         (\ k r -> tryWith (TryF qfn k) $          -- log and ...
                     r (A pa (M.insert qfn k fa) sa)) -- record the pkg choice
+      ts
+    go (SChoiceF qsn c _ ts) (A pa fa sa)   =
+      backjumpInfo c $
+      asum $                                      -- try children in order,
+      P.mapWithKey                                -- when descending ...
+        (\ k r -> tryWith (TryS qsn k) $          -- log and ...
+                    r (A pa fa (M.insert qsn k sa))) -- record the pkg choice
       ts
     go (GoalChoiceF      ts) a           =
       casePSQ ts

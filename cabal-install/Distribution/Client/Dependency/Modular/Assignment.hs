@@ -29,7 +29,7 @@ type PAssignment    = Map QPN I
 -- and in the extreme case fix a concrete instance.
 type PPreAssignment = Map QPN (CI QPN)
 type FAssignment    = Map QFN Bool
-type SAssignment    = Map QPN [OptionalStanza]
+type SAssignment    = Map QSN Bool
 
 -- | A (partial) assignment of variables.
 data Assignment = A PAssignment FAssignment SAssignment
@@ -37,7 +37,7 @@ data Assignment = A PAssignment FAssignment SAssignment
 
 -- | A preassignment comprises knowledge about variables, but not
 -- necessarily fixed values.
-data PreAssignment = PA PPreAssignment FAssignment
+data PreAssignment = PA PPreAssignment FAssignment SAssignment
 
 -- | Extend a package preassignment.
 --
@@ -91,6 +91,12 @@ toCPs (A pa fa sa) rdm =
            L.map (\ ((FN (PI qpn _) fn), b) -> (qpn, [(fn, b)])) $
            M.toList $
            fa
+    -- Stanzas per package.
+    sapp :: Map QPN [OptionalStanza]
+    sapp = M.fromListWith (++) $
+           L.map (\ ((SN (PI qpn _) sn), b) -> (qpn, if b then [sn] else [])) $
+           M.toList $
+           sa
     -- Dependencies per package.
     depp :: QPN -> [PI QPN]
     depp qpn = let v :: Vertex
@@ -101,7 +107,7 @@ toCPs (A pa fa sa) rdm =
   in
     L.map (\ pi@(PI qpn _) -> CP pi
                                  (M.findWithDefault [] qpn fapp)
-                                 (M.findWithDefault [] qpn sa)
+                                 (M.findWithDefault [] qpn sapp)
                                  (depp qpn))
           ps
 

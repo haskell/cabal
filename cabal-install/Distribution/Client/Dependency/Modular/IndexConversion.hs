@@ -82,19 +82,24 @@ convSP os arch cid (SourcePackage (PackageIdentifier pn pv) gpd _pl) =
 -- executable and test components. This does not quite seem fair.
 convGPD :: OS -> Arch -> CompilerId ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch cid
-        pi@(PI _pn _i)
+convGPD os arch cid pi
         (GenericPackageDescription _ flags libs exes tests benchs) =
   let
     fds = flagDefaults flags
   in
     PInfo
-      (maybe []  (convCondTree os arch cid pi fds (const True)          ) libs   ++
-       concatMap (convCondTree os arch cid pi fds (const True)     . snd) exes   ++
-       concatMap (convCondTree os arch cid pi fds testEnabled      . snd) tests  ++
-       concatMap (convCondTree os arch cid pi fds benchmarkEnabled . snd) benchs)
+      (maybe []    (convCondTree os arch cid pi fds (const True)          ) libs    ++
+       concatMap   (convCondTree os arch cid pi fds (const True)     . snd) exes    ++
+      (prefix (Stanza (SN pi TestStanzas))
+        (concatMap (convCondTree os arch cid pi fds (const True)     . snd) tests)) ++
+      (prefix (Stanza (SN pi BenchStanzas))
+        (concatMap (convCondTree os arch cid pi fds (const True)     . snd) benchs)))
       fds
       [] -- TODO: add encaps
+
+prefix :: (FlaggedDeps qpn -> FlaggedDep qpn) -> FlaggedDeps qpn -> FlaggedDeps qpn
+prefix _ []  = []
+prefix f fds = [f fds]
 
 -- | Convert flag information.
 flagDefaults :: [PD.Flag] -> FlagDefaults
