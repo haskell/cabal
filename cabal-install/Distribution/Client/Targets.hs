@@ -49,7 +49,7 @@ import Distribution.Package
          , PackageIdentifier(..), packageName, packageVersion
          , Dependency(Dependency) )
 import Distribution.Client.Types
-         ( SourcePackage(..), PackageLocation(..) )
+         ( SourcePackage(..), PackageLocation(..), OptionalStanza(..) )
 import Distribution.Client.Dependency.Types
          ( PackageConstraint(..) )
 
@@ -673,6 +673,7 @@ data UserConstraint =
    | UserConstraintInstalled PackageName
    | UserConstraintSource    PackageName
    | UserConstraintFlags     PackageName FlagAssignment
+   | UserConstraintStanzas   PackageName [OptionalStanza]
   deriving (Show,Eq)
 
 
@@ -683,6 +684,7 @@ userToPackageConstraint uc = case uc of
   UserConstraintInstalled name       -> PackageConstraintInstalled  name
   UserConstraintSource    name       -> PackageConstraintSource     name
   UserConstraintFlags     name flags -> PackageConstraintFlags      name flags
+  UserConstraintStanzas   name stanzas -> PackageConstraintStanzas  name stanzas
 
 renamePackageConstraint :: PackageName -> PackageConstraint -> PackageConstraint
 renamePackageConstraint name pc = case pc of
@@ -714,6 +716,12 @@ instance Text UserConstraint where
       dispFlagValue (f, False)  = Disp.char '-' <> dispFlagName f
       dispFlagName (FlagName f) = Disp.text f
 
+  disp (UserConstraintStanzas   pkgname stanzas)  = disp pkgname <+> dispStanzas stanzas
+    where
+      dispStanzas = Disp.hsep . map dispStanza
+      dispStanza TestStanzas  = Disp.text "test"
+      dispStanza BenchStanzas = Disp.text "bench"
+
   parse = parse >>= parseConstraint
     where
       spaces = Parse.satisfy isSpace >> Parse.skipSpaces
@@ -726,6 +734,12 @@ instance Text UserConstraint where
         +++ (do spaces
                 _ <- Parse.string "source"
                 return (UserConstraintSource pkgname))
+        +++ (do spaces
+                _ <- Parse.string "test"
+                return (UserConstraintStanzas pkgname [TestStanzas]))
+        +++ (do spaces
+                _ <- Parse.string "bench"
+                return (UserConstraintStanzas pkgname [BenchStanzas]))
         <++ (parseFlagAssignment >>= (return . UserConstraintFlags pkgname))
 
       parseFlagAssignment = Parse.many1 (spaces >> parseFlagValue)
