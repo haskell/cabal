@@ -440,7 +440,7 @@ annotateSourcePackages constraints dfsNumber sourcePkgIndex =
       [ (name, flags)
       | PackageConstraintFlags name flags <- constraints ]
     stanzasFor = fromMaybe [] . flip Map.lookup stanzasMap
-    stanzasMap = Map.fromList
+    stanzasMap = Map.fromListWith (++)
         [ (name, stanzas)
         | PackageConstraintStanzas name stanzas <- constraints ]
 
