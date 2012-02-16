@@ -282,6 +282,7 @@ instance Text.Text InstallOutcome where
   disp SetupFailed     = Disp.text "SetupFailed"
   disp ConfigureFailed = Disp.text "ConfigureFailed"
   disp BuildFailed     = Disp.text "BuildFailed"
+  disp TestsFailed     = Disp.text "TestsFailed"
   disp InstallFailed   = Disp.text "InstallFailed"
   disp InstallOk       = Disp.text "InstallOk"
 
@@ -296,6 +297,7 @@ instance Text.Text InstallOutcome where
       "SetupFailed"      -> return SetupFailed
       "ConfigureFailed"  -> return ConfigureFailed
       "BuildFailed"      -> return BuildFailed
+      "TestsFailed"      -> return TestsFailed
       "InstallFailed"    -> return InstallFailed
       "InstallOk"        -> return InstallOk
       _                  -> Parse.pfail
