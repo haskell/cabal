@@ -895,9 +895,10 @@ installUnpackedPackage verbosity scriptOptions miscOptions
 
   -- Tests phase
       onFailure TestsFailed $ do
-        when shouldTest $ setup Cabal.testCommand testFlags
+        when (testsEnabled && PackageDescription.hasTests pkg) $
+            setup Cabal.testCommand testFlags
 
-        let testsResult | shouldTest = TestsOk
+        let testsResult | testsEnabled = TestsOk
                         | otherwise = TestsNotTried
 
       -- Install phase
@@ -921,7 +922,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions
     haddockFlags' _   = haddockFlags {
       haddockVerbosity = toFlag verbosity'
     }
-    shouldTest = fromFlag (configTests configFlags)
+    testsEnabled = fromFlag (configTests configFlags)
     testFlags _ = Cabal.emptyTestFlags
     installFlags _   = Cabal.emptyInstallFlags {
       Cabal.installDistPref  = configDistPref configFlags,
