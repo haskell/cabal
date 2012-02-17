@@ -47,13 +47,13 @@ done
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
 PARSEC_VER="3.1.2";    PARSEC_VER_REGEXP="[23]\."  # == 2.* || == 3.*
-TEXT_VER="0.11.1.12";  TEXT_VER_REGEXP="0\.([2-9]|(1[0-1]))\." # >= 0.2 && < 0.12
-NETWORK_VER="2.3.0.8"; NETWORK_VER_REGEXP="2\."    # == 2.*
+TEXT_VER="0.11.1.13";  TEXT_VER_REGEXP="0\.([2-9]|(1[0-1]))\." # >= 0.2 && < 0.12
+NETWORK_VER="2.3.0.11"; NETWORK_VER_REGEXP="2\."    # == 2.*
 CABAL_VER="1.14.0";    CABAL_VER_REGEXP="1\.(13\.3|14\.)"  # >= 1.13.3 && < 1.15
 TRANS_VER="0.2.2.0";   TRANS_VER_REGEXP="0\.2\."   # == 0.2.*
 MTL_VER="2.0.1.0";     MTL_VER_REGEXP="[12]\."     # == 1.* || == 2.*
 HTTP_VER="4000.2.2";   HTTP_VER_REGEXP="4000\.[012]\." # == 4000.0.* || 4000.1.* || 4000.2.*
-ZLIB_VER="0.5.3.1";    ZLIB_VER_REGEXP="0\.[45]\." # == 0.4.* || == 0.5.*
+ZLIB_VER="0.5.3.3";    ZLIB_VER_REGEXP="0\.[45]\." # == 0.4.* || == 0.5.*
 TIME_VER="1.4"         TIME_VER_REGEXP="1\.[1234]\.?" # >= 1.1 && < 1.5
 RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\." # >= 1 && < 1.1
 
