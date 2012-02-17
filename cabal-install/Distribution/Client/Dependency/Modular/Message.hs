@@ -91,4 +91,5 @@ showFR c Backjump                       = " (backjumping, conflict set: " ++ sho
 -- message though.
 showFR _ (BuildFailureNotInIndex pn)    = " (BUILD FAILURE: NOT IN INDEX: " ++ display pn ++ ")"
 showFR _ (MalformedFlagChoice qfn)      = " (INTERNAL ERROR: MALFORMED FLAG CHOICE: " ++ showQFN qfn ++ ")"
+showFR _ (MalformedStanzaChoice qsn)    = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
 showFR _ EmptyGoalChoice                = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
