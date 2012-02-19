@@ -137,6 +137,10 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
 
       solver = fromFlag $ configSolver configExFlags
 
+      testsEnabled = fromFlagOrDefault False $ configTests configFlags
+      benchmarksEnabled =
+        fromFlagOrDefault False $ configBenchmarks configFlags
+
       resolverParams =
 
           addPreferences
@@ -154,6 +158,15 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
             -- package flags from the config file or command line
             [ PackageConstraintFlags (packageName pkg)
                                      (configConfigurationsFlags configFlags) ]
+
+        . addConstraints
+            -- '--enable-tests' and '--enable-benchmarks' constraints from
+            -- command line
+            [ PackageConstraintStanzas (packageName pkg) $ concat
+                [ if testsEnabled then [TestStanzas] else []
+                , if benchmarksEnabled then [BenchStanzas] else []
+                ]
+            ]
 
         $ standardInstallPolicy
             installedPkgIndex
