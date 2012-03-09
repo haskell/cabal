@@ -7,7 +7,6 @@
 # It expects to be run inside the cabal-install directory.
 
 # install settings, you can override these by setting environment vars
-PREFIX=${PREFIX:-${HOME}/.cabal}
 #VERBOSE
 #EXTRA_CONFIGURE_OPTS
 
@@ -20,6 +19,7 @@ FETCH=${FETCH:-fetch}
 TAR=${TAR:-tar}
 GUNZIP=${GUNZIP:-gunzip}
 SCOPE_OF_INSTALLATION="--user"
+DEFAULT_PREFIX="${HOME}/.cabal"
 
 
 for arg in $*
@@ -30,7 +30,7 @@ do
       shift;;
     "--global")
       SCOPE_OF_INSTALLATION=${arg}
-      PREFIX="/usr/local"
+      DEFAULT_PREFIX="/usr/local"
       shift;;
     *)
       echo "Unknown argument or option, quitting: ${arg}"
@@ -43,6 +43,7 @@ do
   esac
 done
 
+PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
