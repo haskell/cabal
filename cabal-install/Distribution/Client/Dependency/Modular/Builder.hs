@@ -1,6 +1,19 @@
 module Distribution.Client.Dependency.Modular.Builder where
 
 -- Building the search tree.
+--
+-- In this phase, we build a search tree that is too large, i.e, it contains
+-- invalid solutions. We keep track of the open goals at each point. We
+-- nondeterministically pick an open goal (via a goal choice node), create
+-- subtrees according to the index and the available solutions, and extend the
+-- set of open goals by superficially looking at the dependencies recorded in
+-- the index.
+--
+-- For each goal, we keep track of all the *reasons* why it is being
+-- introduced. These are for debugging and error messages, mainly. A little bit
+-- of care has to be taken due to the way we treat flags. If a package has
+-- flag-guarded dependencies, we cannot introduce them immediately. Instead, we
+-- store the entire dependency.
 
 import Control.Monad.Reader hiding (sequence, mapM)
 import Data.List as L
