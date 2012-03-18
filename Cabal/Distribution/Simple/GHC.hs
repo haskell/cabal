@@ -268,6 +268,12 @@ configureToolchain ghcProg ghcInfo =
                                   then mingwBinDir </> binPrefix ++ "ar.exe"
                                   else libDir      </> "ar.exe" ]
     }
+  . addKnownProgram stripProgram {
+      programFindLocation = findProg stripProgram
+                              [ if ghcVersion >= Version [6,12] []
+                                  then mingwBinDir </> binPrefix ++ "strip.exe"
+                                  else libDir      </> "strip.exe" ]
+    }
   where
     Just ghcVersion = programVersion ghcProg
     compilerDir = takeDirectory (programPath ghcProg)
