@@ -59,7 +59,8 @@ import Distribution.PackageDescription as PD
          , Library(..), hasLibs, Executable(..) )
 import Distribution.Simple.Compiler
          ( Compiler(..), compilerVersion )
-import Distribution.Simple.GHC ( ghcLibDir )
+import Distribution.Simple.GHC ( componentGhcOptions, ghcLibDir )
+import Distribution.Simple.Program.GHC ( GhcOptions(..), renderGhcOptions )
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), requireProgramVersion
          , rawSystemProgram, rawSystemProgramStdout
@@ -68,7 +69,7 @@ import Distribution.Simple.PreProcess (ppCpp', ppUnlit
                                       , PPSuffixHandler, runSimplePreProcessor
                                       , preprocessComponent)
 import Distribution.Simple.Setup
-        ( defaultHscolourFlags, Flag(..), flagToMaybe, fromFlag
+        ( defaultHscolourFlags, Flag(..), toFlag, flagToMaybe, flagToList, fromFlag
         , HaddockFlags(..), HscolourFlags(..) )
 import Distribution.Simple.Build (initialBuildSteps)
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplateEnv, PathTemplate,
@@ -93,7 +94,6 @@ import Distribution.Simple.Utils
          , createDirectoryIfMissingVerbose, withTempFile, copyFileVerbose
          , withTempDirectory
          , findFileWithExtension, findFile )
-import Distribution.Simple.GHC (ghcOptions)
 import Distribution.Text
          ( display, simpleParse )
 
@@ -129,7 +129,7 @@ data HaddockArgs = HaddockArgs {
  argOutputDir :: Directory,                       -- ^ where to generate the documentation.
  argTitle :: Flag String,                         -- ^ page's title,                                         required.
  argPrologue :: Flag String,                      -- ^ prologue text,                                        required.
- argGhcFlags :: [String],                         -- ^ additional flags to pass to ghc for haddock-2
+ argGhcOptions :: Flag (GhcOptions, Version),     -- ^ additional flags to pass to ghc for haddock-2
  argGhcLibDir :: Flag FilePath,                   -- ^ to find the correct ghc,                              required by haddock-2.
  argTargets :: [FilePath]                         -- ^ modules to process.
 }
@@ -305,45 +305,51 @@ fromLibrary :: Verbosity
             -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
             -> Maybe PathTemplate -- ^ template for html location
             -> IO HaddockArgs
-fromLibrary verbosity tmp lbi lib clbi htmlTemplate =
-            do inFiles <- map snd `fmap` getLibSourceFiles lbi lib
-               ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
-               return $ ifaceArgs {
-                            argHideModules = (mempty,otherModules $ bi),
-                            argGhcFlags = ghcOptions lbi bi clbi (buildDir lbi)
-                                       -- Noooooooooo!!!!!111
-                                       -- haddock stomps on our precious .hi
-                                       -- and .o files. Workaround by telling
-                                       -- haddock to write them elsewhere.
-                                       ++ [ "-odir", tmp, "-hidir", tmp
-                                          , "-stubdir", tmp ],
-                            argTargets = inFiles
-                          }
-    where
-      bi = libBuildInfo lib
+fromLibrary verbosity tmp lbi lib clbi htmlTemplate = do
+    inFiles <- map snd `fmap` getLibSourceFiles lbi lib
+    ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
+    return ifaceArgs {
+      argHideModules = (mempty,otherModules $ bi),
+      argGhcOptions  = toFlag ((componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
+                       -- Noooooooooo!!!!!111
+                       -- haddock stomps on our precious .hi
+                       -- and .o files. Workaround by telling
+                       -- haddock to write them elsewhere.
+                         ghcOptObjDir  = toFlag tmp,
+                         ghcOptHiDir   = toFlag tmp,
+                         ghcOptStubDir = toFlag tmp
+                       },ghcVersion),
+      argTargets     = inFiles
+    }
+  where
+    bi = libBuildInfo lib
+    ghcVersion = compilerVersion (compiler lbi)
 
 fromExecutable :: Verbosity
                -> FilePath
                -> LocalBuildInfo -> Executable -> ComponentLocalBuildInfo
                -> Maybe PathTemplate -- ^ template for html location
                -> IO HaddockArgs
-fromExecutable verbosity tmp lbi exe clbi htmlTemplate =
-            do inFiles <- map snd `fmap` getExeSourceFiles lbi exe
-               ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
-               return $ ifaceArgs {
-                            argGhcFlags = ghcOptions lbi bi clbi (buildDir lbi)
-                                       -- Noooooooooo!!!!!111
-                                       -- haddock stomps on our precious .hi
-                                       -- and .o files. Workaround by telling
-                                       -- haddock to write them elsewhere.
-                                       ++ [ "-odir", tmp, "-hidir", tmp
-                                          , "-stubdir", tmp ],
-                            argOutputDir = Dir (exeName exe),
-                            argTitle = Flag (exeName exe),
-                            argTargets = inFiles
-                          }
-    where
-      bi = buildInfo exe
+fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
+    inFiles <- map snd `fmap` getExeSourceFiles lbi exe
+    ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
+    return ifaceArgs {
+      argGhcOptions = toFlag ((componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
+                      -- Noooooooooo!!!!!111
+                      -- haddock stomps on our precious .hi
+                      -- and .o files. Workaround by telling
+                      -- haddock to write them elsewhere.
+                        ghcOptObjDir  = toFlag tmp,
+                        ghcOptHiDir   = toFlag tmp,
+                        ghcOptStubDir = toFlag tmp
+                      }, ghcVersion),
+      argOutputDir  = Dir (exeName exe),
+      argTitle      = Flag (exeName exe),
+      argTargets    = inFiles
+    }
+  where
+    bi = buildInfo exe
+    ghcVersion = compilerVersion (compiler lbi)
 
 getInterfaces :: Verbosity
               -> LocalBuildInfo
@@ -384,7 +390,7 @@ runHaddock verbosity confHaddock args = do
 renderArgs :: Verbosity
               -> Version
               -> HaddockArgs
-              -> (([[Char]], FilePath) -> IO a)
+              -> (([String], FilePath) -> IO a)
               -> IO a
 renderArgs verbosity version args k = do
   createDirectoryIfMissingVerbose verbosity True outputDir
@@ -409,7 +415,7 @@ renderArgs verbosity version args k = do
               pkgid = arg argPackageName
       arg f = fromFlag $ f args
 
-renderPureArgs :: Version -> HaddockArgs -> [[Char]]
+renderPureArgs :: Version -> HaddockArgs -> [String]
 renderPureArgs version args = concat
     [
      (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
@@ -429,7 +435,9 @@ renderPureArgs version args = concat
      (:[]).("--odir="++) . unDir . argOutputDir $ args,
      (:[]).("--title="++) . (bool (++" (internal documentation)") id (getAny $ argIgnoreExports args))
               . fromFlag . argTitle $ args,
-     bool id (const []) isVersion2 . map ("--optghc=" ++) . argGhcFlags $ args,
+     [ "--optghc=" ++ opt | isVersion2
+                          , (opts, ghcVersion) <- flagToList (argGhcOptions args)
+                          , opt <- renderGhcOptions ghcVersion opts ],
      maybe [] (\l -> ["-B"++l]) $ guard isVersion2 >> flagToMaybe (argGhcLibDir args), -- error if isVersion2 and Nothing?
      argTargets $ args
     ]
@@ -616,7 +624,7 @@ instance Monoid HaddockArgs where
                 argOutputDir = mempty,
                 argTitle = mempty,
                 argPrologue = mempty,
-                argGhcFlags = mempty,
+                argGhcOptions = mempty,
                 argGhcLibDir = mempty,
                 argTargets = mempty
              }
@@ -634,7 +642,7 @@ instance Monoid HaddockArgs where
                 argOutputDir = mult argOutputDir,
                 argTitle = mult argTitle,
                 argPrologue = mult argPrologue,
-                argGhcFlags = mult argGhcFlags,
+                argGhcOptions = mult argGhcOptions,
                 argGhcLibDir = mult argGhcLibDir,
                 argTargets = mult argTargets
              }
