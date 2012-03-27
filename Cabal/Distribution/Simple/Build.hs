@@ -81,7 +81,7 @@ import Distribution.Simple.PreProcess
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms)
          , Component(..), ComponentLocalBuildInfo(..), withComponentsLBI
-         , inplacePackageId )
+         , componentBuildInfo, inplacePackageId )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.BuildPaths
@@ -125,132 +125,143 @@ build pkg_descr lbi flags suffixes = do
 
   internalPackageDB <- createInternalPackageDB distPref
 
-  let pre c lbi' = preprocessComponent pkg_descr c lbi' False verbosity suffixes
   withComponentsLBI pkg_descr lbi $ \comp clbi ->
-    case comp of
-      CLib lib -> do
-        let bi     = libBuildInfo lib
-            progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-            lbi'   = lbi { withPrograms = progs' }
-        pre comp lbi'
-        info verbosity "Building library..."
-        buildLib verbosity pkg_descr lbi' lib clbi
+    let bi     = componentBuildInfo comp
+        progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+        lbi'   = lbi {
+                   withPrograms  = progs',
+                   withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+                 }
+    in buildComponent verbosity pkg_descr lbi' suffixes comp clbi distPref
 
-        -- Register the library in-place, so exes can depend
-        -- on internally defined libraries.
-        pwd <- getCurrentDirectory
-        let installedPkgInfo =
-              (inplaceInstalledPackageInfo pwd distPref pkg_descr lib lbi clbi) {
-                -- The inplace registration uses the "-inplace" suffix,
-                -- not an ABI hash.
-                IPI.installedPackageId = inplacePackageId (packageId installedPkgInfo)
+
+buildComponent :: Verbosity
+               -> PackageDescription
+               -> LocalBuildInfo
+               -> [PPSuffixHandler]
+               -> Component
+               -> ComponentLocalBuildInfo
+               -> FilePath
+               -> IO ()
+buildComponent verbosity pkg_descr lbi suffixes
+               comp@(CLib lib) clbi distPref = do
+    preprocessComponent pkg_descr comp lbi False verbosity suffixes
+    info verbosity "Building library..."
+    buildLib verbosity pkg_descr lbi lib clbi
+
+    -- Register the library in-place, so exes can depend
+    -- on internally defined libraries.
+    pwd <- getCurrentDirectory
+    let installedPkgInfo =
+          (inplaceInstalledPackageInfo pwd distPref pkg_descr lib lbi clbi) {
+            -- The inplace registration uses the "-inplace" suffix,
+            -- not an ABI hash.
+            IPI.installedPackageId = inplacePackageId (packageId installedPkgInfo)
+          }
+    registerPackage verbosity
+      installedPkgInfo pkg_descr lbi True -- True meaning inplace
+      (withPackageDB lbi)
+
+
+buildComponent verbosity pkg_descr lbi suffixes
+               comp@(CExe exe) clbi _ = do
+    preprocessComponent pkg_descr comp lbi False verbosity suffixes
+    info verbosity $ "Building executable " ++ exeName exe ++ "..."
+    buildExe verbosity pkg_descr lbi exe clbi
+
+
+buildComponent verbosity pkg_descr lbi suffixes
+               comp@(CTest
+                 test@TestSuite { testInterface = TestSuiteExeV10 _ f })
+               clbi _distPref = do
+    let bi  = testBuildInfo test
+        exe = Executable {
+                exeName    = testName test,
+                modulePath = f,
+                buildInfo  = bi
               }
-        registerPackage verbosity
-          installedPkgInfo pkg_descr lbi True -- True meaning inplace
-          (withPackageDB lbi ++ [internalPackageDB])
+    preprocessComponent pkg_descr comp lbi False verbosity suffixes
+    info verbosity $ "Building test suite " ++ testName test ++ "..."
+    buildExe verbosity pkg_descr lbi exe clbi
 
-      CExe exe -> do
-        let bi     = buildInfo exe
-            progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-            lbi'   = lbi {
-                       withPrograms  = progs',
-                       withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-                     }
-        pre comp lbi'
-        info verbosity $ "Building executable " ++ exeName exe ++ "..."
-        buildExe verbosity pkg_descr lbi' exe clbi
 
-      CTest test -> do
-        case testInterface test of
-            TestSuiteExeV10 _ f -> do
-                let bi  = testBuildInfo test
-                    exe = Executable
-                        { exeName = testName test
-                        , modulePath = f
-                        , buildInfo  = bi
-                        }
-                    progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-                    lbi'   = lbi {
-                               withPrograms  = progs',
-                               withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+buildComponent verbosity pkg_descr lbi suffixes
+               comp@(CTest
+                 test@TestSuite { testInterface = TestSuiteLibV09 _ m })
+               clbi distPref = do
+    pwd <- getCurrentDirectory
+    let bi  = testBuildInfo test
+        lib = Library {
+                exposedModules = [ m ],
+                libExposed     = True,
+                libBuildInfo   = bi
+              }
+        pkg = pkg_descr {
+                package      = (package pkg_descr) {
+                                 pkgName = PackageName (testName test)
+                               }
+              , buildDepends = targetBuildDepends $ testBuildInfo test
+              , executables  = []
+              , testSuites   = []
+              , library      = Just lib
+              }
+        ipi = (inplaceInstalledPackageInfo pwd distPref pkg lib lbi clbi) {
+                IPI.installedPackageId = inplacePackageId $ packageId ipi
+              }
+        testDir = buildDir lbi </> stubName test
+              </> stubName test ++ "-tmp"
+        testLibDep = thisPackageVersion $ package pkg
+        exe = Executable {
+                exeName    = stubName test,
+                modulePath = stubFilePath test,
+                buildInfo  = (testBuildInfo test) {
+                               hsSourceDirs       = [ testDir ],
+                               targetBuildDepends = testLibDep
+                                 : (targetBuildDepends $ testBuildInfo test)
                              }
-                pre comp lbi'
-                info verbosity $ "Building test suite " ++ testName test ++ "..."
-                buildExe verbosity pkg_descr lbi' exe clbi
-            TestSuiteLibV09 _ m -> do
-                pwd <- getCurrentDirectory
-                let bi  = testBuildInfo test
-                    lib = Library
-                        { exposedModules = [ m ]
-                        , libExposed = True
-                        , libBuildInfo = bi
-                        }
-                    pkg = pkg_descr
-                        { package = (package pkg_descr)
-                            { pkgName = PackageName $ testName test
-                            }
-                        , buildDepends = targetBuildDepends $ testBuildInfo test
-                        , executables = []
-                        , testSuites = []
-                        , library = Just lib
-                        }
-                    ipi = (inplaceInstalledPackageInfo
-                        pwd distPref pkg lib lbi clbi)
-                        { IPI.installedPackageId = inplacePackageId $ packageId ipi
-                        }
-                    testDir = buildDir lbi' </> stubName test
-                        </> stubName test ++ "-tmp"
-                    testLibDep = thisPackageVersion $ package pkg
-                    exe = Executable
-                        { exeName = stubName test
-                        , modulePath = stubFilePath test
-                        , buildInfo = (testBuildInfo test)
-                            { hsSourceDirs = [ testDir ]
-                            , targetBuildDepends = testLibDep
-                                : (targetBuildDepends $ testBuildInfo test)
-                            }
-                        }
-                    -- | The stub executable needs a new 'ComponentLocalBuildInfo'
-                    -- that exposes the relevant test suite library.
-                    exeClbi = clbi
-                        { componentPackageDeps =
-                            (IPI.installedPackageId ipi, packageId ipi)
-                            : (filter (\(_, x) -> let PackageName name = pkgName x in name == "Cabal" || name == "base")
-                                $ componentPackageDeps clbi)
-                        }
-                    progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-                    lbi'   = lbi {
-                               withPrograms  = progs',
-                               withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-                             }
+              }
+        -- | The stub executable needs a new 'ComponentLocalBuildInfo'
+        -- that exposes the relevant test suite library.
+        exeClbi = clbi {
+                    componentPackageDeps =
+                        (IPI.installedPackageId ipi, packageId ipi)
+                      : (filter (\(_, x) -> let PackageName name = pkgName x
+                                            in name == "Cabal" || name == "base")
+                                (componentPackageDeps clbi))
+                  }
+    preprocessComponent pkg_descr comp lbi False verbosity suffixes
+    info verbosity $ "Building test suite " ++ testName test ++ "..."
+    buildLib verbosity pkg lbi lib clbi
+    registerPackage verbosity ipi pkg lbi True $ withPackageDB lbi
+    buildExe verbosity pkg_descr lbi exe exeClbi
 
-                pre comp lbi'
-                info verbosity $ "Building test suite " ++ testName test ++ "..."
-                buildLib verbosity pkg lbi' lib clbi
-                registerPackage verbosity ipi pkg lbi' True $ withPackageDB lbi'
-                buildExe verbosity pkg_descr lbi' exe exeClbi
-            TestSuiteUnsupported tt -> die $ "No support for building test suite "
-                                          ++ "type " ++ display tt
 
-      CBench bm -> do
-        case benchmarkInterface bm of
-            BenchmarkExeV10 _ f -> do
-                let bi  = benchmarkBuildInfo bm
-                    exe = Executable
-                        { exeName = benchmarkName bm
-                        , modulePath = f
-                        , buildInfo  = bi
-                        }
-                    progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-                    lbi'   = lbi {
-                               withPrograms  = progs',
-                               withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-                             }
-                pre comp lbi'
-                info verbosity $ "Building benchmark " ++ benchmarkName bm ++ "..."
-                buildExe verbosity pkg_descr lbi' exe clbi
-            BenchmarkUnsupported tt -> die $ "No support for building benchmark "
-                                          ++ "type " ++ display tt
+buildComponent _ _ _ _
+               (CTest TestSuite { testInterface = TestSuiteUnsupported tt })
+               _ _ =
+    die $ "No support for building test suite type " ++ display tt
+
+
+buildComponent verbosity pkg_descr lbi suffixes
+               comp@(CBench
+                 bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f })
+               clbi _ = do
+    let bi  = benchmarkBuildInfo bm
+        exe = Executable
+            { exeName = benchmarkName bm
+            , modulePath = f
+            , buildInfo  = bi
+            }
+    preprocessComponent pkg_descr comp lbi False verbosity suffixes
+    info verbosity $ "Building benchmark " ++ benchmarkName bm ++ "..."
+    buildExe verbosity pkg_descr lbi exe clbi
+
+
+buildComponent _ _ _ _
+               (CBench Benchmark { benchmarkInterface = BenchmarkUnsupported tt })
+               _ _ =
+    die $ "No support for building benchmark type " ++ display tt
+
 
 -- | Initialize a new package db file for libraries defined
 -- internally to the package.

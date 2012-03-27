@@ -52,6 +52,7 @@ module Distribution.Simple.LocalBuildInfo (
         -- * Buildable package components
         Component(..),
         foldComponent,
+        componentBuildInfo,
         allComponentsBy,
         ComponentName(..),
         ComponentLocalBuildInfo(..),
@@ -195,6 +196,10 @@ foldComponent f _ _ _ (CLib   lib) = f lib
 foldComponent _ f _ _ (CExe   exe) = f exe
 foldComponent _ _ f _ (CTest  tst) = f tst
 foldComponent _ _ _ f (CBench bch) = f bch
+
+componentBuildInfo :: Component -> BuildInfo
+componentBuildInfo =
+  foldComponent libBuildInfo buildInfo testBuildInfo benchmarkBuildInfo
 
 -- | Obtains all components (libs, exes, or test suites), transformed by the
 -- given function.  Useful for gathering dependencies with component context.
