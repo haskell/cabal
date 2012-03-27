@@ -66,9 +66,7 @@ module Distribution.Simple.GHC (
         installLib, installExe,
         libAbiHash,
         registerPackage,
-        ghcOptions,
-        ghcVerbosityOptions,
-        ghcPackageDbOptions,
+        componentGhcOptions,
         ghcLibDir,
  ) where
 
@@ -94,8 +92,9 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
-         , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
+         , ProgramLocation(..), rawSystemProgram
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
+         , getProgramInvocationOutput
          , requireProgramVersion, requireProgram, getProgramOutput
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, hsc2hsProgram
@@ -104,10 +103,12 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
+import Distribution.Simple.Program.GHC
+import Distribution.Simple.Setup (toFlag, fromFlag)
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
-         , Flag, languageToFlags, extensionsToFlags )
+         , Flag )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
@@ -120,7 +121,7 @@ import Language.Haskell.Extension (Language(..), Extension(..), KnownExtension(.
 import Control.Monad            ( unless, when, liftM )
 import Data.Char                ( isSpace )
 import Data.List
-import Data.Maybe               ( catMaybes )
+import Data.Maybe               ( catMaybes, fromMaybe )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
          ( removeFile, getDirectoryContents, doesFileExist
@@ -588,13 +589,15 @@ buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
 buildLib verbosity pkg_descr lbi lib clbi = do
   let pref = buildDir lbi
       pkgid = packageId pkg_descr
-      runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
       ifSharedLib = when (withSharedLib lbi)
       ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
       comp = compiler lbi
       ghcVersion = compilerVersion comp
+
+  (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
+  let runGhcProg = runGHC verbosity ghcProg
 
   libBi <- hackThreadedFlag verbosity
              comp (withProfLib lbi) (libBuildInfo lib)
@@ -605,39 +608,51 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
-  let ghcArgs =
-             "--make"
-          :  ["-package-name", display pkgid ]
-          ++ constructGHCCmdLine lbi libBi clbi libTargetDir verbosity
-          ++ map display (libModules lib)
-      ghcArgsProf = ghcArgs
-          ++ ["-prof",
-              "-hisuf", "p_hi",
-              "-osuf", "p_o"
-             ]
-          ++ ghcProfOptions libBi
-      ghcArgsShared = ghcArgs
-          ++ ["-dynamic",
-              "-hisuf", "dyn_hi",
-              "-osuf", "dyn_o", "-fPIC"
-             ]
-          ++ ghcSharedOptions libBi
+  let baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
+      vanillaOpts = baseOpts {
+                      ghcOptMode         = toFlag GhcModeMake,
+                      ghcOptPackageName  = toFlag pkgid,
+                      ghcOptInputModules = libModules lib
+                    }
+
+      profOpts    = vanillaOpts {
+                      ghcOptProfilingMode = toFlag True,
+                      ghcOptHiSuffix      = toFlag "p_hi",
+                      ghcOptObjSuffix     = toFlag "p_o",
+                      ghcOptExtra         = ghcProfOptions libBi
+                    }
+
+      sharedOpts  = vanillaOpts {
+                      ghcOptDynamic   = toFlag True,
+                      ghcOptFPic      = toFlag True,
+                      ghcOptHiSuffix  = toFlag "dyn_hi",
+                      ghcOptObjSuffix = toFlag "dyn_o",
+                      ghcOptExtra     = ghcSharedOptions libBi
+                    }
+
   unless (null (libModules lib)) $
-    do ifVanillaLib forceVanillaLib (runGhcProg ghcArgs)
-       ifProfLib (runGhcProg ghcArgsProf)
-       ifSharedLib (runGhcProg ghcArgsShared)
+    do ifVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
+       ifProfLib (runGhcProg profOpts)
+       ifSharedLib (runGhcProg sharedOpts)
 
   -- build any C sources
   unless (null (cSources libBi)) $ do
      info verbosity "Building C Sources..."
-     sequence_ [do let (odir,args) = constructCcCmdLine lbi libBi clbi pref
-                                                        filename verbosity
-                                                        False
-                                                        (withProfLib lbi)
-                   createDirectoryIfMissingVerbose verbosity True odir
-                   runGhcProg args
-                   ifSharedLib (runGhcProg (args ++ ["-fPIC", "-osuf dyn_o"]))
-               | filename <- cSources libBi]
+     sequence_
+       [ do let vanillaCcOpts = (componentCcGhcOptions verbosity lbi
+                                    libBi clbi pref filename) {
+                                  ghcOptProfilingMode = toFlag (withProfLib lbi)
+                                }
+                sharedCcOpts  = vanillaOpts {
+                                  ghcOptFPic      = toFlag True,
+                                  ghcOptDynamic   = toFlag True,
+                                  ghcOptObjSuffix = toFlag "dyn_o"
+                                }
+                odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
+            createDirectoryIfMissingVerbose verbosity True odir
+            runGhcProg vanillaCcOpts
+            ifSharedLib (runGhcProg sharedCcOpts)
+       | filename <- cSources libBi]
 
   -- link:
   info verbosity "Linking..."
@@ -708,20 +723,23 @@ buildLib verbosity pkg_descr lbi lib clbi = do
         -- with the dependencies spelled out as -package arguments
         -- and ghc invokes the linker with the proper library paths
         ghcSharedLinkArgs =
-            [ "-no-auto-link-packages",
-              "-shared",
-              "-dynamic",
-              "-o", sharedLibFilePath ]
-            -- For dynamic libs, Mac OS/X needs to know the install location
-            -- at build time.
-            ++ (if buildOS == OSX
-                then ["-dylib-install-name", sharedLibInstallPath]
-                else [])
-            ++ dynamicObjectFiles
-            ++ ["-package-name", display pkgid ]
-            ++ ghcPackageFlags lbi clbi
-            ++ ["-l"++extraLib | extraLib <- extraLibs libBi]
-            ++ ["-L"++extraLibDir | extraLibDir <- extraLibDirs libBi]
+            mempty {
+              ghcOptShared             = toFlag True,
+              ghcOptDynamic            = toFlag True,
+              ghcOptInputFiles         = dynamicObjectFiles,
+              ghcOptOutputFile         = toFlag sharedLibFilePath,
+              -- For dynamic libs, Mac OS/X needs to know the install location
+              -- at build time.
+              ghcOptDylibName          = if buildOS == OSX
+                                          then toFlag sharedLibInstallPath
+                                          else mempty,
+              ghcOptPackageName        = toFlag pkgid,
+              ghcOptNoAutoLinkPackages = toFlag True,
+              ghcOptPackageDBs         = withPackageDB lbi,
+              ghcOptPackages           = componentPackageDeps clbi,
+              ghcOptLinkLibs           = extraLibs libBi,
+              ghcOptLinkLibPath        = extraLibDirs libBi
+            }
 
     ifVanillaLib False $ do
       (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
@@ -749,7 +767,9 @@ buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo
 buildExe verbosity _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
   let pref = buildDir lbi
-      runGhcProg = rawSystemProgramConf verbosity ghcProgram (withPrograms lbi)
+
+  (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
+  let runGhcProg = runGHC verbosity ghcProg
 
   exeBi <- hackThreadedFlag verbosity
              (compiler lbi) (withProfExe lbi) (buildInfo exe)
@@ -768,47 +788,56 @@ buildExe verbosity _pkg_descr lbi
   -- build executables
   unless (null (cSources exeBi)) $ do
    info verbosity "Building C Sources."
-   sequence_ [do let (odir,args) = constructCcCmdLine lbi exeBi clbi
-                                          exeDir filename verbosity
-                                          (withDynExe lbi) (withProfExe lbi)
-                 createDirectoryIfMissingVerbose verbosity True odir
-                 runGhcProg args
-             | filename <- cSources exeBi]
+   sequence_
+     [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
+                         exeDir filename) {
+                       ghcOptDynamic       = toFlag (withDynExe lbi),
+                       ghcOptProfilingMode = toFlag (withProfExe lbi)
+                     }
+              odir = fromFlag (ghcOptObjDir opts)
+          createDirectoryIfMissingVerbose verbosity True odir
+          runGhcProg opts
+     | filename <- cSources exeBi]
 
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
   let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
-  let binArgs linkExe dynExe profExe =
-             "--make"
-          :  (if linkExe
-                 then ["-o", targetDir </> exeNameReal]
-                 else ["-c"])
-          ++ constructGHCCmdLine lbi exeBi clbi exeDir verbosity
-          ++ [exeDir </> x | x <- cObjs]
-          ++ [srcMainFile]
-          ++ ["-optl" ++ opt | opt <- PD.ldOptions exeBi]
-          ++ ["-l"++lib | lib <- extraLibs exeBi]
-          ++ ["-L"++libDir | libDir <- extraLibDirs exeBi]
-          ++ concat [["-framework", f] | f <- PD.frameworks exeBi]
-          ++ if dynExe
-                then ["-dynamic"]
-                else []
-          ++ if profExe
-                then ["-prof",
-                      "-hisuf", "p_hi",
-                      "-osuf", "p_o"
-                     ] ++ ghcProfOptions exeBi
-                else []
+  let vanillaOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir) {
+                      ghcOptMode           = toFlag GhcModeMake,
+                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs]
+                                          ++ [srcMainFile],
+                      ghcOptLinkOptions    = PD.ldOptions exeBi,
+                      ghcOptLinkLibs       = extraLibs exeBi,
+                      ghcOptLinkLibPath    = extraLibDirs exeBi,
+                      ghcOptLinkFrameworks = PD.frameworks exeBi
+                    }
 
+      dynamicOpts = vanillaOpts {
+                      ghcOptDynamic        = toFlag True,
+                      ghcOptExtra          = ghcSharedOptions exeBi
+                    }
+
+      exeOpts     | withDynExe lbi = dynamicOpts
+                  | otherwise      = vanillaOpts
+
+      exeProfOpts = exeOpts {
+                      ghcOptProfilingMode  = toFlag True,
+                      ghcOptHiSuffix       = toFlag "p_hi",
+                      ghcOptObjSuffix      = toFlag "p_o",
+                      ghcOptExtra          = ghcProfOptions exeBi,
+                      ghcOptNoLink         = toFlag True
+                    }
   -- For building exe's for profiling that use TH we actually
   -- have to build twice, once without profiling and the again
   -- with profiling. This is because the code that TH needs to
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
-  when (withProfExe lbi && EnableExtension TemplateHaskell `elem` allExtensions exeBi)
-     (runGhcProg (binArgs False (withDynExe lbi) False))
+  when (withProfExe lbi &&
+        EnableExtension TemplateHaskell `elem` allExtensions exeBi) $
+    runGhcProg exeProfOpts { ghcOptNoLink = toFlag True }
 
-  runGhcProg (binArgs True (withDynExe lbi) (withProfExe lbi))
+  runGhcProg exeOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
+
 
 -- | Filter the "-threaded" flag when profiling as it does not
 --   work with ghc-6.8 and older.
@@ -858,116 +887,75 @@ libAbiHash verbosity pkg_descr lbi lib clbi = do
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
   let
       ghcArgs =
-             "--abi-hash"
-          :  ["-package-name", display (packageId pkg_descr) ]
-          ++ constructGHCCmdLine lbi libBi clbi (buildDir lbi) verbosity
-          ++ map display (exposedModules lib)
+        (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi)) {
+          ghcOptMode         = toFlag GhcModeAbiHash,
+          ghcOptPackageName  = toFlag (packageId pkg_descr),
+          ghcOptInputModules = exposedModules lib
+        }
   --
-  rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi) ghcArgs
+  (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
+  getProgramInvocationOutput verbosity (ghcInvocation ghcProg ghcArgs)
 
 
-constructGHCCmdLine
-        :: LocalBuildInfo
-        -> BuildInfo
-        -> ComponentLocalBuildInfo
-        -> FilePath
-        -> Verbosity
-        -> [String]
-constructGHCCmdLine lbi bi clbi odir verbosity =
-        ghcVerbosityOptions verbosity
-        -- Unsupported extensions have already been checked by configure
-     ++ ghcOptions lbi bi clbi odir
-
-ghcVerbosityOptions :: Verbosity -> [String]
-ghcVerbosityOptions verbosity
-     | verbosity >= deafening = ["-v"]
-     | verbosity >= normal    = []
-     | otherwise              = ["-w", "-v0"]
-
-ghcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
-           -> FilePath -> [String]
-ghcOptions lbi bi clbi odir
-     =  ["-hide-all-packages"]
-     ++ ["-fbuilding-cabal-package" | ghcVer >= Version [6,11] [] ]
-     ++ ghcPackageDbOptions (withPackageDB lbi)
-     ++ ["-split-objs" | splitObjs lbi ]
-     ++ ["-i"]
-     ++ ["-i" ++ odir]
-     ++ ["-i" ++ l | l <- nub (hsSourceDirs bi)]
-     ++ ["-i" ++ autogenModulesDir lbi]
-     ++ ["-I" ++ autogenModulesDir lbi]
-     ++ ["-I" ++ odir]
-     ++ ["-I" ++ dir | dir <- PD.includeDirs bi]
-     ++ ["-optP" ++ opt | opt <- cppOptions bi]
-     ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi </> cppHeaderName) ]
-     ++ [ "-#include \"" ++ inc ++ "\"" | ghcVer < Version [6,11] []
-                                        , inc <- PD.includes bi ]
-     ++ [ "-odir",  odir, "-hidir", odir ]
-     ++ concat [ ["-stubdir", odir] | ghcVer >=  Version [6,8] [] ]
-     ++ ghcPackageFlags lbi clbi
-     ++ (case withOptimization lbi of
-           NoOptimisation      -> []
-           NormalOptimisation  -> ["-O"]
-           MaximumOptimisation -> ["-O2"])
-     ++ hcOptions GHC bi
-     ++ languageToFlags   (compiler lbi) (defaultLanguage bi)
-     ++ extensionsToFlags (compiler lbi) (usedExtensions bi)
-    where
-      ghcVer = compilerVersion (compiler lbi)
-
-ghcPackageFlags :: LocalBuildInfo -> ComponentLocalBuildInfo -> [String]
-ghcPackageFlags lbi clbi
-  | ghcVer >= Version [6,11] []
-              = concat [ ["-package-id", display ipkgid]
-                       | (ipkgid, _) <- componentPackageDeps clbi ]
-
-  | otherwise = concat [ ["-package", display pkgid]
-                       | (_, pkgid)  <- componentPackageDeps clbi ]
-    where
-      ghcVer = compilerVersion (compiler lbi)
-
-ghcPackageDbOptions :: PackageDBStack -> [String]
-ghcPackageDbOptions dbstack = case dbstack of
-  (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
-  (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
-                                       : concatMap specific dbs
-  _                                   -> ierror
+componentGhcOptions :: Verbosity -> LocalBuildInfo
+                    -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
+                    -> GhcOptions
+componentGhcOptions verbosity lbi bi clbi odir =
+    mempty {
+      ghcOptVerbosity       = toFlag verbosity,
+      ghcOptHideAllPackages = toFlag True,
+      ghcOptCabal           = toFlag True,
+      ghcOptPackageDBs      = withPackageDB lbi,
+      ghcOptPackages        = componentPackageDeps clbi,
+      ghcOptSplitObjs       = toFlag (splitObjs lbi),
+      ghcOptSourcePathClear = toFlag True,
+      ghcOptSourcePath      = [odir] ++ nub (hsSourceDirs bi)
+                                    ++ [autogenModulesDir lbi],
+      ghcOptCppIncludePath  = [autogenModulesDir lbi, odir]
+                                    ++ PD.includeDirs bi,
+      ghcOptCppOptions      = cppOptions bi,
+      ghcOptCppIncludes     = [autogenModulesDir lbi </> cppHeaderName],
+      ghcOptFfiIncludes     = PD.includes bi,
+      ghcOptObjDir          = toFlag odir,
+      ghcOptHiDir           = toFlag odir,
+      ghcOptStubDir         = toFlag odir,
+      ghcOptOptimisation    = toGhcOptimisation (withOptimization lbi),
+      ghcOptExtra           = hcOptions GHC bi,
+      ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
+      -- Unsupported extensions have already been checked by configure
+      ghcOptExtensions      = usedExtensions bi,
+      ghcOptExtensionMap    = compilerExtensions (compiler lbi)
+    }
   where
-    specific (SpecificPackageDB db) = [ "-package-conf", db ]
-    specific _ = ierror
-    ierror     = error ("internal error: unexpected package db stack: " ++ show dbstack)
+    toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
+    toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
+    toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
 
-constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
-                   -> FilePath -> FilePath -> Verbosity -> Bool -> Bool
-                   ->(FilePath,[String])
-constructCcCmdLine lbi bi clbi pref filename verbosity dynamic profiling
-  =  let odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
-              | otherwise = pref </> takeDirectory filename
-                        -- ghc 6.4.1 fixed a bug in -odir handling
-                        -- for C compilations.
-     in
-        (odir,
-         ghcCcOptions lbi bi clbi odir
-         ++ (if verbosity >= deafening then ["-v"] else [])
-         ++ ["-c",filename]
-         -- Note: When building with profiling enabled, we pass the -prof
-         -- option to ghc here when compiling C code, so that the PROFILING
-         -- macro gets defined. The macro is used in ghc's Rts.h in the
-         -- definitions of closure layouts (Closures.h).
-         ++ ["-dynamic" | dynamic]
-         ++ ["-prof" | profiling])
 
-ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
-             -> FilePath -> [String]
-ghcCcOptions lbi bi clbi odir
-     =  ["-I" ++ dir | dir <- odir : PD.includeDirs bi]
-     ++ ghcPackageDbOptions (withPackageDB lbi)
-     ++ ghcPackageFlags lbi clbi
-     ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
-     ++ (case withOptimization lbi of
-           NoOptimisation -> []
-           _              -> ["-optc-O2"])
-     ++ ["-odir", odir]
+componentCcGhcOptions :: Verbosity -> LocalBuildInfo
+                      -> BuildInfo -> ComponentLocalBuildInfo
+                      -> FilePath -> FilePath
+                      -> GhcOptions
+componentCcGhcOptions verbosity lbi bi clbi pref filename =
+    mempty {
+      ghcOptVerbosity      = toFlag verbosity,
+      ghcOptMode           = toFlag GhcModeCompile,
+      ghcOptInputFiles     = [filename],
+
+      ghcOptCppIncludePath = odir : PD.includeDirs bi,
+      ghcOptPackageDBs     = withPackageDB lbi,
+      ghcOptPackages       = componentPackageDeps clbi,
+      ghcOptCcOptions      = PD.ccOptions bi
+                             ++ case withOptimization lbi of
+                                  NoOptimisation -> []
+                                  _              -> ["-O2"],
+      ghcOptObjDir         = toFlag odir
+    }
+  where
+    odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
+         | otherwise = pref </> takeDirectory filename
+         -- ghc 6.4.0 had a bug in -odir handling for C compilations.
+
 
 mkGHCiLibName :: PackageIdentifier -> String
 mkGHCiLibName lib = "HS" ++ display lib <.> "o"
