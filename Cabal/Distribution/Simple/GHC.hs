@@ -129,6 +129,7 @@ import System.Directory
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension, splitExtension )
 import System.IO (hClose, hPutStrLn)
+import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
 
 -- -----------------------------------------------------------------------------
@@ -467,6 +468,7 @@ oldLanguageExtensions =
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                      -> IO PackageIndex
 getInstalledPackages verbosity packagedbs conf = do
+  checkPackageDbEnvVar
   checkPackageDbStack packagedbs
   pkgss <- getInstalledPackages' verbosity packagedbs conf
   topDir <- ghcLibDir' verbosity ghcProg
@@ -496,6 +498,19 @@ ghcLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 ghcLibDir' verbosity ghcProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
+
+-- Cabal does not use the environment variable GHC_PACKAGE_PATH; let users
+-- know that this is the case. See ticket #335. Simply ignoring it is not a
+-- good idea, since then ghc and cabal are looking at different sets of
+-- package dbs and chaos is likely to ensue.
+checkPackageDbEnvVar :: IO ()
+checkPackageDbEnvVar = do
+    hasGPP <- (getEnv "GHC_PACKAGE_PATH" >> return True)
+              `catchIO` (\_ -> return False)
+    when hasGPP $
+      die $ "Use of GHC's environment variable GHC_PACKAGE_PATH is "
+         ++ "incompatible with Cabal. Use the flag --package-db to specify a "
+         ++ "package database (it can be used multiple times)."
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
