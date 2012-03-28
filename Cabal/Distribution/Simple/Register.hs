@@ -212,7 +212,10 @@ registerPackage :: Verbosity
                 -> PackageDBStack
                 -> IO ()
 registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
-  setupMessage verbosity "Registering" (packageId pkg)
+  let msg = if inplace
+            then "In-place registering"
+            else "Registering"
+  setupMessage verbosity msg (packageId pkg)
   case compilerFlavor (compiler lbi) of
     GHC  -> GHC.registerPackage  verbosity installedPkgInfo pkg lbi inplace packageDbs
     LHC  -> LHC.registerPackage  verbosity installedPkgInfo pkg lbi inplace packageDbs
