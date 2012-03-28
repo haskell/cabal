@@ -62,7 +62,7 @@ import Distribution.Version
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.Text
-         ( Text(parse), display )
+         ( Text(..), display )
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
@@ -615,7 +615,8 @@ data InstallFlags = InstallFlags {
     installLogFile          :: Flag PathTemplate,
     installBuildReports     :: Flag ReportLevel,
     installSymlinkBinDir    :: Flag FilePath,
-    installOneShot          :: Flag Bool
+    installOneShot          :: Flag Bool,
+    installNumJobs          :: Flag Int
   }
 
 defaultInstallFlags :: InstallFlags
@@ -638,7 +639,8 @@ defaultInstallFlags = InstallFlags {
     installLogFile         = mempty,
     installBuildReports    = Flag NoReports,
     installSymlinkBinDir   = mempty,
-    installOneShot         = Flag False
+    installOneShot         = Flag False,
+    installNumJobs         = Flag 1
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
@@ -786,6 +788,13 @@ installOptions showOrParseArgs =
           "Do not record the packages in the world file."
           installOneShot (\v flags -> flags { installOneShot = v })
           (yesNoOpt showOrParseArgs)
+
+      , option "j" ["jobs"]
+        "Run N jobs simultaneously."
+        installNumJobs (\v flags -> flags { installNumJobs = v })
+        (reqArg "NUM" (readP_to_E (const $ "Argument should be an integer") 
+                       (toFlag `fmap` parse))
+         (flagToList . fmap display))
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
@@ -815,7 +824,8 @@ instance Monoid InstallFlags where
     installLogFile         = mempty,
     installBuildReports    = mempty,
     installSymlinkBinDir   = mempty,
-    installOneShot         = mempty
+    installOneShot         = mempty,
+    installNumJobs         = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation   = combine installDocumentation,
@@ -836,7 +846,8 @@ instance Monoid InstallFlags where
     installLogFile         = combine installLogFile,
     installBuildReports    = combine installBuildReports,
     installSymlinkBinDir   = combine installSymlinkBinDir,
-    installOneShot         = combine installOneShot
+    installOneShot         = combine installOneShot,
+    installNumJobs         = combine installNumJobs
   }
     where combine field = field a `mappend` field b
 
