@@ -97,15 +97,8 @@ configure verbosity packageDBs repos comp conf
       useCabalVersion  = maybe anyVersion thisVersion
                          (flagToMaybe (configCabalVersion configExFlags)),
       useCompiler      = Just comp,
-      -- Hack: we typically want to allow the UserPackageDB for finding the
-      -- Cabal lib when compiling any Setup.hs even if we're doing a global
-      -- install. However we also allow looking in a specific package db.
-      usePackageDB     = if UserPackageDB `elem` packageDBs
-                           then packageDBs
-                           else packageDBs ++ [UserPackageDB],
-      usePackageIndex  = if UserPackageDB `elem` packageDBs
-                           then Just index
-                           else Nothing,
+      usePackageDB     = packageDBs',
+      usePackageIndex  = index',
       useProgramConfig = conf,
       useDistPref      = fromFlagOrDefault
                            (useDistPref defaultSetupScriptOptions)
@@ -113,6 +106,16 @@ configure verbosity packageDBs repos comp conf
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing
     }
+      where
+        -- Hack: we typically want to allow the UserPackageDB for finding the
+        -- Cabal lib when compiling any Setup.hs even if we're doing a global
+        -- install. However we also allow looking in a specific package db.
+        (packageDBs', index') =
+          case packageDBs of
+            (GlobalPackageDB:dbs) | UserPackageDB `notElem` dbs
+                -> (GlobalPackageDB:UserPackageDB:dbs, Nothing)
+            -- but if the user is using an odd db stack, don't touch it
+            dbs -> (dbs, Just index)
 
     logMsg message rest = debug verbosity message >> rest
 
