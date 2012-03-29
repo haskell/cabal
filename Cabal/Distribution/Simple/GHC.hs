@@ -519,8 +519,13 @@ checkPackageDbEnvVar = do
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
   | GlobalPackageDB `notElem` rest = return ()
+checkPackageDbStack rest
+  | GlobalPackageDB `notElem` rest =
+  die $ "With current ghc versions the global package db is always used "
+     ++ "and must be listed first. This ghc limitation may be lifted in "
+     ++ "future, see http://hackage.haskell.org/trac/ghc/ticket/5977"
 checkPackageDbStack _ =
-  die $ "GHC.getInstalledPackages: the global package db must be "
+  die $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
 
 -- GHC < 6.10 put "$topdir/include/mingw" in rts's installDirs. This

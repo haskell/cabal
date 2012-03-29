@@ -61,6 +61,7 @@ module Distribution.Simple.Configure (configure,
                                       ccLdOptionsBuildInfo,
                                       tryGetConfigStateFile,
                                       checkForeignDeps,
+                                      interpretPackageDbFlags,
                                      )
     where
 
@@ -279,8 +280,8 @@ configure (pkg_descr0, pbi) cfg
                            . userSpecifyPaths (configProgramPaths cfg)
                            $ configPrograms cfg
             userInstall = fromFlag (configUserInstall cfg)
-            packageDbs = implicitPackageDbStack userInstall
-                           (flagToMaybe $ configPackageDB cfg)
+            packageDbs  = interpretPackageDbFlags userInstall
+                            (configPackageDBs cfg)
 
         -- detect compiler
         (comp, programsConfig') <- configCompiler
@@ -683,6 +684,11 @@ getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
                      -> IO PackageIndex
 getInstalledPackages verbosity comp packageDBs progconf = do
+  when (null packageDBs) $
+    die $ "No package databases have been specified. If you use "
+       ++ "--package-db=clear, you must follow it with --package-db= "
+       ++ "with 'global', 'user' or a specific file."
+
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
     GHC -> GHC.getInstalledPackages verbosity packageDBs progconf
@@ -694,19 +700,21 @@ getInstalledPackages verbosity comp packageDBs progconf = do
     flv -> die $ "don't know how to find the installed packages for "
               ++ display flv
 
--- | Currently the user interface specifies the package dbs to use with just a
--- single valued option, a 'PackageDB'. However internally we represent the
--- stack of 'PackageDB's explictly as a list. This function converts encodes
--- the package db stack implicit in a single packagedb.
+-- | The user interface specifies the package dbs to use with a combination of
+-- @--global@, @--user@ and @--package-db=global|user|clear|$file@.
+-- This function combines the global/user flag and interprets the package-db
+-- flag into a single package db stack.
 --
-implicitPackageDbStack :: Bool -> Maybe PackageDB -> PackageDBStack
-implicitPackageDbStack userInstall maybePackageDB
-  | userInstall = GlobalPackageDB : UserPackageDB : extra
-  | otherwise   = GlobalPackageDB : extra
+interpretPackageDbFlags :: Bool -> [Maybe PackageDB] -> PackageDBStack
+interpretPackageDbFlags userInstall specificDBs =
+    extra initialStack specificDBs
   where
-    extra = case maybePackageDB of
-      Just (SpecificPackageDB db) -> [SpecificPackageDB db]
-      _                           -> []
+    initialStack | userInstall = [GlobalPackageDB, UserPackageDB]
+                 | otherwise   = [GlobalPackageDB]
+
+    extra dbs' []            = dbs'
+    extra _    (Nothing:dbs) = extra []             dbs
+    extra dbs' (Just db:dbs) = extra (dbs' ++ [db]) dbs
 
 newPackageDepsBehaviourMinVersion :: Version
 newPackageDepsBehaviourMinVersion = Version { versionBranch = [1,7,1], versionTags = [] }

@@ -285,7 +285,7 @@ data ConfigFlags = ConfigFlags {
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configVerbosity :: Flag Verbosity, -- ^verbosity level
     configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
-    configPackageDB :: Flag PackageDB, -- ^Which package DB to use
+    configPackageDBs :: [Maybe PackageDB], -- ^Which package DBs to use
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
@@ -446,12 +446,9 @@ configureOptions showOrParseArgs =
          (boolOpt' ([],["user"]) ([], ["global"]))
 
       ,option "" ["package-db"]
-         "Use a specific package database (to satisfy dependencies and register in)"
-         configPackageDB (\v flags -> flags { configPackageDB = v })
-         (reqArg' "PATH" (Flag . SpecificPackageDB)
-                        (\f -> case f of
-                                 Flag (SpecificPackageDB db) -> [db]
-                                 _ -> []))
+         "Use a given package database (to satisfy dependencies and register in). May be a specific file, 'global', 'user' or 'clear'."
+         configPackageDBs (\v flags -> flags { configPackageDBs = v })
+         (reqArg' "DB" readPackageDbList showPackageDbList)
 
       ,option "f" ["flags"]
          "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."
@@ -495,6 +492,20 @@ configureOptions showOrParseArgs =
     showFlagList :: FlagAssignment -> [String]
     showFlagList fs = [ if not set then '-':fname else fname
                       | (FlagName fname, set) <- fs]
+
+    readPackageDbList :: String -> [Maybe PackageDB]
+    readPackageDbList "clear"  = [Nothing]
+    readPackageDbList "global" = [Just GlobalPackageDB]
+    readPackageDbList "user"   = [Just UserPackageDB]
+    readPackageDbList other    = [Just (SpecificPackageDB other)]
+
+    showPackageDbList :: [Maybe PackageDB] -> [String]
+    showPackageDbList = map showPackageDb
+      where
+        showPackageDb Nothing                       = "clear"
+        showPackageDb (Just GlobalPackageDB)        = "global"
+        showPackageDb (Just UserPackageDB)          = "user"
+        showPackageDb (Just (SpecificPackageDB db)) = db
 
     liftInstallDirs =
       liftOption configInstallDirs (\v flags -> flags { configInstallDirs = v })
@@ -585,7 +596,7 @@ instance Monoid ConfigFlags where
     configDistPref      = mempty,
     configVerbosity     = mempty,
     configUserInstall   = mempty,
-    configPackageDB     = mempty,
+    configPackageDBs    = mempty,
     configGHCiLib       = mempty,
     configSplitObjs     = mempty,
     configStripExes     = mempty,
@@ -618,7 +629,7 @@ instance Monoid ConfigFlags where
     configDistPref      = combine configDistPref,
     configVerbosity     = combine configVerbosity,
     configUserInstall   = combine configUserInstall,
-    configPackageDB     = combine configPackageDB,
+    configPackageDBs    = combine configPackageDBs,
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
     configStripExes     = combine configStripExes,
