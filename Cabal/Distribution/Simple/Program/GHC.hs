@@ -52,7 +52,8 @@ data GhcOptions = GhcOptions {
   -- | Location for output file; the @ghc -o@ flag.
   ghcOptOutputFile    :: Flag FilePath,
 
-  -- | Search path for Haskell source files; the @ghc -i@ flag.
+  -- | Start with an empty search path for Haskell source files;
+  -- the @ghc -i@ flag (@-i@ on it's own with no path argument).
   ghcOptSourcePathClear :: Flag Bool,
 
   -- | Search path for Haskell source files; the @ghc -i@ flag.
