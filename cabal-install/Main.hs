@@ -62,11 +62,12 @@ import Distribution.Client.Init             (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
 import Distribution.Simple.Compiler
-         ( Compiler, PackageDB(..), PackageDBStack )
+         ( Compiler, PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, defaultProgramConfiguration )
 import Distribution.Simple.Command
-import Distribution.Simple.Configure (configCompilerAux)
+import Distribution.Simple.Configure
+         ( configCompilerAux, interpretPackageDbFlags )
 import Distribution.Simple.Utils
          ( cabalVersion, die, topHandler, intercalate )
 import Distribution.Text
@@ -386,24 +387,9 @@ win32SelfUpgradeAction _ = return ()
 -- Utils (transitionary)
 --
 
--- | Currently the user interface specifies the package dbs to use with just a
--- single valued option, a 'PackageDB'. However internally we represent the
--- stack of 'PackageDB's explictly as a list. This function converts encodes
--- the package db stack implicit in a single packagedb.
---
--- TODO: sort this out, make it consistent with the command line UI
-implicitPackageDbStack :: Bool -> Maybe PackageDB -> PackageDBStack
-implicitPackageDbStack userInstall packageDbFlag
-  | userInstall = GlobalPackageDB : UserPackageDB : extra
-  | otherwise   = GlobalPackageDB : extra
-  where
-    extra = case packageDbFlag of
-      Just (SpecificPackageDB db) -> [SpecificPackageDB db]
-      _                           -> []
-
 configPackageDB' :: ConfigFlags -> PackageDBStack
 configPackageDB' cfg =
-  implicitPackageDbStack userInstall (flagToMaybe (configPackageDB cfg))
+    interpretPackageDbFlags userInstall (configPackageDBs cfg)
   where
     userInstall = fromFlagOrDefault True (configUserInstall cfg)
 
