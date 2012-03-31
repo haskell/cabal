@@ -159,6 +159,8 @@ install verbosity packageDBs repos comp conf
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
+    solver <- chooseSolver verbosity (fromFlag (configSolver  configExFlags)) (compilerId comp)
+
     let -- For install, if no target is given it means we use the
         -- current directory as the single target
         userTargets | null userTargets0 = [UserTargetLocalDir "."]
@@ -172,7 +174,7 @@ install verbosity packageDBs repos comp conf
     notice verbosity "Resolving dependencies..."
     installPlan   <- foldProgress logMsg die return $
                        planPackages
-                         comp configFlags configExFlags installFlags
+                         comp solver configFlags configExFlags installFlags
                          installedPkgIndex sourcePkgDb pkgSpecifiers
 
     checkPrintPlan verbosity installedPkgIndex installPlan installFlags
@@ -189,7 +191,6 @@ install verbosity packageDBs repos comp conf
                globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
 
     dryRun      = fromFlag (installDryRun installFlags)
-    solver      = fromFlag (configSolver  configExFlags)
     logMsg message rest = debug verbosity message >> rest
 
 
@@ -221,6 +222,7 @@ type InstallContext = ( PackageDBStack
 -- ------------------------------------------------------------
 
 planPackages :: Compiler
+             -> Solver
              -> ConfigFlags
              -> ConfigExFlags
              -> InstallFlags
@@ -228,7 +230,7 @@ planPackages :: Compiler
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
-planPackages comp configFlags configExFlags installFlags
+planPackages comp solver configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
         resolveDependencies
@@ -312,7 +314,6 @@ planPackages comp configFlags configExFlags installFlags
         targetnames  = map pkgSpecifierTarget pkgSpecifiers
 
 
-    solver           = fromFlag (configSolver            configExFlags)
     reinstall        = fromFlag (installReinstall        installFlags)
     reorderGoals     = fromFlag (installReorderGoals     installFlags)
     independentGoals = fromFlag (installIndependentGoals installFlags)

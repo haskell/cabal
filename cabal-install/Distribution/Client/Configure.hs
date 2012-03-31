@@ -130,6 +130,7 @@ planLocalPackage :: Verbosity -> Compiler
 planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
   (SourcePackageDb _ packagePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
+  solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags) (compilerId comp)
 
   let -- We create a local package and ask to resolve a dependency on it
       localPkg = SourcePackage {
@@ -137,8 +138,6 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
         Source.packageDescription = pkg,
         packageSource             = LocalUnpackedPackage "."
       }
-
-      solver = fromFlag $ configSolver configExFlags
 
       testsEnabled = fromFlagOrDefault False $ configTests configFlags
       benchmarksEnabled =
