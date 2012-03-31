@@ -14,6 +14,7 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency (
     -- * The main package dependency resolver
+    chooseSolver,
     resolveDependencies,
     Progress(..),
     foldProgress,
@@ -64,7 +65,7 @@ import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb)
          , SourcePackage(..) )
 import Distribution.Client.Dependency.Types
-         ( Solver(..), DependencyResolver, PackageConstraint(..)
+         ( PreSolver(..), Solver(..), DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
@@ -74,14 +75,17 @@ import Distribution.Package
          ( PackageName(..), PackageId, Package(..), packageVersion
          , InstalledPackageId, Dependency(Dependency))
 import Distribution.Version
-         ( VersionRange, anyVersion, withinRange, simplifyVersionRange )
+         ( Version(..), VersionRange, anyVersion, withinRange, simplifyVersionRange )
 import Distribution.Compiler
-         ( CompilerId(..) )
+         ( CompilerId(..), CompilerFlavor(..) )
 import Distribution.System
          ( Platform )
-import Distribution.Simple.Utils (comparing)
+import Distribution.Simple.Utils
+         ( comparing, warn, info )
 import Distribution.Text
          ( display )
+import Distribution.Verbosity
+         ( Verbosity )
 
 import Data.List (maximumBy, foldl')
 import Data.Maybe (fromMaybe)
@@ -304,6 +308,17 @@ standardInstallPolicy
 -- ------------------------------------------------------------
 -- * Interface to the standard resolver
 -- ------------------------------------------------------------
+
+chooseSolver :: Verbosity -> PreSolver -> CompilerId -> IO Solver
+chooseSolver _         AlwaysTopDown _                = return TopDown
+chooseSolver _         AlwaysModular _                = return Modular
+chooseSolver verbosity Choose        (CompilerId f v) = do
+  let chosenSolver | f == GHC && v <= Version [7] [] = TopDown
+                   | otherwise                       = Modular
+      msg TopDown = warn verbosity "Falling back to topdown solver for GHC < 7."
+      msg Modular = info verbosity "Choosing modular solver."
+  msg chosenSolver
+  return chosenSolver
 
 runSolver :: Solver -> SolverConfig -> DependencyResolver
 runSolver TopDown = const topDownResolver -- TODO: warn about unsuported options

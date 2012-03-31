@@ -39,7 +39,7 @@ import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( Solver(..) )
+         ( PreSolver(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -238,7 +238,7 @@ data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [UserConstraint],
     configPreferences  :: [Dependency],
-    configSolver       :: Flag Solver
+    configSolver       :: Flag PreSolver
   }
 
 defaultConfigExFlags :: ConfigExFlags
@@ -306,7 +306,7 @@ data FetchFlags = FetchFlags {
 --    fetchOutput    :: Flag FilePath,
       fetchDeps      :: Flag Bool,
       fetchDryRun    :: Flag Bool,
-      fetchSolver           :: Flag Solver,
+      fetchSolver           :: Flag PreSolver,
       fetchMaxBackjumps     :: Flag Int,
       fetchReorderGoals     :: Flag Bool,
       fetchIndependentGoals :: Flag Bool,
@@ -640,11 +640,11 @@ defaultInstallFlags = InstallFlags {
 defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 200
 
-defaultSolver :: Solver
-defaultSolver = TopDown
+defaultSolver :: PreSolver
+defaultSolver = Choose
 
 allSolvers :: String
-allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [Solver]))
+allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [PreSolver]))
 
 installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installCommand = CommandUI {
@@ -1110,12 +1110,12 @@ liftOptions :: (b -> a) -> (a -> b -> b)
             -> [OptionField a] -> [OptionField b]
 liftOptions get set = map (liftOption get set)
 
-optionSolver :: (flags -> Flag Solver)
-             -> (Flag Solver -> flags -> flags)
+optionSolver :: (flags -> Flag PreSolver)
+             -> (Flag PreSolver -> flags -> flags)
              -> OptionField flags
 optionSolver get set =
   option [] ["solver"]
-    ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ".")
+    ("Select dependency solver to use (default: " ++ display defaultSolver ++ "). Choices: " ++ allSolvers ++ ", where 'choose' chooses between 'topdown' and 'modular' based on compiler version.")
     get set
     (reqArg "SOLVER" (readP_to_E (const $ "solver must be one of: " ++ allSolvers)
                                  (toFlag `fmap` parse))
