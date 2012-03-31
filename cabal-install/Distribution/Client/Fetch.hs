@@ -120,6 +120,7 @@ planPackages verbosity comp fetchFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers
 
   | includeDependencies = do
+      solver <- chooseSolver verbosity (fromFlag (fetchSolver fetchFlags)) (compilerId comp)
       notice verbosity "Resolving dependencies..."
       installPlan <- foldProgress logMsg die return $
                        resolveDependencies
@@ -159,7 +160,6 @@ planPackages verbosity comp fetchFlags
     includeDependencies = fromFlag (fetchDeps fetchFlags)
     logMsg message rest = debug verbosity message >> rest
 
-    solver           = fromFlag (fetchSolver           fetchFlags)
     reorderGoals     = fromFlag (fetchReorderGoals     fetchFlags)
     independentGoals = fromFlag (fetchIndependentGoals fetchFlags)
     maxBackjumps     = fromFlag (fetchMaxBackjumps     fetchFlags)
