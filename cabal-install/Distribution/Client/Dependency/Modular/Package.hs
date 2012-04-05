@@ -41,7 +41,13 @@ data I = I Ver Loc
 -- | String representation of an instance.
 showI :: I -> String
 showI (I v InRepo)   = showVer v
-showI (I v (Inst _)) = showVer v ++ "/installed"
+showI (I v (Inst (InstalledPackageId i))) = showVer v ++ "/installed" ++ shortId i
+  where
+    -- A hack to extract the beginning of the package ABI hash
+    shortId = snip (splitAt 4) (++ "...") .
+              snip ((\ (x, y) -> (reverse x, y)) . break (=='-') . reverse) ('-':)
+    snip p f xs = case p xs of
+                    (ys, zs) -> (if L.null zs then id else f) ys
 
 -- | Package instance. A package name and an instance.
 data PI qpn = PI qpn I

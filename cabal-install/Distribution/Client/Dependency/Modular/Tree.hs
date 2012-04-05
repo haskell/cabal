@@ -37,6 +37,8 @@ data FailReason = InconsistentInitialConstraints
                 | Conflicting [Dep QPN]
                 | CannotInstall
                 | CannotReinstall
+                | Shadowed
+                | Broken
                 | GlobalConstraintVersion VR
                 | GlobalConstraintInstalled
                 | GlobalConstraintSource

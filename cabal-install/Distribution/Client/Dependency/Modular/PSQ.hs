@@ -26,6 +26,9 @@ instance Foldable (PSQ k) where
 instance Traversable (PSQ k) where
   traverse f (PSQ xs) = PSQ <$> traverse (\ (k, v) -> (\ x -> (k, x)) <$> f v) xs
 
+keys :: PSQ k v -> [k]
+keys (PSQ xs) = fmap fst xs
+
 lookup :: Eq k => k -> PSQ k v -> Maybe v
 lookup k (PSQ xs) = S.lookup k xs
 
@@ -37,6 +40,12 @@ mapKeys f (PSQ xs) = PSQ (fmap (\ (k, v) -> (f k, v)) xs)
 
 mapWithKey :: (k -> a -> b) -> PSQ k a -> PSQ k b
 mapWithKey f (PSQ xs) = PSQ (fmap (\ (k, v) -> (k, f k v)) xs)
+
+mapWithKeyState :: (s -> k -> a -> (b, s)) -> PSQ k a -> s -> PSQ k b
+mapWithKeyState p (PSQ xs) s0 =
+  PSQ (foldr (\ (k, v) r s -> case p s k v of
+                                (w, n) -> (k, w) : (r n))
+             (const []) xs s0)
 
 delete :: Eq k => k -> PSQ k a -> PSQ k a
 delete k (PSQ xs) = PSQ (snd (partition ((== k) . fst) xs))

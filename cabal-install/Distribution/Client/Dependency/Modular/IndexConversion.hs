@@ -12,38 +12,59 @@ import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
 import qualified Distribution.Simple.PackageIndex as SI
+import Distribution.Simple.Utils (equating)
 import Distribution.System
 
 import Distribution.Client.Dependency.Modular.Dependency as D
 import Distribution.Client.Dependency.Modular.Flag as F
 import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
+import Distribution.Client.Dependency.Modular.Tree
 import Distribution.Client.Dependency.Modular.Version
 
 -- | Convert both the installed package index and the source package
 -- index into one uniform solver index.
+--
+-- We use 'allPackagesByName' for the installed package index because
+-- that returns us several instances of the same package and version
+-- in order of preference. This allows us in principle to "shadow"
+-- packages if there are several installed packages of the same version.
+-- There are currently some shortcomings in both GHC and Cabal in
+-- resolving these situations. However, the right thing to do is to
+-- fix the problem there, so for now, shadowing is disabled here --
+-- although it's easy enough to activate.
 convPIs :: OS -> Arch -> CompilerId ->
            SI.PackageIndex -> CI.PackageIndex SourcePackage -> Index
 convPIs os arch cid iidx sidx =
-  mkIndex (L.concatMap (convIP iidx)        (SI.allPackages iidx) ++
-           L.map       (convSP os arch cid) (CI.allPackages sidx))
+  mkIndex (convIPI' iidx ++ convSPI' os arch cid sidx)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
+convIPI' :: SI.PackageIndex -> [(PN, I, PInfo)]
+convIPI' idx = combine (convIP idx) . versioned . SI.allPackagesByName $ idx
+  where
+    -- group installed packages by version
+    versioned = L.map (groupBy (equating packageVersion))
+    -- apply shadowing whenever there are multple installed packages with
+    -- the same version
+    combine f pkgs = [ g (f p) | pbn <- pkgs, pbv <- pbn,
+                                 (g, p) <- zip (id : repeat shadow) pbv ]
+    -- shadowing is recorded in the package info -- currently disabled
+    shadow = id
+    -- shadow (pn, i, PInfo fdeps fds encs _) = (pn, i, PInfo fdeps fds encs (Just Shadowed))
+
 convIPI :: SI.PackageIndex -> Index
-convIPI idx = mkIndex . L.concatMap (convIP idx) . SI.allPackages $ idx
+convIPI = mkIndex . convIPI'
 
 -- | Convert a single installed package into the solver-specific format.
---
--- May return the empty list if the installed package is broken.
-convIP :: SI.PackageIndex -> InstalledPackageInfo -> [(PN, I, PInfo)]
+convIP :: SI.PackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
   let ipid = installedPackageId ipi
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
-  in  maybeToList $ do
-        fds <- mapM (convIPId pn idx) (IPI.depends ipi)
-        return (pn, i, PInfo fds M.empty [])
+  in  case mapM (convIPId pn idx) (IPI.depends ipi) of
+        Nothing  -> (pn, i, PInfo [] M.empty [] (Just Broken))
+        Just fds -> (pn, i, PInfo fds M.empty [] Nothing)
 -- TODO: Installed packages should also store their encapsulations!
 
 -- | Convert dependencies specified by an installed package id into
@@ -62,9 +83,13 @@ convIPId pn' idx ipid =
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
+convSPI' :: OS -> Arch -> CompilerId ->
+            CI.PackageIndex SourcePackage -> [(PN, I, PInfo)]
+convSPI' os arch cid = L.map (convSP os arch cid) . CI.allPackages
+
 convSPI :: OS -> Arch -> CompilerId ->
            CI.PackageIndex SourcePackage -> Index
-convSPI os arch cid = mkIndex . L.map (convSP os arch cid) . CI.allPackages
+convSPI os arch cid = mkIndex . convSPI' os arch cid
 
 -- | Convert a single source package into the solver-specific format.
 convSP :: OS -> Arch -> CompilerId -> SourcePackage -> (PN, I, PInfo)
@@ -96,6 +121,7 @@ convGPD os arch cid pi
         (concatMap (convCondTree os arch cid pi fds (const True)     . snd) benchs)))
       fds
       [] -- TODO: add encaps
+      Nothing
 
 prefix :: (FlaggedDeps qpn -> FlaggedDep qpn) -> FlaggedDeps qpn -> FlaggedDeps qpn
 prefix _ []  = []
