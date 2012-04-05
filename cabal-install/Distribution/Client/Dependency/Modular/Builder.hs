@@ -124,7 +124,7 @@ build = ana go
     -- and furthermore we update the set of goals.
     --
     -- TODO: We could inline this above.
-    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs ecs) gr }) =
+    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs ecs _) gr }) =
       go ((establishScope qpn ecs
              (scopedExtendOpen qpn i (PDependency (PI qpn i) : gr) fdeps fdefs bs))
              { next = Goals })

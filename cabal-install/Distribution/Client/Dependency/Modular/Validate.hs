@@ -122,7 +122,7 @@ validate = cata go
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies
-      let (PInfo deps _ _) = idx ! pn ! i -- obtain dependencies introduced by the choice
+      let (PInfo deps _ _ mfr) = idx ! pn ! i -- obtain dependencies and index-dictated exclusions introduced by the choice
       let qdeps = L.map (fmap (qualify sc)) deps -- qualify the deps in the current scope
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
@@ -132,11 +132,14 @@ validate = cata go
       let mnppa = extend (P qpn) ppa newactives
       -- In case we continue, we save the scoped dependencies
       let nsvd = M.insert qpn qdeps svd
-      case mnppa of
-        Left (c, d) -> -- We have an inconsistency. We can stop.
-                       return (Fail c (Conflicting d))
-        Right nppa  -> -- We have an updated partial assignment for the recursive validation.
-                       local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
+      case mfr of
+        Just fr -> -- The index marks this as an invalid choice. We can stop.
+                   return (Fail (toConflictSet goal) fr)
+        _       -> case mnppa of
+                     Left (c, d) -> -- We have an inconsistency. We can stop.
+                                    return (Fail c (Conflicting d))
+                     Right nppa  -> -- We have an updated partial assignment for the recursive validation.
+                                    local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
     goF :: QFN -> QGoalReasons -> Bool -> Validate (Tree QGoalReasons) -> Validate (Tree QGoalReasons)
