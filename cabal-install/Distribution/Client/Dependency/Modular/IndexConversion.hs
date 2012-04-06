@@ -31,17 +31,17 @@ import Distribution.Client.Dependency.Modular.Version
 -- packages if there are several installed packages of the same version.
 -- There are currently some shortcomings in both GHC and Cabal in
 -- resolving these situations. However, the right thing to do is to
--- fix the problem there, so for now, shadowing is disabled here --
--- although it's easy enough to activate.
-convPIs :: OS -> Arch -> CompilerId ->
+-- fix the problem there, so for now, shadowing is only activated if
+-- explicitly requested.
+convPIs :: OS -> Arch -> CompilerId -> Bool ->
            SI.PackageIndex -> CI.PackageIndex SourcePackage -> Index
-convPIs os arch cid iidx sidx =
-  mkIndex (convIPI' iidx ++ convSPI' os arch cid sidx)
+convPIs os arch cid sip iidx sidx =
+  mkIndex (convIPI' sip iidx ++ convSPI' os arch cid sidx)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
-convIPI' :: SI.PackageIndex -> [(PN, I, PInfo)]
-convIPI' idx = combine (convIP idx) . versioned . SI.allPackagesByName $ idx
+convIPI' :: Bool -> SI.PackageIndex -> [(PN, I, PInfo)]
+convIPI' sip idx = combine (convIP idx) . versioned . SI.allPackagesByName $ idx
   where
     -- group installed packages by version
     versioned = L.map (groupBy (equating packageVersion))
@@ -49,12 +49,12 @@ convIPI' idx = combine (convIP idx) . versioned . SI.allPackagesByName $ idx
     -- the same version
     combine f pkgs = [ g (f p) | pbn <- pkgs, pbv <- pbn,
                                  (g, p) <- zip (id : repeat shadow) pbv ]
-    -- shadowing is recorded in the package info -- currently disabled
-    shadow = id
-    -- shadow (pn, i, PInfo fdeps fds encs _) = (pn, i, PInfo fdeps fds encs (Just Shadowed))
+    -- shadowing is recorded in the package info
+    shadow (pn, i, PInfo fdeps fds encs _) | sip = (pn, i, PInfo fdeps fds encs (Just Shadowed))
+    shadow x                                     = x
 
-convIPI :: SI.PackageIndex -> Index
-convIPI = mkIndex . convIPI'
+convIPI :: Bool -> SI.PackageIndex -> Index
+convIPI sip = mkIndex . convIPI' sip
 
 -- | Convert a single installed package into the solver-specific format.
 convIP :: SI.PackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)

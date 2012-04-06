@@ -20,6 +20,7 @@ data SolverConfig = SolverConfig {
   preferEasyGoalChoices :: Bool,
   independentGoals      :: Bool,
   avoidReinstalls       :: Bool,
+  shadowPkgs            :: Bool,
   maxBackjumps          :: Maybe Int
 }
 
