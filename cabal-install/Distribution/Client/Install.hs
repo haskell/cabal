@@ -19,7 +19,7 @@ module Distribution.Client.Install (
   ) where
 
 import Data.List
-         ( unfoldr, find, nub, sort, (\\) )
+         ( unfoldr, nub, sort, (\\) )
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Control.Exception as Exception
@@ -101,7 +101,7 @@ import Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion
          , Package(..), PackageFixedDeps(..)
-         , Dependency(..), thisPackageVersion )
+         , Dependency(..), thisPackageVersion, InstalledPackageId )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
@@ -178,7 +178,6 @@ install verbosity packageDBs repos comp conf
                          installedPkgIndex sourcePkgDb pkgSpecifiers
 
     checkPrintPlan verbosity installedPkgIndex installPlan installFlags
-      pkgSpecifiers solver
 
     unless dryRun $ do
       installPlan' <- performInstallations verbosity
@@ -332,14 +331,14 @@ planPackages comp solver configFlags configExFlags installFlags
 -- * Informational messages
 -- ------------------------------------------------------------
 
+-- | Perform post-solver checks of the install plan and print it if
+-- either requested or needed.
 checkPrintPlan :: Verbosity
                -> PackageIndex
                -> InstallPlan
                -> InstallFlags
-               -> [PackageSpecifier SourcePackage]
-               -> Solver
                -> IO ()
-checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers solver = do
+checkPrintPlan verbosity installed installPlan installFlags = do
 
   when nothingToInstall $
     notice verbosity $
@@ -348,37 +347,45 @@ checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers solver
       ++ "the --reinstall flag."
 
   let lPlan = linearizeInstallPlan installed installPlan
-  -- The following check is for packages contained in the install plan
-  -- that are destructive reinstalls. We exclude packages that are specified
-  -- targets as long as --reinstall is specified.
-  let containsReinstalls = any (\ (p, s) -> isReinstall s &&
-                                            (not (reinstall && isTarget pkgSpecifiers p)))
-                               lPlan
-  let adaptedVerbosity | containsReinstalls = verbose `max` verbosity
-                       | otherwise          = verbosity
+  -- Are any packages classified as reinstalls?
+  let reinstalledPkgs = concatMap (extractReinstalls . snd) lPlan
+  -- Packages that are reverse dependencies of replaced packages are very
+  -- likely to be broken.
+  let brokenPkgs =
+        filter (\ p -> not (Installed.installedPackageId p `elem` reinstalledPkgs))
+               (PackageIndex.reverseDependencyClosure installed reinstalledPkgs)
+  let containsReinstalls = not (null reinstalledPkgs)
+  let breaksPkgs         = not (null brokenPkgs)
 
-  when (dryRun || adaptedVerbosity >= verbose) $
+  let adaptedVerbosity
+        | containsReinstalls && not overrideReinstall = verbosity `max` verbose
+        | otherwise                                   = verbosity
+
+  -- We print the install plan if we are in a dry-run or if we are confronted
+  -- with a dangerous install plan.
+  when (dryRun || containsReinstalls && not overrideReinstall) $
     printDryRun adaptedVerbosity lPlan
 
-  when (containsReinstalls && not overrideReinstall) $
-    (if dryRun then notice adaptedVerbosity else die) $
-         "The install plan contains reinstalls which can break "
-      ++ "your GHC installation. "
-      ++ (if solver /= Modular
-          then "You can try --solver=modular for the new modular solver that "
-            ++ "chooses such reinstalls less often and also offers the "
-            ++ "--avoid-reinstalls option. "
-          else "You can use the --avoid-reinstalls option to try to find an "
-            ++ "install plan without such reinstalls. ")
-      ++ "You can also ghc-pkg unregister the affected packages and run "
-      ++ "ghc-pkg check to see the effect on reverse dependencies. "
-      ++ "If you know what you are doing you can use the "
-      ++ "--force-reinstalls option to override this reinstall check."
+  -- If the install plan is dangerous, we print various warning messages. In
+  -- particular, if we can see that packages are likely to be broken, we even
+  -- bail out (unless installation has been forced with --force-reinstalls).
+  when containsReinstalls $ do
+    if breaksPkgs
+      then do
+        (if dryRun || overrideReinstall then warn verbosity else die) $ unlines $
+            "The following packages are likely to be broken by the reinstalls:"
+          : map (display . Installed.sourcePackageId) brokenPkgs
+          ++ if overrideReinstall
+               then if dryRun then [] else
+                 ["Continuing even though the plan contains dangerous reinstalls."]
+               else
+                 ["Use --force-reinstalls if you want to install anyway."]
+      else unless dryRun $ warn verbosity
+             "Note that reinstalls are always dangerous. Continuing anyway..."
 
   where
     nothingToInstall = null (InstallPlan.ready installPlan)
 
-    reinstall         = fromFlag (installReinstall         installFlags)
     dryRun            = fromFlag (installDryRun            installFlags)
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
 
@@ -398,7 +405,7 @@ linearizeInstallPlan installedPkgIndex plan = unfoldr next plan
 
 data PackageStatus = NewPackage
                    | NewVersion [Version]
-                   | Reinstall  [PackageChange]
+                   | Reinstall  [InstalledPackageId] [PackageChange]
 
 type PackageChange = MergeResult PackageIdentifier PackageIdentifier
 
@@ -407,18 +414,19 @@ isTarget pkgSpecifiers pkg = packageName pkg `elem` targetnames
   where
     targetnames  = map pkgSpecifierTarget pkgSpecifiers
 
-isReinstall :: PackageStatus -> Bool
-isReinstall (Reinstall _) = True
-isReinstall _             = False
+extractReinstalls :: PackageStatus -> [InstalledPackageId]
+extractReinstalls (Reinstall ipids _) = ipids
+extractReinstalls _                   = []
 
 packageStatus :: PackageIndex -> ConfiguredPackage -> PackageStatus
 packageStatus installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
     [] -> NewPackage
-    ps ->  case find ((==packageId cpkg) . Installed.sourcePackageId) (concatMap snd ps) of
-      Nothing  -> NewVersion (map fst ps)
-      Just pkg -> Reinstall (changes pkg cpkg)
+    ps ->  case filter ((==packageId cpkg) . Installed.sourcePackageId) (concatMap snd ps) of
+      []           -> NewVersion (map fst ps)
+      pkgs@(pkg:_) -> Reinstall (map Installed.installedPackageId pkgs)
+                                (changes pkg cpkg)
 
   where
 
@@ -455,9 +463,9 @@ printDryRun verbosity plan = case plan of
           showFlagAssignment (nonDefaultFlags pkg') ++
           showStanzas (stanzas pkg') ++ " " ++
           case pr of
-            NewPackage   -> "(new package)"
-            NewVersion _ -> "(new version)"
-            Reinstall cs -> "(reinstall)" ++ case cs of
+            NewPackage     -> "(new package)"
+            NewVersion _   -> "(new version)"
+            Reinstall _ cs -> "(reinstall)" ++ case cs of
                 []   -> ""
                 diff -> " changes: "  ++ intercalate ", " (map change diff)
 
