@@ -46,6 +46,7 @@ module Distribution.Client.Dependency (
     setReorderGoals,
     setIndependentGoals,
     setAvoidReinstalls,
+    setShadowPkgs,
     setMaxBackjumps,
     addSourcePackages,
     hideInstalledPackagesSpecificByInstalledPackageId,
@@ -111,6 +112,7 @@ data DepResolverParams = DepResolverParams {
        depResolverReorderGoals      :: Bool,
        depResolverIndependentGoals  :: Bool,
        depResolverAvoidReinstalls   :: Bool,
+       depResolverShadowPkgs        :: Bool,
        depResolverMaxBackjumps      :: Maybe Int
      }
 
@@ -143,6 +145,7 @@ basicDepResolverParams installedPkgIndex sourcePkgIndex =
        depResolverReorderGoals      = False,
        depResolverIndependentGoals  = False,
        depResolverAvoidReinstalls   = False,
+       depResolverShadowPkgs        = False,
        depResolverMaxBackjumps      = Nothing
      }
 
@@ -192,6 +195,12 @@ setAvoidReinstalls :: Bool -> DepResolverParams -> DepResolverParams
 setAvoidReinstalls b params =
     params {
       depResolverAvoidReinstalls = b
+    }
+
+setShadowPkgs :: Bool -> DepResolverParams -> DepResolverParams
+setShadowPkgs b params =
+    params {
+      depResolverShadowPkgs = b
     }
 
 setMaxBackjumps :: Maybe Int -> DepResolverParams -> DepResolverParams
@@ -344,7 +353,7 @@ resolveDependencies platform comp _solver params
 resolveDependencies platform comp  solver params =
 
     fmap (mkInstallPlan platform comp)
-  $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls maxBkjumps)
+  $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls shadowing maxBkjumps)
                      platform comp installedPkgIndex sourcePkgIndex
                      preferences constraints targets
   where
@@ -356,6 +365,7 @@ resolveDependencies platform comp  solver params =
       reorderGoals
       indGoals
       noReinstalls
+      shadowing
       maxBkjumps      = dontUpgradeBasePackage
                       . hideBrokenInstalledPackages
                       $ params
@@ -432,7 +442,7 @@ resolveWithoutDependencies :: DepResolverParams
                            -> Either [ResolveNoDepsError] [SourcePackage]
 resolveWithoutDependencies (DepResolverParams targets constraints
                               prefs defpref installedPkgIndex sourcePkgIndex
-                              _reorderGoals _indGoals _avoidReinstalls _maxBjumps) =
+                              _reorderGoals _indGoals _avoidReinstalls _shadowing _maxBjumps) =
     collectEithers (map selectPackage targets)
   where
     selectPackage :: PackageName -> Either ResolveNoDepsError SourcePackage

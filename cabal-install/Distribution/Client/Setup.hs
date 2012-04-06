@@ -310,6 +310,7 @@ data FetchFlags = FetchFlags {
       fetchMaxBackjumps     :: Flag Int,
       fetchReorderGoals     :: Flag Bool,
       fetchIndependentGoals :: Flag Bool,
+      fetchShadowPkgs       :: Flag Bool,
       fetchVerbosity :: Flag Verbosity
     }
 
@@ -322,6 +323,7 @@ defaultFetchFlags = FetchFlags {
     fetchMaxBackjumps     = Flag defaultMaxBackjumps,
     fetchReorderGoals     = Flag False,
     fetchIndependentGoals = Flag False,
+    fetchShadowPkgs       = Flag False,
     fetchVerbosity = toFlag normal
    }
 
@@ -361,6 +363,7 @@ fetchCommand = CommandUI {
        optionSolverFlags fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
+                         fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
 
   }
 
@@ -599,6 +602,7 @@ data InstallFlags = InstallFlags {
     installMaxBackjumps     :: Flag Int,
     installReorderGoals     :: Flag Bool,
     installIndependentGoals :: Flag Bool,
+    installShadowPkgs       :: Flag Bool,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag Bool,
     installOverrideReinstall :: Flag Bool,
@@ -621,6 +625,7 @@ defaultInstallFlags = InstallFlags {
     installMaxBackjumps    = Flag defaultMaxBackjumps,
     installReorderGoals    = Flag False,
     installIndependentGoals= Flag False,
+    installShadowPkgs      = Flag False,
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag False,
     installOverrideReinstall = Flag False,
@@ -718,7 +723,8 @@ installOptions showOrParseArgs =
 
       optionSolverFlags installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
                         installReorderGoals     (\v flags -> flags { installReorderGoals     = v })
-                        installIndependentGoals (\v flags -> flags { installIndependentGoals = v }) ++
+                        installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
+                        installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v }) ++
 
       [ option [] ["reinstall"]
           "Install even if it means installing the same version again."
@@ -800,6 +806,7 @@ instance Monoid InstallFlags where
     installUpgradeDeps     = mempty,
     installReorderGoals    = mempty,
     installIndependentGoals= mempty,
+    installShadowPkgs      = mempty,
     installOnly            = mempty,
     installOnlyDeps        = mempty,
     installRootCmd         = mempty,
@@ -820,6 +827,7 @@ instance Monoid InstallFlags where
     installUpgradeDeps     = combine installUpgradeDeps,
     installReorderGoals    = combine installReorderGoals,
     installIndependentGoals= combine installIndependentGoals,
+    installShadowPkgs      = combine installShadowPkgs,
     installOnly            = combine installOnly,
     installOnlyDeps        = combine installOnlyDeps,
     installRootCmd         = combine installRootCmd,
@@ -1124,8 +1132,9 @@ optionSolver get set =
 optionSolverFlags :: (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
                   -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
                   -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
+                  -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
                   -> [OptionField flags]
-optionSolverFlags getmbj setmbj getrg setrg getig setig =
+optionSolverFlags getmbj setmbj getrg setrg getig setig getsip setsip =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
@@ -1136,10 +1145,13 @@ optionSolverFlags getmbj setmbj getrg setrg getig setig =
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
       getrg setrg
       trueArg
-
   , option [] ["independent-goals"]
       "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
       getig setig
+      trueArg
+  , option [] ["shadow-installed-packages"]
+      "If multiple package instances of the same version are installed, treat all but one as shadowed."
+      getsip setsip
       trueArg
   ]
 
