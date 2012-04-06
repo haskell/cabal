@@ -737,7 +737,7 @@ installOptions showOrParseArgs =
           trueArg
 
       , option [] ["force-reinstalls"]
-          "Use to override the check that prevents reinstalling already installed versions of package dependencies."
+          "Reinstall packages even if they will most likely break other installed packages."
           installOverrideReinstall (\v flags -> flags { installOverrideReinstall = v })
           trueArg
 
