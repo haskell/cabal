@@ -252,6 +252,8 @@ planPackages comp solver configFlags configExFlags installFlags
 
       . setAvoidReinstalls avoidReinstalls
 
+      . setShadowPkgs shadowPkgs
+
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)
 
@@ -318,6 +320,7 @@ planPackages comp solver configFlags configExFlags installFlags
     reorderGoals     = fromFlag (installReorderGoals     installFlags)
     independentGoals = fromFlag (installIndependentGoals installFlags)
     avoidReinstalls  = fromFlag (installAvoidReinstalls  installFlags)
+    shadowPkgs       = fromFlag (installShadowPkgs       installFlags)
     maxBackjumps     = fromFlag (installMaxBackjumps     installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps      installFlags)
     onlyDeps         = fromFlag (installOnlyDeps         installFlags)
