@@ -42,7 +42,7 @@ import System.Directory
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
-         ( openFile, IOMode(AppendMode) )
+         ( openFile, IOMode(AppendMode), stdout, hFlush )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -111,7 +111,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, debug, warn, die, intercalate, withTempDirectory )
+         ( notice, info, warn, die, intercalate, withTempDirectory )
 import Distribution.Client.Utils
          ( inDir, mergeBy, MergeResult(..) )
 import Distribution.System
@@ -119,7 +119,7 @@ import Distribution.System
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, showForCabal, verbose )
+         ( Verbosity, showForCabal, verbose, deafening )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
@@ -191,8 +191,11 @@ install verbosity packageDBs repos comp conf
                globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
 
     dryRun      = fromFlag (installDryRun installFlags)
-    logMsg message rest = debug verbosity message >> rest
-
+    logMsg message rest = debugNoWrap message >> rest
+    -- Solver debug output really looks better without automatic
+    -- line wrapping. TODO: This should probably be moved into
+    -- the utilities module.
+    debugNoWrap xs = when (verbosity >= deafening) (putStrLn xs >> hFlush stdout)
 
 upgrade _ _ _ _ _ _ _ _ _ _ _ = die $
     "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
