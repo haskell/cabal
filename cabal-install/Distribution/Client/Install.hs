@@ -177,7 +177,7 @@ install verbosity packageDBs repos comp conf
                          comp solver configFlags configExFlags installFlags
                          installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    checkPrintPlan verbosity installedPkgIndex installPlan installFlags
+    checkPrintPlan verbosity installedPkgIndex installPlan installFlags pkgSpecifiers
 
     unless dryRun $ do
       installPlan' <- performInstallations verbosity
@@ -337,14 +337,23 @@ checkPrintPlan :: Verbosity
                -> PackageIndex
                -> InstallPlan
                -> InstallFlags
+               -> [PackageSpecifier SourcePackage]
                -> IO ()
-checkPrintPlan verbosity installed installPlan installFlags = do
+checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers = do
 
+  -- User targets that are already installed.
+  let preExistingTargets =
+        [ p | let tgts = map pkgSpecifierTarget pkgSpecifiers,
+              InstallPlan.PreExisting p <- InstallPlan.toList installPlan,
+              packageName p `elem` tgts ]
+
+  -- If there's nothing to install, we print the already existing
+  -- target packages as an explanation.
   when nothingToInstall $
-    notice verbosity $
-         "No packages to be installed. All the requested packages are "
-      ++ "already installed.\n If you want to reinstall anyway then use "
-      ++ "the --reinstall flag."
+    notice verbosity $ unlines $
+         "All the requested packages are already installed:"
+       : map (display . packageId) preExistingTargets
+      ++ ["Use --reinstall if you want to reinstall anyway."]
 
   let lPlan = linearizeInstallPlan installed installPlan
   -- Are any packages classified as reinstalls?
