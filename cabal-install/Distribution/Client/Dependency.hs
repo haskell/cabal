@@ -367,7 +367,13 @@ resolveDependencies platform comp  solver params =
       noReinstalls
       shadowing
       maxBkjumps      = dontUpgradeBasePackage
-                      . hideBrokenInstalledPackages
+                      -- TODO:
+                      -- The modular solver can properly deal with broken packages
+                      -- and won't select them. So the 'hideBrokenInstalledPackages'
+                      -- function should be moved into a module that is specific
+                      -- to the Topdown solver.
+                      . (if solver /= Modular then hideBrokenInstalledPackages
+                                              else id)
                       $ params
 
     preferences = interpretPackagesPreference
