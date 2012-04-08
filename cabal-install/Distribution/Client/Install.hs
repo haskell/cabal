@@ -381,7 +381,7 @@ checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers = do
   -- We print the install plan if we are in a dry-run or if we are confronted
   -- with a dangerous install plan.
   when (dryRun || containsReinstalls && not overrideReinstall) $
-    printDryRun adaptedVerbosity lPlan
+    printPlan (dryRun || breaksPkgs && not overrideReinstall) adaptedVerbosity lPlan
 
   -- If the install plan is dangerous, we print various warning messages. In
   -- particular, if we can see that packages are likely to be broken, we even
@@ -463,19 +463,23 @@ packageStatus installedPkgIndex cpkg =
     changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
     changed _                        = True
 
-printDryRun :: Verbosity
-            -> [(ConfiguredPackage, PackageStatus)]
-            -> IO ()
-printDryRun verbosity plan = case plan of
+printPlan :: Bool -- is dry run
+          -> Verbosity
+          -> [(ConfiguredPackage, PackageStatus)]
+          -> IO ()
+printPlan dryRun verbosity plan = case plan of
   []   -> return ()
   pkgs
     | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
-        "In order, the following would be installed:"
+        ("In order, the following " ++ wouldWill ++ " be installed:")
       : map showPkgAndReason pkgs
     | otherwise -> notice verbosity $ unlines $
-        "In order, the following would be installed (use -v for more details):"
+        ("In order, the following " ++ wouldWill ++ " be installed (use -v for more details):")
       : map (display . packageId) (map fst pkgs)
   where
+    wouldWill | dryRun    = "would"
+              | otherwise = "will"
+
     showPkgAndReason (pkg', pr) = display (packageId pkg') ++
           showFlagAssignment (nonDefaultFlags pkg') ++
           showStanzas (stanzas pkg') ++ " " ++
