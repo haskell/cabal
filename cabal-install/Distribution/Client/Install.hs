@@ -358,13 +358,21 @@ checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers = do
   let lPlan = linearizeInstallPlan installed installPlan
   -- Are any packages classified as reinstalls?
   let reinstalledPkgs = concatMap (extractReinstalls . snd) lPlan
+  -- Packages that are already broken.
+  let oldBrokenPkgs =
+          map Installed.installedPackageId
+        . PackageIndex.reverseDependencyClosure installed
+        . map (Installed.installedPackageId . fst)
+        . PackageIndex.brokenPackages
+        $ installed
+  let excluded = reinstalledPkgs ++ oldBrokenPkgs
   -- Packages that are reverse dependencies of replaced packages are very
-  -- likely to be broken.
-  let brokenPkgs =
-        filter (\ p -> not (Installed.installedPackageId p `elem` reinstalledPkgs))
+  -- likely to be broken. We exclude packages that are already broken.
+  let newBrokenPkgs =
+        filter (\ p -> not (Installed.installedPackageId p `elem` excluded))
                (PackageIndex.reverseDependencyClosure installed reinstalledPkgs)
   let containsReinstalls = not (null reinstalledPkgs)
-  let breaksPkgs         = not (null brokenPkgs)
+  let breaksPkgs         = not (null newBrokenPkgs)
 
   let adaptedVerbosity
         | containsReinstalls && not overrideReinstall = verbosity `max` verbose
@@ -383,7 +391,7 @@ checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers = do
       then do
         (if dryRun || overrideReinstall then warn verbosity else die) $ unlines $
             "The following packages are likely to be broken by the reinstalls:"
-          : map (display . Installed.sourcePackageId) brokenPkgs
+          : map (display . Installed.sourcePackageId) newBrokenPkgs
           ++ if overrideReinstall
                then if dryRun then [] else
                  ["Continuing even though the plan contains dangerous reinstalls."]
