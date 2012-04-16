@@ -1,5 +1,19 @@
 -*-change-log-*-
 
+0.14.0 Andres Loeh <andres@well-typed.com> April 2012
+	* Works with ghc-7.4
+	* Completely new modular dependency solver (default in most cases)
+	* Some tweaks to old topdown dependency solver
+	* Install plans are now checked for reinstalls that break packages
+	* Flags --constraint and --preference work for nonexisting packages
+	* New constraint forms for source and installed packages
+	* New constraint form for package-specific use flags
+	* New constraint form for package-specific stanza flags
+	* Test suite dependencies are pulled in on demand
+	* No longer install packages on --enable-tests when tests fail
+	* New "cabal bench" command
+	* Various "cabal init" tweaks
+
 0.10.0 Duncan Coutts <duncan@community.haskell.org> February 2011
 	* New package targets: local dirs, local and remote tarballs
 	* Initial support for a "world" package target
