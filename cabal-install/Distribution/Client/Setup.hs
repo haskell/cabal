@@ -53,7 +53,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), SDistFlags(..), HaddockFlags(..) )
 import Distribution.Simple.Setup
-         ( Flag(..), toFlag, fromFlag, flagToList
+         ( Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
          , optionVerbosity, boolOpt, trueArg, falseArg )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, toPathTemplate, fromPathTemplate )
@@ -334,7 +334,7 @@ fetchCommand = CommandUI {
     commandDescription  = Nothing,
     commandUsage        = usagePackages "fetch",
     commandDefaultFlags = defaultFetchFlags,
-    commandOptions      = \_ -> [
+    commandOptions      = \ showOrParseArgs -> [
          optionVerbosity fetchVerbosity (\v flags -> flags { fetchVerbosity = v })
 
 --     , option "o" ["output"]
@@ -360,7 +360,8 @@ fetchCommand = CommandUI {
        ] ++
 
        optionSolver      fetchSolver           (\v flags -> flags { fetchSolver           = v }) :
-       optionSolverFlags fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
+       optionSolverFlags showOrParseArgs
+                         fetchMaxBackjumps     (\v flags -> flags { fetchMaxBackjumps     = v })
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
@@ -721,7 +722,8 @@ installOptions showOrParseArgs =
           trueArg
       ] ++
 
-      optionSolverFlags installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
+      optionSolverFlags showOrParseArgs
+                        installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
                         installReorderGoals     (\v flags -> flags { installReorderGoals     = v })
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
                         installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v }) ++
@@ -729,28 +731,27 @@ installOptions showOrParseArgs =
       [ option [] ["reinstall"]
           "Install even if it means installing the same version again."
           installReinstall (\v flags -> flags { installReinstall = v })
-          trueArg
+          (yesNoOpt showOrParseArgs)
 
       , option [] ["avoid-reinstalls"]
           "Do not select versions that would destructively overwrite installed packages."
           installAvoidReinstalls (\v flags -> flags { installAvoidReinstalls = v })
-          trueArg
+          (yesNoOpt showOrParseArgs)
 
       , option [] ["force-reinstalls"]
           "Reinstall packages even if they will most likely break other installed packages."
           installOverrideReinstall (\v flags -> flags { installOverrideReinstall = v })
-          trueArg
+          (yesNoOpt showOrParseArgs)
 
       , option [] ["upgrade-dependencies"]
           "Pick the latest version for all dependencies, rather than trying to pick an installed version."
           installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
-          trueArg
+          (yesNoOpt showOrParseArgs)
 
       , option [] ["only-dependencies"]
           "Install only the dependencies necessary to build the given packages"
           installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
-          trueArg
-
+          (yesNoOpt showOrParseArgs)
 
       , option [] ["root-cmd"]
           "Command used to gain root privileges, when installing with --global."
@@ -784,7 +785,7 @@ installOptions showOrParseArgs =
       , option [] ["one-shot"]
           "Do not record the packages in the world file."
           installOneShot (\v flags -> flags { installOneShot = v })
-          trueArg
+          (yesNoOpt showOrParseArgs)
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
@@ -1110,13 +1111,17 @@ instance Monoid SDistExFlags where
 -- * GetOpt Utils
 -- ------------------------------------------------------------
 
-reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
-              (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
+reqArgFlag :: ArgPlaceHolder ->
+              MkOptDescr (b -> Flag String) (Flag String -> b -> b) b
 reqArgFlag ad = reqArg ad (succeedReadE Flag) flagToList
 
 liftOptions :: (b -> a) -> (a -> b -> b)
             -> [OptionField a] -> [OptionField b]
 liftOptions get set = map (liftOption get set)
+
+yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> (b -> b)) b
+yesNoOpt ShowArgs sf lf = trueArg sf lf
+yesNoOpt _        sf lf = boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf
 
 optionSolver :: (flags -> Flag PreSolver)
              -> (Flag PreSolver -> flags -> flags)
@@ -1129,12 +1134,13 @@ optionSolver get set =
                                  (toFlag `fmap` parse))
                      (flagToList . fmap display))
 
-optionSolverFlags :: (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
+optionSolverFlags :: ShowOrParseArgs
+                  -> (flags -> Flag Int   ) -> (Flag Int    -> flags -> flags)
                   -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
                   -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
                   -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
                   -> [OptionField flags]
-optionSolverFlags getmbj setmbj getrg setrg getig setig getsip setsip =
+optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip setsip =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
@@ -1144,11 +1150,14 @@ optionSolverFlags getmbj setmbj getrg setrg getig setig getsip setsip =
   , option [] ["reorder-goals"]
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
       getrg setrg
-      trueArg
+      (yesNoOpt showOrParseArgs)
+  -- TODO: Disabled for now because it does not work as advertised (yet).
+{-
   , option [] ["independent-goals"]
       "Treat several goals on the command line as independent. If several goals depend on the same package, different versions can be chosen."
       getig setig
-      trueArg
+      (yesNoOpt showOrParseArgs)
+-}
   , option [] ["shadow-installed-packages"]
       "If multiple package instances of the same version are installed, treat all but one as shadowed."
       getsip setsip
