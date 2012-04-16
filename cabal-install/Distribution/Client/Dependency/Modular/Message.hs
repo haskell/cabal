@@ -87,11 +87,11 @@ showFR _ (GlobalConstraintVersion vr)   = " (global constraint requires " ++ dis
 showFR _ GlobalConstraintInstalled      = " (global constraint requires installed instance)"
 showFR _ GlobalConstraintSource         = " (global constraint requires source instance)"
 showFR _ GlobalConstraintFlag           = " (global constraint requires opposite flag selection)"
+showFR _ (BuildFailureNotInIndex pn)    = " (unknown package: " ++ display pn ++ ")"
 showFR c Backjump                       = " (backjumping, conflict set: " ++ showCS c ++ ")"
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.
-showFR _ (BuildFailureNotInIndex pn)    = " (BUILD FAILURE: NOT IN INDEX: " ++ display pn ++ ")"
 showFR _ (MalformedFlagChoice qfn)      = " (INTERNAL ERROR: MALFORMED FLAG CHOICE: " ++ showQFN qfn ++ ")"
 showFR _ (MalformedStanzaChoice qsn)    = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
 showFR _ EmptyGoalChoice                = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
