@@ -37,16 +37,19 @@ import Distribution.Client.Setup
          , ReportFlags(..), reportCommand
          , showRepo, parseRepo )
 
+import Distribution.Simple.Compiler
+         ( OptimisationLevel(..) )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
          , installDirsOptions
-         , Flag, toFlag, flagToMaybe, fromFlagOrDefault )
+         , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
          , PathTemplate, toPathTemplate )
 import Distribution.ParseUtils
          ( FieldDescr(..), liftField
-         , ParseResult(..), locatedErrorMsg, showPWarning
+         , ParseResult(..), PError(..), PWarning(..)
+         , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
          , simpleField, listField, parseFilePathQ, parseTokenQ )
 import qualified Distribution.ParseUtils as ParseUtils
@@ -351,6 +354,31 @@ configFieldDescriptions =
        [simpleField "compiler"
           (fromFlagOrDefault Disp.empty . fmap Text.disp) (optional Text.parse)
           configHcFlavor (\v flags -> flags { configHcFlavor = v })
+        -- TODO: The following is a temporary fix. The "optimization" field is
+        -- OptArg, and viewAsFieldDescr fails on that. Instead of a hand-written
+        -- hackaged parser and printer, we should handle this case properly in
+        -- the library.
+       ,liftField configOptimization (\v flags -> flags { configOptimization = v }) $
+        let name = "optimization" in
+        FieldDescr name
+          (\f -> case f of
+                   Flag NoOptimisation      -> Disp.text "False"
+                   Flag NormalOptimisation  -> Disp.text "True"
+                   Flag MaximumOptimisation -> Disp.text "2"
+                   _                        -> Disp.empty)
+          (\line str _ -> case () of
+           _ |  str == "False" -> ParseOk [] (Flag NoOptimisation)
+             |  str == "True"  -> ParseOk [] (Flag NormalOptimisation)
+             |  str == "0"     -> ParseOk [] (Flag NoOptimisation)
+             |  str == "1"     -> ParseOk [] (Flag NormalOptimisation)
+             |  str == "2"     -> ParseOk [] (Flag MaximumOptimisation)
+             | lstr == "false" -> ParseOk [caseWarning] (Flag NoOptimisation)
+             | lstr == "true"  -> ParseOk [caseWarning] (Flag NormalOptimisation)
+             | otherwise       -> ParseFailed (NoParse name line)
+             where
+               lstr = lowercase str
+               caseWarning = PWarning $
+                 "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'.")
        ]
 
   ++ toSavedConfig liftConfigExFlag
