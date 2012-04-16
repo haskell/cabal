@@ -48,6 +48,7 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
 PARSEC_VER="3.1.2";    PARSEC_VER_REGEXP="[23]\."  # == 2.* || == 3.*
+DEEPSEQ_VER="1.3.0.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\." # >= 1.1 && < 2
 TEXT_VER="0.11.2.0";  TEXT_VER_REGEXP="0\.([2-9]|(1[0-1]))\." # >= 0.2 && < 0.12
 NETWORK_VER="2.3.0.11"; NETWORK_VER_REGEXP="2\."    # == 2.*
 CABAL_VER="1.14.0";    CABAL_VER_REGEXP="1\.(13\.3|14\.)"  # >= 1.13.3 && < 1.15
@@ -189,6 +190,7 @@ do_pkg () {
 info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 info_pkg "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
+info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
@@ -200,6 +202,7 @@ info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
+do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 do_pkg   "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 do_pkg   "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
