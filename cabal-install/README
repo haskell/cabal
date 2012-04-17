@@ -17,13 +17,10 @@ come with a standard ghc installation. It requires the `network` package, which
 is sometimes packaged separately by Linux distributions, for example on
 debian or ubuntu it is in "libghc6-network-dev".
 
-It requires a few other Haskell packages that are not always installed:
-
- * Cabal  (version 1.10 or later)
- * HTTP   (version 4000 or later)
- * zlib   (version 0.4  or later)
-
-All of these are available from [Hackage](http://hackage.haskell.org).
+It requires a few other Haskell packages that are not always installed.
+The exact list is specified in the `.cabal` file or in the `bootstrap.sh`
+file. All these packages are available from
+[Hackage](http://hackage.haskell.org).
 
 Note that on some Unix systems you may need to install an additional zlib
 development package using your system package manager, for example on
@@ -45,7 +42,7 @@ which will download and install each of the dependencies in turn.
 
     $ ./bootstrap.sh
 
-It will download and install the above three dependencies. The script will
+It will download and install the dependencies. The script will
 install the library packages into `$HOME/.cabal/` and the `cabal` program will
 be installed into `$HOME/.cabal/bin/`.
 
@@ -139,13 +136,6 @@ their dependencies) from hackage.
 By default it installs the latest available version however you can optionally
 specify exact versions or version ranges. For example `cabal install alex-2.2`
 or `cabal install parsec < 3`.
-
-    $ cabal upgrade xmonad
-
-This is a variation on the `install` command. Both mean to install the latest
-version, the only difference is in the treatment of dependencies. The `install`
-command tries to use existing installed versions of dependent packages while
-the `upgrade` command tries to upgrade all the dependencies too.
 
     $ cabal list xml
 
