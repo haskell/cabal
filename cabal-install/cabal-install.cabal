@@ -26,8 +26,8 @@ Extra-Source-Files: README bash-completion/cabal bootstrap.sh
 Cabal-Version:      >= 1.6
 
 source-repository head
-  type:     darcs
-  location: http://darcs.haskell.org/cabal/
+  type:     git
+  location: https://github.com/haskell/cabal/
   subdir:   cabal-install
 
 flag old-base
