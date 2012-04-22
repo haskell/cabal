@@ -5,4 +5,4 @@ This Cabal darcs repository contains multiple packages:
 
 See the README in each subdir for more details.
 
-The canonical upstream repo lives at http://darcs.haskell.org/cabal/
+The canonical upstream repo lives at https://github.com/haskell/cabal
