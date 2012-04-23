@@ -43,6 +43,7 @@ module Distribution.Simple.PackageIndex (
   -- ** Bulk queries
   allPackages,
   allPackagesByName,
+  allPackagesBySourcePackageId,
 
   -- ** Special queries
   brokenPackages,
@@ -293,11 +294,22 @@ allPackages (PackageIndex pids _) = Map.elems pids
 
 -- | Get all the packages from the index.
 --
--- They are grouped by package name, case-sensitively.
+-- They are grouped by package name (case-sensitively).
 --
-allPackagesByName :: PackageIndex -> [[InstalledPackageInfo]]
+allPackagesByName :: PackageIndex -> [(PackageName, [InstalledPackageInfo])]
 allPackagesByName (PackageIndex _ pnames) =
-  concatMap Map.elems (Map.elems pnames)
+  [ (pkgname, concat (Map.elems pvers))
+  | (pkgname, pvers) <- Map.toList pnames ]
+
+-- | Get all the packages from the index.
+--
+-- They are grouped by source package id (package name and version).
+--
+allPackagesBySourcePackageId :: PackageIndex -> [(PackageId, [InstalledPackageInfo])]
+allPackagesBySourcePackageId (PackageIndex _ pnames) =
+  [ (packageId ipkg, ipkgs)
+  | pvers <- Map.elems pnames
+  , ipkgs@(ipkg:_) <- Map.elems pvers ]
 
 --
 -- * Lookups

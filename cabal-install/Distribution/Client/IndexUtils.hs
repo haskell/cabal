@@ -51,11 +51,11 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info, fromUTF8, equating )
+         ( die, warn, info, fromUTF8 )
 
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (catMaybes, fromMaybe)
-import Data.List   (isPrefixOf, groupBy)
+import Data.List   (isPrefixOf)
 import Data.Monoid (Monoid(..))
 import qualified Data.Map as Map
 import Control.Monad (MonadPlus(mplus), when, unless, liftM)
@@ -89,15 +89,14 @@ getInstalledPackages verbosity comp packageDbs conf =
 
 convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
 convert index' = PackageIndex.fromList
-  -- There can be multiple installed instances of each package version,
-  -- like when the same package is installed in the global & user dbs.
-  -- InstalledPackageIndex.allPackagesByName gives us the installed
-  -- packages with the most preferred instances first, so by picking the
-  -- first we should get the user one. This is almost but not quite the
-  -- same as what ghc does.
-  [ InstalledPackage ipkg (sourceDeps index' ipkg)
-  | ipkgs <- InstalledPackageIndex.allPackagesByName index'
-  , (ipkg:_) <- groupBy (equating packageVersion) ipkgs ]
+    -- There can be multiple installed instances of each package version,
+    -- like when the same package is installed in the global & user dbs.
+    -- InstalledPackageIndex.allPackagesBySourcePackageId gives us the
+    -- installed packages with the most preferred instances first, so by
+    -- picking the first we should get the user one. This is almost but not
+    -- quite the same as what ghc does.
+    [ InstalledPackage ipkg (sourceDeps index' ipkg)
+    | (_,ipkg:_) <- InstalledPackageIndex.allPackagesBySourcePackageId index' ]
   where
     -- The InstalledPackageInfo only lists dependencies by the
     -- InstalledPackageId, which means we do not directly know the corresponding
