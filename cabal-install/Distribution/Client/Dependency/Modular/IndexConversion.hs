@@ -12,7 +12,6 @@ import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
 import qualified Distribution.Simple.PackageIndex as SI
-import Distribution.Simple.Utils (equating)
 import Distribution.System
 
 import Distribution.Client.Dependency.Modular.Dependency as D
@@ -25,9 +24,9 @@ import Distribution.Client.Dependency.Modular.Version
 -- | Convert both the installed package index and the source package
 -- index into one uniform solver index.
 --
--- We use 'allPackagesByName' for the installed package index because
--- that returns us several instances of the same package and version
--- in order of preference. This allows us in principle to "shadow"
+-- We use 'allPackagesBySourcePackageId' for the installed package index
+-- because that returns us several instances of the same package and version
+-- in order of preference. This allows us in principle to \"shadow\"
 -- packages if there are several installed packages of the same version.
 -- There are currently some shortcomings in both GHC and Cabal in
 -- resolving these situations. However, the right thing to do is to
@@ -41,14 +40,14 @@ convPIs os arch cid sip iidx sidx =
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
 convIPI' :: Bool -> SI.PackageIndex -> [(PN, I, PInfo)]
-convIPI' sip idx = combine (convIP idx) . versioned . SI.allPackagesByName $ idx
-  where
-    -- group installed packages by version
-    versioned = L.map (groupBy (equating packageVersion))
+convIPI' sip idx =
     -- apply shadowing whenever there are multple installed packages with
     -- the same version
-    combine f pkgs = [ g (f p) | pbn <- pkgs, pbv <- pbn,
-                                 (g, p) <- zip (id : repeat shadow) pbv ]
+    [ maybeShadow (convIP idx pkg)
+    | (_pkgid, pkgs) <- SI.allPackagesBySourcePackageId idx
+    , (maybeShadow, pkg) <- zip (id : repeat shadow) pkgs ]
+  where
+
     -- shadowing is recorded in the package info
     shadow (pn, i, PInfo fdeps fds encs _) | sip = (pn, i, PInfo fdeps fds encs (Just Shadowed))
     shadow x                                     = x

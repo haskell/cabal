@@ -22,14 +22,15 @@ import Control.Monad (guard)
 import System.Directory (createDirectoryIfMissing, doesFileExist,
                          renameFile)
 import System.FilePath ((</>), splitFileName)
-import Distribution.Package (Package(..))
+import Distribution.Package
+         ( Package(..), packageVersion )
 import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
                                    , rawSystemProgram, requireProgramVersion)
 import Distribution.Version (Version(Version), orLaterVersion)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text (display)
-import Distribution.Simple.PackageIndex (PackageIndex, allPackages,
-                                         allPackagesByName, fromList)
+import Distribution.Simple.PackageIndex
+         ( PackageIndex, allPackagesByName )
 import Distribution.Simple.Utils
          ( comparing, intercalate, debug
          , installDirectoryContents, withTempDirectory )
@@ -64,12 +65,10 @@ regenerateHaddockIndex verbosity pkgs conf index = do
 
   where
     (destDir,destFile) = splitFileName index
-    pkgs' = map (maximumBy $ comparing packageId)
-            . allPackagesByName
-            . fromList
-            . filter exposed
-            . allPackages
-            $ pkgs
+    pkgs' = [ maximumBy (comparing packageVersion) pkgvers'
+            | (_pname, pkgvers) <- allPackagesByName pkgs
+            , let pkgvers' = filter exposed pkgvers
+            , not (null pkgvers') ]
 
 haddockPackagePaths :: [InstalledPackageInfo]
                        -> IO ([(FilePath, FilePath)], Maybe String)
