@@ -116,16 +116,16 @@ convGPD os arch cid pi
       (maybe []    (convCondTree os arch cid pi fds (const True)          ) libs    ++
        concatMap   (convCondTree os arch cid pi fds (const True)     . snd) exes    ++
       (prefix (Stanza (SN pi TestStanzas))
-        (concatMap (convCondTree os arch cid pi fds (const True)     . snd) tests)) ++
+        (L.map     (convCondTree os arch cid pi fds (const True)     . snd) tests)) ++
       (prefix (Stanza (SN pi BenchStanzas))
-        (concatMap (convCondTree os arch cid pi fds (const True)     . snd) benchs)))
+        (L.map     (convCondTree os arch cid pi fds (const True)     . snd) benchs)))
       fds
       [] -- TODO: add encaps
       Nothing
 
-prefix :: (FlaggedDeps qpn -> FlaggedDep qpn) -> FlaggedDeps qpn -> FlaggedDeps qpn
+prefix :: (FlaggedDeps qpn -> FlaggedDep qpn) -> [FlaggedDeps qpn] -> FlaggedDeps qpn
 prefix _ []  = []
-prefix f fds = [f fds]
+prefix f fds = [f (concat fds)]
 
 -- | Convert flag information.
 flagDefaults :: [PD.Flag] -> FlagDefaults
