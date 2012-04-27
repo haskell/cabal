@@ -86,6 +86,9 @@ data License =
     -- certainly want to use the BSD3 license instead.
   | BSD4
 
+    -- | Apache license 2.0.  GPL3 compatible, very free license.
+  | Apache2
+
     -- | The MIT license, similar to the BSD3. Very free license.
   | MIT
 
@@ -126,6 +129,7 @@ instance Text License where
       ("LGPL",              _      ) -> LGPL version
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
+      ("Apache2",           Nothing) -> Apache2
       ("MIT",               Nothing) -> MIT
       ("PublicDomain",      Nothing) -> PublicDomain
       ("AllRightsReserved", Nothing) -> AllRightsReserved
