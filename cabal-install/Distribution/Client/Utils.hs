@@ -4,9 +4,15 @@ import Data.List
          ( sortBy, groupBy )
 import System.Directory
          ( doesFileExist, getModificationTime
-         , getCurrentDirectory, setCurrentDirectory )
+         , getCurrentDirectory, setCurrentDirectory
+         , renameFile, removeFile )
+import System.FilePath
+         ( splitFileName, (<.>) )
+import System.IO
+         ( openBinaryTempFile, hClose )
 import qualified Control.Exception as Exception
-         ( finally )
+         ( bracketOnError, finally )
+import qualified Data.ByteString.Lazy as BS
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
@@ -58,3 +64,15 @@ inDir (Just d) m = do
   old <- getCurrentDirectory
   setCurrentDirectory d
   m `Exception.finally` setCurrentDirectory old
+
+-- | Write a file atomically
+writeFileAtomic :: FilePath -> BS.ByteString -> IO ()
+writeFileAtomic targetPath content = do
+  let (targetDir, targetFile) = splitFileName targetPath
+  Exception.bracketOnError
+    (openBinaryTempFile targetDir $ targetFile <.> "tmp")
+    (\(tmpPath, handle) -> hClose handle >> removeFile tmpPath)
+    (\(tmpPath, handle) -> do
+        BS.hPut handle content
+        hClose handle
+        renameFile tmpPath targetPath)
