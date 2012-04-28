@@ -1,6 +1,0 @@
-^dist(/|$)
-^setup(/|$)
-^GNUmakefile$
-^Makefile.local$
-^.depend(.bak)?$
-^doc/.depend(.bak)?$
