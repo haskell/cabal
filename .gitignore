@@ -1,0 +1,5 @@
+# trivial gitignore file
+
+Cabal/dist/
+cabal-install/dist/
+.hpc/
