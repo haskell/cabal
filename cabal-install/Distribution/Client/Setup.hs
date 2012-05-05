@@ -27,6 +27,7 @@ module Distribution.Client.Setup
     , unpackCommand, UnpackFlags(..)
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
+    , forkCommand, ForkFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -506,6 +507,46 @@ instance Monoid UnpackFlags where
   mappend a b = UnpackFlags {
      unpackDestDir = combine unpackDestDir
     ,unpackVerbosity = combine unpackVerbosity
+  }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Fork flags
+-- ------------------------------------------------------------
+
+data ForkFlags = ForkFlags {
+      forkDestDir :: Flag FilePath,
+      forkVerbosity :: Flag Verbosity
+    }
+
+defaultForkFlags :: ForkFlags
+defaultForkFlags = ForkFlags {
+    forkDestDir = mempty,
+    forkVerbosity = toFlag normal
+   }
+
+forkCommand :: CommandUI ForkFlags
+forkCommand = CommandUI {
+    commandName         = "fork",
+    commandSynopsis     = "Forks a package's source repository to the local disk.",
+    commandDescription  = Nothing,
+    commandUsage        = usagePackages "fork",
+    commandDefaultFlags = mempty,
+    commandOptions      = \_ -> [
+        optionVerbosity forkVerbosity (\v flags -> flags { forkVerbosity = v })
+
+       ,option "d" ["destdir"]
+         "Where to place the forked checkout; defaults to the current directory."
+         forkDestDir (\v flags -> flags { forkDestDir = v })
+         (reqArgFlag "PATH")
+       ]
+  }
+
+instance Monoid ForkFlags where
+  mempty = defaultForkFlags
+  mappend a b = ForkFlags {
+     forkDestDir = combine forkDestDir
+    ,forkVerbosity = combine forkVerbosity
   }
     where combine field = field a `mappend` field b
 

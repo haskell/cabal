@@ -75,6 +75,7 @@ Executable cabal
         Distribution.Client.Dependency.Modular.Version
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
+        Distribution.Client.Fork
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
