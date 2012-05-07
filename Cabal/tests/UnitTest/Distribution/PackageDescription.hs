@@ -199,7 +199,7 @@ hunitTests =
     [ TestLabel "license parsers" $ TestCase $
       sequence_ [ assertParseOk ("license " ++ show lVal) lVal
                     (runP 1 "license" parseLicenseQ (show lVal))
-                | lVal <- [GPL,LGPL,BSD3,BSD4] ]
+                | lVal <- [GPL,LGPL,BSD3,BSD4,Apache] ]
 
     , TestLabel "Required fields" $ TestCase $
       do assertParseOk "some fields"

@@ -89,6 +89,11 @@ data License =
     -- | The MIT license, similar to the BSD3. Very free license.
   | MIT
 
+    -- | The Apache License. Version 2.0 is the current version,
+    -- previous versions are considered historical.
+
+  | Apache (Maybe Version)
+
     -- | Holder makes no claim to ownership, least restrictive license.
   | PublicDomain
 
@@ -107,6 +112,7 @@ knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
                 , LGPL unversioned, LGPL (version [2,1]), LGPL (version [3])
                 , BSD3, MIT
+                , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
  where
    unversioned = Nothing
@@ -115,6 +121,7 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
 instance Text License where
   disp (GPL  version)         = Disp.text "GPL"  <> dispOptVersion version
   disp (LGPL version)         = Disp.text "LGPL" <> dispOptVersion version
+  disp (Apache version)       = Disp.text "Apache" <> dispOptVersion version
   disp (UnknownLicense other) = Disp.text other
   disp other                  = Disp.text (show other)
 
@@ -127,6 +134,7 @@ instance Text License where
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
       ("MIT",               Nothing) -> MIT
+      ("Apache",            _      ) -> Apache version
       ("PublicDomain",      Nothing) -> PublicDomain
       ("AllRightsReserved", Nothing) -> AllRightsReserved
       ("OtherLicense",      Nothing) -> OtherLicense
