@@ -516,6 +516,9 @@ checkLicense pkg =
     unknownLicenseVersion (LGPL (Just v))
       | v `notElem` knownVersions = Just knownVersions
       where knownVersions = [ v' | LGPL (Just v') <- knownLicenses ]
+    unknownLicenseVersion (Apache  (Just v))
+      | v `notElem` knownVersions = Just knownVersions
+      where knownVersions = [ v' | Apache  (Just v') <- knownLicenses ]
     unknownLicenseVersion _ = Nothing
 
 checkSourceRepos :: PackageDescription -> [PackageCheck]
