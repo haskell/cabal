@@ -205,7 +205,7 @@ ghcInvocation prog@ConfiguredProgram { programVersion = Just ver } opts =
 
 
 renderGhcOptions :: Version -> GhcOptions -> [String]
-renderGhcOptions (Version ver _) opts =
+renderGhcOptions version@(Version ver _) opts =
   concat
   [ case flagToMaybe (ghcOptMode opts) of
        Nothing                 -> []
@@ -291,7 +291,7 @@ renderGhcOptions (Version ver _) opts =
   , [ "-hide-all-packages"     | flagBool ghcOptHideAllPackages ]
   , [ "-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages ]
 
-  , packageDbArgs (flags ghcOptPackageDBs)
+  , packageDbArgs version (flags ghcOptPackageDBs)
 
   , concat $ if ver >= [6,11]
       then [ ["-package-id", display ipkgid] | (ipkgid,_) <- flags ghcOptPackages ]
@@ -343,17 +343,23 @@ verbosityOpts verbosity
   | otherwise              = ["-w", "-v0"]
 
 
-packageDbArgs :: PackageDBStack -> [String]
-packageDbArgs dbstack = case dbstack of
+packageDbArgs :: Version -> PackageDBStack -> [String]
+packageDbArgs (Version ver _) dbstack = case dbstack of
   (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
-  (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
+  (GlobalPackageDB:dbs)               -> ("-no-user-" ++ packageDbFlag)
                                        : concatMap specific dbs
   _ -> ierror
   where
-    specific (SpecificPackageDB db) = [ "-package-conf", db ]
+    specific (SpecificPackageDB db) = [ '-':packageDbFlag , db ]
     specific _ = ierror
     ierror     = error $ "internal error: unexpected package db stack: "
                       ++ show dbstack
+
+    packageDbFlag
+      | ver < [7,5]
+      = "package-conf"
+      | otherwise
+      = "package-db"
 
 
 -- -----------------------------------------------------------------------------
