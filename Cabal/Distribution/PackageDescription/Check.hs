@@ -586,6 +586,11 @@ checkGhcOptions pkg =
         ++ "is using the FFI incorrectly and will probably not work with GHC "
         ++ "6.10 or later."
 
+  , checkFlags ["-fdefer-type-errors"] $
+      PackageDistInexcusable $
+          "'ghc-options: -fdefer-type-errors' is fine during development but "
+       ++ "is not appropriate for a distributed package."
+
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
         "'ghc-options: -fhpc' is not appropriate for a distributed package."
