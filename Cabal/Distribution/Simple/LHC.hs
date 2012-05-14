@@ -241,7 +241,7 @@ getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                      -> IO PackageIndex
 getInstalledPackages verbosity packagedbs conf = do
   checkPackageDbStack packagedbs
-  pkgss <- getInstalledPackages' verbosity packagedbs conf
+  pkgss <- getInstalledPackages' lhcPkg verbosity packagedbs conf
   let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
   return $! (mconcat indexes)
@@ -251,6 +251,7 @@ getInstalledPackages verbosity packagedbs conf = do
     -- paths. We need to substitute the right value in so that when
     -- we, for example, call gcc, we have proper paths to give it
     Just ghcProg = lookupProgram lhcProgram conf
+    Just lhcPkg  = lookupProgram lhcPkgProgram conf
     compilerDir  = takeDirectory (programPath ghcProg)
     topDir       = takeDirectory compilerDir
 
@@ -263,9 +264,10 @@ checkPackageDbStack _ =
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 --
-getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
-                     -> IO [(PackageDB, [InstalledPackageInfo])]
-getInstalledPackages' verbosity packagedbs conf
+getInstalledPackages' :: ConfiguredProgram -> Verbosity
+                      -> [PackageDB] -> ProgramConfiguration
+                      -> IO [(PackageDB, [InstalledPackageInfo])]
+getInstalledPackages' lhcPkg verbosity packagedbs conf
   =
   sequence
     [ do str <- rawSystemProgramStdoutConf verbosity lhcPkgProgram conf
@@ -294,7 +296,13 @@ getInstalledPackages' verbosity packagedbs conf
 
     packageDbGhcPkgFlag GlobalPackageDB          = "--global"
     packageDbGhcPkgFlag UserPackageDB            = "--user"
-    packageDbGhcPkgFlag (SpecificPackageDB path) = "--package-conf=" ++ path
+    packageDbGhcPkgFlag (SpecificPackageDB path) = "--" ++ packageDbFlag ++ "=" ++ path
+
+    packageDbFlag
+      | programVersion lhcPkg < Just (Version [7,5] [])
+      = "package-conf"
+      | otherwise
+      = "package-db"
 
 
 substTopDir :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
@@ -607,7 +615,7 @@ ghcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
            -> FilePath -> [String]
 ghcOptions lbi bi clbi odir
      =  ["-hide-all-packages"]
-     ++ ghcPackageDbOptions (withPackageDB lbi)
+     ++ ghcPackageDbOptions lbi
      ++ (if splitObjs lbi then ["-split-objs"] else [])
      ++ ["-i"]
      ++ ["-i" ++ odir]
@@ -643,16 +651,23 @@ ghcPackageFlags lbi clbi
     where
       ghcVer = compilerVersion (compiler lbi)
 
-ghcPackageDbOptions :: PackageDBStack -> [String]
-ghcPackageDbOptions dbstack = case dbstack of
+ghcPackageDbOptions :: LocalBuildInfo -> [String]
+ghcPackageDbOptions lbi = case dbstack of
   (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
-  (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
+  (GlobalPackageDB:dbs)               -> ("-no-user-" ++ packageDbFlag)
                                        : concatMap specific dbs
   _                                   -> ierror
  where
-    specific (SpecificPackageDB db) = [ "-package-conf", db ]
+    specific (SpecificPackageDB db) = [ '-':packageDbFlag, db ]
     specific _ = ierror
     ierror     = error ("internal error: unexpected package db stack: " ++ show dbstack)
+
+    dbstack = withPackageDB lbi
+    packageDbFlag
+      | compilerVersion (compiler lbi) < Version [7,5] []
+      = "package-conf"
+      | otherwise
+      = "package-db"
 
 constructCcCmdLine :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
                    -> FilePath -> FilePath -> Verbosity -> (FilePath,[String])
@@ -672,7 +687,7 @@ ghcCcOptions :: LocalBuildInfo -> BuildInfo -> ComponentLocalBuildInfo
              -> FilePath -> [String]
 ghcCcOptions lbi bi clbi odir
      =  ["-I" ++ dir | dir <- PD.includeDirs bi]
-     ++ ghcPackageDbOptions (withPackageDB lbi)
+     ++ ghcPackageDbOptions lbi
      ++ ghcPackageFlags lbi clbi
      ++ ["-optc" ++ opt | opt <- PD.ccOptions bi]
      ++ (case withOptimization lbi of

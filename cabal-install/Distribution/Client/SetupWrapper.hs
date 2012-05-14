@@ -286,7 +286,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     let outOfDate = setupHsNewer || cabalVersionNewer
     when outOfDate $ do
       debug verbosity "Setup script is out of date, compiling..."
-      (_, conf, _) <- configureCompiler options'
+      (_, conf, compiler) <- configureCompiler options'
       --TODO: get Cabal's GHC module to export a GhcOptions type and render func
       rawSystemProgramConf verbosity ghcProgram conf $
           ghcVerbosityOptions verbosity
@@ -300,17 +300,22 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     where
       cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
 
-      ghcPackageDbOptions :: PackageDBStack -> [String]
-      ghcPackageDbOptions dbstack = case dbstack of
+      ghcPackageDbOptions :: Compiler -> PackageDBStack -> [String]
+      ghcPackageDbOptions compiler dbstack = case dbstack of
         (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
-        (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
+        (GlobalPackageDB:dbs)               -> ("-no-user-" ++ packageDbFlag)
                                              : concatMap specific dbs
         _                                   -> ierror
         where
-          specific (SpecificPackageDB db) = [ "-package-conf", db ]
+          specific (SpecificPackageDB db) = [ '-':packageDbFlag, db ]
           specific _ = ierror
           ierror     = error "internal error: unexpected package db stack"
 
+          packageDbFlag
+            | compilerVersion compiler < Version [7,5] []
+            = "package-conf"
+            | otherwise
+            = "package-db"
 
   invokeSetupScript :: [String] -> IO ()
   invokeSetupScript args = do

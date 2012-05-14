@@ -132,7 +132,7 @@ cabal spec cabalArgs = do
     r <- run (Just $ directory spec) "ghc"
              [ "--make"
              , "-fhpc"
-             , "-package-conf " ++ wd </> "../dist/package.conf.inplace"
+             , "-package-db " ++ wd </> "../dist/package.conf.inplace"
              , "Setup.hs"
              ]
     requireSuccess r

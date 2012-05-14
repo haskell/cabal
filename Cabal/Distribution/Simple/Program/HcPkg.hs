@@ -64,7 +64,7 @@ import qualified System.FilePath.Posix as FilePath.Posix
 
 -- | Call @hc-pkg@ to register a package.
 --
--- > hc-pkg register {filename | -} [--user | --global | --package-conf]
+-- > hc-pkg register {filename | -} [--user | --global | --package-db]
 --
 register :: Verbosity -> ConfiguredProgram -> PackageDBStack
          -> Either FilePath
@@ -77,7 +77,7 @@ register verbosity hcPkg packagedb pkgFile =
 
 -- | Call @hc-pkg@ to re-register a package.
 --
--- > hc-pkg register {filename | -} [--user | --global | --package-conf]
+-- > hc-pkg register {filename | -} [--user | --global | --package-db]
 --
 reregister :: Verbosity -> ConfiguredProgram -> PackageDBStack
            -> Either FilePath
@@ -90,7 +90,7 @@ reregister verbosity hcPkg packagedb pkgFile =
 
 -- | Call @hc-pkg@ to unregister a package
 --
--- > hc-pkg unregister [pkgid] [--user | --global | --package-conf]
+-- > hc-pkg unregister [pkgid] [--user | --global | --package-db]
 --
 unregister :: Verbosity -> ConfiguredProgram -> PackageDB -> PackageId -> IO ()
 unregister verbosity hcPkg packagedb pkgid =
@@ -100,7 +100,7 @@ unregister verbosity hcPkg packagedb pkgid =
 
 -- | Call @hc-pkg@ to expose a package.
 --
--- > hc-pkg expose [pkgid] [--user | --global | --package-conf]
+-- > hc-pkg expose [pkgid] [--user | --global | --package-db]
 --
 expose :: Verbosity -> ConfiguredProgram -> PackageDB -> PackageId -> IO ()
 expose verbosity hcPkg packagedb pkgid =
@@ -110,7 +110,7 @@ expose verbosity hcPkg packagedb pkgid =
 
 -- | Call @hc-pkg@ to expose a package.
 --
--- > hc-pkg expose [pkgid] [--user | --global | --package-conf]
+-- > hc-pkg expose [pkgid] [--user | --global | --package-db]
 --
 hide :: Verbosity -> ConfiguredProgram -> PackageDB -> PackageId -> IO ()
 hide verbosity hcPkg packagedb pkgid =
@@ -245,8 +245,8 @@ registerInvocation' cmdname hcPkg verbosity packagedbs (Left pkgFile) =
   where
     args = [cmdname, pkgFile]
         ++ (if legacyVersion hcPkg
-              then [packageDbOpts (last packagedbs)]
-              else packageDbStackOpts packagedbs)
+              then [packageDbOpts hcPkg (last packagedbs)]
+              else packageDbStackOpts hcPkg packagedbs)
         ++ verbosityOpts hcPkg verbosity
 
 registerInvocation' cmdname hcPkg verbosity packagedbs (Right pkgInfo) =
@@ -257,8 +257,8 @@ registerInvocation' cmdname hcPkg verbosity packagedbs (Right pkgInfo) =
   where
     args = [cmdname, "-"]
         ++ (if legacyVersion hcPkg
-              then [packageDbOpts (last packagedbs)]
-              else packageDbStackOpts packagedbs)
+              then [packageDbOpts hcPkg (last packagedbs)]
+              else packageDbStackOpts hcPkg packagedbs)
         ++ verbosityOpts hcPkg verbosity
 
 
@@ -267,7 +267,7 @@ unregisterInvocation :: ConfiguredProgram
                      -> ProgramInvocation
 unregisterInvocation hcPkg verbosity packagedb pkgid =
   programInvocation hcPkg $
-       ["unregister", packageDbOpts packagedb, display pkgid]
+       ["unregister", packageDbOpts hcPkg packagedb, display pkgid]
     ++ verbosityOpts hcPkg verbosity
 
 
@@ -275,7 +275,7 @@ exposeInvocation :: ConfiguredProgram
                  -> Verbosity -> PackageDB -> PackageId -> ProgramInvocation
 exposeInvocation hcPkg verbosity packagedb pkgid =
   programInvocation hcPkg $
-       ["expose", packageDbOpts packagedb, display pkgid]
+       ["expose", packageDbOpts hcPkg packagedb, display pkgid]
     ++ verbosityOpts hcPkg verbosity
 
 
@@ -283,7 +283,7 @@ hideInvocation :: ConfiguredProgram
                -> Verbosity -> PackageDB -> PackageId -> ProgramInvocation
 hideInvocation hcPkg verbosity packagedb pkgid =
   programInvocation hcPkg $
-       ["hide", packageDbOpts packagedb, display pkgid]
+       ["hide", packageDbOpts hcPkg packagedb, display pkgid]
     ++ verbosityOpts hcPkg verbosity
 
 
@@ -294,31 +294,38 @@ dumpInvocation hcPkg _verbosity packagedb =
       progInvokeOutputEncoding = IOEncodingUTF8
     }
   where
-    args = ["dump", packageDbOpts packagedb]
+    args = ["dump", packageDbOpts hcPkg packagedb]
         ++ verbosityOpts hcPkg silent
            -- We use verbosity level 'silent' because it is important that we
            -- do not contaminate the output with info/debug messages.
 
 
-packageDbStackOpts :: PackageDBStack -> [String]
-packageDbStackOpts dbstack = case dbstack of
+packageDbStackOpts :: ConfiguredProgram -> PackageDBStack -> [String]
+packageDbStackOpts hcPkg dbstack = case dbstack of
   (GlobalPackageDB:UserPackageDB:dbs) -> "--global"
                                        : "--user"
                                        : map specific dbs
   (GlobalPackageDB:dbs)               -> "--global"
-                                       : "--no-user-package-conf"
+                                       : ("--no-user-" ++ packageDbFlag hcPkg)
                                        : map specific dbs
   _                                   -> ierror
   where
-    specific (SpecificPackageDB db) = "--package-conf=" ++ db
+    specific (SpecificPackageDB db) = "--" ++ packageDbFlag hcPkg ++ "=" ++ db
     specific _ = ierror
     ierror :: a
     ierror     = error ("internal error: unexpected package db stack: " ++ show dbstack)
 
-packageDbOpts :: PackageDB -> String
-packageDbOpts GlobalPackageDB        = "--global"
-packageDbOpts UserPackageDB          = "--user"
-packageDbOpts (SpecificPackageDB db) = "--package-conf=" ++ db
+packageDbFlag :: ConfiguredProgram -> String
+packageDbFlag hcPkg
+  | programVersion hcPkg < Just (Version [7,5] [])
+  = "package-conf"
+  | otherwise
+  = "package-db"
+
+packageDbOpts :: ConfiguredProgram -> PackageDB -> String
+packageDbOpts _ GlobalPackageDB        = "--global"
+packageDbOpts _ UserPackageDB          = "--user"
+packageDbOpts hcPkg (SpecificPackageDB db) = "--" ++ packageDbFlag hcPkg ++ "=" ++ db
 
 verbosityOpts :: ConfiguredProgram -> Verbosity -> [String]
 verbosityOpts hcPkg v
