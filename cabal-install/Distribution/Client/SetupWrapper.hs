@@ -41,7 +41,8 @@ import Distribution.PackageDescription.Parse
 import Distribution.Simple.Configure
          ( configCompiler )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(GHC), Compiler, PackageDB(..), PackageDBStack )
+         ( CompilerFlavor(GHC), Compiler, PackageDB(..), PackageDBStack
+         , compilerVersion )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
          , rawSystemProgramConf, ghcProgram )
@@ -286,14 +287,14 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     let outOfDate = setupHsNewer || cabalVersionNewer
     when outOfDate $ do
       debug verbosity "Setup script is out of date, compiling..."
-      (_, conf, compiler) <- configureCompiler options'
+      (compiler, conf, _) <- configureCompiler options'
       --TODO: get Cabal's GHC module to export a GhcOptions type and render func
       rawSystemProgramConf verbosity ghcProgram conf $
           ghcVerbosityOptions verbosity
        ++ ["--make", setupHsFile, "-o", setupProgFile
           ,"-odir", setupDir, "-hidir", setupDir
           ,"-i", "-i" ++ workingDir ]
-       ++ ghcPackageDbOptions (usePackageDB options')
+       ++ ghcPackageDbOptions compiler (usePackageDB options')
        ++ if packageName pkg == PackageName "Cabal"
             then []
             else ["-package", display cabalPkgid]
