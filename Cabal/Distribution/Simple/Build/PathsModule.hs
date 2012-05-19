@@ -19,7 +19,7 @@ module Distribution.Simple.Build.PathsModule (
   ) where
 
 import Distribution.System
-         ( OS(Windows), buildOS )
+         ( OS(Windows), buildOS, Arch(..), buildArch )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor, compilerVersion )
 import Distribution.Package
@@ -168,7 +168,7 @@ generate pkg_descr lbi =
           | isHugs    = "progdirrel :: String\n"++
                         "progdirrel = "++show (fromJust flat_progdirrel)++"\n\n"++
                         get_prefix_hugs
-          | otherwise = get_prefix_win32
+          | otherwise = get_prefix_win32 buildArch
 
         path_sep = show [pathSeparator]
 
@@ -190,8 +190,8 @@ pkgPathEnvVar pkg_descr var =
         fixchar '-' = '_'
         fixchar c   = c
 
-get_prefix_win32 :: String
-get_prefix_win32 =
+get_prefix_win32 :: Arch -> String
+get_prefix_win32 arch =
   "getPrefixDirRel :: FilePath -> IO FilePath\n"++
   "getPrefixDirRel dirRel = try_size 2048 -- plenty, PATH_MAX is 512 under Win32.\n"++
   "  where\n"++
@@ -205,8 +205,11 @@ get_prefix_win32 =
   "              return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"++
   "            | otherwise  -> try_size (size * 2)\n"++
   "\n"++
-  "foreign import stdcall unsafe \"windows.h GetModuleFileNameW\"\n"++
+  "foreign import " ++ cconv ++ " unsafe \"windows.h GetModuleFileNameW\"\n"++
   "  c_GetModuleFileName :: Ptr () -> CWString -> Int32 -> IO Int32\n"
+    where cconv = case arch of
+                  I386 -> "stdcall"
+                  X86_64 -> "ccall"
 
 
 get_prefix_hugs :: String
