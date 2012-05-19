@@ -112,7 +112,7 @@ import Distribution.Simple.Utils
     , withFileContents, writeFileAtomic
     , withTempFile )
 import Distribution.System
-    ( OS(..), buildOS, buildPlatform )
+    ( OS(..), buildOS, Arch(..), buildArch, buildPlatform )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
@@ -1011,7 +1011,40 @@ checkForeignDeps pkg lbi verbosity = do
         hcDefines :: Compiler -> [String]
         hcDefines comp =
           case compilerFlavor comp of
-            GHC  -> ["-D__GLASGOW_HASKELL__=" ++ versionInt version]
+            GHC  ->
+                let ghcOS = case buildOS of
+                            Linux     -> ["linux"]
+                            Windows   -> ["mingw32"]
+                            OSX       -> ["darwin"]
+                            FreeBSD   -> ["freebsd"]
+                            OpenBSD   -> ["openbsd"]
+                            NetBSD    -> ["netbsd"]
+                            Solaris   -> ["solaris2"]
+                            AIX       -> ["aix"]
+                            HPUX      -> ["hpux"]
+                            IRIX      -> ["irix"]
+                            HaLVM     -> []
+                            OtherOS _ -> []
+                    ghcArch = case buildArch of
+                              I386        -> ["i386"]
+                              X86_64      -> ["x86_64"]
+                              PPC         -> ["powerpc"]
+                              PPC64       -> ["powerpc64"]
+                              Sparc       -> ["sparc"]
+                              Arm         -> ["arm"]
+                              Mips        -> ["mips"]
+                              SH          -> []
+                              IA64        -> ["ia64"]
+                              S390        -> ["s390"]
+                              Alpha       -> ["alpha"]
+                              Hppa        -> ["hppa"]
+                              Rs6000      -> ["rs6000"]
+                              M68k        -> ["m68k"]
+                              Vax         -> ["vax"]
+                              OtherArch _ -> []
+                in ["-D__GLASGOW_HASKELL__=" ++ versionInt version] ++
+                   map (\os   -> "-D" ++ os   ++ "_HOST_OS=1")   ghcOS ++
+                   map (\arch -> "-D" ++ arch ++ "_HOST_ARCH=1") ghcArch
             JHC  -> ["-D__JHC__=" ++ versionInt version]
             NHC  -> ["-D__NHC__=" ++ versionInt version]
             Hugs -> ["-D__HUGS__"]
