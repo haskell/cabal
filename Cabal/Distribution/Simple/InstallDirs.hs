@@ -90,7 +90,7 @@ import Distribution.Compiler
 import Distribution.Text
          ( display )
 
-#if mingw32_HOST_OS || mingw32_TARGET_OS
+#if mingw32_HOST_OS
 import Foreign
 import Foreign.C
 #endif
@@ -551,14 +551,14 @@ instance Read PathTemplate where
 
 getWindowsProgramFilesDir :: IO FilePath
 getWindowsProgramFilesDir = do
-#if mingw32_HOST_OS || mingw32_TARGET_OS
+#if mingw32_HOST_OS
   m <- shGetFolderPath csidl_PROGRAM_FILES
 #else
   let m = Nothing
 #endif
   return (fromMaybe "C:\\Program Files" m)
 
-#if mingw32_HOST_OS || mingw32_TARGET_OS
+#if mingw32_HOST_OS
 shGetFolderPath :: CInt -> IO (Maybe FilePath)
 shGetFolderPath n =
 # if __HUGS__
