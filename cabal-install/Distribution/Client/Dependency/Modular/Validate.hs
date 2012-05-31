@@ -85,8 +85,8 @@ validate = cata go
   where
     go :: TreeF (QGoalReasons, Scope) (Validate (Tree QGoalReasons)) -> Validate (Tree QGoalReasons)
 
-    go (PChoiceF qpn (gr,  sc)   ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
-    go (FChoiceF qfn (gr, _sc) b ts) =
+    go (PChoiceF qpn (gr,  sc)     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
+    go (FChoiceF qfn (gr, _sc) b m ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
         -- in various places). However, subsequent choices must be consistent. We thereby
@@ -98,8 +98,8 @@ validate = cata go
                        Just t  -> goF qfn gr rb t
                        Nothing -> return $ Fail (toConflictSet (Goal (F qfn) gr)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
-                     FChoice qfn gr b <$> sequence (P.mapWithKey (goF qfn gr) ts)
-    go (SChoiceF qsn (gr, _sc) b ts) =
+                     FChoice qfn gr b m <$> sequence (P.mapWithKey (goF qfn gr) ts)
+    go (SChoiceF qsn (gr, _sc) b   ts) =
       do
         -- Optional stanza choices are very similar to flag choices.
         PA _ _ psa <- asks pa -- obtain current stanza-preassignment
