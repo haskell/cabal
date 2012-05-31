@@ -63,7 +63,7 @@ establishScope (Q pp pn) ecs s =
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
-scopedExtendOpen :: QPN -> I -> QGoalReasons -> FlaggedDeps PN -> FlagDefaults ->
+scopedExtendOpen :: QPN -> I -> QGoalReasons -> FlaggedDeps PN -> FlagInfo ->
                     BuildState -> BuildState
 scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
   where
@@ -104,7 +104,7 @@ build = ana go
     -- that is indicated by the flag default.
     --
     -- TODO: Should we include the flag default in the tree?
-    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) b t f) gr) }) =
+    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b _) t f) gr) }) =
       FChoiceF qfn (gr, sc) trivial (P.fromList (reorder b
         [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True  : gr)) t) bs) { next = Goals }),
          (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False : gr)) f) bs) { next = Goals })]))
