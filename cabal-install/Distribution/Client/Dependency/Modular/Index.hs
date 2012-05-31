@@ -20,7 +20,7 @@ type Index = Map PN (Map I PInfo)
 -- globally, for reasons external to the solver. We currently use this
 -- for shadowing which essentially is a GHC limitation, and for
 -- installed packages that are broken.
-data PInfo = PInfo (FlaggedDeps PN) FlagDefaults Encaps (Maybe FailReason)
+data PInfo = PInfo (FlaggedDeps PN) FlagInfo Encaps (Maybe FailReason)
   deriving (Show)
 
 -- | Encapsulations. A list of package names.

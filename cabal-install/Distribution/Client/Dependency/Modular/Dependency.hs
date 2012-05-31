@@ -95,8 +95,8 @@ type FlaggedDeps qpn = [FlaggedDep qpn]
 -- | Flagged dependencies can either be plain dependency constraints,
 -- or flag-dependent dependency trees.
 data FlaggedDep qpn =
-    Flagged (FN qpn) FDefault (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
-  | Stanza  (SN qpn)          (TrueFlaggedDeps qpn)
+    Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
+  | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
   | Simple (Dep qpn)
   deriving (Eq, Show)
 

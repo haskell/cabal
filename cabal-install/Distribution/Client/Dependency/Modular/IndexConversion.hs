@@ -110,7 +110,7 @@ convGPD :: OS -> Arch -> CompilerId ->
 convGPD os arch cid pi
         (GenericPackageDescription _ flags libs exes tests benchs) =
   let
-    fds = flagDefaults flags
+    fds = flagInfo flags
   in
     PInfo
       (maybe []    (convCondTree os arch cid pi fds (const True)          ) libs    ++
@@ -128,11 +128,11 @@ prefix _ []  = []
 prefix f fds = [f (concat fds)]
 
 -- | Convert flag information.
-flagDefaults :: [PD.Flag] -> FlagDefaults
-flagDefaults = M.fromList . L.map (\ (MkFlag fn _ b _) -> (fn, b))
+flagInfo :: [PD.Flag] -> FlagInfo
+flagInfo = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m))
 
 -- | Convert condition trees to flagged dependencies.
-convCondTree :: OS -> Arch -> CompilerId -> PI PN -> FlagDefaults ->
+convCondTree :: OS -> Arch -> CompilerId -> PI PN -> FlagInfo ->
                 (a -> Bool) -> -- how to detect if a branch is active
                 CondTree ConfVar [Dependency] a -> FlaggedDeps PN
 convCondTree os arch cid pi@(PI pn _) fds p (CondNode info ds branches)
@@ -149,7 +149,7 @@ convCondTree os arch cid pi@(PI pn _) fds p (CondNode info ds branches)
 -- special flags and subsequently simplify to a tree that only depends on
 -- simple flag choices.
 convBranch :: OS -> Arch -> CompilerId ->
-              PI PN -> FlagDefaults ->
+              PI PN -> FlagInfo ->
               (a -> Bool) -> -- how to detect if a branch is active
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
