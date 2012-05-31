@@ -108,24 +108,24 @@ processPackageConstraintS _ _ _  _                             r = r
 enforcePackageConstraints :: M.Map PN [PackageConstraint] -> Tree QGoalReasons -> Tree QGoalReasons
 enforcePackageConstraints pcs = trav go
   where
-    go (PChoiceF qpn@(Q _ pn)               gr    ts) =
+    go (PChoiceF qpn@(Q _ pn)               gr      ts) =
       let c = toConflictSet (Goal (P qpn) gr)
           -- compose the transformation functions for each of the relevant constraint
           g = \ i -> foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
                            (M.findWithDefault [] pn pcs)
-      in PChoiceF qpn gr    (P.mapWithKey g ts)
-    go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr ts) =
+      in PChoiceF qpn gr      (P.mapWithKey g ts)
+    go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =
       let c = toConflictSet (Goal (F qfn) gr)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintF f c b pc) id
                            (M.findWithDefault [] pn pcs)
-      in FChoiceF qfn gr tr (P.mapWithKey g ts)
-    go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) gr tr ts) =
+      in FChoiceF qfn gr tr m (P.mapWithKey g ts)
+    go (SChoiceF qsn@(SN (PI (Q _ pn) _) f) gr tr   ts) =
       let c = toConflictSet (Goal (S qsn) gr)
           -- compose the transformation functions for each of the relevant constraint
           g = \ b -> foldl (\ h pc -> h . processPackageConstraintS f c b pc) id
                            (M.findWithDefault [] pn pcs)
-      in SChoiceF qsn gr tr (P.mapWithKey g ts)
+      in SChoiceF qsn gr tr   (P.mapWithKey g ts)
     go x = x
 
 -- | Prefer installed packages over non-installed packages, generally.
@@ -232,9 +232,9 @@ deferDefaultFlagChoices = trav go
     go x                = x
 
     defer :: Tree a -> Tree a -> Ordering
-    defer (FChoice _ _ True _) _ = GT
-    defer _ (FChoice _ _ True _) = LT
-    defer _ _                    = EQ
+    defer (FChoice _ _ True _ _) _ = GT
+    defer _ (FChoice _ _ True _ _) = LT
+    defer _ _                      = EQ
 
 -- | Variant of 'preferEasyGoalChoices'.
 --
