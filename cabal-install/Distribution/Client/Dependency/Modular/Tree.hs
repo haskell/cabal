@@ -43,6 +43,7 @@ data FailReason = InconsistentInitialConstraints
                 | GlobalConstraintInstalled
                 | GlobalConstraintSource
                 | GlobalConstraintFlag
+                | ManualFlag
                 | BuildFailureNotInIndex PN
                 | MalformedFlagChoice QFN
                 | MalformedStanzaChoice QSN

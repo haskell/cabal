@@ -87,6 +87,7 @@ showFR _ (GlobalConstraintVersion vr)   = " (global constraint requires " ++ dis
 showFR _ GlobalConstraintInstalled      = " (global constraint requires installed instance)"
 showFR _ GlobalConstraintSource         = " (global constraint requires source instance)"
 showFR _ GlobalConstraintFlag           = " (global constraint requires opposite flag selection)"
+showFR _ ManualFlag                     = " (manual flag can only be changed explicitly)"
 showFR _ (BuildFailureNotInIndex pn)    = " (unknown package: " ++ display pn ++ ")"
 showFR c Backjump                       = " (backjumping, conflict set: " ++ showCS c ++ ")"
 -- The following are internal failures. They should not occur. In the
