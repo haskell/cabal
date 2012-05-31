@@ -25,11 +25,13 @@ type Flag = FlagName
 unFlag :: Flag -> String
 unFlag (FlagName fn) = fn
 
--- | Flag default. Just a bool.
-type FDefault = Bool
+-- | Flag info. Default value, and whether the flag is manual.
+-- Manual flags can only be set explicitly.
+data FInfo = FInfo { fdefault :: Bool, fmanual :: Bool }
+  deriving (Eq, Ord, Show)
 
 -- | Flag defaults.
-type FlagDefaults = Map Flag FDefault
+type FlagInfo = Map Flag FInfo
 
 -- | Qualified flag name.
 type QFN = FN QPN
