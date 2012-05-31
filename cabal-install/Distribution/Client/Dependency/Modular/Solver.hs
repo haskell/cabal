@@ -43,7 +43,8 @@ solve sc idx userPrefs userConstraints userGoals =
                          then P.preferBaseGoalChoice . P.deferDefaultFlagChoices . P.lpreferEasyGoalChoices
                          else P.preferBaseGoalChoice
     preferencesPhase = P.preferPackagePreferences userPrefs
-    validationPhase  = P.enforcePackageConstraints userConstraints .
+    validationPhase  = P.enforceManualFlags . -- can only be done after user constraints
+                       P.enforcePackageConstraints userConstraints .
                        validateTree idx
     prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
                        -- packages that can never be "upgraded":
