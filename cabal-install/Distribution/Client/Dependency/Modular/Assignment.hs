@@ -41,6 +41,14 @@ data PreAssignment = PA PPreAssignment FAssignment SAssignment
 
 -- | Extend a package preassignment.
 --
+-- Takes the variable that causes the new constraints, a current preassignment
+-- and a set of new dependency constraints.
+--
+-- We're trying to extend the preassignment with each dependency one by one.
+-- Each dependency is for a particular variable. We check if we already have
+-- constraints for that variable in the current preassignment. If so, we're
+-- trying to merge the constraints.
+--
 -- Either returns a witness of the conflict that would arise during the merge,
 -- or the successfully extended assignment.
 extend :: Var QPN -> PPreAssignment -> [Dep QPN] -> Either (ConflictSet QPN, [Dep QPN]) PPreAssignment
