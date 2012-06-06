@@ -39,7 +39,8 @@ solve sc idx userPrefs userConstraints userGoals =
   buildPhase
   where
     explorePhase     = exploreTreeLog . backjump
-    heuristicsPhase  = if preferEasyGoalChoices sc
+    heuristicsPhase  = P.firstGoal . -- after doing goal-choice heuristics, commit to the first choice (saves space)
+                       if preferEasyGoalChoices sc
                          then P.preferBaseGoalChoice . P.deferDefaultFlagChoices . P.lpreferEasyGoalChoices
                          else P.preferBaseGoalChoice
     preferencesPhase = P.preferPackagePreferences userPrefs
