@@ -34,18 +34,21 @@ logToProgress mbj l = let
                         (ms, s) = runLog l
                         (es, e) = proc 0 ms -- catch first error (always)
                         (ns, t) = case mbj of
-                                    Nothing -> (ms, Nothing)
-                                    Just n  -> proc n ms
+                                     Nothing -> (ms, Nothing)
+                                     Just n  -> proc n ms
                         -- prefer first error over later error
                         r       = case t of
                                     Nothing -> case s of
                                                  Nothing -> e
                                                  Just _  -> Nothing
                                     Just _  -> e
-                      in go es -- trace for first error
+                      in go es es -- trace for first error
                             (showMessages (const True) True ns) -- shortened run
                             r s
   where
+    -- Proc takes the allowed number of backjumps and a list of messages and explores the
+    -- message list until the maximum number of backjumps has been reached. The log until
+    -- that point as well as whether we have encountered an error or not are returned.
     proc :: Int -> [Message] -> ([Message], Maybe (ConflictSet QPN))
     proc _ []                             = ([], Nothing)
     proc n (   Failure cs Backjump  : xs@(Leave : Failure cs' Backjump : _))
@@ -54,15 +57,24 @@ logToProgress mbj l = let
     proc n (x@(Failure _  Backjump) : xs) = (\ ~(ys, r) -> (x : ys, r)) (proc (n - 1) xs)
     proc n (x                       : xs) = (\ ~(ys, r) -> (x : ys, r)) (proc  n      xs)
 
+    -- This function takes a lot of arguments. The first two are both supposed to be
+    -- the log up to the first error. That's the error that will always be printed in
+    -- case we do not find a solution. We pass this log twice, because we evaluate it
+    -- in parallel with the full log, but we also want to retain the reference to its
+    -- beginning for when we print it. This trick prevents a space leak!
+    --
+    -- The thirs argument is the full log, the fifth and six error conditions.
+    --
     -- The order of arguments is important! In particular 's' must not be evaluated
     -- unless absolutely necessary. It contains the final result, and if we shortcut
     -- with an error due to backjumping, evaluating 's' would still require traversing
     -- the entire tree.
-    go ms (x : xs) r         s        = Step x (go ms xs r s)
-    go ms []       (Just cs) _        = Fail ("Could not resolve dependencies:\n" ++
-                                        unlines (showMessages (L.foldr (\ v _ -> v `S.member` cs) True) False ms))
-    go _  []       _         (Just s) = Done s
-    go _  []       _         _        = Fail ("Could not resolve dependencies.") -- should not happen
+    go ms (_ : ns) (x : xs) r         s        = Step x (go ms ns xs r s)
+    go ms []       (x : xs) r         s        = Step x (go ms [] xs r s)
+    go ms _        []       (Just cs) _        = Fail ("Could not resolve dependencies:\n" ++
+                                                 unlines (showMessages (L.foldr (\ v _ -> v `S.member` cs) True) False ms))
+    go _  _        []       _         (Just s) = Done s
+    go _  _        []       _         _        = Fail ("Could not resolve dependencies.") -- should not happen
 
 logToProgress' :: Log Message a -> Progress String String a
 logToProgress' l = let
