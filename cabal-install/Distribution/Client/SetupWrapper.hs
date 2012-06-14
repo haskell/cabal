@@ -20,9 +20,6 @@ module Distribution.Client.SetupWrapper (
     defaultSetupScriptOptions,
   ) where
 
-import Distribution.Client.Types
-         ( InstalledPackage )
-
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
 import Distribution.Version
@@ -65,6 +62,8 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
+import Distribution.Compat.Exception
+         ( catchIO )
 
 import System.Directory  ( doesFileExist, getCurrentDirectory )
 import System.FilePath   ( (</>), (<.>) )
@@ -203,7 +202,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
               return (version, options')
 
   savedCabalVersion = do
-    versionString <- readFile setupVersionFile `catch` \_ -> return ""
+    versionString <- readFile setupVersionFile `catchIO` \_ -> return ""
     case reads versionString of
       [(version,s)] | all isSpace s -> return (Just version)
       _                             -> return Nothing
