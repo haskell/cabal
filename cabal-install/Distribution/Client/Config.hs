@@ -93,6 +93,8 @@ import System.Environment
          ( getEnvironment )
 import System.IO.Error
          ( isDoesNotExistError )
+import Distribution.Compat.Exception
+         ( catchIO )
 
 --
 -- * Configuration saved in the config file
@@ -291,7 +293,7 @@ readConfigFile initial file = handleNotExists $
   fmap (Just . parseConfig initial) (readFile file)
 
   where
-    handleNotExists action = catch action $ \ioe ->
+    handleNotExists action = catchIO action $ \ioe ->
       if isDoesNotExistError ioe
         then return Nothing
         else ioError ioe
