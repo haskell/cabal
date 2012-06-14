@@ -27,6 +27,7 @@ module Distribution.Client.Setup
     , unpackCommand, UnpackFlags(..)
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
+    , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -1117,6 +1118,41 @@ instance Monoid SDistExFlags where
   }
     where
       combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Win32SelfUpgrade flags
+-- ------------------------------------------------------------
+
+data Win32SelfUpgradeFlags = Win32SelfUpgradeFlags {
+  win32SelfUpgradeVerbosity :: Flag Verbosity
+}
+
+defaultWin32SelfUpgradeFlags :: Win32SelfUpgradeFlags
+defaultWin32SelfUpgradeFlags = Win32SelfUpgradeFlags {
+  win32SelfUpgradeVerbosity = toFlag normal
+}
+
+win32SelfUpgradeCommand :: CommandUI Win32SelfUpgradeFlags
+win32SelfUpgradeCommand = CommandUI {
+  commandName         = "win32selfupgrade",
+  commandSynopsis     = "Self-upgrade the executable on Windows",
+  commandDescription  = Nothing,
+  commandUsage        = \pname ->
+    "Usage: " ++ pname ++ " win32selfupgrade PID PATH\n\n"
+     ++ "Flags for win32selfupgrade:",
+  commandDefaultFlags = defaultWin32SelfUpgradeFlags,
+  commandOptions      = \_ ->
+      [optionVerbosity win32SelfUpgradeVerbosity
+       (\v flags -> flags { win32SelfUpgradeVerbosity = v})
+      ]
+}
+
+instance Monoid Win32SelfUpgradeFlags where
+  mempty = defaultWin32SelfUpgradeFlags
+  mappend a b = Win32SelfUpgradeFlags {
+    win32SelfUpgradeVerbosity = combine win32SelfUpgradeVerbosity
+  }
+    where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils
