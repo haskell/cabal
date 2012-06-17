@@ -71,6 +71,7 @@ import System.FilePath.Posix as FilePath.Posix
 import System.IO
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO.Error (isDoesNotExistError)
+import Distribution.Compat.Exception (catchIO)
 import System.Directory
          ( getModificationTime, doesFileExist )
 import System.Time
@@ -177,7 +178,7 @@ readRepoIndex verbosity repo =
         packageSource      = RepoTarballPackage repo pkgid Nothing
       }
 
-    handleNotFound action = catch action $ \e -> if isDoesNotExistError e
+    handleNotFound action = catchIO action $ \e -> if isDoesNotExistError e
       then do
         case repoKind repo of
           Left  remoteRepo -> warn verbosity $
