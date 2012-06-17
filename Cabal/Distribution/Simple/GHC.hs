@@ -288,9 +288,7 @@ configureToolchain ghcProg ghcInfo =
     libDir      = baseDir </> "gcc-lib"
     includeDir  = baseDir </> "include" </> "mingw"
     isWindows   = case buildOS of Windows -> True; _ -> False
-    binPrefix   = case buildArch of
-                  X86_64 -> "x86_64-w64-mingw32-"
-                  _      -> ""
+    binPrefix   = ""
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
     findProg :: Program -> [FilePath] -> Verbosity -> IO (Maybe FilePath)
