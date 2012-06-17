@@ -421,7 +421,8 @@ readIndexCacheEntry = \line ->
   case BSS.words line of
     [key, pkgnamestr, pkgverstr, sep, blocknostr]
       | key == packageKey && sep == blocknoKey ->
-      case (parseName pkgnamestr, parseVer pkgverstr [], parseBlockNo blocknostr) of
+      case (parseName pkgnamestr, parseVer pkgverstr [],
+            parseBlockNo blocknostr) of
         (Just pkgname, Just pkgver, Just blockno)
           -> Just (CachePackageId (PackageIdentifier pkgname pkgver) blockno)
         _ -> Nothing
