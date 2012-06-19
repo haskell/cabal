@@ -21,6 +21,8 @@ module Distribution.Client.Tar (
   -- * Converting between internal and external representation
   read,
   write,
+  writeEntries,
+  appendEntries,
 
   -- * Packing and unpacking files to\/from internal representation
   pack,
@@ -656,6 +658,18 @@ instance Monad Partial where
 --
 write :: [Entry] -> ByteString
 write es = BS.concat $ map putEntry es ++ [BS.replicate (512*2) 0]
+
+-- | Same as 'write', but for 'Entries'.
+writeEntries :: Entries -> ByteString
+writeEntries = appendEntries []
+
+-- | Same as 'writeEntries', but additionally appends entries from @es@ to the end.
+appendEntries :: [Entry] -> Entries -> ByteString
+appendEntries es entries =
+  BS.concat $ foldrEntries (\e r -> (putEntry e):r) es' error entries
+  ++ [BS.replicate (512*2) 0]
+  where
+    es' = map putEntry es
 
 putEntry :: Entry -> ByteString
 putEntry entry = case entryContent entry of

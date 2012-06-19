@@ -29,6 +29,7 @@ import Distribution.Client.Setup
          , InitFlags(initVerbosity), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
+         , IndexFlags(..), indexCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
 import Distribution.Simple.Setup
@@ -59,6 +60,7 @@ import Distribution.Client.Check as Check   (check)
 import Distribution.Client.Upload as Upload (upload, check, report)
 import Distribution.Client.SrcDist          (sdist)
 import Distribution.Client.Unpack           (unpack)
+import Distribution.Client.Index            (index)
 import Distribution.Client.Init             (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
@@ -83,7 +85,7 @@ import System.FilePath          (splitExtension, takeExtension)
 import System.Directory         (doesFileExist)
 import Data.List                (intersperse)
 import Data.Monoid              (Monoid(..))
-import Control.Monad            (unless)
+import Control.Monad            (when, unless)
 
 -- | Entry point
 --
@@ -156,6 +158,8 @@ mainWorker args = topHandler $
       ,upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $
        win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
+      ,hiddenCommand $
+       indexCommand `commandAddAction` indexAction
       ]
 
 wrapperAction :: Monoid flags
@@ -371,6 +375,15 @@ initAction initFlags _extraArgs globalFlags = do
             comp
             conf
             initFlags
+
+indexAction :: IndexFlags -> [String] -> GlobalFlags -> IO ()
+indexAction indexFlags extraArgs _globalFlags = do
+  when (null extraArgs) $ do
+    die $ "the 'index' command expects a single argument. "
+  when ((>1). length $ extraArgs) $ do
+    die $ "the 'index' command expects a single argument: " ++ unwords extraArgs
+  let verbosity = fromFlag (indexVerbosity indexFlags)
+  index verbosity indexFlags (head extraArgs)
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
