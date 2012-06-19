@@ -151,8 +151,6 @@ import Text.PrettyPrint
     ( comma, punctuate, render, nest, sep )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
-import Prelude hiding (catch)
-
 tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
 tryGetConfigStateFile filename = do
   exists <- doesFileExist filename
