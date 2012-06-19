@@ -5,6 +5,8 @@ import Data.List
 import System.Directory
          ( doesFileExist, getModificationTime
          , getCurrentDirectory, setCurrentDirectory )
+import System.FilePath
+         ( (</>), isAbsolute )
 import qualified Control.Exception as Exception
          ( finally )
 
@@ -58,3 +60,10 @@ inDir (Just d) m = do
   old <- getCurrentDirectory
   setCurrentDirectory d
   m `Exception.finally` setCurrentDirectory old
+
+-- | Given a relative path, make it absolute relative to the current
+-- directory. Absolute paths are returned unmodified.
+makeAbsoluteToCwd :: FilePath -> IO FilePath
+makeAbsoluteToCwd path | isAbsolute path = return path
+                       | otherwise       = do cwd <- getCurrentDirectory
+                                              return $! cwd </> path
