@@ -71,6 +71,7 @@ import System.FilePath.Posix as FilePath.Posix
 import System.IO
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO.Error (isDoesNotExistError)
+import Distribution.Compat.Exception (catchIO)
 import System.Directory
          ( getModificationTime, doesFileExist )
 import System.Time
@@ -177,7 +178,7 @@ readRepoIndex verbosity repo =
         packageSource      = RepoTarballPackage repo pkgid Nothing
       }
 
-    handleNotFound action = catch action $ \e -> if isDoesNotExistError e
+    handleNotFound action = catchIO action $ \e -> if isDoesNotExistError e
       then do
         case repoKind repo of
           Left  remoteRepo -> warn verbosity $
@@ -338,7 +339,7 @@ updatePackageIndexCacheFile indexFile cacheFile = do
     writeFile cacheFile (showIndexCache cache)
   where
     mkCache pkgs prefs =
-        [ CachePrefrence pref          | pref <- prefs ]
+        [ CachePreference pref          | pref <- prefs ]
      ++ [ CachePackageId pkgid blockNo | (pkgid, _, blockNo) <- pkgs ]
 
 readPackageIndexCacheFile :: Package pkg
@@ -376,7 +377,7 @@ packageIndexFromCache mkPkg hnd = accum mempty []
       let srcpkg = mkPkg pkgid pkg
       accum (srcpkg:srcpkgs) prefs entries
 
-    accum srcpkgs prefs (CachePrefrence pref : entries) =
+    accum srcpkgs prefs (CachePreference pref : entries) =
       accum srcpkgs (pref:prefs) entries
 
     getPackageDescription blockno = do
@@ -413,7 +414,7 @@ packageIndexFromCache mkPkg hnd = accum mempty []
 type BlockNo = Int
 
 data IndexCacheEntry = CachePackageId PackageId BlockNo
-                     | CachePrefrence Dependency
+                     | CachePreference Dependency
   deriving (Eq, Show)
 
 readIndexCacheEntry :: BSS.ByteString -> Maybe IndexCacheEntry
@@ -421,12 +422,13 @@ readIndexCacheEntry = \line ->
   case BSS.words line of
     [key, pkgnamestr, pkgverstr, sep, blocknostr]
       | key == packageKey && sep == blocknoKey ->
-      case (parseName pkgnamestr, parseVer pkgverstr [], parseBlockNo blocknostr) of
+      case (parseName pkgnamestr, parseVer pkgverstr [],
+            parseBlockNo blocknostr) of
         (Just pkgname, Just pkgver, Just blockno)
           -> Just (CachePackageId (PackageIdentifier pkgname pkgver) blockno)
         _ -> Nothing
     (key: remainder) | key == preferredVersionKey ->
-      fmap CachePrefrence (simpleParse (BSS.unpack (BSS.unwords remainder)))
+      fmap CachePreference (simpleParse (BSS.unpack (BSS.unwords remainder)))
     _  -> Nothing
   where
     packageKey = BSS.pack "pkg:"
@@ -456,7 +458,7 @@ showIndexCacheEntry entry = case entry of
    CachePackageId pkgid b -> "pkg: " ++ display (packageName pkgid)
                                   ++ " " ++ display (packageVersion pkgid)
                           ++ " b# " ++ show b
-   CachePrefrence dep     -> "pref-ver: " ++ display dep
+   CachePreference dep     -> "pref-ver: " ++ display dep
 
 readIndexCache :: BSS.ByteString -> [IndexCacheEntry]
 readIndexCache = catMaybes . map readIndexCacheEntry . BSS.lines

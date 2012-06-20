@@ -264,12 +264,12 @@ directoryEntry name = simpleEntry name Directory
 -- * Tar paths
 --
 
--- | The classic tar format allowed just 100 charcters for the file name. The
+-- | The classic tar format allowed just 100 characters for the file name. The
 -- USTAR format extended this with an extra 155 characters, however it uses a
 -- complex method of splitting the name between the two sections.
 --
 -- Instead of just putting any overflow into the extended area, it uses the
--- extended area as a prefix. The agrevating insane bit however is that the
+-- extended area as a prefix. The aggravating insane bit however is that the
 -- prefix (if any) must only contain a directory prefix. That is the split
 -- between the two areas must be on a directory separator boundary. So there is
 -- no simple calculation to work out if a file name is too long. Instead we
