@@ -116,7 +116,7 @@ import Distribution.Simple.Compiler
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
-         ( OS(..), buildOS, Arch(..), buildArch )
+         ( OS(..), buildOS )
 import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
