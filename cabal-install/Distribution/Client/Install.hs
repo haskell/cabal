@@ -78,6 +78,7 @@ import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
 import Paths_cabal_install (getBinDir)
+import Distribution.Client.JobControl
 
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
@@ -99,7 +100,7 @@ import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion
+         ( PackageIdentifier, PackageId, packageName, packageVersion
          , Package(..), PackageFixedDeps(..)
          , Dependency(..), thisPackageVersion, InstalledPackageId )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -409,16 +410,20 @@ checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers = do
 linearizeInstallPlan :: PackageIndex
                      -> InstallPlan
                      -> [(ConfiguredPackage, PackageStatus)]
-linearizeInstallPlan installedPkgIndex plan = unfoldr next plan
+linearizeInstallPlan installedPkgIndex plan =
+    unfoldr next plan
   where
     next plan' = case InstallPlan.ready plan' of
       []      -> Nothing
-      (pkg:_) -> Just ((pkg, status), InstallPlan.completed pkgid result plan')
-        where pkgid  = packageId pkg
-              status = packageStatus installedPkgIndex pkg
-              result = BuildOk DocsNotTried TestsNotTried
-              --FIXME: This is a bit of a hack,
-              -- pretending that each package is installed
+      (pkg:_) -> Just ((pkg, status), plan'')
+        where
+          pkgid  = packageId pkg
+          status = packageStatus installedPkgIndex pkg
+          plan'' = InstallPlan.completed pkgid
+                     (BuildOk DocsNotTried TestsNotTried)
+                     (InstallPlan.processing [pkg] plan')
+          --FIXME: This is a bit of a hack,
+          -- pretending that each package is installed
 
 data PackageStatus = NewPackage
                    | NewVersion [Version]
@@ -737,12 +742,18 @@ performInstallations verbosity
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
-  executeInstallPlan installPlan $ \cpkg ->
+  jobControl   <- if parallelBuild then newParallelJobControl
+                                   else newSerialJobControl
+  buildLimit   <- newJobLimit numJobs
+  fetchLimit   <- newJobLimit (min numJobs numFetchJobs)
+  installLimit <- newJobLimit 1 --serialise installation
+
+  executeInstallPlan verbosity jobControl installPlan $ \cpkg ->
     installConfiguredPackage platform compid configFlags
                              cpkg $ \configFlags' src pkg ->
-      fetchSourcePackage verbosity src $ \src' ->
-        installLocalPackage verbosity (packageId pkg) src' $ \mpath ->
-          installUnpackedPackage verbosity
+      fetchSourcePackage verbosity fetchLimit src $ \src' ->
+        installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
+          installUnpackedPackage verbosity buildLimit installLimit
                                  (setupScriptOptions installedPkgIndex)
                                  miscOptions configFlags' installFlags haddockFlags
                                  compid pkg mpath useLogFile
@@ -750,6 +761,10 @@ performInstallations verbosity
   where
     platform = InstallPlan.planPlatform installPlan
     compid   = InstallPlan.planCompiler installPlan
+
+    numJobs  = fromFlag (installNumJobs installFlags)
+    numFetchJobs = 2
+    parallelBuild = numJobs >= 2
 
     setupScriptOptions index = SetupScriptOptions {
       useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
@@ -771,7 +786,8 @@ performInstallations verbosity
                            (useDistPref defaultSetupScriptOptions)
                            (configDistPref configFlags),
       useLoggingHandle = Nothing,
-      useWorkingDir    = Nothing
+      useWorkingDir    = Nothing,
+      forceExternalSetupMethod = parallelBuild
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
@@ -784,6 +800,8 @@ performInstallations verbosity
           = Just $ toPathTemplate $ logsDir </> "$pkgid" <.> "log"
           | otherwise
           = flagToMaybe (installLogFile installFlags)
+
+    substLogFileName :: PathTemplate -> PackageIdentifier -> FilePath
     substLogFileName template pkg = fromPathTemplate
                                   . substPathTemplate env
                                   $ template
@@ -796,16 +814,39 @@ performInstallations verbosity
     }
 
 
-executeInstallPlan :: Monad m
-                   => InstallPlan
-                   -> (ConfiguredPackage -> m BuildResult)
-                   -> m InstallPlan
-executeInstallPlan plan installPkg = case InstallPlan.ready plan of
-  []       -> return plan
-  (pkg: _) -> do buildResult <- installPkg pkg
-                 let plan' = updatePlan (packageId pkg) buildResult plan
-                 executeInstallPlan plan' installPkg
+executeInstallPlan :: Verbosity
+                   -> JobControl IO (PackageId, BuildResult)
+                   -> InstallPlan
+                   -> (ConfiguredPackage -> IO BuildResult)
+                   -> IO InstallPlan
+executeInstallPlan verbosity jobCtl plan0 installPkg =
+    tryNewTasks 0 plan0
   where
+    tryNewTasks taskCount plan = do
+      case InstallPlan.ready plan of
+        [] | taskCount == 0 -> return plan
+           | otherwise      -> waitForTasks taskCount plan
+        pkgs                -> do
+          sequence_
+            [ do notice verbosity $ "Ready to install " ++ display pkgid
+                 spawnJob jobCtl $ do
+                   buildResult <- installPkg pkg
+                   return (packageId pkg, buildResult)
+            | pkg <- pkgs
+            , let pkgid = packageId pkg]
+
+          let taskCount' = taskCount + length pkgs
+              plan'      = InstallPlan.processing pkgs plan
+          waitForTasks taskCount' plan'
+
+    waitForTasks taskCount plan = do
+      notice verbosity $ "Waiting for install task to finish..."
+      (pkgid, buildResult) <- collectJob jobCtl
+      notice verbosity $ "Collecting build result for " ++ display pkgid
+      let taskCount' = taskCount-1
+          plan'      = updatePlan pkgid buildResult plan
+      tryNewTasks taskCount' plan'
+
     updatePlan pkgid (Right buildSuccess) =
       InstallPlan.completed pkgid buildSuccess
 
@@ -847,74 +888,91 @@ installConfiguredPackage platform comp configFlags
 
 fetchSourcePackage
   :: Verbosity
+  -> JobLimit
   -> PackageLocation (Maybe FilePath)
   -> (PackageLocation FilePath -> IO BuildResult)
   -> IO BuildResult
-fetchSourcePackage verbosity src installPkg = do
+fetchSourcePackage verbosity fetchLimit src installPkg = do
   fetched <- checkFetched src
   case fetched of
     Just src' -> installPkg src'
-    Nothing   -> onFailure DownloadFailed $
-                   fetchPackage verbosity src >>= installPkg
+    Nothing   -> onFailure DownloadFailed $ do
+                   loc <- withJobLimit fetchLimit $
+                            fetchPackage verbosity src
+                   installPkg loc
 
 
 installLocalPackage
-  :: Verbosity -> PackageIdentifier -> PackageLocation FilePath
+  :: Verbosity
+  -> JobLimit
+  -> PackageIdentifier -> PackageLocation FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installLocalPackage verbosity pkgid location installPkg = case location of
+installLocalPackage verbosity jobLimit pkgid location installPkg =
+
+  case location of
 
     LocalUnpackedPackage dir ->
       installPkg (Just dir)
 
     LocalTarballPackage tarballPath ->
-      installLocalTarballPackage verbosity pkgid tarballPath installPkg
+      installLocalTarballPackage verbosity jobLimit
+        pkgid tarballPath installPkg
 
     RemoteTarballPackage _ tarballPath ->
-      installLocalTarballPackage verbosity pkgid tarballPath installPkg
+      installLocalTarballPackage verbosity jobLimit
+        pkgid tarballPath installPkg
 
     RepoTarballPackage _ _ tarballPath ->
-      installLocalTarballPackage verbosity pkgid tarballPath installPkg
+      installLocalTarballPackage verbosity jobLimit
+        pkgid tarballPath installPkg
 
 
 installLocalTarballPackage
-  :: Verbosity -> PackageIdentifier -> FilePath
+  :: Verbosity
+  -> JobLimit
+  -> PackageIdentifier -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installLocalTarballPackage verbosity pkgid tarballPath installPkg = do
+installLocalTarballPackage verbosity jobLimit pkgid tarballPath installPkg = do
   tmp <- getTemporaryDirectory
   withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
     onFailure UnpackFailed $ do
-      info verbosity $ "Extracting " ++ tarballPath
-                    ++ " to " ++ tmpDirPath ++ "..."
       let relUnpackedPath = display pkgid
           absUnpackedPath = tmpDirPath </> relUnpackedPath
           descFilePath = absUnpackedPath
                      </> display (packageName pkgid) <.> "cabal"
-      extractTarGzFile tmpDirPath relUnpackedPath tarballPath
-      exists <- doesFileExist descFilePath
-      when (not exists) $
-        die $ "Package .cabal file not found: " ++ show descFilePath
+      withJobLimit jobLimit $ do
+        info verbosity $ "Extracting " ++ tarballPath
+                      ++ " to " ++ tmpDirPath ++ "..."
+        extractTarGzFile tmpDirPath relUnpackedPath tarballPath
+        exists <- doesFileExist descFilePath
+        when (not exists) $
+          die $ "Package .cabal file not found: " ++ show descFilePath
       installPkg (Just absUnpackedPath)
 
 
-installUnpackedPackage :: Verbosity
-                   -> SetupScriptOptions
-                   -> InstallMisc
-                   -> ConfigFlags
-                   -> InstallFlags
-                   -> HaddockFlags
-                   -> CompilerId
-                   -> PackageDescription
-                   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
-                   -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
-                   -> IO BuildResult
-installUnpackedPackage verbosity scriptOptions miscOptions
+installUnpackedPackage
+  :: Verbosity
+  -> JobLimit
+  -> JobLimit
+  -> SetupScriptOptions
+  -> InstallMisc
+  -> ConfigFlags
+  -> InstallFlags
+  -> HaddockFlags
+  -> CompilerId
+  -> PackageDescription
+  -> Maybe FilePath -- ^ Directory to change to before starting the installation.
+  -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
+  -> IO BuildResult
+installUnpackedPackage verbosity buildLimit installLimit
+                       scriptOptions miscOptions
                        configFlags installConfigFlags haddockFlags
                        compid pkg workingDir useLogFile =
 
   -- Configure phase
-  onFailure ConfigureFailed $ do
+  onFailure ConfigureFailed $ withJobLimit buildLimit $ do
     setup configureCommand configureFlags
 
   -- Build phase
@@ -938,7 +996,7 @@ installUnpackedPackage verbosity scriptOptions miscOptions
                         | otherwise = TestsNotTried
 
       -- Install phase
-        onFailure InstallFailed $
+        onFailure InstallFailed $ withJobLimit installLimit $
           withWin32SelfUpgrade verbosity configFlags compid pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd

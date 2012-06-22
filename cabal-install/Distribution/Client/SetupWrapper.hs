@@ -38,8 +38,7 @@ import Distribution.PackageDescription.Parse
 import Distribution.Simple.Configure
          ( configCompiler )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(GHC), Compiler, PackageDB(..), PackageDBStack
-         , compilerVersion )
+         ( CompilerFlavor(GHC), Compiler, PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
          , rawSystemProgramConf, ghcProgram )
@@ -76,26 +75,28 @@ import Data.Maybe        ( fromMaybe, isJust )
 import Data.Char         ( isSpace )
 
 data SetupScriptOptions = SetupScriptOptions {
-    useCabalVersion  :: VersionRange,
-    useCompiler      :: Maybe Compiler,
-    usePackageDB     :: PackageDBStack,
-    usePackageIndex  :: Maybe PackageIndex,
-    useProgramConfig :: ProgramConfiguration,
-    useDistPref      :: FilePath,
-    useLoggingHandle :: Maybe Handle,
-    useWorkingDir    :: Maybe FilePath
+    useCabalVersion          :: VersionRange,
+    useCompiler              :: Maybe Compiler,
+    usePackageDB             :: PackageDBStack,
+    usePackageIndex          :: Maybe PackageIndex,
+    useProgramConfig         :: ProgramConfiguration,
+    useDistPref              :: FilePath,
+    useLoggingHandle         :: Maybe Handle,
+    useWorkingDir            :: Maybe FilePath,
+    forceExternalSetupMethod :: Bool
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
 defaultSetupScriptOptions = SetupScriptOptions {
-    useCabalVersion  = anyVersion,
-    useCompiler      = Nothing,
-    usePackageDB     = [GlobalPackageDB, UserPackageDB],
-    usePackageIndex  = Nothing,
-    useProgramConfig = emptyProgramConfiguration,
-    useDistPref      = defaultDistPref,
-    useLoggingHandle = Nothing,
-    useWorkingDir    = Nothing
+    useCabalVersion          = anyVersion,
+    useCompiler              = Nothing,
+    usePackageDB             = [GlobalPackageDB, UserPackageDB],
+    usePackageIndex          = Nothing,
+    useProgramConfig         = emptyProgramConfiguration,
+    useDistPref              = defaultDistPref,
+    useLoggingHandle         = Nothing,
+    useWorkingDir            = Nothing,
+    forceExternalSetupMethod = False
   }
 
 setupWrapper :: Verbosity
@@ -135,11 +136,12 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
 --
 determineSetupMethod :: SetupScriptOptions -> BuildType -> SetupMethod
 determineSetupMethod options buildType'
+  | forceExternalSetupMethod options = externalSetupMethod
   | isJust (useLoggingHandle options)
- || buildType' == Custom      = externalSetupMethod
+ || buildType' == Custom             = externalSetupMethod
   | cabalVersion `withinRange`
-      useCabalVersion options = internalSetupMethod
-  | otherwise                 = externalSetupMethod
+      useCabalVersion options        = internalSetupMethod
+  | otherwise                        = externalSetupMethod
 
 type SetupMethod = Verbosity
                 -> SetupScriptOptions

@@ -104,7 +104,8 @@ configure verbosity packageDBs repos comp conf
                            (useDistPref defaultSetupScriptOptions)
                            (configDistPref configFlags),
       useLoggingHandle = Nothing,
-      useWorkingDir    = Nothing
+      useWorkingDir    = Nothing,
+      forceExternalSetupMethod = False
     }
       where
         -- Hack: we typically want to allow the UserPackageDB for finding the
