@@ -790,11 +790,11 @@ installOptions showOrParseArgs =
           (yesNoOpt showOrParseArgs)
 
       , option "j" ["jobs"]
-        "Run N jobs simultaneously."
+        "Run NUM jobs simultaneously."
         installNumJobs (\v flags -> flags { installNumJobs = v })
-        (reqArg "NUM" (readP_to_E (const $ "Argument should be an integer") 
-                       (toFlag `fmap` parse))
-         (flagToList . fmap display))
+        (reqArg "NUM" (readP_to_E (\_ -> "jobs should be a number")
+                                  (fmap toFlag (Parse.readS_to_P reads)))
+                      (map show . flagToList))
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
