@@ -14,14 +14,14 @@ module Distribution.Client.Index (index)
 
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.Setup ( IndexFlags(..) )
-import Distribution.Client.Utils ( makeAbsoluteToCwd )
+import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
+                                 , makeAbsoluteToCwd )
 
 import Distribution.Simple.Setup ( fromFlagOrDefault )
 import Distribution.Simple.Utils ( die, debug, notice )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Control.Monad             ( liftM, when, unless )
 import Data.List                 ( (\\), nub )
 import Data.Maybe                ( catMaybes )
@@ -60,7 +60,7 @@ readLocalBuildTree :: Tar.Entry -> Maybe FilePath
 readLocalBuildTree entry = case Tar.entryContent entry of
   (Tar.OtherEntryType typeCode bs size)
     | (typeCode == localBuildTreeTypeCode)
-      && (size == BS.length bs) -> Just $ BS.Char8.unpack bs
+      && (size == BS.length bs) -> Just $ byteStringToFilePath bs
     | otherwise                 -> Nothing
   _ -> Nothing
 
@@ -77,8 +77,7 @@ readLocalBuildTreesFromFile = liftM (readLocalBuildTrees . Tar.read)
 writeLocalBuildTree :: LocalBuildTree -> Tar.Entry
 writeLocalBuildTree lbt = Tar.simpleEntry tarPath content
   where
-    -- TODO: Use utf8-string or text here.
-    bs       = BS.Char8.pack path
+    bs       = filePathToByteString path
     path     = localBuildTreePath lbt
     -- fromRight can't fail because the path is shorter than 255 characters.
     tarPath  = fromRight $ Tar.toTarPath True tarPath'
