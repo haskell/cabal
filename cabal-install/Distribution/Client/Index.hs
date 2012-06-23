@@ -156,10 +156,11 @@ doLinkSource verbosity path l' = do
   let entries = map writeLocalBuildTree (catMaybes treesToAdd)
   when (not . null $ entries) $ do
     let tmpFile = path <.> "tmp"
-    -- TODO: Calculate the offset and append instead of rewriting. Complicated
-    -- by the fact that a tar archive can have a nondeterministic number of
-    -- trailing zeros after two obligatory zero blocks, so searching for the
-    -- last entry from the end is problematic.
+    -- TODO: Calculate the offset and append instead of
+    -- rewriting. Complicated by the fact that a tar archive can have
+    -- a variable number of trailing zeros after two obligatory zero
+    -- blocks, so searching for the last entry from the end is
+    -- problematic.
     BS.writeFile tmpFile . Tar.appendEntries entries. Tar.read
       =<< BS.readFile path
     renameFile tmpFile path
