@@ -683,12 +683,15 @@ putEntry entry = case entryContent entry of
 
 putHeader :: Entry -> ByteString
 putHeader entry =
-     BS.Char8.pack $ take 148 block
-  ++ putOct 7 checksum
-  ++ ' ' : drop 156 block
+     BS.concat $ [ BS.take 148 block
+                 , BS.Char8.pack $ putOct 7 checksum
+                 , BS.Char8.singleton ' '
+                 , BS.drop 156 block ]
   where
-    block    = putHeaderNoChkSum entry
-    checksum = foldl' (\x y -> x + ord y) 0 block
+    -- putHeaderNoChkSum returns a String, so we convert it to the final
+    -- representation before calculating the checksum.
+    block    = BS.Char8.pack . putHeaderNoChkSum $ entry
+    checksum = BS.Char8.foldl' (\x y -> x + ord y) 0 block
 
 putHeaderNoChkSum :: Entry -> String
 putHeaderNoChkSum Entry {
