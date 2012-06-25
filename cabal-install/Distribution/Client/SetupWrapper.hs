@@ -38,7 +38,8 @@ import Distribution.PackageDescription.Parse
 import Distribution.Simple.Configure
          ( configCompiler )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(GHC), Compiler, PackageDB(..), PackageDBStack )
+         ( CompilerFlavor(GHC), Compiler, compilerVersion
+         , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
          , rawSystemProgramConf, ghcProgram )
