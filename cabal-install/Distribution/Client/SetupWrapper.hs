@@ -38,7 +38,7 @@ import Distribution.PackageDescription.Parse
 import Distribution.Simple.Configure
          ( configCompiler )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(GHC), Compiler, compilerVersion
+         ( CompilerFlavor(GHC), Compiler, compilerVersion, showCompilerId
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
@@ -51,11 +51,16 @@ import Distribution.Simple.GHC
          ( ghcVerbosityOptions )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Client.Config
+         ( defaultCabalDir )
 import Distribution.Client.IndexUtils
          ( getInstalledPackages )
+import Distribution.Client.JobControl
+         ( JobLimit, withJobLimit )
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, findPackageDesc, comparing
-         , createDirectoryIfMissingVerbose, rewriteFile, intercalate )
+         , createDirectoryIfMissingVerbose, installExecutableFile
+         , rewriteFile, intercalate )
 import Distribution.Client.Utils
          ( moreRecentFile, inDir )
 import Distribution.Text
@@ -84,7 +89,8 @@ data SetupScriptOptions = SetupScriptOptions {
     useDistPref              :: FilePath,
     useLoggingHandle         :: Maybe Handle,
     useWorkingDir            :: Maybe FilePath,
-    forceExternalSetupMethod :: Bool
+    forceExternalSetupMethod :: Bool,
+    setupCacheLimit          :: Maybe JobLimit
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -97,7 +103,8 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,
-    forceExternalSetupMethod = False
+    forceExternalSetupMethod = False,
+    setupCacheLimit          = Nothing
   }
 
 setupWrapper :: Verbosity
@@ -182,8 +189,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   debug verbosity $ "Using Cabal library version " ++ display cabalLibVersion
   setupHs <- updateSetupScript cabalLibVersion bt
   debug verbosity $ "Using " ++ setupHs ++ " as setup script."
-  compileSetupExecutable options' cabalLibVersion setupHs
-  invokeSetupScript (mkargs cabalLibVersion)
+  path <- tryCachedSetupExecutable options' cabalLibVersion setupHs
+  invokeSetupScript path (mkargs cabalLibVersion)
 
   where
   workingDir       = case fromMaybe "" (useWorkingDir options) of
@@ -191,7 +198,6 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                        dir -> dir
   setupDir         = workingDir </> useDistPref options </> "setup"
   setupVersionFile = setupDir </> "setup" <.> "version"
-  setupProgFile    = setupDir </> "setup" <.> exeExtension
 
   cabalLibVersionToUse :: IO (Version, SetupScriptOptions)
   cabalLibVersionToUse = do
@@ -279,10 +285,53 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     Custom             -> error "buildTypeScript Custom"
     UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
 
+  -- | Given the versions of the compiler and the Cabal lib, try to find the
+  -- cached setup executable.
+  tryCachedSetupExecutable :: SetupScriptOptions -> Version -> FilePath
+                              -> IO FilePath
+  tryCachedSetupExecutable = case bt of
+    Simple -> getCachedSetupExecutable
+    _      -> compileSetupExecutable
+
+  -- | Look up the setup executable in the cache; update the cache if the setup
+  -- executable is not found.
+  getCachedSetupExecutable :: SetupScriptOptions -> Version -> FilePath
+                                 -> IO FilePath
+  getCachedSetupExecutable options' cabalLibVersion setupHsFile = do
+    cabalDir <- defaultCabalDir
+    let setupCacheDir = cabalDir </> "setup-exe-cache"
+    let setupProgFile = setupCacheDir
+                        </> ("setup-" ++ cabalVersionString ++ "-"
+                             ++ compilerVersionString)
+                        <.> exeExtension
+    setupProgFileExists <- doesFileExist setupProgFile
+    if setupProgFileExists
+      then debug verbosity $
+           "Found cached setup executable: " ++ setupProgFile
+      else withSetupCacheLimit $ do
+        -- The cache may have been populated while we were waiting.
+        setupProgFileExists' <- doesFileExist setupProgFile
+        if setupProgFileExists'
+          then debug verbosity $
+               "Found cached setup executable: " ++ setupProgFile
+          else do
+          debug verbosity $ "Setup executable not found in the cache."
+          src <- compileSetupExecutable options' cabalLibVersion setupHsFile
+          createDirectoryIfMissingVerbose verbosity True setupCacheDir
+          installExecutableFile verbosity src setupProgFile
+    return setupProgFile
+      where
+        cabalVersionString    = "Cabal-" ++ (display cabalLibVersion)
+        compilerVersionString = fromMaybe "nonexisting-compiler"
+                                (showCompilerId `fmap` useCompiler options')
+        withSetupCacheLimit   = fromMaybe id
+                                (fmap withJobLimit $ setupCacheLimit options')
+
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
   -- Currently this is GHC only. It should really be generalised.
   --
-  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath -> IO ()
+  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath ->
+                            IO FilePath
   compileSetupExecutable options' cabalLibVersion setupHsFile = do
     setupHsNewer      <- setupHsFile      `moreRecentFile` setupProgFile
     cabalVersionNewer <- setupVersionFile `moreRecentFile` setupProgFile
@@ -300,8 +349,10 @@ externalSetupMethod verbosity options pkg bt mkargs = do
        ++ if packageName pkg == PackageName "Cabal"
             then []
             else ["-package", display cabalPkgid]
+    return setupProgFile
     where
-      cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
+      setupProgFile = setupDir </> "setup" <.> exeExtension
+      cabalPkgid    = PackageIdentifier (PackageName "Cabal") cabalLibVersion
 
       ghcPackageDbOptions :: Compiler -> PackageDBStack -> [String]
       ghcPackageDbOptions compiler dbstack = case dbstack of
@@ -320,15 +371,14 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             | otherwise
             = "package-db"
 
-  invokeSetupScript :: [String] -> IO ()
-  invokeSetupScript args = do
-    info verbosity $ unwords (setupProgFile : args)
+  invokeSetupScript :: FilePath -> [String] -> IO ()
+  invokeSetupScript path args = do
+    info verbosity $ unwords (path : args)
     case useLoggingHandle options of
       Nothing        -> return ()
       Just logHandle -> info verbosity $ "Redirecting build log to "
                                       ++ show logHandle
-    currentDir <- getCurrentDirectory
-    process <- runProcess (currentDir </> setupProgFile) args
+    process <- runProcess path args
                  (useWorkingDir options) Nothing
                  Nothing (useLoggingHandle options) (useLoggingHandle options)
     exitCode <- waitForProcess process
