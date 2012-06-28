@@ -754,7 +754,7 @@ performInstallations verbosity
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLimit
-                                 (setupScriptOptions installedPkgIndex)
+                                 (setupScriptOptions installedPkgIndex installLimit)
                                  miscOptions configFlags' installFlags haddockFlags
                                  compid pkg mpath useLogFile
 
@@ -766,7 +766,7 @@ performInstallations verbosity
     numFetchJobs = 2
     parallelBuild = numJobs >= 2
 
-    setupScriptOptions index = SetupScriptOptions {
+    setupScriptOptions index limit = SetupScriptOptions {
       useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
       -- Hack: we typically want to allow the UserPackageDB for finding the
@@ -787,7 +787,8 @@ performInstallations verbosity
                            (configDistPref configFlags),
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing,
-      forceExternalSetupMethod = parallelBuild
+      forceExternalSetupMethod = parallelBuild,
+      setupCacheLimit  = Just limit
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
