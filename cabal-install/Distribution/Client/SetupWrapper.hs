@@ -90,6 +90,8 @@ data SetupScriptOptions = SetupScriptOptions {
     useLoggingHandle         :: Maybe Handle,
     useWorkingDir            :: Maybe FilePath,
     forceExternalSetupMethod :: Bool,
+
+    -- Used only in parallel code; should be Nothing otherwise.
     setupCacheLimit          :: Maybe JobLimit
   }
 
@@ -288,7 +290,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- | Given the versions of the compiler and the Cabal lib, try to find the
   -- cached setup executable.
   tryCachedSetupExecutable :: SetupScriptOptions -> Version -> FilePath
-                              -> IO FilePath
+                           -> IO FilePath
   tryCachedSetupExecutable = case bt of
     Simple -> getCachedSetupExecutable
     _      -> compileSetupExecutable
@@ -296,7 +298,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
   getCachedSetupExecutable :: SetupScriptOptions -> Version -> FilePath
-                                 -> IO FilePath
+                           -> IO FilePath
   getCachedSetupExecutable options' cabalLibVersion setupHsFile = do
     cabalDir <- defaultCabalDir
     let setupCacheDir = cabalDir </> "setup-exe-cache"
@@ -330,8 +332,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
   -- Currently this is GHC only. It should really be generalised.
   --
-  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath ->
-                            IO FilePath
+  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath
+                         -> IO FilePath
   compileSetupExecutable options' cabalLibVersion setupHsFile = do
     setupHsNewer      <- setupHsFile      `moreRecentFile` setupProgFile
     cabalVersionNewer <- setupVersionFile `moreRecentFile` setupProgFile
