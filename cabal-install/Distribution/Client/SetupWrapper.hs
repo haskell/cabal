@@ -56,7 +56,7 @@ import Distribution.Client.Config
 import Distribution.Client.IndexUtils
          ( getInstalledPackages )
 import Distribution.Client.JobControl
-         ( JobLimit, withJobLimit )
+         ( JobLimit, withJobLimit, Lock, criticalSection )
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, findPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
@@ -91,8 +91,9 @@ data SetupScriptOptions = SetupScriptOptions {
     useWorkingDir            :: Maybe FilePath,
     forceExternalSetupMethod :: Bool,
 
-    -- Used only in parallel code; should be Nothing otherwise.
-    setupCacheLimit          :: Maybe JobLimit
+    -- Used only when calling setupWrapper from parallel code to serialise
+    -- access to the setup cache; should be Nothing otherwise.
+    setupCacheLock           :: Maybe Lock
   }
 
 defaultSetupScriptOptions :: SetupScriptOptions
@@ -106,7 +107,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,
     forceExternalSetupMethod = False,
-    setupCacheLimit          = Nothing
+    setupCacheLock           = Nothing
   }
 
 setupWrapper :: Verbosity
@@ -310,7 +311,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     if setupProgFileExists
       then debug verbosity $
            "Found cached setup executable: " ++ setupProgFile
-      else withSetupCacheLimit $ do
+      else criticalSection' $ do
         -- The cache may have been populated while we were waiting.
         setupProgFileExists' <- doesFileExist setupProgFile
         if setupProgFileExists'
@@ -326,8 +327,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
         cabalVersionString    = "Cabal-" ++ (display cabalLibVersion)
         compilerVersionString = fromMaybe "nonexisting-compiler"
                                 (showCompilerId `fmap` useCompiler options')
-        withSetupCacheLimit   = fromMaybe id
-                                (fmap withJobLimit $ setupCacheLimit options')
+        criticalSection'      = fromMaybe id
+                                (fmap criticalSection $ setupCacheLock options')
 
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
   -- Currently this is GHC only. It should really be generalised.
