@@ -70,7 +70,7 @@ import Distribution.Verbosity
 import Distribution.Compat.Exception
          ( catchIO )
 
-import System.Directory  ( doesFileExist, getCurrentDirectory )
+import System.Directory  ( doesFileExist )
 import System.FilePath   ( (</>), (<.>) )
 import System.IO         ( Handle )
 import System.Exit       ( ExitCode(..), exitWith )
