@@ -106,7 +106,7 @@ configure verbosity packageDBs repos comp conf
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing,
       forceExternalSetupMethod = False,
-      setupCacheLimit  = Nothing
+      setupCacheLock   = Nothing
     }
       where
         -- Hack: we typically want to allow the UserPackageDB for finding the
