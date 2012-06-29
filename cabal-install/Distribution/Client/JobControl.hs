@@ -20,6 +20,10 @@ module Distribution.Client.JobControl (
     JobLimit,
     newJobLimit,
     withJobLimit,
+
+    Lock,
+    newLock,
+    criticalSection
   ) where
 
 import Control.Monad
@@ -77,3 +81,11 @@ newJobLimit n =
 withJobLimit :: JobLimit -> IO a -> IO a
 withJobLimit (JobLimit sem) =
   bracket_ (waitQSem sem) (signalQSem sem)
+
+newtype Lock = Lock (MVar ())
+
+newLock :: IO Lock
+newLock = fmap Lock $ newMVar ()
+
+criticalSection :: Lock -> IO a -> IO a
+criticalSection (Lock lck) act = bracket_ (takeMVar lck) (putMVar lck ()) act

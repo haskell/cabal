@@ -746,15 +746,16 @@ performInstallations verbosity
                                    else newSerialJobControl
   buildLimit   <- newJobLimit numJobs
   fetchLimit   <- newJobLimit (min numJobs numFetchJobs)
-  installLimit <- newJobLimit 1 --serialise installation
+  installLock  <- newLock -- serialise installation
+  cacheLock    <- newLock -- serialise access to setup exe cache
 
   executeInstallPlan verbosity jobControl installPlan $ \cpkg ->
     installConfiguredPackage platform compid configFlags
                              cpkg $ \configFlags' src pkg ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
-          installUnpackedPackage verbosity buildLimit installLimit
-                                 (setupScriptOptions installedPkgIndex)
+          installUnpackedPackage verbosity buildLimit installLock
+                                 (setupScriptOptions installedPkgIndex cacheLock)
                                  miscOptions configFlags' installFlags haddockFlags
                                  compid pkg mpath useLogFile
 
@@ -766,7 +767,7 @@ performInstallations verbosity
     numFetchJobs = 2
     parallelBuild = numJobs >= 2
 
-    setupScriptOptions index = SetupScriptOptions {
+    setupScriptOptions index lock = SetupScriptOptions {
       useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
       -- Hack: we typically want to allow the UserPackageDB for finding the
@@ -787,7 +788,8 @@ performInstallations verbosity
                            (configDistPref configFlags),
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing,
-      forceExternalSetupMethod = parallelBuild
+      forceExternalSetupMethod = parallelBuild,
+      setupCacheLock   = Just lock
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
@@ -955,7 +957,7 @@ installLocalTarballPackage verbosity jobLimit pkgid tarballPath installPkg = do
 installUnpackedPackage
   :: Verbosity
   -> JobLimit
-  -> JobLimit
+  -> Lock
   -> SetupScriptOptions
   -> InstallMisc
   -> ConfigFlags
@@ -966,7 +968,7 @@ installUnpackedPackage
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
   -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
   -> IO BuildResult
-installUnpackedPackage verbosity buildLimit installLimit
+installUnpackedPackage verbosity buildLimit installLock
                        scriptOptions miscOptions
                        configFlags installConfigFlags haddockFlags
                        compid pkg workingDir useLogFile =
@@ -996,7 +998,7 @@ installUnpackedPackage verbosity buildLimit installLimit
                         | otherwise = TestsNotTried
 
       -- Install phase
-        onFailure InstallFailed $ withJobLimit installLimit $
+        onFailure InstallFailed $ criticalSection installLock $
           withWin32SelfUpgrade verbosity configFlags compid pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
