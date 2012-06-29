@@ -192,7 +192,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   debug verbosity $ "Using Cabal library version " ++ display cabalLibVersion
   setupHs <- updateSetupScript cabalLibVersion bt
   debug verbosity $ "Using " ++ setupHs ++ " as setup script."
-  path <- tryCachedSetupExecutable options' cabalLibVersion setupHs
+  path <- case bt of
+    Simple -> getCachedSetupExecutable options' cabalLibVersion setupHs
+    _      -> compileSetupExecutable options' cabalLibVersion setupHs
   invokeSetupScript path (mkargs cabalLibVersion)
 
   where
@@ -287,14 +289,6 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     Make      -> "import Distribution.Make; main = defaultMain\n"
     Custom             -> error "buildTypeScript Custom"
     UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
-
-  -- | Given the versions of the compiler and the Cabal lib, try to find the
-  -- cached setup executable.
-  tryCachedSetupExecutable :: SetupScriptOptions -> Version -> FilePath
-                           -> IO FilePath
-  tryCachedSetupExecutable = case bt of
-    Simple -> getCachedSetupExecutable
-    _      -> compileSetupExecutable
 
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
