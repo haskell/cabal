@@ -40,6 +40,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( Text(..), display, simpleParse )
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.Exception ( catchIO )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ( (<>), (<+>) )
 
@@ -117,7 +118,7 @@ getContents world = do
     else die "Could not parse world file."
   where
   safelyReadFile :: FilePath -> IO B.ByteString
-  safelyReadFile file = B.readFile file `catch` handler
+  safelyReadFile file = B.readFile file `catchIO` handler
     where
       handler e | isDoesNotExistError e = return B.empty
                 | otherwise             = ioError e
