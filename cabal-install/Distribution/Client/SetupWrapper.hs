@@ -56,7 +56,7 @@ import Distribution.Client.Config
 import Distribution.Client.IndexUtils
          ( getInstalledPackages )
 import Distribution.Client.JobControl
-         ( JobLimit, withJobLimit, Lock, criticalSection )
+         ( Lock, criticalSection )
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, findPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
