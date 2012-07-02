@@ -732,6 +732,10 @@ data InstallMisc = InstallMisc {
     libVersion :: Maybe Version
   }
 
+-- | If logging is enabled, contains location of the log file and the verbosity
+-- level for logging.
+type UseLogFile = Maybe (PackageIdentifier -> FilePath, Verbosity)
+
 performInstallations :: Verbosity
                      -> InstallContext
                      -> PackageIndex
@@ -749,12 +753,12 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  executeInstallPlan verbosity jobControl installPlan $ \cpkg ->
+  executeInstallPlan verbosity jobControl useLogFile installPlan $ \cpkg ->
     installConfiguredPackage platform compid configFlags
                              cpkg $ \configFlags' src pkg ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
-          installUnpackedPackage verbosity buildLimit installLock
+          installUnpackedPackage verbosity buildLimit installLock numJobs
                                  (setupScriptOptions installedPkgIndex cacheLock)
                                  miscOptions configFlags' installFlags haddockFlags
                                  compid pkg mpath useLogFile
@@ -793,21 +797,50 @@ performInstallations verbosity
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
-    useLogFile :: Maybe (PackageIdentifier -> FilePath)
-    useLogFile = fmap substLogFileName logFileTemplate
+
+    -- Should the build output be written to a log file instead of stdout?
+    useLogFile :: UseLogFile
+    useLogFile = fmap ((\f -> (f, loggingVerbosity)) . substLogFileName)
+                 logFileTemplate
       where
+        installLogFile' = flagToMaybe $ installLogFile installFlags
+        defaultTemplate = toPathTemplate $ logsDir </> "$pkgid" <.> "log"
+
+        -- If the user has specified --remote-build-reporting=detailed, use the
+        -- default log file location. If the --build-log option is set, use the
+        -- provided location. Otherwise don't use logging, unless building in
+        -- parallel (in which case the default location is used).
         logFileTemplate :: Maybe PathTemplate
-        logFileTemplate --TODO: separate policy from mechanism
-          | reportingLevel == DetailedReports
-          = Just $ toPathTemplate $ logsDir </> "$pkgid" <.> "log"
-          | otherwise
-          = flagToMaybe (installLogFile installFlags)
+        logFileTemplate
+          | useDefaultTemplate = Just defaultTemplate
+          | otherwise          = installLogFile'
+
+        -- If the user has specified --remote-build-reporting=detailed or
+        -- --build-log, use more verbose logging.
+        loggingVerbosity :: Verbosity
+        loggingVerbosity | overrideVerbosity = max Verbosity.verbose verbosity
+                         | otherwise         = verbosity
+
+        useDefaultTemplate :: Bool
+        useDefaultTemplate
+          | reportingLevel == DetailedReports = True
+          | isJust installLogFile'            = False
+          | numJobs > 1                       = True
+          | otherwise                         = False
+
+        overrideVerbosity :: Bool
+        overrideVerbosity
+          | reportingLevel == DetailedReports = True
+          | isJust installLogFile'            = True
+          | numJobs > 1                       = False
+          | otherwise                         = False
 
     substLogFileName :: PathTemplate -> PackageIdentifier -> FilePath
     substLogFileName template pkg = fromPathTemplate
                                   . substPathTemplate env
                                   $ template
       where env = initialPathTemplateEnv (packageId pkg) (compilerId comp)
+
     miscOptions  = InstallMisc {
       rootCmd    = if fromFlag (configUserInstall configFlags)
                      then Nothing      -- ignore --root-cmd if --user.
@@ -818,10 +851,11 @@ performInstallations verbosity
 
 executeInstallPlan :: Verbosity
                    -> JobControl IO (PackageId, BuildResult)
+                   -> UseLogFile
                    -> InstallPlan
                    -> (ConfiguredPackage -> IO BuildResult)
                    -> IO InstallPlan
-executeInstallPlan verbosity jobCtl plan0 installPkg =
+executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
     tryNewTasks 0 plan0
   where
     tryNewTasks taskCount plan = do
@@ -830,7 +864,7 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
            | otherwise      -> waitForTasks taskCount plan
         pkgs                -> do
           sequence_
-            [ do notice verbosity $ "Ready to install " ++ display pkgid
+            [ do info verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
                    buildResult <- installPkg pkg
                    return (packageId pkg, buildResult)
@@ -842,13 +876,14 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do
-      notice verbosity $ "Waiting for install task to finish..."
+      info verbosity $ "Waiting for install task to finish..."
       (pkgid, buildResult) <- collectJob jobCtl
-      notice verbosity $ "Collecting build result for " ++ display pkgid
+      printBuildResult pkgid buildResult
       let taskCount' = taskCount-1
           plan'      = updatePlan pkgid buildResult plan
       tryNewTasks taskCount' plan'
 
+    updatePlan :: PackageIdentifier -> BuildResult -> InstallPlan -> InstallPlan
     updatePlan pkgid (Right buildSuccess) =
       InstallPlan.completed pkgid buildSuccess
 
@@ -861,6 +896,27 @@ executeInstallPlan verbosity jobCtl plan0 installPkg =
         -- now cannot build, we mark as failing due to 'DependentFailed'
         -- which kind of means it was not their fault.
 
+    -- Print last 10 lines of the build log if something went wrong, and
+    -- 'Installed $PKGID' otherwise.
+    printBuildResult :: PackageId -> BuildResult -> IO ()
+    printBuildResult pkgid buildResult = case buildResult of
+        (Right _) -> notice verbosity $ "Installed " ++ display pkgid
+        (Left _)  -> do
+          notice verbosity $ "Failed to install " ++ display pkgid
+          case useLogFile of
+            Nothing                   -> return ()
+            Just (mkLogFileName, _) -> do
+              let (logName, n) = (mkLogFileName pkgid, 10)
+              notice verbosity $ "Last " ++ (show n)
+                ++ " lines of the build log ( " ++ logName ++ " ):"
+              printLastNLines logName n
+
+    printLastNLines :: FilePath -> Int -> IO ()
+    printLastNLines path n = do
+      lns <- fmap lines $ readFile path
+      let len = length lns
+      let toDrop = if len > n && n > 0 then (len - n) else 0
+      mapM_ (notice verbosity) (drop toDrop lns)
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ConfiguredPackage'. In particular the
@@ -958,6 +1014,7 @@ installUnpackedPackage
   :: Verbosity
   -> JobLimit
   -> Lock
+  -> Int
   -> SetupScriptOptions
   -> InstallMisc
   -> ConfigFlags
@@ -966,19 +1023,23 @@ installUnpackedPackage
   -> CompilerId
   -> PackageDescription
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
-  -> Maybe (PackageIdentifier -> FilePath) -- ^ File to log output to (if any)
+  -> UseLogFile -- ^ File to log output to (if any)
   -> IO BuildResult
-installUnpackedPackage verbosity buildLimit installLock
+installUnpackedPackage verbosity buildLimit installLock numJobs
                        scriptOptions miscOptions
                        configFlags installConfigFlags haddockFlags
                        compid pkg workingDir useLogFile =
 
   -- Configure phase
   onFailure ConfigureFailed $ withJobLimit buildLimit $ do
+    when (numJobs > 1) $ notice verbosity $
+      "Configuring " ++ display pkgid ++ "..."
     setup configureCommand configureFlags
 
   -- Build phase
     onFailure BuildFailed $ do
+      when (numJobs > 1) $ notice verbosity $
+        "Building " ++ display pkgid ++ "..."
       setup buildCommand' buildFlags
 
   -- Doc generation phase
@@ -1006,6 +1067,7 @@ installUnpackedPackage verbosity buildLimit installLock
             return (Right (BuildOk docsResult testsResult))
 
   where
+    pkgid            = packageId pkg
     configureFlags   = filterConfigureFlags configFlags {
       configVerbosity = toFlag verbosity'
     }
@@ -1024,12 +1086,12 @@ installUnpackedPackage verbosity buildLimit installLock
       Cabal.installDistPref  = configDistPref configFlags,
       Cabal.installVerbosity = toFlag verbosity'
     }
-    verbosity' | isJust useLogFile = max Verbosity.verbose verbosity
-               | otherwise         = verbosity
+    verbosity' = maybe verbosity snd useLogFile
+
     setup cmd flags  = do
       logFileHandle <- case useLogFile of
-        Nothing          -> return Nothing
-        Just mkLogFileName -> do
+        Nothing                   -> return Nothing
+        Just (mkLogFileName, _) -> do
           let logFileName = mkLogFileName (packageId pkg)
               logDir      = takeDirectory logFileName
           unless (null logDir) $ createDirectoryIfMissing True logDir
