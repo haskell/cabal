@@ -42,7 +42,7 @@ import Distribution.Simple.Compiler
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
-         , rawSystemProgramConf, ghcProgram )
+         , getDbProgramOutput, runDbProgram, ghcProgram )
 import Distribution.Simple.BuildPaths
          ( defaultDistPref, exeExtension )
 import Distribution.Simple.Command
@@ -72,7 +72,7 @@ import Distribution.Compat.Exception
 
 import System.Directory  ( doesFileExist )
 import System.FilePath   ( (</>), (<.>) )
-import System.IO         ( Handle )
+import System.IO         ( Handle, hPutStr )
 import System.Exit       ( ExitCode(..), exitWith )
 import System.Process    ( runProcess, waitForProcess )
 import Control.Monad     ( when, unless )
@@ -337,15 +337,22 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       debug verbosity "Setup script is out of date, compiling..."
       (compiler, conf, _) <- configureCompiler options'
       --TODO: get Cabal's GHC module to export a GhcOptions type and render func
-      rawSystemProgramConf verbosity ghcProgram conf $
-          ghcVerbosityOptions verbosity
-       ++ ["--make", setupHsFile, "-o", setupProgFile
-          ,"-odir", setupDir, "-hidir", setupDir
-          ,"-i", "-i" ++ workingDir ]
-       ++ ghcPackageDbOptions compiler (usePackageDB options')
-       ++ if packageName pkg == PackageName "Cabal"
-            then []
-            else ["-package", display cabalPkgid]
+      let ghcCmdLine =
+            ghcVerbosityOptions verbosity
+            ++ ["--make", setupHsFile, "-o", setupProgFile
+               ,"-odir", setupDir, "-hidir", setupDir
+               ,"-i", "-i" ++ workingDir ]
+            ++ ghcPackageDbOptions compiler (usePackageDB options')
+            ++ if packageName pkg == PackageName "Cabal"
+               then []
+               else ["-package", display cabalPkgid]
+      case useLoggingHandle options of
+        Nothing          -> runDbProgram verbosity ghcProgram conf ghcCmdLine
+
+        -- If build logging is enabled, redirect compiler output to the log file.
+        (Just logHandle) -> do output <- getDbProgramOutput verbosity ghcProgram
+                                         conf ghcCmdLine
+                               hPutStr logHandle output
     return setupProgFile
     where
       setupProgFile = setupDir </> "setup" <.> exeExtension
