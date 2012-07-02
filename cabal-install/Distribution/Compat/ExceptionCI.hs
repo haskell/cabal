@@ -3,7 +3,7 @@
 {-# OPTIONS_NHC98 -cpp #-}
 {-# OPTIONS_JHC -fcpp #-}
 -- #hide
-module Distribution.Compat.Exception (
+module Distribution.Compat.ExceptionCI (
   SomeException,
   onException,
   catchIO,

@@ -33,7 +33,7 @@ import System.Exit
 import Control.Exception as Exception
          ( Exception(IOException, ExitException) )
 #endif
-import Distribution.Compat.Exception
+import Distribution.Compat.ExceptionCI
          ( SomeException, catchIO, catchExit )
 import Control.Monad
          ( when, unless )
