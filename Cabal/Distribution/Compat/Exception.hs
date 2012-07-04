@@ -10,6 +10,7 @@
 #endif
 
 module Distribution.Compat.Exception (
+     SomeException,
      Exception.IOException,
      onException,
      catchIO,
@@ -20,6 +21,13 @@ module Distribution.Compat.Exception (
 
 import System.Exit
 import qualified Control.Exception as Exception
+
+#if MIN_VERSION_base(4,0,0)
+import Control.Exception (SomeException)
+#else
+import Control.Exception (Exception)
+type SomeException = Exception
+#endif
 
 onException :: IO a -> IO b -> IO a
 #ifdef NEW_EXCEPTION
