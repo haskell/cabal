@@ -266,7 +266,7 @@ parsePackageIndex = accum 0 [] [] . Tar.read
       Tar.Next e es' -> accum blockNo' pkgs' prefs' es'
         where
           (pkgs', prefs') = extract blockNo pkgs prefs e
-          blockNo'        = blockNo + sizeInBlocks e
+          blockNo'        = blockNo + Tar.entrySizeInBlocks e
 
     extract blockNo pkgs prefs entry =
        fromMaybe (pkgs, prefs) $
@@ -280,14 +280,6 @@ parsePackageIndex = accum 0 [] [] . Tar.read
         tryExtractPrefs = do
           prefs' <- extractPrefs entry
           return (pkgs, prefs'++prefs)
-
-    sizeInBlocks entry =
-        1 + case Tar.entryContent entry of
-              Tar.NormalFile     _   size -> bytesToBlocks size
-              Tar.OtherEntryType _ _ size -> bytesToBlocks size
-              _                           -> 0
-      where
-        bytesToBlocks s = 1 + ((fromIntegral s - 1) `div` 512)
 
 extractPkg :: Tar.Entry -> Maybe (PackageId, GenericPackageDescription)
 extractPkg entry = case Tar.entryContent entry of
