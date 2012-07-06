@@ -22,7 +22,6 @@ module Distribution.Client.Tar (
   read,
   write,
   writeEntries,
-  appendEntries,
 
   -- * Packing and unpacking files to\/from internal representation
   pack,
@@ -40,6 +39,8 @@ module Distribution.Client.Tar (
   DevMinor,
   TypeCode,
   Format(..),
+  entrySizeInBlocks,
+  entrySizeInBytes,
 
   -- * Constructing simple entry values
   simpleEntry,
@@ -157,6 +158,19 @@ data Entry = Entry {
 --
 entryPath :: Entry -> FilePath
 entryPath = fromTarPath . entryTarPath
+
+-- | Return the size of an entry in bytes.
+entrySizeInBytes :: Entry -> FileSize
+entrySizeInBytes = (*512) . fromIntegral . entrySizeInBlocks
+
+-- | Return the number of blocks in an entry.
+entrySizeInBlocks :: Entry -> Int
+entrySizeInBlocks entry = 1 + case entryContent entry of
+  NormalFile     _   size -> bytesToBlocks size
+  OtherEntryType _ _ size -> bytesToBlocks size
+  _                       -> 0
+  where
+    bytesToBlocks s = 1 + ((fromIntegral s - 1) `div` 512)
 
 -- | The content of a tar archive entry, which depends on the type of entry.
 --
@@ -661,15 +675,8 @@ write es = BS.concat $ map putEntry es ++ [BS.replicate (512*2) 0]
 
 -- | Same as 'write', but for 'Entries'.
 writeEntries :: Entries -> ByteString
-writeEntries = appendEntries []
-
--- | Same as 'writeEntries', but additionally appends entries from @es@ to the end.
-appendEntries :: [Entry] -> Entries -> ByteString
-appendEntries es entries =
-  BS.concat $ foldrEntries (\e r -> (putEntry e):r) es' error entries
-  ++ [BS.replicate (512*2) 0]
-  where
-    es' = map putEntry es
+writeEntries entries = BS.concat $ foldrEntries (\e res -> (putEntry e):res)
+                       [BS.replicate (512*2) 0] error entries
 
 putEntry :: Entry -> ByteString
 putEntry entry = case entryContent entry of

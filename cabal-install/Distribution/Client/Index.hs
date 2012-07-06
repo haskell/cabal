@@ -29,7 +29,8 @@ import System.Directory          ( canonicalizePath,
                                    doesDirectoryExist, doesFileExist,
                                    getDirectoryContents, renameFile )
 import System.FilePath           ( (</>), (<.>), takeExtension )
-
+import System.IO                 ( IOMode(..), SeekMode(..)
+                                 , hSeek, withBinaryFile )
 
 -- | A reference to a local build tree.
 data LocalBuildTree = LocalBuildTree {
@@ -155,20 +156,18 @@ doLinkSource verbosity path l' = do
   treesToAdd <- mapM localBuildTreeFromPath (l \\ treesInIndex)
   let entries = map writeLocalBuildTree (catMaybes treesToAdd)
   when (not . null $ entries) $ do
-    let tmpFile = path <.> "tmp"
-    -- TODO: Calculate the offset and append instead of
-    -- rewriting. Complicated by the fact that a tar archive can have
-    -- a variable number of trailing zeros after two obligatory zero
-    -- blocks, so searching for the last entry from the end is
-    -- problematic.
-    BS.writeFile tmpFile . Tar.appendEntries entries. Tar.read
-      =<< BS.readFile path
-    renameFile tmpFile path
-    debug verbosity $ "Successfully renamed '" ++ tmpFile
-      ++ "' to '" ++ path ++ "'"
+    offset <-
+      fmap (Tar.foldrEntries (\e acc -> Tar.entrySizeInBytes e + acc) 0 error
+            . Tar.read) $ BS.readFile path
+    -- Force 'offset'.
+    when (offset > -1) $ do
+      debug verbosity $ "Writing at offset: " ++ show offset
+      withBinaryFile path ReadWriteMode $ \h -> do
+        hSeek h AbsoluteSeek (fromIntegral offset)
+        BS.hPut h (Tar.write entries)
+        debug verbosity $ "Successfully appended to '" ++ path ++ "'"
 
-
--- | Remove a reference to a local build tree to the index.
+-- | Remove a reference to a local build tree from the index.
 doRemoveSource :: Verbosity -> FilePath -> [FilePath] -> IO ()
 doRemoveSource _         _   [] =
   error "Distribution.Client.Index.doRemoveSource: unexpected"
