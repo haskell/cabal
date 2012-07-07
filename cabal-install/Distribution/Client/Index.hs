@@ -18,7 +18,7 @@ import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd )
 
 import Distribution.Simple.Setup ( fromFlagOrDefault )
-import Distribution.Simple.Utils ( die, debug, notice )
+import Distribution.Simple.Utils ( die, debug, notice, findPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
@@ -28,7 +28,7 @@ import Data.List                 ( (\\), nub )
 import Data.Maybe                ( catMaybes )
 import System.Directory          ( canonicalizePath,
                                    doesDirectoryExist, doesFileExist,
-                                   getDirectoryContents, renameFile )
+                                   renameFile )
 import System.FilePath           ( (</>), (<.>), takeExtension )
 import System.IO                 ( IOMode(..), SeekMode(..)
                                  , hSeek, withBinaryFile )
@@ -80,15 +80,10 @@ index verbosity indexFlags path' = do
 localBuildTreeFromPath :: FilePath -> IO (Maybe LocalBuildTree)
 localBuildTreeFromPath dir = do
   dirExists <- doesDirectoryExist dir
-  if dirExists then
-    do fns <- getDirectoryContents dir
-       case filter ((== ".cabal") . takeExtension) fns of
-         [_] -> return . Just $ LocalBuildTree { localBuildTreePath = dir }
-         []  -> die $ "directory '" ++ dir
-                ++ "' doesn't contain a .cabal file"
-         _   -> die $ "directory '" ++ dir
-                ++ "' contains more than one .cabal file"
-    else die $ "directory '" ++ dir ++ "' does not exist"
+  when (not dirExists) $ do
+    die $ "directory '" ++ dir ++ "' does not exist"
+  _ <- findPackageDesc dir
+  return . Just $ LocalBuildTree { localBuildTreePath = dir }
 
 -- | Given a tar archive entry, try to parse it as a local build tree reference.
 readLocalBuildTreePath :: Tar.Entry -> Maybe FilePath
