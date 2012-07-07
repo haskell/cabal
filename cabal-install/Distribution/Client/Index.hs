@@ -22,6 +22,7 @@ import Distribution.Simple.Utils ( die, debug, notice )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
+import Control.Exception         ( evaluate )
 import Control.Monad             ( liftM, when, unless )
 import Data.List                 ( (\\), nub )
 import Data.Maybe                ( catMaybes )
@@ -161,13 +162,12 @@ doLinkSource verbosity path l' = do
     offset <-
       fmap (Tar.foldrEntries (\e acc -> Tar.entrySizeInBytes e + acc) 0 error
             . Tar.read) $ BS.readFile path
-    -- Force 'offset'.
-    when (offset > -1) $ do
-      debug verbosity $ "Writing at offset: " ++ show offset
-      withBinaryFile path ReadWriteMode $ \h -> do
-        hSeek h AbsoluteSeek (fromIntegral offset)
-        BS.hPut h (Tar.write entries)
-        debug verbosity $ "Successfully appended to '" ++ path ++ "'"
+    _ <- evaluate offset
+    debug verbosity $ "Writing at offset: " ++ show offset
+    withBinaryFile path ReadWriteMode $ \h -> do
+      hSeek h AbsoluteSeek (fromIntegral offset)
+      BS.hPut h (Tar.write entries)
+      debug verbosity $ "Successfully appended to '" ++ path ++ "'"
 
 -- | Remove a reference to a local build tree from the index.
 doRemoveSource :: Verbosity -> FilePath -> [FilePath] -> IO ()
