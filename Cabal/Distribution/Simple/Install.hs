@@ -139,6 +139,8 @@ install pkg_descr lbi flags = do
   unless (null lfile) $ do
     createDirectoryIfMissingVerbose verbosity True docPref
     installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
+    flip mapM_ (extraLicenseFiles pkg_descr) $ \elfile ->
+      installOrdinaryFile verbosity elfile (docPref </> takeFileName elfile)
 
   let buildPref = buildDir lbi
   when (hasLibs pkg_descr) $
