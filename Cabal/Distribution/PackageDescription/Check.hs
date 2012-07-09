@@ -1298,30 +1298,37 @@ checkPackageContent :: Monad m => CheckPackageContentOps m
                     -> PackageDescription
                     -> m [PackageCheck]
 checkPackageContent ops pkg = do
-  licenseError    <- checkLicenseExists   ops pkg
-  setupError      <- checkSetupExists     ops pkg
-  configureError  <- checkConfigureExists ops pkg
-  localPathErrors <- checkLocalPathsExist ops pkg
-  vcsLocation     <- checkMissingVcsInfo  ops pkg
+  licenseErrors     <- checkLicenseExists      ops pkg
+  setupError        <- checkSetupExists        ops pkg
+  configureError    <- checkConfigureExists    ops pkg
+  localPathErrors   <- checkLocalPathsExist    ops pkg
+  vcsLocation       <- checkMissingVcsInfo     ops pkg
 
-  return $ catMaybes [licenseError, setupError, configureError]
+  return $ licenseErrors
+        ++ catMaybes [setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
 
 checkLicenseExists :: Monad m => CheckPackageContentOps m
                    -> PackageDescription
-                   -> m (Maybe PackageCheck)
+                   -> m [PackageCheck]
 checkLicenseExists ops pkg
-  | null (licenseFile pkg) = return Nothing
+  | null (licenseFile pkg) = return []
   | otherwise = do
-    exists <- doesFileExist ops file
-    return $ check (not exists) $
-      PackageBuildWarning $
-           "The 'license-file' field refers to the file " ++ quote file
-        ++ " which does not exist."
-
-  where
-    file = licenseFile pkg
+    exists <- doesFileExist ops (licenseFile pkg)
+    let licenseError =
+          check (not exists) $ PackageBuildWarning $
+               "The 'license-file' field refers to the file "
+            ++ quote (licenseFile pkg) ++ " which does not exist."
+    existsExtras <- mapM (doesFileExist ops) (extraLicenseFiles pkg)
+    let missingExtrasErrors =
+          zipWith (\file exists ->
+                    check (not exists) $ PackageBuildWarning $
+                         "The 'extra-license-files' field refers to the file "
+                      ++ quote file ++ " which does not exist.")
+              (extraLicenseFiles pkg)
+              existsExtras
+    return $ catMaybes $ licenseError : missingExtrasErrors
 
 checkSetupExists :: Monad m => CheckPackageContentOps m
                  -> PackageDescription
