@@ -631,20 +631,20 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
   let baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
-      vanillaOpts = baseOpts {
+      vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptPackageName  = toFlag pkgid,
                       ghcOptInputModules = libModules lib
                     }
 
-      profOpts    = vanillaOpts {
+      profOpts    = vanillaOpts `mappend` mempty {
                       ghcOptProfilingMode = toFlag True,
                       ghcOptHiSuffix      = toFlag "p_hi",
                       ghcOptObjSuffix     = toFlag "p_o",
                       ghcOptExtra         = ghcProfOptions libBi
                     }
 
-      sharedOpts  = vanillaOpts {
+      sharedOpts  = vanillaOpts `mappend` mempty {
                       ghcOptDynamic   = toFlag True,
                       ghcOptFPic      = toFlag True,
                       ghcOptHiSuffix  = toFlag "dyn_hi",
@@ -662,10 +662,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
      info verbosity "Building C Sources..."
      sequence_
        [ do let vanillaCcOpts = (componentCcGhcOptions verbosity lbi
-                                    libBi clbi pref filename) {
+                                    libBi clbi pref filename) `mappend` mempty {
                                   ghcOptProfilingMode = toFlag (withProfLib lbi)
                                 }
-                sharedCcOpts  = vanillaOpts {
+                sharedCcOpts  = vanillaOpts `mappend` mempty {
                                   ghcOptFPic      = toFlag True,
                                   ghcOptDynamic   = toFlag True,
                                   ghcOptObjSuffix = toFlag "dyn_o"
@@ -812,7 +812,7 @@ buildExe verbosity _pkg_descr lbi
    info verbosity "Building C Sources."
    sequence_
      [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
-                         exeDir filename) {
+                         exeDir filename) `mappend` mempty {
                        ghcOptDynamic       = toFlag (withDynExe lbi),
                        ghcOptProfilingMode = toFlag (withProfExe lbi)
                      }
@@ -824,7 +824,8 @@ buildExe verbosity _pkg_descr lbi
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
   let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
-  let vanillaOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir) {
+  let vanillaOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
+                    `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeMake,
                       ghcOptInputFiles     = [exeDir </> x | x <- cObjs]
                                           ++ [srcMainFile],
@@ -834,7 +835,7 @@ buildExe verbosity _pkg_descr lbi
                       ghcOptLinkFrameworks = PD.frameworks exeBi
                     }
 
-      dynamicOpts = vanillaOpts {
+      dynamicOpts = vanillaOpts `mappend` mempty {
                       ghcOptDynamic        = toFlag True,
                       ghcOptExtra          = ghcSharedOptions exeBi
                     }
@@ -842,7 +843,7 @@ buildExe verbosity _pkg_descr lbi
       exeOpts     | withDynExe lbi = dynamicOpts
                   | otherwise      = vanillaOpts
 
-      exeProfOpts = exeOpts {
+      exeProfOpts = exeOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
@@ -909,7 +910,8 @@ libAbiHash verbosity pkg_descr lbi lib clbi = do
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
   let
       ghcArgs =
-        (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi)) {
+        (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
+        `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
           ghcOptPackageName  = toFlag (packageId pkg_descr),
           ghcOptInputModules = exposedModules lib
