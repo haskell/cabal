@@ -39,8 +39,8 @@ import System.IO                 ( IOMode(..), SeekMode(..)
                                  , hSeek, withBinaryFile )
 
 -- | A reference to a local build tree.
-newtype LocalBuildTree = LocalBuildTree {
-  localBuildTreePath :: FilePath
+newtype BuildTreeRef = BuildTreeRef {
+  buildTreePath :: FilePath
   }
 
 -- | Entry point for the 'cabal index' command.
@@ -78,47 +78,47 @@ index verbosity indexFlags path' = do
     doList verbosity path
 
 -- | Given a path, ensure that it refers to a local build tree.
-localBuildTreeFromPath :: FilePath -> IO (Maybe LocalBuildTree)
-localBuildTreeFromPath dir = do
+buildTreeRefFromPath :: FilePath -> IO (Maybe BuildTreeRef)
+buildTreeRefFromPath dir = do
   dirExists <- doesDirectoryExist dir
   when (not dirExists) $ do
     die $ "directory '" ++ dir ++ "' does not exist"
   _ <- findPackageDesc dir
-  return . Just $ LocalBuildTree { localBuildTreePath = dir }
+  return . Just $ BuildTreeRef { buildTreePath = dir }
 
 -- | Given a tar archive entry, try to parse it as a local build tree reference.
-readLocalBuildTreePath :: Tar.Entry -> Maybe FilePath
-readLocalBuildTreePath entry = case Tar.entryContent entry of
+readBuildTreePath :: Tar.Entry -> Maybe FilePath
+readBuildTreePath entry = case Tar.entryContent entry of
   (Tar.OtherEntryType typeCode bs size)
-    | (typeCode == Tar.localBuildTreeTypeCode)
+    | (typeCode == Tar.buildTreeRefTypeCode)
       && (size == BS.length bs) -> Just $ byteStringToFilePath bs
     | otherwise                 -> Nothing
   _ -> Nothing
 
 -- | Given a sequence of tar archive entries, extract all references to local
 -- build trees.
-readLocalBuildTreePaths :: Tar.Entries -> [FilePath]
-readLocalBuildTreePaths =
+readBuildTreePaths :: Tar.Entries -> [FilePath]
+readBuildTreePaths =
   catMaybes
-  . Tar.foldrEntries (\e r -> (readLocalBuildTreePath e):r)
+  . Tar.foldrEntries (\e r -> (readBuildTreePath e):r)
   [] error
 
 -- | Given a path to a tar archive, extract all references to local build trees.
-readLocalBuildTreePathsFromFile :: FilePath -> IO [FilePath]
-readLocalBuildTreePathsFromFile = liftM (readLocalBuildTreePaths . Tar.read)
+readBuildTreePathsFromFile :: FilePath -> IO [FilePath]
+readBuildTreePathsFromFile = liftM (readBuildTreePaths . Tar.read)
                                   . BS.readFile
 
 -- | Given a local build tree, serialise it to a tar archive entry.
-writeLocalBuildTree :: LocalBuildTree -> Tar.Entry
-writeLocalBuildTree lbt = Tar.simpleEntry tarPath content
+writeBuildTreeRef :: BuildTreeRef -> Tar.Entry
+writeBuildTreeRef lbt = Tar.simpleEntry tarPath content
   where
     bs       = filePathToByteString path
-    path     = localBuildTreePath lbt
+    path     = buildTreePath lbt
     -- fromRight can't fail because the path is shorter than 255 characters.
     tarPath  = fromRight $ Tar.toTarPath True tarPath'
     -- Provide a filename for tools that treat custom entries as ordinary files.
     tarPath' = "local-build-tree-reference"
-    content  = Tar.OtherEntryType Tar.localBuildTreeTypeCode bs (BS.length bs)
+    content  = Tar.OtherEntryType Tar.buildTreeRefTypeCode bs (BS.length bs)
 
     -- TODO: Move this to D.C.Utils?
     fromRight (Left err) = error err
@@ -150,10 +150,10 @@ doLinkSource _         _   [] =
   error "Distribution.Client.Index.doLinkSource: unexpected"
 doLinkSource verbosity path l' = do
   l <- liftM nub . mapM canonicalizePath $ l'
-  treesInIndex <- readLocalBuildTreePathsFromFile path
+  treesInIndex <- readBuildTreePathsFromFile path
   -- Add only those paths that aren't already in the index.
-  treesToAdd <- mapM localBuildTreeFromPath (l \\ treesInIndex)
-  let entries = map writeLocalBuildTree (catMaybes treesToAdd)
+  treesToAdd <- mapM buildTreeRefFromPath (l \\ treesInIndex)
+  let entries = map writeBuildTreeRef (catMaybes treesToAdd)
   when (not . null $ entries) $ do
     offset <-
       fmap (Tar.foldrEntries (\e acc -> Tar.entrySizeInBytes e + acc) 0 error
@@ -182,7 +182,7 @@ doRemoveSource verbosity path l' = do
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ path ++ "'"
     where
-      p l entry = case readLocalBuildTreePath entry of
+      p l entry = case readBuildTreePath entry of
         Nothing    -> True
         (Just pth) -> not $ any (== pth) l
 
@@ -192,9 +192,9 @@ doList verbosity path = do
   let repo = Repo { repoKind = Right LocalRepo
                   , repoLocalDir = takeDirectory path }
   pkgIndex <- fmap packageIndex . getSourcePackages verbosity $ [repo]
-  let localTrees = [ pkgPath | (LocalUnpackedPackage pkgPath) <-
-                       map packageSource . allPackages $ pkgIndex ]
-  when (null localTrees) $ do
+  let buildTreeRefs = [ pkgPath | (LocalUnpackedPackage pkgPath) <-
+                           map packageSource . allPackages $ pkgIndex ]
+  when (null buildTreeRefs) $ do
     notice verbosity $ "Index file '" ++ path
       ++ "' has no references to local build trees."
-  mapM_ putStrLn localTrees
+  mapM_ putStrLn buildTreeRefs
