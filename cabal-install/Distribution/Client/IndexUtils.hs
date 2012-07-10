@@ -309,7 +309,7 @@ extractPkg entry = case Tar.entryContent entry of
         _ -> Nothing
 
   Tar.OtherEntryType typeCode content _
-    | typeCode == Tar.localBuildTreeTypeCode -> Just (pkgid, pkgtype, descr)
+    | typeCode == Tar.buildTreeRefTypeCode -> Just (pkgid, pkgtype, descr)
     where
       path    = byteStringToFilePath content
       pkgid   = packageId descr
@@ -427,7 +427,7 @@ packageIndexFromCache mkPkg hnd = accum mempty []
           case Tar.entryContent e of
             Tar.NormalFile _ size -> return size
             Tar.OtherEntryType typecode _ size
-              | typecode == Tar.localBuildTreeTypeCode
+              | typecode == Tar.buildTreeRefTypeCode
                                   -> return size
             _                     -> interror "unexpected tar entry type"
         _ -> interror "could not read tar file entry"
