@@ -39,6 +39,7 @@ module Distribution.Client.Tar (
   DevMinor,
   TypeCode,
   Format(..),
+  localBuildTreeTypeCode,
   entrySizeInBlocks,
   entrySizeInBytes,
 
@@ -153,6 +154,12 @@ data Entry = Entry {
     -- | The tar format the archive is using.
     entryFormat :: !Format
   }
+
+-- | Type code for the local build tree reference entry type. We don't use the
+-- symbolic link entry type because it allows only 100 ASCII characters for the
+-- path.
+localBuildTreeTypeCode :: TypeCode
+localBuildTreeTypeCode = 'C'
 
 -- | Native 'FilePath' of the file or directory within the archive.
 --

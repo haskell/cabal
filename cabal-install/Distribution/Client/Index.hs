@@ -13,7 +13,12 @@ module Distribution.Client.Index (index)
        where
 
 import qualified Distribution.Client.Tar as Tar
+import Distribution.Client.IndexUtils ( getSourcePackages )
+import Distribution.Client.PackageIndex ( allPackages )
 import Distribution.Client.Setup ( IndexFlags(..) )
+import Distribution.Client.Types ( Repo(..), LocalRepo(..)
+                                 , SourcePackageDb(..)
+                                 , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd )
 
@@ -29,7 +34,7 @@ import Data.Maybe                ( catMaybes )
 import System.Directory          ( canonicalizePath,
                                    doesDirectoryExist, doesFileExist,
                                    renameFile )
-import System.FilePath           ( (</>), (<.>), takeExtension )
+import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension )
 import System.IO                 ( IOMode(..), SeekMode(..)
                                  , hSeek, withBinaryFile )
 
@@ -37,10 +42,6 @@ import System.IO                 ( IOMode(..), SeekMode(..)
 newtype LocalBuildTree = LocalBuildTree {
   localBuildTreePath :: FilePath
   }
-
--- | Type code of the corresponding tar entry type.
-localBuildTreeTypeCode :: Tar.TypeCode
-localBuildTreeTypeCode = 'C'
 
 -- | Entry point for the 'cabal index' command.
 index :: Verbosity -> IndexFlags -> FilePath -> IO ()
@@ -89,7 +90,7 @@ localBuildTreeFromPath dir = do
 readLocalBuildTreePath :: Tar.Entry -> Maybe FilePath
 readLocalBuildTreePath entry = case Tar.entryContent entry of
   (Tar.OtherEntryType typeCode bs size)
-    | (typeCode == localBuildTreeTypeCode)
+    | (typeCode == Tar.localBuildTreeTypeCode)
       && (size == BS.length bs) -> Just $ byteStringToFilePath bs
     | otherwise                 -> Nothing
   _ -> Nothing
@@ -117,7 +118,7 @@ writeLocalBuildTree lbt = Tar.simpleEntry tarPath content
     tarPath  = fromRight $ Tar.toTarPath True tarPath'
     -- Provide a filename for tools that treat custom entries as ordinary files.
     tarPath' = "local-build-tree-reference"
-    content  = Tar.OtherEntryType localBuildTreeTypeCode bs (BS.length bs)
+    content  = Tar.OtherEntryType Tar.localBuildTreeTypeCode bs (BS.length bs)
 
     -- TODO: Move this to D.C.Utils?
     fromRight (Left err) = error err
@@ -176,6 +177,7 @@ doRemoveSource verbosity path l' = do
   -- much smaller.
   BS.writeFile tmpFile . Tar.writeEntries . Tar.filterEntries (p l) . Tar.read
     =<< BS.readFile path
+  -- This invalidates the cache, so we don't have to update it explicitly.
   renameFile tmpFile path
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ path ++ "'"
@@ -187,7 +189,11 @@ doRemoveSource verbosity path l' = do
 -- | List the local build trees that are referred to from the index.
 doList :: Verbosity -> FilePath -> IO ()
 doList verbosity path = do
-  localTrees <- readLocalBuildTreePathsFromFile path
+  let repo = Repo { repoKind = Right LocalRepo
+                  , repoLocalDir = takeDirectory path }
+  pkgIndex <- fmap packageIndex . getSourcePackages verbosity $ [repo]
+  let localTrees = [ pkgPath | (LocalUnpackedPackage pkgPath) <-
+                       map packageSource . allPackages $ pkgIndex ]
   when (null localTrees) $ do
     notice verbosity $ "Index file '" ++ path
       ++ "' has no references to local build trees."
