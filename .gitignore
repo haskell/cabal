@@ -4,3 +4,10 @@ cabal-dev/
 Cabal/dist/
 cabal-install/dist/
 .hpc/
+
+# GHC build
+
+Cabal/GNUmakefile
+Cabal/dist-boot/
+Cabal/dist-install/
+Cabal/ghc.mk
