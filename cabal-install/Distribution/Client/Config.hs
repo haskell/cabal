@@ -8,7 +8,8 @@
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Utilities for handling saved state such as known packages, known servers and downloaded packages.
+-- Utilities for handling saved state such as known packages, known servers and
+-- downloaded packages.
 -----------------------------------------------------------------------------
 module Distribution.Client.Config (
     SavedConfig(..),
