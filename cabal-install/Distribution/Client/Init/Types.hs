@@ -22,6 +22,7 @@ import Distribution.Verbosity
 import qualified Distribution.Package as P
 import Distribution.License
 import Distribution.ModuleName
+import Language.Haskell.Extension ( Language(..) )
 
 import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
@@ -53,6 +54,7 @@ data InitFlags =
               , category     :: Flag (Either String Category)
 
               , packageType  :: Flag PackageType
+              , language     :: Flag Language
 
               , exposedModules :: Maybe [ModuleName]
               , otherModules   :: Maybe [ModuleName]
@@ -90,6 +92,7 @@ instance Monoid InitFlags where
     , synopsis       = mempty
     , category       = mempty
     , packageType    = mempty
+    , language       = mempty
     , exposedModules = mempty
     , otherModules   = mempty
     , dependencies   = mempty
@@ -114,6 +117,7 @@ instance Monoid InitFlags where
     , synopsis       = combine synopsis
     , category       = combine category
     , packageType    = combine packageType
+    , language       = combine language
     , exposedModules = combine exposedModules
     , otherModules   = combine otherModules
     , dependencies   = combine dependencies
