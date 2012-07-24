@@ -245,7 +245,7 @@ getLibOrExec flags = do
 -- | Ask whether to generate explanitory comments.
 getGenComments :: InitFlags -> IO InitFlags
 getGenComments flags = do
-  genComments <-     return (flagToMaybe $ noComments flags)
+  genComments <-     return (not <$> (flagToMaybe $ noComments flags))
                  ?>> maybePrompt flags (promptYesNo promptMsg (Just False))
                  ?>> return (Just False)
   return $ flags { noComments = maybeToFlag (fmap not genComments) }
