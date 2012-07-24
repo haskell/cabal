@@ -979,6 +979,11 @@ initCommand = CommandUI {
         IT.minimal (\v flags -> flags { IT.minimal = v })
         trueArg
 
+      , option [] ["overwrite"]
+        "Overwrite any existing .cabal, LICENSE, or Setup.hs files without warning."
+        IT.overwrite (\v flags -> flags { IT.overwrite = v })
+        trueArg
+
       , option [] ["package-dir"]
         "Root directory of the package (default = current directory)."
         IT.packageDir (\v flags -> flags { IT.packageDir = v })
