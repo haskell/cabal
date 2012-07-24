@@ -1052,6 +1052,14 @@ initCommand = CommandUI {
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Executable))
 
+      , option [] ["language"]
+        "Specify the default language."
+        IT.language
+        (\v flags -> flags { IT.language = v })
+        (reqArg "LANGUAGE" (readP_to_E ("Cannot parse language: "++)
+                                       (toFlag `fmap` parse))
+                          (flagToList . fmap display))
+
       , option ['o'] ["expose-module"]
         "Export a module from the package."
         IT.exposedModules

@@ -63,6 +63,7 @@ import Distribution.ModuleName
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, sourcePackageId, exposed )
 import qualified Distribution.Package as P
+import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Types
   ( InitFlags(..), PackageType(..), Category(..) )
@@ -127,6 +128,7 @@ extendFlags pkgIx =
   >=> getSynopsis
   >=> getCategory
   >=> getLibOrExec
+  >=> getLanguage
   >=> getGenComments
   >=> getSrcDir
   >=> getModulesBuildToolsAndDeps pkgIx
@@ -242,7 +244,24 @@ getLibOrExec flags = do
 
   return $ flags { packageType = maybeToFlag isLib }
 
--- | Ask whether to generate explanitory comments.
+-- | Ask for the base language of the package.
+getLanguage :: InitFlags -> IO InitFlags
+getLanguage flags = do
+  lang <-     return (flagToMaybe $ language flags)
+          ?>> maybePrompt flags
+                (either UnknownLanguage id `fmap`
+                  (promptList "What base language is the package written in"
+                    [Haskell2010, Haskell98]
+                    (Just Haskell2010)
+                    display
+                    True
+                  )
+                )
+          ?>> return (Just Haskell2010)
+
+  return $ flags { language = maybeToFlag lang }
+
+-- | Ask whether to generate explanatory comments.
 getGenComments :: InitFlags -> IO InitFlags
 getGenComments flags = do
   genComments <-     return (not <$> (flagToMaybe $ noComments flags))
@@ -678,6 +697,10 @@ generateCabalFile fileName c =
      , fieldS "build-tools" (listFieldS (buildTools c'))
               (Just "Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.")
               False
+
+     , field  "default-language" (language c')
+              (Just "Base language which the package is written in.")
+              True
      ]
 
    listField :: Text s => Maybe [s] -> Flag String
