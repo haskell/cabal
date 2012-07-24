@@ -13,12 +13,14 @@
 module Distribution.Client.PkgEnv (dumpPkgEnv)
        where
 
+import Distribution.Client.Config    ( SavedConfig(..), baseSavedConfig,
+                                       configFieldDescriptions )
 import Distribution.Client.Setup     ( SandboxFlags(..) )
 import Distribution.Simple.Setup     ( Flag(..), fromFlagOrDefault, toFlag )
 import Distribution.Simple.Utils     ( notice, warn )
 import Distribution.ParseUtils       ( FieldDescr(..), ParseResult(..),
                                        parseFilePathQ, parseFields,
-                                       ppFields, simpleField )
+                                       liftField, ppFields, simpleField )
 import Distribution.Verbosity        ( Verbosity )
 import Data.Monoid                   ( Monoid(..) )
 import Distribution.Compat.Exception ( catchIO )
@@ -33,23 +35,24 @@ import qualified Distribution.Compat.ReadP as Parse
 -- * Configuration saved in the package environment file
 --
 
+-- TODO: Print w/comments & defaults, install-dirs section, constraints field
 data PkgEnv = PkgEnv {
-  pkgEnvInherit :: Flag FilePath
+  pkgEnvInherit       :: Flag FilePath,
+  pkgEnvSavedConfig   :: SavedConfig
 }
 
 defaultPkgEnv :: PkgEnv
-defaultPkgEnv  = PkgEnv {
-  pkgEnvInherit = NoFlag
-  -- pkgEnvInstallDirs
-  }
+defaultPkgEnv = mempty
 
 instance Monoid PkgEnv where
   mempty = PkgEnv {
-    pkgEnvInherit = mempty
+    pkgEnvInherit       = mempty,
+    pkgEnvSavedConfig   = mempty
     }
 
   mappend a b = PkgEnv {
-    pkgEnvInherit = combine pkgEnvInherit
+    pkgEnvInherit       = combine pkgEnvInherit,
+    pkgEnvSavedConfig   = combine pkgEnvSavedConfig
     }
     where
       combine f = f a `mappend` f b
@@ -64,7 +67,10 @@ dumpPkgEnv verbosity sandboxFlags path = do
     Just (ParseFailed err)
       -> warn verbosity $ "Failed to parse file '" ++ path ++ "'."
     Just (ParseOk warns pkgEnv)
-      -> putStrLn . showPkgEnv $ pkgEnv
+      -> do base <- baseSavedConfig
+            let pkgEnv' = pkgEnv { pkgEnvSavedConfig =
+                                      base `mappend` pkgEnvSavedConfig pkgEnv }
+            putStrLn . showPkgEnv $ pkgEnv'
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PkgEnv]
@@ -73,8 +79,15 @@ pkgEnvFieldDescrs = [
     (Disp.text . fromFlagOrDefault "") (optional parseFilePathQ)
     pkgEnvInherit (\v pkgEnv -> pkgEnv { pkgEnvInherit = v })
   ]
+  ++ map toPkgEnv configFieldDescriptions
   where
     optional = Parse.option mempty . fmap toFlag
+
+    toPkgEnv :: FieldDescr SavedConfig -> FieldDescr PkgEnv
+    toPkgEnv fieldDescr =
+      liftField pkgEnvSavedConfig
+      (\savedConfig pkgEnv -> pkgEnv { pkgEnvSavedConfig = savedConfig})
+      fieldDescr
 
 -- | Read the package environment file.
 readPkgEnvFile :: PkgEnv -> FilePath -> IO (Maybe (ParseResult PkgEnv))
