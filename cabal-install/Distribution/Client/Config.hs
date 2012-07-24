@@ -85,11 +85,11 @@ import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint
          ( (<>), (<+>), ($$), ($+$) )
 import System.Directory
-         ( createDirectoryIfMissing, getAppUserDataDirectory )
+         ( createDirectoryIfMissing, getAppUserDataDirectory, renameFile )
 import Network.URI
          ( URI(..), URIAuth(..) )
 import System.FilePath
-         ( (</>), takeDirectory )
+         ( (<.>), (</>), takeDirectory )
 import System.Environment
          ( getEnvironment )
 import System.IO.Error
@@ -301,8 +301,10 @@ readConfigFile initial file = handleNotExists $
 
 writeConfigFile :: FilePath -> SavedConfig -> SavedConfig -> IO ()
 writeConfigFile file comments vals = do
+  let tmpFile = file <.> "tmp"
   createDirectoryIfMissing True (takeDirectory file)
-  writeFile file $ explanation ++ showConfigWithComments comments vals ++ "\n"
+  writeFile tmpFile $ explanation ++ showConfigWithComments comments vals ++ "\n"
+  renameFile tmpFile file
   where
     explanation = unlines
       ["-- This is the configuration file for the 'cabal' command line tool."
