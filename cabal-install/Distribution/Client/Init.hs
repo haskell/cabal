@@ -307,7 +307,14 @@ getModulesBuildToolsAndDeps pkgIx flags = do
 
   deps <-      return (dependencies flags)
            ?>> Just <$> importsToDeps flags
-                        (fromString "Prelude" : concatMap imports sourceFiles)
+                        (fromString "Prelude" :  -- to ensure we get base as a dep
+                           (   nub   -- only need to consider each imported package once
+                             . filter (`notElem` mods)  -- don't consider modules from
+                                                        -- this package itself
+                             . concatMap imports
+                             $ sourceFiles
+                           )
+                        )
                         pkgIx
 
   return $ flags { exposedModules = Just mods
