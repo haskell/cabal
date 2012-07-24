@@ -62,6 +62,7 @@ data InitFlags =
               , buildTools   :: Maybe [String]
 
               , initVerbosity :: Flag Verbosity
+              , overwrite     :: Flag Bool
               }
   deriving (Show)
 
@@ -95,6 +96,7 @@ instance Monoid InitFlags where
     , sourceDirs     = mempty
     , buildTools     = mempty
     , initVerbosity  = mempty
+    , overwrite      = mempty
     }
   mappend  a b = InitFlags
     { nonInteractive = combine nonInteractive
@@ -118,6 +120,7 @@ instance Monoid InitFlags where
     , sourceDirs     = combine sourceDirs
     , buildTools     = combine buildTools
     , initVerbosity  = combine initVerbosity
+    , overwrite      = combine overwrite
     }
     where combine field = field a `mappend` field b
 
