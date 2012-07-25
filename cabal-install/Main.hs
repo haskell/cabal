@@ -29,7 +29,9 @@ import Distribution.Client.Setup
          , InitFlags(initVerbosity), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , reportCommand
-         , unpackCommand, UnpackFlags(..) )
+         , unpackCommand, UnpackFlags(..)
+         , forkCommand, ForkFlags(..)
+         )
 import Distribution.Simple.Setup
          ( BuildFlags(..), buildCommand
          , HaddockFlags(..), haddockCommand
@@ -58,6 +60,7 @@ import Distribution.Client.Check as Check   (check)
 import Distribution.Client.Upload as Upload (upload, check, report)
 import Distribution.Client.SrcDist          (sdist)
 import Distribution.Client.Unpack           (unpack)
+import Distribution.Client.Fork             (fork)
 import Distribution.Client.Init             (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
@@ -132,6 +135,7 @@ mainWorker args = topHandler $
       ,infoCommand            `commandAddAction` infoAction
       ,fetchCommand           `commandAddAction` fetchAction
       ,unpackCommand          `commandAddAction` unpackAction
+      ,forkCommand            `commandAddAction` forkAction
       ,checkCommand           `commandAddAction` checkAction
       ,sdistCommand           `commandAddAction` sdistAction
       ,uploadCommand          `commandAddAction` uploadAction
@@ -357,6 +361,18 @@ unpackAction unpackFlags extraArgs globalFlags = do
          (globalRepos (savedGlobalFlags config))
          globalFlags'
          unpackFlags
+         targets
+
+forkAction :: ForkFlags -> [String] -> GlobalFlags -> IO ()
+forkAction forkFlags extraArgs globalFlags = do
+  let verbosity = fromFlag (forkVerbosity forkFlags)
+  targets <- readUserTargets verbosity extraArgs
+  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
+  let globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  fork verbosity
+         (globalRepos (savedGlobalFlags config))
+         globalFlags'
+         forkFlags
          targets
 
 initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
