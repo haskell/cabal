@@ -10,6 +10,7 @@
 #endif
 
 module Distribution.Compat.Exception (
+     SomeException,
      Exception.IOException,
      onException,
      catchIO,
@@ -20,6 +21,7 @@ module Distribution.Compat.Exception (
 
 import System.Exit
 import qualified Control.Exception as Exception
+import Control.Exception (SomeException)
 
 onException :: IO a -> IO b -> IO a
 #ifdef NEW_EXCEPTION
