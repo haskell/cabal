@@ -23,6 +23,9 @@ module Distribution.Client.Config (
     defaultConfigFile,
     defaultCacheDir,
     defaultLogsDir,
+
+    baseSavedConfig,
+    configFieldDescriptions
   ) where
 
 
@@ -53,6 +56,8 @@ import Distribution.ParseUtils
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
          , simpleField, listField, parseFilePathQ, parseTokenQ )
+import Distribution.Client.ParseUtils
+         ( parseFields, ppFields, ppSection )
 import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
 import qualified Distribution.Text as Text
@@ -77,13 +82,12 @@ import Data.Monoid
          ( Monoid(..) )
 import Control.Monad
          ( when, foldM, liftM )
-import qualified Data.Map as Map
 import qualified Distribution.Compat.ReadP as Parse
          ( option )
 import qualified Text.PrettyPrint as Disp
-         ( Doc, render, text, colon, vcat, empty, isEmpty, nest )
+         ( render, text, empty )
 import Text.PrettyPrint
-         ( (<>), (<+>), ($$), ($+$) )
+         ( ($+$) )
 import System.Directory
          ( createDirectoryIfMissing, getAppUserDataDirectory, renameFile )
 import Network.URI
@@ -528,42 +532,5 @@ showConfigWithComments comment vals = Disp.render $
       ppSection "install-dirs" name installDirsFields
                 (field comment) (field vals)
 
-------------------------
--- * Parsing utils
---
-
---FIXME: replace this with something better in Cabal-1.5
-parseFields :: [FieldDescr a] -> a -> [ParseUtils.Field] -> ParseResult a
-parseFields fields initial = foldM setField initial
-  where
-    fieldMap = Map.fromList
-      [ (name, f) | f@(FieldDescr name _ _) <- fields ]
-    setField accum (ParseUtils.F line name value) = case Map.lookup name fieldMap of
-      Just (FieldDescr _ _ set) -> set line value accum
-      Nothing -> do
-        warning $ "Unrecognized field " ++ name ++ " on line " ++ show line
-        return accum
-    setField accum f = do
-      warning $ "Unrecognized stanza on line " ++ show (lineNo f)
-      return accum
-
--- | This is a customised version of the function from Cabal that also prints
--- default values for empty fields as comments.
---
-ppFields :: [FieldDescr a] -> a -> a -> Disp.Doc
-ppFields fields def cur = Disp.vcat [ ppField name (getter def) (getter cur)
-                                    | FieldDescr name getter _ <- fields]
-
-ppField :: String -> Disp.Doc -> Disp.Doc -> Disp.Doc
-ppField name def cur
-  | Disp.isEmpty cur = Disp.text "--" <+> Disp.text name <> Disp.colon <+> def
-  | otherwise        =                    Disp.text name <> Disp.colon <+> cur
-
-ppSection :: String -> String -> [FieldDescr a] -> a -> a -> Disp.Doc
-ppSection name arg fields def cur =
-     Disp.text name <+> Disp.text arg
-  $$ Disp.nest 2 (ppFields fields def cur)
-
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
-
