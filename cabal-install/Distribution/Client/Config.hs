@@ -25,7 +25,8 @@ module Distribution.Client.Config (
     defaultLogsDir,
 
     baseSavedConfig,
-    configFieldDescriptions
+    configFieldDescriptions,
+    installDirsFields
   ) where
 
 
