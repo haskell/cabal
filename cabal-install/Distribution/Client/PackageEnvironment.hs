@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.PkgEnv
+-- Module      :  Distribution.Client.PackageEnvironment
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
@@ -8,7 +8,7 @@
 -- Distribution.Client.Config.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.PkgEnv (
+module Distribution.Client.PackageEnvironment (
     PkgEnv(..),
     loadPkgEnv,
     dumpPkgEnv
@@ -77,14 +77,14 @@ basePackageEnvironment = do
 -- it does not exist. When the package environment gets loaded it gets layered
 -- on top of 'basePackageEnvironment'.
 initialPackageEnvironment :: FilePath -> IO PkgEnv
-initialPackageEnvironment _ = do
+initialPackageEnvironment pkgEnvDir = do
   initialConf <- initialSavedConfig
   return $ mempty { pkgEnvSavedConfig = initialConf }
 
 -- | Default values that get used if no value is given. Used here to include in
 -- comments when we write out the initial package environment.
 commentPackageEnvironment :: FilePath -> IO PkgEnv
-commentPackageEnvironment _ = do
+commentPackageEnvironment pkgEnvDir = do
   commentConf <- commentSavedConfig
   return $ mempty { pkgEnvSavedConfig = commentConf }
 
