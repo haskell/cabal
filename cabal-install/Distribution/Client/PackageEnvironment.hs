@@ -47,8 +47,9 @@ import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
 -- * Configuration saved in the package environment file
 --
 
--- TODO: better defaults, constraints field (?), remove duplication between
--- D.C.PackageEnvironment and D.C.Config
+-- TODO: better defaults, constraints field (really needed? there is already
+-- 'constraint'), remove duplication between D.C.PackageEnvironment and
+-- D.C.Config
 data PackageEnvironment = PackageEnvironment {
   pkgEnvInherit       :: Flag FilePath,
   pkgEnvSavedConfig   :: SavedConfig
