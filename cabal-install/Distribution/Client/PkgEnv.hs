@@ -8,10 +8,14 @@
 -- Distribution.Client.Config.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.PkgEnv (dumpPkgEnv)
-       where
+module Distribution.Client.PkgEnv (
+    PkgEnv(..),
+    loadPkgEnv,
+    dumpPkgEnv
+  ) where
 
 import Distribution.Client.Config      ( SavedConfig(..), baseSavedConfig,
+                                         commentSavedConfig, initialSavedConfig,
                                          configFieldDescriptions,
                                          installDirsFields )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
@@ -20,7 +24,7 @@ import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate )
 import Distribution.Simple.Setup       ( Flag(..), fromFlagOrDefault, toFlag )
 import Distribution.Simple.Utils       ( notice, warn, lowercase )
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..),
-                                         liftField, lineNo,
+                                         liftField, lineNo, locatedErrorMsg,
                                          parseFilePathQ, readFields,
                                          showPWarning, simpleField, warning )
 import Distribution.Verbosity          ( Verbosity )
@@ -28,7 +32,8 @@ import Control.Monad                   ( foldM, when )
 import Data.List                       ( partition )
 import Data.Monoid                     ( Monoid(..) )
 import Distribution.Compat.Exception   ( catchIO )
-import System.Directory                ( createDirectoryIfMissing, renameFile )
+import System.Directory                ( canonicalizePath,
+                                         createDirectoryIfMissing, renameFile )
 import System.FilePath                 ( (<.>), takeDirectory )
 import System.IO.Error                 ( isDoesNotExistError )
 import Text.PrettyPrint                ( ($+$) )
@@ -37,19 +42,17 @@ import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
 
+
 --
 -- * Configuration saved in the package environment file
 --
 
--- TODO: constraints field, sensible defaults, loadPkgEnv function,
--- remove duplication between D.C.PkgEnv and D.C.Config
+-- TODO: better defaults, constraints field, remove duplication between
+-- D.C.PkgEnv and D.C.Config
 data PkgEnv = PkgEnv {
   pkgEnvInherit       :: Flag FilePath,
   pkgEnvSavedConfig   :: SavedConfig
 }
-
-defaultPkgEnv :: PkgEnv
-defaultPkgEnv = mempty
 
 instance Monoid PkgEnv where
   mempty = PkgEnv {
@@ -64,25 +67,61 @@ instance Monoid PkgEnv where
     where
       combine f = f a `mappend` f b
 
-basePkgEnv :: IO PkgEnv
-basePkgEnv = do baseConf <- baseSavedConfig
-                return $ mempty { pkgEnvSavedConfig = baseConf }
+-- | Values that *must* be initialised.
+basePackageEnvironment :: IO PkgEnv
+basePackageEnvironment = do
+  baseConf <- baseSavedConfig
+  return $ mempty { pkgEnvSavedConfig = baseConf }
+
+-- | Initial configuration that we write out to the package environment file if
+-- it does not exist. When the package environment gets loaded it gets layered
+-- on top of 'basePackageEnvironment'.
+initialPackageEnvironment :: FilePath -> IO PkgEnv
+initialPackageEnvironment _ = do
+  initialConf <- initialSavedConfig
+  return $ mempty { pkgEnvSavedConfig = initialConf }
+
+-- | Default values that get used if no value is given. Used here to include in
+-- comments when we write out the initial package environment.
+commentPackageEnvironment :: FilePath -> IO PkgEnv
+commentPackageEnvironment _ = do
+  commentConf <- commentSavedConfig
+  return $ mempty { pkgEnvSavedConfig = commentConf }
 
 -- | Entry point for the 'cabal dump-pkgenv' command.
 dumpPkgEnv :: Verbosity -> SandboxFlags -> FilePath -> IO ()
 dumpPkgEnv verbosity sandboxFlags path = do
-  minp <- readPkgEnvFile defaultPkgEnv path
+  pkgEnv <- loadPkgEnv verbosity path
+  putStrLn . showPkgEnv $ pkgEnv
+
+-- | Load the package environment file, creating it if doesn't exist.
+loadPkgEnv :: Verbosity -> FilePath -> IO PkgEnv
+loadPkgEnv verbosity path = addBasePkgEnv $ do
+  pkgEnvDir <- canonicalizePath . takeDirectory $ path
+  minp <- readPkgEnvFile mempty path
   case minp of
-    Nothing
-      -> notice verbosity $ "File '" ++ path ++ "' not found"
-    Just (ParseFailed err)
-      -> warn verbosity $ "Failed to parse file '" ++ path ++ "'."
-    Just (ParseOk warns pkgEnv)
-      -> do when (not $ null warns) $ warn verbosity $
-              unlines (map (showPWarning path) warns)
-            base <- basePkgEnv
-            let pkgEnv' = base `mappend` pkgEnv
-            putStrLn . showPkgEnvWithComments base $ pkgEnv'
+    Nothing -> do
+      notice verbosity $ "Writing default package environment to " ++ path
+      commentPkgEnv <- commentPackageEnvironment pkgEnvDir
+      initialPkgEnv <- initialPackageEnvironment pkgEnvDir
+      writePkgEnvFile path commentPkgEnv initialPkgEnv
+      return initialPkgEnv
+    Just (ParseOk warns pkgEnv) -> do
+      when (not $ null warns) $ warn verbosity $
+        unlines (map (showPWarning path) warns)
+      return pkgEnv
+    Just (ParseFailed err) -> do
+      let (line, msg) = locatedErrorMsg err
+      warn verbosity $
+        "Error parsing package environment file " ++ path
+        ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
+      warn verbosity $ "Using default package environment."
+      initialPackageEnvironment pkgEnvDir
+  where
+    addBasePkgEnv body = do
+      base  <- basePackageEnvironment
+      extra <- body
+      return $ base `mappend` extra
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PkgEnv]
@@ -120,6 +159,7 @@ parsePkgEnv initial str = do
   pkgEnv <- parse others
   let config       = pkgEnvSavedConfig pkgEnv
       installDirs0 = savedUserInstallDirs config
+  -- 'install-dirs' is the only section that we care about.
   installDirs <- foldM parseSection installDirs0 knownSections
   return pkgEnv {
     pkgEnvSavedConfig = config {
@@ -150,12 +190,25 @@ parsePkgEnv initial str = do
       return accum
 
 -- | Write out the package environment file.
-writePkgEnvFile :: FilePath -> PkgEnv -> IO ()
-writePkgEnvFile path pkgEnv = do
+writePkgEnvFile :: FilePath -> PkgEnv -> PkgEnv -> IO ()
+writePkgEnvFile path comments pkgEnv = do
   let tmpPath = (path <.> "tmp")
   createDirectoryIfMissing True (takeDirectory path)
-  writeFile tmpPath (showPkgEnv pkgEnv)
+  writeFile tmpPath $ explanation ++ showPkgEnvWithComments comments pkgEnv ++ "\n"
   renameFile tmpPath path
+  where
+    -- TODO: Better explanation
+    explanation = unlines
+      ["-- This is a Cabal package environment file."
+      ,""
+      ,"-- The available configuration options are listed below."
+      ,"-- Some of them have default values listed."
+      ,""
+      ,"-- Lines (like this one) beginning with '--' are comments."
+      ,"-- Be careful with spaces and indentation because they are"
+      ,"-- used to indicate layout for nested sections."
+      ,"",""
+      ]
 
 -- | Pretty-print the package environment data.
 showPkgEnv :: PkgEnv -> String
