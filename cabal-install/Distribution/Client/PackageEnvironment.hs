@@ -9,9 +9,9 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Client.PackageEnvironment (
-    PkgEnv(..),
-    loadPkgEnv,
-    dumpPkgEnv
+    PackageEnvironment(..),
+    loadPackageEnvironment,
+    dumpPackageEnvironment
   ) where
 
 import Distribution.Client.Config      ( SavedConfig(..), baseSavedConfig,
@@ -47,20 +47,20 @@ import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
 -- * Configuration saved in the package environment file
 --
 
--- TODO: better defaults, constraints field, remove duplication between
--- D.C.PkgEnv and D.C.Config
-data PkgEnv = PkgEnv {
+-- TODO: better defaults, constraints field (?), remove duplication between
+-- D.C.PackageEnvironment and D.C.Config
+data PackageEnvironment = PackageEnvironment {
   pkgEnvInherit       :: Flag FilePath,
   pkgEnvSavedConfig   :: SavedConfig
 }
 
-instance Monoid PkgEnv where
-  mempty = PkgEnv {
+instance Monoid PackageEnvironment where
+  mempty = PackageEnvironment {
     pkgEnvInherit       = mempty,
     pkgEnvSavedConfig   = mempty
     }
 
-  mappend a b = PkgEnv {
+  mappend a b = PackageEnvironment {
     pkgEnvInherit       = combine pkgEnvInherit,
     pkgEnvSavedConfig   = combine pkgEnvSavedConfig
     }
@@ -68,7 +68,7 @@ instance Monoid PkgEnv where
       combine f = f a `mappend` f b
 
 -- | Values that *must* be initialised.
-basePackageEnvironment :: IO PkgEnv
+basePackageEnvironment :: IO PackageEnvironment
 basePackageEnvironment = do
   baseConf <- baseSavedConfig
   return $ mempty { pkgEnvSavedConfig = baseConf }
@@ -76,35 +76,35 @@ basePackageEnvironment = do
 -- | Initial configuration that we write out to the package environment file if
 -- it does not exist. When the package environment gets loaded it gets layered
 -- on top of 'basePackageEnvironment'.
-initialPackageEnvironment :: FilePath -> IO PkgEnv
+initialPackageEnvironment :: FilePath -> IO PackageEnvironment
 initialPackageEnvironment pkgEnvDir = do
   initialConf <- initialSavedConfig
   return $ mempty { pkgEnvSavedConfig = initialConf }
 
 -- | Default values that get used if no value is given. Used here to include in
 -- comments when we write out the initial package environment.
-commentPackageEnvironment :: FilePath -> IO PkgEnv
+commentPackageEnvironment :: FilePath -> IO PackageEnvironment
 commentPackageEnvironment pkgEnvDir = do
   commentConf <- commentSavedConfig
   return $ mempty { pkgEnvSavedConfig = commentConf }
 
 -- | Entry point for the 'cabal dump-pkgenv' command.
-dumpPkgEnv :: Verbosity -> SandboxFlags -> FilePath -> IO ()
-dumpPkgEnv verbosity sandboxFlags path = do
-  pkgEnv <- loadPkgEnv verbosity path
-  putStrLn . showPkgEnv $ pkgEnv
+dumpPackageEnvironment :: Verbosity -> SandboxFlags -> FilePath -> IO ()
+dumpPackageEnvironment verbosity sandboxFlags path = do
+  pkgEnv <- loadPackageEnvironment verbosity path
+  putStrLn . showPackageEnvironment $ pkgEnv
 
 -- | Load the package environment file, creating it if doesn't exist.
-loadPkgEnv :: Verbosity -> FilePath -> IO PkgEnv
-loadPkgEnv verbosity path = addBasePkgEnv $ do
+loadPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
+loadPackageEnvironment verbosity path = addBasePkgEnv $ do
   pkgEnvDir <- canonicalizePath . takeDirectory $ path
-  minp <- readPkgEnvFile mempty path
+  minp <- readPackageEnvironmentFile mempty path
   case minp of
     Nothing -> do
       notice verbosity $ "Writing default package environment to " ++ path
       commentPkgEnv <- commentPackageEnvironment pkgEnvDir
       initialPkgEnv <- initialPackageEnvironment pkgEnvDir
-      writePkgEnvFile path commentPkgEnv initialPkgEnv
+      writePackageEnvironmentFile path commentPkgEnv initialPkgEnv
       return initialPkgEnv
     Just (ParseOk warns pkgEnv) -> do
       when (not $ null warns) $ warn verbosity $
@@ -124,7 +124,7 @@ loadPkgEnv verbosity path = addBasePkgEnv $ do
       return $ base `mappend` extra
 
 -- | Descriptions of all fields in the package environment file.
-pkgEnvFieldDescrs :: [FieldDescr PkgEnv]
+pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
 pkgEnvFieldDescrs = [
   simpleField "inherit"
     (fromFlagOrDefault Disp.empty . fmap Disp.text) (optional parseFilePathQ)
@@ -134,16 +134,18 @@ pkgEnvFieldDescrs = [
   where
     optional = Parse.option mempty . fmap toFlag
 
-    toPkgEnv :: FieldDescr SavedConfig -> FieldDescr PkgEnv
+    toPkgEnv :: FieldDescr SavedConfig -> FieldDescr PackageEnvironment
     toPkgEnv fieldDescr =
       liftField pkgEnvSavedConfig
       (\savedConfig pkgEnv -> pkgEnv { pkgEnvSavedConfig = savedConfig})
       fieldDescr
 
 -- | Read the package environment file.
-readPkgEnvFile :: PkgEnv -> FilePath -> IO (Maybe (ParseResult PkgEnv))
-readPkgEnvFile initial file = handleNotExists $
-                              fmap (Just . parsePkgEnv initial) (readFile file)
+readPackageEnvironmentFile :: PackageEnvironment -> FilePath
+                              -> IO (Maybe (ParseResult PackageEnvironment))
+readPackageEnvironmentFile initial file =
+  handleNotExists $
+  fmap (Just . parsePackageEnvironment initial) (readFile file)
   where
     handleNotExists action = catchIO action $ \ioe ->
       if isDoesNotExistError ioe
@@ -151,8 +153,9 @@ readPkgEnvFile initial file = handleNotExists $
         else ioError ioe
 
 -- | Parse the package environment file.
-parsePkgEnv :: PkgEnv -> String -> ParseResult PkgEnv
-parsePkgEnv initial str = do
+parsePackageEnvironment :: PackageEnvironment -> String
+                           -> ParseResult PackageEnvironment
+parsePackageEnvironment initial str = do
   fields <- readFields str
   let (knownSections, others) = partition isKnownSection fields
 
@@ -173,7 +176,7 @@ parsePkgEnv initial str = do
     isKnownSection (ParseUtils.Section _ "install-dirs" _ _) = True
     isKnownSection _                                         = False
 
-    parse :: [ParseUtils.Field] -> ParseResult PkgEnv
+    parse :: [ParseUtils.Field] -> ParseResult PackageEnvironment
     parse = parseFields pkgEnvFieldDescrs initial
 
     parseSection :: InstallDirs (Flag PathTemplate)
@@ -190,11 +193,13 @@ parsePkgEnv initial str = do
       return accum
 
 -- | Write out the package environment file.
-writePkgEnvFile :: FilePath -> PkgEnv -> PkgEnv -> IO ()
-writePkgEnvFile path comments pkgEnv = do
+writePackageEnvironmentFile :: FilePath -> PackageEnvironment
+                               -> PackageEnvironment -> IO ()
+writePackageEnvironmentFile path comments pkgEnv = do
   let tmpPath = (path <.> "tmp")
   createDirectoryIfMissing True (takeDirectory path)
-  writeFile tmpPath $ explanation ++ showPkgEnvWithComments comments pkgEnv ++ "\n"
+  writeFile tmpPath $ explanation
+    ++ showPackageEnvironmentWithComments comments pkgEnv ++ "\n"
   renameFile tmpPath path
   where
     -- TODO: Better explanation
@@ -211,11 +216,12 @@ writePkgEnvFile path comments pkgEnv = do
       ]
 
 -- | Pretty-print the package environment data.
-showPkgEnv :: PkgEnv -> String
-showPkgEnv = showPkgEnvWithComments mempty
+showPackageEnvironment :: PackageEnvironment -> String
+showPackageEnvironment = showPackageEnvironmentWithComments mempty
 
-showPkgEnvWithComments :: PkgEnv -> PkgEnv -> String
-showPkgEnvWithComments defPkgEnv pkgEnv = Disp.render $
+showPackageEnvironmentWithComments :: PackageEnvironment -> PackageEnvironment
+                                      -> String
+showPackageEnvironmentWithComments defPkgEnv pkgEnv = Disp.render $
       ppFields pkgEnvFieldDescrs defPkgEnv pkgEnv
   $+$ Disp.text ""
   $+$ ppSection "install-dirs" "" installDirsFields
