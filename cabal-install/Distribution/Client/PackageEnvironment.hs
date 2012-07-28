@@ -78,21 +78,21 @@ basePackageEnvironment pkgEnvDir = do
   baseConf <- baseSavedConfig
   return $ mempty {
     pkgEnvSavedConfig = baseConf {
-      savedConfigureFlags = (savedConfigureFlags baseConf) {
-         configUserInstall = toFlag False
+       savedConfigureFlags = (savedConfigureFlags baseConf) {
+          configUserInstall = toFlag False
+          },
+       savedUserInstallDirs = (savedUserInstallDirs baseConf) {
+         prefix = toFlag (toPathTemplate pkgEnvDir)
          },
-      savedUserInstallDirs = (savedUserInstallDirs baseConf) {
-        prefix = toFlag (toPathTemplate pkgEnvDir)
-        },
-      savedGlobalInstallDirs = (savedGlobalInstallDirs baseConf) {
-        prefix = toFlag (toPathTemplate pkgEnvDir)
-        },
-      savedGlobalFlags = (savedGlobalFlags baseConf) {
-        globalLogsDir = toFlag $ pkgEnvDir </> "logs",
-        -- TODO: cabal-dev uses the global world file: is this right?
-        globalWorldFile = toFlag $ pkgEnvDir </> "world"
-        }
-      }
+       savedGlobalInstallDirs = (savedGlobalInstallDirs baseConf) {
+         prefix = toFlag (toPathTemplate pkgEnvDir)
+         },
+       savedGlobalFlags = (savedGlobalFlags baseConf) {
+         globalLogsDir = toFlag $ pkgEnvDir </> "logs",
+         -- TODO: cabal-dev uses the global world file: is this right?
+         globalWorldFile = toFlag $ pkgEnvDir </> "world"
+         }
+       }
     }
 
 -- | Initial configuration that we write out to the package environment file if
@@ -101,30 +101,23 @@ basePackageEnvironment pkgEnvDir = do
 initialPackageEnvironment :: FilePath -> IO PackageEnvironment
 initialPackageEnvironment pkgEnvDir = do
   initialConf <- initialSavedConfig
+  baseConf <- fmap pkgEnvSavedConfig $ basePackageEnvironment pkgEnvDir
+  let initialConf' = initialConf `mappend` baseConf
   return $ mempty {
-    pkgEnvSavedConfig = initialConf {
-      savedUserInstallDirs = (savedUserInstallDirs initialConf) {
-        prefix = toFlag (toPathTemplate pkgEnvDir)
-        },
-      savedGlobalInstallDirs = (savedGlobalInstallDirs initialConf) {
-        prefix = toFlag (toPathTemplate pkgEnvDir)
-        },
-      savedGlobalFlags = (savedGlobalFlags initialConf) {
-         globalLocalRepos = [pkgEnvDir </> "packages"],
-         -- TODO: cabal-dev uses the global world file: is this right?
-         globalWorldFile = toFlag $ pkgEnvDir </> "world"
+    pkgEnvSavedConfig = initialConf' {
+       savedGlobalFlags = (savedGlobalFlags initialConf') {
+          globalLocalRepos = [pkgEnvDir </> "packages"]
+          },
+       savedConfigureFlags = (savedConfigureFlags initialConf') {
+         -- TODO: This should include comp. flavor and version
+         configPackageDBs = [Just (SpecificPackageDB $ pkgEnvDir
+                                   </> "packages.conf.d")]
          },
-      savedConfigureFlags = (savedConfigureFlags initialConf) {
-        configUserInstall = toFlag False,
-        -- TODO: This should include comp. flavor and version
-        configPackageDBs = [Just (SpecificPackageDB $ pkgEnvDir
-                                  </> "packages.conf.d")]
-        },
-      savedInstallFlags = (savedInstallFlags initialConf) {
-        installSummaryFile = [toPathTemplate (pkgEnvDir </>
-                                              "logs" </> "build.log")]
-        }
-      }
+       savedInstallFlags = (savedInstallFlags initialConf') {
+         installSummaryFile = [toPathTemplate (pkgEnvDir </>
+                                               "logs" </> "build.log")]
+         }
+       }
     }
 
 -- | Default values that get used if no value is given. Used here to include in
@@ -132,13 +125,18 @@ initialPackageEnvironment pkgEnvDir = do
 commentPackageEnvironment :: FilePath -> IO PackageEnvironment
 commentPackageEnvironment pkgEnvDir = do
   commentConf <- commentSavedConfig
-  return $ mempty { pkgEnvSavedConfig = commentConf }
+  baseConf <- fmap pkgEnvSavedConfig $ basePackageEnvironment pkgEnvDir
+  return $ mempty {
+    pkgEnvSavedConfig = commentConf `mappend` baseConf
+    }
 
 -- | Entry point for the 'cabal dump-pkgenv' command.
 dumpPackageEnvironment :: Verbosity -> SandboxFlags -> FilePath -> IO ()
 dumpPackageEnvironment verbosity sandboxFlags path = do
+  pkgEnvDir <- canonicalizePath . takeDirectory $ path
   pkgEnv <- loadPackageEnvironment verbosity path
-  putStrLn . showPackageEnvironment $ pkgEnv
+  commentPkgEnv <- commentPackageEnvironment pkgEnvDir
+  putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
 
 -- | Load the package environment file, creating it if doesn't exist.
 loadPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
