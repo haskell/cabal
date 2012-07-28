@@ -16,7 +16,7 @@ module Distribution.Client.PackageEnvironment (
 
 import Distribution.Client.Config      ( SavedConfig(..), baseSavedConfig,
                                          commentSavedConfig, initialSavedConfig,
-                                         configFieldDescriptions,
+                                         loadConfig, configFieldDescriptions,
                                          installDirsFields )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), InstallFlags(..),
@@ -169,7 +169,13 @@ loadPackageEnvironment verbosity path = do
     addBasePkgEnv pkgEnvDir body = do
       base  <- basePackageEnvironment pkgEnvDir
       extra <- body
-      return $ base `mappend` extra
+      case pkgEnvInherit extra of
+        NoFlag          ->
+          return $ base `mappend` extra
+        (Flag confPath) -> do
+          conf <- loadConfig verbosity (Flag confPath) (Flag False)
+          let conf' = base `mappend` conf `mappend` (pkgEnvSavedConfig extra)
+          return $ extra { pkgEnvSavedConfig = conf' }
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
