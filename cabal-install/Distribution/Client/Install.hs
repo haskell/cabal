@@ -23,7 +23,7 @@ import Data.List
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Control.Exception as Exception
-         ( handleJust )
+         ( bracket, handleJust )
 #if MIN_VERSION_base(4,0,0)
 import Control.Exception as Exception
          ( Exception(toException), catches, Handler(Handler), IOException )
@@ -42,7 +42,7 @@ import System.Directory
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
-         ( openFile, IOMode(AppendMode), stdout, hFlush )
+         ( openFile, IOMode(AppendMode), stdout, hFlush, hClose )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -1092,20 +1092,24 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
     verbosity' = maybe verbosity snd useLogFile
 
     setup cmd flags  = do
-      logFileHandle <- case useLogFile of
-        Nothing                   -> return Nothing
-        Just (mkLogFileName, _) -> do
-          let logFileName = mkLogFileName (packageId pkg)
-              logDir      = takeDirectory logFileName
-          unless (null logDir) $ createDirectoryIfMissing True logDir
-          logFile <- openFile logFileName AppendMode
-          return (Just logFile)
-
-      setupWrapper verbosity
-        scriptOptions { useLoggingHandle = logFileHandle
-                      , useWorkingDir    = workingDir }
-        (Just pkg)
-        cmd flags []
+      Exception.bracket
+              (case useLogFile of
+               Nothing                   -> return Nothing
+               Just (mkLogFileName, _) -> do
+                 let logFileName = mkLogFileName (packageId pkg)
+                     logDir      = takeDirectory logFileName
+                 unless (null logDir) $ createDirectoryIfMissing True logDir
+                 logFile <- openFile logFileName AppendMode
+                 return (Just logFile))
+              (\mHandle -> case mHandle of
+                           Just handle -> hClose handle
+                           Nothing -> return ())
+              (\logFileHandle ->
+               setupWrapper verbosity
+                 scriptOptions { useLoggingHandle = logFileHandle
+                               , useWorkingDir    = workingDir }
+                 (Just pkg)
+                 cmd flags [])
     reexec cmd = do
       -- look for our on executable file and re-exec ourselves using
       -- a helper program like sudo to elevate priviledges:
