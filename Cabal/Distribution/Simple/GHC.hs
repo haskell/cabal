@@ -840,16 +840,17 @@ buildExe verbosity _pkg_descr lbi
                       ghcOptExtra          = ghcSharedOptions exeBi
                     }
 
-      exeOpts     | withDynExe lbi = dynamicOpts
-                  | otherwise      = vanillaOpts
+      exeNoProfOpts | withDynExe lbi = dynamicOpts
+                    | otherwise      = vanillaOpts
 
-      exeProfOpts = exeOpts `mappend` mempty {
+      exeOpts     | withProfExe lbi = vanillaOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = ghcProfOptions exeBi,
-                      ghcOptNoLink         = toFlag True
+                      ghcOptExtra          = ghcProfOptions exeBi
                     }
+                  | otherwise = exeNoProfOpts
+
   -- For building exe's for profiling that use TH we actually
   -- have to build twice, once without profiling and the again
   -- with profiling. This is because the code that TH needs to
@@ -857,7 +858,7 @@ buildExe verbosity _pkg_descr lbi
   -- be loaded up and run by the compiler.
   when (withProfExe lbi &&
         EnableExtension TemplateHaskell `elem` allExtensions exeBi) $
-    runGhcProg exeProfOpts { ghcOptNoLink = toFlag True }
+    runGhcProg exeNoProfOpts { ghcOptNoLink = toFlag True }
 
   runGhcProg exeOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 
