@@ -4,13 +4,19 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Querying and modifying the package index.
---
---
+-- Querying and modifying local build tree references in the package index.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.Index (index)
-       where
+module Distribution.Client.Index (
+    index,
+
+    createEmpty,
+    addBuildTreeRefs,
+    removeBuildTreeRefs,
+    listBuildTreeRefs,
+
+    defaultIndexFileName
+  ) where
 
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.IndexUtils ( getSourcePackages )
@@ -23,7 +29,7 @@ import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd )
 
 import Distribution.Simple.Setup ( fromFlagOrDefault )
-import Distribution.Simple.Utils ( die, debug, notice, findPackageDesc )
+import Distribution.Simple.Utils ( die, debug, notice, warn, findPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
@@ -31,7 +37,7 @@ import Control.Exception         ( evaluate )
 import Control.Monad             ( liftM, when, unless )
 import Data.List                 ( (\\), nub )
 import Data.Maybe                ( catMaybes )
-import System.Directory          ( canonicalizePath,
+import System.Directory          ( canonicalizePath, createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
                                    renameFile )
 import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension )
@@ -43,15 +49,18 @@ newtype BuildTreeRef = BuildTreeRef {
   buildTreePath :: FilePath
   }
 
+defaultIndexFileName :: FilePath
+defaultIndexFileName = "00-index.tar"
+
 -- | Entry point for the 'cabal index' command.
 index :: Verbosity -> IndexFlags -> FilePath -> IO ()
 index verbosity indexFlags path' = do
-  let runInit = fromFlagOrDefault False (indexInit indexFlags)
-  let linkSource = indexLinkSource indexFlags
-  let runLinkSource = not . null $ linkSource
-  let removeSource = indexRemoveSource indexFlags
-  let runRemoveSource = not . null $ removeSource
-  let runList = fromFlagOrDefault False (indexList indexFlags)
+  let runInit         = fromFlagOrDefault False (indexInit indexFlags)
+  let refsToAdd       = indexLinkSource indexFlags
+  let runLinkSource   = not . null $ refsToAdd
+  let refsToRemove    = indexRemoveSource indexFlags
+  let runRemoveSource = not . null $ refsToRemove
+  let runList         = fromFlagOrDefault False (indexList indexFlags)
 
   unless (or [runInit, runLinkSource, runRemoveSource, runList]) $ do
     die "no arguments passed to the 'index' command"
@@ -59,23 +68,17 @@ index verbosity indexFlags path' = do
   path <- validateIndexPath path'
 
   when runInit $ do
-    indexExists <- doesFileExist path
-    if indexExists
-      then die $ "index already exists: '" ++ path ++ "'"
-      else doInit verbosity path
-
-  indexExists <- doesFileExist path
-  when (not indexExists) $ do
-    die $ "index does not exist: '" ++ path ++ "'"
+    createEmpty verbosity path
 
   when runLinkSource $ do
-    doLinkSource verbosity path linkSource
+    addBuildTreeRefs verbosity path refsToAdd
 
   when runRemoveSource $ do
-    doRemoveSource verbosity path removeSource
+    removeBuildTreeRefs verbosity path refsToRemove
 
   when runList $ do
-    doList verbosity path
+    refs <- listBuildTreeRefs verbosity path
+    mapM_ putStrLn refs
 
 -- | Given a path, ensure that it refers to a local build tree.
 buildTreeRefFromPath :: FilePath -> IO (Maybe BuildTreeRef)
@@ -134,21 +137,27 @@ validateIndexPath path' = do
      else do dirExists <- doesDirectoryExist path
              unless dirExists $ do
                die $ "directory does not exist: '" ++ path ++ "'"
-             return $ path </> "00-index.tar"
+             return $ path </> defaultIndexFileName
 
--- | Create an empty index file (index --init).
-doInit :: Verbosity -> FilePath -> IO ()
-doInit verbosity path = do
-  debug verbosity $ "Creating the index file '" ++ path ++ "'"
-  -- Equivalent to 'tar cvf empty.tar --files-from /dev/null'.
-  let zeros = BS.replicate (512*20) 0
-  BS.writeFile path zeros
+-- | Create an empty index file.
+createEmpty :: Verbosity -> FilePath -> IO ()
+createEmpty verbosity path = do
+  indexExists <- doesFileExist path
+  if indexExists
+    then warn verbosity $ "package index already exists: '" ++ path ++ "'"
+    else do
+    debug verbosity $ "Creating the index file '" ++ path ++ "'"
+    createDirectoryIfMissing True (takeDirectory path)
+    -- Equivalent to 'tar cvf empty.tar --files-from /dev/null'.
+    let zeros = BS.replicate (512*20) 0
+    BS.writeFile path zeros
 
--- | Add a reference to a local build tree to the index.
-doLinkSource :: Verbosity -> FilePath -> [FilePath] -> IO ()
-doLinkSource _         _   [] =
-  error "Distribution.Client.Index.doLinkSource: unexpected"
-doLinkSource verbosity path l' = do
+-- | Add given local build tree references to the index.
+addBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO ()
+addBuildTreeRefs _         _   [] =
+  error "Distribution.Client.Index.addBuildTreeRefs: unexpected"
+addBuildTreeRefs verbosity path l' = do
+  checkIndexExists path
   l <- liftM nub . mapM canonicalizePath $ l'
   treesInIndex <- readBuildTreePathsFromFile path
   -- Add only those paths that aren't already in the index.
@@ -165,11 +174,12 @@ doLinkSource verbosity path l' = do
       BS.hPut h (Tar.write entries)
       debug verbosity $ "Successfully appended to '" ++ path ++ "'"
 
--- | Remove a reference to a local build tree from the index.
-doRemoveSource :: Verbosity -> FilePath -> [FilePath] -> IO ()
-doRemoveSource _         _   [] =
-  error "Distribution.Client.Index.doRemoveSource: unexpected"
-doRemoveSource verbosity path l' = do
+-- | Remove given local build tree references from the index.
+removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO ()
+removeBuildTreeRefs _         _   [] =
+  error "Distribution.Client.Index.removeBuildTreeRefs: unexpected"
+removeBuildTreeRefs verbosity path l' = do
+  checkIndexExists path
   l <- mapM canonicalizePath l'
   let tmpFile = path <.> "tmp"
   -- Performance note: on my system, it takes 'index --remove-source'
@@ -187,8 +197,9 @@ doRemoveSource verbosity path l' = do
         (Just pth) -> not $ any (== pth) l
 
 -- | List the local build trees that are referred to from the index.
-doList :: Verbosity -> FilePath -> IO ()
-doList verbosity path = do
+listBuildTreeRefs :: Verbosity -> FilePath -> IO [FilePath]
+listBuildTreeRefs verbosity path = do
+  checkIndexExists path
   let repo = Repo { repoKind = Right LocalRepo
                   , repoLocalDir = takeDirectory path }
   pkgIndex <- fmap packageIndex . getSourcePackages verbosity $ [repo]
@@ -197,4 +208,11 @@ doList verbosity path = do
   when (null buildTreeRefs) $ do
     notice verbosity $ "Index file '" ++ path
       ++ "' has no references to local build trees."
-  mapM_ putStrLn buildTreeRefs
+  return buildTreeRefs
+
+-- | Check that the package index file exists and exit with error if it does not.
+checkIndexExists :: FilePath -> IO ()
+checkIndexExists path = do
+  indexExists <- doesFileExist path
+  when (not indexExists) $ do
+    die $ "index does not exist: '" ++ path ++ "'"
