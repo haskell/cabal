@@ -12,16 +12,19 @@ module Distribution.Client.PackageEnvironment (
     PackageEnvironment(..),
     loadPackageEnvironment,
     showPackageEnvironment,
-    dumpPackageEnvironment
+    showPackageEnvironmentWithComments,
+
+    basePackageEnvironment,
+    initialPackageEnvironment,
+    commentPackageEnvironment
   ) where
 
-import Distribution.Client.Config      ( SavedConfig(..), baseSavedConfig,
-                                         commentSavedConfig, initialSavedConfig,
-                                         loadConfig, configFieldDescriptions,
-                                         installDirsFields )
+import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
+                                         initialSavedConfig, loadConfig,
+                                         configFieldDescriptions,
+                                         installDirsFields, defaultCompiler )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
-import Distribution.Client.Setup       ( GlobalFlags(..), InstallFlags(..),
-                                         SandboxFlags(..) )
+import Distribution.Client.Setup       ( GlobalFlags(..), InstallFlags(..) )
 import Distribution.Simple.Compiler    ( PackageDB(..) )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate,
                                          toPathTemplate )
@@ -32,7 +35,7 @@ import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..),
                                          liftField, lineNo, locatedErrorMsg,
                                          parseFilePathQ, readFields,
                                          showPWarning, simpleField, warning )
-import Distribution.Verbosity          ( Verbosity )
+import Distribution.Verbosity          ( Verbosity, normal )
 import Control.Monad                   ( foldM, when )
 import Data.List                       ( partition )
 import Data.Monoid                     ( Monoid(..) )
@@ -73,48 +76,62 @@ instance Monoid PackageEnvironment where
     where
       combine f = f a `mappend` f b
 
--- | Values that *must* be initialised.
-basePackageEnvironment :: FilePath -> IO PackageEnvironment
-basePackageEnvironment pkgEnvDir = do
-  baseConf <- baseSavedConfig
-  return $ mempty {
-    pkgEnvSavedConfig = baseConf {
-       savedConfigureFlags = (savedConfigureFlags baseConf) {
-          configUserInstall = toFlag False
-          },
-       savedUserInstallDirs = (savedUserInstallDirs baseConf) {
-         prefix = toFlag (toPathTemplate pkgEnvDir)
-         },
-       savedGlobalInstallDirs = (savedGlobalInstallDirs baseConf) {
-         prefix = toFlag (toPathTemplate pkgEnvDir)
-         },
-       savedGlobalFlags = (savedGlobalFlags baseConf) {
-         globalLogsDir = toFlag $ pkgEnvDir </> "logs",
-         -- TODO: cabal-dev uses the global world file: is this right?
-         globalWorldFile = toFlag $ pkgEnvDir </> "world"
-         }
-       }
+
+-- | Defaults common to 'initialPackageEnvironment' and
+-- 'commentPackageEnvironment'.
+basePackageEnvironmentConfig :: FilePath -> SavedConfig
+basePackageEnvironmentConfig pkgEnvDir =
+  mempty {
+    savedConfigureFlags = mempty {
+       configUserInstall = toFlag False
+       },
+    savedUserInstallDirs = mempty {
+      prefix = toFlag (toPathTemplate pkgEnvDir)
+      },
+    savedGlobalInstallDirs = mempty {
+      prefix = toFlag (toPathTemplate pkgEnvDir)
+      },
+    savedGlobalFlags = mempty {
+      globalLogsDir = toFlag $ pkgEnvDir </> "logs",
+      -- TODO: cabal-dev uses the global world file: is this right?
+      globalWorldFile = toFlag $ pkgEnvDir </> "world"
+      }
     }
+
+-- | These are the absolute basic defaults, the fields that must be
+-- initialised. When we load the package environment from the file we layer the
+-- loaded values over these ones.
+basePackageEnvironment :: FilePath -> PackageEnvironment
+basePackageEnvironment pkgEnvDir = do
+  let baseConf = basePackageEnvironmentConfig pkgEnvDir in
+    mempty {
+      pkgEnvSavedConfig = baseConf {
+         savedConfigureFlags = (savedConfigureFlags baseConf) {
+            configHcFlavor    = toFlag defaultCompiler,
+            configVerbosity   = toFlag normal
+            }
+         }
+      }
 
 -- | Initial configuration that we write out to the package environment file if
 -- it does not exist. When the package environment gets loaded it gets layered
 -- on top of 'basePackageEnvironment'.
 initialPackageEnvironment :: FilePath -> IO PackageEnvironment
 initialPackageEnvironment pkgEnvDir = do
-  initialConf <- initialSavedConfig
-  baseConf <- fmap pkgEnvSavedConfig $ basePackageEnvironment pkgEnvDir
-  let initialConf' = initialConf `mappend` baseConf
+  initialConf' <- initialSavedConfig
+  let baseConf =  basePackageEnvironmentConfig pkgEnvDir
+  let initialConf = initialConf' `mappend` baseConf
   return $ mempty {
-    pkgEnvSavedConfig = initialConf' {
-       savedGlobalFlags = (savedGlobalFlags initialConf') {
+    pkgEnvSavedConfig = initialConf {
+       savedGlobalFlags = (savedGlobalFlags initialConf) {
           globalLocalRepos = [pkgEnvDir </> "packages"]
           },
-       savedConfigureFlags = (savedConfigureFlags initialConf') {
+       savedConfigureFlags = (savedConfigureFlags initialConf) {
          -- TODO: This should include comp. flavor and version
          configPackageDBs = [Just (SpecificPackageDB $ pkgEnvDir
                                    </> "packages.conf.d")]
          },
-       savedInstallFlags = (savedInstallFlags initialConf') {
+       savedInstallFlags = (savedInstallFlags initialConf) {
          installSummaryFile = [toPathTemplate (pkgEnvDir </>
                                                "logs" </> "build.log")]
          }
@@ -125,21 +142,11 @@ initialPackageEnvironment pkgEnvDir = do
 -- comments when we write out the initial package environment.
 commentPackageEnvironment :: FilePath -> IO PackageEnvironment
 commentPackageEnvironment pkgEnvDir = do
-  commentConf <- commentSavedConfig
-  baseConf <- fmap pkgEnvSavedConfig $ basePackageEnvironment pkgEnvDir
+  commentConf  <- commentSavedConfig
+  let baseConf =  basePackageEnvironmentConfig pkgEnvDir
   return $ mempty {
     pkgEnvSavedConfig = commentConf `mappend` baseConf
     }
-
--- | Entry point for the 'cabal dump-pkgenv' command.
-dumpPackageEnvironment :: Verbosity -> SandboxFlags -> IO ()
-dumpPackageEnvironment verbosity sandboxFlags = do
-  let pkgEnvDir' = fromFlagOrDefault "sandbox" (sandboxLocation sandboxFlags)
-  createDirectoryIfMissing True pkgEnvDir'
-  pkgEnvDir <- canonicalizePath pkgEnvDir'
-  pkgEnv <- loadPackageEnvironment verbosity (pkgEnvDir </> "pkgenv")
-  commentPkgEnv <- commentPackageEnvironment pkgEnvDir
-  putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
 
 -- | Load the package environment file, creating it if doesn't exist.
 loadPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
@@ -168,8 +175,8 @@ loadPackageEnvironment verbosity path = do
   where
     addBasePkgEnv :: FilePath -> IO PackageEnvironment -> IO PackageEnvironment
     addBasePkgEnv pkgEnvDir body = do
-      base  <- basePackageEnvironment pkgEnvDir
-      extra <- body
+      let base  = basePackageEnvironment pkgEnvDir
+      extra    <- body
       case pkgEnvInherit extra of
         NoFlag          ->
           return $ base `mappend` extra
@@ -213,7 +220,6 @@ parsePackageEnvironment :: PackageEnvironment -> String
 parsePackageEnvironment initial str = do
   fields <- readFields str
   let (knownSections, others) = partition isKnownSection fields
-
   pkgEnv <- parse others
   let config       = pkgEnvSavedConfig pkgEnv
       installDirs0 = savedUserInstallDirs config

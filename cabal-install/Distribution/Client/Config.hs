@@ -22,6 +22,7 @@ module Distribution.Client.Config (
     defaultCabalDir,
     defaultConfigFile,
     defaultCacheDir,
+    defaultCompiler,
     defaultLogsDir,
 
     baseSavedConfig,
