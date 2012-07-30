@@ -80,8 +80,8 @@ defaultPackageEnvironmentFileName = "pkgenv"
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.
-basePackageEnvironmentConfig :: FilePath -> SavedConfig
-basePackageEnvironmentConfig pkgEnvDir =
+commonPackageEnvironmentConfig :: FilePath -> SavedConfig
+commonPackageEnvironmentConfig pkgEnvDir =
   mempty {
     savedConfigureFlags = mempty {
        configUserInstall = toFlag False
@@ -104,7 +104,7 @@ basePackageEnvironmentConfig pkgEnvDir =
 -- loaded values over these ones.
 basePackageEnvironment :: FilePath -> PackageEnvironment
 basePackageEnvironment pkgEnvDir = do
-  let baseConf = basePackageEnvironmentConfig pkgEnvDir in
+  let baseConf = commonPackageEnvironmentConfig pkgEnvDir in
     mempty {
       pkgEnvSavedConfig = baseConf {
          savedConfigureFlags = (savedConfigureFlags baseConf) {
@@ -120,7 +120,7 @@ basePackageEnvironment pkgEnvDir = do
 initialPackageEnvironment :: FilePath -> IO PackageEnvironment
 initialPackageEnvironment pkgEnvDir = do
   initialConf' <- initialSavedConfig
-  let baseConf =  basePackageEnvironmentConfig pkgEnvDir
+  let baseConf =  commonPackageEnvironmentConfig pkgEnvDir
   let initialConf = initialConf' `mappend` baseConf
   return $ mempty {
     pkgEnvSavedConfig = initialConf {
@@ -144,7 +144,7 @@ initialPackageEnvironment pkgEnvDir = do
 commentPackageEnvironment :: FilePath -> IO PackageEnvironment
 commentPackageEnvironment pkgEnvDir = do
   commentConf  <- commentSavedConfig
-  let baseConf =  basePackageEnvironmentConfig pkgEnvDir
+  let baseConf =  commonPackageEnvironmentConfig pkgEnvDir
   return $ mempty {
     pkgEnvSavedConfig = commentConf `mappend` baseConf
     }
