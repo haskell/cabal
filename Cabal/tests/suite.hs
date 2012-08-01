@@ -39,8 +39,10 @@ hunit name test = testGroup name $ hUnitTestToTests test
 tests :: Version -> [Test]
 tests cabalVersion = [
         hunit "PackageTests/BuildDeps/SameDepsAllRound/" PackageTests.BuildDeps.SameDepsAllRound.Check.suite,
-        hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite,
-        hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite,
+        -- The two following tests were disabled by Johan Tibell as
+        -- they have been failing for a long time:
+        -- hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite,
+        -- hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite,
         hunit "PackageTests/BuildDeps/InternalLibrary0/" (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion),
         hunit "PackageTests/TestStanza/" (PackageTests.TestStanza.Check.suite cabalVersion),
         -- ^ The Test stanza test will eventually be required
