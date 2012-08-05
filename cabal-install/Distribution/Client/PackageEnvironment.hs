@@ -84,20 +84,19 @@ commonPackageEnvironmentConfig :: FilePath -> SavedConfig
 commonPackageEnvironmentConfig pkgEnvDir =
   mempty {
     savedConfigureFlags = mempty {
-       configUserInstall = toFlag False
+       configUserInstall = toFlag False,
+       configInstallDirs = sandboxInstallDirs
        },
-    savedUserInstallDirs = mempty {
-      prefix = toFlag (toPathTemplate pkgEnvDir)
-      },
-    savedGlobalInstallDirs = mempty {
-      prefix = toFlag (toPathTemplate pkgEnvDir)
-      },
+    savedUserInstallDirs   = sandboxInstallDirs,
+    savedGlobalInstallDirs = sandboxInstallDirs,
     savedGlobalFlags = mempty {
       globalLogsDir = toFlag $ pkgEnvDir </> "logs",
       -- TODO: cabal-dev uses the global world file: is this right?
       globalWorldFile = toFlag $ pkgEnvDir </> "world"
       }
     }
+  where
+    sandboxInstallDirs = mempty { prefix = toFlag (toPathTemplate pkgEnvDir) }
 
 -- | These are the absolute basic defaults, the fields that must be
 -- initialised. When we load the package environment from the file we layer the
