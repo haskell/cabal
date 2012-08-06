@@ -1,1 +1,0 @@
-main = print "exe1"
