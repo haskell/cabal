@@ -132,9 +132,23 @@ Library
   Default-Language: Haskell98
   Default-Extensions: CPP
 
+-- Small, fast running tests.
 test-suite unit-tests
   type: exitcode-stdio-1.0
-  main-is: suite.hs
+  main-is: UnitTests.hs
+  hs-source-dirs: tests
+  build-depends:
+        base,
+        test-framework,
+        test-framework-hunit,
+        HUnit,
+        Cabal
+  Default-Language: Haskell98
+
+-- Large, system tests that build packages.
+test-suite package-tests
+  type: exitcode-stdio-1.0
+  main-is: PackageTests.hs
   other-modules: PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check,
                  PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check,
                  PackageTests.BuildDeps.InternalLibrary0.Check,
