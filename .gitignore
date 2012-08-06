@@ -4,6 +4,11 @@ cabal-dev/
 Cabal/dist/
 cabal-install/dist/
 .hpc/
+*.hi
+*.o
+*.p_hi
+*.prof
+*.tix
 
 # GHC build
 
