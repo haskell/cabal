@@ -47,11 +47,14 @@ module UnitTest.Distribution.PackageDescription (
 
 
 import Distribution.ParseUtils
-import Distribution.Package   (PackageIdentifier(..), Dependency(..))
+import Distribution.Package   (PackageIdentifier(..), Dependency(..),
+                               PackageName(..))
 import Distribution.Version   (Version(..), VersionRange(..))
 import Distribution.Compiler  (CompilerFlavor(..), CompilerId(..))
-import Distribution.System    (OS(..), buildOS, Arch(..), buildArch)
+import Distribution.System    (OS(..), buildOS, Arch(..), buildArch,
+                               Platform(..))
 
+import Distribution.ModuleName (fromString)
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
 import Distribution.PackageDescription.Parse
@@ -127,10 +130,10 @@ compatTestPkgDescAnswer :: PackageDescription
 compatTestPkgDescAnswer = 
     emptyPackageDescription 
     { package = PackageIdentifier 
-                { pkgName = "Cabal",
+                { pkgName = PackageName "Cabal",
                   pkgVersion = Version {versionBranch = [0,1,1,1,1],
                                         versionTags = ["rain"]}},
-      license = LGPL,
+      license = LGPL Nothing,
       licenseFile = "foo",
       copyright = "Free Text String",
       author  = "Happy Haskell Hacker",
@@ -139,10 +142,10 @@ compatTestPkgDescAnswer =
       synopsis = "a nice package!",
       description = "a really nice package!",
       category = "tools",
-      descCabalVersion = LaterVersion (Version [1,1,1] []),
+      specVersionRaw = Left ((Version [1,1,1] [])),
       buildType = Just Custom,
-      buildDepends = [Dependency "haskell-src" AnyVersion,
-                      Dependency "HUnit"
+      buildDepends = [Dependency (PackageName "haskell-src") AnyVersion,
+                      Dependency (PackageName "HUnit")
                         (UnionVersionRanges 
                          (ThisVersion (Version [1,0,0] ["rain"]))
                          (LaterVersion (Version [1,0,0] ["rain"])))],
@@ -154,7 +157,8 @@ compatTestPkgDescAnswer =
       dataFiles = [],
 
       library = Just $ Library {
-          exposedModules = ["Distribution.Void", "Foo.Bar"],
+          exposedModules = [fromString "Distribution.Void",
+                            fromString "Foo.Bar"],
           libBuildInfo = emptyBuildInfo {
               buildable = True,
               ccOptions = ["-g", "-o"],
@@ -162,10 +166,11 @@ compatTestPkgDescAnswer =
               frameworks = ["foo"],
               cSources = ["not/even/rain.c", "such/small/hands"],
               hsSourceDirs = ["src", "src2"],
-              otherModules = ["Distribution.Package",
-                              "Distribution.Version",
-                              "Distribution.Simple.GHCPackageConfig"],
-              extensions = [OverlappingInstances, TypeSynonymInstances],
+              otherModules = [fromString "Distribution.Package",
+                              fromString "Distribution.Version",
+                              fromString "Distribution.Simple.GHCPackageConfig"],
+              defaultExtensions = [EnableExtension OverlappingInstances,
+                                   EnableExtension TypeSynonymInstances],
               extraLibs = ["libfoo", "bar", "bang"],
               extraLibDirs = ["/usr/local/libs"],
               includeDirs = ["your/slightest", "look/will"],
@@ -178,9 +183,11 @@ compatTestPkgDescAnswer =
 
       executables = [Executable "somescript" 
                      "SomeFile.hs" (emptyBuildInfo {
-                         otherModules=["Foo1","Util","Main"],
+                         otherModules = [fromString "Foo1", fromString "Util",
+                                         fromString "Main"],
                          hsSourceDirs = ["scripts"],
-                         extensions = [OverlappingInstances],
+                         defaultExtensions = [
+                             EnableExtension OverlappingInstances],
                          options = [(GHC,[]),(Hugs,[]),(NHC,[]),(JHC,[])]
                       })]
   }
@@ -189,8 +196,8 @@ compatTestPkgDescAnswer =
 compatParseDescription :: String -> ParseResult PackageDescription
 compatParseDescription descr = do
     gpd <- parsePackageDescription descr
-    case finalizePackageDescription [] (Nothing :: Maybe (PackageIndex.PackageIndex PackageIdentifier))
-           buildOS buildArch (CompilerId GHC (Version [] [])) [] gpd of
+    case finalizePackageDescription [] (const True)
+           (Platform buildArch buildOS) (CompilerId GHC (Version [] [])) [] gpd of
       Left _ -> syntaxError (-1) "finalize failed"
       Right (pd,_) -> return pd
 
@@ -199,27 +206,27 @@ hunitTests =
     [ TestLabel "license parsers" $ TestCase $
       sequence_ [ assertParseOk ("license " ++ show lVal) lVal
                     (runP 1 "license" parseLicenseQ (show lVal))
-                | lVal <- [GPL,LGPL,BSD3,BSD4,Apache] ]
+                | lVal <- [GPL Nothing, LGPL Nothing, BSD3, BSD4, Apache Nothing] ]
 
     , TestLabel "Required fields" $ TestCase $
       do assertParseOk "some fields"
            emptyPackageDescription {
-             package = (PackageIdentifier "foo"
+             package = (PackageIdentifier (PackageName "foo")
                         (Version [0,0] ["asdf"])) }
            (compatParseDescription "Name: foo\nVersion: 0.0-asdf")
 
          assertParseOk "more fields foo"
            emptyPackageDescription {
-             package = (PackageIdentifier "foo"
+             package = (PackageIdentifier (PackageName "foo")
                         (Version [0,0] ["asdf"])),
-             license = GPL }
+             license = GPL Nothing }
            (compatParseDescription "Name: foo\nVersion:0.0-asdf\nLicense: GPL")
 
          assertParseOk "required fields for foo"
            emptyPackageDescription { 
-             package = (PackageIdentifier "foo"
+             package = (PackageIdentifier (PackageName "foo")
                         (Version [0,0] ["asdf"])),
-             license = GPL, copyright="2004 isaac jones" }
+             license = GPL Nothing, copyright="2004 isaac jones" }
            (compatParseDescription $ "Name: foo\nVersion:0.0-asdf\n" 
                ++ "Copyright: 2004 isaac jones\nLicense: GPL")
                                           
@@ -400,17 +407,14 @@ test_finalizePD =
     case parsePackageDescription testFile of
       ParseFailed err -> print err
       ParseOk _ ppd -> do
-       case finalizePackageDescription [(FlagName "debug",True)] (Just pkgs) os arch impl [] ppd of
+       case finalizePackageDescription [(FlagName "debug",True)] (const True)
+            (Platform arch os) impl [] ppd of
          Right (pd,fs) -> do putStrLn $ showPackageDescription pd
                              print fs
          Left missing -> putStrLn $ "missing: " ++ show missing
        putStrLn $ showPackageDescription $ 
                 flattenPackageDescription ppd
   where
-    pkgs = PackageIndex.fromList[ PackageIdentifier "blub" (Version [1,0] []) 
-           --, PackageIdentifier "hunit" (Version [1,1] []) 
-           , PackageIdentifier "blab" (Version [0,1] []) 
-           ]
     os = Windows
     arch = X86_64
     impl = CompilerId GHC (Version [6,6] [])

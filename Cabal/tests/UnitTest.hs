@@ -53,7 +53,7 @@ import Distribution.Version (Version(..))
 import System.FilePath( (</>) )
 
 import Distribution.Simple.Configure (configCompiler)
-import Distribution.Verbosity ( silent )
+import Distribution.Verbosity (silent)
 -- base
 import Data.List (intersperse)
 import Control.Monad (when)
@@ -62,11 +62,11 @@ import System.Directory (setCurrentDirectory, doesFileExist,
                          getPermissions, Permissions(..),
                          removeDirectoryRecursive)
 import System.Cmd (system)
-import System.Exit(ExitCode(..))
+import System.Exit (ExitCode(..))
 import System.Environment (getArgs)
 
-import Test.HUnit(runTestTT, Test(..), Counts(..), assertBool,
-             assertEqual, Assertion, showCounts)
+import Test.HUnit (runTestTT, Test(..), Counts(..), assertBool,
+                   assertEqual, Assertion, showCounts)
 
 
 -- ------------------------------------------------------------
@@ -446,29 +446,15 @@ main = do putStrLn "compile successful"
           putStrLn "-= Setup Tests =-"
           setupCount <- runTestTT' $ TestList (D.V.hunitTests ++ D.PD.hunitTests)
           dir <- getCurrentDirectory
---          count' <- runTestTT' $ TestList (tests dir Hugs GHC)
-          args <- getArgs
-          let testList :: CompilerFlavor -> Version -> [Test]
-              testList compiler version
-                | null args = tests dir compiler compiler version
-                | otherwise =
-                    case reads (head args) of
-                      [(n,_)] -> [ tests dir compiler compiler version !! n ]
-                      _ -> error "usage: moduleTest [test_num]"
-              compilers = [GHC] --, Hugs]
           globalTests <-
-            flip mapM compilers $ \compilerFlavour -> do
+            flip mapM [GHC] $ \compilerFlavour -> do
               (compiler, _) <- configCompiler (Just compilerFlavour)
 	                         Nothing Nothing
 	                         defaultProgramConfiguration silent
               let version = compilerVersion compiler
-              runTestTT' $ TestList (testList compilerFlavour version)
+              runTestTT' $ TestList (tests dir compilerFlavour compilerFlavour version)
           putStrLn "-------------"
           putStrLn "Test Summary:"
           putStrLn $ showCounts $
                       foldl1 combineCounts (setupCount:globalTests)
           return ()
-
--- Local Variables:
--- compile-command: "ghc -i../:/usr/local/src/HUnit-1.0 -Wall --make ModuleTest.hs -o moduleTest"
--- End:

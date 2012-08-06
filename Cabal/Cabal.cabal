@@ -167,3 +167,17 @@ test-suite unit-tests
         bytestring,
         unix
   Default-Language: Haskell98
+
+test-suite old-tests
+  type: exitcode-stdio-1.0
+  main-is: UnitTest.hs
+  hs-source-dirs: tests
+  build-depends:
+        base,
+        directory,
+        filepath,
+        HUnit,
+        Cabal,
+        process,
+        unix
+  Default-Language: Haskell98
