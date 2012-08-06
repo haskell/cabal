@@ -1,6 +1,0 @@
-Name:           test-bin
-Build-Depends:  base, testffi
-Version:        0.0
-
-Executable:     test
-Main-Is:        Main.hs
