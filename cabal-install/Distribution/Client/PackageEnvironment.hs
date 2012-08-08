@@ -132,10 +132,12 @@ commentPackageEnvironment pkgEnvDir = do
     }
 
 -- | Entry point for the 'cabal dump-pkgenv' command.
-dumpPackageEnvironment :: Verbosity -> SandboxFlags -> FilePath -> IO ()
-dumpPackageEnvironment verbosity sandboxFlags path = do
-  pkgEnvDir <- canonicalizePath . takeDirectory $ path
-  pkgEnv <- loadPackageEnvironment verbosity path
+dumpPackageEnvironment :: Verbosity -> SandboxFlags -> IO ()
+dumpPackageEnvironment verbosity sandboxFlags = do
+  let pkgEnvDir' = fromFlagOrDefault "sandbox" (sandboxLocation sandboxFlags)
+  createDirectoryIfMissing True pkgEnvDir'
+  pkgEnvDir <- canonicalizePath pkgEnvDir'
+  pkgEnv <- loadPackageEnvironment verbosity (pkgEnvDir </> "pkgenv")
   commentPkgEnv <- commentPackageEnvironment pkgEnvDir
   putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
 
