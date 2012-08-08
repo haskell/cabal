@@ -24,7 +24,8 @@ import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
                                          configFieldDescriptions,
                                          installDirsFields, defaultCompiler )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
-import Distribution.Client.Setup       ( GlobalFlags(..), InstallFlags(..) )
+import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
+                                       , InstallFlags(..) )
 import Distribution.Simple.Compiler    ( PackageDB(..) )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate,
                                          toPathTemplate )
@@ -32,6 +33,7 @@ import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..),
                                          fromFlagOrDefault, toFlag )
 import Distribution.Simple.Utils       ( notice, warn, lowercase )
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..),
+                                         commaListField,
                                          liftField, lineNo, locatedErrorMsg,
                                          parseFilePathQ, readFields,
                                          showPWarning, simpleField, warning )
@@ -48,15 +50,14 @@ import Text.PrettyPrint                ( ($+$) )
 import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
-
+import qualified Distribution.Text         as Text
 
 --
 -- * Configuration saved in the package environment file
 --
 
--- TODO: add a 'constraints' field (really needed? there is already
--- 'constraint'), remove duplication between D.C.PackageEnvironment and
--- D.C.Config
+-- TODO: would be nice to remove duplication between D.C.PackageEnvironment and
+-- D.C.Config.
 data PackageEnvironment = PackageEnvironment {
   pkgEnvInherit       :: Flag FilePath,
   pkgEnvSavedConfig   :: SavedConfig
@@ -192,16 +193,44 @@ pkgEnvFieldDescrs = [
   simpleField "inherit"
     (fromFlagOrDefault Disp.empty . fmap Disp.text) (optional parseFilePathQ)
     pkgEnvInherit (\v pkgEnv -> pkgEnv { pkgEnvInherit = v })
+
+    -- FIXME: Should we make these fields part of ~/.cabal/config ?
+  , commaListField "constraints"
+    Text.disp Text.parse
+    (configExConstraints . savedConfigureExFlags . pkgEnvSavedConfig)
+    (\v pkgEnv -> updateConfigureExFlags pkgEnv
+                  (\flags -> flags { configExConstraints = v }))
+
+  , commaListField "preferences"
+    Text.disp Text.parse
+    (configPreferences . savedConfigureExFlags . pkgEnvSavedConfig)
+    (\v pkgEnv -> updateConfigureExFlags pkgEnv
+                  (\flags -> flags { configPreferences = v }))
   ]
-  ++ map toPkgEnv configFieldDescriptions
+  ++ map toPkgEnv configFieldDescriptions'
   where
     optional = Parse.option mempty . fmap toFlag
+
+    configFieldDescriptions' :: [FieldDescr SavedConfig]
+    configFieldDescriptions' = filter
+      (\(FieldDescr name _ _) -> name /= "preference" && name /= "constraint")
+      configFieldDescriptions
 
     toPkgEnv :: FieldDescr SavedConfig -> FieldDescr PackageEnvironment
     toPkgEnv fieldDescr =
       liftField pkgEnvSavedConfig
       (\savedConfig pkgEnv -> pkgEnv { pkgEnvSavedConfig = savedConfig})
       fieldDescr
+
+    updateConfigureExFlags :: PackageEnvironment
+                              -> (ConfigExFlags -> ConfigExFlags)
+                              -> PackageEnvironment
+    updateConfigureExFlags pkgEnv f = pkgEnv {
+      pkgEnvSavedConfig = (pkgEnvSavedConfig pkgEnv) {
+         savedConfigureExFlags = f . savedConfigureExFlags . pkgEnvSavedConfig
+                                 $ pkgEnv
+         }
+      }
 
 -- | Read the package environment file.
 readPackageEnvironmentFile :: PackageEnvironment -> FilePath
