@@ -141,7 +141,9 @@ test-suite unit-tests
         base,
         test-framework,
         test-framework-hunit,
+        test-framework-quickcheck2,
         HUnit,
+        QuickCheck,
         Cabal
   Default-Language: Haskell98
 
