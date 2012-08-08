@@ -91,7 +91,7 @@ commonPackageEnvironmentConfig pkgEnvDir =
     savedGlobalInstallDirs = sandboxInstallDirs,
     savedGlobalFlags = mempty {
       globalLogsDir = toFlag $ pkgEnvDir </> "logs",
-      -- TODO: cabal-dev uses the global world file: is this right?
+      -- Is this right? cabal-dev uses the global world file.
       globalWorldFile = toFlag $ pkgEnvDir </> "world"
       }
     }
@@ -263,7 +263,6 @@ writePackageEnvironmentFile path comments pkgEnv = do
     ++ showPackageEnvironmentWithComments comments pkgEnv ++ "\n"
   renameFile tmpPath path
   where
-    -- TODO: Better explanation
     explanation = unlines
       ["-- This is a Cabal package environment file."
       ,""
