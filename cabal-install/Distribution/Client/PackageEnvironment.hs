@@ -11,6 +11,7 @@
 module Distribution.Client.PackageEnvironment (
     PackageEnvironment(..),
     loadPackageEnvironment,
+    showPackageEnvironment,
     dumpPackageEnvironment
   ) where
 
