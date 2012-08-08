@@ -40,9 +40,8 @@ import Control.Monad                   ( foldM, when )
 import Data.List                       ( partition )
 import Data.Monoid                     ( Monoid(..) )
 import Distribution.Compat.Exception   ( catchIO )
-import System.Directory                ( canonicalizePath,
-                                         createDirectoryIfMissing, renameFile )
-import System.FilePath                 ( (<.>), (</>), takeDirectory )
+import System.Directory                ( renameFile )
+import System.FilePath                 ( (<.>), (</>) )
 import System.IO.Error                 ( isDoesNotExistError )
 import Text.PrettyPrint                ( ($+$) )
 
@@ -76,6 +75,8 @@ instance Monoid PackageEnvironment where
     where
       combine f = f a `mappend` f b
 
+defaultPackageEnvironmentFileName :: FilePath
+defaultPackageEnvironmentFileName = "pkgenv"
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.
@@ -148,11 +149,12 @@ commentPackageEnvironment pkgEnvDir = do
     pkgEnvSavedConfig = commentConf `mappend` baseConf
     }
 
--- | Load the package environment file, creating it if doesn't exist.
+-- | Load the package environment file, creating it if doesn't exist. Note that
+-- the path parameter should be a name of an existing directory.
 loadPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
-loadPackageEnvironment verbosity path = do
-  pkgEnvDir <- canonicalizePath . takeDirectory $ path
-  addBasePkgEnv pkgEnvDir $ do
+loadPackageEnvironment verbosity pkgEnvDir = do
+  let path = pkgEnvDir </> defaultPackageEnvironmentFileName
+  addBasePkgEnv $ do
     minp <- readPackageEnvironmentFile mempty path
     case minp of
       Nothing -> do
@@ -173,8 +175,8 @@ loadPackageEnvironment verbosity path = do
         warn verbosity $ "Using default package environment."
         initialPackageEnvironment pkgEnvDir
   where
-    addBasePkgEnv :: FilePath -> IO PackageEnvironment -> IO PackageEnvironment
-    addBasePkgEnv pkgEnvDir body = do
+    addBasePkgEnv :: IO PackageEnvironment -> IO PackageEnvironment
+    addBasePkgEnv body = do
       let base  = basePackageEnvironment pkgEnvDir
       extra    <- body
       case pkgEnvInherit extra of
@@ -258,7 +260,6 @@ writePackageEnvironmentFile :: FilePath -> PackageEnvironment
                                -> PackageEnvironment -> IO ()
 writePackageEnvironmentFile path comments pkgEnv = do
   let tmpPath = (path <.> "tmp")
-  createDirectoryIfMissing True (takeDirectory path)
   writeFile tmpPath $ explanation
     ++ showPackageEnvironmentWithComments comments pkgEnv ++ "\n"
   renameFile tmpPath path
