@@ -31,7 +31,7 @@ import Distribution.Client.Setup
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
 import Distribution.Simple.Setup
-         ( BuildFlags(..), buildCommand
+         ( BuildFlags(..), buildCommand, defaultBuildFlags
          , defaultConfigFlags
          , HaddockFlags(..), haddockCommand
          , HscolourFlags(..), hscolourCommand
@@ -152,8 +152,7 @@ mainWorker args = topHandler $
                      hscolourVerbosity hscolourDistPref
       ,wrapperAction registerCommand
                      regVerbosity      regDistPref
-      ,wrapperAction testCommand
-                     testVerbosity     testDistPref
+      ,testCommand            `commandAddAction` testAction
       ,wrapperAction benchmarkCommand
                      benchmarkVerbosity     benchmarkDistPref
       ,upgradeCommand         `commandAddAction` upgradeAction
@@ -361,6 +360,23 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
           targets
+
+testAction :: TestFlags -> [String] -> GlobalFlags -> IO ()
+testAction testFlags extraArgs globalFlags = do
+    let verbosity = fromFlagOrDefault normal (testVerbosity testFlags)
+        distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                                     (testDistPref testFlags)
+        setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+        addConfigFlags = mempty { configTests = toFlag True }
+        checkFlags flags
+            | fromFlagOrDefault False (configTests flags) = Nothing
+            | otherwise = Just "Re-configuring with test suites enabled.\n"
+
+    reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
+    build verbosity distPref defaultBuildFlags []
+
+    setupWrapper verbosity setupOptions Nothing
+                 testCommand (const testFlags) extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
