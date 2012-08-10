@@ -15,6 +15,7 @@ module Distribution.Client.Setup
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
+    , buildCommand, BuildFlags(..)
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
@@ -49,9 +50,9 @@ import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Setup as Cabal
-         ( configureCommand, sdistCommand, haddockCommand )
+         ( configureCommand, buildCommand, sdistCommand, haddockCommand )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), SDistFlags(..), HaddockFlags(..) )
+         ( ConfigFlags(..), BuildFlags(..), SDistFlags(..), HaddockFlags(..) )
 import Distribution.Simple.Setup
          ( Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
          , optionVerbosity, boolOpt, trueArg, falseArg )
@@ -297,6 +298,15 @@ instance Monoid ConfigExFlags where
     configSolver       = combine configSolver
   }
     where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Build flags
+-- ------------------------------------------------------------
+
+buildCommand :: CommandUI BuildFlags
+buildCommand = (Cabal.buildCommand defaultProgramConfiguration) {
+    commandDefaultFlags = mempty
+  }
 
 -- ------------------------------------------------------------
 -- * Fetch command

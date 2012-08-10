@@ -17,6 +17,7 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, globalRepos
          , ConfigFlags(..)
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
+         , BuildFlags(..), buildCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
@@ -31,9 +32,7 @@ import Distribution.Client.Setup
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
 import Distribution.Simple.Setup
-         ( BuildFlags(..), buildCommand, defaultBuildFlags
-         , defaultConfigFlags
-         , HaddockFlags(..), haddockCommand
+         ( HaddockFlags(..), haddockCommand
          , HscolourFlags(..), hscolourCommand
          , CopyFlags(..), copyCommand
          , RegisterFlags(..), registerCommand
@@ -65,7 +64,7 @@ import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack )
 import Distribution.Simple.Program
-         ( ProgramConfiguration, defaultProgramConfiguration )
+         ( ProgramConfiguration )
 import Distribution.Simple.Command
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
@@ -141,7 +140,7 @@ mainWorker args = topHandler $
       ,reportCommand          `commandAddAction` reportAction
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
-      ,(buildCommand defaultProgramConfiguration) `commandAddAction` buildAction
+      ,buildCommand           `commandAddAction` buildAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
       ,wrapperAction haddockCommand
@@ -153,8 +152,7 @@ mainWorker args = topHandler $
       ,wrapperAction registerCommand
                      regVerbosity      regDistPref
       ,testCommand            `commandAddAction` testAction
-      ,wrapperAction benchmarkCommand
-                     benchmarkVerbosity     benchmarkDistPref
+      ,benchmarkCommand       `commandAddAction` benchmarkAction
       ,upgradeCommand         `commandAddAction` upgradeAction
       ]
 
@@ -204,8 +202,7 @@ buildAction buildFlags extraArgs globalFlags = do
 build :: Verbosity -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity distPref buildFlags extraArgs =
     setupWrapper verbosity setupOptions Nothing
-                 (buildCommand defaultProgramConfiguration)
-                 (const buildFlags') extraArgs
+                 buildCommand (const buildFlags') extraArgs
   where 
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
     buildFlags' = buildFlags
@@ -274,8 +271,7 @@ reconfigure verbosity distPref    addConfigFlags
         -- Package has never been configured.
         Nothing -> do
             notice verbosity
-                $ "Configuring with default flags. "
-                ++ "If this fails, please run configure manually.\n"
+                $ "Configuring with default flags." ++ configureManually
             configureAction (defaultFlags, defaultConfigExFlags)
                             extraArgs globalFlags
 
@@ -293,7 +289,7 @@ reconfigure verbosity distPref    addConfigFlags
             message <- case checkFlags configFlags of
 
                 -- Flag required by the caller is not set.
-                Just msg -> return $! Just msg
+                Just msg -> return $! Just $! msg ++ configureManually
 
                 Nothing
                     -- Required "dist" prefix is not set.
@@ -326,14 +322,15 @@ reconfigure verbosity distPref    addConfigFlags
         { configVerbosity = toFlag verbosity
         , configDistPref = toFlag distPref
         }
+    configureManually = " If this fails, please run configure manually.\n"
     distPrefMessage =
         "Package previously configured with different \"dist\" prefix. "
-        ++ "Re-configuring based on most recently used options. "
-        ++ "If this fails, please run configure manually.\n"
+        ++ "Re-configuring based on most recently used options."
+        ++ configureManually
     outdatedMessage pdFile =
         pdFile ++ " has been changed. "
-        ++ "Re-configuring with most recently used options. "
-        ++ "If this fails, please run configure manually.\n"
+        ++ "Re-configuring with most recently used options."
+        ++ configureManually
 
 installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
@@ -370,13 +367,30 @@ testAction testFlags extraArgs globalFlags = do
         addConfigFlags = mempty { configTests = toFlag True }
         checkFlags flags
             | fromFlagOrDefault False (configTests flags) = Nothing
-            | otherwise = Just "Re-configuring with test suites enabled.\n"
+            | otherwise = Just "Re-configuring with test suites enabled."
 
     reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
-    build verbosity distPref defaultBuildFlags []
+    build verbosity distPref mempty []
 
     setupWrapper verbosity setupOptions Nothing
                  testCommand (const testFlags) extraArgs
+
+benchmarkAction :: BenchmarkFlags -> [String] -> GlobalFlags -> IO ()
+benchmarkAction benchmarkFlags extraArgs globalFlags = do
+    let verbosity = fromFlagOrDefault normal (benchmarkVerbosity benchmarkFlags)
+        distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                                     (benchmarkDistPref benchmarkFlags)
+        setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+        addConfigFlags = mempty { configBenchmarks = toFlag True }
+        checkFlags flags
+            | fromFlagOrDefault False (configTests flags) = Nothing
+            | otherwise = Just "Re-configuring with benchmarks enabled."
+
+    reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
+    build verbosity distPref mempty []
+
+    setupWrapper verbosity setupOptions Nothing
+                 benchmarkCommand (const benchmarkFlags) extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
