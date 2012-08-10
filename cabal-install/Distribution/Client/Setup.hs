@@ -616,7 +616,7 @@ data InstallFlags = InstallFlags {
     installBuildReports     :: Flag ReportLevel,
     installSymlinkBinDir    :: Flag FilePath,
     installOneShot          :: Flag Bool,
-    installNumJobs          :: Flag Int
+    installNumJobs          :: Flag (Maybe Int)
   }
 
 defaultInstallFlags :: InstallFlags
@@ -640,7 +640,7 @@ defaultInstallFlags = InstallFlags {
     installBuildReports    = Flag NoReports,
     installSymlinkBinDir   = mempty,
     installOneShot         = Flag False,
-    installNumJobs         = Flag 1
+    installNumJobs         = mempty
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
@@ -792,9 +792,11 @@ installOptions showOrParseArgs =
       , option "j" ["jobs"]
         "Run NUM jobs simultaneously."
         installNumJobs (\v flags -> flags { installNumJobs = v })
-        (reqArg "NUM" (readP_to_E (\_ -> "jobs should be a number")
-                                  (fmap toFlag (Parse.readS_to_P reads)))
-                      (map show . flagToList))
+        (optArg "NUM" (readP_to_E (\_ -> "jobs should be a number")
+                                  (fmap (toFlag . Just)
+                                        (Parse.readS_to_P reads)))
+                      (Flag Nothing)
+                      (map (fmap show) . flagToList))
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             option [] ["only"]
