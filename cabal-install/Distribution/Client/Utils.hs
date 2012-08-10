@@ -1,10 +1,17 @@
-module Distribution.Client.Utils where
+{-# LANGUAGE ForeignFunctionInterface #-}
+
+module Distribution.Client.Utils ( MergeResult(..)
+                                 , mergeBy, duplicates, duplicatesBy
+                                 , moreRecentFile, inDir, numberOfProcessors )
+       where
 
 import Data.List
          ( sortBy, groupBy )
+import Foreign.C.Types ( CInt(..) )
 import System.Directory
          ( doesFileExist, getModificationTime
          , getCurrentDirectory, setCurrentDirectory )
+import System.IO.Unsafe ( unsafePerformIO )
 import qualified Control.Exception as Exception
          ( finally )
 
@@ -58,3 +65,10 @@ inDir (Just d) m = do
   old <- getCurrentDirectory
   setCurrentDirectory d
   m `Exception.finally` setCurrentDirectory old
+
+foreign import ccall "getNumberOfProcessors" c_getNumberOfProcessors :: IO CInt
+
+-- The number of processors is not going to change during the duration of the
+-- program, so unsafePerformIO is safe here.
+numberOfProcessors :: Int
+numberOfProcessors = fromEnum $ unsafePerformIO c_getNumberOfProcessors

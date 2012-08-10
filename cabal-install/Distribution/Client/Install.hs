@@ -93,7 +93,7 @@ import Distribution.Simple.Setup
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.Setup as Cabal
          ( installCommand, InstallFlags(..), emptyInstallFlags
-         , emptyTestFlags, testCommand )
+         , emptyTestFlags, testCommand, Flag(..) )
 import Distribution.Simple.Utils
          ( rawSystemExit, comparing )
 import Distribution.Simple.InstallDirs as InstallDirs
@@ -114,7 +114,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, die, intercalate, withTempDirectory )
 import Distribution.Client.Utils
-         ( inDir, mergeBy, MergeResult(..) )
+         ( numberOfProcessors, inDir, mergeBy, MergeResult(..) )
 import Distribution.System
          ( Platform, buildPlatform, OS(Windows), buildOS )
 import Distribution.Text
@@ -767,7 +767,10 @@ performInstallations verbosity
     platform = InstallPlan.planPlatform installPlan
     compid   = InstallPlan.planCompiler installPlan
 
-    numJobs  = fromFlag (installNumJobs installFlags)
+    numJobs  = case installNumJobs installFlags of
+      Cabal.NoFlag        -> 1
+      Cabal.Flag Nothing  -> numberOfProcessors
+      Cabal.Flag (Just n) -> n
     numFetchJobs = 2
     parallelBuild = numJobs >= 2
 
@@ -825,14 +828,14 @@ performInstallations verbosity
         useDefaultTemplate
           | reportingLevel == DetailedReports = True
           | isJust installLogFile'            = False
-          | numJobs > 1                       = True
+          | parallelBuild                     = True
           | otherwise                         = False
 
         overrideVerbosity :: Bool
         overrideVerbosity
           | reportingLevel == DetailedReports = True
           | isJust installLogFile'            = True
-          | numJobs > 1                       = False
+          | parallelBuild                     = False
           | otherwise                         = False
 
     substLogFileName :: PathTemplate -> PackageIdentifier -> FilePath
