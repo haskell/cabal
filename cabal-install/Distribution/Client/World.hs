@@ -102,7 +102,7 @@ modifyWorld f verbosity world pkgs =
             all (`elem` pkgsNewWorld) pkgsOldWorld)
       then do
         info verbosity "Updating world file..."
-        writeFileAtomic world $ unlines
+        writeFileAtomic world . B.pack $ unlines
             [ (display pkg) | pkg <- pkgsNewWorld]
       else
         info verbosity "World file is already up to date."
