@@ -21,6 +21,8 @@ import Distribution.Client.FetchUtils
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
          ( getSourcePackages, updateRepoIndexCache )
+import Distribution.Client.Utils
+         ( writeFileAtomic )
 import qualified Paths_cabal_install
          ( version )
 
@@ -29,12 +31,11 @@ import Distribution.Package
 import Distribution.Version
          ( anyVersion, withinRange )
 import Distribution.Simple.Utils
-         ( warn, notice, writeFileAtomic )
+         ( warn, notice )
 import Distribution.Verbosity
          ( Verbosity )
 
 import qualified Data.ByteString.Lazy       as BS
-import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Distribution.Client.GZipUtils (maybeDecompress)
 import qualified Data.Map as Map
 import System.FilePath (dropExtension)
@@ -57,8 +58,7 @@ updateRepo verbosity repo = case repoKind repo of
     notice verbosity $ "Downloading the latest package list from "
                     ++ remoteRepoName remoteRepo
     indexPath <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
-    writeFileAtomic (dropExtension indexPath) . BS.Char8.unpack
-                                              . maybeDecompress
+    writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                             =<< BS.readFile indexPath
     updateRepoIndexCache verbosity repo
 
