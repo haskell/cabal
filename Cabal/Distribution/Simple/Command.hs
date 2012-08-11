@@ -270,9 +270,9 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
                                                  Just f -> return (f a)
                                                  _      -> syntaxError line val
                     BoolOpt _ _ _ setV _    -> (`setV` a) `liftM` runP line n parse val
-                    OptArg _ _ _ _readE _ _ -> -- The behaviour in this case is not clear, and it has no use so far,
-                                               -- so we avoid future surprises by not implementing it.
-                                               error "Command.optionToFieldDescr: feature not implemented"
+                    OptArg _ _ _  readE _ _ -> ($ a) `liftM` runE line n readE val
+                                             -- Optional arguments are parsed just like required arguments here;
+                                             -- we don't provide a method to set an OptArg field to the default value.
 
 getChoiceByLongFlag :: OptDescr b -> String -> Maybe (b->b)
 getChoiceByLongFlag (ChoiceOpt alts) val = listToMaybe [ set | (_,(_sf,lf:_), set, _) <- alts
