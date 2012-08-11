@@ -37,6 +37,8 @@ Flag base4
 Flag base3
     Description: Choose the new smaller, split-up base package.
 
+Flag bytestring-in-base
+
 Library
   build-depends:   base       >= 2   && < 5,
                    filepath   >= 1   && < 1.4
@@ -49,6 +51,10 @@ Library
                    containers >= 0.1 && < 0.6,
                    array      >= 0.1 && < 0.5,
                    pretty     >= 1   && < 1.2
+  if flag(bytestring-in-base)
+    Build-Depends: base >= 2.0 && < 2.2
+  else
+    Build-Depends: base < 2.0 || >= 3.0, bytestring >= 0.9
 
   if !os(windows)
     Build-Depends: unix       >= 2.0 && < 2.7

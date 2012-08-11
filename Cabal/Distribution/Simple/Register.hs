@@ -113,7 +113,7 @@ import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Data.List
          ( partition, nub )
-
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 -- -----------------------------------------------------------------------------
 -- Registration
@@ -377,7 +377,7 @@ unregister pkg lbi regFlags = do
                          packageDb pkgid
       in if genScript
            then writeFileAtomic unregScriptFileName
-                  (invocationAsSystemScript buildOS invocation)
+                  (BS.Char8.pack $ invocationAsSystemScript buildOS invocation)
             else runProgramInvocation verbosity invocation
     Hugs -> do
         _ <- tryIO $ removeDirectoryRecursive (libdir installDirs)

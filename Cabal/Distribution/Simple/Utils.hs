@@ -147,6 +147,8 @@ import Data.Char as Char
     ( toLower, chr, ord )
 import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
+import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 import System.Directory
     ( getDirectoryContents, doesDirectoryExist, doesFileExist, removeFile
@@ -163,7 +165,8 @@ import System.FilePath
 import System.Directory
     ( createDirectory, renameFile, removeDirectoryRecursive )
 import System.IO
-    ( Handle, openFile, openBinaryFile, IOMode(ReadMode), hSetBinaryMode
+    ( Handle, openFile, openBinaryFile, openBinaryTempFile
+    , IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( isDoesNotExistError, isAlreadyExistsError
@@ -200,9 +203,9 @@ import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile
          , setFileOrdinary, setFileExecutable, setDirOrdinary )
 import Distribution.Compat.TempFile
-         ( openTempFile, openNewBinaryFile, createTempDirectory )
+         ( openTempFile, createTempDirectory )
 import Distribution.Compat.Exception
-         ( IOException, throwIOIO, tryIO, catchIO, catchExit, onException )
+         ( IOException, throwIOIO, tryIO, catchIO, catchExit )
 import Distribution.Verbosity
 
 #ifdef VERSION_base
@@ -918,21 +921,16 @@ withFileContents name action =
 -- On windows it is not possible to delete a file that is open by a process.
 -- This case will give an IO exception but the atomic property is not affected.
 --
-writeFileAtomic :: FilePath -> String -> IO ()
-writeFileAtomic targetFile content = do
-  (tmpFile, tmpHandle) <- openNewBinaryFile targetDir template
-  do  hPutStr tmpHandle content
-      hClose tmpHandle
-      renameFile tmpFile targetFile
-   `onException` do hClose tmpHandle
-                    removeFile tmpFile
-  where
-    template = targetName <.> "tmp"
-    targetDir | null targetDir_ = currentDir
-              | otherwise       = targetDir_
-    --TODO: remove this when takeDirectory/splitFileName is fixed
-    --      to always return a valid dir
-    (targetDir_,targetName) = splitFileName targetFile
+writeFileAtomic :: FilePath -> BS.ByteString -> IO ()
+writeFileAtomic targetPath content = do
+  let (targetDir, targetFile) = splitFileName targetPath
+  Exception.bracketOnError
+    (openBinaryTempFile targetDir $ targetFile <.> "tmp")
+    (\(tmpPath, handle) -> hClose handle >> removeFile tmpPath)
+    (\(tmpPath, handle) -> do
+        BS.hPut handle content
+        hClose handle
+        renameFile tmpPath targetPath)
 
 -- | Write a file but only if it would have new content. If we would be writing
 -- the same as the existing content then leave the file as is so that we do not
@@ -944,9 +942,10 @@ rewriteFile path newContent =
     existingContent <- readFile path
     _ <- evaluate (length existingContent)
     unless (existingContent == newContent) $
-      writeFileAtomic path newContent
+      writeFileAtomic path (BS.Char8.pack newContent)
   where
-    mightNotExist e | isDoesNotExistError e = writeFileAtomic path newContent
+    mightNotExist e | isDoesNotExistError e = writeFileAtomic path
+                                              (BS.Char8.pack newContent)
                     | otherwise             = ioError e
 
 -- | The path name that represents the current directory.
@@ -1112,7 +1111,7 @@ withUTF8FileContents name action =
 -- Uses 'writeFileAtomic', so provides the same guarantees.
 --
 writeUTF8File :: FilePath -> String -> IO ()
-writeUTF8File path = writeFileAtomic path . toUTF8
+writeUTF8File path = writeFileAtomic path . BS.Char8.pack . toUTF8
 
 -- | Fix different systems silly line ending conventions
 normaliseLineEndings :: String -> String

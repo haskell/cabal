@@ -190,7 +190,7 @@ downloadURI verbosity uri path = do
     Left err   -> die $ "Failed to download " ++ show uri ++ " : " ++ show err
     Right body -> do
       info verbosity ("Downloaded to " ++ path)
-      writeFileAtomic path (ByteString.unpack body)
+      writeFileAtomic path body
       --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.

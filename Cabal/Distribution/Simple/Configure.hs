@@ -151,6 +151,8 @@ import Text.PrettyPrint
     ( comma, punctuate, render, nest, sep )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+
 tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
 tryGetConfigStateFile filename = do
   exists <- doesFileExist filename
@@ -214,7 +216,7 @@ writePersistBuildConfig :: FilePath -> LocalBuildInfo -> IO ()
 writePersistBuildConfig distPref lbi = do
   createDirectoryIfMissing False distPref
   writeFileAtomic (localBuildInfoFile distPref)
-                  (showHeader pkgid ++ '\n' : show lbi)
+                  (BS.Char8.pack $ showHeader pkgid ++ '\n' : show lbi)
   where
     pkgid   = packageId (localPkgDescr lbi)
 

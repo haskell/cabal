@@ -89,6 +89,8 @@ import Data.List                ( nub )
 import Data.Char                ( isSpace )
 import Data.Maybe               ( fromMaybe )
 
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -161,7 +163,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   let pkgid = display (packageId pkg_descr)
       pfile = buildDir lbi </> "jhc-pkg.conf"
       hlfile= buildDir lbi </> (pkgid ++ ".hl")
-  writeFileAtomic pfile $ jhcPkgConf pkg_descr
+  writeFileAtomic pfile . BS.Char8.pack $ jhcPkgConf pkg_descr
   rawSystemProgram verbosity jhcProg $
      ["--build-hl="++pfile, "-o", hlfile] ++
      args ++ map display (libModules lib)
@@ -218,4 +220,3 @@ installExe verb dest build_dir (progprefix,progsuffix) _ exe = do
         out   = (progprefix ++ exe_name ++ progsuffix) </> exeExtension
     createDirectoryIfMissingVerbose verb True dest
     installExecutableFile verb (build_dir </> src) (dest </> out)
-

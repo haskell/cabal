@@ -74,6 +74,7 @@ import Data.Monoid ( Monoid(..) )
 import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless)
 import System.Directory (doesFileExist)
+import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
@@ -1168,7 +1169,8 @@ ppCustomField :: (String,String) -> Doc
 ppCustomField (name,val) = text name <> colon <+> showFreeText val
 
 writeHookedBuildInfo :: FilePath -> HookedBuildInfo -> IO ()
-writeHookedBuildInfo fpath = writeFileAtomic fpath . showHookedBuildInfo
+writeHookedBuildInfo fpath = writeFileAtomic fpath . BS.Char8.pack
+                             . showHookedBuildInfo
 
 showHookedBuildInfo :: HookedBuildInfo -> String
 showHookedBuildInfo (mb_lib_bi, ex_bis) = render $
