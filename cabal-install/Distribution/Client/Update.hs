@@ -21,8 +21,6 @@ import Distribution.Client.FetchUtils
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
          ( getSourcePackages, updateRepoIndexCache )
-import Distribution.Client.Utils
-         ( writeFileAtomic )
 import qualified Paths_cabal_install
          ( version )
 
@@ -31,7 +29,7 @@ import Distribution.Package
 import Distribution.Version
          ( anyVersion, withinRange )
 import Distribution.Simple.Utils
-         ( warn, notice )
+         ( writeFileAtomic, warn, notice )
 import Distribution.Verbosity
          ( Verbosity )
 
@@ -80,4 +78,3 @@ checkForSelfUpgrade verbosity repos = do
     notice verbosity $
          "Note: there is a new version of cabal-install available.\n"
       ++ "To upgrade, run: cabal install cabal-install"
-

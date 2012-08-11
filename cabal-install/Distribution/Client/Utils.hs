@@ -2,8 +2,7 @@
 
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
-                                 , moreRecentFile, inDir, numberOfProcessors
-                                 , writeFileAtomic )
+                                 , moreRecentFile, inDir, numberOfProcessors )
        where
 
 import Data.List
@@ -11,14 +10,10 @@ import Data.List
 import Foreign.C.Types ( CInt(..) )
 import System.Directory
          ( doesFileExist, getModificationTime
-         , getCurrentDirectory, setCurrentDirectory
-         , renameFile, removeFile )
-import System.FilePath ( splitFileName, (<.>) )
-import System.IO ( openBinaryTempFile, hClose )
+         , getCurrentDirectory, setCurrentDirectory )
 import System.IO.Unsafe ( unsafePerformIO )
 import qualified Control.Exception as Exception
-         ( bracketOnError, finally )
-import qualified Data.ByteString.Lazy as BS
+         ( finally )
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
 --
@@ -77,22 +72,3 @@ foreign import ccall "getNumberOfProcessors" c_getNumberOfProcessors :: IO CInt
 -- program, so unsafePerformIO is safe here.
 numberOfProcessors :: Int
 numberOfProcessors = fromEnum $ unsafePerformIO c_getNumberOfProcessors
-
--- | Writes a file atomically.
---
--- The file is either written sucessfully or an IO exception is raised and
--- the original file is left unchanged.
---
--- On windows it is not possible to delete a file that is open by a process.
--- This case will give an IO exception but the atomic property is not affected.
---
-writeFileAtomic :: FilePath -> BS.ByteString -> IO ()
-writeFileAtomic targetPath content = do
-  let (targetDir, targetFile) = splitFileName targetPath
-  Exception.bracketOnError
-    (openBinaryTempFile targetDir $ targetFile <.> "tmp")
-    (\(tmpPath, handle) -> hClose handle >> removeFile tmpPath)
-    (\(tmpPath, handle) -> do
-        BS.hPut handle content
-        hClose handle
-        renameFile tmpPath targetPath)
