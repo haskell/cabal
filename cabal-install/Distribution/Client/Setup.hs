@@ -27,6 +27,7 @@ module Distribution.Client.Setup
     , unpackCommand, UnpackFlags(..)
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
+    , commandWithConfigFlags
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -1119,6 +1120,24 @@ instance Monoid SDistExFlags where
   }
     where
       combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Test and Benchmark Flags
+-- ------------------------------------------------------------
+
+commandWithConfigFlags :: Monoid a => CommandUI a
+                       -> CommandUI (ConfigFlags, ConfigExFlags, a)
+commandWithConfigFlags wrappedCommand = wrappedCommand
+    { commandOptions = \showOrParseArgs ->
+        liftOptions get1 set1 (configureOptions showOrParseArgs)
+        ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
+        ++ liftOptions get3 set3 (commandOptions wrappedCommand showOrParseArgs)
+    , commandDefaultFlags = (mempty, mempty, mempty)
+    } 
+  where
+    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
+    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
+    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils

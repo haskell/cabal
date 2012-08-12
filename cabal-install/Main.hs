@@ -29,7 +29,8 @@ import Distribution.Client.Setup
          , InitFlags(initVerbosity), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , reportCommand
-         , unpackCommand, UnpackFlags(..) )
+         , unpackCommand, UnpackFlags(..)
+         , commandWithConfigFlags )
 import Distribution.Simple.Setup
          ( BuildFlags(..), buildCommand
          , HaddockFlags(..), haddockCommand
@@ -39,7 +40,7 @@ import Distribution.Simple.Setup
          , CleanFlags(..), cleanCommand
          , TestFlags(..), testCommand
          , BenchmarkFlags(..), benchmarkCommand
-         , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
+         , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag )
 
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
@@ -150,10 +151,9 @@ mainWorker args = topHandler $
                      hscolourVerbosity hscolourDistPref
       ,wrapperAction registerCommand
                      regVerbosity      regDistPref
-      ,wrapperAction testCommand
-                     testVerbosity     testDistPref
-      ,wrapperAction benchmarkCommand
-                     benchmarkVerbosity     benchmarkDistPref
+      ,(commandWithConfigFlags testCommand) `commandAddAction` testAction
+      ,(commandWithConfigFlags benchmarkCommand)
+            `commandAddAction` benchmarkAction
       ,upgradeCommand         `commandAddAction` upgradeAction
       ]
 
@@ -213,6 +213,65 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
           targets
+
+configureAndBuildBefore
+    :: CommandUI a                  -- ^ Command to run after configure and build
+    -> (ConfigFlags -> ConfigFlags)
+        -- ^ Edits the config flags, if necessary. For tests this would enable
+        -- test suites, for example.
+    -> (a -> Flag Verbosity)
+        -- ^ Extract the verbosity from the wrapped command's flags.
+    -> (a -> Flag FilePath)
+        -- ^ Extract the \"dist\" prefix from the wrapped command's flags.
+    -> (ConfigFlags, ConfigExFlags, a) -> [String] -> GlobalFlags -> IO ()
+        -- ^ The resulting action which configures and builds the package before
+        -- running the specified command.
+configureAndBuildBefore wrappedCommand rewriteConfigFlags getVerbosity getDistPref
+    (configFlags, configExFlags, wrappedFlags) extraArgs globalFlags = do
+        let verbosity = fromFlagOrDefault normal $ getVerbosity wrappedFlags
+        config <- loadConfig verbosity (globalConfigFile globalFlags) (toFlag True)
+
+        let configExFlags' = defaultConfigExFlags           `mappend`
+                             savedConfigureExFlags config   `mappend` configExFlags
+            configFlags'   = savedConfigureFlags config     `mappend`
+                             (rewriteConfigFlags configFlags)
+            setupScriptOptions = defaultSetupScriptOptions {
+              useDistPref = fromFlagOrDefault
+                              (useDistPref defaultSetupScriptOptions)
+                              (getDistPref wrappedFlags)
+            }
+            setup = setupWrapper verbosity setupScriptOptions Nothing
+
+        (comp, conf) <- configCompilerAux configFlags'
+        configure verbosity
+                  (configPackageDB' configFlags')
+                  (globalRepos globalFlags)
+                  comp conf configFlags' configExFlags' []
+        setup (buildCommand defaultProgramConfiguration) (const mempty) []
+
+        setup wrappedCommand (const wrappedFlags) extraArgs
+
+-- | Configure and build the package in the current directory and run its test
+-- suites. Mimics 'installAction' by accepting the flags for 'configureCommand'
+-- and passing the default options to 'buildCommand'.
+testAction :: (ConfigFlags, ConfigExFlags, TestFlags) -> [String] -> GlobalFlags
+           -> IO ()
+testAction = configureAndBuildBefore testCommand enableTests testVerbosity testDistPref
+  where
+    enableTests configFlags = configFlags { configTests = toFlag True }
+
+-- | Configure and build the package in the current directory and run its
+-- benchmarks. Mimics 'installAction' by accepting the flags for
+-- 'configureCommand' and passing the default options to 'buildCommand'.
+benchmarkAction
+    :: (ConfigFlags, ConfigExFlags, BenchmarkFlags) -> [String] -> GlobalFlags
+    -> IO ()
+benchmarkAction = configureAndBuildBefore benchmarkCommand
+                                          enableBenchmarks
+                                          benchmarkVerbosity
+                                          benchmarkDistPref
+  where
+    enableBenchmarks configFlags = configFlags { configBenchmarks = toFlag True }
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
