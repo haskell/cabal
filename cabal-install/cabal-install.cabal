@@ -78,6 +78,7 @@ Executable cabal
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
+        Distribution.Client.Index
         Distribution.Client.IndexUtils
         Distribution.Client.Init
         Distribution.Client.Init.Heuristics
