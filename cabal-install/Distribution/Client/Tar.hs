@@ -21,6 +21,7 @@ module Distribution.Client.Tar (
   -- * Converting between internal and external representation
   read,
   write,
+  writeEntries,
 
   -- * Packing and unpacking files to\/from internal representation
   pack,
@@ -38,6 +39,9 @@ module Distribution.Client.Tar (
   DevMinor,
   TypeCode,
   Format(..),
+  buildTreeRefTypeCode,
+  entrySizeInBlocks,
+  entrySizeInBytes,
 
   -- * Constructing simple entry values
   simpleEntry,
@@ -151,10 +155,29 @@ data Entry = Entry {
     entryFormat :: !Format
   }
 
+-- | Type code for the local build tree reference entry type. We don't use the
+-- symbolic link entry type because it allows only 100 ASCII characters for the
+-- path.
+buildTreeRefTypeCode :: TypeCode
+buildTreeRefTypeCode = 'C'
+
 -- | Native 'FilePath' of the file or directory within the archive.
 --
 entryPath :: Entry -> FilePath
 entryPath = fromTarPath . entryTarPath
+
+-- | Return the size of an entry in bytes.
+entrySizeInBytes :: Entry -> FileSize
+entrySizeInBytes = (*512) . fromIntegral . entrySizeInBlocks
+
+-- | Return the number of blocks in an entry.
+entrySizeInBlocks :: Entry -> Int
+entrySizeInBlocks entry = 1 + case entryContent entry of
+  NormalFile     _   size -> bytesToBlocks size
+  OtherEntryType _ _ size -> bytesToBlocks size
+  _                       -> 0
+  where
+    bytesToBlocks s = 1 + ((fromIntegral s - 1) `div` 512)
 
 -- | The content of a tar archive entry, which depends on the type of entry.
 --
@@ -657,6 +680,11 @@ instance Monad Partial where
 write :: [Entry] -> ByteString
 write es = BS.concat $ map putEntry es ++ [BS.replicate (512*2) 0]
 
+-- | Same as 'write', but for 'Entries'.
+writeEntries :: Entries -> ByteString
+writeEntries entries = BS.concat $ foldrEntries (\e res -> (putEntry e):res)
+                       [BS.replicate (512*2) 0] error entries
+
 putEntry :: Entry -> ByteString
 putEntry entry = case entryContent entry of
   NormalFile       content size -> BS.concat [ header, content, padding size ]
@@ -669,12 +697,15 @@ putEntry entry = case entryContent entry of
 
 putHeader :: Entry -> ByteString
 putHeader entry =
-     BS.Char8.pack $ take 148 block
-  ++ putOct 7 checksum
-  ++ ' ' : drop 156 block
+     BS.concat $ [ BS.take 148 block
+                 , BS.Char8.pack $ putOct 7 checksum
+                 , BS.Char8.singleton ' '
+                 , BS.drop 156 block ]
   where
-    block    = putHeaderNoChkSum entry
-    checksum = foldl' (\x y -> x + ord y) 0 block
+    -- putHeaderNoChkSum returns a String, so we convert it to the final
+    -- representation before calculating the checksum.
+    block    = BS.Char8.pack . putHeaderNoChkSum $ entry
+    checksum = BS.Char8.foldl' (\x y -> x + ord y) 0 block
 
 putHeaderNoChkSum :: Entry -> String
 putHeaderNoChkSum Entry {

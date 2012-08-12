@@ -28,6 +28,8 @@ import Distribution.Client.Setup
          , ReportFlags(..), reportCommand
          , InitFlags(initVerbosity), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
+         , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
+         , IndexFlags(..), indexCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
 import Distribution.Simple.Setup
@@ -58,6 +60,7 @@ import Distribution.Client.Check as Check   (check)
 import Distribution.Client.Upload as Upload (upload, check, report)
 import Distribution.Client.SrcDist          (sdist)
 import Distribution.Client.Unpack           (unpack)
+import Distribution.Client.Index            (index)
 import Distribution.Client.Init             (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
@@ -73,7 +76,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-       ( Verbosity, normal, intToVerbosity, lessVerbose )
+       ( Verbosity, normal, lessVerbose )
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
@@ -81,9 +84,8 @@ import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
 import System.Directory         (doesFileExist)
 import Data.List                (intersperse)
-import Data.Maybe               (fromMaybe)
 import Data.Monoid              (Monoid(..))
-import Control.Monad            (unless)
+import Control.Monad            (when, unless)
 
 -- | Entry point
 --
@@ -91,7 +93,6 @@ main :: IO ()
 main = getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
-mainWorker ("win32selfupgrade":args) = win32SelfUpgradeAction args
 mainWorker args = topHandler $
   case commandsRun globalCommand commands args of
     CommandHelp   help                 -> printGlobalHelp help
@@ -155,6 +156,10 @@ mainWorker args = topHandler $
       ,wrapperAction benchmarkCommand
                      benchmarkVerbosity     benchmarkDistPref
       ,upgradeCommand         `commandAddAction` upgradeAction
+      ,hiddenCommand $
+       win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
+      ,hiddenCommand $
+       indexCommand `commandAddAction` indexAction
       ]
 
 wrapperAction :: Monoid flags
@@ -371,17 +376,23 @@ initAction initFlags _extraArgs globalFlags = do
             conf
             initFlags
 
+indexAction :: IndexFlags -> [String] -> GlobalFlags -> IO ()
+indexAction indexFlags extraArgs _globalFlags = do
+  when (null extraArgs) $ do
+    die $ "the 'index' command expects a single argument. "
+  when ((>1). length $ extraArgs) $ do
+    die $ "the 'index' command expects a single argument: " ++ unwords extraArgs
+  let verbosity = fromFlag (indexVerbosity indexFlags)
+  index verbosity indexFlags (head extraArgs)
+
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
-win32SelfUpgradeAction :: [String] -> IO ()
-win32SelfUpgradeAction (pid:path:rest) =
+win32SelfUpgradeAction :: Win32SelfUpgradeFlags -> [String] -> GlobalFlags
+                          -> IO ()
+win32SelfUpgradeAction selfUpgradeFlags (pid:path:_extraArgs) _globalFlags = do
+  let verbosity = fromFlag (win32SelfUpgradeVerbosity selfUpgradeFlags)
   Win32SelfUpgrade.deleteOldExeFile verbosity (read pid) path
-  where
-    verbosity = case rest of
-      (['-','-','v','e','r','b','o','s','e','=',n]:_) | n `elem` ['0'..'9']
-         -> fromMaybe Verbosity.normal (Verbosity.intToVerbosity (read [n]))
-      _  ->           Verbosity.normal
-win32SelfUpgradeAction _ = return ()
+win32SelfUpgradeAction _ _ _ = return ()
 
 --
 -- Utils (transitionary)

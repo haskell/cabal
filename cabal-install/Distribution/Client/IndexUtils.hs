@@ -32,6 +32,7 @@ import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 import Distribution.PackageDescription
          ( GenericPackageDescription )
 import Distribution.PackageDescription.Parse
@@ -49,9 +50,9 @@ import Distribution.Version
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Verbosity
-         ( Verbosity, lessVerbose )
+         ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info, fromUTF8 )
+         ( die, warn, info, fromUTF8, findPackageDesc )
 
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (catMaybes, fromMaybe)
@@ -65,6 +66,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.ByteString.Char8 as BSS
 import Data.ByteString.Lazy (ByteString)
 import Distribution.Client.GZipUtils (maybeDecompress)
+import Distribution.Client.Utils (byteStringToFilePath)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
@@ -149,7 +151,6 @@ getSourcePackages verbosity repos = do
     packagePreferences = prefs'
   }
 
-
 -- | Read a repository index from disk, from the local file specified by
 -- the 'Repo'.
 --
@@ -170,12 +171,16 @@ readRepoIndex verbosity repo =
     readPackageIndexCacheFile mkAvailablePackage indexFile cacheFile
 
   where
-    mkAvailablePackage pkgid pkg =
+    mkAvailablePackage pkgEntry =
       SourcePackage {
         packageInfoId      = pkgid,
-        packageDescription = pkg,
-        packageSource      = RepoTarballPackage repo pkgid Nothing
+        packageDescription = packageDesc pkgEntry,
+        packageSource      = case pkgEntry of
+          NormalPackage _ _ _      -> RepoTarballPackage repo pkgid Nothing
+          BuildTreeRef  _ path _ _ -> LocalUnpackedPackage path
       }
+      where
+        pkgid = packageId pkgEntry
 
     handleNotFound action = catchIO action $ \e -> if isDoesNotExistError e
       then do
@@ -228,6 +233,21 @@ whenCacheOutOfDate origFile cacheFile action = do
 -- Reading the index file
 --
 
+-- | An index entry is either a normal package, or a local build tree reference.
+data PackageEntry = NormalPackage PackageId GenericPackageDescription BlockNo
+                  | BuildTreeRef PackageId FilePath GenericPackageDescription
+                    BlockNo
+
+type MkPackageEntry = IO PackageEntry
+
+instance Package PackageEntry where
+  packageId (NormalPackage pkgid _ _   ) = pkgid
+  packageId (BuildTreeRef  pkgid _ _ _ ) = pkgid
+
+packageDesc :: PackageEntry -> GenericPackageDescription
+packageDesc (NormalPackage _   descr _ ) = descr
+packageDesc (BuildTreeRef  _ _ descr _ ) = descr
+
 -- | Read a compressed \"00-index.tar.gz\" file into a 'PackageIndex'.
 --
 -- This is supposed to be an \"all in one\" way to easily get at the info in
@@ -238,26 +258,24 @@ whenCacheOutOfDate origFile cacheFile action = do
 -- case you can just use @\_ p -> p@ here.
 --
 readPackageIndexFile :: Package pkg
-                     => (PackageId -> GenericPackageDescription -> pkg)
+                     => (PackageEntry -> pkg)
                      -> FilePath
                      -> IO (PackageIndex pkg, [Dependency])
 readPackageIndexFile mkPkg indexFile = do
-  (pkgs, prefs) <- either fail return
-                 . parsePackageIndex
-                 . maybeDecompress
-               =<< BS.readFile indexFile
+  (mkPkgs, prefs) <- either fail return
+                     . parsePackageIndex
+                     . maybeDecompress
+                     =<< BS.readFile indexFile
 
-  pkgs' <- evaluate $ PackageIndex.fromList
-            [ mkPkg pkgid pkg | (pkgid, pkg, _) <- pkgs]
-  return (pkgs', prefs)
+  pkgEntries  <- sequence mkPkgs
+  pkgs <- evaluate $ PackageIndex.fromList (map mkPkg pkgEntries)
+  return (pkgs, prefs)
 
 -- | Parse an uncompressed \"00-index.tar\" repository index file represented
 -- as a 'ByteString'.
 --
 parsePackageIndex :: ByteString
-                  -> Either String
-                            ( [(PackageId, GenericPackageDescription, BlockNo)]
-                            , [Dependency] )
+                  -> Either String ([MkPackageEntry], [Dependency])
 parsePackageIndex = accum 0 [] [] . Tar.read
   where
     accum blockNo pkgs prefs es = case es of
@@ -266,7 +284,7 @@ parsePackageIndex = accum 0 [] [] . Tar.read
       Tar.Next e es' -> accum blockNo' pkgs' prefs' es'
         where
           (pkgs', prefs') = extract blockNo pkgs prefs e
-          blockNo'        = blockNo + sizeInBlocks e
+          blockNo'        = blockNo + Tar.entrySizeInBlocks e
 
     extract blockNo pkgs prefs entry =
        fromMaybe (pkgs, prefs) $
@@ -274,28 +292,20 @@ parsePackageIndex = accum 0 [] [] . Tar.read
          `mplus` tryExtractPrefs
       where
         tryExtractPkg = do
-          (pkgid, pkg) <- extractPkg entry
-          return ((pkgid, pkg, blockNo):pkgs, prefs)
+          mkPkgEntry <- extractPkg entry blockNo
+          return (mkPkgEntry:pkgs, prefs)
 
         tryExtractPrefs = do
           prefs' <- extractPrefs entry
           return (pkgs, prefs'++prefs)
 
-    sizeInBlocks entry =
-        1 + case Tar.entryContent entry of
-              Tar.NormalFile     _   size -> bytesToBlocks size
-              Tar.OtherEntryType _ _ size -> bytesToBlocks size
-              _                           -> 0
-      where
-        bytesToBlocks s = 1 + ((fromIntegral s - 1) `div` 512)
-
-extractPkg :: Tar.Entry -> Maybe (PackageId, GenericPackageDescription)
-extractPkg entry = case Tar.entryContent entry of
+extractPkg :: Tar.Entry -> BlockNo -> Maybe MkPackageEntry
+extractPkg entry blockNo = case Tar.entryContent entry of
   Tar.NormalFile content _
      | takeExtension fileName == ".cabal"
     -> case splitDirectories (normalise fileName) of
         [pkgname,vers,_] -> case simpleParse vers of
-          Just ver -> Just (pkgid, descr)
+          Just ver -> Just $ return (NormalPackage pkgid descr blockNo)
             where
               pkgid  = PackageIdentifier (PackageName pkgname) ver
               parsed = parsePackageDescription . fromUTF8 . BS.Char8.unpack
@@ -306,7 +316,17 @@ extractPkg entry = case Tar.entryContent entry of
                                     ++ show fileName
           _ -> Nothing
         _ -> Nothing
+
+  Tar.OtherEntryType typeCode content _
+    | typeCode == Tar.buildTreeRefTypeCode ->
+      Just $ do
+        let path   = byteStringToFilePath content
+        cabalFile <- findPackageDesc path
+        descr     <- PackageDesc.Parse.readPackageDescription normal cabalFile
+        return $ BuildTreeRef (packageId descr) path descr blockNo
+
   _ -> Nothing
+
   where
     fileName = Tar.entryPath entry
 
@@ -330,19 +350,23 @@ parsePreferredVersions = catMaybes
 
 updatePackageIndexCacheFile :: FilePath -> FilePath -> IO ()
 updatePackageIndexCacheFile indexFile cacheFile = do
-    (pkgs, prefs) <- either fail return
-                   . parsePackageIndex
-                   . maybeDecompress
-                 =<< BS.readFile indexFile
-    let cache = mkCache pkgs prefs
+    (mkPkgs, prefs) <- either fail return
+                       . parsePackageIndex
+                       . maybeDecompress
+                       =<< BS.readFile indexFile
+    pkgEntries <- sequence mkPkgs
+    let cache = mkCache pkgEntries prefs
     writeFile cacheFile (showIndexCache cache)
   where
     mkCache pkgs prefs =
         [ CachePreference pref          | pref <- prefs ]
-     ++ [ CachePackageId pkgid blockNo | (pkgid, _, blockNo) <- pkgs ]
+     ++ [ CachePackageId pkgid blockNo
+        | (NormalPackage pkgid _ blockNo) <- pkgs ]
+     ++ [ CacheBuildTreeRef blockNo
+        | (BuildTreeRef _ _ _ blockNo) <- pkgs]
 
 readPackageIndexCacheFile :: Package pkg
-                          => (PackageId -> GenericPackageDescription -> pkg)
+                          => (PackageEntry -> pkg)
                           -> FilePath
                           -> FilePath
                           -> IO (PackageIndex pkg, [Dependency])
@@ -353,7 +377,7 @@ readPackageIndexCacheFile mkPkg indexFile cacheFile = do
 
 
 packageIndexFromCache :: Package pkg
-                      => (PackageId -> GenericPackageDescription -> pkg)
+                      => (PackageEntry -> pkg)
                       -> Handle
                       -> [IndexCacheEntry]
                       -> IO (PackageIndex pkg, [Dependency])
@@ -372,28 +396,43 @@ packageIndexFromCache mkPkg hnd = accum mempty []
       -- from the index tarball if it turns out that we need it.
       -- Most of the time we only need the package id.
       pkg <- unsafeInterleaveIO $ do
-               getPackageDescription blockno
-      let srcpkg = mkPkg pkgid pkg
+        getEntryContent blockno >>= readPackageDescription
+      let srcpkg = mkPkg (NormalPackage pkgid pkg blockno)
+      accum (srcpkg:srcpkgs) prefs entries
+
+    accum srcpkgs prefs (CacheBuildTreeRef blockno : entries) = do
+      -- We have to read the .cabal file eagerly here because we can't cache the
+      -- package id for build tree references - the user might edit the .cabal
+      -- file after the reference was added to the index.
+      path <- liftM byteStringToFilePath . getEntryContent $ blockno
+      pkg  <- do cabalFile <- findPackageDesc path
+                 PackageDesc.Parse.readPackageDescription normal cabalFile
+      let srcpkg = mkPkg (BuildTreeRef (packageId pkg) path pkg blockno)
       accum (srcpkg:srcpkgs) prefs entries
 
     accum srcpkgs prefs (CachePreference pref : entries) =
       accum srcpkgs (pref:prefs) entries
 
-    getPackageDescription blockno = do
+    getEntryContent :: BlockNo -> IO ByteString
+    getEntryContent blockno = do
       hSeek hnd AbsoluteSeek (fromIntegral (blockno * 512))
       header  <- BS.hGet hnd 512
       size    <- getEntrySize header
-      content <- BS.hGet hnd (fromIntegral size)
-      readPackageDescription content
+      BS.hGet hnd (fromIntegral size)
 
+    getEntrySize :: ByteString -> IO Tar.FileSize
     getEntrySize header =
       case Tar.read header of
         Tar.Next e _ ->
           case Tar.entryContent e of
             Tar.NormalFile _ size -> return size
+            Tar.OtherEntryType typecode _ size
+              | typecode == Tar.buildTreeRefTypeCode
+                                  -> return size
             _                     -> interror "unexpected tar entry type"
         _ -> interror "could not read tar file entry"
 
+    readPackageDescription :: ByteString -> IO GenericPackageDescription
     readPackageDescription content =
       case parsePackageDescription . fromUTF8 . BS.Char8.unpack $ content of
         ParseOk _ d -> return d
@@ -413,6 +452,7 @@ packageIndexFromCache mkPkg hnd = accum mempty []
 type BlockNo = Int
 
 data IndexCacheEntry = CachePackageId PackageId BlockNo
+                     | CacheBuildTreeRef BlockNo
                      | CachePreference Dependency
   deriving (Eq, Show)
 
@@ -426,12 +466,17 @@ readIndexCacheEntry = \line ->
         (Just pkgname, Just pkgver, Just blockno)
           -> Just (CachePackageId (PackageIdentifier pkgname pkgver) blockno)
         _ -> Nothing
+    [key, blocknostr] | key == buildTreeRefKey ->
+      case parseBlockNo blocknostr of
+        Just blockno -> Just (CacheBuildTreeRef blockno)
+        _            -> Nothing
     (key: remainder) | key == preferredVersionKey ->
       fmap CachePreference (simpleParse (BSS.unpack (BSS.unwords remainder)))
     _  -> Nothing
   where
     packageKey = BSS.pack "pkg:"
     blocknoKey = BSS.pack "b#"
+    buildTreeRefKey     = BSS.pack "build-tree-ref:"
     preferredVersionKey = BSS.pack "pref-ver:"
 
     parseName str
@@ -457,7 +502,8 @@ showIndexCacheEntry entry = case entry of
    CachePackageId pkgid b -> "pkg: " ++ display (packageName pkgid)
                                   ++ " " ++ display (packageVersion pkgid)
                           ++ " b# " ++ show b
-   CachePreference dep     -> "pref-ver: " ++ display dep
+   CacheBuildTreeRef b    -> "build-tree-ref: " ++ show b
+   CachePreference dep    -> "pref-ver: " ++ display dep
 
 readIndexCache :: BSS.ByteString -> [IndexCacheEntry]
 readIndexCache = catMaybes . map readIndexCacheEntry . BSS.lines

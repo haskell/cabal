@@ -27,6 +27,8 @@ module Distribution.Client.Setup
     , unpackCommand, UnpackFlags(..)
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
+    , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
+    , indexCommand, IndexFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -1119,6 +1121,114 @@ instance Monoid SDistExFlags where
   }
     where
       combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Win32SelfUpgrade flags
+-- ------------------------------------------------------------
+
+data Win32SelfUpgradeFlags = Win32SelfUpgradeFlags {
+  win32SelfUpgradeVerbosity :: Flag Verbosity
+}
+
+defaultWin32SelfUpgradeFlags :: Win32SelfUpgradeFlags
+defaultWin32SelfUpgradeFlags = Win32SelfUpgradeFlags {
+  win32SelfUpgradeVerbosity = toFlag normal
+}
+
+win32SelfUpgradeCommand :: CommandUI Win32SelfUpgradeFlags
+win32SelfUpgradeCommand = CommandUI {
+  commandName         = "win32selfupgrade",
+  commandSynopsis     = "Self-upgrade the executable on Windows",
+  commandDescription  = Nothing,
+  commandUsage        = \pname ->
+    "Usage: " ++ pname ++ " win32selfupgrade PID PATH\n\n"
+     ++ "Flags for win32selfupgrade:",
+  commandDefaultFlags = defaultWin32SelfUpgradeFlags,
+  commandOptions      = \_ ->
+      [optionVerbosity win32SelfUpgradeVerbosity
+       (\v flags -> flags { win32SelfUpgradeVerbosity = v})
+      ]
+}
+
+instance Monoid Win32SelfUpgradeFlags where
+  mempty = defaultWin32SelfUpgradeFlags
+  mappend a b = Win32SelfUpgradeFlags {
+    win32SelfUpgradeVerbosity = combine win32SelfUpgradeVerbosity
+  }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Index flags
+-- ------------------------------------------------------------
+
+data IndexFlags = IndexFlags {
+  indexInit         :: Flag Bool,
+  indexList         :: Flag Bool,
+  indexLinkSource   :: [FilePath],
+  indexRemoveSource :: [String],
+  indexVerbosity    :: Flag Verbosity
+}
+
+defaultIndexFlags :: IndexFlags
+defaultIndexFlags = IndexFlags {
+  indexInit         = mempty,
+  indexList         = mempty,
+  indexLinkSource   = [],
+  indexRemoveSource = [],
+  indexVerbosity    = toFlag normal
+}
+
+indexCommand :: CommandUI IndexFlags
+indexCommand = CommandUI {
+  commandName         = "index",
+  commandSynopsis     = "Query and modify the index file",
+  commandDescription  = Nothing,
+  commandUsage        = \pname ->
+    "Usage: " ++ pname ++ " index FLAGS PATH\n\n"
+     ++ "Flags for index:",
+  commandDefaultFlags = defaultIndexFlags,
+  commandOptions      = \_ ->
+      [optionVerbosity indexVerbosity
+       (\v flags -> flags { indexVerbosity = v})
+
+      ,option [] ["init"]
+       "Create the index"
+       indexInit (\v flags -> flags { indexInit = v })
+       trueArg
+
+      ,option [] ["link-source"]
+       "Add a reference to a local build tree to the index"
+       indexLinkSource (\v flags -> flags { indexLinkSource = v })
+       (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option [] ["remove-source"]
+       "Remove a reference to a local build tree from the index"
+       indexRemoveSource (\v flags -> flags { indexRemoveSource = v })
+       (reqArg' "PATH" (\x -> [x]) id)
+
+      ,option [] ["list"]
+       "List the local build trees that are referred to from the index"
+       indexList (\v flags -> flags { indexList = v })
+       trueArg
+      ]
+}
+
+instance Monoid IndexFlags where
+  mempty = IndexFlags {
+    indexInit         = mempty,
+    indexList         = mempty,
+    indexLinkSource   = mempty,
+    indexRemoveSource = mempty,
+    indexVerbosity    = mempty
+  }
+  mappend a b = IndexFlags {
+    indexInit         = combine indexInit,
+    indexList         = combine indexList,
+    indexLinkSource   = combine indexLinkSource,
+    indexRemoveSource = combine indexRemoveSource,
+    indexVerbosity    = combine indexVerbosity
+  }
+    where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils
