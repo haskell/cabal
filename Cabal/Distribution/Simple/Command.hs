@@ -456,7 +456,7 @@ data Command action =
 -- | Mark command as hidden. Hidden commands don't show up in the 'progname
 -- help' or 'progname --help' output.
 hiddenCommand :: Command action -> Command action
-hiddenCommand (Command name synopsys f cmdType) =
+hiddenCommand (Command name synopsys f _cmdType) =
   Command name synopsys f HiddenCommand
 
 commandAddAction :: CommandUI flags
