@@ -665,7 +665,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                                     libBi clbi pref filename) `mappend` mempty {
                                   ghcOptProfilingMode = toFlag (withProfLib lbi)
                                 }
-                sharedCcOpts  = vanillaOpts `mappend` mempty {
+                sharedCcOpts  = vanillaCcOpts `mappend` mempty {
                                   ghcOptFPic      = toFlag True,
                                   ghcOptDynamic   = toFlag True,
                                   ghcOptObjSuffix = toFlag "dyn_o"
