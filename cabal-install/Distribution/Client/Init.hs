@@ -24,9 +24,9 @@ module Distribution.Client.Init (
 import System.IO
   ( hSetBuffering, stdout, BufferMode(..) )
 import System.Directory
-  ( getCurrentDirectory, doesDirectoryExist )
+  ( getCurrentDirectory, doesDirectoryExist, doesFileExist, copyFile )
 import System.FilePath
-  ( (</>) )
+  ( (</>), (<.>) )
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
@@ -42,7 +42,7 @@ import Data.Traversable
 import Control.Applicative
   ( (<$>) )
 import Control.Monad
-  ( when )
+  ( when, unless )
 #if MIN_VERSION_base(3,0,0)
 import Control.Monad
   ( (>=>), join )
@@ -63,6 +63,7 @@ import Distribution.ModuleName
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, sourcePackageId, exposed )
 import qualified Distribution.Package as P
+import Language.Haskell.Extension ( Language(..) )
 
 import Distribution.Client.Init.Types
   ( InitFlags(..), PackageType(..), Category(..) )
@@ -127,6 +128,7 @@ extendFlags pkgIx =
   >=> getSynopsis
   >=> getCategory
   >=> getLibOrExec
+  >=> getLanguage
   >=> getGenComments
   >=> getSrcDir
   >=> getModulesBuildToolsAndDeps pkgIx
@@ -242,10 +244,27 @@ getLibOrExec flags = do
 
   return $ flags { packageType = maybeToFlag isLib }
 
--- | Ask whether to generate explanitory comments.
+-- | Ask for the base language of the package.
+getLanguage :: InitFlags -> IO InitFlags
+getLanguage flags = do
+  lang <-     return (flagToMaybe $ language flags)
+          ?>> maybePrompt flags
+                (either UnknownLanguage id `fmap`
+                  (promptList "What base language is the package written in"
+                    [Haskell2010, Haskell98]
+                    (Just Haskell2010)
+                    display
+                    True
+                  )
+                )
+          ?>> return (Just Haskell2010)
+
+  return $ flags { language = maybeToFlag lang }
+
+-- | Ask whether to generate explanatory comments.
 getGenComments :: InitFlags -> IO InitFlags
 getGenComments flags = do
-  genComments <-     return (flagToMaybe $ noComments flags)
+  genComments <-     return (not <$> (flagToMaybe $ noComments flags))
                  ?>> maybePrompt flags (promptYesNo promptMsg (Just False))
                  ?>> return (Just False)
   return $ flags { noComments = maybeToFlag (fmap not genComments) }
@@ -288,7 +307,14 @@ getModulesBuildToolsAndDeps pkgIx flags = do
 
   deps <-      return (dependencies flags)
            ?>> Just <$> importsToDeps flags
-                        (fromString "Prelude" : concatMap imports sourceFiles)
+                        (fromString "Prelude" :  -- to ensure we get base as a dep
+                           (   nub   -- only need to consider each imported package once
+                             . filter (`notElem` mods)  -- don't consider modules from
+                                                        -- this package itself
+                             . concatMap imports
+                             $ sourceFiles
+                           )
+                        )
                         pkgIx
 
   return $ flags { exposedModules = Just mods
@@ -501,7 +527,7 @@ writeLicense flags = do
           _ -> Nothing
 
   case licenseFile of
-    Just licenseText -> writeFile "LICENSE" licenseText
+    Just licenseText -> writeFileSafe flags "LICENSE" licenseText
     Nothing -> message flags "Warning: unknown license type, you must put a copy in LICENSE yourself."
 
 getYear :: IO Integer
@@ -515,7 +541,7 @@ getYear = do
 writeSetupFile :: InitFlags -> IO ()
 writeSetupFile flags = do
   message flags "Generating Setup.hs..."
-  writeFile "Setup.hs" setupFile
+  writeFileSafe flags "Setup.hs" setupFile
  where
   setupFile = unlines
     [ "import Distribution.Simple"
@@ -531,8 +557,35 @@ writeCabalFile flags@(InitFlags{packageName = NoFlag}) = do
 writeCabalFile flags@(InitFlags{packageName = Flag p}) = do
   let cabalFileName = p ++ ".cabal"
   message flags $ "Generating " ++ cabalFileName ++ "..."
-  writeFile cabalFileName (generateCabalFile cabalFileName flags)
+  writeFileSafe flags cabalFileName (generateCabalFile cabalFileName flags)
   return True
+
+-- | Write a file \"safely\", backing up any existing version (unless
+--   the overwrite flag is set).
+writeFileSafe :: InitFlags -> FilePath -> String -> IO ()
+writeFileSafe flags fileName content = do
+  moveExistingFile flags fileName
+  writeFile fileName content
+
+-- | Move an existing file, if there is one, and the overwrite flag is
+--   not set.
+moveExistingFile :: InitFlags -> FilePath -> IO ()
+moveExistingFile flags fileName =
+  unless (overwrite flags == Flag True) $ do
+    e <- doesFileExist fileName
+    when e $ do
+      newName <- findNewName fileName
+      message flags $ "Warning: " ++ fileName ++ " already exists, backing up old version in " ++ newName
+      copyFile fileName newName
+
+findNewName :: FilePath -> IO FilePath
+findNewName oldName = findNewName' 0
+  where
+    findNewName' :: Integer -> IO FilePath
+    findNewName' n = do
+      let newName = oldName <.> ("save" ++ show n)
+      e <- doesFileExist newName
+      if e then findNewName' (n+1) else return newName
 
 -- | Generate a .cabal file from an InitFlags structure.  NOTE: this
 --   is rather ad-hoc!  What we would REALLY like is to have a
@@ -611,7 +664,7 @@ generateCabalFile fileName c =
                 (Just "Extra files to be distributed with the package, such as examples or a README.")
                 False
 
-       , field  "cabal-version" (Flag $ orLaterVersion (Version [1,8] []))
+       , field  "cabal-version" (Flag $ orLaterVersion (Version [1,10] []))
                 (Just "Constraint on the version of Cabal needed to build this package.")
                 False
 
@@ -651,6 +704,10 @@ generateCabalFile fileName c =
      , fieldS "build-tools" (listFieldS (buildTools c'))
               (Just "Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.")
               False
+
+     , field  "default-language" (language c')
+              (Just "Base language which the package is written in.")
+              True
      ]
 
    listField :: Text s => Maybe [s] -> Flag String

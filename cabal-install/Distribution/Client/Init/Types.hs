@@ -22,6 +22,7 @@ import Distribution.Verbosity
 import qualified Distribution.Package as P
 import Distribution.License
 import Distribution.ModuleName
+import Language.Haskell.Extension ( Language(..) )
 
 import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
@@ -53,6 +54,7 @@ data InitFlags =
               , category     :: Flag (Either String Category)
 
               , packageType  :: Flag PackageType
+              , language     :: Flag Language
 
               , exposedModules :: Maybe [ModuleName]
               , otherModules   :: Maybe [ModuleName]
@@ -62,6 +64,7 @@ data InitFlags =
               , buildTools   :: Maybe [String]
 
               , initVerbosity :: Flag Verbosity
+              , overwrite     :: Flag Bool
               }
   deriving (Show)
 
@@ -89,12 +92,14 @@ instance Monoid InitFlags where
     , synopsis       = mempty
     , category       = mempty
     , packageType    = mempty
+    , language       = mempty
     , exposedModules = mempty
     , otherModules   = mempty
     , dependencies   = mempty
     , sourceDirs     = mempty
     , buildTools     = mempty
     , initVerbosity  = mempty
+    , overwrite      = mempty
     }
   mappend  a b = InitFlags
     { nonInteractive = combine nonInteractive
@@ -112,12 +117,14 @@ instance Monoid InitFlags where
     , synopsis       = combine synopsis
     , category       = combine category
     , packageType    = combine packageType
+    , language       = combine language
     , exposedModules = combine exposedModules
     , otherModules   = combine otherModules
     , dependencies   = combine dependencies
     , sourceDirs     = combine sourceDirs
     , buildTools     = combine buildTools
     , initVerbosity  = combine initVerbosity
+    , overwrite      = combine overwrite
     }
     where combine field = field a `mappend` field b
 

@@ -979,6 +979,11 @@ initCommand = CommandUI {
         IT.minimal (\v flags -> flags { IT.minimal = v })
         trueArg
 
+      , option [] ["overwrite"]
+        "Overwrite any existing .cabal, LICENSE, or Setup.hs files without warning."
+        IT.overwrite (\v flags -> flags { IT.overwrite = v })
+        trueArg
+
       , option [] ["package-dir"]
         "Root directory of the package (default = current directory)."
         IT.packageDir (\v flags -> flags { IT.packageDir = v })
@@ -1046,6 +1051,14 @@ initCommand = CommandUI {
         IT.packageType
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Executable))
+
+      , option [] ["language"]
+        "Specify the default language."
+        IT.language
+        (\v flags -> flags { IT.language = v })
+        (reqArg "LICENSE" (readP_to_E ("Cannot parse language: "++)
+                                      (toFlag `fmap` parse))
+                          (flagToList . fmap display))
 
       , option ['o'] ["expose-module"]
         "Export a module from the package."
