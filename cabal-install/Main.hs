@@ -17,6 +17,7 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, globalRepos
          , ConfigFlags(..)
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
+         , BuildFlags(..), buildCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
@@ -33,15 +34,14 @@ import Distribution.Client.Setup
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
 import Distribution.Simple.Setup
-         ( BuildFlags(..), buildCommand
-         , HaddockFlags(..), haddockCommand
+         ( HaddockFlags(..), haddockCommand
          , HscolourFlags(..), hscolourCommand
          , CopyFlags(..), copyCommand
          , RegisterFlags(..), registerCommand
          , CleanFlags(..), cleanCommand
          , TestFlags(..), testCommand
          , BenchmarkFlags(..), benchmarkCommand
-         , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe )
+         , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag )
 
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
@@ -67,12 +67,14 @@ import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Simple.Compiler
          ( Compiler, PackageDBStack )
 import Distribution.Simple.Program
-         ( ProgramConfiguration, defaultProgramConfiguration )
+         ( ProgramConfiguration )
 import Distribution.Simple.Command
 import Distribution.Simple.Configure
-         ( configCompilerAux, interpretPackageDbFlags )
+         ( checkPersistBuildConfigOutdated, configCompilerAux
+         , interpretPackageDbFlags, maybeGetPersistBuildConfig )
+import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Utils
-         ( cabalVersion, die, topHandler, intercalate )
+         ( cabalVersion, die, intercalate, notice, topHandler )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -139,8 +141,7 @@ mainWorker args = topHandler $
       ,reportCommand          `commandAddAction` reportAction
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
-      ,wrapperAction (buildCommand defaultProgramConfiguration)
-                     buildVerbosity    buildDistPref
+      ,buildCommand           `commandAddAction` buildAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
       ,wrapperAction haddockCommand
@@ -151,10 +152,8 @@ mainWorker args = topHandler $
                      hscolourVerbosity hscolourDistPref
       ,wrapperAction registerCommand
                      regVerbosity      regDistPref
-      ,wrapperAction testCommand
-                     testVerbosity     testDistPref
-      ,wrapperAction benchmarkCommand
-                     benchmarkVerbosity     benchmarkDistPref
+      ,testCommand            `commandAddAction` testAction
+      ,benchmarkCommand       `commandAddAction` benchmarkAction
       ,upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $
        win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
@@ -193,6 +192,151 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
             (configPackageDB' configFlags') (globalRepos globalFlags')
             comp conf configFlags' configExFlags' extraArgs
 
+buildAction :: BuildFlags -> [String] -> GlobalFlags -> IO ()
+buildAction buildFlags extraArgs globalFlags = do
+    let distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                                     (buildDistPref buildFlags)
+        verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
+
+    reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
+    build verbosity distPref buildFlags extraArgs
+
+-- | Actually do the work of building the package. This is separate from
+-- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
+-- 'reconfigure' twice.
+build :: Verbosity -> FilePath -> BuildFlags -> [String] -> IO ()
+build verbosity distPref buildFlags extraArgs =
+    setupWrapper verbosity setupOptions Nothing
+                 buildCommand (const buildFlags') extraArgs
+  where 
+    setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+    buildFlags' = buildFlags
+        { buildVerbosity = toFlag verbosity
+        , buildDistPref = toFlag distPref
+        }
+
+-- | Re-configure the package in the current directory if needed. Deciding
+-- when to reconfigure and with which options is convoluted:
+--
+-- If we are reconfiguring, we must always run @configure@ with the
+-- verbosity option we are given; however, that a previous configuration
+-- uses a different verbosity setting is not reason enough to reconfigure.
+--
+-- The package should be configured to use the same \"dist\" prefix as
+-- given to the @build@ command, otherwise the build will probably
+-- fail. Not only does this determine the \"dist\" prefix setting if we
+-- need to reconfigure anyway, but an existing configuration should be
+-- invalidated if its \"dist\" prefix differs.
+--
+-- If the package has never been configured (i.e., there is no
+-- LocalBuildInfo), we must configure first, using the default options.
+--
+-- If the package has been configured, there will be a 'LocalBuildInfo'.
+-- If there no package description file, we assume that the
+-- 'PackageDescription' is up to date, though the configuration may need
+-- to be updated for other reasons (see above). If there is a package
+-- description file, and it has been modified since the 'LocalBuildInfo'
+-- was generated, then we need to reconfigure.
+--
+-- The caller of this function may also have specific requirements
+-- regarding the flags the last configuration used. For example,
+-- 'testAction' requires that the package be configured with test suites
+-- enabled. The caller may pass the required settings to this function
+-- along with a function to check the validity of the saved 'ConfigFlags';
+-- these required settings will be checked first upon determining that
+-- a previous configuration exists.
+reconfigure :: Verbosity    -- ^ Verbosity setting
+            -> FilePath     -- ^ \"dist\" prefix
+            -> ConfigFlags  -- ^ Additional config flags to set. These flags
+                            -- will be 'mappend'ed to the last used or
+                            -- default 'ConfigFlags' as appropriate, so
+                            -- this value should be 'mempty' with only the
+                            -- required flags set. The required verbosity
+                            -- and \"dist\" prefix flags will be set
+                            -- automatically because they are always
+                            -- required; therefore, it is not necessary to
+                            -- set them here.
+            -> [String]     -- ^ Extra arguments
+            -> GlobalFlags  -- ^ Global flags
+            -> (ConfigFlags -> Maybe String)
+                            -- ^ Check that the required flags are set in
+                            -- the last used 'ConfigFlags'. If the required
+                            -- flags are not set, provide a message to the
+                            -- user explaining the reason for
+                            -- reconfiguration. Because the correct \"dist\"
+                            -- prefix setting is always required, it is checked
+                            -- automatically; this function need not check
+                            -- for it.
+            -> IO ()
+reconfigure verbosity distPref    addConfigFlags
+            extraArgs globalFlags checkFlags = do
+    mLbi <- maybeGetPersistBuildConfig distPref
+    case mLbi of
+
+        -- Package has never been configured.
+        Nothing -> do
+            notice verbosity
+                $ "Configuring with default flags." ++ configureManually
+            configureAction (defaultFlags, defaultConfigExFlags)
+                            extraArgs globalFlags
+
+        -- Package has been configured, but the configuration may be out of
+        -- date or required flags may not be set.
+        Just lbi -> do
+            let configFlags = LBI.configFlags lbi
+                flags = mconcat [configFlags, addConfigFlags, distVerbFlags]
+                savedDistPref = fromFlagOrDefault
+                    (useDistPref defaultSetupScriptOptions)
+                    (configDistPref configFlags)
+
+            -- Determine what message, if any, to display to the user if
+            -- reconfiguration is required.
+            message <- case checkFlags configFlags of
+
+                -- Flag required by the caller is not set.
+                Just msg -> return $! Just $! msg ++ configureManually
+
+                Nothing
+                    -- Required "dist" prefix is not set.
+                    | savedDistPref /= distPref ->
+                        return $! Just distPrefMessage
+
+                    -- All required flags are set, but the configuration
+                    -- may be outdated.
+                    | otherwise -> case LBI.pkgDescrFile lbi of
+                        Nothing -> return Nothing
+                        Just pdFile -> do
+                            outdated <- checkPersistBuildConfigOutdated distPref pdFile
+                            return $! if outdated
+                                then Just $! outdatedMessage pdFile
+                                else Nothing
+
+            case message of
+
+                -- No message for the user indicates that reconfiguration
+                -- is not required.
+                Nothing -> return ()
+
+                Just msg -> do
+                    notice verbosity msg
+                    configureAction (flags, defaultConfigExFlags)
+                                    extraArgs globalFlags
+  where
+    defaultFlags = mappend addConfigFlags distVerbFlags
+    distVerbFlags = mempty
+        { configVerbosity = toFlag verbosity
+        , configDistPref = toFlag distPref
+        }
+    configureManually = " If this fails, please run configure manually.\n"
+    distPrefMessage =
+        "Package previously configured with different \"dist\" prefix. "
+        ++ "Re-configuring based on most recently used options."
+        ++ configureManually
+    outdatedMessage pdFile =
+        pdFile ++ " has been changed. "
+        ++ "Re-configuring with most recently used options."
+        ++ configureManually
+
 installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
 installAction (configFlags, _, installFlags, _) _ _globalFlags
@@ -218,6 +362,40 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
           targets
+
+testAction :: TestFlags -> [String] -> GlobalFlags -> IO ()
+testAction testFlags extraArgs globalFlags = do
+    let verbosity = fromFlagOrDefault normal (testVerbosity testFlags)
+        distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                                     (testDistPref testFlags)
+        setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+        addConfigFlags = mempty { configTests = toFlag True }
+        checkFlags flags
+            | fromFlagOrDefault False (configTests flags) = Nothing
+            | otherwise = Just "Re-configuring with test suites enabled."
+
+    reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
+    build verbosity distPref mempty []
+
+    setupWrapper verbosity setupOptions Nothing
+                 testCommand (const testFlags) extraArgs
+
+benchmarkAction :: BenchmarkFlags -> [String] -> GlobalFlags -> IO ()
+benchmarkAction benchmarkFlags extraArgs globalFlags = do
+    let verbosity = fromFlagOrDefault normal (benchmarkVerbosity benchmarkFlags)
+        distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                                     (benchmarkDistPref benchmarkFlags)
+        setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+        addConfigFlags = mempty { configBenchmarks = toFlag True }
+        checkFlags flags
+            | fromFlagOrDefault False (configTests flags) = Nothing
+            | otherwise = Just "Re-configuring with benchmarks enabled."
+
+    reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
+    build verbosity distPref mempty []
+
+    setupWrapper verbosity setupOptions Nothing
+                 benchmarkCommand (const benchmarkFlags) extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
