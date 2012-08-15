@@ -57,6 +57,7 @@ module Distribution.Simple.Register (
     register,
     unregister,
 
+    initPackageDB,
     registerPackage,
     generateRegistrationInfo,
     inplaceInstalledPackageInfo,
@@ -73,11 +74,12 @@ import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
 import Distribution.Simple.Compiler
-         ( compilerVersion, CompilerFlavor(..), compilerFlavor
+         ( compilerVersion, Compiler, CompilerFlavor(..), compilerFlavor
          , PackageDBStack, registrationPackageDB )
 import Distribution.Simple.Program
-         ( ConfiguredProgram, runProgramInvocation
-         , requireProgram, lookupProgram, ghcPkgProgram, lhcPkgProgram )
+         ( ProgramConfiguration, ConfiguredProgram
+         , runProgramInvocation, requireProgram, lookupProgram
+         , ghcPkgProgram, lhcPkgProgram )
 import Distribution.Simple.Program.Script
          ( invocationAsSystemScript )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -203,6 +205,14 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
 
   return installedPkgInfo{ IPI.installedPackageId = ipid }
 
+
+-- | Create an empty package DB at the specified location.
+initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath
+                 -> IO ()
+initPackageDB verbosity comp conf dbPath =
+  case (compilerFlavor comp) of
+    GHC -> GHC.initPackageDB verbosity conf dbPath
+    _   -> die "initPackageDB is not implemented for this compiler"
 
 registerPackage :: Verbosity
                 -> InstalledPackageInfo

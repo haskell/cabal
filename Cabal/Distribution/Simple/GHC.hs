@@ -65,6 +65,7 @@ module Distribution.Simple.GHC (
         buildLib, buildExe,
         installLib, installExe,
         libAbiHash,
+        initPackageDB,
         registerPackage,
         componentGhcOptions,
         ghcLibDir,
@@ -1105,9 +1106,14 @@ updateLibArchive verbosity lbi path
     rawSystemProgram verbosity ranlib [path]
   | otherwise = return ()
 
-
 -- -----------------------------------------------------------------------------
 -- Registering
+
+-- | Create an empty package DB at the specified location.
+initPackageDB :: Verbosity -> ProgramConfiguration -> FilePath -> IO ()
+initPackageDB verbosity conf dbPath = HcPkg.init verbosity ghcPkgProg dbPath
+  where
+    Just ghcPkgProg = lookupProgram ghcPkgProgram conf
 
 registerPackage
   :: Verbosity
