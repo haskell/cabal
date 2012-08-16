@@ -120,7 +120,7 @@ Executable cabal
     else
       build-depends: base       >= 3,
                      process    >= 1   && < 1.2,
-                     directory  >= 1   && < 1.2,
+                     directory  >= 1   && < 1.3,
                      pretty     >= 1   && < 1.2,
                      random     >= 1   && < 1.1,
                      containers >= 0.1 && < 0.6,
