@@ -88,8 +88,10 @@ Executable cabal
         Distribution.Client.InstallPlan
         Distribution.Client.InstallSymlink
         Distribution.Client.List
+        Distribution.Client.PackageEnvironment
         Distribution.Client.PackageIndex
         Distribution.Client.PackageUtils
+        Distribution.Client.ParseUtils
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist
