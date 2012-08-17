@@ -177,14 +177,15 @@ loadPackageEnvironment verbosity pkgEnvDir = do
   where
     addBasePkgEnv :: IO PackageEnvironment -> IO PackageEnvironment
     addBasePkgEnv body = do
-      let base  = basePackageEnvironment pkgEnvDir
+      let base     = basePackageEnvironment pkgEnvDir
+          baseConf = pkgEnvSavedConfig base
       extra    <- body
       case pkgEnvInherit extra of
         NoFlag          ->
           return $ base `mappend` extra
         (Flag confPath) -> do
           conf <- loadConfig verbosity (Flag confPath) (Flag False)
-          let conf' = base `mappend` conf `mappend` (pkgEnvSavedConfig extra)
+          let conf' = baseConf `mappend` conf `mappend` (pkgEnvSavedConfig extra)
           return $ extra { pkgEnvSavedConfig = conf' }
 
 -- | Descriptions of all fields in the package environment file.
