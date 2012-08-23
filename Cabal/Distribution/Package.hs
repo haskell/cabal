@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Package
@@ -73,9 +74,10 @@ import Text.PrettyPrint ((<>), (<+>), text)
 import Control.DeepSeq (NFData(..))
 import qualified Data.Char as Char ( isDigit, isAlphaNum )
 import Data.List ( intersperse )
+import Data.Typeable ( Typeable )
 
 newtype PackageName = PackageName String
-    deriving (Read, Show, Eq, Ord)
+    deriving (Read, Show, Eq, Ord, Typeable)
 
 instance Text PackageName where
   disp (PackageName n) = Disp.text n
@@ -101,7 +103,7 @@ data PackageIdentifier
         pkgName    :: PackageName, -- ^The name of this package, eg. foo
         pkgVersion :: Version -- ^the version of this package, eg 1.2
      }
-     deriving (Read, Show, Eq, Ord)
+     deriving (Read, Show, Eq, Ord, Typeable)
 
 instance Text PackageIdentifier where
   disp (PackageIdentifier n v) = case v of
