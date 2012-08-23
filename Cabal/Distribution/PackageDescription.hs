@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription
@@ -126,6 +127,7 @@ module Distribution.PackageDescription (
 import Data.List   (nub, intersperse)
 import Data.Maybe  (maybeToList)
 import Data.Monoid (Monoid(mempty, mappend))
+import Data.Typeable ( Typeable )
 import Control.Monad (MonadPlus(mplus))
 import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
@@ -952,7 +954,7 @@ data GenericPackageDescription =
         condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
         condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]
       }
-    deriving (Show, Eq)
+    deriving (Show, Eq, Typeable)
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
