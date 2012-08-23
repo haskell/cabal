@@ -131,7 +131,8 @@ cabal spec cabalArgs = do
     wd <- getCurrentDirectory
     r <- run (Just $ directory spec) "ghc"
              [ "--make"
-             , "-fhpc"
+-- HPC causes trouble -- see #1012
+--             , "-fhpc"
              , "-package-db " ++ wd </> "../dist/package.conf.inplace"
              , "Setup.hs"
              ]
