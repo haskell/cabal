@@ -70,6 +70,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((<++))
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>), (<+>), text)
+import Control.DeepSeq (NFData(..))
 import qualified Data.Char as Char ( isDigit, isAlphaNum )
 import Data.List ( intersperse )
 
@@ -87,6 +88,9 @@ instance Text PackageName where
         if all Char.isDigit cs then Parse.pfail else return cs
         -- each component must contain an alphabetic character, to avoid
         -- ambiguity in identifiers like foo-1 (the 1 is the version number).
+
+instance NFData PackageName where
+    rnf (PackageName pkg) = rnf pkg
 
 -- | Type alias so we can use the shorter name PackageId.
 type PackageId = PackageIdentifier
@@ -108,6 +112,9 @@ instance Text PackageIdentifier where
     n <- parse
     v <- (Parse.char '-' >> parse) <++ return (Version [] [])
     return (PackageIdentifier n v)
+
+instance NFData PackageIdentifier where
+    rnf (PackageIdentifier name version) = rnf name `seq` rnf version
 
 -- ------------------------------------------------------------
 -- * Installed Package Ids
