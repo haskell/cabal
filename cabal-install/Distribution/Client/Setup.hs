@@ -30,6 +30,9 @@ module Distribution.Client.Setup
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , indexCommand, IndexFlags(..)
+    , dumpPkgEnvCommand, sandboxConfigureCommand, sandboxAddSourceCommand
+    , sandboxBuildCommand, sandboxInstallCommand, defaultSandboxLocation
+    , SandboxFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -52,7 +55,8 @@ import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Setup as Cabal
-         ( configureCommand, buildCommand, sdistCommand, haddockCommand )
+         ( configureCommand, buildCommand, sdistCommand, haddockCommand
+         , buildOptions, defaultBuildFlags )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), SDistFlags(..), HaddockFlags(..) )
 import Distribution.Simple.Setup
@@ -699,18 +703,19 @@ installCommand = CommandUI {
     get3 (_,_,c,_) = c; set3 c (a,b,_,d) = (a,b,c,d)
     get4 (_,_,_,d) = d; set4 d (a,b,c,_) = (a,b,c,d)
 
-    haddockOptions showOrParseArgs
-      = [ opt { optionName = "haddock-" ++ name,
-                optionDescr = [ fmapOptFlags (\(_, lflags) -> ([], map ("haddock-" ++) lflags)) descr
-                              | descr <- optionDescr opt] }
-        | opt <- commandOptions Cabal.haddockCommand showOrParseArgs
-        , let name = optionName opt
-        , name `elem` ["hoogle", "html", "html-location",
-                       "executables", "internal", "css",
-                       "hyperlink-source", "hscolour-css",
-                       "contents-location"]
-        ]
-
+haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]
+haddockOptions showOrParseArgs
+  = [ opt { optionName = "haddock-" ++ name,
+            optionDescr = [ fmapOptFlags (\(_, lflags) -> ([], map ("haddock-" ++) lflags)) descr
+                          | descr <- optionDescr opt] }
+    | opt <- commandOptions Cabal.haddockCommand showOrParseArgs
+    , let name = optionName opt
+    , name `elem` ["hoogle", "html", "html-location",
+                   "executables", "internal", "css",
+                   "hyperlink-source", "hscolour-css",
+                   "contents-location"]
+    ]
+  where
     fmapOptFlags :: (OptFlags -> OptFlags) -> OptDescr a -> OptDescr a
     fmapOptFlags modify (ReqArg d f p r w)    = ReqArg d (modify f) p r w
     fmapOptFlags modify (OptArg d f p r i w)  = OptArg d (modify f) p r i w
@@ -1254,6 +1259,128 @@ instance Monoid IndexFlags where
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
+-- * Sandbox-related flags
+-- ------------------------------------------------------------
+
+data SandboxFlags = SandboxFlags {
+  sandboxVerbosity :: Flag Verbosity,
+  sandboxLocation  :: Flag FilePath
+}
+
+defaultSandboxLocation :: FilePath
+defaultSandboxLocation = ".cabal-sandbox"
+
+defaultSandboxFlags :: SandboxFlags
+defaultSandboxFlags = SandboxFlags {
+  sandboxVerbosity = toFlag normal,
+  sandboxLocation  = toFlag defaultSandboxLocation
+  }
+
+commonSandboxOptions :: ShowOrParseArgs -> [OptionField SandboxFlags]
+commonSandboxOptions _showOrParseArgs =
+  [ optionVerbosity sandboxVerbosity (\v flags -> flags { sandboxVerbosity = v })
+
+    , option [] ["sandbox"]
+      "Sandbox location (default: './.cabal-sandbox')."
+      sandboxLocation (\v flags -> flags { sandboxLocation = v })
+      (reqArgFlag "DIR")
+  ]
+
+sandboxConfigureCommand :: CommandUI (SandboxFlags, ConfigFlags, ConfigExFlags)
+sandboxConfigureCommand = CommandUI {
+  commandName         = "sandbox-configure",
+  commandSynopsis     = "Configure a package inside a sandbox",
+  commandDescription  = Nothing,
+  commandUsage        = \pname -> usageFlags pname "sandbox-configure",
+  commandDefaultFlags = (defaultSandboxFlags, mempty, defaultConfigExFlags),
+  commandOptions      = \showOrParseArgs ->
+    liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
+    ++ liftOptions get2 set2
+             (filter ((\n -> n /= "constraint" && n /= "verbose") . optionName) $
+              configureOptions showOrParseArgs)
+    ++ liftOptions get3 set3 (configureExOptions showOrParseArgs)
+
+  }
+  where
+    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
+    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
+    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
+
+sandboxAddSourceCommand :: CommandUI SandboxFlags
+sandboxAddSourceCommand = CommandUI {
+  commandName         = "sandbox-add-source",
+  commandSynopsis     = "Make a source package available in a sandbox",
+  commandDescription  = Nothing,
+  commandUsage        = \pname -> usageFlags pname "sandbox-add-source",
+  commandDefaultFlags = defaultSandboxFlags,
+  commandOptions      = commonSandboxOptions
+  }
+
+sandboxBuildCommand :: CommandUI (SandboxFlags, BuildFlags)
+sandboxBuildCommand = CommandUI {
+  commandName         = "sandbox-build",
+  commandSynopsis     = "Build a package inside a sandbox",
+  commandDescription  = Nothing,
+  commandUsage        = \pname -> usageFlags pname "sandbox-build",
+  commandDefaultFlags = (defaultSandboxFlags, Cabal.defaultBuildFlags),
+  commandOptions      = \showOrParseArgs ->
+    liftOptions fst setFst (commonSandboxOptions showOrParseArgs)
+    ++ liftOptions snd setSnd (filter ((/= "verbose") . optionName) $
+                               Cabal.buildOptions progConf showOrParseArgs)
+  }
+  where
+    progConf = defaultProgramConfiguration
+
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+sandboxInstallCommand :: CommandUI (SandboxFlags, ConfigFlags, ConfigExFlags,
+                                    InstallFlags, HaddockFlags)
+sandboxInstallCommand = CommandUI {
+  commandName         = "sandbox-install",
+  commandSynopsis     = "Install a list of packages into a sandbox",
+  commandDescription  = commandDescription installCommand,
+  commandUsage        = \pname -> usagePackages pname "sandbox-install",
+  commandDefaultFlags = (defaultSandboxFlags, mempty, mempty, mempty, mempty),
+  commandOptions      = \showOrParseArgs ->
+       liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
+    ++ liftOptions get2 set2
+       (filter ((\n -> n /= "constraint" && n /= "verbose") . optionName) $
+        configureOptions showOrParseArgs)
+    ++ liftOptions get3 set3 (configureExOptions showOrParseArgs)
+    ++ liftOptions get4 set4 (installOptions showOrParseArgs)
+    ++ liftOptions get5 set5 (haddockOptions showOrParseArgs)
+  }
+  where
+    get1 (a,_,_,_,_) = a; set1 a (_,b,c,d,e) = (a,b,c,d,e)
+    get2 (_,b,_,_,_) = b; set2 b (a,_,c,d,e) = (a,b,c,d,e)
+    get3 (_,_,c,_,_) = c; set3 c (a,b,_,d,e) = (a,b,c,d,e)
+    get4 (_,_,_,d,_) = d; set4 d (a,b,c,_,e) = (a,b,c,d,e)
+    get5 (_,_,_,_,e) = e; set5 e (a,b,c,d,_) = (a,b,c,d,e)
+
+dumpPkgEnvCommand :: CommandUI SandboxFlags
+dumpPkgEnvCommand = CommandUI {
+  commandName         = "dump-pkgenv",
+  commandSynopsis     = "Dump a parsed package environment file",
+  commandDescription  = Nothing,
+  commandUsage        = \pname -> usageFlags pname "dump-pkgenv",
+  commandDefaultFlags = defaultSandboxFlags,
+  commandOptions      = commonSandboxOptions
+  }
+
+instance Monoid SandboxFlags where
+  mempty = SandboxFlags {
+    sandboxVerbosity = mempty,
+    sandboxLocation  = mempty
+    }
+  mappend a b = SandboxFlags {
+    sandboxVerbosity = combine sandboxVerbosity,
+    sandboxLocation  = combine sandboxLocation
+    }
+    where combine field = field a `mappend` field b
+
+
+-- ------------------------------------------------------------
 -- * GetOpt Utils
 -- ------------------------------------------------------------
 
@@ -1315,6 +1442,11 @@ usagePackages :: String -> String -> String
 usagePackages name pname =
      "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n"
   ++ "   or: " ++ pname ++ " " ++ name ++ " [PACKAGES]\n\n"
+  ++ "Flags for " ++ name ++ ":"
+
+usageFlags :: String -> String -> String
+usageFlags name pname =
+  "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n\n"
   ++ "Flags for " ++ name ++ ":"
 
 --TODO: do we want to allow per-package flags?
