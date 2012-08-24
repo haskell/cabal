@@ -29,7 +29,7 @@ import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd )
 
 import Distribution.Simple.Setup ( fromFlagOrDefault )
-import Distribution.Simple.Utils ( die, debug, notice, warn, findPackageDesc )
+import Distribution.Simple.Utils ( die, debug, notice, findPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
@@ -144,7 +144,7 @@ createEmpty :: Verbosity -> FilePath -> IO ()
 createEmpty verbosity path = do
   indexExists <- doesFileExist path
   if indexExists
-    then warn verbosity $ "package index already exists: '" ++ path ++ "'"
+    then debug verbosity $ "Package index already exists: " ++ path
     else do
     debug verbosity $ "Creating the index file '" ++ path ++ "'"
     createDirectoryIfMissing True (takeDirectory path)
