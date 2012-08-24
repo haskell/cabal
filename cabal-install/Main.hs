@@ -31,6 +31,9 @@ import Distribution.Client.Setup
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , IndexFlags(..), indexCommand
+         , SandboxFlags(..), sandboxAddSourceCommand
+         , sandboxConfigureCommand, sandboxBuildCommand, sandboxInstallCommand
+         , dumpPkgEnvCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
 import Distribution.Simple.Setup
@@ -50,18 +53,22 @@ import Distribution.Client.Config
 import Distribution.Client.Targets
          ( readUserTargets )
 
-import Distribution.Client.List             (list, info)
-import Distribution.Client.Install          (install, upgrade)
-import Distribution.Client.Configure        (configure)
-import Distribution.Client.Update           (update)
-import Distribution.Client.Fetch            (fetch)
-import Distribution.Client.Check as Check   (check)
+import Distribution.Client.List               (list, info)
+import Distribution.Client.Install            (install, upgrade)
+import Distribution.Client.Configure          (configure)
+import Distribution.Client.Update             (update)
+import Distribution.Client.Fetch              (fetch)
+import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
-import Distribution.Client.Upload as Upload (upload, check, report)
-import Distribution.Client.SrcDist          (sdist)
-import Distribution.Client.Unpack           (unpack)
-import Distribution.Client.Index            (index)
-import Distribution.Client.Init             (initCabal)
+import Distribution.Client.Upload as Upload   (upload, check, report)
+import Distribution.Client.SrcDist            (sdist)
+import Distribution.Client.Unpack             (unpack)
+import Distribution.Client.Index              (index)
+import Distribution.Client.Sandbox            (sandboxConfigure
+                                              , sandboxAddSource, sandboxBuild
+                                              , sandboxInstall
+                                              , dumpPackageEnvironment)
+import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
 import Distribution.Simple.Compiler
@@ -159,6 +166,16 @@ mainWorker args = topHandler $
        win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
       ,hiddenCommand $
        indexCommand `commandAddAction` indexAction
+      ,hiddenCommand $
+       sandboxConfigureCommand `commandAddAction` sandboxConfigureAction
+      ,hiddenCommand $
+       sandboxAddSourceCommand `commandAddAction` sandboxAddSourceAction
+      ,hiddenCommand $
+       sandboxBuildCommand `commandAddAction` sandboxBuildAction
+      ,hiddenCommand $
+       sandboxInstallCommand `commandAddAction` sandboxInstallAction
+      ,hiddenCommand $
+       dumpPkgEnvCommand `commandAddAction` dumpPkgEnvAction
       ]
 
 wrapperAction :: Monoid flags
@@ -557,11 +574,48 @@ initAction initFlags _extraArgs globalFlags = do
 indexAction :: IndexFlags -> [String] -> GlobalFlags -> IO ()
 indexAction indexFlags extraArgs _globalFlags = do
   when (null extraArgs) $ do
-    die $ "the 'index' command expects a single argument. "
+    die $ "the 'index' command expects a single argument."
   when ((>1). length $ extraArgs) $ do
     die $ "the 'index' command expects a single argument: " ++ unwords extraArgs
   let verbosity = fromFlag (indexVerbosity indexFlags)
   index verbosity indexFlags (head extraArgs)
+
+sandboxConfigureAction :: (SandboxFlags, ConfigFlags, ConfigExFlags)
+                          -> [String] -> GlobalFlags -> IO ()
+sandboxConfigureAction (sandboxFlags, configFlags, configExFlags)
+  extraArgs globalFlags = do
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  sandboxConfigure verbosity sandboxFlags configFlags configExFlags
+    extraArgs globalFlags
+
+sandboxAddSourceAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
+sandboxAddSourceAction sandboxFlags extraArgs _globalFlags = do
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  sandboxAddSource verbosity sandboxFlags extraArgs
+
+sandboxBuildAction :: (SandboxFlags, BuildFlags) -> [String] -> GlobalFlags
+                      -> IO ()
+sandboxBuildAction (sandboxFlags, buildFlags) extraArgs _globalFlags = do
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  sandboxBuild verbosity sandboxFlags buildFlags extraArgs
+
+sandboxInstallAction :: (SandboxFlags, ConfigFlags, ConfigExFlags,
+                         InstallFlags, HaddockFlags)
+                        -> [String] -> GlobalFlags -> IO ()
+sandboxInstallAction
+  (sandboxFlags, configFlags, configExFlags, installFlags, haddockFlags)
+  extraArgs globalFlags = do
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  sandboxInstall verbosity sandboxFlags configFlags configExFlags
+    installFlags haddockFlags extraArgs globalFlags
+
+dumpPkgEnvAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
+dumpPkgEnvAction sandboxFlags extraArgs _globalFlags = do
+  when ((>0). length $ extraArgs) $ do
+    die $ "the 'dump-pkgenv' command doesn't expect any arguments: "
+      ++ unwords extraArgs
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  dumpPackageEnvironment verbosity sandboxFlags
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --

@@ -75,7 +75,7 @@ module Distribution.Simple.Setup (
   BenchmarkFlags(..), emptyBenchmarkFlags, defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
-  installDirsOptions,
+  buildOptions, installDirsOptions,
 
   defaultDistPref,
 
@@ -1225,22 +1225,26 @@ defaultBuildFlags  = BuildFlags {
   }
 
 buildCommand :: ProgramConfiguration -> CommandUI BuildFlags
-buildCommand progConf = makeCommand name shortDesc longDesc defaultBuildFlags options
+buildCommand progConf = makeCommand name shortDesc longDesc
+                        defaultBuildFlags (buildOptions progConf)
   where
     name       = "build"
     shortDesc  = "Make this package ready for installation."
     longDesc   = Nothing
-    options showOrParseArgs =
-      optionVerbosity buildVerbosity (\v flags -> flags { buildVerbosity = v })
-      : optionDistPref
-          buildDistPref (\d flags -> flags { buildDistPref = d })
-          showOrParseArgs
 
-      : programConfigurationPaths   progConf showOrParseArgs
-          buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
+buildOptions :: ProgramConfiguration -> ShowOrParseArgs
+                -> [OptionField BuildFlags]
+buildOptions progConf showOrParseArgs =
+  optionVerbosity buildVerbosity (\v flags -> flags { buildVerbosity = v })
+  : optionDistPref
+  buildDistPref (\d flags -> flags { buildDistPref = d })
+  showOrParseArgs
 
-     ++ programConfigurationOptions progConf showOrParseArgs
-          buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
+  : programConfigurationPaths   progConf showOrParseArgs
+  buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
+
+  ++ programConfigurationOptions progConf showOrParseArgs
+  buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
 
 emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty

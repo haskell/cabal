@@ -388,7 +388,7 @@ splitLongPath path =
                                      where n' = n + length c
     packName' _      _ ok    cs  = (FilePath.Posix.joinPath ok, cs)
 
--- | The tar format allows just 100 ASCII charcters for the 'SymbolicLink' and
+-- | The tar format allows just 100 ASCII characters for the 'SymbolicLink' and
 -- 'HardLink' entry types.
 --
 newtype LinkTarget = LinkTarget FilePath

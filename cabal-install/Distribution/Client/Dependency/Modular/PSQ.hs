@@ -5,7 +5,7 @@ module Distribution.Client.Dependency.Modular.PSQ where
 -- I am not yet sure what exactly is needed. But we need a datastructure with
 -- key-based lookup that can be sorted. We're using a sequence right now with
 -- (inefficiently implemented) lookup, because I think that queue-based
--- opertions and sorting turn out to be more efficiency-critical in practice.
+-- operations and sorting turn out to be more efficiency-critical in practice.
 
 import Control.Applicative
 import Data.Foldable
