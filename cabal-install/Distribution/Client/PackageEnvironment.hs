@@ -9,14 +9,17 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Client.PackageEnvironment (
-    PackageEnvironment(..),
-    loadPackageEnvironment,
-    showPackageEnvironment,
-    showPackageEnvironmentWithComments,
+    PackageEnvironment(..)
+  , loadOrCreatePackageEnvironment
+  , tryLoadPackageEnvironment
+  , readPackageEnvironmentFile
+  , showPackageEnvironment
+  , showPackageEnvironmentWithComments
 
-    basePackageEnvironment,
-    initialPackageEnvironment,
-    commentPackageEnvironment
+  , basePackageEnvironment
+  , initialPackageEnvironment
+  , commentPackageEnvironment
+  , defaultPackageEnvironmentFileName
   ) where
 
 import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
@@ -26,12 +29,13 @@ import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..) )
-import Distribution.Simple.Compiler    ( PackageDB(..) )
+import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
+                                         , showCompilerId )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate,
                                          toPathTemplate )
 import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..),
                                          fromFlagOrDefault, toFlag )
-import Distribution.Simple.Utils       ( notice, warn, lowercase )
+import Distribution.Simple.Utils       ( die, notice, warn, lowercase )
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..),
                                          commaListField,
                                          liftField, lineNo, locatedErrorMsg,
@@ -117,8 +121,8 @@ basePackageEnvironment pkgEnvDir = do
 -- | Initial configuration that we write out to the package environment file if
 -- it does not exist. When the package environment gets loaded it gets layered
 -- on top of 'basePackageEnvironment'.
-initialPackageEnvironment :: FilePath -> IO PackageEnvironment
-initialPackageEnvironment pkgEnvDir = do
+initialPackageEnvironment :: FilePath -> Compiler -> IO PackageEnvironment
+initialPackageEnvironment pkgEnvDir compiler = do
   initialConf' <- initialSavedConfig
   let baseConf =  commonPackageEnvironmentConfig pkgEnvDir
   let initialConf = initialConf' `mappend` baseConf
@@ -127,16 +131,22 @@ initialPackageEnvironment pkgEnvDir = do
        savedGlobalFlags = (savedGlobalFlags initialConf) {
           globalLocalRepos = [pkgEnvDir </> "packages"]
           },
-       savedConfigureFlags = (savedConfigureFlags initialConf) {
-         -- TODO: This should include comp. flavor and version
-         configPackageDBs = [Just (SpecificPackageDB $ pkgEnvDir
-                                   </> "packages.conf.d")]
-         },
+       savedConfigureFlags = setPackageDB pkgEnvDir compiler
+                             (savedConfigureFlags initialConf),
        savedInstallFlags = (savedInstallFlags initialConf) {
          installSummaryFile = [toPathTemplate (pkgEnvDir </>
                                                "logs" </> "build.log")]
          }
        }
+    }
+
+-- | Use the package DB location specific for this compiler.
+setPackageDB :: FilePath -> Compiler -> ConfigFlags -> ConfigFlags
+setPackageDB pkgEnvDir compiler configFlags =
+  configFlags {
+    configPackageDBs = [Just (SpecificPackageDB $ pkgEnvDir
+                              </> (showCompilerId compiler ++
+                                   "-packages.conf.d"))]
     }
 
 -- | Default values that get used if no value is given. Used here to include in
@@ -149,43 +159,94 @@ commentPackageEnvironment pkgEnvDir = do
     pkgEnvSavedConfig = commentConf `mappend` baseConf
     }
 
--- | Load the package environment file, creating it if doesn't exist. Note that
--- the path parameter should be a name of an existing directory.
-loadPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
-loadPackageEnvironment verbosity pkgEnvDir = do
+-- | Given a package environment loaded from a file, layer it on top of the base
+-- package environment.
+addBasePkgEnv :: Verbosity -> FilePath -> PackageEnvironment
+                 -> IO PackageEnvironment
+addBasePkgEnv verbosity pkgEnvDir extra = do
+  let base     = basePackageEnvironment pkgEnvDir
+      baseConf = pkgEnvSavedConfig base
+  -- Does this package environment inherit from some config file?
+  case pkgEnvInherit extra of
+    NoFlag          ->
+      return $ base `mappend` extra
+    (Flag confPath) -> do
+      conf <- loadConfig verbosity (Flag confPath) NoFlag
+      let conf' = baseConf `mappend` conf `mappend` (pkgEnvSavedConfig extra)
+      return $ extra { pkgEnvSavedConfig = conf' }
+
+-- | Try to load a package environment file, exiting with error if it doesn't
+-- exist.
+tryLoadPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
+tryLoadPackageEnvironment verbosity pkgEnvDir = do
   let path = pkgEnvDir </> defaultPackageEnvironmentFileName
-  addBasePkgEnv $ do
-    minp <- readPackageEnvironmentFile mempty path
-    case minp of
-      Nothing -> do
-        notice verbosity $ "Writing default package environment to " ++ path
-        commentPkgEnv <- commentPackageEnvironment pkgEnvDir
-        initialPkgEnv <- initialPackageEnvironment pkgEnvDir
-        writePackageEnvironmentFile path commentPkgEnv initialPkgEnv
-        return initialPkgEnv
-      Just (ParseOk warns pkgEnv) -> do
-        when (not $ null warns) $ warn verbosity $
-          unlines (map (showPWarning path) warns)
-        return pkgEnv
-      Just (ParseFailed err) -> do
-        let (line, msg) = locatedErrorMsg err
-        warn verbosity $
-          "Error parsing package environment file " ++ path
-          ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
-        warn verbosity $ "Using default package environment."
-        initialPackageEnvironment pkgEnvDir
+  minp <- readPackageEnvironmentFile mempty path
+  pkgEnv <- case minp of
+    Nothing -> die $
+      "The package environment file '" ++ path ++ "' doesn't exist"
+    Just (ParseOk warns parseResult) -> do
+      when (not $ null warns) $ warn verbosity $
+        unlines (map (showPWarning path) warns)
+      return parseResult
+    Just (ParseFailed err) -> do
+      let (line, msg) = locatedErrorMsg err
+      die $ "Error parsing package environment file " ++ path
+        ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
+  addBasePkgEnv verbosity pkgEnvDir pkgEnv
+
+-- | Load a package environment file, creating one if it doesn't exist. Note
+-- that the path parameter should be a name of an existing directory.
+loadOrCreatePackageEnvironment :: Verbosity -> FilePath
+                                  -> ConfigFlags -> Compiler
+                                  -> IO PackageEnvironment
+loadOrCreatePackageEnvironment verbosity pkgEnvDir configFlags compiler = do
+  let path = pkgEnvDir </> defaultPackageEnvironmentFileName
+  minp <- readPackageEnvironmentFile mempty path
+  pkgEnv <- case minp of
+    Nothing -> do
+      notice verbosity $ "Writing default package environment to " ++ path
+      commentPkgEnv <- commentPackageEnvironment pkgEnvDir
+      initialPkgEnv <- initialPackageEnvironment pkgEnvDir compiler
+      let pkgEnv = updateConfigFlags initialPkgEnv
+                   (\flags -> flags `mappend` configFlags)
+      writePackageEnvironmentFile path commentPkgEnv pkgEnv
+      return initialPkgEnv
+    Just (ParseOk warns parseResult) -> do
+      when (not $ null warns) $ warn verbosity $
+        unlines (map (showPWarning path) warns)
+
+      -- Update the package environment file in case the user has changed some
+      -- settings via the command-line (otherwise 'configure -w compiler-B' will
+      -- fail for a sandbox already configured to use compiler-A).
+      notice verbosity $ "Writing the updated package environment to " ++ path
+      commentPkgEnv <- commentPackageEnvironment pkgEnvDir
+      let pkgEnv = updateConfigFlags parseResult
+                   (\flags ->
+                     setPackageDB pkgEnvDir compiler flags
+                     `mappend` configFlags)
+      writePackageEnvironmentFile path commentPkgEnv pkgEnv
+
+      return pkgEnv
+    Just (ParseFailed err) -> do
+      let (line, msg) = locatedErrorMsg err
+      warn verbosity $
+        "Error parsing package environment file " ++ path
+        ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
+      warn verbosity $ "Using default package environment."
+      initialPackageEnvironment pkgEnvDir compiler
+  addBasePkgEnv verbosity pkgEnvDir pkgEnv
+
   where
-    addBasePkgEnv :: IO PackageEnvironment -> IO PackageEnvironment
-    addBasePkgEnv body = do
-      let base  = basePackageEnvironment pkgEnvDir
-      extra    <- body
-      case pkgEnvInherit extra of
-        NoFlag          ->
-          return $ base `mappend` extra
-        (Flag confPath) -> do
-          conf <- loadConfig verbosity (Flag confPath) (Flag False)
-          let conf' = base `mappend` conf `mappend` (pkgEnvSavedConfig extra)
-          return $ extra { pkgEnvSavedConfig = conf' }
+    updateConfigFlags :: PackageEnvironment -> (ConfigFlags -> ConfigFlags)
+                         -> PackageEnvironment
+    updateConfigFlags pkgEnv f =
+      let pkgEnvConfig      = pkgEnvSavedConfig pkgEnv
+          pkgEnvConfigFlags = savedConfigureFlags pkgEnvConfig
+      in pkgEnv {
+        pkgEnvSavedConfig = pkgEnvConfig {
+           savedConfigureFlags = f pkgEnvConfigFlags
+           }
+        }
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
