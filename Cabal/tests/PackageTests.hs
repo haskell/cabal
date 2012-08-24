@@ -28,6 +28,7 @@ import PackageTests.BuildDeps.InternalLibrary4.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
+import PackageTests.TemplateHaskell.Check
 import Distribution.Text (display)
 import Distribution.Simple.Utils (cabalVersion)
 import Data.Version
@@ -57,7 +58,9 @@ tests cabalVersion = [
         -- only for higher versions.
         hunit "PackageTests/BenchmarkExeV10/Test"
         (PackageTests.BenchmarkExeV10.Check.checkBenchmark cabalVersion),
-        hunit "PackageTests/BenchmarkOptions" PackageTests.BenchmarkOptions.Check.suite
+        hunit "PackageTests/BenchmarkOptions" PackageTests.BenchmarkOptions.Check.suite,
+        hunit "PackageTests/TemplateHaskell/profiling" PackageTests.TemplateHaskell.Check.profiling,
+        hunit "PackageTests/TemplateHaskell/dynamic" PackageTests.TemplateHaskell.Check.dynamic
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if cabalVersion >= Version [1, 7] []
