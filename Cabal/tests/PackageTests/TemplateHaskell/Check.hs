@@ -26,8 +26,8 @@ import Distribution.Text
 
 profiling :: Test
 profiling = TestCase $ do
-   let flags = ["--disable-library-vanilla"
-               ,"--enable-library-profiling"
+   let flags = ["--enable-library-profiling"
+--                ,"--disable-library-vanilla"
                ,"--enable-executable-profiling"]
        spec = PackageSpec ("PackageTests" </> "TemplateHaskell" </> "profiling") flags
    result <- cabal_build spec
@@ -35,8 +35,8 @@ profiling = TestCase $ do
 
 dynamic :: Test
 dynamic = TestCase $ do
-    let flags = ["--disable-library-vanilla"
-                ,"--enable-shared"
+    let flags = ["--enable-shared"
+--                ,"--disable-library-vanilla"
                 ,"--enable-executable-dynamic"]
         spec = PackageSpec ("PackageTests" </> "TemplateHaskell" </> "dynamic") flags
     result <- cabal_build spec
