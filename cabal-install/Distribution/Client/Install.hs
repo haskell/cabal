@@ -74,6 +74,7 @@ import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
+import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -178,7 +179,8 @@ install verbosity packageDBs repos comp conf
                          comp solver configFlags configExFlags installFlags
                          installedPkgIndex sourcePkgDb pkgSpecifiers
 
-    checkPrintPlan verbosity installedPkgIndex installPlan installFlags pkgSpecifiers
+    checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
+      installFlags pkgSpecifiers
 
     unless dryRun $ do
       installPlan' <- performInstallations verbosity
@@ -337,10 +339,12 @@ planPackages comp solver configFlags configExFlags installFlags
 checkPrintPlan :: Verbosity
                -> PackageIndex
                -> InstallPlan
+               -> SourcePackageDb
                -> InstallFlags
                -> [PackageSpecifier SourcePackage]
                -> IO ()
-checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers = do
+checkPrintPlan verbosity installed installPlan sourcePkgDb
+  installFlags pkgSpecifiers = do
 
   -- User targets that are already installed.
   let preExistingTargets =
@@ -382,7 +386,8 @@ checkPrintPlan verbosity installed installPlan installFlags pkgSpecifiers = do
   -- We print the install plan if we are in a dry-run or if we are confronted
   -- with a dangerous install plan.
   when (dryRun || containsReinstalls && not overrideReinstall) $
-    printPlan (dryRun || breaksPkgs && not overrideReinstall) adaptedVerbosity lPlan
+    printPlan (dryRun || breaksPkgs && not overrideReinstall)
+      adaptedVerbosity lPlan sourcePkgDb
 
   -- If the install plan is dangerous, we print various warning messages. In
   -- particular, if we can see that packages are likely to be broken, we even
@@ -471,8 +476,9 @@ packageStatus installedPkgIndex cpkg =
 printPlan :: Bool -- is dry run
           -> Verbosity
           -> [(ConfiguredPackage, PackageStatus)]
+          -> SourcePackageDb
           -> IO ()
-printPlan dryRun verbosity plan = case plan of
+printPlan dryRun verbosity plan sourcePkgDb = case plan of
   []   -> return ()
   pkgs
     | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
@@ -480,12 +486,16 @@ printPlan dryRun verbosity plan = case plan of
       : map showPkgAndReason pkgs
     | otherwise -> notice verbosity $ unlines $
         ("In order, the following " ++ wouldWill ++ " be installed (use -v for more details):")
-      : map (display . packageId) (map fst pkgs)
+      : map showPkg pkgs
   where
     wouldWill | dryRun    = "would"
               | otherwise = "will"
 
+    showPkg (pkg, _) = display (packageId pkg) ++
+                       showLatest (pkg)
+
     showPkgAndReason (pkg', pr) = display (packageId pkg') ++
+          showLatest pkg' ++
           showFlagAssignment (nonDefaultFlags pkg') ++
           showStanzas (stanzas pkg') ++ " " ++
           case pr of
@@ -494,6 +504,17 @@ printPlan dryRun verbosity plan = case plan of
             Reinstall _ cs -> "(reinstall)" ++ case cs of
                 []   -> ""
                 diff -> " changes: "  ++ intercalate ", " (map change diff)
+
+    showLatest :: ConfiguredPackage -> String
+    showLatest pkg = if pkgVersion /= latestVersion
+                     then (" (latest: " ++ display latestVersion ++ ")")
+                     else ""
+      where
+        pkgVersion    = packageVersion pkg
+        latestVersion =
+          packageVersion . last
+          . SourcePackageIndex.lookupPackageName (packageIndex sourcePkgDb)
+          $ (packageName pkg)
 
     toFlagAssignment :: [Flag] -> FlagAssignment
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
