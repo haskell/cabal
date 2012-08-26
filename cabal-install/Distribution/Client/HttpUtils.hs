@@ -45,7 +45,14 @@ trim = f . f
 -- |Get the local proxy settings  
 --TODO: print info message when we're using a proxy based on verbosity
 proxy :: Verbosity -> IO Proxy
-proxy verbosity = fetchProxy True
+proxy verbosity = do
+  p <- fetchProxy True
+  -- Handle empty proxy strings
+  return $ case p of
+    Proxy uri auth ->
+      let uri' = trim uri in
+      if uri' == "" then NoProxy else Proxy uri' auth
+    _ -> p
 
 mkRequest :: URI -> Request ByteString
 mkRequest uri = Request{ rqURI     = uri
