@@ -506,15 +506,20 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
                 diff -> " changes: "  ++ intercalate ", " (map change diff)
 
     showLatest :: ConfiguredPackage -> String
-    showLatest pkg = if pkgVersion /= latestVersion
-                     then (" (latest: " ++ display latestVersion ++ ")")
-                     else ""
+    showLatest pkg = case mLatestVersion of
+        Just latestVersion ->
+            if pkgVersion /= latestVersion
+            then (" (latest: " ++ display latestVersion ++ ")")
+            else ""
+        Nothing -> ""
       where
         pkgVersion    = packageVersion pkg
-        latestVersion =
-          packageVersion . last
-          . SourcePackageIndex.lookupPackageName (packageIndex sourcePkgDb)
-          $ (packageName pkg)
+        mLatestVersion :: Maybe Version
+        mLatestVersion = case SourcePackageIndex.lookupPackageName
+                                (packageIndex sourcePkgDb)
+                                (packageName pkg) of
+            [] -> Nothing
+            x -> Just $ packageVersion $ last x
 
     toFlagAssignment :: [Flag] -> FlagAssignment
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
