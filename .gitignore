@@ -10,6 +10,13 @@ cabal-install/dist/
 *.prof
 *.tix
 
+# editor temp files
+
+*#
+.#*
+*~
+.*.swp
+
 # GHC build
 
 Cabal/GNUmakefile
