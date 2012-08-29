@@ -300,7 +300,9 @@ renderGhcOptions version@(Version ver _) opts =
   ----------------------------
   -- Language and extensions
 
-  , [ "-X" ++ display lang | lang <- flag ghcOptLanguage ]
+  , if ver >= [7]
+    then [ "-X" ++ display lang | lang <- flag ghcOptLanguage ]
+    else []
 
   , [ case lookup ext (ghcOptExtensionMap opts) of
         Just arg -> arg
