@@ -5,6 +5,13 @@ Cabal/dist/
 cabal-install/dist/
 .hpc/
 
+# editor temp files
+
+*#
+.#*
+*~
+.*.swp
+
 # GHC build
 
 Cabal/GNUmakefile
