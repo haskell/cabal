@@ -4,12 +4,19 @@ import Test.HUnit
 import PackageTests.PackageTester
 import System.FilePath
 import Data.List
+import Control.Exception
+import Prelude hiding (catch)
 
 
 suite :: Test
 suite = TestCase $ do
     let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "GlobalBuildDepsNotAdditive2") []
     result <- cabal_build spec
-    assertEqual "cabal build should fail - see test-log.txt" False (successful result)
-    assertBool "cabal error should be \"Failed to load interface for `Prelude'\"" $
-        "Failed to load interface for `Prelude'" `isInfixOf` outputText result
+    do
+        assertEqual "cabal build should fail - see test-log.txt" False (successful result)
+        let sb = "Could not find module `Prelude'"
+        assertBool ("cabal output should be "++show sb) $
+            sb `isInfixOf` outputText result
+      `catch` \exc -> do
+        putStrLn $ "Cabal result was "++show result
+        throwIO (exc :: SomeException)
