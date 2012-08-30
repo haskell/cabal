@@ -144,32 +144,13 @@ run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
 run cwd cmd args = do
     -- Posix-specific
     (outf, outf0) <- createPipe
-    (errf, errf0) <- createPipe
     outh <- fdToHandle outf
     outh0 <- fdToHandle outf0
-    errh <- fdToHandle errf
-    errh0 <- fdToHandle errf0
-    pid <- runProcess cmd args cwd Nothing Nothing (Just outh0) (Just errh0)
-
-    {-
-    -- ghc-6.10.1 specific
-    (Just inh, Just outh, Just errh, pid) <-
-        createProcess (proc cmd args){ std_in  = CreatePipe,
-                                       std_out = CreatePipe,
-                                       std_err = CreatePipe,
-                                       cwd     = cwd }
-    hClose inh -- done with stdin
-    -}
+    pid <- runProcess cmd args cwd Nothing Nothing (Just outh0) (Just outh0)
 
     -- fork off a thread to start consuming the output
-    outChan <- newChan
-    forkIO $ suckH outChan outh
-    forkIO $ suckH outChan errh
-
-    output <- suckChan outChan
-
+    output <- suckH [] outh
     hClose outh
-    hClose errh
 
     -- wait on the process
     ex <- waitForProcess pid
@@ -177,22 +158,13 @@ run cwd cmd args = do
     return ("\"" ++ fullCmd ++ "\" in " ++ fromMaybe "" cwd,
         ex, output)
   where
-    suckH chan h = do
+    suckH output h = do
         eof <- hIsEOF h
         if eof
-            then writeChan chan Nothing
+            then return (reverse output)
             else do
                 c <- hGetChar h
-                writeChan chan $ Just c
-                suckH chan h
-    suckChan chan = sc' chan 2 []
-      where
-        sc' _ 0 acc = return $ reverse acc
-        sc' chan eofs acc = do
-            mC <- readChan chan
-            case mC of
-                Just c -> sc' chan eofs (c:acc)
-                Nothing -> sc' chan (eofs-1) acc
+                suckH (c:output) h
 
 requireSuccess :: (String, ExitCode, String) -> IO ()
 requireSuccess (cmd, exitCode, output) = do
