@@ -8,7 +8,9 @@ You can build and run the test suite by running:
     cabal configure --package-db=../dist/package.conf.inplace \
         --constraint='Cabal == 1.9.1'
     cabal build
-    ./dist/build/suite/suite
+    cd ..
+    tests/dist/build/suite/suite
+                        (because suite.hs starts by 'cd'ing into 'tests')
 
 Replace the Cabal constraint with whatever the current development
 version of Cabal.

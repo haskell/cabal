@@ -4,6 +4,8 @@ import Test.HUnit
 import PackageTests.PackageTester
 import System.FilePath
 import qualified Data.ByteString.Char8 as C
+import Control.Exception
+import Prelude hiding (catch)
 
 
 suite :: Test
@@ -13,9 +15,17 @@ suite = TestCase $ do
 
     unregister "InternalLibrary3"
     iResult <- cabal_install specTI                     
-    assertEqual "cabal install should succeed - see to-install/test-log.txt" True (successful iResult)
+    do
+        assertEqual "cabal install should succeed - see to-install/test-log.txt" True (successful iResult)
+      `catch` \exc -> do
+        putStrLn $ "Cabal result was "++show iResult
+        throwIO (exc :: SomeException)
     bResult <- cabal_build spec
-    assertEqual "cabal build should succeed - see test-log.txt" True (successful bResult)
+    do
+        assertEqual "cabal build should succeed - see test-log.txt" True (successful bResult)
+      `catch` \exc -> do
+        putStrLn $ "Cabal result was "++show bResult
+        throwIO (exc :: SomeException)
     unregister "InternalLibrary3"
 
     (_, _, output) <- run (Just $ directory spec) "dist/build/lemon/lemon" []
