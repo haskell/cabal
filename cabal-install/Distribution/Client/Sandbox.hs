@@ -86,8 +86,7 @@ getIndexFilePath pkgEnv = do
 -- | Entry point for the 'cabal dump-pkgenv' command.
 dumpPackageEnvironment :: Verbosity -> SandboxFlags -> IO ()
 dumpPackageEnvironment verbosity sandboxFlags = do
-  pkgEnvDir <- getSandboxLocation verbosity sandboxFlags
-
+  pkgEnvDir     <- getSandboxLocation verbosity sandboxFlags
   pkgEnv        <- tryLoadPackageEnvironment verbosity pkgEnvDir
   commentPkgEnv <- commentPackageEnvironment pkgEnvDir
   putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
