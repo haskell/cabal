@@ -76,8 +76,10 @@ import System.IO.Error (isDoesNotExistError)
 import Distribution.Compat.Exception (catchIO)
 import System.Directory
          ( getModificationTime, doesFileExist )
-import System.Time
-         ( getClockTime, diffClockTimes, normalizeTimeDiff, TimeDiff(tdDay) )
+import Data.Time.Clock
+         ( getCurrentTime, diffUTCTime )
+import Data.Time.Clock.POSIX
+         ( posixDayLength )
 
 
 getInstalledPackages :: Verbosity -> Compiler
@@ -194,15 +196,16 @@ readRepoIndex verbosity repo =
         return mempty
       else ioError e
 
+    isOldThreshold :: Integer
     isOldThreshold = 15 --days
     warnIfIndexIsOld indexFile = do
       indexTime   <- getModificationTime indexFile
-      currentTime <- getClockTime
-      let diff = normalizeTimeDiff (diffClockTimes currentTime indexTime)
-      when (tdDay diff >= isOldThreshold) $ case repoKind repo of
+      currentTime <- getCurrentTime
+      let diff = truncate $ diffUTCTime currentTime indexTime / posixDayLength
+      when (diff >= isOldThreshold) $ case repoKind repo of
         Left  remoteRepo -> warn verbosity $
              "The package list for '" ++ remoteRepoName remoteRepo
-          ++ "' is " ++ show (tdDay diff)  ++ " days old.\nRun "
+          ++ "' is " ++ show diff ++ " days old.\nRun "
           ++ "'cabal update' to get the latest list of available packages."
         Right _localRepo -> return ()
 
