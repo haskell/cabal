@@ -87,8 +87,7 @@ import Distribution.Compat.FilePerms
          ( setFileExecutable )
 import System.Posix.Types
          ( FileMode )
-import System.Time
-         ( ClockTime(..) )
+import Distribution.Compat.Time
 import System.IO
          ( IOMode(ReadMode), openBinaryFile, hFileSize )
 import System.IO.Unsafe (unsafeInterleaveIO)
@@ -120,7 +119,6 @@ extractTarGzFile dir expected tar = do
 
 type FileSize  = Int64
 -- | The number of seconds since the UNIX epoch
-type EpochTime = Int64
 type DevMajor  = Int
 type DevMinor  = Int
 type TypeCode  = Char
@@ -896,8 +894,3 @@ recurseDirectories base (dir:dirs) = unsafeInterleaveIO $ do
     ignore ['.']      = True
     ignore ['.', '.'] = True
     ignore _          = False
-
-getModTime :: FilePath -> IO EpochTime
-getModTime path = do
-  (TOD s _) <- getModificationTime path
-  return $! fromIntegral s
