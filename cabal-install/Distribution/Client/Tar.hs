@@ -118,7 +118,6 @@ extractTarGzFile dir expected tar = do
 --
 
 type FileSize  = Int64
--- | The number of seconds since the UNIX epoch
 type DevMajor  = Int
 type DevMinor  = Int
 type TypeCode  = Char
