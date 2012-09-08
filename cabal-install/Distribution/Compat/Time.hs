@@ -11,6 +11,7 @@ import Data.Time (getCurrentTime, diffUTCTime)
 import System.Time (ClockTime(..), getClockTime, diffClockTimes, normalizeTimeDiff, tdDay)
 #endif
 
+-- | The number of seconds since the UNIX epoch
 type EpochTime = Int64
 
 getModTime :: FilePath -> IO EpochTime
