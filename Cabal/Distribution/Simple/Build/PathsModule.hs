@@ -73,9 +73,9 @@ generate pkg_descr lbi =
         "\n"++
         foreign_imports++
         "import qualified Control.Exception as Exception\n"++
-        "import Data.Version (Version(..))\n"++
+        "import Data.Version (Version(Version, versionBranch, versionTags))\n"++
         "import System.Environment (getEnv)\n"++
-        "import Prelude\n"++
+        "import Prelude ((++), FilePath, IO, return)\n"++
         "\n"++
         "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
         "catchIO = Exception.catch\n" ++
