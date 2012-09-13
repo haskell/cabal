@@ -8,12 +8,13 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Client.Sandbox (
-    dumpPackageEnvironment,
-
+    sandboxInit,
     sandboxAddSource,
     sandboxConfigure,
     sandboxBuild,
-    sandboxInstall
+    sandboxInstall,
+
+    dumpPackageEnvironment
   ) where
 
 import Distribution.Client.Setup
@@ -92,6 +93,19 @@ dumpPackageEnvironment verbosity sandboxFlags = do
   commentPkgEnv <- commentPackageEnvironment pkgEnvDir
   putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
 
+-- | Entry point for the 'cabal sandbox-init' command.
+sandboxInit :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
+sandboxInit _verbosity _sandboxFlags _globalFlags = do
+  die "Not implemented."
+
+-- | Entry point for the 'cabal sandbox-add-source' command.
+sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
+sandboxAddSource verbosity sandboxFlags buildTreeRefs = do
+  sandboxDir <- getSandboxLocation verbosity sandboxFlags
+  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir
+  indexFile  <- tryGetIndexFilePath pkgEnv
+  Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
+
 -- | Entry point for the 'cabal sandbox-configure' command.
 sandboxConfigure :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
                     -> [String] -> GlobalFlags -> IO ()
@@ -145,14 +159,6 @@ sandboxConfigure verbosity
                              `mappend` configFlags
       -- ...and pass it to configCompilerAux.
       configCompilerAux configFlags'
-
--- | Entry point for the 'cabal sandbox-add-source' command.
-sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
-sandboxAddSource verbosity sandboxFlags buildTreeRefs = do
-  sandboxDir <- getSandboxLocation verbosity sandboxFlags
-  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir
-  indexFile  <- tryGetIndexFilePath pkgEnv
-  Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
 
 -- | Entry point for the 'cabal sandbox-build' command.
 sandboxBuild :: Verbosity -> SandboxFlags -> BuildFlags -> [String] -> IO ()

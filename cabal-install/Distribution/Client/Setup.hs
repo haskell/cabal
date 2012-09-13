@@ -30,9 +30,10 @@ module Distribution.Client.Setup
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , indexCommand, IndexFlags(..)
-    , dumpPkgEnvCommand, sandboxConfigureCommand, sandboxAddSourceCommand
-    , sandboxBuildCommand, sandboxInstallCommand, defaultSandboxLocation
-    , SandboxFlags(..)
+    , dumpPkgEnvCommand
+    , sandboxInitCommand, sandboxConfigureCommand, sandboxAddSourceCommand
+    , sandboxBuildCommand, sandboxInstallCommand
+    , SandboxFlags(..), defaultSandboxLocation
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -1295,6 +1296,26 @@ commonSandboxOptions _showOrParseArgs =
       (reqArgFlag "DIR")
   ]
 
+sandboxInitCommand :: CommandUI SandboxFlags
+sandboxInitCommand = CommandUI {
+  commandName         = "sandbox-init",
+  commandSynopsis     = "Initialise a fresh sandbox",
+  commandDescription  = Nothing,
+  commandUsage        = \pname -> usageFlags pname "sandbox-init",
+  commandDefaultFlags = defaultSandboxFlags,
+  commandOptions      = commonSandboxOptions
+  }
+
+sandboxAddSourceCommand :: CommandUI SandboxFlags
+sandboxAddSourceCommand = CommandUI {
+  commandName         = "sandbox-add-source",
+  commandSynopsis     = "Make a source package available in a sandbox",
+  commandDescription  = Nothing,
+  commandUsage        = \pname -> usageFlags pname "sandbox-add-source",
+  commandDefaultFlags = defaultSandboxFlags,
+  commandOptions      = commonSandboxOptions
+  }
+
 sandboxConfigureCommand :: CommandUI (SandboxFlags, ConfigFlags, ConfigExFlags)
 sandboxConfigureCommand = CommandUI {
   commandName         = "sandbox-configure",
@@ -1314,16 +1335,6 @@ sandboxConfigureCommand = CommandUI {
     get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
     get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
     get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
-
-sandboxAddSourceCommand :: CommandUI SandboxFlags
-sandboxAddSourceCommand = CommandUI {
-  commandName         = "sandbox-add-source",
-  commandSynopsis     = "Make a source package available in a sandbox",
-  commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-add-source",
-  commandDefaultFlags = defaultSandboxFlags,
-  commandOptions      = commonSandboxOptions
-  }
 
 sandboxBuildCommand :: CommandUI (SandboxFlags, BuildFlags)
 sandboxBuildCommand = CommandUI {
