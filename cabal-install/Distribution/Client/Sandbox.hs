@@ -73,14 +73,15 @@ getSandboxLocation verbosity sandboxFlags = do
   return sandboxDir
 
 -- | Return the name of the package index file for this package environment.
-getIndexFilePath :: PackageEnvironment -> IO FilePath
-getIndexFilePath pkgEnv = do
+-- | Return the name of the package index file for this package environment.
+tryGetIndexFilePath :: PackageEnvironment -> IO FilePath
+tryGetIndexFilePath pkgEnv = do
   let paths = globalLocalRepos . savedGlobalFlags . pkgEnvSavedConfig $ pkgEnv
   case paths of
-    []  -> die $ "Distribution.Client.Sandbox.getIndexFilePath: " ++
+    []  -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "no local repos found"
     [p] -> return $ p </> Index.defaultIndexFileName
-    _   -> die $ "Distribution.Client.Sandbox.getIndexFilePath: " ++
+    _   -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "too many local repos found"
 
 -- | Entry point for the 'cabal dump-pkgenv' command.
@@ -112,7 +113,7 @@ sandboxConfigure verbosity
       [Just (SpecificPackageDB dbPath)]
                      = configPackageDBs configFlags'
 
-  indexFile <- getIndexFilePath pkgEnv
+  indexFile <- tryGetIndexFilePath pkgEnv
   Index.createEmpty verbosity indexFile
   packageDBExists <- doesDirectoryExist dbPath
   unless packageDBExists $
@@ -150,7 +151,7 @@ sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
 sandboxAddSource verbosity sandboxFlags buildTreeRefs = do
   sandboxDir <- getSandboxLocation verbosity sandboxFlags
   pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir
-  indexFile  <- getIndexFilePath pkgEnv
+  indexFile  <- tryGetIndexFilePath pkgEnv
   Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
 
 -- | Entry point for the 'cabal sandbox-build' command.
