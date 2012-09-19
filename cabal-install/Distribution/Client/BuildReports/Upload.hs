@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE CPP, PatternGuards #-}
 -- This is a quick hack for uploading build reports to Hackage.
 
 module Distribution.Client.BuildReports.Upload
@@ -51,7 +51,11 @@ postBuildReport uri buildReport = do
   }
   case rspCode response of
     (3,0,3) | [Just buildId] <- [ do rel <- parseRelativeReference location
+#if MIN_VERSION_network(2,4,0)
+                                     return $ relativeTo rel uri
+#else
                                      relativeTo rel uri
+#endif
                                   | Header HdrLocation location <- rspHeaders response ]
               -> return $ buildId
     _         -> error "Unrecognised response from server."
