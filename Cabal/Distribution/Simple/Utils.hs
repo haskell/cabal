@@ -62,6 +62,7 @@ module Distribution.Simple.Utils (
         rawSystemExitWithEnv,
         rawSystemStdout,
         rawSystemStdInOut,
+        rawSystemIOWithEnv,
         maybeExit,
         xargs,
         findProgramLocation,
@@ -400,6 +401,24 @@ rawSystemExitWithEnv verbosity path args env = do
     unless (exitcode == ExitSuccess) $ do
         debug verbosity $ path ++ " returned " ++ show exitcode
         exitWith exitcode
+
+-- Closes the passed in handles before returning.
+rawSystemIOWithEnv :: Verbosity
+                   -> FilePath
+                   -> [String]
+                   -> [(String, String)]
+                   -> Maybe Handle  -- ^ stdin
+                   -> Maybe Handle  -- ^ stdout
+                   -> Maybe Handle  -- ^ stderr
+                   -> IO ExitCode
+rawSystemIOWithEnv verbosity path args env inp out err = do
+    printRawCommandAndArgsAndEnv verbosity path args env
+    hFlush stdout
+    ph <- runProcess path args Nothing (Just env) inp out err
+    exitcode <- waitForProcess ph
+    unless (exitcode == ExitSuccess) $ do
+      debug verbosity $ path ++ " returned " ++ show exitcode
+    return exitcode
 
 -- | Run a command and return its output.
 --
