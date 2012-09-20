@@ -71,7 +71,7 @@ import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..) )
 import Distribution.Simple.Setup ( TestFlags(..), TestShowDetails(..), fromFlag )
-import Distribution.Simple.Utils ( die, notice )
+import Distribution.Simple.Utils ( die, notice, rawSystemIOWithEnv )
 import Distribution.TestSuite
     ( OptionDescr(..), Options, Progress(..), Result(..), TestInstance(..)
     , Test(..) )
@@ -91,7 +91,6 @@ import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, IOMode(..), openFile )
-import System.Process ( runProcess, waitForProcess )
 
 -- | Logs all test results for a package, broken down first by test suite and
 -- then by test case.
@@ -191,10 +190,10 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
     let dataDirPath = pwd </> PD.dataDir pkg_descr
-        shellEnv = Just $ (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                        : ("HPCTIXFILE", (</>) pwd
-                            $ tixFilePath distPref $ PD.testName suite)
-                        : existingEnv
+        shellEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
+                   : ("HPCTIXFILE", (</>) pwd
+                       $ tixFilePath distPref $ PD.testName suite)
+                   : existingEnv
 
     bracket (openCabalTemp testLogDir) deleteIfExists $ \tempLog ->
         bracket (openCabalTemp testLogDir) deleteIfExists $ \tempInput -> do
@@ -223,10 +222,9 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
             exit <- do
               hLog <- openFile tempLog AppendMode
               hIn  <- openFile tempInput ReadMode
-              -- these handles get closed by runProcess
-              proc <- runProcess cmd opts Nothing shellEnv
-                        (Just hIn) (Just hLog) (Just hLog)
-              waitForProcess proc
+              -- these handles get closed by rawSystemIOWithEnv
+              rawSystemIOWithEnv verbosity cmd opts shellEnv (Just hIn)
+                  (Just hLog) (Just hLog)
 
             -- Generate TestSuiteLog from executable exit code and a machine-
             -- readable test log
