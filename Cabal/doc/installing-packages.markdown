@@ -785,12 +785,21 @@ the setup script, the sources of the modules named in the package
 description file, and files named in the `license-file`, `main-is`,
 `c-sources`, `data-files` and `extra-source-files` fields.
 
+If the package includes generated Haskell source files, they can be
+excluded from the distribution on the command line.  `Paths_`_pkgname_
+does not need to be so specified; Cabal automatically knows to exclude it.
+
 This command takes the following option:
 
 `--snapshot`
 :   Append today's date (in "YYYYMMDD" format) to the version number for
     the generated source package.  The original package is unaffected.
 
+`--generated-module=`_module_
+:   Specify that the named module is machine-generated and not to be included
+    it in the distribution.  Note that this takes a module name, not a
+    path name (that is, `Distribution.GeneratedModule` rather than
+    `Distribution/GeneratedModule.hs`).
 
 [dist-simple]:  ../libraries/Cabal/Distribution-Simple.html
 [dist-make]:    ../libraries/Cabal/Distribution-Make.html
