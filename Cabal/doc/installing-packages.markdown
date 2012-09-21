@@ -788,6 +788,8 @@ description file, and files named in the `license-file`, `main-is`,
 If the package includes generated Haskell source files, they can be
 excluded from the distribution on the command line.  `Paths_`_pkgname_
 does not need to be so specified; Cabal automatically knows to exclude it.
+All the necessary scripts and data to re-generate the modules should be listed
+in the `extra-source-files` field of the `.cabal` file.
 
 This command takes the following option:
 

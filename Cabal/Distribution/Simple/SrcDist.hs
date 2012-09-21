@@ -278,10 +278,17 @@ prepareTreeWithoutGeneratedModules verbosity pkg_descr0 mb_lbi distPref targetDi
   installOrdinaryFile verbosity descFile (targetDir </> descFile)
 
   where
-    pkg_descr = mapAllBuildInfo filterGeneratedModules pkg_descr0
-    filterGeneratedModules bi = bi {
-      otherModules = filter (flip notElem generatedModules) (otherModules bi)
+    pkg_descr1 = mapAllBuildInfo filterGeneratedOtherModules pkg_descr0
+    pkg_descr = pkg_descr1 {
+      library = fmap filterGeneratedExposedModules (library pkg_descr1)
     }
+    filterGeneratedOtherModules bi = bi {
+      otherModules = filterGeneratedModules (otherModules bi)
+    }
+    filterGeneratedExposedModules libr = libr {
+      exposedModules = filterGeneratedModules (exposedModules libr)
+    }
+    filterGeneratedModules = filter (flip notElem generatedModules)
     -- Paths_<pkg>.hs, as well as the modules specified by the caller.
     generatedModules = autogenModuleName pkg_descr0 : generatedModules0
 
