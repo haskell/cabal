@@ -67,7 +67,7 @@ import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
 
-import Control.Monad (when, unless)
+import Control.Monad (when, unless, forM_)
 import System.Directory
          ( doesDirectoryExist, doesFileExist )
 import System.FilePath
@@ -135,10 +135,11 @@ install pkg_descr lbi flags = do
         installOrdinaryFile verbosity haddockInterfaceFileSrc
                                       haddockInterfaceFileDest
 
-  let lfile = licenseFile pkg_descr
-  unless (null lfile) $ do
+  let lfiles = licenseFiles pkg_descr
+  unless (null lfiles) $ do
     createDirectoryIfMissingVerbose verbosity True docPref
-    installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
+    forM_ (licenseFiles pkg_descr) $ \lfile ->
+      installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
 
   let buildPref = buildDir lbi
   when (hasLibs pkg_descr) $

@@ -160,7 +160,7 @@ data PackageDescription
         -- the following are required by all packages:
         package        :: PackageIdentifier,
         license        :: License,
-        licenseFile    :: FilePath,
+        licenseFiles   :: [FilePath],
         copyright      :: String,
         maintainer     :: String,
         author         :: String,
@@ -230,7 +230,7 @@ emptyPackageDescription
                       package      = PackageIdentifier (PackageName "")
                                                        (Version [] []),
                       license      = AllRightsReserved,
-                      licenseFile  = "",
+                      licenseFiles = [],
                       specVersionRaw = Right anyVersion,
                       buildType    = Nothing,
                       copyright    = "",

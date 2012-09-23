@@ -220,8 +220,8 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
     sequence_ [ installOrdinaryFile verbosity file (targetDir </> file)
               | file <- files ]
 
-  when (not (null (licenseFile pkg_descr))) $
-    copyFileTo verbosity targetDir (licenseFile pkg_descr)
+  flip mapM_ (licenseFiles pkg_descr) $ \ fpath ->
+    copyFileTo verbosity targetDir fpath
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
     files <- matchFileGlob fpath
     sequence_
@@ -244,7 +244,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   -- pre-processors and include those generated files
   case mb_lbi of
     Just lbi | not (null pps) -> do
-      let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }   
+      let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }
       withComponentsLBI pkg_descr lbi' $ \c _ ->
         preprocessComponent pkg_descr c lbi' True verbosity pps
     _ -> return ()
