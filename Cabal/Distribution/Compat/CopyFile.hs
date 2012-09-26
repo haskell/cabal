@@ -22,12 +22,10 @@ import Control.Exception
          ( bracket, bracketOnError )
 import Distribution.Compat.Exception
          ( catchIO )
-#if __GLASGOW_HASKELL__ >= 608
 import Distribution.Compat.Exception
          ( throwIOIO )
 import System.IO.Error
          ( ioeSetLocation )
-#endif
 import System.Directory
          ( renameFile, removeFile )
 import Distribution.Compat.TempFile
@@ -41,22 +39,13 @@ import Foreign
 #endif /* __GLASGOW_HASKELL__ */
 
 #ifndef mingw32_HOST_OS
-#if __GLASGOW_HASKELL__ >= 611
 import System.Posix.Internals (withFilePath)
-#else
-import Foreign.C              (withCString)
-#endif
 import System.Posix.Types
          ( FileMode )
 import System.Posix.Internals
          ( c_chmod )
-#if __GLASGOW_HASKELL__ >= 608
 import Foreign.C
          ( throwErrnoPathIfMinus1_ )
-#else
-import Foreign.C
-         ( throwErrnoIfMinus1_ )
-#endif
 #endif /* mingw32_HOST_OS */
 
 copyOrdinaryFile, copyExecutableFile :: FilePath -> FilePath -> IO ()
@@ -70,16 +59,8 @@ setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
 
 setFileMode :: FilePath -> FileMode -> IO ()
 setFileMode name m =
-#if __GLASGOW_HASKELL__ >= 611
   withFilePath name $ \s -> do
-#else
-  withCString name $ \s -> do
-#endif
-#if __GLASGOW_HASKELL__ >= 608
     throwErrnoPathIfMinus1_ "setFileMode" name (c_chmod s m)
-#else
-    throwErrnoIfMinus1_                   name (c_chmod s m)
-#endif
 #else
 setFileOrdinary   _ = return ()
 setFileExecutable _ = return ()
@@ -91,9 +72,7 @@ copyFile :: FilePath -> FilePath -> IO ()
 #ifdef __GLASGOW_HASKELL__
 copyFile fromFPath toFPath =
   copy
-#if __GLASGOW_HASKELL__ >= 608
     `catchIO` (\ioe -> throwIOIO (ioeSetLocation ioe "copyFile"))
-#endif
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp
