@@ -77,7 +77,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
-#if __HUGS__ || __GLASGOW_HASKELL__ > 606
+#if defined(__HUGS__) || defined(__GLASGOW_HASKELL__)
 import System.FilePath (dropDrive)
 #endif
 

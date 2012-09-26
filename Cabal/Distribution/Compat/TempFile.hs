@@ -28,17 +28,9 @@ import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
                                o_BINARY, o_NONBLOCK, o_NOCTTY)
 import System.IO.Error        (isAlreadyExistsError)
-#if __GLASGOW_HASKELL__ >= 611
 import System.Posix.Internals (withFilePath)
-#else
-import Foreign.C              (withCString)
-#endif
 import Foreign.C              (CInt)
-#if __GLASGOW_HASKELL__ >= 611
 import GHC.IO.Handle.FD       (fdToHandle)
-#else
-import GHC.Handle             (fdToHandle)
-#endif
 import Distribution.Compat.Exception (onException, tryIO)
 #endif
 import Foreign.C              (getErrno, errnoToIOError)
@@ -128,10 +120,6 @@ openNewBinaryFile dir template = do
 
     oflags = rw_flags .|. o_EXCL .|. o_BINARY
 
-#if __GLASGOW_HASKELL__ < 611
-    withFilePath = withCString
-#endif
-
     findTempName x = do
       fd <- withFilePath filepath $ \ f ->
               c_open f oflags 0o666
@@ -145,17 +133,7 @@ openNewBinaryFile dir template = do
          -- TODO: We want to tell fdToHandle what the filepath is,
          -- as any exceptions etc will only be able to report the
          -- fd currently
-         h <-
-#if __GLASGOW_HASKELL__ >= 609
-              fdToHandle fd
-#elif __GLASGOW_HASKELL__ <= 606 && defined(mingw32_HOST_OS)
-              -- fdToHandle is borked on Windows with ghc-6.6.x
-              openFd (fromIntegral fd) Nothing False filepath
-                                       ReadWriteMode True
-#else
-              fdToHandle (fromIntegral fd)
-#endif
-              `onException` c_close fd
+         h <- fdToHandle fd `onException` c_close fd
          return (filepath, h)
       where
         filename        = prefix ++ show x ++ suffix
