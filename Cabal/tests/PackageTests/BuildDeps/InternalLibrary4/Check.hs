@@ -15,17 +15,9 @@ suite = TestCase $ do
 
     unregister "InternalLibrary4"
     iResult <- cabal_install specTI                     
-    do
-        assertEqual "cabal install should succeed - see to-install/test-log.txt" True (successful iResult)
-      `catch` \exc -> do
-        putStrLn $ "Cabal result was "++show iResult
-        throwIO (exc :: SomeException)
+    assertInstallSucceeded iResult
     bResult <- cabal_build spec
-    do
-        assertEqual "cabal build should succeed - see test-log.txt" True (successful bResult)
-      `catch` \exc -> do
-        putStrLn $ "Cabal result was "++show bResult
-        throwIO (exc :: SomeException)
+    assertBuildSucceeded bResult
     unregister "InternalLibrary4"
 
     (_, _, output) <- run (Just $ directory spec) "dist/build/lemon/lemon" []

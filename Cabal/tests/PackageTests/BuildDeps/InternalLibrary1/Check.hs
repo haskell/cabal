@@ -11,8 +11,4 @@ suite :: Test
 suite = TestCase $ do
     let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "InternalLibrary1") []
     result <- cabal_build spec
-    do
-        assertEqual "cabal build should succeed - see test-log.txt" True (successful result)
-      `catch` \exc -> do
-        putStrLn $ "Cabal result was "++show result
-        throwIO (exc :: SomeException)
+    assertBuildSucceeded result
