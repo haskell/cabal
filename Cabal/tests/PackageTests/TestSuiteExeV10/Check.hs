@@ -14,23 +14,13 @@ import PackageTests.PackageTester
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteExeV10"
 
-assertBuildSucceeds result =
-    assertBool (msg ++ " (output: " ++ show result ++ ")") $
-    successful result
-  where msg = "\'setup build\' should succeed"
-
-assertTestSucceeds result =
-    assertBool (msg ++ " (output: " ++ show result ++ ")") $
-    successful result
-  where msg = "\'cabal test\' should succeed"
-
 checkTest :: Version -> Test
 checkTest cabalVersion = TestCase $ do
     let spec = PackageSpec dir ["--enable-tests"]
     buildResult <- cabal_build spec
-    assertBuildSucceeds buildResult
+    assertBuildSucceeded buildResult
     testResult <- cabal_test spec []
-    assertTestSucceeds testResult
+    assertTestSucceeded testResult
 
 checkTestWithHpc :: Version -> Test
 checkTestWithHpc cabalVersion = TestCase $ do
@@ -38,9 +28,9 @@ checkTestWithHpc cabalVersion = TestCase $ do
                                , "--enable-library-coverage"
                                ]
     buildResult <- cabal_build spec
-    assertBuildSucceeds buildResult
+    assertBuildSucceeded buildResult
     testResult <- cabal_test spec []
-    assertTestSucceeds testResult
+    assertTestSucceeded testResult
     let dummy = emptyTestSuite { testName = "test-Foo" }
         tixFile = tixFilePath (dir </> "dist") $ testName dummy
         tixFileMessage = ".tix file should exist"
