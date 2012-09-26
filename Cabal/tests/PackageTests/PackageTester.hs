@@ -173,11 +173,10 @@ run cwd cmd args = do
                 suckH (c:output) h
 
 requireSuccess :: (String, ExitCode, String) -> IO ()
-requireSuccess (cmd, exitCode, output) = do
-    case exitCode of
-        ExitSuccess -> return ()
-        ExitFailure r -> do
-            ioError $ userError $ "Command " ++ cmd ++ " failed."
+requireSuccess (cmd, exitCode, output) =
+    unless (exitCode == ExitSuccess) $
+        assertFailure $ "Command " ++ cmd ++ " failed.\n" ++
+        "output: " ++ output
 
 record :: PackageSpec -> Result -> IO ()
 record spec res = do
