@@ -8,7 +8,9 @@ module PackageTests.PackageTester (
         cabal_bench,
         cabal_install,
         unregister,
-        run
+        run,
+        assertBuildSucceeded,
+        assertTestSucceeded
     ) where
 
 import qualified Control.Exception.Extensible as E
@@ -25,6 +27,7 @@ import Control.Monad
 import Data.List
 import Data.Maybe
 import qualified Data.ByteString.Char8 as C
+import Test.HUnit
 
 
 data PackageSpec =
@@ -177,3 +180,16 @@ record :: PackageSpec -> Result -> IO ()
 record spec res = do
     C.writeFile (directory spec </> "test-log.txt") (C.pack $ outputText res)
 
+-- Test helpers:
+
+assertBuildSucceeded :: Result -> Assertion
+assertBuildSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'setup build\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertTestSucceeded :: Result -> Assertion
+assertTestSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'setup test\' should succeed\n" ++
+    "  output: " ++ outputText result

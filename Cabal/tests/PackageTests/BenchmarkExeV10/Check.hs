@@ -17,5 +17,4 @@ checkBenchmark :: Version -> Test
 checkBenchmark cabalVersion = TestCase $ do
     let spec = PackageSpec dir ["--enable-benchmarks"]
     buildResult <- cabal_build spec
-    let buildMessage = "\'setup build\' should succeed"
-    assertEqual buildMessage True $ successful buildResult
+    assertBuildSucceeded buildResult
