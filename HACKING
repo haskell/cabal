@@ -8,3 +8,11 @@ There are other resources listed on the dev wiki:
 
 In particular, the open tickets and the cabal-devel mailing list
 which is a good place to ask questions.
+
+
+Dependencies policy
+-------------------
+
+Cabal's policy is to support being built by versions of GHC that are up
+to 3 years old.
+
