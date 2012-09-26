@@ -97,7 +97,7 @@ import Control.Monad(when, unless)
 import Data.Char (toLower)
 import Data.List (partition, isPrefixOf)
 import Data.Maybe (isNothing, catMaybes)
-import System.Time (getClockTime, toCalendarTime, CalendarTime(..))
+import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory
          ( doesFileExist, Permissions(executable), getPermissions )
 import Distribution.Verbosity (Verbosity)
@@ -119,7 +119,7 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
   when (isNothing mb_lbi) $
     warn verbosity "Cannot run preprocessors. Run 'configure' command first."
 
-  date <- toCalendarTime =<< getClockTime
+  date <- getCurrentTime
   let pkg' | snapshot  = snapshotPackage date pkg
            | otherwise = pkg
 
@@ -318,7 +318,7 @@ overwriteSnapshotPackageDesc verbosity pkg targetDir = do
 -- | Modifies a 'PackageDescription' by appending a snapshot number
 -- corresponding to the given date.
 --
-snapshotPackage :: CalendarTime -> PackageDescription -> PackageDescription
+snapshotPackage :: UTCTime -> PackageDescription -> PackageDescription
 snapshotPackage date pkg =
   pkg {
     package = pkgid { pkgVersion = snapshotVersion date (pkgVersion pkgid) }
@@ -328,7 +328,7 @@ snapshotPackage date pkg =
 -- | Modifies a 'Version' by appending a snapshot number corresponding
 -- to the given date.
 --
-snapshotVersion :: CalendarTime -> Version -> Version
+snapshotVersion :: UTCTime -> Version -> Version
 snapshotVersion date version = version {
     versionBranch = versionBranch version
                  ++ [dateToSnapshotNumber date]
@@ -337,14 +337,12 @@ snapshotVersion date version = version {
 -- | Given a date produce a corresponding integer representation.
 -- For example given a date @18/03/2008@ produce the number @20080318@.
 --
-dateToSnapshotNumber :: CalendarTime -> Int
-dateToSnapshotNumber date = year  * 10000
-                          + month * 100
-                          + day
-  where
-    year  = ctYear date
-    month = fromEnum (ctMonth date) + 1
-    day   = ctDay date
+dateToSnapshotNumber :: UTCTime -> Int
+dateToSnapshotNumber date = case toGregorian (utctDay date) of
+                            (year, month, day) ->
+                                fromIntegral year * 10000
+                              + month             * 100
+                              + day
 
 -- |Create an archive from a tree of source files, and clean up the tree.
 createArchive :: Verbosity            -- ^verbosity
