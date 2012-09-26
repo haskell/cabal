@@ -8,7 +8,12 @@ module PackageTests.PackageTester (
         cabal_bench,
         cabal_install,
         unregister,
-        run
+        run,
+        assertBuildSucceeded,
+        assertBuildFailed,
+        assertTestSucceeded,
+        assertInstallSucceeded,
+        assertOutputContains
     ) where
 
 import qualified Control.Exception.Extensible as E
@@ -25,6 +30,7 @@ import Control.Monad
 import Data.List
 import Data.Maybe
 import qualified Data.ByteString.Char8 as C
+import Test.HUnit
 
 
 data PackageSpec =
@@ -167,13 +173,45 @@ run cwd cmd args = do
                 suckH (c:output) h
 
 requireSuccess :: (String, ExitCode, String) -> IO ()
-requireSuccess (cmd, exitCode, output) = do
-    case exitCode of
-        ExitSuccess -> return ()
-        ExitFailure r -> do
-            ioError $ userError $ "Command " ++ cmd ++ " failed."
+requireSuccess (cmd, exitCode, output) =
+    unless (exitCode == ExitSuccess) $
+        assertFailure $ "Command " ++ cmd ++ " failed.\n" ++
+        "output: " ++ output
 
 record :: PackageSpec -> Result -> IO ()
 record spec res = do
     C.writeFile (directory spec </> "test-log.txt") (C.pack $ outputText res)
 
+-- Test helpers:
+
+assertBuildSucceeded :: Result -> Assertion
+assertBuildSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'setup build\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertBuildFailed :: Result -> Assertion
+assertBuildFailed result = when (successful result) $
+    assertFailure $
+    "expected: \'setup build\' should fail\n" ++
+    "  output: " ++ outputText result
+
+assertTestSucceeded :: Result -> Assertion
+assertTestSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'setup test\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertInstallSucceeded :: Result -> Assertion
+assertInstallSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'setup install\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertOutputContains :: String -> Result -> Assertion
+assertOutputContains needle result =
+    unless (needle `isInfixOf` (intercalate " " $ lines output)) $
+    assertFailure $
+    " expected: " ++ needle ++
+    "in output: " ++ output
+  where output = outputText result

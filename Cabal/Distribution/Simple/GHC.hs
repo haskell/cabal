@@ -214,7 +214,8 @@ guessToolFromGhcPath tool ghcProg verbosity
        info verbosity $ "looking for tool " ++ show tool ++ " near compiler in " ++ dir
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
-         [] -> return Nothing
+                   -- If we can't find it near ghc, fall back to the usual method.
+         []     -> findProgramLocation verbosity tool
          (fp:_) -> do info verbosity $ "found " ++ tool ++ " in " ++ fp
                       return (Just fp)
 

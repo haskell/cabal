@@ -18,11 +18,9 @@ checkTest :: Version -> Test
 checkTest cabalVersion = TestCase $ do
     let spec = PackageSpec dir ["--enable-tests"]
     buildResult <- cabal_build spec
-    let buildMessage = "\'setup build\' should succeed"
-    assertEqual buildMessage True $ successful buildResult
+    assertBuildSucceeded buildResult
     testResult <- cabal_test spec []
-    let testMessage = "\'setup test\' should succeed"
-    assertEqual testMessage True $ successful testResult
+    assertTestSucceeded testResult
 
 checkTestWithHpc :: Version -> Test
 checkTestWithHpc cabalVersion = TestCase $ do
@@ -30,11 +28,9 @@ checkTestWithHpc cabalVersion = TestCase $ do
                                , "--enable-library-coverage"
                                ]
     buildResult <- cabal_build spec
-    let buildMessage = "\'setup build\' should succeed"
-    assertEqual buildMessage True $ successful buildResult
+    assertBuildSucceeded buildResult
     testResult <- cabal_test spec []
-    let testMessage = "\'setup test\' should succeed"
-    assertEqual testMessage True $ successful testResult
+    assertTestSucceeded testResult
     let dummy = emptyTestSuite { testName = "test-Foo" }
         tixFile = tixFilePath (dir </> "dist") $ testName dummy
         tixFileMessage = ".tix file should exist"
