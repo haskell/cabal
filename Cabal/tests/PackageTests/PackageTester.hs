@@ -10,7 +10,10 @@ module PackageTests.PackageTester (
         unregister,
         run,
         assertBuildSucceeded,
-        assertTestSucceeded
+        assertBuildFailed,
+        assertTestSucceeded,
+        assertInstallSucceeded,
+        assertOutputContains
     ) where
 
 import qualified Control.Exception.Extensible as E
@@ -188,8 +191,28 @@ assertBuildSucceeded result = unless (successful result) $
     "expected: \'setup build\' should succeed\n" ++
     "  output: " ++ outputText result
 
+assertBuildFailed :: Result -> Assertion
+assertBuildFailed result = when (successful result) $
+    assertFailure $
+    "expected: \'setup build\' should fail\n" ++
+    "  output: " ++ outputText result
+
 assertTestSucceeded :: Result -> Assertion
 assertTestSucceeded result = unless (successful result) $
     assertFailure $
     "expected: \'setup test\' should succeed\n" ++
     "  output: " ++ outputText result
+
+assertInstallSucceeded :: Result -> Assertion
+assertInstallSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'setup install\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertOutputContains :: String -> Result -> Assertion
+assertOutputContains needle result =
+    unless (needle `isInfixOf` (intercalate " " $ lines output)) $
+    assertFailure $
+    " expected: " ++ needle ++
+    "in output: " ++ output
+  where output = outputText result
