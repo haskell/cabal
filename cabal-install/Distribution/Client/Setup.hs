@@ -491,13 +491,15 @@ instance Monoid ReportFlags where
 
 data UnpackFlags = UnpackFlags {
       unpackDestDir :: Flag FilePath,
-      unpackVerbosity :: Flag Verbosity
+      unpackVerbosity :: Flag Verbosity,
+      unpackPristine :: Flag Bool
     }
 
 defaultUnpackFlags :: UnpackFlags
 defaultUnpackFlags = UnpackFlags {
     unpackDestDir = mempty,
-    unpackVerbosity = toFlag normal
+    unpackVerbosity = toFlag normal,
+    unpackPristine  = toFlag False
    }
 
 unpackCommand :: CommandUI UnpackFlags
@@ -514,14 +516,21 @@ unpackCommand = CommandUI {
          "where to unpack the packages, defaults to the current directory."
          unpackDestDir (\v flags -> flags { unpackDestDir = v })
          (reqArgFlag "PATH")
+
+       , option [] ["pristine"]
+           ("Unpack the original pristine tarball, rather than updating the "
+           ++ ".cabal file with the latest revision from the package archive.")
+           unpackPristine (\v flags -> flags { unpackPristine = v })
+           trueArg
        ]
   }
 
 instance Monoid UnpackFlags where
   mempty = defaultUnpackFlags
   mappend a b = UnpackFlags {
-     unpackDestDir = combine unpackDestDir
-    ,unpackVerbosity = combine unpackVerbosity
+    unpackDestDir   = combine unpackDestDir,
+    unpackVerbosity = combine unpackVerbosity,
+    unpackPristine  = combine unpackPristine
   }
     where combine field = field a `mappend` field b
 
