@@ -169,11 +169,12 @@ readRepoIndex verbosity repo =
     readPackageIndexCacheFile mkAvailablePackage indexFile cacheFile
 
   where
-    mkAvailablePackage pkgid pkg =
+    mkAvailablePackage pkgid pkgtxt pkg =
       SourcePackage {
         packageInfoId      = pkgid,
         packageDescription = pkg,
-        packageSource      = RepoTarballPackage repo pkgid Nothing
+        packageSource      = RepoTarballPackage repo pkgid Nothing,
+        packageDescrOverride = Just pkgtxt
       }
 
     handleNotFound action = catchIO action $ \e -> if isDoesNotExistError e
@@ -339,7 +340,8 @@ updatePackageIndexCacheFile indexFile cacheFile = do
      ++ [ CachePackageId pkgid blockNo | (pkgid, _, blockNo) <- pkgs ]
 
 readPackageIndexCacheFile :: Package pkg
-                          => (PackageId -> GenericPackageDescription -> pkg)
+                          => (PackageId -> ByteString
+                                        -> GenericPackageDescription -> pkg)
                           -> FilePath
                           -> FilePath
                           -> IO (PackageIndex pkg, [Dependency])
@@ -350,7 +352,8 @@ readPackageIndexCacheFile mkPkg indexFile cacheFile = do
 
 
 packageIndexFromCache :: Package pkg
-                      => (PackageId -> GenericPackageDescription -> pkg)
+                      => (PackageId -> ByteString
+                                    -> GenericPackageDescription -> pkg)
                       -> Handle
                       -> [IndexCacheEntry]
                       -> IO (PackageIndex pkg, [Dependency])
@@ -368,20 +371,22 @@ packageIndexFromCache mkPkg hnd = accum mempty []
       -- The magic here is that we use lazy IO to read the .cabal file
       -- from the index tarball if it turns out that we need it.
       -- Most of the time we only need the package id.
-      pkg <- unsafeInterleaveIO $ do
-               getPackageDescription blockno
-      let srcpkg = mkPkg pkgid pkg
+      ~(pkg, pkgtxt) <- unsafeInterleaveIO $ do
+        pkgtxt <- getEntryContent blockno
+        pkg    <- readPackageDescription pkgtxt
+        return (pkg, pkgtxt)
+
+      let srcpkg = mkPkg pkgid pkgtxt pkg
       accum (srcpkg:srcpkgs) prefs entries
 
     accum srcpkgs prefs (CachePreference pref : entries) =
       accum srcpkgs (pref:prefs) entries
 
-    getPackageDescription blockno = do
+    getEntryContent blockno = do
       hSeek hnd AbsoluteSeek (fromIntegral (blockno * 512))
       header  <- BS.hGet hnd 512
       size    <- getEntrySize header
-      content <- BS.hGet hnd (fromIntegral size)
-      readPackageDescription content
+      BS.hGet hnd (fromIntegral size)
 
     getEntrySize header =
       case Tar.read header of
