@@ -175,8 +175,11 @@ readRepoIndex verbosity repo =
         packageInfoId      = pkgid,
         packageDescription = packageDesc pkgEntry,
         packageSource      = case pkgEntry of
-          NormalPackage _ _ _      -> RepoTarballPackage repo pkgid Nothing
-          BuildTreeRef  _ path _ _ -> LocalUnpackedPackage path
+          NormalPackage _ _ _ _    -> RepoTarballPackage repo pkgid Nothing
+          BuildTreeRef  _ _ path _ -> LocalUnpackedPackage path,
+        packageDescrOverride = case pkgEntry of
+          NormalPackage _ _ pkgtxt _ -> Just pkgtxt
+          _                          -> Nothing
       }
       where
         pkgid = packageId pkgEntry
@@ -231,19 +234,18 @@ whenCacheOutOfDate origFile cacheFile action = do
 --
 
 -- | An index entry is either a normal package, or a local build tree reference.
-data PackageEntry = NormalPackage PackageId GenericPackageDescription BlockNo
-                  | BuildTreeRef PackageId FilePath GenericPackageDescription
-                    BlockNo
+data PackageEntry = NormalPackage PackageId GenericPackageDescription ByteString BlockNo
+                  | BuildTreeRef  PackageId GenericPackageDescription FilePath   BlockNo
 
 type MkPackageEntry = IO PackageEntry
 
 instance Package PackageEntry where
-  packageId (NormalPackage pkgid _ _   ) = pkgid
-  packageId (BuildTreeRef  pkgid _ _ _ ) = pkgid
+  packageId (NormalPackage pkgid _ _ _) = pkgid
+  packageId (BuildTreeRef  pkgid _ _ _) = pkgid
 
 packageDesc :: PackageEntry -> GenericPackageDescription
-packageDesc (NormalPackage _   descr _ ) = descr
-packageDesc (BuildTreeRef  _ _ descr _ ) = descr
+packageDesc (NormalPackage _ descr _ _) = descr
+packageDesc (BuildTreeRef  _ descr _ _) = descr
 
 -- | Read a compressed \"00-index.tar.gz\" file into a 'PackageIndex'.
 --
@@ -302,7 +304,7 @@ extractPkg entry blockNo = case Tar.entryContent entry of
      | takeExtension fileName == ".cabal"
     -> case splitDirectories (normalise fileName) of
         [pkgname,vers,_] -> case simpleParse vers of
-          Just ver -> Just $ return (NormalPackage pkgid descr blockNo)
+          Just ver -> Just $ return (NormalPackage pkgid descr content blockNo)
             where
               pkgid  = PackageIdentifier (PackageName pkgname) ver
               parsed = parsePackageDescription . fromUTF8 . BS.Char8.unpack
@@ -320,7 +322,7 @@ extractPkg entry blockNo = case Tar.entryContent entry of
         let path   = byteStringToFilePath content
         cabalFile <- findPackageDesc path
         descr     <- PackageDesc.Parse.readPackageDescription normal cabalFile
-        return $ BuildTreeRef (packageId descr) path descr blockNo
+        return $ BuildTreeRef (packageId descr) descr path blockNo
 
   _ -> Nothing
 
@@ -358,7 +360,7 @@ updatePackageIndexCacheFile indexFile cacheFile = do
     mkCache pkgs prefs =
         [ CachePreference pref          | pref <- prefs ]
      ++ [ CachePackageId pkgid blockNo
-        | (NormalPackage pkgid _ blockNo) <- pkgs ]
+        | (NormalPackage pkgid _ _ blockNo) <- pkgs ]
      ++ [ CacheBuildTreeRef blockNo
         | (BuildTreeRef _ _ _ blockNo) <- pkgs]
 
@@ -392,9 +394,11 @@ packageIndexFromCache mkPkg hnd = accum mempty []
       -- The magic here is that we use lazy IO to read the .cabal file
       -- from the index tarball if it turns out that we need it.
       -- Most of the time we only need the package id.
-      pkg <- unsafeInterleaveIO $ do
-        getEntryContent blockno >>= readPackageDescription
-      let srcpkg = mkPkg (NormalPackage pkgid pkg blockno)
+      ~(pkg, pkgtxt) <- unsafeInterleaveIO $ do
+        pkgtxt <- getEntryContent blockno
+        pkg    <- readPackageDescription pkgtxt
+        return (pkg, pkgtxt)
+      let srcpkg = mkPkg (NormalPackage pkgid pkg pkgtxt blockno)
       accum (srcpkg:srcpkgs) prefs entries
 
     accum srcpkgs prefs (CacheBuildTreeRef blockno : entries) = do
@@ -404,7 +408,7 @@ packageIndexFromCache mkPkg hnd = accum mempty []
       path <- liftM byteStringToFilePath . getEntryContent $ blockno
       pkg  <- do cabalFile <- findPackageDesc path
                  PackageDesc.Parse.readPackageDescription normal cabalFile
-      let srcpkg = mkPkg (BuildTreeRef (packageId pkg) path pkg blockno)
+      let srcpkg = mkPkg (BuildTreeRef (packageId pkg) pkg path blockno)
       accum (srcpkg:srcpkgs) prefs entries
 
     accum srcpkgs prefs (CachePreference pref : entries) =
