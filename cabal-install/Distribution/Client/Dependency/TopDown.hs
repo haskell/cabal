@@ -368,7 +368,7 @@ pruneBottomUp platform comp constraints =
                               [ (dep, Constraints.conflicting cs dep)
                               | dep <- missing ]
 
-    configure cs (UnconfiguredPackage (SourcePackage _ pkg _) _ flags stanzas) =
+    configure cs (UnconfiguredPackage (SourcePackage _ pkg _ _) _ flags stanzas) =
       finalizePackageDescription flags (dependencySatisfiable cs)
                                  platform comp [] (enableStanzas stanzas pkg)
     dependencySatisfiable cs =
@@ -397,7 +397,7 @@ configurePackage platform comp available spkg = case spkg of
   InstalledAndSource ipkg apkg -> fmap (InstalledAndSource ipkg)
                                        (configure apkg)
   where
-  configure (UnconfiguredPackage apkg@(SourcePackage _ p _) _ flags stanzas) =
+  configure (UnconfiguredPackage apkg@(SourcePackage _ p _ _) _ flags stanzas) =
     case finalizePackageDescription flags dependencySatisfiable
                                     platform comp [] (enableStanzas stanzas p) of
       Left missing        -> Left missing
@@ -481,7 +481,7 @@ topologicalSortNumbering installedPkgIndex sourcePkgIndex =
       ++ [ ((), packageName pkg, nub deps)
          | pkgs@(pkg:_) <- PackageIndex.allPackagesByName sourcePkgIndex
          , let deps = [ depName
-                      | SourcePackage _ pkg' _ <- pkgs
+                      | SourcePackage _ pkg' _ _ <- pkgs
                       , Dependency depName _ <-
                           buildDepends (flattenPackageDescription pkg') ] ]
 
@@ -517,7 +517,7 @@ selectNeededSubset installedPkgIndex sourcePkgIndex = select mempty mempty
                         | pkg <- moreInstalled
                         , dep <- depends pkg ]
                      ++ [ name
-                        | SourcePackage _ pkg _ <- moreSource
+                        | SourcePackage _ pkg _ _ <- moreSource
                         , Dependency name _ <-
                             buildDepends (flattenPackageDescription pkg) ]
         installedPkgIndex'' = foldl' (flip PackageIndex.insert)
