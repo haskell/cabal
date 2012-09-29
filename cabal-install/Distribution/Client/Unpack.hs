@@ -19,11 +19,11 @@ module Distribution.Client.Unpack (
   ) where
 
 import Distribution.Package
-         ( PackageId, packageId )
+         ( PackageId, packageId, packageName )
 import Distribution.Simple.Setup
          ( fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Utils
-         ( notice, die )
+         ( notice, die, info, writeFileAtomic )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Text(display)
@@ -45,8 +45,9 @@ import Control.Monad
 import Data.Monoid
          ( mempty )
 import System.FilePath
-         ( (</>), addTrailingPathSeparator )
-
+         ( (</>), (<.>), addTrailingPathSeparator )
+import qualified Data.ByteString.Lazy.Char8 as BS
+         ( unpack )
 
 unpack :: Verbosity
        -> [Repo]
@@ -77,15 +78,17 @@ unpack verbosity repos globalFlags unpackFlags userTargets = do
   flip mapM_ pkgs $ \pkg -> do
     location <- fetchPackage verbosity (packageSource pkg)
     let pkgid = packageId pkg
+        descOverride | usePristine = Nothing
+                     | otherwise   = packageDescrOverride pkg
     case location of
       LocalTarballPackage tarballPath ->
-        unpackPackage verbosity prefix pkgid tarballPath
+        unpackPackage verbosity prefix pkgid descOverride tarballPath
 
       RemoteTarballPackage _tarballURL tarballPath ->
-        unpackPackage verbosity prefix pkgid tarballPath
+        unpackPackage verbosity prefix pkgid descOverride tarballPath
 
       RepoTarballPackage _repo _pkgid tarballPath ->
-        unpackPackage verbosity prefix pkgid tarballPath
+        unpackPackage verbosity prefix pkgid descOverride tarballPath
 
       LocalUnpackedPackage _ ->
         error "Distribution.Client.Unpack.unpack: the impossible happened."
@@ -97,6 +100,7 @@ unpack verbosity repos globalFlags unpackFlags userTargets = do
         standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
 
     prefix = fromFlagOrDefault "" (unpackDestDir unpackFlags)
+    usePristine = fromFlagOrDefault False (unpackPristine unpackFlags)
 
 checkTarget :: UserTarget -> IO ()
 checkTarget target = case target of
@@ -108,8 +112,10 @@ checkTarget target = case target of
         "The 'unpack' command is for tarball packages. "
      ++ "The target '" ++ t ++ "' is not a tarball."
 
-unpackPackage :: Verbosity -> FilePath -> PackageId -> FilePath -> IO ()
-unpackPackage verbosity prefix pkgid pkgPath = do
+unpackPackage :: Verbosity -> FilePath -> PackageId
+              -> PackageDescriptionOverride
+              -> FilePath  -> IO ()
+unpackPackage verbosity prefix pkgid descOverride pkgPath = do
     let pkgdirname = display pkgid
         pkgdir     = prefix </> pkgdirname
         pkgdir'    = addTrailingPathSeparator pkgdir
@@ -121,3 +127,12 @@ unpackPackage verbosity prefix pkgid pkgPath = do
      "A file \"" ++ pkgdir ++ "\" is in the way, not unpacking."
     notice verbosity $ "Unpacking to " ++ pkgdir'
     Tar.extractTarGzFile prefix pkgdirname pkgPath
+
+    case descOverride of
+      Nothing     -> return ()
+      Just pkgtxt -> do
+        let descFilePath = pkgdir </> display (packageName pkgid) <.> "cabal"
+        info verbosity $
+          "Updating " ++ descFilePath
+                      ++ " with the latest revision from the index."
+        writeFileAtomic descFilePath (BS.unpack pkgtxt)
