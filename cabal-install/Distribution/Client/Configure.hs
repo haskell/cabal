@@ -82,7 +82,7 @@ configure verbosity packageDBs repos comp conf
         configureCommand (const configFlags) extraArgs
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [pkg@(ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _)) _ _ _)] ->
+      [pkg@(ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] ->
         configurePackage verbosity
           (InstallPlan.planPlatform installPlan)
           (InstallPlan.planCompiler installPlan)
@@ -138,7 +138,8 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
       localPkg = SourcePackage {
         packageInfoId             = packageId pkg,
         Source.packageDescription = pkg,
-        packageSource             = LocalUnpackedPackage "."
+        packageSource             = LocalUnpackedPackage ".",
+        packageDescrOverride      = Nothing
       }
 
       testsEnabled = fromFlagOrDefault False $ configTests configFlags
@@ -194,7 +195,7 @@ configurePackage :: Verbosity
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-  (ConfiguredPackage (SourcePackage _ gpkg _) flags stanzas deps) extraArgs =
+  (ConfiguredPackage (SourcePackage _ gpkg _ _) flags stanzas deps) extraArgs =
 
   setupWrapper verbosity
     scriptOptions (Just pkg) configureCommand configureFlags extraArgs

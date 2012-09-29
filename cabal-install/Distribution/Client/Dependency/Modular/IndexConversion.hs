@@ -92,7 +92,7 @@ convSPI os arch cid = mkIndex . convSPI' os arch cid
 
 -- | Convert a single source package into the solver-specific format.
 convSP :: OS -> Arch -> CompilerId -> SourcePackage -> (PN, I, PInfo)
-convSP os arch cid (SourcePackage (PackageIdentifier pn pv) gpd _pl) =
+convSP os arch cid (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
   in  (pn, i, convGPD os arch cid (PI pn i) gpd)
 
