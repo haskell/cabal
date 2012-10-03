@@ -51,6 +51,7 @@ newSerialJobControl = do
     collect = join . readChan
 
 newParallelJobControl :: IO (JobControl IO a)
+#if MIN_VERSION_base(4,3,0)
 newParallelJobControl = do
     resultVar <- newEmptyMVar
     return JobControl {
@@ -68,7 +69,9 @@ newParallelJobControl = do
     collect :: MVar (Either SomeException a) -> IO a
     collect resultVar =
       takeMVar resultVar >>= either throw return
-
+#else
+newParallelJobControl = newSerialJobControl
+#endif
 
 data JobLimit = JobLimit QSem
 
