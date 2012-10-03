@@ -246,7 +246,7 @@ renderGhcOptions version@(Version ver _) opts =
   -- Dynamic linking
 
   , [ "-shared"  | flagBool ghcOptShared  ]
-  , [ "-dynamic" | flagBool ghcOptDynamic ]
+  , [ if flagBool ghcOptDynamic then "-dynamic" else "-static" ]
   , [ "-fPIC"    | flagBool ghcOptFPic ]
 
   , concat [ ["-dylib-install-name", libname] | libname <- flag ghcOptDylibName ]
