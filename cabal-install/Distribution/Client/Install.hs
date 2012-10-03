@@ -96,7 +96,7 @@ import qualified Distribution.Simple.Setup as Cabal
          ( installCommand, InstallFlags(..), emptyInstallFlags
          , emptyTestFlags, testCommand, Flag(..) )
 import Distribution.Simple.Utils
-         ( rawSystemExit, comparing )
+         ( rawSystemExit, comparing, writeFileAtomic )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
@@ -781,13 +781,13 @@ performInstallations verbosity
 
   executeInstallPlan verbosity jobControl useLogFile installPlan $ \cpkg ->
     installConfiguredPackage platform compid configFlags
-                             cpkg $ \configFlags' src pkg ->
+                             cpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs
                                  (setupScriptOptions installedPkgIndex cacheLock)
                                  miscOptions configFlags' installFlags haddockFlags
-                                 compid pkg mpath useLogFile
+                                 compid pkg pkgoverride mpath useLogFile
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -956,16 +956,17 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
 installConfiguredPackage :: Platform -> CompilerId
                          ->  ConfigFlags -> ConfiguredPackage
                          -> (ConfigFlags -> PackageLocation (Maybe FilePath)
-                                         -> PackageDescription -> a)
+                                         -> PackageDescription
+                                         -> PackageDescriptionOverride -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
-  (ConfiguredPackage (SourcePackage _ gpkg source) flags stanzas deps)
+  (ConfiguredPackage (SourcePackage _ gpkg source pkgoverride) flags stanzas deps)
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
     configConstraints = map thisPackageVersion deps,
     configBenchmarks = toFlag False,
     configTests = toFlag (TestStanzas `elem` stanzas)
-  } source pkg
+  } source pkg pkgoverride
   where
     pkg = case finalizePackageDescription flags
            (const True)
@@ -1051,13 +1052,25 @@ installUnpackedPackage
   -> HaddockFlags
   -> CompilerId
   -> PackageDescription
+  -> PackageDescriptionOverride
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
   -> UseLogFile -- ^ File to log output to (if any)
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs
                        scriptOptions miscOptions
                        configFlags installConfigFlags haddockFlags
-                       compid pkg workingDir useLogFile =
+                       compid pkg pkgoverride workingDir useLogFile = do
+
+  -- Override the .cabal file if necessary
+  case pkgoverride of
+    Nothing     -> return ()
+    Just pkgtxt -> do
+      let descFilePath = fromMaybe "." workingDir
+                     </> display (packageName pkgid) <.> "cabal"
+      info verbosity $
+        "Updating " ++ display (packageName pkgid) <.> "cabal"
+                    ++ " with the latest revision from the index."
+      writeFileAtomic descFilePath pkgtxt
 
   -- Configure phase
   onFailure ConfigureFailed $ withJobLimit buildLimit $ do

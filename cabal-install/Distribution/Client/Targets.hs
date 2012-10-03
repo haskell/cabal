@@ -472,9 +472,10 @@ readPackageTarget verbosity target = case target of
         pkg <- readPackageDescription verbosity =<< findPackageDesc dir
         return $ PackageTargetLocation $
                    SourcePackage {
-                     packageInfoId      = packageId pkg,
-                     packageDescription = pkg,
-                     packageSource      = fmap Just location
+                     packageInfoId        = packageId pkg,
+                     packageDescription   = pkg,
+                     packageSource        = fmap Just location,
+                     packageDescrOverride = Nothing
                    }
 
       LocalTarballPackage tarballFile ->
@@ -497,9 +498,10 @@ readPackageTarget verbosity target = case target of
         Just pkg ->
           return $ PackageTargetLocation $
                      SourcePackage {
-                       packageInfoId      = packageId pkg,
-                       packageDescription = pkg,
-                       packageSource      = fmap Just location
+                       packageInfoId        = packageId pkg,
+                       packageDescription   = pkg,
+                       packageSource        = fmap Just location,
+                       packageDescrOverride = Nothing
                      }
 
     extractTarballPackageCabalFile :: FilePath -> String
