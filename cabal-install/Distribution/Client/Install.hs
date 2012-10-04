@@ -22,6 +22,8 @@ import Data.List
          ( unfoldr, nub, sort, (\\) )
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
+import qualified Data.ByteString.Lazy.Char8 as BS
+         ( unpack )
 import Control.Exception as Exception
          ( bracket, handleJust )
 #if MIN_VERSION_base(4,0,0)
