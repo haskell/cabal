@@ -61,6 +61,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
+        getGhcInfo,
         configure, getInstalledPackages,
         buildLib, buildExe,
         installLib, installExe,
@@ -137,6 +138,21 @@ import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
 
+getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
+getGhcInfo verbosity ghcProg =
+    case programVersion ghcProg of
+    Just ghcVersion
+     | ghcVersion >= Version [6,7] [] ->
+        do xs <- getProgramOutput verbosity ghcProg ["--info"]
+           case reads xs of
+               [(i, ss)]
+                | all isSpace ss ->
+                   return i
+               _ ->
+                   die "Can't parse --info output of GHC"
+    _ ->
+        return []
+
 -- -----------------------------------------------------------------------------
 -- Configuring
 
@@ -172,15 +188,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
   languages  <- getLanguages verbosity ghcProg
   extensions <- getExtensions verbosity ghcProg
 
-  ghcInfo <- if ghcVersion >= Version [6,7] []
-             then do xs <- getProgramOutput verbosity ghcProg ["--info"]
-                     case reads xs of
-                         [(i, ss)]
-                          | all isSpace ss ->
-                             return i
-                         _ ->
-                             die "Can't parse --info output of GHC"
-             else return []
+  ghcInfo <- getGhcInfo verbosity ghcProg
 
   let comp = Compiler {
         compilerId             = CompilerId GHC ghcVersion,
