@@ -115,8 +115,7 @@ cabal_install spec = do
     buildResult <- doCabalBuild spec
     res <- if successful buildResult
         then do
-            ghc <- getGHC
-            res <- cabal spec ["install", "-w", ghc]
+            res <- cabal spec ["install"]
             return $ recordRun res InstallSuccess buildResult
         else
             return buildResult
