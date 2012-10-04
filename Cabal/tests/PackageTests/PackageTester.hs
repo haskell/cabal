@@ -81,7 +81,8 @@ doCabalConfigure :: PackageSpec -> IO Result
 doCabalConfigure spec = do
     cleanResult@(_, _, cleanOutput) <- cabal spec ["clean"]
     requireSuccess cleanResult
-    res <- cabal spec $ ["configure", "--user"] ++ configOpts spec
+    ghc <- getGHC
+    res <- cabal spec $ ["configure", "--user", "-w", ghc] ++ configOpts spec
     return $ recordRun res ConfigureSuccess nullResult
 
 doCabalBuild :: PackageSpec -> IO Result
@@ -114,7 +115,7 @@ cabal_install spec = do
     buildResult <- doCabalBuild spec
     res <- if successful buildResult
         then do
-            res <- cabal spec ["install"]
+            res <- cabal spec ["install", "-w", ghc]
             return $ recordRun res InstallSuccess buildResult
         else
             return buildResult
