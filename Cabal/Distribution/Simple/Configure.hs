@@ -532,7 +532,7 @@ configure (pkg_descr0, pbi) cfg
                 ++ intercalate " depends on "
                      (map (\(_,k,_) -> "'" ++ k ++ "'") (vs ++ [head vs]))
 
-        withSharedLibDefault <-
+        sharedLibsByDefault <-
             case compilerId comp of
             CompilerId GHC _ ->
                 case lookupProgram ghcProgram programsConfig''' of
@@ -566,8 +566,8 @@ configure (pkg_descr0, pbi) cfg
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
                     withProfLib         = fromFlag $ configProfLib cfg,
-                    withSharedLib       = fromFlagOrDefault withSharedLibDefault $ configSharedLib cfg,
-                    withDynExe          = fromFlag $ configDynExe cfg,
+                    withSharedLib       = fromFlagOrDefault sharedLibsByDefault $ configSharedLib cfg,
+                    withDynExe          = fromFlagOrDefault sharedLibsByDefault $ configDynExe cfg,
                     withProfExe         = fromFlag $ configProfExe cfg,
                     withOptimization    = fromFlag $ configOptimization cfg,
                     withGHCiLib         = fromFlag $ configGHCiLib cfg,
