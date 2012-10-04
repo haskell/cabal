@@ -65,6 +65,8 @@ module Distribution.Simple.Configure (configure,
                                      )
     where
 
+import Distribution.Compiler
+    ( CompilerId(..) )
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
@@ -117,6 +119,10 @@ import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
+import Distribution.Simple.Program.Db
+    ( lookupProgram )
+import Distribution.Simple.Program.Builtin
+    ( ghcProgram )
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
@@ -526,6 +532,18 @@ configure (pkg_descr0, pbi) cfg
                 ++ intercalate " depends on "
                      (map (\(_,k,_) -> "'" ++ k ++ "'") (vs ++ [head vs]))
 
+        withSharedLibDefault <-
+            case compilerId comp of
+            CompilerId GHC _ ->
+                case lookupProgram ghcProgram programsConfig''' of
+                Just ghcProg ->
+                    do xs <- GHC.getGhcInfo verbosity ghcProg
+                       return $ case lookup "Dynamic by default" xs of
+                                Just "YES" -> True
+                                _ -> False
+                Nothing -> return False
+            _ -> return False
+
         let lbi = LocalBuildInfo {
                     configFlags         = cfg,
                     extraConfigArgs     = [],  -- Currently configure does not
@@ -548,7 +566,7 @@ configure (pkg_descr0, pbi) cfg
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
                     withProfLib         = fromFlag $ configProfLib cfg,
-                    withSharedLib       = fromFlag $ configSharedLib cfg,
+                    withSharedLib       = fromFlagOrDefault withSharedLibDefault $ configSharedLib cfg,
                     withDynExe          = fromFlag $ configDynExe cfg,
                     withProfExe         = fromFlag $ configProfExe cfg,
                     withOptimization    = fromFlag $ configOptimization cfg,
