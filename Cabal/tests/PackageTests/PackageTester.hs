@@ -241,4 +241,7 @@ getGHC :: IO String
 getGHC = fromMaybe "ghc" `fmap` lookupEnv "GHC"
 
 getGHCPkg :: IO String
-getGHCPkg = fromMaybe "ghc-pkg" `fmap` lookupEnv "GHC_PKG"
+getGHCPkg = do
+    ghc <- getGHC
+    -- Somewhat brittle, but better than nothing.
+    return $ "ghc-pkg" ++ drop 3 ghc
