@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module PackageTests.PackageTester (
         PackageSpec(..),
         Success(..),
@@ -17,9 +18,11 @@ module PackageTests.PackageTester (
     ) where
 
 import qualified Control.Exception.Extensible as E
+import System.Environment (getEnv)
 import System.Directory
 import System.FilePath
 import System.IO
+import System.IO.Error (isDoesNotExistError)
 import System.Posix.IO
 import System.Process
 import System.Exit
@@ -99,7 +102,8 @@ cabal_build spec = do
 
 unregister :: String -> IO ()
 unregister libraryName = do
-    res@(_, _, output) <- run Nothing "ghc-pkg" ["unregister", "--user", libraryName]
+    ghcPkg <- getGHCPkg
+    res@(_, _, output) <- run Nothing ghcPkg ["unregister", "--user", libraryName]
     if "cannot find package" `isInfixOf` output
         then return ()
         else requireSuccess res
@@ -135,7 +139,8 @@ cabal_bench spec extraArgs = do
 cabal :: PackageSpec -> [String] -> IO (String, ExitCode, String)
 cabal spec cabalArgs = do
     wd <- getCurrentDirectory
-    r <- run (Just $ directory spec) "ghc"
+    ghc <- getGHC
+    r <- run (Just $ directory spec) ghc
              [ "--make"
 -- HPC causes trouble -- see #1012
 --             , "-fhpc"
@@ -182,7 +187,8 @@ record :: PackageSpec -> Result -> IO ()
 record spec res = do
     C.writeFile (directory spec </> "test-log.txt") (C.pack $ outputText res)
 
--- Test helpers:
+------------------------------------------------------------------------
+-- Test helpers
 
 assertBuildSucceeded :: Result -> Assertion
 assertBuildSucceeded result = unless (successful result) $
@@ -215,3 +221,24 @@ assertOutputContains needle result =
     " expected: " ++ needle ++
     "in output: " ++ output
   where output = outputText result
+
+------------------------------------------------------------------------
+-- Finding ghc and related tools
+--
+-- To allow the test suite to be run using other GHC versions than the
+-- one symlinked as ghc, we look in the environment for GHC and
+-- GHC_PKG.
+
+lookupEnv :: String -> IO (Maybe String)
+lookupEnv name =
+    (fmap Just $ getEnv name)
+    `E.catch` \ (e :: IOError) ->
+        if isDoesNotExistError e
+        then return Nothing
+        else E.throw e
+
+getGHC :: IO String
+getGHC = fromMaybe "ghc" `fmap` lookupEnv "GHC"
+
+getGHCPkg :: IO String
+getGHCPkg = fromMaybe "ghc-pkg" `fmap` lookupEnv "GHC_PKG"
