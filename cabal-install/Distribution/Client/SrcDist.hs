@@ -36,7 +36,7 @@ import Distribution.Text
 import Distribution.Version
          ( Version )
 
-import System.Time (getClockTime, toCalendarTime)
+import Data.Time (getCurrentTime)
 import System.FilePath ((</>), (<.>))
 import Control.Monad (when, unless)
 import Data.Maybe (isNothing)
@@ -60,7 +60,7 @@ sdist flags exflags = do
   when (isNothing mb_lbi) $
     warn verbosity "Cannot run preprocessors. Run 'configure' command first."
 
-  date <- toCalendarTime =<< getClockTime
+  date <- getCurrentTime
   let pkg' | snapshot  = snapshotPackage date pkg
            | otherwise = pkg
 

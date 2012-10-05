@@ -31,7 +31,7 @@ profiling = TestCase $ do
                ,"--enable-executable-profiling"]
        spec = PackageSpec ("PackageTests" </> "TemplateHaskell" </> "profiling") flags
    result <- cabal_build spec
-   assertEqual "cabal build should succeed - see test-log.txt" True (successful result)
+   assertBuildSucceeded result
 
 dynamic :: Test
 dynamic = TestCase $ do
@@ -40,5 +40,4 @@ dynamic = TestCase $ do
                 ,"--enable-executable-dynamic"]
         spec = PackageSpec ("PackageTests" </> "TemplateHaskell" </> "dynamic") flags
     result <- cabal_build spec
-    assertEqual "cabal build should succeed - see test-log.txt" True (successful result)
-
+    assertBuildSucceeded result
