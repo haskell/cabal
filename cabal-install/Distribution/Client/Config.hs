@@ -203,7 +203,7 @@ initialSavedConfig = do
     savedInstallFlags    = mempty {
       installSummaryFile = [toPathTemplate (logsDir </> "build.log")],
       installBuildReports= toFlag AnonymousReports,
-      installNumJobs     = toFlag (Just numberOfProcessors)
+      --installNumJobs     = toFlag (Just numberOfProcessors)
     }
   }
 
