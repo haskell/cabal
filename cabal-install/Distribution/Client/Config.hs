@@ -36,8 +36,6 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , showRepo, parseRepo )
-import Distribution.Client.Utils
-         ( numberOfProcessors )
 
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..) )
@@ -202,7 +200,7 @@ initialSavedConfig = do
     },
     savedInstallFlags    = mempty {
       installSummaryFile = [toPathTemplate (logsDir </> "build.log")],
-      installBuildReports= toFlag AnonymousReports,
+      installBuildReports= toFlag AnonymousReports
       --installNumJobs     = toFlag (Just numberOfProcessors)
     }
   }
