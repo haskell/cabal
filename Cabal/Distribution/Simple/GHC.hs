@@ -70,6 +70,7 @@ module Distribution.Simple.GHC (
         registerPackage,
         componentGhcOptions,
         ghcLibDir,
+        ghcDynamicByDefault,
 
         -- * Deprecated
         ghcVerbosityOptions,
@@ -623,7 +624,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       pkgid = packageId pkg_descr
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
       ifProfLib = when (withProfLib lbi)
-      ifSharedLib = when (withSharedLib lbi)
+      ifSharedLib forceShared = when (forceShared || withSharedLib lbi)
       ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
       comp = compiler lbi
       ghcVersion = compilerVersion comp
@@ -634,9 +635,12 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   libBi <- hackThreadedFlag verbosity
              comp (withProfLib lbi) (libBuildInfo lib)
 
+  dynamicByDefault <- ghcDynamicByDefault verbosity ghcProg
   let libTargetDir = pref
-      forceVanillaLib = EnableExtension TemplateHaskell `elem` allExtensions libBi
-      -- TH always needs vanilla libs, even when building for profiling
+      doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
+      forceVanillaLib = doingTH && not dynamicByDefault
+      forceSharedLib  = doingTH &&     dynamicByDefault
+      -- TH always needs default libs, even when building for profiling
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
@@ -664,8 +668,8 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
   unless (null (libModules lib)) $
     do ifVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
-       ifProfLib (runGhcProg profOpts)
-       ifSharedLib (runGhcProg sharedOpts)
+       ifProfLib                    (runGhcProg profOpts)
+       ifSharedLib  forceSharedLib  (runGhcProg sharedOpts)
 
   -- build any C sources
   unless (null (cSources libBi)) $ do
@@ -683,7 +687,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                 odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
             createDirectoryIfMissingVerbose verbosity True odir
             runGhcProg vanillaCcOpts
-            ifSharedLib (runGhcProg sharedCcOpts)
+            ifSharedLib forceSharedLib (runGhcProg sharedCcOpts)
        | filename <- cSources libBi]
 
   -- link:
@@ -788,7 +792,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       Ld.combineObjectFiles verbosity ldProg
         ghciLibFilePath ghciObjFiles
 
-    ifSharedLib $
+    ifSharedLib False $
       runGhcProg ghcSharedLinkArgs
 
 
@@ -1134,3 +1138,14 @@ registerPackage
 registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
   let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
   HcPkg.reregister verbosity ghcPkg packageDbs (Right installedPkgInfo)
+
+-- -----------------------------------------------------------------------------
+-- Utils
+
+ghcDynamicByDefault :: Verbosity -> ConfiguredProgram -> IO Bool
+ghcDynamicByDefault verbosity ghcProg
+    = do xs <- getGhcInfo verbosity ghcProg
+         return $ case lookup "Dynamic by default" xs of
+                  Just "YES" -> True
+                  _          -> False
+
