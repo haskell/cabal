@@ -537,10 +537,7 @@ configure (pkg_descr0, pbi) cfg
             CompilerId GHC _ ->
                 case lookupProgram ghcProgram programsConfig''' of
                 Just ghcProg ->
-                    do xs <- GHC.getGhcInfo verbosity ghcProg
-                       return $ case lookup "Dynamic by default" xs of
-                                Just "YES" -> True
-                                _ -> False
+                    GHC.ghcDynamicByDefault verbosity ghcProg
                 Nothing -> return False
             _ -> return False
 
