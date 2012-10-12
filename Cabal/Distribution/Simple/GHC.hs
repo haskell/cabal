@@ -667,9 +667,11 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                     }
 
   unless (null (libModules lib)) $
-    do ifVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
-       ifProfLib                    (runGhcProg profOpts)
-       ifSharedLib  forceSharedLib  (runGhcProg sharedOpts)
+    do let vanilla = ifVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
+           shared  = ifSharedLib  forceSharedLib  (runGhcProg sharedOpts)
+       if dynamicByDefault then do shared;  vanilla
+                           else do vanilla; shared
+       ifProfLib (runGhcProg profOpts)
 
   -- build any C sources
   unless (null (cSources libBi)) $ do
