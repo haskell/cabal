@@ -70,7 +70,7 @@ import Distribution.Verbosity
 import Distribution.Compat.Exception
          ( catchIO )
 
-import System.Directory  ( doesFileExist )
+import System.Directory  ( doesFileExist, canonicalizePath )
 import System.FilePath   ( (</>), (<.>) )
 import System.IO         ( Handle, hPutStr )
 import System.Exit       ( ExitCode(..), exitWith )
@@ -382,7 +382,14 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       Nothing        -> return ()
       Just logHandle -> info verbosity $ "Redirecting build log to "
                                       ++ show logHandle
-    process <- runProcess path args
+
+    -- Since useWorkingDir can change the relative path, the path argument must
+    -- be turned into an absolute path. On some systems, runProcess will take
+    -- path as relative to the new working directory instead of the current
+    -- working directory.
+    path' <- canonicalizePath path
+
+    process <- runProcess path' args
                  (useWorkingDir options) Nothing
                  Nothing (useLoggingHandle options) (useLoggingHandle options)
     exitCode <- waitForProcess process
