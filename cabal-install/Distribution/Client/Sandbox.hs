@@ -9,6 +9,7 @@
 
 module Distribution.Client.Sandbox (
     sandboxInit,
+    sandboxDelete,
     sandboxAddSource,
     sandboxConfigure,
     sandboxBuild,
@@ -96,6 +97,11 @@ dumpPackageEnvironment verbosity sandboxFlags = do
 -- | Entry point for the 'cabal sandbox-init' command.
 sandboxInit :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
 sandboxInit _verbosity _sandboxFlags _globalFlags = do
+  die "Not implemented."
+
+-- | Entry point for the 'cabal sandbox-delete' command.
+sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
+sandboxDelete _verbosity _sandboxFlags _globalFlags = do
   die "Not implemented."
 
 -- | Entry point for the 'cabal sandbox-add-source' command.
