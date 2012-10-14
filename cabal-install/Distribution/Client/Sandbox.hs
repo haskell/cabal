@@ -54,7 +54,8 @@ import Control.Monad                          ( unless, when )
 import Data.Monoid                            ( mappend, mempty )
 import System.Directory                       ( canonicalizePath
                                               , doesDirectoryExist
-                                              , doesFileExist )
+                                              , doesFileExist
+                                              , removeDirectoryRecursive )
 import System.FilePath                        ( (</>) )
 
 
@@ -101,8 +102,18 @@ sandboxInit _verbosity _sandboxFlags _globalFlags = do
 
 -- | Entry point for the 'cabal sandbox-delete' command.
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
-sandboxDelete _verbosity _sandboxFlags _globalFlags = do
-  die "Not implemented."
+sandboxDelete verbosity sandboxFlags _globalFlags =
+  if sandboxLoc == defaultSandboxLocation
+  then do
+    sandboxDir <- getSandboxLocation verbosity sandboxFlags
+    notice verbosity $ "deleting..."
+    removeDirectoryRecursive sandboxDir
+  else
+    die $ "Non-default sandbox location used: " ++ sandboxLoc
+    ++ "\nPlease delete manually."
+  where
+    sandboxLoc = fromFlagOrDefault defaultSandboxLocation
+                 (sandboxLocation sandboxFlags)
 
 -- | Entry point for the 'cabal sandbox-add-source' command.
 sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
