@@ -31,8 +31,9 @@ import Distribution.Client.Setup
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , IndexFlags(..), indexCommand
-         , SandboxFlags(..), sandboxInitCommand, sandboxAddSourceCommand
-         , sandboxConfigureCommand, sandboxBuildCommand, sandboxInstallCommand
+         , SandboxFlags(..), sandboxInitCommand, sandboxDeleteCommand
+         , sandboxAddSourceCommand, sandboxConfigureCommand
+         , sandboxBuildCommand, sandboxInstallCommand
          , dumpPkgEnvCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
@@ -65,6 +66,7 @@ import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Unpack             (unpack)
 import Distribution.Client.Index              (index)
 import Distribution.Client.Sandbox            (sandboxInit
+                                              , sandboxDelete
                                               , sandboxAddSource
                                               , sandboxBuild
                                               , sandboxConfigure
@@ -170,6 +172,8 @@ mainWorker args = topHandler $
        indexCommand `commandAddAction` indexAction
       ,hiddenCommand $
        sandboxInitCommand `commandAddAction` sandboxInitAction
+      ,hiddenCommand $
+       sandboxDeleteCommand `commandAddAction` sandboxDeleteAction
       ,hiddenCommand $
        sandboxAddSourceCommand `commandAddAction` sandboxAddSourceAction
       ,hiddenCommand $
@@ -591,6 +595,14 @@ sandboxInitAction sandboxFlags extraArgs globalFlags = do
       ++ unwords extraArgs
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
   sandboxInit verbosity sandboxFlags globalFlags
+
+sandboxDeleteAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
+sandboxDeleteAction sandboxFlags extraArgs globalFlags = do
+  when ((>0). length $ extraArgs) $ do
+    die $ "the 'sandbox-init' command doesn't expect any arguments: "
+      ++ unwords extraArgs
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  sandboxDelete verbosity sandboxFlags globalFlags
 
 sandboxAddSourceAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
 sandboxAddSourceAction sandboxFlags extraArgs _globalFlags = do

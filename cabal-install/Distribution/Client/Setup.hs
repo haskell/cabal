@@ -31,8 +31,8 @@ module Distribution.Client.Setup
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , indexCommand, IndexFlags(..)
     , dumpPkgEnvCommand
-    , sandboxInitCommand, sandboxConfigureCommand, sandboxAddSourceCommand
-    , sandboxBuildCommand, sandboxInstallCommand
+    , sandboxInitCommand, sandboxDeleteCommand, sandboxConfigureCommand
+    , sandboxAddSourceCommand, sandboxBuildCommand, sandboxInstallCommand
     , SandboxFlags(..), defaultSandboxLocation
 
     , parsePackageArgs
@@ -1302,6 +1302,16 @@ sandboxInitCommand = CommandUI {
   commandSynopsis     = "Initialise a fresh sandbox",
   commandDescription  = Nothing,
   commandUsage        = \pname -> usageFlags pname "sandbox-init",
+  commandDefaultFlags = defaultSandboxFlags,
+  commandOptions      = commonSandboxOptions
+  }
+
+sandboxDeleteCommand :: CommandUI SandboxFlags
+sandboxDeleteCommand = CommandUI {
+  commandName         = "sandbox-delete",
+  commandSynopsis     = "Deletes current sandbox",
+  commandDescription  = Nothing,
+  commandUsage        = \pname -> usageFlags pname "sandbox-delete",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
