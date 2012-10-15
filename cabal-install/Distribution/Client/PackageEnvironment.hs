@@ -127,8 +127,8 @@ basePackageEnvironment pkgEnvDir = do
       }
 
 -- | Initial configuration that we write out to the package environment file if
--- it does not exist. When the package environment gets loaded it gets layered
--- on top of 'basePackageEnvironment'.
+-- it does not exist. When the package environment gets loaded this
+-- configuration gets layered on top of 'basePackageEnvironment'.
 initialPackageEnvironment :: FilePath -> Compiler -> IO PackageEnvironment
 initialPackageEnvironment pkgEnvDir compiler = do
   initialConf' <- initialSavedConfig
