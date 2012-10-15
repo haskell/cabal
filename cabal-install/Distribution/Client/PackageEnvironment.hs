@@ -57,6 +57,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
 import qualified Distribution.Text         as Text
 
+
 --
 -- * Configuration saved in the package environment file
 --
@@ -167,8 +168,8 @@ commentPackageEnvironment pkgEnvDir = do
     pkgEnvSavedConfig = commentConf `mappend` baseConf
     }
 
--- | Given a package environment loaded from a file, layer it on top of the base
--- package environment.
+-- | Given a package environment, layer it on top of the base package
+-- environment.
 addBasePkgEnv :: Verbosity -> FilePath -> PackageEnvironment
                  -> IO PackageEnvironment
 addBasePkgEnv verbosity pkgEnvDir extra = do
@@ -182,6 +183,26 @@ addBasePkgEnv verbosity pkgEnvDir extra = do
       conf <- loadConfig verbosity (Flag confPath) NoFlag
       let conf' = baseConf `mappend` conf `mappend` (pkgEnvSavedConfig extra)
       return $ extra { pkgEnvSavedConfig = conf' }
+
+-- | Given a package environment, layer it on top of the user package
+-- environment (the one loaded from the optional "cabal.config" file).
+addUserPkgEnv :: Verbosity -> FilePath -> PackageEnvironment
+                 -> IO PackageEnvironment
+addUserPkgEnv verbosity pkgEnvDir pkgEnv = do
+  let path = pkgEnvDir </> userPackageEnvironmentFileName
+  minp <- readPackageEnvironmentFile mempty path
+  userPkgEnv <- case minp of
+    Nothing -> return mempty
+    Just (ParseOk warns parseResult) -> do
+      when (not $ null warns) $ warn verbosity $
+        unlines (map (showPWarning path) warns)
+      return parseResult
+    Just (ParseFailed err) -> do
+      let (line, msg) = locatedErrorMsg err
+      warn verbosity $ "Error parsing user package environment file " ++ path
+        ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
+      return mempty
+  return $ userPkgEnv `mappend` pkgEnv
 
 -- | Try to load a package environment file, exiting with error if it doesn't
 -- exist.
@@ -200,7 +221,8 @@ tryLoadPackageEnvironment verbosity pkgEnvDir = do
       let (line, msg) = locatedErrorMsg err
       die $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
-  addBasePkgEnv verbosity pkgEnvDir pkgEnv
+  pkgEnv' <- addUserPkgEnv verbosity pkgEnvDir pkgEnv
+  addBasePkgEnv verbosity pkgEnvDir pkgEnv'
 
 -- | Load a package environment file, creating one if it doesn't exist. Note
 -- that the path parameter should be a name of an existing directory.
@@ -242,7 +264,8 @@ loadOrCreatePackageEnvironment verbosity pkgEnvDir configFlags compiler = do
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
       warn verbosity $ "Using default package environment."
       initialPackageEnvironment pkgEnvDir compiler
-  addBasePkgEnv verbosity pkgEnvDir pkgEnv
+  pkgEnv' <- addUserPkgEnv verbosity pkgEnvDir pkgEnv
+  addBasePkgEnv verbosity pkgEnvDir pkgEnv'
 
   where
     updateConfigFlags :: PackageEnvironment -> (ConfigFlags -> ConfigFlags)
@@ -363,6 +386,9 @@ writePackageEnvironmentFile path comments pkgEnv = do
   where
     explanation = unlines
       ["-- This is a Cabal package environment file."
+      ,"-- THIS FILE IS AUTO-GENERATED. DO NOT EDIT DIRECTLY."
+      ,"-- Please create a 'cabal.config' file in the same directory"
+      ,"-- if you want to change the default settings for this sandbox."
       ,""
       ,"-- The available configuration options are listed below."
       ,"-- Some of them have default values listed."
