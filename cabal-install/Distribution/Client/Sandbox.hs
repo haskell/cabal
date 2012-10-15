@@ -207,6 +207,13 @@ sandboxInstall :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
 sandboxInstall verbosity _sandboxFlags _configFlags _configExFlags
   installFlags _haddockFlags _extraArgs _globalFlags
   | fromFlagOrDefault False (installOnly installFlags)
+  -- TODO: It'd nice if this picked up the -w flag passed to sandbox-configure.
+  -- Right now, running
+  --
+  -- $ cabal sandbox-init && cabal sandbox-configure -w /path/to/ghc
+  --   && cabal sandbox-build && cabal sandbox-install
+  --
+  -- performs the compilation twice unless you also pass -w to sandbox-install.
   = setupWrapper verbosity defaultSetupScriptOptions Nothing
     installCommand (const mempty) []
 
