@@ -20,6 +20,7 @@ module Distribution.Client.PackageEnvironment (
   , initialPackageEnvironment
   , commentPackageEnvironment
   , defaultPackageEnvironmentFileName
+  , userPackageEnvironmentFileName
   ) where
 
 import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
@@ -80,8 +81,15 @@ instance Monoid PackageEnvironment where
     where
       combine f = f a `mappend` f b
 
+-- | The automatically-created package environment file that should not be
+-- touched by the user.
 defaultPackageEnvironmentFileName :: FilePath
-defaultPackageEnvironmentFileName = "pkgenv"
+defaultPackageEnvironmentFileName = "cabal.sandbox.config"
+
+-- | Optional package environment file that can be used to customize the default
+-- settings. Created by the user.
+userPackageEnvironmentFileName :: FilePath
+userPackageEnvironmentFileName = "cabal.config"
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.
