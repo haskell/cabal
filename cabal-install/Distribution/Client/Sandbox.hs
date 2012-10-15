@@ -130,7 +130,9 @@ sandboxInit verbosity sandboxFlags _globalFlags = do
   indexFile <- tryGetIndexFilePath pkgEnv
   Index.createEmpty verbosity indexFile
 
-  -- Create the package DB for this compiler if it doesn't exist.
+  -- Create the package DB for this compiler if it doesn't exist. If the user
+  -- later chooses a different compiler with -w, the sandbox for that compiler
+  -- will be created on demand.
   initPackageDBIfNeeded verbosity
     (savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv) comp conf
 
