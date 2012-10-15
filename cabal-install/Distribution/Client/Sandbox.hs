@@ -143,8 +143,8 @@ sandboxDelete verbosity sandboxFlags _globalFlags = do
   removeFile (pkgEnvDir </> sandboxPackageEnvironmentFile)
   if sandboxLoc == defaultSandboxLocation
     then do
-      sandboxDir <- getSandboxLocation verbosity sandboxFlags
-      notice verbosity $ "deleting..."
+      sandboxDir <- canonicalizePath sandboxLoc
+      notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
       removeDirectoryRecursive sandboxDir
     else
       die $ "Non-default sandbox location used: " ++ sandboxLoc
