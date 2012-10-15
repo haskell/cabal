@@ -169,30 +169,27 @@ commentPackageEnvironment sandboxDir = do
     pkgEnvSavedConfig = commentConf `mappend` baseConf
     }
 
--- | Given a package environment, layer it on top of the base package
--- environment.
-addBasePkgEnv :: Verbosity -> FilePath -> PackageEnvironment
-                 -> IO PackageEnvironment
-addBasePkgEnv verbosity sandboxDir extra = do
+-- | Return the base package environment: settings from the config file this
+-- package environment optionally inherits from layered on top of
+-- `basePackageEnvironment`.
+basePkgEnv :: Verbosity -> FilePath -> (Flag FilePath) -> IO PackageEnvironment
+basePkgEnv verbosity sandboxDir inheritConfig = do
   let base     = basePackageEnvironment sandboxDir
       baseConf = pkgEnvSavedConfig base
   -- Does this package environment inherit from some config file?
-  case pkgEnvInherit extra of
-    NoFlag          ->
-      return $ base `mappend` extra
+  case inheritConfig of
+    NoFlag          -> return base
     (Flag confPath) -> do
       conf <- loadConfig verbosity (Flag confPath) NoFlag
-      let conf' = baseConf `mappend` conf `mappend` (pkgEnvSavedConfig extra)
-      return $ extra { pkgEnvSavedConfig = conf' }
+      return $ base { pkgEnvSavedConfig = baseConf `mappend` conf }
 
--- | Given a package environment, layer it on top of the user package
--- environment (the one loaded from the optional "cabal.config" file).
-addUserPkgEnv :: Verbosity -> FilePath -> PackageEnvironment
-                 -> IO PackageEnvironment
-addUserPkgEnv verbosity pkgEnvDir pkgEnv = do
+-- | Load the user package environment if it exists (the optional "cabal.config"
+-- file).
+userPkgEnv :: Verbosity -> FilePath -> IO PackageEnvironment
+userPkgEnv verbosity pkgEnvDir = do
   let path = pkgEnvDir </> userPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
-  userPkgEnv <- case minp of
+  case minp of
     Nothing -> return mempty
     Just (ParseOk warns parseResult) -> do
       when (not $ null warns) $ warn verbosity $
@@ -203,7 +200,6 @@ addUserPkgEnv verbosity pkgEnvDir pkgEnv = do
       warn verbosity $ "Error parsing user package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
       return mempty
-  return $ userPkgEnv `mappend` pkgEnv
 
 -- | Try to load a package environment file, exiting with error if it doesn't
 -- exist.
@@ -223,8 +219,9 @@ tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir = do
       let (line, msg) = locatedErrorMsg err
       die $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
-  pkgEnv' <- addUserPkgEnv verbosity pkgEnvDir pkgEnv
-  addBasePkgEnv verbosity sandboxDir pkgEnv'
+  user <- userPkgEnv verbosity pkgEnvDir
+  base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit pkgEnv)
+  return $ base `mappend` user `mappend` pkgEnv
 
 -- | Load a package environment file, creating one if it doesn't exist. Note
 -- that the path parameter should be a name of an existing directory.
@@ -251,8 +248,9 @@ loadOrCreatePackageEnvironment verbosity sandboxDir pkgEnvDir compiler = do
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
       warn verbosity $ "Using the default package environment."
       initialPackageEnvironment sandboxDir compiler
-  pkgEnv' <- addUserPkgEnv verbosity pkgEnvDir pkgEnv
-  addBasePkgEnv verbosity sandboxDir pkgEnv'
+  user <- userPkgEnv verbosity pkgEnvDir
+  base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit pkgEnv)
+  return $ base `mappend` user `mappend` pkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
