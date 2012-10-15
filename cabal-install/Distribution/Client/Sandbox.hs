@@ -32,7 +32,7 @@ import Distribution.Client.PackageEnvironment
   , commentPackageEnvironment
   , showPackageEnvironmentWithComments
   , setPackageDB
-  , defaultPackageEnvironmentFileName )
+  , sandboxPackageEnvironmentFile )
 import Distribution.Client.SetupWrapper
   ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Targets            ( readUserTargets )
@@ -138,7 +138,7 @@ sandboxInit verbosity sandboxFlags _globalFlags = do
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
 sandboxDelete verbosity sandboxFlags _globalFlags = do
   pkgEnvDir <- getCurrentDirectory
-  removeFile (pkgEnvDir </> defaultPackageEnvironmentFileName)
+  removeFile (pkgEnvDir </> sandboxPackageEnvironmentFile)
   if sandboxLoc == defaultSandboxLocation
     then do
       sandboxDir <- getSandboxLocation verbosity sandboxFlags

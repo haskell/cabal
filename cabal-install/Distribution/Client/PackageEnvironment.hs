@@ -20,8 +20,8 @@ module Distribution.Client.PackageEnvironment (
   , basePackageEnvironment
   , initialPackageEnvironment
   , commentPackageEnvironment
-  , defaultPackageEnvironmentFileName
-  , userPackageEnvironmentFileName
+  , sandboxPackageEnvironmentFile
+  , userPackageEnvironmentFile
   ) where
 
 import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
@@ -85,13 +85,13 @@ instance Monoid PackageEnvironment where
 
 -- | The automatically-created package environment file that should not be
 -- touched by the user.
-defaultPackageEnvironmentFileName :: FilePath
-defaultPackageEnvironmentFileName = "cabal.sandbox.config"
+sandboxPackageEnvironmentFile :: FilePath
+sandboxPackageEnvironmentFile = "cabal.sandbox.config"
 
 -- | Optional package environment file that can be used to customize the default
 -- settings. Created by the user.
-userPackageEnvironmentFileName :: FilePath
-userPackageEnvironmentFileName = "cabal.config"
+userPackageEnvironmentFile :: FilePath
+userPackageEnvironmentFile = "cabal.config"
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.
@@ -190,7 +190,7 @@ addBasePkgEnv verbosity sandboxDir extra = do
 addUserPkgEnv :: Verbosity -> FilePath -> PackageEnvironment
                  -> IO PackageEnvironment
 addUserPkgEnv verbosity pkgEnvDir pkgEnv = do
-  let path = pkgEnvDir </> userPackageEnvironmentFileName
+  let path = pkgEnvDir </> userPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
   userPkgEnv <- case minp of
     Nothing -> return mempty
@@ -210,7 +210,7 @@ addUserPkgEnv verbosity pkgEnvDir pkgEnv = do
 tryLoadPackageEnvironment :: Verbosity -> FilePath -> FilePath
                              -> IO PackageEnvironment
 tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir = do
-  let path = pkgEnvDir </> defaultPackageEnvironmentFileName
+  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
   pkgEnv <- case minp of
     Nothing -> die $
@@ -231,7 +231,7 @@ tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir = do
 loadOrCreatePackageEnvironment :: Verbosity -> FilePath -> FilePath -> Compiler
                                   -> IO PackageEnvironment
 loadOrCreatePackageEnvironment verbosity sandboxDir pkgEnvDir compiler = do
-  let path = pkgEnvDir </> defaultPackageEnvironmentFileName
+  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
   pkgEnv <- case minp of
     Nothing -> do
