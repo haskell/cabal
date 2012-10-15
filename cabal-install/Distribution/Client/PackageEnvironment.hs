@@ -15,11 +15,13 @@ module Distribution.Client.PackageEnvironment (
   , readPackageEnvironmentFile
   , showPackageEnvironment
   , showPackageEnvironmentWithComments
+  , setPackageDB
 
   , basePackageEnvironment
   , initialPackageEnvironment
   , commentPackageEnvironment
-  , defaultPackageEnvironmentFileName
+  , sandboxPackageEnvironmentFile
+  , userPackageEnvironmentFile
   ) where
 
 import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
@@ -56,6 +58,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Distribution.ParseUtils   as ParseUtils ( Field(..) )
 import qualified Distribution.Text         as Text
 
+
 --
 -- * Configuration saved in the package environment file
 --
@@ -80,13 +83,20 @@ instance Monoid PackageEnvironment where
     where
       combine f = f a `mappend` f b
 
-defaultPackageEnvironmentFileName :: FilePath
-defaultPackageEnvironmentFileName = "pkgenv"
+-- | The automatically-created package environment file that should not be
+-- touched by the user.
+sandboxPackageEnvironmentFile :: FilePath
+sandboxPackageEnvironmentFile = "cabal.sandbox.config"
+
+-- | Optional package environment file that can be used to customize the default
+-- settings. Created by the user.
+userPackageEnvironmentFile :: FilePath
+userPackageEnvironmentFile = "cabal.config"
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.
 commonPackageEnvironmentConfig :: FilePath -> SavedConfig
-commonPackageEnvironmentConfig pkgEnvDir =
+commonPackageEnvironmentConfig sandboxDir =
   mempty {
     savedConfigureFlags = mempty {
        configUserInstall = toFlag False,
@@ -95,20 +105,20 @@ commonPackageEnvironmentConfig pkgEnvDir =
     savedUserInstallDirs   = sandboxInstallDirs,
     savedGlobalInstallDirs = sandboxInstallDirs,
     savedGlobalFlags = mempty {
-      globalLogsDir = toFlag $ pkgEnvDir </> "logs",
+      globalLogsDir = toFlag $ sandboxDir </> "logs",
       -- Is this right? cabal-dev uses the global world file.
-      globalWorldFile = toFlag $ pkgEnvDir </> "world"
+      globalWorldFile = toFlag $ sandboxDir </> "world"
       }
     }
   where
-    sandboxInstallDirs = mempty { prefix = toFlag (toPathTemplate pkgEnvDir) }
+    sandboxInstallDirs = mempty { prefix = toFlag (toPathTemplate sandboxDir) }
 
 -- | These are the absolute basic defaults, the fields that must be
 -- initialised. When we load the package environment from the file we layer the
 -- loaded values over these ones.
 basePackageEnvironment :: FilePath -> PackageEnvironment
-basePackageEnvironment pkgEnvDir = do
-  let baseConf = commonPackageEnvironmentConfig pkgEnvDir in
+basePackageEnvironment sandboxDir = do
+  let baseConf = commonPackageEnvironmentConfig sandboxDir in
     mempty {
       pkgEnvSavedConfig = baseConf {
          savedConfigureFlags = (savedConfigureFlags baseConf) {
@@ -119,22 +129,22 @@ basePackageEnvironment pkgEnvDir = do
       }
 
 -- | Initial configuration that we write out to the package environment file if
--- it does not exist. When the package environment gets loaded it gets layered
--- on top of 'basePackageEnvironment'.
+-- it does not exist. When the package environment gets loaded this
+-- configuration gets layered on top of 'basePackageEnvironment'.
 initialPackageEnvironment :: FilePath -> Compiler -> IO PackageEnvironment
-initialPackageEnvironment pkgEnvDir compiler = do
+initialPackageEnvironment sandboxDir compiler = do
   initialConf' <- initialSavedConfig
-  let baseConf =  commonPackageEnvironmentConfig pkgEnvDir
+  let baseConf =  commonPackageEnvironmentConfig sandboxDir
   let initialConf = initialConf' `mappend` baseConf
   return $ mempty {
     pkgEnvSavedConfig = initialConf {
        savedGlobalFlags = (savedGlobalFlags initialConf) {
-          globalLocalRepos = [pkgEnvDir </> "packages"]
+          globalLocalRepos = [sandboxDir </> "packages"]
           },
-       savedConfigureFlags = setPackageDB pkgEnvDir compiler
+       savedConfigureFlags = setPackageDB sandboxDir compiler
                              (savedConfigureFlags initialConf),
        savedInstallFlags = (savedInstallFlags initialConf) {
-         installSummaryFile = [toPathTemplate (pkgEnvDir </>
+         installSummaryFile = [toPathTemplate (sandboxDir </>
                                                "logs" </> "build.log")]
          }
        }
@@ -142,9 +152,9 @@ initialPackageEnvironment pkgEnvDir compiler = do
 
 -- | Use the package DB location specific for this compiler.
 setPackageDB :: FilePath -> Compiler -> ConfigFlags -> ConfigFlags
-setPackageDB pkgEnvDir compiler configFlags =
+setPackageDB sandboxDir compiler configFlags =
   configFlags {
-    configPackageDBs = [Just (SpecificPackageDB $ pkgEnvDir
+    configPackageDBs = [Just (SpecificPackageDB $ sandboxDir
                               </> (showCompilerId compiler ++
                                    "-packages.conf.d"))]
     }
@@ -152,34 +162,51 @@ setPackageDB pkgEnvDir compiler configFlags =
 -- | Default values that get used if no value is given. Used here to include in
 -- comments when we write out the initial package environment.
 commentPackageEnvironment :: FilePath -> IO PackageEnvironment
-commentPackageEnvironment pkgEnvDir = do
+commentPackageEnvironment sandboxDir = do
   commentConf  <- commentSavedConfig
-  let baseConf =  commonPackageEnvironmentConfig pkgEnvDir
+  let baseConf =  commonPackageEnvironmentConfig sandboxDir
   return $ mempty {
     pkgEnvSavedConfig = commentConf `mappend` baseConf
     }
 
--- | Given a package environment loaded from a file, layer it on top of the base
--- package environment.
-addBasePkgEnv :: Verbosity -> FilePath -> PackageEnvironment
-                 -> IO PackageEnvironment
-addBasePkgEnv verbosity pkgEnvDir extra = do
-  let base     = basePackageEnvironment pkgEnvDir
+-- | Return the base package environment: settings from the config file this
+-- package environment optionally inherits from layered on top of
+-- `basePackageEnvironment`.
+basePkgEnv :: Verbosity -> FilePath -> (Flag FilePath) -> IO PackageEnvironment
+basePkgEnv verbosity sandboxDir inheritConfig = do
+  let base     = basePackageEnvironment sandboxDir
       baseConf = pkgEnvSavedConfig base
   -- Does this package environment inherit from some config file?
-  case pkgEnvInherit extra of
-    NoFlag          ->
-      return $ base `mappend` extra
+  case inheritConfig of
+    NoFlag          -> return base
     (Flag confPath) -> do
       conf <- loadConfig verbosity (Flag confPath) NoFlag
-      let conf' = baseConf `mappend` conf `mappend` (pkgEnvSavedConfig extra)
-      return $ extra { pkgEnvSavedConfig = conf' }
+      return $ base { pkgEnvSavedConfig = baseConf `mappend` conf }
+
+-- | Load the user package environment if it exists (the optional "cabal.config"
+-- file).
+userPkgEnv :: Verbosity -> FilePath -> IO PackageEnvironment
+userPkgEnv verbosity pkgEnvDir = do
+  let path = pkgEnvDir </> userPackageEnvironmentFile
+  minp <- readPackageEnvironmentFile mempty path
+  case minp of
+    Nothing -> return mempty
+    Just (ParseOk warns parseResult) -> do
+      when (not $ null warns) $ warn verbosity $
+        unlines (map (showPWarning path) warns)
+      return parseResult
+    Just (ParseFailed err) -> do
+      let (line, msg) = locatedErrorMsg err
+      warn verbosity $ "Error parsing user package environment file " ++ path
+        ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
+      return mempty
 
 -- | Try to load a package environment file, exiting with error if it doesn't
 -- exist.
-tryLoadPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
-tryLoadPackageEnvironment verbosity pkgEnvDir = do
-  let path = pkgEnvDir </> defaultPackageEnvironmentFileName
+tryLoadPackageEnvironment :: Verbosity -> FilePath -> FilePath
+                             -> IO PackageEnvironment
+tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir = do
+  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
   pkgEnv <- case minp of
     Nothing -> die $
@@ -192,61 +219,38 @@ tryLoadPackageEnvironment verbosity pkgEnvDir = do
       let (line, msg) = locatedErrorMsg err
       die $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
-  addBasePkgEnv verbosity pkgEnvDir pkgEnv
+  user <- userPkgEnv verbosity pkgEnvDir
+  base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit pkgEnv)
+  return $ base `mappend` user `mappend` pkgEnv
 
 -- | Load a package environment file, creating one if it doesn't exist. Note
 -- that the path parameter should be a name of an existing directory.
-loadOrCreatePackageEnvironment :: Verbosity -> FilePath
-                                  -> ConfigFlags -> Compiler
+loadOrCreatePackageEnvironment :: Verbosity -> FilePath -> FilePath -> Compiler
                                   -> IO PackageEnvironment
-loadOrCreatePackageEnvironment verbosity pkgEnvDir configFlags compiler = do
-  let path = pkgEnvDir </> defaultPackageEnvironmentFileName
+loadOrCreatePackageEnvironment verbosity sandboxDir pkgEnvDir compiler = do
+  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
   pkgEnv <- case minp of
     Nothing -> do
       notice verbosity $ "Writing default package environment to " ++ path
-      commentPkgEnv <- commentPackageEnvironment pkgEnvDir
-      initialPkgEnv <- initialPackageEnvironment pkgEnvDir compiler
-      let pkgEnv = updateConfigFlags initialPkgEnv
-                   (\flags -> flags `mappend` configFlags)
-      writePackageEnvironmentFile path commentPkgEnv pkgEnv
+      commentPkgEnv <- commentPackageEnvironment sandboxDir
+      initialPkgEnv <- initialPackageEnvironment sandboxDir compiler
+      writePackageEnvironmentFile path commentPkgEnv initialPkgEnv
       return initialPkgEnv
     Just (ParseOk warns parseResult) -> do
       when (not $ null warns) $ warn verbosity $
         unlines (map (showPWarning path) warns)
-
-      -- Update the package environment file in case the user has changed some
-      -- settings via the command-line (otherwise 'configure -w compiler-B' will
-      -- fail for a sandbox already configured to use compiler-A).
-      notice verbosity $ "Writing the updated package environment to " ++ path
-      commentPkgEnv <- commentPackageEnvironment pkgEnvDir
-      let pkgEnv = updateConfigFlags parseResult
-                   (\flags ->
-                     setPackageDB pkgEnvDir compiler flags
-                     `mappend` configFlags)
-      writePackageEnvironmentFile path commentPkgEnv pkgEnv
-
-      return pkgEnv
+      return parseResult
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
       warn verbosity $
         "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
-      warn verbosity $ "Using default package environment."
-      initialPackageEnvironment pkgEnvDir compiler
-  addBasePkgEnv verbosity pkgEnvDir pkgEnv
-
-  where
-    updateConfigFlags :: PackageEnvironment -> (ConfigFlags -> ConfigFlags)
-                         -> PackageEnvironment
-    updateConfigFlags pkgEnv f =
-      let pkgEnvConfig      = pkgEnvSavedConfig pkgEnv
-          pkgEnvConfigFlags = savedConfigureFlags pkgEnvConfig
-      in pkgEnv {
-        pkgEnvSavedConfig = pkgEnvConfig {
-           savedConfigureFlags = f pkgEnvConfigFlags
-           }
-        }
+      warn verbosity $ "Using the default package environment."
+      initialPackageEnvironment sandboxDir compiler
+  user <- userPkgEnv verbosity pkgEnvDir
+  base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit pkgEnv)
+  return $ base `mappend` user `mappend` pkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
@@ -355,6 +359,9 @@ writePackageEnvironmentFile path comments pkgEnv = do
   where
     explanation = unlines
       ["-- This is a Cabal package environment file."
+      ,"-- THIS FILE IS AUTO-GENERATED. DO NOT EDIT DIRECTLY."
+      ,"-- Please create a 'cabal.config' file in the same directory"
+      ,"-- if you want to change the default settings for this sandbox."
       ,""
       ,"-- The available configuration options are listed below."
       ,"-- Some of them have default values listed."

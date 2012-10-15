@@ -8,12 +8,14 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Client.Sandbox (
-    dumpPackageEnvironment,
-
+    sandboxInit,
+    sandboxDelete,
     sandboxAddSource,
     sandboxConfigure,
     sandboxBuild,
-    sandboxInstall
+    sandboxInstall,
+
+    dumpPackageEnvironment
   ) where
 
 import Distribution.Client.Setup
@@ -28,8 +30,9 @@ import Distribution.Client.PackageEnvironment
   ( PackageEnvironment(..)
   , loadOrCreatePackageEnvironment, tryLoadPackageEnvironment
   , commentPackageEnvironment
-  , showPackageEnvironmentWithComments, readPackageEnvironmentFile
-  , basePackageEnvironment, defaultPackageEnvironmentFileName )
+  , showPackageEnvironmentWithComments
+  , setPackageDB
+  , sandboxPackageEnvironmentFile )
 import Distribution.Client.SetupWrapper
   ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Targets            ( readUserTargets )
@@ -42,9 +45,8 @@ import Distribution.Simple.Program            ( ProgramConfiguration
 import Distribution.Simple.Setup              ( Flag(..), toFlag
                                               , BuildFlags(..), HaddockFlags(..)
                                               , buildCommand, fromFlagOrDefault )
-import Distribution.Simple.Utils              ( die, notice
+import Distribution.Simple.Utils              ( die, debug, notice
                                               , createDirectoryIfMissingVerbose )
-import Distribution.ParseUtils                ( ParseResult(..) )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
@@ -52,7 +54,9 @@ import Control.Monad                          ( unless, when )
 import Data.Monoid                            ( mappend, mempty )
 import System.Directory                       ( canonicalizePath
                                               , doesDirectoryExist
-                                              , doesFileExist )
+                                              , getCurrentDirectory
+                                              , removeDirectoryRecursive
+                                              , removeFile )
 import System.FilePath                        ( (</>) )
 
 
@@ -65,94 +69,121 @@ getSandboxLocation verbosity sandboxFlags = do
                     (sandboxLocation sandboxFlags)
   sandboxDir <- canonicalizePath sandboxDir'
   dirExists  <- doesDirectoryExist sandboxDir
-  pkgEnvExists <- doesFileExist $
-                  sandboxDir </> defaultPackageEnvironmentFileName
-  unless (dirExists && pkgEnvExists) $
+  -- TODO: Also check for an initialised package DB?
+  unless dirExists $
     die ("No sandbox exists at " ++ sandboxDir)
   notice verbosity $ "Using a sandbox located at " ++ sandboxDir
   return sandboxDir
 
 -- | Return the name of the package index file for this package environment.
-getIndexFilePath :: PackageEnvironment -> IO FilePath
-getIndexFilePath pkgEnv = do
+tryGetIndexFilePath :: PackageEnvironment -> IO FilePath
+tryGetIndexFilePath pkgEnv = do
   let paths = globalLocalRepos . savedGlobalFlags . pkgEnvSavedConfig $ pkgEnv
   case paths of
-    []  -> die $ "Distribution.Client.Sandbox.getIndexFilePath: " ++
+    []  -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "no local repos found"
     [p] -> return $ p </> Index.defaultIndexFileName
-    _   -> die $ "Distribution.Client.Sandbox.getIndexFilePath: " ++
+    _   -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "too many local repos found"
+
+-- | Initialise a package DB for this compiler if it doesn't exist.
+initPackageDBIfNeeded :: Verbosity -> ConfigFlags
+                         -> Compiler -> ProgramConfiguration
+                         -> IO ()
+initPackageDBIfNeeded verbosity configFlags comp conf = do
+  -- TODO: Is pattern-matching here really safe?
+  let [Just (SpecificPackageDB dbPath)] = configPackageDBs configFlags
+  packageDBExists <- doesDirectoryExist dbPath
+  unless packageDBExists $
+    Register.initPackageDB verbosity comp conf dbPath
+  when packageDBExists $
+    debug verbosity $ "The package database already exists: " ++ dbPath
 
 -- | Entry point for the 'cabal dump-pkgenv' command.
 dumpPackageEnvironment :: Verbosity -> SandboxFlags -> IO ()
 dumpPackageEnvironment verbosity sandboxFlags = do
-  pkgEnvDir <- getSandboxLocation verbosity sandboxFlags
-
-  pkgEnv        <- tryLoadPackageEnvironment verbosity pkgEnvDir
+  sandboxDir    <- getSandboxLocation verbosity sandboxFlags
+  pkgEnvDir     <- getCurrentDirectory
+  pkgEnv        <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
   commentPkgEnv <- commentPackageEnvironment pkgEnvDir
   putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
+
+-- | Entry point for the 'cabal sandbox-init' command.
+sandboxInit :: Verbosity -> SandboxFlags  -> GlobalFlags -> IO ()
+sandboxInit verbosity sandboxFlags _globalFlags = do
+  -- Create the sandbox directory.
+  let sandboxDir' = fromFlagOrDefault defaultSandboxLocation
+                    (sandboxLocation sandboxFlags)
+  createDirectoryIfMissingVerbose verbosity True sandboxDir'
+  sandboxDir <- canonicalizePath sandboxDir'
+  notice verbosity $ "Using a sandbox located at " ++ sandboxDir
+
+  -- Determine which compiler to use (using the value from ~/.cabal/config).
+  userConfig   <- loadConfig verbosity NoFlag NoFlag
+  (comp, conf) <- configCompilerAux (savedConfigureFlags userConfig)
+
+  -- Create the package environment file.
+  pkgEnvDir <- getCurrentDirectory
+  pkgEnv    <- loadOrCreatePackageEnvironment verbosity sandboxDir pkgEnvDir comp
+
+  -- Create the index file if it doesn't exist.
+  indexFile <- tryGetIndexFilePath pkgEnv
+  Index.createEmpty verbosity indexFile
+
+  -- Create the package DB for this compiler if it doesn't exist. If the user
+  -- later chooses a different compiler with -w, the sandbox for that compiler
+  -- will be created on demand.
+  initPackageDBIfNeeded verbosity
+    (savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv) comp conf
+
+-- | Entry point for the 'cabal sandbox-delete' command.
+sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
+sandboxDelete verbosity sandboxFlags _globalFlags = do
+  pkgEnvDir <- getCurrentDirectory
+  removeFile (pkgEnvDir </> sandboxPackageEnvironmentFile)
+  if sandboxLoc == defaultSandboxLocation
+    then do
+      sandboxDir <- canonicalizePath sandboxLoc
+      notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
+      removeDirectoryRecursive sandboxDir
+    else
+      die $ "Non-default sandbox location used: " ++ sandboxLoc
+      ++ "\nPlease delete manually."
+  where
+    sandboxLoc = fromFlagOrDefault defaultSandboxLocation
+                 (sandboxLocation sandboxFlags)
+
+-- | Entry point for the 'cabal sandbox-add-source' command.
+sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
+sandboxAddSource verbosity sandboxFlags buildTreeRefs = do
+  sandboxDir <- getSandboxLocation verbosity sandboxFlags
+  pkgEnvDir  <- getCurrentDirectory
+  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
+  indexFile  <- tryGetIndexFilePath pkgEnv
+  Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
 
 -- | Entry point for the 'cabal sandbox-configure' command.
 sandboxConfigure :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
                     -> [String] -> GlobalFlags -> IO ()
 sandboxConfigure verbosity
   sandboxFlags configFlags configExFlags extraArgs globalFlags = do
-  let sandboxDir' = fromFlagOrDefault defaultSandboxLocation
-                    (sandboxLocation sandboxFlags)
-  createDirectoryIfMissingVerbose verbosity True sandboxDir'
-  sandboxDir   <- canonicalizePath sandboxDir'
-  (comp, conf) <- configCompilerSandbox sandboxDir
-  notice verbosity $ "Using a sandbox located at " ++ sandboxDir
-
-  pkgEnv <- loadOrCreatePackageEnvironment verbosity sandboxDir configFlags comp
-
+  sandboxDir <- getSandboxLocation verbosity sandboxFlags
+  pkgEnvDir  <- getCurrentDirectory
+  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
   let config         = pkgEnvSavedConfig pkgEnv
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-      [Just (SpecificPackageDB dbPath)]
-                     = configPackageDBs configFlags'
+  (comp, conf) <- configCompilerAux configFlags'
 
-  indexFile <- getIndexFilePath pkgEnv
-  Index.createEmpty verbosity indexFile
-  packageDBExists <- doesDirectoryExist dbPath
-  unless packageDBExists $
-    Register.initPackageDB verbosity comp conf dbPath
-  when packageDBExists $
-    notice verbosity $ "The package database already exists: " ++ dbPath
+  -- If the user has set the -w option, we may need to create the package DB for
+  -- this compiler.
+  let configFlags''  = setPackageDB sandboxDir comp configFlags'
+  initPackageDBIfNeeded verbosity configFlags'' comp conf
+
   configure verbosity
-            (configPackageDB' configFlags') (globalRepos globalFlags')
-            comp conf configFlags' configExFlags' extraArgs
-  where
-    -- We need to know the compiler version so that the correct package DB is
-    -- used. We try to read it from the package environment file, which might
-    -- not exist.
-    configCompilerSandbox :: FilePath -> IO (Compiler, ProgramConfiguration)
-    configCompilerSandbox sandboxDir = do
-      -- Build a ConfigFlags record...
-      let basePkgEnv = basePackageEnvironment sandboxDir
-      userConfig    <- loadConfig verbosity NoFlag NoFlag
-      mPkgEnv       <- readPackageEnvironmentFile mempty
-                       (sandboxDir </> defaultPackageEnvironmentFileName)
-      let pkgEnv     = case mPkgEnv of
-            Just (ParseOk _warns parseResult) -> parseResult
-            _                                 -> mempty
-      let basePkgEnvConfig = pkgEnvSavedConfig basePkgEnv
-          pkgEnvConfig     = pkgEnvSavedConfig pkgEnv
-          configFlags'     = savedConfigureFlags basePkgEnvConfig
-                             `mappend` savedConfigureFlags userConfig
-                             `mappend` savedConfigureFlags pkgEnvConfig
-                             `mappend` configFlags
-      -- ...and pass it to configCompilerAux.
-      configCompilerAux configFlags'
-
--- | Entry point for the 'cabal sandbox-add-source' command.
-sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
-sandboxAddSource verbosity sandboxFlags buildTreeRefs = do
-  sandboxDir <- getSandboxLocation verbosity sandboxFlags
-  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir
-  indexFile  <- getIndexFilePath pkgEnv
-  Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
+            (configPackageDB' configFlags'') (globalRepos globalFlags')
+            comp conf configFlags'' configExFlags' extraArgs
 
 -- | Entry point for the 'cabal sandbox-build' command.
 sandboxBuild :: Verbosity -> SandboxFlags -> BuildFlags -> [String] -> IO ()
@@ -178,14 +209,21 @@ sandboxInstall :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
 sandboxInstall verbosity _sandboxFlags _configFlags _configExFlags
   installFlags _haddockFlags _extraArgs _globalFlags
   | fromFlagOrDefault False (installOnly installFlags)
+  -- TODO: It'd nice if this picked up the -w flag passed to sandbox-configure.
+  -- Right now, running
+  --
+  -- $ cabal sandbox-init && cabal sandbox-configure -w /path/to/ghc
+  --   && cabal sandbox-build && cabal sandbox-install
+  --
+  -- performs the compilation twice unless you also pass -w to sandbox-install.
   = setupWrapper verbosity defaultSetupScriptOptions Nothing
     installCommand (const mempty) []
 
 sandboxInstall verbosity sandboxFlags configFlags configExFlags
   installFlags haddockFlags extraArgs globalFlags = do
   sandboxDir <- getSandboxLocation verbosity sandboxFlags
-
-  pkgEnv <- tryLoadPackageEnvironment verbosity sandboxDir
+  pkgEnvDir  <- getCurrentDirectory
+  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
   targets    <- readUserTargets verbosity extraArgs
   let config        = pkgEnvSavedConfig pkgEnv
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
@@ -195,10 +233,16 @@ sandboxInstall verbosity sandboxFlags configFlags configExFlags
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, conf) <- configCompilerAux' configFlags'
+
+  -- If the user has set the -w option, we may need to create the package DB for
+  -- this compiler.
+  let configFlags''  = setPackageDB sandboxDir comp configFlags'
+  initPackageDBIfNeeded verbosity configFlags'' comp conf
+
   install verbosity
-          (configPackageDB' configFlags') (globalRepos globalFlags')
+          (configPackageDB' configFlags'') (globalRepos globalFlags')
           comp conf
-          globalFlags' configFlags' configExFlags' installFlags' haddockFlags
+          globalFlags' configFlags'' configExFlags' installFlags' haddockFlags
           targets
 
 configPackageDB' :: ConfigFlags -> PackageDBStack
