@@ -45,7 +45,7 @@ import Distribution.Simple.Program            ( ProgramConfiguration
 import Distribution.Simple.Setup              ( Flag(..), toFlag
                                               , BuildFlags(..), HaddockFlags(..)
                                               , buildCommand, fromFlagOrDefault )
-import Distribution.Simple.Utils              ( die, debug, notice
+import Distribution.Simple.Utils              ( die, debug, notice, info
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import qualified Distribution.Client.Index as Index
@@ -72,7 +72,7 @@ getSandboxLocation verbosity sandboxFlags = do
   -- TODO: Also check for an initialised package DB?
   unless dirExists $
     die ("No sandbox exists at " ++ sandboxDir)
-  notice verbosity $ "Using a sandbox located at " ++ sandboxDir
+  info verbosity $ "Using a sandbox located at " ++ sandboxDir
   return sandboxDir
 
 -- | Return the name of the package index file for this package environment.
