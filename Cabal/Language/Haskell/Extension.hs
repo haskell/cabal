@@ -361,6 +361,16 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/ffi.html#id681687>
   | UnliftedFFITypes
 
+  -- | Enable interruptible FFI.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/ffi.html#ffi-interruptible>
+  | InterruptibleFFI
+
+  -- | Allow use of CAPI FFI calling convention (@foreign import capi@).
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/ffi.html#ffi-capi>
+  | CApiFFI
+
   -- | Defer validity checking of types until after expanding type
   -- synonyms, relaxing the constraints on how synonyms may be used.
   --
@@ -386,6 +396,11 @@ data KnownExtension =
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#disambiguate-fields>
   | DisambiguateRecordFields
+
+  -- | Enable traditional record syntax (as supported by Haskell 98)
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#traditional-record-syntax>
+  | TraditionalRecordSyntax
 
   -- | Enable overloading of string literals using a type class, much
   -- like integer literals.
@@ -433,6 +448,21 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/deriving.html#deriving-typeable>
   | DeriveDataTypeable
 
+  -- | Enable @deriving@ for 'GHC.Generics.Generic' and 'GHC.Generics.Generic1'.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/deriving.html#deriving-typeable>
+  | DeriveGeneric
+
+  -- | Enable support for default signatures.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#class-default-signatures>
+  | DefaultSignatures
+
+  -- | Allow type signatures to be specified in instance declarations.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#instance-sigs>
+  | InstanceSigs
+
   -- | Allow a class method's type to place additional constraints on
   -- a class type variable.
   --
@@ -476,6 +506,12 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#generalised-list-comprehensions>
   | TransformListComp
 
+  -- | Enable monad comprehensions, which generalise the list
+  -- comprehension syntax to work for any monad.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#monad-comprehensions>
+  | MonadComprehensions
+
   -- | Enable view patterns, which match a value by applying a
   -- function and matching on the result.
   --
@@ -513,6 +549,16 @@ data KnownExtension =
   -- | Improve the layout rule when @if@ expressions are used in a @do@
   -- block.
   | DoAndIfThenElse
+
+  -- | Enable support for multi-way @if@-expressions.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#multi-way-if>
+  | MultiWayIf
+
+  -- | Enable support lambda-@case@ expressions.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#lambda-case>
+  | LambdaCase
 
   -- | Makes much of the Haskell sugar be desugared into calls to the
   -- function with a particular name that is in scope.
@@ -579,6 +625,12 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/safe-haskell.html#safe-trust>
   | Trustworthy
 
+  -- | Compile a module in the Unsafe, Safe Haskell mode so that
+  -- modules compiled using Safe, Safe Haskell mode can't import it.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/safe-haskell.html#safe-trust>
+  | Unsafe
+
   -- | Allow type class/implicit parameter/equality constraints to be
   -- used as types with the special kind constraint.  Also generalise
   -- the @(ctxt => ty)@ syntax so that any type of kind constraint can
@@ -586,6 +638,21 @@ data KnownExtension =
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/constraint-kind.html>
   | ConstraintKinds
+
+  -- | Enable kind polymorphism.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/kind-polymorphism.html>
+  | PolyKinds
+
+  -- | Enable datatype promotion.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/promotion.html>
+  | DataKinds
+
+  -- | Enable parallel arrays syntax (@[:@, @:]@) for /Data Parallel Haskell/.
+  --
+  -- * <http://www.haskell.org/haskellwiki/GHC/Data_Parallel_Haskell>
+  | ParallelArrays
 
   deriving (Show, Read, Eq, Enum, Bounded)
 
