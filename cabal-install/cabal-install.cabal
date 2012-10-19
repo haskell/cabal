@@ -76,6 +76,7 @@ Library
         Distribution.Client.Dependency.Modular.Version
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
+        Distribution.Client.Get
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
@@ -102,7 +103,6 @@ Library
         Distribution.Client.Tar
         Distribution.Client.Targets
         Distribution.Client.Types
-        Distribution.Client.Unpack
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils

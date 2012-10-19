@@ -21,6 +21,7 @@ import Distribution.Client.Setup
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
+         , GetFlags(..), getCommand
          , checkCommand
          , updateCommand
          , ListFlags(..), listCommand
@@ -37,7 +38,7 @@ import Distribution.Client.Setup
          , sandboxBuildCommand, sandboxInstallCommand
          , dumpPkgEnvCommand
          , reportCommand
-         , unpackCommand, UnpackFlags(..) )
+         )
 import Distribution.Simple.Setup
          ( HaddockFlags(..), haddockCommand
          , HscolourFlags(..), hscolourCommand
@@ -65,7 +66,7 @@ import Distribution.Client.Check as Check     (check)
 import Distribution.Client.Upload as Upload   (upload, check, report)
 import Distribution.Client.Run                (run)
 import Distribution.Client.SrcDist            (sdist)
-import Distribution.Client.Unpack             (unpack)
+import Distribution.Client.Get                (get)
 import Distribution.Client.Index              (index)
 import Distribution.Client.Sandbox            (sandboxInit
                                               , sandboxDelete
@@ -149,7 +150,7 @@ mainWorker args = topHandler $
       ,listCommand            `commandAddAction` listAction
       ,infoCommand            `commandAddAction` infoAction
       ,fetchCommand           `commandAddAction` fetchAction
-      ,unpackCommand          `commandAddAction` unpackAction
+      ,getCommand             `commandAddAction` getAction
       ,checkCommand           `commandAddAction` checkAction
       ,sdistCommand           `commandAddAction` sdistAction
       ,uploadCommand          `commandAddAction` uploadAction
@@ -568,17 +569,17 @@ runAction buildFlags extraArgs globalFlags = do
 
   run verbosity buildFlags extraArgs
 
-unpackAction :: UnpackFlags -> [String] -> GlobalFlags -> IO ()
-unpackAction unpackFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (unpackVerbosity unpackFlags)
+getAction :: GetFlags -> [String] -> GlobalFlags -> IO ()
+getAction getFlags extraArgs globalFlags = do
+  let verbosity = fromFlag (getVerbosity getFlags)
   targets <- readUserTargets verbosity extraArgs
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  unpack verbosity
-         (globalRepos (savedGlobalFlags config))
-         globalFlags'
-         unpackFlags
-         targets
+  get verbosity
+    (globalRepos (savedGlobalFlags config))
+    globalFlags'
+    getFlags
+    targets
 
 initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
 initAction initFlags _extraArgs globalFlags = do

@@ -22,11 +22,11 @@ module Distribution.Client.Setup
     , upgradeCommand
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
+    , getCommand, GetFlags(..)
     , checkCommand
     , uploadCommand, UploadFlags(..)
     , reportCommand, ReportFlags(..)
     , runCommand
-    , unpackCommand, UnpackFlags(..)
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
@@ -67,6 +67,8 @@ import Distribution.Version
          ( Version(Version), anyVersion, thisVersion )
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
+import Distribution.PackageDescription
+         ( RepoKind(..) )
 import Distribution.Text
          ( Text(..), display )
 import Distribution.ReadE
@@ -511,51 +513,62 @@ instance Monoid ReportFlags where
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
--- * Unpack flags
+-- * Get flags
 -- ------------------------------------------------------------
 
-data UnpackFlags = UnpackFlags {
-      unpackDestDir :: Flag FilePath,
-      unpackVerbosity :: Flag Verbosity,
-      unpackPristine :: Flag Bool
-    }
+data GetFlags = GetFlags {
+    getDestDir          :: Flag FilePath,
+    getPristine         :: Flag Bool,
+    getSourceRepository :: Flag (Maybe RepoKind),
+    getVerbosity        :: Flag Verbosity
+  }
 
-defaultUnpackFlags :: UnpackFlags
-defaultUnpackFlags = UnpackFlags {
-    unpackDestDir = mempty,
-    unpackVerbosity = toFlag normal,
-    unpackPristine  = toFlag False
+defaultGetFlags :: GetFlags
+defaultGetFlags = GetFlags {
+    getDestDir          = mempty,
+    getPristine         = mempty,
+    getSourceRepository = mempty,
+    getVerbosity        = toFlag normal
    }
 
-unpackCommand :: CommandUI UnpackFlags
-unpackCommand = CommandUI {
-    commandName         = "unpack",
-    commandSynopsis     = "Unpacks packages for user inspection.",
+getCommand :: CommandUI GetFlags
+getCommand = CommandUI {
+    commandName         = "get",
+    commandSynopsis     = "Gets a package's source code.",
     commandDescription  = Nothing,
-    commandUsage        = usagePackages "unpack",
+    commandUsage        = usagePackages "get",
     commandDefaultFlags = mempty,
     commandOptions      = \_ -> [
-        optionVerbosity unpackVerbosity (\v flags -> flags { unpackVerbosity = v })
+        optionVerbosity getVerbosity (\v flags -> flags { getVerbosity = v })
 
        ,option "d" ["destdir"]
-         "where to unpack the packages, defaults to the current directory."
-         unpackDestDir (\v flags -> flags { unpackDestDir = v })
+         "where to place the package source, defaults to the current directory."
+         getDestDir (\v flags -> flags { getDestDir = v })
          (reqArgFlag "PATH")
+
+       ,option "s" ["source-repository"]
+         "fork the package's source repository."
+         getSourceRepository (\v flags -> flags { getSourceRepository = v })
+        (optArg "[head|this|...]" (readP_to_E (const "invalid source-repository")
+                                              (fmap (toFlag . Just) parse))
+                                  (Flag Nothing)
+                                  (map (fmap show) . flagToList))
 
        , option [] ["pristine"]
            ("Unpack the original pristine tarball, rather than updating the "
            ++ ".cabal file with the latest revision from the package archive.")
-           unpackPristine (\v flags -> flags { unpackPristine = v })
+           getPristine (\v flags -> flags { getPristine = v })
            trueArg
        ]
   }
 
-instance Monoid UnpackFlags where
-  mempty = defaultUnpackFlags
-  mappend a b = UnpackFlags {
-    unpackDestDir   = combine unpackDestDir,
-    unpackVerbosity = combine unpackVerbosity,
-    unpackPristine  = combine unpackPristine
+instance Monoid GetFlags where
+  mempty = defaultGetFlags
+  mappend a b = GetFlags {
+    getDestDir          = combine getDestDir,
+    getPristine         = combine getPristine,
+    getSourceRepository = combine getSourceRepository,
+    getVerbosity        = combine getVerbosity
   }
     where combine field = field a `mappend` field b
 
