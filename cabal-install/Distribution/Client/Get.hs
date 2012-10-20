@@ -110,8 +110,9 @@ get verbosity repos globalFlags getFlags userTargets = do
 
     fork :: [SourcePackage] -> IO ()
     fork pkgs = do
+      let kind = fromFlag . getSourceRepository $ getFlags
       branchers <- findUsableBranchers
-      mapM_ (forkPackage verbosity branchers prefix) pkgs
+      mapM_ (forkPackage verbosity branchers prefix kind) pkgs
 
     unpack :: [SourcePackage] -> IO ()
     unpack pkgs = do
@@ -218,10 +219,12 @@ forkPackage :: Verbosity
             -> FilePath
                -- ^ The directory in which new branches or repositories will
                -- be created.
+            -> (Maybe PD.RepoKind)
+               -- ^ Which repo to choose.
             -> SourcePackage
                -- ^ The package to fork.
             -> IO ()
-forkPackage verbosity branchers prefix src = do
+forkPackage verbosity branchers prefix kind src = do
     let desc = PD.packageDescription (packageDescription src)
     let pkgname = display (packageId src)
     let destdir = prefix </> pkgname
@@ -235,7 +238,7 @@ forkPackage verbosity branchers prefix src = do
         die ("A file " ++ show destdir ++ " is in the way, not forking.")
 
     let repos = PD.sourceRepos desc
-    case findBranchCmd branchers repos of
+    case findBranchCmd branchers repos kind of
         Just (BranchCmd io) -> do
             exitCode <- io verbosity destdir
             case exitCode of
@@ -248,12 +251,13 @@ forkPackage verbosity branchers prefix src = do
 -- | Given a set of possible branchers, and a set of possible source
 -- repositories, find a repository that is both 1) likely to be specific to
 -- this source version and 2) is supported by the local machine.
-findBranchCmd :: Data.Map.Map PD.RepoType Brancher -> [PD.SourceRepo] -> Maybe BranchCmd
-findBranchCmd branchers allRepos = cmd where
+findBranchCmd :: Data.Map.Map PD.RepoType Brancher -> [PD.SourceRepo]
+                 -> (Maybe PD.RepoKind) -> Maybe BranchCmd
+findBranchCmd branchers allRepos maybeKind = cmd where
     -- Sort repositories by kind, from This to Head to Unknown. Repositories
     -- with equivalent kinds are selected based on the order they appear in
     -- the Cabal description file.
-    repos = sortBy (comparing thisFirst) allRepos
+    repos' = sortBy (comparing thisFirst) allRepos
     thisFirst r = case PD.repoKind r of
         PD.RepoThis -> 0 :: Int
         PD.RepoHead -> case PD.repoTag r of
@@ -262,6 +266,10 @@ findBranchCmd branchers allRepos = cmd where
             Just _ -> 0
             Nothing -> 1
         PD.RepoKindUnknown _ -> 2
+
+    -- If the user has specified the repo kind, filter out the repositories
+    -- she's not interested in.
+    repos = maybe repos' (\k -> filter ((==) k . PD.repoKind) repos') maybeKind
 
     repoBranchCmd repo = do
         t <- PD.repoType repo
