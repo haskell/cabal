@@ -41,7 +41,7 @@ import Distribution.Client.IndexUtils as IndexUtils
 import Control.Exception
          ( finally )
 import Control.Monad
-         ( filterM, unless, when )
+         ( filterM, forM_, unless, when )
 import Data.List
          ( sortBy )
 import qualified Data.Map
@@ -75,68 +75,65 @@ get :: Verbosity
 get verbosity _ _ _ [] =
     notice verbosity "No packages requested. Nothing to do."
 
-get verbosity repos globalFlags getFlags userTargets =
-  case getSourceRepository getFlags
-  of NoFlag -> unpack verbosity
-               repos globalFlags getFlags userTargets
+get verbosity repos globalFlags getFlags userTargets = do
+  let useFork = case (getSourceRepository getFlags) of
+        NoFlag -> False
+        _      -> True
 
-     _      -> fork verbosity
-               repos globalFlags getFlags userTargets
+  unless useFork $
+    mapM_ checkTarget userTargets
 
-
--- ------------------------------------------------------------
--- * Unpacking the source tarball
--- ------------------------------------------------------------
-
-unpack :: Verbosity
-       -> [Repo]
-       -> GlobalFlags
-       -> GetFlags
-       -> [UserTarget]
-       -> IO ()
-unpack verbosity repos globalFlags getFlags userTargets = do
-  mapM_ checkTarget userTargets
-
-  sourcePkgDb   <- getSourcePackages verbosity repos
+  sourcePkgDb <- getSourcePackages verbosity repos
 
   pkgSpecifiers <- resolveUserTargets verbosity
-                     (fromFlag $ globalWorldFile globalFlags)
-                     (packageIndex sourcePkgDb)
-                     userTargets
+                   (fromFlag $ globalWorldFile globalFlags)
+                   (packageIndex sourcePkgDb)
+                   userTargets
 
   pkgs <- either (die . unlines . map show) return $
             resolveWithoutDependencies
               (resolverParams sourcePkgDb pkgSpecifiers)
 
   unless (null prefix) $
-         createDirectoryIfMissing True prefix
+    createDirectoryIfMissing True prefix
 
-  flip mapM_ pkgs $ \pkg -> do
-    location <- fetchPackage verbosity (packageSource pkg)
-    let pkgid = packageId pkg
-        descOverride | usePristine = Nothing
-                     | otherwise   = packageDescrOverride pkg
-    case location of
-      LocalTarballPackage tarballPath ->
-        unpackPackage verbosity prefix pkgid descOverride tarballPath
-
-      RemoteTarballPackage _tarballURL tarballPath ->
-        unpackPackage verbosity prefix pkgid descOverride tarballPath
-
-      RepoTarballPackage _repo _pkgid tarballPath ->
-        unpackPackage verbosity prefix pkgid descOverride tarballPath
-
-      LocalUnpackedPackage _ ->
-        error "Distribution.Client.Get.unpack: the impossible happened."
+  if useFork
+    then fork pkgs
+    else unpack pkgs
 
   where
     resolverParams sourcePkgDb pkgSpecifiers =
         --TODO: add commandline constraint and preference args for unpack
-
         standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
 
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
-    usePristine = fromFlagOrDefault False (getPristine getFlags)
+
+    fork :: [SourcePackage] -> IO ()
+    fork pkgs = do
+      branchers <- findUsableBranchers
+      mapM_ (forkPackage verbosity branchers prefix) pkgs
+
+    unpack :: [SourcePackage] -> IO ()
+    unpack pkgs = do
+      forM_ pkgs $ \pkg -> do
+        location <- fetchPackage verbosity (packageSource pkg)
+        let pkgid = packageId pkg
+            descOverride | usePristine = Nothing
+                         | otherwise   = packageDescrOverride pkg
+        case location of
+          LocalTarballPackage tarballPath ->
+            unpackPackage verbosity prefix pkgid descOverride tarballPath
+
+          RemoteTarballPackage _tarballURL tarballPath ->
+            unpackPackage verbosity prefix pkgid descOverride tarballPath
+
+          RepoTarballPackage _repo _pkgid tarballPath ->
+            unpackPackage verbosity prefix pkgid descOverride tarballPath
+
+          LocalUnpackedPackage _ ->
+            error "Distribution.Client.Get.unpack: the impossible happened."
+      where
+        usePristine = fromFlagOrDefault False (getPristine getFlags)
 
 checkTarget :: UserTarget -> IO ()
 checkTarget target = case target of
@@ -147,6 +144,10 @@ checkTarget target = case target of
     notTarball t =
         "The 'get' command is for tarball packages. "
      ++ "The target '" ++ t ++ "' is not a tarball."
+
+-- ------------------------------------------------------------
+-- * Unpacking the source tarball
+-- ------------------------------------------------------------
 
 unpackPackage :: Verbosity -> FilePath -> PackageId
               -> PackageDescriptionOverride
@@ -177,37 +178,6 @@ unpackPackage verbosity prefix pkgid descOverride pkgPath = do
 -- ------------------------------------------------------------
 -- * Forking the source repository
 -- ------------------------------------------------------------
-
-fork :: Verbosity
-     -> [Repo]
-     -> GlobalFlags
-     -> GetFlags
-     -> [UserTarget]
-     -> IO ()
-fork verbosity repos globalFlags getFlags userTargets = do
-    let prefix = fromFlagOrDefault "" (getDestDir getFlags)
-
-    --TODO: add commandline constraint and preference args?
-    let resolverParams sourcePkgDb pkgSpecifiers =
-         standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
-
-    sourcePkgDb <- getSourcePackages verbosity repos
-
-    pkgSpecifiers <- resolveUserTargets
-        verbosity
-        (fromFlag $ globalWorldFile globalFlags)
-        (packageIndex sourcePkgDb)
-        userTargets
-
-    pkgs <- case resolveWithoutDependencies (resolverParams sourcePkgDb pkgSpecifiers) of
-        Right pkgs -> return pkgs
-        Left errors -> die (unlines (map show errors))
-
-    unless (null prefix) $
-       createDirectoryIfMissing True prefix
-
-    branchers <- findUsableBranchers
-    mapM_ (forkPackage verbosity branchers prefix) pkgs
 
 data BranchCmd = BranchCmd (Verbosity -> FilePath -> IO ExitCode)
 
