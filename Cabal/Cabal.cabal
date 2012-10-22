@@ -72,6 +72,7 @@ Library
         Distribution.Simple.BuildPaths,
         Distribution.Simple.Bench,
         Distribution.Simple.Command,
+        Distribution.Simple.CCompiler,
         Distribution.Simple.Compiler,
         Distribution.Simple.Configure,
         Distribution.Simple.GHC,

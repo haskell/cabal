@@ -71,6 +71,8 @@ import Distribution.PackageDescription as PD
 import qualified Distribution.InstalledPackageInfo as Installed
          ( InstalledPackageInfo_(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Simple.CCompiler
+         ( cSourceExtensions )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo
@@ -219,9 +221,11 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
       BenchmarkUnsupported tt -> die $ "No support for preprocessing benchmark "
                                  ++ "type " ++ display tt
   where
-    builtinSuffixes
+    builtinHaskellSuffixes
       | NHC == compilerFlavor (compiler lbi) = ["hs", "lhs", "gc"]
       | otherwise                            = ["hs", "lhs"]
+    builtinCSuffixes = cSourceExtensions
+    builtinSuffixes = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
     pre dirs dir lhndlrs fp =
       preprocessFile dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs
