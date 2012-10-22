@@ -99,7 +99,7 @@ doCabalBuild spec = do
     configResult <- doCabalConfigure spec
     if successful configResult
         then do
-            res <- cabal spec ["build"]
+            res <- cabal spec ["build", "-v"]
             return $ recordRun res BuildSuccess configResult
         else
             return configResult

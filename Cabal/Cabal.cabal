@@ -72,6 +72,7 @@ Library
         Distribution.Simple.BuildPaths,
         Distribution.Simple.Bench,
         Distribution.Simple.Command,
+        Distribution.Simple.CCompiler,
         Distribution.Simple.Compiler,
         Distribution.Simple.Configure,
         Distribution.Simple.GHC,
@@ -162,6 +163,7 @@ test-suite package-tests
                  PackageTests.TestSuiteExeV10.Check,
                  PackageTests.BenchmarkStanza.Check,
                  PackageTests.TemplateHaskell.Check,
+                 PackageTests.CMain.Check,
                  PackageTests.PackageTester
                  PackageTests.PathsModule.Executable.Check
                  PackageTests.PathsModule.Library.Check
