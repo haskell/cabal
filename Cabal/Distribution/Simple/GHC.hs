@@ -824,18 +824,6 @@ buildExe verbosity _pkg_descr lbi
   -- FIX: what about exeName.hi-boot?
 
   -- build executables
-  unless (null (cSources exeBi)) $ do
-   info verbosity "Building C Sources."
-   sequence_
-     [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
-                         exeDir filename) `mappend` mempty {
-                       ghcOptDynamic       = toFlag (withDynExe lbi),
-                       ghcOptProfilingMode = toFlag (withProfExe lbi)
-                     }
-              odir = fromFlag (ghcOptObjDir opts)
-          createDirectoryIfMissingVerbose verbosity True odir
-          runGhcProg opts
-     | filename <- cSources exeBi]
 
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
@@ -864,6 +852,22 @@ buildExe verbosity _pkg_descr lbi
                       ghcOptExtra          = ghcSharedOptions exeBi
                     }
                   | otherwise = vanillaOpts
+
+  -- Gen up stub files
+  runGhcProg exeOpts { ghcOptNoLink = toFlag True }
+
+  unless (null (cSources exeBi)) $ do
+   info verbosity "Building C Sources."
+   sequence_
+     [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
+                         exeDir filename) `mappend` mempty {
+                       ghcOptDynamic       = toFlag (withDynExe lbi),
+                       ghcOptProfilingMode = toFlag (withProfExe lbi)
+                     }
+              odir = fromFlag (ghcOptObjDir opts)
+          createDirectoryIfMissingVerbose verbosity True odir
+          runGhcProg opts
+     | filename <- cSources exeBi]
 
   -- For building exe's for profiling that use TH we actually
   -- have to build twice, once without profiling and the again
