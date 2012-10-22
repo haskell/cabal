@@ -828,6 +828,9 @@ buildExe verbosity _pkg_descr lbi
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
   let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
+  let no_hs_main = if elem (takeExtension srcMainFile) [".hs", ".lhs"]
+                      then []
+                      else ["-no-hs-main"]
   let vanillaOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
                     `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeMake,
@@ -836,7 +839,8 @@ buildExe verbosity _pkg_descr lbi
                       ghcOptLinkOptions    = PD.ldOptions exeBi,
                       ghcOptLinkLibs       = extraLibs exeBi,
                       ghcOptLinkLibPath    = extraLibDirs exeBi,
-                      ghcOptLinkFrameworks = PD.frameworks exeBi
+                      ghcOptLinkFrameworks = PD.frameworks exeBi,
+                      ghcOptExtra          = no_hs_main
                     }
 
       exeOpts     | withProfExe lbi = vanillaOpts `mappend` mempty {
