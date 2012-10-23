@@ -824,22 +824,13 @@ buildExe verbosity _pkg_descr lbi
   -- FIX: what about exeName.hi-boot?
 
   -- build executables
-  unless (null (cSources exeBi)) $ do
-   info verbosity "Building C Sources."
-   sequence_
-     [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
-                         exeDir filename) `mappend` mempty {
-                       ghcOptDynamic       = toFlag (withDynExe lbi),
-                       ghcOptProfilingMode = toFlag (withProfExe lbi)
-                     }
-              odir = fromFlag (ghcOptObjDir opts)
-          createDirectoryIfMissingVerbose verbosity True odir
-          runGhcProg opts
-     | filename <- cSources exeBi]
 
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
   let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
+  let no_hs_main = if elem (takeExtension srcMainFile) [".hs", ".lhs"]
+                      then []
+                      else ["-no-hs-main"]
   let vanillaOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
                     `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeMake,
@@ -848,7 +839,8 @@ buildExe verbosity _pkg_descr lbi
                       ghcOptLinkOptions    = PD.ldOptions exeBi,
                       ghcOptLinkLibs       = extraLibs exeBi,
                       ghcOptLinkLibPath    = extraLibDirs exeBi,
-                      ghcOptLinkFrameworks = PD.frameworks exeBi
+                      ghcOptLinkFrameworks = PD.frameworks exeBi,
+                      ghcOptExtra          = no_hs_main
                     }
 
       exeOpts     | withProfExe lbi = vanillaOpts `mappend` mempty {
@@ -870,9 +862,26 @@ buildExe verbosity _pkg_descr lbi
   -- with profiling. This is because the code that TH needs to
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
-  when ((withProfExe lbi || withDynExe lbi) &&
-        EnableExtension TemplateHaskell `elem` allExtensions exeBi) $
+  --
+  -- We also need to do this build if we have any C sources, because
+  -- it may generate stub files which the C sources would use.
+  when (((withProfExe lbi || withDynExe lbi) &&
+        EnableExtension TemplateHaskell `elem` allExtensions exeBi)
+        || not (null (cSources exeBi))) $
     runGhcProg vanillaOpts { ghcOptNoLink = toFlag True }
+
+  unless (null (cSources exeBi)) $ do
+   info verbosity "Building C Sources."
+   sequence_
+     [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
+                         exeDir filename) `mappend` mempty {
+                       ghcOptDynamic       = toFlag (withDynExe lbi),
+                       ghcOptProfilingMode = toFlag (withProfExe lbi)
+                     }
+              odir = fromFlag (ghcOptObjDir opts)
+          createDirectoryIfMissingVerbose verbosity True odir
+          runGhcProg opts
+     | filename <- cSources exeBi]
 
   runGhcProg exeOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 

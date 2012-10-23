@@ -25,6 +25,7 @@ import PackageTests.BuildDeps.InternalLibrary1.Check
 import PackageTests.BuildDeps.InternalLibrary2.Check
 import PackageTests.BuildDeps.InternalLibrary3.Check
 import PackageTests.BuildDeps.InternalLibrary4.Check
+import PackageTests.CMain.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
@@ -71,7 +72,8 @@ tests cabalVersion = [
             hunit "PackageTests/BuildDeps/InternalLibrary1/" PackageTests.BuildDeps.InternalLibrary1.Check.suite,
             hunit "PackageTests/BuildDeps/InternalLibrary2/" PackageTests.BuildDeps.InternalLibrary2.Check.suite,
             hunit "PackageTests/BuildDeps/InternalLibrary3/" PackageTests.BuildDeps.InternalLibrary3.Check.suite,
-            hunit "PackageTests/BuildDeps/InternalLibrary4/" PackageTests.BuildDeps.InternalLibrary4.Check.suite
+            hunit "PackageTests/BuildDeps/InternalLibrary4/" PackageTests.BuildDeps.InternalLibrary4.Check.suite,
+            hunit "PackageTests/CMain" PackageTests.CMain.Check.checkBuild
         ]
         else [])
 
