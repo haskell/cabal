@@ -194,7 +194,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   debug verbosity $ "Using " ++ setupHs ++ " as setup script."
   path <- case bt of
     Simple -> getCachedSetupExecutable options' cabalLibVersion setupHs
-    _      -> compileSetupExecutable options' cabalLibVersion setupHs
+    _      -> compileSetupExecutable options' cabalLibVersion setupHs False
   invokeSetupScript path (mkargs cabalLibVersion)
 
   where
@@ -313,7 +313,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                "Found cached setup executable: " ++ setupProgFile
           else do
           debug verbosity $ "Setup executable not found in the cache."
-          src <- compileSetupExecutable options' cabalLibVersion setupHsFile
+          src <- compileSetupExecutable options' cabalLibVersion setupHsFile True
           createDirectoryIfMissingVerbose verbosity True setupCacheDir
           installExecutableFile verbosity src setupProgFile
     return setupProgFile
@@ -327,14 +327,14 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
   -- Currently this is GHC only. It should really be generalised.
   --
-  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath
+  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath -> Bool
                          -> IO FilePath
-  compileSetupExecutable options' cabalLibVersion setupHsFile = do
+  compileSetupExecutable options' cabalLibVersion setupHsFile forceCompile = do
     setupHsNewer      <- setupHsFile      `moreRecentFile` setupProgFile
     cabalVersionNewer <- setupVersionFile `moreRecentFile` setupProgFile
     let outOfDate = setupHsNewer || cabalVersionNewer
-    when outOfDate $ do
-      debug verbosity "Setup script is out of date, compiling..."
+    when (outOfDate || forceCompile) $ do
+      debug verbosity "Setup executable needs to be updated, compiling..."
       (compiler, conf, _) <- configureCompiler options'
       --TODO: get Cabal's GHC module to export a GhcOptions type and render func
       let ghcCmdLine =
