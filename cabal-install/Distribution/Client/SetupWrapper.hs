@@ -207,12 +207,18 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   cabalLibVersionToUse :: IO (Version, SetupScriptOptions)
   cabalLibVersionToUse = do
     savedVersion <- savedCabalVersion
+    let versionRangeToUse = useCabalVersion options
     case savedVersion of
-      Just version | version `withinRange` useCabalVersion options
+      Just version | version `withinRange` versionRangeToUse
+                  -- If the Cabal lib version that cabal-install was compiled
+                  -- with can be used instead of the cached version,
+                  -- double-check that we really want to use the cached one.
+                  && (version == cabalVersion
+                      || not (cabalVersion `withinRange` versionRangeToUse))
         -> return (version, options)
       _ -> do (comp, conf, options') <- configureCompiler options
               version <- installedCabalVersion options comp conf
-              writeFile setupVersionFile (show version ++ "\n")
+              rewriteFile setupVersionFile (show version ++ "\n")
               return (version, options')
 
   savedCabalVersion = do
