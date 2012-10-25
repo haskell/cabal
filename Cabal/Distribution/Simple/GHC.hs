@@ -924,13 +924,30 @@ libAbiHash verbosity pkg_descr lbi lib clbi = do
   libBi <- hackThreadedFlag verbosity
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
   let
-      ghcArgs =
+      vanillaArgs =
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
           ghcOptPackageName  = toFlag (packageId pkg_descr),
           ghcOptInputModules = exposedModules lib
         }
+      sharedArgs = vanillaArgs `mappend` mempty {
+                       ghcOptDynamic   = toFlag True,
+                       ghcOptFPic      = toFlag True,
+                       ghcOptHiSuffix  = toFlag "dyn_hi",
+                       ghcOptObjSuffix = toFlag "dyn_o",
+                       ghcOptExtra     = ghcSharedOptions libBi
+                   }
+      profArgs = vanillaArgs `mappend` mempty {
+                     ghcOptProfilingMode = toFlag True,
+                     ghcOptHiSuffix      = toFlag "p_hi",
+                     ghcOptObjSuffix     = toFlag "p_o",
+                     ghcOptExtra         = ghcProfOptions libBi
+                 }
+      ghcArgs = if withVanillaLib lbi then vanillaArgs
+           else if withSharedLib  lbi then sharedArgs
+           else if withProfLib    lbi then profArgs
+           else error "libAbiHash: Can't find an enabled library way"
   --
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   getProgramInvocationOutput verbosity (ghcInvocation ghcProg ghcArgs)
