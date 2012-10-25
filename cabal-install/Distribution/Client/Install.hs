@@ -22,8 +22,6 @@ import Data.List
          ( unfoldr, nub, sort, (\\) )
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
-import qualified Data.ByteString.Lazy.Char8 as BS
-         ( unpack )
 import Control.Exception as Exception
          ( bracket, handleJust )
 #if MIN_VERSION_base(4,0,0)
@@ -123,7 +121,7 @@ import Distribution.System
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, showForCabal, verbose, deafening )
+         ( Verbosity, showForCabal, normal, verbose, deafening )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
@@ -934,20 +932,21 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
         (Right _) -> notice verbosity $ "Installed " ++ display pkgid
         (Left _)  -> do
           notice verbosity $ "Failed to install " ++ display pkgid
-          case useLogFile of
-            Nothing                   -> return ()
-            Just (mkLogFileName, _) -> do
-              let (logName, n) = (mkLogFileName pkgid, 10)
-              notice verbosity $ "Last " ++ (show n)
-                ++ " lines of the build log ( " ++ logName ++ " ):"
-              printLastNLines logName n
+          when (verbosity >= normal) $
+            case useLogFile of
+              Nothing                 -> return ()
+              Just (mkLogFileName, _) -> do
+                let (logName, n) = (mkLogFileName pkgid, 10)
+                putStr $ "Last " ++ (show n)
+                  ++ " lines of the build log ( " ++ logName ++ " ):"
+                printLastNLines logName n
 
     printLastNLines :: FilePath -> Int -> IO ()
     printLastNLines path n = do
       lns <- fmap lines $ readFile path
       let len = length lns
       let toDrop = if len > n && n > 0 then (len - n) else 0
-      mapM_ (notice verbosity) (drop toDrop lns)
+      mapM_ putStr (drop toDrop lns)
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ConfiguredPackage'. In particular the

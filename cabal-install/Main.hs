@@ -31,8 +31,9 @@ import Distribution.Client.Setup
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , IndexFlags(..), indexCommand
-         , SandboxFlags(..), sandboxAddSourceCommand
-         , sandboxConfigureCommand, sandboxBuildCommand, sandboxInstallCommand
+         , SandboxFlags(..), sandboxInitCommand, sandboxDeleteCommand
+         , sandboxAddSourceCommand, sandboxConfigureCommand
+         , sandboxBuildCommand, sandboxInstallCommand
          , dumpPkgEnvCommand
          , reportCommand
          , unpackCommand, UnpackFlags(..) )
@@ -64,8 +65,11 @@ import Distribution.Client.Upload as Upload   (upload, check, report)
 import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Unpack             (unpack)
 import Distribution.Client.Index              (index)
-import Distribution.Client.Sandbox            (sandboxConfigure
-                                              , sandboxAddSource, sandboxBuild
+import Distribution.Client.Sandbox            (sandboxInit
+                                              , sandboxDelete
+                                              , sandboxAddSource
+                                              , sandboxBuild
+                                              , sandboxConfigure
                                               , sandboxInstall
                                               , dumpPackageEnvironment)
 import Distribution.Client.Init               (initCabal)
@@ -167,9 +171,13 @@ mainWorker args = topHandler $
       ,hiddenCommand $
        indexCommand `commandAddAction` indexAction
       ,hiddenCommand $
-       sandboxConfigureCommand `commandAddAction` sandboxConfigureAction
+       sandboxInitCommand `commandAddAction` sandboxInitAction
+      ,hiddenCommand $
+       sandboxDeleteCommand `commandAddAction` sandboxDeleteAction
       ,hiddenCommand $
        sandboxAddSourceCommand `commandAddAction` sandboxAddSourceAction
+      ,hiddenCommand $
+       sandboxConfigureCommand `commandAddAction` sandboxConfigureAction
       ,hiddenCommand $
        sandboxBuildCommand `commandAddAction` sandboxBuildAction
       ,hiddenCommand $
@@ -580,6 +588,27 @@ indexAction indexFlags extraArgs _globalFlags = do
   let verbosity = fromFlag (indexVerbosity indexFlags)
   index verbosity indexFlags (head extraArgs)
 
+sandboxInitAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
+sandboxInitAction sandboxFlags extraArgs globalFlags = do
+  when ((>0). length $ extraArgs) $ do
+    die $ "the 'sandbox-init' command doesn't expect any arguments: "
+      ++ unwords extraArgs
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  sandboxInit verbosity sandboxFlags globalFlags
+
+sandboxDeleteAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
+sandboxDeleteAction sandboxFlags extraArgs globalFlags = do
+  when ((>0). length $ extraArgs) $ do
+    die $ "the 'sandbox-init' command doesn't expect any arguments: "
+      ++ unwords extraArgs
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  sandboxDelete verbosity sandboxFlags globalFlags
+
+sandboxAddSourceAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
+sandboxAddSourceAction sandboxFlags extraArgs _globalFlags = do
+  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
+  sandboxAddSource verbosity sandboxFlags extraArgs
+
 sandboxConfigureAction :: (SandboxFlags, ConfigFlags, ConfigExFlags)
                           -> [String] -> GlobalFlags -> IO ()
 sandboxConfigureAction (sandboxFlags, configFlags, configExFlags)
@@ -587,11 +616,6 @@ sandboxConfigureAction (sandboxFlags, configFlags, configExFlags)
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
   sandboxConfigure verbosity sandboxFlags configFlags configExFlags
     extraArgs globalFlags
-
-sandboxAddSourceAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
-sandboxAddSourceAction sandboxFlags extraArgs _globalFlags = do
-  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxAddSource verbosity sandboxFlags extraArgs
 
 sandboxBuildAction :: (SandboxFlags, BuildFlags) -> [String] -> GlobalFlags
                       -> IO ()

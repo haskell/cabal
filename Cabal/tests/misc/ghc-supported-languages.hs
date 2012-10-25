@@ -17,9 +17,7 @@ import System.Exit
 -- | A list of GHC extensions that are deliberately not registered,
 -- e.g. due to being experimental and not ready for public consumption
 --
-exceptions = map readExtension
-  [ "PArr"   -- still classed as experimental, will be renamed and registered
-  ]
+exceptions = map readExtension []
 
 checkProblems :: [Extension] -> [String]
 checkProblems implemented =
