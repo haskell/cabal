@@ -632,7 +632,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
     rawSystemExitWithEnv verbosity "sh" args' env'
 
   where
-    args = "configure" : configureArgs backwardsCompatHack flags
+    args = "./configure" : configureArgs backwardsCompatHack flags
 
     appendToEnvironment (key, val) [] = [(key, val)]
     appendToEnvironment (key, val) (kv@(k, v) : rest)

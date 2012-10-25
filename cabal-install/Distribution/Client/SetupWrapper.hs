@@ -70,7 +70,7 @@ import Distribution.Verbosity
 import Distribution.Compat.Exception
          ( catchIO )
 
-import System.Directory  ( doesFileExist )
+import System.Directory  ( doesFileExist, canonicalizePath )
 import System.FilePath   ( (</>), (<.>) )
 import System.IO         ( Handle, hPutStr )
 import System.Exit       ( ExitCode(..), exitWith )
@@ -194,7 +194,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   debug verbosity $ "Using " ++ setupHs ++ " as setup script."
   path <- case bt of
     Simple -> getCachedSetupExecutable options' cabalLibVersion setupHs
-    _      -> compileSetupExecutable options' cabalLibVersion setupHs
+    _      -> compileSetupExecutable options' cabalLibVersion setupHs False
   invokeSetupScript path (mkargs cabalLibVersion)
 
   where
@@ -207,12 +207,18 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   cabalLibVersionToUse :: IO (Version, SetupScriptOptions)
   cabalLibVersionToUse = do
     savedVersion <- savedCabalVersion
+    let versionRangeToUse = useCabalVersion options
     case savedVersion of
-      Just version | version `withinRange` useCabalVersion options
+      Just version | version `withinRange` versionRangeToUse
+                  -- If the Cabal lib version that cabal-install was compiled
+                  -- with can be used instead of the cached version,
+                  -- double-check that we really want to use the cached one.
+                  && (version == cabalVersion
+                      || not (cabalVersion `withinRange` versionRangeToUse))
         -> return (version, options)
       _ -> do (comp, conf, options') <- configureCompiler options
               version <- installedCabalVersion options comp conf
-              writeFile setupVersionFile (show version ++ "\n")
+              rewriteFile setupVersionFile (show version ++ "\n")
               return (version, options')
 
   savedCabalVersion = do
@@ -313,7 +319,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                "Found cached setup executable: " ++ setupProgFile
           else do
           debug verbosity $ "Setup executable not found in the cache."
-          src <- compileSetupExecutable options' cabalLibVersion setupHsFile
+          src <- compileSetupExecutable options' cabalLibVersion setupHsFile True
           createDirectoryIfMissingVerbose verbosity True setupCacheDir
           installExecutableFile verbosity src setupProgFile
     return setupProgFile
@@ -327,14 +333,14 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
   -- Currently this is GHC only. It should really be generalised.
   --
-  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath
+  compileSetupExecutable :: SetupScriptOptions -> Version -> FilePath -> Bool
                          -> IO FilePath
-  compileSetupExecutable options' cabalLibVersion setupHsFile = do
+  compileSetupExecutable options' cabalLibVersion setupHsFile forceCompile = do
     setupHsNewer      <- setupHsFile      `moreRecentFile` setupProgFile
     cabalVersionNewer <- setupVersionFile `moreRecentFile` setupProgFile
     let outOfDate = setupHsNewer || cabalVersionNewer
-    when outOfDate $ do
-      debug verbosity "Setup script is out of date, compiling..."
+    when (outOfDate || forceCompile) $ do
+      debug verbosity "Setup executable needs to be updated, compiling..."
       (compiler, conf, _) <- configureCompiler options'
       --TODO: get Cabal's GHC module to export a GhcOptions type and render func
       let ghcCmdLine =
@@ -382,7 +388,14 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       Nothing        -> return ()
       Just logHandle -> info verbosity $ "Redirecting build log to "
                                       ++ show logHandle
-    process <- runProcess path args
+
+    -- Since useWorkingDir can change the relative path, the path argument must
+    -- be turned into an absolute path. On some systems, runProcess will take
+    -- path as relative to the new working directory instead of the current
+    -- working directory.
+    path' <- canonicalizePath path
+
+    process <- runProcess path' args
                  (useWorkingDir options) Nothing
                  Nothing (useLoggingHandle options) (useLoggingHandle options)
     exitCode <- waitForProcess process
