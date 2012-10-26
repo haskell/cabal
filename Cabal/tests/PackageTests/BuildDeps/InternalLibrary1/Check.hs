@@ -1,10 +1,9 @@
 module PackageTests.BuildDeps.InternalLibrary1.Check where
 
-import Test.HUnit
 import PackageTests.PackageTester
-import System.FilePath
-import Control.Exception
 import Prelude hiding (catch)
+import System.FilePath
+import Test.HUnit
 
 
 suite :: Test

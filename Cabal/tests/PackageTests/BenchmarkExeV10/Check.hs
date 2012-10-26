@@ -2,19 +2,15 @@ module PackageTests.BenchmarkExeV10.Check
        ( checkBenchmark
        ) where
 
-import Distribution.PackageDescription ( Benchmark(..), emptyBenchmark )
-import Distribution.Simple.Hpc
-import Distribution.Version
-import Test.HUnit
-import System.Directory
-import System.FilePath
 import PackageTests.PackageTester
+import System.FilePath
+import Test.HUnit
 
 dir :: FilePath
 dir = "PackageTests" </> "BenchmarkExeV10"
 
-checkBenchmark :: Version -> Test
-checkBenchmark cabalVersion = TestCase $ do
+checkBenchmark :: Test
+checkBenchmark = TestCase $ do
     let spec = PackageSpec dir ["--enable-benchmarks"]
     buildResult <- cabal_build spec
     assertBuildSucceeded buildResult

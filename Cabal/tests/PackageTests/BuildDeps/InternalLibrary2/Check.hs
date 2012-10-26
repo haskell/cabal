@@ -1,11 +1,10 @@
 module PackageTests.BuildDeps.InternalLibrary2.Check where
 
-import Test.HUnit
-import PackageTests.PackageTester
-import System.FilePath
 import qualified Data.ByteString.Char8 as C
-import Control.Exception
+import PackageTests.PackageTester
 import Prelude hiding (catch)
+import System.FilePath
+import Test.HUnit
 
 
 suite :: Test

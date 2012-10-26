@@ -1,14 +1,13 @@
 module PackageTests.BenchmarkOptions.Check where
 
-import Test.HUnit
-import System.FilePath
 import PackageTests.PackageTester
+import System.FilePath
+import Test.HUnit
 
 suite :: Test
 suite = TestCase $ do
-    let directory = "PackageTests" </> "BenchmarkOptions"
-        pdFile = directory </> "BenchmarkOptions" <.> "cabal"
-        spec = PackageSpec directory ["--enable-benchmarks"]
+    let spec = PackageSpec ("PackageTests" </> "BenchmarkOptions")
+               ["--enable-benchmarks"]
     _ <- cabal_build spec
     result <- cabal_bench spec ["--benchmark-options=1 2 3"]
     let message = "\"cabal bench\" did not pass the correct options to the "
@@ -18,6 +17,6 @@ suite = TestCase $ do
                                 , "--benchmark-option=2"
                                 , "--benchmark-option=3"
                                 ]
-    let message = "\"cabal bench\" did not pass the correct options to the "
-                  ++ "benchmark executable with \"--benchmark-option\""
-    assertEqual message True $ successful result'
+    let message' = "\"cabal bench\" did not pass the correct options to the "
+                   ++ "benchmark executable with \"--benchmark-option\""
+    assertEqual message' True $ successful result'

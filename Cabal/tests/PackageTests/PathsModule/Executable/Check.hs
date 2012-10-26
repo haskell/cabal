@@ -1,8 +1,7 @@
 module PackageTests.PathsModule.Executable.Check (suite) where
 
-import Distribution.Version
-import PackageTests.PackageTester (PackageSpec(..), assertBuildSucceeded,
-                                   cabal_build)
+import PackageTests.PackageTester
+    (PackageSpec(..), assertBuildSucceeded, cabal_build)
 import System.FilePath
 import Test.HUnit
 
