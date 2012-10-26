@@ -6,13 +6,12 @@
 
 module Main where
 
-import Data.Version
+import Data.Version (Version(Version))
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
-import System.Directory
-import Test.Framework
-import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck2
+import System.Directory (setCurrentDirectory)
+import Test.Framework (Test, TestName, defaultMain, testGroup)
+import Test.Framework.Providers.HUnit (hUnitTestToTests)
 import qualified Test.HUnit as HUnit
 
 import PackageTests.BenchmarkExeV10.Check
@@ -42,7 +41,7 @@ hunit name test = testGroup name $ hUnitTestToTests test
 
 tests :: Version -> [Test]
 tests cabalVersion =
-    [ hunit "BuildDeps/SameDepsAllRound/"
+    [ hunit "BuildDeps/SameDepsAllRound"
       PackageTests.BuildDeps.SameDepsAllRound.Check.suite
       -- The two following tests were disabled by Johan Tibell as
       -- they have been failing for a long time:
@@ -50,7 +49,7 @@ tests cabalVersion =
       --   PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite
       -- , hunit "BuildDeps/GlobalBuildDepsNotAdditive2/"
       --   PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite
-    , hunit "BuildDeps/InternalLibrary0/"
+    , hunit "BuildDeps/InternalLibrary0"
       (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion)
     , hunit "TestStanza/" (PackageTests.TestStanza.Check.suite cabalVersion)
       -- ^ The Test stanza test will eventually be required
@@ -60,7 +59,7 @@ tests cabalVersion =
     , hunit "TestSuiteExeV10/TestWithHpc"
       (PackageTests.TestSuiteExeV10.Check.checkTestWithHpc cabalVersion)
     , hunit "TestOptions" PackageTests.TestOptions.Check.suite
-    , hunit "BenchmarkStanza/"
+    , hunit "BenchmarkStanza"
       (PackageTests.BenchmarkStanza.Check.suite cabalVersion)
       -- ^ The benchmark stanza test will eventually be required
       -- only for higher versions.
