@@ -138,6 +138,7 @@ test-suite unit-tests
         HUnit,
         QuickCheck,
         Cabal
+  ghc-options: -Wall
   Default-Language: Haskell98
 
 -- Large, system tests that build packages.

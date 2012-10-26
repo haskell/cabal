@@ -20,11 +20,10 @@ module UnitTests.Distribution.Compat.ReadP
 
 import Data.List
 import Distribution.Compat.ReadP
-
 import Test.Framework
-import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
 
+tests :: [Test]
 tests =
     [ testProperty "Get Nil" prop_Get_Nil
     , testProperty "Get Cons" prop_Get_Cons
@@ -69,21 +68,27 @@ xs =~ ys = sort xs == sort ys
 
 -- Here follow the properties:
 
+prop_Get_Nil :: Bool
 prop_Get_Nil =
   readP_to_S get [] =~ []
 
+prop_Get_Cons :: Char -> [Char] -> Bool
 prop_Get_Cons c s =
   readP_to_S get (c:s) =~ [(c,s)]
 
+prop_Look :: String -> Bool
 prop_Look s =
   readP_to_S look s =~ [(s,s)]
 
+prop_Fail :: String -> Bool
 prop_Fail s =
   readP_to_S pfail s =~. []
 
+prop_Return :: Int -> String -> Bool
 prop_Return x s =
   readP_to_S (return x) s =~. [(x,s)]
 
+{-
 prop_Bind p k s =
   readP_to_S (p >>= k) s =~.
     [ ys''
@@ -91,10 +96,12 @@ prop_Bind p k s =
     , ys''   <- readP_to_S (k (x::Int)) s'
     ]
 
+prop_Plus :: ReadP Int Int -> ReadP Int Int -> String -> Bool
 prop_Plus p q s =
   readP_to_S (p +++ q) s =~.
     (readP_to_S p s ++ readP_to_S q s)
 
+prop_LeftPlus :: ReadP Int Int -> ReadP Int Int -> String -> Bool
 prop_LeftPlus p q s =
   readP_to_S (p <++ q) s =~.
     (readP_to_S p s +<+ readP_to_S q s)
@@ -102,7 +109,6 @@ prop_LeftPlus p q s =
   [] +<+ ys = ys
   xs +<+ _  = xs
 
-{-
 prop_Gather s =
   forAll readPWithoutReadS $ \p ->
     readP_to_S (gather p) s =~
@@ -112,28 +118,36 @@ prop_Gather s =
   ]
 -}
 
+prop_String_Yes :: String -> [Char] -> Bool
 prop_String_Yes this s =
   readP_to_S (string this) (this ++ s) =~
     [(this,s)]
 
+prop_String_Maybe :: String -> String -> Bool
 prop_String_Maybe this s =
   readP_to_S (string this) s =~
     [(this, drop (length this) s) | this `isPrefixOf` s]
 
+prop_Munch :: (Char -> Bool) -> String -> Bool
 prop_Munch p s =
   readP_to_S (munch p) s =~
     [(takeWhile p s, dropWhile p s)]
 
+prop_Munch1 :: (Char -> Bool) -> String -> Bool
 prop_Munch1 p s =
   readP_to_S (munch1 p) s =~
     [(res,s') | let (res,s') = (takeWhile p s, dropWhile p s), not (null res)]
 
+{-
+prop_Choice :: [ReadP Int Int] -> String -> Bool
 prop_Choice ps s =
   readP_to_S (choice ps) s =~.
     readP_to_S (foldr (+++) pfail ps) s
 
+prop_ReadS :: ReadS Int -> String -> Bool
 prop_ReadS r s =
   readP_to_S (readS_to_P r) s =~. r s
+-}
 
 evenChar :: Char -> Bool
 evenChar = even . fromEnum
