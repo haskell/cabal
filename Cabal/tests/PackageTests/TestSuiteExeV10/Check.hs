@@ -5,25 +5,24 @@ module PackageTests.TestSuiteExeV10.Check
 
 import Distribution.PackageDescription ( TestSuite(..), emptyTestSuite )
 import Distribution.Simple.Hpc
-import Distribution.Version
-import Test.HUnit
+import PackageTests.PackageTester
 import System.Directory
 import System.FilePath
-import PackageTests.PackageTester
+import Test.HUnit
 
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteExeV10"
 
-checkTest :: Version -> Test
-checkTest cabalVersion = TestCase $ do
+checkTest :: Test
+checkTest = TestCase $ do
     let spec = PackageSpec dir ["--enable-tests"]
     buildResult <- cabal_build spec
     assertBuildSucceeded buildResult
     testResult <- cabal_test spec []
     assertTestSucceeded testResult
 
-checkTestWithHpc :: Version -> Test
-checkTestWithHpc cabalVersion = TestCase $ do
+checkTestWithHpc :: Test
+checkTestWithHpc = TestCase $ do
     let spec = PackageSpec dir [ "--enable-tests"
                                , "--enable-library-coverage"
                                ]

@@ -178,4 +178,5 @@ test-suite package-tests
         extensible-exceptions,
         bytestring,
         unix
+  ghc-options: -Wall
   Default-Language: Haskell98
