@@ -6,18 +6,18 @@
 
 module Main where
 
+import Data.Version
+import Distribution.Simple.Utils (cabalVersion)
+import Distribution.Text (display)
+import System.Directory
 import Test.Framework
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2
 import qualified Test.HUnit as HUnit
+
 import PackageTests.BenchmarkExeV10.Check
 import PackageTests.BenchmarkOptions.Check
 import PackageTests.BenchmarkStanza.Check
-import PackageTests.BuildDeps.SameDepsAllRound.Check
-import PackageTests.BuildDeps.TargetSpecificDeps1.Check
-import PackageTests.BuildDeps.TargetSpecificDeps1.Check
-import PackageTests.BuildDeps.TargetSpecificDeps2.Check
-import PackageTests.BuildDeps.TargetSpecificDeps3.Check
 import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check
 import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check
 import PackageTests.BuildDeps.InternalLibrary0.Check
@@ -25,64 +25,78 @@ import PackageTests.BuildDeps.InternalLibrary1.Check
 import PackageTests.BuildDeps.InternalLibrary2.Check
 import PackageTests.BuildDeps.InternalLibrary3.Check
 import PackageTests.BuildDeps.InternalLibrary4.Check
+import PackageTests.BuildDeps.SameDepsAllRound.Check
+import PackageTests.BuildDeps.TargetSpecificDeps1.Check
+import PackageTests.BuildDeps.TargetSpecificDeps1.Check
+import PackageTests.BuildDeps.TargetSpecificDeps2.Check
+import PackageTests.BuildDeps.TargetSpecificDeps3.Check
 import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
+import PackageTests.TemplateHaskell.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
-import PackageTests.TemplateHaskell.Check
-import Distribution.Text (display)
-import Distribution.Simple.Utils (cabalVersion)
-import Data.Version
-import System.Directory
 
 hunit :: TestName -> HUnit.Test -> Test
 hunit name test = testGroup name $ hUnitTestToTests test
 
 tests :: Version -> [Test]
-tests cabalVersion = [
-        hunit "PackageTests/BuildDeps/SameDepsAllRound/" PackageTests.BuildDeps.SameDepsAllRound.Check.suite,
-        -- The two following tests were disabled by Johan Tibell as
-        -- they have been failing for a long time:
-        -- hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite,
-        -- hunit "PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/" PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite,
-        hunit "PackageTests/BuildDeps/InternalLibrary0/" (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion),
-        hunit "PackageTests/TestStanza/" (PackageTests.TestStanza.Check.suite cabalVersion),
-        -- ^ The Test stanza test will eventually be required
-        -- only for higher versions.
-        hunit "PackageTests/TestSuiteExeV10/Test"
-        (PackageTests.TestSuiteExeV10.Check.checkTest cabalVersion),
-        hunit "PackageTests/TestSuiteExeV10/TestWithHpc"
-        (PackageTests.TestSuiteExeV10.Check.checkTestWithHpc cabalVersion),
-        hunit "PackageTests/TestOptions" PackageTests.TestOptions.Check.suite,
-        hunit "PackageTests/BenchmarkStanza/" (PackageTests.BenchmarkStanza.Check.suite cabalVersion),
-        -- ^ The benchmark stanza test will eventually be required
-        -- only for higher versions.
-        hunit "PackageTests/BenchmarkExeV10/Test"
-        (PackageTests.BenchmarkExeV10.Check.checkBenchmark cabalVersion),
-        hunit "PackageTests/BenchmarkOptions" PackageTests.BenchmarkOptions.Check.suite,
-        hunit "PackageTests/TemplateHaskell/profiling" PackageTests.TemplateHaskell.Check.profiling,
-        hunit "PackageTests/TemplateHaskell/dynamic" PackageTests.TemplateHaskell.Check.dynamic,
-        hunit "PackageTests/PathsModule/Executable"
-        PackageTests.PathsModule.Executable.Check.suite,
-        hunit "PackageTests/PathsModule/Library"
-        PackageTests.PathsModule.Library.Check.suite
+tests cabalVersion =
+    [ hunit "BuildDeps/SameDepsAllRound/"
+      PackageTests.BuildDeps.SameDepsAllRound.Check.suite
+      -- The two following tests were disabled by Johan Tibell as
+      -- they have been failing for a long time:
+      -- , hunit "BuildDeps/GlobalBuildDepsNotAdditive1/"
+      --   PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite
+      -- , hunit "BuildDeps/GlobalBuildDepsNotAdditive2/"
+      --   PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite
+    , hunit "BuildDeps/InternalLibrary0/"
+      (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion)
+    , hunit "TestStanza/" (PackageTests.TestStanza.Check.suite cabalVersion)
+      -- ^ The Test stanza test will eventually be required
+      -- only for higher versions.
+    , hunit "TestSuiteExeV10/Test"
+      (PackageTests.TestSuiteExeV10.Check.checkTest cabalVersion)
+    , hunit "TestSuiteExeV10/TestWithHpc"
+      (PackageTests.TestSuiteExeV10.Check.checkTestWithHpc cabalVersion)
+    , hunit "TestOptions" PackageTests.TestOptions.Check.suite
+    , hunit "BenchmarkStanza/"
+      (PackageTests.BenchmarkStanza.Check.suite cabalVersion)
+      -- ^ The benchmark stanza test will eventually be required
+      -- only for higher versions.
+    , hunit "BenchmarkExeV10/Test"
+      (PackageTests.BenchmarkExeV10.Check.checkBenchmark cabalVersion)
+    , hunit "BenchmarkOptions" PackageTests.BenchmarkOptions.Check.suite
+    , hunit "TemplateHaskell/profiling"
+      PackageTests.TemplateHaskell.Check.profiling
+    , hunit "TemplateHaskell/dynamic"
+      PackageTests.TemplateHaskell.Check.dynamic
+    , hunit "PathsModule/Executable"
+      PackageTests.PathsModule.Executable.Check.suite
+    , hunit "PathsModule/Library" PackageTests.PathsModule.Library.Check.suite
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if cabalVersion >= Version [1, 7] []
-        then [
-            hunit "PackageTests/BuildDeps/TargetSpecificDeps1/" PackageTests.BuildDeps.TargetSpecificDeps1.Check.suite,
-            hunit "PackageTests/BuildDeps/TargetSpecificDeps2/" PackageTests.BuildDeps.TargetSpecificDeps2.Check.suite,
-            hunit "PackageTests/BuildDeps/TargetSpecificDeps3/" PackageTests.BuildDeps.TargetSpecificDeps3.Check.suite,
-            hunit "PackageTests/BuildDeps/InternalLibrary1/" PackageTests.BuildDeps.InternalLibrary1.Check.suite,
-            hunit "PackageTests/BuildDeps/InternalLibrary2/" PackageTests.BuildDeps.InternalLibrary2.Check.suite,
-            hunit "PackageTests/BuildDeps/InternalLibrary3/" PackageTests.BuildDeps.InternalLibrary3.Check.suite,
-            hunit "PackageTests/BuildDeps/InternalLibrary4/" PackageTests.BuildDeps.InternalLibrary4.Check.suite
-        ]
-        else [])
+     then [ hunit "BuildDeps/TargetSpecificDeps1/"
+            PackageTests.BuildDeps.TargetSpecificDeps1.Check.suite
+          , hunit "BuildDeps/TargetSpecificDeps2/"
+            PackageTests.BuildDeps.TargetSpecificDeps2.Check.suite
+          , hunit "BuildDeps/TargetSpecificDeps3/"
+            PackageTests.BuildDeps.TargetSpecificDeps3.Check.suite
+          , hunit "BuildDeps/InternalLibrary1/"
+            PackageTests.BuildDeps.InternalLibrary1.Check.suite
+          , hunit "BuildDeps/InternalLibrary2/"
+            PackageTests.BuildDeps.InternalLibrary2.Check.suite
+          , hunit "BuildDeps/InternalLibrary3/"
+            PackageTests.BuildDeps.InternalLibrary3.Check.suite
+          , hunit "BuildDeps/InternalLibrary4/"
+            PackageTests.BuildDeps.InternalLibrary4.Check.suite
+          ]
+     else [])
 
 main = do
-    putStrLn $ "Cabal test suite - testing cabal version "++display cabalVersion
+    putStrLn $ "Cabal test suite - testing cabal version " ++
+        display cabalVersion
     setCurrentDirectory "tests"
     defaultMain (tests cabalVersion)
 
