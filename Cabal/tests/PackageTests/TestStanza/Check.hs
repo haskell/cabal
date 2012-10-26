@@ -10,12 +10,10 @@ import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
         ( finalizePackageDescription )
 import Distribution.Package
-        ( PackageIdentifier(..), PackageName(..), Dependency(..) )
+        ( PackageName(..), Dependency(..) )
 import Distribution.PackageDescription
-        ( PackageDescription(..), BuildInfo(..), TestSuite(..), Library(..)
-        , TestSuiteInterface(..)
-        , TestType(..), emptyPackageDescription, emptyBuildInfo, emptyLibrary
-        , emptyTestSuite, BuildType(..) )
+        ( PackageDescription(..), BuildInfo(..), TestSuite(..)
+        , TestSuiteInterface(..), emptyBuildInfo, emptyTestSuite )
 import Distribution.Verbosity (silent)
 import Distribution.License (License(..))
 import Distribution.ModuleName (fromString)
@@ -24,8 +22,8 @@ import Distribution.Compiler
         ( CompilerId(..), CompilerFlavor(..) )
 import Distribution.Text
 
-suite :: Version -> Test
-suite cabalVersion = TestCase $ do
+suite :: Test
+suite = TestCase $ do
     let directory = "PackageTests" </> "TestStanza"
         pdFile = directory </> "my" <.> "cabal"
         spec = PackageSpec directory []

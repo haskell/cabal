@@ -24,11 +24,8 @@ import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
 import System.Posix.IO
-import System.Process
+import System.Process hiding (cwd)
 import System.Exit
-import Control.Concurrent.Chan
-import Control.Concurrent.MVar
-import Control.Concurrent
 import Control.Monad
 import Data.List
 import Data.Maybe
@@ -79,7 +76,7 @@ cabal_configure spec = do
 
 doCabalConfigure :: PackageSpec -> IO Result
 doCabalConfigure spec = do
-    cleanResult@(_, _, cleanOutput) <- cabal spec ["clean"]
+    cleanResult@(_, _, _) <- cabal spec ["clean"]
     requireSuccess cleanResult
     ghc <- getGHC
     res <- cabal spec $ ["configure", "--user", "-w", ghc] ++ configOpts spec

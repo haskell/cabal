@@ -17,8 +17,8 @@ import qualified Test.HUnit as HUnit
 import PackageTests.BenchmarkExeV10.Check
 import PackageTests.BenchmarkOptions.Check
 import PackageTests.BenchmarkStanza.Check
-import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check
-import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check
+-- import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check
+-- import PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check
 import PackageTests.BuildDeps.InternalLibrary0.Check
 import PackageTests.BuildDeps.InternalLibrary1.Check
 import PackageTests.BuildDeps.InternalLibrary2.Check
@@ -51,13 +51,12 @@ tests cabalVersion =
       --   PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite
     , hunit "BuildDeps/InternalLibrary0"
       (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion)
-    , hunit "TestStanza/" (PackageTests.TestStanza.Check.suite cabalVersion)
+    , hunit "TestStanza" PackageTests.TestStanza.Check.suite
       -- ^ The Test stanza test will eventually be required
       -- only for higher versions.
-    , hunit "TestSuiteExeV10/Test"
-      (PackageTests.TestSuiteExeV10.Check.checkTest cabalVersion)
+    , hunit "TestSuiteExeV10/Test" PackageTests.TestSuiteExeV10.Check.checkTest
     , hunit "TestSuiteExeV10/TestWithHpc"
-      (PackageTests.TestSuiteExeV10.Check.checkTestWithHpc cabalVersion)
+      PackageTests.TestSuiteExeV10.Check.checkTestWithHpc
     , hunit "TestOptions" PackageTests.TestOptions.Check.suite
     , hunit "BenchmarkStanza"
       (PackageTests.BenchmarkStanza.Check.suite cabalVersion)
