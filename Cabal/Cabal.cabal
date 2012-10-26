@@ -161,6 +161,8 @@ test-suite package-tests
                  PackageTests.BenchmarkStanza.Check,
                  PackageTests.TemplateHaskell.Check,
                  PackageTests.PackageTester
+                 PackageTests.PathsModule.Executable.Check
+                 PackageTests.PathsModule.Library.Check
   hs-source-dirs: tests
   build-depends:
         base,
