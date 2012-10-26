@@ -26,7 +26,6 @@ import PackageTests.BuildDeps.InternalLibrary3.Check
 import PackageTests.BuildDeps.InternalLibrary4.Check
 import PackageTests.BuildDeps.SameDepsAllRound.Check
 import PackageTests.BuildDeps.TargetSpecificDeps1.Check
-import PackageTests.BuildDeps.TargetSpecificDeps1.Check
 import PackageTests.BuildDeps.TargetSpecificDeps2.Check
 import PackageTests.BuildDeps.TargetSpecificDeps3.Check
 import PackageTests.PathsModule.Executable.Check
@@ -40,7 +39,7 @@ hunit :: TestName -> HUnit.Test -> Test
 hunit name test = testGroup name $ hUnitTestToTests test
 
 tests :: Version -> [Test]
-tests cabalVersion =
+tests version =
     [ hunit "BuildDeps/SameDepsAllRound"
       PackageTests.BuildDeps.SameDepsAllRound.Check.suite
       -- The two following tests were disabled by Johan Tibell as
@@ -50,7 +49,7 @@ tests cabalVersion =
       -- , hunit "BuildDeps/GlobalBuildDepsNotAdditive2/"
       --   PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite
     , hunit "BuildDeps/InternalLibrary0"
-      (PackageTests.BuildDeps.InternalLibrary0.Check.suite cabalVersion)
+      (PackageTests.BuildDeps.InternalLibrary0.Check.suite version)
     , hunit "TestStanza" PackageTests.TestStanza.Check.suite
       -- ^ The Test stanza test will eventually be required
       -- only for higher versions.
@@ -58,12 +57,11 @@ tests cabalVersion =
     , hunit "TestSuiteExeV10/TestWithHpc"
       PackageTests.TestSuiteExeV10.Check.checkTestWithHpc
     , hunit "TestOptions" PackageTests.TestOptions.Check.suite
-    , hunit "BenchmarkStanza"
-      (PackageTests.BenchmarkStanza.Check.suite cabalVersion)
+    , hunit "BenchmarkStanza" PackageTests.BenchmarkStanza.Check.suite
       -- ^ The benchmark stanza test will eventually be required
       -- only for higher versions.
     , hunit "BenchmarkExeV10/Test"
-      (PackageTests.BenchmarkExeV10.Check.checkBenchmark cabalVersion)
+      PackageTests.BenchmarkExeV10.Check.checkBenchmark
     , hunit "BenchmarkOptions" PackageTests.BenchmarkOptions.Check.suite
     , hunit "TemplateHaskell/profiling"
       PackageTests.TemplateHaskell.Check.profiling
@@ -74,24 +72,25 @@ tests cabalVersion =
     , hunit "PathsModule/Library" PackageTests.PathsModule.Library.Check.suite
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
-    (if cabalVersion >= Version [1, 7] []
-     then [ hunit "BuildDeps/TargetSpecificDeps1/"
+    (if version >= Version [1, 7] []
+     then [ hunit "BuildDeps/TargetSpecificDeps1"
             PackageTests.BuildDeps.TargetSpecificDeps1.Check.suite
-          , hunit "BuildDeps/TargetSpecificDeps2/"
+          , hunit "BuildDeps/TargetSpecificDeps2"
             PackageTests.BuildDeps.TargetSpecificDeps2.Check.suite
-          , hunit "BuildDeps/TargetSpecificDeps3/"
+          , hunit "BuildDeps/TargetSpecificDeps3"
             PackageTests.BuildDeps.TargetSpecificDeps3.Check.suite
-          , hunit "BuildDeps/InternalLibrary1/"
+          , hunit "BuildDeps/InternalLibrary1"
             PackageTests.BuildDeps.InternalLibrary1.Check.suite
-          , hunit "BuildDeps/InternalLibrary2/"
+          , hunit "BuildDeps/InternalLibrary2"
             PackageTests.BuildDeps.InternalLibrary2.Check.suite
-          , hunit "BuildDeps/InternalLibrary3/"
+          , hunit "BuildDeps/InternalLibrary3"
             PackageTests.BuildDeps.InternalLibrary3.Check.suite
-          , hunit "BuildDeps/InternalLibrary4/"
+          , hunit "BuildDeps/InternalLibrary4"
             PackageTests.BuildDeps.InternalLibrary4.Check.suite
           ]
      else [])
 
+main :: IO ()
 main = do
     putStrLn $ "Cabal test suite - testing cabal version " ++
         display cabalVersion

@@ -14,7 +14,8 @@ module PackageTests.PackageTester (
         assertBuildFailed,
         assertTestSucceeded,
         assertInstallSucceeded,
-        assertOutputContains
+        assertOutputContains,
+        assertOutputDoesNotContain
     ) where
 
 import qualified Control.Exception.Extensible as E
@@ -218,6 +219,14 @@ assertOutputContains needle result =
     assertFailure $
     " expected: " ++ needle ++
     "in output: " ++ output
+  where output = outputText result
+
+assertOutputDoesNotContain :: String -> Result -> Assertion
+assertOutputDoesNotContain needle result =
+    when (needle `isInfixOf` (intercalate " " $ lines output)) $
+    assertFailure $
+    "unexpected: " ++ needle ++
+    " in output: " ++ output
   where output = outputText result
 
 ------------------------------------------------------------------------

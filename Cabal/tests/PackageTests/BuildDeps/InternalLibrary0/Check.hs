@@ -1,13 +1,11 @@
 module PackageTests.BuildDeps.InternalLibrary0.Check where
 
-import Test.HUnit
-import PackageTests.PackageTester
 import Control.Monad
-import System.FilePath
 import Data.Version
-import Data.List (isInfixOf, intercalate)
-import Control.Exception
+import PackageTests.PackageTester
 import Prelude hiding (catch)
+import System.FilePath
+import Test.HUnit
 
 
 suite :: Version -> Test

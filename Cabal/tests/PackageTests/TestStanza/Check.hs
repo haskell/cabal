@@ -3,39 +3,28 @@ module PackageTests.TestStanza.Check where
 import Test.HUnit
 import System.FilePath
 import PackageTests.PackageTester
-import Data.List (isInfixOf, intercalate)
 import Distribution.Version
-import Distribution.PackageDescription.Parse
-        ( readPackageDescription )
+import Distribution.PackageDescription.Parse (readPackageDescription)
 import Distribution.PackageDescription.Configuration
-        ( finalizePackageDescription )
-import Distribution.Package
-        ( PackageName(..), Dependency(..) )
+    (finalizePackageDescription)
+import Distribution.Package (PackageName(..), Dependency(..))
 import Distribution.PackageDescription
-        ( PackageDescription(..), BuildInfo(..), TestSuite(..)
-        , TestSuiteInterface(..), emptyBuildInfo, emptyTestSuite )
+    ( PackageDescription(..), BuildInfo(..), TestSuite(..)
+    , TestSuiteInterface(..), emptyBuildInfo, emptyTestSuite)
 import Distribution.Verbosity (silent)
-import Distribution.License (License(..))
-import Distribution.ModuleName (fromString)
 import Distribution.System (buildPlatform)
-import Distribution.Compiler
-        ( CompilerId(..), CompilerFlavor(..) )
+import Distribution.Compiler (CompilerId(..), CompilerFlavor(..))
 import Distribution.Text
 
 suite :: Test
 suite = TestCase $ do
-    let directory = "PackageTests" </> "TestStanza"
-        pdFile = directory </> "my" <.> "cabal"
-        spec = PackageSpec directory []
+    let dir = "PackageTests" </> "TestStanza"
+        pdFile = dir </> "my" <.> "cabal"
+        spec = PackageSpec dir []
     result <- cabal_configure spec
-    let message = "cabal configure should recognize test section"
-        test = "unknown section type"
-               `isInfixOf`
-               (intercalate " " $ lines $ outputText result)
-    assertEqual message False test
+    assertOutputDoesNotContain "unknown section type" result
     genPD <- readPackageDescription silent pdFile
     let compiler = CompilerId GHC $ Version [6, 12, 2] []
-        anyV = intersectVersionRanges anyVersion anyVersion
         anticipatedTestSuite = emptyTestSuite
             { testName = "dummy"
             , testInterface = TestSuiteExeV10 (Version [1,0] []) "dummy.hs"
