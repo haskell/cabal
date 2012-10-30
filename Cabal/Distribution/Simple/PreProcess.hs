@@ -232,7 +232,7 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
     preProcessComponent bi modules exePath dir = do
         let biHandlers = localHandlers bi
             sourceDirs = hsSourceDirs bi ++ [ autogenModulesDir lbi ]
-        sequence_ [ preprocessFile sourceDirs (buildDir lbi) isSrcDist
+        sequence_ [ preprocessFile sourceDirs dir isSrcDist
                 (ModuleName.toFilePath modu) verbosity builtinSuffixes
                 biHandlers
                 | modu <- modules ]
