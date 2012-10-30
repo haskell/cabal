@@ -22,7 +22,7 @@ module Distribution.Client.Setup
     , upgradeCommand
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
-    , getCommand, GetFlags(..)
+    , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , uploadCommand, UploadFlags(..)
     , reportCommand, ReportFlags(..)
@@ -560,6 +560,13 @@ getCommand = CommandUI {
            getPristine (\v flags -> flags { getPristine = v })
            trueArg
        ]
+  }
+
+-- 'cabal unpack' is a deprecated alias for 'cabal get'.
+unpackCommand :: CommandUI GetFlags
+unpackCommand = getCommand {
+  commandName  = "unpack",
+  commandUsage = usagePackages "unpack"
   }
 
 instance Monoid GetFlags where
