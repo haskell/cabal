@@ -15,7 +15,8 @@ module PackageTests.PackageTester (
         assertTestSucceeded,
         assertInstallSucceeded,
         assertOutputContains,
-        assertOutputDoesNotContain
+        assertOutputDoesNotContain,
+        compileSetup
     ) where
 
 import qualified Control.Exception.Extensible as E
@@ -134,12 +135,11 @@ cabal_bench spec extraArgs = do
     record spec r
     return r
 
--- | Returns the command that was issued, the return code, and hte output text
-cabal :: PackageSpec -> [String] -> IO (String, ExitCode, String)
-cabal spec cabalArgs = do
+compileSetup :: FilePath -> IO ()
+compileSetup packageDir = do
     wd <- getCurrentDirectory
     ghc <- getGHC
-    r <- run (Just $ directory spec) ghc
+    r <- run (Just $ packageDir) ghc
              [ "--make"
 -- HPC causes trouble -- see #1012
 --             , "-fhpc"
@@ -147,7 +147,18 @@ cabal spec cabalArgs = do
              , "Setup.hs"
              ]
     requireSuccess r
-    run (Just $ directory spec) (wd </> directory spec </> "Setup") cabalArgs
+
+-- | Returns the command that was issued, the return code, and hte output text
+cabal :: PackageSpec -> [String] -> IO (String, ExitCode, String)
+cabal spec cabalArgs = do
+    customSetup <- doesFileExist (directory spec </> "Setup.hs")
+    wd <- getCurrentDirectory
+    if customSetup
+        then do
+            compileSetup (directory spec)
+            run (Just $ directory spec) (wd </> directory spec </> "Setup") cabalArgs
+        else do
+            run (Just $ directory spec) (wd </> "Setup") cabalArgs
 
 -- | Returns the command that was issued, the return code, and hte output text
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
