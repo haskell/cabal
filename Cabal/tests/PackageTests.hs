@@ -30,6 +30,7 @@ import PackageTests.BuildDeps.TargetSpecificDeps2.Check
 import PackageTests.BuildDeps.TargetSpecificDeps3.Check
 import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
+import PackageTests.PreProcess.Check
 import PackageTests.TemplateHaskell.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
@@ -50,6 +51,7 @@ tests version =
       --   PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite
     , hunit "BuildDeps/InternalLibrary0"
       (PackageTests.BuildDeps.InternalLibrary0.Check.suite version)
+    , hunit "PreProcess" PackageTests.PreProcess.Check.suite
     , hunit "TestStanza" PackageTests.TestStanza.Check.suite
       -- ^ The Test stanza test will eventually be required
       -- only for higher versions.
