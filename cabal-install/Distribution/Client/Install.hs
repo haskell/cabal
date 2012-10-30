@@ -42,7 +42,7 @@ import System.Directory
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
-         ( openFile, IOMode(AppendMode), stdout, hFlush, hClose )
+         ( openFile, IOMode(WriteMode), stdout, hFlush, hClose )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -1139,7 +1139,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                  let logFileName = mkLogFileName (packageId pkg)
                      logDir      = takeDirectory logFileName
                  unless (null logDir) $ createDirectoryIfMissing True logDir
-                 logFile <- openFile logFileName AppendMode
+                 logFile <- openFile logFileName WriteMode
                  return (Just logFile))
               (\mHandle -> case mHandle of
                            Just handle -> hClose handle
