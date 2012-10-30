@@ -21,7 +21,7 @@ import Distribution.Client.Setup
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
-         , GetFlags(..), getCommand
+         , GetFlags(..), getCommand, unpackCommand
          , checkCommand
          , updateCommand
          , ListFlags(..), listCommand
@@ -151,6 +151,8 @@ mainWorker args = topHandler $
       ,infoCommand            `commandAddAction` infoAction
       ,fetchCommand           `commandAddAction` fetchAction
       ,getCommand             `commandAddAction` getAction
+      ,hiddenCommand $
+       unpackCommand          `commandAddAction` unpackAction
       ,checkCommand           `commandAddAction` checkAction
       ,sdistCommand           `commandAddAction` sdistAction
       ,uploadCommand          `commandAddAction` uploadAction
@@ -580,6 +582,14 @@ getAction getFlags extraArgs globalFlags = do
     globalFlags'
     getFlags
     targets
+
+unpackAction :: GetFlags -> [String] -> GlobalFlags -> IO ()
+unpackAction getFlags extraArgs globalFlags = do
+  let verbosity = fromFlag (getVerbosity getFlags)
+  notice verbosity $ "The 'unpack' command is deprecated "
+    ++ "and will be removed in a future release. "
+    ++ "Please use 'cabal get' instead."
+  getAction getFlags extraArgs globalFlags
 
 initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
 initAction initFlags _extraArgs globalFlags = do
