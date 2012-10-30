@@ -24,7 +24,6 @@ import System.Directory
 import System.FilePath
 import System.IO
 import System.IO.Error (isDoesNotExistError)
-import System.Posix.IO
 import System.Process hiding (cwd)
 import System.Exit
 import Control.Monad
@@ -33,6 +32,7 @@ import Data.Maybe
 import qualified Data.ByteString.Char8 as C
 import Test.HUnit
 
+import Distribution.Compat.CreatePipe (createPipe)
 
 data PackageSpec =
     PackageSpec {
@@ -153,14 +153,12 @@ cabal spec cabalArgs = do
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
 run cwd cmd args = do
     -- Posix-specific
-    (outf, outf0) <- createPipe
-    outh <- fdToHandle outf
-    outh0 <- fdToHandle outf0
-    pid <- runProcess cmd args cwd Nothing Nothing (Just outh0) (Just outh0)
+    (readh, writeh) <- createPipe
+    pid <- runProcess cmd args cwd Nothing Nothing (Just writeh) (Just writeh)
 
     -- fork off a thread to start consuming the output
-    output <- suckH [] outh
-    hClose outh
+    output <- suckH [] readh
+    hClose readh
 
     -- wait on the process
     ex <- waitForProcess pid

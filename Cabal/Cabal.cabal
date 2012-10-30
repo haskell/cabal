@@ -164,6 +164,7 @@ test-suite package-tests
                  PackageTests.PackageTester
                  PackageTests.PathsModule.Executable.Check
                  PackageTests.PathsModule.Library.Check
+                 Distribution.Compat.CreatePipe
   hs-source-dirs: tests
   build-depends:
         base,
@@ -177,7 +178,9 @@ test-suite package-tests
         directory,
         filepath,
         extensible-exceptions,
-        bytestring,
-        unix
+        bytestring
+  if !os(windows)
+    build-depends: unix
   ghc-options: -Wall
+  Default-Extensions: CPP
   Default-Language: Haskell98
