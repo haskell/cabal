@@ -58,12 +58,11 @@ data Success = Failure
              | BenchSuccess
              deriving (Eq, Show)
 
-data Result = Result {
-        successful :: Bool,
-        success    :: Success,
-        outputText :: String
-    }
-    deriving Show
+data Result = Result
+    { successful :: Bool
+    , success    :: Success
+    , outputText :: String
+    } deriving Show
 
 nullResult :: Result
 nullResult = Result True Failure ""
@@ -73,14 +72,13 @@ nullResult = Result True Failure ""
 
 recordRun :: (String, ExitCode, String) -> Success -> Result -> Result
 recordRun (cmd, exitCode, exeOutput) thisSucc res =
-    res {
-        successful = successful res && exitCode == ExitSuccess,
-        success = if exitCode == ExitSuccess then thisSucc
-                                             else success res,
-        outputText =
+    res { successful = successful res && exitCode == ExitSuccess
+        , success    = if exitCode == ExitSuccess then thisSucc
+                       else success res
+        , outputText =
             (if null $ outputText res then "" else outputText res ++ "\n") ++
-                cmd ++ "\n" ++ exeOutput
-    }
+            cmd ++ "\n" ++ exeOutput
+        }
 
 cabal_configure :: PackageSpec -> IO Result
 cabal_configure spec = do
@@ -152,12 +150,12 @@ compileSetup packageDir = do
     wd <- getCurrentDirectory
     ghc <- getGHC
     r <- run (Just $ packageDir) ghc
-             [ "--make"
+         [ "--make"
 -- HPC causes trouble -- see #1012
---             , "-fhpc"
-             , "-package-conf " ++ wd </> "../dist/package.conf.inplace"
-             , "Setup.hs"
-             ]
+--       , "-fhpc"
+         , "-package-conf " ++ wd </> "../dist/package.conf.inplace"
+         , "Setup.hs"
+         ]
     requireSuccess r
 
 -- | Returns the command that was issued, the return code, and hte output text
@@ -201,9 +199,9 @@ run cwd path args = do
 -- Copied from Distribution/Simple/Utils.hs
 printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args
- | verbosity >= deafening = print (path, args)
- | verbosity >= verbose   = putStrLn $ unwords (path : args)
- | otherwise              = return ()
+    | verbosity >= deafening = print (path, args)
+    | verbosity >= verbose   = putStrLn $ unwords (path : args)
+    | otherwise              = return ()
 
 requireSuccess :: (String, ExitCode, String) -> IO ()
 requireSuccess (cmd, exitCode, output) =
@@ -244,7 +242,7 @@ assertInstallSucceeded result = unless (successful result) $
 
 assertOutputContains :: String -> Result -> Assertion
 assertOutputContains needle result =
-    unless (needle `isInfixOf` (intercalate " " $ lines output)) $
+    unless (needle `isInfixOf` (unwords $ lines output)) $
     assertFailure $
     " expected: " ++ needle ++
     "in output: " ++ output
@@ -252,7 +250,7 @@ assertOutputContains needle result =
 
 assertOutputDoesNotContain :: String -> Result -> Assertion
 assertOutputDoesNotContain needle result =
-    when (needle `isInfixOf` (intercalate " " $ lines output)) $
+    when (needle `isInfixOf` (unwords $ lines output)) $
     assertFailure $
     "unexpected: " ++ needle ++
     " in output: " ++ output
