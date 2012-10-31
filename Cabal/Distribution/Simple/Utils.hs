@@ -97,6 +97,9 @@ module Distribution.Simple.Utils (
         findModuleFiles,
         getDirectoryContentsRecursive,
 
+        -- * environment variables
+        isInSearchPath,
+
         -- * simple file globbing
         matchFileGlob,
         matchDirFileGlob,
@@ -161,7 +164,8 @@ import System.Cmd
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
-    ( normalise, (</>), (<.>), takeDirectory, splitFileName
+    ( normalise, (</>), (<.>)
+    , getSearchPath, takeDirectory, splitFileName
     , splitExtension, splitExtensions, splitDirectories )
 import System.Directory
     ( createDirectory, renameFile, removeDirectoryRecursive )
@@ -691,6 +695,13 @@ getDirectoryContentsRecursive topdir = recurseDirectories [""]
         ignore ['.']      = True
         ignore ['.', '.'] = True
         ignore _          = False
+
+------------------------
+-- Environment variables
+
+-- | Is this directory in the system search path?
+isInSearchPath :: FilePath -> IO Bool
+isInSearchPath path = fmap (elem path) getSearchPath
 
 ----------------
 -- File globbing
