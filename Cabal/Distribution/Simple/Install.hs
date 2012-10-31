@@ -54,8 +54,9 @@ import Distribution.Simple.LocalBuildInfo (
         substPathTemplate)
 import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
-         ( createDirectoryIfMissingVerbose, installDirectoryContents
-         , installOrdinaryFile, die, info, notice, matchDirFileGlob )
+         ( createDirectoryIfMissingVerbose
+         , installDirectoryContents, installOrdinaryFile, isInSearchPath
+         , die, info, notice, warn, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
 import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..), fromFlag)
@@ -143,8 +144,12 @@ install pkg_descr lbi flags = do
   let buildPref = buildDir lbi
   when (hasLibs pkg_descr) $
     notice verbosity ("Installing library in " ++ libPref)
-  when (hasExes pkg_descr) $
+  when (hasExes pkg_descr) $ do
     notice verbosity ("Installing executable(s) in " ++ binPref)
+    inPath <- isInSearchPath binPref
+    when (not inPath) $
+      warn verbosity ("The directory " ++ binPref
+                      ++ " is not in the system search path.")
 
   -- install include files for all compilers - they may be needed to compile
   -- haskell files (using the CPP extension)
