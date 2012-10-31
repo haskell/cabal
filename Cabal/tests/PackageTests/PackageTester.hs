@@ -31,7 +31,7 @@ import Control.Monad
 import qualified Data.ByteString.Char8 as C
 import Data.List
 import Data.Maybe
-import System.Directory (doesFileExist, getCurrentDirectory)
+import System.Directory (canonicalizePath, doesFileExist, getCurrentDirectory)
 import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitSuccess))
 import System.FilePath
@@ -162,14 +162,15 @@ compileSetup packageDir = do
 cabal :: PackageSpec -> [String] -> IO (String, ExitCode, String)
 cabal spec cabalArgs = do
     customSetup <- doesFileExist (directory spec </> "Setup.hs")
-    wd <- getCurrentDirectory
     if customSetup
         then do
             compileSetup (directory spec)
-            run (Just $ directory spec) (wd </> directory spec </> "Setup")
-                cabalArgs
+            path <- canonicalizePath $ directory spec </> "Setup"
+            run (Just $ directory spec) path cabalArgs
         else do
-            run (Just $ directory spec) (wd </> "Setup") cabalArgs
+            -- Use shared Setup executable (only for Simple build types).
+            path <- canonicalizePath "Setup"
+            run (Just $ directory spec) path cabalArgs
 
 -- | Returns the command that was issued, the return code, and hte output text
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
