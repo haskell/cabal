@@ -56,11 +56,13 @@ module Distribution.Simple.SrcDist (
 
   -- ** Parts of 'sdist'
   printPackageProblems,
+  prepareTreeWithoutGeneratedModules,
   prepareTree,
   createArchive,
 
   -- ** Snaphots
   prepareSnapshotTree,
+  prepareSnapshotTreeWithoutGeneratedModules,
   snapshotPackage,
   snapshotVersion,
   dateToSnapshotNumber,
@@ -140,17 +142,17 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
     generateSourceDir targetDir pkg' = do
 
       setupMessage verbosity "Building source dist for" (packageId pkg')
-      prepareTree verbosity pkg' mb_lbi distPref targetDir pps
+      prepareTreeWithoutGeneratedModules verbosity pkg' mb_lbi distPref targetDir pps generatedModules
       when snapshot $
         overwriteSnapshotPackageDesc verbosity pkg' targetDir
 
     verbosity = fromFlag (sDistVerbosity flags)
     snapshot  = fromFlag (sDistSnapshot flags)
+    generatedModules = sDistGeneratedModules flags
 
     distPref     = fromFlag $ sDistDistPref flags
     targetPref   = distPref
     tmpTargetDir = mkTmpDir distPref
-
 
 -- |Prepare a directory tree of source files.
 prepareTree :: Verbosity          -- ^verbosity
@@ -160,7 +162,21 @@ prepareTree :: Verbosity          -- ^verbosity
             -> FilePath           -- ^source tree to populate
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
             -> IO ()
-prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
+prepareTree verbosity pkg_descr mb_lbi distPref targetDir pps =
+  prepareTreeWithoutGeneratedModules verbosity pkg_descr mb_lbi distPref targetDir pps []
+
+-- |Prepare a directory tree of source files, except for generated modules.
+-- Note that this automatically ignores the Paths_<pkg>.hs module.
+prepareTreeWithoutGeneratedModules 
+    :: Verbosity          -- ^verbosity
+    -> PackageDescription -- ^info from the cabal file
+    -> Maybe LocalBuildInfo
+    -> FilePath           -- ^dist dir
+    -> FilePath           -- ^source tree to populate
+    -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
+    -> [ModuleName]       -- ^generated modules to ignore
+    -> IO ()
+prepareTreeWithoutGeneratedModules verbosity pkg_descr0 mb_lbi distPref targetDir pps generatedModules0 = do
   createDirectoryIfMissingVerbose verbosity True targetDir
 
   -- maybe move the library files into place
@@ -262,11 +278,19 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   installOrdinaryFile verbosity descFile (targetDir </> descFile)
 
   where
-    pkg_descr = mapAllBuildInfo filterAutogenModule pkg_descr0
-    filterAutogenModule bi = bi {
-      otherModules = filter (/=autogenModule) (otherModules bi)
+    pkg_descr1 = mapAllBuildInfo filterGeneratedOtherModules pkg_descr0
+    pkg_descr = pkg_descr1 {
+      library = fmap filterGeneratedExposedModules (library pkg_descr1)
     }
-    autogenModule = autogenModuleName pkg_descr0
+    filterGeneratedOtherModules bi = bi {
+      otherModules = filterGeneratedModules (otherModules bi)
+    }
+    filterGeneratedExposedModules libr = libr {
+      exposedModules = filterGeneratedModules (exposedModules libr)
+    }
+    filterGeneratedModules = filter (flip notElem generatedModules)
+    -- Paths_<pkg>.hs, as well as the modules specified by the caller.
+    generatedModules = autogenModuleName pkg_descr0 : generatedModules0
 
     findInc [] f = die ("can't find include file " ++ f)
     findInc (d:ds) f = do
@@ -292,8 +316,24 @@ prepareSnapshotTree :: Verbosity          -- ^verbosity
                     -> FilePath           -- ^source tree to populate
                     -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
                     -> IO ()
-prepareSnapshotTree verbosity pkg mb_lbi distPref targetDir pps = do
-  prepareTree verbosity pkg mb_lbi distPref targetDir pps
+prepareSnapshotTree verbosity pkg mb_lbi distPref targetDir pps =
+  prepareSnapshotTreeWithoutGeneratedModules verbosity pkg mb_lbi distPref targetDir pps []
+
+-- | Prepare a directory tree of source files for a snapshot version, without
+-- the specified generated modules (as well as Paths_<pkg>.hs).
+-- It is expected that the appropriate snapshot version has already been set
+-- in the package description, eg using 'snapshotPackage' or 'snapshotVersion'.
+prepareSnapshotTreeWithoutGeneratedModules
+    :: Verbosity          -- ^verbosity
+    -> PackageDescription -- ^info from the cabal file
+    -> Maybe LocalBuildInfo
+    -> FilePath           -- ^dist dir
+    -> FilePath           -- ^source tree to populate
+    -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
+    -> [ModuleName]       -- ^generated modules to ignore
+    -> IO ()
+prepareSnapshotTreeWithoutGeneratedModules verbosity pkg mb_lbi distPref targetDir pps generatedModules = do
+  prepareTreeWithoutGeneratedModules verbosity pkg mb_lbi distPref targetDir pps generatedModules
   overwriteSnapshotPackageDesc verbosity pkg targetDir
 
 overwriteSnapshotPackageDesc :: Verbosity          -- ^verbosity

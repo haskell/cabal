@@ -113,6 +113,8 @@ import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Verbosity
+import Distribution.ModuleName
+         ( ModuleName )
 
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
@@ -785,7 +787,8 @@ data SDistFlags = SDistFlags {
     sDistSnapshot  :: Flag Bool,
     sDistDirectory :: Flag FilePath,
     sDistDistPref  :: Flag FilePath,
-    sDistVerbosity :: Flag Verbosity
+    sDistVerbosity :: Flag Verbosity,
+    sDistGeneratedModules :: [ModuleName]
   }
   deriving Show
 
@@ -794,7 +797,8 @@ defaultSDistFlags = SDistFlags {
     sDistSnapshot  = Flag False,
     sDistDirectory = mempty,
     sDistDistPref  = Flag defaultDistPref,
-    sDistVerbosity = Flag normal
+    sDistVerbosity = Flag normal,
+    sDistGeneratedModules = mempty
   }
 
 sdistCommand :: CommandUI SDistFlags
@@ -818,6 +822,13 @@ sdistCommand = makeCommand name shortDesc longDesc defaultSDistFlags options
          "Generate a source distribution in the given directory"
          sDistDirectory (\v flags -> flags { sDistDirectory = v })
          (reqArgFlag "DIR")
+
+      ,option "" ["generated-module"]
+         "Name a generated module to exclude from the tarball"
+         sDistGeneratedModules (\v flags -> flags { sDistGeneratedModules = v })
+         (reqArg "MODULE"
+                 (readP_to_E (const "module name expected") ((\x -> [x]) `fmap` parse))
+                 (map (\x -> display x)))
       ]
 
 emptySDistFlags :: SDistFlags
@@ -828,13 +839,15 @@ instance Monoid SDistFlags where
     sDistSnapshot  = mempty,
     sDistDirectory = mempty,
     sDistDistPref  = mempty,
-    sDistVerbosity = mempty
+    sDistVerbosity = mempty,
+    sDistGeneratedModules = mempty
   }
   mappend a b = SDistFlags {
     sDistSnapshot  = combine sDistSnapshot,
     sDistDirectory = combine sDistDirectory,
     sDistDistPref  = combine sDistDistPref,
-    sDistVerbosity = combine sDistVerbosity
+    sDistVerbosity = combine sDistVerbosity,
+    sDistGeneratedModules = combine sDistGeneratedModules
   }
     where combine field = field a `mappend` field b
 
