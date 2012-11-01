@@ -93,6 +93,7 @@ Executable cabal
         Distribution.Client.PackageIndex
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
+        Distribution.Client.Run
         Distribution.Client.Sandbox
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper

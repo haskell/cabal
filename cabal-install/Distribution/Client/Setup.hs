@@ -25,6 +25,7 @@ module Distribution.Client.Setup
     , checkCommand
     , uploadCommand, UploadFlags(..)
     , reportCommand, ReportFlags(..)
+    , runCommand
     , unpackCommand, UnpackFlags(..)
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
@@ -429,6 +430,21 @@ checkCommand = CommandUI {
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> []
   }
+
+runCommand :: CommandUI BuildFlags
+runCommand = CommandUI {
+    commandName         = "run",
+    commandSynopsis     = "Runs the compiled executable.",
+    commandDescription  = Nothing,
+    commandUsage        =
+      (\pname -> "Usage: " ++ pname
+                 ++ " run [FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]\n\n"
+                 ++ "Flags for run:"),
+    commandDefaultFlags = mempty,
+    commandOptions      = Cabal.buildOptions progConf
+  }
+  where
+    progConf = defaultProgramConfiguration
 
 -- ------------------------------------------------------------
 -- * Report flags
