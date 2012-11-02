@@ -103,7 +103,7 @@ data CommandUI flags = CommandUI {
     commandName        :: String,
     -- | A short, one line description of the command to use in help texts.
     commandSynopsis :: String,
-    -- | The useage line summary for this command
+    -- | The usage line summary for this command
     commandUsage    :: String -> String,
     -- | Additional explanation of the command to use in help texts.
     commandDescription :: Maybe (String -> String),
