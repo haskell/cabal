@@ -142,5 +142,4 @@ Executable cabal
       cpp-options: -DWIN32
     else
       build-depends: unix >= 1.0 && < 2.7
-    extensions: CPP, ForeignFunctionInterface
     c-sources: cbits/getnumcores.c
