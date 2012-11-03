@@ -125,7 +125,7 @@ module Distribution.PackageDescription (
   ) where
 
 import Data.List   (nub, intercalate)
-import Data.Maybe  (maybeToList)
+import Data.Maybe  (fromMaybe, maybeToList)
 import Data.Monoid (Monoid(mempty, mappend))
 import Data.Typeable ( Typeable )
 import Control.Monad (MonadPlus(mplus))
@@ -567,8 +567,7 @@ instance Monoid Benchmark where
         benchmarkName      = combine' benchmarkName,
         benchmarkInterface = combine  benchmarkInterface,
         benchmarkBuildInfo = combine  benchmarkBuildInfo,
-        benchmarkEnabled   = if benchmarkEnabled a then True
-                             else benchmarkEnabled b
+        benchmarkEnabled   = benchmarkEnabled a || benchmarkEnabled b
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -892,9 +891,7 @@ instance Text RepoType where
 
 classifyRepoType :: String -> RepoType
 classifyRepoType s =
-  case lookup (lowercase s) repoTypeMap of
-    Just repoType' -> repoType'
-    Nothing        -> OtherRepoType s
+  fromMaybe (OtherRepoType s) $ lookup (lowercase s) repoTypeMap
   where
     repoTypeMap = [ (name, repoType')
                   | repoType' <- knownRepoTypes

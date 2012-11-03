@@ -502,8 +502,7 @@ clean pkg_descr flags = do
             isDir <- doesDirectoryExist fname
             isFile <- doesFileExist fname
             if isDir then removeDirectoryRecursive fname
-              else if isFile then removeFile fname
-              else return ()
+              else when isFile $ removeFile fname
         verbosity = fromFlag (cleanVerbosity flags)
 
 -- --------------------------------------------------------------------------
@@ -551,7 +550,7 @@ defaultUserHooks :: UserHooks
 defaultUserHooks = autoconfUserHooks {
           confHook = \pkg flags -> do
                        let verbosity = fromFlag (configVerbosity flags)
-                       warn verbosity $
+                       warn verbosity
                          "defaultUserHooks in Setup script is deprecated."
                        confHook autoconfUserHooks pkg flags,
           postConf = oldCompatPostConf

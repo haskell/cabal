@@ -70,7 +70,6 @@ import Control.Monad
 import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
 
-import Distribution.Package ( pkgName )
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription, finalizePackageDescription )
@@ -92,7 +91,7 @@ import Distribution.Version
          , asVersionIntervals, UpperBound(..), isNoVersion )
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
-         , Dependency(..) )
+         , Dependency(..), pkgName )
 
 import Distribution.Text
          ( display, disp )
@@ -412,7 +411,7 @@ checkFields pkg =
       PackageDistSuspicious $
            "Deprecated extensions: "
         ++ commaSep (map (quote . display . fst) deprecatedExtensions)
-        ++ ". " ++ intercalate " "
+        ++ ". " ++ unwords
              [ "Instead of '" ++ display ext
             ++ "' use '" ++ display replacement ++ "'."
              | (ext, Just replacement) <- deprecatedExtensions ]
@@ -424,7 +423,7 @@ checkFields pkg =
       PackageDistSuspicious "No 'maintainer' field."
 
   , check (null (synopsis pkg) && null (description pkg)) $
-      PackageDistInexcusable $ "No 'synopsis' or 'description' field."
+      PackageDistInexcusable "No 'synopsis' or 'description' field."
 
   , check (null (description pkg) && not (null (synopsis pkg))) $
       PackageDistSuspicious "No 'description' field."
@@ -532,19 +531,19 @@ checkSourceRepos pkg =
                    ++ "The repo kind is usually 'head' or 'this'"
       _ -> Nothing
 
-  , check (repoType repo == Nothing) $
+  , check (isNothing (repoType repo)) $
       PackageDistInexcusable
         "The source-repository 'type' is a required field."
 
-  , check (repoLocation repo == Nothing) $
+  , check (isNothing (repoLocation repo)) $
       PackageDistInexcusable
         "The source-repository 'location' is a required field."
 
-  , check (repoType repo == Just CVS && repoModule repo == Nothing) $
+  , check (repoType repo == Just CVS && isNothing (repoModule repo)) $
       PackageDistInexcusable
         "For a CVS source-repository, the 'module' is a required field."
 
-  , check (repoKind repo == RepoThis && repoTag repo == Nothing) $
+  , check (repoKind repo == RepoThis && isNothing (repoTag repo)) $
       PackageDistInexcusable $
            "For the 'this' kind of source-repository, the 'tag' is a required "
         ++ "field. It should specify the tag corresponding to this version "
