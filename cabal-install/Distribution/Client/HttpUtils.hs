@@ -15,14 +15,14 @@ import Network.HTTP
          , Header(..), HeaderName(..) )
 import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
 import Network.URI
-         ( URI (..), URIAuth (..), parseAbsoluteURI )
+         ( URI (..), URIAuth (..) )
 import Network.Browser
-         ( Authority (..), BrowserAction, browse
+         ( BrowserAction, browse
          , setOutHandler, setErrHandler, setProxy, setAuthorityGen, request)
 import Network.Stream
          ( Result, ConnError(..) )
 import Control.Monad
-         ( mplus, join, liftM, liftM2 )
+         ( liftM )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy (ByteString)
 
@@ -45,7 +45,7 @@ trim = f . f
 -- |Get the local proxy settings  
 --TODO: print info message when we're using a proxy based on verbosity
 proxy :: Verbosity -> IO Proxy
-proxy verbosity = do
+proxy _verbosity = do
   p <- fetchProxy True
   -- Handle empty proxy strings
   return $ case p of
