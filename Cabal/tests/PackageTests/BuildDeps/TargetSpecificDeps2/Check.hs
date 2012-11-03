@@ -3,7 +3,6 @@ module PackageTests.BuildDeps.TargetSpecificDeps2.Check where
 import Test.HUnit
 import PackageTests.PackageTester
 import System.FilePath
-import Data.List
 import qualified Control.Exception as E
 
 
