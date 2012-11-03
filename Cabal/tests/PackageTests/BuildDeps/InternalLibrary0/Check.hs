@@ -3,7 +3,6 @@ module PackageTests.BuildDeps.InternalLibrary0.Check where
 import Control.Monad
 import Data.Version
 import PackageTests.PackageTester
-import Prelude hiding (catch)
 import System.FilePath
 import Test.HUnit
 
