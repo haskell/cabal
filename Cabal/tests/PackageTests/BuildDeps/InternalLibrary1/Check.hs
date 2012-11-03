@@ -1,7 +1,6 @@
 module PackageTests.BuildDeps.InternalLibrary1.Check where
 
 import PackageTests.PackageTester
-import Prelude hiding (catch)
 import System.FilePath
 import Test.HUnit
 
