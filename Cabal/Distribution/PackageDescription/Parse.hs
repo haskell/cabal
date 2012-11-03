@@ -176,7 +176,7 @@ pkgDescrFieldDescrs =
 --   a PackageDescription.  All other fields will generate a warning.
 storeXFieldsPD :: UnrecFieldParser PackageDescription
 storeXFieldsPD (f@('x':'-':_),val) pkg = Just pkg{ customFieldsPD =
-                                                        (customFieldsPD pkg) ++ [(f,val)]}
+                                                        customFieldsPD pkg ++ [(f,val)]}
 storeXFieldsPD _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -194,7 +194,7 @@ libFieldDescrs =
 
 storeXFieldsLib :: UnrecFieldParser Library
 storeXFieldsLib (f@('x':'-':_), val) l@(Library { libBuildInfo = bi }) =
-    Just $ l {libBuildInfo = bi{ customFieldsBI = (customFieldsBI bi) ++ [(f,val)]}}
+    Just $ l {libBuildInfo = bi{ customFieldsBI = customFieldsBI bi ++ [(f,val)]}}
 storeXFieldsLib _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -217,7 +217,7 @@ executableFieldDescrs =
 
 storeXFieldsExe :: UnrecFieldParser Executable
 storeXFieldsExe (f@('x':'-':_), val) e@(Executable { buildInfo = bi }) =
-    Just $ e {buildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
+    Just $ e {buildInfo = bi{ customFieldsBI = (f,val):customFieldsBI bi}}
 storeXFieldsExe _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -254,7 +254,7 @@ testSuiteFieldDescrs =
 
 storeXFieldsTest :: UnrecFieldParser TestSuiteStanza
 storeXFieldsTest (f@('x':'-':_), val) t@(TestSuiteStanza { testStanzaBuildInfo = bi }) =
-    Just $ t {testStanzaBuildInfo = bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
+    Just $ t {testStanzaBuildInfo = bi{ customFieldsBI = (f,val):customFieldsBI bi}}
 storeXFieldsTest _ _ = Nothing
 
 validateTestSuite :: LineNo -> TestSuiteStanza -> ParseResult TestSuite
@@ -340,7 +340,7 @@ storeXFieldsBenchmark :: UnrecFieldParser BenchmarkStanza
 storeXFieldsBenchmark (f@('x':'-':_), val)
     t@(BenchmarkStanza { benchmarkStanzaBuildInfo = bi }) =
         Just $ t {benchmarkStanzaBuildInfo =
-                       bi{ customFieldsBI = (f,val):(customFieldsBI bi)}}
+                       bi{ customFieldsBI = (f,val):customFieldsBI bi}}
 storeXFieldsBenchmark _ _ = Nothing
 
 validateBenchmark :: LineNo -> BenchmarkStanza -> ParseResult Benchmark
@@ -463,7 +463,7 @@ binfoFieldDescrs =
  ]
 
 storeXFieldsBI :: UnrecFieldParser BuildInfo
-storeXFieldsBI (f@('x':'-':_),val) bi = Just bi{ customFieldsBI = (f,val):(customFieldsBI bi) }
+storeXFieldsBI (f@('x':'-':_),val) bi = Just bi{ customFieldsBI = (f,val):customFieldsBI bi }
 storeXFieldsBI _ _ = Nothing
 
 ------------------------------------------------------------------------------
@@ -514,7 +514,8 @@ readAndParseFile :: (FilePath -> (String -> IO a) -> IO a)
                  -> FilePath -> IO a
 readAndParseFile withFileContents' parser verbosity fpath = do
   exists <- doesFileExist fpath
-  when (not exists) (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
+  unless exists
+    (die $ "Error Parsing: file \"" ++ fpath ++ "\" doesn't exist. Cannot continue.")
   withFileContents' fpath $ \str -> case parser str of
     ParseFailed e -> do
         let (line, message) = locatedErrorMsg e
@@ -547,9 +548,9 @@ isStanzaHeader _ = False
 
 mapSimpleFields :: (Field -> ParseResult Field) -> [Field]
                 -> ParseResult [Field]
-mapSimpleFields f fs = mapM walk fs
+mapSimpleFields f = mapM walk
   where
-    walk fld@(F _ _ _) = f fld
+    walk fld@F{} = f fld
     walk (IfBlock l c fs1 fs2) = do
       fs1' <- mapM walk fs1
       fs2' <- mapM walk fs2
@@ -612,7 +613,7 @@ lift :: Monad m => m a -> StT s m a
 lift m = StT $ \s -> m >>= \a -> return (a,s)
 
 evalStT :: Monad m => StT s m a -> s -> m a
-evalStT st s = runStT st s >>= return . fst
+evalStT st s = liftM fst $ runStT st s
 
 -- Our monad for parsing a list/tree of fields.
 --
@@ -623,7 +624,7 @@ type PM a = StT [Field] ParseResult a
 
 -- return look-ahead field or nothing if we're at the end of the file
 peekField :: PM (Maybe Field)
-peekField = get >>= return . listToMaybe
+peekField = liftM listToMaybe get
 
 -- Unconditionally discard the first field in our state.  Will error when it
 -- reaches end of file.  (Yes, that's evil.)
@@ -711,7 +712,7 @@ parsePackageDescription file = do
                    flags mlib exes tests bms
 
   where
-    oldSyntax flds = all isSimpleField flds
+    oldSyntax = all isSimpleField
     reportTabsError tabs =
         syntaxError (fst (head tabs)) $
           "Do not use tabs for indentation (use spaces instead)\n"
@@ -789,7 +790,7 @@ parsePackageDescription file = do
             ++ exes
       | otherwise = fs
 
-    isSimpleField (F _ _ _) = True
+    isSimpleField F{} = True
     isSimpleField _ = False
 
     -- warn if there's something at the end of the file
@@ -804,7 +805,7 @@ parsePackageDescription file = do
     -- fields
     getHeader :: [Field] -> PM [Field]
     getHeader acc = peekField >>= \mf -> case mf of
-        Just f@(F _ _ _) -> skipField >> getHeader (f:acc)
+        Just f@F{} -> skipField >> getHeader (f:acc)
         _ -> return (reverse acc)
 
     --
@@ -863,7 +864,7 @@ parsePackageDescription file = do
                     -- only one need one to specify a type because the
                     -- configure step uses 'mappend' to join together the
                     -- results of flag resolution.
-                    in hasTestType || (any checkComponent components)
+                    in hasTestType || any checkComponent components
             if checkTestType emptyTestSuite flds
                 then do
                     skipField
@@ -911,7 +912,7 @@ parsePackageDescription file = do
                     -- only one need one to specify a type because the
                     -- configure step uses 'mappend' to join together the
                     -- results of flag resolution.
-                    in hasBenchmarkType || (any checkComponent components)
+                    in hasBenchmarkType || any checkComponent components
             if checkBenchmarkType emptyBenchmark flds
                 then do
                     skipField
@@ -925,7 +926,7 @@ parsePackageDescription file = do
                       ++ intercalate ", " (map display knownBenchmarkTypes)
 
         | sec_type == "library" -> do
-            when (not (null sec_label)) $ lift $
+            unless (null sec_label) $ lift $
               syntaxError line_no "'library' expects no argument"
             flds <- collectFields parseLibFields sec_fields
             skipField
@@ -957,7 +958,7 @@ parsePackageDescription file = do
             repo <- lift $ parseFields
                     sourceRepoFieldDescrs
                     warnUnrec
-                    (SourceRepo {
+                    SourceRepo {
                       repoKind     = kind,
                       repoType     = Nothing,
                       repoLocation = Nothing,
@@ -965,7 +966,7 @@ parsePackageDescription file = do
                       repoBranch   = Nothing,
                       repoTag      = Nothing,
                       repoSubdir   = Nothing
-                    })
+                    }
                     sec_fields
             skipField
             (repos, flags, lib, exes, tests, bms) <- getBody
@@ -991,7 +992,7 @@ parsePackageDescription file = do
     collectFields parser allflds = do
 
         let simplFlds = [ F l n v | F l n v <- allflds ]
-            condFlds = [ f | f@(IfBlock _ _ _ _) <- allflds ]
+            condFlds = [ f | f@IfBlock{} <- allflds ]
 
         let (depFlds, dataFlds) = partition isConstraint simplFlds
 
@@ -1049,7 +1050,7 @@ parsePackageDescription file = do
     checkCondTreeFlags :: [FlagName] -> CondTree ConfVar c a -> PM ()
     checkCondTreeFlags definedFlags ct = do
         let fv = nub $ freeVars ct
-        when (not . all (`elem` definedFlags) $ fv) $
+        unless (all (`elem` definedFlags) fv) $
             fail $ "These flags are used without having been defined: "
                 ++ intercalate ", " [ n | FlagName n <- fv \\ definedFlags ]
 
@@ -1067,14 +1068,13 @@ parseFields :: [FieldDescr a]      -- ^ descriptions of fields we know how to
             -> ParseResult a
 parseFields descrs unrec ini fields =
     do (a, unknowns) <- foldM (parseField descrs unrec) (ini, []) fields
-       when (not (null unknowns)) $ do
-         warning $ render $
-           text "Unknown fields:" <+>
-                commaSep (map (\(l,u) -> u ++ " (line " ++ show l ++ ")")
-                              (reverse unknowns))
-           $+$
-           text "Fields allowed in this section:" $$
-             nest 4 (commaSep $ map fieldName descrs)
+       unless (null unknowns) $ warning $ render $
+         text "Unknown fields:" <+>
+              commaSep (map (\(l,u) -> u ++ " (line " ++ show l ++ ")")
+                            (reverse unknowns))
+         $+$
+         text "Fields allowed in this section:" $$
+           nest 4 (commaSep $ map fieldName descrs)
        return a
   where
     commaSep = fsep . punctuate comma . map text
@@ -1085,13 +1085,13 @@ parseField :: [FieldDescr a]     -- ^ list of parseable fields
            -> (a,[(Int,String)]) -- ^ accumulated result and warnings
            -> Field              -- ^ the field to be parsed
            -> ParseResult (a, [(Int,String)])
-parseField ((FieldDescr name _ parser):fields) unrec (a, us) (F line f val)
+parseField (FieldDescr name _ parser : fields) unrec (a, us) (F line f val)
   | name == f = parser line val a >>= \a' -> return (a',us)
   | otherwise = parseField fields unrec (a,us) (F line f val)
 parseField [] unrec (a,us) (F l f val) = return $
   case unrec (f,val) a of        -- no fields matched, see if the 'unrec'
     Just a' -> (a',us)           -- function wants to do anything with it
-    Nothing -> (a, ((l,f):us))
+    Nothing -> (a, (l,f):us)
 parseField _ _ _ _ = bug "'parseField' called on a non-field"
 
 deprecatedFields :: [(String,String)]
@@ -1126,12 +1126,12 @@ parseHookedBuildInfo inp = do
   return (mLib, biExes)
   where
     parseLib :: [Field] -> ParseResult (Maybe BuildInfo)
-    parseLib (bi@((F _ inFieldName _):_))
+    parseLib (bi@(F _ inFieldName _:_))
         | lowercase inFieldName /= "executable" = liftM Just (parseBI bi)
     parseLib _ = return Nothing
 
     parseExe :: [Field] -> ParseResult (String, BuildInfo)
-    parseExe ((F line inFieldName mName):bi)
+    parseExe (F line inFieldName mName:bi)
         | lowercase inFieldName == "executable"
             = do bis <- parseBI bi
                  return (mName, bis)

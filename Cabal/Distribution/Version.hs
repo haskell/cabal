@@ -410,7 +410,7 @@ simplifyVersionRange vr
 --
 
 wildcardUpperBound :: Version -> Version
-wildcardUpperBound (Version lowerBound ts) = (Version upperBound ts)
+wildcardUpperBound (Version lowerBound ts) = Version upperBound ts
   where
     upperBound = init lowerBound ++ [last lowerBound + 1]
 
