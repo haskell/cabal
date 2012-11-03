@@ -80,6 +80,8 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Command
+         ( CommandParse(..), CommandUI(..), Command
+         , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
          , interpretPackageDbFlags, maybeGetPersistBuildConfig )
