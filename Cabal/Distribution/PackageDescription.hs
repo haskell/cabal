@@ -124,7 +124,7 @@ module Distribution.PackageDescription (
         knownRepoTypes,
   ) where
 
-import Data.List   (nub, intersperse)
+import Data.List   (nub, intercalate)
 import Data.Maybe  (maybeToList)
 import Data.Monoid (Monoid(mempty, mappend))
 import Data.Typeable ( Typeable )
@@ -440,7 +440,7 @@ instance Monoid TestSuite where
         testName      = combine' testName,
         testInterface = combine  testInterface,
         testBuildInfo = combine  testBuildInfo,
-        testEnabled   = if testEnabled a then True else testEnabled b
+        testEnabled   = testEnabled a || testEnabled b
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -493,7 +493,7 @@ stdParse f = do
   cs   <- Parse.sepBy1 component (Parse.char '-')
   _    <- Parse.char '-'
   ver  <- parse
-  let name = concat (intersperse "-" cs)
+  let name = intercalate "-" cs
   return $! f ver (lowercase name)
   where
     component = do

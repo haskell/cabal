@@ -31,7 +31,7 @@ import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
 import Data.List
-  ( intersperse, intercalate, nub, groupBy, (\\) )
+  ( intercalate, nub, groupBy, (\\) )
 import Data.Maybe
   ( fromMaybe, isJust, catMaybes )
 import Data.Function
@@ -714,7 +714,7 @@ generateCabalFile fileName c =
    listField = listFieldS . fmap (map display)
 
    listFieldS :: Maybe [String] -> Flag String
-   listFieldS = Flag . maybe "" (concat . intersperse ", ")
+   listFieldS = Flag . maybe "" (intercalate ", ")
 
    field :: Text t => String -> Flag t -> Maybe String -> Bool -> Doc
    field s f = fieldS s (fmap display f)
