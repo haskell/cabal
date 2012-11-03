@@ -2,7 +2,6 @@ module PackageTests.BuildDeps.InternalLibrary4.Check where
 
 import qualified Data.ByteString.Char8 as C
 import PackageTests.PackageTester
-import Prelude hiding (catch)
 import System.FilePath
 import Test.HUnit
 
