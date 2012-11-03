@@ -96,7 +96,7 @@ import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
 import System.Directory         (doesFileExist)
-import Data.List                (intersperse)
+import Data.List                (intercalate)
 import Data.Monoid              (Monoid(..))
 import Control.Monad            (when, unless)
 
@@ -131,7 +131,7 @@ mainWorker args = topHandler $
       putStr $ "\nYou can edit the cabal configuration file to set defaults:\n"
             ++ "  " ++ configFile ++ "\n"
     printOptionsList = putStr . unlines
-    printErrors errs = die $ concat (intersperse "\n" errs)
+    printErrors errs = die $ intercalate "\n" errs
     printNumericVersion = putStrLn $ display Paths_cabal_install.version
     printVersion        = putStrLn $ "cabal-install version "
                                   ++ display Paths_cabal_install.version

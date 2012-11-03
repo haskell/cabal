@@ -139,7 +139,7 @@ import System.IO.Error   (isDoesNotExistError)
 import Distribution.Compat.Exception (catchIO, throwIOIO)
 
 import Control.Monad   (when)
-import Data.List       (intersperse, unionBy, nub, (\\))
+import Data.List       (intercalate, unionBy, nub, (\\))
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -187,7 +187,7 @@ defaultMainHelper hooks args = topHandler $
     printHelp help = getProgName >>= putStr . help
     printOptionsList = putStr . unlines
     printErrors errs = do
-      putStr (concat (intersperse "\n" errs))
+      putStr (intercalate "\n" errs)
       exitWith (ExitFailure 1)
     printNumericVersion = putStrLn $ display cabalVersion
     printVersion        = putStrLn $ "Cabal library version "

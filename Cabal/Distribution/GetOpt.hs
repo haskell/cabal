@@ -50,7 +50,7 @@ module Distribution.GetOpt (
    -- $example
 ) where
 
-import Data.List ( isPrefixOf, intersperse, find )
+import Data.List ( isPrefixOf, intercalate, find )
 
 -- |What to do with options following non-options
 data ArgOrder a
@@ -98,7 +98,7 @@ usageInfo :: String                    -- header
           -> [OptDescr a]              -- option descriptors
           -> String                    -- nicely formatted decription of options
 usageInfo header optDescr = unlines (header:table)
-   where (ss,ls,ds) = unzip3 [ (sepBy ", " (map (fmtShort ad) sos)
+   where (ss,ls,ds) = unzip3 [ (intercalate ", " (map (fmtShort ad) sos)
                                ,concatMap (fmtLong  ad) (take 1 los)
                                ,d)
                              | Option sos los ad d <- optDescr ]
@@ -111,7 +111,6 @@ usageInfo header optDescr = unlines (header:table)
                       | (so,lo,d) <- zip3 ss ls ds
                       , (so',lo',d') <- fmtOpt dsWidth so lo d ]
          padTo n x  = take n (x ++ repeat ' ')
-         sepBy s    = concat . intersperse s
 
 fmtOpt :: Int -> String -> String -> String -> [(String, String, String)]
 fmtOpt descrWidth so lo descr =
