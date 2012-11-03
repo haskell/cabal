@@ -413,7 +413,7 @@ benchmarkAction benchmarkFlags extraArgs globalFlags = do
         setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
         addConfigFlags = mempty { configBenchmarks = toFlag True }
         checkFlags flags
-            | fromFlagOrDefault False (configTests flags) = Nothing
+            | fromFlagOrDefault False (configBenchmarks flags) = Nothing
             | otherwise = Just "Re-configuring with benchmarks enabled."
 
     reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
