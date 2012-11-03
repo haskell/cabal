@@ -85,7 +85,7 @@ import Distribution.Simple.Configure
          , interpretPackageDbFlags, maybeGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Utils
-         ( cabalVersion, die, intercalate, notice, topHandler )
+         ( cabalVersion, die, notice, topHandler )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
