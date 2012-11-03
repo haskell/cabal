@@ -73,7 +73,7 @@ import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>), (<+>), text)
 import Control.DeepSeq (NFData(..))
 import qualified Data.Char as Char ( isDigit, isAlphaNum )
-import Data.List ( intersperse )
+import Data.List ( intercalate )
 import Data.Typeable ( Typeable )
 
 newtype PackageName = PackageName String
@@ -83,7 +83,7 @@ instance Text PackageName where
   disp (PackageName n) = Disp.text n
   parse = do
     ns <- Parse.sepBy1 component (Parse.char '-')
-    return (PackageName (concat (intersperse "-" ns)))
+    return (PackageName (intercalate "-" ns))
     where
       component = do
         cs <- Parse.munch1 Char.isAlphaNum

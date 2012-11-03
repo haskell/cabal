@@ -146,7 +146,7 @@ import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 #endif
 import Data.List
-    ( nub, unfoldr, isPrefixOf, tails, intersperse )
+  ( nub, unfoldr, isPrefixOf, tails, intercalate )
 import Data.Char as Char
     ( toLower, chr, ord )
 import Data.Bits
@@ -1162,9 +1162,6 @@ comparing p x y = p x `compare` p y
 
 isInfixOf :: String -> String -> Bool
 isInfixOf needle haystack = any (isPrefixOf needle) (tails haystack)
-
-intercalate :: [a] -> [[a]] -> [a]
-intercalate sep = concat . intersperse sep
 
 lowercase :: String -> String
 lowercase = map Char.toLower

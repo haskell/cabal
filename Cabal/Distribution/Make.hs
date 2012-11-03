@@ -106,7 +106,7 @@ import Distribution.Text
          ( display )
 
 import System.Environment (getArgs, getProgName)
-import Data.List  (intersperse)
+import Data.List  (intercalate)
 import System.Exit
 
 defaultMain :: IO ()
@@ -138,7 +138,7 @@ defaultMainHelper args =
     printHelp help = getProgName >>= putStr . help
     printOptionsList = putStr . unlines
     printErrors errs = do
-      putStr (concat (intersperse "\n" errs))
+      putStr (intercalate "\n" errs)
       exitWith (ExitFailure 1)
     printNumericVersion = putStrLn $ display cabalVersion
     printVersion        = putStrLn $ "Cabal library version "

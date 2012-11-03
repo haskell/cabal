@@ -210,7 +210,7 @@ get_prefix_win32 arch =
     where cconv = case arch of
                   I386 -> "stdcall"
                   X86_64 -> "ccall"
-
+                  _ -> error "win32 supported only with I386, X86_64"
 
 get_prefix_hugs :: String
 get_prefix_hugs =

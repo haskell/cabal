@@ -70,7 +70,7 @@ parseReadE (ReadE p) = do
   txt <- look
   either fail return (p txt)
 
-readEOrFail :: ReadE a -> (String -> a)
+readEOrFail :: ReadE a -> String -> a
 readEOrFail r = either error id . runReadE r
 
 readP_to_E :: (String -> ErrorMsg) -> ReadP a a -> ReadE a
