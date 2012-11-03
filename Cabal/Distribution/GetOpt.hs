@@ -50,7 +50,8 @@ module Distribution.GetOpt (
    -- $example
 ) where
 
-import Data.List ( isPrefixOf, intersperse, find )
+import Data.List ( isPrefixOf, intercalate, find )
+import Data.Maybe ( isJust )
 
 -- |What to do with options following non-options
 data ArgOrder a
@@ -98,7 +99,7 @@ usageInfo :: String                    -- header
           -> [OptDescr a]              -- option descriptors
           -> String                    -- nicely formatted decription of options
 usageInfo header optDescr = unlines (header:table)
-   where (ss,ls,ds) = unzip3 [ (sepBy ", " (map (fmtShort ad) sos)
+   where (ss,ls,ds) = unzip3 [ (intercalate ", " (map (fmtShort ad) sos)
                                ,concatMap (fmtLong  ad) (take 1 los)
                                ,d)
                              | Option sos los ad d <- optDescr ]
@@ -111,7 +112,6 @@ usageInfo header optDescr = unlines (header:table)
                       | (so,lo,d) <- zip3 ss ls ds
                       , (so',lo',d') <- fmtOpt dsWidth so lo d ]
          padTo n x  = take n (x ++ repeat ' ')
-         sepBy s    = concat . intersperse s
 
 fmtOpt :: Int -> String -> String -> String -> [(String, String, String)]
 fmtOpt descrWidth so lo descr =
@@ -201,11 +201,11 @@ longOpt :: String -> [String] -> [OptDescr a] -> (OptKind a,[String])
 longOpt ls rs optDescr = long ads arg rs
    where (opt,arg) = break (=='=') ls
          getWith p = [ o  | o@(Option _ xs _ _) <- optDescr
-                          , find (p opt) xs /= Nothing]
+                          , isJust (find (p opt) xs)]
          exact     = getWith (==)
          options   = if null exact then getWith isPrefixOf else exact
          ads       = [ ad | Option _ _ ad _ <- options ]
-         optStr    = ("--"++opt)
+         optStr    = "--" ++ opt
 
          long (_:_:_)      _        rest     = (errAmbig options optStr,rest)
          long [NoArg  a  ] []       rest     = (Opt a,rest)

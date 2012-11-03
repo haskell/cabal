@@ -124,8 +124,8 @@ module Distribution.PackageDescription (
         knownRepoTypes,
   ) where
 
-import Data.List   (nub, intersperse)
-import Data.Maybe  (maybeToList)
+import Data.List   (nub, intercalate)
+import Data.Maybe  (fromMaybe, maybeToList)
 import Data.Monoid (Monoid(mempty, mappend))
 import Data.Typeable ( Typeable )
 import Control.Monad (MonadPlus(mplus))
@@ -440,7 +440,7 @@ instance Monoid TestSuite where
         testName      = combine' testName,
         testInterface = combine  testInterface,
         testBuildInfo = combine  testBuildInfo,
-        testEnabled   = if testEnabled a then True else testEnabled b
+        testEnabled   = testEnabled a || testEnabled b
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -488,27 +488,30 @@ knownTestTypes :: [TestType]
 knownTestTypes = [ TestTypeExe (Version [1,0] [])
                  , TestTypeLib (Version [0,9] []) ]
 
+stdParse :: Text ver => (ver -> String -> res) -> Parse.ReadP r res
+stdParse f = do
+  cs   <- Parse.sepBy1 component (Parse.char '-')
+  _    <- Parse.char '-'
+  ver  <- parse
+  let name = intercalate "-" cs
+  return $! f ver (lowercase name)
+  where
+    component = do
+      cs <- Parse.munch1 Char.isAlphaNum
+      if all Char.isDigit cs then Parse.pfail else return cs
+      -- each component must contain an alphabetic character, to avoid
+      -- ambiguity in identifiers like foo-1 (the 1 is the version number).
+
 instance Text TestType where
   disp (TestTypeExe ver)          = text "exitcode-stdio-" <> disp ver
   disp (TestTypeLib ver)          = text "detailed-"       <> disp ver
   disp (TestTypeUnknown name ver) = text name <> char '-' <> disp ver
 
-  parse = do
-    cs   <- Parse.sepBy1 component (Parse.char '-')
-    _    <- Parse.char '-'
-    ver  <- parse
-    let name = concat (intersperse "-" cs)
-    return $! case lowercase name of
-      "exitcode-stdio" -> TestTypeExe ver
-      "detailed"       -> TestTypeLib ver
-      _                -> TestTypeUnknown name ver
+  parse = stdParse $ \ver name -> case name of
+    "exitcode-stdio" -> TestTypeExe ver
+    "detailed"       -> TestTypeLib ver
+    _                -> TestTypeUnknown name ver
 
-    where
-      component = do
-        cs <- Parse.munch1 Char.isAlphaNum
-        if all Char.isDigit cs then Parse.pfail else return cs
-        -- each component must contain an alphabetic character, to avoid
-        -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
 testType :: TestSuite -> TestType
 testType test = case testInterface test of
@@ -564,8 +567,7 @@ instance Monoid Benchmark where
         benchmarkName      = combine' benchmarkName,
         benchmarkInterface = combine  benchmarkInterface,
         benchmarkBuildInfo = combine  benchmarkBuildInfo,
-        benchmarkEnabled   = if benchmarkEnabled a then True
-                             else benchmarkEnabled b
+        benchmarkEnabled   = benchmarkEnabled a || benchmarkEnabled b
     }
         where combine   field = field a `mappend` field b
               combine' f = case (f a, f b) of
@@ -614,21 +616,10 @@ instance Text BenchmarkType where
   disp (BenchmarkTypeExe ver)          = text "exitcode-stdio-" <> disp ver
   disp (BenchmarkTypeUnknown name ver) = text name <> char '-' <> disp ver
 
-  parse = do
-    cs   <- Parse.sepBy1 component (Parse.char '-')
-    _    <- Parse.char '-'
-    ver  <- parse
-    let name = concat (intersperse "-" cs)
-    return $! case lowercase name of
-      "exitcode-stdio" -> BenchmarkTypeExe ver
-      _                -> BenchmarkTypeUnknown name ver
+  parse = stdParse $ \ver name -> case name of
+    "exitcode-stdio" -> BenchmarkTypeExe ver
+    _                -> BenchmarkTypeUnknown name ver
 
-    where
-      component = do
-        cs <- Parse.munch1 Char.isAlphaNum
-        if all Char.isDigit cs then Parse.pfail else return cs
-        -- each component must contain an alphabetic character, to avoid
-        -- ambiguity in identifiers like foo-1 (the 1 is the version number).
 
 benchmarkType :: Benchmark -> BenchmarkType
 benchmarkType benchmark = case benchmarkInterface benchmark of
@@ -900,9 +891,7 @@ instance Text RepoType where
 
 classifyRepoType :: String -> RepoType
 classifyRepoType s =
-  case lookup (lowercase s) repoTypeMap of
-    Just repoType' -> repoType'
-    Nothing        -> OtherRepoType s
+  fromMaybe (OtherRepoType s) $ lookup (lowercase s) repoTypeMap
   where
     repoTypeMap = [ (name, repoType')
                   | repoType' <- knownRepoTypes

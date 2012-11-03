@@ -3,9 +3,7 @@ module PackageTests.BuildDeps.TargetSpecificDeps2.Check where
 import Test.HUnit
 import PackageTests.PackageTester
 import System.FilePath
-import Data.List
-import Control.Exception
-import Prelude hiding (catch)
+import qualified Control.Exception as E
 
 
 suite :: Test
@@ -14,6 +12,6 @@ suite = TestCase $ do
     result <- cabal_build spec
     do
         assertEqual "cabal build should succeed - see test-log.txt" True (successful result)
-      `catch` \exc -> do
+      `E.catch` \exc -> do
         putStrLn $ "Cabal result was "++show result
-        throwIO (exc :: SomeException)
+        E.throwIO (exc :: E.SomeException)
