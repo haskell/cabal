@@ -115,7 +115,7 @@ data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
         deriving Show
 
 instance Monad ParseResult where
-        return x = ParseOk [] x
+        return = ParseOk []
         ParseFailed err >>= _ = ParseFailed err
         ParseOk ws x >>= f = case f x of
                                ParseFailed err -> ParseFailed err
@@ -183,7 +183,7 @@ data FieldDescr a
         -- successful.  Otherwise, reports an error on line number @n@.
       }
 
-field :: String -> (a -> Doc) -> (ReadP a a) -> FieldDescr a
+field :: String -> (a -> Doc) -> ReadP a a -> FieldDescr a
 field name showF readF =
   FieldDescr name showF (\line val _st -> runP line name readF val)
 
@@ -191,7 +191,7 @@ field name showF readF =
 -- into a 'b'.
 liftField :: (b -> a) -> (a -> b -> b) -> FieldDescr a -> FieldDescr b
 liftField get set (FieldDescr name showF parseF)
- = FieldDescr name (\b -> showF (get b))
+ = FieldDescr name (showF . get)
         (\line str b -> do
             a <- parseF line str (get b)
             return (set a b))
@@ -199,12 +199,12 @@ liftField get set (FieldDescr name showF parseF)
 -- Parser combinator for simple fields.  Takes a field name, a pretty printer,
 -- a parser function, an accessor, and a setter, returns a FieldDescr over the
 -- compoid structure.
-simpleField :: String -> (a -> Doc) -> (ReadP a a)
+simpleField :: String -> (a -> Doc) -> ReadP a a
             -> (b -> a) -> (a -> b -> b) -> FieldDescr b
 simpleField name showF readF get set
   = liftField get set $ field name showF readF
 
-commaListField :: String -> (a -> Doc) -> (ReadP [a] a)
+commaListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 commaListField name showF readF get set =
   liftField get set' $
@@ -212,7 +212,7 @@ commaListField name showF readF get set =
   where
     set' xs b = set (get b ++ xs) b
 
-spaceListField :: String -> (a -> Doc) -> (ReadP [a] a)
+spaceListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 spaceListField name showF readF get set =
   liftField get set' $
@@ -220,7 +220,7 @@ spaceListField name showF readF get set =
   where
     set' xs b = set (get b ++ xs) b
 
-listField :: String -> (a -> Doc) -> (ReadP [a] a)
+listField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 listField name showF readF get set =
   liftField get set' $
@@ -277,11 +277,11 @@ showSingleNamedField fields f =
     (get:_) -> Just (render . ppField f . get)
 
 parseFields :: [FieldDescr a] -> a -> String -> ParseResult a
-parseFields fields initial = \str ->
+parseFields fields initial str =
   readFields str >>= accumFields fields initial
 
 parseFieldsFlat :: [FieldDescr a] -> a -> String -> ParseResult a
-parseFieldsFlat fields initial = \str ->
+parseFieldsFlat fields initial str =
   readFieldsFlat str >>= accumFields fields initial
 
 accumFields :: [FieldDescr a] -> a -> [Field] -> ParseResult a
@@ -314,7 +314,7 @@ warnUnrec _ _ = Nothing
 --   warnings will be generated) ignores unrecognized fields, by
 --   returning the structure being built unmodified.
 ignoreUnrec :: UnrecFieldParser a
-ignoreUnrec _ x = Just x
+ignoreUnrec _ = Just
 
 ------------------------------------------------------------------------------
 
@@ -370,7 +370,7 @@ readFieldsFlat input = mapM (mkField 0)
 
 -- attach line number and determine indentation
 trimLines :: [String] -> [(LineNo, Indent, HasTabs, String)]
-trimLines ls = [ (lineno, indent, hastabs, (trimTrailing l'))
+trimLines ls = [ (lineno, indent, hastabs, trimTrailing l')
                | (lineno, l) <- zip [1..] ls
                , let (sps, l') = span isSpace l
                      indent    = length sps
@@ -492,7 +492,7 @@ layout i a (Line n i' t l:ss) = do
         ([], _)   -> layout i (Node (n,t,l) [] :a) ss
         (ts, ss') -> layout i (Node (n,t,l) ts :a) ss'
 
-layout _ _ (   OpenBracket  n :_)  = syntaxError n $ "unexpected '{'"
+layout _ _ (   OpenBracket  n :_)  = syntaxError n "unexpected '{'"
 layout _ a (s@(CloseBracket _):ss) = return (reverse a, s:ss)
 layout _ _ (   Span n l       : _) = syntaxError n $ "unexpected span: "
                                                   ++ show l
@@ -657,7 +657,7 @@ parseTokenQ :: ReadP r String
 parseTokenQ = parseHaskellString <++ munch1 (\x -> not (isSpace x) && x /= ',')
 
 parseTokenQ' :: ReadP r String
-parseTokenQ' = parseHaskellString <++ munch1 (\x -> not (isSpace x))
+parseTokenQ' = parseHaskellString <++ munch1 (not . isSpace)
 
 parseSepList :: ReadP r b
              -> ReadP r a -- ^The parser for the stuff between commas
@@ -678,7 +678,7 @@ parseOptCommaList :: ReadP r a -- ^The parser for the stuff between commas
 parseOptCommaList = parseSepList (optional (ReadP.char ','))
 
 parseQuoted :: ReadP r a -> ReadP r a
-parseQuoted p = between (ReadP.char '"') (ReadP.char '"') p
+parseQuoted = between (ReadP.char '"') (ReadP.char '"')
 
 parseFreeText :: ReadP.ReadP s String
 parseFreeText = ReadP.munch (const True)
