@@ -585,11 +585,15 @@ parseFilePathQ = parseTokenQ
   -- removed until normalise is no longer broken, was:
   --   liftM normalise parseTokenQ
 
+betweenSpaces :: ReadP r a -> ReadP r a
+betweenSpaces act = do skipSpaces
+                       res <- act
+                       skipSpaces
+                       return res
+
 parseBuildTool :: ReadP r Dependency
 parseBuildTool = do name <- parseBuildToolNameQ
-                    skipSpaces
-                    ver <- parseVersionRangeQ <++ return anyVersion
-                    skipSpaces
+                    ver <- betweenSpaces $ parseVersionRangeQ <++ return anyVersion
                     return $ Dependency name ver
 
 parseBuildToolNameQ :: ReadP r PackageName
@@ -608,9 +612,8 @@ parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
 -- It then has a package version number like 2.10.13
 parsePkgconfigDependency :: ReadP r Dependency
 parsePkgconfigDependency = do name <- munch1 (\c -> isAlphaNum c || c `elem` "+-._")
-                              skipSpaces
-                              ver <- parseVersionRangeQ <++ return anyVersion
-                              skipSpaces
+                              ver <- betweenSpaces $
+                                     parseVersionRangeQ <++ return anyVersion
                               return $ Dependency (PackageName name) ver
 
 parsePackageNameQ :: ReadP r PackageName
@@ -630,9 +633,7 @@ parseTestedWithQ = parseQuoted tw <++ tw
   where
     tw :: ReadP r (CompilerFlavor,VersionRange)
     tw = do compiler <- parseCompilerFlavorCompat
-            skipSpaces
-            version <- parse <++ return anyVersion
-            skipSpaces
+            version <- betweenSpaces $ parse <++ return anyVersion
             return (compiler,version)
 
 parseLicenseQ :: ReadP r License
@@ -662,7 +663,7 @@ parseSepList :: ReadP r b
              -> ReadP r a -- ^The parser for the stuff between commas
              -> ReadP r [a]
 parseSepList sepr p = sepBy p separator
-    where separator = skipSpaces >> sepr >> skipSpaces
+    where separator = betweenSpaces sepr
 
 parseSpaceList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]
