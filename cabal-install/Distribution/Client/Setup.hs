@@ -1081,14 +1081,14 @@ initCommand = CommandUI {
         (\v flags -> flags { IT.exposedModules = v })
         (reqArg "MODULE" (readP_to_E ("Cannot parse module name: "++)
                                      ((Just . (:[])) `fmap` parse))
-                         (fromMaybe [] . fmap (fmap display)))
+                         (maybe [] (fmap display)))
 
       , option ['d'] ["dependency"]
         "Package dependency."
         IT.dependencies (\v flags -> flags { IT.dependencies = v })
         (reqArg "PACKAGE" (readP_to_E ("Cannot parse dependency: "++)
                                       ((Just . (:[])) `fmap` parse))
-                          (fromMaybe [] . fmap (fmap display)))
+                          (maybe [] (fmap display)))
 
       , option [] ["source-dir"]
         "Directory containing package source."
@@ -1301,7 +1301,7 @@ sandboxInitCommand = CommandUI {
   commandName         = "sandbox-init",
   commandSynopsis     = "Initialise a fresh sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-init",
+  commandUsage        = usageFlags "sandbox-init",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
@@ -1311,7 +1311,7 @@ sandboxDeleteCommand = CommandUI {
   commandName         = "sandbox-delete",
   commandSynopsis     = "Deletes current sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-delete",
+  commandUsage        = usageFlags "sandbox-delete",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
@@ -1321,7 +1321,7 @@ sandboxAddSourceCommand = CommandUI {
   commandName         = "sandbox-add-source",
   commandSynopsis     = "Make a source package available in a sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-add-source",
+  commandUsage        = usageFlags "sandbox-add-source",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
@@ -1331,7 +1331,7 @@ sandboxConfigureCommand = CommandUI {
   commandName         = "sandbox-configure",
   commandSynopsis     = "Configure a package inside a sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-configure",
+  commandUsage        = usageFlags "sandbox-configure",
   commandDefaultFlags = (defaultSandboxFlags, mempty, defaultConfigExFlags),
   commandOptions      = \showOrParseArgs ->
     liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
@@ -1351,7 +1351,7 @@ sandboxBuildCommand = CommandUI {
   commandName         = "sandbox-build",
   commandSynopsis     = "Build a package inside a sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-build",
+  commandUsage        = usageFlags "sandbox-build",
   commandDefaultFlags = (defaultSandboxFlags, Cabal.defaultBuildFlags),
   commandOptions      = \showOrParseArgs ->
     liftOptions fst setFst (commonSandboxOptions showOrParseArgs)
@@ -1370,7 +1370,7 @@ sandboxInstallCommand = CommandUI {
   commandName         = "sandbox-install",
   commandSynopsis     = "Install a list of packages into a sandbox",
   commandDescription  = commandDescription installCommand,
-  commandUsage        = \pname -> usagePackages pname "sandbox-install",
+  commandUsage        = usagePackages "sandbox-install",
   commandDefaultFlags = (defaultSandboxFlags, mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
@@ -1393,7 +1393,7 @@ dumpPkgEnvCommand = CommandUI {
   commandName         = "dump-pkgenv",
   commandSynopsis     = "Dump a parsed package environment file",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "dump-pkgenv",
+  commandUsage        = usageFlags "dump-pkgenv",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
