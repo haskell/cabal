@@ -55,7 +55,7 @@ import Distribution.Client.Targets
          ( readUserTargets )
 
 import Distribution.Client.List               (list, info)
-import Distribution.Client.Install            (install, upgrade)
+import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
 import Distribution.Client.Update             (update)
 import Distribution.Client.Fetch              (fetch)
@@ -467,22 +467,18 @@ updateAction verbosityFlag extraArgs globalFlags = do
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
-upgradeAction (configFlags, configExFlags, installFlags, haddockFlags)
-              extraArgs globalFlags = do
-  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-  targets <- readUserTargets verbosity extraArgs
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
-                                 (configUserInstall configFlags)
-  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
-      configExFlags' = savedConfigureExFlags config `mappend` configExFlags
-      installFlags'  = defaultInstallFlags          `mappend`
-                       savedInstallFlags     config `mappend` installFlags
-      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux' configFlags'
-  upgrade verbosity
-          (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
-          targets
+upgradeAction _ _ _ = die $
+    "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
+ ++ "You can install the latest version of a package using 'cabal install'. "
+ ++ "The 'cabal upgrade' command has been removed because people found it "
+ ++ "confusing and it often led to broken packages.\n"
+ ++ "If you want the old upgrade behaviour then use the install command "
+ ++ "with the --upgrade-dependencies flag (but check first with --dry-run "
+ ++ "to see what would happen). This will try to pick the latest versions "
+ ++ "of all dependencies, rather than the usual behaviour of trying to pick "
+ ++ "installed versions of all dependencies. If you do use "
+ ++ "--upgrade-dependencies, it is recommended that you do not upgrade core "
+ ++ "packages (e.g. by using appropriate --constraint= flags)."
 
 fetchAction :: FetchFlags -> [String] -> GlobalFlags -> IO ()
 fetchAction fetchFlags extraArgs globalFlags = do
