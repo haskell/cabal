@@ -62,18 +62,18 @@ index verbosity indexFlags path' = do
   let runRemoveSource = not . null $ refsToRemove
   let runList         = fromFlagOrDefault False (indexList indexFlags)
 
-  unless (or [runInit, runLinkSource, runRemoveSource, runList]) $ do
+  unless (or [runInit, runLinkSource, runRemoveSource, runList]) $
     die "no arguments passed to the 'index' command"
 
   path <- validateIndexPath path'
 
-  when runInit $ do
+  when runInit $
     createEmpty verbosity path
 
-  when runLinkSource $ do
+  when runLinkSource $
     addBuildTreeRefs verbosity path refsToAdd
 
-  when runRemoveSource $ do
+  when runRemoveSource $
     removeBuildTreeRefs verbosity path refsToRemove
 
   when runList $ do
@@ -84,7 +84,7 @@ index verbosity indexFlags path' = do
 buildTreeRefFromPath :: FilePath -> IO (Maybe BuildTreeRef)
 buildTreeRefFromPath dir = do
   dirExists <- doesDirectoryExist dir
-  when (not dirExists) $ do
+  unless dirExists $
     die $ "directory '" ++ dir ++ "' does not exist"
   _ <- findPackageDesc dir
   return . Just $ BuildTreeRef { buildTreePath = dir }
@@ -103,7 +103,7 @@ readBuildTreePath entry = case Tar.entryContent entry of
 readBuildTreePaths :: Tar.Entries -> [FilePath]
 readBuildTreePaths =
   catMaybes
-  . Tar.foldrEntries (\e r -> (readBuildTreePath e):r)
+  . Tar.foldrEntries (\e r -> readBuildTreePath e : r)
   [] error
 
 -- | Given a path to a tar archive, extract all references to local build trees.
@@ -135,7 +135,7 @@ validateIndexPath path' = do
    if (== ".tar") . takeExtension $ path
      then return path
      else do dirExists <- doesDirectoryExist path
-             unless dirExists $ do
+             unless dirExists $
                die $ "directory does not exist: '" ++ path ++ "'"
              return $ path </> defaultIndexFileName
 
@@ -163,7 +163,7 @@ addBuildTreeRefs verbosity path l' = do
   -- Add only those paths that aren't already in the index.
   treesToAdd <- mapM buildTreeRefFromPath (l \\ treesInIndex)
   let entries = map writeBuildTreeRef (catMaybes treesToAdd)
-  when (not . null $ entries) $ do
+  unless (null entries) $ do
     offset <-
       fmap (Tar.foldrEntries (\e acc -> Tar.entrySizeInBytes e + acc) 0 error
             . Tar.read) $ BS.readFile path
@@ -194,7 +194,7 @@ removeBuildTreeRefs verbosity path l' = do
     where
       p l entry = case readBuildTreePath entry of
         Nothing    -> True
-        (Just pth) -> not $ any (== pth) l
+        (Just pth) -> pth `notElem` l
 
 -- | List the local build trees that are referred to from the index.
 listBuildTreeRefs :: Verbosity -> FilePath -> IO [FilePath]
@@ -205,7 +205,7 @@ listBuildTreeRefs verbosity path = do
   pkgIndex <- fmap packageIndex . getSourcePackages verbosity $ [repo]
   let buildTreeRefs = [ pkgPath | (LocalUnpackedPackage pkgPath) <-
                            map packageSource . allPackages $ pkgIndex ]
-  when (null buildTreeRefs) $ do
+  when (null buildTreeRefs) $
     notice verbosity $ "Index file '" ++ path
       ++ "' has no references to local build trees."
   return buildTreeRefs
@@ -214,5 +214,5 @@ listBuildTreeRefs verbosity path = do
 checkIndexExists :: FilePath -> IO ()
 checkIndexExists path = do
   indexExists <- doesFileExist path
-  when (not indexExists) $ do
+  unless indexExists $
     die $ "index does not exist: '" ++ path ++ "'"

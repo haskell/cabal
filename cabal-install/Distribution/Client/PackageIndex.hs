@@ -63,7 +63,7 @@ import qualified Data.Array as Array
 import Data.Array ((!))
 import Data.List (groupBy, sortBy, nub, isInfixOf)
 import Data.Monoid (Monoid(..))
-import Data.Maybe (isJust, isNothing, fromMaybe)
+import Data.Maybe (isJust, isNothing, fromMaybe, catMaybes)
 
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
@@ -90,7 +90,7 @@ newtype PackageIndex pkg = PackageIndex
   deriving (Show, Read)
 
 instance Package pkg => Monoid (PackageIndex pkg) where
-  mempty  = PackageIndex (Map.empty)
+  mempty  = PackageIndex Map.empty
   mappend = merge
   --save one mappend with empty in the common case:
   mconcat [] = mempty
@@ -466,9 +466,8 @@ dependencyGraph :: PackageFixedDeps pkg
                     PackageIdentifier -> Maybe Graph.Vertex)
 dependencyGraph index = (graph, vertexToPkg, pkgIdToVertex)
   where
-    graph = Array.listArray bounds
-              [ [ v | Just v <- map pkgIdToVertex (depends pkg) ]
-              | pkg <- pkgs ]
+    graph = Array.listArray bounds $
+            map (catMaybes . map pkgIdToVertex . depends) pkgs
     vertexToPkg vertex = pkgTable ! vertex
     pkgIdToVertex = binarySearch 0 topBound
 
