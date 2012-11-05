@@ -14,8 +14,7 @@
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
 module Distribution.Client.Install (
-    install,
-    upgrade,
+    install
   ) where
 
 import Data.List
@@ -142,7 +141,7 @@ import Distribution.Simple.BuildPaths ( exeExtension )
 
 -- | Installs the packages needed to satisfy a list of dependencies.
 --
-install, upgrade
+install
   :: Verbosity
   -> PackageDBStack
   -> [Repo]
@@ -198,19 +197,6 @@ install verbosity packageDBs repos comp conf
     -- line wrapping. TODO: This should probably be moved into
     -- the utilities module.
     debugNoWrap xs = when (verbosity >= deafening) (putStrLn xs >> hFlush stdout)
-
-upgrade _ _ _ _ _ _ _ _ _ _ _ = die $
-    "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
- ++ "You can install the latest version of a package using 'cabal install'. "
- ++ "The 'cabal upgrade' command has been removed because people found it "
- ++ "confusing and it often led to broken packages.\n"
- ++ "If you want the old upgrade behaviour then use the install command "
- ++ "with the --upgrade-dependencies flag (but check first with --dry-run "
- ++ "to see what would happen). This will try to pick the latest versions "
- ++ "of all dependencies, rather than the usual behaviour of trying to pick "
- ++ "installed versions of all dependencies. If you do use "
- ++ "--upgrade-dependencies, it is recommended that you do not upgrade core "
- ++ "packages (e.g. by using appropriate --constraint= flags)."
 
 type InstallContext = ( PackageDBStack
                       , [Repo]
