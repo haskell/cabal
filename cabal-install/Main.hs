@@ -167,7 +167,8 @@ mainWorker args = topHandler $
                      regVerbosity      regDistPref
       ,testCommand            `commandAddAction` testAction
       ,benchmarkCommand       `commandAddAction` benchmarkAction
-      ,upgradeCommand         `commandAddAction` upgradeAction
+      ,hiddenCommand $
+       upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $
        win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
       ,hiddenCommand $
