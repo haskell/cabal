@@ -28,7 +28,7 @@ setFileExecutable path = setFileMode path 0o755 -- file perms -rwxr-xr-x
 
 setFileMode :: FilePath -> FileMode -> IO ()
 setFileMode name m =
-  withCString name $ \s -> do
+  withCString name $ \s ->
 #if __GLASGOW_HASKELL__ >= 608
     throwErrnoPathIfMinus1_ "setFileMode" name (c_chmod s m)
 #else

@@ -38,11 +38,11 @@ import Distribution.Client.GZipUtils (maybeDecompress)
 import qualified Data.Map as Map
 import System.FilePath (dropExtension)
 import Data.Maybe      (fromMaybe)
-import Control.Monad   (when)
+import Control.Monad   (unless)
 
 -- | 'update' downloads the package list from all known servers
 update :: Verbosity -> [Repo] -> IO ()
-update verbosity [] = do
+update verbosity [] =
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
 update verbosity repos = do
@@ -74,7 +74,7 @@ checkForSelfUpgrade verbosity repos = do
         , version > currentVersion
         , version `withinRange` preferredVersionRange ]
 
-  when (not (null laterPreferredVersions)) $
+  unless (null laterPreferredVersions) $
     notice verbosity $
          "Note: there is a new version of cabal-install available.\n"
       ++ "To upgrade, run: cabal install cabal-install"

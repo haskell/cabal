@@ -458,7 +458,7 @@ infoAction infoFlags extraArgs globalFlags = do
 
 updateAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
 updateAction verbosityFlag extraArgs globalFlags = do
-  unless (null extraArgs) $ do
+  unless (null extraArgs) $
     die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag verbosityFlag
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
@@ -527,7 +527,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
 
 checkAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
 checkAction verbosityFlag extraArgs _globalFlags = do
-  unless (null extraArgs) $ do
+  unless (null extraArgs) $
     die $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
@@ -535,13 +535,13 @@ checkAction verbosityFlag extraArgs _globalFlags = do
 
 sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (sdistFlags, sdistExFlags) extraArgs _globalFlags = do
-  unless (null extraArgs) $ do
+  unless (null extraArgs) $
     die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   sdist sdistFlags sdistExFlags
 
 reportAction :: ReportFlags -> [String] -> GlobalFlags -> IO ()
 reportAction reportFlags extraArgs globalFlags = do
-  unless (null extraArgs) $ do
+  unless (null extraArgs) $
     die $ "'report' doesn't take any extra arguments: " ++ unwords extraArgs
 
   let verbosity = fromFlag (reportVerbosity reportFlags)
@@ -579,16 +579,16 @@ initAction initFlags _extraArgs globalFlags = do
 
 indexAction :: IndexFlags -> [String] -> GlobalFlags -> IO ()
 indexAction indexFlags extraArgs _globalFlags = do
-  when (null extraArgs) $ do
+  when (null extraArgs) $
     die $ "the 'index' command expects a single argument."
-  when ((>1). length $ extraArgs) $ do
+  when ((>1). length $ extraArgs) $
     die $ "the 'index' command expects a single argument: " ++ unwords extraArgs
   let verbosity = fromFlag (indexVerbosity indexFlags)
   index verbosity indexFlags (head extraArgs)
 
 sandboxInitAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
 sandboxInitAction sandboxFlags extraArgs globalFlags = do
-  when ((>0). length $ extraArgs) $ do
+  when ((>0). length $ extraArgs) $
     die $ "the 'sandbox-init' command doesn't expect any arguments: "
       ++ unwords extraArgs
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
@@ -596,7 +596,7 @@ sandboxInitAction sandboxFlags extraArgs globalFlags = do
 
 sandboxDeleteAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
 sandboxDeleteAction sandboxFlags extraArgs globalFlags = do
-  when ((>0). length $ extraArgs) $ do
+  when ((>0). length $ extraArgs) $
     die $ "the 'sandbox-init' command doesn't expect any arguments: "
       ++ unwords extraArgs
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
@@ -633,7 +633,7 @@ sandboxInstallAction
 
 dumpPkgEnvAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
 dumpPkgEnvAction sandboxFlags extraArgs _globalFlags = do
-  when ((>0). length $ extraArgs) $ do
+  when ((>0). length $ extraArgs) $
     die $ "the 'dump-pkgenv' command doesn't expect any arguments: "
       ++ unwords extraArgs
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)

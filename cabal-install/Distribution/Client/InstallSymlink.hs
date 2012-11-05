@@ -234,6 +234,6 @@ makeRelative a b = assert (isAbsolute a && isAbsolute b) $
       bs = splitPath b
       commonLen = length $ takeWhile id $ zipWith (==) as bs
    in joinPath $ [ ".." | _  <- drop commonLen as ]
-              ++ [  b'  | b' <- drop commonLen bs ]
+              ++ drop commonLen bs
 
 #endif

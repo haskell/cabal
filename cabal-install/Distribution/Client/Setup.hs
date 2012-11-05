@@ -56,12 +56,9 @@ import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Setup as Cabal
-         ( configureCommand, buildCommand, sdistCommand, haddockCommand
-         , buildOptions, defaultBuildFlags )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), BuildFlags(..), SDistFlags(..), HaddockFlags(..) )
-import Distribution.Simple.Setup
-         ( Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
+         ( ConfigFlags(..), BuildFlags(..), SDistFlags(..), HaddockFlags(..)
+         , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
          , optionVerbosity, boolOpt, trueArg, falseArg )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, toPathTemplate, fromPathTemplate )
@@ -826,11 +823,10 @@ installOptions showOrParseArgs =
                       (map (fmap show) . flagToList))
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
-            option [] ["only"]
+            [ option [] ["only"]
               "Only installs the package in the current directory."
               installOnly (\v flags -> flags { installOnly = v })
-              trueArg
-             : []
+              trueArg ]
           _ -> []
 
 instance Monoid InstallFlags where
@@ -1422,7 +1418,7 @@ liftOptions :: (b -> a) -> (a -> b -> b)
             -> [OptionField a] -> [OptionField b]
 liftOptions get set = map (liftOption get set)
 
-yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> (b -> b)) b
+yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf
 yesNoOpt _        sf lf = boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf
 
