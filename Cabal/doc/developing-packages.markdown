@@ -488,6 +488,21 @@ information](#build-information)).
     using a preprocessor. The source file must be relative to one of the
     directories listed in `hs-source-dirs`.
 
+#### Running executables ####
+
+You can have Cabal build and run your executables by using the `run` command:
+
+~~~~~~~~~~~~~~~~
+$ cabal run EXECUTABLE [-- EXECUTABLE_FLAGS]
+~~~~~~~~~~~~~~~~
+
+This command will configure, build and run the executable `EXECUTABLE`. The
+double dash separator is required to distinguish executable flags from `run`'s
+own flags. If there is only one executable defined in the whole package, the
+executable's name can be omitted. See the output of `cabal help run` for a list
+of options you can pass to `cabal run`.
+
+
 ### Test suites ###
 
 Test suite sections (if present) describe package test suites and must have an
