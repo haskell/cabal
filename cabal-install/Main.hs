@@ -27,6 +27,7 @@ import Distribution.Client.Setup
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
+         , runCommand
          , InitFlags(initVerbosity), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
@@ -62,6 +63,7 @@ import Distribution.Client.Fetch              (fetch)
 import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
 import Distribution.Client.Upload as Upload   (upload, check, report)
+import Distribution.Client.Run                (run)
 import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Unpack             (unpack)
 import Distribution.Client.Index              (index)
@@ -150,6 +152,7 @@ mainWorker args = topHandler $
       ,sdistCommand           `commandAddAction` sdistAction
       ,uploadCommand          `commandAddAction` uploadAction
       ,reportCommand          `commandAddAction` reportAction
+      ,runCommand             `commandAddAction` runAction
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
       ,buildCommand           `commandAddAction` buildAction
@@ -554,6 +557,17 @@ reportAction reportFlags extraArgs globalFlags = do
   Upload.report verbosity (globalRepos globalFlags')
     (flagToMaybe $ reportUsername reportFlags')
     (flagToMaybe $ reportPassword reportFlags')
+
+runAction :: BuildFlags -> [String] -> GlobalFlags -> IO ()
+runAction buildFlags extraArgs globalFlags = do
+  let verbosity    = fromFlagOrDefault normal (buildVerbosity buildFlags)
+      distPref     = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                     (buildDistPref buildFlags)
+
+  reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
+  build verbosity distPref mempty []
+
+  run verbosity buildFlags extraArgs
 
 unpackAction :: UnpackFlags -> [String] -> GlobalFlags -> IO ()
 unpackAction unpackFlags extraArgs globalFlags = do
