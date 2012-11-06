@@ -56,7 +56,7 @@ import Distribution.Client.Targets
          ( readUserTargets )
 
 import Distribution.Client.List               (list, info)
-import Distribution.Client.Install            (install, upgrade)
+import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
 import Distribution.Client.Update             (update)
 import Distribution.Client.Fetch              (fetch)
@@ -82,12 +82,14 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Command
+         ( CommandParse(..), CommandUI(..), Command
+         , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
          , interpretPackageDbFlags, maybeGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Utils
-         ( cabalVersion, die, intercalate, notice, topHandler )
+         ( cabalVersion, die, notice, topHandler )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -168,7 +170,8 @@ mainWorker args = topHandler $
                      regVerbosity      regDistPref
       ,testCommand            `commandAddAction` testAction
       ,benchmarkCommand       `commandAddAction` benchmarkAction
-      ,upgradeCommand         `commandAddAction` upgradeAction
+      ,hiddenCommand $
+       upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $
        win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
       ,hiddenCommand $
@@ -459,7 +462,7 @@ infoAction infoFlags extraArgs globalFlags = do
 
 updateAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
 updateAction verbosityFlag extraArgs globalFlags = do
-  unless (null extraArgs) $ do
+  unless (null extraArgs) $
     die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag verbosityFlag
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
@@ -468,22 +471,18 @@ updateAction verbosityFlag extraArgs globalFlags = do
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
-upgradeAction (configFlags, configExFlags, installFlags, haddockFlags)
-              extraArgs globalFlags = do
-  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-  targets <- readUserTargets verbosity extraArgs
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
-                                 (configUserInstall configFlags)
-  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
-      configExFlags' = savedConfigureExFlags config `mappend` configExFlags
-      installFlags'  = defaultInstallFlags          `mappend`
-                       savedInstallFlags     config `mappend` installFlags
-      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux' configFlags'
-  upgrade verbosity
-          (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
-          targets
+upgradeAction _ _ _ = die $
+    "Use the 'cabal install' command instead of 'cabal upgrade'.\n"
+ ++ "You can install the latest version of a package using 'cabal install'. "
+ ++ "The 'cabal upgrade' command has been removed because people found it "
+ ++ "confusing and it often led to broken packages.\n"
+ ++ "If you want the old upgrade behaviour then use the install command "
+ ++ "with the --upgrade-dependencies flag (but check first with --dry-run "
+ ++ "to see what would happen). This will try to pick the latest versions "
+ ++ "of all dependencies, rather than the usual behaviour of trying to pick "
+ ++ "installed versions of all dependencies. If you do use "
+ ++ "--upgrade-dependencies, it is recommended that you do not upgrade core "
+ ++ "packages (e.g. by using appropriate --constraint= flags)."
 
 fetchAction :: FetchFlags -> [String] -> GlobalFlags -> IO ()
 fetchAction fetchFlags extraArgs globalFlags = do
@@ -532,7 +531,7 @@ uploadAction uploadFlags extraArgs globalFlags = do
 
 checkAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
 checkAction verbosityFlag extraArgs _globalFlags = do
-  unless (null extraArgs) $ do
+  unless (null extraArgs) $
     die $ "'check' doesn't take any extra arguments: " ++ unwords extraArgs
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
@@ -540,13 +539,13 @@ checkAction verbosityFlag extraArgs _globalFlags = do
 
 sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (sdistFlags, sdistExFlags) extraArgs _globalFlags = do
-  unless (null extraArgs) $ do
+  unless (null extraArgs) $
     die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
   sdist sdistFlags sdistExFlags
 
 reportAction :: ReportFlags -> [String] -> GlobalFlags -> IO ()
 reportAction reportFlags extraArgs globalFlags = do
-  unless (null extraArgs) $ do
+  unless (null extraArgs) $
     die $ "'report' doesn't take any extra arguments: " ++ unwords extraArgs
 
   let verbosity = fromFlag (reportVerbosity reportFlags)
@@ -595,16 +594,16 @@ initAction initFlags _extraArgs globalFlags = do
 
 indexAction :: IndexFlags -> [String] -> GlobalFlags -> IO ()
 indexAction indexFlags extraArgs _globalFlags = do
-  when (null extraArgs) $ do
+  when (null extraArgs) $
     die $ "the 'index' command expects a single argument."
-  when ((>1). length $ extraArgs) $ do
+  when ((>1). length $ extraArgs) $
     die $ "the 'index' command expects a single argument: " ++ unwords extraArgs
   let verbosity = fromFlag (indexVerbosity indexFlags)
   index verbosity indexFlags (head extraArgs)
 
 sandboxInitAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
 sandboxInitAction sandboxFlags extraArgs globalFlags = do
-  when ((>0). length $ extraArgs) $ do
+  when ((>0). length $ extraArgs) $
     die $ "the 'sandbox-init' command doesn't expect any arguments: "
       ++ unwords extraArgs
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
@@ -612,7 +611,7 @@ sandboxInitAction sandboxFlags extraArgs globalFlags = do
 
 sandboxDeleteAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
 sandboxDeleteAction sandboxFlags extraArgs globalFlags = do
-  when ((>0). length $ extraArgs) $ do
+  when ((>0). length $ extraArgs) $
     die $ "the 'sandbox-init' command doesn't expect any arguments: "
       ++ unwords extraArgs
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
@@ -649,7 +648,7 @@ sandboxInstallAction
 
 dumpPkgEnvAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
 dumpPkgEnvAction sandboxFlags extraArgs _globalFlags = do
-  when ((>0). length $ extraArgs) $ do
+  when ((>0). length $ extraArgs) $
     die $ "the 'dump-pkgenv' command doesn't expect any arguments: "
       ++ unwords extraArgs
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)

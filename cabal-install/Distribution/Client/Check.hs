@@ -72,10 +72,10 @@ check verbosity = do
         isDistError _                          = True
         errors = filter isDistError packageChecks
 
-    unless (null errors) $ do
+    unless (null errors) $
         putStrLn "Hackage would reject this package."
 
-    when (null packageChecks) $ do
+    when (null packageChecks) $
         putStrLn "No errors or warnings could be found in the package."
 
     return (null packageChecks)

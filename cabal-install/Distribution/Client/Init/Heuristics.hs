@@ -37,7 +37,7 @@ import Data.Char   ( isUpper, isLower, isSpace )
 import Data.Either ( partitionEithers )
 #endif
 import Data.List   ( isPrefixOf )
-import Data.Maybe  ( catMaybes )
+import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
 import Data.Monoid ( mempty, mappend )
 import qualified Data.Set as Set ( fromList, toList )
 import System.Directory ( getDirectoryContents, doesDirectoryExist, doesFileExist,
@@ -104,13 +104,13 @@ findImports :: FilePath -> SourceFileEntry -> IO SourceFileEntry
 findImports projectRoot sf = do
   s <- readFile (sfToFileName projectRoot sf)
 
-  let modules = catMaybes
-              . map ( getModName
-                    . drop 1
-                    . filter (not . null)
-                    . dropWhile (/= "import")
-                    . words
-                    )
+  let modules = mapMaybe
+                ( getModName
+                . drop 1
+                . filter (not . null)
+                . dropWhile (/= "import")
+                . words
+                )
               . filter (not . ("--" `isPrefixOf`)) -- poor man's comment filtering
               . lines
               $ s
@@ -148,7 +148,7 @@ neededBuildPrograms :: [SourceFileEntry] -> [String]
 neededBuildPrograms entries =
     [ handler
     | ext <- nubSet (map fileExtension entries)
-    , handler <- maybe [] (:[]) (lookup ext knownSuffixHandlers)
+    , handler <- maybeToList (lookup ext knownSuffixHandlers)
     ]
 
 -- |Guess author and email
@@ -173,7 +173,7 @@ guessAuthorNameMail =
 
 -- |Get list of categories used in hackage. NOTE: Very slow, needs to be cached
 knownCategories :: SourcePackageDb -> [String]
-knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet $
+knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet
     [ cat | pkg <- map head (allPackagesByName sourcePkgIndex)
           , let catList = (PD.category . PD.packageDescription . packageDescription) pkg
           , cat <- splitString ',' catList
