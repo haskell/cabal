@@ -2,6 +2,7 @@ module Distribution.Client.Dependency.Modular.Package
   (module Distribution.Client.Dependency.Modular.Package,
    module Distribution.Package) where
 
+import Control.Arrow (first)
 import Data.List as L
 import Data.Map as M
 
@@ -45,7 +46,7 @@ showI (I v (Inst (InstalledPackageId i))) = showVer v ++ "/installed" ++ shortId
   where
     -- A hack to extract the beginning of the package ABI hash
     shortId = snip (splitAt 4) (++ "...") .
-              snip ((\ (x, y) -> (reverse x, y)) . break (=='-') . reverse) ('-':)
+              snip (first reverse . break (=='-') . reverse) ('-':)
     snip p f xs = case p xs of
                     (ys, zs) -> (if L.null zs then id else f) ys
 
@@ -82,7 +83,7 @@ data Q a = Q PP a
   deriving (Eq, Ord, Show)
 
 -- | Standard string representation of a qualified entity.
-showQ :: (a -> String) -> (Q a -> String)
+showQ :: (a -> String) -> Q a -> String
 showQ showa (Q [] x) = showa x
 showQ showa (Q pp x) = showPP pp ++ "." ++ showa x
 

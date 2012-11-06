@@ -57,12 +57,9 @@ import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Setup as Cabal
-         ( configureCommand, buildCommand, sdistCommand, haddockCommand
-         , buildOptions, defaultBuildFlags )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), BuildFlags(..), SDistFlags(..), HaddockFlags(..) )
-import Distribution.Simple.Setup
-         ( Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
+         ( ConfigFlags(..), BuildFlags(..), SDistFlags(..), HaddockFlags(..)
+         , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
          , optionVerbosity, boolOpt, trueArg, falseArg )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, toPathTemplate, fromPathTemplate )
@@ -842,11 +839,10 @@ installOptions showOrParseArgs =
                       (map (fmap show) . flagToList))
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
-            option [] ["only"]
+            [ option [] ["only"]
               "Only installs the package in the current directory."
               installOnly (\v flags -> flags { installOnly = v })
-              trueArg
-             : []
+              trueArg ]
           _ -> []
 
 instance Monoid InstallFlags where
@@ -1097,14 +1093,14 @@ initCommand = CommandUI {
         (\v flags -> flags { IT.exposedModules = v })
         (reqArg "MODULE" (readP_to_E ("Cannot parse module name: "++)
                                      ((Just . (:[])) `fmap` parse))
-                         (fromMaybe [] . fmap (fmap display)))
+                         (maybe [] (fmap display)))
 
       , option ['d'] ["dependency"]
         "Package dependency."
         IT.dependencies (\v flags -> flags { IT.dependencies = v })
         (reqArg "PACKAGE" (readP_to_E ("Cannot parse dependency: "++)
                                       ((Just . (:[])) `fmap` parse))
-                          (fromMaybe [] . fmap (fmap display)))
+                          (maybe [] (fmap display)))
 
       , option [] ["source-dir"]
         "Directory containing package source."
@@ -1317,7 +1313,7 @@ sandboxInitCommand = CommandUI {
   commandName         = "sandbox-init",
   commandSynopsis     = "Initialise a fresh sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-init",
+  commandUsage        = usageFlags "sandbox-init",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
@@ -1327,7 +1323,7 @@ sandboxDeleteCommand = CommandUI {
   commandName         = "sandbox-delete",
   commandSynopsis     = "Deletes current sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-delete",
+  commandUsage        = usageFlags "sandbox-delete",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
@@ -1337,7 +1333,7 @@ sandboxAddSourceCommand = CommandUI {
   commandName         = "sandbox-add-source",
   commandSynopsis     = "Make a source package available in a sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-add-source",
+  commandUsage        = usageFlags "sandbox-add-source",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
@@ -1347,7 +1343,7 @@ sandboxConfigureCommand = CommandUI {
   commandName         = "sandbox-configure",
   commandSynopsis     = "Configure a package inside a sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-configure",
+  commandUsage        = usageFlags "sandbox-configure",
   commandDefaultFlags = (defaultSandboxFlags, mempty, defaultConfigExFlags),
   commandOptions      = \showOrParseArgs ->
     liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
@@ -1367,7 +1363,7 @@ sandboxBuildCommand = CommandUI {
   commandName         = "sandbox-build",
   commandSynopsis     = "Build a package inside a sandbox",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "sandbox-build",
+  commandUsage        = usageFlags "sandbox-build",
   commandDefaultFlags = (defaultSandboxFlags, Cabal.defaultBuildFlags),
   commandOptions      = \showOrParseArgs ->
     liftOptions fst setFst (commonSandboxOptions showOrParseArgs)
@@ -1386,7 +1382,7 @@ sandboxInstallCommand = CommandUI {
   commandName         = "sandbox-install",
   commandSynopsis     = "Install a list of packages into a sandbox",
   commandDescription  = commandDescription installCommand,
-  commandUsage        = \pname -> usagePackages pname "sandbox-install",
+  commandUsage        = usagePackages "sandbox-install",
   commandDefaultFlags = (defaultSandboxFlags, mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
@@ -1409,7 +1405,7 @@ dumpPkgEnvCommand = CommandUI {
   commandName         = "dump-pkgenv",
   commandSynopsis     = "Dump a parsed package environment file",
   commandDescription  = Nothing,
-  commandUsage        = \pname -> usageFlags pname "dump-pkgenv",
+  commandUsage        = usageFlags "dump-pkgenv",
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = commonSandboxOptions
   }
@@ -1438,7 +1434,7 @@ liftOptions :: (b -> a) -> (a -> b -> b)
             -> [OptionField a] -> [OptionField b]
 liftOptions get set = map (liftOption get set)
 
-yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> (b -> b)) b
+yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf
 yesNoOpt _        sf lf = boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf
 

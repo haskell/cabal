@@ -86,7 +86,7 @@ import Data.Maybe
 import Data.Monoid
          ( Monoid(..) )
 import Control.Monad
-         ( when, foldM, liftM )
+         ( unless, foldM, liftM )
 import qualified Distribution.Compat.ReadP as Parse
          ( option )
 import qualified Text.PrettyPrint as Disp
@@ -282,15 +282,15 @@ loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
       writeConfigFile configFile commentConf initialConf
       return initialConf
     Just (ParseOk ws conf) -> do
-      when (not $ null ws) $ warn verbosity $
+      unless (null ws) $ warn verbosity $
         unlines (map (showPWarning configFile) ws)
       return conf
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
       warn verbosity $
           "Error parsing config file " ++ configFile
-        ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
-      warn verbosity $ "Using default configuration."
+        ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
+      warn verbosity "Using default configuration."
       initialSavedConfig
 
   where

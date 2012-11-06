@@ -114,10 +114,10 @@ convGPD os arch cid pi
     PInfo
       (maybe []    (convCondTree os arch cid pi fds (const True)          ) libs    ++
        concatMap   (convCondTree os arch cid pi fds (const True)     . snd) exes    ++
-      (prefix (Stanza (SN pi TestStanzas))
-        (L.map     (convCondTree os arch cid pi fds (const True)     . snd) tests)) ++
-      (prefix (Stanza (SN pi BenchStanzas))
-        (L.map     (convCondTree os arch cid pi fds (const True)     . snd) benchs)))
+      prefix (Stanza (SN pi TestStanzas))
+        (L.map     (convCondTree os arch cid pi fds (const True)     . snd) tests) ++
+      prefix (Stanza (SN pi BenchStanzas))
+        (L.map     (convCondTree os arch cid pi fds (const True)     . snd) benchs))
       fds
       [] -- TODO: add encaps
       Nothing

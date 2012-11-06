@@ -41,7 +41,7 @@ import Distribution.Client.IndexUtils as IndexUtils
 import System.Directory
          ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist )
 import Control.Monad
-         ( unless, when )
+         ( unless, when, forM_ )
 import Data.Monoid
          ( mempty )
 import System.FilePath
@@ -74,7 +74,7 @@ unpack verbosity repos globalFlags unpackFlags userTargets = do
   unless (null prefix) $
          createDirectoryIfMissing True prefix
 
-  flip mapM_ pkgs $ \pkg -> do
+  forM_ pkgs $ \pkg -> do
     location <- fetchPackage verbosity (packageSource pkg)
     let pkgid = packageId pkg
         descOverride | usePristine = Nothing

@@ -48,7 +48,7 @@ import Control.Monad
   ( (>=>), join )
 #endif
 import Control.Arrow
-  ( (&&&) )
+  ( (&&&), (***) )
 
 import Text.PrettyPrint hiding (mode, cat)
 
@@ -59,7 +59,7 @@ import Distribution.Version
 import Distribution.Verbosity
   ( Verbosity )
 import Distribution.ModuleName
-  ( ModuleName, fromString )
+  ( ModuleName, fromString )  -- And for the Text instance
 import Distribution.InstalledPackageInfo
   ( InstalledPackageInfo, sourcePackageId, exposed )
 import qualified Distribution.Package as P
@@ -74,8 +74,6 @@ import Distribution.Client.Init.Heuristics
 
 import Distribution.License
   ( License(..), knownLicenses )
-import Distribution.ModuleName
-  ( ) -- for the Text instance
 
 import Distribution.ReadE
   ( runReadE, readP_to_E )
@@ -186,7 +184,8 @@ getLicense flags = do
 --   darcs repo.
 getAuthorInfo :: InitFlags -> IO InitFlags
 getAuthorInfo flags = do
-  (authorName, authorEmail)  <- (\(a,e) -> (flagToMaybe a, flagToMaybe e)) `fmap` guessAuthorNameMail
+  (authorName, authorEmail)  <-
+    (flagToMaybe *** flagToMaybe) `fmap` guessAuthorNameMail
   authorName'  <-     return (flagToMaybe $ author flags)
                   ?>> maybePrompt flags (promptStr "Author name" authorName)
                   ?>> return authorName
@@ -237,9 +236,9 @@ getLibOrExec :: InitFlags -> IO InitFlags
 getLibOrExec flags = do
   isLib <-     return (flagToMaybe $ packageType flags)
            ?>> maybePrompt flags (either (const Library) id `fmap`
-                                   (promptList "What does the package build"
-                                               [Library, Executable]
-                                               Nothing display False))
+                                   promptList "What does the package build"
+                                   [Library, Executable]
+                                   Nothing display False)
            ?>> return (Just Library)
 
   return $ flags { packageType = maybeToFlag isLib }
@@ -250,13 +249,9 @@ getLanguage flags = do
   lang <-     return (flagToMaybe $ language flags)
           ?>> maybePrompt flags
                 (either UnknownLanguage id `fmap`
-                  (promptList "What base language is the package written in"
-                    [Haskell2010, Haskell98]
-                    (Just Haskell2010)
-                    display
-                    True
-                  )
-                )
+                  promptList "What base language is the package written in"
+                  [Haskell2010, Haskell98]
+                  (Just Haskell2010) display True)
           ?>> return (Just Haskell2010)
 
   return $ flags { language = maybeToFlag lang }
@@ -264,7 +259,7 @@ getLanguage flags = do
 -- | Ask whether to generate explanatory comments.
 getGenComments :: InitFlags -> IO InitFlags
 getGenComments flags = do
-  genComments <-     return (not <$> (flagToMaybe $ noComments flags))
+  genComments <-     return (not <$> flagToMaybe (noComments flags))
                  ?>> maybePrompt flags (promptYesNo promptMsg (Just False))
                  ?>> return (Just False)
   return $ flags { noComments = maybeToFlag (fmap not genComments) }
@@ -275,7 +270,7 @@ getGenComments flags = do
 getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
   srcDirs <-     return (sourceDirs flags)
-             ?>> Just `fmap` (guessSourceDirs flags)
+             ?>> Just `fmap` guessSourceDirs flags
 
   return $ flags { sourceDirs = srcDirs }
 
@@ -283,8 +278,8 @@ getSrcDir flags = do
 --   moment just looks to see whether there is a directory called 'src'.
 guessSourceDirs :: InitFlags -> IO [String]
 guessSourceDirs flags = do
-  dir      <- fromMaybe getCurrentDirectory
-                (fmap return . flagToMaybe $ packageDir flags)
+  dir      <-
+    maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
   srcIsDir <- doesDirectoryExist (dir </> "src")
   if srcIsDir
     then return ["src"]
@@ -293,8 +288,7 @@ guessSourceDirs flags = do
 -- | Get the list of exposed modules and extra tools needed to build them.
 getModulesBuildToolsAndDeps :: PackageIndex -> InitFlags -> IO InitFlags
 getModulesBuildToolsAndDeps pkgIx flags = do
-  dir <- fromMaybe getCurrentDirectory
-                   (fmap return . flagToMaybe $ packageDir flags)
+  dir <- maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
 
   -- XXX really should use guessed source roots.
   sourceFiles <- scanForModules dir
@@ -359,7 +353,7 @@ chooseDep flags (m, Just ps)
       grps  -> do message flags ("\nWarning: multiple packages found providing "
                                  ++ display m
                                  ++ ": " ++ intercalate ", " (map (display . P.pkgName . head) grps))
-                  message flags ("You will need to pick one and manually add it to the Build-depends: field.")
+                  message flags "You will need to pick one and manually add it to the Build-depends: field."
                   return Nothing
   where
     pkgGroups = groupBy ((==) `on` P.pkgName) (map sourcePackageId ps)
@@ -447,7 +441,7 @@ promptListOptional pr choices =
   $ promptList pr (Nothing : map Just choices) (Just Nothing)
                (maybe "(none)" display) True
   where
-    rearrange = either (Just . Left) (maybe Nothing (Just . Right))
+    rearrange = either (Just . Left) (fmap Right)
 
 -- | Create a prompt from a list of items.
 promptList :: Eq t
@@ -461,8 +455,7 @@ promptList pr choices def displayItem other = do
   putStrLn $ pr ++ ":"
   let options1 = map (\c -> (Just c == def, displayItem c)) choices
       options2 = zip ([1..]::[Int])
-                     (options1 ++ if other then [(False, "Other (specify)")]
-                                           else [])
+                     (options1 ++ [(False, "Other (specify)") | other])
   mapM_ (putStrLn . \(n,(i,s)) -> showOption n i ++ s) options2
   promptList' displayItem (length options2) choices def other
  where showOption n i | n < 10 = " " ++ star i ++ " " ++ rest
@@ -598,7 +591,7 @@ findNewName oldName = findNewName' 0
 generateCabalFile :: String -> InitFlags -> String
 generateCabalFile fileName c =
   renderStyle style { lineLength = 79, ribbonsPerLine = 1.1 } $
-  (if (minimal c /= Flag True)
+  (if minimal c /= Flag True
     then showComment (Just $ "Initial " ++ fileName ++ " generated by cabal "
                           ++ "init.  For further documentation, see "
                           ++ "http://haskell.org/cabal/users-guide/")
@@ -670,12 +663,12 @@ generateCabalFile fileName c =
 
        , case packageType c of
            Flag Executable ->
-             text "\nexecutable" <+> text (fromMaybe "" . flagToMaybe $ packageName c) $$ (nest 2 $ vcat
+             text "\nexecutable" <+> text (fromMaybe "" . flagToMaybe $ packageName c) $$ nest 2 (vcat
              [ fieldS "main-is" NoFlag (Just ".hs or .lhs file containing the Main module.") True
 
              , generateBuildInfo Executable c
              ])
-           Flag Library    -> text "\nlibrary" $$ (nest 2 $ vcat
+           Flag Library    -> text "\nlibrary" $$ nest 2 (vcat
              [ fieldS "exposed-modules" (listField (exposedModules c))
                       (Just "Modules exported by the library.")
                       True
@@ -733,15 +726,15 @@ generateCabalFile fileName c =
                         (False, _, _)     -> ($$ text "")
                       $
                       comment f <> text s <> colon
-                                <> text (take (20 - length s) (repeat ' '))
+                                <> text (replicate (20 - length s) ' ')
                                 <> text (fromMaybe "" . flagToMaybe $ f)
    comment NoFlag    = text "-- "
    comment (Flag "") = text "-- "
    comment _         = text ""
 
    showComment :: Maybe String -> Doc
-   showComment (Just t) = vcat . map text
-                        . map ("-- "++) . lines
+   showComment (Just t) = vcat
+                        . map (text . ("-- "++)) . lines
                         . renderStyle style {
                             lineLength = 76,
                             ribbonsPerLine = 1.05
@@ -774,6 +767,6 @@ message _ s = putStrLn s
 
 #if MIN_VERSION_base(3,0,0)
 #else
-(>=>)       :: Monad m => (a -> m b) -> (b -> m c) -> (a -> m c)
+(>=>)       :: Monad m => (a -> m b) -> (b -> m c) -> a -> m c
 f >=> g     = \x -> f x >>= g
 #endif
