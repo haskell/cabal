@@ -23,7 +23,7 @@ import qualified Text.PrettyPrint as Disp
 
 --FIXME: replace this with something better
 parseFields :: [FieldDescr a] -> a -> [ParseUtils.Field] -> ParseResult a
-parseFields fields initial = foldM setField initial
+parseFields fields = foldM setField
   where
     fieldMap = Map.fromList
       [ (name, f) | f@(FieldDescr name _ _) <- fields ]

@@ -167,10 +167,9 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
         . addConstraints
             -- '--enable-tests' and '--enable-benchmarks' constraints from
             -- command line
-            [ PackageConstraintStanzas (packageName pkg) $ concat
-                [ if testsEnabled then [TestStanzas] else []
-                , if benchmarksEnabled then [BenchStanzas] else []
-                ]
+            [ PackageConstraintStanzas (packageName pkg) $
+                [ TestStanzas  | testsEnabled ] ++
+                [ BenchStanzas | benchmarksEnabled ]
             ]
 
         $ standardInstallPolicy

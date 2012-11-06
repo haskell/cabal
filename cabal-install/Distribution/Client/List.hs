@@ -184,9 +184,8 @@ info verbosity packageDBs repos comp conf
                                  sourcePkgs  selectedSourcePkg'
                                  showPkgVersion
       where
-        pref           = prefs name
-        installedPkgs  = concatMap snd (InstalledPackageIndex.lookupPackageName installedPkgIndex name)
-        sourcePkgs     =                         PackageIndex.lookupPackageName sourcePkgIndex name
+        (pref, installedPkgs, sourcePkgs) =
+          sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex
 
         selectedInstalledPkgs = InstalledPackageIndex.lookupDependency installedPkgIndex
                                     (Dependency name verConstraint)
@@ -205,10 +204,22 @@ info verbosity packageDBs repos comp conf
                                  selectedPkg True
       where
         name          = packageName pkg
-        pref          = prefs name
-        installedPkgs = concatMap snd (InstalledPackageIndex.lookupPackageName installedPkgIndex name)
-        sourcePkgs    =                         PackageIndex.lookupPackageName sourcePkgIndex name
         selectedPkg   = Just pkg
+        (pref, installedPkgs, sourcePkgs) =
+          sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex
+
+sourcePkgsInfo ::
+  (PackageName -> VersionRange)
+  -> PackageName
+  -> InstalledPackageIndex.PackageIndex
+  -> PackageIndex.PackageIndex SourcePackage
+  -> (VersionRange, [Installed.InstalledPackageInfo], [SourcePackage])
+sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
+  (pref, installedPkgs, sourcePkgs)
+  where
+    pref          = prefs name
+    installedPkgs = concatMap snd (InstalledPackageIndex.lookupPackageName installedPkgIndex name)
+    sourcePkgs    =                         PackageIndex.lookupPackageName sourcePkgIndex name
 
 
 -- | The info that we can display for each package. It is information per

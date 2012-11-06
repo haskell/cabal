@@ -114,7 +114,7 @@ extractTarGzFile :: FilePath -- ^ Destination directory
                  -> FilePath -- ^ Expected subdir (to check for tarbombs)
                  -> FilePath -- ^ Tarball
                 -> IO ()
-extractTarGzFile dir expected tar = do
+extractTarGzFile dir expected tar =
   unpack dir . checkTarbomb expected . read . GZipUtils.maybeDecompress =<< BS.readFile tar
 
 --
@@ -363,7 +363,7 @@ splitLongPath path =
     Right (name, [])         -> Right (TarPath name "")
     Right (name, first:rest) -> case packName prefixMax remainder of
       Left err               -> Left err
-      Right (_     , (_:_))  -> Left "File name too long (cannot split)"
+      Right (_     , _ : _)  -> Left "File name too long (cannot split)"
       Right (prefix, [])     -> Right (TarPath name prefix)
       where
         -- drop the '/' between the name and prefix:
@@ -495,7 +495,7 @@ checkEntrySecurity entry = case entryContent entry of
       | not (FilePath.Native.isValid name)
       = Just $ "Invalid file name in tar archive: " ++ show name
 
-      | any (=="..") (FilePath.Native.splitDirectories name)
+      | ".." `elem` FilePath.Native.splitDirectories name
       = Just $ "Invalid file name in tar archive: " ++ show name
 
       | otherwise = Nothing
@@ -679,7 +679,7 @@ write es = BS.concat $ map putEntry es ++ [BS.replicate (512*2) 0]
 
 -- | Same as 'write', but for 'Entries'.
 writeEntries :: Entries -> ByteString
-writeEntries entries = BS.concat $ foldrEntries (\e res -> (putEntry e):res)
+writeEntries entries = BS.concat $ foldrEntries (\e res -> putEntry e : res)
                        [BS.replicate (512*2) 0] error entries
 
 putEntry :: Entry -> ByteString
@@ -694,10 +694,10 @@ putEntry entry = case entryContent entry of
 
 putHeader :: Entry -> ByteString
 putHeader entry =
-     BS.concat $ [ BS.take 148 block
-                 , BS.Char8.pack $ putOct 7 checksum
-                 , BS.Char8.singleton ' '
-                 , BS.drop 156 block ]
+     BS.concat [ BS.take 148 block
+               , BS.Char8.pack $ putOct 7 checksum
+               , BS.Char8.singleton ' '
+               , BS.drop 156 block ]
   where
     -- putHeaderNoChkSum returns a String, so we convert it to the final
     -- representation before calculating the checksum.

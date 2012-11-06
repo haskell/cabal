@@ -55,7 +55,7 @@ import Distribution.Simple.Utils
          ( die, warn, info, fromUTF8, findPackageDesc )
 
 import Data.Char   (isAlphaNum)
-import Data.Maybe  (catMaybes, fromMaybe)
+import Data.Maybe  (mapMaybe, fromMaybe)
 import Data.List   (isPrefixOf)
 import Data.Monoid (Monoid(..))
 import qualified Data.Map as Map
@@ -165,7 +165,7 @@ readRepoIndex verbosity repo =
   in handleNotFound $ do
     warnIfIndexIsOld indexFile
     whenCacheOutOfDate indexFile cacheFile $ do
-      info verbosity $ "Updating the index cache file..."
+      info verbosity "Updating the index cache file..."
       updatePackageIndexCacheFile indexFile cacheFile
     readPackageIndexCacheFile mkAvailablePackage indexFile cacheFile
 
@@ -212,7 +212,7 @@ readRepoIndex verbosity repo =
 updateRepoIndexCache :: Verbosity -> Repo -> IO ()
 updateRepoIndexCache verbosity repo =
     whenCacheOutOfDate indexFile cacheFile $ do
-      info verbosity $ "Updating the index cache file..."
+      info verbosity "Updating the index cache file..."
       updatePackageIndexCacheFile indexFile cacheFile
   where
     indexFile = repoLocalDir repo </> "00-index.tar"
@@ -338,8 +338,7 @@ extractPrefs entry = case Tar.entryContent entry of
   _ -> Nothing
 
 parsePreferredVersions :: String -> [Dependency]
-parsePreferredVersions = catMaybes
-                       . map simpleParse
+parsePreferredVersions = mapMaybe simpleParse
                        . filter (not . isPrefixOf "--")
                        . lines
 
@@ -507,7 +506,7 @@ showIndexCacheEntry entry = case entry of
    CachePreference dep    -> "pref-ver: " ++ display dep
 
 readIndexCache :: BSS.ByteString -> [IndexCacheEntry]
-readIndexCache = catMaybes . map readIndexCacheEntry . BSS.lines
+readIndexCache = mapMaybe readIndexCacheEntry . BSS.lines
 
 showIndexCache :: [IndexCacheEntry] -> String
 showIndexCache = unlines . map showIndexCacheEntry
