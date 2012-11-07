@@ -16,7 +16,7 @@ import Foreign.Ptr (Ptr)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Storable (peek, peekElemOff)
 import GHC.IO.FD (mkFD)
-import GHC.IO.Device (close)
+import GHC.IO.Device (IODeviceType(Stream))
 import GHC.IO.Handle.FD (mkHandleFromFD)
 import System.IO (IOMode(ReadMode, WriteMode))
 #endif
@@ -30,19 +30,26 @@ createPipe = do
     return (readh, writeh)
 #else
 createPipe = do
-   (readfd, writefd) <- allocaArray 2 $ \ pfds -> do
-      throwErrnoIfMinus1_ "_pipe" $ c__pipe pfds 2 (#const _O_BINARY)
-      readfd <- peek pfds
-      writefd <- peekElemOff pfds 1
-      return (readfd, writefd)
-   (readFD, readDeviceType) <- mkFD readfd ReadMode Nothing False False
-   readh <- mkHandleFromFD readFD readDeviceType "" ReadMode False Nothing
-       `onException` close readFD
-   (writeFD, writeDeviceType) <- mkFD writefd WriteMode Nothing False False
-   writeh <- mkHandleFromFD writeFD writeDeviceType "" WriteMode False Nothing
-       `onException` close writeFD
-   return (readh, writeh)
+    (readfd, writefd) <- allocaArray 2 $ \ pfds -> do
+        throwErrnoIfMinus1_ "_pipe" $ c__pipe pfds 2 (#const _O_BINARY)
+        readfd <- peek pfds
+        writefd <- peekElemOff pfds 1
+        return (readfd, writefd)
+    (do readh <- fdToHandle readfd ReadMode
+        writeh <- fdToHandle writefd WriteMode
+        return (readh, writeh)) `onException` (close readfd >> close writefd)
+
+fdToHandle :: CInt -> IOMode -> IO Handle
+fdToHandle fd mode = do
+    (fd', deviceType) <- mkFD fd mode (Just (Stream, 0, 0)) False False
+    mkHandleFromFD fd' deviceType "" mode False Nothing
+
+close :: CInt -> IO ()
+close = throwErrnoIfMinus1_ "_close" . c__close
 
 foreign import ccall "io.h _pipe" c__pipe ::
     Ptr CInt -> CUInt -> CInt -> IO CInt
+
+foreign import ccall "io.h _close" c__close ::
+    CInt -> IO CInt
 #endif
