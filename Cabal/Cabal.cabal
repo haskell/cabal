@@ -160,7 +160,9 @@ test-suite package-tests
                  PackageTests.TestOptions.Check,
                  PackageTests.TestStanza.Check,
                  PackageTests.TestSuiteExeV10.Check,
+                 PackageTests.BenchmarkOptions.Check,
                  PackageTests.BenchmarkStanza.Check,
+                 PackageTests.BenchmarkExeV10.Check,
                  PackageTests.TemplateHaskell.Check,
                  PackageTests.PackageTester
                  PackageTests.PathsModule.Executable.Check
