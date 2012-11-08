@@ -7,7 +7,7 @@ import System.IO (Handle)
 import System.Posix.IO (fdToHandle)
 import qualified System.Posix.IO as Posix
 #else
-# include <io.h>        /* for _pipe */
+# include <io.h>        /* for _close and _pipe */
 # include <fcntl.h>     /* for _O_BINARY */
 import Control.Exception (onException)
 import Foreign.C.Error (throwErrnoIfMinus1_)
