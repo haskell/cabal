@@ -130,7 +130,7 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
 
     Nothing -> do
       createDirectoryIfMissingVerbose verbosity True tmpTargetDir
-      withTempDirectory verbosity tmpTargetDir "sdist." $ \tmpDir -> do
+      withTempDirectory verbosity False tmpTargetDir "sdist." $ \tmpDir -> do
         let targetDir = tmpDir </> tarBallName pkg'
         generateSourceDir targetDir pkg'
         targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref

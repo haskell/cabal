@@ -1024,6 +1024,7 @@ data HaddockFlags = HaddockFlags {
     haddockHscolourCss  :: Flag FilePath,
     haddockContents     :: Flag PathTemplate,
     haddockDistPref     :: Flag FilePath,
+    haddockKeepTempFiles:: Flag Bool,
     haddockVerbosity    :: Flag Verbosity
   }
   deriving Show
@@ -1042,6 +1043,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHscolourCss  = NoFlag,
     haddockContents     = NoFlag,
     haddockDistPref     = Flag defaultDistPref,
+    haddockKeepTempFiles= Flag False,
     haddockVerbosity    = Flag normal
   }
 
@@ -1056,6 +1058,11 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
       ,optionDistPref
          haddockDistPref (\d flags -> flags { haddockDistPref = d })
          showOrParseArgs
+
+      ,option "" ["keep-temp-files"]
+         "Keep temporary files"
+         haddockKeepTempFiles (\b flags -> flags { haddockKeepTempFiles = b })
+         trueArg
 
       ,option "" ["hoogle"]
          "Generate a hoogle database"
@@ -1129,6 +1136,7 @@ instance Monoid HaddockFlags where
     haddockHscolourCss  = mempty,
     haddockContents     = mempty,
     haddockDistPref     = mempty,
+    haddockKeepTempFiles= mempty,
     haddockVerbosity    = mempty
   }
   mappend a b = HaddockFlags {
@@ -1144,6 +1152,7 @@ instance Monoid HaddockFlags where
     haddockHscolourCss  = combine haddockHscolourCss,
     haddockContents     = combine haddockContents,
     haddockDistPref     = combine haddockDistPref,
+    haddockKeepTempFiles= combine haddockKeepTempFiles,
     haddockVerbosity    = combine haddockVerbosity
   }
     where combine field = field a `mappend` field b
