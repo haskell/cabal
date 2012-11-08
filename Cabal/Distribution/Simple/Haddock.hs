@@ -205,23 +205,24 @@ haddock pkg_descr lbi suffixes flags = do
       pre comp
       case comp of
         CLib lib -> do
-          withTempDirectory verbosity (buildDir lbi) "tmp" $ \tmp -> do
+          withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
             let bi = libBuildInfo lib
             libArgs  <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
             libArgs' <- prepareSources verbosity tmp
                           lbi isVersion2 bi (commonArgs `mappend` libArgs)
-            runHaddock verbosity confHaddock libArgs'
+            runHaddock verbosity keepTempFiles confHaddock libArgs'
         CExe exe -> when (flag haddockExecutables) $ do
-          withTempDirectory verbosity (buildDir lbi) "tmp" $ \tmp -> do
+          withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
             let bi = buildInfo exe
             exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
             exeArgs' <- prepareSources verbosity tmp
                           lbi isVersion2 bi (commonArgs `mappend` exeArgs)
-            runHaddock verbosity confHaddock exeArgs'
+            runHaddock verbosity keepTempFiles confHaddock exeArgs'
         _ -> return ()
   where
-    verbosity = flag haddockVerbosity
-    flag f    = fromFlag $ f flags
+    verbosity     = flag haddockVerbosity
+    keepTempFiles = flag haddockKeepTempFiles
+    flag f        = fromFlag $ f flags
     htmlTemplate = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $ flags
 
 -- | performs cpp and unlit preprocessing where needed on the files in
@@ -376,11 +377,11 @@ getGhcLibDir verbosity lbi isVersion2
 ----------------------------------------------------------------------------------------------
 
 -- | Call haddock with the specified arguments.
-runHaddock :: Verbosity -> ConfiguredProgram -> HaddockArgs -> IO ()
-runHaddock verbosity confHaddock args = do
+runHaddock :: Verbosity -> Bool -> ConfiguredProgram -> HaddockArgs -> IO ()
+runHaddock verbosity keepTempFiles confHaddock args = do
   let haddockVersion = fromMaybe (error "unable to determine haddock version")
                        (programVersion confHaddock)
-  renderArgs verbosity haddockVersion args $ \(flags,result)-> do
+  renderArgs verbosity keepTempFiles haddockVersion args $ \(flags,result)-> do
 
       rawSystemProgram verbosity confHaddock flags
 
@@ -388,13 +389,14 @@ runHaddock verbosity confHaddock args = do
 
 
 renderArgs :: Verbosity
+              -> Bool
               -> Version
               -> HaddockArgs
               -> (([String], FilePath) -> IO a)
               -> IO a
-renderArgs verbosity version args k = do
+renderArgs verbosity keepTempFiles version args k = do
   createDirectoryIfMissingVerbose verbosity True outputDir
-  withTempFile outputDir "haddock-prolog.txt" $ \prologFileName h -> do
+  withTempFile keepTempFiles outputDir "haddock-prolog.txt" $ \prologFileName h -> do
           do
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h

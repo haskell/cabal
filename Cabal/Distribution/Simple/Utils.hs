@@ -913,13 +913,15 @@ copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
 
 -- | Use a temporary filename that doesn't already exist.
 --
-withTempFile :: FilePath -- ^ Temp dir to create the file in
+withTempFile :: Bool     -- ^ Keep temporary files?
+             -> FilePath -- ^ Temp dir to create the file in
              -> String   -- ^ File name template. See 'openTempFile'.
              -> (FilePath -> Handle -> IO a) -> IO a
-withTempFile tmpDir template action =
+withTempFile keepTempFiles tmpDir template action =
   Exception.bracket
     (openTempFile tmpDir template)
-    (\(name, handle) -> hClose handle >> removeFile name)
+    (\(name, handle) -> do hClose handle
+                           unless keepTempFiles $ removeFile name)
     (uncurry action)
 
 -- | Create and use a temporary directory.
@@ -932,11 +934,13 @@ withTempFile tmpDir template action =
 -- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
 -- @src/sdist.342@.
 --
-withTempDirectory :: Verbosity -> FilePath -> String -> (FilePath -> IO a) -> IO a
-withTempDirectory _verbosity targetDir template =
+withTempDirectory :: Verbosity
+                  -> Bool     -- ^ Keep temporary files?
+                  -> FilePath -> String -> (FilePath -> IO a) -> IO a
+withTempDirectory _verbosity keepTempFiles targetDir template =
   Exception.bracket
     (createTempDirectory targetDir template)
-    (removeDirectoryRecursive)
+    (unless keepTempFiles . removeDirectoryRecursive)
 
 -----------------------------------
 -- Safely reading and writing files
