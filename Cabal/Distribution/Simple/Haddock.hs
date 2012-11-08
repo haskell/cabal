@@ -309,17 +309,30 @@ fromLibrary :: Verbosity
 fromLibrary verbosity tmp lbi lib clbi htmlTemplate = do
     inFiles <- map snd `fmap` getLibSourceFiles lbi lib
     ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
+    let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
+                          -- Noooooooooo!!!!!111
+                          -- haddock stomps on our precious .hi
+                          -- and .o files. Workaround by telling
+                          -- haddock to write them elsewhere.
+                          ghcOptObjDir  = toFlag tmp,
+                          ghcOptHiDir   = toFlag tmp,
+                          ghcOptStubDir = toFlag tmp
+                      }
+        sharedOpts = vanillaOpts {
+                         ghcOptDynamic   = toFlag True,
+                         ghcOptFPic      = toFlag True,
+                         ghcOptHiSuffix  = toFlag "dyn_hi",
+                         ghcOptObjSuffix = toFlag "dyn_o",
+                         ghcOptExtra     = ghcSharedOptions bi
+                     }
+    opts <- if withVanillaLib lbi
+            then return vanillaOpts
+            else if withSharedLib lbi
+            then return sharedOpts
+            else die "Must have vanilla or shared libraries enabled in order to run haddock"
     return ifaceArgs {
       argHideModules = (mempty,otherModules $ bi),
-      argGhcOptions  = toFlag ((componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
-                       -- Noooooooooo!!!!!111
-                       -- haddock stomps on our precious .hi
-                       -- and .o files. Workaround by telling
-                       -- haddock to write them elsewhere.
-                         ghcOptObjDir  = toFlag tmp,
-                         ghcOptHiDir   = toFlag tmp,
-                         ghcOptStubDir = toFlag tmp
-                       },ghcVersion),
+      argGhcOptions  = toFlag (opts, ghcVersion),
       argTargets     = inFiles
     }
   where
@@ -334,16 +347,29 @@ fromExecutable :: Verbosity
 fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
     inFiles <- map snd `fmap` getExeSourceFiles lbi exe
     ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
+    let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
+                          -- Noooooooooo!!!!!111
+                          -- haddock stomps on our precious .hi
+                          -- and .o files. Workaround by telling
+                          -- haddock to write them elsewhere.
+                          ghcOptObjDir  = toFlag tmp,
+                          ghcOptHiDir   = toFlag tmp,
+                          ghcOptStubDir = toFlag tmp
+                      }
+        sharedOpts = vanillaOpts {
+                         ghcOptDynamic   = toFlag True,
+                         ghcOptFPic      = toFlag True,
+                         ghcOptHiSuffix  = toFlag "dyn_hi",
+                         ghcOptObjSuffix = toFlag "dyn_o",
+                         ghcOptExtra     = ghcSharedOptions bi
+                     }
+    opts <- if withVanillaLib lbi
+            then return vanillaOpts
+            else if withSharedLib lbi
+            then return sharedOpts
+            else die "Must have vanilla or shared libraries enabled in order to run haddock"
     return ifaceArgs {
-      argGhcOptions = toFlag ((componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
-                      -- Noooooooooo!!!!!111
-                      -- haddock stomps on our precious .hi
-                      -- and .o files. Workaround by telling
-                      -- haddock to write them elsewhere.
-                        ghcOptObjDir  = toFlag tmp,
-                        ghcOptHiDir   = toFlag tmp,
-                        ghcOptStubDir = toFlag tmp
-                      }, ghcVersion),
+      argGhcOptions = toFlag (opts, ghcVersion),
       argOutputDir  = Dir (exeName exe),
       argTitle      = Flag (exeName exe),
       argTargets    = inFiles
