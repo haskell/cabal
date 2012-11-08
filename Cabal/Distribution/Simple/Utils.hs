@@ -199,6 +199,9 @@ import System.Process (runProcess)
 #ifdef __GLASGOW_HASKELL__
 import Control.Concurrent (forkIO)
 import System.Process (runInteractiveProcess, waitForProcess)
+#if __GLASGOW_HASKELL__ >= 602
+import System.Process (showCommandForUser)
+#endif
 #else
 import System.Cmd (system)
 import System.Directory (getTemporaryDirectory)
@@ -359,7 +362,12 @@ maybeExit cmd = do
 printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args
  | verbosity >= deafening = print (path, args)
- | verbosity >= verbose   = putStrLn $ unwords (path : args)
+ | verbosity >= verbose   =
+#if __GLASGOW_HASKELL__ >= 602
+                            putStrLn $ showCommandForUser path args
+#else
+                            putStrLn $ unwords (path : args)
+#endif
  | otherwise              = return ()
 
 printRawCommandAndArgsAndEnv :: Verbosity
