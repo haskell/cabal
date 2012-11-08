@@ -426,8 +426,8 @@ renderArgs verbosity keepTempFiles version args k = do
           do
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h
-             let pflag = (:[]).("--prologue="++) $ prologFileName
-             k $ (pflag ++ renderPureArgs version args, result)
+             let pflag = "--prologue=" ++ prologFileName
+             k (pflag : renderPureArgs version args, result)
     where
       isVersion2 = version >= Version [2,0] []
       outputDir = (unDir $ argOutputDir args)
