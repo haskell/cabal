@@ -1011,7 +1011,7 @@ installLocalTarballPackage
   -> IO BuildResult
 installLocalTarballPackage verbosity jobLimit pkgid tarballPath installPkg = do
   tmp <- getTemporaryDirectory
-  withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
+  withTempDirectory verbosity False tmp (display pkgid) $ \tmpDirPath ->
     onFailure UnpackFailed $ do
       let relUnpackedPath = display pkgid
           absUnpackedPath = tmpDirPath </> relUnpackedPath
