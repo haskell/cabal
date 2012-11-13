@@ -31,6 +31,8 @@ import Control.Monad
 import Control.Concurrent
 import Control.Exception
 
+import qualified Distribution.Compat.MSem as MSem
+
 data JobControl m a = JobControl {
        spawnJob    :: m a -> m (),
        collectJob  :: m a
@@ -74,15 +76,16 @@ newParallelJobControl = do
 newParallelJobControl = newSerialJobControl
 #endif
 
-data JobLimit = JobLimit QSem
+data JobLimit = JobLimit (MSem.MSem Int)
 
 newJobLimit :: Int -> IO JobLimit
-newJobLimit n =
-  fmap JobLimit (newQSem n)
+newJobLimit n
+  | n < 1     = error "Distribution.Client.JobControl.newJobLimit: n < 1"
+  | otherwise = fmap JobLimit (MSem.new n)
 
 withJobLimit :: JobLimit -> IO a -> IO a
 withJobLimit (JobLimit sem) =
-  bracket_ (waitQSem sem) (signalQSem sem)
+  bracket_ (MSem.wait sem) (MSem.signal sem)
 
 newtype Lock = Lock (MVar ())
 
