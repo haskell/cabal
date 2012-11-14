@@ -28,7 +28,7 @@ import Distribution.Client.Configure          ( configure )
 import Distribution.Client.Install            ( install )
 import Distribution.Client.PackageEnvironment
   ( PackageEnvironment(..)
-  , loadOrCreatePackageEnvironment, tryLoadPackageEnvironment
+  , createPackageEnvironment, tryLoadPackageEnvironment
   , commentPackageEnvironment
   , showPackageEnvironmentWithComments
   , setPackageDB
@@ -124,7 +124,7 @@ sandboxInit verbosity sandboxFlags _globalFlags = do
 
   -- Create the package environment file.
   pkgEnvDir <- getCurrentDirectory
-  pkgEnv    <- loadOrCreatePackageEnvironment verbosity sandboxDir pkgEnvDir comp
+  pkgEnv    <- createPackageEnvironment verbosity sandboxDir pkgEnvDir comp
 
   -- Create the index file if it doesn't exist.
   indexFile <- tryGetIndexFilePath pkgEnv
