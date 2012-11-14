@@ -84,8 +84,7 @@ newJobLimit n
   | otherwise = fmap JobLimit (MSem.new n)
 
 withJobLimit :: JobLimit -> IO a -> IO a
-withJobLimit (JobLimit sem) =
-  bracket_ (MSem.wait sem) (MSem.signal sem)
+withJobLimit (JobLimit sem) = MSem.with sem
 
 newtype Lock = Lock (MVar ())
 
