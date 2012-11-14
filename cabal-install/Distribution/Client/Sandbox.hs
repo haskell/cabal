@@ -99,18 +99,12 @@ initPackageDBIfNeeded verbosity configFlags comp conf = do
   when packageDBExists $
     debug verbosity $ "The package database already exists: " ++ dbPath
 
-getSandboxInfo :: Verbosity -> SandboxFlags
-                  -> IO (FilePath, FilePath, PackageEnvironment)
-getSandboxInfo verbosity sandboxFlags = do
-  sandboxDir <- getSandboxLocation verbosity sandboxFlags
-  pkgEnvDir  <- getCurrentDirectory
-  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
-  return (sandboxDir, pkgEnvDir, pkgEnv)
-
 -- | Entry point for the 'cabal dump-pkgenv' command.
 dumpPackageEnvironment :: Verbosity -> SandboxFlags -> IO ()
 dumpPackageEnvironment verbosity sandboxFlags = do
-  (_sandboxDir, pkgEnvDir, pkgEnv) <- getSandboxInfo verbosity sandboxFlags
+  sandboxDir    <- getSandboxLocation verbosity sandboxFlags
+  pkgEnvDir     <- getCurrentDirectory
+  pkgEnv        <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
   commentPkgEnv <- commentPackageEnvironment pkgEnvDir
   putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
 
@@ -162,8 +156,11 @@ sandboxDelete verbosity sandboxFlags _globalFlags = do
 -- | Entry point for the 'cabal sandbox-add-source' command.
 sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
 sandboxAddSource verbosity sandboxFlags buildTreeRefs = do
-  (_sandboxDir, _pkgEnvDir, pkgEnv) <- getSandboxInfo verbosity sandboxFlags
+  sandboxDir <- getSandboxLocation verbosity sandboxFlags
+  pkgEnvDir  <- getCurrentDirectory
+  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
   indexFile  <- tryGetIndexFilePath pkgEnv
+
   Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
 
 -- | Entry point for the 'cabal sandbox-configure' command.
@@ -171,7 +168,10 @@ sandboxConfigure :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
                     -> [String] -> GlobalFlags -> IO ()
 sandboxConfigure verbosity
   sandboxFlags configFlags configExFlags extraArgs globalFlags = do
-  (sandboxDir, _pkgEnvDir, pkgEnv) <- getSandboxInfo verbosity sandboxFlags
+  sandboxDir <- getSandboxLocation verbosity sandboxFlags
+  pkgEnvDir  <- getCurrentDirectory
+  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
+
   let config         = pkgEnvSavedConfig pkgEnv
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
@@ -223,8 +223,11 @@ sandboxInstall verbosity _sandboxFlags _configFlags _configExFlags
 
 sandboxInstall verbosity sandboxFlags configFlags configExFlags
   installFlags haddockFlags extraArgs globalFlags = do
-  (sandboxDir, _pkgEnvDir, pkgEnv) <- getSandboxInfo verbosity sandboxFlags
+  sandboxDir <- getSandboxLocation verbosity sandboxFlags
+  pkgEnvDir  <- getCurrentDirectory
+  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
   targets    <- readUserTargets verbosity extraArgs
+
   let config        = pkgEnvSavedConfig pkgEnv
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = defaultConfigExFlags         `mappend`
