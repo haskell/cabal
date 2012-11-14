@@ -60,7 +60,10 @@ import Distribution.PackageDescription
     , testModules
     )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import Distribution.Simple.Program ( hpcProgram, requireProgram )
+import Distribution.Simple.Program
+    ( hpcProgram
+    , requireProgram
+    )
 import Distribution.Simple.Program.Hpc ( markup, union )
 import Distribution.Simple.Utils ( notice )
 import Distribution.Text
@@ -139,13 +142,15 @@ markupTest verbosity lbi distPref libName suite = do
     tixFileExists <- doesFileExist $ tixFilePath distPref $ testName suite
     when tixFileExists $ do
         (hpc, _) <- requireProgram verbosity hpcProgram $ withPrograms lbi
-        markup hpc verbosity (tixFilePath distPref $ testName suite)
-                             (mixDir distPref libName)
-                             (htmlDir distPref $ testName suite)
-                             (testModules suite ++ [ main ])
+        markup hpc verbosity
+            (tixFilePath distPref $ testName suite) mixDirs
+            (htmlDir distPref $ testName suite)
+            (testModules suite ++ [ main ])
         notice verbosity $ "Test coverage report written to "
                             ++ htmlDir distPref (testName suite)
                             </> "hpc_index" <.> "html"
+  where
+    mixDirs = map (mixDir distPref) [ testName suite, libName ]
 
 -- | Generate the HTML markup for all of a package's test suites.
 markupPackage :: Verbosity
@@ -160,11 +165,12 @@ markupPackage verbosity lbi distPref libName suites = do
     when (and tixFilesExist) $ do
         (hpc, _) <- requireProgram verbosity hpcProgram $ withPrograms lbi
         let outFile = tixFilePath distPref libName
-            mixDir' = mixDir distPref libName
             htmlDir' = htmlDir distPref libName
             excluded = concatMap testModules suites ++ [ main ]
         createDirectoryIfMissing True $ takeDirectory outFile
         union hpc verbosity tixFiles outFile excluded
-        markup hpc verbosity outFile mixDir' htmlDir' excluded
+        markup hpc verbosity outFile mixDirs htmlDir' excluded
         notice verbosity $ "Package coverage report written to "
                            ++ htmlDir' </> "hpc_index.html"
+  where
+    mixDirs = map (mixDir distPref) $ libName : map testName suites
