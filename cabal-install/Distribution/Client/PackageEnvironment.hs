@@ -201,8 +201,8 @@ userPkgEnv verbosity pkgEnvDir = do
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
       return mempty
 
--- | Try to load a package environment file, exiting with error if it doesn't
--- exist.
+-- | Try to load the package environment file ("cabal.sandbox.config"), exiting
+-- with error if it doesn't exist.
 tryLoadPackageEnvironment :: Verbosity -> FilePath -> FilePath
                              -> IO PackageEnvironment
 tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir = do
