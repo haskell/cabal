@@ -211,7 +211,8 @@ avoidReinstalls p = trav go
 firstGoal :: Tree a -> Tree a
 firstGoal = trav go
   where
-    go (GoalChoiceF xs) = casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t)
+    go (GoalChoiceF xs) = -- casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t) -- more space efficient, but removes valuable debug info
+                          casePSQ xs (GoalChoiceF (fromList [])) (\ g t _ -> GoalChoiceF (fromList [(g, t)]))
     go x                = x
     -- Note that we keep empty choice nodes, because they mean success.
 
