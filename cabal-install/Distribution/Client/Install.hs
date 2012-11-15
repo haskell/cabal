@@ -286,7 +286,7 @@ planPackages comp solver configFlags configExFlags installFlags
     adjustPlanOnlyDeps :: InstallPlan -> Progress String String InstallPlan
     adjustPlanOnlyDeps =
         either (Fail . explain) Done
-      . InstallPlan.remove (isTarget pkgSpecifiers)
+      . InstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
       where
         explain :: [InstallPlan.PlanProblem] -> String
         explain problems =
@@ -421,11 +421,6 @@ data PackageStatus = NewPackage
                    | Reinstall  [InstalledPackageId] [PackageChange]
 
 type PackageChange = MergeResult PackageIdentifier PackageIdentifier
-
-isTarget :: Package pkg => [PackageSpecifier SourcePackage] -> pkg -> Bool
-isTarget pkgSpecifiers pkg = packageName pkg `elem` targetnames
-  where
-    targetnames  = map pkgSpecifierTarget pkgSpecifiers
 
 extractReinstalls :: PackageStatus -> [InstalledPackageId]
 extractReinstalls (Reinstall ipids _) = ipids
