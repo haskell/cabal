@@ -1,14 +1,17 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-module Distribution.Compat.Semaphore (
-    QSem, newQSem, waitQSem, signalQSem
-  ) where
+module Distribution.Compat.Semaphore
+    ( QSem
+    , newQSem
+    , waitQSem
+    , signalQSem
+    ) where
 
-import Control.Concurrent hiding (QSem, newQSem, waitQSem, signalQSem)
-import Control.Concurrent.STM
-import Control.Monad
-import Data.Typeable
-import Control.Exception
+import Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, retry,
+                               writeTVar)
+import Control.Exception (mask_)
+import Control.Monad (join, when)
+import Data.Typeable (Typeable)
 
 data QSem = QSem !(TVar Int) !(TVar [TVar Bool]) !(TVar [TVar Bool])
   deriving (Eq, Typeable)
@@ -32,10 +35,12 @@ waitQSem (QSem q b1 b2) =
         else do writeTVar q $! v - 1
                 return (return ())
 
+wait :: TVar Bool -> IO ()
 wait t = atomically $ do
   v <- readTVar t
   when (not v) retry
 
+wake :: TVar Bool -> IO ()
 wake t = atomically $ writeTVar t True
 
 signalQSem :: QSem -> IO ()
