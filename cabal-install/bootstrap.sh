@@ -58,6 +58,7 @@ HTTP_VER="4000.2.4";   HTTP_VER_REGEXP="4000\.[012]\." # == 4000.0.* || 4000.1.*
 ZLIB_VER="0.5.4.0";    ZLIB_VER_REGEXP="0\.[45]\." # == 0.4.* || == 0.5.*
 TIME_VER="1.4.0.1"     TIME_VER_REGEXP="1\.[1234]\.?" # >= 1.1 && < 1.5
 RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\." # >= 1 && < 1.1
+STM_VER="2.4";         STM_VER_REGEXP="2\." # == 2.*
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
 
@@ -198,6 +199,7 @@ info_pkg "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
 info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
+info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 
 do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
@@ -210,6 +212,7 @@ do_pkg   "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
 do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
+do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 
 install_pkg "cabal-install"
 

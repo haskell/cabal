@@ -28,8 +28,9 @@ module Distribution.Client.JobControl (
   ) where
 
 import Control.Monad
-import Control.Concurrent
+import Control.Concurrent hiding (QSem, newQSem, waitQSem, signalQSem)
 import Control.Exception
+import Distribution.Compat.Semaphore
 
 import qualified Distribution.Compat.MSem as MSem
 
