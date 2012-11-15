@@ -199,7 +199,7 @@ import System.Process (runProcess)
 #ifdef __GLASGOW_HASKELL__
 import Control.Concurrent (forkIO)
 import System.Process (runInteractiveProcess, waitForProcess)
-#if __GLASGOW_HASKELL__ >= 602
+#if MIN_VERSION_process(1,1,0)
 import System.Process (showCommandForUser)
 #endif
 #else
@@ -363,7 +363,7 @@ printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args
  | verbosity >= deafening = print (path, args)
  | verbosity >= verbose   =
-#if __GLASGOW_HASKELL__ >= 602
+#if MIN_VERSION_process(1,1,0)
                             putStrLn $ showCommandForUser path args
 #else
                             putStrLn $ unwords (path : args)
