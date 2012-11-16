@@ -43,6 +43,7 @@ data BuildState = BS {
 extendOpen :: QPN -> [OpenGoal] -> BuildState -> BuildState
 extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
   where
+    go :: RevDepMap -> PSQ OpenGoal () -> [OpenGoal] -> BuildState
     go g o []                                             = s { rdeps = g, open = o }
     go g o (ng@(OpenGoal (Flagged _ _ _ _)    _gr) : ngs) = go g (cons ng () o) ngs
     go g o (ng@(OpenGoal (Stanza  _   _  )    _gr) : ngs) = go g (cons ng () o) ngs
@@ -63,7 +64,7 @@ establishScope (Q pp pn) ecs s =
 
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
-scopedExtendOpen :: QPN -> I -> QGoalReasons -> FlaggedDeps PN -> FlagInfo ->
+scopedExtendOpen :: QPN -> I -> QGoalReasonChain -> FlaggedDeps PN -> FlagInfo ->
                     BuildState -> BuildState
 scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
   where
@@ -72,12 +73,12 @@ scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
     qfdefs = L.map (\ (fn, b) -> Flagged (FN (PI qpn i) fn) b [] []) $ M.toList fdefs
     gs     = L.map (flip OpenGoal gr) (qfdeps ++ qfdefs)
 
-data BuildType = Goals | OneGoal OpenGoal | Instance QPN I PInfo QGoalReasons
+data BuildType = Goals | OneGoal OpenGoal | Instance QPN I PInfo QGoalReasonChain
 
-build :: BuildState -> Tree (QGoalReasons, Scope)
+build :: BuildState -> Tree (QGoalReasonChain, Scope)
 build = ana go
   where
-    go :: BuildState -> TreeF (QGoalReasons, Scope) BuildState
+    go :: BuildState -> TreeF (QGoalReasonChain, Scope) BuildState
 
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
@@ -131,7 +132,7 @@ build = ana go
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> Bool -> [PN] -> Tree (QGoalReasons, Scope)
+buildTree :: Index -> Bool -> [PN] -> Tree (QGoalReasonChain, Scope)
 buildTree idx ind igs =
     build (BS idx sc
                   (M.fromList (L.map (\ qpn -> (qpn, []))                                                     qpns))
