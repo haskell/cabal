@@ -795,6 +795,11 @@ installOptions showOrParseArgs =
           installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
           (yesNoOpt showOrParseArgs)
 
+      , option [] ["dependencies-only"]
+          "A synonym for --only-dependencies"
+          installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
+          (yesNoOpt showOrParseArgs)
+
       , option [] ["root-cmd"]
           "Command used to gain root privileges, when installing with --global."
           installRootCmd (\v flags -> flags { installRootCmd = v })
