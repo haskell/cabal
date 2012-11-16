@@ -25,8 +25,7 @@ module Distribution.Client.PackageEnvironment (
   ) where
 
 import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
-                                         initialSavedConfig, loadConfig,
-                                         configFieldDescriptions,
+                                         loadConfig, configFieldDescriptions,
                                          installDirsFields, defaultCompiler )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
@@ -132,19 +131,19 @@ basePackageEnvironment sandboxDir = do
 -- | Initial configuration that we write out to the package environment file if
 -- it does not exist. When the package environment gets loaded this
 -- configuration gets layered on top of 'basePackageEnvironment'.
-initialPackageEnvironment :: FilePath -> Compiler -> IO PackageEnvironment
-initialPackageEnvironment sandboxDir compiler = do
-  initialConf' <- initialSavedConfig
-  let baseConf =  commonPackageEnvironmentConfig sandboxDir
-  let initialConf = initialConf' `mappend` baseConf
+initialPackageEnvironment :: FilePath -> Compiler -> SavedConfig
+                             -> IO PackageEnvironment
+initialPackageEnvironment sandboxDir compiler userConfig = do
+  let commonConfig  = commonPackageEnvironmentConfig sandboxDir
+      initialConfig = userConfig `mappend` commonConfig
   return $ mempty {
-    pkgEnvSavedConfig = initialConf {
-       savedGlobalFlags = (savedGlobalFlags initialConf) {
+    pkgEnvSavedConfig = initialConfig {
+       savedGlobalFlags = (savedGlobalFlags initialConfig) {
           globalLocalRepos = [sandboxDir </> "packages"]
           },
        savedConfigureFlags = setPackageDB sandboxDir compiler
-                             (savedConfigureFlags initialConf),
-       savedInstallFlags = (savedInstallFlags initialConf) {
+                             (savedConfigureFlags initialConfig),
+       savedInstallFlags = (savedInstallFlags initialConfig) {
          installSummaryFile = [toPathTemplate (sandboxDir </>
                                                "logs" </> "build.log")]
          }
@@ -233,14 +232,15 @@ tryLoadPackageEnvironment verbosity pkgEnvDir = do
 
 -- | Create a new package environment file, replacing the existing one if it
 -- exists. Note that the path parameters should point to existing directories.
-createPackageEnvironment :: Verbosity -> FilePath -> FilePath -> Compiler
+createPackageEnvironment :: Verbosity -> FilePath -> FilePath
+                            -> Compiler -> SavedConfig
                             -> IO PackageEnvironment
-createPackageEnvironment verbosity sandboxDir pkgEnvDir compiler = do
+createPackageEnvironment verbosity sandboxDir pkgEnvDir compiler userConfig = do
   let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   notice verbosity $ "Writing default package environment to " ++ path
 
   commentPkgEnv <- commentPackageEnvironment sandboxDir
-  initialPkgEnv <- initialPackageEnvironment sandboxDir compiler
+  initialPkgEnv <- initialPackageEnvironment sandboxDir compiler userConfig
   writePackageEnvironmentFile path commentPkgEnv initialPkgEnv
 
   user <- userPkgEnv verbosity pkgEnvDir
