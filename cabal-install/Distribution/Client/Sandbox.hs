@@ -107,7 +107,7 @@ dumpPackageEnvironment verbosity _sandboxFlags = do
 
 -- | Entry point for the 'cabal sandbox-init' command.
 sandboxInit :: Verbosity -> SandboxFlags  -> GlobalFlags -> IO ()
-sandboxInit verbosity sandboxFlags _globalFlags = do
+sandboxInit verbosity sandboxFlags globalFlags = do
   -- Create the sandbox directory.
   let sandboxDir' = fromFlagOrDefault defaultSandboxLocation
                     (sandboxLocation sandboxFlags)
@@ -116,12 +116,13 @@ sandboxInit verbosity sandboxFlags _globalFlags = do
   notice verbosity $ "Using a sandbox located at " ++ sandboxDir
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
-  userConfig   <- loadConfig verbosity NoFlag NoFlag
+  userConfig   <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
   (comp, conf) <- configCompilerAux (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
   pkgEnvDir <- getCurrentDirectory
-  pkgEnv    <- createPackageEnvironment verbosity sandboxDir pkgEnvDir comp
+  pkgEnv    <- createPackageEnvironment verbosity sandboxDir pkgEnvDir
+               comp userConfig
 
   -- Create the index file if it doesn't exist.
   indexFile <- tryGetIndexFilePath pkgEnv
