@@ -119,9 +119,13 @@ pkgDescrFieldDescrs =
  , simpleField "license"
            disp                   parseLicenseQ
            license                (\l pkg -> pkg{license=l})
+ , listField "license-files"
+           showFilePath           parseFilePathQ
+           licenseFiles           (\l pkg -> pkg{licenseFiles=l})
+ -- Alias for the common case where there is only one license file.
  , simpleField "license-file"
            showFilePath           parseFilePathQ
-           licenseFile            (\l pkg -> pkg{licenseFile=l})
+           (head . licenseFiles) (\l pkg -> pkg{licenseFiles=[l]})
  , simpleField "copyright"
            showFreeText           parseFreeText
            copyright              (\val pkg -> pkg{copyright=val})
@@ -164,9 +168,6 @@ pkgDescrFieldDescrs =
  , simpleField "data-dir"
            showFilePath           parseFilePathQ
            dataDir                (\val pkg -> pkg{dataDir=val})
- , listField "extra-source-files"
-           showFilePath    parseFilePathQ
-           extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
  , listField "extra-tmp-files"
            showFilePath       parseFilePathQ
            extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})

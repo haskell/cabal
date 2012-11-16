@@ -506,7 +506,7 @@ checkLicense pkg =
   , check (license pkg `notElem` [AllRightsReserved, PublicDomain]
            -- AllRightsReserved and PublicDomain are not strictly
            -- licenses so don't need license files.
-        && null (licenseFile pkg)) $
+        && null (licenseFiles pkg)) $
       PackageDistSuspicious "A 'license-file' is not specified."
   ]
   where
@@ -1297,30 +1297,32 @@ checkPackageContent :: Monad m => CheckPackageContentOps m
                     -> PackageDescription
                     -> m [PackageCheck]
 checkPackageContent ops pkg = do
-  licenseError    <- checkLicenseExists   ops pkg
+  licenseErrors   <- checkLicenseExists   ops pkg
   setupError      <- checkSetupExists     ops pkg
   configureError  <- checkConfigureExists ops pkg
   localPathErrors <- checkLocalPathsExist ops pkg
   vcsLocation     <- checkMissingVcsInfo  ops pkg
 
-  return $ catMaybes [licenseError, setupError, configureError]
+  return $ licenseErrors
+        ++ catMaybes [setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
 
 checkLicenseExists :: Monad m => CheckPackageContentOps m
                    -> PackageDescription
-                   -> m (Maybe PackageCheck)
+                   -> m [PackageCheck]
 checkLicenseExists ops pkg
-  | null (licenseFile pkg) = return Nothing
+  | null (licenseFiles pkg) = return []
   | otherwise = do
-    exists <- doesFileExist ops file
-    return $ check (not exists) $
-      PackageBuildWarning $
-           "The 'license-file' field refers to the file " ++ quote file
-        ++ " which does not exist."
-
-  where
-    file = licenseFile pkg
+    exists <- mapM (doesFileExist ops) (licenseFiles pkg)
+    let licenseErrors =
+          zipWith (\file exists ->
+                    check (not exists) $ PackageBuildWarning $
+                         "The 'license-files' field refers to the file "
+                      ++ quote file ++ " which does not exist.")
+                  (licenseFiles pkg)
+                  exists
+    return $ catMaybes $ licenseErrors
 
 checkSetupExists :: Monad m => CheckPackageContentOps m
                  -> PackageDescription
