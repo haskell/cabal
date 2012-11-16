@@ -80,10 +80,10 @@ data ValidateState = VS {
 
 type Validate = Reader ValidateState
 
-validate :: Tree (QGoalReasons, Scope) -> Validate (Tree QGoalReasons)
+validate :: Tree (QGoalReasonChain, Scope) -> Validate (Tree QGoalReasonChain)
 validate = cata go
   where
-    go :: TreeF (QGoalReasons, Scope) (Validate (Tree QGoalReasons)) -> Validate (Tree QGoalReasons)
+    go :: TreeF (QGoalReasonChain, Scope) (Validate (Tree QGoalReasonChain)) -> Validate (Tree QGoalReasonChain)
 
     go (PChoiceF qpn (gr,  sc)     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
     go (FChoiceF qfn (gr, _sc) b m ts) =
@@ -117,7 +117,7 @@ validate = cata go
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> QGoalReasons -> Scope -> I -> Validate (Tree QGoalReasons) -> Validate (Tree QGoalReasons)
+    goP :: QPN -> QGoalReasonChain -> Scope -> I -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
     goP qpn@(Q _pp pn) gr sc i r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       idx            <- asks index -- obtain the index
@@ -142,7 +142,7 @@ validate = cata go
                                     local (\ s -> s { pa = PA nppa pfa psa, saved = nsvd }) r
 
     -- What to do for flag nodes ...
-    goF :: QFN -> QGoalReasons -> Bool -> Validate (Tree QGoalReasons) -> Validate (Tree QGoalReasons)
+    goF :: QFN -> QGoalReasonChain -> Bool -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
     goF qfn@(FN (PI qpn _i) _f) gr b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       svd <- asks saved         -- obtain saved dependencies
@@ -164,7 +164,7 @@ validate = cata go
         Right nppa  -> local (\ s -> s { pa = PA nppa npfa psa }) r
 
     -- What to do for stanza nodes (similar to flag nodes) ...
-    goS :: QSN -> QGoalReasons -> Bool -> Validate (Tree QGoalReasons) -> Validate (Tree QGoalReasons)
+    goS :: QSN -> QGoalReasonChain -> Bool -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
     goS qsn@(SN (PI qpn _i) _f) gr b r = do
       PA ppa pfa psa <- asks pa -- obtain current preassignment
       svd <- asks saved         -- obtain saved dependencies
@@ -205,7 +205,7 @@ extractDeps fa sa deps = do
 -- | We try to find new dependencies that become available due to the given
 -- flag or stanza choice. We therefore look for the choice in question, and then call
 -- 'extractDeps' for everything underneath.
-extractNewDeps :: Var QPN -> QGoalReasons -> Bool -> FAssignment -> SAssignment -> FlaggedDeps QPN -> [Dep QPN]
+extractNewDeps :: Var QPN -> QGoalReasonChain -> Bool -> FAssignment -> SAssignment -> FlaggedDeps QPN -> [Dep QPN]
 extractNewDeps v gr b fa sa = go
   where
     go deps = do
@@ -228,5 +228,5 @@ extractNewDeps v gr b fa sa = go
                                   Just False -> []
 
 -- | Interface.
-validateTree :: Index -> Tree (QGoalReasons, Scope) -> Tree QGoalReasons
+validateTree :: Index -> Tree (QGoalReasonChain, Scope) -> Tree QGoalReasonChain
 validateTree idx t = runReader (validate t) (VS idx M.empty (PA M.empty M.empty M.empty))
