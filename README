@@ -1,4 +1,4 @@
-This Cabal darcs repository contains multiple packages:
+This Cabal git repository contains multiple packages:
 
  * Cabal/          -- the Cabal library package
  * cabal-install/  -- the cabal-install package containing the 'cabal' tool.
