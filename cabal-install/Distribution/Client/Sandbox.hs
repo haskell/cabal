@@ -46,18 +46,24 @@ import Distribution.Simple.Setup              ( Flag(..), toFlag
                                               , BuildFlags(..), HaddockFlags(..)
                                               , buildCommand, fromFlagOrDefault )
 import Distribution.Simple.Utils              ( die, debug, notice, info
+                                              , intercalate
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
+import Distribution.Compat.SetEnv             ( setEnv )
 import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
+import Control.Exception                      ( bracket_ )
 import Control.Monad                          ( unless, when )
 import Data.Monoid                            ( mappend, mempty )
+import Data.List                              ( delete )
 import System.Directory                       ( canonicalizePath
                                               , doesDirectoryExist
                                               , getCurrentDirectory
                                               , removeDirectoryRecursive
                                               , removeFile )
-import System.FilePath                        ( (</>) )
+import System.Environment                     ( getEnv )
+import System.FilePath                        ( (</>), getSearchPath
+                                              , searchPathSeparator )
 
 
 -- | Load the default package environment file. In addition to a
@@ -84,6 +90,29 @@ tryGetIndexFilePath pkgEnv = do
     [p] -> return $ p </> Index.defaultIndexFileName
     _   -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "too many local repos found"
+
+-- | Temporarily add $SANDBOX_DIR/bin to $PATH.
+withSandboxBinDirOnSearchPath :: FilePath -> IO a -> IO a
+withSandboxBinDirOnSearchPath sandboxDir = bracket_ addBinDir rmBinDir
+  where
+    -- TODO: Instead of modifying the global process state, it'd be better to
+    -- set the environment individually for each subprocess invocation. This
+    -- will have to wait until the Shell monad is implemented; without it the
+    -- required changes are too intrusive.
+    addBinDir :: IO ()
+    addBinDir = do
+      oldPath <- getEnv "PATH"
+      let newPath = sandboxBin ++ (searchPathSeparator:oldPath)
+      setEnv "PATH" newPath
+
+    rmBinDir :: IO ()
+    rmBinDir = do
+      oldPath <- getSearchPath
+      let newPath = intercalate [searchPathSeparator]
+                    (delete sandboxBin oldPath)
+      setEnv "PATH" newPath
+
+    sandboxBin = sandboxDir </> "bin"
 
 -- | Initialise a package DB for this compiler if it doesn't exist.
 initPackageDBIfNeeded :: Verbosity -> ConfigFlags
@@ -177,15 +206,16 @@ sandboxConfigure verbosity
   let configFlags''  = setPackageDB sandboxDir comp configFlags'
   initPackageDBIfNeeded verbosity configFlags'' comp conf
 
-  configure verbosity
-            (configPackageDB' configFlags'') (globalRepos globalFlags')
-            comp conf configFlags'' configExFlags' extraArgs
+  withSandboxBinDirOnSearchPath sandboxDir $
+    configure verbosity
+              (configPackageDB' configFlags'') (globalRepos globalFlags')
+              comp conf configFlags'' configExFlags' extraArgs
 
 -- | Entry point for the 'cabal sandbox-build' command.
 sandboxBuild :: Verbosity -> SandboxFlags -> BuildFlags -> [String] -> IO ()
 sandboxBuild verbosity _sandboxFlags buildFlags' extraArgs = do
   -- Check that the sandbox exists.
-  _ <- tryLoadSandboxConfig verbosity
+  (sandboxDir, _) <- tryLoadSandboxConfig verbosity
 
   let setupScriptOptions = defaultSetupScriptOptions {
         useDistPref = fromFlagOrDefault
@@ -195,8 +225,10 @@ sandboxBuild verbosity _sandboxFlags buildFlags' extraArgs = do
       buildFlags = buildFlags' {
         buildVerbosity = toFlag verbosity
         }
-  setupWrapper verbosity setupScriptOptions Nothing
-    (buildCommand defaultProgramConfiguration) (const buildFlags) extraArgs
+
+  withSandboxBinDirOnSearchPath sandboxDir $
+    setupWrapper verbosity setupScriptOptions Nothing
+      (buildCommand defaultProgramConfiguration) (const buildFlags) extraArgs
 
 -- | Entry point for the 'cabal sandbox-install' command.
 sandboxInstall :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
@@ -234,11 +266,12 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
   let configFlags''  = setPackageDB sandboxDir comp configFlags'
   initPackageDBIfNeeded verbosity configFlags'' comp conf
 
-  install verbosity
-          (configPackageDB' configFlags'') (globalRepos globalFlags')
-          comp conf
-          globalFlags' configFlags'' configExFlags' installFlags' haddockFlags
-          targets
+  withSandboxBinDirOnSearchPath sandboxDir $
+    install verbosity
+            (configPackageDB' configFlags'') (globalRepos globalFlags')
+            comp conf
+            globalFlags' configFlags'' configExFlags' installFlags' haddockFlags
+            targets
 
 configPackageDB' :: ConfigFlags -> PackageDBStack
 configPackageDB' cfg =
