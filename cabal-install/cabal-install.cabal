@@ -109,6 +109,7 @@ Executable cabal
         Distribution.Client.Win32SelfUpgrade
         Distribution.Compat.Exception
         Distribution.Compat.FilePerms
+        Distribution.Compat.SetEnv
         Distribution.Compat.Time
         Paths_cabal_install
 
