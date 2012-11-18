@@ -1202,4 +1202,4 @@ findIndentTabs = concatMap checkLine
 --    [ "foo", "  bar", " \t baz", "\t  biz\t", "\t\t \t mib" ]
 
 bug :: String -> a
-bug msg = error $ msg ++ ". Consider this a bug in Cabal."
+bug msg = error $ msg ++ ". Consider this a bug."
