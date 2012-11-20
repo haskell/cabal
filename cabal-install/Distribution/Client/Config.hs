@@ -101,6 +101,8 @@ import System.FilePath
          ( (<.>), (</>), takeDirectory )
 import System.Environment
          ( getEnvironment )
+import System.Posix.Env
+         ( getEnv )
 import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Compat.Exception
@@ -215,10 +217,12 @@ initialSavedConfig = do
     }
   }
 
---TODO: misleading, there's no way to override this default
---      either make it possible or rename to simply getCabalDir.
 defaultCabalDir :: IO FilePath
-defaultCabalDir = getAppUserDataDirectory "cabal"
+defaultCabalDir = do
+  env <- getEnv "CABAL_DIR"
+  case env of
+    Nothing -> getAppUserDataDirectory "cabal"
+    Just a  -> return a :: IO FilePath
 
 defaultConfigFile :: IO FilePath
 defaultConfigFile = do
