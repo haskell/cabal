@@ -100,11 +100,9 @@ import Network.URI
 import System.FilePath
          ( (<.>), (</>), takeDirectory )
 import System.Environment
-         ( getEnvironment )
-import System.Posix.Env
-         ( getEnv )
+         ( getEnvironment, getEnv )
 import System.IO.Error
-         ( isDoesNotExistError )
+         ( isDoesNotExistError, try )
 import Distribution.Compat.Exception
          ( catchIO )
 
@@ -219,10 +217,10 @@ initialSavedConfig = do
 
 defaultCabalDir :: IO FilePath
 defaultCabalDir = do
-  env <- getEnv "CABAL_DIR"
+  env <- try $ getEnv "CABAL_HOME"
   case env of
-    Nothing -> getAppUserDataDirectory "cabal"
-    Just a  -> return a :: IO FilePath
+    Left  _ -> getAppUserDataDirectory "cabal"
+    Right a -> return a :: IO FilePath
 
 defaultConfigFile :: IO FilePath
 defaultConfigFile = do
