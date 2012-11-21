@@ -220,7 +220,7 @@ defaultCabalDir = do
   env <- try $ getEnv "CABAL_HOME"
   case env of
     Left  _ -> getAppUserDataDirectory "cabal"
-    Right a -> return a :: IO FilePath
+    Right a -> return a
 
 defaultConfigFile :: IO FilePath
 defaultConfigFile = do
