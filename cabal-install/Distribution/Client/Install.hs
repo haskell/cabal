@@ -41,7 +41,7 @@ import System.Directory
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
-         ( openFile, IOMode(WriteMode), stdout, hFlush, hClose )
+         ( openFile, IOMode(WriteMode), hClose )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -112,7 +112,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, warn, die, intercalate, withTempDirectory )
+         ( notice, info, warn, debugNoWrap, die, intercalate, withTempDirectory )
 import Distribution.Client.Utils
          ( numberOfProcessors, inDir, mergeBy, MergeResult(..) )
 import Distribution.System
@@ -120,7 +120,7 @@ import Distribution.System
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, showForCabal, normal, verbose, deafening )
+         ( Verbosity, showForCabal, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
@@ -192,11 +192,8 @@ install verbosity packageDBs repos comp conf
                globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
 
     dryRun      = fromFlag (installDryRun installFlags)
-    logMsg message rest = debugNoWrap message >> rest
-    -- Solver debug output really looks better without automatic
-    -- line wrapping. TODO: This should probably be moved into
-    -- the utilities module.
-    debugNoWrap xs = when (verbosity >= deafening) (putStrLn xs >> hFlush stdout)
+    logMsg message rest = debugNoWrap verbosity message >> rest
+
 
 type InstallContext = ( PackageDBStack
                       , [Repo]
