@@ -21,8 +21,8 @@ Of course, if you don't have an existing version of the `cabal` program
 then to get one you'd first need to install the Cabal library! To avoid
 this bootstrapping problem, you can install the Cabal library directly:
 
-Installing as a user (no root or administer access)
----------------------------------------------------
+Installing as a user (no root or administrator access)
+------------------------------------------------------
 
     ghc --make Setup
     ./Setup configure --user
