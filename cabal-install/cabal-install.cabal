@@ -38,7 +38,11 @@ flag bytestring-in-base
 
 Executable cabal
     Main-Is:            Main.hs
-    ghc-options:        -Wall -threaded
+    ghc-options:        -Wall
+    if !arch(arm)
+       ghc-options: -threaded
+    else
+       cc-options:  -DCABAL_NO_THREADED
     if impl(ghc >= 6.8)
       ghc-options: -fwarn-tabs
     Other-Modules:
