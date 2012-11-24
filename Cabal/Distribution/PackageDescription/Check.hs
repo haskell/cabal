@@ -170,7 +170,7 @@ checkPackage gpkg mpkg =
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
 --TODO: make this variant go away
---      we should alwaws know the GenericPackageDescription
+--      we should always know the GenericPackageDescription
 checkConfiguredPackage :: PackageDescription -> [PackageCheck]
 checkConfiguredPackage pkg =
     checkSanity pkg
