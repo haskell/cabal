@@ -79,7 +79,7 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplateEnv, PathTe
                                         initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-         , withComponentsLBI )
+         , withAllComponentsInBuildOrder )
 import Distribution.Simple.BuildPaths ( haddockName,
                                         hscolourPref, autogenModulesDir,
                                         )
@@ -201,7 +201,7 @@ haddock pkg_descr lbi suffixes flags = do
             , fromPackageDescription pkg_descr ]
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
-    withComponentsLBI pkg_descr lbi $ \comp clbi -> do
+    withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
       pre comp
       case comp of
         CLib lib -> do
@@ -555,7 +555,7 @@ hscolour' pkg_descr lbi suffixes flags = do
     createDirectoryIfMissingVerbose verbosity True $ hscolourPref distPref pkg_descr
 
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
-    withComponentsLBI pkg_descr lbi $ \comp _ -> do
+    withAllComponentsInBuildOrder pkg_descr lbi $ \comp _ -> do
       pre comp
       case comp of
         CLib lib -> do

@@ -80,7 +80,8 @@ import Distribution.Simple.PreProcess
          ( preprocessComponent, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms)
-         , Component(..), ComponentLocalBuildInfo(..), withComponentsLBI
+         , Component(..), ComponentLocalBuildInfo(..)
+         , withAllComponentsInBuildOrder
          , componentBuildInfo, inplacePackageId )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
@@ -125,7 +126,7 @@ build pkg_descr lbi flags suffixes = do
 
   internalPackageDB <- createInternalPackageDB distPref
 
-  withComponentsLBI pkg_descr lbi $ \comp clbi ->
+  withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi ->
     let bi     = componentBuildInfo comp
         progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
         lbi'   = lbi {
