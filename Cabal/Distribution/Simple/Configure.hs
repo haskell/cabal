@@ -105,7 +105,8 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
     , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
-    , allComponentsBy, Component(..), foldComponent, ComponentName(..) )
+    , ComponentName(..), pkgEnabledComponents, componentBuildInfo, componentName
+    , checkComponentsCyclic )
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
@@ -132,15 +133,13 @@ import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
 
 import Control.Monad
-    ( when, unless, foldM, filterM, forM )
+    ( when, unless, foldM, filterM )
 import Data.List
-    ( nub, partition, isPrefixOf, inits, find )
+    ( nub, partition, isPrefixOf, inits )
 import Data.Maybe
-    ( isNothing, catMaybes, mapMaybe )
+    ( isNothing, catMaybes )
 import Data.Monoid
     ( Monoid(..) )
-import Data.Graph
-    ( SCC(..), graphFromEdges, transposeG, vertices, stronglyConnCompR )
 import System.Directory
     ( doesFileExist, getModificationTime, createDirectoryIfMissing, getTemporaryDirectory )
 import System.Exit
@@ -419,6 +418,13 @@ configure (pkg_descr0, pbi) cfg
                          | (name, uses) <- inconsistencies
                          , (pkg, ver) <- uses ]
 
+        -- internal component graph
+        buildComponents <-
+          case mkComponentsLocalBuildInfo pkg_descr
+                 internalPkgDeps externalPkgDeps of
+            Left  componentCycle -> reportComponentCycle componentCycle
+            Right components     -> return components
+
         -- installation directories
         defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
         let installDirs = combineInstallDirs fromFlagOrDefault
@@ -471,66 +477,6 @@ configure (pkg_descr0, pbi) cfg
                                           "--enable-split-objs; ignoring")
                                     return False
 
-        -- The allPkgDeps contains all the package deps for the whole package
-        -- but we need to select the subset for this specific component.
-        -- we just take the subset for the package names this component
-        -- needs. Note, this only works because we cannot yet depend on two
-        -- versions of the same package.
-        let configLib lib = configComponent (libBuildInfo lib)
-            configExe exe = (exeName exe, configComponent (buildInfo exe))
-            configTest test = (testName test,
-                    configComponent(testBuildInfo test))
-            configBenchmark bm = (benchmarkName bm,
-                    configComponent(benchmarkBuildInfo bm))
-            configComponent bi = ComponentLocalBuildInfo {
-              componentPackageDeps =
-                if newPackageDepsBehaviour pkg_descr'
-                  then [ (installedPackageId pkg, packageId pkg)
-                       | pkg <- selectSubset bi externalPkgDeps ]
-                    ++ [ (inplacePackageId pkgid, pkgid)
-                       | pkgid <- selectSubset bi internalPkgDeps ]
-                  else [ (installedPackageId pkg, packageId pkg)
-                       | pkg <- externalPkgDeps ]
-            }
-            selectSubset :: Package pkg => BuildInfo -> [pkg] -> [pkg]
-            selectSubset bi pkgs =
-                [ pkg | pkg <- pkgs, packageName pkg `elem` names ]
-              where
-                names = [ name | Dependency name _ <- targetBuildDepends bi ]
-
-        -- Obtains the intrapackage dependencies for the given component
-        let ipDeps component =
-                 mapMaybe exeDepToComp (buildTools bi)
-              ++ mapMaybe libDepToComp (targetBuildDepends bi)
-              where
-                bi = foldComponent libBuildInfo buildInfo testBuildInfo
-                     benchmarkBuildInfo component
-                exeDepToComp (Dependency (PackageName name) _) =
-                  CExe `fmap` find ((==) name . exeName)
-                                (executables pkg_descr')
-                libDepToComp (Dependency pn _)
-                  | pn `elem` map packageName internalPkgDeps =
-                    CLib `fmap` library pkg_descr'
-                libDepToComp _ = Nothing
-
-        let sccs = (stronglyConnCompR . map lkup . vertices . transposeG) g
-              where (g, lkup, _) = graphFromEdges
-                                 $ allComponentsBy pkg_descr'
-                                 $ \c -> (c, key c, map key (ipDeps c))
-                    key          = foldComponent (const "library") exeName
-                                   testName benchmarkName
-
-        -- check for cycles in the dependency graph
-        buildOrder <- forM sccs $ \scc -> case scc of
-          AcyclicSCC (c,_,_) -> return (foldComponent (const CLibName)
-                                                      (CExeName . exeName)
-                                                      (CTestName . testName)
-                                                      (CBenchName . benchmarkName)
-                                                      c)
-          CyclicSCC vs ->
-            die $ "Found cycle in intrapackage dependency graph:\n  "
-                ++ intercalate " depends on "
-                     (map (\(_,k,_) -> "'" ++ k ++ "'") (vs ++ [head vs]))
 
         sharedLibsByDefault <-
             case compilerId comp of
@@ -552,11 +498,7 @@ configure (pkg_descr0, pbi) cfg
                     scratchDir          = fromFlagOrDefault
                                             (distPref </> "scratch")
                                             (configScratchDir cfg),
-                    libraryConfig       = configLib `fmap` library pkg_descr',
-                    executableConfigs   = configExe `fmap` executables pkg_descr',
-                    testSuiteConfigs    = configTest `fmap` testSuites pkg_descr',
-                    benchmarkConfigs    = configBenchmark `fmap` benchmarks pkg_descr',
-                    compBuildOrder      = buildOrder,
+                    componentsConfigs   = buildComponents,
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
@@ -878,6 +820,74 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
       UHC  -> UHC.configure  verbosity hcPath hcPkg conf
       _    -> die "Unknown compiler"
 
+
+-- -----------------------------------------------------------------------------
+-- Making the internal component graph
+
+
+mkComponentsLocalBuildInfo :: PackageDescription
+                           -> [PackageId] -> [InstalledPackageInfo]
+                           -> Either [ComponentName]
+                                     [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
+mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps =
+    let graph = [ (c, componentName c, componentDeps c)
+                | c <- pkgEnabledComponents pkg_descr ]
+     in case checkComponentsCyclic graph of
+          Just ccycle -> Left  [ cname | (_,cname,_) <- ccycle ]
+          Nothing     -> Right [ (cname, clbi, cdeps)
+                               | (c, cname, cdeps) <- graph
+                               , let clbi = componentLocalBuildInfo c ]
+  where
+    -- The dependencies for the given component
+    componentDeps component =
+         [ CExeName toolname | Dependency (PackageName toolname) _ <- buildTools bi
+                             , toolname `elem` map exeName (executables pkg_descr) ]
+
+      ++ [ CLibName          | Dependency pkgname _ <- targetBuildDepends bi
+                             , pkgname `elem` map packageName internalPkgDeps ]
+      where
+        bi = componentBuildInfo component
+
+    -- The allPkgDeps contains all the package deps for the whole package
+    -- but we need to select the subset for this specific component.
+    -- we just take the subset for the package names this component
+    -- needs. Note, this only works because we cannot yet depend on two
+    -- versions of the same package.
+    componentLocalBuildInfo component =
+      ComponentLocalBuildInfo {
+        componentPackageDeps =
+          if newPackageDepsBehaviour pkg_descr
+            then [ (installedPackageId pkg, packageId pkg)
+                 | pkg <- selectSubset bi externalPkgDeps ]
+              ++ [ (inplacePackageId pkgid, pkgid)
+                 | pkgid <- selectSubset bi internalPkgDeps ]
+            else [ (installedPackageId pkg, packageId pkg)
+                 | pkg <- externalPkgDeps ]
+      }
+      where
+        bi = componentBuildInfo component
+
+    selectSubset :: Package pkg => BuildInfo -> [pkg] -> [pkg]
+    selectSubset bi pkgs =
+        [ pkg | pkg <- pkgs, packageName pkg `elem` names ]
+      where
+        names = [ name | Dependency name _ <- targetBuildDepends bi ]
+
+reportComponentCycle :: [ComponentName] -> IO a
+reportComponentCycle cnames =
+    die $ "Components in the package depend on each other in a cyclic way:\n  "
+       ++ intercalate " depends on "
+            [ "'" ++ showComponentName cname ++ "'"
+            | cname <- cnames ++ [head cnames] ]
+  where
+    showComponentName CLibName          = "library"
+    showComponentName (CExeName   name) = "executable " ++ name
+    showComponentName (CTestName  name) = "test suite " ++ name
+    showComponentName (CBenchName name) = "benchmark " ++ name
+
+
+-- -----------------------------------------------------------------------------
+-- Testing C lib and header dependencies
 
 -- Try to build a test C program which includes every header and links every
 -- lib. If that fails, try to narrow it down by preprocessing (only) and linking

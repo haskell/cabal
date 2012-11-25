@@ -86,7 +86,8 @@ import Distribution.Simple.Utils
          , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag, flagToMaybe)
 import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessComponent)
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..), withComponentsLBI )
+import Distribution.Simple.LocalBuildInfo
+         ( LocalBuildInfo(..), withAllComponentsInBuildOrder )
 import Distribution.Simple.BuildPaths ( autogenModuleName )
 import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
                               rawSystemProgram, tarProgram )
@@ -245,7 +246,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   case mb_lbi of
     Just lbi | not (null pps) -> do
       let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }
-      withComponentsLBI pkg_descr lbi' $ \c _ ->
+      withAllComponentsInBuildOrder pkg_descr lbi' $ \c _ ->
         preprocessComponent pkg_descr c lbi' True verbosity pps
     _ -> return ()
 

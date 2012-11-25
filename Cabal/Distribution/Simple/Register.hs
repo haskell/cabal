@@ -67,6 +67,7 @@ module Distribution.Simple.Register (
 
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
+         , ComponentName(..), getComponentLocalBuildInfo
          , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
 import qualified Distribution.Simple.GHC  as GHC
@@ -123,10 +124,9 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 register :: PackageDescription -> LocalBuildInfo
          -> RegisterFlags -- ^Install in the user's database?; verbose
          -> IO ()
-register pkg@PackageDescription { library       = Just lib  }
-         lbi@LocalBuildInfo     { libraryConfig = Just clbi } regFlags
+register pkg@PackageDescription { library       = Just lib  } lbi regFlags
   = do
-
+    let clbi = getComponentLocalBuildInfo lbi CLibName
     installedPkgInfo <- generateRegistrationInfo
                            verbosity pkg lib lbi clbi inplace distPref
 
