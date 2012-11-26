@@ -272,7 +272,7 @@ buildAction hooks flags args = do
 
   hookedAction preBuild buildHook postBuild
                (return lbi { withPrograms = progs })
-               hooks flags args
+               hooks flags { buildArgs = args } args
 
 hscolourAction :: UserHooks -> HscolourFlags -> Args -> IO ()
 hscolourAction hooks flags args

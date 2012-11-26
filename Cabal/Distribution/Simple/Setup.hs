@@ -1217,7 +1217,10 @@ data BuildFlags = BuildFlags {
     buildProgramPaths :: [(String, FilePath)],
     buildProgramArgs :: [(String, [String])],
     buildDistPref    :: Flag FilePath,
-    buildVerbosity   :: Flag Verbosity
+    buildVerbosity   :: Flag Verbosity,
+    -- TODO: this one should not be here, it's just that the silly
+    -- UserHooks stop us from passing extra info in other ways
+    buildArgs :: [String]
   }
   deriving Show
 
@@ -1230,7 +1233,8 @@ defaultBuildFlags  = BuildFlags {
     buildProgramPaths = mempty,
     buildProgramArgs = [],
     buildDistPref    = Flag defaultDistPref,
-    buildVerbosity   = Flag normal
+    buildVerbosity   = Flag normal,
+    buildArgs        = []
   }
 
 buildCommand :: ProgramConfiguration -> CommandUI BuildFlags
@@ -1263,13 +1267,15 @@ instance Monoid BuildFlags where
     buildProgramPaths = mempty,
     buildProgramArgs = mempty,
     buildVerbosity   = mempty,
-    buildDistPref    = mempty
+    buildDistPref    = mempty,
+    buildArgs        = mempty
   }
   mappend a b = BuildFlags {
     buildProgramPaths = combine buildProgramPaths,
     buildProgramArgs = combine buildProgramArgs,
     buildVerbosity   = combine buildVerbosity,
-    buildDistPref    = combine buildDistPref
+    buildDistPref    = combine buildDistPref,
+    buildArgs        = combine buildArgs
   }
     where combine field = field a `mappend` field b
 
