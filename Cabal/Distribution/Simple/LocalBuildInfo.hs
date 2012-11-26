@@ -52,12 +52,17 @@ module Distribution.Simple.LocalBuildInfo (
         -- * Buildable package components
         Component(..),
         ComponentName(..),
+        showComponentName,
         ComponentLocalBuildInfo(..),
         foldComponent,
         componentName,
         componentBuildInfo,
+        componentEnabled,
+        componentDisabledReason,
+        ComponentDisabledReason(..),
         pkgComponents,
         pkgEnabledComponents,
+        lookupComponent,
         getComponent,
         getComponentLocalBuildInfo,
         allComponentsInBuildOrder,
@@ -98,7 +103,7 @@ import Distribution.Simple.Setup
 import Distribution.Text
          ( display )
 
-import Data.List (nub)
+import Data.List (nub, find)
 import Data.Graph
 import Data.Tree  (flatten)
 import Data.Array ((!))
@@ -185,6 +190,12 @@ data ComponentName = CLibName   -- currently only a single lib
                    | CBenchName String
                    deriving (Show, Eq, Ord, Read)
 
+showComponentName :: ComponentName -> String
+showComponentName CLibName          = "library"
+showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
+showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
+showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
+
 data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
     -- | Resolved internal and external package dependencies for this component.
     -- The 'BuildInfo' specifies a set of build dependencies that must be
@@ -230,38 +241,43 @@ pkgComponents pkg =
 -- that have been disabled.
 --
 pkgEnabledComponents :: PackageDescription -> [Component]
-pkgEnabledComponents pkg =
-    [ CLib  lib | Just lib <- [library pkg]
-                , buildable (libBuildInfo lib) ]
- ++ [ CExe  exe | exe <- executables pkg
-                , buildable (buildInfo exe) ]
- ++ [ CTest tst | tst <- testSuites pkg
-                , buildable (testBuildInfo tst)
-                , testEnabled tst ]
- ++ [ CBench bm | bm <- benchmarks pkg
-                , buildable (benchmarkBuildInfo bm)
-                , benchmarkEnabled bm ]
+pkgEnabledComponents = filter componentEnabled . pkgComponents
 
+componentEnabled :: Component -> Bool
+componentEnabled = isNothing . componentDisabledReason
+
+data ComponentDisabledReason = DisabledComponent
+                             | DisabledAllTests
+                             | DisabledAllBenchmarks
+
+componentDisabledReason :: Component -> Maybe ComponentDisabledReason
+componentDisabledReason (CLib  lib)
+  | not (buildable (libBuildInfo lib))      = Just DisabledComponent
+componentDisabledReason (CExe  exe) 
+  | not (buildable (buildInfo exe))         = Just DisabledComponent
+componentDisabledReason (CTest tst)
+  | not (buildable (testBuildInfo tst))     = Just DisabledComponent
+  | not (testEnabled tst)                   = Just DisabledAllTests
+componentDisabledReason (CBench bm)
+  | not (buildable (benchmarkBuildInfo bm)) = Just DisabledComponent
+  | not (benchmarkEnabled bm)               = Just DisabledAllBenchmarks
+componentDisabledReason _                   = Nothing
+
+lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
+lookupComponent pkg CLibName =
+    fmap CLib $ library pkg
+lookupComponent pkg (CExeName name) =
+    fmap CExe $ find ((name ==) . exeName) (executables pkg)
+lookupComponent pkg (CTestName name) =
+    fmap CTest $ find ((name ==) . testName) (testSuites pkg)
+lookupComponent pkg (CBenchName name) =
+    fmap CBench $ find ((name ==) . benchmarkName) (benchmarks pkg)
 
 getComponent :: PackageDescription -> ComponentName -> Component
 getComponent pkg cname =
-    case cname of
-      CLibName ->
-        case library pkg of
-          Just lib -> CLib lib
-          Nothing  -> missingComponent
-      CExeName name ->
-        case [ exe | exe <- executables pkg, exeName exe == name ] of
-          [exe] -> CExe exe
-          _     -> missingComponent
-      CTestName  name ->
-        case [ tst | tst <- testSuites pkg, testName tst == name ] of
-          [tst] -> CTest tst
-          _     -> missingComponent
-      CBenchName name ->
-        case [ bch | bch <- benchmarks pkg, benchmarkName bch == name ] of
-          [bch] -> CBench bch
-          _     -> missingComponent
+    case lookupComponent pkg cname of
+      Just cpnt -> cpnt
+      Nothing   -> missingComponent
   where
     missingComponent =
       error $ "internal error: the package description contains no "
