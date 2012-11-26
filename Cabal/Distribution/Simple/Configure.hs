@@ -105,8 +105,8 @@ import Distribution.Simple.InstallDirs
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
     , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
-    , ComponentName(..), pkgEnabledComponents, componentBuildInfo, componentName
-    , checkComponentsCyclic )
+    , ComponentName(..), showComponentName, pkgEnabledComponents
+    , componentBuildInfo, componentName, checkComponentsCyclic )
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
@@ -879,11 +879,6 @@ reportComponentCycle cnames =
        ++ intercalate " depends on "
             [ "'" ++ showComponentName cname ++ "'"
             | cname <- cnames ++ [head cnames] ]
-  where
-    showComponentName CLibName          = "library"
-    showComponentName (CExeName   name) = "executable " ++ name
-    showComponentName (CTestName  name) = "test suite " ++ name
-    showComponentName (CBenchName name) = "benchmark " ++ name
 
 
 -- -----------------------------------------------------------------------------
