@@ -138,7 +138,7 @@ globalCommand = CommandUI {
       ++ "  " ++ pname ++ " update\n",
     commandDefaultFlags = defaultGlobalFlags,
     commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 2; ParseArgs -> id)
+      (case showOrParseArgs of ShowArgs -> take 3; ParseArgs -> id)
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
