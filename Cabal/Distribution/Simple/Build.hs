@@ -112,7 +112,7 @@ import Data.Either
 import Data.List
          ( intersect, intercalate )
 import Control.Monad
-         ( unless, forM_ )
+         ( when, unless, forM_ )
 import System.FilePath
          ( (</>), (<.>) )
 import System.Directory
@@ -132,16 +132,18 @@ build pkg_descr lbi flags suffixes = do
 
   targets  <- readBuildTargets pkg_descr (buildArgs flags)
   targets' <- checkBuildTargets verbosity pkg_descr targets
-  info verbosity $ "Component build order: " ++ intercalate ", "
-                     [ showComponentName cn
-                     | (cn,_) <- componentsInBuildOrder lbi (map fst targets') ]
+  let componentsToBuild = map fst (componentsInBuildOrder lbi (map fst targets'))
+  info verbosity $ "Component build order: "
+                ++ intercalate ", " (map showComponentName componentsToBuild)
 
   initialBuildSteps distPref pkg_descr lbi verbosity
-  setupMessage verbosity "Building" (packageId pkg_descr)
+  when (null targets) $
+    -- Only bother with this message if we're building the whole package
+    setupMessage verbosity "Building" (packageId pkg_descr)
 
   internalPackageDB <- createInternalPackageDB distPref
 
-  withComponentsInBuildOrder pkg_descr lbi (map fst targets') $ \comp clbi ->
+  withComponentsInBuildOrder pkg_descr lbi componentsToBuild $ \comp clbi ->
     let bi     = componentBuildInfo comp
         progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
         lbi'   = lbi {
