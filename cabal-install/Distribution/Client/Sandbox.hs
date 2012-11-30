@@ -28,7 +28,7 @@ import Distribution.Client.Configure          ( configure )
 import Distribution.Client.Install            ( install )
 import Distribution.Client.PackageEnvironment
   ( PackageEnvironment(..)
-  , loadOrCreatePackageEnvironment, tryLoadPackageEnvironment
+  , createPackageEnvironment, tryLoadPackageEnvironment
   , commentPackageEnvironment
   , showPackageEnvironmentWithComments
   , setPackageDB
@@ -60,20 +60,19 @@ import System.Directory                       ( canonicalizePath
 import System.FilePath                        ( (</>) )
 
 
--- | Given a 'SandboxFlags' record, return a canonical path to the
--- sandbox. Exits with error if the sandbox directory does not exist or is not
--- properly initialised.
-getSandboxLocation :: Verbosity -> SandboxFlags -> IO FilePath
-getSandboxLocation verbosity sandboxFlags = do
-  let sandboxDir' = fromFlagOrDefault defaultSandboxLocation
-                    (sandboxLocation sandboxFlags)
-  sandboxDir <- canonicalizePath sandboxDir'
-  dirExists  <- doesDirectoryExist sandboxDir
+-- | Load the default package environment file. In addition to a
+-- @PackageEnvironment@, also return a canonical path to the sandbox. Exit with
+-- error if the sandbox directory or the package environment file do not exist.
+tryLoadSandboxConfig :: Verbosity -> IO (FilePath, PackageEnvironment)
+tryLoadSandboxConfig verbosity = do
+  pkgEnvDir            <- getCurrentDirectory
+  (sandboxDir, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
+  dirExists            <- doesDirectoryExist sandboxDir
   -- TODO: Also check for an initialised package DB?
   unless dirExists $
     die ("No sandbox exists at " ++ sandboxDir)
   info verbosity $ "Using a sandbox located at " ++ sandboxDir
-  return sandboxDir
+  return (sandboxDir, pkgEnv)
 
 -- | Return the name of the package index file for this package environment.
 tryGetIndexFilePath :: PackageEnvironment -> IO FilePath
@@ -99,19 +98,11 @@ initPackageDBIfNeeded verbosity configFlags comp conf = do
   when packageDBExists $
     debug verbosity $ "The package database already exists: " ++ dbPath
 
-getSandboxInfo :: Verbosity -> SandboxFlags
-                  -> IO (FilePath, FilePath, PackageEnvironment)
-getSandboxInfo verbosity sandboxFlags = do
-  sandboxDir <- getSandboxLocation verbosity sandboxFlags
-  pkgEnvDir  <- getCurrentDirectory
-  pkgEnv     <- tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir
-  return (sandboxDir, pkgEnvDir, pkgEnv)
-
 -- | Entry point for the 'cabal dump-pkgenv' command.
 dumpPackageEnvironment :: Verbosity -> SandboxFlags -> IO ()
-dumpPackageEnvironment verbosity sandboxFlags = do
-  (_sandboxDir, pkgEnvDir, pkgEnv) <- getSandboxInfo verbosity sandboxFlags
-  commentPkgEnv <- commentPackageEnvironment pkgEnvDir
+dumpPackageEnvironment verbosity _sandboxFlags = do
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+  commentPkgEnv        <- commentPackageEnvironment sandboxDir
   putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
 
 -- | Entry point for the 'cabal sandbox-init' command.
@@ -130,7 +121,7 @@ sandboxInit verbosity sandboxFlags _globalFlags = do
 
   -- Create the package environment file.
   pkgEnvDir <- getCurrentDirectory
-  pkgEnv    <- loadOrCreatePackageEnvironment verbosity sandboxDir pkgEnvDir comp
+  pkgEnv    <- createPackageEnvironment verbosity sandboxDir pkgEnvDir comp
 
   -- Create the index file if it doesn't exist.
   indexFile <- tryGetIndexFilePath pkgEnv
@@ -161,17 +152,19 @@ sandboxDelete verbosity sandboxFlags _globalFlags = do
 
 -- | Entry point for the 'cabal sandbox-add-source' command.
 sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
-sandboxAddSource verbosity sandboxFlags buildTreeRefs = do
-  (_sandboxDir, _pkgEnvDir, pkgEnv) <- getSandboxInfo verbosity sandboxFlags
-  indexFile  <- tryGetIndexFilePath pkgEnv
+sandboxAddSource verbosity _sandboxFlags buildTreeRefs = do
+  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+  indexFile             <- tryGetIndexFilePath pkgEnv
+
   Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
 
 -- | Entry point for the 'cabal sandbox-configure' command.
 sandboxConfigure :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
                     -> [String] -> GlobalFlags -> IO ()
 sandboxConfigure verbosity
-  sandboxFlags configFlags configExFlags extraArgs globalFlags = do
-  (sandboxDir, _pkgEnvDir, pkgEnv) <- getSandboxInfo verbosity sandboxFlags
+  _sandboxFlags configFlags configExFlags extraArgs globalFlags = do
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+
   let config         = pkgEnvSavedConfig pkgEnv
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
@@ -189,9 +182,9 @@ sandboxConfigure verbosity
 
 -- | Entry point for the 'cabal sandbox-build' command.
 sandboxBuild :: Verbosity -> SandboxFlags -> BuildFlags -> [String] -> IO ()
-sandboxBuild verbosity sandboxFlags buildFlags' extraArgs = do
+sandboxBuild verbosity _sandboxFlags buildFlags' extraArgs = do
   -- Check that the sandbox exists.
-  _ <- getSandboxLocation verbosity sandboxFlags
+  _ <- tryLoadSandboxConfig verbosity
 
   let setupScriptOptions = defaultSetupScriptOptions {
         useDistPref = fromFlagOrDefault
@@ -221,11 +214,12 @@ sandboxInstall verbosity _sandboxFlags _configFlags _configExFlags
   = setupWrapper verbosity defaultSetupScriptOptions Nothing
     installCommand (const mempty) []
 
-sandboxInstall verbosity sandboxFlags configFlags configExFlags
+sandboxInstall verbosity _sandboxFlags configFlags configExFlags
   installFlags haddockFlags extraArgs globalFlags = do
-  (sandboxDir, _pkgEnvDir, pkgEnv) <- getSandboxInfo verbosity sandboxFlags
-  targets    <- readUserTargets verbosity extraArgs
-  let config        = pkgEnvSavedConfig pkgEnv
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+  targets              <- readUserTargets verbosity extraArgs
+
+  let config         = pkgEnvSavedConfig pkgEnv
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = defaultConfigExFlags         `mappend`
                        savedConfigureExFlags config `mappend` configExFlags

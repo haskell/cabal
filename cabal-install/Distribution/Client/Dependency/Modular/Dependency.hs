@@ -135,11 +135,11 @@ type RevDepMap = Map QPN [QPN]
 
 -- | Goals are solver variables paired with information about
 -- why they have been introduced.
-data Goal qpn = Goal (Var qpn) (GoalReasons qpn)
+data Goal qpn = Goal (Var qpn) (GoalReasonChain qpn)
   deriving (Eq, Show)
 
 instance Functor Goal where
-  fmap f (Goal v gr) = Goal (fmap f v) (fmap (fmap f) gr)
+  fmap f (Goal v grs) = Goal (fmap f v) (fmap (fmap f) grs)
 
 class ResetGoal f where
   resetGoal :: Goal qpn -> f qpn -> f qpn
@@ -149,7 +149,7 @@ instance ResetGoal Goal where
 
 -- | For open goals as they occur during the build phase, we need to store
 -- additional information about flags.
-data OpenGoal = OpenGoal (FlaggedDep QPN) QGoalReasons
+data OpenGoal = OpenGoal (FlaggedDep QPN) QGoalReasonChain
   deriving (Eq, Show)
 
 -- | Reasons why a goal can be added to a goal set.
@@ -168,9 +168,9 @@ instance Functor GoalReason where
 
 -- | The first element is the immediate reason. The rest are the reasons
 -- for the reasons ...
-type GoalReasons qpn = [GoalReason qpn]
+type GoalReasonChain qpn = [GoalReason qpn]
 
-type QGoalReasons = GoalReasons QPN
+type QGoalReasonChain = GoalReasonChain QPN
 
 goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = S.empty
@@ -178,8 +178,11 @@ goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
 goalReasonToVars (FDependency qfn _)      = S.singleton (F qfn)
 goalReasonToVars (SDependency qsn)        = S.singleton (S qsn)
 
-goalReasonsToVars :: Ord qpn => GoalReasons qpn -> ConflictSet qpn
-goalReasonsToVars = S.unions . L.map goalReasonToVars
+goalReasonChainToVars :: Ord qpn => GoalReasonChain qpn -> ConflictSet qpn
+goalReasonChainToVars = S.unions . L.map goalReasonToVars
+
+goalReasonChainsToVars :: Ord qpn => [GoalReasonChain qpn] -> ConflictSet qpn
+goalReasonChainsToVars = S.unions . L.map goalReasonChainToVars
 
 -- | Closes a goal, i.e., removes all the extraneous information that we
 -- need only during the build phase.
@@ -191,4 +194,4 @@ close (OpenGoal (Stanza  qsn _)      gr) = Goal (S qsn) gr
 -- | Compute a conflic set from a goal. The conflict set contains the
 -- closure of goal reasons as well as the variable of the goal itself.
 toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
-toConflictSet (Goal g gr) = S.insert g (goalReasonsToVars gr)
+toConflictSet (Goal g grs) = S.insert g (goalReasonChainToVars grs)

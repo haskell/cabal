@@ -105,7 +105,7 @@ processPackageConstraintS _ _ _  _                             r = r
 -- | Traversal that tries to establish various kinds of user constraints. Works
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
-enforcePackageConstraints :: M.Map PN [PackageConstraint] -> Tree QGoalReasons -> Tree QGoalReasons
+enforcePackageConstraints :: M.Map PN [PackageConstraint] -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 enforcePackageConstraints pcs = trav go
   where
     go (PChoiceF qpn@(Q _ pn)               gr      ts) =
@@ -132,7 +132,7 @@ enforcePackageConstraints pcs = trav go
 -- can only be re-set explicitly by the user. This transformation should
 -- be run after user preferences have been enforced. For manual flags,
 -- it disables all but the first non-disabled choice.
-enforceManualFlags :: Tree QGoalReasons -> Tree QGoalReasons
+enforceManualFlags :: Tree QGoalReasonChain -> Tree QGoalReasonChain
 enforceManualFlags = trav go
   where
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
@@ -162,7 +162,7 @@ preferLatest :: Tree a -> Tree a
 preferLatest = preferLatestFor (const True)
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree (QGoalReasons, a) -> Tree (QGoalReasons, a)
+requireInstalled :: (PN -> Bool) -> Tree (QGoalReasonChain, a) -> Tree (QGoalReasonChain, a)
 requireInstalled p = trav go
   where
     go (PChoiceF v@(Q _ pn) i@(gr, _) cs)
@@ -186,7 +186,7 @@ requireInstalled p = trav go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree (QGoalReasons, a) -> Tree (QGoalReasons, a)
+avoidReinstalls :: (PN -> Bool) -> Tree (QGoalReasonChain, a) -> Tree (QGoalReasonChain, a)
 avoidReinstalls p = trav go
   where
     go (PChoiceF qpn@(Q _ pn) i@(gr, _) cs)
@@ -211,7 +211,8 @@ avoidReinstalls p = trav go
 firstGoal :: Tree a -> Tree a
 firstGoal = trav go
   where
-    go (GoalChoiceF xs) = casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t)
+    go (GoalChoiceF xs) = -- casePSQ xs (GoalChoiceF xs) (\ _ t _ -> out t) -- more space efficient, but removes valuable debug info
+                          casePSQ xs (GoalChoiceF (fromList [])) (\ g t _ -> GoalChoiceF (fromList [(g, t)]))
     go x                = x
     -- Note that we keep empty choice nodes, because they mean success.
 

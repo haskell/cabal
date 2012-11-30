@@ -66,7 +66,7 @@ showMessages p sl = go [] 0
       | p v       = x : xs
       | otherwise = xs
 
-showGRs :: QGoalReasons -> String
+showGRs :: QGoalReasonChain -> String
 showGRs (gr : _) = showGR gr
 showGRs []       = ""
 
