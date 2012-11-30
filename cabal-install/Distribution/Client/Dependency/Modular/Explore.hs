@@ -72,7 +72,7 @@ combine var ((k, (     d, v)) : xs) c = (\ ~(e, ys) -> (e, (k, v) : ys)) $
 
 -- | Naive backtracking exploration of the search tree. This will yield correct
 -- assignments only once the tree itself is validated.
-explore :: Alternative m => Tree a -> Assignment -> m (Assignment, RevDepMap)
+explore :: Alternative m => Tree a -> (Assignment -> m (Assignment, RevDepMap))
 explore = cata go
   where
     go (FailF _ _)           _           = A.empty
@@ -97,8 +97,8 @@ explore = cata go
         (\ _k v _xs -> v a)                   -- commit to the first goal choice
 
 -- | Version of 'explore' that returns a 'Log'.
-exploreLog :: Tree (Maybe (ConflictSet QPN))
-              -> Assignment -> Log Message (Assignment, RevDepMap)
+exploreLog :: Tree (Maybe (ConflictSet QPN)) ->
+              (Assignment -> Log Message (Assignment, RevDepMap))
 exploreLog = cata go
   where
     go (FailF c fr)          _           = failWith (Failure c fr)

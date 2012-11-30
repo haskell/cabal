@@ -10,7 +10,7 @@
 
 module Distribution.Client.PackageEnvironment (
     PackageEnvironment(..)
-  , loadOrCreatePackageEnvironment
+  , createPackageEnvironment
   , tryLoadPackageEnvironment
   , readPackageEnvironmentFile
   , showPackageEnvironment
@@ -30,11 +30,12 @@ import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig,
                                          installDirsFields, defaultCompiler )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
-                                       , InstallFlags(..) )
+                                       , InstallFlags(..)
+                                       , defaultSandboxLocation )
 import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
                                          , showCompilerId )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate,
-                                         toPathTemplate )
+                                         fromPathTemplate, toPathTemplate )
 import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..),
                                          fromFlagOrDefault, toFlag )
 import Distribution.Simple.Utils       ( die, notice, warn, lowercase )
@@ -201,11 +202,13 @@ userPkgEnv verbosity pkgEnvDir = do
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
       return mempty
 
--- | Try to load a package environment file, exiting with error if it doesn't
--- exist.
-tryLoadPackageEnvironment :: Verbosity -> FilePath -> FilePath
-                             -> IO PackageEnvironment
-tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir = do
+-- | Try to load the package environment file ("cabal.sandbox.config"), exiting
+-- with error if it doesn't exist. Also returns the path to the sandbox
+-- directory. Note that the path parameter should be a name of an existing
+-- directory.
+tryLoadPackageEnvironment :: Verbosity -> FilePath
+                             -> IO (FilePath, PackageEnvironment)
+tryLoadPackageEnvironment verbosity pkgEnvDir = do
   let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
   pkgEnv <- case minp of
@@ -220,37 +223,29 @@ tryLoadPackageEnvironment verbosity sandboxDir pkgEnvDir = do
       die $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
   user <- userPkgEnv verbosity pkgEnvDir
+  -- Get the saved sandbox directory.
+  -- TODO: Use substPathTemplate instead of fromPathTemplate.
+  let sandboxDir = fromFlagOrDefault defaultSandboxLocation
+                   . fmap fromPathTemplate . prefix . savedGlobalInstallDirs
+                   . pkgEnvSavedConfig $ pkgEnv
   base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit pkgEnv)
-  return $ base `mappend` user `mappend` pkgEnv
+  return (sandboxDir, base `mappend` user `mappend` pkgEnv)
 
--- | Load a package environment file, creating one if it doesn't exist. Note
--- that the path parameter should be a name of an existing directory.
-loadOrCreatePackageEnvironment :: Verbosity -> FilePath -> FilePath -> Compiler
-                                  -> IO PackageEnvironment
-loadOrCreatePackageEnvironment verbosity sandboxDir pkgEnvDir compiler = do
+-- | Create a new package environment file, replacing the existing one if it
+-- exists. Note that the path parameters should point to existing directories.
+createPackageEnvironment :: Verbosity -> FilePath -> FilePath -> Compiler
+                            -> IO PackageEnvironment
+createPackageEnvironment verbosity sandboxDir pkgEnvDir compiler = do
   let path = pkgEnvDir </> sandboxPackageEnvironmentFile
-  minp <- readPackageEnvironmentFile mempty path
-  pkgEnv <- case minp of
-    Nothing -> do
-      notice verbosity $ "Writing default package environment to " ++ path
-      commentPkgEnv <- commentPackageEnvironment sandboxDir
-      initialPkgEnv <- initialPackageEnvironment sandboxDir compiler
-      writePackageEnvironmentFile path commentPkgEnv initialPkgEnv
-      return initialPkgEnv
-    Just (ParseOk warns parseResult) -> do
-      when (not $ null warns) $ warn verbosity $
-        unlines (map (showPWarning path) warns)
-      return parseResult
-    Just (ParseFailed err) -> do
-      let (line, msg) = locatedErrorMsg err
-      warn verbosity $
-        "Error parsing package environment file " ++ path
-        ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
-      warn verbosity $ "Using the default package environment."
-      initialPackageEnvironment sandboxDir compiler
+  notice verbosity $ "Writing default package environment to " ++ path
+
+  commentPkgEnv <- commentPackageEnvironment sandboxDir
+  initialPkgEnv <- initialPackageEnvironment sandboxDir compiler
+  writePackageEnvironmentFile path commentPkgEnv initialPkgEnv
+
   user <- userPkgEnv verbosity pkgEnvDir
-  base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit pkgEnv)
-  return $ base `mappend` user `mappend` pkgEnv
+  base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit initialPkgEnv)
+  return $ base `mappend` user `mappend` initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]

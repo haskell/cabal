@@ -244,7 +244,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   -- pre-processors and include those generated files
   case mb_lbi of
     Just lbi | not (null pps) -> do
-      let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }   
+      let lbi' = lbi{ buildDir = targetDir </> buildDir lbi }
       withComponentsLBI pkg_descr lbi' $ \c _ ->
         preprocessComponent pkg_descr c lbi' True verbosity pps
     _ -> return ()
@@ -262,9 +262,13 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   installOrdinaryFile verbosity descFile (targetDir </> descFile)
 
   where
-    pkg_descr = mapAllBuildInfo filterAutogenModule pkg_descr0
-    filterAutogenModule bi = bi {
-      otherModules = filter (/=autogenModule) (otherModules bi)
+    pkg_descr = mapLib filterAutogenModuleLib $ mapAllBuildInfo filterAutogenModuleBI pkg_descr0
+    mapLib f pkg = pkg { library = fmap f (library pkg) }
+    filterAutogenModuleLib lib = lib {
+      exposedModules = filter (/=autogenModule) (exposedModules lib)
+    }
+    filterAutogenModuleBI bi = bi {
+      otherModules   = filter (/=autogenModule) (otherModules bi)
     }
     autogenModule = autogenModuleName pkg_descr0
 
