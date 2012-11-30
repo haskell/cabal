@@ -36,7 +36,7 @@ Library
                    deepseq    >= 1.3 && < 1.4,
                    filepath   >= 1   && < 1.4,
                    directory  >= 1   && < 1.3,
-                   process    >= 1   && < 1.2,
+                   process    >= 1   && < 1.3,
                    time       >= 1.4 && < 1.5,
                    containers >= 0.1 && < 0.6,
                    array      >= 0.1 && < 0.5,
