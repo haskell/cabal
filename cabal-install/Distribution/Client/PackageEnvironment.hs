@@ -99,7 +99,7 @@ commonPackageEnvironmentConfig :: FilePath -> SavedConfig
 commonPackageEnvironmentConfig sandboxDir =
   mempty {
     savedConfigureFlags = mempty {
-       configUserInstall = toFlag False,
+       configUserInstall = toFlag True,
        configInstallDirs = sandboxInstallDirs
        },
     savedUserInstallDirs   = sandboxInstallDirs,
