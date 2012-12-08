@@ -81,7 +81,7 @@ import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, hcOptions, usedExtensions, allExtensions )
+         , Library(..), libModules, exeModules, hcOptions, usedExtensions, allExtensions )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -824,32 +824,30 @@ buildExe verbosity _pkg_descr lbi
   -- FIX: what about exeName.hi-boot?
 
   -- build executables
-  unless (null (cSources exeBi)) $ do
-   info verbosity "Building C Sources."
-   sequence_
-     [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
-                         exeDir filename) `mappend` mempty {
-                       ghcOptDynamic       = toFlag (withDynExe lbi),
-                       ghcOptProfilingMode = toFlag (withProfExe lbi)
-                     }
-              odir = fromFlag (ghcOptObjDir opts)
-          createDirectoryIfMissingVerbose verbosity True odir
-          runGhcProg opts
-     | filename <- cSources exeBi]
 
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
   let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
-  let vanillaOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
+  let isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
+  let plainOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
                     `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeMake,
-                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs]
-                                          ++ [srcMainFile],
+                      ghcOptInputModules   = exeModules exe,
+                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs],
                       ghcOptLinkOptions    = PD.ldOptions exeBi,
                       ghcOptLinkLibs       = extraLibs exeBi,
                       ghcOptLinkLibPath    = extraLibDirs exeBi,
-                      ghcOptLinkFrameworks = PD.frameworks exeBi
+                      ghcOptLinkFrameworks = PD.frameworks exeBi,
+                      ghcOptExtra          = if isHaskellMain then [] else ["-no-hs-main"]
                     }
+      vanillaOpts = plainOpts `mappend` mempty {
+                      ghcOptInputFiles     = [srcMainFile]
+                    }
+      -- Don't prebuild non-Haskell main modules, they don't
+      -- contribute to the ABI for TH or stub files for later C
+      -- compilation (and indeed, may require stub files themselves,
+      -- so they *must not* be included in the prebuild).
+      prebuildOpts = if isHaskellMain then vanillaOpts else plainOpts
 
       exeOpts     | withProfExe lbi = vanillaOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
@@ -870,9 +868,29 @@ buildExe verbosity _pkg_descr lbi
   -- with profiling. This is because the code that TH needs to
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
-  when ((withProfExe lbi || withDynExe lbi) &&
-        EnableExtension TemplateHaskell `elem` allExtensions exeBi) $
-    runGhcProg vanillaOpts { ghcOptNoLink = toFlag True }
+  --
+  -- We also need to do this pre-build build if we have any C sources,
+  -- because the build may generate stub header files which the C
+  -- sources would use.  C sources include sources specified by
+  -- C sources, or the main module itself, if it is non-Haskell.
+  when (((withProfExe lbi || withDynExe lbi) &&
+        EnableExtension TemplateHaskell `elem` allExtensions exeBi)
+        || not (null (cSources exeBi)) || not isHaskellMain) $ do
+    info verbosity "Pre-building Haskell Sources."
+    runGhcProg prebuildOpts { ghcOptNoLink = toFlag True }
+
+  unless (null (cSources exeBi)) $ do
+   info verbosity "Building C Sources."
+   sequence_
+     [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
+                         exeDir filename) `mappend` mempty {
+                       ghcOptDynamic       = toFlag (withDynExe lbi),
+                       ghcOptProfilingMode = toFlag (withProfExe lbi)
+                     }
+              odir = fromFlag (ghcOptObjDir opts)
+          createDirectoryIfMissingVerbose verbosity True odir
+          runGhcProg opts
+     | filename <- cSources exeBi]
 
   runGhcProg exeOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 
