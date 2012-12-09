@@ -155,12 +155,14 @@ install
   -> [UserTarget]
   -> IO ()
 install verbosity packageDBs repos comp conf
-  globalFlags configFlags configExFlags installFlags haddockFlags userTargets0 = do
+  globalFlags configFlags configExFlags installFlags haddockFlags
+  userTargets0 = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
-    solver <- chooseSolver verbosity (fromFlag (configSolver  configExFlags)) (compilerId comp)
+    solver <- chooseSolver verbosity (fromFlag (configSolver  configExFlags))
+              (compilerId comp)
 
     let -- For install, if no target is given it means we use the
         -- current directory as the single target
@@ -189,7 +191,8 @@ install verbosity packageDBs repos comp conf
   where
     context :: InstallContext
     context = (packageDBs, repos, comp, conf,
-               globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
+               globalFlags, configFlags, configExFlags, installFlags,
+               haddockFlags)
 
     dryRun      = fromFlag (installDryRun installFlags)
     logMsg message rest = debugNoWrap verbosity message >> rest
