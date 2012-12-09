@@ -824,8 +824,58 @@ buildExe verbosity _pkg_descr lbi
   -- FIX: what about exeName.hi-boot?
 
   -- build executables
+
+  srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
+
+  let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
+      baseOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
+                    `mappend` mempty {
+                      ghcOptMode           = toFlag GhcModeMake,
+                      ghcOptInputFiles     = [srcMainFile]
+                    }
+      staticOpts = baseOpts `mappend` mempty {
+                      ghcOptDynamic        = toFlag False
+                   }
+      profOpts   = baseOpts `mappend` mempty {
+                      ghcOptProfilingMode  = toFlag True,
+                      ghcOptHiSuffix       = toFlag "p_hi",
+                      ghcOptObjSuffix      = toFlag "p_o",
+                      ghcOptExtra          = ghcProfOptions exeBi
+                    }
+      dynOpts    = baseOpts `mappend` mempty {
+                      ghcOptDynamic        = toFlag True,
+                      ghcOptHiSuffix       = toFlag "dyn_hi",
+                      ghcOptObjSuffix      = toFlag "dyn_o",
+                      ghcOptExtra          = ghcSharedOptions exeBi
+                    }
+
+      compileOpts | withProfExe lbi = profOpts
+                  | withDynExe  lbi = dynOpts
+                  | otherwise       = staticOpts
+      
+      linkOpts = compileOpts `mappend` mempty {
+                      ghcOptLinkOptions    = PD.ldOptions exeBi,
+                      ghcOptLinkLibs       = extraLibs exeBi,
+                      ghcOptLinkLibPath    = extraLibDirs exeBi,
+                      ghcOptLinkFrameworks = PD.frameworks exeBi,
+                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs]
+                 }
+
+  -- For building exe's for profiling that use TH we actually
+  -- have to build twice, once without profiling and the again
+  -- with profiling. This is because the code that TH needs to
+  -- run at compile time needs to be the vanilla ABI so it can
+  -- be loaded up and run by the compiler.
+  when ((withProfExe lbi || withDynExe lbi) &&
+        EnableExtension TemplateHaskell `elem` allExtensions exeBi) $
+    runGhcProg compileOpts { ghcOptNoLink = toFlag True }
+    --TODO: do we also need to play the static vs dynamic games here?
+
+  runGhcProg compileOpts { ghcOptNoLink = toFlag True }
+
+  -- build any C sources
   unless (null (cSources exeBi)) $ do
-   info verbosity "Building C Sources."
+   info verbosity "Building C Sources..."
    sequence_
      [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
                          exeDir filename) `mappend` mempty {
@@ -837,44 +887,8 @@ buildExe verbosity _pkg_descr lbi
           runGhcProg opts
      | filename <- cSources exeBi]
 
-  srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
-
-  let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
-  let vanillaOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
-                    `mappend` mempty {
-                      ghcOptMode           = toFlag GhcModeMake,
-                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs]
-                                          ++ [srcMainFile],
-                      ghcOptLinkOptions    = PD.ldOptions exeBi,
-                      ghcOptLinkLibs       = extraLibs exeBi,
-                      ghcOptLinkLibPath    = extraLibDirs exeBi,
-                      ghcOptLinkFrameworks = PD.frameworks exeBi
-                    }
-
-      exeOpts     | withProfExe lbi = vanillaOpts `mappend` mempty {
-                      ghcOptProfilingMode  = toFlag True,
-                      ghcOptHiSuffix       = toFlag "p_hi",
-                      ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = ghcProfOptions exeBi
-                    }
-                  | withDynExe lbi = vanillaOpts `mappend` mempty {
-                      ghcOptDynamic        = toFlag True,
-                      ghcOptHiSuffix       = toFlag "dyn_hi",
-                      ghcOptObjSuffix      = toFlag "dyn_o",
-                      ghcOptExtra          = ghcSharedOptions exeBi
-                    }
-                  | otherwise = vanillaOpts
-
-  -- For building exe's for profiling that use TH we actually
-  -- have to build twice, once without profiling and the again
-  -- with profiling. This is because the code that TH needs to
-  -- run at compile time needs to be the vanilla ABI so it can
-  -- be loaded up and run by the compiler.
-  when ((withProfExe lbi || withDynExe lbi) &&
-        EnableExtension TemplateHaskell `elem` allExtensions exeBi) $
-    runGhcProg vanillaOpts { ghcOptNoLink = toFlag True }
-
-  runGhcProg exeOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
+  -- link:
+  runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 
 
 -- | Filter the "-threaded" flag when profiling as it does not
