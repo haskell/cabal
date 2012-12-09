@@ -14,7 +14,18 @@
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
 module Distribution.Client.Install (
-    install
+    -- * High-level interface
+    install,
+
+    -- * Lower-level interface that allows to manipulate the install plan
+    makeInstallContext,
+    makeInstallPlan,
+    processInstallPlan,
+    InstallArgs,
+    InstallContext,
+
+    -- * Prune certain packages from the install plan
+    pruneInstallPlan
   ) where
 
 import Data.List
@@ -158,46 +169,24 @@ install verbosity packageDBs repos comp conf
   globalFlags configFlags configExFlags installFlags haddockFlags
   userTargets0 = do
 
-    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
-    sourcePkgDb       <- getSourcePackages    verbosity repos
+    installContext <- makeInstallContext verbosity args userTargets0
+    installPlan    <- foldProgress logMsg die return =<<
+                      makeInstallPlan verbosity args installContext
 
-    solver <- chooseSolver verbosity (fromFlag (configSolver  configExFlags))
-              (compilerId comp)
-
-    let -- For install, if no target is given it means we use the
-        -- current directory as the single target
-        userTargets | null userTargets0 = [UserTargetLocalDir "."]
-                    | otherwise         = userTargets0
-
-    pkgSpecifiers <- resolveUserTargets verbosity
-                       (fromFlag $ globalWorldFile globalFlags)
-                       (packageIndex sourcePkgDb)
-                       userTargets
-
-    notice verbosity "Resolving dependencies..."
-    installPlan   <- foldProgress logMsg die return $
-                       planPackages
-                         comp solver configFlags configExFlags installFlags
-                         installedPkgIndex sourcePkgDb pkgSpecifiers
-
-    checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
-      installFlags pkgSpecifiers
-
-    unless dryRun $ do
-      installPlan' <- performInstallations verbosity
-                        context installedPkgIndex installPlan
-      postInstallActions verbosity context userTargets installPlan'
-
+    processInstallPlan verbosity args installContext installPlan
   where
-    context :: InstallArgs
-    context = (packageDBs, repos, comp, conf,
-               globalFlags, configFlags, configExFlags, installFlags,
-               haddockFlags)
+    args :: InstallArgs
+    args = (packageDBs, repos, comp, conf,
+            globalFlags, configFlags, configExFlags, installFlags,
+            haddockFlags)
 
-    dryRun      = fromFlag (installDryRun installFlags)
     logMsg message rest = debugNoWrap verbosity message >> rest
 
+-- | Common context for makeInstallPlan and processInstallPlan.
+type InstallContext = ( PackageIndex, SourcePackageDb
+                      , [UserTarget], [PackageSpecifier SourcePackage] )
 
+-- | Initial arguments given to 'install' or 'makeInstallContext'.
 type InstallArgs = ( PackageDBStack
                    , [Repo]
                    , Compiler
@@ -207,6 +196,62 @@ type InstallArgs = ( PackageDBStack
                    , ConfigExFlags
                    , InstallFlags
                    , HaddockFlags )
+
+-- | Make an install context given install arguments.
+makeInstallContext :: Verbosity -> InstallArgs -> [UserTarget]
+                      -> IO InstallContext
+makeInstallContext verbosity
+  (packageDBs, repos, comp, conf,
+   globalFlags, _, _, _, _) userTargets0 = do
+
+    installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+    sourcePkgDb       <- getSourcePackages    verbosity repos
+
+    let -- For install, if no target is given it means we use the
+        -- current directory as the single target
+        userTargets | null userTargets0 = [UserTargetLocalDir "."]
+                    | otherwise         = userTargets0
+
+    pkgSpecifiers <- resolveUserTargets verbosity
+                     (fromFlag $ globalWorldFile globalFlags)
+                     (packageIndex sourcePkgDb)
+                     userTargets
+
+    return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers)
+
+-- | Make an install plan given install context and install arguments.
+makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
+                -> IO (Progress String String InstallPlan)
+makeInstallPlan verbosity
+  (_, _, comp, _,
+   _, configFlags, configExFlags, installFlags,
+   _)
+  (installedPkgIndex, sourcePkgDb,
+   _, pkgSpecifiers) = do
+
+    solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
+              (compilerId comp)
+    notice verbosity "Resolving dependencies..."
+    return $ planPackages comp solver configFlags configExFlags installFlags
+      installedPkgIndex sourcePkgDb pkgSpecifiers
+
+-- | Given an install plan, perform the actual installations.
+processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
+                   -> InstallPlan
+                   -> IO ()
+processInstallPlan verbosity
+  args@(_, _, _, _, _, _, _, installFlags, _)
+  (installedPkgIndex, sourcePkgDb,
+   userTargets, pkgSpecifiers) installPlan = do
+    checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
+      installFlags pkgSpecifiers
+
+    unless dryRun $ do
+      installPlan' <- performInstallations verbosity
+                      args installedPkgIndex installPlan
+      postInstallActions verbosity args userTargets installPlan'
+  where
+    dryRun = fromFlag (installDryRun installFlags)
 
 -- ------------------------------------------------------------
 -- * Installation planning
