@@ -22,7 +22,7 @@ module Distribution.Client.Init.Heuristics (
 import Distribution.Text         (simpleParse)
 import Distribution.Simple.Setup (Flag(..))
 import Distribution.ModuleName
-    ( ModuleName, fromString, toFilePath )
+    ( ModuleName, toFilePath )
 import Distribution.Client.PackageIndex
     ( allPackagesByName )
 import qualified Distribution.PackageDescription as PD
@@ -31,6 +31,7 @@ import Distribution.Simple.Utils
          ( intercalate )
 
 import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
+import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad (liftM )
 import Data.Char   ( isUpper, isLower, isSpace )
 #if MIN_VERSION_base(3,0,3)
@@ -85,13 +86,15 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
         return $ (if isDir then Right else Left) entry
     guessModuleName hierarchy entry
         | takeBaseName entry == "Setup" = Nothing
-        | ext `elem` sourceExtensions = Just $ SourceFileEntry relRoot modName ext []
+        | ext `elem` sourceExtensions   =
+            SourceFileEntry <$> pure relRoot <*> modName <*> pure ext <*> pure []
         | otherwise = Nothing
       where
-        relRoot = makeRelative projectRoot srcRoot
+        relRoot       = makeRelative projectRoot srcRoot
         unqualModName = dropExtension entry
-        modName = fromString $ intercalate "." . reverse $ (unqualModName : hierarchy)
-        ext = case takeExtension entry of '.':e -> e; e -> e
+        modName       = simpleParse
+                      $ intercalate "." . reverse $ (unqualModName : hierarchy)
+        ext           = case takeExtension entry of '.':e -> e; e -> e
     scanRecursive parent hierarchy entry
       | isUpper (head entry) = scan (parent </> entry) (entry : hierarchy)
       | isLower (head entry) && not (ignoreDir entry) =
