@@ -229,7 +229,7 @@ planPackages comp solver configFlags configExFlags installFlags
           solver
           resolverParams
 
-    >>= if onlyDeps then adjustPlanOnlyDeps else return
+    >>= if onlyDeps then pruneInstallPlan pkgSpecifiers else return
 
   where
     resolverParams =
@@ -280,33 +280,6 @@ planPackages comp solver configFlags configExFlags installFlags
     testsEnabled = fromFlagOrDefault False $ configTests configFlags
     benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
 
-    --TODO: this is a general feature and should be moved to D.C.Dependency
-    -- Also, the InstallPlan.remove should return info more precise to the
-    -- problem, rather than the very general PlanProblem type.
-    adjustPlanOnlyDeps :: InstallPlan -> Progress String String InstallPlan
-    adjustPlanOnlyDeps =
-        either (Fail . explain) Done
-      . InstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
-      where
-        explain :: [InstallPlan.PlanProblem] -> String
-        explain problems =
-            "Cannot select only the dependencies (as requested by the "
-         ++ "'--only-dependencies' flag), "
-         ++ (case pkgids of
-               [pkgid] -> "the package " ++ display pkgid ++ " is "
-               _       -> "the packages "
-                       ++ intercalate ", " (map display pkgids) ++ " are ")
-         ++ "required by a dependency of one of the other targets."
-          where
-            pkgids =
-              nub [ depid
-                  | InstallPlan.PackageMissingDeps _ depids <- problems
-                  , depid <- depids
-                  , packageName depid `elem` targetnames ]
-
-        targetnames  = map pkgSpecifierTarget pkgSpecifiers
-
-
     reinstall        = fromFlag (installReinstall        installFlags)
     reorderGoals     = fromFlag (installReorderGoals     installFlags)
     independentGoals = fromFlag (installIndependentGoals installFlags)
@@ -315,6 +288,34 @@ planPackages comp solver configFlags configExFlags installFlags
     maxBackjumps     = fromFlag (installMaxBackjumps     installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps      installFlags)
     onlyDeps         = fromFlag (installOnlyDeps         installFlags)
+
+-- | Remove the provided targets from the install plan.
+pruneInstallPlan :: Package pkg => [PackageSpecifier pkg] -> InstallPlan
+                    -> Progress String String InstallPlan
+pruneInstallPlan pkgSpecifiers =
+  -- TODO: this is a general feature and should be moved to D.C.Dependency
+  -- Also, the InstallPlan.remove should return info more precise to the
+  -- problem, rather than the very general PlanProblem type.
+  either (Fail . explain) Done
+  . InstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
+  where
+    explain :: [InstallPlan.PlanProblem] -> String
+    explain problems =
+      "Cannot select only the dependencies (as requested by the "
+      ++ "'--only-dependencies' flag), "
+      ++ (case pkgids of
+             [pkgid] -> "the package " ++ display pkgid ++ " is "
+             _       -> "the packages "
+                        ++ intercalate ", " (map display pkgids) ++ " are ")
+      ++ "required by a dependency of one of the other targets."
+      where
+        pkgids =
+          nub [ depid
+              | InstallPlan.PackageMissingDeps _ depids <- problems
+              , depid <- depids
+              , packageName depid `elem` targetnames ]
+
+    targetnames  = map pkgSpecifierTarget pkgSpecifiers
 
 -- ------------------------------------------------------------
 -- * Informational messages
