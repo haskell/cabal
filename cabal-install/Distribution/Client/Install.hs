@@ -189,7 +189,7 @@ install verbosity packageDBs repos comp conf
       postInstallActions verbosity context userTargets installPlan'
 
   where
-    context :: InstallContext
+    context :: InstallArgs
     context = (packageDBs, repos, comp, conf,
                globalFlags, configFlags, configExFlags, installFlags,
                haddockFlags)
@@ -198,15 +198,15 @@ install verbosity packageDBs repos comp conf
     logMsg message rest = debugNoWrap verbosity message >> rest
 
 
-type InstallContext = ( PackageDBStack
-                      , [Repo]
-                      , Compiler
-                      , ProgramConfiguration
-                      , GlobalFlags
-                      , ConfigFlags
-                      , ConfigExFlags
-                      , InstallFlags
-                      , HaddockFlags )
+type InstallArgs = ( PackageDBStack
+                   , [Repo]
+                   , Compiler
+                   , ProgramConfiguration
+                   , GlobalFlags
+                   , ConfigFlags
+                   , ConfigExFlags
+                   , InstallFlags
+                   , HaddockFlags )
 
 -- ------------------------------------------------------------
 -- * Installation planning
@@ -546,7 +546,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 --  * error reporting
 --
 postInstallActions :: Verbosity
-                   -> InstallContext
+                   -> InstallArgs
                    -> [UserTarget]
                    -> InstallPlan
                    -> IO ()
@@ -744,7 +744,7 @@ data InstallMisc = InstallMisc {
 type UseLogFile = Maybe (PackageIdentifier -> FilePath, Verbosity)
 
 performInstallations :: Verbosity
-                     -> InstallContext
+                     -> InstallArgs
                      -> PackageIndex
                      -> InstallPlan
                      -> IO InstallPlan
