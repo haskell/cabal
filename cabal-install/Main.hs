@@ -644,7 +644,7 @@ sandboxInstallAction
   extraArgs globalFlags = do
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
   sandboxInstall verbosity sandboxFlags configFlags configExFlags
-    installFlags haddockFlags extraArgs globalFlags
+    installFlags haddockFlags extraArgs globalFlags mempty
 
 dumpPkgEnvAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
 dumpPkgEnvAction sandboxFlags extraArgs _globalFlags = do
