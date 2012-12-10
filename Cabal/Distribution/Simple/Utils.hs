@@ -331,9 +331,10 @@ chattyTry desc action =
 -- | Wraps text to the default line width. Existing newlines are preserved.
 wrapText :: String -> String
 wrapText = unlines
-         . concatMap (map unwords
-                    . wrapLine 79
-                    . words)
+         . map (intercalate "\n"
+              . map unwords
+              . wrapLine 79
+              . words)
          . lines
 
 -- | Wraps a list of words to a list of lines of words of a particular width.

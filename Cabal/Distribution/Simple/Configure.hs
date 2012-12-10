@@ -142,14 +142,12 @@ import Data.Monoid
     ( Monoid(..) )
 import System.Directory
     ( doesFileExist, getModificationTime, createDirectoryIfMissing, getTemporaryDirectory )
-import System.Exit
-    ( ExitCode(..), exitWith )
 import System.FilePath
     ( (</>), isAbsolute )
 import qualified System.Info
     ( compilerName, compilerVersion )
 import System.IO
-    ( hPutStrLn, stderr, hClose )
+    ( hPutStrLn, hClose )
 import Distribution.Text
     ( Text(disp), display, simpleParse )
 import Text.PrettyPrint
@@ -1099,5 +1097,4 @@ checkPackageProblems verbosity gpkg pkg = do
       warnings = [ w | PackageBuildWarning    w <- pureChecks ++ ioChecks ]
   if null errors
     then mapM_ (warn verbosity) warnings
-    else do mapM_ (hPutStrLn stderr . ("Error: " ++)) errors
-            exitWith (ExitFailure 1)
+    else die (intercalate "\n\n" errors)
