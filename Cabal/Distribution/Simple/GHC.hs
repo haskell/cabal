@@ -81,7 +81,7 @@ import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, hcOptions, usedExtensions, allExtensions )
+         , Library(..), libModules, exeModules, hcOptions, usedExtensions, allExtensions )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -827,11 +827,15 @@ buildExe verbosity _pkg_descr lbi
 
   srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
 
-  let cObjs = map (`replaceExtension` objExtension) (cSources exeBi)
-      baseOpts = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
+  let isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
+      cSrcs         = cSources exeBi ++ [srcMainFile | not isHaskellMain]
+      cObjs         = map (`replaceExtension` objExtension) cSrcs
+      baseOpts   = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
                     `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeMake,
-                      ghcOptInputFiles     = [srcMainFile]
+                      ghcOptInputFiles     = [ srcMainFile  |     isHaskellMain],
+                      ghcOptInputModules   = [ m            | not isHaskellMain
+                                                            , m <- exeModules exe]
                     }
       staticOpts = baseOpts `mappend` mempty {
                       ghcOptDynamic        = toFlag False
@@ -858,7 +862,8 @@ buildExe verbosity _pkg_descr lbi
                       ghcOptLinkLibs       = extraLibs exeBi,
                       ghcOptLinkLibPath    = extraLibDirs exeBi,
                       ghcOptLinkFrameworks = PD.frameworks exeBi,
-                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs]
+                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs],
+                      ghcOptExtra          = ["-no-hs-main" | not isHaskellMain ]
                  }
 
   -- For building exe's for profiling that use TH we actually
@@ -874,7 +879,7 @@ buildExe verbosity _pkg_descr lbi
   runGhcProg compileOpts { ghcOptNoLink = toFlag True }
 
   -- build any C sources
-  unless (null (cSources exeBi)) $ do
+  unless (null cSrcs) $ do
    info verbosity "Building C Sources..."
    sequence_
      [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
@@ -885,9 +890,10 @@ buildExe verbosity _pkg_descr lbi
               odir = fromFlag (ghcOptObjDir opts)
           createDirectoryIfMissingVerbose verbosity True odir
           runGhcProg opts
-     | filename <- cSources exeBi]
+     | filename <- cSrcs ]
 
   -- link:
+  info verbosity "Linking..."
   runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 
 

@@ -33,6 +33,7 @@ import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
 import PackageTests.PreProcess.Check
 import PackageTests.TemplateHaskell.Check
+import PackageTests.CMain.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
@@ -90,6 +91,8 @@ tests version =
             PackageTests.BuildDeps.InternalLibrary3.Check.suite
           , hunit "BuildDeps/InternalLibrary4"
             PackageTests.BuildDeps.InternalLibrary4.Check.suite
+          , hunit "PackageTests/CMain"
+            PackageTests.CMain.Check.checkBuild
           ]
      else [])
 
