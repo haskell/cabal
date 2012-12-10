@@ -54,7 +54,7 @@ module Distribution.Simple.Utils (
         dieWithLocation,
         topHandler,
         warn, notice, setupMessage, info, debug,
-        chattyTry,
+        debugNoWrap, chattyTry,
 
         -- * running programs
         rawSystemExit,
@@ -314,6 +314,14 @@ debug :: Verbosity -> String -> IO ()
 debug verbosity msg =
   when (verbosity >= deafening) $ do
     putStr (wrapText msg)
+    hFlush stdout
+
+-- | A variant of 'debug' that doesn't perform the automatic line
+-- wrapping. Produces better output in some cases.
+debugNoWrap :: Verbosity -> String -> IO ()
+debugNoWrap verbosity msg =
+  when (verbosity >= deafening) $ do
+    putStrLn msg
     hFlush stdout
 
 -- | Perform an IO action, catching any IO exceptions and printing an error

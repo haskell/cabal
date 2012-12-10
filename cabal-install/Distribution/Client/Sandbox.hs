@@ -25,7 +25,11 @@ import Distribution.Client.Setup
   , installCommand )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
 import Distribution.Client.Configure          ( configure )
-import Distribution.Client.Install            ( install )
+import Distribution.Client.Install            ( makeInstallContext
+                                              , makeInstallPlan
+                                              , processInstallPlan
+                                              , pruneInstallPlan
+                                              , InstallArgs )
 import Distribution.Client.PackageEnvironment
   ( PackageEnvironment(..)
   , createPackageEnvironment, tryLoadPackageEnvironment
@@ -35,18 +39,22 @@ import Distribution.Client.PackageEnvironment
   , sandboxPackageEnvironmentFile )
 import Distribution.Client.SetupWrapper
   ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
-import Distribution.Client.Targets            ( readUserTargets )
+import Distribution.Client.Targets            ( readUserTargets
+                                              , resolveUserTargets
+                                              , UserTarget(..) )
+import Distribution.Client.Types              ( SourcePackageDb(packageIndex) )
+import Distribution.Client.Dependency.Types   ( foldProgress )
 import Distribution.Simple.Compiler           ( Compiler
                                               , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAux
                                               , interpretPackageDbFlags )
 import Distribution.Simple.Program            ( ProgramConfiguration
                                               , defaultProgramConfiguration )
-import Distribution.Simple.Setup              ( Flag(..), toFlag
+import Distribution.Simple.Setup              ( Flag(..), toFlag, fromFlag
                                               , BuildFlags(..), HaddockFlags(..)
                                               , buildCommand, fromFlagOrDefault )
 import Distribution.Simple.Utils              ( die, debug, notice, info
-                                              , intercalate
+                                              , debugNoWrap, intercalate
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.SetEnv             ( setEnv )
@@ -213,10 +221,7 @@ sandboxConfigure verbosity
 
 -- | Entry point for the 'cabal sandbox-build' command.
 sandboxBuild :: Verbosity -> SandboxFlags -> BuildFlags -> [String] -> IO ()
-sandboxBuild verbosity _sandboxFlags buildFlags' extraArgs = do
-  -- Check that the sandbox exists.
-  (sandboxDir, _) <- tryLoadSandboxConfig verbosity
-
+sandboxBuild verbosity sandboxFlags buildFlags' extraArgs = do
   let setupScriptOptions = defaultSetupScriptOptions {
         useDistPref = fromFlagOrDefault
                       (useDistPref defaultSetupScriptOptions)
@@ -225,17 +230,32 @@ sandboxBuild verbosity _sandboxFlags buildFlags' extraArgs = do
       buildFlags = buildFlags' {
         buildVerbosity = toFlag verbosity
         }
+  -- Check that the sandbox exists.
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+  indexFile            <- tryGetIndexFilePath pkgEnv
+  buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
 
+  -- Install all add-source dependencies of the current package into the
+  -- sandbox.
+  unless (null buildTreeRefs) $
+    sandboxInstall verbosity sandboxFlags mempty mempty mempty mempty
+      (".":buildTreeRefs) mempty [UserTargetLocalDir "."]
+
+  -- Actually build the package.
+  -- TODO: Do the "you should run configure before build" check before installing
+  -- add-source dependencies.
   withSandboxBinDirOnSearchPath sandboxDir $
     setupWrapper verbosity setupScriptOptions Nothing
       (buildCommand defaultProgramConfiguration) (const buildFlags) extraArgs
 
 -- | Entry point for the 'cabal sandbox-install' command.
 sandboxInstall :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
-                  -> InstallFlags -> HaddockFlags -> [String] -> GlobalFlags
+                  -> InstallFlags -> HaddockFlags
+                  -> [String] -> GlobalFlags
+                  -> [UserTarget] -- ^ Targets to prune from the install plan.
                   -> IO ()
 sandboxInstall verbosity _sandboxFlags _configFlags _configExFlags
-  installFlags _haddockFlags _extraArgs _globalFlags
+  installFlags _haddockFlags _extraArgs _globalFlags _targetsToPrune
   | fromFlagOrDefault False (installOnly installFlags)
   -- TODO: It'd nice if this picked up the -w flag passed to sandbox-configure.
   -- Right now, running
@@ -248,7 +268,8 @@ sandboxInstall verbosity _sandboxFlags _configFlags _configExFlags
     installCommand (const mempty) []
 
 sandboxInstall verbosity _sandboxFlags configFlags configExFlags
-  installFlags haddockFlags extraArgs globalFlags = do
+  installFlags haddockFlags extraArgs globalFlags
+  targetsToPrune = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
   targets              <- readUserTargets verbosity extraArgs
 
@@ -264,14 +285,34 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
   -- If the user has set the -w option, we may need to create the package DB for
   -- this compiler.
   let configFlags''  = setPackageDB sandboxDir comp configFlags'
+
+      args :: InstallArgs
+      args = ((configPackageDB' configFlags''), (globalRepos globalFlags'),
+              comp, conf,
+              globalFlags', configFlags'', configExFlags', installFlags',
+              haddockFlags)
+
+      logMsg message rest = debugNoWrap verbosity message >> rest
+
   initPackageDBIfNeeded verbosity configFlags'' comp conf
 
-  withSandboxBinDirOnSearchPath sandboxDir $
-    install verbosity
-            (configPackageDB' configFlags'') (globalRepos globalFlags')
-            comp conf
-            globalFlags' configFlags'' configExFlags' installFlags' haddockFlags
-            targets
+  withSandboxBinDirOnSearchPath sandboxDir $ do
+    installContext@(_,sourcePkgDb,_,_) <-
+      makeInstallContext verbosity args targets
+
+    toPrune <- resolveUserTargets verbosity
+               (fromFlag $ globalWorldFile globalFlags')
+               (packageIndex sourcePkgDb)
+               targetsToPrune
+
+    installPlan     <- foldProgress logMsg die return =<<
+                       (fmap (\p -> p >>= if not . null $ targetsToPrune
+                                          then pruneInstallPlan toPrune
+                                          else return)
+                        $ makeInstallPlan verbosity args installContext)
+
+    processInstallPlan verbosity args installContext installPlan
+  where
 
 configPackageDB' :: ConfigFlags -> PackageDBStack
 configPackageDB' cfg =

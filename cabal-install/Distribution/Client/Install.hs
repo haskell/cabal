@@ -14,7 +14,18 @@
 -- High level interface to package installation.
 -----------------------------------------------------------------------------
 module Distribution.Client.Install (
-    install
+    -- * High-level interface
+    install,
+
+    -- * Lower-level interface that allows to manipulate the install plan
+    makeInstallContext,
+    makeInstallPlan,
+    processInstallPlan,
+    InstallArgs,
+    InstallContext,
+
+    -- * Prune certain packages from the install plan
+    pruneInstallPlan
   ) where
 
 import Data.List
@@ -41,7 +52,7 @@ import System.Directory
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
-         ( openFile, IOMode(WriteMode), stdout, hFlush, hClose )
+         ( openFile, IOMode(WriteMode), hClose )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -112,7 +123,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, warn, die, intercalate, withTempDirectory )
+         ( notice, info, warn, debugNoWrap, die, intercalate, withTempDirectory )
 import Distribution.Client.Utils
          ( numberOfProcessors, inDir, mergeBy, MergeResult(..) )
 import Distribution.System
@@ -120,7 +131,7 @@ import Distribution.System
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-         ( Verbosity, showForCabal, normal, verbose, deafening )
+         ( Verbosity, showForCabal, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
 
 --TODO:
@@ -155,12 +166,49 @@ install
   -> [UserTarget]
   -> IO ()
 install verbosity packageDBs repos comp conf
-  globalFlags configFlags configExFlags installFlags haddockFlags userTargets0 = do
+  globalFlags configFlags configExFlags installFlags haddockFlags
+  userTargets0 = do
+
+    installContext <- makeInstallContext verbosity args userTargets0
+    installPlan    <- foldProgress logMsg die return =<<
+                      makeInstallPlan verbosity args installContext
+
+    processInstallPlan verbosity args installContext installPlan
+  where
+    args :: InstallArgs
+    args = (packageDBs, repos, comp, conf,
+            globalFlags, configFlags, configExFlags, installFlags,
+            haddockFlags)
+
+    logMsg message rest = debugNoWrap verbosity message >> rest
+
+-- TODO: Make InstallContext a proper datatype with documented fields.
+-- | Common context for makeInstallPlan and processInstallPlan.
+type InstallContext = ( PackageIndex, SourcePackageDb
+                      , [UserTarget], [PackageSpecifier SourcePackage] )
+
+-- TODO: Make InstallArgs a proper datatype with documented fields or just get
+-- rid of it completely.
+-- | Initial arguments given to 'install' or 'makeInstallContext'.
+type InstallArgs = ( PackageDBStack
+                   , [Repo]
+                   , Compiler
+                   , ProgramConfiguration
+                   , GlobalFlags
+                   , ConfigFlags
+                   , ConfigExFlags
+                   , InstallFlags
+                   , HaddockFlags )
+
+-- | Make an install context given install arguments.
+makeInstallContext :: Verbosity -> InstallArgs -> [UserTarget]
+                      -> IO InstallContext
+makeInstallContext verbosity
+  (packageDBs, repos, comp, conf,
+   globalFlags, _, _, _, _) userTargets0 = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
-
-    solver <- chooseSolver verbosity (fromFlag (configSolver  configExFlags)) (compilerId comp)
 
     let -- For install, if no target is given it means we use the
         -- current directory as the single target
@@ -168,45 +216,45 @@ install verbosity packageDBs repos comp conf
                     | otherwise         = userTargets0
 
     pkgSpecifiers <- resolveUserTargets verbosity
-                       (fromFlag $ globalWorldFile globalFlags)
-                       (packageIndex sourcePkgDb)
-                       userTargets
+                     (fromFlag $ globalWorldFile globalFlags)
+                     (packageIndex sourcePkgDb)
+                     userTargets
 
+    return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers)
+
+-- | Make an install plan given install context and install arguments.
+makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
+                -> IO (Progress String String InstallPlan)
+makeInstallPlan verbosity
+  (_, _, comp, _,
+   _, configFlags, configExFlags, installFlags,
+   _)
+  (installedPkgIndex, sourcePkgDb,
+   _, pkgSpecifiers) = do
+
+    solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
+              (compilerId comp)
     notice verbosity "Resolving dependencies..."
-    installPlan   <- foldProgress logMsg die return $
-                       planPackages
-                         comp solver configFlags configExFlags installFlags
-                         installedPkgIndex sourcePkgDb pkgSpecifiers
+    return $ planPackages comp solver configFlags configExFlags installFlags
+      installedPkgIndex sourcePkgDb pkgSpecifiers
 
+-- | Given an install plan, perform the actual installations.
+processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
+                   -> InstallPlan
+                   -> IO ()
+processInstallPlan verbosity
+  args@(_, _, _, _, _, _, _, installFlags, _)
+  (installedPkgIndex, sourcePkgDb,
+   userTargets, pkgSpecifiers) installPlan = do
     checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
 
     unless dryRun $ do
       installPlan' <- performInstallations verbosity
-                        context installedPkgIndex installPlan
-      postInstallActions verbosity context userTargets installPlan'
-
+                      args installedPkgIndex installPlan
+      postInstallActions verbosity args userTargets installPlan'
   where
-    context :: InstallContext
-    context = (packageDBs, repos, comp, conf,
-               globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
-
-    dryRun      = fromFlag (installDryRun installFlags)
-    logMsg message rest = debugNoWrap message >> rest
-    -- Solver debug output really looks better without automatic
-    -- line wrapping. TODO: This should probably be moved into
-    -- the utilities module.
-    debugNoWrap xs = when (verbosity >= deafening) (putStrLn xs >> hFlush stdout)
-
-type InstallContext = ( PackageDBStack
-                      , [Repo]
-                      , Compiler
-                      , ProgramConfiguration
-                      , GlobalFlags
-                      , ConfigFlags
-                      , ConfigExFlags
-                      , InstallFlags
-                      , HaddockFlags )
+    dryRun = fromFlag (installDryRun installFlags)
 
 -- ------------------------------------------------------------
 -- * Installation planning
@@ -229,7 +277,7 @@ planPackages comp solver configFlags configExFlags installFlags
           solver
           resolverParams
 
-    >>= if onlyDeps then adjustPlanOnlyDeps else return
+    >>= if onlyDeps then pruneInstallPlan pkgSpecifiers else return
 
   where
     resolverParams =
@@ -280,33 +328,6 @@ planPackages comp solver configFlags configExFlags installFlags
     testsEnabled = fromFlagOrDefault False $ configTests configFlags
     benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
 
-    --TODO: this is a general feature and should be moved to D.C.Dependency
-    -- Also, the InstallPlan.remove should return info more precise to the
-    -- problem, rather than the very general PlanProblem type.
-    adjustPlanOnlyDeps :: InstallPlan -> Progress String String InstallPlan
-    adjustPlanOnlyDeps =
-        either (Fail . explain) Done
-      . InstallPlan.remove (isTarget pkgSpecifiers)
-      where
-        explain :: [InstallPlan.PlanProblem] -> String
-        explain problems =
-            "Cannot select only the dependencies (as requested by the "
-         ++ "'--only-dependencies' flag), "
-         ++ (case pkgids of
-               [pkgid] -> "the package " ++ display pkgid ++ " is "
-               _       -> "the packages "
-                       ++ intercalate ", " (map display pkgids) ++ " are ")
-         ++ "required by a dependency of one of the other targets."
-          where
-            pkgids =
-              nub [ depid
-                  | InstallPlan.PackageMissingDeps _ depids <- problems
-                  , depid <- depids
-                  , packageName depid `elem` targetnames ]
-
-        targetnames  = map pkgSpecifierTarget pkgSpecifiers
-
-
     reinstall        = fromFlag (installReinstall        installFlags)
     reorderGoals     = fromFlag (installReorderGoals     installFlags)
     independentGoals = fromFlag (installIndependentGoals installFlags)
@@ -315,6 +336,34 @@ planPackages comp solver configFlags configExFlags installFlags
     maxBackjumps     = fromFlag (installMaxBackjumps     installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps      installFlags)
     onlyDeps         = fromFlag (installOnlyDeps         installFlags)
+
+-- | Remove the provided targets from the install plan.
+pruneInstallPlan :: Package pkg => [PackageSpecifier pkg] -> InstallPlan
+                    -> Progress String String InstallPlan
+pruneInstallPlan pkgSpecifiers =
+  -- TODO: this is a general feature and should be moved to D.C.Dependency
+  -- Also, the InstallPlan.remove should return info more precise to the
+  -- problem, rather than the very general PlanProblem type.
+  either (Fail . explain) Done
+  . InstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
+  where
+    explain :: [InstallPlan.PlanProblem] -> String
+    explain problems =
+      "Cannot select only the dependencies (as requested by the "
+      ++ "'--only-dependencies' flag), "
+      ++ (case pkgids of
+             [pkgid] -> "the package " ++ display pkgid ++ " is "
+             _       -> "the packages "
+                        ++ intercalate ", " (map display pkgids) ++ " are ")
+      ++ "required by a dependency of one of the other targets."
+      where
+        pkgids =
+          nub [ depid
+              | InstallPlan.PackageMissingDeps _ depids <- problems
+              , depid <- depids
+              , packageName depid `elem` targetnames ]
+
+    targetnames  = map pkgSpecifierTarget pkgSpecifiers
 
 -- ------------------------------------------------------------
 -- * Informational messages
@@ -421,11 +470,6 @@ data PackageStatus = NewPackage
                    | Reinstall  [InstalledPackageId] [PackageChange]
 
 type PackageChange = MergeResult PackageIdentifier PackageIdentifier
-
-isTarget :: Package pkg => [PackageSpecifier SourcePackage] -> pkg -> Bool
-isTarget pkgSpecifiers pkg = packageName pkg `elem` targetnames
-  where
-    targetnames  = map pkgSpecifierTarget pkgSpecifiers
 
 extractReinstalls :: PackageStatus -> [InstalledPackageId]
 extractReinstalls (Reinstall ipids _) = ipids
@@ -551,7 +595,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 --  * error reporting
 --
 postInstallActions :: Verbosity
-                   -> InstallContext
+                   -> InstallArgs
                    -> [UserTarget]
                    -> InstallPlan
                    -> IO ()
@@ -749,7 +793,7 @@ data InstallMisc = InstallMisc {
 type UseLogFile = Maybe (PackageIdentifier -> FilePath, Verbosity)
 
 performInstallations :: Verbosity
-                     -> InstallContext
+                     -> InstallArgs
                      -> PackageIndex
                      -> InstallPlan
                      -> IO InstallPlan
