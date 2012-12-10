@@ -182,10 +182,13 @@ install verbosity packageDBs repos comp conf
 
     logMsg message rest = debugNoWrap verbosity message >> rest
 
+-- TODO: Make InstallContext a proper datatype with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( PackageIndex, SourcePackageDb
                       , [UserTarget], [PackageSpecifier SourcePackage] )
 
+-- TODO: Make InstallArgs a proper datatype with documented fields or just get
+-- rid of it completely.
 -- | Initial arguments given to 'install' or 'makeInstallContext'.
 type InstallArgs = ( PackageDBStack
                    , [Repo]
