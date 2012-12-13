@@ -846,13 +846,11 @@ installOptions showOrParseArgs =
           (yesNoOpt showOrParseArgs)
 
       , option "j" ["jobs"]
-        "Run NUM jobs simultaneously."
+        "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
         installNumJobs (\v flags -> flags { installNumJobs = v })
-        (optArg "NUM" (readP_to_E (\_ -> "jobs should be a number")
-                                  (fmap (toFlag . Just)
-                                        (Parse.readS_to_P reads)))
+        (optArg "NUM" (fmap Flag flagToJobs)
                       (Flag Nothing)
-                      (map (fmap show) . flagToList))
+                      (map (Just . maybe "$ncpus" show) . flagToList))
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
           ParseArgs ->
             [ option [] ["only"]
@@ -860,6 +858,18 @@ installOptions showOrParseArgs =
               installOnly (\v flags -> flags { installOnly = v })
               trueArg ]
           _ -> []
+  where
+    flagToJobs :: ReadE (Maybe Int)
+    flagToJobs = ReadE $ \s ->
+      case s of
+        "$ncpus" -> Right Nothing
+        _        -> case read s of
+          [(n, "")]
+            | n < 1     -> Left "The number of jobs should be 1 or more."
+            | n > 64    -> Left "You probably don't want that many jobs."
+            | otherwise -> Right (Just n)
+          _             -> Left "The jobs value should be a number or '$ncpus'"
+
 
 instance Monoid InstallFlags where
   mempty = InstallFlags {
