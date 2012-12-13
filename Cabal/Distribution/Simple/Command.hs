@@ -166,7 +166,8 @@ reqArg ad mkflag showflag sf lf d get set =
 optArg :: Monoid b => ArgPlaceHolder -> ReadE b -> b -> (b -> [Maybe String])
                    -> MkOptDescr (a -> b) (b -> a -> a) a
 optArg ad mkflag def showflag sf lf d get set  =
-  OptArg d (sf,lf) ad (fmap (\a b -> set (get b `mappend` a) b) mkflag)
+  OptArg d (sf,lf) ad (fmap (\a b -> set (get b `mappend` a) b)
+                       (withDefaultValue def mkflag))
                (\b ->          set (get b `mappend` def) b)
                (showflag . get)
 
@@ -255,7 +256,7 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
                     OptArg _ _ _ _ _ ppr ->
                      case ppr t of
                         []        -> empty
-                        (Nothing : _) -> text "True"
+                        (Nothing : _) -> text "$DEFAULT"
                         (Just a  : _) -> text a
                     ChoiceOpt alts ->
                      fromMaybe empty $ listToMaybe
@@ -272,8 +273,8 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
                                                  _      -> syntaxError line val
                     BoolOpt _ _ _ setV _    -> (`setV` a) `liftM` runP line n parse val
                     OptArg _ _ _  readE _ _ -> ($ a) `liftM` runE line n readE val
-                                             -- Optional arguments are parsed just like required arguments here;
-                                             -- we don't provide a method to set an OptArg field to the default value.
+                                             -- A special value @$DEFAULT@ is used for setting an 'OptArg' field to
+                                             -- the default value (see 'withDefaultValue').
 
 getChoiceByLongFlag :: OptDescr b -> String -> Maybe (b->b)
 getChoiceByLongFlag (ChoiceOpt alts) val = listToMaybe [ set | (_,(_sf,lf:_), set, _) <- alts
@@ -554,3 +555,11 @@ noExtraFlags extraFlags =
   die $ "Unrecognised flags: " ++ intercalate ", " extraFlags
 --TODO: eliminate this function and turn it into a variant on commandAddAction
 --      instead like commandAddActionNoArgs that doesn't supply the [String]
+
+-- | Turn a 'ReadE' parser into a parser that returns the provided default value
+-- if given the special value @$DEFAULT@.
+withDefaultValue :: b -> ReadE b -> ReadE b
+withDefaultValue def (ReadE f) = ReadE f'
+  where
+    f' "$DEFAULT" = Right def
+    f' str        = f str
