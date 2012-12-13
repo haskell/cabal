@@ -863,7 +863,7 @@ installOptions showOrParseArgs =
     flagToJobs = ReadE $ \s ->
       case s of
         "$ncpus" -> Right Nothing
-        _        -> case read s of
+        _        -> case reads s of
           [(n, "")]
             | n < 1     -> Left "The number of jobs should be 1 or more."
             | n > 64    -> Left "You probably don't want that many jobs."
