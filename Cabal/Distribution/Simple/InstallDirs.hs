@@ -77,9 +77,7 @@ import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
-#if defined(__HUGS__) || defined(__GLASGOW_HASKELL__)
 import System.FilePath (dropDrive)
-#endif
 
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion )
@@ -585,20 +583,4 @@ foreign import stdcall unsafe "shlobj.h SHGetFolderPathW"
                               -> CInt
                               -> CWString
                               -> IO CInt
-#endif
-
-#if !(__HUGS__ || __GLASGOW_HASKELL__ > 606)
--- Compat: this function only appears in FilePath > 1.0
--- (which at the time of writing is unreleased)
-dropDrive :: FilePath -> FilePath
-dropDrive (c:cs) | isPathSeparator c = cs
-dropDrive (_:':':c:cs) | isWindows
-                      && isPathSeparator c = cs  -- path with drive letter
-dropDrive (_:':':cs)   | isWindows         = cs
-dropDrive cs = cs
-
-isWindows :: Bool
-isWindows = case buildOS of
-  Windows -> True
-  _       -> False
 #endif
