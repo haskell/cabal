@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Heuristics
@@ -34,9 +33,7 @@ import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
 import Control.Applicative ( pure, (<$>), (<*>) )
 import Control.Monad (liftM )
 import Data.Char   ( isUpper, isLower, isSpace )
-#if MIN_VERSION_base(3,0,3)
 import Data.Either ( partitionEithers )
-#endif
 import Data.List   ( isPrefixOf )
 import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
 import Data.Monoid ( mempty, mappend )
@@ -222,11 +219,3 @@ test db testProjectRoot = do
   print $ knownCategories db
 -}
 
-#if MIN_VERSION_base(3,0,3)
-#else
-partitionEithers :: [Either a b] -> ([a],[b])
-partitionEithers = foldr (either left right) ([],[])
- where
-   left  a (l, r) = (a:l, r)
-   right a (l, r) = (l, a:r)
-#endif
