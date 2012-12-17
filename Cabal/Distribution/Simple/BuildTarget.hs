@@ -55,7 +55,6 @@ import Data.Maybe
 import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
-import Data.Map (Map)
 import Control.Monad
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
@@ -884,7 +883,7 @@ matchExactly xs =
 -- function, then we would get case insensitive matching (but it will still
 -- report an exact match when the case matches too).
 --
-matchInexactly :: forall a a' b. (Ord a, Ord a') =>
+matchInexactly :: (Ord a, Ord a') =>
                         (a -> a') ->
                         [(a, b)] -> (a -> Match b)
 matchInexactly cannonicalise xs =
@@ -894,11 +893,9 @@ matchInexactly cannonicalise xs =
                          Just ys -> inexactMatches ys
                          Nothing -> matchZero
   where
-    m :: Ord a => Map a [b]
     m = Map.fromListWith (++) [ (k,[x]) | (k,x) <- xs ]
 
     -- the map of canonicalised keys to groups of inexact matches
-    m' :: Ord a' => Map a' [b]
     m' = Map.mapKeysWith (++) cannonicalise m
 
 
