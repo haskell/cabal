@@ -24,12 +24,15 @@ module Distribution.Client.Init (
 import System.IO
   ( hSetBuffering, stdout, BufferMode(..) )
 import System.Directory
-  ( getCurrentDirectory, doesDirectoryExist, doesFileExist, copyFile )
+  ( getCurrentDirectory, doesDirectoryExist, doesFileExist, copyFile
+  , getDirectoryContents )
 import System.FilePath
-  ( (</>), (<.>) )
+  ( (</>), (<.>), takeBaseName )
 import Data.Time
   ( getCurrentTime, utcToLocalTime, toGregorian, localDay, getCurrentTimeZone )
 
+import Data.Char
+  ( toUpper )
 import Data.List
   ( intercalate, nub, groupBy, (\\) )
 import Data.Maybe
@@ -125,6 +128,7 @@ extendFlags pkgIx =
   >=> getHomepage
   >=> getSynopsis
   >=> getCategory
+  >=> getExtraSourceFiles
   >=> getLibOrExec
   >=> getLanguage
   >=> getGenComments
@@ -230,6 +234,30 @@ getCategory flags = do
          ?>> fmap join (maybePrompt flags
                          (promptListOptional "Project category" [Codec ..]))
   return $ flags { category = maybeToFlag cat }
+
+-- | Try to guess extra source files (don't prompt the user).
+getExtraSourceFiles :: InitFlags -> IO InitFlags
+getExtraSourceFiles flags = do
+  extraSrcFiles <-     return (extraSrc flags)
+                   ?>> Just `fmap` guessExtraSourceFiles flags
+
+  return $ flags { extraSrc = extraSrcFiles }
+
+-- | Try to guess things to include in the extra-source-files field.
+--   For now, we just look for things in the root directory named
+--   'readme', 'changes', or 'changelog', with any sort of
+--   capitalization and any extension.
+guessExtraSourceFiles :: InitFlags -> IO [FilePath]
+guessExtraSourceFiles flags = do
+  dir <-
+    maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
+  files <- getDirectoryContents dir
+  return $ filter isExtra files
+
+  where
+    isExtra = (`elem` ["README", "CHANGES", "CHANGELOG"])
+            . map toUpper
+            . takeBaseName
 
 -- | Ask whether the project builds a library or executable.
 getLibOrExec :: InitFlags -> IO InitFlags
@@ -653,9 +681,9 @@ generateCabalFile fileName c =
                 Nothing
                 True
 
-       , fieldS "extra-source-files" NoFlag
+       , fieldS "extra-source-files" (listFieldS (extraSrc c))
                 (Just "Extra files to be distributed with the package, such as examples or a README.")
-                False
+                True
 
        , field  "cabal-version" (Flag $ orLaterVersion (Version [1,10] []))
                 (Just "Constraint on the version of Cabal needed to build this package.")
