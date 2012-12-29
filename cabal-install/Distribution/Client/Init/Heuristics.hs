@@ -98,7 +98,7 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
     scanRecursive parent hierarchy entry
       | isUpper (head entry) = scan (parent </> entry) (entry : hierarchy)
       | isLower (head entry) && not (ignoreDir entry) =
-          scanForModulesIn projectRoot $ foldl (</>) srcRoot (entry : hierarchy)
+          scanForModulesIn projectRoot $ foldl (</>) srcRoot (reverse (entry : hierarchy))
       | otherwise = return []
     ignoreDir ('.':_)  = True
     ignoreDir dir      = dir `elem` ["dist", "_darcs"]
