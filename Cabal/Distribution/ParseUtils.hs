@@ -94,7 +94,7 @@ import Data.List (sortBy)
 
 type LineNo = Int
 
-data PError = AmbigousParse String LineNo
+data PError = AmbiguousParse String LineNo
             | NoParse String LineNo
             | TabsError LineNo
             | FromString String (Maybe LineNo)
@@ -139,8 +139,8 @@ runP line fieldname p s =
     []  -> case [ x | (x,ys) <- results, all isSpace ys ] of
              [a] -> ParseOk (utf8Warnings line fieldname s) a
              []  -> ParseFailed (NoParse fieldname line)
-             _   -> ParseFailed (AmbigousParse fieldname line)
-    _   -> ParseFailed (AmbigousParse fieldname line)
+             _   -> ParseFailed (AmbiguousParse fieldname line)
+    _   -> ParseFailed (AmbiguousParse fieldname line)
   where results = readP_to_S p s
 
 runE :: LineNo -> String -> ReadE a -> String -> ParseResult a
@@ -157,10 +157,10 @@ utf8Warnings line fieldname s =
          , '\xfffd' `elem` l ]
 
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
-locatedErrorMsg (AmbigousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'.")
-locatedErrorMsg (NoParse f n)       = (Just n, "Parse of field '"++f++"' failed.")
-locatedErrorMsg (TabsError n)       = (Just n, "Tab used as indentation.")
-locatedErrorMsg (FromString s n)    = (n, s)
+locatedErrorMsg (AmbiguousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'.")
+locatedErrorMsg (NoParse f n)        = (Just n, "Parse of field '"++f++"' failed.")
+locatedErrorMsg (TabsError n)        = (Just n, "Tab used as indentation.")
+locatedErrorMsg (FromString s n)     = (n, s)
 
 syntaxError :: LineNo -> String -> ParseResult a
 syntaxError n s = ParseFailed $ FromString s (Just n)
