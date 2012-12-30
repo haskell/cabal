@@ -157,8 +157,10 @@ utf8Warnings line fieldname s =
          , '\xfffd' `elem` l ]
 
 locatedErrorMsg :: PError -> (Maybe LineNo, String)
-locatedErrorMsg (AmbiguousParse f n) = (Just n, "Ambiguous parse in field '"++f++"'.")
-locatedErrorMsg (NoParse f n)        = (Just n, "Parse of field '"++f++"' failed.")
+locatedErrorMsg (AmbiguousParse f n) = (Just n,
+                                        "Ambiguous parse in field '"++f++"'.")
+locatedErrorMsg (NoParse f n)        = (Just n,
+                                        "Parse of field '"++f++"' failed.")
 locatedErrorMsg (TabsError n)        = (Just n, "Tab used as indentation.")
 locatedErrorMsg (FromString s n)     = (n, s)
 
@@ -228,7 +230,8 @@ listField name showF readF get set =
   where
     set' xs b = set (get b ++ xs) b
 
-optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])]) -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
+optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])])
+             -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
 optsField name flavor get set =
    liftField (fromMaybe [] . lookup flavor . get)
              (\opts b -> set (reorder (update flavor opts (get b))) b) $
@@ -244,7 +247,7 @@ optsField name flavor get set =
 
 -- TODO: this is a bit smelly hack. It's because we want to parse bool fields
 --       liberally but not accept new parses. We cannot do that with ReadP
---       because it does not support warnings. We need a new parser framwork!
+--       because it does not support warnings. We need a new parser framework!
 boolField :: String -> (b -> Bool) -> (Bool -> b -> b) -> FieldDescr b
 boolField name get set = liftField get set (FieldDescr name showF readF)
   where
@@ -567,7 +570,8 @@ ifelse (Section n "if"   cond thenpart:fs)
        | otherwise     = do tp  <- ifelse thenpart
                             fs' <- ifelse fs
                             return (IfBlock n cond tp []:fs')
-ifelse (Section n "else" _ _:_) = syntaxError n "stray 'else' with no preceding 'if'"
+ifelse (Section n "else" _ _:_) = syntaxError n
+                                  "stray 'else' with no preceding 'if'"
 ifelse (Section n s a fs':fs) = do fs''  <- ifelse fs'
                                    fs''' <- ifelse fs
                                    return (Section n s a fs'' : fs''')
@@ -593,7 +597,8 @@ betweenSpaces act = do skipSpaces
 
 parseBuildTool :: ReadP r Dependency
 parseBuildTool = do name <- parseBuildToolNameQ
-                    ver <- betweenSpaces $ parseVersionRangeQ <++ return anyVersion
+                    ver <- betweenSpaces $
+                           parseVersionRangeQ <++ return anyVersion
                     return $ Dependency name ver
 
 parseBuildToolNameQ :: ReadP r PackageName
@@ -611,7 +616,8 @@ parseBuildToolName = do ns <- sepBy1 component (ReadP.char '-')
 -- eg "gtk+-2.0" is a valid pkg-config package _name_.
 -- It then has a package version number like 2.10.13
 parsePkgconfigDependency :: ReadP r Dependency
-parsePkgconfigDependency = do name <- munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+parsePkgconfigDependency = do name <- munch1
+                                      (\c -> isAlphaNum c || c `elem` "+-._")
                               ver <- betweenSpaces $
                                      parseVersionRangeQ <++ return anyVersion
                               return $ Dependency (PackageName name) ver

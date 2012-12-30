@@ -708,17 +708,22 @@ readUserConstraint str =
 
 --FIXME: use Text instance for FlagName and FlagAssignment
 instance Text UserConstraint where
-  disp (UserConstraintVersion   pkgname verrange) = disp pkgname <+> disp verrange
-  disp (UserConstraintInstalled pkgname)          = disp pkgname <+> Disp.text "installed"
-  disp (UserConstraintSource    pkgname)          = disp pkgname <+> Disp.text "source"
-  disp (UserConstraintFlags     pkgname flags)    = disp pkgname <+> dispFlagAssignment flags
+  disp (UserConstraintVersion   pkgname verrange) = disp pkgname
+                                                    <+> disp verrange
+  disp (UserConstraintInstalled pkgname)          = disp pkgname
+                                                    <+> Disp.text "installed"
+  disp (UserConstraintSource    pkgname)          = disp pkgname
+                                                    <+> Disp.text "source"
+  disp (UserConstraintFlags     pkgname flags)    = disp pkgname
+                                                    <+> dispFlagAssignment flags
     where
       dispFlagAssignment = Disp.hsep . map dispFlagValue
       dispFlagValue (f, True)   = Disp.char '+' <> dispFlagName f
       dispFlagValue (f, False)  = Disp.char '-' <> dispFlagName f
       dispFlagName (FlagName f) = Disp.text f
 
-  disp (UserConstraintStanzas   pkgname stanzas)  = disp pkgname <+> dispStanzas stanzas
+  disp (UserConstraintStanzas   pkgname stanzas)  = disp pkgname
+                                                    <+> dispStanzas stanzas
     where
       dispStanzas = Disp.hsep . map dispStanza
       dispStanza TestStanzas  = Disp.text "test"
