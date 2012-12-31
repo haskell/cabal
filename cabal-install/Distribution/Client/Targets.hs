@@ -734,7 +734,7 @@ instance Text UserConstraint where
       spaces = Parse.satisfy isSpace >> Parse.skipSpaces
 
       parseConstraint pkgname =
-            (parse >>= return . UserConstraintVersion pkgname)
+            ((parse >>= return . UserConstraintVersion pkgname)
         +++ (do spaces
                 _ <- Parse.string "installed"
                 return (UserConstraintInstalled pkgname))
@@ -746,7 +746,7 @@ instance Text UserConstraint where
                 return (UserConstraintStanzas pkgname [TestStanzas]))
         +++ (do spaces
                 _ <- Parse.string "bench"
-                return (UserConstraintStanzas pkgname [BenchStanzas]))
+                return (UserConstraintStanzas pkgname [BenchStanzas])))
         <++ (parseFlagAssignment >>= (return . UserConstraintFlags pkgname))
 
       parseFlagAssignment = Parse.many1 (spaces >> parseFlagValue)
