@@ -23,7 +23,7 @@ Copyright:          2005 Lemmih <lemmih@gmail.com>
 Category:           Distribution
 Build-type:         Simple
 Extra-Source-Files: README bash-completion/cabal bootstrap.sh
-Cabal-Version:      >= 1.6
+Cabal-Version:      >= 1.8
 
 source-repository head
   type:     git
@@ -36,16 +36,15 @@ flag old-base
 
 flag bytestring-in-base
 
-Executable cabal
-    Main-Is:            Main.hs
-    ghc-options:        -Wall
+Library
+    ghc-options: -Wall
     if !arch(arm)
        ghc-options: -threaded
     else
        cc-options:  -DCABAL_NO_THREADED
     if impl(ghc >= 6.8)
       ghc-options: -fwarn-tabs
-    Other-Modules:
+    Exposed-Modules:
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
@@ -113,8 +112,10 @@ Executable cabal
         Distribution.Client.Win32SelfUpgrade
         Distribution.Compat.Exception
         Distribution.Compat.FilePerms
+        Distribution.Compat.Semaphore
         Distribution.Compat.SetEnv
         Distribution.Compat.Time
+    Other-Modules:
         Paths_cabal_install
 
     build-depends: base     >= 2        && < 5,
@@ -150,3 +151,17 @@ Executable cabal
     else
       build-depends: unix >= 1.0 && < 2.7
     c-sources: cbits/getnumcores.c
+
+Executable cabal
+    Main-Is:            Main.hs
+    hs-source-dirs:     src
+    ghc-options:        -Wall
+    build-depends:      base          >= 2      && < 5,
+                        Cabal         >= 1.17.0 && < 1.18,
+                        cabal-install >= 1.17.0 && < 1.18,
+                        filepath      >= 1.0    && < 1.4
+    if flag(old-base)
+      build-depends: base < 3
+    else
+      build-depends: base       >= 3,
+                     directory  >= 1 && < 1.3
