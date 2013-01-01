@@ -13,7 +13,6 @@ module Distribution.Simple.Program.Hpc
     , union
     ) where
 
-import Control.Monad ( unless )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Simple.Program.Run
          ( ProgramInvocation, programInvocation, runProgramInvocation )
@@ -23,29 +22,41 @@ import Distribution.Simple.Utils ( warn )
 import Distribution.Verbosity ( Verbosity )
 import Distribution.Version ( Version(..), orLaterVersion, withinRange )
 
+-- | Invoke hpc with the given parameters.
+--
+-- Prior to HPC version 0.7 (packaged with GHC 7.8), hpc did not handle
+-- multiple .mix paths correctly, so we print a warning, and only pass it the
+-- first path in the list. This means that e.g. test suites that import their
+-- library as a dependency can still work, but those that include the library
+-- modules directly (in other-modules) don't.
 markup :: ConfiguredProgram
+       -> Version
        -> Verbosity
        -> FilePath            -- ^ Path to .tix file
        -> [FilePath]          -- ^ Paths to .mix file directories
        -> FilePath            -- ^ Path where html output should be located
        -> [ModuleName]        -- ^ List of modules to exclude from report
        -> IO ()
-markup hpc verbosity tixFile hpcDirs destDir excluded = do
-    unless atLeastHpc07 $ warn verbosity $
-           "This version of HPC has known issues. Coverage report generation "
-        ++ "may fail unexpectedly. Please upgrade to HPC 0.7 or later "
-        ++ "(GHC 7.8 or later) as soon as possible."
-        ++ versionMsg
+markup hpc hpcVer verbosity tixFile hpcDirs destDir excluded = do
+    hpcDirs' <- if withinRange hpcVer (orLaterVersion version07)
+        then return hpcDirs
+        else do
+            warn verbosity $ "Your version of HPC (" ++ display hpcVer
+                ++ ") does not properly handle multiple search paths. "
+                ++ "Coverage report generation may fail unexpectedly. These "
+                ++ "issues are addressed in version 0.7 or later (GHC 7.8 or "
+                ++ "later)."
+                ++ if null droppedDirs
+                    then ""
+                    else " The following search paths have been abandoned: "
+                        ++ show droppedDirs
+            return passedDirs
+
     runProgramInvocation verbosity
       (markupInvocation hpc tixFile hpcDirs' destDir excluded)
   where
-    hpcDirs' | atLeastHpc07 = hpcDirs
-             | otherwise = take 1 hpcDirs
-    atLeastHpc07 = maybe False (flip withinRange $ orLaterVersion version07)
-        $ programVersion hpc
     version07 = Version { versionBranch = [0, 7], versionTags = [] }
-    versionMsg = maybe "" (\v -> " (Found HPC " ++ display v ++ ")")
-                          (programVersion hpc)
+    (passedDirs, droppedDirs) = splitAt 1 hpcDirs
 
 markupInvocation :: ConfiguredProgram
                  -> FilePath            -- ^ Path to .tix file
