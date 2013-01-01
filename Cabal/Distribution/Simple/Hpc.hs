@@ -62,10 +62,11 @@ import Distribution.PackageDescription
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Program
     ( hpcProgram
-    , requireProgram
+    , requireProgramVersion
     )
 import Distribution.Simple.Program.Hpc ( markup, union )
 import Distribution.Simple.Utils ( notice )
+import Distribution.Version ( anyVersion )
 import Distribution.Text
 import Distribution.Verbosity ( Verbosity() )
 import System.Directory ( createDirectoryIfMissing, doesFileExist )
@@ -141,8 +142,11 @@ markupTest :: Verbosity
 markupTest verbosity lbi distPref libName suite = do
     tixFileExists <- doesFileExist $ tixFilePath distPref $ testName suite
     when tixFileExists $ do
-        (hpc, _) <- requireProgram verbosity hpcProgram $ withPrograms lbi
-        markup hpc verbosity
+        -- behaviour of 'markup' depends on version, so we need *a* version
+        -- but no particular one
+        (hpc, hpcVer, _) <- requireProgramVersion verbosity
+            hpcProgram anyVersion (withPrograms lbi)
+        markup hpc hpcVer verbosity
             (tixFilePath distPref $ testName suite) mixDirs
             (htmlDir distPref $ testName suite)
             (testModules suite ++ [ main ])
@@ -163,13 +167,16 @@ markupPackage verbosity lbi distPref libName suites = do
     let tixFiles = map (tixFilePath distPref . testName) suites
     tixFilesExist <- mapM doesFileExist tixFiles
     when (and tixFilesExist) $ do
-        (hpc, _) <- requireProgram verbosity hpcProgram $ withPrograms lbi
+        -- behaviour of 'markup' depends on version, so we need *a* version
+        -- but no particular one
+        (hpc, hpcVer, _) <- requireProgramVersion verbosity
+            hpcProgram anyVersion (withPrograms lbi)
         let outFile = tixFilePath distPref libName
             htmlDir' = htmlDir distPref libName
             excluded = concatMap testModules suites ++ [ main ]
         createDirectoryIfMissing True $ takeDirectory outFile
         union hpc verbosity tixFiles outFile excluded
-        markup hpc verbosity outFile mixDirs htmlDir' excluded
+        markup hpc hpcVer verbosity outFile mixDirs htmlDir' excluded
         notice verbosity $ "Package coverage report written to "
                            ++ htmlDir' </> "hpc_index.html"
   where
