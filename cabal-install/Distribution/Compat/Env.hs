@@ -15,7 +15,7 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Compat.Env (
-  setEnv
+  lookupEnv, setEnv
 ) where
 
 #ifdef __GLASGOW_HASKELL__
@@ -30,12 +30,28 @@ import Foreign.C.String
 import Foreign.C.Error (throwErrnoIfMinus1_)
 #endif /* mingw32_HOST_OS */
 
+import System.Environment (getEnv)
+#if MIN_VERSION_base(4,6,0)
+import System.Environment (lookupEnv)
+#else
+import Distribution.Compat.Exception (catchIO)
+#endif
+
 #if __GLASGOW_HASKELL__ > 611
 import System.Posix.Internals ( withFilePath )
-#else
+#endif /* __GLASGOW_HASKELL__ > 611 */
+
+#if __GLASGOW_HASKELL__ <= 611
 withFilePath :: FilePath -> (CString -> IO a) -> IO a
 withFilePath = withCString
-#endif /* __GLASGOW_HASKELL__ > 611 */
+#endif /* __GLASGOW_HASKELL__ <= 611 */
+
+#if !MIN_VERSION_base(4,6,0)
+-- | @lookupEnv var@ returns the value of the environment variable @var@, or
+-- @Nothing@ if there is no such value.
+lookupEnv :: String -> IO (Maybe String)
+lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
+#endif /* !MIN_VERSION_base(4,6,0) */
 
 #ifdef mingw32_HOST_OS
 # if defined(i386_HOST_ARCH)
