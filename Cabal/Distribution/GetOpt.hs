@@ -36,7 +36,7 @@ over 1100 lines, we need only 195 here, including a 46 line example!
 :-)
 -}
 
--- #hide
+{-# OPTIONS_HADDOCK hide #-}
 module Distribution.GetOpt (
    -- * GetOpt
    getOpt, getOpt',
