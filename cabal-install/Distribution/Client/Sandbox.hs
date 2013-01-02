@@ -57,7 +57,7 @@ import Distribution.Simple.Utils              ( die, debug, notice, info
                                               , debugNoWrap, intercalate
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
-import Distribution.Compat.Env                ( setEnv )
+import Distribution.Compat.Env                ( lookupEnv, setEnv )
 import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
 import Control.Exception                      ( bracket_ )
@@ -69,7 +69,6 @@ import System.Directory                       ( canonicalizePath
                                               , getCurrentDirectory
                                               , removeDirectoryRecursive
                                               , removeFile )
-import System.Environment                     ( getEnv )
 import System.FilePath                        ( (</>), getSearchPath
                                               , searchPathSeparator )
 
@@ -109,8 +108,9 @@ withSandboxBinDirOnSearchPath sandboxDir = bracket_ addBinDir rmBinDir
     -- required changes are too intrusive.
     addBinDir :: IO ()
     addBinDir = do
-      oldPath <- getEnv "PATH"
-      let newPath = sandboxBin ++ (searchPathSeparator:oldPath)
+      mbOldPath <- lookupEnv "PATH"
+      let newPath = maybe sandboxBin ((++) sandboxBin . (:) searchPathSeparator)
+                    mbOldPath
       setEnv "PATH" newPath
 
     rmBinDir :: IO ()
