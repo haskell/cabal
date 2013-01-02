@@ -111,9 +111,9 @@ Library
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Compat.Exception
+        Distribution.Compat.Env
         Distribution.Compat.FilePerms
         Distribution.Compat.Semaphore
-        Distribution.Compat.SetEnv
         Distribution.Compat.Time
     Other-Modules:
         Paths_cabal_install

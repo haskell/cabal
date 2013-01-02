@@ -2,7 +2,7 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Compat.SetEnv
+-- Module      :  Distribution.Compat.Env
 -- Copyright   :  (c) Simon Hengel 2012
 -- License     :  BSD-style (see the file LICENSE)
 --
@@ -14,7 +14,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Distribution.Compat.SetEnv (
+module Distribution.Compat.Env (
   setEnv
 ) where
 
@@ -44,7 +44,7 @@ withFilePath = withCString
 #  define WINDOWS_CCONV ccall
 # else
 #  error Unknown mingw32 arch
-# endif
+# endif /* i386_HOST_ARCH */
 
 foreign import WINDOWS_CCONV unsafe "windows.h GetLastError"
   c_GetLastError:: IO DWORD

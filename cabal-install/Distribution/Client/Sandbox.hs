@@ -57,7 +57,7 @@ import Distribution.Simple.Utils              ( die, debug, notice, info
                                               , debugNoWrap, intercalate
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
-import Distribution.Compat.SetEnv             ( setEnv )
+import Distribution.Compat.Env                ( setEnv )
 import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
 import Control.Exception                      ( bracket_ )
