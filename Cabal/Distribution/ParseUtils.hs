@@ -47,7 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 -- This module is meant to be local-only to Distribution...
 
--- #hide
+{-# OPTIONS_HADDOCK hide #-}
 module Distribution.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
