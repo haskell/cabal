@@ -343,6 +343,10 @@ describe the package as a whole:
 :   The name of a file containing the precise license for this package.
     It will be installed with the package.
 
+`extra-license-files:` _filename list_
+:   A list of files containing additional license material. They will be
+    installed with the package.
+
 `copyright:` _freeform_
 :   The content of a copyright notice, typically the name of the holder
     of the copyright on the package and the year(s) from which copyright

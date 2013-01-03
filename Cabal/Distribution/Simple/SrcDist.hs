@@ -223,6 +223,8 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
 
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbosity targetDir (licenseFile pkg_descr)
+  flip mapM_ (extraLicenseFiles pkg_descr) $ \fpath -> do
+    copyFileTo verbosity targetDir fpath
   flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
     files <- matchFileGlob fpath
     sequence_

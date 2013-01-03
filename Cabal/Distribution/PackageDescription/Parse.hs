@@ -165,11 +165,14 @@ pkgDescrFieldDescrs =
            showFilePath           parseFilePathQ
            dataDir                (\val pkg -> pkg{dataDir=val})
  , listField "extra-source-files"
-           showFilePath    parseFilePathQ
+           showFilePath           parseFilePathQ
            extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
  , listField "extra-tmp-files"
-           showFilePath       parseFilePathQ
+           showFilePath           parseFilePathQ
            extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
+ , listField "extra-license-files"
+           showFilePath           parseFilePathQ
+           extraLicenseFiles      (\val pkg -> pkg{extraLicenseFiles=val})
  ]
 
 -- | Store any fields beginning with "x-" in the customFields field of
