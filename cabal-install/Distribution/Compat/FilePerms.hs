@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
--- #hide
+{-# OPTIONS_HADDOCK hide #-}
 module Distribution.Compat.FilePerms (
   setFileOrdinary,
   setFileExecutable,
