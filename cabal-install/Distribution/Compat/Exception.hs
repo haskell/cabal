@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -cpp #-}
 {-# OPTIONS_NHC98 -cpp #-}
 {-# OPTIONS_JHC -fcpp #-}
--- #hide
+{-# OPTIONS_HADDOCK hide #-}
 module Distribution.Compat.Exception (
   SomeException,
   onException,
