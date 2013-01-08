@@ -172,6 +172,7 @@ Test-Suite unit-tests
   hs-source-dirs: tests
   build-depends:
         base,
+        filepath,
         test-framework,
         test-framework-hunit,
         HUnit,

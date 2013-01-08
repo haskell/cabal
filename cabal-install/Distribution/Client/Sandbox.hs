@@ -15,7 +15,8 @@ module Distribution.Client.Sandbox (
     sandboxBuild,
     sandboxInstall,
 
-    dumpPackageEnvironment
+    dumpPackageEnvironment,
+    withSandboxBinDirOnSearchPath
   ) where
 
 import Distribution.Client.Setup
