@@ -1,6 +1,4 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp -fffi #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Win32SelfUpgrade

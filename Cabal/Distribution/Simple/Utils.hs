@@ -1,6 +1,4 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp -fffi #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
@@ -141,10 +139,8 @@ module Distribution.Simple.Utils (
 
 import Control.Monad
     ( when, unless, filterM )
-#ifdef __GLASGOW_HASKELL__
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
-#endif
 import Data.List
   ( nub, unfoldr, isPrefixOf, tails, intercalate )
 import Data.Char as Char
@@ -176,10 +172,8 @@ import System.IO
 import System.IO.Error as IO.Error
     ( isDoesNotExistError, isAlreadyExistsError
     , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
-#if !defined(__HUGS__)
 import System.IO.Error
     ( ioeSetLocation, ioeGetLocation )
-#endif
 import System.IO.Unsafe
     ( unsafeInterleaveIO )
 import qualified Control.Exception as Exception
@@ -196,15 +190,10 @@ import Distribution.Version
 import Control.Exception (evaluate)
 import System.Process (runProcess)
 
-#ifdef __GLASGOW_HASKELL__
 import Control.Concurrent (forkIO)
 import System.Process (runInteractiveProcess, waitForProcess)
 #if __GLASGOW_HASKELL__ >= 702
 import System.Process (showCommandForUser)
-#endif
-#else
-import System.Cmd (system)
-import System.Directory (getTemporaryDirectory)
 #endif
 
 import Distribution.Compat.CopyFile
@@ -239,12 +228,8 @@ dieWithLocation filename lineno msg =
           . flip ioeSetFileName (normalise filename)
           $ userError msg
   where
-#if defined(__HUGS__)
-    setLocation _        err = err
-#else
     setLocation Nothing  err = err
     setLocation (Just n) err = ioeSetLocation err (show n)
-#endif
 
 die :: String -> IO a
 die msg = ioError (userError msg)
@@ -262,13 +247,9 @@ topHandler prog = catchIO prog handle
         file         = case ioeGetFileName ioe of
                          Nothing   -> ""
                          Just path -> path ++ location ++ ": "
-#if defined(__HUGS__)
-        location     = ""
-#else
         location     = case ioeGetLocation ioe of
                          l@(n:_) | n >= '0' && n <= '9' -> ':' : l
                          _                              -> ""
-#endif
         detail       = ioeGetErrorString ioe
 
 -- | Non fatal conditions that may be indicative of an error or problem.
@@ -465,7 +446,6 @@ rawSystemStdInOut :: Verbosity
 rawSystemStdInOut verbosity path args input outputBinary = do
   printRawCommandAndArgs verbosity path args
 
-#ifdef __GLASGOW_HASKELL__
   Exception.bracket
      (runInteractiveProcess path args Nothing Nothing)
      (\(inh,outh,errh,_) -> hClose inh >> hClose outh >> hClose errh)
@@ -512,33 +492,6 @@ rawSystemStdInOut verbosity path args input outputBinary = do
                           " with error message:\n" ++ err
 
       return (out, err, exitcode)
-#else
-  tmpDir <- getTemporaryDirectory
-  withTempFile tmpDir ".cmd.stdout" $ \outName outHandle ->
-   withTempFile tmpDir ".cmd.stdin" $ \inName inHandle -> do
-    hClose outHandle
-
-    case input of
-      Nothing -> return ()
-      Just (inputStr, inputBinary) -> do
-        hSetBinaryMode inHandle inputBinary
-        hPutStr inHandle inputStr
-    hClose inHandle
-
-    let quote name = "'" ++ name ++ "'"
-        cmd = unwords (map quote (path:args))
-           ++ " <" ++ quote inName
-           ++ " >" ++ quote outName
-    exitcode <- system cmd
-
-    unless (exitcode == ExitSuccess) $
-      debug verbosity $ path ++ " returned " ++ show exitcode
-
-    Exception.bracket (openFile outName ReadMode) hClose $ \hnd -> do
-      hSetBinaryMode hnd outputBinary
-      output <- hGetContents hnd
-      length output `seq` return (output, "", exitcode)
-#endif
 
 
 -- | Look for a program on the path.

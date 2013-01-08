@@ -1,9 +1,4 @@
-{-# OPTIONS -cpp #-}
--- OPTIONS required for ghc-6.4.x compat, and must appear first
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -cpp #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Distribution.Compat.CopyFile (
   copyFile,
@@ -14,7 +9,6 @@ module Distribution.Compat.CopyFile (
   setDirOrdinary,
   ) where
 
-#ifdef __GLASGOW_HASKELL__
 
 import Control.Monad
          ( when )
@@ -36,7 +30,6 @@ import System.IO
          ( openBinaryFile, IOMode(ReadMode), hClose, hGetBuf, hPutBuf )
 import Foreign
          ( allocaBytes )
-#endif /* __GLASGOW_HASKELL__ */
 
 #ifndef mingw32_HOST_OS
 import System.Posix.Internals (withFilePath)
@@ -69,7 +62,6 @@ setFileExecutable _ = return ()
 setDirOrdinary = setFileExecutable
 
 copyFile :: FilePath -> FilePath -> IO ()
-#ifdef __GLASGOW_HASKELL__
 copyFile fromFPath toFPath =
   copy
     `catchIO` (\ioe -> throwIOIO (ioeSetLocation ioe "copyFile"))
@@ -89,6 +81,3 @@ copyFile fromFPath toFPath =
                   when (count > 0) $ do
                           hPutBuf hTo buffer count
                           copyContents hFrom hTo buffer
-#else
-copyFile fromFPath toFPath = readFile fromFPath >>= writeFile toFPath
-#endif
