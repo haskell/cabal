@@ -1,9 +1,4 @@
-{-# OPTIONS -cpp #-}
--- OPTIONS required for ghc-6.4.x compat, and must appear first
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -cpp #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Distribution.Compat.TempFile (
   openTempFile,
@@ -16,13 +11,6 @@ module Distribution.Compat.TempFile (
 import System.FilePath        ((</>))
 import Foreign.C              (eEXIST)
 
-#if __NHC__ || __HUGS__
-import System.IO              (openFile, openBinaryFile,
-                               Handle, IOMode(ReadWriteMode))
-import System.Directory       (doesFileExist)
-import System.FilePath        ((<.>), splitExtension)
-import System.IO.Error        (try, isAlreadyExistsError)
-#else
 import System.IO              (Handle, openTempFile, openBinaryTempFile)
 import Data.Bits              ((.|.))
 import System.Posix.Internals (c_open, c_close, o_CREAT, o_EXCL, o_RDWR,
@@ -32,15 +20,9 @@ import System.Posix.Internals (withFilePath)
 import Foreign.C              (CInt)
 import GHC.IO.Handle.FD       (fdToHandle)
 import Distribution.Compat.Exception (onException, tryIO)
-#endif
 import Foreign.C              (getErrno, errnoToIOError)
 
-#if __NHC__
-import System.Posix.Types     (CPid(..))
-foreign import ccall unsafe "getpid" c_getpid :: IO CPid
-#else
 import System.Posix.Internals (c_getpid)
-#endif
 
 #ifdef mingw32_HOST_OS
 import System.Directory       ( createDirectory )
@@ -56,43 +38,6 @@ import qualified System.Posix
 -- System.IO.openTempFile. This includes nhc-1.20, hugs-2006.9.
 -- TODO: Not sure about jhc
 
-#if __NHC__ || __HUGS__
--- use a temporary filename that doesn't already exist.
--- NB. *not* secure (we don't atomically lock the tmp file we get)
-openTempFile :: FilePath -> String -> IO (FilePath, Handle)
-openTempFile tmp_dir template
-  = do x <- getProcessID
-       findTempName x
-  where
-    (templateBase, templateExt) = splitExtension template
-    findTempName :: Int -> IO (FilePath, Handle)
-    findTempName x
-      = do let path = tmp_dir </> (templateBase ++ "-" ++ show x) <.> templateExt
-           b  <- doesFileExist path
-           if b then findTempName (x+1)
-                else do hnd <- openFile path ReadWriteMode
-                        return (path, hnd)
-
-openBinaryTempFile :: FilePath -> String -> IO (FilePath, Handle)
-openBinaryTempFile tmp_dir template
-  = do x <- getProcessID
-       findTempName x
-  where
-    (templateBase, templateExt) = splitExtension template
-    findTempName :: Int -> IO (FilePath, Handle)
-    findTempName x
-      = do let path = tmp_dir </> (templateBase ++ "-" ++ show x) <.> templateExt
-           b  <- doesFileExist path
-           if b then findTempName (x+1)
-                else do hnd <- openBinaryFile path ReadWriteMode
-                        return (path, hnd)
-
-openNewBinaryFile :: FilePath -> String -> IO (FilePath, Handle)
-openNewBinaryFile = openBinaryTempFile
-
-getProcessID :: IO Int
-getProcessID = fmap fromIntegral c_getpid
-#else
 -- This is a copy/paste of the openBinaryTempFile definition, but
 -- if uses 666 rather than 600 for the permissions. The base library
 -- needs to be changed to make this better.
@@ -159,7 +104,6 @@ std_flags, output_flags, rw_flags :: CInt
 std_flags    = o_NONBLOCK   .|. o_NOCTTY
 output_flags = std_flags    .|. o_CREAT
 rw_flags     = output_flags .|. o_RDWR
-#endif
 
 createTempDirectory :: FilePath -> String -> IO FilePath
 createTempDirectory dir template = do

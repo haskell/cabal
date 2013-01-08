@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Install
@@ -34,15 +33,10 @@ import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Control.Exception as Exception
          ( bracket, handleJust )
-#if MIN_VERSION_base(4,0,0)
 import Control.Exception as Exception
          ( Exception(toException), catches, Handler(Handler), IOException )
 import System.Exit
          ( ExitCode )
-#else
-import Control.Exception as Exception
-         ( Exception(IOException, ExitException) )
-#endif
 import Distribution.Compat.Exception
          ( SomeException, catchIO, catchExit )
 import Control.Monad
@@ -657,11 +651,7 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
       warn verbosity $ "Missing log file for build report: "
                     ++ fromMaybe ""  (ioeGetFileName ioe)
 
-#if MIN_VERSION_base(4,0,0)
     missingFile ioe
-#else
-    missingFile (IOException ioe)
-#endif
       | isDoesNotExistError ioe  = Just ioe
     missingFile _                = Nothing
 
@@ -1197,7 +1187,6 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 -- helper
 onFailure :: (SomeException -> BuildFailure) -> IO BuildResult -> IO BuildResult
 onFailure result action =
-#if MIN_VERSION_base(4,0,0)
   action `catches`
     [ Handler $ \ioe  -> handler (ioe  :: IOException)
     , Handler $ \exit -> handler (exit :: ExitCode)
@@ -1205,11 +1194,6 @@ onFailure result action =
   where
     handler :: Exception e => e -> IO BuildResult
     handler = return . Left . result . toException
-#else
-  action
-    `catchIO`   (return . Left . result . IOException)
-    `catchExit` (return . Left . result . ExitException)
-#endif
 
 
 -- ------------------------------------------------------------

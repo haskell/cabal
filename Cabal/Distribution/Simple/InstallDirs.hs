@@ -1,6 +1,4 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp -fffi #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.InstallDirs
@@ -559,9 +557,6 @@ getWindowsProgramFilesDir = do
 #if mingw32_HOST_OS
 shGetFolderPath :: CInt -> IO (Maybe FilePath)
 shGetFolderPath n =
-# if __HUGS__
-  return Nothing
-# else
   allocaArray long_path_size $ \pPath -> do
      r <- c_SHGetFolderPath nullPtr n nullPtr 0 pPath
      if (r /= 0)
@@ -569,7 +564,6 @@ shGetFolderPath n =
         else do s <- peekCWString pPath; return (Just s)
   where
     long_path_size      = 1024 -- MAX_PATH is 260, this should be plenty
-# endif
 
 csidl_PROGRAM_FILES :: CInt
 csidl_PROGRAM_FILES = 0x0026

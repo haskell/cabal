@@ -18,7 +18,6 @@ module Distribution.Compat.Env (
   lookupEnv, setEnv
 ) where
 
-#ifdef __GLASGOW_HASKELL__
 #ifdef mingw32_HOST_OS
 import GHC.Windows
 import Foreign.Safe
@@ -37,14 +36,7 @@ import System.Environment (lookupEnv)
 import Distribution.Compat.Exception (catchIO)
 #endif
 
-#if __GLASGOW_HASKELL__ > 611
 import System.Posix.Internals ( withFilePath )
-#endif /* __GLASGOW_HASKELL__ > 611 */
-
-#if __GLASGOW_HASKELL__ <= 611
-withFilePath :: FilePath -> (CString -> IO a) -> IO a
-withFilePath = withCString
-#endif /* __GLASGOW_HASKELL__ <= 611 */
 
 #if !MIN_VERSION_base(4,6,0)
 -- | @lookupEnv var@ returns the value of the environment variable @var@, or
@@ -69,7 +61,6 @@ eRROR_ENVVAR_NOT_FOUND :: DWORD
 eRROR_ENVVAR_NOT_FOUND = 203
 
 #endif /* mingw32_HOST_OS */
-#endif /* __GLASGOW_HASKELL__ */
 
 -- | @setEnv name value@ sets the specified environment variable to @value@.
 --
@@ -86,7 +77,6 @@ setEnv key value_
     value = takeWhile (/= '\NUL') value_
 
 setEnv_ :: String -> String -> IO ()
-#ifdef __GLASGOW_HASKELL__
 
 #ifdef mingw32_HOST_OS
 setEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do
@@ -106,7 +96,3 @@ foreign import ccall unsafe "setenv"
    c_setenv :: CString -> CString -> CInt -> IO CInt
 #endif /* mingw32_HOST_OS */
 
-#else
--- setEnv is a no-op on non-GHC compilers since we depend on GHC.Windows.
-setEnv_ _key _value = return ()
-#endif /* __GLASGOW_HASKELL__ */

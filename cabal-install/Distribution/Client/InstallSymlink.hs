@@ -1,9 +1,4 @@
-{-# OPTIONS -cpp #-}
--- OPTIONS required for ghc-6.4.x compat, and must appear first
 {-# LANGUAGE CPP #-}
-{-# OPTIONS_GHC -cpp #-}
-{-# OPTIONS_NHC98 -cpp #-}
-{-# OPTIONS_JHC -fcpp  #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.InstallSymlink
