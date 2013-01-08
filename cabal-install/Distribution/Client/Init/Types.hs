@@ -51,6 +51,7 @@ data InitFlags =
 
               , synopsis     :: Flag String
               , category     :: Flag (Either String Category)
+              , extraSrc     :: Maybe [String]
 
               , packageType  :: Flag PackageType
               , language     :: Flag Language
@@ -66,6 +67,10 @@ data InitFlags =
               , overwrite     :: Flag Bool
               }
   deriving (Show)
+
+  -- the Monoid instance for Flag has later values override earlier
+  -- ones, which is why we want Maybe [foo] for collecting foo values,
+  -- not Flag [foo].
 
 data PackageType = Library | Executable
   deriving (Show, Read, Eq)
@@ -90,6 +95,7 @@ instance Monoid InitFlags where
     , homepage       = mempty
     , synopsis       = mempty
     , category       = mempty
+    , extraSrc       = mempty
     , packageType    = mempty
     , language       = mempty
     , exposedModules = mempty
@@ -115,6 +121,7 @@ instance Monoid InitFlags where
     , homepage       = combine homepage
     , synopsis       = combine synopsis
     , category       = combine category
+    , extraSrc       = combine extraSrc
     , packageType    = combine packageType
     , language       = combine language
     , exposedModules = combine exposedModules

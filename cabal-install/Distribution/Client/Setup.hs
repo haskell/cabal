@@ -1094,6 +1094,12 @@ initCommand = CommandUI {
         (reqArg' "CATEGORY" (\s -> toFlag $ maybe (Left s) Right (readMaybe s))
                             (flagToList . fmap (either id show)))
 
+      , option ['x'] ["extra-source-file"]
+        "Extra source file to be distributed with tarball."
+        IT.extraSrc (\v flags -> flags { IT.extraSrc = v })
+        (reqArg' "FILE" (Just . (:[]))
+                        (fromMaybe []))
+
       , option [] ["is-library"]
         "Build a library."
         IT.packageType (\v flags -> flags { IT.packageType = v })
