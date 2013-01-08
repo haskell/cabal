@@ -29,10 +29,10 @@ import Foreign.C.String
 import Foreign.C.Error (throwErrnoIfMinus1_)
 #endif /* mingw32_HOST_OS */
 
-import System.Environment (getEnv)
 #if MIN_VERSION_base(4,6,0)
 import System.Environment (lookupEnv)
 #else
+import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchIO)
 #endif
 
@@ -44,23 +44,6 @@ import System.Posix.Internals ( withFilePath )
 lookupEnv :: String -> IO (Maybe String)
 lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
 #endif /* !MIN_VERSION_base(4,6,0) */
-
-#ifdef mingw32_HOST_OS
-# if defined(i386_HOST_ARCH)
-#  define WINDOWS_CCONV stdcall
-# elif defined(x86_64_HOST_ARCH)
-#  define WINDOWS_CCONV ccall
-# else
-#  error Unknown mingw32 arch
-# endif /* i386_HOST_ARCH */
-
-foreign import WINDOWS_CCONV unsafe "windows.h GetLastError"
-  c_GetLastError:: IO DWORD
-
-eRROR_ENVVAR_NOT_FOUND :: DWORD
-eRROR_ENVVAR_NOT_FOUND = 203
-
-#endif /* mingw32_HOST_OS */
 
 -- | @setEnv name value@ sets the specified environment variable to @value@.
 --
@@ -79,9 +62,18 @@ setEnv key value_
 setEnv_ :: String -> String -> IO ()
 
 #ifdef mingw32_HOST_OS
+
 setEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do
   success <- c_SetEnvironmentVariable k v
   unless success (throwGetLastError "setEnv")
+
+# if defined(i386_HOST_ARCH)
+#  define WINDOWS_CCONV stdcall
+# elif defined(x86_64_HOST_ARCH)
+#  define WINDOWS_CCONV ccall
+# else
+#  error Unknown mingw32 arch
+# endif /* i386_HOST_ARCH */
 
 foreign import WINDOWS_CCONV unsafe "windows.h SetEnvironmentVariableW"
   c_SetEnvironmentVariable :: LPTSTR -> LPTSTR -> IO Bool
