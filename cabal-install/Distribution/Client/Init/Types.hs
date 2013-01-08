@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -153,12 +152,3 @@ instance Text Category where
   disp  = Disp.text . show
   parse = Parse.choice $ map (fmap read . Parse.string . show) [Codec .. ]
 
-#if MIN_VERSION_base(3,0,0)
-#else
--- Compat instance for ghc-6.6 era
-instance Monoid a => Monoid (Maybe a) where
-  mempty = Nothing
-  Nothing `mappend` m = m
-  m `mappend` Nothing = m
-  Just m1 `mappend` Just m2 = Just (m1 `mappend` m2)
-#endif

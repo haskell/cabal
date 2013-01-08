@@ -42,11 +42,7 @@ import Data.Traversable
 import Control.Applicative
   ( (<$>) )
 import Control.Monad
-  ( when, unless )
-#if MIN_VERSION_base(3,0,0)
-import Control.Monad
-  ( (>=>), join )
-#endif
+  ( when, unless, (>=>), join )
 import Control.Arrow
   ( (&&&), (***) )
 
@@ -765,8 +761,3 @@ message :: InitFlags -> String -> IO ()
 message (InitFlags{quiet = Flag True}) _ = return ()
 message _ s = putStrLn s
 
-#if MIN_VERSION_base(3,0,0)
-#else
-(>=>)       :: Monad m => (a -> m b) -> (b -> m c) -> a -> m c
-f >=> g     = \x -> f x >>= g
-#endif
