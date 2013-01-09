@@ -38,9 +38,7 @@ flag bytestring-in-base
 
 Library
     ghc-options: -Wall
-    if !arch(arm)
-       ghc-options: -threaded
-    else
+    if arch(arm)
        cc-options:  -DCABAL_NO_THREADED
     if impl(ghc >= 6.8)
       ghc-options: -fwarn-tabs
@@ -156,6 +154,10 @@ Executable cabal
     Main-Is:            Main.hs
     hs-source-dirs:     src
     ghc-options:        -Wall
+    if !arch(arm)
+       ghc-options: -threaded
+    if impl(ghc >= 6.8)
+       ghc-options: -fwarn-tabs
     build-depends:      base          >= 2      && < 5,
                         Cabal         >= 1.17.0 && < 1.18,
                         cabal-install >= 1.17.0 && < 1.18,
@@ -179,3 +181,7 @@ Test-Suite unit-tests
         cabal-install,
         Cabal
   ghc-options: -Wall
+  if !arch(arm)
+     ghc-options: -threaded
+  if impl(ghc >= 6.8)
+     ghc-options: -fwarn-tabs
