@@ -527,15 +527,16 @@ showConfig = showConfigWithComments mempty
 
 showConfigWithComments :: SavedConfig -> SavedConfig -> String
 showConfigWithComments comment vals = Disp.render $
-      ppFields configFieldDescriptions comment vals
+      ppFields configFieldDescriptions mcomment vals
   $+$ Disp.text ""
   $+$ installDirsSection "user"   savedUserInstallDirs
   $+$ Disp.text ""
   $+$ installDirsSection "global" savedGlobalInstallDirs
   where
+    mcomment = Just comment
     installDirsSection name field =
       ppSection "install-dirs" name installDirsFields
-                (field comment) (field vals)
+                (fmap field mcomment) (field vals)
 
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions

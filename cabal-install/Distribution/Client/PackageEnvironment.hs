@@ -52,7 +52,7 @@ import Distribution.Compat.Exception   ( catchIO )
 import System.Directory                ( renameFile )
 import System.FilePath                 ( (<.>), (</>) )
 import System.IO.Error                 ( isDoesNotExistError )
-import Text.PrettyPrint                ( ($+$), (<+>), ($$), (<>) )
+import Text.PrettyPrint                ( ($+$) )
 
 import qualified Text.PrettyPrint          as Disp
 import qualified Distribution.Compat.ReadP as Parse
@@ -359,7 +359,8 @@ writePackageEnvironmentFile path incComments comments pkgEnv = do
   renameFile tmpPath path
   where
     pkgEnvStr = case incComments of
-      IncludeComments -> showPackageEnvironmentWithComments comments pkgEnv
+      IncludeComments -> showPackageEnvironmentWithComments
+                         (Just comments) pkgEnv
       NoComments      -> showPackageEnvironment pkgEnv
     explanation = unlines
       ["-- This is a Cabal package environment file."
@@ -378,38 +379,17 @@ writePackageEnvironmentFile path incComments comments pkgEnv = do
 
 -- | Pretty-print the package environment.
 showPackageEnvironment :: PackageEnvironment -> String
-showPackageEnvironment pkgEnv = Disp.render $
-      ppFields' pkgEnvFieldDescrs pkgEnv
-  $+$ Disp.text ""
-  $+$ ppSection' "install-dirs" "" installDirsFields (field pkgEnv)
-  where
-    field = savedUserInstallDirs . pkgEnvSavedConfig
-
-    -- Customised versions of functions from D.C.ParseUtils that do not print
-    -- fields with empty arguments.
-    ppFields' :: [FieldDescr a] -> a -> Disp.Doc
-    ppFields' fields a =
-      Disp.vcat [ ppField' name (getter a)
-                | FieldDescr name getter _ <- fields]
-
-    ppField' :: String -> Disp.Doc -> Disp.Doc
-    ppField' name arg
-      | Disp.isEmpty arg = Disp.empty
-      | otherwise        = Disp.text name <> Disp.colon <+> arg
-
-    ppSection' :: String -> String -> [FieldDescr a] -> a -> Disp.Doc
-    ppSection' name arg fields cur =
-      Disp.text name <+> Disp.text arg
-      $$ Disp.nest 2 (ppFields' fields cur)
+showPackageEnvironment pkgEnv = showPackageEnvironmentWithComments Nothing pkgEnv
 
 -- | Pretty-print the package environment with default values for empty fields
 -- commented out (just like the default ~/.cabal/config).
-showPackageEnvironmentWithComments :: PackageEnvironment -> PackageEnvironment
+showPackageEnvironmentWithComments :: (Maybe PackageEnvironment)
+                                      -> PackageEnvironment
                                       -> String
-showPackageEnvironmentWithComments defPkgEnv pkgEnv = Disp.render $
-      ppFields pkgEnvFieldDescrs defPkgEnv pkgEnv
+showPackageEnvironmentWithComments mdefPkgEnv pkgEnv = Disp.render $
+      ppFields pkgEnvFieldDescrs mdefPkgEnv pkgEnv
   $+$ Disp.text ""
   $+$ ppSection "install-dirs" "" installDirsFields
-                (field defPkgEnv) (field pkgEnv)
+                (fmap installDirsSection mdefPkgEnv) (installDirsSection pkgEnv)
   where
-    field = savedUserInstallDirs . pkgEnvSavedConfig
+    installDirsSection = savedUserInstallDirs . pkgEnvSavedConfig
