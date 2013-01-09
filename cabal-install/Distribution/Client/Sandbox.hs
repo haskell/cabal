@@ -141,7 +141,7 @@ dumpPackageEnvironment :: Verbosity -> SandboxFlags -> IO ()
 dumpPackageEnvironment verbosity _sandboxFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
   commentPkgEnv        <- commentPackageEnvironment sandboxDir
-  putStrLn . showPackageEnvironmentWithComments commentPkgEnv $ pkgEnv
+  putStrLn . showPackageEnvironmentWithComments (Just commentPkgEnv) $ pkgEnv
 
 -- | Entry point for the 'cabal sandbox-init' command.
 sandboxInit :: Verbosity -> SandboxFlags  -> GlobalFlags -> IO ()

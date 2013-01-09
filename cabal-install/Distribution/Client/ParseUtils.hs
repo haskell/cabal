@@ -19,7 +19,7 @@ import Control.Monad    ( foldM )
 import Text.PrettyPrint ( (<>), (<+>), ($$) )
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
-         ( Doc, text, colon, vcat, isEmpty, nest )
+         ( Doc, text, colon, vcat, empty, isEmpty, nest )
 
 --FIXME: replace this with something better
 parseFields :: [FieldDescr a] -> a -> [ParseUtils.Field] -> ParseResult a
@@ -37,19 +37,21 @@ parseFields fields = foldM setField
       warning $ "Unrecognized stanza on line " ++ show (lineNo f)
       return accum
 
--- | This is a customised version of the function from Cabal that also prints
--- default values for empty fields as comments.
+-- | This is a customised version of the functions from Distribution.ParseUtils
+-- that also optionally print default values for empty fields as comments.
 --
-ppFields :: [FieldDescr a] -> a -> a -> Disp.Doc
-ppFields fields def cur = Disp.vcat [ ppField name (getter def) (getter cur)
+ppFields :: [FieldDescr a] -> (Maybe a) -> a -> Disp.Doc
+ppFields fields def cur = Disp.vcat [ ppField name (fmap getter def) (getter cur)
                                     | FieldDescr name getter _ <- fields]
 
-ppField :: String -> Disp.Doc -> Disp.Doc -> Disp.Doc
-ppField name def cur
-  | Disp.isEmpty cur = Disp.text "--" <+> Disp.text name <> Disp.colon <+> def
-  | otherwise        =                    Disp.text name <> Disp.colon <+> cur
+ppField :: String -> (Maybe Disp.Doc) -> Disp.Doc -> Disp.Doc
+ppField name mdef cur
+  | Disp.isEmpty cur = maybe Disp.empty
+                       (\def -> Disp.text "--" <+> Disp.text name
+                                <> Disp.colon <+> def) mdef
+  | otherwise        = Disp.text name <> Disp.colon <+> cur
 
-ppSection :: String -> String -> [FieldDescr a] -> a -> a -> Disp.Doc
+ppSection :: String -> String -> [FieldDescr a] -> (Maybe a) -> a -> Disp.Doc
 ppSection name arg fields def cur =
      Disp.text name <+> Disp.text arg
   $$ Disp.nest 2 (ppFields fields def cur)
