@@ -64,6 +64,8 @@ module Distribution.Simple.SrcDist (
   snapshotPackage,
   snapshotVersion,
   dateToSnapshotNumber,
+
+  copyFileTo
   )  where
 
 import Distribution.PackageDescription
@@ -223,7 +225,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
 
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbosity targetDir (licenseFile pkg_descr)
-  flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
+  flip mapM_ (extraSrcFiles pkg_descr ++ extraHtmlFiles pkg_descr) $ \ fpath -> do
     files <- matchFileGlob fpath
     sequence_
       [ do copyFileTo verbosity targetDir file
