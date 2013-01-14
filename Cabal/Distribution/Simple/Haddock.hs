@@ -226,7 +226,6 @@ haddock pkg_descr lbi suffixes flags = do
       let dir = takeDirectory (flat_htmldir </> "html")
           InstallDirs { htmldir = flat_htmldir } =
               absoluteInstallDirs pkg_descr lbi NoCopyDest
-      -- sequence_ [ do copyFileTo verbosity dir file | file <- files ]
       forM_ files $ copyFileTo verbosity dir
   where
     verbosity     = flag haddockVerbosity
