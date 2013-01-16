@@ -221,7 +221,7 @@ haddock pkg_descr lbi suffixes flags = do
             runHaddock verbosity keepTempFiles confHaddock exeArgs'
         _ -> return ()
 
-    flip mapM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
+    forM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
       let dir = takeDirectory (flat_htmldir </> "html")
           InstallDirs { htmldir = flat_htmldir } =
@@ -588,7 +588,7 @@ hscolour' pkg_descr lbi suffixes flags = do
                    | otherwise -> return ()
            Just s -> copyFileVerbose verbosity s (outputDir </> "hscolour.css")
 
-         flip mapM_ moduleFiles $ \(m, inFile) ->
+         forM_ moduleFiles $ \(m, inFile) ->
              rawSystemProgram verbosity prog
                     ["-css", "-anchor", "-o" ++ outFile m, inFile]
         where
