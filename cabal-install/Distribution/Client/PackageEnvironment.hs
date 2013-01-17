@@ -367,13 +367,6 @@ writePackageEnvironmentFile path incComments comments pkgEnv = do
       ,"-- THIS FILE IS AUTO-GENERATED. DO NOT EDIT DIRECTLY."
       ,"-- Please create a 'cabal.config' file in the same directory"
       ,"-- if you want to change the default settings for this sandbox."
-      ,""
-      ,"-- The available configuration options are listed below."
-      ,"-- Some of them have default values listed."
-      ,""
-      ,"-- Lines (like this one) beginning with '--' are comments."
-      ,"-- Be careful with spaces and indentation because they are"
-      ,"-- used to indicate layout for nested sections."
       ,"",""
       ]
 
