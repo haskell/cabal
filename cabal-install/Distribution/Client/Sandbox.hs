@@ -316,9 +316,7 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
 
 configPackageDB' :: ConfigFlags -> PackageDBStack
 configPackageDB' cfg =
-  interpretPackageDbFlags userInstall (configPackageDBs cfg)
-  where
-    userInstall = fromFlagOrDefault True (configUserInstall cfg)
+  interpretPackageDbFlags {- userInstall = -} False (configPackageDBs cfg)
 
 configCompilerAux' :: ConfigFlags
                       -> IO (Compiler, ProgramConfiguration)
