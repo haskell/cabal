@@ -79,7 +79,7 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplateEnv, PathTe
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
          , withAllComponentsInBuildOrder
-         , absoluteInstallDirs, CopyDest(NoCopyDest) )
+         , CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths ( haddockName,
                                         hscolourPref, autogenModulesDir,
                                         )
@@ -223,10 +223,7 @@ haddock pkg_descr lbi suffixes flags = do
 
     forM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
-      let dir = takeDirectory (flat_htmldir </> "html")
-          InstallDirs { htmldir = flat_htmldir } =
-              absoluteInstallDirs pkg_descr lbi NoCopyDest
-      forM_ files $ copyFileTo verbosity dir
+      forM_ files $ copyFileTo verbosity (unDir' $ argOutputDir commonArgs)
   where
     verbosity     = flag haddockVerbosity
     keepTempFiles = flag haddockKeepTempFiles
