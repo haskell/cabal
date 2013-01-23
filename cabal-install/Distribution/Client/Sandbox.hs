@@ -313,13 +313,10 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
                         $ makeInstallPlan verbosity args installContext)
 
     processInstallPlan verbosity args installContext installPlan
-  where
 
 configPackageDB' :: ConfigFlags -> PackageDBStack
 configPackageDB' cfg =
-  interpretPackageDbFlags userInstall (configPackageDBs cfg)
-  where
-    userInstall = fromFlagOrDefault True (configUserInstall cfg)
+  interpretPackageDbFlags {- userInstall = -} False (configPackageDBs cfg)
 
 configCompilerAux' :: ConfigFlags
                       -> IO (Compiler, ProgramConfiguration)
