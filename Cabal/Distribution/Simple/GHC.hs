@@ -814,7 +814,7 @@ buildExe verbosity _pkg_descr lbi
 
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
   let exeNameReal = exeName' <.>
-                    (if takeExtension exeName' /= exeExtension
+                    (if takeExtension exeName' /= ('.':exeExtension)
                        then exeExtension
                        else "")
 
