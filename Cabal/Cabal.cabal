@@ -1,29 +1,29 @@
-Name: Cabal
-Version: 1.17.0
-Copyright: 2003-2006, Isaac Jones
+name: Cabal
+version: 1.17.0
+copyright: 2003-2006, Isaac Jones
            2005-2011, Duncan Coutts
-License: BSD3
-License-File: LICENSE
-Author: Isaac Jones <ijones@syntaxpolice.org>
+license: BSD3
+license-file: LICENSE
+author: Isaac Jones <ijones@syntaxpolice.org>
         Duncan Coutts <duncan@community.haskell.org>
-Maintainer: cabal-devel@haskell.org
-Homepage: http://www.haskell.org/cabal/
+maintainer: cabal-devel@haskell.org
+homepage: http://www.haskell.org/cabal/
 bug-reports: https://github.com/haskell/cabal/issues
-Synopsis: A framework for packaging Haskell software
-Description:
+synopsis: A framework for packaging Haskell software
+description:
         The Haskell Common Architecture for Building Applications and
         Libraries: a framework defining a common interface for authors to more
         easily build their Haskell applications in a portable way.
         .
         The Haskell Cabal is part of a larger infrastructure for distributing,
         organizing, and cataloging Haskell libraries and tools.
-Category: Distribution
+category: Distribution
 cabal-version: >=1.10
-Build-Type: Custom
+build-type: Custom
 -- Even though we do use the default Setup.lhs it's vital to bootstrapping
 -- that we build Setup.lhs using our own local Cabal source code.
 
-Extra-Source-Files:
+extra-source-files:
         README changelog
 
 source-repository head
@@ -31,7 +31,7 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   Cabal
 
-Library
+library
   build-depends:   base       >= 4   && < 5,
                    deepseq    >= 1.3 && < 1.4,
                    filepath   >= 1   && < 1.4,
@@ -44,14 +44,14 @@ Library
                    bytestring >= 0.9
 
   if !os(windows)
-    Build-Depends: unix       >= 2.0 && < 2.7
+    build-depends: unix       >= 2.0 && < 2.7
 
   ghc-options: -Wall -fno-ignore-asserts
   if impl(ghc >= 6.8)
     ghc-options: -fwarn-tabs
-  nhc98-Options: -K4M
+  nhc98-options: -K4M
 
-  Exposed-Modules:
+  exposed-modules:
         Distribution.Compiler,
         Distribution.InstalledPackageInfo,
         Distribution.License,
@@ -115,7 +115,7 @@ Library
         Distribution.Compat.ReadP,
         Language.Haskell.Extension
 
-  Other-Modules:
+  other-modules:
         Distribution.GetOpt,
         Distribution.Compat.Exception,
         Distribution.Compat.CopyFile,
@@ -124,8 +124,8 @@ Library
         Distribution.Simple.GHC.IPI642,
         Paths_Cabal
 
-  Default-Language: Haskell98
-  Default-Extensions: CPP
+  default-language: Haskell98
+  default-extensions: CPP
 
 -- Small, fast running tests.
 test-suite unit-tests
@@ -141,7 +141,7 @@ test-suite unit-tests
         QuickCheck,
         Cabal
   ghc-options: -Wall
-  Default-Language: Haskell98
+  default-language: Haskell98
 
 -- Large, system tests that build packages.
 test-suite package-tests
@@ -188,5 +188,5 @@ test-suite package-tests
   if !os(windows)
     build-depends: unix
   ghc-options: -Wall
-  Default-Extensions: CPP
-  Default-Language: Haskell98
+  default-extensions: CPP
+  default-language: Haskell98
