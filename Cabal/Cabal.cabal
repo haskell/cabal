@@ -11,12 +11,12 @@ homepage: http://www.haskell.org/cabal/
 bug-reports: https://github.com/haskell/cabal/issues
 synopsis: A framework for packaging Haskell software
 description:
-        The Haskell Common Architecture for Building Applications and
-        Libraries: a framework defining a common interface for authors to more
-        easily build their Haskell applications in a portable way.
-        .
-        The Haskell Cabal is part of a larger infrastructure for distributing,
-        organizing, and cataloging Haskell libraries and tools.
+  The Haskell Common Architecture for Building Applications and
+  Libraries: a framework defining a common interface for authors to more
+  easily build their Haskell applications in a portable way.
+  .
+  The Haskell Cabal is part of a larger infrastructure for distributing,
+  organizing, and cataloging Haskell libraries and tools.
 category: Distribution
 cabal-version: >=1.10
 build-type: Custom
@@ -24,7 +24,7 @@ build-type: Custom
 -- that we build Setup.lhs using our own local Cabal source code.
 
 extra-source-files:
-        README changelog
+  README changelog
 
 source-repository head
   type:     git
@@ -32,19 +32,21 @@ source-repository head
   subdir:   Cabal
 
 library
-  build-depends:   base       >= 4   && < 5,
-                   deepseq    >= 1.3 && < 1.4,
-                   filepath   >= 1   && < 1.4,
-                   directory  >= 1   && < 1.3,
-                   process    >= 1   && < 1.2,
-                   time       >= 1.1 && < 1.5,
-                   containers >= 0.1 && < 0.6,
-                   array      >= 0.1 && < 0.5,
-                   pretty     >= 1   && < 1.2,
-                   bytestring >= 0.9
+  build-depends:
+    base       >= 4   && < 5,
+    deepseq    >= 1.3 && < 1.4,
+    filepath   >= 1   && < 1.4,
+    directory  >= 1   && < 1.3,
+    process    >= 1   && < 1.2,
+    time       >= 1.1 && < 1.5,
+    containers >= 0.1 && < 0.6,
+    array      >= 0.1 && < 0.5,
+    pretty     >= 1   && < 1.2,
+    bytestring >= 0.9
 
   if !os(windows)
-    build-depends: unix       >= 2.0 && < 2.7
+    build-depends:
+      unix >= 2.0 && < 2.7
 
   ghc-options: -Wall -fno-ignore-asserts
   if impl(ghc >= 6.8)
@@ -52,77 +54,77 @@ library
   nhc98-options: -K4M
 
   exposed-modules:
-        Distribution.Compiler,
-        Distribution.InstalledPackageInfo,
-        Distribution.License,
-        Distribution.Make,
-        Distribution.ModuleName,
-        Distribution.Package,
-        Distribution.PackageDescription,
-        Distribution.PackageDescription.Configuration,
-        Distribution.PackageDescription.Parse,
-        Distribution.PackageDescription.Check,
-        Distribution.PackageDescription.PrettyPrint,
-        Distribution.ParseUtils,
-        Distribution.ReadE,
-        Distribution.Simple,
-        Distribution.Simple.Build,
-        Distribution.Simple.Build.Macros,
-        Distribution.Simple.Build.PathsModule,
-        Distribution.Simple.BuildPaths,
-        Distribution.Simple.BuildTarget,
-        Distribution.Simple.Bench,
-        Distribution.Simple.Command,
-        Distribution.Simple.CCompiler,
-        Distribution.Simple.Compiler,
-        Distribution.Simple.Configure,
-        Distribution.Simple.GHC,
-        Distribution.Simple.LHC,
-        Distribution.Simple.Haddock,
-        Distribution.Simple.Hpc,
-        Distribution.Simple.Hugs,
-        Distribution.Simple.Install,
-        Distribution.Simple.InstallDirs,
-        Distribution.Simple.JHC,
-        Distribution.Simple.LocalBuildInfo,
-        Distribution.Simple.NHC,
-        Distribution.Simple.PackageIndex,
-        Distribution.Simple.PreProcess,
-        Distribution.Simple.PreProcess.Unlit,
-        Distribution.Simple.Program,
-        Distribution.Simple.Program.Ar,
-        Distribution.Simple.Program.Builtin,
-        Distribution.Simple.Program.Db,
-        Distribution.Simple.Program.GHC,
-        Distribution.Simple.Program.HcPkg,
-        Distribution.Simple.Program.Hpc,
-        Distribution.Simple.Program.Ld,
-        Distribution.Simple.Program.Run,
-        Distribution.Simple.Program.Script,
-        Distribution.Simple.Program.Types,
-        Distribution.Simple.Register,
-        Distribution.Simple.Setup,
-        Distribution.Simple.SrcDist,
-        Distribution.Simple.Test,
-        Distribution.Simple.UHC,
-        Distribution.Simple.UserHooks,
-        Distribution.Simple.Utils,
-        Distribution.System,
-        Distribution.TestSuite,
-        Distribution.Text,
-        Distribution.Verbosity,
-        Distribution.Version,
-        Distribution.Compat.ReadP,
-        Language.Haskell.Extension
+    Distribution.Compiler,
+    Distribution.InstalledPackageInfo,
+    Distribution.License,
+    Distribution.Make,
+    Distribution.ModuleName,
+    Distribution.Package,
+    Distribution.PackageDescription,
+    Distribution.PackageDescription.Configuration,
+    Distribution.PackageDescription.Parse,
+    Distribution.PackageDescription.Check,
+    Distribution.PackageDescription.PrettyPrint,
+    Distribution.ParseUtils,
+    Distribution.ReadE,
+    Distribution.Simple,
+    Distribution.Simple.Build,
+    Distribution.Simple.Build.Macros,
+    Distribution.Simple.Build.PathsModule,
+    Distribution.Simple.BuildPaths,
+    Distribution.Simple.BuildTarget,
+    Distribution.Simple.Bench,
+    Distribution.Simple.Command,
+    Distribution.Simple.CCompiler,
+    Distribution.Simple.Compiler,
+    Distribution.Simple.Configure,
+    Distribution.Simple.GHC,
+    Distribution.Simple.LHC,
+    Distribution.Simple.Haddock,
+    Distribution.Simple.Hpc,
+    Distribution.Simple.Hugs,
+    Distribution.Simple.Install,
+    Distribution.Simple.InstallDirs,
+    Distribution.Simple.JHC,
+    Distribution.Simple.LocalBuildInfo,
+    Distribution.Simple.NHC,
+    Distribution.Simple.PackageIndex,
+    Distribution.Simple.PreProcess,
+    Distribution.Simple.PreProcess.Unlit,
+    Distribution.Simple.Program,
+    Distribution.Simple.Program.Ar,
+    Distribution.Simple.Program.Builtin,
+    Distribution.Simple.Program.Db,
+    Distribution.Simple.Program.GHC,
+    Distribution.Simple.Program.HcPkg,
+    Distribution.Simple.Program.Hpc,
+    Distribution.Simple.Program.Ld,
+    Distribution.Simple.Program.Run,
+    Distribution.Simple.Program.Script,
+    Distribution.Simple.Program.Types,
+    Distribution.Simple.Register,
+    Distribution.Simple.Setup,
+    Distribution.Simple.SrcDist,
+    Distribution.Simple.Test,
+    Distribution.Simple.UHC,
+    Distribution.Simple.UserHooks,
+    Distribution.Simple.Utils,
+    Distribution.System,
+    Distribution.TestSuite,
+    Distribution.Text,
+    Distribution.Verbosity,
+    Distribution.Version,
+    Distribution.Compat.ReadP,
+    Language.Haskell.Extension
 
   other-modules:
-        Distribution.GetOpt,
-        Distribution.Compat.Exception,
-        Distribution.Compat.CopyFile,
-        Distribution.Compat.TempFile,
-        Distribution.Simple.GHC.IPI641,
-        Distribution.Simple.GHC.IPI642,
-        Paths_Cabal
+    Distribution.GetOpt,
+    Distribution.Compat.Exception,
+    Distribution.Compat.CopyFile,
+    Distribution.Compat.TempFile,
+    Distribution.Simple.GHC.IPI641,
+    Distribution.Simple.GHC.IPI642,
+    Paths_Cabal
 
   default-language: Haskell98
   default-extensions: CPP
@@ -133,13 +135,13 @@ test-suite unit-tests
   main-is: UnitTests.hs
   hs-source-dirs: tests
   build-depends:
-        base,
-        test-framework,
-        test-framework-hunit,
-        test-framework-quickcheck2,
-        HUnit,
-        QuickCheck,
-        Cabal
+    base,
+    test-framework,
+    test-framework-hunit,
+    test-framework-quickcheck2,
+    HUnit,
+    QuickCheck,
+    Cabal
   ghc-options: -Wall
   default-language: Haskell98
 
@@ -147,44 +149,45 @@ test-suite unit-tests
 test-suite package-tests
   type: exitcode-stdio-1.0
   main-is: PackageTests.hs
-  other-modules: PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check,
-                 PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check,
-                 PackageTests.BuildDeps.InternalLibrary0.Check,
-                 PackageTests.BuildDeps.InternalLibrary1.Check,
-                 PackageTests.BuildDeps.InternalLibrary2.Check,
-                 PackageTests.BuildDeps.InternalLibrary3.Check,
-                 PackageTests.BuildDeps.InternalLibrary4.Check,
-                 PackageTests.BuildDeps.TargetSpecificDeps1.Check,
-                 PackageTests.BuildDeps.TargetSpecificDeps2.Check,
-                 PackageTests.BuildDeps.TargetSpecificDeps3.Check,
-                 PackageTests.BuildDeps.SameDepsAllRound.Check,
-                 PackageTests.PreProcess.Check,
-                 PackageTests.TestOptions.Check,
-                 PackageTests.TestStanza.Check,
-                 PackageTests.TestSuiteExeV10.Check,
-                 PackageTests.BenchmarkOptions.Check,
-                 PackageTests.BenchmarkStanza.Check,
-                 PackageTests.BenchmarkExeV10.Check,
-                 PackageTests.TemplateHaskell.Check,
-                 PackageTests.CMain.Check,
-                 PackageTests.PackageTester
-                 PackageTests.PathsModule.Executable.Check
-                 PackageTests.PathsModule.Library.Check
-                 Distribution.Compat.CreatePipe
+  other-modules:
+    PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check,
+    PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check,
+    PackageTests.BuildDeps.InternalLibrary0.Check,
+    PackageTests.BuildDeps.InternalLibrary1.Check,
+    PackageTests.BuildDeps.InternalLibrary2.Check,
+    PackageTests.BuildDeps.InternalLibrary3.Check,
+    PackageTests.BuildDeps.InternalLibrary4.Check,
+    PackageTests.BuildDeps.TargetSpecificDeps1.Check,
+    PackageTests.BuildDeps.TargetSpecificDeps2.Check,
+    PackageTests.BuildDeps.TargetSpecificDeps3.Check,
+    PackageTests.BuildDeps.SameDepsAllRound.Check,
+    PackageTests.PreProcess.Check,
+    PackageTests.TestOptions.Check,
+    PackageTests.TestStanza.Check,
+    PackageTests.TestSuiteExeV10.Check,
+    PackageTests.BenchmarkOptions.Check,
+    PackageTests.BenchmarkStanza.Check,
+    PackageTests.BenchmarkExeV10.Check,
+    PackageTests.TemplateHaskell.Check,
+    PackageTests.CMain.Check,
+    PackageTests.PackageTester
+    PackageTests.PathsModule.Executable.Check
+    PackageTests.PathsModule.Library.Check
+    Distribution.Compat.CreatePipe
   hs-source-dirs: tests
   build-depends:
-        base,
-        test-framework,
-        test-framework-quickcheck2 >= 0.2.12,
-        test-framework-hunit,
-        HUnit,
-        QuickCheck >= 2.1.0.1,
-        Cabal,
-        process,
-        directory,
-        filepath,
-        extensible-exceptions,
-        bytestring
+    base,
+    test-framework,
+    test-framework-quickcheck2 >= 0.2.12,
+    test-framework-hunit,
+    HUnit,
+    QuickCheck >= 2.1.0.1,
+    Cabal,
+    process,
+    directory,
+    filepath,
+    extensible-exceptions,
+    bytestring
   if !os(windows)
     build-depends: unix
   ghc-options: -Wall
