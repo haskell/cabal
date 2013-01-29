@@ -36,13 +36,15 @@ import Data.Char   ( isUpper, isLower, isSpace )
 import Data.Either ( partitionEithers )
 import Data.List   ( isPrefixOf )
 import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
-import Data.Monoid ( mempty, mappend )
+import Data.Monoid ( mempty, mappend, mconcat )
 import qualified Data.Set as Set ( fromList, toList )
 import System.Directory ( getDirectoryContents, doesDirectoryExist, doesFileExist,
                           getHomeDirectory, canonicalizePath )
 import System.Environment ( getEnvironment )
 import System.FilePath ( takeExtension, takeBaseName, dropExtension,
                          (</>), (<.>), splitDirectories, makeRelative )
+import System.Process ( readProcessWithExitCode )
+import System.Exit ( ExitCode(..) )
 
 -- |Guess the package name based on the given root directory
 guessPackageName :: FilePath -> IO String
@@ -151,9 +153,27 @@ neededBuildPrograms entries =
     , handler <- maybeToList (lookup ext knownSuffixHandlers)
     ]
 
--- |Guess author and email
+-- | Guess author and email using darcs and git configuration options. Use
+-- the following in decreasing order of preference:
+--
+-- 1. darcs env vars ($DARCS_EMAIL or $EMAIL)
+-- 2. darcs local prefs (./_darcs/prefs/author)
+-- 3. darcs global prefs (~/.darcs/author)
+-- 4. git env vars ($GIT_AUTHOR_{NAME,EMAIL})
+-- 5. git local prefs
+-- 6. git global prefs
+--
+-- The last two are checked simultaneously with a call to `git config`.
 guessAuthorNameMail :: IO (Flag String, Flag String)
-guessAuthorNameMail =
+guessAuthorNameMail = fmap mconcat $ sequence
+  [ gitConfigAuthorNameMail
+  , gitEnvAuthorNameMail
+  , guessAuthorNameMailDarcs
+  ]
+
+-- | Look up darcs prefs
+guessAuthorNameMailDarcs :: IO (Flag String, Flag String)
+guessAuthorNameMailDarcs =
   update (readFromFile authorRepoFile) mempty >>=
   update (getAuthorHome >>= readFromFile) >>=
   update readFromEnvironment
@@ -170,6 +190,36 @@ guessAuthorNameMail =
         in darcsEmailEnv `mappend` emailEnv
     getAuthorHome   = liftM (</> (".darcs" </> "author")) getHomeDirectory
     authorRepoFile  = "_darcs" </> "prefs" </> "author"
+
+-- | Find author name and email from git env vars.
+gitEnvAuthorNameMail :: IO (Flag String, Flag String)
+gitEnvAuthorNameMail = do
+    env <- getEnvironment
+    let name  = toFlag "GIT_AUTHOR_NAME" env
+        email = toFlag "GIT_AUTHOR_EMAIL" env
+    return (name, email)
+  where
+    toFlag k ls = maybe mempty Flag $ lookup k ls
+
+-- | Find author name and email from 'git config'.
+gitConfigAuthorNameMail :: IO (Flag String, Flag String)
+gitConfigAuthorNameMail = do
+  name <- gitConfigVar "user.name"
+  mail <- gitConfigVar "user.email"
+  return (name, mail)
+
+-- | Given a config parameter, attempt to pull it from git config files
+-- (repo-local and user-global files are both attempted), then clean it up.
+gitConfigVar :: String -> IO (Flag String)
+gitConfigVar = (fmap . fmap) trim . fmap happyOutput . gitConfigQuery
+
+happyOutput :: (ExitCode, a, t) -> Flag a
+happyOutput v = case v of
+  (ExitSuccess, s, _) -> Flag s
+  _                   -> NoFlag
+
+gitConfigQuery :: String -> IO (ExitCode, String, String)
+gitConfigQuery key = readProcessWithExitCode "git" ["config", "--get", key] ""
 
 -- |Get list of categories used in hackage. NOTE: Very slow, needs to be cached
 knownCategories :: SourcePackageDb -> [String]
@@ -188,7 +238,10 @@ nameAndMail str
   where
     (nameOrEmail,erest) = break (== '<') str
     (email,_)           = break (== '>') (tail erest)
-    trim                = removeLeadingSpace . reverse . removeLeadingSpace . reverse
+
+trim :: String -> String
+trim = removeLeadingSpace . reverse . removeLeadingSpace . reverse
+  where
     removeLeadingSpace  = dropWhile isSpace
 
 -- split string at given character, and remove whitespaces
