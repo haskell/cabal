@@ -2,6 +2,7 @@
 
 cabal-dev/
 Cabal/dist/
+Cabal/tests/Setup
 cabal-install/dist/
 .hpc/
 *.hi
@@ -23,3 +24,7 @@ Cabal/GNUmakefile
 Cabal/dist-boot/
 Cabal/dist-install/
 Cabal/ghc.mk
+
+
+# TAGS files
+TAGS
