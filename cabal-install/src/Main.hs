@@ -135,6 +135,10 @@ mainWorker args = topHandler $
       putStr (help pname)
       putStr $ "\nYou can edit the cabal configuration file to set defaults:\n"
             ++ "  " ++ configFile ++ "\n"
+      exists <- doesFileExist configFile
+      when (not exists) $
+          putStrLn $ "This file will be generated with sensible "
+                  ++ "defaults if you run 'cabal update'."
     printOptionsList = putStr . unlines
     printErrors errs = die $ intercalate "\n" errs
     printNumericVersion = putStrLn $ display Paths_cabal_install.version
@@ -242,7 +246,7 @@ build :: Verbosity -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity distPref buildFlags extraArgs =
     setupWrapper verbosity setupOptions Nothing
                  buildCommand (const buildFlags') extraArgs
-  where 
+  where
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
     buildFlags' = buildFlags
         { buildVerbosity = toFlag verbosity
