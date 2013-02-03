@@ -31,12 +31,12 @@ import Distribution.Simple.Utils
 
 import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
 import Control.Applicative ( pure, (<$>), (<*>) )
-import Control.Monad ( liftM, join )
+import Control.Monad ( liftM )
 import Data.Char   ( isUpper, isLower, isSpace )
 import Data.Either ( partitionEithers )
 import Data.List   ( isPrefixOf )
 import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
-import Data.Monoid ( mempty, mappend, mconcat )
+import Data.Monoid ( mempty, mconcat )
 import qualified Data.Set as Set ( fromList, toList )
 import System.Directory ( getDirectoryContents, doesDirectoryExist, doesFileExist,
                           getHomeDirectory, canonicalizePath )
@@ -166,56 +166,60 @@ neededBuildPrograms entries =
 --
 -- Darcs has preference, for tradition's sake.
 guessAuthorNameMail :: IO (Flag String, Flag String)
-guessAuthorNameMail = fmap mconcat $ sequence
-    [ emailEnv
-    , gitCfg Global
-    , darcsGlobal
-    , gitCfg Local
-    , darcsRepo
-    , gitEnv
-    , darcsEnv
-    ]
+guessAuthorNameMail = fmap authorGuessPure authorGuessIO
+
+-- Ordered in increasing preference, since Flag-as-monoid is identical to
+-- Last.
+authorGuessPure :: AuthorGuessIO -> AuthorGuess
+authorGuessPure (AuthorGuessIO env darcsLocalF darcsGlobalF gitLocal gitGlobal)
+    = mconcat
+        [ emailEnv env
+        , gitGlobal
+        , darcsCfg darcsGlobalF
+        , gitLocal
+        , darcsCfg darcsLocalF
+        , gitEnv env
+        , darcsEnv env
+        ]
+
+authorGuessIO :: IO AuthorGuessIO
+authorGuessIO = AuthorGuessIO
+    <$> getEnvironment
+    <*> (maybeReadFile $ "_darcs" </> "prefs" </> "author")
+    <*> (maybeReadFile =<< liftM (</> (".darcs" </> "author")) getHomeDirectory)
+    <*> gitCfg Local
+    <*> gitCfg Global
 
 -- Types and functions used for guessing the author are now defined:
 
 type AuthorGuess   = (Flag String, Flag String)
+type Enviro        = [(String, String)]
 data GitLoc        = Local | Global
+data AuthorGuessIO = AuthorGuessIO
+    Enviro         -- ^ Environment lookup table
+    (Maybe String) -- ^ Contents of local darcs author info
+    (Maybe String) -- ^ Contents of global darcs author info
+    AuthorGuess    -- ^ Git config --local
+    AuthorGuess    -- ^ Git config --global
 
+darcsEnv :: Enviro -> AuthorGuess
+darcsEnv = maybe mempty nameAndMail . lookup "DARCS_EMAIL"
 
-darcsEnv :: IO AuthorGuess
-darcsEnv = fmap extractDarcs getEnvironment
+gitEnv :: Enviro -> AuthorGuess
+gitEnv env = (name, email)
   where
-    extractDarcs = maybe mempty nameAndMail . lookup "DARCS_EMAIL"
+    name  = maybeFlag "GIT_AUTHOR_NAME" env
+    email = maybeFlag "GIT_AUTHOR_EMAIL" env
 
-gitEnv :: IO AuthorGuess
-gitEnv = do
-    env <- getEnvironment
-    let name  = toFlag "GIT_AUTHOR_NAME" env
-        email = toFlag "GIT_AUTHOR_EMAIL" env
-    return (name, email)
+darcsCfg :: Maybe String -> AuthorGuess
+darcsCfg = maybe mempty nameAndMail
+
+emailEnv :: Enviro -> AuthorGuess
+emailEnv env = (mempty, email)
   where
-    toFlag k ls = maybe mempty Flag $ lookup k ls
+    email = maybeFlag "EMAIL" env
 
-darcsRepo :: IO AuthorGuess
-darcsRepo = readFromFile authorRepoFile
-  where
-    authorRepoFile  = "_darcs" </> "prefs" </> "author"
-
-darcsGlobal = join . fmap readFromFile $ globalCfg
-  where
-    globalCfg = fmap (</> ".darcs" </> "author") getHomeDirectory
-
-readFromFile file = do
-  exists <- doesFileExist file
-  if exists then liftM nameAndMail (readFile file) else return mempty
-
-emailEnv :: IO AuthorGuess
-emailEnv = fmap ((,) mempty) email
-  where
-    email = maybe mempty Flag
-          <$> lookup "EMAIL"
-          <$> getEnvironment
-
+gitCfg :: GitLoc -> IO AuthorGuess
 gitCfg which = do
   name <- gitVar which "user.name"
   mail <- gitVar which "user.email"
@@ -237,6 +241,16 @@ gitConfigQuery which key =
         Local  -> "--local"
         Global -> "--global"
     trim' (a, b, c) = (a, trim b, c)
+
+maybeFlag :: String -> Enviro -> Flag String
+maybeFlag k = maybe mempty Flag . lookup k
+
+maybeReadFile :: String -> IO (Maybe String)
+maybeReadFile f = do
+    exists <- doesFileExist f
+    if exists
+        then fmap Just $ readFile f
+        else return Nothing
 
 -- |Get list of categories used in hackage. NOTE: Very slow, needs to be cached
 knownCategories :: SourcePackageDb -> [String]
