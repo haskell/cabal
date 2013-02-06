@@ -64,6 +64,8 @@ module Distribution.Simple.SrcDist (
   snapshotPackage,
   snapshotVersion,
   dateToSnapshotNumber,
+
+  copyFileTo
   )  where
 
 import Distribution.PackageDescription
@@ -94,7 +96,7 @@ import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram
 import Distribution.Text
          ( display )
 
-import Control.Monad(when, unless)
+import Control.Monad(when, unless, forM_)
 import Data.Char (toLower)
 import Data.List (partition, isPrefixOf)
 import Data.Maybe (isNothing, catMaybes)
@@ -214,7 +216,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
             copyFileTo verbosity targetDir srcMainFile
         BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: " ++ show tp
 
-  flip mapM_ (dataFiles pkg_descr) $ \ filename -> do
+  forM_ (dataFiles pkg_descr) $ \ filename -> do
     files <- matchFileGlob (dataDir pkg_descr </> filename)
     let dir = takeDirectory (dataDir pkg_descr </> filename)
     createDirectoryIfMissingVerbose verbosity True (targetDir </> dir)
@@ -223,7 +225,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
 
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbosity targetDir (licenseFile pkg_descr)
-  flip mapM_ (extraSrcFiles pkg_descr) $ \ fpath -> do
+  forM_ (extraSrcFiles pkg_descr ++ extraHtmlFiles pkg_descr) $ \ fpath -> do
     files <- matchFileGlob fpath
     sequence_
       [ do copyFileTo verbosity targetDir file
@@ -238,8 +240,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
     let lbi = libBuildInfo l
         relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
     incs <- mapM (findInc relincdirs) (installIncludes lbi)
-    flip mapM_ incs $ \(_,fpath) ->
-       copyFileTo verbosity targetDir fpath
+    forM_ incs $ \(_,fpath) -> copyFileTo verbosity targetDir fpath
 
   -- if the package was configured then we can run platform independent
   -- pre-processors and include those generated files
