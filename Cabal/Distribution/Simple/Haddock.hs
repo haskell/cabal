@@ -75,11 +75,11 @@ import Distribution.Simple.Build (initialBuildSteps)
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplateEnv, PathTemplate,
                                         PathTemplateVariable(..),
                                         toPathTemplate, fromPathTemplate,
-                                        substPathTemplate,
-                                        initialPathTemplateEnv)
+                                        substPathTemplate, initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-         , withAllComponentsInBuildOrder )
+         , withAllComponentsInBuildOrder
+         , CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths ( haddockName,
                                         hscolourPref, autogenModulesDir,
                                         )
@@ -92,7 +92,7 @@ import Distribution.InstalledPackageInfo
 import Distribution.Simple.Utils
          ( die, warn, notice, intercalate, setupMessage
          , createDirectoryIfMissingVerbose, withTempFile, copyFileVerbose
-         , withTempDirectory
+         , withTempDirectory, matchFileGlob
          , findFileWithExtension, findFile )
 import Distribution.Text
          ( display, simpleParse )
@@ -102,15 +102,16 @@ import Language.Haskell.Extension
 -- Base
 import System.Directory(removeFile, doesFileExist, createDirectoryIfMissing)
 
-import Control.Monad ( when, guard )
+import Control.Monad ( when, guard, forM_ )
 import Control.Exception (assert)
 import Data.Monoid
 import Data.Maybe    ( fromMaybe, listToMaybe )
 
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
-                       normalise, splitPath, joinPath)
+                       normalise, splitPath, joinPath, takeDirectory)
 import System.IO (hClose, hPutStrLn)
 import Distribution.Version
+import Distribution.Simple.SrcDist (copyFileTo)
 
 -- Types
 
@@ -219,6 +220,10 @@ haddock pkg_descr lbi suffixes flags = do
                           lbi isVersion2 bi (commonArgs `mappend` exeArgs)
             runHaddock verbosity keepTempFiles confHaddock exeArgs'
         _ -> return ()
+
+    forM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
+      files <- matchFileGlob fpath
+      forM_ files $ copyFileTo verbosity (unDir' $ argOutputDir commonArgs)
   where
     verbosity     = flag haddockVerbosity
     keepTempFiles = flag haddockKeepTempFiles
@@ -580,7 +585,7 @@ hscolour' pkg_descr lbi suffixes flags = do
                    | otherwise -> return ()
            Just s -> copyFileVerbose verbosity s (outputDir </> "hscolour.css")
 
-         flip mapM_ moduleFiles $ \(m, inFile) ->
+         forM_ moduleFiles $ \(m, inFile) ->
              rawSystemProgram verbosity prog
                     ["-css", "-anchor", "-o" ++ outFile m, inFile]
         where
