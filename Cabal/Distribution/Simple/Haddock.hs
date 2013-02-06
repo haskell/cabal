@@ -223,7 +223,7 @@ haddock pkg_descr lbi suffixes flags = do
 
     forM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
-      forM_ files $ copyFileTo verbosity (unDir' $ argOutputDir commonArgs)
+      forM_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
   where
     verbosity     = flag haddockVerbosity
     keepTempFiles = flag haddockKeepTempFiles
