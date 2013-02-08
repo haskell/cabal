@@ -565,8 +565,6 @@ writeSetupFile flags = do
     , "main = defaultMain"
     ]
 
--- XXX ought to do something sensible if a .cabal file already exists,
--- instead of overwriting.
 writeCabalFile :: InitFlags -> IO Bool
 writeCabalFile flags@(InitFlags{packageName = NoFlag}) = do
   message flags "Error: no package name provided."
