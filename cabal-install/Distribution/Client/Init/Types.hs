@@ -21,7 +21,7 @@ import Distribution.Verbosity
 import qualified Distribution.Package as P
 import Distribution.License
 import Distribution.ModuleName
-import Language.Haskell.Extension ( Language(..) )
+import Language.Haskell.Extension ( Language(..), Extension )
 
 import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
@@ -58,6 +58,7 @@ data InitFlags =
 
               , exposedModules :: Maybe [ModuleName]
               , otherModules   :: Maybe [ModuleName]
+              , otherExts      :: Maybe [Extension]
 
               , dependencies :: Maybe [P.Dependency]
               , sourceDirs   :: Maybe [String]
@@ -100,6 +101,7 @@ instance Monoid InitFlags where
     , language       = mempty
     , exposedModules = mempty
     , otherModules   = mempty
+    , otherExts      = mempty
     , dependencies   = mempty
     , sourceDirs     = mempty
     , buildTools     = mempty
@@ -126,6 +128,7 @@ instance Monoid InitFlags where
     , language       = combine language
     , exposedModules = combine exposedModules
     , otherModules   = combine otherModules
+    , otherExts      = combine otherExts
     , dependencies   = combine dependencies
     , sourceDirs     = combine sourceDirs
     , buildTools     = combine buildTools

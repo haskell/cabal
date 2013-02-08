@@ -335,9 +335,13 @@ getModulesBuildToolsAndDeps pkgIx flags = do
                         )
                         pkgIx
 
+  exts <-     return (otherExts flags)
+          ?>> (return . Just . nub . concatMap extensions $ sourceFiles)
+
   return $ flags { exposedModules = Just mods
                  , buildTools     = tools
                  , dependencies   = deps
+                 , otherExts      = exts
                  }
 
 importsToDeps :: InitFlags -> [ModuleName] -> PackageIndex -> IO [P.Dependency]
@@ -706,6 +710,10 @@ generateCabalFile fileName c =
               (Just $ case pkgtype of
                  Library    -> "Modules included in this library but not exported."
                  Executable -> "Modules included in this executable, other than Main.")
+              True
+
+     , fieldS "other-extensions" (listField (otherExts c'))
+              (Just "LANGUAGE extensions used by modules in this package.")
               True
 
      , fieldS "build-depends" (listField (dependencies c'))
