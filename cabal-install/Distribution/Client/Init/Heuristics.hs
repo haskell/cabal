@@ -28,6 +28,7 @@ import qualified Distribution.PackageDescription as PD
     ( category, packageDescription )
 import Distribution.Simple.Utils
          ( intercalate )
+import Language.Haskell.Extension ( Extension )
 
 import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
 import Control.Applicative ( pure, (<$>), (<*>) )
@@ -54,10 +55,11 @@ data SourceFileEntry = SourceFileEntry
     , moduleName         :: ModuleName
     , fileExtension      :: String
     , imports            :: [ModuleName]
+    , extensions         :: [Extension]
     } deriving Show
 
 sfToFileName :: FilePath -> SourceFileEntry -> FilePath
-sfToFileName projectRoot (SourceFileEntry relPath m ext _)
+sfToFileName projectRoot (SourceFileEntry relPath m ext _ _)
   = projectRoot </> relPath </> toFilePath m <.> ext
 
 -- |Search for source files in the given directory
@@ -75,7 +77,7 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
         let modules = catMaybes [ guessModuleName hierarchy file
                                 | file <- files
                                 , isUpper (head file) ]
-        modules' <- mapM (findImports projectRoot) modules
+        modules' <- mapM (findImportsAndExts projectRoot) modules
         recMods <- mapM (scanRecursive dir hierarchy) dirs
         return $ concat (modules' : recMods)
     tagIsDir parent entry = do
@@ -84,7 +86,7 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
     guessModuleName hierarchy entry
         | takeBaseName entry == "Setup" = Nothing
         | ext `elem` sourceExtensions   =
-            SourceFileEntry <$> pure relRoot <*> modName <*> pure ext <*> pure []
+            SourceFileEntry <$> pure relRoot <*> modName <*> pure ext <*> pure [] <*> pure []
         | otherwise = Nothing
       where
         relRoot       = makeRelative projectRoot srcRoot
@@ -100,8 +102,8 @@ scanForModulesIn projectRoot srcRoot = scan srcRoot []
     ignoreDir ('.':_)  = True
     ignoreDir dir      = dir `elem` ["dist", "_darcs"]
 
-findImports :: FilePath -> SourceFileEntry -> IO SourceFileEntry
-findImports projectRoot sf = do
+findImportsAndExts :: FilePath -> SourceFileEntry -> IO SourceFileEntry
+findImportsAndExts projectRoot sf = do
   s <- readFile (sfToFileName projectRoot sf)
 
   let modules = mapMaybe
@@ -120,7 +122,13 @@ findImports projectRoot sf = do
       -- Haskell parser since cabal's dependencies must be kept at a
       -- minimum.
 
-  return sf { imports = modules }
+      exts = undefined  --- XXX todo: parse LANGUAGE pragmas.
+           . lines
+           $ s
+
+  return sf { imports    = modules
+            , extensions = exts
+            }
 
  where getModName :: [String] -> Maybe ModuleName
        getModName []               = Nothing
