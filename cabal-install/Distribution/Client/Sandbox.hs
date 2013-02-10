@@ -316,6 +316,10 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
 
 configPackageDB' :: ConfigFlags -> PackageDBStack
 configPackageDB' cfg =
+  -- The userInstall parameter is set to False so that interpretPackageDbFlags
+  -- doesn't add UserPackageDb to the PackageDbStack (see #1183).
+  -- FIXME: This is a bit fragile, maybe change the boolean parameter to
+  -- UserInstall | GlobalInstall | UseSandbox ?
   interpretPackageDbFlags {- userInstall = -} False (configPackageDBs cfg)
 
 configCompilerAux' :: ConfigFlags
