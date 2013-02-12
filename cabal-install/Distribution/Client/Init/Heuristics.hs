@@ -124,9 +124,25 @@ findImportsAndExts projectRoot sf = do
       -- Haskell parser since cabal's dependencies must be kept at a
       -- minimum.
 
-      exts = undefined  --- XXX todo: parse LANGUAGE pragmas.
-           . lines
-           $ s
+      -- A poor man's LANGUAGE pragma parser.
+      exts = mapMaybe simpleParse
+           . concatMap getPragmas
+           . filter isLANGUAGEPragma
+           . map fst
+           . drop 1
+           . takeWhile (not . null . snd)
+           . iterate (takeBraces . snd)
+           $ ("",s)
+
+      takeBraces = break (== '}') . dropWhile (/= '{')
+
+      isLANGUAGEPragma = ("{-# LANGUAGE " `isPrefixOf`)
+
+      getPragmas = map trim . splitCommas . takeWhile (/= '#') . drop 13
+
+      splitCommas "" = []
+      splitCommas xs = x : splitCommas (drop 1 y)
+        where (x,y) = break (==',') xs
 
   return sf { imports    = modules
             , extensions = exts
