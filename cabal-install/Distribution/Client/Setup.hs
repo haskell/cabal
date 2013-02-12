@@ -1147,6 +1147,14 @@ initCommand = CommandUI {
                                      ((Just . (:[])) `fmap` parse))
                          (maybe [] (fmap display)))
 
+      , option [] ["extension"]
+        "Use a LANGUAGE extension (in the other-extensions field)."
+        IT.otherExts
+        (\v flags -> flags { IT.otherExts = v })
+        (reqArg "EXTENSION" (readP_to_E ("Cannot parse extension: "++)
+                                        ((Just . (:[])) `fmap` parse))
+                            (maybe [] (fmap display)))
+
       , option ['d'] ["dependency"]
         "Package dependency."
         IT.dependencies (\v flags -> flags { IT.dependencies = v })
