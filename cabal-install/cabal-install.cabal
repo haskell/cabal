@@ -177,7 +177,9 @@ Test-Suite unit-tests
         filepath,
         test-framework,
         test-framework-hunit,
+        test-framework-quickcheck2,
         HUnit,
+        QuickCheck (>= 2.5),
         cabal-install,
         Cabal
   ghc-options: -Wall
