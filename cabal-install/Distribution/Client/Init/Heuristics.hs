@@ -32,18 +32,20 @@ import Language.Haskell.Extension ( Extension )
 
 import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
 import Control.Applicative ( pure, (<$>), (<*>) )
-import Control.Monad (liftM )
+import Control.Monad ( liftM )
 import Data.Char   ( isUpper, isLower, isSpace )
 import Data.Either ( partitionEithers )
 import Data.List   ( isPrefixOf )
 import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
-import Data.Monoid ( mempty, mappend )
+import Data.Monoid ( mempty, mconcat )
 import qualified Data.Set as Set ( fromList, toList )
 import System.Directory ( getDirectoryContents, doesDirectoryExist, doesFileExist,
                           getHomeDirectory, canonicalizePath )
 import System.Environment ( getEnvironment )
 import System.FilePath ( takeExtension, takeBaseName, dropExtension,
                          (</>), (<.>), splitDirectories, makeRelative )
+import System.Process ( readProcessWithExitCode )
+import System.Exit ( ExitCode(..) )
 
 -- |Guess the package name based on the given root directory
 guessPackageName :: FilePath -> IO String
@@ -159,25 +161,104 @@ neededBuildPrograms entries =
     , handler <- maybeToList (lookup ext knownSuffixHandlers)
     ]
 
--- |Guess author and email
+-- | Guess author and email using darcs and git configuration options. Use
+-- the following in decreasing order of preference:
+--
+-- 1. vcs env vars ($DARCS_EMAIL, $GIT_AUTHOR_*)
+-- 2. Local repo configs
+-- 3. Global vcs configs
+-- 4. The generic $EMAIL
+--
+-- Name and email are processed separately, so the guess might end up being
+-- a name from DARCS_EMAIL and an email from git config.
+--
+-- Darcs has preference, for tradition's sake.
 guessAuthorNameMail :: IO (Flag String, Flag String)
-guessAuthorNameMail =
-  update (readFromFile authorRepoFile) mempty >>=
-  update (getAuthorHome >>= readFromFile) >>=
-  update readFromEnvironment
+guessAuthorNameMail = fmap authorGuessPure authorGuessIO
+
+-- Ordered in increasing preference, since Flag-as-monoid is identical to
+-- Last.
+authorGuessPure :: AuthorGuessIO -> AuthorGuess
+authorGuessPure (AuthorGuessIO env darcsLocalF darcsGlobalF gitLocal gitGlobal)
+    = mconcat
+        [ emailEnv env
+        , gitGlobal
+        , darcsCfg darcsGlobalF
+        , gitLocal
+        , darcsCfg darcsLocalF
+        , gitEnv env
+        , darcsEnv env
+        ]
+
+authorGuessIO :: IO AuthorGuessIO
+authorGuessIO = AuthorGuessIO
+    <$> getEnvironment
+    <*> (maybeReadFile $ "_darcs" </> "prefs" </> "author")
+    <*> (maybeReadFile =<< liftM (</> (".darcs" </> "author")) getHomeDirectory)
+    <*> gitCfg Local
+    <*> gitCfg Global
+
+-- Types and functions used for guessing the author are now defined:
+
+type AuthorGuess   = (Flag String, Flag String)
+type Enviro        = [(String, String)]
+data GitLoc        = Local | Global
+data AuthorGuessIO = AuthorGuessIO
+    Enviro         -- ^ Environment lookup table
+    (Maybe String) -- ^ Contents of local darcs author info
+    (Maybe String) -- ^ Contents of global darcs author info
+    AuthorGuess    -- ^ Git config --local
+    AuthorGuess    -- ^ Git config --global
+
+darcsEnv :: Enviro -> AuthorGuess
+darcsEnv = maybe mempty nameAndMail . lookup "DARCS_EMAIL"
+
+gitEnv :: Enviro -> AuthorGuess
+gitEnv env = (name, email)
   where
-    update _ info@(Flag _, Flag _) = return info
-    update extract info = liftM (`mappend` info) extract -- prefer info
-    readFromFile file = do
-      exists <- doesFileExist file
-      if exists then liftM nameAndMail (readFile file) else return mempty
-    readFromEnvironment = fmap extractFromEnvironment getEnvironment
-    extractFromEnvironment env =
-        let darcsEmailEnv = maybe mempty nameAndMail (lookup "DARCS_EMAIL" env)
-            emailEnv      = maybe mempty (\e -> (mempty, Flag e)) (lookup "EMAIL" env)
-        in darcsEmailEnv `mappend` emailEnv
-    getAuthorHome   = liftM (</> (".darcs" </> "author")) getHomeDirectory
-    authorRepoFile  = "_darcs" </> "prefs" </> "author"
+    name  = maybeFlag "GIT_AUTHOR_NAME" env
+    email = maybeFlag "GIT_AUTHOR_EMAIL" env
+
+darcsCfg :: Maybe String -> AuthorGuess
+darcsCfg = maybe mempty nameAndMail
+
+emailEnv :: Enviro -> AuthorGuess
+emailEnv env = (mempty, email)
+  where
+    email = maybeFlag "EMAIL" env
+
+gitCfg :: GitLoc -> IO AuthorGuess
+gitCfg which = do
+  name <- gitVar which "user.name"
+  mail <- gitVar which "user.email"
+  return (name, mail)
+
+gitVar :: GitLoc -> String -> IO (Flag String)
+gitVar which = fmap happyOutput . gitConfigQuery which
+
+happyOutput :: (ExitCode, a, t) -> Flag a
+happyOutput v = case v of
+  (ExitSuccess, s, _) -> Flag s
+  _                   -> mempty
+
+gitConfigQuery :: GitLoc -> String -> IO (ExitCode, String, String)
+gitConfigQuery which key =
+    fmap trim' $ readProcessWithExitCode "git" ["config", w, key] ""
+  where
+    w = case which of
+        Local  -> "--local"
+        Global -> "--global"
+    trim' (a, b, c) = (a, trim b, c)
+
+maybeFlag :: String -> Enviro -> Flag String
+maybeFlag k = maybe mempty Flag . lookup k
+
+maybeReadFile :: String -> IO (Maybe String)
+maybeReadFile f = do
+    exists <- doesFileExist f
+    if exists
+        then fmap Just $ readFile f
+        else return Nothing
 
 -- |Get list of categories used in hackage. NOTE: Very slow, needs to be cached
 knownCategories :: SourcePackageDb -> [String]
@@ -196,7 +277,10 @@ nameAndMail str
   where
     (nameOrEmail,erest) = break (== '<') str
     (email,_)           = break (== '>') (tail erest)
-    trim                = removeLeadingSpace . reverse . removeLeadingSpace . reverse
+
+trim :: String -> String
+trim = removeLeadingSpace . reverse . removeLeadingSpace . reverse
+  where
     removeLeadingSpace  = dropWhile isSpace
 
 -- split string at given character, and remove whitespaces
