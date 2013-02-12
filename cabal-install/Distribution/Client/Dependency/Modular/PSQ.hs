@@ -66,10 +66,11 @@ casePSQ (PSQ xs) n c =
     (k, v) : ys -> c k v (PSQ ys)
 
 splits :: PSQ k a -> PSQ k (a, PSQ k a)
-splits xs =
-  casePSQ xs
-    (PSQ [])
-    (\ k v ys -> cons k (v, ys) (fmap (\ (w, zs) -> (w, cons k v zs)) (splits ys)))
+splits = go id 
+  where
+    go f xs = casePSQ xs
+        (PSQ [])
+        (\ k v ys -> cons k (v, f ys) (go (f . cons k v) ys))
 
 sortBy :: (a -> a -> Ordering) -> PSQ k a -> PSQ k a
 sortBy cmp (PSQ xs) = PSQ (S.sortBy (cmp `on` snd) xs)
