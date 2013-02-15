@@ -1039,6 +1039,7 @@ checkForeignDeps pkg lbi verbosity = do
                             HPUX      -> ["hpux"]
                             IRIX      -> ["irix"]
                             HaLVM     -> []
+                            IOS       -> ["ios"]
                             OtherOS _ -> []
                     ghcArch = case buildArch of
                               I386        -> ["i386"]
