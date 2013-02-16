@@ -132,11 +132,9 @@ basePackageEnvironment sandboxDir = do
 -- | Initial configuration that we write out to the package environment file if
 -- it does not exist. When the package environment gets loaded this
 -- configuration gets layered on top of 'basePackageEnvironment'.
-initialPackageEnvironment :: FilePath -> Compiler -> SavedConfig
-                             -> IO PackageEnvironment
-initialPackageEnvironment sandboxDir compiler userConfig = do
-  let commonConfig  = commonPackageEnvironmentConfig sandboxDir
-      initialConfig = userConfig `mappend` commonConfig
+initialPackageEnvironment :: FilePath -> Compiler -> IO PackageEnvironment
+initialPackageEnvironment sandboxDir compiler = do
+  let initialConfig = commonPackageEnvironmentConfig sandboxDir
   return $ mempty {
     pkgEnvSavedConfig = initialConfig {
        savedGlobalFlags = (savedGlobalFlags initialConfig) {
@@ -238,15 +236,14 @@ data IncludeComments = IncludeComments | NoComments
 -- exists. Note that the path parameters should point to existing directories.
 createPackageEnvironment :: Verbosity -> FilePath -> FilePath
                             -> IncludeComments
-                            -> Compiler -> SavedConfig
+                            -> Compiler
                             -> IO PackageEnvironment
-createPackageEnvironment verbosity sandboxDir pkgEnvDir
-  incComments compiler userConfig = do
+createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments compiler = do
   let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   notice verbosity $ "Writing default package environment to " ++ path
 
   commentPkgEnv <- commentPackageEnvironment sandboxDir
-  initialPkgEnv <- initialPackageEnvironment sandboxDir compiler userConfig
+  initialPkgEnv <- initialPackageEnvironment sandboxDir compiler
   writePackageEnvironmentFile path incComments commentPkgEnv initialPkgEnv
 
   user <- userPkgEnv verbosity pkgEnvDir
