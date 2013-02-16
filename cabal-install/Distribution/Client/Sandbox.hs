@@ -160,7 +160,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   -- Create the package environment file.
   pkgEnvDir <- getCurrentDirectory
   pkgEnv    <- createPackageEnvironment verbosity sandboxDir pkgEnvDir
-               NoComments comp userConfig
+               NoComments comp
 
   -- Create the index file if it doesn't exist.
   indexFile <- tryGetIndexFilePath pkgEnv
