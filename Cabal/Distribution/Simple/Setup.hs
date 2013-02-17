@@ -112,6 +112,7 @@ import Distribution.Simple.Program (Program(..), ProgramConfiguration,
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
+import Distribution.System (OS, Arch, buildOS, buildArch)
 import Distribution.Verbosity
 
 import Data.List   ( sort )
@@ -294,7 +295,9 @@ data ConfigFlags = ConfigFlags {
     configConfigurationsFlags :: FlagAssignment,
     configTests :: Flag Bool,     -- ^Enable test suite compilation
     configBenchmarks :: Flag Bool,     -- ^Enable benchmark compilation
-    configLibCoverage :: Flag Bool    -- ^ Enable test suite program coverage
+    configLibCoverage :: Flag Bool,   -- ^ Enable test suite program coverage
+    configHostOS        :: OS,
+    configHostArch      :: Arch
   }
   deriving (Read,Show)
 
@@ -482,6 +485,14 @@ configureOptions showOrParseArgs =
          "dependency checking and compilation for benchmarks listed in the package description file."
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
          (boolOpt [] [])
+      ,option "" ["host-os"]
+         "specify host OS, i.e. OS to cross-compile to"
+         configHostOS (\v flags -> flags { configHostOS = v })
+         (textReqArg "HOST_OS")
+      ,option "" ["host-arch"]
+         "specify host Arch, i.e. CPU to cross-compile to"
+         configHostArch (\v flags -> flags { configHostArch = v })
+         (textReqArg "HOST_ARCH")
       ]
   where
     readFlagList :: String -> FlagAssignment
@@ -606,7 +617,9 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = mempty,
     configTests   = mempty,
     configLibCoverage = mempty,
-    configBenchmarks    = mempty
+    configBenchmarks    = mempty,
+    configHostOS        = buildOS,
+    configHostArch      = buildArch
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -639,7 +652,9 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests = combine configTests,
     configLibCoverage = combine configLibCoverage,
-    configBenchmarks    = combine configBenchmarks
+    configBenchmarks    = combine configBenchmarks,
+    configHostOS        = combine configHostOS,
+    configHostArch      = combine configHostArch
   }
     where combine field = field a `mappend` field b
 

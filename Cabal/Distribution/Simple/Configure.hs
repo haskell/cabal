@@ -114,7 +114,7 @@ import Distribution.Simple.Utils
     , withFileContents, writeFileAtomic
     , withTempFile )
 import Distribution.System
-    ( OS(..), buildOS, Arch(..), buildArch, buildPlatform )
+    ( OS(..), buildOS, Arch(..), Platform(..) )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
@@ -343,7 +343,7 @@ configure (pkg_descr0, pbi) cfg
                 case finalizePackageDescription
                        (configConfigurationsFlags cfg)
                        dependencySatisfiable
-                       Distribution.System.buildPlatform
+                       (Platform (configHostArch cfg) (configHostOS cfg))
                        (compilerId comp)
                        (configConstraints cfg)
                        pkg_descr0''
@@ -1027,7 +1027,7 @@ checkForeignDeps pkg lbi verbosity = do
         hcDefines comp =
           case compilerFlavor comp of
             GHC  ->
-                let ghcOS = case buildOS of
+                let ghcOS = case configHostOS (configFlags lbi) of
                             Linux     -> ["linux"]
                             Windows   -> ["mingw32"]
                             OSX       -> ["darwin"]
@@ -1039,8 +1039,9 @@ checkForeignDeps pkg lbi verbosity = do
                             HPUX      -> ["hpux"]
                             IRIX      -> ["irix"]
                             HaLVM     -> []
+                            IOS       -> ["ios"]
                             OtherOS _ -> []
-                    ghcArch = case buildArch of
+                    ghcArch = case configHostArch (configFlags lbi) of
                               I386        -> ["i386"]
                               X86_64      -> ["x86_64"]
                               PPC         -> ["powerpc"]

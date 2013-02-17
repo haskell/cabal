@@ -31,6 +31,7 @@ import qualified System.Info (os, arch)
 import qualified Data.Char as Char (toLower, isAlphaNum)
 
 import Data.Maybe (fromMaybe)
+import Data.Monoid (Monoid(..))
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
@@ -63,6 +64,7 @@ data OS = Linux | Windows | OSX        -- teir 1 desktop OSs
         | FreeBSD | OpenBSD | NetBSD   -- other free unix OSs
         | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
         | HaLVM                        -- bare metal / VMs / hypervisors
+        | IOS                          -- mobile OSes
         | OtherOS String
   deriving (Eq, Ord, Show, Read)
 
@@ -75,7 +77,7 @@ knownOSs :: [OS]
 knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD
            ,Solaris, AIX, HPUX, IRIX
-           ,HaLVM]
+           ,HaLVM, IOS]
 
 osAliases :: ClassificationStrictness -> OS -> [String]
 osAliases Permissive Windows = ["mingw32", "cygwin32"]
@@ -83,6 +85,7 @@ osAliases Compat     Windows = ["mingw32", "win32"]
 osAliases _          OSX     = ["darwin"]
 osAliases Permissive FreeBSD = ["kfreebsdgnu"]
 osAliases Permissive Solaris = ["solaris2"]
+osAliases _          IOS     = ["ios"]
 osAliases _          _       = []
 
 instance Text OS where
@@ -90,6 +93,11 @@ instance Text OS where
   disp other          = Disp.text (lowercase (show other))
 
   parse = fmap (classifyOS Compat) ident
+
+instance Monoid OS where
+  mempty = buildOS
+  a `mappend` b = if a == buildOS then b else
+                  if b == buildOS then a else a
 
 classifyOS :: ClassificationStrictness -> String -> OS
 classifyOS strictness s =
@@ -136,6 +144,11 @@ instance Text Arch where
   disp other            = Disp.text (lowercase (show other))
 
   parse = fmap (classifyArch Strict) ident
+
+instance Monoid Arch where
+  mempty = buildArch
+  a `mappend` b = if a == buildArch then b else
+                  if b == buildArch then a else a
 
 classifyArch :: ClassificationStrictness -> String -> Arch
 classifyArch strictness s =
