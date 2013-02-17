@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildTargets
