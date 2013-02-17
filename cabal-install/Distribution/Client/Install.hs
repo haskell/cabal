@@ -432,7 +432,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
                  ["Continuing even though the plan contains dangerous reinstalls."]
                else
                  ["Try --avoid-reinstalls to avoid selecting destructive reinstalls or " ++
-                  "manually unregister conflicting packages (using 'ghc-pkg unregister').",
+                  "manually uninstall conflicting packages.",
                   "Use --force-reinstalls if you want to install anyway (including destructive reinstalls)."]
       else unless dryRun $ warn verbosity
              "Note that reinstalls are always dangerous. Continuing anyway..."
