@@ -84,7 +84,7 @@ import System.FilePath (dropDrive)
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion )
 import Distribution.System
-         ( OS(..), buildOS, Platform(..), buildPlatform )
+         ( OS(..), buildOS, Platform(..) )
 import Distribution.Compiler
          ( CompilerId, CompilerFlavor(..) )
 import Distribution.Text
@@ -310,10 +310,10 @@ substituteInstallDirTemplates env dirs = dirs'
 -- | Convert from abstract install directories to actual absolute ones by
 -- substituting for all the variables in the abstract paths, to get real
 -- absolute path.
-absoluteInstallDirs :: PackageIdentifier -> CompilerId -> CopyDest
+absoluteInstallDirs :: PackageIdentifier -> CompilerId -> CopyDest -> Platform
                     -> InstallDirs PathTemplate
                     -> InstallDirs FilePath
-absoluteInstallDirs pkgId compilerId copydest dirs =
+absoluteInstallDirs pkgId compilerId copydest platform dirs =
     (case copydest of
        CopyTo destdir -> fmap ((destdir </>) . dropDrive)
        _              -> id)
@@ -321,7 +321,7 @@ absoluteInstallDirs pkgId compilerId copydest dirs =
   . fmap fromPathTemplate
   $ substituteInstallDirTemplates env dirs
   where
-    env = initialPathTemplateEnv pkgId compilerId
+    env = initialPathTemplateEnv pkgId compilerId platform
 
 
 -- |The location prefix for the /copy/ command.
@@ -336,10 +336,10 @@ data CopyDest
 -- prevents us from making a relocatable package (also known as a \"prefix
 -- independent\" package).
 --
-prefixRelativeInstallDirs :: PackageIdentifier -> CompilerId
+prefixRelativeInstallDirs :: PackageIdentifier -> CompilerId -> Platform
                           -> InstallDirTemplates
                           -> InstallDirs (Maybe FilePath)
-prefixRelativeInstallDirs pkgId compilerId dirs =
+prefixRelativeInstallDirs pkgId compilerId platform dirs =
     fmap relative
   . appendSubdirs combinePathTemplate
   $ -- substitute the path template into each other, except that we map
@@ -349,7 +349,7 @@ prefixRelativeInstallDirs pkgId compilerId dirs =
       prefix = PathTemplate [Variable PrefixVar]
     }
   where
-    env = initialPathTemplateEnv pkgId compilerId
+    env = initialPathTemplateEnv pkgId compilerId platform
 
     -- If it starts with $prefix then it's relative and produce the relative
     -- path by stripping off $prefix/ or $prefix
@@ -421,12 +421,11 @@ substPathTemplate environment (PathTemplate template) =
                   Nothing                        -> [component]
 
 -- | The initial environment has all the static stuff but no paths
-initialPathTemplateEnv :: PackageIdentifier -> CompilerId -> PathTemplateEnv
-initialPathTemplateEnv pkgId compilerId =
+initialPathTemplateEnv :: PackageIdentifier -> CompilerId -> Platform -> PathTemplateEnv
+initialPathTemplateEnv pkgId compilerId platform =
      packageTemplateEnv  pkgId
   ++ compilerTemplateEnv compilerId
-  ++ platformTemplateEnv buildPlatform -- platform should be param if we want
-                                       -- to do cross-platform configuation
+  ++ platformTemplateEnv platform
 
 packageTemplateEnv :: PackageIdentifier -> PathTemplateEnv
 packageTemplateEnv pkgId =

@@ -75,7 +75,7 @@ module Distribution.Simple.Setup (
   BenchmarkFlags(..), emptyBenchmarkFlags, defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
-  buildOptions, installDirsOptions,
+  buildOptions, installDirsOptions, configHostPlatform,
 
   defaultDistPref,
 
@@ -112,7 +112,7 @@ import Distribution.Simple.Program (Program(..), ProgramConfiguration,
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
-import Distribution.System (OS, Arch, buildOS, buildArch)
+import Distribution.System (OS, Arch, buildOS, buildArch, Platform(..))
 import Distribution.Verbosity
 
 import Data.List   ( sort )
@@ -1658,6 +1658,9 @@ splitArgs  = space []
 
     word [] s = s
     word w  s = reverse w : s
+
+configHostPlatform :: ConfigFlags -> Platform
+configHostPlatform cfg = Platform (configHostArch cfg) (configHostOS cfg)
 
 -- The test cases kinda have to be rewritten from the ground up... :/
 --hunitTests :: [Test]
