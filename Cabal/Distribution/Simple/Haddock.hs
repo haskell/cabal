@@ -70,7 +70,7 @@ import Distribution.Simple.PreProcess (ppCpp', ppUnlit
                                       , preprocessComponent)
 import Distribution.Simple.Setup
         ( defaultHscolourFlags, Flag(..), toFlag, flagToMaybe, flagToList, fromFlag
-        , HaddockFlags(..), HscolourFlags(..) )
+        , HaddockFlags(..), HscolourFlags(..), configHostPlatform )
 import Distribution.Simple.Build (initialBuildSteps)
 import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplateEnv, PathTemplate,
                                         PathTemplateVariable(..),
@@ -525,6 +525,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id = (PrefixVar, prefix (installDirTemplates lbi))
                                 : initialPathTemplateEnv pkg_id (compilerId (compiler lbi))
+                                  (configHostPlatform (configFlags lbi))
 
 -- --------------------------------------------------------------------------
 -- hscolour support
