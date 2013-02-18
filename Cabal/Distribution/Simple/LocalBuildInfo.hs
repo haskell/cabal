@@ -86,7 +86,7 @@ import Distribution.Simple.PackageIndex
 import Distribution.Simple.Utils
          ( die )
 import Distribution.Simple.Setup
-         ( ConfigFlags )
+         ( ConfigFlags, configHostPlatform )
 import Distribution.Text
          ( display )
 
@@ -317,6 +317,7 @@ absoluteInstallDirs pkg lbi copydest =
     (packageId pkg)
     (compilerId (compiler lbi))
     copydest
+    (configHostPlatform (configFlags lbi))
     (installDirTemplates lbi)
 
 -- |See 'InstallDirs.prefixRelativeInstallDirs'
@@ -326,6 +327,7 @@ prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
     (compilerId (compiler lbi))
+    (configHostPlatform (configFlags lbi))
     (installDirTemplates lbi)
 
 substPathTemplate :: PackageId -> LocalBuildInfo
@@ -335,3 +337,4 @@ substPathTemplate pkgid lbi = fromPathTemplate
     where env = initialPathTemplateEnv
                    pkgid
                    (compilerId (compiler lbi))
+                   (configHostPlatform (configFlags lbi))

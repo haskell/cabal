@@ -70,7 +70,8 @@ import Distribution.Simple.InstallDirs
     , substPathTemplate , toPathTemplate, PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..) )
-import Distribution.Simple.Setup ( TestFlags(..), TestShowDetails(..), fromFlag )
+import Distribution.Simple.Setup
+    ( TestFlags(..), TestShowDetails(..), fromFlag, configHostPlatform )
 import Distribution.Simple.Utils ( die, notice, rawSystemIOWithEnv )
 import Distribution.TestSuite
     ( OptionDescr(..), Options, Progress(..), Result(..), TestInstance(..)
@@ -430,6 +431,7 @@ testSuiteLogPath template pkg_descr lbi testLog =
     where
         env = initialPathTemplateEnv
                 (PD.package pkg_descr) (compilerId $ LBI.compiler lbi)
+                (configHostPlatform (LBI.configFlags lbi))
                 ++  [ (TestSuiteNameVar, toPathTemplate $ testSuiteName testLog)
                     , (TestSuiteResultVar, result)
                     ]
@@ -446,7 +448,8 @@ testOption pkg_descr lbi suite template =
     fromPathTemplate $ substPathTemplate env template
   where
     env = initialPathTemplateEnv
-          (PD.package pkg_descr) (compilerId $ LBI.compiler lbi) ++
+          (PD.package pkg_descr) (compilerId $ LBI.compiler lbi)
+          (configHostPlatform (LBI.configFlags lbi)) ++
           [(TestSuiteNameVar, toPathTemplate $ PD.testName suite)]
 
 packageLogPath :: PathTemplate
@@ -458,6 +461,7 @@ packageLogPath template pkg_descr lbi =
     where
         env = initialPathTemplateEnv
                 (PD.package pkg_descr) (compilerId $ LBI.compiler lbi)
+                (configHostPlatform (LBI.configFlags lbi))
 
 -- | The filename of the source file for the stub executable associated with a
 -- library 'TestSuite'.
