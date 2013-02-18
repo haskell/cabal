@@ -86,7 +86,6 @@ osAliases _          OSX     = ["darwin"]
 osAliases _          IOS     = ["ios"]
 osAliases Permissive FreeBSD = ["kfreebsdgnu"]
 osAliases Permissive Solaris = ["solaris2"]
-osAliases _          IOS     = ["ios"]
 osAliases _          _       = []
 
 instance Text OS where
