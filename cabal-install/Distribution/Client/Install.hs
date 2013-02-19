@@ -90,7 +90,7 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
-         , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe )
+         , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe, configHostPlatform )
 import qualified Distribution.Simple.Setup as Cabal
          ( installCommand, InstallFlags(..), emptyInstallFlags
          , emptyTestFlags, testCommand, Flag(..) )
@@ -566,7 +566,7 @@ postInstallActions verbosity
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan installPlan
-  BuildReports.storeLocal (installSummaryFile installFlags) buildReports
+  BuildReports.storeLocal (installSummaryFile installFlags) buildReports (configHostPlatform configFlags)
   when (reportingLevel >= AnonymousReports) $
     BuildReports.storeAnonymous buildReports
   when (reportingLevel == DetailedReports) $
@@ -854,7 +854,7 @@ performInstallations verbosity
     substLogFileName template pkg = fromPathTemplate
                                   . substPathTemplate env
                                   $ template
-      where env = initialPathTemplateEnv (packageId pkg) (compilerId comp)
+      where env = initialPathTemplateEnv (packageId pkg) (compilerId comp) (configHostPlatform configFlags)
 
     miscOptions  = InstallMisc {
       rootCmd    = if fromFlag (configUserInstall configFlags)
@@ -1203,10 +1203,11 @@ withWin32SelfUpgrade verbosity configFlags compid pkg action = do
         fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
         prefixTemplate = fromFlagTemplate (configProgPrefix configFlags)
         suffixTemplate = fromFlagTemplate (configProgSuffix configFlags)
+        hostPlatform   = configHostPlatform configFlags
         templateDirs   = InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
         absoluteDirs   = InstallDirs.absoluteInstallDirs
-                           pkgid compid InstallDirs.NoCopyDest templateDirs
+                           pkgid compid InstallDirs.NoCopyDest hostPlatform templateDirs
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
-          where env = InstallDirs.initialPathTemplateEnv pkgid compid
+          where env = InstallDirs.initialPathTemplateEnv pkgid compid hostPlatform
