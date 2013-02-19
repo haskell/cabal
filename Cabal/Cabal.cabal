@@ -48,10 +48,7 @@ library
     build-depends:
       unix >= 2.0 && < 2.7
 
-  ghc-options: -Wall -fno-ignore-asserts
-  if impl(ghc >= 6.8)
-    ghc-options: -fwarn-tabs
-  nhc98-options: -K4M
+  ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
 
   exposed-modules:
     Distribution.Compiler,
