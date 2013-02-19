@@ -20,6 +20,7 @@ TAR=${TAR:-tar}
 GUNZIP=${GUNZIP:-gunzip}
 SCOPE_OF_INSTALLATION="--user"
 DEFAULT_PREFIX="${HOME}/.cabal"
+BASH_COMPL_DIR=""
 
 
 for arg in $*
@@ -81,6 +82,15 @@ GHC_VER=`${GHC} --numeric-version`
 GHC_PKG_VER=`${GHC_PKG} --version | cut -d' ' -f 5`
 [ ${GHC_VER} = ${GHC_PKG_VER} ] \
   || die "Version mismatch between ${GHC} and ${GHC_PKG} If you set the GHC variable then set GHC_PKG too"
+
+# locate bash completion directory
+if [[ -d "/etc/bash_completion" ]]
+then
+  BASH_COMPL_DIR="/etc/bash_completion"
+elif [[ -d "/etc/bash_completion.d" ]]
+then
+  BASH_COMPL_DIR="/etc/bash_completion.d"
+fi
 
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
@@ -186,6 +196,20 @@ do_pkg () {
   fi
 }
 
+bash_compl_err_msg () {
+    echo ""
+    echo "Bash shell completion was not installed on your system."
+    echo ""
+    echo "To enable bash completion feature for cabal-install you need to:"
+    echo " - use Linux with bash shell 2.04 or later"
+    echo " - locate bash completion directory on your system. Depending"
+    echo "   on your Linux distribution this will be /etc/bash_completion"
+    echo "   or /etc/bash_completion.d"
+    echo " - copy 'cabal' file from bash-completion subdirectory of"
+    echo "   cabal-install to your system's bash completion directory in /etc."
+    echo "   This requires root privelages."
+}
+
 # Actually do something!
 
 info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
@@ -234,6 +258,11 @@ then
     echo "If you do not want to add this directory to your PATH then you can"
     echo "change the setting in the config file, for example you could use:"
     echo "symlink-bindir: $HOME/bin"
+    echo ""
+    # install bash completion or tell the user that something went wrong
+    echo -n "Installing bash completion script..."
+    (cp bash-completion/cabal $BASH_COMPL_DIR &>/dev/null && echo "success.") \
+        || (echo "failed." && bash_compl_err_msg)
 else
     echo "Sorry, something went wrong."
     echo "The 'cabal' executable was not successfully installed into"
