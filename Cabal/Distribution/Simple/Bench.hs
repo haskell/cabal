@@ -54,7 +54,8 @@ import Distribution.Simple.InstallDirs
     , substPathTemplate , toPathTemplate, PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..) )
-import Distribution.Simple.Setup ( BenchmarkFlags(..), fromFlag )
+import Distribution.Simple.Setup
+    ( BenchmarkFlags(..), fromFlag )
 import Distribution.Simple.UserHooks ( Args )
 import Distribution.Simple.Utils ( die, notice, rawSystemExitCode )
 import Distribution.Text
@@ -152,5 +153,6 @@ benchOption pkg_descr lbi bm template =
     fromPathTemplate $ substPathTemplate env template
   where
     env = initialPathTemplateEnv
-          (PD.package pkg_descr) (compilerId $ LBI.compiler lbi) ++
+          (PD.package pkg_descr) (compilerId $ LBI.compiler lbi)
+          (compilerTargetPlatform $ LBI.compiler lbi) ++
           [(BenchmarkNameVar, toPathTemplate $ PD.benchmarkName bm)]

@@ -294,7 +294,7 @@ data ConfigFlags = ConfigFlags {
     configConfigurationsFlags :: FlagAssignment,
     configTests :: Flag Bool,     -- ^Enable test suite compilation
     configBenchmarks :: Flag Bool,     -- ^Enable benchmark compilation
-    configLibCoverage :: Flag Bool    -- ^ Enable test suite program coverage
+    configLibCoverage :: Flag Bool     -- ^ Enable test suite program coverage
   }
   deriving (Read,Show)
 

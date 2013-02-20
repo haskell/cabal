@@ -118,6 +118,7 @@ import System.Directory
 import System.Exit
          ( ExitCode(ExitSuccess) )
 import Distribution.Compat.Exception
+import Distribution.System ( buildPlatform )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -137,7 +138,8 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
         compilerId             = CompilerId Hugs version,
         compilerLanguages      = hugsLanguages,
-        compilerExtensions     = hugsLanguageExtensions
+        compilerExtensions     = hugsLanguageExtensions,
+        compilerTargetPlatform = buildPlatform
       }
   return (comp, conf'')
 

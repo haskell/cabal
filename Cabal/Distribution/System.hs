@@ -25,12 +25,14 @@ module Distribution.System (
   -- * Platform is a pair of arch and OS
   Platform(..),
   buildPlatform,
+  platformFromTriple
   ) where
 
 import qualified System.Info (os, arch)
 import qualified Data.Char as Char (toLower, isAlphaNum)
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Monoid (Monoid(..))
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
@@ -63,6 +65,7 @@ data OS = Linux | Windows | OSX        -- teir 1 desktop OSs
         | FreeBSD | OpenBSD | NetBSD   -- other free unix OSs
         | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
         | HaLVM                        -- bare metal / VMs / hypervisors
+        | IOS                          -- mobile OSes
         | OtherOS String
   deriving (Eq, Ord, Show, Read)
 
@@ -75,12 +78,13 @@ knownOSs :: [OS]
 knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD
            ,Solaris, AIX, HPUX, IRIX
-           ,HaLVM]
+           ,HaLVM, IOS]
 
 osAliases :: ClassificationStrictness -> OS -> [String]
 osAliases Permissive Windows = ["mingw32", "cygwin32"]
 osAliases Compat     Windows = ["mingw32", "win32"]
 osAliases _          OSX     = ["darwin"]
+osAliases _          IOS     = ["ios"]
 osAliases Permissive FreeBSD = ["kfreebsdgnu"]
 osAliases Permissive Solaris = ["solaris2"]
 osAliases _          _       = []
@@ -90,6 +94,11 @@ instance Text OS where
   disp other          = Disp.text (lowercase (show other))
 
   parse = fmap (classifyOS Compat) ident
+
+instance Monoid OS where
+  mempty = buildOS
+  a `mappend` b = if a == buildOS then b else
+                  if b == buildOS then a else a
 
 classifyOS :: ClassificationStrictness -> String -> OS
 classifyOS strictness s =
@@ -137,6 +146,11 @@ instance Text Arch where
 
   parse = fmap (classifyArch Strict) ident
 
+instance Monoid Arch where
+  mempty = buildArch
+  a `mappend` b = if a == buildArch then b else
+                  if b == buildArch then a else a
+
 classifyArch :: ClassificationStrictness -> String -> Arch
 classifyArch strictness s =
   fromMaybe (OtherArch s) $ lookup (lowercase s) archMap
@@ -174,3 +188,17 @@ ident = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
 
 lowercase :: String -> String
 lowercase = map Char.toLower
+
+platformFromTriple :: String -> Maybe Platform
+platformFromTriple triple = fmap fst (listToMaybe $ Parse.readP_to_S parseTriple triple)
+  where parseWord = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_')
+        parseTriple = do
+          arch <- fmap (classifyArch Strict) parseWord
+          _ <- Parse.char '-'
+          _ <- parseWord
+          _ <- Parse.char '-'
+          os <- fmap (classifyOS Compat) parseWord
+          return $ Platform arch os
+--targetPlatform ghcInfo = result
+--  where Just targetTriple = lookup "Target platform" ghcInfo
+        
