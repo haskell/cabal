@@ -27,7 +27,7 @@ import Codec.Compression.Zlib.Internal
 --
 -- This is to deal with http proxies that lie to us and transparently
 -- decompress without removing the content-encoding header. See:
--- <http://hackage.haskell.org/trac/hackage/ticket/686>
+-- <https://github.com/haskell/cabal/issues/678>
 --
 maybeDecompress :: ByteString -> ByteString
 maybeDecompress bytes = foldStream $ decompressWithErrors gzipOrZlibFormat defaultDecompressParams bytes

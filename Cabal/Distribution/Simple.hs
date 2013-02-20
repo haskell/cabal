@@ -557,7 +557,7 @@ defaultUserHooks = autoconfUserHooks {
     }
     -- This is the annoying old version that only runs configure if it exists.
     -- It's here for compatibility with existing Setup.hs scripts. See:
-    -- http://hackage.haskell.org/trac/hackage/ticket/165
+    -- https://github.com/haskell/cabal/issues/158
     where oldCompatPostConf args flags pkg_descr lbi
               = do let verbosity = fromFlag (configVerbosity flags)
                    noExtraFlags args
