@@ -84,6 +84,7 @@ import Distribution.Text
          ( Text(parse), display )
 import Distribution.Compat.ReadP
     ( readP_to_S, string, skipSpaces )
+import Distribution.System ( buildPlatform )
 
 import Data.List                ( nub )
 import Data.Char                ( isSpace )
@@ -107,7 +108,8 @@ configure verbosity hcPath _hcPkgPath conf = do
       comp = Compiler {
         compilerId             = CompilerId JHC version,
         compilerLanguages      = jhcLanguages,
-        compilerExtensions     = jhcLanguageExtensions
+        compilerExtensions     = jhcLanguageExtensions,
+        compilerTargetPlatform = buildPlatform
       }
   return (comp, conf')
 

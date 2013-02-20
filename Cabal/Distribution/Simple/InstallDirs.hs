@@ -240,7 +240,7 @@ defaultInstallDirs comp userInstall _hasLibs = do
            JHC    -> "$compiler"
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
-           _other -> "$pkgid" </> "$compiler",
+           _other -> "$arch-$os" </> "$pkgid" </> "$compiler",
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$pkgid"

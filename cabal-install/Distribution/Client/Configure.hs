@@ -28,7 +28,7 @@ import Distribution.Client.Targets
          ( userToPackageConstraint )
 
 import Distribution.Simple.Compiler
-         ( CompilerId(..), Compiler(compilerId)
+         ( CompilerId(..), Compiler(compilerId, compilerTargetPlatform)
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
@@ -47,7 +47,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, debug, die )
 import Distribution.System
-         ( Platform, buildPlatform )
+         ( Platform )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 
@@ -177,7 +177,7 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-  return (resolveDependencies buildPlatform (compilerId comp) solver resolverParams)
+  return (resolveDependencies (compilerTargetPlatform comp) (compilerId comp) solver resolverParams)
 
 
 -- | Call an installer for an 'SourcePackage' but override the configure

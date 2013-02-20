@@ -25,12 +25,13 @@ module Distribution.System (
   -- * Platform is a pair of arch and OS
   Platform(..),
   buildPlatform,
+  platformFromTriple
   ) where
 
 import qualified System.Info (os, arch)
 import qualified Data.Char as Char (toLower, isAlphaNum)
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Monoid (Monoid(..))
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
@@ -187,3 +188,17 @@ ident = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
 
 lowercase :: String -> String
 lowercase = map Char.toLower
+
+platformFromTriple :: String -> Maybe Platform
+platformFromTriple triple = fmap fst (listToMaybe $ Parse.readP_to_S parseTriple triple)
+  where parseWord = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_')
+        parseTriple = do
+          arch <- fmap (classifyArch Strict) parseWord
+          _ <- Parse.char '-'
+          _ <- parseWord
+          _ <- Parse.char '-'
+          os <- fmap (classifyOS Compat) parseWord
+          return $ Platform arch os
+--targetPlatform ghcInfo = result
+--  where Just targetTriple = lookup "Target platform" ghcInfo
+        

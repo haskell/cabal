@@ -69,6 +69,7 @@ import Distribution.Version
 import Language.Haskell.Extension
 import System.Directory
 import System.FilePath
+import Distribution.System ( buildPlatform )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -83,9 +84,10 @@ configure verbosity hcPath _hcPkgPath conf = do
     (userMaybeSpecifyPath "uhc" hcPath conf)
 
   let comp = Compiler {
-               compilerId          =  CompilerId UHC uhcVersion,
-               compilerLanguages   =  uhcLanguages,
-               compilerExtensions  =  uhcLanguageExtensions
+               compilerId             =  CompilerId UHC uhcVersion,
+               compilerLanguages      =  uhcLanguages,
+               compilerExtensions     =  uhcLanguageExtensions,
+               compilerTargetPlatform =  buildPlatform
              }
   return (comp, conf')
 

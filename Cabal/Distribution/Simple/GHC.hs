@@ -138,6 +138,7 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
+import Distribution.System (Platform, buildPlatform, platformFromTriple)
 
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
 getGhcInfo verbosity ghcProg =
@@ -194,10 +195,16 @@ configure verbosity hcPath hcPkgPath conf0 = do
   let comp = Compiler {
         compilerId             = CompilerId GHC ghcVersion,
         compilerLanguages      = languages,
-        compilerExtensions     = extensions
+        compilerExtensions     = extensions,
+        compilerTargetPlatform = compTargetPlatform
       }
+      compTargetPlatform = targetPlatform ghcInfo
       conf4 = configureToolchain ghcProg ghcInfo conf3 -- configure gcc and ld
   return (comp, conf4)
+
+targetPlatform :: [(String, String)] -> Platform
+targetPlatform ghcInfo = fromMaybe buildPlatform maybePlatform
+  where maybePlatform = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking

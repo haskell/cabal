@@ -56,7 +56,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), fromFlag, fromFlagOrDefault, flagToMaybe, configHostPlatform )
+         ( ConfigFlags(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 
 import System.Posix.Files
@@ -152,18 +152,17 @@ symlinkBinaries configFlags installFlags plan =
                            defaultDirs (configInstallDirs configFlags)
           absoluteDirs = InstallDirs.absoluteInstallDirs
                            (packageId pkg) compilerId InstallDirs.NoCopyDest
-                           hostPlatform templateDirs
+                           platform templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
 
     substTemplate pkgid = InstallDirs.fromPathTemplate
                         . InstallDirs.substPathTemplate env
-      where env = InstallDirs.initialPathTemplateEnv pkgid compilerId hostPlatform
+      where env = InstallDirs.initialPathTemplateEnv pkgid compilerId platform
 
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
     prefixTemplate   = fromFlagTemplate (configProgPrefix configFlags)
     suffixTemplate   = fromFlagTemplate (configProgSuffix configFlags)
     platform         = InstallPlan.planPlatform plan
-    hostPlatform     = configHostPlatform configFlags
     compilerId@(CompilerId compilerFlavor _) = InstallPlan.planCompiler plan
 
 symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
