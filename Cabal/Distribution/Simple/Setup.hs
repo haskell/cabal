@@ -75,7 +75,7 @@ module Distribution.Simple.Setup (
   BenchmarkFlags(..), emptyBenchmarkFlags, defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
-  buildOptions, installDirsOptions, configHostPlatform,
+  buildOptions, installDirsOptions,
 
   defaultDistPref,
 
@@ -112,7 +112,6 @@ import Distribution.Simple.Program (Program(..), ProgramConfiguration,
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
-import Distribution.System (OS, Arch, buildOS, buildArch, Platform(..))
 import Distribution.Verbosity
 
 import Data.List   ( sort )
@@ -295,9 +294,7 @@ data ConfigFlags = ConfigFlags {
     configConfigurationsFlags :: FlagAssignment,
     configTests :: Flag Bool,     -- ^Enable test suite compilation
     configBenchmarks :: Flag Bool,     -- ^Enable benchmark compilation
-    configLibCoverage :: Flag Bool,   -- ^ Enable test suite program coverage
-    configHostOS        :: OS,
-    configHostArch      :: Arch
+    configLibCoverage :: Flag Bool     -- ^ Enable test suite program coverage
   }
   deriving (Read,Show)
 
@@ -485,14 +482,6 @@ configureOptions showOrParseArgs =
          "dependency checking and compilation for benchmarks listed in the package description file."
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
          (boolOpt [] [])
-      ,option "" ["host-os"]
-         "specify host OS, i.e. OS to cross-compile to"
-         configHostOS (\v flags -> flags { configHostOS = v })
-         (textReqArg "HOST_OS")
-      ,option "" ["host-arch"]
-         "specify host Arch, i.e. CPU to cross-compile to"
-         configHostArch (\v flags -> flags { configHostArch = v })
-         (textReqArg "HOST_ARCH")
       ]
   where
     readFlagList :: String -> FlagAssignment
@@ -617,9 +606,7 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = mempty,
     configTests   = mempty,
     configLibCoverage = mempty,
-    configBenchmarks    = mempty,
-    configHostOS        = buildOS,
-    configHostArch      = buildArch
+    configBenchmarks    = mempty
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -652,9 +639,7 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests = combine configTests,
     configLibCoverage = combine configLibCoverage,
-    configBenchmarks    = combine configBenchmarks,
-    configHostOS        = combine configHostOS,
-    configHostArch      = combine configHostArch
+    configBenchmarks    = combine configBenchmarks
   }
     where combine field = field a `mappend` field b
 
@@ -1658,9 +1643,6 @@ splitArgs  = space []
 
     word [] s = s
     word w  s = reverse w : s
-
-configHostPlatform :: ConfigFlags -> Platform
-configHostPlatform cfg = Platform (configHostArch cfg) (configHostOS cfg)
 
 -- The test cases kinda have to be rewritten from the ground up... :/
 --hunitTests :: [Test]

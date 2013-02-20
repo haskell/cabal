@@ -123,6 +123,7 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension )
 import System.IO (hClose, hPutStrLn)
 import Distribution.Compat.Exception (catchExit, catchIO)
+import Distribution.System ( buildPlatform )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -152,7 +153,8 @@ configure verbosity hcPath hcPkgPath conf = do
   let comp = Compiler {
         compilerId             = CompilerId LHC lhcVersion,
         compilerLanguages      = languages,
-        compilerExtensions     = extensions
+        compilerExtensions     = extensions,
+        compilerTargetPlatform = buildPlatform
       }
       conf''' = configureToolchain lhcProg conf'' -- configure gcc and ld
   return (comp, conf''')

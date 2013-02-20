@@ -68,7 +68,7 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Compiler
     ( CompilerId(..) )
 import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
+    ( CompilerFlavor(..), Compiler(compilerId, compilerTargetPlatform), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack )
 import Distribution.Package
@@ -99,8 +99,7 @@ import Distribution.Simple.Program
     , requireProgram, requireProgramVersion
     , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
-    ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe
-    , configHostPlatform )
+    ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
@@ -344,7 +343,7 @@ configure (pkg_descr0, pbi) cfg
                 case finalizePackageDescription
                        (configConfigurationsFlags cfg)
                        dependencySatisfiable
-                       (configHostPlatform cfg)
+                       (compilerTargetPlatform comp)
                        (compilerId comp)
                        (configConstraints cfg)
                        pkg_descr0''
@@ -1028,7 +1027,7 @@ checkForeignDeps pkg lbi verbosity = do
         hcDefines comp =
           case compilerFlavor comp of
             GHC  ->
-                let ghcOS = case configHostOS (configFlags lbi) of
+                let ghcOS = case hostOS of
                             Linux     -> ["linux"]
                             Windows   -> ["mingw32"]
                             OSX       -> ["darwin"]
@@ -1042,7 +1041,7 @@ checkForeignDeps pkg lbi verbosity = do
                             HaLVM     -> []
                             IOS       -> ["ios"]
                             OtherOS _ -> []
-                    ghcArch = case configHostArch (configFlags lbi) of
+                    ghcArch = case hostArch of
                               I386        -> ["i386"]
                               X86_64      -> ["x86_64"]
                               PPC         -> ["powerpc"]
@@ -1067,6 +1066,7 @@ checkForeignDeps pkg lbi verbosity = do
             Hugs -> ["-D__HUGS__"]
             _    -> []
           where
+            Platform hostArch hostOS = compilerTargetPlatform comp
             version = compilerVersion comp
                       -- TODO: move this into the compiler abstraction
             -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all
