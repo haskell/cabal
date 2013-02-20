@@ -79,7 +79,7 @@ module Distribution.Simple.Command (
 
 -- ** OptDescr 'smart' constructors
   MkOptDescr,
-  reqArg, reqArg', textReqArg, optArg, optArg', noArg,
+  reqArg, reqArg', optArg, optArg', noArg,
   boolOpt, boolOpt', choiceOpt, choiceOptFromEnum
 
   ) where
@@ -91,7 +91,7 @@ import Data.Maybe
 import Data.Monoid
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.Text
-         ( Text(disp, parse), simpleParse, display )
+         ( Text(disp, parse) )
 import Distribution.ParseUtils
 import Distribution.ReadE
 import Distribution.Simple.Utils (die, intercalate)
@@ -175,14 +175,6 @@ reqArg' :: Monoid b => ArgPlaceHolder -> (String -> b) -> (b -> [String])
                     -> MkOptDescr (a -> b) (b -> a -> a) a
 reqArg' ad mkflag showflag =
     reqArg ad (succeedReadE mkflag) showflag
-
-textReqArg :: (Monoid b, Text b) => ArgPlaceHolder -> MkOptDescr (a -> b) (b -> a -> a) a
-textReqArg ad = reqArg ad parseIt formatIt
-  where
-    parseIt = ReadE $ \txt -> case simpleParse txt of
-        Just a  -> Right a
-        Nothing -> Left $ "Can't parse "++ad
-    formatIt = (:[]) . display
 
 -- | (String -> a) variant of "optArg"
 optArg' :: Monoid b => ArgPlaceHolder -> (Maybe String -> b) -> (b -> [Maybe String])
