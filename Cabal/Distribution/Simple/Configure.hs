@@ -68,7 +68,7 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Compiler
     ( CompilerId(..) )
 import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
+    ( CompilerFlavor(..), Compiler(compilerId, compilerTargetPlatform), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack )
 import Distribution.Package
@@ -115,7 +115,7 @@ import Distribution.Simple.Utils
     , withFileContents, writeFileAtomic
     , withTempFile )
 import Distribution.System
-    ( OS(..), buildOS, Arch(..), buildArch, buildPlatform )
+    ( OS(..), buildOS, Arch(..), Platform(..) )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
@@ -340,7 +340,7 @@ configure (pkg_descr0, pbi) cfg
                 case finalizePackageDescription
                        (configConfigurationsFlags cfg)
                        dependencySatisfiable
-                       Distribution.System.buildPlatform
+                       (compilerTargetPlatform comp)
                        (compilerId comp)
                        (configConstraints cfg)
                        pkg_descr0''
@@ -1030,7 +1030,7 @@ checkForeignDeps pkg lbi verbosity = do
         hcDefines comp =
           case compilerFlavor comp of
             GHC  ->
-                let ghcOS = case buildOS of
+                let ghcOS = case hostOS of
                             Linux     -> ["linux"]
                             Windows   -> ["mingw32"]
                             OSX       -> ["darwin"]
@@ -1042,8 +1042,9 @@ checkForeignDeps pkg lbi verbosity = do
                             HPUX      -> ["hpux"]
                             IRIX      -> ["irix"]
                             HaLVM     -> []
+                            IOS       -> ["ios"]
                             OtherOS _ -> []
-                    ghcArch = case buildArch of
+                    ghcArch = case hostArch of
                               I386        -> ["i386"]
                               X86_64      -> ["x86_64"]
                               PPC         -> ["powerpc"]
@@ -1068,6 +1069,7 @@ checkForeignDeps pkg lbi verbosity = do
             Hugs -> ["-D__HUGS__"]
             _    -> []
           where
+            Platform hostArch hostOS = compilerTargetPlatform comp
             version = compilerVersion comp
                       -- TODO: move this into the compiler abstraction
             -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all

@@ -74,6 +74,7 @@ import Distribution.Compiler
 import Distribution.Version (Version(..))
 import Distribution.Text (display)
 import Language.Haskell.Extension (Language(Haskell98), Extension)
+import Distribution.System (Platform)
 
 import Data.List (nub)
 import Data.Maybe (catMaybes, isNothing)
@@ -81,7 +82,8 @@ import Data.Maybe (catMaybes, isNothing)
 data Compiler = Compiler {
         compilerId              :: CompilerId,
         compilerLanguages       :: [(Language, Flag)],
-        compilerExtensions      :: [(Extension, Flag)]
+        compilerExtensions      :: [(Extension, Flag)],
+        compilerTargetPlatform  :: Platform
     }
     deriving (Show, Read)
 

@@ -104,6 +104,7 @@ import Data.Maybe    ( catMaybes )
 import Data.Monoid   ( Monoid(..) )
 import Control.Monad ( when, unless )
 import Distribution.Compat.Exception
+import Distribution.System ( buildPlatform )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -132,7 +133,8 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
         compilerId         = CompilerId NHC nhcVersion,
         compilerLanguages  = nhcLanguages,
-        compilerExtensions     = nhcLanguageExtensions
+        compilerExtensions     = nhcLanguageExtensions,
+        compilerTargetPlatform = buildPlatform
       }
   return (comp, conf'''')
 
