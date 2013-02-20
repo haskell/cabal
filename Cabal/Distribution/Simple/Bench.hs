@@ -54,8 +54,7 @@ import Distribution.Simple.InstallDirs
     , substPathTemplate , toPathTemplate, PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..) )
-import Distribution.Simple.Setup
-    ( BenchmarkFlags(..), fromFlag )
+import Distribution.Simple.Setup ( BenchmarkFlags(..), fromFlag )
 import Distribution.Simple.UserHooks ( Args )
 import Distribution.Simple.Utils ( die, notice, rawSystemExitCode )
 import Distribution.Text
