@@ -8,7 +8,7 @@ For general discussion or queries email the libraries mailing list
 <libraries@haskell.org>. There is also a development mailing list
 <cabal-devel@haskell.org>.
 
-[bug tracker]: http://hackage.haskell.org/trac/hackage/
+[bug tracker]: https://github.com/haskell/cabal/issues
 
 # Stability of Cabal interfaces #
 
