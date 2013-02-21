@@ -48,7 +48,8 @@ module Distribution.PackageDescription.PrettyPrint (
 
 import Data.Monoid (Monoid(mempty))
 import Distribution.PackageDescription
-       ( TestSuite(..), TestSuiteInterface(..), testType
+       ( Benchmark(..), BenchmarkInterface(..), benchmarkType
+       , TestSuite(..), TestSuiteInterface(..), testType
        , SourceRepo(..),
         customFieldsBI, CondTree(..), Condition(..),
         FlagName(..), ConfVar(..), Executable(..), Library(..),
@@ -87,6 +88,7 @@ ppGenericPackageDescription gpd          =
         $+$ ppLibrary (condLibrary gpd)
         $+$ ppExecutables (condExecutables gpd)
         $+$ ppTestSuites (condTestSuites gpd)
+        $+$ ppBenchmarks (condBenchmarks gpd)
 
 ppPackageDescription :: PackageDescription -> Doc
 ppPackageDescription pd                  =      ppFields pkgDescrFieldDescrs pd
@@ -193,6 +195,32 @@ ppTestSuites suites =
 
     testSuiteModule test = case testInterface test of
       TestSuiteLibV09 _ m -> Just m
+      _                   -> Nothing
+
+ppBenchmarks :: [(String, CondTree ConfVar [Dependency] Benchmark)] -> Doc
+ppBenchmarks suites =
+    emptyLine $ vcat [     text ("benchmark " ++ n)
+                       $+$ nest indentWith (ppCondTree condTree Nothing ppBenchmark)
+                     | (n,condTree) <- suites]
+  where
+    ppBenchmark benchmark Nothing =
+                maybe empty (\t -> text "type:"        <+> disp t)
+                            maybeBenchmarkType
+            $+$ maybe empty (\f -> text "main-is:"     <+> text f)
+                            (benchmarkMainIs benchmark)
+            $+$ ppFields binfoFieldDescrs (benchmarkBuildInfo benchmark)
+            $+$ ppCustomFields (customFieldsBI (benchmarkBuildInfo benchmark))
+      where
+        maybeBenchmarkType | benchmarkInterface benchmark == mempty = Nothing
+                           | otherwise = Just (benchmarkType benchmark)
+
+    ppBenchmark (Benchmark _ _ buildInfo' _)
+                    (Just (Benchmark _ _ buildInfo2 _)) =
+            ppDiffFields binfoFieldDescrs buildInfo' buildInfo2
+            $+$ ppCustomFields (customFieldsBI buildInfo')
+
+    benchmarkMainIs benchmark = case benchmarkInterface benchmark of
+      BenchmarkExeV10 _ f -> Just f
       _                   -> Nothing
 
 ppCondition :: Condition ConfVar -> Doc
