@@ -236,7 +236,7 @@ defaultInstallDirs comp userInstall _hasLibs = do
            JHC    -> "$compiler"
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
-           _other -> "$pkgid" </> "$compiler",
+           _other -> "$arch-$os-$compiler" </> "$pkgid",
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$pkgid"
@@ -246,8 +246,8 @@ defaultInstallDirs comp userInstall _hasLibs = do
       datadir      = case buildOS of
         Windows   -> "$prefix"
         _other    -> "$prefix" </> "share",
-      datasubdir   = "$pkgid",
-      docdir       = "$datadir" </> "doc" </> "$pkgid",
+      datasubdir   = "$arch-$os-$compiler" </> "$pkgid",
+      docdir       = "$datadir" </> "doc" </> "$arch-$os-$compiler" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
       haddockdir   = "$htmldir"
