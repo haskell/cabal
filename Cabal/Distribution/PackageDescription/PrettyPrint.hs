@@ -46,6 +46,7 @@ module Distribution.PackageDescription.PrettyPrint (
     showGenericPackageDescription,
 ) where
 
+import Data.Monoid (Monoid(mempty))
 import Distribution.PackageDescription
        ( TestSuite(..), TestSuiteInterface(..), testType
        , SourceRepo(..),
@@ -169,13 +170,17 @@ ppTestSuites suites =
                      | (n,condTree) <- suites]
   where
     ppTestSuite testsuite Nothing =
-                text "type:" <+> disp (testType testsuite)
+                maybe empty (\t -> text "type:"        <+> disp t)
+                            maybeTestType
             $+$ maybe empty (\f -> text "main-is:"     <+> text f)
                             (testSuiteMainIs testsuite)
             $+$ maybe empty (\m -> text "test-module:" <+> disp m)
                             (testSuiteModule testsuite)
             $+$ ppFields binfoFieldDescrs (testBuildInfo testsuite)
             $+$ ppCustomFields (customFieldsBI (testBuildInfo testsuite))
+      where
+        maybeTestType | testInterface testsuite == mempty = Nothing
+                      | otherwise = Just (testType testsuite)
 
     ppTestSuite (TestSuite _ _ buildInfo' _)
                     (Just (TestSuite _ _ buildInfo2 _)) =
