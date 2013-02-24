@@ -158,9 +158,9 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   (comp, conf) <- configCompilerAux (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
-  pkgEnvDir <- getCurrentDirectory
-  pkgEnv    <- createPackageEnvironment verbosity sandboxDir pkgEnvDir
-               NoComments comp
+  pkgEnvDir   <- getCurrentDirectory
+  createPackageEnvironment verbosity sandboxDir pkgEnvDir NoComments comp
+  (_, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
 
   -- Create the index file if it doesn't exist.
   indexFile <- tryGetIndexFilePath pkgEnv
