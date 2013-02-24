@@ -237,7 +237,7 @@ data IncludeComments = IncludeComments | NoComments
 createPackageEnvironment :: Verbosity -> FilePath -> FilePath
                             -> IncludeComments
                             -> Compiler
-                            -> IO PackageEnvironment
+                            -> IO ()
 createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments compiler = do
   let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   notice verbosity $ "Writing default package environment to " ++ path
@@ -245,10 +245,6 @@ createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments compiler = d
   commentPkgEnv <- commentPackageEnvironment sandboxDir
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler
   writePackageEnvironmentFile path incComments commentPkgEnv initialPkgEnv
-
-  let base  = basePackageEnvironment sandboxDir
-  user     <- userPackageEnvironment verbosity pkgEnvDir
-  return $ base `mappend` user `mappend` initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
