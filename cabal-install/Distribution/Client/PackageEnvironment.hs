@@ -168,19 +168,16 @@ commentPackageEnvironment sandboxDir = do
     pkgEnvSavedConfig = commentConf `mappend` baseConf
     }
 
--- | Return the base package environment: settings from the config file this
--- package environment optionally inherits from layered on top of
--- `basePackageEnvironment`.
-basePkgEnv :: Verbosity -> FilePath -> (Flag FilePath) -> IO PackageEnvironment
-basePkgEnv verbosity sandboxDir inheritConfig = do
-  let base     = basePackageEnvironment sandboxDir
-      baseConf = pkgEnvSavedConfig base
-  -- Does this package environment inherit from some config file?
-  case inheritConfig of
-    NoFlag          -> return base
-    (Flag confPath) -> do
-      conf <- loadConfig verbosity (Flag confPath) NoFlag
-      return $ base { pkgEnvSavedConfig = baseConf `mappend` conf }
+-- | If this package environment inherits from some other package environment,
+-- return that package environment; otherwise return mempty.
+inheritedPackageEnvironment :: Verbosity -> PackageEnvironment
+                               -> IO PackageEnvironment
+inheritedPackageEnvironment verbosity pkgEnv = do
+  case (pkgEnvInherit pkgEnv) of
+    NoFlag                -> return mempty
+    confPathFlag@(Flag _) -> do
+      conf <- loadConfig verbosity confPathFlag NoFlag
+      return $ mempty { pkgEnvSavedConfig = conf }
 
 -- | Load the user package environment if it exists (the optional "cabal.config"
 -- file).
@@ -220,14 +217,17 @@ tryLoadPackageEnvironment verbosity pkgEnvDir = do
       let (line, msg) = locatedErrorMsg err
       die $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
-  user <- userPkgEnv verbosity pkgEnvDir
+
   -- Get the saved sandbox directory.
   -- TODO: Use substPathTemplate instead of fromPathTemplate.
   let sandboxDir = fromFlagOrDefault defaultSandboxLocation
                    . fmap fromPathTemplate . prefix . savedGlobalInstallDirs
                    . pkgEnvSavedConfig $ pkgEnv
-  base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit pkgEnv)
-  return (sandboxDir, base `mappend` user `mappend` pkgEnv)
+
+  let base   = basePackageEnvironment sandboxDir
+  user      <- userPkgEnv verbosity pkgEnvDir
+  inherited <- inheritedPackageEnvironment verbosity user
+  return (sandboxDir, base `mappend` inherited `mappend` user `mappend` pkgEnv)
 
 -- | Should the generated package environment file include comments?
 data IncludeComments = IncludeComments | NoComments
@@ -246,8 +246,8 @@ createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments compiler = d
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler
   writePackageEnvironmentFile path incComments commentPkgEnv initialPkgEnv
 
-  user <- userPkgEnv verbosity pkgEnvDir
-  base <- basePkgEnv verbosity sandboxDir (pkgEnvInherit initialPkgEnv)
+  let base  = basePackageEnvironment sandboxDir
+  user     <- userPkgEnv verbosity pkgEnvDir
   return $ base `mappend` user `mappend` initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
