@@ -181,8 +181,8 @@ inheritedPackageEnvironment verbosity pkgEnv = do
 
 -- | Load the user package environment if it exists (the optional "cabal.config"
 -- file).
-userPkgEnv :: Verbosity -> FilePath -> IO PackageEnvironment
-userPkgEnv verbosity pkgEnvDir = do
+userPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
+userPackageEnvironment verbosity pkgEnvDir = do
   let path = pkgEnvDir </> userPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
   case minp of
@@ -225,7 +225,7 @@ tryLoadPackageEnvironment verbosity pkgEnvDir = do
                    . pkgEnvSavedConfig $ pkgEnv
 
   let base   = basePackageEnvironment sandboxDir
-  user      <- userPkgEnv verbosity pkgEnvDir
+  user      <- userPackageEnvironment verbosity pkgEnvDir
   inherited <- inheritedPackageEnvironment verbosity user
   return (sandboxDir, base `mappend` inherited `mappend` user `mappend` pkgEnv)
 
@@ -247,7 +247,7 @@ createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments compiler = d
   writePackageEnvironmentFile path incComments commentPkgEnv initialPkgEnv
 
   let base  = basePackageEnvironment sandboxDir
-  user     <- userPkgEnv verbosity pkgEnvDir
+  user     <- userPackageEnvironment verbosity pkgEnvDir
   return $ base `mappend` user `mappend` initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
