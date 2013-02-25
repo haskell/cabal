@@ -29,7 +29,7 @@ import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd )
 
 import Distribution.Simple.Setup ( fromFlagOrDefault )
-import Distribution.Simple.Utils ( die, debug, notice, findPackageDesc )
+import Distribution.Simple.Utils ( die, debug, info, findPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
@@ -206,7 +206,7 @@ listBuildTreeRefs verbosity path = do
   let buildTreeRefs = [ pkgPath | (LocalUnpackedPackage pkgPath) <-
                            map packageSource . allPackages $ pkgIndex ]
   when (null buildTreeRefs) $
-    notice verbosity $ "Index file '" ++ path
+    info verbosity $ "Index file '" ++ path
       ++ "' has no references to local build trees."
   return buildTreeRefs
 
