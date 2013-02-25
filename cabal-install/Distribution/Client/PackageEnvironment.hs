@@ -114,15 +114,19 @@ commonPackageEnvironmentConfig sandboxDir =
   where
     sandboxInstallDirs = mempty { prefix = toFlag (toPathTemplate sandboxDir) }
 
+commonPackageEnvironment :: FilePath -> PackageEnvironment
+commonPackageEnvironment sandboxDir = mempty {
+  pkgEnvSavedConfig = commonPackageEnvironmentConfig sandboxDir
+  }
+
 -- | These are the absolute basic defaults, the fields that must be
 -- initialised. When we load the package environment from the file we layer the
 -- loaded values over these ones.
-basePackageEnvironment :: FilePath -> PackageEnvironment
-basePackageEnvironment sandboxDir = do
-  let baseConf = commonPackageEnvironmentConfig sandboxDir in
+basePackageEnvironment :: PackageEnvironment
+basePackageEnvironment =
     mempty {
-      pkgEnvSavedConfig = baseConf {
-         savedConfigureFlags = (savedConfigureFlags baseConf) {
+      pkgEnvSavedConfig = mempty {
+         savedConfigureFlags = mempty {
             configHcFlavor    = toFlag defaultCompiler,
             configVerbosity   = toFlag normal
             }
@@ -157,6 +161,31 @@ setPackageDB sandboxDir compiler configFlags =
                               </> (showCompilerId compiler ++
                                    "-packages.conf.d"))]
     }
+
+-- | Almost the same as 'savedConf `mappend` pkgEnv', but some settings are
+-- overridden instead of mappend'ed.
+overrideSandboxSettings :: SavedConfig -> PackageEnvironment ->
+                           PackageEnvironment
+overrideSandboxSettings savedConf pkgEnv =
+  pkgEnv {
+    pkgEnvSavedConfig = mappendedConf {
+       savedGlobalFlags = (savedGlobalFlags mappendedConf) {
+          globalLocalRepos = globalLocalRepos pkgEnvGlobalFlags
+          }
+       , savedConfigureFlags = (savedConfigureFlags mappendedConf) {
+          configPackageDBs = configPackageDBs pkgEnvConfigureFlags
+          }
+       , savedInstallFlags = (savedInstallFlags mappendedConf) {
+          installSummaryFile = installSummaryFile pkgEnvInstallFlags
+          }
+       }
+    }
+  where
+    pkgEnvConf           = pkgEnvSavedConfig pkgEnv
+    mappendedConf        = savedConf `mappend` pkgEnvConf
+    pkgEnvGlobalFlags    = savedGlobalFlags pkgEnvConf
+    pkgEnvConfigureFlags = savedConfigureFlags pkgEnvConf
+    pkgEnvInstallFlags   = savedInstallFlags pkgEnvConf
 
 -- | Default values that get used if no value is given. Used here to include in
 -- comments when we write out the initial package environment.
@@ -201,9 +230,9 @@ userPackageEnvironment verbosity pkgEnvDir = do
 -- with error if it doesn't exist. Also returns the path to the sandbox
 -- directory. Note that the path parameter should be a name of an existing
 -- directory.
-tryLoadPackageEnvironment :: Verbosity -> FilePath
+tryLoadPackageEnvironment :: Verbosity -> FilePath -> (Flag FilePath)
                              -> IO (FilePath, PackageEnvironment)
-tryLoadPackageEnvironment verbosity pkgEnvDir = do
+tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
   let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   minp <- readPackageEnvironmentFile mempty path
   pkgEnv <- case minp of
@@ -224,10 +253,15 @@ tryLoadPackageEnvironment verbosity pkgEnvDir = do
                    . fmap fromPathTemplate . prefix . savedUserInstallDirs
                    . pkgEnvSavedConfig $ pkgEnv
 
-  let base   = basePackageEnvironment sandboxDir
+  let base   = basePackageEnvironment
+  let common = commonPackageEnvironment sandboxDir
   user      <- userPackageEnvironment verbosity pkgEnvDir
   inherited <- inheritedPackageEnvironment verbosity user
-  return (sandboxDir, base `mappend` inherited `mappend` user `mappend` pkgEnv)
+
+  cabalConfig <- loadConfig verbosity configFileFlag NoFlag
+  return (sandboxDir,
+          base `mappend` (cabalConfig `overrideSandboxSettings`
+          (common `mappend` inherited `mappend` user `mappend` pkgEnv)))
 
 -- | Should the generated package environment file include comments?
 data IncludeComments = IncludeComments | NoComments
