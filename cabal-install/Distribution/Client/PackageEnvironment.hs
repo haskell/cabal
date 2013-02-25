@@ -221,7 +221,7 @@ tryLoadPackageEnvironment verbosity pkgEnvDir = do
   -- Get the saved sandbox directory.
   -- TODO: Use substPathTemplate instead of fromPathTemplate.
   let sandboxDir = fromFlagOrDefault defaultSandboxLocation
-                   . fmap fromPathTemplate . prefix . savedGlobalInstallDirs
+                   . fmap fromPathTemplate . prefix . savedUserInstallDirs
                    . pkgEnvSavedConfig $ pkgEnv
 
   let base   = basePackageEnvironment sandboxDir
