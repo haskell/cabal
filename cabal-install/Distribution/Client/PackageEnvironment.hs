@@ -34,8 +34,8 @@ import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , defaultSandboxLocation )
 import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
                                          , showCompilerId )
-import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate,
-                                         fromPathTemplate, toPathTemplate )
+import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
+                                       , fromPathTemplate, toPathTemplate )
 import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..),
                                          fromFlagOrDefault, toFlag )
 import Distribution.Simple.Utils       ( die, notice, warn, lowercase )
@@ -101,10 +101,10 @@ commonPackageEnvironmentConfig sandboxDir =
   mempty {
     savedConfigureFlags = mempty {
        configUserInstall = toFlag True,
-       configInstallDirs = sandboxInstallDirs
+       configInstallDirs = installDirs
        },
-    savedUserInstallDirs   = sandboxInstallDirs,
-    savedGlobalInstallDirs = sandboxInstallDirs,
+    savedUserInstallDirs   = installDirs,
+    savedGlobalInstallDirs = installDirs,
     savedGlobalFlags = mempty {
       globalLogsDir = toFlag $ sandboxDir </> "logs",
       -- Is this right? cabal-dev uses the global world file.
@@ -112,11 +112,18 @@ commonPackageEnvironmentConfig sandboxDir =
       }
     }
   where
-    sandboxInstallDirs = mempty { prefix = toFlag (toPathTemplate sandboxDir) }
+    installDirs = sandboxInstallDirs sandboxDir
 
+-- | 'commonPackageEnvironmentConfig' wrapped inside a 'PackageEnvironment'.
 commonPackageEnvironment :: FilePath -> PackageEnvironment
 commonPackageEnvironment sandboxDir = mempty {
   pkgEnvSavedConfig = commonPackageEnvironmentConfig sandboxDir
+  }
+
+-- | Given a path to a sandbox, return the corresponding InstallDirs record.
+sandboxInstallDirs :: FilePath -> InstallDirs (Flag PathTemplate)
+sandboxInstallDirs sandboxDir = mempty {
+  prefix = toFlag (toPathTemplate sandboxDir)
   }
 
 -- | These are the absolute basic defaults, the fields that must be
@@ -248,7 +255,7 @@ tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
 
   -- Get the saved sandbox directory.
-  -- TODO: Use substPathTemplate instead of fromPathTemplate.
+  -- TODO: Use substPathTemplate with compilerTemplateEnv ++ platformTemplateEnv.
   let sandboxDir = fromFlagOrDefault defaultSandboxLocation
                    . fmap fromPathTemplate . prefix . savedUserInstallDirs
                    . pkgEnvSavedConfig $ pkgEnv
