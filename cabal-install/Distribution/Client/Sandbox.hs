@@ -77,10 +77,12 @@ import System.FilePath                        ( (</>), getSearchPath
 -- | Load the default package environment file. In addition to a
 -- @PackageEnvironment@, also return a canonical path to the sandbox. Exit with
 -- error if the sandbox directory or the package environment file do not exist.
-tryLoadSandboxConfig :: Verbosity -> IO (FilePath, PackageEnvironment)
-tryLoadSandboxConfig verbosity = do
+tryLoadSandboxConfig :: Verbosity -> Flag FilePath
+                        -> IO (FilePath, PackageEnvironment)
+tryLoadSandboxConfig verbosity configFileFlag = do
   pkgEnvDir            <- getCurrentDirectory
   (sandboxDir, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
+                          configFileFlag
   dirExists            <- doesDirectoryExist sandboxDir
   -- TODO: Also check for an initialised package DB?
   unless dirExists $
@@ -137,9 +139,10 @@ initPackageDBIfNeeded verbosity configFlags comp conf = do
     debug verbosity $ "The package database already exists: " ++ dbPath
 
 -- | Entry point for the 'cabal dump-pkgenv' command.
-dumpPackageEnvironment :: Verbosity -> SandboxFlags -> IO ()
-dumpPackageEnvironment verbosity _sandboxFlags = do
+dumpPackageEnvironment :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
+dumpPackageEnvironment verbosity _sandboxFlags globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                          (globalConfigFile globalFlags)
   commentPkgEnv        <- commentPackageEnvironment sandboxDir
   putStrLn . showPackageEnvironmentWithComments (Just commentPkgEnv) $ pkgEnv
 
@@ -158,9 +161,10 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   (comp, conf) <- configCompilerAux (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
-  pkgEnvDir <- getCurrentDirectory
-  pkgEnv    <- createPackageEnvironment verbosity sandboxDir pkgEnvDir
-               NoComments comp userConfig
+  pkgEnvDir   <- getCurrentDirectory
+  createPackageEnvironment verbosity sandboxDir pkgEnvDir NoComments comp
+  (_, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
+                 (globalConfigFile globalFlags)
 
   -- Create the index file if it doesn't exist.
   indexFile <- tryGetIndexFilePath pkgEnv
@@ -190,9 +194,11 @@ sandboxDelete verbosity sandboxFlags _globalFlags = do
                  (sandboxLocation sandboxFlags)
 
 -- | Entry point for the 'cabal sandbox-add-source' command.
-sandboxAddSource :: Verbosity -> SandboxFlags -> [FilePath] -> IO ()
-sandboxAddSource verbosity _sandboxFlags buildTreeRefs = do
+sandboxAddSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
+                    -> IO ()
+sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                           (globalConfigFile globalFlags)
   indexFile             <- tryGetIndexFilePath pkgEnv
 
   Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
@@ -203,6 +209,7 @@ sandboxConfigure :: Verbosity -> SandboxFlags -> ConfigFlags -> ConfigExFlags
 sandboxConfigure verbosity
   _sandboxFlags configFlags configExFlags extraArgs globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                          (globalConfigFile globalFlags)
 
   let config         = pkgEnvSavedConfig pkgEnv
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
@@ -221,8 +228,9 @@ sandboxConfigure verbosity
               comp conf configFlags'' configExFlags' extraArgs
 
 -- | Entry point for the 'cabal sandbox-build' command.
-sandboxBuild :: Verbosity -> SandboxFlags -> BuildFlags -> [String] -> IO ()
-sandboxBuild verbosity sandboxFlags buildFlags' extraArgs = do
+sandboxBuild :: Verbosity -> SandboxFlags -> BuildFlags -> GlobalFlags
+                -> [String] -> IO ()
+sandboxBuild verbosity sandboxFlags buildFlags' globalFlags extraArgs = do
   let setupScriptOptions = defaultSetupScriptOptions {
         useDistPref = fromFlagOrDefault
                       (useDistPref defaultSetupScriptOptions)
@@ -233,6 +241,7 @@ sandboxBuild verbosity sandboxFlags buildFlags' extraArgs = do
         }
   -- Check that the sandbox exists.
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                          (globalConfigFile globalFlags)
   indexFile            <- tryGetIndexFilePath pkgEnv
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
 
@@ -272,6 +281,7 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
   installFlags haddockFlags extraArgs globalFlags
   targetsToPrune = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                          (globalConfigFile globalFlags)
   targets              <- readUserTargets verbosity extraArgs
 
   let config         = pkgEnvSavedConfig pkgEnv

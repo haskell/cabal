@@ -633,9 +633,9 @@ sandboxDeleteAction sandboxFlags extraArgs globalFlags = do
   sandboxDelete verbosity sandboxFlags globalFlags
 
 sandboxAddSourceAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
-sandboxAddSourceAction sandboxFlags extraArgs _globalFlags = do
+sandboxAddSourceAction sandboxFlags extraArgs globalFlags = do
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxAddSource verbosity sandboxFlags extraArgs
+  sandboxAddSource verbosity extraArgs sandboxFlags globalFlags
 
 sandboxConfigureAction :: (SandboxFlags, ConfigFlags, ConfigExFlags)
                           -> [String] -> GlobalFlags -> IO ()
@@ -647,9 +647,9 @@ sandboxConfigureAction (sandboxFlags, configFlags, configExFlags)
 
 sandboxBuildAction :: (SandboxFlags, BuildFlags) -> [String] -> GlobalFlags
                       -> IO ()
-sandboxBuildAction (sandboxFlags, buildFlags) extraArgs _globalFlags = do
+sandboxBuildAction (sandboxFlags, buildFlags) extraArgs globalFlags = do
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxBuild verbosity sandboxFlags buildFlags extraArgs
+  sandboxBuild verbosity sandboxFlags buildFlags globalFlags extraArgs
 
 sandboxInstallAction :: (SandboxFlags, ConfigFlags, ConfigExFlags,
                          InstallFlags, HaddockFlags)
@@ -662,12 +662,12 @@ sandboxInstallAction
     installFlags haddockFlags extraArgs globalFlags mempty
 
 dumpPkgEnvAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
-dumpPkgEnvAction sandboxFlags extraArgs _globalFlags = do
+dumpPkgEnvAction sandboxFlags extraArgs globalFlags = do
   when ((>0). length $ extraArgs) $
     die $ "the 'dump-pkgenv' command doesn't expect any arguments: "
       ++ unwords extraArgs
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  dumpPackageEnvironment verbosity sandboxFlags
+  dumpPackageEnvironment verbosity sandboxFlags globalFlags
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
