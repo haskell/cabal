@@ -207,7 +207,7 @@ bash_compl_err_msg () {
     echo "   or /etc/bash_completion.d"
     echo " - copy 'cabal' file from bash-completion subdirectory of"
     echo "   cabal-install to your system's bash completion directory in /etc."
-    echo "   This requires root privelages."
+    echo "   This requires root privileges."
 }
 
 # Actually do something!
