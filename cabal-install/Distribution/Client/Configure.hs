@@ -47,7 +47,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, debug, die )
 import Distribution.System
-         ( Platform, buildPlatform )
+         ( Platform )
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 
@@ -58,18 +58,19 @@ configure :: Verbosity
           -> PackageDBStack
           -> [Repo]
           -> Compiler
+          -> Platform
           -> ProgramConfiguration
           -> ConfigFlags
           -> ConfigExFlags
           -> [String]
           -> IO ()
-configure verbosity packageDBs repos comp conf
+configure verbosity packageDBs repos comp platform conf
   configFlags configExFlags extraArgs = do
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
   sourcePkgDb       <- getSourcePackages    verbosity repos
 
-  progress <- planLocalPackage verbosity comp configFlags configExFlags
+  progress <- planLocalPackage verbosity comp platform configFlags configExFlags
                                installedPkgIndex sourcePkgDb
 
   notice verbosity "Resolving dependencies..."
@@ -125,11 +126,12 @@ configure verbosity packageDBs repos comp conf
 -- and all its dependencies.
 --
 planLocalPackage :: Verbosity -> Compiler
+                 -> Platform
                  -> ConfigFlags -> ConfigExFlags
                  -> PackageIndex
                  -> SourcePackageDb
                  -> IO (Progress String String InstallPlan)
-planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
+planLocalPackage verbosity comp platform configFlags configExFlags installedPkgIndex
   (SourcePackageDb _ packagePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
   solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags) (compilerId comp)
@@ -177,7 +179,7 @@ planLocalPackage verbosity comp configFlags configExFlags installedPkgIndex
             (SourcePackageDb mempty packagePrefs)
             [SpecificSourcePackage localPkg]
 
-  return (resolveDependencies buildPlatform (compilerId comp) solver resolverParams)
+  return (resolveDependencies platform (compilerId comp) solver resolverParams)
 
 
 -- | Call an installer for an 'SourcePackage' but override the configure

@@ -152,5 +152,6 @@ benchOption pkg_descr lbi bm template =
     fromPathTemplate $ substPathTemplate env template
   where
     env = initialPathTemplateEnv
-          (PD.package pkg_descr) (compilerId $ LBI.compiler lbi) ++
+          (PD.package pkg_descr) (compilerId $ LBI.compiler lbi)
+          (LBI.hostPlatform lbi) ++
           [(BenchmarkNameVar, toPathTemplate $ PD.benchmarkName bm)]
