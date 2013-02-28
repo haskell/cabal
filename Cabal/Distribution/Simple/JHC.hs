@@ -84,6 +84,7 @@ import Distribution.Text
          ( Text(parse), display )
 import Distribution.Compat.ReadP
     ( readP_to_S, string, skipSpaces )
+import Distribution.System ( Platform )
 
 import Data.List                ( nub )
 import Data.Char                ( isSpace )
@@ -96,7 +97,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
   (jhcProg, _, conf') <- requireProgramVersion verbosity
@@ -109,7 +110,8 @@ configure verbosity hcPath _hcPkgPath conf = do
         compilerLanguages      = jhcLanguages,
         compilerExtensions     = jhcLanguageExtensions
       }
-  return (comp, conf')
+      compPlatform = Nothing
+  return (comp, compPlatform, conf')
 
 jhcLanguages :: [(Language, Flag)]
 jhcLanguages = [(Haskell98, "")]

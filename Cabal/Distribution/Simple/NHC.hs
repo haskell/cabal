@@ -104,12 +104,13 @@ import Data.Maybe    ( catMaybes )
 import Data.Monoid   ( Monoid(..) )
 import Control.Monad ( when, unless )
 import Distribution.Compat.Exception
+import Distribution.System ( Platform )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
   (_nhcProg, nhcVersion, conf') <-
@@ -134,7 +135,8 @@ configure verbosity hcPath _hcPkgPath conf = do
         compilerLanguages  = nhcLanguages,
         compilerExtensions     = nhcLanguageExtensions
       }
-  return (comp, conf'''')
+      compPlatform = Nothing
+  return (comp, compPlatform,  conf'''')
 
 nhcLanguages :: [(Language, Flag)]
 nhcLanguages = [(Haskell98, "-98")]
