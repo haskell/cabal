@@ -722,7 +722,7 @@ generateCabalFile fileName c =
 
      , fieldS "hs-source-dirs" (listFieldS (sourceDirs c'))
               (Just "Directories containing source files.")
-              False
+              True
 
      , fieldS "build-tools" (listFieldS (buildTools c'))
               (Just "Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.")
