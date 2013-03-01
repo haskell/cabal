@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.JobControl
@@ -29,7 +28,8 @@ module Distribution.Client.JobControl (
 
 import Control.Monad
 import Control.Concurrent hiding (QSem, newQSem, waitQSem, signalQSem)
-import Control.Exception
+import Control.Exception (SomeException, bracket_, throw, try)
+import Distribution.Compat.Exception (mask)
 import Distribution.Compat.Semaphore
 
 data JobControl m a = JobControl {
@@ -53,7 +53,6 @@ newSerialJobControl = do
     collect = join . readChan
 
 newParallelJobControl :: IO (JobControl IO a)
-#if MIN_VERSION_base(4,3,0)
 newParallelJobControl = do
     resultVar <- newEmptyMVar
     return JobControl {
@@ -71,9 +70,6 @@ newParallelJobControl = do
     collect :: MVar (Either SomeException a) -> IO a
     collect resultVar =
       takeMVar resultVar >>= either throw return
-#else
-newParallelJobControl = newSerialJobControl
-#endif
 
 data JobLimit = JobLimit QSem
 
