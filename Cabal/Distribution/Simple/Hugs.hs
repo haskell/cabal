@@ -118,6 +118,7 @@ import System.Directory
 import System.Exit
          ( ExitCode(ExitSuccess) )
 import Distribution.Compat.Exception
+import Distribution.System ( Platform )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -125,7 +126,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
   (_ffihugsProg, conf') <- requireProgram verbosity ffihugsProgram
@@ -139,7 +140,8 @@ configure verbosity hcPath _hcPkgPath conf = do
         compilerLanguages      = hugsLanguages,
         compilerExtensions     = hugsLanguageExtensions
       }
-  return (comp, conf'')
+      compPlatform = Nothing
+  return (comp, compPlatform, conf'')
 
   where
     hugsProgram' = hugsProgram { programFindVersion = getVersion }

@@ -530,6 +530,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id = (PrefixVar, prefix (installDirTemplates lbi))
                                 : initialPathTemplateEnv pkg_id (compilerId (compiler lbi))
+                                  (hostPlatform lbi)
 
 -- --------------------------------------------------------------------------
 -- hscolour support

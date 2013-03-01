@@ -138,6 +138,7 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
+import Distribution.System (Platform, buildPlatform, platformFromTriple)
 
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
 getGhcInfo verbosity ghcProg =
@@ -158,7 +159,7 @@ getGhcInfo verbosity ghcProg =
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
 configure verbosity hcPath hcPkgPath conf0 = do
 
   (ghcProg, ghcVersion, conf1) <-
@@ -196,8 +197,12 @@ configure verbosity hcPath hcPkgPath conf0 = do
         compilerLanguages      = languages,
         compilerExtensions     = extensions
       }
+      compPlatform = targetPlatform ghcInfo
       conf4 = configureToolchain ghcProg ghcInfo conf3 -- configure gcc and ld
-  return (comp, conf4)
+  return (comp, compPlatform, conf4)
+
+targetPlatform :: [(String, String)] -> Maybe Platform
+targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking

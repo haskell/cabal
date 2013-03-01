@@ -147,12 +147,12 @@ symlinkBinaries configFlags installFlags plan =
                            defaultDirs (configInstallDirs configFlags)
           absoluteDirs = InstallDirs.absoluteInstallDirs
                            (packageId pkg) compilerId InstallDirs.NoCopyDest
-                           templateDirs
+                           platform templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
 
     substTemplate pkgid = InstallDirs.fromPathTemplate
                         . InstallDirs.substPathTemplate env
-      where env = InstallDirs.initialPathTemplateEnv pkgid compilerId
+      where env = InstallDirs.initialPathTemplateEnv pkgid compilerId platform
 
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
     prefixTemplate   = fromFlagTemplate (configProgPrefix configFlags)
