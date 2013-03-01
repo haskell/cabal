@@ -604,7 +604,7 @@ postInstallActions verbosity
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan installPlan
-  BuildReports.storeLocal (installSummaryFile installFlags) buildReports
+  BuildReports.storeLocal (installSummaryFile installFlags) buildReports (InstallPlan.planPlatform installPlan)
   when (reportingLevel >= AnonymousReports) $
     BuildReports.storeAnonymous buildReports
   when (reportingLevel == DetailedReports) $
@@ -807,7 +807,7 @@ performInstallations verbosity
           installUnpackedPackage verbosity buildLimit installLock numJobs
                                  (setupScriptOptions installedPkgIndex cacheLock)
                                  miscOptions configFlags' installFlags haddockFlags
-                                 compid pkg pkgoverride mpath useLogFile
+                                 compid platform pkg pkgoverride mpath useLogFile
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -888,7 +888,7 @@ performInstallations verbosity
     substLogFileName template pkg = fromPathTemplate
                                   . substPathTemplate env
                                   $ template
-      where env = initialPathTemplateEnv (packageId pkg) (compilerId comp)
+      where env = initialPathTemplateEnv (packageId pkg) (compilerId comp) platform
 
     miscOptions  = InstallMisc {
       rootCmd    = if fromFlag (configUserInstall configFlags)
@@ -1072,6 +1072,7 @@ installUnpackedPackage
   -> InstallFlags
   -> HaddockFlags
   -> CompilerId
+  -> Platform
   -> PackageDescription
   -> PackageDescriptionOverride
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
@@ -1080,7 +1081,7 @@ installUnpackedPackage
 installUnpackedPackage verbosity buildLimit installLock numJobs
                        scriptOptions miscOptions
                        configFlags installConfigFlags haddockFlags
-                       compid pkg pkgoverride workingDir useLogFile = do
+                       compid platform pkg pkgoverride workingDir useLogFile = do
 
   -- Override the .cabal file if necessary
   case pkgoverride of
@@ -1123,7 +1124,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
       -- Install phase
         onFailure InstallFailed $ criticalSection installLock $
-          withWin32SelfUpgrade verbosity configFlags compid pkg $ do
+          withWin32SelfUpgrade verbosity configFlags compid platform pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
               Nothing    -> setup Cabal.installCommand installFlags
@@ -1203,10 +1204,11 @@ onFailure result action =
 withWin32SelfUpgrade :: Verbosity
                      -> ConfigFlags
                      -> CompilerId
+                     -> Platform
                      -> PackageDescription
                      -> IO a -> IO a
-withWin32SelfUpgrade _ _ _ _ action | buildOS /= Windows = action
-withWin32SelfUpgrade verbosity configFlags compid pkg action = do
+withWin32SelfUpgrade _ _ _ _ _ action | buildOS /= Windows = action
+withWin32SelfUpgrade verbosity configFlags compid platform pkg action = do
 
   defaultDirs <- InstallDirs.defaultInstallDirs
                    compFlavor
@@ -1234,7 +1236,7 @@ withWin32SelfUpgrade verbosity configFlags compid pkg action = do
         templateDirs   = InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
         absoluteDirs   = InstallDirs.absoluteInstallDirs
-                           pkgid compid InstallDirs.NoCopyDest templateDirs
+                           pkgid compid InstallDirs.NoCopyDest platform templateDirs
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
-          where env = InstallDirs.initialPathTemplateEnv pkgid compid
+          where env = InstallDirs.initialPathTemplateEnv pkgid compid platform

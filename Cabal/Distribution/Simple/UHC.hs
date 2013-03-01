@@ -69,12 +69,13 @@ import Distribution.Version
 import Language.Haskell.Extension
 import System.Directory
 import System.FilePath
+import Distribution.System ( Platform )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
 configure verbosity hcPath _hcPkgPath conf = do
 
   (_uhcProg, uhcVersion, conf') <-
@@ -83,11 +84,12 @@ configure verbosity hcPath _hcPkgPath conf = do
     (userMaybeSpecifyPath "uhc" hcPath conf)
 
   let comp = Compiler {
-               compilerId          =  CompilerId UHC uhcVersion,
-               compilerLanguages   =  uhcLanguages,
-               compilerExtensions  =  uhcLanguageExtensions
+               compilerId         =  CompilerId UHC uhcVersion,
+               compilerLanguages  =  uhcLanguages,
+               compilerExtensions =  uhcLanguageExtensions
              }
-  return (comp, conf')
+      compPlatform = Nothing
+  return (comp, compPlatform, conf')
 
 uhcLanguages :: [(Language, C.Flag)]
 uhcLanguages = [(Haskell98, "")]

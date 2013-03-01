@@ -102,7 +102,8 @@ import Distribution.Simple.Setup
          ( ConfigFlags )
 import Distribution.Text
          ( display )
-
+import Distribution.System
+          ( Platform )
 import Data.List (nub, find)
 import Data.Graph
 import Data.Tree  (flatten)
@@ -124,6 +125,8 @@ data LocalBuildInfo = LocalBuildInfo {
         --TODO: inplaceDirTemplates :: InstallDirs FilePath
         compiler      :: Compiler,
                 -- ^ The compiler we're building with
+        hostPlatform  :: Platform,
+                -- ^ The platform we're building for
         buildDir      :: FilePath,
                 -- ^ Where to build the package.
         --TODO: eliminate hugs's scratchDir, use builddir
@@ -400,6 +403,7 @@ absoluteInstallDirs pkg lbi copydest =
     (packageId pkg)
     (compilerId (compiler lbi))
     copydest
+    (hostPlatform lbi)
     (installDirTemplates lbi)
 
 -- |See 'InstallDirs.prefixRelativeInstallDirs'
@@ -409,6 +413,7 @@ prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
     (compilerId (compiler lbi))
+    (hostPlatform lbi)
     (installDirTemplates lbi)
 
 substPathTemplate :: PackageId -> LocalBuildInfo
@@ -418,3 +423,4 @@ substPathTemplate pkgid lbi = fromPathTemplate
     where env = initialPathTemplateEnv
                    pkgid
                    (compilerId (compiler lbi))
+                   (hostPlatform lbi)

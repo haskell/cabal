@@ -25,12 +25,13 @@ module Distribution.System (
   -- * Platform is a pair of arch and OS
   Platform(..),
   buildPlatform,
+  platformFromTriple
   ) where
 
 import qualified System.Info (os, arch)
 import qualified Data.Char as Char (toLower, isAlphaNum)
 
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
@@ -59,10 +60,11 @@ data ClassificationStrictness = Permissive | Compat | Strict
 -- * Operating System
 -- ------------------------------------------------------------
 
-data OS = Linux | Windows | OSX        -- teir 1 desktop OSs
+data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
         | FreeBSD | OpenBSD | NetBSD   -- other free unix OSs
         | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
         | HaLVM                        -- bare metal / VMs / hypervisors
+        | IOS                          -- iOS
         | OtherOS String
   deriving (Eq, Ord, Show, Read)
 
@@ -75,12 +77,14 @@ knownOSs :: [OS]
 knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD
            ,Solaris, AIX, HPUX, IRIX
-           ,HaLVM]
+           ,HaLVM
+           ,IOS]
 
 osAliases :: ClassificationStrictness -> OS -> [String]
 osAliases Permissive Windows = ["mingw32", "cygwin32"]
 osAliases Compat     Windows = ["mingw32", "win32"]
 osAliases _          OSX     = ["darwin"]
+osAliases _          IOS     = ["ios"]
 osAliases Permissive FreeBSD = ["kfreebsdgnu"]
 osAliases Permissive Solaris = ["solaris2"]
 osAliases _          _       = []
@@ -174,3 +178,15 @@ ident = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_' || c == '-')
 
 lowercase :: String -> String
 lowercase = map Char.toLower
+
+platformFromTriple :: String -> Maybe Platform
+platformFromTriple triple = fmap fst (listToMaybe $ Parse.readP_to_S parseTriple triple)
+  where parseWord = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_')
+        parseTriple = do
+          arch <- fmap (classifyArch Strict) parseWord
+          _ <- Parse.char '-'
+          _ <- parseWord -- Skip vendor
+          _ <- Parse.char '-'
+          os <- fmap (classifyOS Compat) ident -- OS may have hyphens, like 'nto-qnx'
+          return $ Platform arch os
+
