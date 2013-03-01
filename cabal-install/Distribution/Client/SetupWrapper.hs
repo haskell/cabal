@@ -261,8 +261,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   configureCompiler options' = do
     (comp, conf) <- case useCompiler options' of
       Just comp -> return (comp, useProgramConfig options')
-      Nothing   -> configCompiler (Just GHC) Nothing Nothing
-                     (useProgramConfig options') verbosity
+      Nothing   -> do (comp, _, conf) <- configCompiler (Just GHC) Nothing Nothing
+                        (useProgramConfig options') verbosity
+                      return (comp, conf)
     return (comp, conf, options' { useCompiler = Just comp,
                                    useProgramConfig = conf })
 

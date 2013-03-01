@@ -89,6 +89,7 @@ import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
          , interpretPackageDbFlags, maybeGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.System ( Platform )
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, topHandler )
 import Distribution.Text
@@ -225,10 +226,10 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux configFlags'
+  (comp, platform, conf) <- configCompilerAux configFlags'
   configure verbosity
             (configPackageDB' configFlags') (globalRepos globalFlags')
-            comp conf configFlags' configExFlags' extraArgs
+            comp platform conf configFlags' configExFlags' extraArgs
 
 buildAction :: BuildFlags -> [String] -> GlobalFlags -> IO ()
 buildAction buildFlags extraArgs globalFlags = do
@@ -395,7 +396,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux' configFlags'
+  (comp, _, conf) <- configCompilerAux' configFlags'
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
           comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
@@ -441,7 +442,7 @@ listAction listFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux' configFlags
+  (comp, _, conf) <- configCompilerAux' configFlags
   list verbosity
        (configPackageDB' configFlags)
        (globalRepos globalFlags')
@@ -457,7 +458,7 @@ infoAction infoFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux configFlags
+  (comp, _, conf) <- configCompilerAux configFlags
   info verbosity
        (configPackageDB' configFlags)
        (globalRepos globalFlags')
@@ -498,7 +499,7 @@ fetchAction fetchFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux' configFlags
+  (comp, _, conf) <- configCompilerAux' configFlags
   fetch verbosity
         (configPackageDB' configFlags) (globalRepos globalFlags')
         comp conf globalFlags' fetchFlags
@@ -600,7 +601,7 @@ initAction initFlags _extraArgs globalFlags = do
   let verbosity = fromFlag (initVerbosity initFlags)
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
-  (comp, conf) <- configCompilerAux' configFlags
+  (comp, _, conf) <- configCompilerAux' configFlags
   initCabal verbosity
             (configPackageDB' configFlags)
             comp
@@ -689,7 +690,7 @@ configPackageDB' cfg =
     userInstall = fromFlagOrDefault True (configUserInstall cfg)
 
 configCompilerAux' :: ConfigFlags
-                   -> IO (Compiler, ProgramConfiguration)
+                   -> IO (Compiler, Platform, ProgramConfiguration)
 configCompilerAux' configFlags =
   configCompilerAux configFlags
     --FIXME: make configCompilerAux use a sensible verbosity

@@ -74,8 +74,8 @@ storeAnonymous reports = sequence_
       [ (report, repo, remoteRepo)
       | (report, repo@Repo { repoKind = Left remoteRepo }) <- rs ]
 
-storeLocal :: [PathTemplate] -> [(BuildReport, Repo)] -> IO ()
-storeLocal templates reports = sequence_
+storeLocal :: [PathTemplate] -> [(BuildReport, Repo)] -> Platform -> IO ()
+storeLocal templates reports platform = sequence_
   [ do createDirectoryIfMissing True (takeDirectory file)
        appendFile file output
        --TODO: make this concurrency safe, either lock the report file or make
@@ -94,6 +94,7 @@ storeLocal templates reports = sequence_
       where env = initialPathTemplateEnv
                     (BuildReport.package  report)
                     (BuildReport.compiler report)
+                    platform
 
     groupByFileName = map (\grp@((filename,_):_) -> (filename, map snd grp))
                     . groupBy (equating  fst)

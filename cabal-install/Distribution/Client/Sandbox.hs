@@ -59,6 +59,7 @@ import Distribution.Simple.Utils              ( die, debug, notice, info
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
+import Distribution.System                    ( Platform )
 import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
 import Control.Exception                      ( bracket_ )
@@ -158,7 +159,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
   userConfig   <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
-  (comp, conf) <- configCompilerAux (savedConfigureFlags userConfig)
+  (comp, _, conf) <- configCompilerAux (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
   pkgEnvDir   <- getCurrentDirectory
@@ -215,7 +216,7 @@ sandboxConfigure verbosity
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux configFlags'
+  (comp, platform, conf) <- configCompilerAux configFlags'
 
   -- If the user has set the -w option, we may need to create the package DB for
   -- this compiler.
@@ -225,7 +226,7 @@ sandboxConfigure verbosity
   withSandboxBinDirOnSearchPath sandboxDir $
     configure verbosity
               (configPackageDB' configFlags'') (globalRepos globalFlags')
-              comp conf configFlags'' configExFlags' extraArgs
+              comp platform conf configFlags'' configExFlags' extraArgs
 
 -- | Entry point for the 'cabal sandbox-build' command.
 sandboxBuild :: Verbosity -> SandboxFlags -> BuildFlags -> GlobalFlags
@@ -291,7 +292,7 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, conf) <- configCompilerAux' configFlags'
+  (comp, _, conf) <- configCompilerAux' configFlags'
 
   -- If the user has set the -w option, we may need to create the package DB for
   -- this compiler.
@@ -333,7 +334,7 @@ configPackageDB' cfg =
   interpretPackageDbFlags {- userInstall = -} False (configPackageDBs cfg)
 
 configCompilerAux' :: ConfigFlags
-                      -> IO (Compiler, ProgramConfiguration)
+                      -> IO (Compiler, Platform, ProgramConfiguration)
 configCompilerAux' configFlags =
   configCompilerAux configFlags
     --FIXME: make configCompilerAux use a sensible verbosity

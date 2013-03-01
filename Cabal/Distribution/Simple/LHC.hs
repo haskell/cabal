@@ -123,12 +123,13 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension )
 import System.IO (hClose, hPutStrLn)
 import Distribution.Compat.Exception (catchExit, catchIO)
+import Distribution.System ( Platform )
 
 -- -----------------------------------------------------------------------------
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, ProgramConfiguration)
+          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
 configure verbosity hcPath hcPkgPath conf = do
 
   (lhcProg, lhcVersion, conf') <-
@@ -155,7 +156,8 @@ configure verbosity hcPath hcPkgPath conf = do
         compilerExtensions     = extensions
       }
       conf''' = configureToolchain lhcProg conf'' -- configure gcc and ld
-  return (comp, conf''')
+      compPlatform = Nothing
+  return (comp, compPlatform, conf''')
 
 -- | Adjust the way we find and configure gcc and ld
 --
