@@ -265,6 +265,7 @@ tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
   user      <- userPackageEnvironment verbosity pkgEnvDir
   inherited <- inheritedPackageEnvironment verbosity user
 
+  -- Layer the package environment settings over settings from ~/.cabal/config.
   cabalConfig <- loadConfig verbosity configFileFlag NoFlag
   return (sandboxDir,
           base `mappend` (cabalConfig `overrideSandboxSettings`
