@@ -30,11 +30,7 @@ module Distribution.Client.Setup
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
-    , indexCommand, IndexFlags(..)
-    , dumpPkgEnvCommand
-    , sandboxInitCommand, sandboxDeleteCommand, sandboxConfigureCommand
-    , sandboxAddSourceCommand, sandboxBuildCommand, sandboxInstallCommand
-    , SandboxFlags(..), defaultSandboxLocation
+    , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -1268,79 +1264,6 @@ instance Monoid Win32SelfUpgradeFlags where
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
--- * Index flags
--- ------------------------------------------------------------
-
-data IndexFlags = IndexFlags {
-  indexInit         :: Flag Bool,
-  indexList         :: Flag Bool,
-  indexLinkSource   :: [FilePath],
-  indexRemoveSource :: [String],
-  indexVerbosity    :: Flag Verbosity
-}
-
-defaultIndexFlags :: IndexFlags
-defaultIndexFlags = IndexFlags {
-  indexInit         = mempty,
-  indexList         = mempty,
-  indexLinkSource   = [],
-  indexRemoveSource = [],
-  indexVerbosity    = toFlag normal
-}
-
-indexCommand :: CommandUI IndexFlags
-indexCommand = CommandUI {
-  commandName         = "index",
-  commandSynopsis     = "Query and modify the index file",
-  commandDescription  = Nothing,
-  commandUsage        = \pname ->
-    "Usage: " ++ pname ++ " index FLAGS PATH\n\n"
-     ++ "Flags for index:",
-  commandDefaultFlags = defaultIndexFlags,
-  commandOptions      = \_ ->
-      [optionVerbosity indexVerbosity
-       (\v flags -> flags { indexVerbosity = v})
-
-      ,option [] ["init"]
-       "Create the index"
-       indexInit (\v flags -> flags { indexInit = v })
-       trueArg
-
-      ,option [] ["link-source"]
-       "Add a reference to a local build tree to the index"
-       indexLinkSource (\v flags -> flags { indexLinkSource = v })
-       (reqArg' "PATH" (\x -> [x]) id)
-
-      ,option [] ["remove-source"]
-       "Remove a reference to a local build tree from the index"
-       indexRemoveSource (\v flags -> flags { indexRemoveSource = v })
-       (reqArg' "PATH" (\x -> [x]) id)
-
-      ,option [] ["list"]
-       "List the local build trees that are referred to from the index"
-       indexList (\v flags -> flags { indexList = v })
-       trueArg
-      ]
-}
-
-instance Monoid IndexFlags where
-  mempty = IndexFlags {
-    indexInit         = mempty,
-    indexList         = mempty,
-    indexLinkSource   = mempty,
-    indexRemoveSource = mempty,
-    indexVerbosity    = mempty
-  }
-  mappend a b = IndexFlags {
-    indexInit         = combine indexInit,
-    indexList         = combine indexList,
-    indexLinkSource   = combine indexLinkSource,
-    indexRemoveSource = combine indexRemoveSource,
-    indexVerbosity    = combine indexVerbosity
-  }
-    where combine field = field a `mappend` field b
-
--- ------------------------------------------------------------
 -- * Sandbox-related flags
 -- ------------------------------------------------------------
 
@@ -1358,116 +1281,27 @@ defaultSandboxFlags = SandboxFlags {
   sandboxLocation  = toFlag defaultSandboxLocation
   }
 
-commonSandboxOptions :: ShowOrParseArgs -> [OptionField SandboxFlags]
-commonSandboxOptions _showOrParseArgs =
-  [ optionVerbosity sandboxVerbosity (\v flags -> flags { sandboxVerbosity = v })
+sandboxCommand :: CommandUI SandboxFlags
+sandboxCommand = CommandUI {
+  commandName         = "sandbox",
+  commandSynopsis     = "Create/modify/delete a sandbox",
+  commandDescription  = Nothing,
+  commandUsage        = \pname ->
+       "Usage: " ++ pname ++ " sandbox init\n"
+    ++ "   or: " ++ pname ++ " sandbox delete\n"
+    ++ "   or: " ++ pname ++ " sandbox add-source [PATHS]\n\n"
+    ++ "Flags for sandbox:",
+
+  commandDefaultFlags = defaultSandboxFlags,
+  commandOptions      = \_ ->
+    [ optionVerbosity sandboxVerbosity
+      (\v flags -> flags { sandboxVerbosity = v })
 
     , option [] ["sandbox"]
       "Sandbox location (default: './.cabal-sandbox')."
       sandboxLocation (\v flags -> flags { sandboxLocation = v })
       (reqArgFlag "DIR")
-  ]
-
-sandboxInitCommand :: CommandUI SandboxFlags
-sandboxInitCommand = CommandUI {
-  commandName         = "sandbox-init",
-  commandSynopsis     = "Initialise a fresh sandbox",
-  commandDescription  = Nothing,
-  commandUsage        = usageFlags "sandbox-init",
-  commandDefaultFlags = defaultSandboxFlags,
-  commandOptions      = commonSandboxOptions
-  }
-
-sandboxDeleteCommand :: CommandUI SandboxFlags
-sandboxDeleteCommand = CommandUI {
-  commandName         = "sandbox-delete",
-  commandSynopsis     = "Deletes current sandbox",
-  commandDescription  = Nothing,
-  commandUsage        = usageFlags "sandbox-delete",
-  commandDefaultFlags = defaultSandboxFlags,
-  commandOptions      = commonSandboxOptions
-  }
-
-sandboxAddSourceCommand :: CommandUI SandboxFlags
-sandboxAddSourceCommand = CommandUI {
-  commandName         = "sandbox-add-source",
-  commandSynopsis     = "Make a source package available in a sandbox",
-  commandDescription  = Nothing,
-  commandUsage        = usageFlags "sandbox-add-source",
-  commandDefaultFlags = defaultSandboxFlags,
-  commandOptions      = commonSandboxOptions
-  }
-
-sandboxConfigureCommand :: CommandUI (SandboxFlags, ConfigFlags, ConfigExFlags)
-sandboxConfigureCommand = CommandUI {
-  commandName         = "sandbox-configure",
-  commandSynopsis     = "Configure a package inside a sandbox",
-  commandDescription  = Nothing,
-  commandUsage        = usageFlags "sandbox-configure",
-  commandDefaultFlags = (defaultSandboxFlags, mempty, defaultConfigExFlags),
-  commandOptions      = \showOrParseArgs ->
-    liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
-    ++ liftOptions get2 set2
-             (filter ((\n -> n /= "constraint" && n /= "verbose") . optionName) $
-              configureOptions showOrParseArgs)
-    ++ liftOptions get3 set3 (configureExOptions showOrParseArgs)
-
-  }
-  where
-    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
-    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
-    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
-
-sandboxBuildCommand :: CommandUI (SandboxFlags, BuildFlags)
-sandboxBuildCommand = CommandUI {
-  commandName         = "sandbox-build",
-  commandSynopsis     = "Build a package inside a sandbox",
-  commandDescription  = Nothing,
-  commandUsage        = usageFlags "sandbox-build",
-  commandDefaultFlags = (defaultSandboxFlags, Cabal.defaultBuildFlags),
-  commandOptions      = \showOrParseArgs ->
-    liftOptions fst setFst (commonSandboxOptions showOrParseArgs)
-    ++ liftOptions snd setSnd (filter ((/= "verbose") . optionName) $
-                               Cabal.buildOptions progConf showOrParseArgs)
-  }
-  where
-    progConf = defaultProgramConfiguration
-
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
-
-sandboxInstallCommand :: CommandUI (SandboxFlags, ConfigFlags, ConfigExFlags,
-                                    InstallFlags, HaddockFlags)
-sandboxInstallCommand = CommandUI {
-  commandName         = "sandbox-install",
-  commandSynopsis     = "Install a list of packages into a sandbox",
-  commandDescription  = commandDescription installCommand,
-  commandUsage        = usageFlagsOrPackages "sandbox-install",
-  commandDefaultFlags = (defaultSandboxFlags, mempty, mempty, mempty, mempty),
-  commandOptions      = \showOrParseArgs ->
-       liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
-    ++ liftOptions get2 set2
-       (filter ((\n -> n /= "constraint" && n /= "verbose") . optionName) $
-        configureOptions showOrParseArgs)
-    ++ liftOptions get3 set3 (configureExOptions showOrParseArgs)
-    ++ liftOptions get4 set4 (installOptions showOrParseArgs)
-    ++ liftOptions get5 set5 (haddockOptions showOrParseArgs)
-  }
-  where
-    get1 (a,_,_,_,_) = a; set1 a (_,b,c,d,e) = (a,b,c,d,e)
-    get2 (_,b,_,_,_) = b; set2 b (a,_,c,d,e) = (a,b,c,d,e)
-    get3 (_,_,c,_,_) = c; set3 c (a,b,_,d,e) = (a,b,c,d,e)
-    get4 (_,_,_,d,_) = d; set4 d (a,b,c,_,e) = (a,b,c,d,e)
-    get5 (_,_,_,_,e) = e; set5 e (a,b,c,d,_) = (a,b,c,d,e)
-
-dumpPkgEnvCommand :: CommandUI SandboxFlags
-dumpPkgEnvCommand = CommandUI {
-  commandName         = "dump-pkgenv",
-  commandSynopsis     = "Dump a parsed package environment file",
-  commandDescription  = Nothing,
-  commandUsage        = usageFlags "dump-pkgenv",
-  commandDefaultFlags = defaultSandboxFlags,
-  commandOptions      = commonSandboxOptions
+    ]
   }
 
 instance Monoid SandboxFlags where

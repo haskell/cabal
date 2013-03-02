@@ -32,11 +32,7 @@ import Distribution.Client.Setup
          , InitFlags(initVerbosity), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
-         , IndexFlags(..), indexCommand
-         , SandboxFlags(..), sandboxInitCommand, sandboxDeleteCommand
-         , sandboxAddSourceCommand, sandboxConfigureCommand
-         , sandboxBuildCommand, sandboxInstallCommand
-         , dumpPkgEnvCommand
+         , SandboxFlags(..), sandboxCommand
          , reportCommand
          )
 import Distribution.Simple.Setup
@@ -67,14 +63,10 @@ import Distribution.Client.Upload as Upload   (upload, check, report)
 import Distribution.Client.Run                (run)
 import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Get                (get)
-import Distribution.Client.Index              (index)
 import Distribution.Client.Sandbox            (sandboxInit
-                                              , sandboxDelete
-                                              , sandboxAddSource
-                                              , sandboxBuild
-                                              , sandboxConfigure
-                                              , sandboxInstall
-                                              , dumpPackageEnvironment)
+                                              ,sandboxAddSource
+                                              ,sandboxDelete
+                                              ,dumpPackageEnvironment)
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
@@ -166,6 +158,7 @@ mainWorker args = topHandler $
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
       ,buildCommand           `commandAddAction` buildAction
+      ,sandboxCommand         `commandAddAction` sandboxAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
       ,wrapperAction haddockCommand
@@ -182,22 +175,6 @@ mainWorker args = topHandler $
        upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $
        win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
-      ,hiddenCommand $
-       indexCommand `commandAddAction` indexAction
-      ,hiddenCommand $
-       sandboxInitCommand `commandAddAction` sandboxInitAction
-      ,hiddenCommand $
-       sandboxDeleteCommand `commandAddAction` sandboxDeleteAction
-      ,hiddenCommand $
-       sandboxAddSourceCommand `commandAddAction` sandboxAddSourceAction
-      ,hiddenCommand $
-       sandboxConfigureCommand `commandAddAction` sandboxConfigureAction
-      ,hiddenCommand $
-       sandboxBuildCommand `commandAddAction` sandboxBuildAction
-      ,hiddenCommand $
-       sandboxInstallCommand `commandAddAction` sandboxInstallAction
-      ,hiddenCommand $
-       dumpPkgEnvCommand `commandAddAction` dumpPkgEnvAction
       ]
 
 wrapperAction :: Monoid flags
@@ -610,67 +587,28 @@ initAction initFlags _extraArgs globalFlags = do
             conf
             initFlags
 
-indexAction :: IndexFlags -> [String] -> GlobalFlags -> IO ()
-indexAction indexFlags extraArgs _globalFlags = do
-  when (null extraArgs) $
-    die $ "the 'index' command expects a single argument."
-  when ((>1). length $ extraArgs) $
-    die $ "the 'index' command expects a single argument: " ++ unwords extraArgs
-  let verbosity = fromFlag (indexVerbosity indexFlags)
-  index verbosity indexFlags (head extraArgs)
-
-sandboxInitAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
-sandboxInitAction sandboxFlags extraArgs globalFlags = do
-  when ((>0). length $ extraArgs) $
-    die $ "the 'sandbox-init' command doesn't expect any arguments: "
-      ++ unwords extraArgs
+sandboxAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
+sandboxAction sandboxFlags extraArgs globalFlags = do
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxInit verbosity sandboxFlags globalFlags
+  case extraArgs of
+    -- Basic sandbox commands.
+    ["init"] -> sandboxInit verbosity sandboxFlags globalFlags
+    ["delete"] -> sandboxDelete verbosity sandboxFlags globalFlags
+    ("add-source":extra) -> do
+      when ((<1) . length $ extra) $
+        die $ "The 'sandbox add-source' command expects at least one argument"
+      sandboxAddSource verbosity extra sandboxFlags globalFlags
 
-sandboxDeleteAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
-sandboxDeleteAction sandboxFlags extraArgs globalFlags = do
-  when ((>0). length $ extraArgs) $
-    die $ "the 'sandbox-init' command doesn't expect any arguments: "
-      ++ unwords extraArgs
-  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxDelete verbosity sandboxFlags globalFlags
+    -- More advanced commands.
+    ["hc-pkg"] -> die "Not implemented!"
+    ["buildopts"] -> die "Not implemented!"
 
-sandboxAddSourceAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
-sandboxAddSourceAction sandboxFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxAddSource verbosity extraArgs sandboxFlags globalFlags
+    -- Hidden commands.
+    ["dump-pkgenv"] -> dumpPackageEnvironment verbosity sandboxFlags globalFlags
 
-sandboxConfigureAction :: (SandboxFlags, ConfigFlags, ConfigExFlags)
-                          -> [String] -> GlobalFlags -> IO ()
-sandboxConfigureAction (sandboxFlags, configFlags, configExFlags)
-  extraArgs globalFlags = do
-  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxConfigure verbosity sandboxFlags configFlags configExFlags
-    extraArgs globalFlags
-
-sandboxBuildAction :: (SandboxFlags, BuildFlags) -> [String] -> GlobalFlags
-                      -> IO ()
-sandboxBuildAction (sandboxFlags, buildFlags) extraArgs globalFlags = do
-  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxBuild verbosity sandboxFlags buildFlags globalFlags extraArgs
-
-sandboxInstallAction :: (SandboxFlags, ConfigFlags, ConfigExFlags,
-                         InstallFlags, HaddockFlags)
-                        -> [String] -> GlobalFlags -> IO ()
-sandboxInstallAction
-  (sandboxFlags, configFlags, configExFlags, installFlags, haddockFlags)
-  extraArgs globalFlags = do
-  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  sandboxInstall verbosity sandboxFlags configFlags configExFlags
-    installFlags haddockFlags extraArgs globalFlags mempty
-
-dumpPkgEnvAction :: SandboxFlags -> [String] -> GlobalFlags -> IO ()
-dumpPkgEnvAction sandboxFlags extraArgs globalFlags = do
-  when ((>0). length $ extraArgs) $
-    die $ "the 'dump-pkgenv' command doesn't expect any arguments: "
-      ++ unwords extraArgs
-  let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
-  dumpPackageEnvironment verbosity sandboxFlags globalFlags
+    -- Error handling.
+    [] -> die $ "Please specify a subcommand (see 'help sandbox')"
+    _  -> die $ "Unknown 'sandbox' subcommand: " ++ unwords extraArgs
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
