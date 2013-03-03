@@ -88,7 +88,8 @@ import Distribution.Client.JobControl
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , PackageDB(..), PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
+import Distribution.Simple.Program (ProgramConfiguration,
+                                    defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -474,7 +475,8 @@ packageStatus installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
     [] -> NewPackage
-    ps ->  case filter ((==packageId cpkg) . Installed.sourcePackageId) (concatMap snd ps) of
+    ps ->  case filter ((==packageId cpkg)
+                        . Installed.sourcePackageId) (concatMap snd ps) of
       []           -> NewVersion (map fst ps)
       pkgs@(pkg:_) -> Reinstall (map Installed.installedPackageId pkgs)
                                 (changes pkg cpkg)
@@ -484,15 +486,17 @@ packageStatus installedPkgIndex cpkg =
     changes :: Installed.InstalledPackageInfo
             -> ConfiguredPackage
             -> [MergeResult PackageIdentifier PackageIdentifier]
-    changes pkg pkg' = filter changed
-                     $ mergeBy (comparing packageName)
-                         -- get dependencies of installed package (convert to source pkg ids via index)
-                         (nub . sort . concatMap (maybeToList .
-                                                  fmap Installed.sourcePackageId .
-                                                  PackageIndex.lookupInstalledPackageId installedPkgIndex) .
-                                                  Installed.depends $ pkg)
-                         -- get dependencies of configured package
-                         (nub . sort . depends $ pkg')
+    changes pkg pkg' =
+      filter changed
+      $ mergeBy (comparing packageName)
+        -- get dependencies of installed package (convert to source pkg ids via
+        -- index)
+        (nub . sort . concatMap
+         (maybeToList . fmap Installed.sourcePackageId .
+          PackageIndex.lookupInstalledPackageId installedPkgIndex) .
+         Installed.depends $ pkg)
+        -- get dependencies of configured package
+        (nub . sort . depends $ pkg')
 
     changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
     changed _                        = True
@@ -509,7 +513,8 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
         ("In order, the following " ++ wouldWill ++ " be installed:")
       : map showPkgAndReason pkgs
     | otherwise -> notice verbosity $ unlines $
-        ("In order, the following " ++ wouldWill ++ " be installed (use -v for more details):")
+        ("In order, the following " ++ wouldWill
+         ++ " be installed (use -v for more details):")
       : map showPkg pkgs
   where
     wouldWill | dryRun    = "would"
@@ -604,7 +609,8 @@ postInstallActions verbosity
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan installPlan
-  BuildReports.storeLocal (installSummaryFile installFlags) buildReports (InstallPlan.planPlatform installPlan)
+  BuildReports.storeLocal (installSummaryFile installFlags) buildReports
+    (InstallPlan.planPlatform installPlan)
   when (reportingLevel >= AnonymousReports) $
     BuildReports.storeAnonymous buildReports
   when (reportingLevel == DetailedReports) $
@@ -888,7 +894,8 @@ performInstallations verbosity
     substLogFileName template pkg = fromPathTemplate
                                   . substPathTemplate env
                                   $ template
-      where env = initialPathTemplateEnv (packageId pkg) (compilerId comp) platform
+      where env = initialPathTemplateEnv (packageId pkg)
+                  (compilerId comp) platform
 
     miscOptions  = InstallMisc {
       rootCmd    = if fromFlag (configUserInstall configFlags)
@@ -981,7 +988,8 @@ installConfiguredPackage :: Platform -> CompilerId
                                          -> PackageDescriptionOverride -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
-  (ConfiguredPackage (SourcePackage _ gpkg source pkgoverride) flags stanzas deps)
+  (ConfiguredPackage (SourcePackage _ gpkg source pkgoverride)
+   flags stanzas deps)
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
     configConstraints = map thisPackageVersion deps,
@@ -1236,7 +1244,8 @@ withWin32SelfUpgrade verbosity configFlags compid platform pkg action = do
         templateDirs   = InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
         absoluteDirs   = InstallDirs.absoluteInstallDirs
-                           pkgid compid InstallDirs.NoCopyDest platform templateDirs
+                           pkgid compid InstallDirs.NoCopyDest
+                           platform templateDirs
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
           where env = InstallDirs.initialPathTemplateEnv pkgid compid platform
