@@ -37,8 +37,10 @@ import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Configure
          ( configCompiler )
+import Distribution.Compiler ( buildCompilerId )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(GHC), Compiler, compilerVersion, showCompilerId
+         ( CompilerFlavor(GHC), Compiler(compilerId)
+         , compilerVersion, showCompilerId
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
@@ -63,7 +65,7 @@ import Distribution.Simple.Utils
          , rewriteFile, intercalate )
 import Distribution.Client.Utils
          ( moreRecentFile, inDir )
-import Distribution.System (Platform(..))
+import Distribution.System ( Platform(..), buildPlatform )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -310,6 +312,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     let setupCacheDir = cabalDir </> "setup-exe-cache"
     let setupProgFile = setupCacheDir
                         </> ("setup-" ++ cabalVersionString ++ "-"
+                             ++ platformString ++ "-"
                              ++ compilerVersionString)
                         <.> exeExtension
     setupProgFileExists <- doesFileExist setupProgFile
@@ -330,8 +333,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     return setupProgFile
       where
         cabalVersionString    = "Cabal-" ++ (display cabalLibVersion)
-        compilerVersionString = fromMaybe "nonexisting-compiler"
-                                (showCompilerId `fmap` useCompiler options')
+        compilerVersionString = display $
+                                fromMaybe buildCompilerId
+                                (fmap compilerId . useCompiler $ options')
+        platformString        = display $
+                                fromMaybe buildPlatform (usePlatform options')
         criticalSection'      = fromMaybe id
                                 (fmap criticalSection $ setupCacheLock options')
 
