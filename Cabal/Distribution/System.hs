@@ -167,6 +167,9 @@ instance Text Platform where
     os   <- parse
     return (Platform arch os)
 
+-- | The platform Cabal was compiled on. In most cases,
+-- @LocalBuildInfo.hostPlatform@ should be used instead (the platform we're
+-- targeting).
 buildPlatform :: Platform
 buildPlatform = Platform buildArch buildOS
 
@@ -180,13 +183,14 @@ lowercase :: String -> String
 lowercase = map Char.toLower
 
 platformFromTriple :: String -> Maybe Platform
-platformFromTriple triple = fmap fst (listToMaybe $ Parse.readP_to_S parseTriple triple)
+platformFromTriple triple =
+  fmap fst (listToMaybe $ Parse.readP_to_S parseTriple triple)
   where parseWord = Parse.munch1 (\c -> Char.isAlphaNum c || c == '_')
         parseTriple = do
           arch <- fmap (classifyArch Strict) parseWord
           _ <- Parse.char '-'
           _ <- parseWord -- Skip vendor
           _ <- Parse.char '-'
-          os <- fmap (classifyOS Compat) ident -- OS may have hyphens, like 'nto-qnx'
+          os <- fmap (classifyOS Compat) ident -- OS may have hyphens, like
+                                               -- 'nto-qnx'
           return $ Platform arch os
-

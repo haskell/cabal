@@ -292,7 +292,7 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, _, conf) <- configCompilerAux' configFlags'
+  (comp, platform, conf) <- configCompilerAux' configFlags'
 
   -- If the user has set the -w option, we may need to create the package DB for
   -- this compiler.
@@ -300,7 +300,7 @@ sandboxInstall verbosity _sandboxFlags configFlags configExFlags
 
       args :: InstallArgs
       args = ((configPackageDB' configFlags''), (globalRepos globalFlags'),
-              comp, conf,
+              comp, platform, conf,
               globalFlags', configFlags'', configExFlags', installFlags',
               haddockFlags)
 
