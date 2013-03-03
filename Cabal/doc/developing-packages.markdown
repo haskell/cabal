@@ -275,8 +275,8 @@ simple build infrastructure understands the extensions:
 When building, Cabal will automatically run the appropriate preprocessor
 and compile the Haskell module it produces.
 
-Some fields take lists of values, which are optionally separated by commas, except for the
-`build-depends` field, where the commas are mandatory.
+Some fields take lists of values, which are optionally separated by commas,
+except for the `build-depends` field, where the commas are mandatory.
 
 Some fields are marked as required.  All others are optional, and unless
 otherwise specified have empty default values.
@@ -674,8 +674,8 @@ may provide human-readable information through the standard output and error
 channels.
 
 `main-is:` _filename_ (required: `exitcode-stdio-1.0`)
-:   The name of the `.hs` or `.lhs` file containing the `Main` module. Note that it is the
-    `.hs` filename that must be listed, even if that file is generated
+:   The name of the `.hs` or `.lhs` file containing the `Main` module. Note that
+    it is the `.hs` filename that must be listed, even if that file is generated
     using a preprocessor. The source file must be relative to one of the
     directories listed in `hs-source-dirs`.  This field is analogous to the
     `main-is` field of an executable section.
