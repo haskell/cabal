@@ -360,7 +360,7 @@ fetchCommand = CommandUI {
     commandName         = "fetch",
     commandSynopsis     = "Downloads packages for later installation.",
     commandDescription  = Nothing,
-    commandUsage        = usagePackages "fetch",
+    commandUsage        = usageFlagsOrPackages "fetch",
     commandDefaultFlags = defaultFetchFlags,
     commandOptions      = \ showOrParseArgs -> [
          optionVerbosity fetchVerbosity (\v flags -> flags { fetchVerbosity = v })
@@ -405,7 +405,7 @@ updateCommand = CommandUI {
     commandName         = "update",
     commandSynopsis     = "Updates list of known packages",
     commandDescription  = Nothing,
-    commandUsage        = usagePackages "update",
+    commandUsage        = usageFlagsOrPackages "update",
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> [optionVerbosity id const]
   }
@@ -415,7 +415,7 @@ upgradeCommand = configureCommand {
     commandName         = "upgrade",
     commandSynopsis     = "(command disabled, use install instead)",
     commandDescription  = Nothing,
-    commandUsage        = usagePackages "upgrade",
+    commandUsage        = usageFlagsOrPackages "upgrade",
     commandDefaultFlags = (mempty, mempty, mempty, mempty),
     commandOptions      = commandOptions installCommand
   }
@@ -601,7 +601,7 @@ listCommand = CommandUI {
     commandName         = "list",
     commandSynopsis     = "List packages matching a search string.",
     commandDescription  = Nothing,
-    commandUsage        = usagePackages "list",
+    commandUsage        = usageFlagsOrPackages "list",
     commandDefaultFlags = defaultListFlags,
     commandOptions      = \_ -> [
         optionVerbosity listVerbosity (\v flags -> flags { listVerbosity = v })
@@ -646,7 +646,7 @@ infoCommand = CommandUI {
     commandName         = "info",
     commandSynopsis     = "Display detailed information about a particular package.",
     commandDescription  = Nothing,
-    commandUsage        = usagePackages "info",
+    commandUsage        = usageFlagsOrPackages "info",
     commandDefaultFlags = defaultInfoFlags,
     commandOptions      = \_ -> [
         optionVerbosity infoVerbosity (\v flags -> flags { infoVerbosity = v })
@@ -728,7 +728,7 @@ installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFl
 installCommand = CommandUI {
   commandName         = "install",
   commandSynopsis     = "Installs a list of packages.",
-  commandUsage        = usagePackages "install",
+  commandUsage        = usageFlagsOrPackages "install",
   commandDescription  = Just $ \pname ->
     let original = case commandDescription configureCommand of
           Just desc -> desc pname ++ "\n"
@@ -1442,7 +1442,7 @@ sandboxInstallCommand = CommandUI {
   commandName         = "sandbox-install",
   commandSynopsis     = "Install a list of packages into a sandbox",
   commandDescription  = commandDescription installCommand,
-  commandUsage        = usagePackages "sandbox-install",
+  commandUsage        = usageFlagsOrPackages "sandbox-install",
   commandDefaultFlags = (defaultSandboxFlags, mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1 (commonSandboxOptions showOrParseArgs)
@@ -1540,10 +1540,15 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
   ]
 
 
-usagePackages :: String -> String -> String
-usagePackages name pname =
+usageFlagsOrPackages :: String -> String -> String
+usageFlagsOrPackages name pname =
      "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n"
   ++ "   or: " ++ pname ++ " " ++ name ++ " [PACKAGES]\n\n"
+  ++ "Flags for " ++ name ++ ":"
+
+usagePackages :: String -> String -> String
+usagePackages name pname =
+     "Usage: " ++ pname ++ " " ++ name ++ " [PACKAGES]\n\n"
   ++ "Flags for " ++ name ++ ":"
 
 usageFlags :: String -> String -> String
