@@ -409,7 +409,7 @@ closed = null . PackageIndex.brokenPackages
 -- most one version of any package in the set. It only requires that of
 -- packages which have more than one other package depending on them. We could
 -- actually make the condition even more precise and say that different
--- versions are ok so long as they are not both in the transative closure of
+-- versions are ok so long as they are not both in the transitive closure of
 -- any other package (or equivalently that their inverse closures do not
 -- intersect). The point is we do not want to have any packages depending
 -- directly or indirectly on two different versions of the same package. The

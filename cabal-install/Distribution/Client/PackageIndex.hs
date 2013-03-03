@@ -334,9 +334,9 @@ brokenPackages index =
                          , isNothing (lookupPackageId index pkg') ]
   , not (null missing) ]
 
--- | Tries to take the transative closure of the package dependencies.
+-- | Tries to take the transitive closure of the package dependencies.
 --
--- If the transative closure is complete then it returns that subset of the
+-- If the transitive closure is complete then it returns that subset of the
 -- index. Otherwise it returns the broken packages as in 'brokenPackages'.
 --
 -- * Note that if the result is @Right []@ it is because at least one of
@@ -360,7 +360,7 @@ dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
           where completed' = insert pkg completed
                 pkgids'    = depends pkg ++ pkgids
 
--- | Takes the transative closure of the packages reverse dependencies.
+-- | Takes the transitive closure of the packages reverse dependencies.
 --
 -- * The given 'PackageIdentifier's must be in the index.
 --
