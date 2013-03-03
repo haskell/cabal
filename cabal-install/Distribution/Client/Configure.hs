@@ -98,6 +98,7 @@ configure verbosity packageDBs repos comp platform conf
       useCabalVersion  = maybe anyVersion thisVersion
                          (flagToMaybe (configCabalVersion configExFlags)),
       useCompiler      = Just comp,
+      usePlatform      = Just platform,
       usePackageDB     = packageDBs',
       usePackageIndex  = index',
       useProgramConfig = conf,

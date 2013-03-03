@@ -54,6 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Compiler (
   -- * Compiler flavor
   CompilerFlavor(..),
+  buildCompilerId,
   buildCompilerFlavor,
   defaultCompilerFlavor,
   parseCompilerFlavorCompat,
@@ -65,7 +66,7 @@ module Distribution.Compiler (
 import Data.Maybe (fromMaybe)
 import Distribution.Version (Version(..))
 
-import qualified System.Info (compilerName)
+import qualified System.Info (compilerName, compilerVersion)
 import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
@@ -125,6 +126,12 @@ parseCompilerFlavorCompat = do
 
 buildCompilerFlavor :: CompilerFlavor
 buildCompilerFlavor = classifyCompilerFlavor System.Info.compilerName
+
+buildCompilerVersion :: Version
+buildCompilerVersion = System.Info.compilerVersion
+
+buildCompilerId :: CompilerId
+buildCompilerId = CompilerId buildCompilerFlavor buildCompilerVersion
 
 -- | The default compiler flavour to pick when compiling stuff. This defaults
 -- to the compiler used to build the Cabal lib.

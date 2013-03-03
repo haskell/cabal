@@ -138,7 +138,7 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
-import Distribution.System (Platform, buildPlatform, platformFromTriple)
+import Distribution.System (Platform, platformFromTriple)
 
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
 getGhcInfo verbosity ghcProg =
