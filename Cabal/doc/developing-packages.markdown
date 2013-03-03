@@ -1293,6 +1293,27 @@ The exact fields are as follows:
     This field is optional. It default to empty which corresponds to the
     root directory of the repository.
 
+### Downloading a package's source ###
+
+The `cabal get` command allows to access a package's source code - either by
+unpacking a tarball downloaded from Hackage (the default) or by checking out a
+working copy from the package's source repository.
+
+~~~~~~~~~~~~~~~~
+$ cabal get [FLAGS] PACKAGES
+~~~~~~~~~~~~~~~~
+
+The `get` command supports the following options:
+
+`-d --destdir` _PATH_
+:   Where to place the package source, defaults to (a subdirectory of) the
+    current directory.
+
+`-s --source-repository` _[head|this|...]_
+:   Fork the package's source repository using the appropriate version control
+    system. The optional argument allows to choose a specific repo kind.
+
+
 ## Accessing data files from package code ##
 
 The placement on the target system of files listed in the `data-files`
