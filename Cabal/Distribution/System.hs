@@ -167,7 +167,9 @@ instance Text Platform where
     os   <- parse
     return (Platform arch os)
 
-
+-- | The platform Cabal was compiled on. In most cases,
+-- @LocalBuildInfo.hostPlatform@ should be used instead (the platform we're
+-- targeting).
 buildPlatform :: Platform
 buildPlatform = Platform buildArch buildOS
 
