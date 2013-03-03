@@ -165,5 +165,9 @@ Note that `cabal` is not the only tool for working with Cabal packages.
 Due to the standardised format and a library for reading `.cabal` files,
 there are several other special-purpose tools.
 
+The `cabal` tool keeps its preferences in the `~/.cabal/config` file
+(`%APPDATA%/cabal/config` on Windows). The `--config-file` option allows to load
+configuration from an alternate location.
+
 [Haskell]:  http://www.haskell.org/
 [Hackage]:  http://hackage.haskell.org/
