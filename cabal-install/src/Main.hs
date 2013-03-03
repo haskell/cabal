@@ -397,10 +397,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, _, conf) <- configCompilerAux' configFlags'
+  (comp, platform, conf) <- configCompilerAux' configFlags'
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf globalFlags' configFlags' configExFlags'
+          comp platform conf globalFlags' configFlags' configExFlags'
           installFlags' haddockFlags
           targets
 
