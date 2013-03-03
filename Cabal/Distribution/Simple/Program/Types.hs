@@ -43,8 +43,9 @@ data Program = Program {
        -- | The simple name of the program, eg. ghc
        programName :: String,
 
-       -- | A function to search for the program if it's location was not
-       -- specified by the user. Usually this will just be a
+       -- | A function to search for the program if its location was not
+       -- specified by the user. Usually this will just be a call to
+       -- @findProgramLocation@.
        programFindLocation :: Verbosity -> IO (Maybe FilePath),
 
        -- | Try to find the version of the program. For many programs this is
