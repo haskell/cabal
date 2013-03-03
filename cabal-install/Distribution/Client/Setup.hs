@@ -542,12 +542,12 @@ getCommand = CommandUI {
         optionVerbosity getVerbosity (\v flags -> flags { getVerbosity = v })
 
        ,option "d" ["destdir"]
-         "where to place the package source, defaults to the current directory."
+         "Where to place the package source, defaults to the current directory."
          getDestDir (\v flags -> flags { getDestDir = v })
          (reqArgFlag "PATH")
 
        ,option "s" ["source-repository"]
-         "fork the package's source repository."
+         "Fork the package's source repository."
          getSourceRepository (\v flags -> flags { getSourceRepository = v })
         (optArg "[head|this|...]" (readP_to_E (const "invalid source-repository")
                                               (fmap (toFlag . Just) parse))
