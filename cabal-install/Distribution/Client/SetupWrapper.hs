@@ -63,6 +63,7 @@ import Distribution.Simple.Utils
          , rewriteFile, intercalate )
 import Distribution.Client.Utils
          ( moreRecentFile, inDir )
+import Distribution.System (Platform(..))
 import Distribution.Text
          ( display )
 import Distribution.Verbosity
@@ -83,6 +84,7 @@ import Data.Char         ( isSpace )
 data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion          :: VersionRange,
     useCompiler              :: Maybe Compiler,
+    usePlatform              :: Maybe Platform,
     usePackageDB             :: PackageDBStack,
     usePackageIndex          :: Maybe PackageIndex,
     useProgramConfig         :: ProgramConfiguration,
@@ -100,6 +102,7 @@ defaultSetupScriptOptions :: SetupScriptOptions
 defaultSetupScriptOptions = SetupScriptOptions {
     useCabalVersion          = anyVersion,
     useCompiler              = Nothing,
+    usePlatform              = Nothing,
     usePackageDB             = [GlobalPackageDB, UserPackageDB],
     usePackageIndex          = Nothing,
     useProgramConfig         = emptyProgramConfiguration,
@@ -261,7 +264,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   configureCompiler options' = do
     (comp, conf) <- case useCompiler options' of
       Just comp -> return (comp, useProgramConfig options')
-      Nothing   -> do (comp, _, conf) <- configCompiler (Just GHC) Nothing Nothing
+      Nothing   -> do (comp, _, conf) <-
+                        configCompiler (Just GHC) Nothing Nothing
                         (useProgramConfig options') verbosity
                       return (comp, conf)
     return (comp, conf, options' { useCompiler = Just comp,
