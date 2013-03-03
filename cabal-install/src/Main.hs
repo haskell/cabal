@@ -345,7 +345,8 @@ reconfigure verbosity distPref    addConfigFlags
                     | otherwise -> case LBI.pkgDescrFile lbi of
                         Nothing -> return Nothing
                         Just pdFile -> do
-                            outdated <- checkPersistBuildConfigOutdated distPref pdFile
+                            outdated <- checkPersistBuildConfigOutdated
+                                        distPref pdFile
                             return $! if outdated
                                 then Just $! outdatedMessage pdFile
                                 else Nothing
@@ -396,10 +397,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, _, conf) <- configCompilerAux' configFlags'
+  (comp, platform, conf) <- configCompilerAux' configFlags'
   install verbosity
           (configPackageDB' configFlags') (globalRepos globalFlags')
-          comp conf globalFlags' configFlags' configExFlags' installFlags' haddockFlags
+          comp platform conf globalFlags' configFlags' configExFlags'
+          installFlags' haddockFlags
           targets
 
 testAction :: TestFlags -> [String] -> GlobalFlags -> IO ()

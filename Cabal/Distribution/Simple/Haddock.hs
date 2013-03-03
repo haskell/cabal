@@ -78,8 +78,7 @@ import Distribution.Simple.InstallDirs (InstallDirs(..), PathTemplateEnv, PathTe
                                         substPathTemplate, initialPathTemplateEnv)
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-         , withAllComponentsInBuildOrder
-         , CopyDest(NoCopyDest) )
+         , withAllComponentsInBuildOrder )
 import Distribution.Simple.BuildPaths ( haddockName,
                                         hscolourPref, autogenModulesDir,
                                         )
@@ -108,7 +107,7 @@ import Data.Monoid
 import Data.Maybe    ( fromMaybe, listToMaybe )
 
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
-                       normalise, splitPath, joinPath, takeDirectory)
+                       normalise, splitPath, joinPath )
 import System.IO (hClose, hPutStrLn)
 import Distribution.Version
 import Distribution.Simple.SrcDist (copyFileTo)

@@ -88,7 +88,8 @@ import Distribution.Client.JobControl
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , PackageDB(..), PackageDBStack )
-import Distribution.Simple.Program (ProgramConfiguration, defaultProgramConfiguration)
+import Distribution.Simple.Program (ProgramConfiguration,
+                                    defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -121,7 +122,7 @@ import Distribution.Simple.Utils as Utils
 import Distribution.Client.Utils
          ( numberOfProcessors, inDir, mergeBy, MergeResult(..) )
 import Distribution.System
-         ( Platform, buildPlatform, OS(Windows), buildOS )
+         ( Platform, OS(Windows), buildOS )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -151,6 +152,7 @@ install
   -> PackageDBStack
   -> [Repo]
   -> Compiler
+  -> Platform
   -> ProgramConfiguration
   -> GlobalFlags
   -> ConfigFlags
@@ -159,7 +161,7 @@ install
   -> HaddockFlags
   -> [UserTarget]
   -> IO ()
-install verbosity packageDBs repos comp conf
+install verbosity packageDBs repos comp platform conf
   globalFlags configFlags configExFlags installFlags haddockFlags
   userTargets0 = do
 
@@ -170,7 +172,7 @@ install verbosity packageDBs repos comp conf
     processInstallPlan verbosity args installContext installPlan
   where
     args :: InstallArgs
-    args = (packageDBs, repos, comp, conf,
+    args = (packageDBs, repos, comp, platform, conf,
             globalFlags, configFlags, configExFlags, installFlags,
             haddockFlags)
 
@@ -187,6 +189,7 @@ type InstallContext = ( PackageIndex, SourcePackageDb
 type InstallArgs = ( PackageDBStack
                    , [Repo]
                    , Compiler
+                   , Platform
                    , ProgramConfiguration
                    , GlobalFlags
                    , ConfigFlags
@@ -198,7 +201,7 @@ type InstallArgs = ( PackageDBStack
 makeInstallContext :: Verbosity -> InstallArgs -> [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
-  (packageDBs, repos, comp, conf,
+  (packageDBs, repos, comp, _, conf,
    globalFlags, _, _, _, _) userTargets0 = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
@@ -220,7 +223,7 @@ makeInstallContext verbosity
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                 -> IO (Progress String String InstallPlan)
 makeInstallPlan verbosity
-  (_, _, comp, _,
+  (_, _, comp, platform, _,
    _, configFlags, configExFlags, installFlags,
    _)
   (installedPkgIndex, sourcePkgDb,
@@ -229,15 +232,15 @@ makeInstallPlan verbosity
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerId comp)
     notice verbosity "Resolving dependencies..."
-    return $ planPackages comp solver configFlags configExFlags installFlags
-      installedPkgIndex sourcePkgDb pkgSpecifiers
+    return $ planPackages comp platform solver configFlags configExFlags
+      installFlags installedPkgIndex sourcePkgDb pkgSpecifiers
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> InstallPlan
                    -> IO ()
 processInstallPlan verbosity
-  args@(_, _, _, _, _, _, _, installFlags, _)
+  args@(_, _, _, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
    userTargets, pkgSpecifiers) installPlan = do
     checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
@@ -255,6 +258,7 @@ processInstallPlan verbosity
 -- ------------------------------------------------------------
 
 planPackages :: Compiler
+             -> Platform
              -> Solver
              -> ConfigFlags
              -> ConfigExFlags
@@ -263,11 +267,11 @@ planPackages :: Compiler
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
-planPackages comp solver configFlags configExFlags installFlags
+planPackages comp platform solver configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
         resolveDependencies
-          buildPlatform (compilerId comp)
+          platform (compilerId comp)
           solver
           resolverParams
 
@@ -474,7 +478,8 @@ packageStatus installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
     [] -> NewPackage
-    ps ->  case filter ((==packageId cpkg) . Installed.sourcePackageId) (concatMap snd ps) of
+    ps ->  case filter ((==packageId cpkg)
+                        . Installed.sourcePackageId) (concatMap snd ps) of
       []           -> NewVersion (map fst ps)
       pkgs@(pkg:_) -> Reinstall (map Installed.installedPackageId pkgs)
                                 (changes pkg cpkg)
@@ -484,15 +489,17 @@ packageStatus installedPkgIndex cpkg =
     changes :: Installed.InstalledPackageInfo
             -> ConfiguredPackage
             -> [MergeResult PackageIdentifier PackageIdentifier]
-    changes pkg pkg' = filter changed
-                     $ mergeBy (comparing packageName)
-                         -- get dependencies of installed package (convert to source pkg ids via index)
-                         (nub . sort . concatMap (maybeToList .
-                                                  fmap Installed.sourcePackageId .
-                                                  PackageIndex.lookupInstalledPackageId installedPkgIndex) .
-                                                  Installed.depends $ pkg)
-                         -- get dependencies of configured package
-                         (nub . sort . depends $ pkg')
+    changes pkg pkg' =
+      filter changed
+      $ mergeBy (comparing packageName)
+        -- get dependencies of installed package (convert to source pkg ids via
+        -- index)
+        (nub . sort . concatMap
+         (maybeToList . fmap Installed.sourcePackageId .
+          PackageIndex.lookupInstalledPackageId installedPkgIndex) .
+         Installed.depends $ pkg)
+        -- get dependencies of configured package
+        (nub . sort . depends $ pkg')
 
     changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
     changed _                        = True
@@ -509,7 +516,8 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
         ("In order, the following " ++ wouldWill ++ " be installed:")
       : map showPkgAndReason pkgs
     | otherwise -> notice verbosity $ unlines $
-        ("In order, the following " ++ wouldWill ++ " be installed (use -v for more details):")
+        ("In order, the following " ++ wouldWill
+         ++ " be installed (use -v for more details):")
       : map showPkg pkgs
   where
     wouldWill | dryRun    = "would"
@@ -594,7 +602,8 @@ postInstallActions :: Verbosity
                    -> InstallPlan
                    -> IO ()
 postInstallActions verbosity
-  (packageDBs, _, comp, conf, globalFlags, configFlags, _, installFlags, _)
+  (packageDBs, _, comp, platform, conf, globalFlags, configFlags
+  , _, installFlags, _)
   targets installPlan = do
 
   unless oneShot $
@@ -604,13 +613,14 @@ postInstallActions verbosity
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan installPlan
-  BuildReports.storeLocal (installSummaryFile installFlags) buildReports (InstallPlan.planPlatform installPlan)
+  BuildReports.storeLocal (installSummaryFile installFlags) buildReports
+    (InstallPlan.planPlatform installPlan)
   when (reportingLevel >= AnonymousReports) $
     BuildReports.storeAnonymous buildReports
   when (reportingLevel == DetailedReports) $
     storeDetailedBuildReports verbosity logsDir buildReports
 
-  regenerateHaddockIndex verbosity packageDBs comp conf
+  regenerateHaddockIndex verbosity packageDBs comp platform conf
                          configFlags installFlags installPlan
 
   symlinkBinaries verbosity configFlags installFlags installPlan
@@ -659,12 +669,13 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
 regenerateHaddockIndex :: Verbosity
                        -> [PackageDB]
                        -> Compiler
+                       -> Platform
                        -> ProgramConfiguration
                        -> ConfigFlags
                        -> InstallFlags
                        -> InstallPlan
                        -> IO ()
-regenerateHaddockIndex verbosity packageDBs comp conf
+regenerateHaddockIndex verbosity packageDBs comp platform conf
                        configFlags installFlags installPlan
   | haddockIndexFileIsRequested && shouldRegenerateHaddockIndex = do
 
@@ -708,7 +719,7 @@ regenerateHaddockIndex verbosity packageDBs comp conf
       where
         env  = env0 ++ installDirsTemplateEnv absoluteDirs
         env0 = InstallDirs.compilerTemplateEnv (compilerId comp)
-            ++ InstallDirs.platformTemplateEnv (buildPlatform)
+            ++ InstallDirs.platformTemplateEnv platform
         absoluteDirs = InstallDirs.substituteInstallDirTemplates
                          env0 templateDirs
         templateDirs = InstallDirs.combineInstallDirs fromFlagOrDefault
@@ -788,7 +799,7 @@ performInstallations :: Verbosity
                      -> InstallPlan
                      -> IO InstallPlan
 performInstallations verbosity
-  (packageDBs, _, comp, conf,
+  (packageDBs, _, comp, _, conf,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
@@ -823,6 +834,7 @@ performInstallations verbosity
     setupScriptOptions index lock = SetupScriptOptions {
       useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
       useCompiler      = Just comp,
+      usePlatform      = Just platform,
       -- Hack: we typically want to allow the UserPackageDB for finding the
       -- Cabal lib when compiling any Setup.hs even if we're doing a global
       -- install. However we also allow looking in a specific package db.
@@ -888,7 +900,8 @@ performInstallations verbosity
     substLogFileName template pkg = fromPathTemplate
                                   . substPathTemplate env
                                   $ template
-      where env = initialPathTemplateEnv (packageId pkg) (compilerId comp) platform
+      where env = initialPathTemplateEnv (packageId pkg)
+                  (compilerId comp) platform
 
     miscOptions  = InstallMisc {
       rootCmd    = if fromFlag (configUserInstall configFlags)
@@ -981,7 +994,8 @@ installConfiguredPackage :: Platform -> CompilerId
                                          -> PackageDescriptionOverride -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
-  (ConfiguredPackage (SourcePackage _ gpkg source pkgoverride) flags stanzas deps)
+  (ConfiguredPackage (SourcePackage _ gpkg source pkgoverride)
+   flags stanzas deps)
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
     configConstraints = map thisPackageVersion deps,
@@ -1236,7 +1250,8 @@ withWin32SelfUpgrade verbosity configFlags compid platform pkg action = do
         templateDirs   = InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
         absoluteDirs   = InstallDirs.absoluteInstallDirs
-                           pkgid compid InstallDirs.NoCopyDest platform templateDirs
+                           pkgid compid InstallDirs.NoCopyDest
+                           platform templateDirs
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
           where env = InstallDirs.initialPathTemplateEnv pkgid compid platform
