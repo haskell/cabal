@@ -43,7 +43,7 @@ data InstalledPackageEx
    = InstalledPackageEx
        InstalledPackage
        !TopologicalSortNumber
-       [PackageIdentifier]    -- transative closure of installed deps
+       [PackageIdentifier]    -- transitive closure of installed deps
 
 data UnconfiguredPackage
    = UnconfiguredPackage

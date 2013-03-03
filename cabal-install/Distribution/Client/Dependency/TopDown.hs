@@ -406,7 +406,7 @@ configurePackage platform comp available spkg = case spkg of
 
   dependencySatisfiable = not . null . PackageIndex.lookupDependency available
 
--- | Annotate each installed packages with its set of transative dependencies
+-- | Annotate each installed packages with its set of transitive dependencies
 -- and its topological sort number.
 --
 annotateInstalledPackages :: (PackageName -> TopologicalSortNumber)
