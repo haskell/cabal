@@ -40,7 +40,7 @@ import Distribution.Simple.Configure
 import Distribution.Compiler ( buildCompilerId )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(GHC), Compiler(compilerId)
-         , compilerVersion, showCompilerId
+         , compilerVersion
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
