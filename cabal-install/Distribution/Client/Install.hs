@@ -828,7 +828,7 @@ performInstallations verbosity
       Cabal.NoFlag        -> 1
       Cabal.Flag Nothing  -> numberOfProcessors
       Cabal.Flag (Just n) -> n
-    numFetchJobs = 2
+    numFetchJobs  = 2
     parallelBuild = numJobs >= 2
 
     setupScriptOptions index lock = SetupScriptOptions {
