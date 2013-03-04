@@ -71,10 +71,6 @@ module Distribution.Simple.GHC (
         componentGhcOptions,
         ghcLibDir,
         ghcDynamicByDefault,
-
-        -- * Deprecated
-        ghcVerbosityOptions,
-        ghcPackageDbOptions,
  ) where
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
@@ -1038,25 +1034,6 @@ componentCcGhcOptions verbosity lbi bi clbi pref filename =
     odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
          | otherwise = pref </> takeDirectory filename
          -- ghc 6.4.0 had a bug in -odir handling for C compilations.
-
-{-# DEPRECATED ghcVerbosityOptions "Use the GhcOptions record instead" #-}
-ghcVerbosityOptions :: Verbosity -> [String]
-ghcVerbosityOptions verbosity
-     | verbosity >= deafening = ["-v"]
-     | verbosity >= normal    = []
-     | otherwise              = ["-w", "-v0"]
-
-{-# DEPRECATED ghcPackageDbOptions "Use the GhcOptions record instead" #-}
-ghcPackageDbOptions :: PackageDBStack -> [String]
-ghcPackageDbOptions dbstack = case dbstack of
-  (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
-  (GlobalPackageDB:dbs)               -> "-no-user-package-conf"
-                                       : concatMap specific dbs
-  _                                   -> ierror
-  where
-    specific (SpecificPackageDB db) = [ "-package-conf", db ]
-    specific _ = ierror
-    ierror     = error ("internal error: unexpected package db stack: " ++ show dbstack)
 
 mkGHCiLibName :: PackageIdentifier -> String
 mkGHCiLibName lib = "HS" ++ display lib <.> "o"
