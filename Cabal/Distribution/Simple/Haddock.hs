@@ -454,9 +454,9 @@ renderPureArgs version args = concat
     [
      (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
      . fromFlag . argInterfaceFile $ args,
-     (\pkgName -> if isVersion2
-                  then ["--optghc=-package-name", "--optghc=" ++ pkgName]
-                  else ["--package=" ++ pkgName]) . display . fromFlag . argPackageName $ args,
+     (\pname ->   if isVersion2
+                  then ["--optghc=-package-name", "--optghc=" ++ pname]
+                  else ["--package=" ++ pname]) . display . fromFlag . argPackageName $ args,
      (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b) . argHideModules $ args,
      bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args,
      maybe [] (\(m,e) -> ["--source-module=" ++ m
