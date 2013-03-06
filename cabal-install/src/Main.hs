@@ -501,10 +501,10 @@ fetchAction fetchFlags extraArgs globalFlags = do
   config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  (comp, _, conf) <- configCompilerAux' configFlags
+  (comp, platform, conf) <- configCompilerAux' configFlags
   fetch verbosity
         (configPackageDB' configFlags) (globalRepos globalFlags')
-        comp conf globalFlags' fetchFlags
+        comp platform conf globalFlags' fetchFlags
         targets
 
 uploadAction :: UploadFlags -> [String] -> GlobalFlags -> IO ()
