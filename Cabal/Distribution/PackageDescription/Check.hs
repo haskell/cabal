@@ -1225,7 +1225,7 @@ checkPackageVersions pkg =
   ]
   where
     -- TODO: What we really want to do is test if there exists any
-    -- configuration in which the base version is unboudned above.
+    -- configuration in which the base version is unbounded above.
     -- However that's a bit tricky because there are many possible
     -- configurations. As a cheap easy and safe approximation we will
     -- pick a single "typical" configuration and check if that has an
