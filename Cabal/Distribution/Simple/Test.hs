@@ -77,7 +77,7 @@ import Distribution.TestSuite
     , Test(..) )
 import Distribution.Text
 import Distribution.Verbosity ( normal, Verbosity )
-import Distribution.System ( buildPlatform, Platform )
+import Distribution.System ( Platform )
 
 import Control.Exception ( bracket )
 import Control.Monad ( when, unless, filterM )
@@ -107,7 +107,7 @@ localPackageLog :: PD.PackageDescription -> LBI.LocalBuildInfo -> PackageLog
 localPackageLog pkg_descr lbi = PackageLog
     { package = PD.package pkg_descr
     , compiler = compilerId $ LBI.compiler lbi
-    , platform = buildPlatform
+    , platform = LBI.hostPlatform lbi
     , testSuites = []
     }
 
@@ -542,4 +542,3 @@ stubWriteLog f n logs = do
     when (suiteError testLog) $ exitWith $ ExitFailure 2
     when (suiteFailed testLog) $ exitWith $ ExitFailure 1
     exitWith ExitSuccess
-
