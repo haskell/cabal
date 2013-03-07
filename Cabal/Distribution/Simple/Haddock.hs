@@ -52,7 +52,9 @@ module Distribution.Simple.Haddock (
 
 -- local
 import Distribution.Package
-         ( PackageIdentifier, Package(..), packageName )
+         ( PackageIdentifier(..)
+         , Package(..)
+         , PackageName(..), packageName )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), allExtensions
@@ -452,9 +454,9 @@ renderPureArgs version args = concat
     [
      (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
      . fromFlag . argInterfaceFile $ args,
-     (\pkgName -> if isVersion2
-                  then ["--optghc=-package-name", "--optghc=" ++ pkgName]
-                  else ["--package=" ++ pkgName]) . display . fromFlag . argPackageName $ args,
+     (\pname ->   if isVersion2
+                  then ["--optghc=-package-name", "--optghc=" ++ pname]
+                  else ["--package=" ++ pname]) . display . fromFlag . argPackageName $ args,
      (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b) . argHideModules $ args,
      bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args,
      maybe [] (\(m,e) -> ["--source-module=" ++ m
@@ -503,7 +505,9 @@ haddockPackageFlags lbi clbi htmlTemplate = do
           if exists
             then return (Right (interface, html))
             else return (Left (packageId ipkg))
-    | ipkg <- PackageIndex.allPackages transitiveDeps ]
+    | ipkg <- PackageIndex.allPackages transitiveDeps
+    , pkgName (packageId ipkg) `notElem` noHaddockWhitelist
+    ]
 
   let missing = [ pkgid | Left pkgid <- interfaces ]
       warning = "The documentation for the following packages are not "
@@ -515,6 +519,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
   return (flags, if null missing then Nothing else Just warning)
 
   where
+    noHaddockWhitelist = map PackageName [ "rts" ]
     interfaceAndHtmlPath :: InstalledPackageInfo -> Maybe (FilePath, FilePath)
     interfaceAndHtmlPath pkg = do
       interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
