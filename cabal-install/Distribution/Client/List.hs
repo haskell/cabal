@@ -138,6 +138,9 @@ info :: Verbosity
      -> InfoFlags
      -> [UserTarget]
      -> IO ()
+info verbosity _ _ _ _ _ _ [] =
+    notice verbosity "No packages requested. Nothing to do."
+
 info verbosity packageDBs repos comp conf
      globalFlags _listFlags userTargets = do
 
