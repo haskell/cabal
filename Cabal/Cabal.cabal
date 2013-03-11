@@ -46,7 +46,7 @@ library
 
   if !os(windows)
     build-depends:
-      unix >= 2.0 && < 2.7
+      unix >= 2.0 && < 2.8
 
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
 
