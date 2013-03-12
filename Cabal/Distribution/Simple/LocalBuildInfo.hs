@@ -54,6 +54,7 @@ module Distribution.Simple.LocalBuildInfo (
         ComponentName(..),
         showComponentName,
         ComponentLocalBuildInfo(..),
+        LibraryName(..),
         foldComponent,
         componentName,
         componentBuildInfo,
@@ -199,7 +200,30 @@ showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
 
-data ComponentLocalBuildInfo = ComponentLocalBuildInfo {
+data ComponentLocalBuildInfo
+  = LibComponentLocalBuildInfo {
+    -- | Resolved internal and external package dependencies for this component.
+    -- The 'BuildInfo' specifies a set of build dependencies that must be
+    -- satisfied in terms of version ranges. This field fixes those dependencies
+    -- to the specific versions available on this machine for this compiler.
+    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentLibraries :: [LibraryName]
+  }
+  | ExeComponentLocalBuildInfo {
+    -- | Resolved internal and external package dependencies for this component.
+    -- The 'BuildInfo' specifies a set of build dependencies that must be
+    -- satisfied in terms of version ranges. This field fixes those dependencies
+    -- to the specific versions available on this machine for this compiler.
+    componentPackageDeps :: [(InstalledPackageId, PackageId)]
+  }
+  | TestComponentLocalBuildInfo {
+    -- | Resolved internal and external package dependencies for this component.
+    -- The 'BuildInfo' specifies a set of build dependencies that must be
+    -- satisfied in terms of version ranges. This field fixes those dependencies
+    -- to the specific versions available on this machine for this compiler.
+    componentPackageDeps :: [(InstalledPackageId, PackageId)]
+  }
+  | BenchComponentLocalBuildInfo {
     -- | Resolved internal and external package dependencies for this component.
     -- The 'BuildInfo' specifies a set of build dependencies that must be
     -- satisfied in terms of version ranges. This field fixes those dependencies
@@ -218,6 +242,9 @@ foldComponent f _ _ _ (CLib   lib) = f lib
 foldComponent _ f _ _ (CExe   exe) = f exe
 foldComponent _ _ f _ (CTest  tst) = f tst
 foldComponent _ _ _ f (CBench bch) = f bch
+
+data LibraryName = LibraryName String
+    deriving (Read, Show)
 
 componentBuildInfo :: Component -> BuildInfo
 componentBuildInfo =

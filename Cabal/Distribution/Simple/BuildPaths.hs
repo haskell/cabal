@@ -69,7 +69,8 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.Compiler
          ( CompilerId(..) )
 import Distribution.PackageDescription (PackageDescription)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(buildDir))
+import Distribution.Simple.LocalBuildInfo
+         ( LocalBuildInfo(buildDir), LibraryName(..) )
 import Distribution.Simple.Setup (defaultDistPref)
 import Distribution.Text
          ( display )
@@ -109,18 +110,18 @@ haddockName pkg_descr = display (packageName pkg_descr) <.> "haddock"
 -- ---------------------------------------------------------------------------
 -- Library file names
 
-mkLibName :: PackageIdentifier -> String
-mkLibName lib = "libHS" ++ display lib <.> "a"
+mkLibName :: LibraryName -> String
+mkLibName (LibraryName lib) = "lib" ++ lib <.> "a"
 
-mkProfLibName :: PackageIdentifier -> String
-mkProfLibName lib =  "libHS" ++ display lib ++ "_p" <.> "a"
+mkProfLibName :: LibraryName -> String
+mkProfLibName (LibraryName lib) =  "lib" ++ lib ++ "_p" <.> "a"
 
 -- Implement proper name mangling for dynamical shared objects
 -- libHS<packagename>-<compilerFlavour><compilerVersion>
 -- e.g. libHSbase-2.1-ghc6.6.1.so
-mkSharedLibName :: PackageIdentifier -> CompilerId -> String
-mkSharedLibName lib (CompilerId compilerFlavor compilerVersion)
-  = "libHS" ++ display lib ++ "-" ++ comp <.> dllExtension
+mkSharedLibName :: CompilerId -> LibraryName -> String
+mkSharedLibName (CompilerId compilerFlavor compilerVersion) (LibraryName lib)
+  = "lib" ++ lib ++ "-" ++ comp <.> dllExtension
   where comp = display compilerFlavor ++ display compilerVersion
 
 -- ------------------------------------------------------------

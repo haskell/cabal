@@ -103,7 +103,8 @@ import Distribution.Simple.Setup
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
-    ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
+    ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
+    , LibraryName(..)
     , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
     , ComponentName(..), showComponentName, pkgEnabledComponents
     , componentBuildInfo, componentName, checkComponentsCyclic )
@@ -854,18 +855,33 @@ mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps =
     -- needs. Note, this only works because we cannot yet depend on two
     -- versions of the same package.
     componentLocalBuildInfo component =
-      ComponentLocalBuildInfo {
-        componentPackageDeps =
-          if newPackageDepsBehaviour pkg_descr
-            then [ (installedPackageId pkg, packageId pkg)
-                 | pkg <- selectSubset bi externalPkgDeps ]
-              ++ [ (inplacePackageId pkgid, pkgid)
-                 | pkgid <- selectSubset bi internalPkgDeps ]
-            else [ (installedPackageId pkg, packageId pkg)
-                 | pkg <- externalPkgDeps ]
-      }
+      case component of
+      CLib _ ->
+        LibComponentLocalBuildInfo {
+          componentPackageDeps = cpds,
+          componentLibraries = [LibraryName ("HS" ++ display (package pkg_descr))]
+        }
+      CExe _ ->
+        ExeComponentLocalBuildInfo {
+          componentPackageDeps = cpds
+        }
+      CTest _ ->
+        TestComponentLocalBuildInfo {
+          componentPackageDeps = cpds
+        }
+      CBench _ ->
+        BenchComponentLocalBuildInfo {
+          componentPackageDeps = cpds
+        }
       where
         bi = componentBuildInfo component
+        cpds = if newPackageDepsBehaviour pkg_descr
+               then [ (installedPackageId pkg, packageId pkg)
+                    | pkg <- selectSubset bi externalPkgDeps ]
+                 ++ [ (inplacePackageId pkgid, pkgid)
+                    | pkgid <- selectSubset bi internalPkgDeps ]
+               else [ (installedPackageId pkg, packageId pkg)
+                    | pkg <- externalPkgDeps ]
 
     selectSubset :: Package pkg => BuildInfo -> [pkg] -> [pkg]
     selectSubset bi pkgs =
