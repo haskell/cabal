@@ -68,6 +68,7 @@ module Distribution.Simple.Register (
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
          , ComponentName(..), getComponentLocalBuildInfo
+         , LibraryName(..)
          , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
 import qualified Distribution.Simple.GHC  as GHC
@@ -293,7 +294,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
     IPI.libraryDirs        = if hasLibrary
                                then libdir installDirs : extraLibDirs bi
                                else                      extraLibDirs bi,
-    IPI.hsLibraries        = [ "HS" ++ display (packageId pkg) | hasLibrary ],
+    IPI.hsLibraries        = [ lib
+                             | LibraryName lib <- componentLibraries clbi ],
     IPI.extraLibraries     = extraLibs bi,
     IPI.extraGHCiLibraries = [],
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,

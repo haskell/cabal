@@ -287,6 +287,10 @@ setInstalledPackageId pkginfo = pkginfo
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
+  libName <- case componentLibraries clbi of
+             [libName] -> return libName
+             [] -> die "No library name found when building library"
+             _  -> die "Multiple library names found when building library"
   let conf = withPrograms lbi
       Just nhcProg = lookupProgram nhcProgram conf
   let bi = libBuildInfo lib
@@ -327,7 +331,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   info verbosity "Linking..."
   let --cObjs = [ targetDir </> cFile `replaceExtension` objExtension
       --        | cFile <- cSources bi ]
-      libFilePath = targetDir </> mkLibName (packageId pkg_descr)
+      libFilePath = targetDir </> mkLibName libName
       hObjs = [ targetDir </> ModuleName.toFilePath m <.> objExtension
               | m <- modules ]
 
@@ -416,11 +420,15 @@ installLib    :: Verbosity -- ^verbosity
               -> FilePath  -- ^Build location
               -> PackageIdentifier
               -> Library
+              -> ComponentLocalBuildInfo
               -> IO ()
-installLib verbosity pref buildPref pkgid lib
+installLib verbosity pref buildPref pkgid lib clbi
     = do let bi = libBuildInfo lib
              modules = exposedModules lib ++ otherModules bi
          findModuleFiles [buildPref] ["hi"] modules
            >>= installOrdinaryFiles verbosity pref
-         let libName = mkLibName pkgid
-         installOrdinaryFile verbosity (buildPref </> libName) (pref </> libName)
+         let libNames = map mkLibName (componentLibraries clbi)
+             installLib libName = installOrdinaryFile verbosity
+                                                      (buildPref </> libName)
+                                                      (pref </> libName)
+         mapM_ installLib libNames
