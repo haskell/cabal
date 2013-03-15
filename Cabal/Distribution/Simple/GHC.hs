@@ -91,7 +91,7 @@ import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageIdentifier, Package(..), PackageName(..) )
+         ( Package(..), PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
@@ -1093,7 +1093,7 @@ installLib    :: Verbosity
               -> Library
               -> ComponentLocalBuildInfo
               -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib clbi = do
+installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   -- copy .hi files over:
   let copyHelper installFun src dst n = do
         createDirectoryIfMissingVerbose verbosity True dst
@@ -1126,8 +1126,6 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib clbi = do
     profileLibNames = map mkProfLibName         libNames
     ghciLibNames    = map mkGHCiLibName         libNames
     sharedLibNames  = map (mkSharedLibName cid) libNames
-
-    pkgid          = packageId pkg
 
     hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))
