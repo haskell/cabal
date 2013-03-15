@@ -52,7 +52,7 @@ module Distribution.Simple.NHC (
 
 import Distribution.Package
          ( PackageName, PackageIdentifier(..), InstalledPackageId(..)
-         , packageId, packageName )
+         , packageName )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo
          , InstalledPackageInfo_( InstalledPackageInfo, installedPackageId
@@ -422,13 +422,13 @@ installLib    :: Verbosity -- ^verbosity
               -> Library
               -> ComponentLocalBuildInfo
               -> IO ()
-installLib verbosity pref buildPref pkgid lib clbi
+installLib verbosity pref buildPref _pkgid lib clbi
     = do let bi = libBuildInfo lib
              modules = exposedModules lib ++ otherModules bi
          findModuleFiles [buildPref] ["hi"] modules
            >>= installOrdinaryFiles verbosity pref
          let libNames = map mkLibName (componentLibraries clbi)
-             installLib libName = installOrdinaryFile verbosity
-                                                      (buildPref </> libName)
-                                                      (pref </> libName)
-         mapM_ installLib libNames
+             installLib' libName = installOrdinaryFile verbosity
+                                                       (buildPref </> libName)
+                                                       (pref </> libName)
+         mapM_ installLib' libNames

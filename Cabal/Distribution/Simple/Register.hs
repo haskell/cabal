@@ -294,8 +294,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
     IPI.libraryDirs        = if hasLibrary
                                then libdir installDirs : extraLibDirs bi
                                else                      extraLibDirs bi,
-    IPI.hsLibraries        = [ lib
-                             | LibraryName lib <- componentLibraries clbi ],
+    IPI.hsLibraries        = [ libname
+                             | LibraryName libname <- componentLibraries clbi ],
     IPI.extraLibraries     = extraLibs bi,
     IPI.extraGHCiLibraries = [],
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,
