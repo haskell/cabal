@@ -34,11 +34,10 @@ Flag old-directory
   description:  Use directory < 1.2 and old-time
   default:      False
 
-Library
-    ghc-options: -Wall -fwarn-tabs
-    if arch(arm)
-       cc-options:  -DCABAL_NO_THREADED
-    Exposed-Modules:
+executable cabal
+    main-is:        Main.hs
+    ghc-options:    -Wall -fwarn-tabs
+    other-modules:
         Distribution.Client.BuildReports.Anonymous
         Distribution.Client.BuildReports.Storage
         Distribution.Client.BuildReports.Types
@@ -109,7 +108,6 @@ Library
         Distribution.Compat.FilePerms
         Distribution.Compat.Semaphore
         Distribution.Compat.Time
-    Other-Modules:
         Paths_cabal_install
 
     build-depends:
@@ -139,34 +137,58 @@ Library
       cpp-options: -DWIN32
     else
       build-depends: unix >= 1.0 && < 2.7
+
+    if arch(arm)
+       cc-options:  -DCABAL_NO_THREADED
+    else
+       ghc-options: -threaded
+
     c-sources: cbits/getnumcores.c
 
-Executable cabal
-    Main-Is:            Main.hs
-    hs-source-dirs:     src
-    ghc-options:        -Wall -fwarn-tabs
-    if !arch(arm)
-       ghc-options: -threaded
-    build-depends:      base          >= 4      && < 5,
-                        Cabal         >= 1.17.0 && < 1.18,
-                        cabal-install >= 1.17.0 && < 1.18,
-                        directory     >= 1      && < 1.3,
-                        filepath      >= 1.0    && < 1.4
 
 Test-Suite unit-tests
   type: exitcode-stdio-1.0
   main-is: UnitTests.hs
-  hs-source-dirs: tests
+  hs-source-dirs: tests, .
+  ghc-options: -Wall -fwarn-tabs
+  other-modules:
+    UnitTests.Distribution.Client.Targets
+    UnitTests.Distribution.Client.Dependency.Modular.PSQ
+    UnitTests.Distribution.Client.Sandbox
   build-depends:
         base,
+        array,
+        bytestring,
+        Cabal,
+        containers,
+        mtl,
+        network,
+        pretty,
+        process,
+        directory,
         filepath,
+        stm,
+        time,
+        network,
+        HTTP,
+        zlib,
+  
         test-framework,
         test-framework-hunit,
         test-framework-quickcheck2,
         HUnit,
-        QuickCheck (>= 2.5),
-        cabal-install,
-        Cabal
-  ghc-options: -Wall -fwarn-tabs
-  if !arch(arm)
-     ghc-options: -threaded
+        QuickCheck >= 2.5
+
+  if flag(old-directory)
+    build-depends: old-time
+
+  if os(windows)
+    build-depends: Win32
+    cpp-options: -DWIN32
+  else
+    build-depends: unix
+
+  if arch(arm)
+    cc-options:  -DCABAL_NO_THREADED
+  else
+    ghc-options: -threaded
