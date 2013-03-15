@@ -236,7 +236,7 @@ haddock pkg_descr lbi suffixes flags = do
 prepareSources :: Verbosity
                   -> FilePath
                   -> LocalBuildInfo
-                  -> Bool            -- haddock == 2.*
+                  -> Bool            -- haddock >= 2.0
                   -> BuildInfo
                   -> HaddockArgs
                   -> IO HaddockArgs
