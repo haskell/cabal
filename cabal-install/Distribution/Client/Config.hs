@@ -401,7 +401,7 @@ configFieldDescriptions =
 
   ++ toSavedConfig liftInstallFlag
        (installOptions ParseArgs)
-       ["dry-run", "only"] []
+       ["dry-run", "only", "only-dependencies", "dependencies-only"] []
 
   ++ toSavedConfig liftUploadFlag
        (commandOptions uploadCommand ParseArgs)
