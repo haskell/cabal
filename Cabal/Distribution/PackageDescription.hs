@@ -124,6 +124,7 @@ module Distribution.PackageDescription (
         knownRepoTypes,
   ) where
 
+import Data.Data   (Data)
 import Data.List   (nub, intercalate)
 import Data.Maybe  (fromMaybe, maybeToList)
 import Data.Monoid (Monoid(mempty, mappend))
@@ -196,7 +197,7 @@ data PackageDescription
         extraTmpFiles  :: [FilePath],
         extraHtmlFiles :: [FilePath]
     }
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Typeable, Data)
 
 instance Package PackageDescription where
   packageId = package
@@ -274,7 +275,7 @@ data BuildType
                 --   be built. Doing it this way rather than just giving a
                 --   parse error means we get better error messages and allows
                 --   you to inspect the rest of the package description.
-                deriving (Show, Read, Eq)
+                deriving (Show, Read, Eq, Typeable, Data)
 
 knownBuildTypes :: [BuildType]
 knownBuildTypes = [Simple, Configure, Make, Custom]
@@ -300,7 +301,7 @@ data Library = Library {
         libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
         libBuildInfo      :: BuildInfo
     }
-    deriving (Show, Eq, Read)
+    deriving (Show, Eq, Read, Typeable, Data)
 
 instance Monoid Library where
   mempty = Library {
@@ -348,7 +349,7 @@ data Executable = Executable {
         modulePath :: FilePath,
         buildInfo  :: BuildInfo
     }
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Typeable, Data)
 
 instance Monoid Executable where
   mempty = Executable {
@@ -402,7 +403,7 @@ data TestSuite = TestSuite {
         -- a better solution is waiting on the next overhaul to the
         -- GenericPackageDescription -> PackageDescription resolution process.
     }
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Typeable, Data)
 
 -- | The test suite interfaces that are currently defined. Each test suite must
 -- specify which interface it supports.
@@ -428,7 +429,7 @@ data TestSuiteInterface =
      -- the given reason (e.g. unknown test type).
      --
    | TestSuiteUnsupported TestType
-   deriving (Eq, Read, Show)
+   deriving (Eq, Read, Show, Typeable, Data)
 
 instance Monoid TestSuite where
     mempty = TestSuite {
@@ -484,7 +485,7 @@ testModules test = (case testInterface test of
 data TestType = TestTypeExe Version     -- ^ \"type: exitcode-stdio-x.y\"
               | TestTypeLib Version     -- ^ \"type: detailed-x.y\"
               | TestTypeUnknown String Version -- ^ Some unknown test type e.g. \"type: foo\"
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Typeable, Data)
 
 knownTestTypes :: [TestType]
 knownTestTypes = [ TestTypeExe (Version [1,0] [])
@@ -533,7 +534,7 @@ data Benchmark = Benchmark {
         benchmarkEnabled   :: Bool
         -- TODO: See TODO for 'testEnabled'.
     }
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Typeable, Data)
 
 -- | The benchmark interfaces that are currently defined. Each
 -- benchmark must specify which interface it supports.
@@ -555,7 +556,7 @@ data BenchmarkInterface =
      -- interfaces for the given reason (e.g. unknown benchmark type).
      --
    | BenchmarkUnsupported BenchmarkType
-   deriving (Eq, Read, Show)
+   deriving (Eq, Read, Show, Typeable, Data)
 
 instance Monoid Benchmark where
     mempty = Benchmark {
@@ -609,7 +610,7 @@ data BenchmarkType = BenchmarkTypeExe Version
                      -- ^ \"type: exitcode-stdio-x.y\"
                    | BenchmarkTypeUnknown String Version
                      -- ^ Some unknown benchmark type e.g. \"type: foo\"
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Typeable, Data)
 
 knownBenchmarkTypes :: [BenchmarkType]
 knownBenchmarkTypes = [ BenchmarkTypeExe (Version [1,0] []) ]
@@ -663,7 +664,7 @@ data BuildInfo = BuildInfo {
                                                 -- simple assoc-list.
         targetBuildDepends :: [Dependency] -- ^ Dependencies specific to a library or executable target
     }
-    deriving (Show,Read,Eq)
+    deriving (Show,Read,Eq,Typeable,Data)
 
 instance Monoid BuildInfo where
   mempty = BuildInfo {
@@ -837,7 +838,7 @@ data SourceRepo = SourceRepo {
   -- given the default is \".\" ie no subdirectory.
   repoSubdir   :: Maybe FilePath
 }
-  deriving (Eq, Read, Show)
+  deriving (Eq, Read, Show, Typeable, Data)
 
 -- | What this repo info is for, what it represents.
 --
@@ -853,7 +854,7 @@ data RepoKind =
   | RepoThis
 
   | RepoKindUnknown String
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Typeable, Data)
 
 -- | An enumeration of common source control systems. The fields used in the
 -- 'SourceRepo' depend on the type of repo. The tools and methods used to
@@ -862,7 +863,7 @@ data RepoKind =
 data RepoType = Darcs | Git | SVN | CVS
               | Mercurial | GnuArch | Bazaar | Monotone
               | OtherRepoType String
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Typeable, Data)
 
 knownRepoTypes :: [RepoType]
 knownRepoTypes = [Darcs, Git, SVN, CVS
@@ -945,7 +946,7 @@ data GenericPackageDescription =
         condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
         condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]
       }
-    deriving (Show, Eq, Typeable)
+    deriving (Show, Eq, Typeable, Data)
 
 instance Package GenericPackageDescription where
   packageId = packageId . packageDescription
@@ -960,11 +961,11 @@ data Flag = MkFlag
     , flagDefault     :: Bool
     , flagManual      :: Bool
     }
-    deriving (Show, Eq)
+    deriving (Show, Eq, Typeable, Data)
 
 -- | A 'FlagName' is the name of a user-defined configuration flag
 newtype FlagName = FlagName String
-    deriving (Eq, Ord, Show, Read)
+    deriving (Eq, Ord, Show, Read, Typeable, Data)
 
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or
@@ -978,7 +979,7 @@ data ConfVar = OS OS
              | Arch Arch
              | Flag FlagName
              | Impl CompilerFlavor VersionRange
-    deriving (Eq, Show)
+    deriving (Eq, Show, Typeable, Data)
 
 --instance Text ConfVar where
 --    disp (OS os) = "os(" ++ display os ++ ")"
@@ -993,7 +994,7 @@ data Condition c = Var c
                  | CNot (Condition c)
                  | COr (Condition c) (Condition c)
                  | CAnd (Condition c) (Condition c)
-    deriving (Show, Eq)
+    deriving (Show, Eq, Typeable, Data)
 
 --instance Text c => Text (Condition c) where
 --  disp (Var x) = text (show x)
@@ -1009,7 +1010,7 @@ data CondTree v c a = CondNode
                               , CondTree v c a
                               , Maybe (CondTree v c a))]
     }
-    deriving (Show, Eq)
+    deriving (Show, Eq, Typeable, Data)
 
 --instance (Text v, Text c) => Text (CondTree v c a) where
 --  disp (CondNode _dat cs ifs) =
