@@ -74,10 +74,11 @@ import Text.PrettyPrint ((<>), (<+>), text)
 import Control.DeepSeq (NFData(..))
 import qualified Data.Char as Char ( isDigit, isAlphaNum )
 import Data.List ( intercalate )
+import Data.Data ( Data )
 import Data.Typeable ( Typeable )
 
 newtype PackageName = PackageName String
-    deriving (Read, Show, Eq, Ord, Typeable)
+    deriving (Read, Show, Eq, Ord, Typeable, Data)
 
 instance Text PackageName where
   disp (PackageName n) = Disp.text n
@@ -103,7 +104,7 @@ data PackageIdentifier
         pkgName    :: PackageName, -- ^The name of this package, eg. foo
         pkgVersion :: Version -- ^the version of this package, eg 1.2
      }
-     deriving (Read, Show, Eq, Ord, Typeable)
+     deriving (Read, Show, Eq, Ord, Typeable, Data)
 
 instance Text PackageIdentifier where
   disp (PackageIdentifier n v) = case v of
@@ -127,7 +128,7 @@ instance NFData PackageIdentifier where
 -- in a package database, or overlay of databases.
 --
 newtype InstalledPackageId = InstalledPackageId String
- deriving (Read,Show,Eq,Ord)
+ deriving (Read,Show,Eq,Ord,Typeable,Data)
 
 instance Text InstalledPackageId where
   disp (InstalledPackageId str) = text str
@@ -142,7 +143,7 @@ instance Text InstalledPackageId where
 -- | Describes a dependency on a source package (API)
 --
 data Dependency = Dependency PackageName VersionRange
-                  deriving (Read, Show, Eq)
+                  deriving (Read, Show, Eq, Typeable, Data)
 
 instance Text Dependency where
   disp (Dependency name ver) =

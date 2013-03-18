@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.License
@@ -59,6 +60,8 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>))
 import qualified Data.Char as Char (isAlphaNum)
+import Data.Data (Data)
+import Data.Typeable (Typeable)
 
 -- |This datatype indicates the license under which your package is
 -- released.  It is also wise to add your license to each source file
@@ -106,7 +109,7 @@ data License =
     -- | Not a recognised license.
     -- Allows us to deal with future extensions more gracefully.
   | UnknownLicense String
-  deriving (Read, Show, Eq)
+  deriving (Read, Show, Eq, Typeable, Data)
 
 knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
