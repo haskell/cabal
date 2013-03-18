@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compiler
@@ -63,6 +64,8 @@ module Distribution.Compiler (
   CompilerId(..),
   ) where
 
+import Data.Data (Data)
+import Data.Typeable (Typeable)
 import Data.Maybe (fromMaybe)
 import Distribution.Version (Version(..))
 
@@ -77,7 +80,7 @@ import Control.Monad (when)
 
 data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
                     | OtherCompiler String
-  deriving (Show, Read, Eq, Ord)
+  deriving (Show, Read, Eq, Ord, Typeable, Data)
 
 knownCompilerFlavors :: [CompilerFlavor]
 knownCompilerFlavors = [GHC, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]

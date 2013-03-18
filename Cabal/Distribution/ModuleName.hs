@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.ModuleName
@@ -50,6 +51,8 @@ module Distribution.ModuleName (
 import Distribution.Text
          ( Text(..) )
 
+import Data.Data (Data)
+import Data.Typeable (Typeable)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Char as Char
@@ -62,7 +65,7 @@ import Data.List
 -- | A valid Haskell module name.
 --
 newtype ModuleName = ModuleName [String]
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read, Show, Typeable, Data)
 
 instance Text ModuleName where
   disp (ModuleName ms) =
