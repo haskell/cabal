@@ -26,9 +26,10 @@ import Distribution.Version
          ( Version(..), VersionRange, anyVersion
          , intersectVersionRanges, orLaterVersion
          , withinRange )
-import Distribution.InstalledPackageInfo (installedPackageId)
+import Distribution.InstalledPackageInfo (installedPackageId, sourcePackageId)
 import Distribution.Package
-         ( PackageIdentifier(..), PackageName(..), Package(..), packageName
+         ( InstalledPackageId(..), PackageIdentifier(..),
+           PackageName(..), Package(..), packageName
          , packageVersion, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
@@ -250,14 +251,16 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     return (packageVersion pkg)
   installedCabalVersion options' comp conf = do
     index <- maybeGetInstalledPackages options' comp conf
-    let cabalDep = Dependency (PackageName "Cabal") (useCabalVersion options)
+    let cabalDep = Dependency (PackageName "Cabal") (useCabalVersion options')
     case PackageIndex.lookupDependency index cabalDep of
       []   -> die $ "The package requires Cabal library version "
                  ++ display (useCabalVersion options)
                  ++ " but no suitable version is installed."
-      pkgs -> return $ bestVersion (map fst pkgs)
+      pkgs -> return $ bestVersion id (map fst pkgs)
+
+  bestVersion :: (a -> Version) -> [a] -> a
+  bestVersion f = maximumBy (comparing (preference . f))
     where
-      bestVersion          = maximumBy (comparing preference)
       preference version   = (sameVersion, sameMajorVersion
                              ,stableVersion, latestVersion)
         where
@@ -268,6 +271,22 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                                (_:x:_) -> even x
                                _       -> False
           latestVersion    = version
+
+  -- TODO: This function looks a lot like @installedCabalVersion@ - can the
+  -- duplication be removed?
+  installedCabalPkgId :: SetupScriptOptions -> Compiler -> ProgramConfiguration
+                         -> Version -> IO (Maybe InstalledPackageId)
+  installedCabalPkgId _ _ _ _ | packageName pkg == PackageName "Cabal" =
+    return Nothing
+  installedCabalPkgId options' compiler conf cabalLibVersion = do
+    index <- maybeGetInstalledPackages options' compiler conf
+    let cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
+    case PackageIndex.lookupSourcePackageId index cabalPkgid of
+      []           -> die $ "The package requires Cabal library version "
+                      ++ display (cabalLibVersion)
+                      ++ " but no suitable version is installed."
+      iPkgInfos   -> return . Just . installedPackageId
+                     . bestVersion (pkgVersion . sourcePackageId) $ iPkgInfos
 
   configureCompiler :: SetupScriptOptions
                     -> IO (Compiler, ProgramConfiguration, SetupScriptOptions)
@@ -365,13 +384,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     when (outOfDate || forceCompile) $ do
       debug verbosity "Setup executable needs to be updated, compiling..."
       (compiler, conf, options'') <- configureCompiler options'
-      index <- maybeGetInstalledPackages options'' compiler conf
-      cabalInstalledPkgId <-
-        case PackageIndex.lookupSourcePackageId index cabalPkgid of
-          []           -> die $ "The package requires Cabal library version "
-                          ++ display (cabalLibVersion)
-                          ++ " but no suitable version is installed."
-          (iPkgInfo:_) -> return $ installedPackageId iPkgInfo
+      let cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
+      maybeCabalInstalledPkgId <- installedCabalPkgId options'' compiler conf
+                                  cabalLibVersion
       let ghcOptions = mempty {
               ghcOptVerbosity       = Flag verbosity
             , ghcOptMode            = Flag GhcModeMake
@@ -383,9 +398,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptSourcePath      = [workingDir]
             , ghcOptPackageDBs      = usePackageDB options''
             , ghcOptPackages        =
-              if (packageName pkg == PackageName "Cabal")
-              then []
-              else [(cabalInstalledPkgId, cabalPkgid)]
+              maybe []
+              (\cabalInstalledPkgId -> [(cabalInstalledPkgId, cabalPkgid)])
+              maybeCabalInstalledPkgId
             }
       let ghcCmdLine = renderGhcOptions (compilerVersion compiler) ghcOptions
       case useLoggingHandle options of
@@ -398,7 +413,6 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     return setupProgFile
     where
       setupProgFile = setupDir </> "setup" <.> exeExtension
-      cabalPkgid    = PackageIdentifier (PackageName "Cabal") cabalLibVersion
 
   invokeSetupScript :: FilePath -> [String] -> IO ()
   invokeSetupScript path args = do
