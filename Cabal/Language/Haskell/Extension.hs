@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.Haskell.Extension
@@ -53,6 +54,8 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Char as Char (isAlphaNum)
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
+import Data.Data (Data)
+import Data.Typeable (Typeable)
 
 -- ------------------------------------------------------------
 -- * Language
@@ -75,7 +78,7 @@ data Language =
 
   -- | An unknown language, identified by its name.
   | UnknownLanguage String
-  deriving (Show, Read, Eq)
+  deriving (Show, Read, Eq, Typeable, Data)
 
 knownLanguages :: [Language]
 knownLanguages = [Haskell98, Haskell2010]
@@ -123,7 +126,7 @@ data Extension =
   -- pragma.
   | UnknownExtension String
 
-  deriving (Show, Read, Eq)
+  deriving (Show, Read, Eq, Typeable, Data)
 
 data KnownExtension =
 
@@ -654,7 +657,7 @@ data KnownExtension =
   -- * <http://www.haskell.org/haskellwiki/GHC/Data_Parallel_Haskell>
   | ParallelArrays
 
-  deriving (Show, Read, Eq, Enum, Bounded)
+  deriving (Show, Read, Eq, Enum, Bounded, Typeable, Data)
 
 {-# DEPRECATED knownExtensions
    "KnownExtension is an instance of Enum and Bounded, use those instead." #-}

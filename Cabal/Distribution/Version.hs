@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, StandaloneDeriving #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Version
@@ -92,6 +92,7 @@ module Distribution.Version (
 
  ) where
 
+import Data.Data        ( Data )
 import Data.Typeable    ( Typeable )
 import Data.Version     ( Version(..) )
 
@@ -118,7 +119,10 @@ data VersionRange
   | UnionVersionRanges     VersionRange VersionRange
   | IntersectVersionRanges VersionRange VersionRange
   | VersionRangeParens     VersionRange -- just '(exp)' parentheses syntax
-  deriving (Show,Read,Eq,Typeable)
+  deriving (Show,Read,Eq,Typeable,Data)
+
+-- TODO orphan
+deriving instance Data Version
 
 {-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
 {-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
