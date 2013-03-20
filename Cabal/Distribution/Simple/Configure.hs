@@ -164,7 +164,7 @@ tryGetConfigStateFile filename = do
     then return (Left missing)
     else withFileContents filename $ \str ->
       case lines str of
-        [headder, rest] -> case checkHeader headder of
+        [header, rest] -> case checkHeader header of
           Just msg -> return (Left msg)
           Nothing  -> case reads rest of
             [(bi,_)] -> return (Right bi)
