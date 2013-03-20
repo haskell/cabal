@@ -490,6 +490,10 @@ rawSystemStdInOut verbosity path args input outputBinary = do
         debug verbosity $ path ++ " returned " ++ show exitcode
                        ++ if null err then "" else
                           " with error message:\n" ++ err
+                       ++ case input of
+                            Nothing       -> ""
+                            Just ("",  _) -> ""
+                            Just (inp, _) -> "\nstdin input:\n" ++ inp
 
       return (out, err, exitcode)
 
