@@ -24,4 +24,3 @@ catchIO = Exception.catch
 
 catchExit :: IO a -> (ExitCode -> IO a) -> IO a
 catchExit = Exception.catch
-
