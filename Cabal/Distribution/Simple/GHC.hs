@@ -863,7 +863,7 @@ buildExe verbosity _pkg_descr lbi
       compileOpts | withProfExe lbi = profOpts
                   | withDynExe  lbi = dynOpts
                   | otherwise       = staticOpts
-      
+
       linkOpts = compileOpts `mappend` mempty {
                       ghcOptLinkOptions    = PD.ldOptions exeBi,
                       ghcOptLinkLibs       = extraLibs exeBi,
