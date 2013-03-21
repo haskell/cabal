@@ -104,4 +104,3 @@ main = do
     -- Create a shared Setup executable to speed up Simple tests
     compileSetup "."
     defaultMain (tests cabalVersion)
-
