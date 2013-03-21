@@ -34,6 +34,7 @@ import PackageTests.PathsModule.Library.Check
 import PackageTests.PreProcess.Check
 import PackageTests.TemplateHaskell.Check
 import PackageTests.CMain.Check
+import PackageTests.EmptyLib.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
@@ -74,6 +75,8 @@ tests version =
     , hunit "PathsModule/Executable"
       PackageTests.PathsModule.Executable.Check.suite
     , hunit "PathsModule/Library" PackageTests.PathsModule.Library.Check.suite
+    , hunit "EmptyLib/emptyLib"
+      PackageTests.EmptyLib.Check.emptyLib
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []
@@ -104,4 +107,3 @@ main = do
     -- Create a shared Setup executable to speed up Simple tests
     compileSetup "."
     defaultMain (tests cabalVersion)
-

@@ -641,11 +641,11 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   libBi <- hackThreadedFlag verbosity
              comp (withProfLib lbi) (libBuildInfo lib)
 
-  ghcDynamic <- ghcDynamic verbosity ghcProg
+  isGhcDynamic <- ghcDynamic verbosity ghcProg
   let libTargetDir = pref
       doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
-      forceVanillaLib = doingTH && not ghcDynamic
-      forceSharedLib  = doingTH &&     ghcDynamic
+      forceVanillaLib = doingTH && not isGhcDynamic
+      forceSharedLib  = doingTH &&     isGhcDynamic
       -- TH always needs default libs, even when building for profiling
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
@@ -675,7 +675,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
   unless (null (libModules lib)) $
     do let vanilla = ifVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
            shared  = ifSharedLib  forceSharedLib  (runGhcProg sharedOpts)
-       if ghcDynamic then do shared;  vanilla
+       if isGhcDynamic then do shared;  vanilla
                      else do vanilla; shared
        ifProfLib (runGhcProg profOpts)
 
@@ -1183,4 +1183,3 @@ ghcDynamicByDefault verbosity ghcProg
          return $ case lookup "Dynamic by default" xs of
                   Just "YES" -> True
                   _          -> False
-
