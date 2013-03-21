@@ -210,24 +210,12 @@ data ComponentLocalBuildInfo
     componentLibraries :: [LibraryName]
   }
   | ExeComponentLocalBuildInfo {
-    -- | Resolved internal and external package dependencies for this component.
-    -- The 'BuildInfo' specifies a set of build dependencies that must be
-    -- satisfied in terms of version ranges. This field fixes those dependencies
-    -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)]
   }
   | TestComponentLocalBuildInfo {
-    -- | Resolved internal and external package dependencies for this component.
-    -- The 'BuildInfo' specifies a set of build dependencies that must be
-    -- satisfied in terms of version ranges. This field fixes those dependencies
-    -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)]
   }
   | BenchComponentLocalBuildInfo {
-    -- | Resolved internal and external package dependencies for this component.
-    -- The 'BuildInfo' specifies a set of build dependencies that must be
-    -- satisfied in terms of version ranges. This field fixes those dependencies
-    -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)]
   }
   deriving (Read, Show)
