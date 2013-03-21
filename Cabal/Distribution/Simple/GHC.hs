@@ -863,7 +863,7 @@ buildExe verbosity _pkg_descr lbi
       compileOpts | withProfExe lbi = profOpts
                   | withDynExe  lbi = dynOpts
                   | otherwise       = staticOpts
-      
+
       linkOpts = compileOpts `mappend` mempty {
                       ghcOptLinkOptions    = PD.ldOptions exeBi,
                       ghcOptLinkLibs       = extraLibs exeBi,
@@ -880,7 +880,7 @@ buildExe verbosity _pkg_descr lbi
   -- be loaded up and run by the compiler.
   when ((withProfExe lbi || withDynExe lbi) &&
         EnableExtension TemplateHaskell `elem` allExtensions exeBi) $
-    runGhcProg compileOpts { ghcOptNoLink = toFlag True }
+    runGhcProg staticOpts { ghcOptNoLink = toFlag True }
     --TODO: do we also need to play the static vs dynamic games here?
 
   runGhcProg compileOpts { ghcOptNoLink = toFlag True }
