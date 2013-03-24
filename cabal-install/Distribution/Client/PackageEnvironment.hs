@@ -70,6 +70,8 @@ import qualified Distribution.Text         as Text
 -- TODO: would be nice to remove duplication between D.C.PackageEnvironment and
 -- D.C.Config.
 data PackageEnvironment = PackageEnvironment {
+  -- The 'inherit' feature is not used ATM, but could be useful in the future
+  -- for constructing nested sandboxes (see discussion in #1196).
   pkgEnvInherit       :: Flag FilePath,
   pkgEnvSavedConfig   :: SavedConfig
 }
