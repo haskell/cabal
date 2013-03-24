@@ -19,6 +19,7 @@ module Distribution.Client.PackageEnvironment (
   , showPackageEnvironment
   , showPackageEnvironmentWithComments
   , setPackageDB
+  , loadUserConfig
 
   , basePackageEnvironment
   , initialPackageEnvironment
@@ -251,6 +252,11 @@ userPackageEnvironment verbosity pkgEnvDir = do
       warn verbosity $ "Error parsing user package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
       return mempty
+
+-- | Same as @userPackageEnvironmentFile@, but returns a SavedConfig.
+loadUserConfig :: Verbosity -> FilePath -> IO SavedConfig
+loadUserConfig verbosity pkgEnvDir = fmap pkgEnvSavedConfig
+                                     $ userPackageEnvironment verbosity pkgEnvDir
 
 -- | Try to load the package environment file ("cabal.sandbox.config"), exiting
 -- with error if it doesn't exist. Also returns the path to the sandbox
