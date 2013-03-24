@@ -66,7 +66,14 @@ import Distribution.Client.Get                (get)
 import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxAddSource
                                               ,sandboxDelete
-                                              ,dumpPackageEnvironment)
+                                              ,dumpPackageEnvironment
+
+                                              ,MaybePkgEnv(..)
+                                              ,toSavedConfig, loadConfigOrPkgEnv
+                                              ,maybeSetPackageDB
+                                              ,maybeInitPackageDBIfNeeded
+                                              ,maybeWithSandboxDirOnSearchPath)
+
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
@@ -198,16 +205,24 @@ configureAction :: (ConfigFlags, ConfigExFlags)
                 -> [String] -> GlobalFlags -> IO ()
 configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
-                                 (configUserInstall configFlags)
-  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+
+  mPkgEnv <- loadConfigOrPkgEnv verbosity globalFlags configFlags
+  let config         = toSavedConfig mPkgEnv
+      configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux configFlags'
-  configure verbosity
-            (configPackageDB' configFlags' UseDefaultPackageDBStack)
-            (globalRepos globalFlags')
-            comp platform conf configFlags' configExFlags' extraArgs
+
+  -- If this a sandbox and the user has set the -w option, we may need to create
+  -- a sandbox-local package DB for this compiler.
+  let configFlags''  = maybeSetPackageDB mPkgEnv comp configFlags'
+  maybeInitPackageDBIfNeeded mPkgEnv verbosity configFlags'' comp conf
+
+  maybeWithSandboxDirOnSearchPath mPkgEnv $
+    configure verbosity
+              (configPackageDB' configFlags'' (maybeForceGlobalInstall mPkgEnv))
+              (globalRepos globalFlags')
+              comp platform conf configFlags'' configExFlags' extraArgs
 
 buildAction :: BuildFlags -> [String] -> GlobalFlags -> IO ()
 buildAction buildFlags extraArgs globalFlags = do
@@ -629,6 +644,11 @@ win32SelfUpgradeAction _ _ _ = return ()
 data ForceGlobalInstall = ForceGlobalInstall
                         | UseDefaultPackageDBStack
 
+-- | If we're in a sandbox, add only the global package db to the package db
+-- stack, otherwise use the default behaviour.
+maybeForceGlobalInstall :: MaybePkgEnv -> ForceGlobalInstall
+maybeForceGlobalInstall (JustConfig _)   = UseDefaultPackageDBStack
+maybeForceGlobalInstall (JustPkgEnv _ _) = ForceGlobalInstall
 
 configPackageDB' :: ConfigFlags -> ForceGlobalInstall -> PackageDBStack
 configPackageDB' cfg force =
