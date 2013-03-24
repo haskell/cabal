@@ -11,6 +11,8 @@
 module Distribution.Client.PackageEnvironment (
     PackageEnvironment(..)
   , IncludeComments(..)
+  , PackageEnvironmentType(..)
+  , classifyPackageEnvironment
   , createPackageEnvironment
   , tryLoadPackageEnvironment
   , readPackageEnvironmentFile
@@ -49,7 +51,7 @@ import Control.Monad                   ( foldM, when )
 import Data.List                       ( partition )
 import Data.Monoid                     ( Monoid(..) )
 import Distribution.Compat.Exception   ( catchIO )
-import System.Directory                ( renameFile )
+import System.Directory                ( doesFileExist, renameFile )
 import System.FilePath                 ( (<.>), (</>) )
 import System.IO.Error                 ( isDoesNotExistError )
 import Text.PrettyPrint                ( ($+$) )
@@ -93,6 +95,23 @@ sandboxPackageEnvironmentFile = "cabal.sandbox.config"
 -- settings. Created by the user.
 userPackageEnvironmentFile :: FilePath
 userPackageEnvironmentFile = "cabal.config"
+
+data PackageEnvironmentType = SandboxPackageEnvironment
+                            | UserPackageEnvironment
+                            | NoPackageEnvironment
+
+-- | Is there a 'cabal.sandbox.config' or 'cabal.config' in this
+-- directory?
+classifyPackageEnvironment :: FilePath -> IO PackageEnvironmentType
+classifyPackageEnvironment pkgEnvDir = do
+  isSandbox <- configExists sandboxPackageEnvironmentFile
+  isUser    <- configExists userPackageEnvironmentFile
+  case (isSandbox, isUser) of
+    (True,  _)     -> return SandboxPackageEnvironment
+    (False, True)  -> return UserPackageEnvironment
+    (False, False) -> return NoPackageEnvironment
+  where
+    configExists fname = doesFileExist (pkgEnvDir </> fname)
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.
