@@ -13,7 +13,13 @@ module Distribution.Client.Sandbox (
     sandboxAddSource,
 
     dumpPackageEnvironment,
-    withSandboxBinDirOnSearchPath
+    withSandboxBinDirOnSearchPath,
+
+    MaybePkgEnv(..),
+    toSavedConfig, loadConfigOrPkgEnv,
+    maybeSetPackageDB,
+    maybeInitPackageDBIfNeeded,
+    maybeWithSandboxDirOnSearchPath
   ) where
 
 import Distribution.Client.Setup
@@ -21,10 +27,10 @@ import Distribution.Client.Setup
   , defaultSandboxLocation )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
 import Distribution.Client.PackageEnvironment
-  ( PackageEnvironment(..), IncludeComments(..)
-  , createPackageEnvironment, tryLoadPackageEnvironment
-  , commentPackageEnvironment
-  , showPackageEnvironmentWithComments
+  ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
+  , createPackageEnvironment, classifyPackageEnvironment
+  , tryLoadPackageEnvironment, loadUserConfig, setPackageDB
+  , commentPackageEnvironment, showPackageEnvironmentWithComments
   , sandboxPackageEnvironmentFile )
 import Distribution.Simple.Compiler           ( Compiler, PackageDB(..) )
 import Distribution.Simple.Configure          ( configCompilerAux )
@@ -41,6 +47,7 @@ import qualified Distribution.Simple.Register as Register
 import Control.Exception                      ( bracket_ )
 import Control.Monad                          ( unless, when )
 import Data.List                              ( delete )
+import Data.Monoid                            ( mappend )
 import System.Directory                       ( canonicalizePath
                                               , doesDirectoryExist
                                               , getCurrentDirectory
@@ -49,6 +56,10 @@ import System.Directory                       ( canonicalizePath
 import System.FilePath                        ( (</>), getSearchPath
                                               , searchPathSeparator )
 
+
+--
+-- * Basic sandbox functions.
+--
 
 -- | Load the default package environment file. In addition to a
 -- @PackageEnvironment@, also return a canonical path to the sandbox. Exit with
@@ -179,3 +190,62 @@ sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
 
   Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
 
+--
+-- * Helpers for working with @SavedConfig@ and @PackageEnvironment@ uniformly.
+--
+
+-- | Helper for working with @SavedConfig@ and @PackageEnvironment@ as a single
+-- type.
+data MaybePkgEnv = JustConfig SavedConfig
+                 | JustPkgEnv PackageEnvironment FilePath
+
+-- | Extract a @SavedConfig@ from @MaybePkgEnv@.
+toSavedConfig :: MaybePkgEnv -> SavedConfig
+toSavedConfig (JustConfig sc)   = sc
+toSavedConfig (JustPkgEnv pe _) = pkgEnvSavedConfig pe
+
+-- | If the current directory contains a 'cabal.sandbox.config', return a
+-- @PackageEnvironment@. If it contains just 'cabal.config', load that file and
+-- @mappend@ in top of the default config. Otherwise, just call @loadConfig@.
+loadConfigOrPkgEnv :: Verbosity -> GlobalFlags -> ConfigFlags
+                      -> IO MaybePkgEnv
+loadConfigOrPkgEnv verbosity globalFlags configFlags = do
+  currentDir <- getCurrentDirectory
+  pkgEnvType <- classifyPackageEnvironment currentDir
+  case pkgEnvType of
+    SandboxPackageEnvironment -> do
+      -- Prints an error message and exits on error.
+      (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                              (globalConfigFile globalFlags)
+      return (JustPkgEnv pkgEnv sandboxDir)
+
+    UserPackageEnvironment    -> do
+      config <- loadConfig verbosity (globalConfigFile globalFlags)
+                (configUserInstall configFlags)
+      userConfig <- loadUserConfig verbosity currentDir
+      return (JustConfig $ config `mappend` userConfig)
+
+    NoPackageEnvironment      -> do
+      config <- loadConfig verbosity (globalConfigFile globalFlags)
+                (configUserInstall configFlags)
+      return (JustConfig config)
+
+-- | If we're in a sandbox, call @setPackageDB@, otherwise do nothing.
+maybeSetPackageDB :: MaybePkgEnv -> Compiler -> ConfigFlags -> ConfigFlags
+maybeSetPackageDB (JustConfig _) _ configFlags               = configFlags
+maybeSetPackageDB (JustPkgEnv _ sandboxDir) comp configFlags =
+  setPackageDB sandboxDir comp configFlags
+
+-- | If we're in a sandbox, call @initPackageDBIfNeeded@, otherwise do nothing.
+maybeInitPackageDBIfNeeded :: MaybePkgEnv -> Verbosity -> ConfigFlags
+                              -> Compiler -> ProgramConfiguration -> IO ()
+maybeInitPackageDBIfNeeded (JustConfig _) _ _ _ _ = return ()
+maybeInitPackageDBIfNeeded (JustPkgEnv _ _) verbosity configFlags comp conf =
+  initPackageDBIfNeeded verbosity configFlags comp conf
+
+-- | If we're in a sandbox, call @withSandboxBinDirOnSearchPath@, otherwise do
+-- nothing.
+maybeWithSandboxDirOnSearchPath :: MaybePkgEnv -> IO a -> IO a
+maybeWithSandboxDirOnSearchPath (JustConfig _) act = act
+maybeWithSandboxDirOnSearchPath (JustPkgEnv _ sandboxDir) act =
+  withSandboxBinDirOnSearchPath sandboxDir $ act
