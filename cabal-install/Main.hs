@@ -205,7 +205,8 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux configFlags'
   configure verbosity
-            (configPackageDB' configFlags') (globalRepos globalFlags')
+            (configPackageDB' configFlags' UseDefaultPackageDBStack)
+            (globalRepos globalFlags')
             comp platform conf configFlags' configExFlags' extraArgs
 
 buildAction :: BuildFlags -> [String] -> GlobalFlags -> IO ()
@@ -376,7 +377,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
   install verbosity
-          (configPackageDB' configFlags') (globalRepos globalFlags')
+          (configPackageDB' configFlags' UseDefaultPackageDBStack)
+          (globalRepos globalFlags')
           comp platform conf globalFlags' configFlags' configExFlags'
           installFlags' haddockFlags
           targets
@@ -423,7 +425,7 @@ listAction listFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
   list verbosity
-       (configPackageDB' configFlags)
+       (configPackageDB' configFlags UseDefaultPackageDBStack)
        (globalRepos globalFlags')
        comp
        conf
@@ -439,7 +441,7 @@ infoAction infoFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux configFlags
   info verbosity
-       (configPackageDB' configFlags)
+       (configPackageDB' configFlags UseDefaultPackageDBStack)
        (globalRepos globalFlags')
        comp
        conf
@@ -480,7 +482,8 @@ fetchAction fetchFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags
   fetch verbosity
-        (configPackageDB' configFlags) (globalRepos globalFlags')
+        (configPackageDB' configFlags UseDefaultPackageDBStack)
+        (globalRepos globalFlags')
         comp platform conf globalFlags' fetchFlags
         targets
 
@@ -582,7 +585,7 @@ initAction initFlags _extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
   (comp, _, conf) <- configCompilerAux' configFlags
   initCabal verbosity
-            (configPackageDB' configFlags)
+            (configPackageDB' configFlags UseDefaultPackageDBStack)
             comp
             conf
             initFlags
@@ -623,11 +626,17 @@ win32SelfUpgradeAction _ _ _ = return ()
 -- Utils (transitionary)
 --
 
-configPackageDB' :: ConfigFlags -> PackageDBStack
-configPackageDB' cfg =
+data ForceGlobalInstall = ForceGlobalInstall
+                        | UseDefaultPackageDBStack
+
+
+configPackageDB' :: ConfigFlags -> ForceGlobalInstall -> PackageDBStack
+configPackageDB' cfg force =
     interpretPackageDbFlags userInstall (configPackageDBs cfg)
   where
-    userInstall = fromFlagOrDefault True (configUserInstall cfg)
+    userInstall = case force of
+      ForceGlobalInstall       -> False
+      UseDefaultPackageDBStack -> fromFlagOrDefault True (configUserInstall cfg)
 
 configCompilerAux' :: ConfigFlags
                    -> IO (Compiler, Platform, ProgramConfiguration)
