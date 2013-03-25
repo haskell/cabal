@@ -427,43 +427,43 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
 testAction :: TestFlags -> [String] -> GlobalFlags -> IO ()
 testAction testFlags extraArgs globalFlags = do
-    let verbosity = fromFlagOrDefault normal (testVerbosity testFlags)
-        distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+  let verbosity = fromFlagOrDefault normal (testVerbosity testFlags)
+      distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                                      (testDistPref testFlags)
-        setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
-        addConfigFlags = mempty { configTests = toFlag True }
-        checkFlags flags
-            | fromFlagOrDefault False (configTests flags) = Nothing
-            | otherwise = Just "Re-configuring with test suites enabled."
+      setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+      addConfigFlags = mempty { configTests = toFlag True }
+      checkFlags flags
+        | fromFlagOrDefault False (configTests flags) = Nothing
+        | otherwise = Just "Re-configuring with test suites enabled."
 
-    mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
-    reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
-    maybeWithSandboxDirOnSearchPath mPkgEnv $
-      build verbosity distPref mempty []
+  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
+  reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
+  maybeWithSandboxDirOnSearchPath mPkgEnv $
+    build verbosity distPref mempty []
 
-    maybeWithSandboxDirOnSearchPath mPkgEnv $
-      setupWrapper verbosity setupOptions Nothing
-        testCommand (const testFlags) extraArgs
+  maybeWithSandboxDirOnSearchPath mPkgEnv $
+    setupWrapper verbosity setupOptions Nothing
+      testCommand (const testFlags) extraArgs
 
 benchmarkAction :: BenchmarkFlags -> [String] -> GlobalFlags -> IO ()
 benchmarkAction benchmarkFlags extraArgs globalFlags = do
-    let verbosity = fromFlagOrDefault normal (benchmarkVerbosity benchmarkFlags)
-        distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+  let verbosity = fromFlagOrDefault normal (benchmarkVerbosity benchmarkFlags)
+      distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                                      (benchmarkDistPref benchmarkFlags)
-        setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
-        addConfigFlags = mempty { configBenchmarks = toFlag True }
-        checkFlags flags
-            | fromFlagOrDefault False (configBenchmarks flags) = Nothing
-            | otherwise = Just "Re-configuring with benchmarks enabled."
+      setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+      addConfigFlags = mempty { configBenchmarks = toFlag True }
+      checkFlags flags
+        | fromFlagOrDefault False (configBenchmarks flags) = Nothing
+        | otherwise = Just "Re-configuring with benchmarks enabled."
 
-    mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
-    reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
-    maybeWithSandboxDirOnSearchPath mPkgEnv $
-      build verbosity distPref mempty []
+  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
+  reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
+  maybeWithSandboxDirOnSearchPath mPkgEnv $
+    build verbosity distPref mempty []
 
-    maybeWithSandboxDirOnSearchPath mPkgEnv $
-      setupWrapper verbosity setupOptions Nothing
-        benchmarkCommand (const benchmarkFlags) extraArgs
+  maybeWithSandboxDirOnSearchPath mPkgEnv $
+    setupWrapper verbosity setupOptions Nothing
+      benchmarkCommand (const benchmarkFlags) extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
