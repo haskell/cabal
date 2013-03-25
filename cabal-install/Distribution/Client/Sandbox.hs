@@ -15,12 +15,12 @@ module Distribution.Client.Sandbox (
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
-    MaybePkgEnv(..),
-    toSavedConfig, loadConfigOrPkgEnv, maybeLoadPackageEnvironment,
-    maybeSetPackageDB,
-    maybeInitPackageDBIfNeeded,
+    UseSandbox(..), usingSandbox,
+    checkIfSandboxPresent,
+    loadConfigOrSandboxConfig,
+    initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
-    maybeInstallAddSourceDeps,
+    installAddSourceDeps,
   ) where
 
 import Distribution.Client.Setup
@@ -37,7 +37,7 @@ import Distribution.Client.Install            ( InstallArgs,
 import Distribution.Client.PackageEnvironment
   ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
   , createPackageEnvironment, classifyPackageEnvironment
-  , tryLoadPackageEnvironment, loadUserConfig, setPackageDB
+  , tryLoadPackageEnvironment, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
   , sandboxPackageEnvironmentFile )
 import Distribution.Client.Targets            ( UserTarget(..)
@@ -93,9 +93,9 @@ tryLoadSandboxConfig verbosity configFileFlag = do
   return (sandboxDir, pkgEnv)
 
 -- | Return the name of the package index file for this package environment.
-tryGetIndexFilePath :: PackageEnvironment -> IO FilePath
-tryGetIndexFilePath pkgEnv = do
-  let paths = globalLocalRepos . savedGlobalFlags . pkgEnvSavedConfig $ pkgEnv
+tryGetIndexFilePath :: SavedConfig -> IO FilePath
+tryGetIndexFilePath config = do
+  let paths = globalLocalRepos . savedGlobalFlags $ config
   case paths of
     []  -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "no local repos found"
@@ -169,7 +169,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
                  (globalConfigFile globalFlags)
 
   -- Create the index file if it doesn't exist.
-  indexFile <- tryGetIndexFilePath pkgEnv
+  indexFile <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
   Index.createEmpty verbosity indexFile
 
   -- Create the package DB for this compiler if it doesn't exist. If the user
@@ -201,101 +201,78 @@ sandboxAddSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
 sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
                            (globalConfigFile globalFlags)
-  indexFile             <- tryGetIndexFilePath pkgEnv
+  indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
   Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
 
 --
--- * Helpers for working with @SavedConfig@ and @PackageEnvironment@ uniformly.
+-- * Helpers for writing code that works both inside and outside a sandbox.
 --
 
--- | Helper for working with @SavedConfig@ and @PackageEnvironment@ as a single
--- type.
-data MaybePkgEnv = JustConfig SavedConfig
-                 | JustPkgEnv PackageEnvironment FilePath
-                 | NoPkgEnv
+-- | Are we using a sandbox?
+data UseSandbox = UseSandbox FilePath | NoSandbox
 
--- | Extract a @SavedConfig@ from @MaybePkgEnv@.
-toSavedConfig :: MaybePkgEnv -> SavedConfig
-toSavedConfig (JustConfig sc)   = sc
-toSavedConfig (JustPkgEnv pe _) = pkgEnvSavedConfig pe
-toSavedConfig NoPkgEnv          =
-  error $ "Distribution.Client.Sandbox.toSavedConfig: no config given!"
+-- | Convert a @UseSandbox@ value to a boolean. Useful in conjunction with
+-- @when@.
+usingSandbox :: UseSandbox -> Bool
+usingSandbox (UseSandbox _) = True
+usingSandbox NoSandbox      = False
 
--- | If the current directory contains a 'cabal.sandbox.config', return a
--- @PackageEnvironment@. If it contains just 'cabal.config', load that file and
--- @mappend@ in top of the default config. Otherwise, just call @loadConfig@.
-loadConfigOrPkgEnv :: Verbosity -> Flag FilePath -> Flag Bool
-                      -> IO MaybePkgEnv
-loadConfigOrPkgEnv verbosity configFileFlag userInstallFlag = do
+-- | Check which type of package environment we're in and return a
+-- correctly-initialised @SavedConfig@ and a @UseSandbox@ value that indicates
+-- whether we're working in a sandbox.
+loadConfigOrSandboxConfig :: Verbosity -> Flag FilePath -> Flag Bool
+                             -> IO (UseSandbox, SavedConfig)
+loadConfigOrSandboxConfig verbosity configFileFlag userInstallFlag = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
     SandboxPackageEnvironment -> do
       (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity configFileFlag
                               -- ^ Prints an error message and exits on error.
-      return (JustPkgEnv pkgEnv sandboxDir)
+      let config = pkgEnvSavedConfig pkgEnv
+      return (UseSandbox sandboxDir, config)
 
     UserPackageEnvironment    -> do
       config <- loadConfig verbosity configFileFlag userInstallFlag
       userConfig <- loadUserConfig verbosity currentDir
-      return (JustConfig $ config `mappend` userConfig)
+      return (NoSandbox, config `mappend` userConfig)
 
-    NoPackageEnvironment      -> do
+    AmbientPackageEnvironment      -> do
       config <- loadConfig verbosity configFileFlag userInstallFlag
-      return (JustConfig config)
+      return (NoSandbox, config)
 
--- | Like @loadConfigOrPkgEnv@, but don't call @loadConfig@ if this is not a
--- sandbox. Saves us from doing unnecessary work.
-maybeLoadPackageEnvironment :: Verbosity -> Flag FilePath -> IO MaybePkgEnv
-maybeLoadPackageEnvironment verbosity configFileFlag = do
+-- | Like @loadConfigOrSandboxConfig@, but only returns a @UseSandbox@ value.
+checkIfSandboxPresent :: Verbosity -> Flag FilePath -> IO UseSandbox
+checkIfSandboxPresent verbosity configFileFlag  = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
     SandboxPackageEnvironment -> do
-      (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity configFileFlag
-                              -- ^ Prints an error message and exits on error.
-      return (JustPkgEnv pkgEnv sandboxDir)
+      (sandboxDir, _) <- tryLoadSandboxConfig verbosity configFileFlag
+                         -- ^ Prints an error message and exits on error.
+      return (UseSandbox sandboxDir)
 
-    _                         -> return NoPkgEnv
-
--- | If we're in a sandbox, call @setPackageDB@, otherwise do nothing.
-maybeSetPackageDB :: MaybePkgEnv -> Compiler -> ConfigFlags -> ConfigFlags
-maybeSetPackageDB NoPkgEnv                  _    configFlags = configFlags
-maybeSetPackageDB (JustConfig _)            _    configFlags = configFlags
-maybeSetPackageDB (JustPkgEnv _ sandboxDir) comp configFlags =
-  setPackageDB sandboxDir comp configFlags
-
--- | If we're in a sandbox, call @initPackageDBIfNeeded@, otherwise do nothing.
-maybeInitPackageDBIfNeeded :: MaybePkgEnv -> Verbosity -> ConfigFlags
-                              -> Compiler -> ProgramConfiguration -> IO ()
-maybeInitPackageDBIfNeeded NoPkgEnv       _ _ _ _ = return ()
-maybeInitPackageDBIfNeeded (JustConfig _) _ _ _ _ = return ()
-maybeInitPackageDBIfNeeded (JustPkgEnv _ _) verbosity configFlags comp conf =
-  initPackageDBIfNeeded verbosity configFlags comp conf
+    _ -> return NoSandbox
 
 -- | If we're in a sandbox, call @withSandboxBinDirOnSearchPath@, otherwise do
 -- nothing.
-maybeWithSandboxDirOnSearchPath :: MaybePkgEnv -> IO a -> IO a
-maybeWithSandboxDirOnSearchPath NoPkgEnv       act = act
-maybeWithSandboxDirOnSearchPath (JustConfig _) act = act
-maybeWithSandboxDirOnSearchPath (JustPkgEnv _ sandboxDir) act =
+maybeWithSandboxDirOnSearchPath :: UseSandbox -> IO a -> IO a
+maybeWithSandboxDirOnSearchPath NoSandbox               act = act
+maybeWithSandboxDirOnSearchPath (UseSandbox sandboxDir) act =
   withSandboxBinDirOnSearchPath sandboxDir $ act
 
--- | If we're in a sandbox, (re)install all add-source dependencies of the
--- current package into the sandbox, otherwise do nothing.
-maybeInstallAddSourceDeps :: MaybePkgEnv -> Verbosity -> GlobalFlags -> IO ()
-maybeInstallAddSourceDeps NoPkgEnv       _ _ = return ()
-maybeInstallAddSourceDeps (JustConfig _) _ _ = return ()
-maybeInstallAddSourceDeps
-  (JustPkgEnv pkgEnv sandboxDir) verbosity globalFlags = do
-  indexFile            <- tryGetIndexFilePath pkgEnv
+-- | (Re)install all add-source dependencies of the current package into the
+-- sandbox.
+installAddSourceDeps :: Verbosity -> SavedConfig -> FilePath -> GlobalFlags
+                        -> IO ()
+installAddSourceDeps verbosity config sandboxDir globalFlags = do
+  indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
 
   unless (null buildTreeRefs) $ do
     let targetNames    = (".":buildTreeRefs)
         targetsToPrune = [UserTargetLocalDir "."]
-        config         = pkgEnvSavedConfig pkgEnv
         configFlags    = savedConfigureFlags   config
         configExFlags  = defaultConfigExFlags         `mappend`
                          savedConfigureExFlags config

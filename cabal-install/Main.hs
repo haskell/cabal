@@ -63,18 +63,20 @@ import Distribution.Client.Upload as Upload   (upload, check, report)
 import Distribution.Client.Run                (run)
 import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Get                (get)
+import Distribution.Client.PackageEnvironment (PackageEnvironmentType(..)
+                                              ,classifyPackageEnvironment
+                                              ,setPackageDB)
 import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxAddSource
                                               ,sandboxDelete
                                               ,dumpPackageEnvironment
 
-                                              ,MaybePkgEnv(..)
-                                              ,toSavedConfig, loadConfigOrPkgEnv
-                                              ,maybeLoadPackageEnvironment
-                                              ,maybeSetPackageDB
-                                              ,maybeInitPackageDBIfNeeded
+                                              ,UseSandbox(..), usingSandbox
+                                              ,loadConfigOrSandboxConfig
+                                              ,checkIfSandboxPresent
+                                              ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
-                                              ,maybeInstallAddSourceDeps)
+                                              ,installAddSourceDeps)
 
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
@@ -102,7 +104,7 @@ import qualified Paths_cabal_install (version)
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
-import System.Directory         (doesFileExist)
+import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.List                (intercalate)
 import Data.Monoid              (Monoid(..))
 import Control.Monad            (when, unless)
@@ -208,22 +210,26 @@ configureAction :: (ConfigFlags, ConfigExFlags)
 configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
-  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags)
-             (configUserInstall configFlags)
-  let config         = toSavedConfig mPkgEnv
-      configFlags'   = savedConfigureFlags   config `mappend` configFlags
+  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                          (globalConfigFile globalFlags)
+                          (configUserInstall configFlags)
+  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux configFlags'
 
   -- If this a sandbox and the user has set the -w option, we may need to create
   -- a sandbox-local package DB for this compiler.
-  let configFlags''  = maybeSetPackageDB mPkgEnv comp configFlags'
-  maybeInitPackageDBIfNeeded mPkgEnv verbosity configFlags'' comp conf
+  let configFlags''  = case useSandbox of
+        NoSandbox               -> configFlags'
+        (UseSandbox sandboxDir) -> setPackageDB sandboxDir comp configFlags'
+  when (usingSandbox useSandbox) $
+    initPackageDBIfNeeded verbosity configFlags'' comp conf
 
-  maybeWithSandboxDirOnSearchPath mPkgEnv $
+  maybeWithSandboxDirOnSearchPath useSandbox $
     configure verbosity
-              (configPackageDB' configFlags'' (maybeForceGlobalInstall mPkgEnv))
+              (configPackageDB' configFlags''
+               (maybeForceGlobalInstall useSandbox))
               (globalRepos globalFlags')
               comp platform conf configFlags'' configExFlags' extraArgs
 
@@ -233,14 +239,25 @@ buildAction buildFlags extraArgs globalFlags = do
                  (buildDistPref buildFlags)
       verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
 
-  mPkgEnv <- maybeLoadPackageEnvironment verbosity (globalConfigFile globalFlags)
-  maybeInstallAddSourceDeps mPkgEnv verbosity globalFlags
+  -- If we're in a sandbox, (re)install all add-source dependencies.
+  currentDir <- getCurrentDirectory
+  pkgEnvType <- classifyPackageEnvironment currentDir
+  useSandbox <- case pkgEnvType of
+    AmbientPackageEnvironment -> return NoSandbox
+    UserPackageEnvironment    -> return NoSandbox
+    SandboxPackageEnvironment -> do
+      (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                              (globalConfigFile globalFlags) mempty
+      let sandboxDir = case useSandbox of
+            { UseSandbox d -> d; _ -> error "buildAction: can't happen" }
+      installAddSourceDeps verbosity config sandboxDir globalFlags
+      return useSandbox
 
   -- Calls 'configureAction' to do the real work, so nothing special has to be
   -- done to support sandboxes.
   reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
 
-  maybeWithSandboxDirOnSearchPath mPkgEnv $
+  maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref buildFlags extraArgs
 
 
@@ -399,12 +416,12 @@ installAction (configFlags, _, installFlags, _) _ _globalFlags
 installAction (configFlags, configExFlags, installFlags, haddockFlags)
               extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags)
-             (configUserInstall configFlags)
+  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                          (globalConfigFile globalFlags)
+                          (configUserInstall configFlags)
   targets <- readUserTargets verbosity extraArgs
 
-  let config         = toSavedConfig mPkgEnv
-      configFlags'   = savedConfigureFlags   config `mappend` configFlags
+  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = defaultConfigExFlags         `mappend`
                        savedConfigureExFlags config `mappend` configExFlags
       installFlags'  = defaultInstallFlags          `mappend`
@@ -414,12 +431,15 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
   -- If this a sandbox and the user has set the -w option, we may need to create
   -- a sandbox-local package DB for this compiler.
-  let configFlags''  = maybeSetPackageDB mPkgEnv comp configFlags'
-  maybeInitPackageDBIfNeeded mPkgEnv verbosity configFlags'' comp conf
+  let configFlags'' = case useSandbox of
+        NoSandbox               -> configFlags'
+        (UseSandbox sandboxDir) -> setPackageDB sandboxDir comp configFlags'
+  when (usingSandbox useSandbox) $
+    initPackageDBIfNeeded verbosity configFlags'' comp conf
 
-  maybeWithSandboxDirOnSearchPath mPkgEnv $
+  maybeWithSandboxDirOnSearchPath useSandbox $
     install verbosity
-            (configPackageDB' configFlags'' (maybeForceGlobalInstall mPkgEnv))
+            (configPackageDB' configFlags'' (maybeForceGlobalInstall useSandbox))
             (globalRepos globalFlags')
             comp platform conf globalFlags' configFlags'' configExFlags'
             installFlags' haddockFlags
@@ -436,12 +456,12 @@ testAction testFlags extraArgs globalFlags = do
         | fromFlagOrDefault False (configTests flags) = Nothing
         | otherwise = Just "Re-configuring with test suites enabled."
 
-  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
+  useSandbox <- checkIfSandboxPresent verbosity (globalConfigFile globalFlags)
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
-  maybeWithSandboxDirOnSearchPath mPkgEnv $
+  maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref mempty []
 
-  maybeWithSandboxDirOnSearchPath mPkgEnv $
+  maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
       testCommand (const testFlags) extraArgs
 
@@ -456,21 +476,21 @@ benchmarkAction benchmarkFlags extraArgs globalFlags = do
         | fromFlagOrDefault False (configBenchmarks flags) = Nothing
         | otherwise = Just "Re-configuring with benchmarks enabled."
 
-  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
+  useSandbox <- checkIfSandboxPresent verbosity (globalConfigFile globalFlags)
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
-  maybeWithSandboxDirOnSearchPath mPkgEnv $
+  maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref mempty []
 
-  maybeWithSandboxDirOnSearchPath mPkgEnv $
+  maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
       benchmarkCommand (const benchmarkFlags) extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
-  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
-  let config       = toSavedConfig mPkgEnv
-      configFlags  = savedConfigureFlags config
+  (_, config) <- loadConfigOrSandboxConfig verbosity
+                 (globalConfigFile globalFlags) mempty
+  let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
   list verbosity
@@ -485,9 +505,9 @@ infoAction :: InfoFlags -> [String] -> GlobalFlags -> IO ()
 infoAction infoFlags extraArgs globalFlags = do
   let verbosity = fromFlag (infoVerbosity infoFlags)
   targets <- readUserTargets verbosity extraArgs
-  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
-  let config       = toSavedConfig mPkgEnv
-      configFlags  = savedConfigureFlags config
+  (_, config) <- loadConfigOrSandboxConfig verbosity
+                 (globalConfigFile globalFlags) mempty
+  let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux configFlags
   info verbosity
@@ -682,10 +702,9 @@ data ForceGlobalInstall = ForceGlobalInstall
 
 -- | If we're in a sandbox, add only the global package db to the package db
 -- stack, otherwise use the default behaviour.
-maybeForceGlobalInstall :: MaybePkgEnv -> ForceGlobalInstall
-maybeForceGlobalInstall NoPkgEnv         = UseDefaultPackageDBStack
-maybeForceGlobalInstall (JustConfig _)   = UseDefaultPackageDBStack
-maybeForceGlobalInstall (JustPkgEnv _ _) = ForceGlobalInstall
+maybeForceGlobalInstall :: UseSandbox -> ForceGlobalInstall
+maybeForceGlobalInstall NoSandbox      = UseDefaultPackageDBStack
+maybeForceGlobalInstall (UseSandbox _) = ForceGlobalInstall
 
 configPackageDB' :: ConfigFlags -> ForceGlobalInstall -> PackageDBStack
 configPackageDB' cfg force =
