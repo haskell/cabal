@@ -16,38 +16,53 @@ module Distribution.Client.Sandbox (
     withSandboxBinDirOnSearchPath,
 
     MaybePkgEnv(..),
-    toSavedConfig, loadConfigOrPkgEnv,
+    toSavedConfig, loadConfigOrPkgEnv, maybeLoadPackageEnvironment,
     maybeSetPackageDB,
     maybeInitPackageDBIfNeeded,
-    maybeWithSandboxDirOnSearchPath
+    maybeWithSandboxDirOnSearchPath,
+    maybeInstallAddSourceDeps,
   ) where
 
 import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), GlobalFlags(..)
-  , defaultSandboxLocation )
+  , defaultConfigExFlags, defaultInstallFlags, defaultSandboxLocation
+  , globalRepos )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
+import Distribution.Client.Dependency         ( foldProgress )
+import Distribution.Client.Install            ( InstallArgs,
+                                                makeInstallContext,
+                                                makeInstallPlan,
+                                                processInstallPlan,
+                                                pruneInstallPlan )
 import Distribution.Client.PackageEnvironment
   ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
   , createPackageEnvironment, classifyPackageEnvironment
   , tryLoadPackageEnvironment, loadUserConfig, setPackageDB
   , commentPackageEnvironment, showPackageEnvironmentWithComments
   , sandboxPackageEnvironmentFile )
+import Distribution.Client.Targets            ( UserTarget(..)
+                                              , readUserTargets
+                                              , resolveUserTargets )
+import Distribution.Client.Types              ( SourcePackageDb(..) )
 import Distribution.Simple.Compiler           ( Compiler, PackageDB(..) )
-import Distribution.Simple.Configure          ( configCompilerAux )
+import Distribution.Simple.Configure          ( configCompilerAux
+                                              , interpretPackageDbFlags )
 import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..)
-                                              , fromFlagOrDefault )
+                                              , fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Utils              ( die, debug, notice, info
+                                              , debugNoWrap
                                               , intercalate
                                               , createDirectoryIfMissingVerbose )
-import Distribution.Verbosity                 ( Verbosity )
+import Distribution.System                    ( Platform )
+import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
 import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
 import Control.Exception                      ( bracket_ )
 import Control.Monad                          ( unless, when )
 import Data.List                              ( delete )
-import Data.Monoid                            ( mappend )
+import Data.Monoid                            ( mempty, mappend )
 import System.Directory                       ( canonicalizePath
                                               , doesDirectoryExist
                                               , getCurrentDirectory
@@ -198,47 +213,63 @@ sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
 -- type.
 data MaybePkgEnv = JustConfig SavedConfig
                  | JustPkgEnv PackageEnvironment FilePath
+                 | NoPkgEnv
 
 -- | Extract a @SavedConfig@ from @MaybePkgEnv@.
 toSavedConfig :: MaybePkgEnv -> SavedConfig
 toSavedConfig (JustConfig sc)   = sc
 toSavedConfig (JustPkgEnv pe _) = pkgEnvSavedConfig pe
+toSavedConfig NoPkgEnv          =
+  error $ "Distribution.Client.Sandbox.toSavedConfig: no config given!"
 
 -- | If the current directory contains a 'cabal.sandbox.config', return a
 -- @PackageEnvironment@. If it contains just 'cabal.config', load that file and
 -- @mappend@ in top of the default config. Otherwise, just call @loadConfig@.
-loadConfigOrPkgEnv :: Verbosity -> GlobalFlags -> ConfigFlags
+loadConfigOrPkgEnv :: Verbosity -> Flag FilePath -> Flag Bool
                       -> IO MaybePkgEnv
-loadConfigOrPkgEnv verbosity globalFlags configFlags = do
+loadConfigOrPkgEnv verbosity configFileFlag userInstallFlag = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
     SandboxPackageEnvironment -> do
-      -- Prints an error message and exits on error.
-      (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
-                              (globalConfigFile globalFlags)
+      (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity configFileFlag
+                              -- ^ Prints an error message and exits on error.
       return (JustPkgEnv pkgEnv sandboxDir)
 
     UserPackageEnvironment    -> do
-      config <- loadConfig verbosity (globalConfigFile globalFlags)
-                (configUserInstall configFlags)
+      config <- loadConfig verbosity configFileFlag userInstallFlag
       userConfig <- loadUserConfig verbosity currentDir
       return (JustConfig $ config `mappend` userConfig)
 
     NoPackageEnvironment      -> do
-      config <- loadConfig verbosity (globalConfigFile globalFlags)
-                (configUserInstall configFlags)
+      config <- loadConfig verbosity configFileFlag userInstallFlag
       return (JustConfig config)
+
+-- | Like @loadConfigOrPkgEnv@, but don't call @loadConfig@ if this is not a
+-- sandbox. Saves us from doing unnecessary work.
+maybeLoadPackageEnvironment :: Verbosity -> Flag FilePath -> IO MaybePkgEnv
+maybeLoadPackageEnvironment verbosity configFileFlag = do
+  currentDir <- getCurrentDirectory
+  pkgEnvType <- classifyPackageEnvironment currentDir
+  case pkgEnvType of
+    SandboxPackageEnvironment -> do
+      (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity configFileFlag
+                              -- ^ Prints an error message and exits on error.
+      return (JustPkgEnv pkgEnv sandboxDir)
+
+    _                         -> return NoPkgEnv
 
 -- | If we're in a sandbox, call @setPackageDB@, otherwise do nothing.
 maybeSetPackageDB :: MaybePkgEnv -> Compiler -> ConfigFlags -> ConfigFlags
-maybeSetPackageDB (JustConfig _) _ configFlags               = configFlags
+maybeSetPackageDB NoPkgEnv                  _    configFlags = configFlags
+maybeSetPackageDB (JustConfig _)            _    configFlags = configFlags
 maybeSetPackageDB (JustPkgEnv _ sandboxDir) comp configFlags =
   setPackageDB sandboxDir comp configFlags
 
 -- | If we're in a sandbox, call @initPackageDBIfNeeded@, otherwise do nothing.
 maybeInitPackageDBIfNeeded :: MaybePkgEnv -> Verbosity -> ConfigFlags
                               -> Compiler -> ProgramConfiguration -> IO ()
+maybeInitPackageDBIfNeeded NoPkgEnv       _ _ _ _ = return ()
 maybeInitPackageDBIfNeeded (JustConfig _) _ _ _ _ = return ()
 maybeInitPackageDBIfNeeded (JustPkgEnv _ _) verbosity configFlags comp conf =
   initPackageDBIfNeeded verbosity configFlags comp conf
@@ -246,6 +277,71 @@ maybeInitPackageDBIfNeeded (JustPkgEnv _ _) verbosity configFlags comp conf =
 -- | If we're in a sandbox, call @withSandboxBinDirOnSearchPath@, otherwise do
 -- nothing.
 maybeWithSandboxDirOnSearchPath :: MaybePkgEnv -> IO a -> IO a
+maybeWithSandboxDirOnSearchPath NoPkgEnv       act = act
 maybeWithSandboxDirOnSearchPath (JustConfig _) act = act
 maybeWithSandboxDirOnSearchPath (JustPkgEnv _ sandboxDir) act =
   withSandboxBinDirOnSearchPath sandboxDir $ act
+
+-- | If we're in a sandbox, (re)install all add-source dependencies of the
+-- current package into the sandbox, otherwise do nothing.
+maybeInstallAddSourceDeps :: MaybePkgEnv -> Verbosity -> GlobalFlags -> IO ()
+maybeInstallAddSourceDeps NoPkgEnv       _ _ = return ()
+maybeInstallAddSourceDeps (JustConfig _) _ _ = return ()
+maybeInstallAddSourceDeps
+  (JustPkgEnv pkgEnv sandboxDir) verbosity globalFlags = do
+  indexFile            <- tryGetIndexFilePath pkgEnv
+  buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
+
+  unless (null buildTreeRefs) $ do
+    let targetNames    = (".":buildTreeRefs)
+        targetsToPrune = [UserTargetLocalDir "."]
+        config         = pkgEnvSavedConfig pkgEnv
+        configFlags    = savedConfigureFlags   config
+        configExFlags  = defaultConfigExFlags         `mappend`
+                         savedConfigureExFlags config
+        installFlags   = defaultInstallFlags          `mappend`
+                         savedInstallFlags     config
+        globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
+
+    (comp, platform, conf) <- configCompilerAux' configFlags
+    targets <- readUserTargets verbosity targetNames
+
+    let args :: InstallArgs
+        args = ((interpretPackageDbFlags {- userInstall = -} False
+                 (configPackageDBs configFlags))
+               ,(globalRepos globalFlags')
+               ,comp, platform, conf
+               ,globalFlags', configFlags, configExFlags, installFlags
+               ,mempty)
+
+        logMsg message rest = debugNoWrap verbosity message >> rest
+
+    -- Using the low-level install interface instead of the high-level 'install'
+    -- action allows us to make changes to the install plan before processing
+    -- it. Here we need to prune the "." target from the install plan. The same
+    -- mechanism is used to implement 'install --only-dependencies'.
+    withSandboxBinDirOnSearchPath sandboxDir $ do
+      installContext@(_,sourcePkgDb,_,_) <-
+        makeInstallContext verbosity args targets
+
+      toPrune <- resolveUserTargets verbosity
+                 (fromFlag $ globalWorldFile globalFlags')
+                 (packageIndex sourcePkgDb)
+                 targetsToPrune
+
+      installPlan     <- foldProgress logMsg die return =<<
+                         (fmap (\p -> p >>= if not . null $ targetsToPrune
+                                            then pruneInstallPlan toPrune
+                                            else return)
+                          $ makeInstallPlan verbosity args installContext)
+
+      processInstallPlan verbosity args installContext installPlan
+
+  where
+    -- Copied from Main.hs. FIXME: Remove duplication.
+    configCompilerAux' :: ConfigFlags
+                          -> IO (Compiler, Platform, ProgramConfiguration)
+    configCompilerAux' configFlags =
+      configCompilerAux configFlags
+      --FIXME: make configCompilerAux use a sensible verbosity
+      { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }

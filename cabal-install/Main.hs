@@ -70,9 +70,11 @@ import Distribution.Client.Sandbox            (sandboxInit
 
                                               ,MaybePkgEnv(..)
                                               ,toSavedConfig, loadConfigOrPkgEnv
+                                              ,maybeLoadPackageEnvironment
                                               ,maybeSetPackageDB
                                               ,maybeInitPackageDBIfNeeded
-                                              ,maybeWithSandboxDirOnSearchPath)
+                                              ,maybeWithSandboxDirOnSearchPath
+                                              ,maybeInstallAddSourceDeps)
 
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
@@ -206,7 +208,8 @@ configureAction :: (ConfigFlags, ConfigExFlags)
 configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
-  mPkgEnv <- loadConfigOrPkgEnv verbosity globalFlags configFlags
+  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags)
+             (configUserInstall configFlags)
   let config         = toSavedConfig mPkgEnv
       configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
@@ -230,8 +233,16 @@ buildAction buildFlags extraArgs globalFlags = do
                  (buildDistPref buildFlags)
       verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
 
+  mPkgEnv <- maybeLoadPackageEnvironment verbosity (globalConfigFile globalFlags)
+  maybeInstallAddSourceDeps mPkgEnv verbosity globalFlags
+
+  -- Calls 'configureAction' to do the real work, so nothing special has to be
+  -- done to support sandboxes.
   reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
-  build verbosity distPref buildFlags extraArgs
+
+  maybeWithSandboxDirOnSearchPath mPkgEnv $
+    build verbosity distPref buildFlags extraArgs
+
 
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
@@ -388,7 +399,8 @@ installAction (configFlags, _, installFlags, _) _ _globalFlags
 installAction (configFlags, configExFlags, installFlags, haddockFlags)
               extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-  mPkgEnv <- loadConfigOrPkgEnv verbosity globalFlags configFlags
+  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags)
+             (configUserInstall configFlags)
   targets <- readUserTargets verbosity extraArgs
 
   let config         = toSavedConfig mPkgEnv
@@ -656,12 +668,14 @@ win32SelfUpgradeAction _ _ _ = return ()
 -- Utils (transitionary)
 --
 
+-- | Helper type used by configPackageDb'.
 data ForceGlobalInstall = ForceGlobalInstall
                         | UseDefaultPackageDBStack
 
 -- | If we're in a sandbox, add only the global package db to the package db
 -- stack, otherwise use the default behaviour.
 maybeForceGlobalInstall :: MaybePkgEnv -> ForceGlobalInstall
+maybeForceGlobalInstall NoPkgEnv         = UseDefaultPackageDBStack
 maybeForceGlobalInstall (JustConfig _)   = UseDefaultPackageDBStack
 maybeForceGlobalInstall (JustPkgEnv _ _) = ForceGlobalInstall
 
