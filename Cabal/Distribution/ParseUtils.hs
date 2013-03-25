@@ -98,11 +98,11 @@ data PError = AmbiguousParse String LineNo
             | NoParse String LineNo
             | TabsError LineNo
             | FromString String (Maybe LineNo)
-        deriving Show
+        deriving (Eq, Show)
 
 data PWarning = PWarning String
               | UTFWarning LineNo String
-        deriving Show
+        deriving (Eq, Show)
 
 showPWarning :: FilePath -> PWarning -> String
 showPWarning fpath (PWarning msg) =
