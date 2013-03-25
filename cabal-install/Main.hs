@@ -375,28 +375,43 @@ installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installAction (configFlags, _, installFlags, _) _ _globalFlags
   | fromFlagOrDefault False (installOnly installFlags)
   = let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+    -- TODO: It'd be nice if this picked up the '-w' flag passed to
+    -- 'configure'.  Right now, running
+    --
+    -- $ cabal sandbox init && cabal configure -w /path/to/ghc
+    --   && cabal build && cabal install
+    --
+    -- performs the compilation twice unless you also pass -w to 'install'.
     in setupWrapper verbosity defaultSetupScriptOptions Nothing
          installCommand (const mempty) []
 
 installAction (configFlags, configExFlags, installFlags, haddockFlags)
               extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+  mPkgEnv <- loadConfigOrPkgEnv verbosity globalFlags configFlags
   targets <- readUserTargets verbosity extraArgs
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
-                                 (configUserInstall configFlags)
-  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+
+  let config         = toSavedConfig mPkgEnv
+      configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = defaultConfigExFlags         `mappend`
                        savedConfigureExFlags config `mappend` configExFlags
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
-  install verbosity
-          (configPackageDB' configFlags' UseDefaultPackageDBStack)
-          (globalRepos globalFlags')
-          comp platform conf globalFlags' configFlags' configExFlags'
-          installFlags' haddockFlags
-          targets
+
+  -- If this a sandbox and the user has set the -w option, we may need to create
+  -- a sandbox-local package DB for this compiler.
+  let configFlags''  = maybeSetPackageDB mPkgEnv comp configFlags'
+  maybeInitPackageDBIfNeeded mPkgEnv verbosity configFlags'' comp conf
+
+  maybeWithSandboxDirOnSearchPath mPkgEnv $
+    install verbosity
+            (configPackageDB' configFlags'' (maybeForceGlobalInstall mPkgEnv))
+            (globalRepos globalFlags')
+            comp platform conf globalFlags' configFlags'' configExFlags'
+            installFlags' haddockFlags
+            targets
 
 testAction :: TestFlags -> [String] -> GlobalFlags -> IO ()
 testAction testFlags extraArgs globalFlags = do
