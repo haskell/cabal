@@ -99,9 +99,11 @@ sandboxPackageEnvironmentFile = "cabal.sandbox.config"
 userPackageEnvironmentFile :: FilePath
 userPackageEnvironmentFile = "cabal.config"
 
-data PackageEnvironmentType = SandboxPackageEnvironment
-                            | UserPackageEnvironment
-                            | NoPackageEnvironment
+-- | Type of the current package environment.
+data PackageEnvironmentType =
+  SandboxPackageEnvironment   -- ^ './cabal.sandbox.config'
+  | UserPackageEnvironment    -- ^ './cabal.config'
+  | AmbientPackageEnvironment -- ^ '~/.cabal/config'
 
 -- | Is there a 'cabal.sandbox.config' or 'cabal.config' in this
 -- directory?
@@ -112,7 +114,7 @@ classifyPackageEnvironment pkgEnvDir = do
   case (isSandbox, isUser) of
     (True,  _)     -> return SandboxPackageEnvironment
     (False, True)  -> return UserPackageEnvironment
-    (False, False) -> return NoPackageEnvironment
+    (False, False) -> return AmbientPackageEnvironment
   where
     configExists fname = doesFileExist (pkgEnvDir </> fname)
 
