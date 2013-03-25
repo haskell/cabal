@@ -436,11 +436,14 @@ testAction testFlags extraArgs globalFlags = do
             | fromFlagOrDefault False (configTests flags) = Nothing
             | otherwise = Just "Re-configuring with test suites enabled."
 
+    mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
     reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
-    build verbosity distPref mempty []
+    maybeWithSandboxDirOnSearchPath mPkgEnv $
+      build verbosity distPref mempty []
 
-    setupWrapper verbosity setupOptions Nothing
-                 testCommand (const testFlags) extraArgs
+    maybeWithSandboxDirOnSearchPath mPkgEnv $
+      setupWrapper verbosity setupOptions Nothing
+        testCommand (const testFlags) extraArgs
 
 benchmarkAction :: BenchmarkFlags -> [String] -> GlobalFlags -> IO ()
 benchmarkAction benchmarkFlags extraArgs globalFlags = do
@@ -453,17 +456,21 @@ benchmarkAction benchmarkFlags extraArgs globalFlags = do
             | fromFlagOrDefault False (configBenchmarks flags) = Nothing
             | otherwise = Just "Re-configuring with benchmarks enabled."
 
+    mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
     reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
-    build verbosity distPref mempty []
+    maybeWithSandboxDirOnSearchPath mPkgEnv $
+      build verbosity distPref mempty []
 
-    setupWrapper verbosity setupOptions Nothing
-                 benchmarkCommand (const benchmarkFlags) extraArgs
+    maybeWithSandboxDirOnSearchPath mPkgEnv $
+      setupWrapper verbosity setupOptions Nothing
+        benchmarkCommand (const benchmarkFlags) extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
-  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
-  let configFlags  = savedConfigureFlags config
+  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
+  let config       = toSavedConfig mPkgEnv
+      configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
   list verbosity
@@ -478,8 +485,9 @@ infoAction :: InfoFlags -> [String] -> GlobalFlags -> IO ()
 infoAction infoFlags extraArgs globalFlags = do
   let verbosity = fromFlag (infoVerbosity infoFlags)
   targets <- readUserTargets verbosity extraArgs
-  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
-  let configFlags  = savedConfigureFlags config
+  mPkgEnv <- loadConfigOrPkgEnv verbosity (globalConfigFile globalFlags) mempty
+  let config       = toSavedConfig mPkgEnv
+      configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux configFlags
   info verbosity
