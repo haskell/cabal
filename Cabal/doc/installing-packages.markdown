@@ -490,7 +490,7 @@ followingcommand line options.
     itself (such as some linux distributions).
 
 `--enable-shared`
-:   Build shared library. This implies a seperate compiler run to
+:   Build shared library. This implies a separate compiler run to
     generate position independent code as required on most platforms.
 
 `--disable-shared`
