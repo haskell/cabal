@@ -226,26 +226,26 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
 
 buildAction :: BuildFlags -> [String] -> GlobalFlags -> IO ()
 buildAction buildFlags extraArgs globalFlags = do
-    let distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                                     (buildDistPref buildFlags)
-        verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
+  let distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                 (buildDistPref buildFlags)
+      verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
 
-    reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
-    build verbosity distPref buildFlags extraArgs
+  reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
+  build verbosity distPref buildFlags extraArgs
 
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
 -- 'reconfigure' twice.
 build :: Verbosity -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity distPref buildFlags extraArgs =
-    setupWrapper verbosity setupOptions Nothing
-                 buildCommand (const buildFlags') extraArgs
+  setupWrapper verbosity setupOptions Nothing
+               buildCommand (const buildFlags') extraArgs
   where
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
     buildFlags' = buildFlags
-        { buildVerbosity = toFlag verbosity
-        , buildDistPref = toFlag distPref
-        }
+      { buildVerbosity = toFlag verbosity
+      , buildDistPref = toFlag distPref
+      }
 
 -- | Re-configure the package in the current directory if needed. Deciding
 -- when to reconfigure and with which options is convoluted:
@@ -302,58 +302,58 @@ reconfigure :: Verbosity    -- ^ Verbosity setting
             -> IO ()
 reconfigure verbosity distPref    addConfigFlags
             extraArgs globalFlags checkFlags = do
-    mLbi <- maybeGetPersistBuildConfig distPref
-    case mLbi of
+  mLbi <- maybeGetPersistBuildConfig distPref
+  case mLbi of
 
-        -- Package has never been configured.
-        Nothing -> do
-            notice verbosity
-                $ "Configuring with default flags." ++ configureManually
-            configureAction (defaultFlags, defaultConfigExFlags)
-                            extraArgs globalFlags
+    -- Package has never been configured.
+    Nothing -> do
+      notice verbosity
+        $ "Configuring with default flags." ++ configureManually
+      configureAction (defaultFlags, defaultConfigExFlags)
+                      extraArgs globalFlags
 
-        -- Package has been configured, but the configuration may be out of
-        -- date or required flags may not be set.
-        Just lbi -> do
-            let configFlags = LBI.configFlags lbi
-                flags = mconcat [configFlags, addConfigFlags, distVerbFlags]
-                savedDistPref = fromFlagOrDefault
-                    (useDistPref defaultSetupScriptOptions)
-                    (configDistPref configFlags)
+    -- Package has been configured, but the configuration may be out of
+    -- date or required flags may not be set.
+    Just lbi -> do
+      let configFlags = LBI.configFlags lbi
+          flags = mconcat [configFlags, addConfigFlags, distVerbFlags]
+          savedDistPref = fromFlagOrDefault
+                          (useDistPref defaultSetupScriptOptions)
+                          (configDistPref configFlags)
 
-            -- Determine what message, if any, to display to the user if
-            -- reconfiguration is required.
-            message <- case checkFlags configFlags of
+      -- Determine what message, if any, to display to the user if
+      -- reconfiguration is required.
+      message <- case checkFlags configFlags of
 
-                -- Flag required by the caller is not set.
-                Just msg -> return $! Just $! msg ++ configureManually
+        -- Flag required by the caller is not set.
+        Just msg -> return $! Just $! msg ++ configureManually
 
-                Nothing
-                    -- Required "dist" prefix is not set.
-                    | savedDistPref /= distPref ->
-                        return $! Just distPrefMessage
+        Nothing
+          -- Required "dist" prefix is not set.
+          | savedDistPref /= distPref ->
+            return $! Just distPrefMessage
 
-                    -- All required flags are set, but the configuration
-                    -- may be outdated.
-                    | otherwise -> case LBI.pkgDescrFile lbi of
-                        Nothing -> return Nothing
-                        Just pdFile -> do
-                            outdated <- checkPersistBuildConfigOutdated
-                                        distPref pdFile
-                            return $! if outdated
-                                then Just $! outdatedMessage pdFile
-                                else Nothing
+          -- All required flags are set, but the configuration
+          -- may be outdated.
+          | otherwise -> case LBI.pkgDescrFile lbi of
+            Nothing -> return Nothing
+            Just pdFile -> do
+              outdated <- checkPersistBuildConfigOutdated
+                          distPref pdFile
+              return $! if outdated
+                        then Just $! outdatedMessage pdFile
+                        else Nothing
 
-            case message of
+      case message of
 
-                -- No message for the user indicates that reconfiguration
-                -- is not required.
-                Nothing -> return ()
+        -- No message for the user indicates that reconfiguration
+        -- is not required.
+        Nothing -> return ()
 
-                Just msg -> do
-                    notice verbosity msg
-                    configureAction (flags, defaultConfigExFlags)
-                                    extraArgs globalFlags
+        Just msg -> do
+          notice verbosity msg
+          configureAction (flags, defaultConfigExFlags)
+            extraArgs globalFlags
   where
     defaultFlags = mappend addConfigFlags distVerbFlags
     distVerbFlags = mempty
