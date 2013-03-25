@@ -216,7 +216,7 @@
 	* New field "build-tools" for tool dependencies
 	* Improved c2hs support
 	* Preprocessor output no longer clutters source dirs
-	* Seperate "includes" and "install-includes" fields
+	* Separate "includes" and "install-includes" fields
 	* Makefile command to generate makefiles for building libs with GHC
 	* New --docdir configure flag
 	* Generic --with-prog --prog-args configure flags
