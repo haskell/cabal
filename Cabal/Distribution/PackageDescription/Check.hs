@@ -139,6 +139,7 @@ data PackageCheck =
        -- quite legitimately refuse to publicly distribute packages with these
        -- problems.
      | PackageDistInexcusable { explanation :: String }
+  deriving (Eq)
 
 instance Show PackageCheck where
     show notice = explanation notice
