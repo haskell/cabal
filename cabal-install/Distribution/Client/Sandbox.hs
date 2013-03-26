@@ -15,7 +15,7 @@ module Distribution.Client.Sandbox (
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
-    UseSandbox(..), usingSandbox,
+    UseSandbox(..), isUseSandbox,
     checkIfSandboxPresent,
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
@@ -214,9 +214,9 @@ data UseSandbox = UseSandbox FilePath | NoSandbox
 
 -- | Convert a @UseSandbox@ value to a boolean. Useful in conjunction with
 -- @when@.
-usingSandbox :: UseSandbox -> Bool
-usingSandbox (UseSandbox _) = True
-usingSandbox NoSandbox      = False
+isUseSandbox :: UseSandbox -> Bool
+isUseSandbox (UseSandbox _) = True
+isUseSandbox NoSandbox      = False
 
 -- | Check which type of package environment we're in and return a
 -- correctly-initialised @SavedConfig@ and a @UseSandbox@ value that indicates

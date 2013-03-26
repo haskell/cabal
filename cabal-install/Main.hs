@@ -71,7 +71,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxDelete
                                               ,dumpPackageEnvironment
 
-                                              ,UseSandbox(..), usingSandbox
+                                              ,UseSandbox(..), isUseSandbox
                                               ,loadConfigOrSandboxConfig
                                               ,checkIfSandboxPresent
                                               ,initPackageDBIfNeeded
@@ -223,7 +223,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let configFlags''  = case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir comp configFlags'
-  when (usingSandbox useSandbox) $
+  when (isUseSandbox useSandbox) $
     initPackageDBIfNeeded verbosity configFlags'' comp conf
 
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -434,7 +434,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   let configFlags'' = case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir comp configFlags'
-  when (usingSandbox useSandbox) $
+  when (isUseSandbox useSandbox) $
     initPackageDBIfNeeded verbosity configFlags'' comp conf
 
   maybeWithSandboxDirOnSearchPath useSandbox $
