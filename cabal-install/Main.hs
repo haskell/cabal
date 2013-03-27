@@ -64,7 +64,6 @@ import Distribution.Client.Run                (run)
 import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Get                (get)
 import Distribution.Client.PackageEnvironment (PackageEnvironmentType(..)
-                                              ,classifyPackageEnvironment
                                               ,setPackageDB)
 import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxAddSource
@@ -73,10 +72,9 @@ import Distribution.Client.Sandbox            (sandboxInit
 
                                               ,UseSandbox(..), isUseSandbox
                                               ,loadConfigOrSandboxConfig
-                                              ,checkIfSandboxPresent
                                               ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
-                                              ,installAddSourceDeps)
+                                              ,maybeInstallAddSourceDeps)
 
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
@@ -104,7 +102,7 @@ import qualified Paths_cabal_install (version)
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
-import System.Directory         (doesFileExist, getCurrentDirectory)
+import System.Directory         (doesFileExist)
 import Data.List                (intercalate)
 import Data.Monoid              (Monoid(..))
 import Control.Monad            (when, unless)
@@ -240,18 +238,7 @@ buildAction buildFlags extraArgs globalFlags = do
       verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
 
   -- If we're in a sandbox, (re)install all add-source dependencies.
-  currentDir <- getCurrentDirectory
-  pkgEnvType <- classifyPackageEnvironment currentDir
-  useSandbox <- case pkgEnvType of
-    AmbientPackageEnvironment -> return NoSandbox
-    UserPackageEnvironment    -> return NoSandbox
-    SandboxPackageEnvironment -> do
-      (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
-                              (globalConfigFile globalFlags) mempty
-      let sandboxDir = case useSandbox of
-            { UseSandbox d -> d; _ -> error "buildAction: can't happen" }
-      installAddSourceDeps verbosity config sandboxDir globalFlags
-      return useSandbox
+  useSandbox <- maybeInstallAddSourceDeps verbosity globalFlags
 
   -- Calls 'configureAction' to do the real work, so nothing special has to be
   -- done to support sandboxes.
@@ -456,7 +443,9 @@ testAction testFlags extraArgs globalFlags = do
         | fromFlagOrDefault False (configTests flags) = Nothing
         | otherwise = Just "Re-configuring with test suites enabled."
 
-  useSandbox <- checkIfSandboxPresent verbosity (globalConfigFile globalFlags)
+  -- If we're in a sandbox, (re)install all add-source dependencies.
+  useSandbox <- maybeInstallAddSourceDeps verbosity globalFlags
+
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref mempty []
@@ -476,7 +465,9 @@ benchmarkAction benchmarkFlags extraArgs globalFlags = do
         | fromFlagOrDefault False (configBenchmarks flags) = Nothing
         | otherwise = Just "Re-configuring with benchmarks enabled."
 
-  useSandbox <- checkIfSandboxPresent verbosity (globalConfigFile globalFlags)
+  -- If we're in a sandbox, (re)install all add-source dependencies.
+  useSandbox <- maybeInstallAddSourceDeps verbosity globalFlags
+
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref mempty []
