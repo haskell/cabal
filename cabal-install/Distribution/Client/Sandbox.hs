@@ -16,11 +16,11 @@ module Distribution.Client.Sandbox (
     withSandboxBinDirOnSearchPath,
 
     UseSandbox(..), isUseSandbox,
-    checkIfSandboxPresent,
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
     installAddSourceDeps,
+    maybeInstallAddSourceDeps,
   ) where
 
 import Distribution.Client.Setup
@@ -242,19 +242,6 @@ loadConfigOrSandboxConfig verbosity configFileFlag userInstallFlag = do
       config <- loadConfig verbosity configFileFlag userInstallFlag
       return (NoSandbox, config)
 
--- | Like @loadConfigOrSandboxConfig@, but only returns a @UseSandbox@ value.
-checkIfSandboxPresent :: Verbosity -> Flag FilePath -> IO UseSandbox
-checkIfSandboxPresent verbosity configFileFlag  = do
-  currentDir <- getCurrentDirectory
-  pkgEnvType <- classifyPackageEnvironment currentDir
-  case pkgEnvType of
-    SandboxPackageEnvironment -> do
-      (sandboxDir, _) <- tryLoadSandboxConfig verbosity configFileFlag
-                         -- ^ Prints an error message and exits on error.
-      return (UseSandbox sandboxDir)
-
-    _ -> return NoSandbox
-
 -- | If we're in a sandbox, call @withSandboxBinDirOnSearchPath@, otherwise do
 -- nothing.
 maybeWithSandboxDirOnSearchPath :: UseSandbox -> IO a -> IO a
@@ -322,3 +309,21 @@ installAddSourceDeps verbosity config sandboxDir globalFlags = do
       configCompilerAux configFlags
       --FIXME: make configCompilerAux use a sensible verbosity
       { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
+
+-- | Check if a sandbox is present and call @installAddSourceDeps@ in that case.
+maybeInstallAddSourceDeps :: Verbosity -> GlobalFlags -> IO UseSandbox
+maybeInstallAddSourceDeps verbosity globalFlags = do
+  currentDir <- getCurrentDirectory
+  pkgEnvType <- classifyPackageEnvironment currentDir
+  case pkgEnvType of
+    AmbientPackageEnvironment -> return NoSandbox
+    UserPackageEnvironment    -> return NoSandbox
+    SandboxPackageEnvironment -> do
+      (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                              (globalConfigFile globalFlags) mempty
+      let sandboxDir = case useSandbox of
+            UseSandbox d -> d;
+            _            -> error "Distribution.Client.Sandbox.\
+                                  \maybeInstallAddSourceDeps: can't happen"
+      installAddSourceDeps verbosity config sandboxDir globalFlags
+      return useSandbox
