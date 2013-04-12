@@ -11,12 +11,15 @@
 module Distribution.Client.PackageEnvironment (
     PackageEnvironment(..)
   , IncludeComments(..)
+  , PackageEnvironmentType(..)
+  , classifyPackageEnvironment
   , createPackageEnvironment
   , tryLoadPackageEnvironment
   , readPackageEnvironmentFile
   , showPackageEnvironment
   , showPackageEnvironmentWithComments
   , setPackageDB
+  , loadUserConfig
 
   , basePackageEnvironment
   , initialPackageEnvironment
@@ -49,7 +52,7 @@ import Control.Monad                   ( foldM, when )
 import Data.List                       ( partition )
 import Data.Monoid                     ( Monoid(..) )
 import Distribution.Compat.Exception   ( catchIO )
-import System.Directory                ( renameFile )
+import System.Directory                ( doesFileExist, renameFile )
 import System.FilePath                 ( (<.>), (</>) )
 import System.IO.Error                 ( isDoesNotExistError )
 import Text.PrettyPrint                ( ($+$) )
@@ -67,6 +70,8 @@ import qualified Distribution.Text         as Text
 -- TODO: would be nice to remove duplication between D.C.PackageEnvironment and
 -- D.C.Config.
 data PackageEnvironment = PackageEnvironment {
+  -- The 'inherit' feature is not used ATM, but could be useful in the future
+  -- for constructing nested sandboxes (see discussion in #1196).
   pkgEnvInherit       :: Flag FilePath,
   pkgEnvSavedConfig   :: SavedConfig
 }
@@ -93,6 +98,25 @@ sandboxPackageEnvironmentFile = "cabal.sandbox.config"
 -- settings. Created by the user.
 userPackageEnvironmentFile :: FilePath
 userPackageEnvironmentFile = "cabal.config"
+
+-- | Type of the current package environment.
+data PackageEnvironmentType =
+  SandboxPackageEnvironment   -- ^ './cabal.sandbox.config'
+  | UserPackageEnvironment    -- ^ './cabal.config'
+  | AmbientPackageEnvironment -- ^ '~/.cabal/config'
+
+-- | Is there a 'cabal.sandbox.config' or 'cabal.config' in this
+-- directory?
+classifyPackageEnvironment :: FilePath -> IO PackageEnvironmentType
+classifyPackageEnvironment pkgEnvDir = do
+  isSandbox <- configExists sandboxPackageEnvironmentFile
+  isUser    <- configExists userPackageEnvironmentFile
+  case (isSandbox, isUser) of
+    (True,  _)     -> return SandboxPackageEnvironment
+    (False, True)  -> return UserPackageEnvironment
+    (False, False) -> return AmbientPackageEnvironment
+  where
+    configExists fname = doesFileExist (pkgEnvDir </> fname)
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.
@@ -233,6 +257,11 @@ userPackageEnvironment verbosity pkgEnvDir = do
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
       return mempty
 
+-- | Same as @userPackageEnvironmentFile@, but returns a SavedConfig.
+loadUserConfig :: Verbosity -> FilePath -> IO SavedConfig
+loadUserConfig verbosity pkgEnvDir = fmap pkgEnvSavedConfig
+                                     $ userPackageEnvironment verbosity pkgEnvDir
+
 -- | Try to load the package environment file ("cabal.sandbox.config"), exiting
 -- with error if it doesn't exist. Also returns the path to the sandbox
 -- directory. Note that the path parameter should be a name of an existing
@@ -265,6 +294,7 @@ tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
   user      <- userPackageEnvironment verbosity pkgEnvDir
   inherited <- inheritedPackageEnvironment verbosity user
 
+  -- Layer the package environment settings over settings from ~/.cabal/config.
   cabalConfig <- loadConfig verbosity configFileFlag NoFlag
   return (sandboxDir,
           base `mappend` (cabalConfig `overrideSandboxSettings`
