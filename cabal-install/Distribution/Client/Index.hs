@@ -8,12 +8,11 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Client.Index (
-    index,
-
     createEmpty,
     addBuildTreeRefs,
     removeBuildTreeRefs,
     listBuildTreeRefs,
+    validateIndexPath,
 
     defaultIndexFileName
   ) where
@@ -21,14 +20,12 @@ module Distribution.Client.Index (
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.IndexUtils ( getSourcePackages )
 import Distribution.Client.PackageIndex ( allPackages )
-import Distribution.Client.Setup ( IndexFlags(..) )
 import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackageDb(..)
                                  , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd )
 
-import Distribution.Simple.Setup ( fromFlagOrDefault )
 import Distribution.Simple.Utils ( die, debug, info, findPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
 
@@ -51,34 +48,6 @@ newtype BuildTreeRef = BuildTreeRef {
 
 defaultIndexFileName :: FilePath
 defaultIndexFileName = "00-index.tar"
-
--- | Entry point for the 'cabal index' command.
-index :: Verbosity -> IndexFlags -> FilePath -> IO ()
-index verbosity indexFlags path' = do
-  let runInit         = fromFlagOrDefault False (indexInit indexFlags)
-  let refsToAdd       = indexLinkSource indexFlags
-  let runLinkSource   = not . null $ refsToAdd
-  let refsToRemove    = indexRemoveSource indexFlags
-  let runRemoveSource = not . null $ refsToRemove
-  let runList         = fromFlagOrDefault False (indexList indexFlags)
-
-  unless (or [runInit, runLinkSource, runRemoveSource, runList]) $
-    die "no arguments passed to the 'index' command"
-
-  path <- validateIndexPath path'
-
-  when runInit $
-    createEmpty verbosity path
-
-  when runLinkSource $
-    addBuildTreeRefs verbosity path refsToAdd
-
-  when runRemoveSource $
-    removeBuildTreeRefs verbosity path refsToRemove
-
-  when runList $ do
-    refs <- listBuildTreeRefs verbosity path
-    mapM_ putStrLn refs
 
 -- | Given a path, ensure that it refers to a local build tree.
 buildTreeRefFromPath :: FilePath -> IO (Maybe BuildTreeRef)
