@@ -63,8 +63,7 @@ import Distribution.Client.Upload as Upload   (upload, check, report)
 import Distribution.Client.Run                (run)
 import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Get                (get)
-import Distribution.Client.PackageEnvironment (PackageEnvironmentType(..)
-                                              ,setPackageDB)
+import Distribution.Client.PackageEnvironment (setPackageDB)
 import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxAddSource
                                               ,sandboxDelete
