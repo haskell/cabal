@@ -498,7 +498,7 @@ commandsRun globalCommand commands args =
     badCommand cname = CommandErrors ["unrecognised command: " ++ cname
                                    ++ " (try --help)\n"]
     commands'      = commands ++ [commandAddAction helpCommandUI undefined]
-    commandNames   = [ name | (Command name _ _ _) <- commands' ]
+    commandNames   = [ name | (Command name _ _ NormalCommand) <- commands' ]
     globalCommand' = globalCommand {
       commandUsage = \pname ->
            (case commandUsage globalCommand pname of
