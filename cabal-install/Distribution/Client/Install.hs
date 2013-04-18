@@ -969,17 +969,18 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
             case useLogFile of
               Nothing                 -> return ()
               Just (mkLogFileName, _) -> do
-                let (logName, n) = (mkLogFileName pkgid, 10)
+                let logName = mkLogFileName pkgid
+                    n       = 10
                 putStr $ "Last " ++ (show n)
-                  ++ " lines of the build log ( " ++ logName ++ " ):"
+                  ++ " lines of the build log ( " ++ logName ++ " ):\n"
                 printLastNLines logName n
 
     printLastNLines :: FilePath -> Int -> IO ()
     printLastNLines path n = do
       lns <- fmap lines $ readFile path
       let len = length lns
-      let toDrop = if len > n && n > 0 then (len - n) else 0
-      mapM_ putStr (drop toDrop lns)
+      let toDrop = if (len > n && n > 0) then (len - n) else 0
+      mapM_ putStrLn (drop toDrop lns)
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ConfiguredPackage'. In particular the
