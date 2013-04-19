@@ -67,35 +67,36 @@ import Distribution.Client.PackageEnvironment (setPackageDB)
 import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxAddSource
                                               ,sandboxDelete
+                                              ,sandboxHcPkg
                                               ,dumpPackageEnvironment
 
                                               ,UseSandbox(..), isUseSandbox
+                                              ,ForceGlobalInstall(..)
+                                              ,maybeForceGlobalInstall
                                               ,loadConfigOrSandboxConfig
                                               ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
-                                              ,maybeInstallAddSourceDeps)
+                                              ,maybeInstallAddSourceDeps
+
+                                              ,configCompilerAux'
+                                              ,configPackageDB')
 
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
-import Distribution.Simple.Compiler
-         ( Compiler, PackageDBStack )
-import Distribution.Simple.Program
-         ( ProgramConfiguration )
 import Distribution.Simple.Command
          ( CommandParse(..), CommandUI(..), Command
          , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
-         , interpretPackageDbFlags, maybeGetPersistBuildConfig )
+         , maybeGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.System ( Platform )
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, topHandler )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-       ( Verbosity, normal, lessVerbose )
+       ( Verbosity, normal )
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
@@ -658,12 +659,15 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
     ["init"] -> sandboxInit verbosity sandboxFlags globalFlags
     ["delete"] -> sandboxDelete verbosity sandboxFlags globalFlags
     ("add-source":extra) -> do
-      when ((<1) . length $ extra) $
-        die $ "The 'sandbox add-source' command expects at least one argument"
-      sandboxAddSource verbosity extra sandboxFlags globalFlags
+        when (noExtraArgs extra) $
+          die $ "The 'sandbox add-source' command expects at least one argument"
+        sandboxAddSource verbosity extra sandboxFlags globalFlags
 
     -- More advanced commands.
-    ["hc-pkg"] -> die "Not implemented!"
+    ("hc-pkg":extra) -> do
+        when (noExtraArgs extra) $
+            die $ "The 'sandbox hc-pkg' command expects at least one argument"
+        sandboxHcPkg verbosity sandboxFlags globalFlags extra
     ["buildopts"] -> die "Not implemented!"
 
     -- Hidden commands.
@@ -673,6 +677,9 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
     [] -> die $ "Please specify a subcommand (see 'help sandbox')"
     _  -> die $ "Unknown 'sandbox' subcommand: " ++ unwords extraArgs
 
+  where
+    noExtraArgs = (<1) . length
+
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
 win32SelfUpgradeAction :: Win32SelfUpgradeFlags -> [String] -> GlobalFlags
@@ -681,32 +688,3 @@ win32SelfUpgradeAction selfUpgradeFlags (pid:path:_extraArgs) _globalFlags = do
   let verbosity = fromFlag (win32SelfUpgradeVerbosity selfUpgradeFlags)
   Win32SelfUpgrade.deleteOldExeFile verbosity (read pid) path
 win32SelfUpgradeAction _ _ _ = return ()
-
---
--- Utils (transitionary)
---
-
--- | Helper type used by configPackageDb'.
-data ForceGlobalInstall = ForceGlobalInstall
-                        | UseDefaultPackageDBStack
-
--- | If we're in a sandbox, add only the global package db to the package db
--- stack, otherwise use the default behaviour.
-maybeForceGlobalInstall :: UseSandbox -> ForceGlobalInstall
-maybeForceGlobalInstall NoSandbox      = UseDefaultPackageDBStack
-maybeForceGlobalInstall (UseSandbox _) = ForceGlobalInstall
-
-configPackageDB' :: ConfigFlags -> ForceGlobalInstall -> PackageDBStack
-configPackageDB' cfg force =
-    interpretPackageDbFlags userInstall (configPackageDBs cfg)
-  where
-    userInstall = case force of
-      ForceGlobalInstall       -> False
-      UseDefaultPackageDBStack -> fromFlagOrDefault True (configUserInstall cfg)
-
-configCompilerAux' :: ConfigFlags
-                   -> IO (Compiler, Platform, ProgramConfiguration)
-configCompilerAux' configFlags =
-  configCompilerAux configFlags
-    --FIXME: make configCompilerAux use a sensible verbosity
-    { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
