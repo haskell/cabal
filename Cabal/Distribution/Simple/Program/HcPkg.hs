@@ -11,6 +11,7 @@
 
 module Distribution.Simple.Program.HcPkg (
     init,
+    invoke,
     register,
     reregister,
     unregister,
@@ -73,6 +74,15 @@ init :: Verbosity -> ConfiguredProgram -> FilePath -> IO ()
 init verbosity hcPkg path =
   runProgramInvocation verbosity
     (initInvocation hcPkg verbosity path)
+
+-- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
+-- provided command-line arguments to it.
+invoke :: Verbosity -> ConfiguredProgram -> PackageDBStack -> [String] -> IO ()
+invoke verbosity hcPkg dbStack extraArgs =
+  runProgramInvocation verbosity invocation
+  where
+    args       = packageDbStackOpts hcPkg dbStack ++ extraArgs
+    invocation = programInvocation hcPkg args
 
 -- | Call @hc-pkg@ to register a package.
 --
