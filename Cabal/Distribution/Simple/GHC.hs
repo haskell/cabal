@@ -67,6 +67,7 @@ module Distribution.Simple.GHC (
         installLib, installExe,
         libAbiHash,
         initPackageDB,
+        invokeHcPkg,
         registerPackage,
         componentGhcOptions,
         ghcLibDir,
@@ -1152,6 +1153,15 @@ updateLibArchive verbosity lbi path
 -- | Create an empty package DB at the specified location.
 initPackageDB :: Verbosity -> ProgramConfiguration -> FilePath -> IO ()
 initPackageDB verbosity conf dbPath = HcPkg.init verbosity ghcPkgProg dbPath
+  where
+    Just ghcPkgProg = lookupProgram ghcPkgProgram conf
+
+-- | Run 'ghc-pkg' using a given package DB stack, directly forwarding the
+-- provided command-line arguments to it.
+invokeHcPkg :: Verbosity -> ProgramConfiguration -> PackageDBStack -> [String]
+               -> IO ()
+invokeHcPkg verbosity conf dbStack extraArgs =
+    HcPkg.invoke verbosity ghcPkgProg dbStack extraArgs
   where
     Just ghcPkgProg = lookupProgram ghcPkgProgram conf
 

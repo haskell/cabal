@@ -58,6 +58,7 @@ module Distribution.Simple.Register (
     unregister,
 
     initPackageDB,
+    invokeHcPkg,
     registerPackage,
     generateRegistrationInfo,
     inplaceInstalledPackageInfo,
@@ -213,7 +214,18 @@ initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath
 initPackageDB verbosity comp conf dbPath =
   case (compilerFlavor comp) of
     GHC -> GHC.initPackageDB verbosity conf dbPath
-    _   -> die "initPackageDB is not implemented for this compiler"
+    _   -> die "Distribution.Simple.Register.initPackageDB: \
+               \not implemented for this compiler"
+
+-- | Run @hc-pkg@ using a given package DB stack, directly forwarding the
+-- provided command-line arguments to it.
+invokeHcPkg :: Verbosity -> Compiler -> ProgramConfiguration -> PackageDBStack
+                -> [String] -> IO ()
+invokeHcPkg verbosity comp conf dbStack extraArgs =
+    case (compilerFlavor comp) of
+      GHC -> GHC.invokeHcPkg verbosity conf dbStack extraArgs
+      _   -> die "Distribution.Simple.Register.invokeHcPkg: \
+                 \not implemented for this compiler"
 
 registerPackage :: Verbosity
                 -> InstalledPackageInfo

@@ -11,16 +11,21 @@ module Distribution.Client.Sandbox (
     sandboxInit,
     sandboxDelete,
     sandboxAddSource,
+    sandboxHcPkg,
 
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
     UseSandbox(..), isUseSandbox,
+    ForceGlobalInstall(UseDefaultPackageDBStack), maybeForceGlobalInstall,
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
     installAddSourceDeps,
     maybeInstallAddSourceDeps,
+
+    -- FIXME: move somewhere else
+    configPackageDB', configCompilerAux'
   ) where
 
 import Distribution.Client.Setup
@@ -44,7 +49,8 @@ import Distribution.Client.Targets            ( UserTarget(..)
                                               , readUserTargets
                                               , resolveUserTargets )
 import Distribution.Client.Types              ( SourcePackageDb(..) )
-import Distribution.Simple.Compiler           ( Compiler, PackageDB(..) )
+import Distribution.Simple.Compiler           ( Compiler, PackageDB(..)
+                                              , PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAux
                                               , interpretPackageDbFlags )
 import Distribution.Simple.Program            ( ProgramConfiguration )
@@ -205,6 +211,18 @@ sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
 
   Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
 
+-- | Invoke the @hc-pkg@ tool with provided arguments, restricted to the
+-- sandbox.
+sandboxHcPkg :: Verbosity -> SandboxFlags -> GlobalFlags -> [String] -> IO ()
+sandboxHcPkg verbosity _sandboxFlags globalFlags extraArgs = do
+  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                           (globalConfigFile globalFlags)
+  let configFlags = savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv
+      dbStack     = configPackageDB' configFlags ForceGlobalInstall
+  (comp, _platform, conf) <- configCompilerAux' configFlags
+
+  Register.invokeHcPkg verbosity comp conf dbStack extraArgs
+
 --
 -- * Helpers for writing code that works both inside and outside a sandbox.
 --
@@ -271,8 +289,7 @@ installAddSourceDeps verbosity config sandboxDir globalFlags = do
     targets <- readUserTargets verbosity targetNames
 
     let args :: InstallArgs
-        args = ((interpretPackageDbFlags {- userInstall = -} False
-                 (configPackageDBs configFlags))
+        args = ((configPackageDB' configFlags ForceGlobalInstall)
                ,(globalRepos globalFlags')
                ,comp, platform, conf
                ,globalFlags', configFlags, configExFlags, installFlags
@@ -301,15 +318,6 @@ installAddSourceDeps verbosity config sandboxDir globalFlags = do
 
       processInstallPlan verbosity args installContext installPlan
 
-  where
-    -- Copied from Main.hs. FIXME: Remove duplication.
-    configCompilerAux' :: ConfigFlags
-                          -> IO (Compiler, Platform, ProgramConfiguration)
-    configCompilerAux' configFlags =
-      configCompilerAux configFlags
-      --FIXME: make configCompilerAux use a sensible verbosity
-      { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
-
 -- | Check if a sandbox is present and call @installAddSourceDeps@ in that case.
 maybeInstallAddSourceDeps :: Verbosity -> GlobalFlags -> IO UseSandbox
 maybeInstallAddSourceDeps verbosity globalFlags = do
@@ -327,3 +335,47 @@ maybeInstallAddSourceDeps verbosity globalFlags = do
                                   \maybeInstallAddSourceDeps: can't happen"
       installAddSourceDeps verbosity config sandboxDir globalFlags
       return useSandbox
+
+--
+-- Utils (transitionary)
+--
+-- FIXME: configPackageDB' and configCompilerAux' don't really belong in this
+-- module
+--
+
+-- | Force the usage of the global package DB even though @configUserInstall@
+-- may be @True@.
+--
+-- We use @userInstallDirs@ in sandbox mode to prevent @cabal-install@ from
+-- doing unnecessary things like invoking itself via @sudo@ (see commit
+-- 7b2e3630f2ada8a56bf9100144e1bb9acbe6dc6a and 'rootCmd' in
+-- "Distribution.Client.Install"), but in this particular case we want
+-- @configUserInstall@ to be @False@ to prevent @UserPackageDB@ from being added
+-- to the package DB stack (see #1183 and @interpretPackageDbFlags@ in
+-- "Distribution.Simple.Configure").
+--
+-- In the future we may want to distinguish between global, user and sandbox
+-- install types.
+data ForceGlobalInstall = ForceGlobalInstall
+                        | UseDefaultPackageDBStack
+
+-- | If we're in a sandbox, add only the global package db to the package db
+-- stack, otherwise use the default behaviour.
+maybeForceGlobalInstall :: UseSandbox -> ForceGlobalInstall
+maybeForceGlobalInstall NoSandbox      = UseDefaultPackageDBStack
+maybeForceGlobalInstall (UseSandbox _) = ForceGlobalInstall
+
+configPackageDB' :: ConfigFlags -> ForceGlobalInstall -> PackageDBStack
+configPackageDB' cfg force =
+    interpretPackageDbFlags userInstall (configPackageDBs cfg)
+  where
+    userInstall = case force of
+      ForceGlobalInstall       -> False
+      UseDefaultPackageDBStack -> fromFlagOrDefault True (configUserInstall cfg)
+
+configCompilerAux' :: ConfigFlags
+                   -> IO (Compiler, Platform, ProgramConfiguration)
+configCompilerAux' configFlags =
+  configCompilerAux configFlags
+    --FIXME: make configCompilerAux use a sensible verbosity
+    { configVerbosity = fmap lessVerbose (configVerbosity configFlags) }
