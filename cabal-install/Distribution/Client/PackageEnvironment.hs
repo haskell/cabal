@@ -47,6 +47,7 @@ import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..),
                                          liftField, lineNo, locatedErrorMsg,
                                          parseFilePathQ, readFields,
                                          showPWarning, simpleField, warning )
+import Distribution.System             ( Platform )
 import Distribution.Verbosity          ( Verbosity, normal )
 import Control.Monad                   ( foldM, when )
 import Data.List                       ( partition )
@@ -167,15 +168,16 @@ basePackageEnvironment =
 -- | Initial configuration that we write out to the package environment file if
 -- it does not exist. When the package environment gets loaded this
 -- configuration gets layered on top of 'basePackageEnvironment'.
-initialPackageEnvironment :: FilePath -> Compiler -> IO PackageEnvironment
-initialPackageEnvironment sandboxDir compiler = do
+initialPackageEnvironment :: FilePath -> Compiler -> Platform
+                             -> IO PackageEnvironment
+initialPackageEnvironment sandboxDir compiler platform = do
   let initialConfig = commonPackageEnvironmentConfig sandboxDir
   return $ mempty {
     pkgEnvSavedConfig = initialConfig {
        savedGlobalFlags = (savedGlobalFlags initialConfig) {
           globalLocalRepos = [sandboxDir </> "packages"]
           },
-       savedConfigureFlags = setPackageDB sandboxDir compiler
+       savedConfigureFlags = setPackageDB sandboxDir compiler platform
                              (savedConfigureFlags initialConfig),
        savedInstallFlags = (savedInstallFlags initialConfig) {
          installSummaryFile = [toPathTemplate (sandboxDir </>
@@ -185,12 +187,13 @@ initialPackageEnvironment sandboxDir compiler = do
     }
 
 -- | Use the package DB location specific for this compiler.
-setPackageDB :: FilePath -> Compiler -> ConfigFlags -> ConfigFlags
-setPackageDB sandboxDir compiler configFlags =
+setPackageDB :: FilePath -> Compiler -> Platform -> ConfigFlags -> ConfigFlags
+setPackageDB sandboxDir compiler platform configFlags =
   configFlags {
     configPackageDBs = [Just (SpecificPackageDB $ sandboxDir
-                              </> (showCompilerId compiler ++
-                                   "-packages.conf.d"))]
+                              </> (Text.display platform ++ "-"
+                                   ++ showCompilerId compiler
+                                   ++ "-packages.conf.d"))]
     }
 
 -- | Almost the same as 'savedConf `mappend` pkgEnv', but some settings are
@@ -308,13 +311,15 @@ data IncludeComments = IncludeComments | NoComments
 createPackageEnvironment :: Verbosity -> FilePath -> FilePath
                             -> IncludeComments
                             -> Compiler
+                            -> Platform
                             -> IO ()
-createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments compiler = do
+createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments
+  compiler platform = do
   let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   notice verbosity $ "Writing default package environment to " ++ path
 
   commentPkgEnv <- commentPackageEnvironment sandboxDir
-  initialPkgEnv <- initialPackageEnvironment sandboxDir compiler
+  initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
   writePackageEnvironmentFile path incComments commentPkgEnv initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
