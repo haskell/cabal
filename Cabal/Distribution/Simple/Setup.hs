@@ -78,6 +78,7 @@ module Distribution.Simple.Setup (
   buildOptions, installDirsOptions,
 
   defaultDistPref,
+  numJobsParser,
 
   Flag(..),
   toFlag,
@@ -1218,6 +1219,7 @@ data BuildFlags = BuildFlags {
     buildProgramArgs :: [(String, [String])],
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity,
+    buildNumJobs     :: Flag (Maybe Int),
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -1234,6 +1236,7 @@ defaultBuildFlags  = BuildFlags {
     buildProgramArgs = [],
     buildDistPref    = Flag defaultDistPref,
     buildVerbosity   = Flag normal,
+    buildNumJobs     = mempty,
     buildArgs        = []
   }
 
@@ -1256,6 +1259,13 @@ buildOptions progConf showOrParseArgs =
   : programConfigurationPaths   progConf showOrParseArgs
   buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
 
+  : option "j" ["jobs"]
+  "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+  buildNumJobs (\v flags -> flags { buildNumJobs = v })
+  (optArg "NUM" (fmap Flag flagToJobs)
+   (Flag Nothing)
+   (map (Just . maybe "$ncpus" show) . flagToList))
+
   ++ programConfigurationOptions progConf showOrParseArgs
   buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
 
@@ -1268,6 +1278,7 @@ instance Monoid BuildFlags where
     buildProgramArgs = mempty,
     buildVerbosity   = mempty,
     buildDistPref    = mempty,
+    buildNumJobs     = mempty,
     buildArgs        = mempty
   }
   mappend a b = BuildFlags {
@@ -1275,6 +1286,7 @@ instance Monoid BuildFlags where
     buildProgramArgs = combine buildProgramArgs,
     buildVerbosity   = combine buildVerbosity,
     buildDistPref    = combine buildDistPref,
+    buildNumJobs     = combine buildNumJobs,
     buildArgs        = combine buildArgs
   }
     where combine field = field a `mappend` field b
@@ -1477,6 +1489,18 @@ instance Monoid BenchmarkFlags where
 -- ------------------------------------------------------------
 -- * Shared options utils
 -- ------------------------------------------------------------
+
+-- | Common parser for the @-j@ flag of @build@ and @install@.
+numJobsParser :: ReadE (Maybe Int)
+numJobsParser = ReadE $ \s ->
+  case s of
+    "$ncpus" -> Right Nothing
+    _        -> case reads s of
+      [(n, "")]
+        | n < 1     -> Left "The number of jobs should be 1 or more."
+        | n > 64    -> Left "You probably don't want that many jobs."
+        | otherwise -> Right (Just n)
+      _             -> Left "The jobs value should be a number or '$ncpus'"
 
 programFlagsDescription :: ProgramConfiguration -> String
 programFlagsDescription progConf =
