@@ -220,7 +220,8 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   -- a sandbox-local package DB for this compiler.
   let configFlags''  = case useSandbox of
         NoSandbox               -> configFlags'
-        (UseSandbox sandboxDir) -> setPackageDB sandboxDir comp configFlags'
+        (UseSandbox sandboxDir) -> setPackageDB sandboxDir
+                                   comp platform configFlags'
   when (isUseSandbox useSandbox) $
     initPackageDBIfNeeded verbosity configFlags'' comp conf
 
@@ -420,7 +421,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- a sandbox-local package DB for this compiler.
   let configFlags'' = case useSandbox of
         NoSandbox               -> configFlags'
-        (UseSandbox sandboxDir) -> setPackageDB sandboxDir comp configFlags'
+        (UseSandbox sandboxDir) -> setPackageDB sandboxDir
+                                   comp platform configFlags'
   when (isUseSandbox useSandbox) $
     initPackageDBIfNeeded verbosity configFlags'' comp conf
 

@@ -12,7 +12,6 @@ module Distribution.Client.Sandbox (
     sandboxDelete,
     sandboxAddSource,
     sandboxHcPkg,
-
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
@@ -166,11 +165,12 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
   userConfig   <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
-  (comp, _, conf) <- configCompilerAux (savedConfigureFlags userConfig)
+  (comp, platform, conf) <- configCompilerAux (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
   pkgEnvDir   <- getCurrentDirectory
-  createPackageEnvironment verbosity sandboxDir pkgEnvDir NoComments comp
+  createPackageEnvironment verbosity sandboxDir pkgEnvDir
+    NoComments comp platform
   (_, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
                  (globalConfigFile globalFlags)
 
