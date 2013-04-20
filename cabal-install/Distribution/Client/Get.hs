@@ -226,7 +226,7 @@ forkPackage :: Verbosity
             -> IO ()
 forkPackage verbosity branchers prefix kind src = do
     let desc = PD.packageDescription (packageDescription src)
-    let pkgname = display (packageId src)
+    let pkgname = display (packageName src)
     let destdir = prefix </> pkgname
 
     destDirExists <- doesDirectoryExist destdir
