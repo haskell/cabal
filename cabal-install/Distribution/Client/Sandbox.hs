@@ -277,6 +277,7 @@ installAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
 
   unless (null buildTreeRefs) $ do
+    notice verbosity "Installing add-source dependencies..."
     let targetNames    = (".":buildTreeRefs)
         targetsToPrune = [UserTargetLocalDir "."]
         configFlags    = savedConfigureFlags   config
