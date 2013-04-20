@@ -2,10 +2,7 @@ module PackageTests.CMain.Check
        ( checkBuild
        ) where
 
-import Distribution.Simple.Hpc
-import Distribution.Version
 import Test.HUnit
-import System.Directory
 import System.FilePath
 import PackageTests.PackageTester
 
