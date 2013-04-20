@@ -51,8 +51,9 @@ import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile )
 import Distribution.Client.Targets
          ( readUserTargets )
+import qualified Distribution.Client.List as List
+         ( list, info )
 
-import Distribution.Client.List               (list, info)
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
 import Distribution.Client.Update             (update)
@@ -89,10 +90,10 @@ import Distribution.Simple.Command
          , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
-         , maybeGetPersistBuildConfig )
+         , tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, topHandler )
+         ( cabalVersion, die, notice, info, topHandler )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -318,11 +319,12 @@ reconfigure :: Verbosity    -- ^ Verbosity setting
             -> IO ()
 reconfigure verbosity distPref    addConfigFlags
             extraArgs globalFlags checkFlags = do
-  mLbi <- maybeGetPersistBuildConfig distPref
-  case mLbi of
+  eLbi <- tryGetPersistBuildConfig distPref
+  case eLbi of
 
     -- Package has never been configured.
-    Nothing -> do
+    Left err -> do
+      info verbosity err
       notice verbosity
         $ "Configuring with default flags." ++ configureManually
       configureAction (defaultFlags, defaultConfigExFlags)
@@ -330,7 +332,7 @@ reconfigure verbosity distPref    addConfigFlags
 
     -- Package has been configured, but the configuration may be out of
     -- date or required flags may not be set.
-    Just lbi -> do
+    Right lbi -> do
       let configFlags = LBI.configFlags lbi
           flags = mconcat [configFlags, addConfigFlags, distVerbFlags]
           savedDistPref = fromFlagOrDefault
@@ -486,7 +488,7 @@ listAction listFlags extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
-  list verbosity
+  List.list verbosity
        (configPackageDB' configFlags UseDefaultPackageDBStack)
        (globalRepos globalFlags')
        comp
@@ -503,7 +505,7 @@ infoAction infoFlags extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux configFlags
-  info verbosity
+  List.info verbosity
        (configPackageDB' configFlags UseDefaultPackageDBStack)
        (globalRepos globalFlags')
        comp
