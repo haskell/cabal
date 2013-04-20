@@ -54,6 +54,7 @@ module Distribution.Simple.Configure (configure,
                                       writePersistBuildConfig,
                                       getPersistBuildConfig,
                                       checkPersistBuildConfigOutdated,
+                                      tryGetPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
                                       localBuildInfoFile,
                                       getInstalledPackages,
@@ -195,7 +196,7 @@ tryGetConfigStateFile filename = do
              ++ display currentCompilerId
              ++ ") which is probably the cause of the problem."
 
--- internal function
+-- |Try to read the 'localBuildInfoFile'.
 tryGetPersistBuildConfig :: FilePath -> IO (Either String LocalBuildInfo)
 tryGetPersistBuildConfig distPref
     = tryGetConfigStateFile (localBuildInfoFile distPref)
