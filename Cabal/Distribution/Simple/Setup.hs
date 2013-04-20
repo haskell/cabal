@@ -1256,15 +1256,15 @@ buildOptions progConf showOrParseArgs =
   buildDistPref (\d flags -> flags { buildDistPref = d })
   showOrParseArgs
 
-  : programConfigurationPaths   progConf showOrParseArgs
-  buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
-
   : option "j" ["jobs"]
   "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
   buildNumJobs (\v flags -> flags { buildNumJobs = v })
-  (optArg "NUM" (fmap Flag flagToJobs)
+  (optArg "NUM" (fmap Flag numJobsParser)
    (Flag Nothing)
    (map (Just . maybe "$ncpus" show) . flagToList))
+
+  : programConfigurationPaths   progConf showOrParseArgs
+  buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
 
   ++ programConfigurationOptions progConf showOrParseArgs
   buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
