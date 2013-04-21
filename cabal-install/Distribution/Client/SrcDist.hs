@@ -81,8 +81,10 @@ createZipArchive verbosity pkg _mlbi tmpDir targetPref = do
     alreadyExists <- doesFileExist zipfile
     when alreadyExists $ removeFile zipfile
 
-    -- we call zip with a different CWD, so have to make the path absolute
-    zipfileAbs <- canonicalizePath zipfile
+    -- We call zip with a different CWD, so have to make the path
+    -- absolute. Can't just use 'canonicalizePath zipfile' since this function
+    -- requires its argument to refer to an existing file.
+    zipfileAbs <- fmap (</> dir <.> "zip") . canonicalizePath $ targetPref
 
     --TODO: use runProgramInvocation, but has to be able to set CWD
     hnd <- runProcess (programPath zipProg) ["-q", "-r", zipfileAbs, dir]
