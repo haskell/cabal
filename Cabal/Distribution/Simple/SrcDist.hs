@@ -54,6 +54,10 @@ module Distribution.Simple.SrcDist (
   -- * The top level action
   sdist,
 
+  -- * Actual impl of 'sdist', for reuse by 'cabal sdist'
+  CreateArchiveFun,
+  sdistWith,
+
   -- ** Parts of 'sdist'
   printPackageProblems,
   prepareTree,
@@ -108,13 +112,26 @@ import System.FilePath
          ( (</>), (<.>), takeDirectory, dropExtension, isAbsolute )
 
 -- |Create a source distribution.
-sdist :: PackageDescription -- ^information from the tarball
-      -> Maybe LocalBuildInfo -- ^Information from configure
-      -> SDistFlags -- ^verbosity & snapshot
+sdist :: PackageDescription     -- ^information from the tarball
+      -> Maybe LocalBuildInfo   -- ^Information from configure
+      -> SDistFlags             -- ^verbosity & snapshot
       -> (FilePath -> FilePath) -- ^build prefix (temp dir)
-      -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
+      -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
       -> IO ()
-sdist pkg mb_lbi flags mkTmpDir pps = do
+sdist pkg mb_lbi flags mkTmpDir pps =
+  sdistWith pkg mb_lbi flags mkTmpDir pps createArchive
+
+-- |Create a source distribution, parametrised by the createArchive function
+-- (for reuse by cabal-install).
+sdistWith :: PackageDescription        -- ^information from the tarball
+             -> Maybe LocalBuildInfo   -- ^Information from configure
+             -> SDistFlags             -- ^verbosity & snapshot
+             -> (FilePath -> FilePath) -- ^build prefix (temp dir)
+             -> [PPSuffixHandler]      -- ^ extra preprocessors (includes
+                                       -- suffixes)
+             -> CreateArchiveFun
+             -> IO ()
+sdistWith pkg mb_lbi flags mkTmpDir pps createArchiveFun = do
 
   -- do some QA
   printPackageProblems verbosity pkg
@@ -136,7 +153,7 @@ sdist pkg mb_lbi flags mkTmpDir pps = do
       withTempDirectory verbosity False tmpTargetDir "sdist." $ \tmpDir -> do
         let targetDir = tmpDir </> tarBallName pkg'
         generateSourceDir targetDir pkg'
-        targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
+        targzFile <- createArchiveFun verbosity pkg' mb_lbi tmpDir targetPref
         notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
@@ -350,23 +367,26 @@ dateToSnapshotNumber date = case toGregorian (utctDay date) of
                               + month             * 100
                               + day
 
--- |Create an archive from a tree of source files, and clean up the tree.
-createArchive :: Verbosity            -- ^verbosity
-              -> PackageDescription   -- ^info from cabal file
-              -> Maybe LocalBuildInfo -- ^info from configure
-              -> FilePath             -- ^source tree to archive
-              -> FilePath             -- ^name of archive to create
-              -> IO FilePath
+-- | Callback type for use by sdistWith.
+type CreateArchiveFun = Verbosity               -- ^verbosity
+                        -> PackageDescription   -- ^info from cabal file
+                        -> Maybe LocalBuildInfo -- ^info from configure
+                        -> FilePath             -- ^source tree to archive
+                        -> FilePath             -- ^name of archive to create
+                        -> IO FilePath
 
+-- | Create an archive from a tree of source files, and clean up the tree.
+createArchive :: CreateArchiveFun
 createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
   let tarBallFilePath = targetPref </> tarBallName pkg_descr <.> "tar.gz"
 
   (tarProg, _) <- requireProgram verbosity tarProgram
                     (maybe defaultProgramConfiguration withPrograms mb_lbi)
 
-   -- Hmm: I could well be skating on thinner ice here by using the -C option (=> GNU tar-specific?)
-   -- [The prev. solution used pipes and sub-command sequences to set up the paths correctly,
-   -- which is problematic in a Windows setting.]
+   -- Hmm: I could well be skating on thinner ice here by using the -C option
+   -- (=> GNU tar-specific?)  [The prev. solution used pipes and sub-command
+   -- sequences to set up the paths correctly, which is problematic in a Windows
+   -- setting.]
   rawSystemProgram verbosity tarProg
            ["-C", tmpDir, "-czf", tarBallFilePath, tarBallName pkg_descr]
   return tarBallFilePath
