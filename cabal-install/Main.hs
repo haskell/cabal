@@ -240,7 +240,8 @@ buildAction buildFlags extraArgs globalFlags = do
       verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
 
   -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity globalFlags
+  useSandbox <- maybeInstallAddSourceDeps verbosity
+                (buildNumJobs buildFlags) globalFlags
 
   -- Calls 'configureAction' to do the real work, so nothing special has to be
   -- done to support sandboxes.
@@ -448,7 +449,7 @@ testAction testFlags extraArgs globalFlags = do
         | otherwise = Just "Re-configuring with test suites enabled."
 
   -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity globalFlags
+  useSandbox <- maybeInstallAddSourceDeps verbosity NoFlag globalFlags
 
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -470,7 +471,7 @@ benchmarkAction benchmarkFlags extraArgs globalFlags = do
         | otherwise = Just "Re-configuring with benchmarks enabled."
 
   -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity globalFlags
+  useSandbox <- maybeInstallAddSourceDeps verbosity NoFlag globalFlags
 
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
   maybeWithSandboxDirOnSearchPath useSandbox $
