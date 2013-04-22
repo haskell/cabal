@@ -650,7 +650,8 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       -- TH always needs default libs, even when building for profiling
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
-  -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
+  -- TODO: do we need to put hs-boot files into place for mutually recursive
+  -- modules?
   let baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
