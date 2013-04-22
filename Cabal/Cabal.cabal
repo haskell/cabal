@@ -1,4 +1,7 @@
 name: Cabal
+-- NOTE: When updating the version, don't forget to also update the value of the
+-- variable 'cabalVersion' in Distribution.Simple.Utils. Otherwise the automated
+-- CI tests will fail.
 version: 1.17.0
 copyright: 2003-2006, Isaac Jones
            2005-2011, Duncan Coutts

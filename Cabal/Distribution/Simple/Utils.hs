@@ -216,7 +216,10 @@ cabalVersion = Paths_Cabal.version
 #elif defined(CABAL_VERSION)
 cabalVersion = Version [CABAL_VERSION] []
 #else
-cabalVersion = Version [1,9999] []  --used when bootstrapping
+-- Translation between Cabal version and Data.Version.Version:
+-- 1.17     == [1,17,0]   <- NB: zero is important
+-- 1.17.0.1 == [1,17,0,1]
+cabalVersion = Version [1,17,0] []  -- used when bootstrapping.
 #endif
 
 -- ----------------------------------------------------------------------------
