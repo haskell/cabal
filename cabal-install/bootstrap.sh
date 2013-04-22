@@ -53,7 +53,7 @@ TEXT_VER="0.11.2.3";   TEXT_VER_REGEXP="0\.([2-9]|(1[0-1]))\." # >= 0.2 && < 0.1
 NETWORK_VER="2.4.1.0"; NETWORK_VER_REGEXP="2\."    # == 2.*
 CABAL_VER="1.16.0.3";  CABAL_VER_REGEXP="1\.1[67]\."  # >= 1.16 && < 1.18
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."   # >= 0.2.* && < 0.4.*
-MTL_VER="2.1.2";       MTL_VER_REGEXP="[12]\."     # == 1.* || == 2.*
+MTL_VER="2.1.2";       MTL_VER_REGEXP="[2]\."     #  == 2.*
 HTTP_VER="4000.2.5";   HTTP_VER_REGEXP="4000\.[012]\." # == 4000.0.* || 4000.1.* || 4000.2.*
 ZLIB_VER="0.5.4.0";    ZLIB_VER_REGEXP="0\.[45]\." # == 0.4.* || == 0.5.*
 TIME_VER="1.4.0.2"     TIME_VER_REGEXP="1\.[1234]\.?" # >= 1.1 && < 1.5
