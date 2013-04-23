@@ -225,9 +225,10 @@ forkPackage :: Verbosity
                -- ^ The package to fork.
             -> IO ()
 forkPackage verbosity branchers prefix kind src = do
-    let desc = PD.packageDescription (packageDescription src)
-    let pkgname = display (packageId src)
-    let destdir = prefix </> pkgname
+    let desc    = PD.packageDescription (packageDescription src)
+        pkgid   = display (packageId src)
+        pkgname = display (packageName src)
+        destdir = prefix </> pkgname
 
     destDirExists <- doesDirectoryExist destdir
     when destDirExists $ do
@@ -243,10 +244,12 @@ forkPackage verbosity branchers prefix kind src = do
             exitCode <- io verbosity destdir
             case exitCode of
                 ExitSuccess -> return ()
-                ExitFailure _ -> die ("Couldn't fork package " ++ pkgname)
+                ExitFailure _ -> die ("Couldn't fork package " ++ pkgid)
         Nothing -> case repos of
-            [] -> die ("Package " ++ pkgname ++ " does not have any source repositories.")
-            _ -> die ("Package " ++ pkgname ++ " does not have any usable source repositories.")
+            [] -> die ("Package " ++ pkgid
+                       ++ " does not have any source repositories.")
+            _ -> die ("Package " ++ pkgid
+                      ++ " does not have any usable source repositories.")
 
 -- | Given a set of possible branchers, and a set of possible source
 -- repositories, find a repository that is both 1) likely to be specific to
