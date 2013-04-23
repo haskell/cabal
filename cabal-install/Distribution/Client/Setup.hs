@@ -55,7 +55,7 @@ import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), SDistFlags(..), HaddockFlags(..)
-         , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
+         , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList, numJobsParser
          , optionVerbosity, boolOpt, trueArg, falseArg )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, toPathTemplate, fromPathTemplate )
@@ -864,27 +864,17 @@ installOptions showOrParseArgs =
       , option "j" ["jobs"]
         "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
         installNumJobs (\v flags -> flags { installNumJobs = v })
-        (optArg "NUM" (fmap Flag flagToJobs)
+        (optArg "NUM" (fmap Flag numJobsParser)
                       (Flag Nothing)
                       (map (Just . maybe "$ncpus" show) . flagToList))
-      ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install" avoids
+      ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install"
+                                        -- avoids
           ParseArgs ->
             [ option [] ["only"]
               "Only installs the package in the current directory."
               installOnly (\v flags -> flags { installOnly = v })
               trueArg ]
           _ -> []
-  where
-    flagToJobs :: ReadE (Maybe Int)
-    flagToJobs = ReadE $ \s ->
-      case s of
-        "$ncpus" -> Right Nothing
-        _        -> case reads s of
-          [(n, "")]
-            | n < 1     -> Left "The number of jobs should be 1 or more."
-            | n > 64    -> Left "You probably don't want that many jobs."
-            | otherwise -> Right (Just n)
-          _             -> Left "The jobs value should be a number or '$ncpus'"
 
 
 instance Monoid InstallFlags where

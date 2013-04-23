@@ -28,7 +28,7 @@ module Distribution.Client.Sandbox (
   ) where
 
 import Distribution.Client.Setup
-  ( SandboxFlags(..), ConfigFlags(..), GlobalFlags(..)
+  ( SandboxFlags(..), ConfigFlags(..), GlobalFlags(..), InstallFlags(..)
   , defaultConfigExFlags, defaultInstallFlags, defaultSandboxLocation
   , globalRepos )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
@@ -269,20 +269,24 @@ maybeWithSandboxDirOnSearchPath (UseSandbox sandboxDir) act =
 
 -- | (Re)install all add-source dependencies of the current package into the
 -- sandbox.
-installAddSourceDeps :: Verbosity -> SavedConfig -> FilePath -> GlobalFlags
+installAddSourceDeps :: Verbosity -> SavedConfig -> Flag (Maybe Int)
+                        -> FilePath -> GlobalFlags
                         -> IO ()
-installAddSourceDeps verbosity config sandboxDir globalFlags = do
+installAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
 
   unless (null buildTreeRefs) $ do
+    notice verbosity "Installing add-source dependencies..."
     let targetNames    = (".":buildTreeRefs)
         targetsToPrune = [UserTargetLocalDir "."]
         configFlags    = savedConfigureFlags   config
         configExFlags  = defaultConfigExFlags         `mappend`
                          savedConfigureExFlags config
-        installFlags   = defaultInstallFlags          `mappend`
+        installFlags'  = defaultInstallFlags          `mappend`
                          savedInstallFlags     config
+        installFlags   = installFlags' {
+          installNumJobs = installNumJobs installFlags' `mappend` numJobsFlag }
         globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
 
     (comp, platform, conf) <- configCompilerAux' configFlags
@@ -319,8 +323,9 @@ installAddSourceDeps verbosity config sandboxDir globalFlags = do
       processInstallPlan verbosity args installContext installPlan
 
 -- | Check if a sandbox is present and call @installAddSourceDeps@ in that case.
-maybeInstallAddSourceDeps :: Verbosity -> GlobalFlags -> IO UseSandbox
-maybeInstallAddSourceDeps verbosity globalFlags = do
+maybeInstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
+                             -> IO UseSandbox
+maybeInstallAddSourceDeps verbosity numJobsFlag globalFlags = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
@@ -333,7 +338,7 @@ maybeInstallAddSourceDeps verbosity globalFlags = do
             UseSandbox d -> d;
             _            -> error "Distribution.Client.Sandbox.\
                                   \maybeInstallAddSourceDeps: can't happen"
-      installAddSourceDeps verbosity config sandboxDir globalFlags
+      installAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags
       return useSandbox
 
 --
