@@ -78,7 +78,8 @@ import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, exeModules, hcOptions, usedExtensions, allExtensions )
+         , Library(..), libModules, exeModules, hcOptions
+         , usedExtensions, allExtensions )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -120,7 +121,8 @@ import Distribution.System
 import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
-import Language.Haskell.Extension (Language(..), Extension(..), KnownExtension(..))
+import Language.Haskell.Extension (Language(..), Extension(..)
+                                  ,KnownExtension(..))
 
 import Control.Monad            ( unless, when, liftM )
 import Data.Char                ( isSpace )
@@ -131,7 +133,8 @@ import System.Directory
          ( removeFile, getDirectoryContents, doesFileExist
          , getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
-                                  takeDirectory, replaceExtension, splitExtension )
+                                  takeDirectory, replaceExtension,
+                                  splitExtension )
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
@@ -156,7 +159,8 @@ getGhcInfo verbosity ghcProg =
 -- Configuring
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
-          -> ProgramConfiguration -> IO (Compiler, Maybe Platform, ProgramConfiguration)
+          -> ProgramConfiguration
+          -> IO (Compiler, Maybe Platform, ProgramConfiguration)
 configure verbosity hcPath hcPkgPath conf0 = do
 
   (ghcProg, ghcVersion, conf1) <-
@@ -216,22 +220,26 @@ guessToolFromGhcPath tool ghcProg verbosity
            dir               = takeDirectory path
            versionSuffix     = takeVersionSuffix (dropExeExtension path)
            guessNormal       = dir </> tool <.> exeExtension
-           guessGhcVersioned = dir </> (tool ++ "-ghc" ++ versionSuffix) <.> exeExtension
+           guessGhcVersioned = dir </> (tool ++ "-ghc" ++ versionSuffix)
+                               <.> exeExtension
            guessVersioned    = dir </> (tool ++ versionSuffix) <.> exeExtension
            guesses | null versionSuffix = [guessNormal]
                    | otherwise          = [guessGhcVersioned,
                                            guessVersioned,
                                            guessNormal]
-       info verbosity $ "looking for tool " ++ show tool ++ " near compiler in " ++ dir
+       info verbosity $ "looking for tool " ++ show tool
+         ++ " near compiler in " ++ dir
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
-                   -- If we can't find it near ghc, fall back to the usual method.
+                   -- If we can't find it near ghc, fall back to the usual
+                   -- method.
          []     -> findProgramLocation verbosity tool
          (fp:_) -> do info verbosity $ "found " ++ tool ++ " in " ++ fp
                       return (Just fp)
 
   where takeVersionSuffix :: FilePath -> String
-        takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") . reverse
+        takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") .
+                            reverse
 
         dropExeExtension :: FilePath -> FilePath
         dropExeExtension filepath =
@@ -310,7 +318,8 @@ configureToolchain ghcProg ghcInfo =
       | otherwise = programFindLocation prog
       where
         look [] verbosity = do
-          warn verbosity ("Couldn't find " ++ programName prog ++ " where I expected it. Trying the search path.")
+          warn verbosity ("Couldn't find " ++ programName prog
+                          ++ " where I expected it. Trying the search path.")
           programFindLocation prog verbosity
         look (f:fs) verbosity = do
           exists <- doesFileExist f
@@ -507,7 +516,8 @@ getInstalledPackages verbosity packagedbs conf = do
 ghcLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 ghcLibDir verbosity lbi =
     (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdoutConf verbosity ghcProgram (withPrograms lbi) ["--print-libdir"]
+     rawSystemProgramStdoutConf verbosity ghcProgram
+     (withPrograms lbi) ["--print-libdir"]
 
 ghcLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 ghcLibDir' verbosity ghcProg =
@@ -829,8 +839,8 @@ buildExe verbosity _pkg_descr lbi
   let exeDir    = targetDir </> (exeName' ++ "-tmp")
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
-  -- TODO: do we need to put hs-boot files into place for mutually recursive modules?
-  -- FIX: what about exeName.hi-boot?
+  -- TODO: do we need to put hs-boot files into place for mutually recursive
+  -- modules?  FIX: what about exeName.hi-boot?
 
   -- build executables
 
@@ -1056,7 +1066,8 @@ installExe :: Verbosity
            -> PackageDescription
            -> Executable
            -> IO ()
-installExe verbosity lbi installDirs buildPref (progprefix, progsuffix) _pkg exe = do
+installExe verbosity lbi installDirs buildPref
+  (progprefix, progsuffix) _pkg exe = do
   let binDir = bindir installDirs
   createDirectoryIfMissingVerbose verbosity True binDir
   let exeFileName = exeName exe <.> exeExtension
