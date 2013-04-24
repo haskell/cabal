@@ -325,7 +325,7 @@ reconfigure verbosity distPref    addConfigFlags
 
     -- Package has never been configured.
     Left err -> do
-      info verbosity err
+      info verbosity (fst err)
       notice verbosity
         $ "Configuring with default flags." ++ configureManually
       configureAction (defaultFlags, defaultConfigExFlags)
