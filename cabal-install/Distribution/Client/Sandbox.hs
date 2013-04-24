@@ -12,6 +12,7 @@ module Distribution.Client.Sandbox (
     sandboxDelete,
     sandboxAddSource,
     sandboxDeleteSource,
+    sandboxListSources,
     sandboxHcPkg,
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
@@ -221,6 +222,17 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
   Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
+
+-- | Entry point for the 'cabal sandbox list-sources' command.
+sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
+                      -> IO ()
+sandboxListSources verbosity _sandboxFlags globalFlags = do
+  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                           (globalConfigFile globalFlags)
+  indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
+
+  refs <- Index.listBuildTreeRefs verbosity indexFile
+  mapM_ putStrLn refs
 
 -- | Invoke the @hc-pkg@ tool with provided arguments, restricted to the
 -- sandbox.

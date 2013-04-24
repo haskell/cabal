@@ -69,6 +69,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxAddSource
                                               ,sandboxDelete
                                               ,sandboxDeleteSource
+                                              ,sandboxListSources
                                               ,sandboxHcPkg
                                               ,dumpPackageEnvironment
 
@@ -679,11 +680,6 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
         sandboxAddSource verbosity extra sandboxFlags globalFlags
 
     -- More advanced commands.
-    ("delete-source":extra) -> do
-        when (noExtraArgs extra) $
-          die "The 'sandbox delete-source' command expects \
-              \at least one argument"
-        sandboxDeleteSource verbosity extra sandboxFlags globalFlags
     ("hc-pkg":extra) -> do
         when (noExtraArgs extra) $
             die $ "The 'sandbox hc-pkg' command expects at least one argument"
@@ -691,7 +687,13 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
     ["buildopts"] -> die "Not implemented!"
 
     -- Hidden commands.
-    ["dump-pkgenv"] -> dumpPackageEnvironment verbosity sandboxFlags globalFlags
+    ("delete-source":extra) -> do
+        when (noExtraArgs extra) $
+          die "The 'sandbox delete-source' command expects \
+              \at least one argument"
+        sandboxDeleteSource verbosity extra sandboxFlags globalFlags
+    ["list-sources"] -> sandboxListSources verbosity sandboxFlags globalFlags
+    ["dump-pkgenv"]  -> dumpPackageEnvironment verbosity sandboxFlags globalFlags
 
     -- Error handling.
     [] -> die $ "Please specify a subcommand (see 'help sandbox')"
