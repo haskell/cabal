@@ -72,7 +72,8 @@ module Distribution.Simple.Setup (
   SDistFlags(..),    emptySDistFlags,    defaultSDistFlags,    sdistCommand,
   TestFlags(..),     emptyTestFlags,     defaultTestFlags,     testCommand,
   TestShowDetails(..),
-  BenchmarkFlags(..), emptyBenchmarkFlags, defaultBenchmarkFlags, benchmarkCommand,
+  BenchmarkFlags(..), emptyBenchmarkFlags,
+  defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, installDirsOptions,
@@ -262,23 +263,29 @@ data ConfigFlags = ConfigFlags {
     -- because the type of configure is constrained by the UserHooks.
     -- when we change UserHooks next we should pass the initial
     -- ProgramConfiguration directly and not via ConfigFlags
-    configPrograms      :: ProgramConfiguration, -- ^All programs that cabal may run
+    configPrograms      :: ProgramConfiguration, -- ^All programs that cabal may
+                                                 -- run
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specifed programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specifed programs args
-    configHcFlavor      :: Flag CompilerFlavor, -- ^The \"flavor\" of the compiler, sugh as GHC or Hugs.
+    configHcFlavor      :: Flag CompilerFlavor, -- ^The \"flavor\" of the
+                                                -- compiler, sugh as GHC or
+                                                -- Hugs.
     configHcPath        :: Flag FilePath, -- ^given compiler location
     configHcPkg         :: Flag FilePath, -- ^given hc-pkg location
     configVanillaLib    :: Flag Bool,     -- ^Enable vanilla library
     configProfLib       :: Flag Bool,     -- ^Enable profiling in the library
     configSharedLib     :: Flag Bool,     -- ^Build shared library
-    configDynExe        :: Flag Bool,     -- ^Enable dynamic linking of the executables.
-    configProfExe       :: Flag Bool,     -- ^Enable profiling in the executables.
+    configDynExe        :: Flag Bool,     -- ^Enable dynamic linking of the
+                                          -- executables.
+    configProfExe       :: Flag Bool,     -- ^Enable profiling in the
+                                          -- executables.
     configConfigureArgs :: [String],      -- ^Extra arguments to @configure@
     configOptimization  :: Flag OptimisationLevel,  -- ^Enable optimization.
     configProgPrefix    :: Flag PathTemplate, -- ^Installed executable prefix.
     configProgSuffix    :: Flag PathTemplate, -- ^Installed executable suffix.
-    configInstallDirs   :: InstallDirs (Flag PathTemplate), -- ^Installation paths
+    configInstallDirs   :: InstallDirs (Flag PathTemplate), -- ^Installation
+                                                            -- paths
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
@@ -323,7 +330,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
-configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags options
+configureCommand progConf = makeCommand name shortDesc
+                            longDesc defaultFlags options
   where
     name       = "configure"
     shortDesc  = "Prepare to build the package."
@@ -339,7 +347,8 @@ configureCommand progConf = makeCommand name shortDesc longDesc defaultFlags opt
 
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions showOrParseArgs =
-      [optionVerbosity configVerbosity (\v flags -> flags { configVerbosity = v })
+      [optionVerbosity configVerbosity
+       (\v flags -> flags { configVerbosity = v })
       ,optionDistPref
          configDistPref (\d flags -> flags { configDistPref = d })
          showOrParseArgs
@@ -866,7 +875,8 @@ defaultRegisterFlags = RegisterFlags {
   }
 
 registerCommand :: CommandUI RegisterFlags
-registerCommand = makeCommand name shortDesc longDesc defaultRegisterFlags options
+registerCommand = makeCommand name shortDesc longDesc
+                  defaultRegisterFlags options
   where
     name       = "register"
     shortDesc  = "Register this package with the compiler."
@@ -901,7 +911,8 @@ registerCommand = makeCommand name shortDesc longDesc defaultRegisterFlags optio
       ]
 
 unregisterCommand :: CommandUI RegisterFlags
-unregisterCommand = makeCommand name shortDesc longDesc defaultRegisterFlags options
+unregisterCommand = makeCommand name shortDesc
+                    longDesc defaultRegisterFlags options
   where
     name       = "unregister"
     shortDesc  = "Unregister this package with the compiler."
@@ -986,13 +997,15 @@ instance Monoid HscolourFlags where
     where combine field = field a `mappend` field b
 
 hscolourCommand :: CommandUI HscolourFlags
-hscolourCommand = makeCommand name shortDesc longDesc defaultHscolourFlags options
+hscolourCommand = makeCommand name shortDesc longDesc
+                  defaultHscolourFlags options
   where
     name       = "hscolour"
     shortDesc  = "Generate HsColour colourised code, in HTML format."
     longDesc   = Just (\_ -> "Requires hscolour.\n")
     options showOrParseArgs =
-      [optionVerbosity hscolourVerbosity (\v flags -> flags { hscolourVerbosity = v })
+      [optionVerbosity hscolourVerbosity
+       (\v flags -> flags { hscolourVerbosity = v })
       ,optionDistPref
          hscolourDistPref (\d flags -> flags { hscolourDistPref = d })
          showOrParseArgs
@@ -1104,7 +1117,7 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
          "Use PATH as the HsColour stylesheet"
          haddockHscolourCss (\v flags -> flags { haddockHscolourCss = v })
          (reqArgFlag "PATH")
-      
+
       ,option "" ["contents-location"]
          "Bake URL in as the location for the contents page"
          haddockContents (\v flags -> flags { haddockContents = v })
@@ -1325,7 +1338,8 @@ data TestFlags = TestFlags {
     testShowDetails :: Flag TestShowDetails,
     testKeepTix     :: Flag Bool,
     testNumJobs     :: Flag (Maybe Int),
-    --TODO: eliminate the test list and pass it directly as positional args to the testHook
+    --TODO: eliminate the test list and pass it directly as positional args to
+    --the testHook
     testList        :: Flag [String],
     -- TODO: think about if/how options are passed to test exes
     testOptions     :: [PathTemplate]
@@ -1455,13 +1469,15 @@ defaultBenchmarkFlags  = BenchmarkFlags {
   }
 
 benchmarkCommand :: CommandUI BenchmarkFlags
-benchmarkCommand = makeCommand name shortDesc longDesc defaultBenchmarkFlags options
+benchmarkCommand = makeCommand name shortDesc
+                   longDesc defaultBenchmarkFlags options
   where
     name       = "bench"
     shortDesc  = "Run the benchmark, if any (configure with UserHooks)."
     longDesc   = Nothing
     options showOrParseArgs =
-      [ optionVerbosity benchmarkVerbosity (\v flags -> flags { benchmarkVerbosity = v })
+      [ optionVerbosity benchmarkVerbosity
+        (\v flags -> flags { benchmarkVerbosity = v })
       , optionDistPref
             benchmarkDistPref (\d flags -> flags { benchmarkDistPref = d })
             showOrParseArgs
@@ -1540,7 +1556,8 @@ programConfigurationPaths progConf showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [withProgramPath "PROG"]
-    ParseArgs -> map (withProgramPath . programName . fst) (knownPrograms progConf)
+    ParseArgs -> map (withProgramPath . programName . fst)
+                 (knownPrograms progConf)
   where
     withProgramPath prog =
       option "" ["with-" ++ prog]
@@ -1559,8 +1576,10 @@ programConfigurationOptions progConf showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [programOptions  "PROG", programOption   "PROG"]
-    ParseArgs -> map (programOptions . programName . fst) (knownPrograms progConf)
-              ++ map (programOption  . programName . fst) (knownPrograms progConf)
+    ParseArgs -> map (programOptions . programName . fst)
+                 (knownPrograms progConf)
+              ++ map (programOption  . programName . fst)
+                 (knownPrograms progConf)
   where
     programOptions prog =
       option "" [prog ++ "-options"]
@@ -1574,17 +1593,20 @@ programConfigurationOptions progConf showOrParseArgs get set =
          " (no need to quote options containing spaces)")
         get set
         (reqArg' "OPT" (\arg -> [(prog, [arg])])
-           (\progArgs -> concat [ args | (prog', args) <- progArgs, prog==prog' ]))
+           (\progArgs -> concat [ args
+                                | (prog', args) <- progArgs, prog==prog' ]))
 
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils
 -- ------------------------------------------------------------
 
-boolOpt :: SFlags -> SFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+boolOpt :: SFlags -> SFlags
+           -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
 boolOpt  = Command.boolOpt  flagToMaybe Flag
 
-boolOpt' :: OptFlags -> OptFlags -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+boolOpt' :: OptFlags -> OptFlags
+            -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
 boolOpt' = Command.boolOpt' flagToMaybe Flag
 
 trueArg, falseArg :: SFlags -> LFlags -> Description -> (b -> Flag Bool) ->
@@ -1653,13 +1675,15 @@ configureArgs bcHack flags
                                                  . config_field
                                                  . configInstallDirs)
 
-configureCCompiler :: Verbosity -> ProgramConfiguration -> IO (FilePath, [String])
+configureCCompiler :: Verbosity -> ProgramConfiguration
+                      -> IO (FilePath, [String])
 configureCCompiler verbosity lbi = configureProg verbosity lbi gccProgram
 
 configureLinker :: Verbosity -> ProgramConfiguration -> IO (FilePath, [String])
 configureLinker verbosity lbi = configureProg verbosity lbi ldProgram
 
-configureProg :: Verbosity -> ProgramConfiguration -> Program -> IO (FilePath, [String])
+configureProg :: Verbosity -> ProgramConfiguration -> Program
+                 -> IO (FilePath, [String])
 configureProg verbosity programConfig prog = do
     (p, _) <- requireProgram verbosity prog programConfig
     let pInv = programInvocation p []
