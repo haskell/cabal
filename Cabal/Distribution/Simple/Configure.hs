@@ -60,9 +60,12 @@ module Distribution.Simple.Configure (configure,
                                       getInstalledPackages,
                                       configCompiler, configCompilerAux,
                                       ccLdOptionsBuildInfo,
-                                      tryGetConfigStateFile,
                                       checkForeignDeps,
                                       interpretPackageDbFlags,
+
+                                      ConfigStateFileErrorType(..),
+                                      ConfigStateFileError,
+                                      tryGetConfigStateFile,
                                      )
     where
 
@@ -159,27 +162,36 @@ import Distribution.Compat.Exception ( catchExit, catchIO )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
-tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
+data ConfigStateFileErrorType = ConfigStateFileCantParse
+                              | ConfigStateFileMissing
+                              | ConfigStateFileBadVersion
+                              deriving Eq
+type ConfigStateFileError = (String, ConfigStateFileErrorType)
+
+tryGetConfigStateFile :: (Read a) => FilePath
+                         -> IO (Either ConfigStateFileError a)
 tryGetConfigStateFile filename = do
   exists <- doesFileExist filename
   if not exists
-    then return (Left missing)
+    then return (Left (missing, ConfigStateFileMissing))
     else withFileContents filename $ \str ->
       case lines str of
         [header, rest] -> case checkHeader header of
-          Just msg -> return (Left msg)
+          Just err -> return (Left err)
           Nothing  -> case reads rest of
             [(bi,_)] -> return (Right bi)
-            _        -> return (Left cantParse)
-        _            -> return (Left cantParse)
+            _        -> return (Left (cantParse, ConfigStateFileCantParse))
+        _            -> return (Left (cantParse, ConfigStateFileCantParse))
   where
-    checkHeader :: String -> Maybe String
+    checkHeader :: String -> Maybe ConfigStateFileError
     checkHeader header = case parseHeader header of
       Just (cabalId, compId)
         | cabalId
        == currentCabalId -> Nothing
-        | otherwise      -> Just (badVersion cabalId compId)
-      Nothing            -> Just cantParse
+        | otherwise      -> Just (badVersion cabalId compId
+                                 ,ConfigStateFileBadVersion)
+      Nothing            -> Just (cantParse
+                                 ,ConfigStateFileCantParse)
 
     missing   = "Run the 'configure' command first."
     cantParse = "Saved package config file seems to be corrupt. "
@@ -198,7 +210,8 @@ tryGetConfigStateFile filename = do
              ++ ") which is probably the cause of the problem."
 
 -- |Try to read the 'localBuildInfoFile'.
-tryGetPersistBuildConfig :: FilePath -> IO (Either String LocalBuildInfo)
+tryGetPersistBuildConfig :: FilePath
+                            -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetPersistBuildConfig distPref
     = tryGetConfigStateFile (localBuildInfoFile distPref)
 
@@ -208,7 +221,7 @@ tryGetPersistBuildConfig distPref
 getPersistBuildConfig :: FilePath -> IO LocalBuildInfo
 getPersistBuildConfig distPref = do
   lbi <- tryGetPersistBuildConfig distPref
-  either die return lbi
+  either (die . fst) return lbi
 
 -- |Try to read the 'localBuildInfoFile'.
 maybeGetPersistBuildConfig :: FilePath -> IO (Maybe LocalBuildInfo)
