@@ -190,15 +190,25 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
 sandboxDelete verbosity sandboxFlags _globalFlags = do
   pkgEnvDir <- getCurrentDirectory
+
+  -- Remove the cabal.sandbox.config file
   removeFile (pkgEnvDir </> sandboxPackageEnvironmentFile)
-  if sandboxLoc == defaultSandboxLocation
-    then do
-      sandboxDir <- canonicalizePath sandboxLoc
-      notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
-      removeDirectoryRecursive sandboxDir
-    else
-      die $ "Non-default sandbox location used: " ++ sandboxLoc
-      ++ "\nPlease delete manually."
+
+  -- Remove the sandbox directory, unless it doesn't exist or we're using a
+  -- shared sandbox.
+  sandboxLocDoesNotExist  <- fmap not . doesDirectoryExist $ sandboxLoc
+  let isNonDefaultLocation = sandboxLoc /= (pkgEnvDir </> defaultSandboxLocation)
+
+  when sandboxLocDoesNotExist $
+    die $ "Sandbox directory does not exist: " ++ sandboxLoc
+  when isNonDefaultLocation $
+    die $ "Non-default sandbox location used: " ++ sandboxLoc
+    ++ "\nAssuming a shared sandbox. Please delete manually."
+
+  sandboxDir <- canonicalizePath sandboxLoc
+  notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
+  removeDirectoryRecursive sandboxDir
+
   where
     sandboxLoc = fromFlagOrDefault defaultSandboxLocation
                  (sandboxLocation sandboxFlags)
