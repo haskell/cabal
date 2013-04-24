@@ -688,7 +688,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
     do let vanilla = ifVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
            shared  = ifSharedLib  forceSharedLib  (runGhcProg sharedOpts)
        if isGhcDynamic then do shared;  vanilla
-                     else do vanilla; shared
+                       else do vanilla; shared
        ifProfLib (runGhcProg profOpts)
 
   -- build any C sources
@@ -696,8 +696,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
      info verbosity "Building C Sources..."
      sequence_
        [ do let vanillaCcOpts = (componentCcGhcOptions verbosity lbi
-                                    libBi clbi pref filename) `mappend` mempty {
-                                  ghcOptProfilingMode = toFlag (withProfLib lbi)
+                                    libBi clbi pref filename)
+                profCcOpts    = vanillaCcOpts `mappend` mempty {
+                                  ghcOptProfilingMode = toFlag True,
+                                  ghcOptObjSuffix     = toFlag "p_o"
                                 }
                 sharedCcOpts  = vanillaCcOpts `mappend` mempty {
                                   ghcOptFPic      = toFlag True,
@@ -708,12 +710,16 @@ buildLib verbosity pkg_descr lbi lib clbi = do
             createDirectoryIfMissingVerbose verbosity True odir
             runGhcProg vanillaCcOpts
             ifSharedLib forceSharedLib (runGhcProg sharedCcOpts)
+            ifProfLib (runGhcProg profCcOpts)
        | filename <- cSources libBi]
 
   -- link:
   info verbosity "Linking..."
-  let cObjs = map (`replaceExtension` objExtension) (cSources libBi)
-      cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension)) (cSources libBi)
+  let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
+      cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
+                    (cSources libBi)
+      cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
+                    (cSources libBi)
       cid = compilerId (compiler lbi)
       vanillaLibFilePath = libTargetDir </> mkLibName           libName
       profileLibFilePath = libTargetDir </> mkProfLibName       libName
@@ -764,7 +770,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
             ++ stubObjs
         profObjectFiles =
                hProfObjs
-            ++ map (pref </>) cObjs
+            ++ map (pref </>) cProfObjs
             ++ stubProfObjs
         ghciObjFiles =
                hObjs
