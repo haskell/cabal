@@ -1318,28 +1318,28 @@ instance Monoid TestShowDetails where
     mappend a b = if a < b then b else a
 
 data TestFlags = TestFlags {
-    testDistPref  :: Flag FilePath,
-    testVerbosity :: Flag Verbosity,
-    testHumanLog :: Flag PathTemplate,
-    testMachineLog :: Flag PathTemplate,
+    testDistPref    :: Flag FilePath,
+    testVerbosity   :: Flag Verbosity,
+    testHumanLog    :: Flag PathTemplate,
+    testMachineLog  :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
-    testKeepTix :: Flag Bool,
+    testKeepTix     :: Flag Bool,
     --TODO: eliminate the test list and pass it directly as positional args to the testHook
-    testList :: Flag [String],
+    testList        :: Flag [String],
     -- TODO: think about if/how options are passed to test exes
-    testOptions :: [PathTemplate]
+    testOptions     :: [PathTemplate]
   }
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
-    testDistPref  = Flag defaultDistPref,
-    testVerbosity = Flag normal,
-    testHumanLog = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
-    testMachineLog = toFlag $ toPathTemplate $ "$pkgid.log",
+    testDistPref    = Flag defaultDistPref,
+    testVerbosity   = Flag normal,
+    testHumanLog    = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
+    testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
-    testKeepTix = toFlag False,
-    testList = Flag [],
-    testOptions = []
+    testKeepTix     = toFlag False,
+    testList        = Flag [],
+    testOptions     = []
   }
 
 testCommand :: CommandUI TestFlags
@@ -1404,24 +1404,24 @@ emptyTestFlags  = mempty
 
 instance Monoid TestFlags where
   mempty = TestFlags {
-    testDistPref  = mempty,
-    testVerbosity = mempty,
-    testHumanLog = mempty,
-    testMachineLog = mempty,
+    testDistPref    = mempty,
+    testVerbosity   = mempty,
+    testHumanLog    = mempty,
+    testMachineLog  = mempty,
     testShowDetails = mempty,
-    testKeepTix = mempty,
-    testList = mempty,
-    testOptions = mempty
+    testKeepTix     = mempty,
+    testList        = mempty,
+    testOptions     = mempty
   }
   mappend a b = TestFlags {
-    testDistPref  = combine testDistPref,
-    testVerbosity = combine testVerbosity,
-    testHumanLog = combine testHumanLog,
-    testMachineLog = combine testMachineLog,
+    testDistPref    = combine testDistPref,
+    testVerbosity   = combine testVerbosity,
+    testHumanLog    = combine testHumanLog,
+    testMachineLog  = combine testMachineLog,
     testShowDetails = combine testShowDetails,
-    testKeepTix = combine testKeepTix,
-    testList = combine testList,
-    testOptions = combine testOptions
+    testKeepTix     = combine testKeepTix,
+    testList        = combine testList,
+    testOptions     = combine testOptions
   }
     where combine field = field a `mappend` field b
 
@@ -1432,14 +1432,14 @@ instance Monoid TestFlags where
 data BenchmarkFlags = BenchmarkFlags {
     benchmarkDistPref  :: Flag FilePath,
     benchmarkVerbosity :: Flag Verbosity,
-    benchmarkOptions :: [PathTemplate]
+    benchmarkOptions   :: [PathTemplate]
   }
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {
     benchmarkDistPref  = Flag defaultDistPref,
     benchmarkVerbosity = Flag normal,
-    benchmarkOptions = []
+    benchmarkOptions   = []
   }
 
 benchmarkCommand :: CommandUI BenchmarkFlags
@@ -1477,12 +1477,12 @@ instance Monoid BenchmarkFlags where
   mempty = BenchmarkFlags {
     benchmarkDistPref  = mempty,
     benchmarkVerbosity = mempty,
-    benchmarkOptions = mempty
+    benchmarkOptions   = mempty
   }
   mappend a b = BenchmarkFlags {
     benchmarkDistPref  = combine benchmarkDistPref,
     benchmarkVerbosity = combine benchmarkVerbosity,
-    benchmarkOptions = combine benchmarkOptions
+    benchmarkOptions   = combine benchmarkOptions
   }
     where combine field = field a `mappend` field b
 
