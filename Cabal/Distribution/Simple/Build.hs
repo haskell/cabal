@@ -77,7 +77,7 @@ import Distribution.ModuleName (ModuleName)
 
 import Distribution.Simple.Setup
          ( BuildFlags(..), fromFlag )
-import Distribution.Simple.BuildTarget 
+import Distribution.Simple.BuildTarget
          ( BuildTarget(..), readBuildTargets )
 import Distribution.Simple.PreProcess
          ( preprocessComponent, PPSuffixHandler )
@@ -376,7 +376,7 @@ checkBuildTargets _ pkg []      =
     return [ (componentName c, Nothing) | c <- pkgEnabledComponents pkg ]
 
 checkBuildTargets verbosity pkg targets = do
-    
+
     let (enabled, disabled) =
           partitionEithers
             [ case componentDisabledReason (getComponent pkg cname) of
