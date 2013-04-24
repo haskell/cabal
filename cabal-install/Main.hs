@@ -449,7 +449,8 @@ testAction testFlags extraArgs globalFlags = do
         | otherwise = Just "Re-configuring with test suites enabled."
 
   -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity NoFlag globalFlags
+  useSandbox <- maybeInstallAddSourceDeps verbosity
+                (testNumJobs testFlags) globalFlags
 
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -471,7 +472,8 @@ benchmarkAction benchmarkFlags extraArgs globalFlags = do
         | otherwise = Just "Re-configuring with benchmarks enabled."
 
   -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity NoFlag globalFlags
+  useSandbox <- maybeInstallAddSourceDeps verbosity
+                (benchmarkNumJobs benchmarkFlags) globalFlags
 
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
   maybeWithSandboxDirOnSearchPath useSandbox $
