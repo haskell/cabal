@@ -90,7 +90,7 @@ import Distribution.Simple.Command
          , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
-         , tryGetPersistBuildConfig )
+         , ConfigStateFileErrorType(..), tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, info, topHandler )
@@ -323,13 +323,20 @@ reconfigure verbosity distPref    addConfigFlags
   eLbi <- tryGetPersistBuildConfig distPref
   case eLbi of
 
-    -- Package has never been configured.
-    Left err -> do
-      info verbosity (fst err)
-      notice verbosity
-        $ "Configuring with default flags." ++ configureManually
-      configureAction (defaultFlags, defaultConfigExFlags)
-                      extraArgs globalFlags
+    -- We couldn't load the saved package config file.
+    Left (err, errCode) -> do
+      let msg = case errCode of
+            ConfigStateFileMissing    -> "Package has never been configured."
+            ConfigStateFileCantParse  -> "Saved package config file seems "
+                                         ++ "to be corrupt."
+            ConfigStateFileBadVersion -> err
+      case errCode of
+        ConfigStateFileBadVersion -> info verbosity msg
+        _                         -> do
+          notice verbosity
+            $ msg ++ " Configuring with default flags." ++ configureManually
+          configureAction (defaultFlags, defaultConfigExFlags)
+            extraArgs globalFlags
 
     -- Package has been configured, but the configuration may be out of
     -- date or required flags may not be set.
