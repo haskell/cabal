@@ -11,6 +11,7 @@ module Distribution.Client.Sandbox (
     sandboxInit,
     sandboxDelete,
     sandboxAddSource,
+    sandboxDeleteSource,
     sandboxHcPkg,
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
@@ -201,7 +202,7 @@ sandboxDelete verbosity sandboxFlags _globalFlags = do
     sandboxLoc = fromFlagOrDefault defaultSandboxLocation
                  (sandboxLocation sandboxFlags)
 
--- | Entry point for the 'cabal sandbox-add-source' command.
+-- | Entry point for the 'cabal sandbox add-source' command.
 sandboxAddSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
                     -> IO ()
 sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
@@ -210,6 +211,16 @@ sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
   Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
+
+-- | Entry point for the 'cabal sandbox delete-source' command.
+sandboxDeleteSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
+                       -> IO ()
+sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
+  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                           (globalConfigFile globalFlags)
+  indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
+
+  Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
 
 -- | Invoke the @hc-pkg@ tool with provided arguments, restricted to the
 -- sandbox.
