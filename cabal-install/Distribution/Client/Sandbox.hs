@@ -200,7 +200,7 @@ sandboxDelete verbosity sandboxFlags _globalFlags = do
   let isNonDefaultLocation = sandboxLoc /= (pkgEnvDir </> defaultSandboxLocation)
 
   when sandboxLocDoesNotExist $
-    die $ "Sandbox directory does not exist: " ++ sandboxLoc
+    die $ "No sandbox exists at this location: " ++ sandboxLoc
   when isNonDefaultLocation $
     die $ "Non-default sandbox location used: " ++ sandboxLoc
     ++ "\nAssuming a shared sandbox. Please delete manually."
