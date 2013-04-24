@@ -1324,6 +1324,7 @@ data TestFlags = TestFlags {
     testMachineLog  :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     testKeepTix     :: Flag Bool,
+    testNumJobs     :: Flag (Maybe Int),
     --TODO: eliminate the test list and pass it directly as positional args to the testHook
     testList        :: Flag [String],
     -- TODO: think about if/how options are passed to test exes
@@ -1338,6 +1339,7 @@ defaultTestFlags  = TestFlags {
     testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testKeepTix     = toFlag False,
+    testNumJobs     = mempty,
     testList        = Flag [],
     testOptions     = []
   }
@@ -1382,6 +1384,12 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
             "keep .tix files for HPC between test runs"
             testKeepTix (\v flags -> flags { testKeepTix = v})
             trueArg
+      , option "j" ["jobs"]
+            "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+            testNumJobs (\v flags -> flags { testNumJobs = v })
+            (optArg "NUM" (fmap Flag numJobsParser)
+             (Flag Nothing)
+             (map (Just . maybe "$ncpus" show) . flagToList))
       , option [] ["test-options"]
             ("give extra options to test executables "
              ++ "(name templates can use $pkgid, $compiler, "
@@ -1410,6 +1418,7 @@ instance Monoid TestFlags where
     testMachineLog  = mempty,
     testShowDetails = mempty,
     testKeepTix     = mempty,
+    testNumJobs     = mempty,
     testList        = mempty,
     testOptions     = mempty
   }
@@ -1420,6 +1429,7 @@ instance Monoid TestFlags where
     testMachineLog  = combine testMachineLog,
     testShowDetails = combine testShowDetails,
     testKeepTix     = combine testKeepTix,
+    testNumJobs     = combine testNumJobs,
     testList        = combine testList,
     testOptions     = combine testOptions
   }
@@ -1432,14 +1442,16 @@ instance Monoid TestFlags where
 data BenchmarkFlags = BenchmarkFlags {
     benchmarkDistPref  :: Flag FilePath,
     benchmarkVerbosity :: Flag Verbosity,
-    benchmarkOptions   :: [PathTemplate]
+    benchmarkOptions   :: [PathTemplate],
+    benchmarkNumJobs   :: Flag (Maybe Int)
   }
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {
     benchmarkDistPref  = Flag defaultDistPref,
     benchmarkVerbosity = Flag normal,
-    benchmarkOptions   = []
+    benchmarkOptions   = [],
+    benchmarkNumJobs   = mempty
   }
 
 benchmarkCommand :: CommandUI BenchmarkFlags
@@ -1468,6 +1480,12 @@ benchmarkCommand = makeCommand name shortDesc longDesc defaultBenchmarkFlags opt
             benchmarkOptions (\v flags -> flags { benchmarkOptions = v })
             (reqArg' "TEMPLATE" (\x -> [toPathTemplate x])
                 (map fromPathTemplate))
+      , option "j" ["jobs"]
+            "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+            benchmarkNumJobs (\v flags -> flags { benchmarkNumJobs = v })
+            (optArg "NUM" (fmap Flag numJobsParser)
+             (Flag Nothing)
+             (map (Just . maybe "$ncpus" show) . flagToList))
       ]
 
 emptyBenchmarkFlags :: BenchmarkFlags
@@ -1477,12 +1495,14 @@ instance Monoid BenchmarkFlags where
   mempty = BenchmarkFlags {
     benchmarkDistPref  = mempty,
     benchmarkVerbosity = mempty,
-    benchmarkOptions   = mempty
+    benchmarkOptions   = mempty,
+    benchmarkNumJobs   = mempty
   }
   mappend a b = BenchmarkFlags {
     benchmarkDistPref  = combine benchmarkDistPref,
     benchmarkVerbosity = combine benchmarkVerbosity,
-    benchmarkOptions   = combine benchmarkOptions
+    benchmarkOptions   = combine benchmarkOptions,
+    benchmarkNumJobs   = combine benchmarkNumJobs
   }
     where combine field = field a `mappend` field b
 
