@@ -60,9 +60,12 @@ module Distribution.Simple.Configure (configure,
                                       getInstalledPackages,
                                       configCompiler, configCompilerAux,
                                       ccLdOptionsBuildInfo,
-                                      tryGetConfigStateFile,
                                       checkForeignDeps,
                                       interpretPackageDbFlags,
+
+                                      ConfigStateFileErrorType(..),
+                                      ConfigStateFileError,
+                                      tryGetConfigStateFile,
                                      )
     where
 
@@ -143,7 +146,8 @@ import Data.Maybe
 import Data.Monoid
     ( Monoid(..) )
 import System.Directory
-    ( doesFileExist, getModificationTime, createDirectoryIfMissing, getTemporaryDirectory )
+    ( doesFileExist, getModificationTime,
+      createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
     ( (</>), isAbsolute )
 import qualified System.Info
@@ -158,27 +162,36 @@ import Distribution.Compat.Exception ( catchExit, catchIO )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
-tryGetConfigStateFile :: (Read a) => FilePath -> IO (Either String a)
+data ConfigStateFileErrorType = ConfigStateFileCantParse
+                              | ConfigStateFileMissing
+                              | ConfigStateFileBadVersion
+                              deriving Eq
+type ConfigStateFileError = (String, ConfigStateFileErrorType)
+
+tryGetConfigStateFile :: (Read a) => FilePath
+                         -> IO (Either ConfigStateFileError a)
 tryGetConfigStateFile filename = do
   exists <- doesFileExist filename
   if not exists
-    then return (Left missing)
+    then return (Left (missing, ConfigStateFileMissing))
     else withFileContents filename $ \str ->
       case lines str of
         [header, rest] -> case checkHeader header of
-          Just msg -> return (Left msg)
+          Just err -> return (Left err)
           Nothing  -> case reads rest of
             [(bi,_)] -> return (Right bi)
-            _        -> return (Left cantParse)
-        _            -> return (Left cantParse)
+            _        -> return (Left (cantParse, ConfigStateFileCantParse))
+        _            -> return (Left (cantParse, ConfigStateFileCantParse))
   where
-    checkHeader :: String -> Maybe String
+    checkHeader :: String -> Maybe ConfigStateFileError
     checkHeader header = case parseHeader header of
       Just (cabalId, compId)
         | cabalId
        == currentCabalId -> Nothing
-        | otherwise      -> Just (badVersion cabalId compId)
-      Nothing            -> Just cantParse
+        | otherwise      -> Just (badVersion cabalId compId
+                                 ,ConfigStateFileBadVersion)
+      Nothing            -> Just (cantParse
+                                 ,ConfigStateFileCantParse)
 
     missing   = "Run the 'configure' command first."
     cantParse = "Saved package config file seems to be corrupt. "
@@ -197,7 +210,8 @@ tryGetConfigStateFile filename = do
              ++ ") which is probably the cause of the problem."
 
 -- |Try to read the 'localBuildInfoFile'.
-tryGetPersistBuildConfig :: FilePath -> IO (Either String LocalBuildInfo)
+tryGetPersistBuildConfig :: FilePath
+                            -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetPersistBuildConfig distPref
     = tryGetConfigStateFile (localBuildInfoFile distPref)
 
@@ -207,7 +221,7 @@ tryGetPersistBuildConfig distPref
 getPersistBuildConfig :: FilePath -> IO LocalBuildInfo
 getPersistBuildConfig distPref = do
   lbi <- tryGetPersistBuildConfig distPref
-  either die return lbi
+  either (die . fst) return lbi
 
 -- |Try to read the 'localBuildInfoFile'.
 maybeGetPersistBuildConfig :: FilePath -> IO (Maybe LocalBuildInfo)
@@ -317,7 +331,8 @@ configure (pkg_descr0, pbi) cfg
                 --      package ID into an installed package id we can use
                 --      for the internal package set. The open-codes use of
                 --      InstalledPackageId . display here is a hack.
-                Installed.installedPackageId = InstalledPackageId $ display $ pid,
+                Installed.installedPackageId =
+                   InstalledPackageId $ display $ pid,
                 Installed.sourcePackageId = pid
               }
             internalPackageSet = PackageIndex.fromList [internalPackage]
@@ -332,8 +347,10 @@ configure (pkg_descr0, pbi) cfg
             enableTest t = t { testEnabled = fromFlag (configTests cfg) }
             flaggedTests = map (\(n, t) -> (n, mapTreeData enableTest t))
                                (condTestSuites pkg_descr0)
-            enableBenchmark bm = bm { benchmarkEnabled = fromFlag (configBenchmarks cfg) }
-            flaggedBenchmarks = map (\(n, bm) -> (n, mapTreeData enableBenchmark bm))
+            enableBenchmark bm = bm { benchmarkEnabled =
+                                         fromFlag (configBenchmarks cfg) }
+            flaggedBenchmarks = map (\(n, bm) ->
+                                      (n, mapTreeData enableBenchmark bm))
                                (condBenchmarks pkg_descr0)
             pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
                                       , condBenchmarks = flaggedBenchmarks }
@@ -371,12 +388,16 @@ configure (pkg_descr0, pbi) cfg
                 (\xs -> ([ x | Left x <- xs ], [ x | Right x <- xs ]))
               . map (selectDependency internalPackageSet installedPackageSet)
 
-            (failedDeps, allPkgDeps) = selectDependencies (buildDepends pkg_descr)
+            (failedDeps, allPkgDeps) =
+              selectDependencies (buildDepends pkg_descr)
 
-            internalPkgDeps = [ pkgid | InternalDependency _ pkgid <- allPkgDeps ]
-            externalPkgDeps = [ pkg   | ExternalDependency _ pkg   <- allPkgDeps ]
+            internalPkgDeps = [ pkgid
+                              | InternalDependency _ pkgid <- allPkgDeps ]
+            externalPkgDeps = [ pkg
+                              | ExternalDependency _ pkg   <- allPkgDeps ]
 
-        when (not (null internalPkgDeps) && not (newPackageDepsBehaviour pkg_descr)) $
+        when (not (null internalPkgDeps)
+              && not (newPackageDepsBehaviour pkg_descr)) $
             die $ "The field 'build-depends: "
                ++ intercalate ", " (map (display . packageName) internalPkgDeps)
                ++ "' refers to a library which is defined within the same "
@@ -401,9 +422,11 @@ configure (pkg_descr0, pbi) cfg
                             | (pkg, deps) <- broken ]
 
         let pseudoTopPkg = emptyInstalledPackageInfo {
-                Installed.installedPackageId = InstalledPackageId (display (packageId pkg_descr)),
+                Installed.installedPackageId =
+                   InstalledPackageId (display (packageId pkg_descr)),
                 Installed.sourcePackageId = packageId pkg_descr,
-                Installed.depends = map Installed.installedPackageId externalPkgDeps
+                Installed.depends =
+                  map Installed.installedPackageId externalPkgDeps
               }
         case PackageIndex.dependencyInconsistencies
            . PackageIndex.insert pseudoTopPkg
@@ -431,7 +454,8 @@ configure (pkg_descr0, pbi) cfg
                             defaultDirs (configInstallDirs cfg)
 
         -- check languages and extensions
-        let langlist = nub $ catMaybes $ map defaultLanguage (allBuildInfo pkg_descr)
+        let langlist = nub $ catMaybes $ map defaultLanguage
+                       (allBuildInfo pkg_descr)
         let langs = unsupportedLanguages comp langlist
         when (not (null langs)) $
           die $ "The package " ++ display (packageId pkg_descr0)
@@ -452,7 +476,8 @@ configure (pkg_descr0, pbi) cfg
               [ buildTool
               | let exeNames = map exeName (executables pkg_descr)
               , bi <- allBuildInfo pkg_descr
-              , buildTool@(Dependency (PackageName toolName) reqVer) <- buildTools bi
+              , buildTool@(Dependency (PackageName toolName) reqVer)
+                <- buildTools bi
               , let isInternal =
                         toolName `elem` exeNames
                         -- we assume all internal build-tools are
@@ -506,8 +531,10 @@ configure (pkg_descr0, pbi) cfg
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
                     withProfLib         = fromFlag $ configProfLib cfg,
-                    withSharedLib       = fromFlagOrDefault sharedLibsByDefault $ configSharedLib cfg,
-                    withDynExe          = fromFlagOrDefault sharedLibsByDefault $ configDynExe cfg,
+                    withSharedLib       = fromFlagOrDefault sharedLibsByDefault $
+                                          configSharedLib cfg,
+                    withDynExe          = fromFlagOrDefault sharedLibsByDefault $
+                                          configDynExe cfg,
                     withProfExe         = fromFlag $ configProfExe cfg,
                     withOptimization    = fromFlag $ configOptimization cfg,
                     withGHCiLib         = fromFlag $ configGHCiLib cfg,
@@ -552,10 +579,13 @@ configure (pkg_descr0, pbi) cfg
       addExtraIncludeLibDirs pkg_descr =
           let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
                                , PD.includeDirs = configExtraIncludeDirs cfg}
-              modifyLib l        = l{ libBuildInfo = libBuildInfo l `mappend` extraBi }
-              modifyExecutable e = e{ buildInfo    = buildInfo e    `mappend` extraBi}
+              modifyLib l        = l{ libBuildInfo = libBuildInfo l
+                                                     `mappend` extraBi }
+              modifyExecutable e = e{ buildInfo    = buildInfo e
+                                                     `mappend` extraBi}
           in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
-                      , executables = modifyExecutable  `map` executables pkg_descr}
+                      , executables = modifyExecutable  `map`
+                                      executables pkg_descr}
 
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies
@@ -576,7 +606,8 @@ hackageUrl :: String
 hackageUrl = "http://hackage.haskell.org/package/"
 
 data ResolvedDependency = ExternalDependency Dependency InstalledPackageInfo
-                        | InternalDependency Dependency PackageId -- should be a lib name
+                        | InternalDependency Dependency PackageId -- should be a
+                                                                  -- lib name
 
 data FailedDependency = DependencyNotExists PackageName
                       | DependencyNoVersion Dependency
@@ -675,7 +706,8 @@ interpretPackageDbFlags userInstall specificDBs =
     extra dbs' (Just db:dbs) = extra (dbs' ++ [db]) dbs
 
 newPackageDepsBehaviourMinVersion :: Version
-newPackageDepsBehaviourMinVersion = Version { versionBranch = [1,7,1], versionTags = [] }
+newPackageDepsBehaviourMinVersion = Version { versionBranch = [1,7,1],
+                                              versionTags = [] }
 
 -- In older cabal versions, there was only one set of package dependencies for
 -- the whole package. In this version, we can have separate dependencies per
@@ -689,12 +721,15 @@ newPackageDepsBehaviour pkg =
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
 
-configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramConfiguration -> IO ProgramConfiguration
+configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramConfiguration
+                             -> IO ProgramConfiguration
 configureRequiredPrograms verbosity deps conf =
   foldM (configureRequiredProgram verbosity) conf deps
 
-configureRequiredProgram :: Verbosity -> ProgramConfiguration -> Dependency -> IO ProgramConfiguration
-configureRequiredProgram verbosity conf (Dependency (PackageName progName) verRange) =
+configureRequiredProgram :: Verbosity -> ProgramConfiguration -> Dependency
+                            -> IO ProgramConfiguration
+configureRequiredProgram verbosity conf
+  (Dependency (PackageName progName) verRange) =
   case lookupKnownProgram progName conf of
     Nothing -> die ("Unknown build tool " ++ progName)
     Just prog
@@ -830,7 +865,8 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
 mkComponentsLocalBuildInfo :: PackageDescription
                            -> [PackageId] -> [InstalledPackageInfo]
                            -> Either [ComponentName]
-                                     [(ComponentName, ComponentLocalBuildInfo, [ComponentName])]
+                                     [(ComponentName,
+                                       ComponentLocalBuildInfo, [ComponentName])]
 mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps =
     let graph = [ (c, componentName c, componentDeps c)
                 | c <- pkgEnabledComponents pkg_descr ]
@@ -842,8 +878,10 @@ mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps =
   where
     -- The dependencies for the given component
     componentDeps component =
-         [ CExeName toolname | Dependency (PackageName toolname) _ <- buildTools bi
-                             , toolname `elem` map exeName (executables pkg_descr) ]
+         [ CExeName toolname | Dependency (PackageName toolname) _
+                               <- buildTools bi
+                             , toolname `elem` map exeName
+                               (executables pkg_descr) ]
 
       ++ [ CLibName          | Dependency pkgname _ <- targetBuildDepends bi
                              , pkgname `elem` map packageName internalPkgDeps ]
@@ -860,7 +898,8 @@ mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps =
       CLib _ ->
         LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
-          componentLibraries = [LibraryName ("HS" ++ display (package pkg_descr))]
+          componentLibraries = [LibraryName
+                                ("HS" ++ display (package pkg_descr))]
         }
       CExe _ ->
         ExeComponentLocalBuildInfo {
@@ -908,7 +947,8 @@ reportComponentCycle cnames =
 -- TODO: produce a log file from the compiler errors, if any.
 checkForeignDeps :: PackageDescription -> LocalBuildInfo -> Verbosity -> IO ()
 checkForeignDeps pkg lbi verbosity = do
-  ifBuildsWith allHeaders (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling lucky
+  ifBuildsWith allHeaders (commonCcArgs ++ makeLdArgs allLibs) -- I'm feeling
+                                                               -- lucky
            (return ())
            (do missingLibs <- findMissingLibs
                missingHdr  <- findOffendingHdr
