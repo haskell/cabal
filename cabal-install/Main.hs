@@ -68,6 +68,7 @@ import Distribution.Client.PackageEnvironment (setPackageDB)
 import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxAddSource
                                               ,sandboxDelete
+                                              ,sandboxDeleteSource
                                               ,sandboxHcPkg
                                               ,dumpPackageEnvironment
 
@@ -667,10 +668,15 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
     ["delete"] -> sandboxDelete verbosity sandboxFlags globalFlags
     ("add-source":extra) -> do
         when (noExtraArgs extra) $
-          die $ "The 'sandbox add-source' command expects at least one argument"
+          die "The 'sandbox add-source' command expects at least one argument"
         sandboxAddSource verbosity extra sandboxFlags globalFlags
 
     -- More advanced commands.
+    ("delete-source":extra) -> do
+        when (noExtraArgs extra) $
+          die "The 'sandbox delete-source' command expects \
+              \at least one argument"
+        sandboxDeleteSource verbosity extra sandboxFlags globalFlags
     ("hc-pkg":extra) -> do
         when (noExtraArgs extra) $
             die $ "The 'sandbox hc-pkg' command expects at least one argument"
