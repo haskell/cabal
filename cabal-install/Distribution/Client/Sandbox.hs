@@ -188,30 +188,28 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
 -- | Entry point for the 'cabal sandbox-delete' command.
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
-sandboxDelete verbosity sandboxFlags _globalFlags = do
-  pkgEnvDir <- getCurrentDirectory
+sandboxDelete verbosity _sandboxFlags globalFlags = do
+  (useSandbox, _) <- loadConfigOrSandboxConfig verbosity
+                     (globalConfigFile globalFlags) mempty
+  case useSandbox of
+    NoSandbox -> die "Not in a sandbox."
+    UseSandbox sandboxDir -> do
+      pkgEnvDir  <- getCurrentDirectory
 
-  -- Remove the cabal.sandbox.config file
-  removeFile (pkgEnvDir </> sandboxPackageEnvironmentFile)
+      -- Remove the cabal.sandbox.config file
+      removeFile (pkgEnvDir </> sandboxPackageEnvironmentFile)
 
-  -- Remove the sandbox directory, unless it doesn't exist or we're using a
-  -- shared sandbox.
-  sandboxLocDoesNotExist  <- fmap not . doesDirectoryExist $ sandboxLoc
-  let isNonDefaultLocation = sandboxLoc /= (pkgEnvDir </> defaultSandboxLocation)
+      -- Remove the sandbox directory, unless we're using a shared sandbox.
+      let isNonDefaultLocation = sandboxDir /=
+                                 (pkgEnvDir </> defaultSandboxLocation)
 
-  when sandboxLocDoesNotExist $
-    die $ "No sandbox exists at this location: " ++ sandboxLoc
-  when isNonDefaultLocation $
-    die $ "Non-default sandbox location used: " ++ sandboxLoc
-    ++ "\nAssuming a shared sandbox. Please delete manually."
+      when isNonDefaultLocation $
+        die $ "Non-default sandbox location used: '" ++ sandboxDir
+        ++ "'\nAssuming a shared sandbox. Please delete '"
+        ++ sandboxDir ++ "' manually."
 
-  sandboxDir <- tryCanonicalizePath sandboxLoc
-  notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
-  removeDirectoryRecursive sandboxDir
-
-  where
-    sandboxLoc = fromFlagOrDefault defaultSandboxLocation
-                 (sandboxLocation sandboxFlags)
+      notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
+      removeDirectoryRecursive sandboxDir
 
 -- | Entry point for the 'cabal sandbox add-source' command.
 sandboxAddSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
