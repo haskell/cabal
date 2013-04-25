@@ -639,10 +639,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
   let pref = buildDir lbi
       pkgid = packageId pkg_descr
-      ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
-      ifProfLib = when (withProfLib lbi)
-      ifSharedLib forceShared = when (forceShared || withSharedLib lbi)
-      ifGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
+      whenVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
+      whenProfLib = when (withProfLib lbi)
+      whenSharedLib forceShared = when (forceShared || withSharedLib lbi)
+      whenGHCiLib = when (withGHCiLib lbi && withVanillaLib lbi)
       comp = compiler lbi
       ghcVersion = compilerVersion comp
 
@@ -685,11 +685,11 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                     }
 
   unless (null (libModules lib)) $
-    do let vanilla = ifVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
-           shared  = ifSharedLib  forceSharedLib  (runGhcProg sharedOpts)
+    do let vanilla = whenVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
+           shared  = whenSharedLib  forceSharedLib  (runGhcProg sharedOpts)
        if isGhcDynamic then do shared;  vanilla
                        else do vanilla; shared
-       ifProfLib (runGhcProg profOpts)
+       whenProfLib (runGhcProg profOpts)
 
   -- build any C sources
   unless (null (cSources libBi)) $ do
@@ -709,8 +709,8 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                 odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
             createDirectoryIfMissingVerbose verbosity True odir
             runGhcProg vanillaCcOpts
-            ifSharedLib forceSharedLib (runGhcProg sharedCcOpts)
-            ifProfLib (runGhcProg profCcOpts)
+            whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
+            whenProfLib (runGhcProg profCcOpts)
        | filename <- cSources libBi]
 
   -- link:
@@ -802,22 +802,22 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               ghcOptLinkLibPath        = extraLibDirs libBi
             }
 
-    ifVanillaLib False $ do
+    whenVanillaLib False $ do
       (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
       Ar.createArLibArchive verbosity arProg
         vanillaLibFilePath staticObjectFiles
 
-    ifProfLib $ do
+    whenProfLib $ do
       (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
       Ar.createArLibArchive verbosity arProg
         profileLibFilePath profObjectFiles
 
-    ifGHCiLib $ do
+    whenGHCiLib $ do
       (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
       Ld.combineObjectFiles verbosity ldProg
         ghciLibFilePath ghciObjFiles
 
-    ifSharedLib False $
+    whenSharedLib False $
       runGhcProg ghcSharedLinkArgs
 
 
@@ -1122,21 +1122,21 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       copyModuleFiles ext =
         findModuleFiles [builtDir] [ext] (libModules lib)
           >>= installOrdinaryFiles verbosity targetDir
-  ifVanilla $ copyModuleFiles "hi"
-  ifProf    $ copyModuleFiles "p_hi"
-  ifShared  $ copyModuleFiles "dyn_hi"
+  whenVanilla $ copyModuleFiles "hi"
+  whenProf    $ copyModuleFiles "p_hi"
+  whenShared  $ copyModuleFiles "dyn_hi"
 
   -- copy the built library files over:
-  ifVanilla $ mapM_ (copy builtDir targetDir)             vanillaLibNames
-  ifProf    $ mapM_ (copy builtDir targetDir)             profileLibNames
-  ifGHCi    $ mapM_ (copy builtDir targetDir)             ghciLibNames
-  ifShared  $ mapM_ (copyShared builtDir dynlibTargetDir) sharedLibNames
+  whenVanilla $ mapM_ (copy builtDir targetDir)             vanillaLibNames
+  whenProf    $ mapM_ (copy builtDir targetDir)             profileLibNames
+  whenGHCi    $ mapM_ (copy builtDir targetDir)             ghciLibNames
+  whenShared  $ mapM_ (copyShared builtDir dynlibTargetDir) sharedLibNames
 
   -- run ranlib if necessary:
-  ifVanilla $ mapM_ (updateLibArchive verbosity lbi . (targetDir </>))
-                    vanillaLibNames
-  ifProf    $ mapM_ (updateLibArchive verbosity lbi . (targetDir </>))
-                    profileLibNames
+  whenVanilla $ mapM_ (updateLibArchive verbosity lbi . (targetDir </>))
+                      vanillaLibNames
+  whenProf    $ mapM_ (updateLibArchive verbosity lbi . (targetDir </>))
+                      profileLibNames
 
   where
     cid = compilerId (compiler lbi)
@@ -1148,10 +1148,10 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
 
     hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))
-    ifVanilla = when (hasLib && withVanillaLib lbi)
-    ifProf    = when (hasLib && withProfLib    lbi)
-    ifGHCi    = when (hasLib && withGHCiLib    lbi)
-    ifShared  = when (hasLib && withSharedLib  lbi)
+    whenVanilla = when (hasLib && withVanillaLib lbi)
+    whenProf    = when (hasLib && withProfLib    lbi)
+    whenGHCi    = when (hasLib && withGHCiLib    lbi)
+    whenShared  = when (hasLib && withSharedLib  lbi)
 
 -- | On MacOS X we have to call @ranlib@ to regenerate the archive index after
 -- copying. This is because the silly MacOS X linker checks that the archive
