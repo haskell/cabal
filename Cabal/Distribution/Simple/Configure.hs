@@ -508,7 +508,9 @@ configure (pkg_descr0, pbi) cfg
             CompilerId GHC _ ->
                 case lookupProgram ghcProgram programsConfig''' of
                 Just ghcProg ->
-                    GHC.ghcDynamicByDefault verbosity ghcProg
+                    -- if ghc is dynamic, then ghci needs a shared
+                    -- library, so we build one by default.
+                    GHC.ghcDynamic verbosity ghcProg
                 Nothing -> return False
             _ -> return False
 

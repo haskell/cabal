@@ -71,7 +71,7 @@ module Distribution.Simple.GHC (
         registerPackage,
         componentGhcOptions,
         ghcLibDir,
-        ghcDynamicByDefault,
+        ghcDynamic,
  ) where
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
@@ -1205,9 +1205,9 @@ ghcDynamic verbosity ghcProg
                   Just "YES" -> True
                   _          -> False
 
-ghcDynamicByDefault :: Verbosity -> ConfiguredProgram -> IO Bool
-ghcDynamicByDefault verbosity ghcProg
+ghcSupportsDynamicToo :: Verbosity -> ConfiguredProgram -> IO Bool
+ghcSupportsDynamicToo verbosity ghcProg
     = do xs <- getGhcInfo verbosity ghcProg
-         return $ case lookup "Dynamic by default" xs of
+         return $ case lookup "Support dynamic-too" xs of
                   Just "YES" -> True
                   _          -> False
