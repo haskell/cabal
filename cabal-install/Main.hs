@@ -630,10 +630,16 @@ runAction buildFlags extraArgs globalFlags = do
       distPref     = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                      (buildDistPref buildFlags)
 
-  reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
-  build verbosity distPref mempty []
+  -- If we're in a sandbox, (re)install all add-source dependencies.
+  useSandbox <- maybeInstallAddSourceDeps verbosity
+                (buildNumJobs buildFlags) globalFlags
 
-  run verbosity buildFlags extraArgs
+  reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
+  maybeWithSandboxDirOnSearchPath useSandbox $
+    build verbosity distPref mempty []
+
+  maybeWithSandboxDirOnSearchPath useSandbox $
+    run verbosity buildFlags extraArgs
 
 getAction :: GetFlags -> [String] -> GlobalFlags -> IO ()
 getAction getFlags extraArgs globalFlags = do
