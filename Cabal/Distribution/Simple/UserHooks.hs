@@ -144,7 +144,7 @@ data UserHooks = UserHooks {
 
     -- |Hook to run before unregister command
     preUnreg  :: Args -> RegisterFlags -> IO HookedBuildInfo,
-    -- |Over-ride this hook to get different behavior during registration.
+    -- |Over-ride this hook to get different behavior during unregistration.
     unregHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> RegisterFlags -> IO (),
     -- |Hook to run after unregister command
     postUnreg :: Args -> RegisterFlags -> PackageDescription -> LocalBuildInfo -> IO (),
