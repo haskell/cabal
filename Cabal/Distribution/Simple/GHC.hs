@@ -653,6 +653,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
              comp (withProfLib lbi) (libBuildInfo lib)
 
   isGhcDynamic <- ghcDynamic verbosity ghcProg
+  dynamicTooSupported <- ghcSupportsDynamicToo verbosity ghcProg
   let libTargetDir = pref
       doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
       forceVanillaLib = doingTH && not isGhcDynamic
@@ -684,11 +685,22 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                       ghcOptExtra     = ghcSharedOptions libBi
                     }
 
+      vanillaSharedOpts = vanillaOpts `mappend` mempty {
+                              ghcOptExtra = ["-dynamic-too",
+                                             "-dynhisuf", "dyn_hi",
+                                             "-dynosuf", "dyn_o"]
+                          }
+
   unless (null (libModules lib)) $
     do let vanilla = whenVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
            shared  = whenSharedLib  forceSharedLib  (runGhcProg sharedOpts)
-       if isGhcDynamic then do shared;  vanilla
-                       else do vanilla; shared
+       if dynamicTooSupported &&
+          (forceVanillaLib || withVanillaLib lbi) &&
+          (forceSharedLib  || withSharedLib  lbi)  &&
+          null (ghcSharedOptions libBi)
+           then runGhcProg vanillaSharedOpts
+           else if isGhcDynamic then do shared;  vanilla
+                                else do vanilla; shared
        whenProfLib (runGhcProg profOpts)
 
   -- build any C sources
