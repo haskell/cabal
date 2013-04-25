@@ -88,7 +88,7 @@ import Distribution.Simple.LocalBuildInfo
          , withComponentsInBuildOrder, componentsInBuildOrder
          , ComponentName(..), showComponentName
          , ComponentDisabledReason(..), componentDisabledReason
-         , inplacePackageId )
+         , inplacePackageId, LibraryName(..) )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import Distribution.Simple.BuildPaths
@@ -206,7 +206,12 @@ buildComponent verbosity pkg_descr lbi suffixes
 buildComponent verbosity pkg_descr lbi suffixes
                comp@(CTest
                  test@TestSuite { testInterface = TestSuiteLibV09 _ m })
-               clbi distPref = do
+               clbi -- This ComponentLocalBuildInfo corresponds to a detailed
+                    -- test suite and not a real component. It should not
+                    -- be used, except to construct the CLBIs for the
+                    -- library and stub executable that will actually be
+                    -- built.
+               distPref = do
     pwd <- getCurrentDirectory
     let bi  = testBuildInfo test
         lib = Library {
@@ -214,6 +219,10 @@ buildComponent verbosity pkg_descr lbi suffixes
                 libExposed     = True,
                 libBuildInfo   = bi
               }
+        libClbi = LibComponentLocalBuildInfo
+                    { componentPackageDeps = componentPackageDeps clbi
+                    , componentLibraries = [LibraryName (testName test)]
+                    }
         pkg = pkg_descr {
                 package      = (package pkg_descr) {
                                  pkgName = PackageName (testName test)
@@ -223,7 +232,7 @@ buildComponent verbosity pkg_descr lbi suffixes
               , testSuites   = []
               , library      = Just lib
               }
-        ipi = (inplaceInstalledPackageInfo pwd distPref pkg lib lbi clbi) {
+        ipi = (inplaceInstalledPackageInfo pwd distPref pkg lib lbi libClbi) {
                 IPI.installedPackageId = inplacePackageId $ packageId ipi
               }
         testDir = buildDir lbi </> stubName test
@@ -240,7 +249,7 @@ buildComponent verbosity pkg_descr lbi suffixes
               }
         -- | The stub executable needs a new 'ComponentLocalBuildInfo'
         -- that exposes the relevant test suite library.
-        exeClbi = clbi {
+        exeClbi = ExeComponentLocalBuildInfo {
                     componentPackageDeps =
                         (IPI.installedPackageId ipi, packageId ipi)
                       : (filter (\(_, x) -> let PackageName name = pkgName x
@@ -249,7 +258,7 @@ buildComponent verbosity pkg_descr lbi suffixes
                   }
     preprocessComponent pkg_descr comp lbi False verbosity suffixes
     info verbosity $ "Building test suite " ++ testName test ++ "..."
-    buildLib verbosity pkg lbi lib clbi
+    buildLib verbosity pkg lbi lib libClbi
     registerPackage verbosity ipi pkg lbi True $ withPackageDB lbi
     buildExe verbosity pkg_descr lbi exe exeClbi
 
@@ -270,9 +279,11 @@ buildComponent verbosity pkg_descr lbi suffixes
             , modulePath = f
             , buildInfo  = bi
             }
+        exeClbi = ExeComponentLocalBuildInfo
+            { componentPackageDeps = componentPackageDeps clbi }
     preprocessComponent pkg_descr comp lbi False verbosity suffixes
     info verbosity $ "Building benchmark " ++ benchmarkName bm ++ "..."
-    buildExe verbosity pkg_descr lbi exe clbi
+    buildExe verbosity pkg_descr lbi exe exeClbi
 
 
 buildComponent _ _ _ _
