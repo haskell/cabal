@@ -24,7 +24,7 @@ import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackageDb(..)
                                  , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
-                                 , makeAbsoluteToCwd )
+                                 , makeAbsoluteToCwd, tryCanonicalizePath )
 
 import Distribution.Simple.Utils ( die, debug, info, findPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
@@ -34,7 +34,7 @@ import Control.Exception         ( evaluate )
 import Control.Monad             ( liftM, when, unless )
 import Data.List                 ( (\\), nub )
 import Data.Maybe                ( catMaybes )
-import System.Directory          ( canonicalizePath, createDirectoryIfMissing,
+import System.Directory          ( createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
                                    renameFile )
 import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension )
@@ -127,7 +127,7 @@ addBuildTreeRefs _         _   [] =
   error "Distribution.Client.Index.addBuildTreeRefs: unexpected"
 addBuildTreeRefs verbosity path l' = do
   checkIndexExists path
-  l <- liftM nub . mapM canonicalizePath $ l'
+  l <- liftM nub . mapM tryCanonicalizePath $ l'
   treesInIndex <- readBuildTreePathsFromFile path
   -- Add only those paths that aren't already in the index.
   treesToAdd <- mapM buildTreeRefFromPath (l \\ treesInIndex)
@@ -149,7 +149,7 @@ removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity path l' = do
   checkIndexExists path
-  l <- mapM canonicalizePath l'
+  l <- mapM tryCanonicalizePath l'
   let tmpFile = path <.> "tmp"
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be

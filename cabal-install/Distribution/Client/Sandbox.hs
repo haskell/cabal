@@ -50,6 +50,7 @@ import Distribution.Client.Targets            ( UserTarget(..)
                                               , readUserTargets
                                               , resolveUserTargets )
 import Distribution.Client.Types              ( SourcePackageDb(..) )
+import Distribution.Client.Utils              ( tryCanonicalizePath )
 import Distribution.Simple.Compiler           ( Compiler, PackageDB(..)
                                               , PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAux
@@ -70,8 +71,7 @@ import Control.Exception                      ( bracket_ )
 import Control.Monad                          ( unless, when )
 import Data.List                              ( delete )
 import Data.Monoid                            ( mempty, mappend )
-import System.Directory                       ( canonicalizePath
-                                              , doesDirectoryExist
+import System.Directory                       ( doesDirectoryExist
                                               , getCurrentDirectory
                                               , removeDirectoryRecursive
                                               , removeFile )
@@ -162,7 +162,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   let sandboxDir' = fromFlagOrDefault defaultSandboxLocation
                     (sandboxLocation sandboxFlags)
   createDirectoryIfMissingVerbose verbosity True sandboxDir'
-  sandboxDir <- canonicalizePath sandboxDir'
+  sandboxDir <- tryCanonicalizePath sandboxDir'
   notice verbosity $ "Using a sandbox located at " ++ sandboxDir
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
@@ -205,7 +205,7 @@ sandboxDelete verbosity sandboxFlags _globalFlags = do
     die $ "Non-default sandbox location used: " ++ sandboxLoc
     ++ "\nAssuming a shared sandbox. Please delete manually."
 
-  sandboxDir <- canonicalizePath sandboxLoc
+  sandboxDir <- tryCanonicalizePath sandboxLoc
   notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
   removeDirectoryRecursive sandboxDir
 
