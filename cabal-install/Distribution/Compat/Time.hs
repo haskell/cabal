@@ -8,7 +8,8 @@ import System.Directory (getModificationTime)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds, posixDayLength)
 import Data.Time (getCurrentTime, diffUTCTime)
 #else
-import System.Time (ClockTime(..), getClockTime, diffClockTimes, normalizeTimeDiff, tdDay)
+import System.Time (ClockTime(..), getClockTime
+                   ,diffClockTimes, normalizeTimeDiff, tdDay)
 #endif
 
 -- | The number of seconds since the UNIX epoch
@@ -35,3 +36,12 @@ getFileAge file = do
   let days = (tdDay . normalizeTimeDiff) (t1 `diffClockTimes` t0)
 #endif
   return days
+
+getCurTime :: IO EpochTime
+getCurTime =  do
+#if MIN_VERSION_directory(1,2,0)
+  (truncate . utcTimeToPOSIXSeconds) `fmap` getCurrentTime
+#else
+  (TOD s _) <- getClockTime
+  return $! fromIntegral s
+#endif
