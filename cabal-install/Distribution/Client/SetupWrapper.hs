@@ -68,7 +68,7 @@ import Distribution.Simple.Utils
          , createDirectoryIfMissingVerbose, installExecutableFile
          , rewriteFile, intercalate )
 import Distribution.Client.Utils
-         ( moreRecentFile, inDir )
+         ( moreRecentFile, inDir, tryCanonicalizePath )
 import Distribution.System ( Platform(..), buildPlatform )
 import Distribution.Text
          ( display )
@@ -77,7 +77,7 @@ import Distribution.Verbosity
 import Distribution.Compat.Exception
          ( catchIO )
 
-import System.Directory  ( doesFileExist, canonicalizePath )
+import System.Directory  ( doesFileExist )
 import System.FilePath   ( (</>), (<.>) )
 import System.IO         ( Handle, hPutStr )
 import System.Exit       ( ExitCode(..), exitWith )
@@ -426,7 +426,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     -- be turned into an absolute path. On some systems, runProcess will take
     -- path as relative to the new working directory instead of the current
     -- working directory.
-    path' <- canonicalizePath path
+    path' <- tryCanonicalizePath path
 
     process <- runProcess path' args
                  (useWorkingDir options) Nothing

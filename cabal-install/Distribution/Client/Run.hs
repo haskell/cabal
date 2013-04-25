@@ -13,6 +13,7 @@ module Distribution.Client.Run ( run )
 import Distribution.Client.Setup             (BuildFlags (..))
 import Distribution.Client.SetupWrapper      (SetupScriptOptions (..),
                                               defaultSetupScriptOptions)
+import Distribution.Client.Utils             (tryCanonicalizePath)
 
 import Distribution.PackageDescription       (Executable (..),
                                               PackageDescription (..))
@@ -26,8 +27,7 @@ import Distribution.Verbosity                (Verbosity)
 
 import Data.Functor                          ((<$>))
 import Data.List                             (find)
-import System.Directory                      (canonicalizePath,
-                                              getCurrentDirectory)
+import System.Directory                      (getCurrentDirectory)
 import System.Environment                    (getEnvironment)
 import System.FilePath                       ((<.>), (</>))
 
@@ -51,7 +51,7 @@ run verbosity buildFlags args = do
 
       doRun :: Executable -> [String] -> IO ()
       doRun exe exeArgs = do
-        path <- canonicalizePath $ exePath exe
+        path <- tryCanonicalizePath $ exePath exe
         env <- (dataDirEnvVar:) <$> getEnvironment
         rawSystemExitWithEnv verbosity path exeArgs env
 
