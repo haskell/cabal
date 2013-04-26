@@ -22,8 +22,8 @@ module Distribution.Client.Sandbox (
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
-    installAddSourceDeps,
-    maybeInstallAddSourceDeps,
+    reinstallAddSourceDeps,
+    maybeReinstallAddSourceDeps,
 
     -- FIXME: move somewhere else
     configPackageDB', configCompilerAux'
@@ -33,7 +33,9 @@ import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), GlobalFlags(..), InstallFlags(..)
   , defaultConfigExFlags, defaultInstallFlags, defaultSandboxLocation
   , globalRepos )
-import Distribution.Client.Sandbox.Timestamp  ( withTimestamps )
+import Distribution.Client.Sandbox.Timestamp  ( withRemoveTimestamps
+                                              , withUpdateTimestamps
+                                              , withModifiedDeps )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
 import Distribution.Client.Dependency         ( foldProgress )
 import Distribution.Client.Install            ( InstallArgs,
@@ -68,9 +70,9 @@ import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
 import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
-import Control.Exception                      ( bracket_ )
+import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( unless, when )
-import Data.List                              ( delete )
+import Data.List                              ( (\\), delete )
 import Data.Monoid                            ( mempty, mappend )
 import System.Directory                       ( doesDirectoryExist
                                               , getCurrentDirectory
@@ -220,19 +222,27 @@ sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
                           (globalConfigFile globalFlags)
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  withTimestamps sandboxDir $ \_timestamps -> do
-    Index.addBuildTreeRefs verbosity indexFile buildTreeRefs
-    return buildTreeRefs
+  withUpdateTimestamps sandboxDir $ \_ -> do
+    -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
+    -- twice because of the timestamps file.
+    buildTreeRefs' <- mapM tryCanonicalizePath buildTreeRefs
+    Index.addBuildTreeRefs verbosity indexFile buildTreeRefs'
+    return buildTreeRefs'
 
 -- | Entry point for the 'cabal sandbox delete-source' command.
 sandboxDeleteSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
                        -> IO ()
 sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
-  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
-                           (globalConfigFile globalFlags)
-  indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                          (globalConfigFile globalFlags)
+  indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
+  withRemoveTimestamps sandboxDir $ \_ -> do
+    -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
+    -- twice because of the timestamps file.
+    buildTreeRefs' <- mapM tryCanonicalizePath buildTreeRefs
+    Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs'
+    return buildTreeRefs'
 
 -- | Entry point for the 'cabal sandbox list-sources' command.
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
@@ -301,65 +311,70 @@ maybeWithSandboxDirOnSearchPath NoSandbox               act = act
 maybeWithSandboxDirOnSearchPath (UseSandbox sandboxDir) act =
   withSandboxBinDirOnSearchPath sandboxDir $ act
 
--- | (Re)install all add-source dependencies of the current package into the
--- sandbox.
-installAddSourceDeps :: Verbosity -> SavedConfig -> Flag (Maybe Int)
-                        -> FilePath -> GlobalFlags
-                        -> IO ()
-installAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
+-- | Reinstall those add-source dependencies that have been modified since
+-- we've last installed them.
+reinstallAddSourceDeps :: Verbosity -> SavedConfig -> Flag (Maybe Int)
+                          -> FilePath -> GlobalFlags
+                          -> IO ()
+reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
 
-  unless (null buildTreeRefs) $ do
-    notice verbosity "Installing add-source dependencies..."
-    let targetNames    = (".":buildTreeRefs)
-        targetsToPrune = [UserTargetLocalDir "."]
-        configFlags    = savedConfigureFlags   config
-        configExFlags  = defaultConfigExFlags         `mappend`
-                         savedConfigureExFlags config
-        installFlags'  = defaultInstallFlags          `mappend`
-                         savedInstallFlags     config
-        installFlags   = installFlags' {
-          installNumJobs = installNumJobs installFlags' `mappend` numJobsFlag }
-        globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
+  withModifiedDeps verbosity sandboxDir $ \modifiedDeps -> do
+    assert (null $ modifiedDeps \\ buildTreeRefs) (return ())
+    unless (null modifiedDeps) $ do
+      notice verbosity "Installing add-source dependencies..."
+      let targetNames    = (".":modifiedDeps)
+          targetsToPrune = [UserTargetLocalDir "."]
+          configFlags    = savedConfigureFlags   config
+          configExFlags  = defaultConfigExFlags         `mappend`
+                           savedConfigureExFlags config
+          installFlags'  = defaultInstallFlags          `mappend`
+                           savedInstallFlags     config
+          installFlags   = installFlags' {
+            installNumJobs = installNumJobs installFlags' `mappend` numJobsFlag
+            }
+          globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
 
-    (comp, platform, conf) <- configCompilerAux' configFlags
-    targets <- readUserTargets verbosity targetNames
+      (comp, platform, conf) <- configCompilerAux' configFlags
+      targets <- readUserTargets verbosity targetNames
 
-    let args :: InstallArgs
-        args = ((configPackageDB' configFlags ForceGlobalInstall)
-               ,(globalRepos globalFlags')
-               ,comp, platform, conf
-               ,globalFlags', configFlags, configExFlags, installFlags
-               ,mempty)
+      let args :: InstallArgs
+          args = ((configPackageDB' configFlags ForceGlobalInstall)
+                 ,(globalRepos globalFlags')
+                 ,comp, platform, conf
+                 ,globalFlags', configFlags, configExFlags, installFlags
+                 ,mempty)
 
-        logMsg message rest = debugNoWrap verbosity message >> rest
+          logMsg message rest = debugNoWrap verbosity message >> rest
 
-    -- Using the low-level install interface instead of the high-level 'install'
-    -- action allows us to make changes to the install plan before processing
-    -- it. Here we need to prune the "." target from the install plan. The same
-    -- mechanism is used to implement 'install --only-dependencies'.
-    withSandboxBinDirOnSearchPath sandboxDir $ do
-      installContext@(_,sourcePkgDb,_,_) <-
-        makeInstallContext verbosity args targets
+      -- Using the low-level install interface instead of the high-level
+      -- 'install' action allows us to make changes to the install plan before
+      -- processing it. Here we need to prune the "." target from the install
+      -- plan. The same mechanism is used to implement 'install
+      -- --only-dependencies'.
+      withSandboxBinDirOnSearchPath sandboxDir $ do
+        installContext@(_,sourcePkgDb,_,_) <-
+          makeInstallContext verbosity args targets
 
-      toPrune <- resolveUserTargets verbosity
-                 (fromFlag $ globalWorldFile globalFlags')
-                 (packageIndex sourcePkgDb)
-                 targetsToPrune
+        toPrune <- resolveUserTargets verbosity
+                   (fromFlag $ globalWorldFile globalFlags')
+                   (packageIndex sourcePkgDb)
+                   targetsToPrune
 
-      installPlan     <- foldProgress logMsg die return =<<
-                         (fmap (\p -> p >>= if not . null $ targetsToPrune
-                                            then pruneInstallPlan toPrune
-                                            else return)
-                          $ makeInstallPlan verbosity args installContext)
+        installPlan     <- foldProgress logMsg die return =<<
+                           (fmap (\p -> p >>= if not . null $ targetsToPrune
+                                              then pruneInstallPlan toPrune
+                                              else return)
+                            $ makeInstallPlan verbosity args installContext)
 
-      processInstallPlan verbosity args installContext installPlan
+        processInstallPlan verbosity args installContext installPlan
 
--- | Check if a sandbox is present and call @installAddSourceDeps@ in that case.
-maybeInstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
+-- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
+-- case.
+maybeReinstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
                              -> IO UseSandbox
-maybeInstallAddSourceDeps verbosity numJobsFlag globalFlags = do
+maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
@@ -372,7 +387,7 @@ maybeInstallAddSourceDeps verbosity numJobsFlag globalFlags = do
             UseSandbox d -> d;
             _            -> error "Distribution.Client.Sandbox.\
                                   \maybeInstallAddSourceDeps: can't happen"
-      installAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags
+      reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags
       return useSandbox
 
 --
