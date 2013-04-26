@@ -535,8 +535,7 @@ configure (pkg_descr0, pbi) cfg
                     withProfLib         = fromFlag $ configProfLib cfg,
                     withSharedLib       = fromFlagOrDefault sharedLibsByDefault $
                                           configSharedLib cfg,
-                    withDynExe          = fromFlagOrDefault sharedLibsByDefault $
-                                          configDynExe cfg,
+                    withDynExe          = fromFlag $ configDynExe cfg,
                     withProfExe         = fromFlag $ configProfExe cfg,
                     withOptimization    = fromFlag $ configOptimization cfg,
                     withGHCiLib         = fromFlag $ configGHCiLib cfg,
