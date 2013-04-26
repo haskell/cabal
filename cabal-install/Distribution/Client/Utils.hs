@@ -75,7 +75,7 @@ moreRecentFile a b = do
             return (ta > tb)
 
 -- | Executes the action in the specified directory.
-inDir :: Maybe FilePath -> IO () -> IO ()
+inDir :: Maybe FilePath -> IO a -> IO a
 inDir Nothing m = m
 inDir (Just d) m = do
   old <- getCurrentDirectory
