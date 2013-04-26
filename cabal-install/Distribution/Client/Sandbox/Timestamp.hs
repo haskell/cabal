@@ -89,10 +89,9 @@ updateTimestamps newTimestamp timestamps paths =
     oldPaths = map fst timestamps
     (pathsToUpdate, newPaths) = partition (flip elem oldPaths) paths
 
-    updateTimestamp t@(path, _oldTimestamp) rest =
-      if path `elem` pathsToUpdate
-      then (path, newTimestamp) : rest
-      else t : rest
+    updateTimestamp t@(path, _oldTimestamp) rest
+      | path `elem` pathsToUpdate = (path, newTimestamp) : rest
+      | otherwise                 = t : rest
 
 -- | Given a list of 'AddSourceTimestamp's and a list of paths to add-source
 -- deps we've removed, remove those deps from the list.
