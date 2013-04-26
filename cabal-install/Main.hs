@@ -79,7 +79,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,loadConfigOrSandboxConfig
                                               ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
-                                              ,maybeInstallAddSourceDeps
+                                              ,maybeReinstallAddSourceDeps
 
                                               ,configCompilerAux'
                                               ,configPackageDB')
@@ -241,8 +241,8 @@ buildAction buildFlags extraArgs globalFlags = do
                  (buildDistPref buildFlags)
       verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
 
-  -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity
+  -- If we're in a sandbox, reinstall the updated add-source dependencies.
+  useSandbox <- maybeReinstallAddSourceDeps verbosity
                 (buildNumJobs buildFlags) globalFlags
 
   -- Calls 'configureAction' to do the real work, so nothing special has to be
@@ -457,8 +457,8 @@ testAction testFlags extraArgs globalFlags = do
         | fromFlagOrDefault False (configTests flags) = Nothing
         | otherwise = Just "Re-configuring with test suites enabled."
 
-  -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity
+  -- If we're in a sandbox, reinstall the updated add-source dependencies.
+  useSandbox <- maybeReinstallAddSourceDeps verbosity
                 (testNumJobs testFlags) globalFlags
 
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
@@ -480,8 +480,8 @@ benchmarkAction benchmarkFlags extraArgs globalFlags = do
         | fromFlagOrDefault False (configBenchmarks flags) = Nothing
         | otherwise = Just "Re-configuring with benchmarks enabled."
 
-  -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity
+  -- If we're in a sandbox, reinstall the updated add-source dependencies.
+  useSandbox <- maybeReinstallAddSourceDeps verbosity
                 (benchmarkNumJobs benchmarkFlags) globalFlags
 
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
@@ -630,8 +630,8 @@ runAction buildFlags extraArgs globalFlags = do
       distPref     = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                      (buildDistPref buildFlags)
 
-  -- If we're in a sandbox, (re)install all add-source dependencies.
-  useSandbox <- maybeInstallAddSourceDeps verbosity
+  -- If we're in a sandbox, reinstall the updated add-source dependencies.
+  useSandbox <- maybeReinstallAddSourceDeps verbosity
                 (buildNumJobs buildFlags) globalFlags
 
   reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
