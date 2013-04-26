@@ -188,6 +188,7 @@ isDepModified verbosity (packageDir, timestamp) = do
 
   where
     go []         = return False
+    -- TOTHINK: What if the clock jumps backwards at any point?
     go (dep:rest) = do modTime <- getModTime dep
                        if modTime >= timestamp
                          then return True
