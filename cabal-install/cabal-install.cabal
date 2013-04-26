@@ -92,6 +92,7 @@ executable cabal
         Distribution.Client.ParseUtils
         Distribution.Client.Run
         Distribution.Client.Sandbox
+        Distribution.Client.Sandbox.Timestamp
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist

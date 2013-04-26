@@ -54,7 +54,7 @@ module Distribution.Simple.SrcDist (
   -- * The top level action
   sdist,
 
-  -- * Actual impl of 'sdist', for reuse by 'cabal sdist'
+  -- * Actual implemenation of 'sdist', for reuse by 'cabal sdist'
   CreateArchiveFun,
   sdistWith,
 
@@ -69,6 +69,14 @@ module Distribution.Simple.SrcDist (
   snapshotVersion,
   dateToSnapshotNumber,
 
+  -- * Extracting the source files
+  findSetupFile,
+  findMainExeFile,
+  findIncludeFile,
+  filterAutogenModule,
+  allSourcesBuildInfo,
+
+  -- * Utils
   copyFileTo
   )  where
 
@@ -91,7 +99,8 @@ import Distribution.Simple.Utils
          , withTempDirectory, defaultPackageDesc
          , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag, flagToMaybe)
-import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessComponent)
+import Distribution.Simple.PreProcess ( PPSuffixHandler, ppSuffixes
+                                      , preprocessComponent )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), withAllComponentsInBuildOrder )
 import Distribution.Simple.BuildPaths ( autogenModuleName )
@@ -190,11 +199,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   -- move the executables into place
   withExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
     prepareDir verbosity pkg_descr distPref targetDir pps [] exeBi
-    srcMainFile <- do
-      ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi) (dropExtension mainPath)
-      case ppFile of
-        Nothing -> findFile (hsSourceDirs exeBi) mainPath
-        Just pp -> return pp
+    srcMainFile <- findMainExeFile exeBi pps mainPath
     copyFileTo verbosity targetDir srcMainFile
 
   -- move the test suites into place
@@ -214,7 +219,8 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
             copyFileTo verbosity targetDir srcMainFile
         TestSuiteLibV09 _ m -> do
             prep [m] bi
-        TestSuiteUnsupported tp -> die $ "Unsupported test suite type: " ++ show tp
+        TestSuiteUnsupported tp -> die $ "Unsupported test suite type: "
+                                   ++ show tp
 
   -- move the benchmarks into place
   withBenchmark $ \bm -> do
@@ -231,8 +237,10 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
                     Nothing -> findFile (hsSourceDirs bi) mainPath
                     Just pp -> return pp
             copyFileTo verbosity targetDir srcMainFile
-        BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: " ++ show tp
+        BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
+                                   ++ show tp
 
+  -- move the data files into place.
   forM_ (dataFiles pkg_descr) $ \ filename -> do
     files <- matchFileGlob (dataDir pkg_descr </> filename)
     let dir = takeDirectory (dataDir pkg_descr </> filename)
@@ -240,6 +248,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
     sequence_ [ installOrdinaryFile verbosity file (targetDir </> file)
               | file <- files ]
 
+  -- move the license file and extra src files into place.
   when (not (null (licenseFile pkg_descr))) $
     copyFileTo verbosity targetDir (licenseFile pkg_descr)
   forM_ (extraSrcFiles pkg_descr ++ extraHtmlFiles pkg_descr) $ \ fpath -> do
@@ -256,7 +265,7 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   withLib $ \ l -> do
     let lbi = libBuildInfo l
         relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
-    incs <- mapM (findInc relincdirs) (installIncludes lbi)
+    incs <- mapM (findIncludeFile relincdirs) (installIncludes lbi)
     forM_ incs $ \(_,fpath) -> copyFileTo verbosity targetDir fpath
 
   -- if the package was configured then we can run platform independent
@@ -269,19 +278,66 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
     _ -> return ()
 
   -- setup isn't listed in the description file.
-  hsExists <- doesFileExist "Setup.hs"
-  lhsExists <- doesFileExist "Setup.lhs"
-  if hsExists then copyFileTo verbosity targetDir "Setup.hs"
-    else if lhsExists then copyFileTo verbosity targetDir "Setup.lhs"
-    else writeUTF8File (targetDir </> "Setup.hs") $ unlines [
-                "import Distribution.Simple",
-                "main = defaultMain"]
+  mSetupFile <- findSetupFile
+  case mSetupFile of
+    Just setupFile -> copyFileTo verbosity targetDir setupFile
+    Nothing        -> do writeUTF8File (targetDir </> "Setup.hs") $ unlines [
+                           "import Distribution.Simple",
+                           "main = defaultMain"]
+
   -- the description file itself
   descFile <- defaultPackageDesc verbosity
   installOrdinaryFile verbosity descFile (targetDir </> descFile)
 
   where
-    pkg_descr = mapLib filterAutogenModuleLib $ mapAllBuildInfo filterAutogenModuleBI pkg_descr0
+    pkg_descr = filterAutogenModule pkg_descr0
+
+    -- We have to deal with all libs and executables, so we have local
+    -- versions of these functions that ignore the 'buildable' attribute:
+    withLib action = maybe (return ()) action (library pkg_descr)
+    withExe action = mapM_ action (executables pkg_descr)
+    withTest action = mapM_ action (testSuites pkg_descr)
+    withBenchmark action = mapM_ action (benchmarks pkg_descr)
+
+-- | Find the setup script file, if it exists.
+findSetupFile :: IO (Maybe FilePath)
+findSetupFile = do
+  hsExists <- doesFileExist setupHs
+  lhsExists <- doesFileExist setupLhs
+  if hsExists
+    then return (Just setupHs)
+    else if lhsExists
+         then return (Just setupLhs)
+         else return Nothing
+    where
+      setupHs  = "Setup.hs"
+      setupLhs = "Setup.lhs"
+
+-- | Find the main executable file.
+findMainExeFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findMainExeFile exeBi pps mainPath = do
+  ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi)
+            (dropExtension mainPath)
+  case ppFile of
+    Nothing -> findFile (hsSourceDirs exeBi) mainPath
+    Just pp -> return pp
+
+-- | Given a list of include paths, try to find the include file named
+-- @f@. Return the name of the file and the full path, or exit with error if
+-- there's no such file.
+findIncludeFile :: [FilePath] -> String -> IO (String, FilePath)
+findIncludeFile [] f = die ("can't find include file " ++ f)
+findIncludeFile (d:ds) f = do
+  let path = (d </> f)
+  b <- doesFileExist path
+  if b then return (f,path) else findIncludeFile ds f
+
+-- | Remove the auto-generated module ('Paths_*') from 'exposed-modules' and
+-- 'other-modules'.
+filterAutogenModule :: PackageDescription -> PackageDescription
+filterAutogenModule pkg_descr0 = mapLib filterAutogenModuleLib $
+                                 mapAllBuildInfo filterAutogenModuleBI pkg_descr0
+  where
     mapLib f pkg = pkg { library = fmap f (library pkg) }
     filterAutogenModuleLib lib = lib {
       exposedModules = filter (/=autogenModule) (exposedModules lib)
@@ -290,19 +346,6 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
       otherModules   = filter (/=autogenModule) (otherModules bi)
     }
     autogenModule = autogenModuleName pkg_descr0
-
-    findInc [] f = die ("can't find include file " ++ f)
-    findInc (d:ds) f = do
-      let path = (d </> f)
-      b <- doesFileExist path
-      if b then return (f,path) else findInc ds f
-
-    -- We have to deal with all libs and executables, so we have local
-    -- versions of these functions that ignore the 'buildable' attribute:
-    withLib action = maybe (return ()) action (library pkg_descr)
-    withExe action = mapM_ action (executables pkg_descr)
-    withTest action = mapM_ action (testSuites pkg_descr)
-    withBenchmark action = mapM_ action (benchmarks pkg_descr)
 
 -- | Prepare a directory tree of source files for a snapshot version.
 -- It is expected that the appropriate snapshot version has already been set
@@ -313,7 +356,8 @@ prepareSnapshotTree :: Verbosity          -- ^verbosity
                     -> Maybe LocalBuildInfo
                     -> FilePath           -- ^dist dir
                     -> FilePath           -- ^source tree to populate
-                    -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
+                    -> [PPSuffixHandler]  -- ^extra preprocessors (includes
+                                          -- suffixes)
                     -> IO ()
 prepareSnapshotTree verbosity pkg mb_lbi distPref targetDir pps = do
   prepareTree verbosity pkg mb_lbi distPref targetDir pps
@@ -392,33 +436,43 @@ createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
   return tarBallFilePath
 
 -- |Move the sources into place based on buildInfo
-prepareDir :: Verbosity -- ^verbosity
-           -> PackageDescription -- ^info from the cabal file
-           -> FilePath           -- ^dist dir
-           -> FilePath  -- ^TargetPrefix
+prepareDir :: Verbosity          -- ^ verbosity
+           -> PackageDescription -- ^ info from the cabal file
+           -> FilePath           -- ^ dist dir
+           -> FilePath           -- ^ TargetPrefix
            -> [PPSuffixHandler]  -- ^ extra preprocessors (includes suffixes)
-           -> [ModuleName]  -- ^Exposed modules
+           -> [ModuleName]       -- ^ Exposed modules
            -> BuildInfo
            -> IO ()
 prepareDir verbosity _pkg _distPref inPref pps modules bi
-    = do let searchDirs = hsSourceDirs bi
-         sources <- sequence
-           [ let file = ModuleName.toFilePath module_
-              in findFileWithExtension suffixes searchDirs file
-             >>= maybe (notFound module_) return
-           | module_ <- modules ++ otherModules bi ]
-         bootFiles <- sequence
-           [ let file = ModuleName.toFilePath module_
-                 fileExts = ["hs-boot", "lhs-boot"]
-              in findFileWithExtension fileExts (hsSourceDirs bi) file
-           | module_ <- modules ++ otherModules bi ]
-
-         let allSources = sources ++ catMaybes bootFiles ++ cSources bi
+    = do allSources <- allSourcesBuildInfo bi pps modules
          installOrdinaryFiles verbosity inPref (zip (repeat []) allSources)
 
-    where suffixes = ppSuffixes pps ++ ["hs", "lhs"]
-          notFound m = die $ "Error: Could not find module: " ++ display m
-                          ++ " with any suffix: " ++ show suffixes
+-- | Given a buildinfo, return the names of all source files.
+allSourcesBuildInfo :: BuildInfo
+                       -> [PPSuffixHandler] -- ^ Extra preprocessors
+                       -> [ModuleName]      -- ^ Exposed modules
+                       -> IO [FilePath]
+allSourcesBuildInfo bi pps modules = do
+  let searchDirs = hsSourceDirs bi
+  sources <- sequence
+    [ let file = ModuleName.toFilePath module_
+      in findFileWithExtension suffixes searchDirs file
+         >>= maybe (notFound module_) return
+    | module_ <- modules ++ otherModules bi ]
+  bootFiles <- sequence
+    [ let file = ModuleName.toFilePath module_
+          fileExts = ["hs-boot", "lhs-boot"]
+      in findFileWithExtension fileExts (hsSourceDirs bi) file
+    | module_ <- modules ++ otherModules bi ]
+
+  return $ sources ++ catMaybes bootFiles ++ cSources bi
+
+  where
+    suffixes = ppSuffixes pps ++ ["hs", "lhs"]
+    notFound m = die $ "Error: Could not find module: " ++ display m
+                 ++ " with any suffix: " ++ show suffixes
+
 
 copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
 copyFileTo verbosity dir file = do
