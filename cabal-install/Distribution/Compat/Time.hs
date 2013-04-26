@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
-module Distribution.Compat.Time where
+module Distribution.Compat.Time (EpochTime, getModTime, getFileAge, getCurTime)
+       where
 
 import Data.Int (Int64)
 import System.Directory (getModificationTime)
