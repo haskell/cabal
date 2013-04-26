@@ -17,6 +17,7 @@ module Distribution.Client.Sandbox.Timestamp (
 
 import Control.Monad                                 (filterM, forM)
 import Data.Char                                     (isSpace)
+import Data.Maybe                                    (maybeToList)
 import Data.List                                     (partition)
 import System.Directory                              (renameFile)
 import System.FilePath                               (isAbsolute, (<.>), (</>))
@@ -166,7 +167,7 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
   mSetupFile <- findSetupFile
   descFile   <- defaultPackageDesc verbosity
 
-  return . map (packageDir </>) $ descFile : (maybe [] (\f -> [f]) mSetupFile)
+  return . map (packageDir </>) $ descFile : (maybeToList mSetupFile)
     ++ incFiles ++ (concat extraSrcs) ++ (concat dataFs)
     ++ (concat exeSources) ++ libSources
 
