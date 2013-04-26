@@ -188,7 +188,9 @@ isDepModified verbosity (packageDir, timestamp) = do
 
   where
     go []         = return False
-    -- TOTHINK: What if the clock jumps backwards at any point?
+    -- TOTHINK: What if the clock jumps backwards at any point? For bonus
+    -- points we could at least detect if any file has a modification time that
+    -- is in the future and print a warning.
     go (dep:rest) = do modTime <- getModTime dep
                        if modTime >= timestamp
                          then return True
