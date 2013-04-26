@@ -28,6 +28,8 @@ import qualified Distribution.PackageDescription as PD
     ( category, packageDescription )
 import Distribution.Simple.Utils
          ( intercalate )
+import Distribution.Client.Utils
+         ( tryCanonicalizePath )
 import Language.Haskell.Extension ( Extension )
 
 import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
@@ -39,8 +41,8 @@ import Data.List   ( isPrefixOf )
 import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
 import Data.Monoid ( mempty, mconcat )
 import qualified Data.Set as Set ( fromList, toList )
-import System.Directory ( getDirectoryContents, doesDirectoryExist, doesFileExist,
-                          getHomeDirectory, canonicalizePath )
+import System.Directory ( getDirectoryContents,
+                          doesDirectoryExist, doesFileExist, getHomeDirectory, )
 import System.Environment ( getEnvironment )
 import System.FilePath ( takeExtension, takeBaseName, dropExtension,
                          (</>), (<.>), splitDirectories, makeRelative )
@@ -49,7 +51,7 @@ import System.Exit ( ExitCode(..) )
 
 -- |Guess the package name based on the given root directory
 guessPackageName :: FilePath -> IO String
-guessPackageName = liftM (last . splitDirectories) . canonicalizePath
+guessPackageName = liftM (last . splitDirectories) . tryCanonicalizePath
 
 -- |Data type of source files found in the working directory
 data SourceFileEntry = SourceFileEntry
@@ -326,4 +328,3 @@ test db testProjectRoot = do
   putStrLn "List of known categories"
   print $ knownCategories db
 -}
-
