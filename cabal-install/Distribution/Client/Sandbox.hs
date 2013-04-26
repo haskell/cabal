@@ -33,6 +33,7 @@ import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), GlobalFlags(..), InstallFlags(..)
   , defaultConfigExFlags, defaultInstallFlags, defaultSandboxLocation
   , globalRepos )
+import Distribution.Client.Sandbox.Timestamp  ( withTimestamps )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
 import Distribution.Client.Dependency         ( foldProgress )
 import Distribution.Client.Install            ( InstallArgs,
@@ -65,21 +66,17 @@ import Distribution.Simple.Utils              ( die, debug, notice, info
 import Distribution.System                    ( Platform )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
-import Distribution.Compat.Exception          ( catchIO )
-import Distribution.Compat.Time               ( EpochTime, getCurTime )
 import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
 import Control.Exception                      ( bracket_ )
 import Control.Monad                          ( unless, when )
-import Data.Char                              ( isSpace )
 import Data.List                              ( delete )
 import Data.Monoid                            ( mempty, mappend )
 import System.Directory                       ( doesDirectoryExist
                                               , getCurrentDirectory
                                               , removeDirectoryRecursive
-                                              , renameFile
                                               , removeFile )
-import System.FilePath                        ( (</>), (<.>), getSearchPath
+import System.FilePath                        ( (</>), getSearchPath
                                               , searchPathSeparator )
 
 
@@ -303,64 +300,6 @@ maybeWithSandboxDirOnSearchPath :: UseSandbox -> IO a -> IO a
 maybeWithSandboxDirOnSearchPath NoSandbox               act = act
 maybeWithSandboxDirOnSearchPath (UseSandbox sandboxDir) act =
   withSandboxBinDirOnSearchPath sandboxDir $ act
-
--- | Timestamp of an add-source dependency.
-type AddSourceTimestamp = (FilePath, EpochTime)
-
--- | The 'add-source-timestamps' file keeps the timestamps of all add-source
--- dependencies. It is initially populated by 'sandbox add-source' and kept
--- current by 'installAddSourceDeps'. The user can install add-source deps
--- manually with 'cabal install' after having edited them, so we can err on the
--- side of caution sometimes.
-timestampFileName :: FilePath
-timestampFileName = "add-source-timestamps"
-
--- | Read the timestamp file. Returns an empty list if the file doesn't exist.
-readTimestamps :: FilePath -> IO (Maybe [AddSourceTimestamp])
-readTimestamps sandboxDir = do
-  timestampString <- readFile timestampFile `catchIO` \_ -> return "[]"
-  case reads timestampString of
-    [(timestamps, s)] | all isSpace s -> return (Just timestamps)
-    _                                 -> return Nothing
-  where
-    timestampFile = sandboxDir </> timestampFileName
-
--- | Write the timestamp file, atomically.
-writeTimestamps :: FilePath -> [AddSourceTimestamp] -> IO ()
-writeTimestamps sandboxDir timestamps = do
-  writeFile  timestampTmpFile (show timestamps)
-  renameFile timestampTmpFile timestampFile
-  where
-    timestampFile    = sandboxDir </> timestampFileName
-    timestampTmpFile = timestampFile <.> "tmp"
-
--- | Given a list of 'AddSourceTimestamp's, a list of paths to add-source deps
--- we've reinstalled and a new timestamp value, update the timestamp value for
--- those deps.
-updateTimestamps :: [AddSourceTimestamp] -> [FilePath] -> EpochTime
-                    -> [AddSourceTimestamp]
-updateTimestamps l pathsToUpdate newTimestamp = foldr updateTimestamp [] l
-  where
-    updateTimestamp t@(path, _oldTimestamp) rest =
-      if path `elem` pathsToUpdate
-      then (path, newTimestamp) : rest
-      else t : rest
-
--- | Given an IO action, feed to it the timestamps from the timestamp file, and
--- then update the timestamps of the returned build tree refs to the current
--- time.
-withTimestamps :: FilePath -> ([AddSourceTimestamp] -> IO ([FilePath]))
-                  -> IO ()
-withTimestamps sandboxDir act = do
-  mTimestamps <- readTimestamps sandboxDir
-  case mTimestamps of
-    Nothing         -> die $ "The timestamps file is corrupted. "
-                       ++ "Please delete & recreate the sandbox."
-    Just timestamps -> do
-      updatedPaths <- act timestamps
-      now <- getCurTime
-      let timestamps' = updateTimestamps timestamps updatedPaths now
-      writeTimestamps sandboxDir timestamps'
 
 -- | (Re)install all add-source dependencies of the current package into the
 -- sandbox.
