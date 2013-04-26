@@ -1,5 +1,6 @@
 # trivial gitignore file
-
+.cabal-sandbox/
+cabal.sandbox.config
 cabal-dev/
 Cabal/dist/
 Cabal/tests/Setup
