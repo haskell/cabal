@@ -91,7 +91,8 @@ import Distribution.Simple.Utils
          , withTempDirectory, defaultPackageDesc
          , die, warn, notice, setupMessage )
 import Distribution.Simple.Setup (SDistFlags(..), fromFlag, flagToMaybe)
-import Distribution.Simple.PreProcess (PPSuffixHandler, ppSuffixes, preprocessComponent)
+import Distribution.Simple.PreProcess ( PPSuffixHandler, ppSuffixes
+                                      , preprocessComponent )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), withAllComponentsInBuildOrder )
 import Distribution.Simple.BuildPaths ( autogenModuleName )
@@ -191,7 +192,8 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   withExe $ \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
     prepareDir verbosity pkg_descr distPref targetDir pps [] exeBi
     srcMainFile <- do
-      ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi) (dropExtension mainPath)
+      ppFile <- findFileWithExtension (ppSuffixes pps) (hsSourceDirs exeBi)
+                (dropExtension mainPath)
       case ppFile of
         Nothing -> findFile (hsSourceDirs exeBi) mainPath
         Just pp -> return pp
@@ -214,7 +216,8 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
             copyFileTo verbosity targetDir srcMainFile
         TestSuiteLibV09 _ m -> do
             prep [m] bi
-        TestSuiteUnsupported tp -> die $ "Unsupported test suite type: " ++ show tp
+        TestSuiteUnsupported tp -> die $ "Unsupported test suite type: "
+                                   ++ show tp
 
   -- move the benchmarks into place
   withBenchmark $ \bm -> do
@@ -231,7 +234,8 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
                     Nothing -> findFile (hsSourceDirs bi) mainPath
                     Just pp -> return pp
             copyFileTo verbosity targetDir srcMainFile
-        BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: " ++ show tp
+        BenchmarkUnsupported tp -> die $ "Unsupported benchmark type: "
+                                   ++ show tp
 
   forM_ (dataFiles pkg_descr) $ \ filename -> do
     files <- matchFileGlob (dataDir pkg_descr </> filename)
@@ -281,7 +285,8 @@ prepareTree verbosity pkg_descr0 mb_lbi distPref targetDir pps = do
   installOrdinaryFile verbosity descFile (targetDir </> descFile)
 
   where
-    pkg_descr = mapLib filterAutogenModuleLib $ mapAllBuildInfo filterAutogenModuleBI pkg_descr0
+    pkg_descr = mapLib filterAutogenModuleLib $
+                mapAllBuildInfo filterAutogenModuleBI pkg_descr0
     mapLib f pkg = pkg { library = fmap f (library pkg) }
     filterAutogenModuleLib lib = lib {
       exposedModules = filter (/=autogenModule) (exposedModules lib)
@@ -313,7 +318,8 @@ prepareSnapshotTree :: Verbosity          -- ^verbosity
                     -> Maybe LocalBuildInfo
                     -> FilePath           -- ^dist dir
                     -> FilePath           -- ^source tree to populate
-                    -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
+                    -> [PPSuffixHandler]  -- ^extra preprocessors (includes
+                                          -- suffixes)
                     -> IO ()
 prepareSnapshotTree verbosity pkg mb_lbi distPref targetDir pps = do
   prepareTree verbosity pkg mb_lbi distPref targetDir pps
