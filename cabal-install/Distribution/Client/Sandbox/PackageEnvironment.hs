@@ -14,6 +14,7 @@ module Distribution.Client.Sandbox.PackageEnvironment (
   , PackageEnvironmentType(..)
   , classifyPackageEnvironment
   , createPackageEnvironment
+  , updatePackageEnvironment
   , tryLoadPackageEnvironment
   , readPackageEnvironmentFile
   , showPackageEnvironment
@@ -35,8 +36,9 @@ import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
                                        , defaultSandboxLocation )
-import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
-                                         , showCompilerId )
+import Distribution.Simple.Compiler    ( Compiler, CompilerFlavor(..)
+                                       , PackageDB(..)
+                                       , showCompilerId )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
                                        , fromPathTemplate, toPathTemplate )
 import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..),
@@ -266,16 +268,13 @@ loadUserConfig :: Verbosity -> FilePath -> IO SavedConfig
 loadUserConfig verbosity pkgEnvDir = fmap pkgEnvSavedConfig
                                      $ userPackageEnvironment verbosity pkgEnvDir
 
--- | Try to load the package environment file ("cabal.sandbox.config"), exiting
--- with error if it doesn't exist. Also returns the path to the sandbox
--- directory. Note that the path parameter should be a name of an existing
--- directory.
-tryLoadPackageEnvironment :: Verbosity -> FilePath -> (Flag FilePath)
-                             -> IO (FilePath, PackageEnvironment)
-tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
-  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
-  minp <- readPackageEnvironmentFile mempty path
-  pkgEnv <- case minp of
+-- | Common error handling code used by 'tryLoadPackageEnvironment' and
+-- 'updatePackageEnvironment'.
+handleParseResult :: Verbosity -> FilePath
+                     -> Maybe (ParseResult PackageEnvironment)
+                     -> IO PackageEnvironment
+handleParseResult verbosity path minp =
+  case minp of
     Nothing -> die $
       "The package environment file '" ++ path ++ "' doesn't exist"
     Just (ParseOk warns parseResult) -> do
@@ -286,6 +285,17 @@ tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
       let (line, msg) = locatedErrorMsg err
       die $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
+
+-- | Try to load the package environment file (@cabal.sandbox.config@), exiting
+-- with error if it doesn't exist. Also returns the path to the sandbox
+-- directory. Note that the path parameter should be a name of an existing
+-- directory.
+tryLoadPackageEnvironment :: Verbosity -> FilePath -> (Flag FilePath)
+                             -> IO (FilePath, PackageEnvironment)
+tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
+  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
+  minp   <- readPackageEnvironmentFile mempty path
+  pkgEnv <- handleParseResult verbosity path minp
 
   -- Get the saved sandbox directory.
   -- TODO: Use substPathTemplate with compilerTemplateEnv ++ platformTemplateEnv.
@@ -325,6 +335,33 @@ createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments
   commentPkgEnv <- commentPackageEnvironment sandboxDir
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
   writePackageEnvironmentFile path incComments commentPkgEnv initialPkgEnv
+
+-- | Update the values of certain flags in the saved package environment. See
+-- 'maybeUpdateSandboxConfig' in "Distribution.Client.Sandbox".
+updatePackageEnvironment :: Verbosity -> FilePath
+                            -> (Flag CompilerFlavor)
+                            -> (Flag FilePath)
+                            -> [Maybe PackageDB]
+                            -> IO ()
+updatePackageEnvironment verbosity pkgEnvDir
+                         newHcFlavor newHcPath newPackageDBs = do
+  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
+  mPkgEnv   <- readPackageEnvironmentFile mempty path
+  oldPkgEnv <- handleParseResult verbosity path mPkgEnv
+  let oldSavedConfig = pkgEnvSavedConfig oldPkgEnv
+      oldConfigFlags = savedConfigureFlags oldSavedConfig
+      newConfigFlags = oldConfigFlags {
+        configHcFlavor   = newHcFlavor,
+        configHcPath     = newHcPath,
+        configPackageDBs = newPackageDBs
+        }
+      newSavedConfig = oldSavedConfig {
+        savedConfigureFlags = newConfigFlags
+        }
+      newPkgEnv      = oldPkgEnv {
+        pkgEnvSavedConfig = newSavedConfig
+        }
+  writePackageEnvironmentFile path NoComments mempty newPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]

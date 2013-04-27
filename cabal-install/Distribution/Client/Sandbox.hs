@@ -17,7 +17,7 @@ module Distribution.Client.Sandbox (
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
-    UseSandbox(..), isUseSandbox,
+    UseSandbox(..), isUseSandbox, withSandboxDir,
     ForceGlobalInstall(UseDefaultPackageDBStack), maybeForceGlobalInstall,
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
@@ -26,6 +26,7 @@ module Distribution.Client.Sandbox (
     WereDepsReinstalled(..),
     reinstallAddSourceDeps,
     maybeReinstallAddSourceDeps,
+    maybeUpdateSandboxConfig,
 
     -- FIXME: move somewhere else
     configPackageDB', configCompilerAux'
@@ -50,7 +51,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
   , createPackageEnvironment, classifyPackageEnvironment
   , tryLoadPackageEnvironment, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
-  , sandboxPackageEnvironmentFile )
+  , sandboxPackageEnvironmentFile, updatePackageEnvironment )
 import Distribution.Client.Targets            ( UserTarget(..)
                                               , readUserTargets
                                               , resolveUserTargets )
@@ -172,8 +173,8 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   notice verbosity $ "Using a sandbox located at " ++ sandboxDir
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
-  userConfig   <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
-  (comp, platform, conf) <- configCompilerAux (savedConfigureFlags userConfig)
+  userConfig <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
+  (comp, platform, _) <- configCompilerAux (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
   pkgEnvDir   <- getCurrentDirectory
@@ -281,6 +282,12 @@ data UseSandbox = UseSandbox FilePath | NoSandbox
 isUseSandbox :: UseSandbox -> Bool
 isUseSandbox (UseSandbox _) = True
 isUseSandbox NoSandbox      = False
+
+-- | Execute an action only if we're in a sandbox, feeding to it the path to the
+-- sandbox directory.
+withSandboxDir :: UseSandbox -> (FilePath -> IO ()) -> IO ()
+withSandboxDir NoSandbox               _   = return ()
+withSandboxDir (UseSandbox sandboxDir) act = act sandboxDir
 
 -- | Check which type of package environment we're in and return a
 -- correctly-initialised @SavedConfig@ and a @UseSandbox@ value that indicates
@@ -402,6 +409,33 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
       depsReinstalled <- reinstallAddSourceDeps verbosity config
                                    numJobsFlag sandboxDir globalFlags
       return (useSandbox, depsReinstalled)
+
+-- | Update the 'with-compiler' and 'package-db' fields in the auto-generated
+-- sandbox config file if the user has configured the project with a different
+-- compiler. Note that we don't auto-enable things like 'library-profiling' (for
+-- now?) even if the user has passed '--enable-library-profiling' to
+-- 'configure'. These options are supposed to be set in cabal.config.
+maybeUpdateSandboxConfig :: Verbosity
+                            -> SavedConfig -- ^ old config
+                            -> ConfigFlags -- ^ new configure flags
+                            -> IO ()
+maybeUpdateSandboxConfig verbosity savedConfig newConfigFlags = do
+  let oldConfigFlags = savedConfigureFlags savedConfig
+
+      oldHcFlavor    = configHcFlavor   oldConfigFlags
+      oldHcPath      = configHcPath     oldConfigFlags
+      oldPackageDBs  = configPackageDBs oldConfigFlags
+
+      newHcFlavor    = configHcFlavor   newConfigFlags
+      newHcPath      = configHcPath     newConfigFlags
+      newPackageDBs  = configPackageDBs newConfigFlags
+
+  when ((oldHcFlavor /= newHcFlavor)
+        || (oldHcPath /= newHcPath)
+        || (oldPackageDBs /= newPackageDBs)) $ do
+    pkgEnvDir <- getCurrentDirectory
+    updatePackageEnvironment verbosity pkgEnvDir
+      newHcFlavor newHcPath newPackageDBs
 
 --
 -- Utils (transitionary)
