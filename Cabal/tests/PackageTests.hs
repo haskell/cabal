@@ -28,6 +28,7 @@ import PackageTests.BuildDeps.SameDepsAllRound.Check
 import PackageTests.BuildDeps.TargetSpecificDeps1.Check
 import PackageTests.BuildDeps.TargetSpecificDeps2.Check
 import PackageTests.BuildDeps.TargetSpecificDeps3.Check
+import PackageTests.BuildTestSuiteDetailedV09.Check
 import PackageTests.PackageTester (compileSetup)
 import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
@@ -77,6 +78,8 @@ tests version =
     , hunit "PathsModule/Library" PackageTests.PathsModule.Library.Check.suite
     , hunit "EmptyLib/emptyLib"
       PackageTests.EmptyLib.Check.emptyLib
+    , hunit "BuildTestSuiteDetailedV09"
+      PackageTests.BuildTestSuiteDetailedV09.Check.suite
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []
