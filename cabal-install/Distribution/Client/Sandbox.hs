@@ -186,11 +186,10 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   indexFile <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
   Index.createEmpty verbosity indexFile
 
-  -- Create the package DB for this compiler if it doesn't exist. If the user
-  -- later chooses a different compiler with -w, the sandbox for that compiler
-  -- will be created on demand.
-  initPackageDBIfNeeded verbosity
-    (savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv) comp conf
+  -- We don't create the package DB for the default compiler here: it's created
+  -- by demand in 'install' and 'configure'. This way, if you run 'sandbox init'
+  -- and then 'configure -w /path/to/nondefault-ghc', you'll end up with a
+  -- package DB for only one compiler instead of two.
 
 -- | Entry point for the 'cabal sandbox-delete' command.
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
