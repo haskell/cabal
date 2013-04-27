@@ -23,7 +23,7 @@ module Distribution.Client.Sandbox (
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
 
-    AreDepsReinstalled(..),
+    WereDepsReinstalled(..),
     reinstallAddSourceDeps,
     maybeReinstallAddSourceDeps,
 
@@ -317,13 +317,13 @@ maybeWithSandboxDirOnSearchPath (UseSandbox sandboxDir) act =
   withSandboxBinDirOnSearchPath sandboxDir $ act
 
 -- | Had reinstallAddSourceDeps actually reinstalled any dependencies?
-data AreDepsReinstalled = ReinstalledSomeDeps | NoDepsReinstalled
+data WereDepsReinstalled = ReinstalledSomeDeps | NoDepsReinstalled
 
 -- | Reinstall those add-source dependencies that have been modified since
 -- we've last installed them.
 reinstallAddSourceDeps :: Verbosity -> SavedConfig -> Flag (Maybe Int)
                           -> FilePath -> GlobalFlags
-                          -> IO AreDepsReinstalled
+                          -> IO WereDepsReinstalled
 reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
@@ -386,7 +386,7 @@ reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
 maybeReinstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
-                             -> IO (UseSandbox, AreDepsReinstalled)
+                             -> IO (UseSandbox, WereDepsReinstalled)
 maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir

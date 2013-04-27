@@ -78,7 +78,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,loadConfigOrSandboxConfig
                                               ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
-                                              ,AreDepsReinstalled(..)
+                                              ,WereDepsReinstalled(..)
                                               ,maybeReinstallAddSourceDeps
 
                                               ,configCompilerAux'
