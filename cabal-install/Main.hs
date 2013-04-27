@@ -64,7 +64,6 @@ import Distribution.Client.Upload as Upload   (upload, check, report)
 import Distribution.Client.Run                (run)
 import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Get                (get)
-import Distribution.Client.PackageEnvironment (setPackageDB)
 import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxAddSource
                                               ,sandboxDelete
@@ -84,6 +83,8 @@ import Distribution.Client.Sandbox            (sandboxInit
 
                                               ,configCompilerAux'
                                               ,configPackageDB')
+import Distribution.Client.Sandbox.PackageEnvironment
+                                              (setPackageDB)
 
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade

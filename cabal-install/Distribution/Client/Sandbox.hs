@@ -45,7 +45,7 @@ import Distribution.Client.Install            ( InstallArgs,
                                                 makeInstallPlan,
                                                 processInstallPlan,
                                                 pruneInstallPlan )
-import Distribution.Client.PackageEnvironment
+import Distribution.Client.Sandbox.PackageEnvironment
   ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
   , createPackageEnvironment, classifyPackageEnvironment
   , tryLoadPackageEnvironment, loadUserConfig
@@ -70,8 +70,8 @@ import Distribution.Simple.Utils              ( die, debug, notice, info
 import Distribution.System                    ( Platform )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
-import qualified Distribution.Client.Index as Index
-import qualified Distribution.Simple.Register as Register
+import qualified Distribution.Client.Sandbox.Index as Index
+import qualified Distribution.Simple.Register      as Register
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( unless, when )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
