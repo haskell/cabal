@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.PackageEnvironment
+-- Module      :  Distribution.Client.Sandbox.PackageEnvironment
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
@@ -8,7 +8,7 @@
 -- Distribution.Client.Config.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.PackageEnvironment (
+module Distribution.Client.Sandbox.PackageEnvironment (
     PackageEnvironment(..)
   , IncludeComments(..)
   , PackageEnvironmentType(..)
@@ -68,8 +68,8 @@ import qualified Distribution.Text         as Text
 -- * Configuration saved in the package environment file
 --
 
--- TODO: would be nice to remove duplication between D.C.PackageEnvironment and
--- D.C.Config.
+-- TODO: would be nice to remove duplication between
+-- D.C.Sandbox.PackageEnvironment and D.C.Config.
 data PackageEnvironment = PackageEnvironment {
   -- The 'inherit' feature is not used ATM, but could be useful in the future
   -- for constructing nested sandboxes (see discussion in #1196).
