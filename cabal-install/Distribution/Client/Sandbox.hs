@@ -286,7 +286,9 @@ isUseSandbox NoSandbox      = False
 -- | Check which type of package environment we're in and return a
 -- correctly-initialised @SavedConfig@ and a @UseSandbox@ value that indicates
 -- whether we're working in a sandbox.
-loadConfigOrSandboxConfig :: Verbosity -> Flag FilePath -> Flag Bool
+loadConfigOrSandboxConfig :: Verbosity
+                             -> Flag FilePath -- ^ --config-file
+                             -> Flag Bool     -- ^ Ignored if we're in a sandbox.
                              -> IO (UseSandbox, SavedConfig)
 loadConfigOrSandboxConfig verbosity configFileFlag userInstallFlag = do
   currentDir <- getCurrentDirectory
