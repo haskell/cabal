@@ -22,6 +22,8 @@ module Distribution.Client.Sandbox (
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
+
+    AreDepsReinstalled(..),
     reinstallAddSourceDeps,
     maybeReinstallAddSourceDeps,
 
@@ -72,6 +74,7 @@ import qualified Distribution.Client.Index as Index
 import qualified Distribution.Simple.Register as Register
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( unless, when )
+import Data.IORef                             ( newIORef, writeIORef, readIORef )
 import Data.List                              ( (\\), delete )
 import Data.Monoid                            ( mempty, mappend )
 import System.Directory                       ( doesDirectoryExist
@@ -311,14 +314,19 @@ maybeWithSandboxDirOnSearchPath NoSandbox               act = act
 maybeWithSandboxDirOnSearchPath (UseSandbox sandboxDir) act =
   withSandboxBinDirOnSearchPath sandboxDir $ act
 
+-- | Had reinstallAddSourceDeps actually reinstalled any dependencies?
+data AreDepsReinstalled = ReinstalledSomeDeps | NoDepsReinstalled
+
 -- | Reinstall those add-source dependencies that have been modified since
 -- we've last installed them.
 reinstallAddSourceDeps :: Verbosity -> SavedConfig -> Flag (Maybe Int)
                           -> FilePath -> GlobalFlags
-                          -> IO ()
+                          -> IO AreDepsReinstalled
 reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
+
+  retVal               <- newIORef NoDepsReinstalled
 
   withModifiedDeps verbosity sandboxDir $ \modifiedDeps -> do
     assert (null $ modifiedDeps \\ buildTreeRefs) (return ())
@@ -369,17 +377,20 @@ reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
                             $ makeInstallPlan verbosity args installContext)
 
         processInstallPlan verbosity args installContext installPlan
+        writeIORef retVal ReinstalledSomeDeps
+
+  readIORef retVal
 
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
 maybeReinstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
-                             -> IO UseSandbox
+                             -> IO (UseSandbox, AreDepsReinstalled)
 maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
-    AmbientPackageEnvironment -> return NoSandbox
-    UserPackageEnvironment    -> return NoSandbox
+    AmbientPackageEnvironment -> return (NoSandbox, NoDepsReinstalled)
+    UserPackageEnvironment    -> return (NoSandbox, NoDepsReinstalled)
     SandboxPackageEnvironment -> do
       (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                               (globalConfigFile globalFlags) mempty
@@ -387,8 +398,9 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
             UseSandbox d -> d;
             _            -> error "Distribution.Client.Sandbox.\
                                   \maybeInstallAddSourceDeps: can't happen"
-      reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags
-      return useSandbox
+      depsReinstalled <- reinstallAddSourceDeps verbosity config
+                                   numJobsFlag sandboxDir globalFlags
+      return (useSandbox, depsReinstalled)
 
 --
 -- Utils (transitionary)

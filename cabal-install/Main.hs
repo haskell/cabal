@@ -242,8 +242,8 @@ buildAction buildFlags extraArgs globalFlags = do
       verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
 
   -- If we're in a sandbox, reinstall the updated add-source dependencies.
-  useSandbox <- maybeReinstallAddSourceDeps verbosity
-                (buildNumJobs buildFlags) globalFlags
+  (useSandbox, _) <- maybeReinstallAddSourceDeps verbosity
+                     (buildNumJobs buildFlags) globalFlags
 
   -- Calls 'configureAction' to do the real work, so nothing special has to be
   -- done to support sandboxes.
@@ -458,8 +458,8 @@ testAction testFlags extraArgs globalFlags = do
         | otherwise = Just "Re-configuring with test suites enabled."
 
   -- If we're in a sandbox, reinstall the updated add-source dependencies.
-  useSandbox <- maybeReinstallAddSourceDeps verbosity
-                (testNumJobs testFlags) globalFlags
+  (useSandbox, _) <- maybeReinstallAddSourceDeps verbosity
+                     (testNumJobs testFlags) globalFlags
 
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -481,8 +481,8 @@ benchmarkAction benchmarkFlags extraArgs globalFlags = do
         | otherwise = Just "Re-configuring with benchmarks enabled."
 
   -- If we're in a sandbox, reinstall the updated add-source dependencies.
-  useSandbox <- maybeReinstallAddSourceDeps verbosity
-                (benchmarkNumJobs benchmarkFlags) globalFlags
+  (useSandbox, _) <- maybeReinstallAddSourceDeps verbosity
+                     (benchmarkNumJobs benchmarkFlags) globalFlags
 
   reconfigure verbosity distPref addConfigFlags [] globalFlags checkFlags
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -631,8 +631,8 @@ runAction buildFlags extraArgs globalFlags = do
                      (buildDistPref buildFlags)
 
   -- If we're in a sandbox, reinstall the updated add-source dependencies.
-  useSandbox <- maybeReinstallAddSourceDeps verbosity
-                (buildNumJobs buildFlags) globalFlags
+  (useSandbox, _) <- maybeReinstallAddSourceDeps verbosity
+                     (buildNumJobs buildFlags) globalFlags
 
   reconfigure verbosity distPref mempty [] globalFlags (const Nothing)
   maybeWithSandboxDirOnSearchPath useSandbox $
