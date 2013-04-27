@@ -198,9 +198,9 @@ setPackageDB sandboxDir compiler platform configFlags =
 
 -- | Almost the same as 'savedConf `mappend` pkgEnv', but some settings are
 -- overridden instead of mappend'ed.
-overrideSandboxSettings :: SavedConfig -> PackageEnvironment ->
+overrideSandboxSettings :: PackageEnvironment -> PackageEnvironment ->
                            PackageEnvironment
-overrideSandboxSettings savedConf pkgEnv =
+overrideSandboxSettings pkgEnv0 pkgEnv =
   pkgEnv {
     pkgEnvSavedConfig = mappendedConf {
        savedGlobalFlags = (savedGlobalFlags mappendedConf) {
@@ -212,11 +212,12 @@ overrideSandboxSettings savedConf pkgEnv =
        , savedInstallFlags = (savedInstallFlags mappendedConf) {
           installSummaryFile = installSummaryFile pkgEnvInstallFlags
           }
-       }
+       },
+    pkgEnvInherit = pkgEnvInherit pkgEnv0
     }
   where
     pkgEnvConf           = pkgEnvSavedConfig pkgEnv
-    mappendedConf        = savedConf `mappend` pkgEnvConf
+    mappendedConf        = (pkgEnvSavedConfig pkgEnv0) `mappend` pkgEnvConf
     pkgEnvGlobalFlags    = savedGlobalFlags pkgEnvConf
     pkgEnvConfigureFlags = savedConfigureFlags pkgEnvConf
     pkgEnvInstallFlags   = savedInstallFlags pkgEnvConf
@@ -300,8 +301,11 @@ tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
   -- Layer the package environment settings over settings from ~/.cabal/config.
   cabalConfig <- loadConfig verbosity configFileFlag NoFlag
   return (sandboxDir,
-          base `mappend` (cabalConfig `overrideSandboxSettings`
-          (common `mappend` inherited `mappend` user `mappend` pkgEnv)))
+          (base `mappend` (toPkgEnv cabalConfig) `mappend`
+           common `mappend` inherited `mappend` user)
+          `overrideSandboxSettings` pkgEnv)
+    where
+      toPkgEnv config = mempty { pkgEnvSavedConfig = config }
 
 -- | Should the generated package environment file include comments?
 data IncludeComments = IncludeComments | NoComments
