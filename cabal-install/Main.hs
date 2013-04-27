@@ -80,6 +80,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,maybeWithSandboxDirOnSearchPath
                                               ,WereDepsReinstalled(..)
                                               ,maybeReinstallAddSourceDeps
+                                              ,maybeUpdateSandboxConfig
 
                                               ,configCompilerAux'
                                               ,configPackageDB')
@@ -222,13 +223,16 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   (comp, platform, conf) <- configCompilerAux configFlags'
 
   -- If this a sandbox and the user has set the -w option, we may need to create
-  -- a sandbox-local package DB for this compiler.
+  -- a sandbox-local package DB for this compiler and rewrite the
+  -- 'with-compiler' and 'package-db' fields in the cabal.sandbox.config file.
   let configFlags''  = case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir
                                    comp platform configFlags'
-  when (isUseSandbox useSandbox) $
+
+  when (isUseSandbox useSandbox) $ do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
+    maybeUpdateSandboxConfig verbosity config configFlags''
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     configure verbosity
