@@ -1259,6 +1259,8 @@ instance Monoid Win32SelfUpgradeFlags where
 
 data SandboxFlags = SandboxFlags {
   sandboxVerbosity :: Flag Verbosity,
+  sandboxSnapshot  :: Flag Bool, -- FIXME: this should be an 'add-source'-only
+                                 -- flag.
   sandboxLocation  :: Flag FilePath
 }
 
@@ -1268,6 +1270,7 @@ defaultSandboxLocation = ".cabal-sandbox"
 defaultSandboxFlags :: SandboxFlags
 defaultSandboxFlags = SandboxFlags {
   sandboxVerbosity = toFlag normal,
+  sandboxSnapshot  = toFlag False,
   sandboxLocation  = toFlag defaultSandboxLocation
   }
 
@@ -1289,6 +1292,11 @@ sandboxCommand = CommandUI {
     [ optionVerbosity sandboxVerbosity
       (\v flags -> flags { sandboxVerbosity = v })
 
+    , option [] ["snapshot"]
+      "Take a snapshot instead of creating a link (only applies to 'add-source')"
+      sandboxSnapshot (\v flags -> flags { sandboxSnapshot = v })
+      trueArg
+
     , option [] ["sandbox"]
       "Sandbox location (default: './.cabal-sandbox')."
       sandboxLocation (\v flags -> flags { sandboxLocation = v })
@@ -1299,10 +1307,12 @@ sandboxCommand = CommandUI {
 instance Monoid SandboxFlags where
   mempty = SandboxFlags {
     sandboxVerbosity = mempty,
+    sandboxSnapshot  = mempty,
     sandboxLocation  = mempty
     }
   mappend a b = SandboxFlags {
     sandboxVerbosity = combine sandboxVerbosity,
+    sandboxSnapshot  = combine sandboxSnapshot,
     sandboxLocation  = combine sandboxLocation
     }
     where combine field = field a `mappend` field b
