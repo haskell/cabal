@@ -11,6 +11,7 @@ module Distribution.Client.Sandbox (
     sandboxInit,
     sandboxDelete,
     sandboxAddSource,
+    sandboxAddSourceSnapshot,
     sandboxDeleteSource,
     sandboxListSources,
     sandboxHcPkg,
@@ -59,35 +60,53 @@ import Distribution.Client.Targets            ( UserTarget(..)
                                               , readUserTargets
                                               , resolveUserTargets )
 import Distribution.Client.Types              ( SourcePackageDb(..) )
-import Distribution.Client.Utils              ( tryCanonicalizePath )
+import Distribution.Client.Utils              ( inDir, tryCanonicalizePath )
+import Distribution.PackageDescription.Configuration
+                                              ( flattenPackageDescription )
+import Distribution.PackageDescription.Parse  ( readPackageDescription )
 import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
                                               , PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAux
                                               , interpretPackageDbFlags )
+import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..)
                                               , fromFlag, fromFlagOrDefault )
+import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die, debug, notice, info
-                                              , debugNoWrap
+                                              , debugNoWrap, defaultPackageDesc
                                               , intercalate
                                               , createDirectoryIfMissingVerbose )
+import Distribution.Package                   ( Package(..) )
 import Distribution.System                    ( Platform )
+import Distribution.Text                      ( display )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
 import qualified Distribution.Client.Sandbox.Index as Index
 import qualified Distribution.Simple.Register      as Register
 import Control.Exception                      ( assert, bracket_ )
-import Control.Monad                          ( unless, when )
+import Control.Monad                          ( forM, unless, when )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
 import Data.List                              ( (\\), delete )
 import Data.Monoid                            ( mempty, mappend )
-import System.Directory                       ( doesDirectoryExist
+import System.Directory                       ( createDirectory
+                                              , doesDirectoryExist
                                               , getCurrentDirectory
                                               , removeDirectoryRecursive
-                                              , removeFile )
+                                              , removeFile
+                                              , renameDirectory )
 import System.FilePath                        ( (</>), getSearchPath
                                               , searchPathSeparator )
 
+
+--
+-- * Constants
+--
+
+-- | The name of the sandbox subdirectory where we keep snapshots of add-source
+-- dependencies.
+snapshotDirectoryName :: FilePath
+snapshotDirectoryName = "snapshots"
 
 --
 -- * Basic sandbox functions.
@@ -220,12 +239,9 @@ sandboxDelete verbosity _sandboxFlags globalFlags = do
       notice verbosity $ "Deleting the sandbox located at " ++ sandboxDir
       removeDirectoryRecursive sandboxDir
 
--- | Entry point for the 'cabal sandbox add-source' command.
-sandboxAddSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
-                    -> IO ()
-sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
-  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
-                          (globalConfigFile globalFlags)
+-- Common implementation of 'sandboxAddSource' and 'sandboxAddSourceSnapshot'.
+doAddSource :: Verbosity -> [FilePath] -> FilePath -> PackageEnvironment -> IO ()
+doAddSource verbosity buildTreeRefs sandboxDir pkgEnv = do
   let savedConfig       = pkgEnvSavedConfig pkgEnv
   indexFile            <- tryGetIndexFilePath savedConfig
 
@@ -240,6 +256,63 @@ sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
     buildTreeRefs' <- mapM tryCanonicalizePath buildTreeRefs
     Index.addBuildTreeRefs verbosity indexFile buildTreeRefs'
     return buildTreeRefs'
+
+-- | Entry point for the 'cabal sandbox add-source' command.
+sandboxAddSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
+                    -> IO ()
+sandboxAddSource verbosity buildTreeRefs sandboxFlags globalFlags = do
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+                          (globalConfigFile globalFlags)
+
+  if fromFlagOrDefault False (sandboxSnapshot sandboxFlags)
+    then sandboxAddSourceSnapshot verbosity buildTreeRefs sandboxDir pkgEnv
+    else doAddSource verbosity buildTreeRefs sandboxDir pkgEnv
+
+-- | Entry point for the 'cabal sandbox add-source --snapshot' command.
+sandboxAddSourceSnapshot :: Verbosity -> [FilePath] -> FilePath
+                            -> PackageEnvironment
+                            -> IO ()
+sandboxAddSourceSnapshot verbosity buildTreeRefs sandboxDir pkgEnv = do
+  let snapshotDir = sandboxDir </> snapshotDirectoryName
+
+  -- Use 'D.S.SrcDist.prepareTree' to copy each package's files to our private
+  -- location.
+  createDirectoryIfMissingVerbose verbosity True snapshotDir
+
+  -- Collect the package descriptions first, so that if some path does not refer
+  -- to a cabal package, we fail immediately.
+  pkgs      <- forM buildTreeRefs $ \buildTreeRef ->
+    inDir (Just buildTreeRef) $
+    return . flattenPackageDescription
+            =<< readPackageDescription verbosity
+            =<< defaultPackageDesc     verbosity
+
+  -- Copy the package sources to "snapshots/$PKGNAME-$VERSION-tmp". If
+  -- 'prepareTree' throws an error at any point, the old snapshots will still be
+  -- in consistent state.
+  tmpDirs <- forM (zip buildTreeRefs pkgs) $ \(buildTreeRef, pkg) ->
+    inDir (Just buildTreeRef) $ do
+      let targetDir    = snapshotDir </> (display . packageId $ pkg)
+          targetTmpDir = targetDir ++ "-tmp"
+      dirExists <- doesDirectoryExist targetTmpDir
+      when dirExists $
+        removeDirectoryRecursive targetDir
+      createDirectory targetTmpDir
+      prepareTree verbosity pkg Nothing buildTreeRef targetTmpDir
+        knownSuffixHandlers
+      return (targetTmpDir, targetDir)
+
+  -- Now rename the "snapshots/$PKGNAME-$VERSION-tmp" dirs to
+  -- "snapshots/$PKGNAME-$VERSION".
+  snapshots <- forM tmpDirs $ \(targetTmpDir, targetDir) -> do
+    dirExists <- doesDirectoryExist targetDir
+    when dirExists $
+      removeDirectoryRecursive targetDir
+    renameDirectory targetTmpDir targetDir
+    return targetDir
+
+  -- Once the packages are copied, just 'add-source' them as usual.
+  doAddSource verbosity snapshots sandboxDir pkgEnv
 
 -- | Entry point for the 'cabal sandbox delete-source' command.
 sandboxDeleteSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
