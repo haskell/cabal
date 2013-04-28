@@ -15,7 +15,7 @@ module Distribution.Client.Sandbox.PackageEnvironment (
   , classifyPackageEnvironment
   , createPackageEnvironment
   , updatePackageEnvironment
-  , tryLoadPackageEnvironment
+  , tryLoadSandboxPackageEnvironment
   , readPackageEnvironmentFile
   , showPackageEnvironment
   , showPackageEnvironmentWithComments
@@ -268,7 +268,7 @@ loadUserConfig :: Verbosity -> FilePath -> IO SavedConfig
 loadUserConfig verbosity pkgEnvDir = fmap pkgEnvSavedConfig
                                      $ userPackageEnvironment verbosity pkgEnvDir
 
--- | Common error handling code used by 'tryLoadPackageEnvironment' and
+-- | Common error handling code used by 'tryLoadSandboxPackageEnvironment' and
 -- 'updatePackageEnvironment'.
 handleParseResult :: Verbosity -> FilePath
                      -> Maybe (ParseResult PackageEnvironment)
@@ -290,9 +290,9 @@ handleParseResult verbosity path minp =
 -- with error if it doesn't exist. Also returns the path to the sandbox
 -- directory. Note that the path parameter should be a name of an existing
 -- directory.
-tryLoadPackageEnvironment :: Verbosity -> FilePath -> (Flag FilePath)
-                             -> IO (FilePath, PackageEnvironment)
-tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
+tryLoadSandboxPackageEnvironment :: Verbosity -> FilePath -> (Flag FilePath)
+                                    -> IO (FilePath, PackageEnvironment)
+tryLoadSandboxPackageEnvironment verbosity pkgEnvDir configFileFlag = do
   let path = pkgEnvDir </> sandboxPackageEnvironmentFile
   minp   <- readPackageEnvironmentFile mempty path
   pkgEnv <- handleParseResult verbosity path minp

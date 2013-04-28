@@ -49,7 +49,7 @@ import Distribution.Client.Install            ( InstallArgs,
 import Distribution.Client.Sandbox.PackageEnvironment
   ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
   , createPackageEnvironment, classifyPackageEnvironment
-  , tryLoadPackageEnvironment, loadUserConfig
+  , tryLoadSandboxPackageEnvironment, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
   , sandboxPackageEnvironmentFile, updatePackageEnvironment )
 import Distribution.Client.Targets            ( UserTarget(..)
@@ -97,7 +97,7 @@ tryLoadSandboxConfig :: Verbosity -> Flag FilePath
                         -> IO (FilePath, PackageEnvironment)
 tryLoadSandboxConfig verbosity configFileFlag = do
   pkgEnvDir            <- getCurrentDirectory
-  (sandboxDir, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
+  (sandboxDir, pkgEnv) <- tryLoadSandboxPackageEnvironment verbosity pkgEnvDir
                           configFileFlag
   dirExists            <- doesDirectoryExist sandboxDir
   -- TODO: Also check for an initialised package DB?
@@ -180,7 +180,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   pkgEnvDir   <- getCurrentDirectory
   createPackageEnvironment verbosity sandboxDir pkgEnvDir
     NoComments comp platform
-  (_, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
+  (_, pkgEnv) <- tryLoadSandboxPackageEnvironment verbosity pkgEnvDir
                  (globalConfigFile globalFlags)
 
   -- Create the index file if it doesn't exist.
