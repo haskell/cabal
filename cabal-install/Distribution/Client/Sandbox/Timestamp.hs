@@ -38,13 +38,13 @@ import Distribution.Simple.SrcDist                   (allSourcesBuildInfo,
                                                       findMainExeFile,
                                                       findSetupFile)
 import Distribution.Simple.Utils                     (defaultPackageDesc, die,
-                                                      findPackageDesc,
+                                                      debug, findPackageDesc,
                                                       matchFileGlob, warn)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
 import Distribution.Verbosity                        (Verbosity)
 
-import Distribution.Client.Utils                     (inDir)
+import Distribution.Client.Utils                     (inDir, tryCanonicalizePath)
 import Distribution.Client.Sandbox.Index             (listBuildTreeRefs)
 
 import Distribution.Compat.Exception                 (catchIO)
@@ -238,7 +238,8 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
   mSetupFile <- findSetupFile
   descFile   <- defaultPackageDesc verbosity
 
-  return . map (packageDir </>) $ descFile : (maybeToList mSetupFile)
+  mapM tryCanonicalizePath . map (packageDir </>) $
+    descFile : (maybeToList mSetupFile)
     ++ incFiles ++ (concat extraSrcs) ++ (concat dataFs)
     ++ (concat exeSources) ++ libSources
 
@@ -266,7 +267,11 @@ isDepModified verbosity now (packageDir, timestamp) = do
       when (modTime > now) $
         warn verbosity $ "File '" ++ dep
                          ++ "' has a modification time that is in the future."
-      if modTime >= timestamp then return True else go rest
+      if modTime > timestamp
+        then do
+          debug verbosity ("Dependency has a modified source file: " ++ dep)
+          return True
+        else go rest
 
 -- | Given an IO action, feed to it the list of modified add-source deps and
 -- set their timestamps to the current time in the timestamps file.
