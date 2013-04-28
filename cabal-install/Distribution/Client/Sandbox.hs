@@ -17,7 +17,7 @@ module Distribution.Client.Sandbox (
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
-    UseSandbox(..), isUseSandbox, withSandboxDir,
+    UseSandbox(..), isUseSandbox, whenUsingSandbox,
     ForceGlobalInstall(UseDefaultPackageDBStack), maybeForceGlobalInstall,
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
@@ -285,9 +285,9 @@ isUseSandbox NoSandbox      = False
 
 -- | Execute an action only if we're in a sandbox, feeding to it the path to the
 -- sandbox directory.
-withSandboxDir :: UseSandbox -> (FilePath -> IO ()) -> IO ()
-withSandboxDir NoSandbox               _   = return ()
-withSandboxDir (UseSandbox sandboxDir) act = act sandboxDir
+whenUsingSandbox :: UseSandbox -> (FilePath -> IO ()) -> IO ()
+whenUsingSandbox NoSandbox               _   = return ()
+whenUsingSandbox (UseSandbox sandboxDir) act = act sandboxDir
 
 -- | Check which type of package environment we're in and return a
 -- correctly-initialised @SavedConfig@ and a @UseSandbox@ value that indicates
