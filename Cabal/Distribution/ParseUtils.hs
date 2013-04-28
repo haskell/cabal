@@ -53,7 +53,8 @@ module Distribution.ParseUtils (
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
         Field(..), fName, lineNo,
         FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
-        showFields, showSingleNamedField, parseFields, parseFieldsFlat,
+        showFields, showSingleNamedField, showSimpleSingleNamedField,
+        parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
         parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
@@ -278,6 +279,13 @@ showSingleNamedField fields f =
   case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
     []      -> Nothing
     (get:_) -> Just (render . ppField f . get)
+
+showSimpleSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
+showSimpleSingleNamedField fields f =
+  case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
+    []      -> Nothing
+    (get:_) -> Just (renderStyle myStyle . get)
+ where myStyle = style { mode = LeftMode }
 
 parseFields :: [FieldDescr a] -> a -> String -> ParseResult a
 parseFields fields initial str =

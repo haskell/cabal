@@ -61,13 +61,15 @@ module Distribution.InstalledPackageInfo (
         parseInstalledPackageInfo,
         showInstalledPackageInfo,
         showInstalledPackageInfoField,
+        showSimpleInstalledPackageInfoField,
         fieldsInstalledPackageInfo,
   ) where
 
 import Distribution.ParseUtils
          ( FieldDescr(..), ParseResult(..), PError(..), PWarning
          , simpleField, listField, parseLicenseQ
-         , showFields, showSingleNamedField, parseFieldsFlat
+         , showFields, showSingleNamedField, showSimpleSingleNamedField
+         , parseFieldsFlat
          , parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ
          , showFilePath, showToken, boolField, parseOptVersion
          , parseFreeText, showFreeText )
@@ -184,6 +186,9 @@ showInstalledPackageInfo = showFields fieldsInstalledPackageInfo
 
 showInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
+
+showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
+showSimpleInstalledPackageInfoField = showSimpleSingleNamedField fieldsInstalledPackageInfo
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
