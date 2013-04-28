@@ -1,13 +1,13 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.Index
+-- Module      :  Distribution.Client.Sandbox.Index
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
 -- Querying and modifying local build tree references in the package index.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.Index (
+module Distribution.Client.Sandbox.Index (
     createEmpty,
     addBuildTreeRefs,
     removeBuildTreeRefs,
@@ -124,7 +124,7 @@ createEmpty verbosity path = do
 -- | Add given local build tree references to the index.
 addBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO ()
 addBuildTreeRefs _         _   [] =
-  error "Distribution.Client.Index.addBuildTreeRefs: unexpected"
+  error "Distribution.Client.Sandbox.Index.addBuildTreeRefs: unexpected"
 addBuildTreeRefs verbosity path l' = do
   checkIndexExists path
   l <- liftM nub . mapM tryCanonicalizePath $ l'
@@ -146,7 +146,7 @@ addBuildTreeRefs verbosity path l' = do
 -- | Remove given local build tree references from the index.
 removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO ()
 removeBuildTreeRefs _         _   [] =
-  error "Distribution.Client.Index.removeBuildTreeRefs: unexpected"
+  error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity path l' = do
   checkIndexExists path
   l <- mapM tryCanonicalizePath l'

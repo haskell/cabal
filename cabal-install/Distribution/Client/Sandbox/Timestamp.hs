@@ -15,10 +15,10 @@ module Distribution.Client.Sandbox.Timestamp (
   withModifiedDeps,
   ) where
 
-import Control.Monad                                 (filterM, forM)
+import Control.Monad                                 (filterM, forM, when)
 import Data.Char                                     (isSpace)
-import Data.Maybe                                    (maybeToList)
 import Data.List                                     (partition)
+import Data.Maybe                                    (maybeToList)
 import System.Directory                              (renameFile)
 import System.FilePath                               (isAbsolute, (<.>), (</>))
 
@@ -36,7 +36,7 @@ import Distribution.Simple.SrcDist                   (allSourcesBuildInfo,
                                                       findSetupFile)
 import Distribution.Simple.Utils                     (defaultPackageDesc, die,
                                                       findPackageDesc,
-                                                      matchFileGlob)
+                                                      matchFileGlob, warn)
 import Distribution.Verbosity                        (Verbosity)
 
 import Distribution.Client.Utils                     (inDir)
@@ -181,26 +181,29 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
 
 
 -- | Has this dependency been modified since we have last looked at it?
-isDepModified :: Verbosity -> AddSourceTimestamp -> IO Bool
-isDepModified verbosity (packageDir, timestamp) = do
+isDepModified :: Verbosity -> EpochTime -> AddSourceTimestamp -> IO Bool
+isDepModified verbosity now (packageDir, timestamp) = do
   depSources <- allPackageSourceFiles verbosity packageDir
   go depSources
 
   where
     go []         = return False
-    -- TOTHINK: What if the clock jumps backwards at any point? For bonus
-    -- points we could at least detect if any file has a modification time that
-    -- is in the future and print a warning.
-    go (dep:rest) = do modTime <- getModTime dep
-                       if modTime >= timestamp
-                         then return True
-                         else go rest
+    go (dep:rest) = do
+      -- FIXME: What if the clock jumps backwards at any point? For now we only
+      -- print a warning.
+      modTime <- getModTime dep
+      when (modTime > now) $
+        warn verbosity $ "File '" ++ dep
+                         ++ "' has a modification time that is in the future."
+      if modTime >= timestamp then return True else go rest
 
 -- | Given an IO action, feed to it the list of modified add-source deps and
 -- set their timestamps to the current time in the timestamps file.
 withModifiedDeps :: Verbosity -> FilePath -> ([FilePath] -> IO ()) -> IO ()
 withModifiedDeps verbosity sandboxDir act = do
   withUpdateTimestamps sandboxDir $ \timestamps -> do
-    modified <- fmap (map fst) . filterM (isDepModified verbosity) $ timestamps
+    now <- getCurTime
+    modified <- fmap (map fst) . filterM (isDepModified verbosity now)
+                $ timestamps
     act modified
     return modified

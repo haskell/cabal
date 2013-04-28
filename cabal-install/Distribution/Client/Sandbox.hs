@@ -17,13 +17,16 @@ module Distribution.Client.Sandbox (
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
-    UseSandbox(..), isUseSandbox,
+    UseSandbox(..), isUseSandbox, whenUsingSandbox,
     ForceGlobalInstall(UseDefaultPackageDBStack), maybeForceGlobalInstall,
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
+
+    WereDepsReinstalled(..),
     reinstallAddSourceDeps,
     maybeReinstallAddSourceDeps,
+    maybeUpdateSandboxConfig,
 
     -- FIXME: move somewhere else
     configPackageDB', configCompilerAux'
@@ -43,12 +46,12 @@ import Distribution.Client.Install            ( InstallArgs,
                                                 makeInstallPlan,
                                                 processInstallPlan,
                                                 pruneInstallPlan )
-import Distribution.Client.PackageEnvironment
+import Distribution.Client.Sandbox.PackageEnvironment
   ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
   , createPackageEnvironment, classifyPackageEnvironment
-  , tryLoadPackageEnvironment, loadUserConfig
+  , tryLoadSandboxPackageEnvironment, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
-  , sandboxPackageEnvironmentFile )
+  , sandboxPackageEnvironmentFile, updatePackageEnvironment )
 import Distribution.Client.Targets            ( UserTarget(..)
                                               , readUserTargets
                                               , resolveUserTargets )
@@ -68,10 +71,11 @@ import Distribution.Simple.Utils              ( die, debug, notice, info
 import Distribution.System                    ( Platform )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
-import qualified Distribution.Client.Index as Index
-import qualified Distribution.Simple.Register as Register
+import qualified Distribution.Client.Sandbox.Index as Index
+import qualified Distribution.Simple.Register      as Register
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( unless, when )
+import Data.IORef                             ( newIORef, writeIORef, readIORef )
 import Data.List                              ( (\\), delete )
 import Data.Monoid                            ( mempty, mappend )
 import System.Directory                       ( doesDirectoryExist
@@ -93,7 +97,7 @@ tryLoadSandboxConfig :: Verbosity -> Flag FilePath
                         -> IO (FilePath, PackageEnvironment)
 tryLoadSandboxConfig verbosity configFileFlag = do
   pkgEnvDir            <- getCurrentDirectory
-  (sandboxDir, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
+  (sandboxDir, pkgEnv) <- tryLoadSandboxPackageEnvironment verbosity pkgEnvDir
                           configFileFlag
   dirExists            <- doesDirectoryExist sandboxDir
   -- TODO: Also check for an initialised package DB?
@@ -169,25 +173,24 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   notice verbosity $ "Using a sandbox located at " ++ sandboxDir
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
-  userConfig   <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
-  (comp, platform, conf) <- configCompilerAux (savedConfigureFlags userConfig)
+  userConfig <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
+  (comp, platform, _) <- configCompilerAux (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
   pkgEnvDir   <- getCurrentDirectory
   createPackageEnvironment verbosity sandboxDir pkgEnvDir
     NoComments comp platform
-  (_, pkgEnv) <- tryLoadPackageEnvironment verbosity pkgEnvDir
+  (_, pkgEnv) <- tryLoadSandboxPackageEnvironment verbosity pkgEnvDir
                  (globalConfigFile globalFlags)
 
   -- Create the index file if it doesn't exist.
   indexFile <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
   Index.createEmpty verbosity indexFile
 
-  -- Create the package DB for this compiler if it doesn't exist. If the user
-  -- later chooses a different compiler with -w, the sandbox for that compiler
-  -- will be created on demand.
-  initPackageDBIfNeeded verbosity
-    (savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv) comp conf
+  -- We don't create the package DB for the default compiler here: it's created
+  -- by demand in 'install' and 'configure'. This way, if you run 'sandbox init'
+  -- and then 'configure -w /path/to/nondefault-ghc', you'll end up with a
+  -- package DB for only one compiler instead of two.
 
 -- | Entry point for the 'cabal sandbox-delete' command.
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
@@ -280,10 +283,18 @@ isUseSandbox :: UseSandbox -> Bool
 isUseSandbox (UseSandbox _) = True
 isUseSandbox NoSandbox      = False
 
+-- | Execute an action only if we're in a sandbox, feeding to it the path to the
+-- sandbox directory.
+whenUsingSandbox :: UseSandbox -> (FilePath -> IO ()) -> IO ()
+whenUsingSandbox NoSandbox               _   = return ()
+whenUsingSandbox (UseSandbox sandboxDir) act = act sandboxDir
+
 -- | Check which type of package environment we're in and return a
 -- correctly-initialised @SavedConfig@ and a @UseSandbox@ value that indicates
 -- whether we're working in a sandbox.
-loadConfigOrSandboxConfig :: Verbosity -> Flag FilePath -> Flag Bool
+loadConfigOrSandboxConfig :: Verbosity
+                             -> Flag FilePath -- ^ --config-file
+                             -> Flag Bool     -- ^ Ignored if we're in a sandbox.
                              -> IO (UseSandbox, SavedConfig)
 loadConfigOrSandboxConfig verbosity configFileFlag userInstallFlag = do
   currentDir <- getCurrentDirectory
@@ -311,14 +322,19 @@ maybeWithSandboxDirOnSearchPath NoSandbox               act = act
 maybeWithSandboxDirOnSearchPath (UseSandbox sandboxDir) act =
   withSandboxBinDirOnSearchPath sandboxDir $ act
 
+-- | Had reinstallAddSourceDeps actually reinstalled any dependencies?
+data WereDepsReinstalled = ReinstalledSomeDeps | NoDepsReinstalled
+
 -- | Reinstall those add-source dependencies that have been modified since
 -- we've last installed them.
 reinstallAddSourceDeps :: Verbosity -> SavedConfig -> Flag (Maybe Int)
                           -> FilePath -> GlobalFlags
-                          -> IO ()
+                          -> IO WereDepsReinstalled
 reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
+
+  retVal               <- newIORef NoDepsReinstalled
 
   withModifiedDeps verbosity sandboxDir $ \modifiedDeps -> do
     assert (null $ modifiedDeps \\ buildTreeRefs) (return ())
@@ -369,17 +385,20 @@ reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
                             $ makeInstallPlan verbosity args installContext)
 
         processInstallPlan verbosity args installContext installPlan
+        writeIORef retVal ReinstalledSomeDeps
+
+  readIORef retVal
 
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
 maybeReinstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
-                             -> IO UseSandbox
+                             -> IO (UseSandbox, WereDepsReinstalled)
 maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
-    AmbientPackageEnvironment -> return NoSandbox
-    UserPackageEnvironment    -> return NoSandbox
+    AmbientPackageEnvironment -> return (NoSandbox, NoDepsReinstalled)
+    UserPackageEnvironment    -> return (NoSandbox, NoDepsReinstalled)
     SandboxPackageEnvironment -> do
       (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                               (globalConfigFile globalFlags) mempty
@@ -387,8 +406,36 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
             UseSandbox d -> d;
             _            -> error "Distribution.Client.Sandbox.\
                                   \maybeInstallAddSourceDeps: can't happen"
-      reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags
-      return useSandbox
+      depsReinstalled <- reinstallAddSourceDeps verbosity config
+                                   numJobsFlag sandboxDir globalFlags
+      return (useSandbox, depsReinstalled)
+
+-- | Update the 'with-compiler' and 'package-db' fields in the auto-generated
+-- sandbox config file if the user has configured the project with a different
+-- compiler. Note that we don't auto-enable things like 'library-profiling' (for
+-- now?) even if the user has passed '--enable-library-profiling' to
+-- 'configure'. These options are supposed to be set in cabal.config.
+maybeUpdateSandboxConfig :: Verbosity
+                            -> SavedConfig -- ^ old config
+                            -> ConfigFlags -- ^ new configure flags
+                            -> IO ()
+maybeUpdateSandboxConfig verbosity savedConfig newConfigFlags = do
+  let oldConfigFlags = savedConfigureFlags savedConfig
+
+      oldHcFlavor    = configHcFlavor   oldConfigFlags
+      oldHcPath      = configHcPath     oldConfigFlags
+      oldPackageDBs  = configPackageDBs oldConfigFlags
+
+      newHcFlavor    = configHcFlavor   newConfigFlags
+      newHcPath      = configHcPath     newConfigFlags
+      newPackageDBs  = configPackageDBs newConfigFlags
+
+  when ((oldHcFlavor /= newHcFlavor)
+        || (oldHcPath /= newHcPath)
+        || (oldPackageDBs /= newPackageDBs)) $ do
+    pkgEnvDir <- getCurrentDirectory
+    updatePackageEnvironment verbosity pkgEnvDir
+      newHcFlavor newHcPath newPackageDBs
 
 --
 -- Utils (transitionary)

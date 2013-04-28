@@ -75,7 +75,6 @@ executable cabal
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock
         Distribution.Client.HttpUtils
-        Distribution.Client.Index
         Distribution.Client.IndexUtils
         Distribution.Client.Init
         Distribution.Client.Init.Heuristics
@@ -86,12 +85,13 @@ executable cabal
         Distribution.Client.InstallSymlink
         Distribution.Client.JobControl
         Distribution.Client.List
-        Distribution.Client.PackageEnvironment
         Distribution.Client.PackageIndex
         Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
         Distribution.Client.Run
         Distribution.Client.Sandbox
+        Distribution.Client.Sandbox.Index
+        Distribution.Client.Sandbox.PackageEnvironment
         Distribution.Client.Sandbox.Timestamp
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
