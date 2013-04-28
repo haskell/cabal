@@ -28,6 +28,8 @@ module Distribution.Client.Sandbox (
     maybeReinstallAddSourceDeps,
     maybeUpdateSandboxConfig,
 
+    tryGetIndexFilePath,
+
     -- FIXME: move somewhere else
     configPackageDB', configCompilerAux'
   ) where
@@ -36,8 +38,9 @@ import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), GlobalFlags(..), InstallFlags(..)
   , defaultConfigExFlags, defaultInstallFlags, defaultSandboxLocation
   , globalRepos )
-import Distribution.Client.Sandbox.Timestamp  ( withRemoveTimestamps
-                                              , withUpdateTimestamps
+import Distribution.Client.Sandbox.Timestamp  ( maybeAddCompilerTimestampRecord
+                                              , withAddTimestamps
+                                              , withRemoveTimestamps
                                               , withModifiedDeps )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
 import Distribution.Client.Dependency         ( foldProgress )
@@ -57,7 +60,7 @@ import Distribution.Client.Targets            ( UserTarget(..)
                                               , resolveUserTargets )
 import Distribution.Client.Types              ( SourcePackageDb(..) )
 import Distribution.Client.Utils              ( tryCanonicalizePath )
-import Distribution.Simple.Compiler           ( Compiler, PackageDB(..)
+import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
                                               , PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAux
                                               , interpretPackageDbFlags )
@@ -223,9 +226,15 @@ sandboxAddSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
 sandboxAddSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
                           (globalConfigFile globalFlags)
-  indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
+  let savedConfig       = pkgEnvSavedConfig pkgEnv
+  indexFile            <- tryGetIndexFilePath savedConfig
 
-  withUpdateTimestamps sandboxDir $ \_ -> do
+  -- If we're running 'sandbox add-source' for the first time for this compiler,
+  -- we need to create an initial timestamp record.
+  (comp, platform, _) <- configCompilerAux . savedConfigureFlags $ savedConfig
+  maybeAddCompilerTimestampRecord sandboxDir (compilerId comp) platform indexFile
+
+  withAddTimestamps sandboxDir $ do
     -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
     -- twice because of the timestamps file.
     buildTreeRefs' <- mapM tryCanonicalizePath buildTreeRefs
@@ -240,7 +249,7 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
                           (globalConfigFile globalFlags)
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  withRemoveTimestamps sandboxDir $ \_ -> do
+  withRemoveTimestamps sandboxDir $ do
     -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
     -- twice because of the timestamps file.
     buildTreeRefs' <- mapM tryCanonicalizePath buildTreeRefs
@@ -255,7 +264,10 @@ sandboxListSources verbosity _sandboxFlags globalFlags = do
                            (globalConfigFile globalFlags)
   indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  refs <- Index.listBuildTreeRefs verbosity indexFile
+  refs <- Index.listBuildTreeRefs indexFile
+  when (null refs) $
+    info verbosity $ "Index file '" ++ indexFile
+    ++ "' has no references to local build trees."
   mapM_ putStrLn refs
 
 -- | Invoke the @hc-pkg@ tool with provided arguments, restricted to the
@@ -331,61 +343,64 @@ reinstallAddSourceDeps :: Verbosity -> SavedConfig -> Flag (Maybe Int)
                           -> FilePath -> GlobalFlags
                           -> IO WereDepsReinstalled
 reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
-  indexFile            <- tryGetIndexFilePath config
-  buildTreeRefs        <- Index.listBuildTreeRefs verbosity indexFile
+  let configFlags    = savedConfigureFlags   config
+      configExFlags  = defaultConfigExFlags         `mappend`
+                       savedConfigureExFlags config
+      installFlags'  = defaultInstallFlags          `mappend`
+                       savedInstallFlags     config
+      installFlags   = installFlags' {
+        installNumJobs = installNumJobs installFlags' `mappend` numJobsFlag
+        }
+      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
 
+  indexFile            <- tryGetIndexFilePath config
+  buildTreeRefs        <- Index.listBuildTreeRefs indexFile
   retVal               <- newIORef NoDepsReinstalled
 
-  withModifiedDeps verbosity sandboxDir $ \modifiedDeps -> do
-    assert (null $ modifiedDeps \\ buildTreeRefs) (return ())
-    unless (null modifiedDeps) $ do
-      notice verbosity "Installing add-source dependencies..."
-      let targetNames    = (".":modifiedDeps)
-          targetsToPrune = [UserTargetLocalDir "."]
-          configFlags    = savedConfigureFlags   config
-          configExFlags  = defaultConfigExFlags         `mappend`
-                           savedConfigureExFlags config
-          installFlags'  = defaultInstallFlags          `mappend`
-                           savedInstallFlags     config
-          installFlags   = installFlags' {
-            installNumJobs = installNumJobs installFlags' `mappend` numJobsFlag
-            }
-          globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
+  unless (null buildTreeRefs) $ do
+    (comp, platform, conf) <- configCompilerAux' configFlags
+    let compId              = compilerId comp
 
-      (comp, platform, conf) <- configCompilerAux' configFlags
-      targets <- readUserTargets verbosity targetNames
+    withModifiedDeps verbosity sandboxDir compId platform $ \modifiedDeps -> do
+      assert (null $ modifiedDeps \\ buildTreeRefs) (return ())
+      unless (null modifiedDeps) $ do
+        let targetNames    = (".":modifiedDeps)
+            targetsToPrune = [UserTargetLocalDir "."]
 
-      let args :: InstallArgs
-          args = ((configPackageDB' configFlags ForceGlobalInstall)
-                 ,(globalRepos globalFlags')
-                 ,comp, platform, conf
-                 ,globalFlags', configFlags, configExFlags, installFlags
-                 ,mempty)
+        notice verbosity "Installing add-source dependencies..."
+        targets <- readUserTargets verbosity targetNames
 
-          logMsg message rest = debugNoWrap verbosity message >> rest
+        let args :: InstallArgs
+            args = ((configPackageDB' configFlags ForceGlobalInstall)
+                   ,(globalRepos globalFlags')
+                   ,comp, platform, conf
+                   ,globalFlags', configFlags, configExFlags, installFlags
+                   ,mempty)
 
-      -- Using the low-level install interface instead of the high-level
-      -- 'install' action allows us to make changes to the install plan before
-      -- processing it. Here we need to prune the "." target from the install
-      -- plan. The same mechanism is used to implement 'install
-      -- --only-dependencies'.
-      withSandboxBinDirOnSearchPath sandboxDir $ do
-        installContext@(_,sourcePkgDb,_,_) <-
-          makeInstallContext verbosity args targets
+            logMsg message rest = debugNoWrap verbosity message >> rest
 
-        toPrune <- resolveUserTargets verbosity
-                   (fromFlag $ globalWorldFile globalFlags')
-                   (packageIndex sourcePkgDb)
-                   targetsToPrune
+        -- Using the low-level install interface instead of the high-level
+        -- 'install' action allows us to make changes to the install plan before
+        -- processing it. Here we need to prune the "." target from the install
+        -- plan. The same mechanism is used to implement 'install
+        -- --only-dependencies'.
+        withSandboxBinDirOnSearchPath sandboxDir $ do
+          installContext@(_,sourcePkgDb,_,_) <-
+            makeInstallContext verbosity args targets
 
-        installPlan     <- foldProgress logMsg die return =<<
-                           (fmap (\p -> p >>= if not . null $ targetsToPrune
-                                              then pruneInstallPlan toPrune
-                                              else return)
-                            $ makeInstallPlan verbosity args installContext)
+          toPrune <- resolveUserTargets verbosity
+                     (fromFlag $ globalWorldFile globalFlags')
+                     (packageIndex sourcePkgDb)
+                     targetsToPrune
 
-        processInstallPlan verbosity args installContext installPlan
-        writeIORef retVal ReinstalledSomeDeps
+          installPlan     <- foldProgress logMsg die return =<<
+                             (fmap (\p -> p >>= if not . null $ targetsToPrune
+                                                then pruneInstallPlan toPrune
+                                                else return)
+                              $ makeInstallPlan verbosity args installContext)
+
+          processInstallPlan verbosity args installContext installPlan
+          writeIORef retVal ReinstalledSomeDeps
 
   readIORef retVal
 
