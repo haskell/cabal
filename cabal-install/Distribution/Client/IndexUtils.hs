@@ -29,9 +29,9 @@ import Distribution.Package
          , Package(..), packageVersion, packageName
          , Dependency(Dependency), InstalledPackageId(..) )
 import Distribution.Client.PackageIndex (PackageIndex)
-import qualified Distribution.Client.PackageIndex as PackageIndex
-import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+import qualified Distribution.Client.PackageIndex      as PackageIndex
+import qualified Distribution.Simple.PackageIndex      as InstalledPackageIndex
+import qualified Distribution.InstalledPackageInfo     as InstalledPackageInfo
 import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 import Distribution.PackageDescription
          ( GenericPackageDescription )
@@ -129,6 +129,8 @@ convert index' = PackageIndex.fromList
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
+-- FIXME: 'getSourcePackages' has a lazy I/O bug that leads to a 'resource busy'
+-- error when opening the file for a second time.
 getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
 getSourcePackages verbosity [] = do
   warn verbosity $ "No remote package servers have been specified. Usually "
@@ -234,8 +236,9 @@ whenCacheOutOfDate origFile cacheFile action = do
 --
 
 -- | An index entry is either a normal package, or a local build tree reference.
-data PackageEntry = NormalPackage PackageId GenericPackageDescription ByteString BlockNo
-                  | BuildTreeRef  PackageId GenericPackageDescription FilePath   BlockNo
+data PackageEntry =
+  NormalPackage  PackageId GenericPackageDescription ByteString BlockNo
+  | BuildTreeRef PackageId GenericPackageDescription FilePath   BlockNo
 
 type MkPackageEntry = IO PackageEntry
 
