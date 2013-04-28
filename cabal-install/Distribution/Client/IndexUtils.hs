@@ -29,9 +29,9 @@ import Distribution.Package
          , Package(..), packageVersion, packageName
          , Dependency(Dependency), InstalledPackageId(..) )
 import Distribution.Client.PackageIndex (PackageIndex)
-import qualified Distribution.Client.PackageIndex as PackageIndex
-import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+import qualified Distribution.Client.PackageIndex      as PackageIndex
+import qualified Distribution.Simple.PackageIndex      as InstalledPackageIndex
+import qualified Distribution.InstalledPackageInfo     as InstalledPackageInfo
 import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
 import Distribution.PackageDescription
          ( GenericPackageDescription )
@@ -234,8 +234,9 @@ whenCacheOutOfDate origFile cacheFile action = do
 --
 
 -- | An index entry is either a normal package, or a local build tree reference.
-data PackageEntry = NormalPackage PackageId GenericPackageDescription ByteString BlockNo
-                  | BuildTreeRef  PackageId GenericPackageDescription FilePath   BlockNo
+data PackageEntry =
+  NormalPackage  PackageId GenericPackageDescription ByteString BlockNo
+  | BuildTreeRef PackageId GenericPackageDescription FilePath   BlockNo
 
 type MkPackageEntry = IO PackageEntry
 
