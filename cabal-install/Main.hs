@@ -72,7 +72,8 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxHcPkg
                                               ,dumpPackageEnvironment
 
-                                              ,UseSandbox(..), isUseSandbox
+                                              ,UseSandbox(..)
+                                              ,isUseSandbox, whenUsingSandbox
                                               ,ForceGlobalInstall(..)
                                               ,maybeForceGlobalInstall
                                               ,loadConfigOrSandboxConfig
@@ -81,18 +82,21 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,WereDepsReinstalled(..)
                                               ,maybeReinstallAddSourceDeps
                                               ,maybeUpdateSandboxConfig
+                                              ,tryGetIndexFilePath
 
                                               ,configCompilerAux'
                                               ,configPackageDB')
 import Distribution.Client.Sandbox.PackageEnvironment
                                               (setPackageDB)
-
+import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
 import Distribution.Simple.Command
          ( CommandParse(..), CommandUI(..), Command
          , commandsRun, commandAddAction, hiddenCommand )
+import Distribution.Simple.Compiler
+         ( Compiler(..) )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
          , ConfigStateFileErrorType(..), tryGetPersistBuildConfig )
@@ -230,9 +234,15 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir
                                    comp platform configFlags'
 
-  when (isUseSandbox useSandbox) $ do
+  whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
     maybeUpdateSandboxConfig verbosity config configFlags''
+
+    -- If we've switched to a new compiler, we need to add a timestamp record
+    -- for this compiler to the timestamp file.
+    indexFile     <- tryGetIndexFilePath config
+    maybeAddCompilerTimestampRecord sandboxDir
+      (compilerId comp) platform indexFile
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     configure verbosity
