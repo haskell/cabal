@@ -129,6 +129,8 @@ convert index' = PackageIndex.fromList
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
+-- FIXME: 'getSourcePackages' has a lazy I/O bug that leads to a 'resource busy'
+-- error when opening the file for a second time.
 getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
 getSourcePackages verbosity [] = do
   warn verbosity $ "No remote package servers have been specified. Usually "
