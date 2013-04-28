@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.PackageEnvironment
+-- Module      :  Distribution.Client.Sandbox.PackageEnvironment
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
@@ -8,13 +8,14 @@
 -- Distribution.Client.Config.
 -----------------------------------------------------------------------------
 
-module Distribution.Client.PackageEnvironment (
+module Distribution.Client.Sandbox.PackageEnvironment (
     PackageEnvironment(..)
   , IncludeComments(..)
   , PackageEnvironmentType(..)
   , classifyPackageEnvironment
   , createPackageEnvironment
-  , tryLoadPackageEnvironment
+  , updatePackageEnvironment
+  , tryLoadSandboxPackageEnvironment
   , readPackageEnvironmentFile
   , showPackageEnvironment
   , showPackageEnvironmentWithComments
@@ -35,8 +36,9 @@ import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
                                        , defaultSandboxLocation )
-import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
-                                         , showCompilerId )
+import Distribution.Simple.Compiler    ( Compiler, CompilerFlavor(..)
+                                       , PackageDB(..)
+                                       , showCompilerId )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
                                        , fromPathTemplate, toPathTemplate )
 import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..),
@@ -68,8 +70,8 @@ import qualified Distribution.Text         as Text
 -- * Configuration saved in the package environment file
 --
 
--- TODO: would be nice to remove duplication between D.C.PackageEnvironment and
--- D.C.Config.
+-- TODO: would be nice to remove duplication between
+-- D.C.Sandbox.PackageEnvironment and D.C.Config.
 data PackageEnvironment = PackageEnvironment {
   -- The 'inherit' feature is not used ATM, but could be useful in the future
   -- for constructing nested sandboxes (see discussion in #1196).
@@ -198,9 +200,9 @@ setPackageDB sandboxDir compiler platform configFlags =
 
 -- | Almost the same as 'savedConf `mappend` pkgEnv', but some settings are
 -- overridden instead of mappend'ed.
-overrideSandboxSettings :: SavedConfig -> PackageEnvironment ->
+overrideSandboxSettings :: PackageEnvironment -> PackageEnvironment ->
                            PackageEnvironment
-overrideSandboxSettings savedConf pkgEnv =
+overrideSandboxSettings pkgEnv0 pkgEnv =
   pkgEnv {
     pkgEnvSavedConfig = mappendedConf {
        savedGlobalFlags = (savedGlobalFlags mappendedConf) {
@@ -212,11 +214,12 @@ overrideSandboxSettings savedConf pkgEnv =
        , savedInstallFlags = (savedInstallFlags mappendedConf) {
           installSummaryFile = installSummaryFile pkgEnvInstallFlags
           }
-       }
+       },
+    pkgEnvInherit = pkgEnvInherit pkgEnv0
     }
   where
     pkgEnvConf           = pkgEnvSavedConfig pkgEnv
-    mappendedConf        = savedConf `mappend` pkgEnvConf
+    mappendedConf        = (pkgEnvSavedConfig pkgEnv0) `mappend` pkgEnvConf
     pkgEnvGlobalFlags    = savedGlobalFlags pkgEnvConf
     pkgEnvConfigureFlags = savedConfigureFlags pkgEnvConf
     pkgEnvInstallFlags   = savedInstallFlags pkgEnvConf
@@ -265,16 +268,13 @@ loadUserConfig :: Verbosity -> FilePath -> IO SavedConfig
 loadUserConfig verbosity pkgEnvDir = fmap pkgEnvSavedConfig
                                      $ userPackageEnvironment verbosity pkgEnvDir
 
--- | Try to load the package environment file ("cabal.sandbox.config"), exiting
--- with error if it doesn't exist. Also returns the path to the sandbox
--- directory. Note that the path parameter should be a name of an existing
--- directory.
-tryLoadPackageEnvironment :: Verbosity -> FilePath -> (Flag FilePath)
-                             -> IO (FilePath, PackageEnvironment)
-tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
-  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
-  minp <- readPackageEnvironmentFile mempty path
-  pkgEnv <- case minp of
+-- | Common error handling code used by 'tryLoadSandboxPackageEnvironment' and
+-- 'updatePackageEnvironment'.
+handleParseResult :: Verbosity -> FilePath
+                     -> Maybe (ParseResult PackageEnvironment)
+                     -> IO PackageEnvironment
+handleParseResult verbosity path minp =
+  case minp of
     Nothing -> die $
       "The package environment file '" ++ path ++ "' doesn't exist"
     Just (ParseOk warns parseResult) -> do
@@ -285,6 +285,17 @@ tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
       let (line, msg) = locatedErrorMsg err
       die $ "Error parsing package environment file " ++ path
         ++ maybe "" (\n -> ":" ++ show n) line ++ ":\n" ++ msg
+
+-- | Try to load the package environment file (@cabal.sandbox.config@), exiting
+-- with error if it doesn't exist. Also returns the path to the sandbox
+-- directory. Note that the path parameter should be a name of an existing
+-- directory.
+tryLoadSandboxPackageEnvironment :: Verbosity -> FilePath -> (Flag FilePath)
+                                    -> IO (FilePath, PackageEnvironment)
+tryLoadSandboxPackageEnvironment verbosity pkgEnvDir configFileFlag = do
+  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
+  minp   <- readPackageEnvironmentFile mempty path
+  pkgEnv <- handleParseResult verbosity path minp
 
   -- Get the saved sandbox directory.
   -- TODO: Use substPathTemplate with compilerTemplateEnv ++ platformTemplateEnv.
@@ -300,8 +311,11 @@ tryLoadPackageEnvironment verbosity pkgEnvDir configFileFlag = do
   -- Layer the package environment settings over settings from ~/.cabal/config.
   cabalConfig <- loadConfig verbosity configFileFlag NoFlag
   return (sandboxDir,
-          base `mappend` (cabalConfig `overrideSandboxSettings`
-          (common `mappend` inherited `mappend` user `mappend` pkgEnv)))
+          (base `mappend` (toPkgEnv cabalConfig) `mappend`
+           common `mappend` inherited `mappend` user)
+          `overrideSandboxSettings` pkgEnv)
+    where
+      toPkgEnv config = mempty { pkgEnvSavedConfig = config }
 
 -- | Should the generated package environment file include comments?
 data IncludeComments = IncludeComments | NoComments
@@ -321,6 +335,33 @@ createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments
   commentPkgEnv <- commentPackageEnvironment sandboxDir
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
   writePackageEnvironmentFile path incComments commentPkgEnv initialPkgEnv
+
+-- | Update the values of certain flags in the saved package environment. See
+-- 'maybeUpdateSandboxConfig' in "Distribution.Client.Sandbox".
+updatePackageEnvironment :: Verbosity -> FilePath
+                            -> (Flag CompilerFlavor)
+                            -> (Flag FilePath)
+                            -> [Maybe PackageDB]
+                            -> IO ()
+updatePackageEnvironment verbosity pkgEnvDir
+                         newHcFlavor newHcPath newPackageDBs = do
+  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
+  mPkgEnv   <- readPackageEnvironmentFile mempty path
+  oldPkgEnv <- handleParseResult verbosity path mPkgEnv
+  let oldSavedConfig = pkgEnvSavedConfig oldPkgEnv
+      oldConfigFlags = savedConfigureFlags oldSavedConfig
+      newConfigFlags = oldConfigFlags {
+        configHcFlavor   = newHcFlavor,
+        configHcPath     = newHcPath,
+        configPackageDBs = newPackageDBs
+        }
+      newSavedConfig = oldSavedConfig {
+        savedConfigureFlags = newConfigFlags
+        }
+      newPkgEnv      = oldPkgEnv {
+        pkgEnvSavedConfig = newSavedConfig
+        }
+  writePackageEnvironmentFile path NoComments mempty newPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
