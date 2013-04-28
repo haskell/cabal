@@ -18,20 +18,15 @@ module Distribution.Client.Sandbox.Index (
   ) where
 
 import qualified Distribution.Client.Tar as Tar
-import Distribution.Client.IndexUtils ( getSourcePackages )
-import Distribution.Client.PackageIndex ( allPackages )
-import Distribution.Client.Types ( Repo(..), LocalRepo(..)
-                                 , SourcePackageDb(..)
-                                 , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath )
 
-import Distribution.Simple.Utils ( die, debug, info, findPackageDesc )
+import Distribution.Simple.Utils ( die, debug, findPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
 import Control.Exception         ( evaluate )
-import Control.Monad             ( liftM, when, unless )
+import Control.Monad             ( liftM, unless )
 import Data.List                 ( (\\), nub )
 import Data.Maybe                ( catMaybes )
 import System.Directory          ( createDirectoryIfMissing,
@@ -166,17 +161,11 @@ removeBuildTreeRefs verbosity path l' = do
         (Just pth) -> pth `notElem` l
 
 -- | List the local build trees that are referred to from the index.
-listBuildTreeRefs :: Verbosity -> FilePath -> IO [FilePath]
-listBuildTreeRefs verbosity path = do
+listBuildTreeRefs :: FilePath -> IO [FilePath]
+listBuildTreeRefs path = do
   checkIndexExists path
-  let repo = Repo { repoKind = Right LocalRepo
-                  , repoLocalDir = takeDirectory path }
-  pkgIndex <- fmap packageIndex . getSourcePackages verbosity $ [repo]
-  let buildTreeRefs = [ pkgPath | (LocalUnpackedPackage pkgPath) <-
-                           map packageSource . allPackages $ pkgIndex ]
-  when (null buildTreeRefs) $
-    info verbosity $ "Index file '" ++ path
-      ++ "' has no references to local build trees."
+  buildTreeRefs <- readBuildTreePathsFromFile path
+  _ <- evaluate (length buildTreeRefs)
   return buildTreeRefs
 
 -- | Check that the package index file exists and exit with error if it does not.
