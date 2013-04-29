@@ -248,7 +248,8 @@ doAddSource verbosity buildTreeRefs sandboxDir pkgEnv = do
   -- If we're running 'sandbox add-source' for the first time for this compiler,
   -- we need to create an initial timestamp record.
   (comp, platform, _) <- configCompilerAux . savedConfigureFlags $ savedConfig
-  maybeAddCompilerTimestampRecord sandboxDir (compilerId comp) platform indexFile
+  maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
+    (compilerId comp) platform
 
   withAddTimestamps sandboxDir $ do
     -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
@@ -333,15 +334,20 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
                       -> IO ()
 sandboxListSources verbosity _sandboxFlags globalFlags = do
-  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
                            (globalConfigFile globalFlags)
   indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  refs <- Index.listBuildTreeRefs indexFile
+  refs <- Index.listBuildTreeRefs verbosity Index.ListIgnored indexFile
   when (null refs) $
-    info verbosity $ "Index file '" ++ indexFile
+    notice verbosity $ "Index file '" ++ indexFile
     ++ "' has no references to local build trees."
-  mapM_ putStrLn refs
+  when (not . null $ refs) $ do
+    notice verbosity $ "Source dependencies registered "
+      ++ "in the current sandbox ('" ++ sandboxDir ++ "'):\n\n"
+    mapM_ putStrLn refs
+    notice verbosity $ "\nTo unregister source dependencies, "
+                       ++ "use the 'sandbox delete-source' command."
 
 -- | Invoke the @hc-pkg@ tool with provided arguments, restricted to the
 -- sandbox.
@@ -427,7 +433,8 @@ reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
 
   indexFile            <- tryGetIndexFilePath config
-  buildTreeRefs        <- Index.listBuildTreeRefs indexFile
+  buildTreeRefs        <- Index.listBuildTreeRefs verbosity
+                          Index.DontListIgnored indexFile
   retVal               <- newIORef NoDepsReinstalled
 
   unless (null buildTreeRefs) $ do
