@@ -334,7 +334,7 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
                       -> IO ()
 sandboxListSources verbosity _sandboxFlags globalFlags = do
-  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
+  (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
                            (globalConfigFile globalFlags)
   indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
@@ -342,7 +342,12 @@ sandboxListSources verbosity _sandboxFlags globalFlags = do
   when (null refs) $
     notice verbosity $ "Index file '" ++ indexFile
     ++ "' has no references to local build trees."
-  mapM_ putStrLn refs
+  when (not . null $ refs) $ do
+    notice verbosity $ "Source dependencies registered "
+      ++ "in the current sandbox ('" ++ sandboxDir ++ "'):\n\n"
+    mapM_ putStrLn refs
+    notice verbosity $ "\nTo unregister source dependencies, "
+                       ++ "use the 'sandbox delete-source' command."
 
 -- | Invoke the @hc-pkg@ tool with provided arguments, restricted to the
 -- sandbox.
