@@ -336,7 +336,7 @@ sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
 sandboxListSources verbosity _sandboxFlags globalFlags = do
   (sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
                            (globalConfigFile globalFlags)
-  indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
+  indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
   refs <- Index.listBuildTreeRefs verbosity Index.ListIgnored indexFile
   when (null refs) $
