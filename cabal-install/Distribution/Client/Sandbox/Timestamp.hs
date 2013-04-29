@@ -45,7 +45,8 @@ import Distribution.Text                             (display)
 import Distribution.Verbosity                        (Verbosity)
 
 import Distribution.Client.Utils                     (inDir, tryCanonicalizePath)
-import Distribution.Client.Sandbox.Index             (listBuildTreeRefs)
+import Distribution.Client.Sandbox.Index
+       (ListIgnoredBuildTreeRefs(..), listBuildTreeRefs)
 
 import Distribution.Compat.Exception                 (catchIO)
 import Distribution.Compat.Time                      (EpochTime, getCurTime,
@@ -135,11 +136,12 @@ removeTimestamps l pathsToRemove = foldr removeTimestamp [] l
       else t : rest
 
 -- | If a timestamp record for this compiler doesn't exist, add a new one.
-maybeAddCompilerTimestampRecord :: FilePath -> CompilerId -> Platform
-                                   -> FilePath
+maybeAddCompilerTimestampRecord :: Verbosity -> FilePath -> FilePath
+                                   -> CompilerId -> Platform
                                    -> IO ()
-maybeAddCompilerTimestampRecord sandboxDir compId platform indexFile = do
-  buildTreeRefs <- listBuildTreeRefs indexFile
+maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
+                                compId platform = do
+  buildTreeRefs <- listBuildTreeRefs verbosity DontListIgnored indexFile
   withTimestampFile sandboxDir $ \timestampRecords -> do
     let key = timestampRecordKey compId platform
     case lookup key timestampRecords of

@@ -248,7 +248,8 @@ doAddSource verbosity buildTreeRefs sandboxDir pkgEnv = do
   -- If we're running 'sandbox add-source' for the first time for this compiler,
   -- we need to create an initial timestamp record.
   (comp, platform, _) <- configCompilerAux . savedConfigureFlags $ savedConfig
-  maybeAddCompilerTimestampRecord sandboxDir (compilerId comp) platform indexFile
+  maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
+    (compilerId comp) platform
 
   withAddTimestamps sandboxDir $ do
     -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
@@ -337,7 +338,7 @@ sandboxListSources verbosity _sandboxFlags globalFlags = do
                            (globalConfigFile globalFlags)
   indexFile             <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  refs <- Index.listBuildTreeRefs indexFile
+  refs <- Index.listBuildTreeRefs verbosity Index.ListIgnored indexFile
   when (null refs) $
     notice verbosity $ "Index file '" ++ indexFile
     ++ "' has no references to local build trees."
@@ -427,7 +428,8 @@ reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
 
   indexFile            <- tryGetIndexFilePath config
-  buildTreeRefs        <- Index.listBuildTreeRefs indexFile
+  buildTreeRefs        <- Index.listBuildTreeRefs verbosity
+                          Index.DontListIgnored indexFile
   retVal               <- newIORef NoDepsReinstalled
 
   unless (null buildTreeRefs) $ do
