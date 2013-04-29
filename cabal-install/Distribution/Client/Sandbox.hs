@@ -82,6 +82,7 @@ import Distribution.System                    ( Platform )
 import Distribution.Text                      ( display )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
+import Distribution.Compat.FilePerms          ( setFileHidden )
 import qualified Distribution.Client.Sandbox.Index as Index
 import qualified Distribution.Simple.Register      as Register
 import Control.Exception                      ( assert, bracket_ )
@@ -192,6 +193,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
                     (sandboxLocation sandboxFlags)
   createDirectoryIfMissingVerbose verbosity True sandboxDir'
   sandboxDir <- tryCanonicalizePath sandboxDir'
+  setFileHidden sandboxDir
   notice verbosity $ "Using a sandbox located at " ++ sandboxDir
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
