@@ -11,6 +11,7 @@ module Distribution.Client.Sandbox.Index (
     createEmpty,
     addBuildTreeRefs,
     removeBuildTreeRefs,
+    ListIgnoredBuildTreeRefs(..),
     listBuildTreeRefs,
     validateIndexPath,
 
@@ -18,6 +19,11 @@ module Distribution.Client.Sandbox.Index (
   ) where
 
 import qualified Distribution.Client.Tar as Tar
+import Distribution.Client.IndexUtils ( getSourcePackages )
+import Distribution.Client.PackageIndex ( allPackages )
+import Distribution.Client.Types ( Repo(..), LocalRepo(..)
+                                 , SourcePackageDb(..)
+                                 , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath )
 
@@ -160,13 +166,31 @@ removeBuildTreeRefs verbosity path l' = do
         Nothing    -> True
         (Just pth) -> pth `notElem` l
 
+-- | A build tree ref can become ignored if the user later adds a build tree ref
+-- with the same package ID. We display ignored build tree refs when the user
+-- runs 'cabal sandbox list-sources', but do not look at their timestamps in
+-- 'reinstallAddSourceDeps'.
+data ListIgnoredBuildTreeRefs = ListIgnored | DontListIgnored
+
 -- | List the local build trees that are referred to from the index.
-listBuildTreeRefs :: FilePath -> IO [FilePath]
-listBuildTreeRefs path = do
+listBuildTreeRefs :: Verbosity -> ListIgnoredBuildTreeRefs -> FilePath
+                     -> IO [FilePath]
+listBuildTreeRefs verbosity listIgnored path = do
   checkIndexExists path
-  buildTreeRefs <- readBuildTreePathsFromFile path
+  buildTreeRefs <-
+    case listIgnored of
+      DontListIgnored -> do
+        let repo = Repo { repoKind = Right LocalRepo
+                        , repoLocalDir = takeDirectory path }
+        pkgIndex <- fmap packageIndex . getSourcePackages verbosity $ [repo]
+        return [ pkgPath | (LocalUnpackedPackage pkgPath) <-
+                    map packageSource . allPackages $ pkgIndex ]
+
+      ListIgnored -> readBuildTreePathsFromFile path
+
   _ <- evaluate (length buildTreeRefs)
   return buildTreeRefs
+
 
 -- | Check that the package index file exists and exit with error if it does not.
 checkIndexExists :: FilePath -> IO ()
