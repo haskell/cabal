@@ -129,8 +129,6 @@ convert index' = PackageIndex.fromList
 --
 -- This is a higher level wrapper used internally in cabal-install.
 --
--- FIXME: 'getSourcePackages' has a lazy IO bug that leads to a 'resource busy'
--- error when opening the "index-00.tar" file for a second time.
 getSourcePackages :: Verbosity -> [Repo] -> IO SourcePackageDb
 getSourcePackages verbosity [] = do
   warn verbosity $ "No remote package servers have been specified. Usually "
@@ -228,7 +226,8 @@ whenCacheOutOfDate origFile cacheFile action = do
     else do
       origTime  <- getModificationTime origFile
       cacheTime <- getModificationTime cacheFile
-      unless (cacheTime >= origTime) action
+      -- FIXME: Revert back to >= when we'll add finer-resolution mtime utils.
+      unless (cacheTime > origTime) action
 
 
 ------------------------------------------------------------------------
@@ -372,9 +371,9 @@ readPackageIndexCacheFile :: Package pkg
                           -> FilePath
                           -> IO (PackageIndex pkg, [Dependency])
 readPackageIndexCacheFile mkPkg indexFile cacheFile = do
-  indexHnd <- openFile indexFile ReadMode
   cache    <- liftM readIndexCache (BSS.readFile cacheFile)
-  packageIndexFromCache mkPkg indexHnd cache
+  withFile indexFile ReadMode $ \indexHnd ->
+    packageIndexFromCache mkPkg indexHnd cache
 
 
 packageIndexFromCache :: Package pkg
