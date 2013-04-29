@@ -339,7 +339,7 @@ sandboxListSources verbosity _sandboxFlags globalFlags = do
 
   refs <- Index.listBuildTreeRefs indexFile
   when (null refs) $
-    info verbosity $ "Index file '" ++ indexFile
+    notice verbosity $ "Index file '" ++ indexFile
     ++ "' has no references to local build trees."
   mapM_ putStrLn refs
 
