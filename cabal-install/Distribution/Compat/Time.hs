@@ -16,6 +16,10 @@ import System.Time (ClockTime(..), getClockTime
 -- | The number of seconds since the UNIX epoch
 type EpochTime = Int64
 
+-- FIXME: 'getModificationTime' has a very low (second-level) resolution in all
+-- released GHCs, which is bad for our purposes.
+-- See hackage.haskell.org/trac/ghc/ticket/7473
+-- We should copy the file modification utils that Shake uses.
 getModTime :: FilePath -> IO EpochTime
 getModTime path =  do
 #if MIN_VERSION_directory(1,2,0)
