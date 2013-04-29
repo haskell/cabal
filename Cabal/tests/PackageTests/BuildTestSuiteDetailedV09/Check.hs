@@ -5,10 +5,13 @@ import System.FilePath ((</>))
 
 import PackageTests.PackageTester
 
-suite :: Test
-suite = TestCase $ do
+suite :: PackageSpec -> Test
+suite inplaceSpec = TestCase $ do
     let dir = "PackageTests" </> "BuildTestSuiteDetailedV09"
-        spec = PackageSpec dir ["--enable-tests"]
+        spec = inplaceSpec
+            { directory = dir
+            , configOpts = "--enable-tests" : configOpts inplaceSpec
+            }
     confResult <- cabal_configure spec
     assertEqual "configure failed!" (successful confResult) True
     buildResult <- cabal_build spec
