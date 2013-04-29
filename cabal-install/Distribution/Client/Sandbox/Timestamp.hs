@@ -269,8 +269,7 @@ isDepModified verbosity now (packageDir, timestamp) = do
       when (modTime > now) $
         warn verbosity $ "File '" ++ dep
                          ++ "' has a modification time that is in the future."
-      -- FIXME: Revert back to >= when we'll add finer-resolution mtime utils.
-      if modTime > timestamp
+      if modTime >= timestamp
         then do
           debug verbosity ("Dependency has a modified source file: " ++ dep)
           return True
