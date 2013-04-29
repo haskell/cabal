@@ -241,8 +241,8 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
     -- If we've switched to a new compiler, we need to add a timestamp record
     -- for this compiler to the timestamp file.
     indexFile     <- tryGetIndexFilePath config
-    maybeAddCompilerTimestampRecord sandboxDir
-      (compilerId comp) platform indexFile
+    maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
+      (compilerId comp) platform
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     configure verbosity
