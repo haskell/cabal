@@ -240,8 +240,7 @@ whenCacheOutOfDate origFile cacheFile action = do
     else do
       origTime  <- getModificationTime origFile
       cacheTime <- getModificationTime cacheFile
-      -- FIXME: Revert back to >= when we'll add finer-resolution mtime utils.
-      unless (cacheTime > origTime) action
+      unless (cacheTime >= origTime) action
 
 
 ------------------------------------------------------------------------
