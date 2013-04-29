@@ -87,4 +87,3 @@ setEnv_ key value = do
 foreign import ccall unsafe "setenv"
    c_setenv :: CString -> CString -> CInt -> IO CInt
 #endif /* mingw32_HOST_OS */
-
