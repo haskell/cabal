@@ -55,7 +55,8 @@ import Distribution.Client.Sandbox.PackageEnvironment
   , createPackageEnvironment, classifyPackageEnvironment
   , tryLoadSandboxPackageEnvironment, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
-  , sandboxPackageEnvironmentFile, updatePackageEnvironment )
+  , sandboxPackageEnvironmentFile, updatePackageEnvironment
+  , userPackageEnvironmentFile )
 import Distribution.Client.Targets            ( UserTarget(..)
                                               , readUserTargets
                                               , resolveUserTargets )
@@ -135,10 +136,14 @@ tryGetIndexFilePath config = do
   let paths = globalLocalRepos . savedGlobalFlags $ config
   case paths of
     []  -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
-           "no local repos found"
+           "no local repos found. " ++ checkConfiguration
     [p] -> return $ p </> Index.defaultIndexFileName
     _   -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
-           "too many local repos found"
+           "too many local repos found. " ++ checkConfiguration
+
+  where
+    checkConfiguration = "Please check your configuration ('"
+                         ++ userPackageEnvironmentFile ++ "')."
 
 -- | Temporarily add $SANDBOX_DIR/bin to $PATH.
 withSandboxBinDirOnSearchPath :: FilePath -> IO a -> IO a
@@ -511,7 +516,7 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
 -- sandbox config file if the user has configured the project with a different
 -- compiler. Note that we don't auto-enable things like 'library-profiling' (for
 -- now?) even if the user has passed '--enable-library-profiling' to
--- 'configure'. These options are supposed to be set in cabal.config.
+-- 'configure'. These options are supposed to be set in cabal.user.config.
 maybeUpdateSandboxConfig :: Verbosity
                             -> SavedConfig -- ^ old config
                             -> ConfigFlags -- ^ new configure flags
