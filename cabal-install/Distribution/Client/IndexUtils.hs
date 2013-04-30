@@ -240,7 +240,7 @@ whenCacheOutOfDate origFile cacheFile action = do
     else do
       origTime  <- getModificationTime origFile
       cacheTime <- getModificationTime cacheFile
-      unless (cacheTime >= origTime) action
+      unless (cacheTime > origTime) action
 
 
 ------------------------------------------------------------------------
