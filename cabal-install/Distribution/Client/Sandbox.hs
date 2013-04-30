@@ -55,7 +55,8 @@ import Distribution.Client.Sandbox.PackageEnvironment
   , createPackageEnvironment, classifyPackageEnvironment
   , tryLoadSandboxPackageEnvironment, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
-  , sandboxPackageEnvironmentFile, updatePackageEnvironment )
+  , sandboxPackageEnvironmentFile, updatePackageEnvironment
+  , userPackageEnvironmentFile )
 import Distribution.Client.Targets            ( UserTarget(..)
                                               , readUserTargets
                                               , resolveUserTargets )
@@ -135,10 +136,14 @@ tryGetIndexFilePath config = do
   let paths = globalLocalRepos . savedGlobalFlags $ config
   case paths of
     []  -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
-           "no local repos found"
+           "no local repos found. " ++ checkConfiguration
     [p] -> return $ p </> Index.defaultIndexFileName
     _   -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
-           "too many local repos found"
+           "too many local repos found. " ++ checkConfiguration
+
+  where
+    checkConfiguration = "Please check your configuration ('"
+                         ++ userPackageEnvironmentFile ++ "')."
 
 -- | Temporarily add $SANDBOX_DIR/bin to $PATH.
 withSandboxBinDirOnSearchPath :: FilePath -> IO a -> IO a
