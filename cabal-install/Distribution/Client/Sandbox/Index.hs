@@ -19,7 +19,7 @@ module Distribution.Client.Sandbox.Index (
   ) where
 
 import qualified Distribution.Client.Tar as Tar
-import Distribution.Client.IndexUtils ( getSourcePackages )
+import Distribution.Client.IndexUtils ( getSourcePackagesStrict )
 import Distribution.Client.PackageIndex ( allPackages )
 import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackageDb(..)
@@ -182,7 +182,8 @@ listBuildTreeRefs verbosity listIgnored path = do
       DontListIgnored -> do
         let repo = Repo { repoKind = Right LocalRepo
                         , repoLocalDir = takeDirectory path }
-        pkgIndex <- fmap packageIndex . getSourcePackages verbosity $ [repo]
+        pkgIndex <- fmap packageIndex
+                    . getSourcePackagesStrict verbosity $ [repo]
         return [ pkgPath | (LocalUnpackedPackage pkgPath) <-
                     map packageSource . allPackages $ pkgIndex ]
 
