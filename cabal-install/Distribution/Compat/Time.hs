@@ -67,6 +67,8 @@ getModTime path = withCString path $ \file ->
       else do
         dword <- peekByteOff info
                  index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime
+        -- TODO: Convert Windows seconds to POSIX seconds. ATM we don't care
+        -- since we only use the value for comparisons.
         return $! fromIntegral (dword :: Word32)
 #else
 
