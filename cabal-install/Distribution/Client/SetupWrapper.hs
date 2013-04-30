@@ -102,6 +102,16 @@ data SetupScriptOptions = SetupScriptOptions {
 
     -- Used only when calling setupWrapper from parallel code to serialise
     -- access to the setup cache; should be Nothing otherwise.
+    --
+    -- Note: setup exe cache
+    ------------------------
+    -- When we are installing in parallel, we always use the external setup
+    -- method. Since compiling the setup script each time adds noticeable
+    -- overhead, we use a shared setup script cache
+    -- ('~/.cabal/setup-exe-cache'). For each (compiler, platform, Cabal
+    -- version) combination the cache holds a compiled setup script
+    -- executable. This only affects the Simple build type; for the Custom,
+    -- Configure and Make build types we always compile the setup script anew.
     setupCacheLock           :: Maybe Lock
   }
 
@@ -203,6 +213,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   setupHs <- updateSetupScript cabalLibVersion bt
   debug verbosity $ "Using " ++ setupHs ++ " as setup script."
   path <- case bt of
+    -- TODO: Should we also cache the setup exe for the Make and Configure build
+    -- types?
     Simple -> getCachedSetupExecutable options' cabalLibVersion setupHs
     _      -> compileSetupExecutable options' cabalLibVersion setupHs False
   invokeSetupScript path (mkargs cabalLibVersion)
