@@ -516,7 +516,7 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
 -- sandbox config file if the user has configured the project with a different
 -- compiler. Note that we don't auto-enable things like 'library-profiling' (for
 -- now?) even if the user has passed '--enable-library-profiling' to
--- 'configure'. These options are supposed to be set in cabal.config.
+-- 'configure'. These options are supposed to be set in cabal.user.config.
 maybeUpdateSandboxConfig :: Verbosity
                             -> SavedConfig -- ^ old config
                             -> ConfigFlags -- ^ new configure flags

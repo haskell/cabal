@@ -100,15 +100,15 @@ sandboxPackageEnvironmentFile = "cabal.sandbox.config"
 -- | Optional package environment file that can be used to customize the default
 -- settings. Created by the user.
 userPackageEnvironmentFile :: FilePath
-userPackageEnvironmentFile = "cabal.config"
+userPackageEnvironmentFile = "cabal.user.config"
 
 -- | Type of the current package environment.
 data PackageEnvironmentType =
   SandboxPackageEnvironment   -- ^ './cabal.sandbox.config'
-  | UserPackageEnvironment    -- ^ './cabal.config'
+  | UserPackageEnvironment    -- ^ './cabal.user.config'
   | AmbientPackageEnvironment -- ^ '~/.cabal/config'
 
--- | Is there a 'cabal.sandbox.config' or 'cabal.config' in this
+-- | Is there a 'cabal.sandbox.config' or 'cabal.user.config' in this
 -- directory?
 classifyPackageEnvironment :: FilePath -> IO PackageEnvironmentType
 classifyPackageEnvironment pkgEnvDir = do
@@ -245,8 +245,8 @@ inheritedPackageEnvironment verbosity pkgEnv = do
       conf <- loadConfig verbosity confPathFlag NoFlag
       return $ mempty { pkgEnvSavedConfig = conf }
 
--- | Load the user package environment if it exists (the optional "cabal.config"
--- file).
+-- | Load the user package environment if it exists (the optional
+-- "cabal.user.config" file).
 userPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
 userPackageEnvironment verbosity pkgEnvDir = do
   let path = pkgEnvDir </> userPackageEnvironmentFile
@@ -475,7 +475,7 @@ writePackageEnvironmentFile path incComments comments pkgEnv = do
     explanation = unlines
       ["-- This is a Cabal package environment file."
       ,"-- THIS FILE IS AUTO-GENERATED. DO NOT EDIT DIRECTLY."
-      ,"-- Please create a 'cabal.config' file in the same directory"
+      ,"-- Please create a 'cabal.user.config' file in the same directory"
       ,"-- if you want to change the default settings for this sandbox."
       ,"",""
       ]
