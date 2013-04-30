@@ -27,7 +27,7 @@ import System.FilePath
 import System.IO.Unsafe ( unsafePerformIO )
 
 #if defined(mingw32_HOST_OS)
-import Control.Monad (liftM2, when)
+import Control.Monad (liftM2, unless)
 import System.Directory (doesDirectoryExist)
 #endif
 
@@ -138,8 +138,8 @@ tryCanonicalizePath :: FilePath -> IO FilePath
 tryCanonicalizePath path = do
   ret <- canonicalizePath path
 #if defined(mingw32_HOST_OS)
-  doesNotExist <- liftM2 (||) (doesFileExist ret) (doesDirectoryExist ret)
-  when doesNotExist $
+  exists <- liftM2 (||) (doesFileExist ret) (doesDirectoryExist ret)
+  unless exists $
     error $ ret ++ ": canonicalizePath: does not exist "
                 ++ "(No such file or directory)"
 #endif
