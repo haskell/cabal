@@ -87,12 +87,13 @@ import Distribution.Compat.FilePerms          ( setFileHidden )
 import qualified Distribution.Client.Sandbox.Index as Index
 import qualified Distribution.Simple.Register      as Register
 import Control.Exception                      ( assert, bracket_ )
-import Control.Monad                          ( forM, unless, when )
+import Control.Monad                          ( forM, liftM2, unless, when )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
 import Data.List                              ( (\\), delete )
 import Data.Monoid                            ( mempty, mappend )
 import System.Directory                       ( createDirectory
                                               , doesDirectoryExist
+                                              , doesFileExist
                                               , getCurrentDirectory
                                               , removeDirectoryRecursive
                                               , removeFile
@@ -193,6 +194,15 @@ dumpPackageEnvironment verbosity _sandboxFlags globalFlags = do
 -- | Entry point for the 'cabal sandbox-init' command.
 sandboxInit :: Verbosity -> SandboxFlags  -> GlobalFlags -> IO ()
 sandboxInit verbosity sandboxFlags globalFlags = do
+  -- Check that there is no 'cabal-dev' directory.
+  isCabalDevSandbox <- liftM2 (&&) (doesDirectoryExist "cabal-dev")
+                       (doesFileExist $ "cabal-dev" </> "cabal.config")
+  when isCabalDevSandbox $
+    die $
+    "You are apparently using a legacy (cabal-dev) sandbox. "
+    ++ "To use native cabal sandboxing, please delete the 'cabal-dev' directory "
+    ++  "and run 'cabal sandbox init'."
+
   -- Create the sandbox directory.
   let sandboxDir' = fromFlagOrDefault defaultSandboxLocation
                     (sandboxLocation sandboxFlags)
