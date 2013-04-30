@@ -792,19 +792,21 @@ instance Monoid InstallFlags where
 
 -- | Flags to @sdist@: (snapshot, verbosity)
 data SDistFlags = SDistFlags {
-    sDistSnapshot  :: Flag Bool,
-    sDistDirectory :: Flag FilePath,
-    sDistDistPref  :: Flag FilePath,
-    sDistVerbosity :: Flag Verbosity
+    sDistSnapshot    :: Flag Bool,
+    sDistDirectory   :: Flag FilePath,
+    sDistDistPref    :: Flag FilePath,
+    sDistListSources :: Flag FilePath,
+    sDistVerbosity   :: Flag Verbosity
   }
   deriving Show
 
 defaultSDistFlags :: SDistFlags
 defaultSDistFlags = SDistFlags {
-    sDistSnapshot  = Flag False,
-    sDistDirectory = mempty,
-    sDistDistPref  = Flag defaultDistPref,
-    sDistVerbosity = Flag normal
+    sDistSnapshot    = Flag False,
+    sDistDirectory   = mempty,
+    sDistDistPref    = Flag defaultDistPref,
+    sDistListSources = mempty,
+    sDistVerbosity   = Flag normal
   }
 
 sdistCommand :: CommandUI SDistFlags
@@ -819,13 +821,19 @@ sdistCommand = makeCommand name shortDesc longDesc defaultSDistFlags options
          sDistDistPref (\d flags -> flags { sDistDistPref = d })
          showOrParseArgs
 
+     ,option "" ["list-sources"]
+         "Just write a list of the package's sources to a file"
+         sDistListSources (\v flags -> flags { sDistListSources = v })
+         (reqArgFlag "FILE")
+
       ,option "" ["snapshot"]
          "Produce a snapshot source distribution"
          sDistSnapshot (\v flags -> flags { sDistSnapshot = v })
          trueArg
 
       ,option "" ["output-directory"]
-         "Generate a source distribution in the given directory"
+       ("Generate a source distribution in the given directory, "
+        ++ "without creating a tarball")
          sDistDirectory (\v flags -> flags { sDistDirectory = v })
          (reqArgFlag "DIR")
       ]
@@ -835,16 +843,18 @@ emptySDistFlags = mempty
 
 instance Monoid SDistFlags where
   mempty = SDistFlags {
-    sDistSnapshot  = mempty,
-    sDistDirectory = mempty,
-    sDistDistPref  = mempty,
-    sDistVerbosity = mempty
+    sDistSnapshot    = mempty,
+    sDistDirectory   = mempty,
+    sDistDistPref    = mempty,
+    sDistListSources = mempty,
+    sDistVerbosity   = mempty
   }
   mappend a b = SDistFlags {
-    sDistSnapshot  = combine sDistSnapshot,
-    sDistDirectory = combine sDistDirectory,
-    sDistDistPref  = combine sDistDistPref,
-    sDistVerbosity = combine sDistVerbosity
+    sDistSnapshot    = combine sDistSnapshot,
+    sDistDirectory   = combine sDistDirectory,
+    sDistDistPref    = combine sDistDistPref,
+    sDistListSources = combine sDistListSources,
+    sDistVerbosity   = combine sDistVerbosity
   }
     where combine field = field a `mappend` field b
 
