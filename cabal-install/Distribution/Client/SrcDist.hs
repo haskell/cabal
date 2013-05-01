@@ -29,7 +29,7 @@ import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
 import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Text ( display )
-import Distribution.Verbosity (Verbosity)
+import Distribution.Verbosity (Verbosity, lessVerbose, normal)
 import Distribution.Version   (Version(..), orLaterVersion)
 
 import System.FilePath ((</>), (<.>))
@@ -50,8 +50,11 @@ sdist flags exflags = do
   createDirectoryIfMissingVerbose verbosity True tmpTargetDir
   withDir $ \tmpDir -> do
     let outDir = if isOutDirectory then tmpDir else tmpDir </> tarBallName pkg
-        flags' = if isOutDirectory then flags
-                 else flags { sDistDirectory = Flag outDir }
+        flags' = (if isOutDirectory then flags
+                  else flags { sDistDirectory = Flag outDir })
+                 { sDistVerbosity = Flag $ if   verbosity == normal
+                                           then lessVerbose verbosity
+                                           else verbosity }
 
     createDirectoryIfMissingVerbose verbosity True outDir
 
@@ -62,6 +65,9 @@ sdist flags exflags = do
     -- create an archive.
     unless (isListSources || isOutDirectory) $
       createArchive verbosity pkg tmpDir distPref
+
+    when isOutDirectory $
+      notice verbosity $ "Source directory created: " ++ tmpTargetDir
 
   where
     flagEnabled f  = not . null . flagToList . f $ flags
@@ -123,6 +129,6 @@ createZipArchive verbosity pkg tmpDir targetPref = do
     unless (exitCode == ExitSuccess) $
       die $ "Generating the zip file failed "
          ++ "(zip returned exit code " ++ show exitCode ++ ")"
-    notice verbosity $ "Source zip archive created: " ++ zipfileAbs
+    notice verbosity $ "Source zip archive created: " ++ zipfile
   where
     zipProgram = simpleProgram "zip"
