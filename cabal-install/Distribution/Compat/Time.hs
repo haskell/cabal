@@ -37,7 +37,11 @@ index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime = 20
 
 #else
 
+#if MIN_VERSION_base(4,5,0)
 import Foreign.C.Types    (CTime(..))
+#else
+import Foreign.C.Types    (CTime)
+#endif
 import System.Posix.Files (getFileStatus, modificationTime)
 
 #endif
@@ -74,9 +78,15 @@ getModTime path = withCString path $ \file ->
 
 -- Directly against the unix library.
 getModTime path = do
-    (CTime i) <- fmap modificationTime $ getFileStatus path
-    -- CTime is Int32 in base < 4.6, but Int64 in base >= 4.6.
+    -- CTime is Int32 in base 4.5, Int64 in base >= 4.6, and an abstract type in
+    -- base < 4.5.
+    t <- fmap modificationTime $ getFileStatus path
+#if MIN_VERSION_base(4,5,0)
+    let CTime i = t
     return (fromIntegral i)
+#else
+    return (read . show $ t)
+#endif
 #endif
 
 -- | Return age of given file in days.
