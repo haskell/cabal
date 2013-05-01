@@ -17,26 +17,36 @@ module Distribution.Client.Sandbox.Timestamp (
   withModifiedDeps,
   ) where
 
+import Control.Exception                             (finally)
 import Control.Monad                                 (filterM, forM, when)
 import Data.Char                                     (isSpace)
 import Data.List                                     (partition)
-import System.Directory                              (renameFile)
+import System.Directory                              (removeFile, renameFile)
 import System.FilePath                               ((<.>), (</>))
 
 import Distribution.Compiler                         (CompilerId)
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parse         (readPackageDescription)
-import Distribution.Simple.PreProcess                (knownSuffixHandlers)
-import Distribution.Simple.SrcDist                   (listPackageSources)
-import Distribution.Simple.Utils                     (die, debug,
+import Distribution.Simple.Setup                     (Flag (..),
+                                                      SDistFlags (..),
+                                                      defaultSDistFlags,
+                                                      sdistCommand)
+import Distribution.Simple.Utils                     (debug, die,
                                                       findPackageDesc, warn)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
-import Distribution.Verbosity                        (Verbosity)
+import Distribution.Verbosity                        (Verbosity, lessVerbose,
+                                                      normal)
+import Distribution.Version                          (Version (..),
+                                                      orLaterVersion)
 
-import Distribution.Client.Utils                     (inDir, tryCanonicalizePath)
 import Distribution.Client.Sandbox.Index
-       (ListIgnoredBuildTreeRefs(..), listBuildTreeRefs)
+  (ListIgnoredBuildTreeRefs (..), listBuildTreeRefs)
+import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
+                                                      defaultSetupScriptOptions,
+                                                      setupWrapper)
+import Distribution.Client.Utils                     (inDir,
+                                                      tryCanonicalizePath)
 
 import Distribution.Compat.Exception                 (catchIO)
 import Distribution.Compat.Time                      (EpochTime, getCurTime,
@@ -202,14 +212,25 @@ withActionOnCompilerTimestamps f sandboxDir compId platform act = do
 -- FIXME: This function is not thread-safe because of 'inDir'.
 allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
 allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
-  pkgDesc <- fmap (flattenPackageDescription)
-             . readPackageDescription verbosity =<< findPackageDesc packageDir
-  (ordinary, executable) <- listPackageSources verbosity pkgDesc pps
-  mapM tryCanonicalizePath (executable ++ ordinary)
+  pkg <- fmap (flattenPackageDescription)
+         . readPackageDescription verbosity =<< findPackageDesc packageDir
 
-  where
-    pps = knownSuffixHandlers
+  let file      = "cabal-sdist-list-sources"
+      flags     = defaultSDistFlags {
+        sDistVerbosity   = Flag $ if verbosity == normal
+                                  then lessVerbose verbosity else verbosity,
+        sDistListSources = Flag file
+        }
+      setupOpts = defaultSetupScriptOptions {
+        -- 'sdist --list-sources' was introduced in Cabal 1.17.
+        useCabalVersion = orLaterVersion $ Version [1,17,0] []
+        }
 
+  -- Run setup sdist --list-sources=TMPFILE
+  (flip finally) (removeFile file) $ do
+    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
+    srcs <- fmap lines . readFile $ file
+    mapM tryCanonicalizePath srcs
 
 -- | Has this dependency been modified since we have last looked at it?
 isDepModified :: Verbosity -> EpochTime -> AddSourceTimestamp -> IO Bool
