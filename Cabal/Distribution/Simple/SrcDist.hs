@@ -92,7 +92,8 @@ import Distribution.Simple.Utils
          , findFile, findFileWithExtension, matchFileGlob
          , withTempDirectory, defaultPackageDesc
          , die, warn, notice, setupMessage )
-import Distribution.Simple.Setup (SDistFlags(..), fromFlag, flagToMaybe)
+import Distribution.Simple.Setup ( Flag(..), SDistFlags(..)
+                                 , fromFlag, flagToMaybe)
 import Distribution.Simple.PreProcess ( PPSuffixHandler, ppSuffixes
                                       , preprocessComponent )
 import Distribution.Simple.LocalBuildInfo
@@ -109,6 +110,7 @@ import Data.List (partition, isPrefixOf)
 import Data.Maybe (isNothing, catMaybes)
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
+import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
 import Distribution.Verbosity (Verbosity)
 import System.FilePath
          ( (</>), (<.>), dropExtension, isAbsolute )
@@ -135,28 +137,35 @@ sdistWith :: PackageDescription        -- ^information from the tarball
              -> IO ()
 sdistWith pkg mb_lbi flags mkTmpDir pps createArchiveFun = do
 
-  -- do some QA
-  printPackageProblems verbosity pkg
+  -- When given --list-sources, just output the list of sources to a file.
+  case (sDistListSources flags) of
+    Flag path -> withFile path WriteMode $ \outHandle -> do
+      (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
+      mapM_ (hPutStrLn outHandle) ordinary
+      mapM_ (hPutStrLn outHandle) maybeExecutable
+    NoFlag    -> do
+      -- do some QA
+      printPackageProblems verbosity pkg
 
-  when (isNothing mb_lbi) $
-    warn verbosity "Cannot run preprocessors. Run 'configure' command first."
+      when (isNothing mb_lbi) $
+        warn verbosity "Cannot run preprocessors. Run 'configure' command first."
 
-  date <- getCurrentTime
-  let pkg' | snapshot  = snapshotPackage date pkg
-           | otherwise = pkg
+      date <- getCurrentTime
+      let pkg' | snapshot  = snapshotPackage date pkg
+               | otherwise = pkg
 
-  case flagToMaybe (sDistDirectory flags) of
-    Just targetDir -> do
-      generateSourceDir targetDir pkg'
-      notice verbosity $ "Source directory created: " ++ targetDir
+      case flagToMaybe (sDistDirectory flags) of
+        Just targetDir -> do
+          generateSourceDir targetDir pkg'
+          notice verbosity $ "Source directory created: " ++ targetDir
 
-    Nothing -> do
-      createDirectoryIfMissingVerbose verbosity True tmpTargetDir
-      withTempDirectory verbosity False tmpTargetDir "sdist." $ \tmpDir -> do
-        let targetDir = tmpDir </> tarBallName pkg'
-        generateSourceDir targetDir pkg'
-        targzFile <- createArchiveFun verbosity pkg' mb_lbi tmpDir targetPref
-        notice verbosity $ "Source tarball created: " ++ targzFile
+        Nothing -> do
+          createDirectoryIfMissingVerbose verbosity True tmpTargetDir
+          withTempDirectory verbosity False tmpTargetDir "sdist." $ \tmpDir -> do
+            let targetDir = tmpDir </> tarBallName pkg'
+            generateSourceDir targetDir pkg'
+            targzFile <- createArchiveFun verbosity pkg' mb_lbi tmpDir targetPref
+            notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
     generateSourceDir targetDir pkg' = do
