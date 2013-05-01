@@ -26,6 +26,88 @@ build-type: Custom
 extra-source-files:
   README changelog
 
+  -- Generated with
+  --
+  -- find tests -type f -name '*.hs' -or -name '*.c' -or -name '*.sh' -or -name '*.cabal'
+  -- | awk '/Check.hs$|UnitTests|PackageTester|autogen|PackageTests.hs/
+  -- { next } { print }'
+
+  tests/misc/ghc-supported-languages.hs
+  tests/PackageTests/TemplateHaskell/dynamic/my.cabal
+  tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
+  tests/PackageTests/TemplateHaskell/dynamic/TH.hs
+  tests/PackageTests/TemplateHaskell/dynamic/Lib.hs
+  tests/PackageTests/TemplateHaskell/profiling/my.cabal
+  tests/PackageTests/TemplateHaskell/profiling/Exe.hs
+  tests/PackageTests/TemplateHaskell/profiling/TH.hs
+  tests/PackageTests/TemplateHaskell/profiling/Lib.hs
+  tests/PackageTests/BenchmarkOptions/test-BenchmarkOptions.hs
+  tests/PackageTests/BenchmarkOptions/BenchmarkOptions.cabal
+  tests/PackageTests/CMain/Bar.hs
+  tests/PackageTests/CMain/my.cabal
+  tests/PackageTests/CMain/foo.c
+  tests/PackageTests/CMain/Setup.hs
+  tests/PackageTests/PathsModule/Executable/my.cabal
+  tests/PackageTests/PathsModule/Executable/Main.hs
+  tests/PackageTests/PathsModule/Library/my.cabal
+  tests/PackageTests/EmptyLib/empty/empty.cabal
+  tests/PackageTests/TestSuiteExeV10/my.cabal
+  tests/PackageTests/TestSuiteExeV10/Foo.hs
+  tests/PackageTests/TestSuiteExeV10/tests/test-Foo.hs
+  tests/PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/MyLibrary.hs
+  tests/PackageTests/BuildDeps/GlobalBuildDepsNotAdditive1/GlobalBuildDepsNotAdditive1.cabal
+  tests/PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/GlobalBuildDepsNotAdditive2.cabal
+  tests/PackageTests/BuildDeps/GlobalBuildDepsNotAdditive2/lemon.hs
+  tests/PackageTests/BuildDeps/TargetSpecificDeps1/my.cabal
+  tests/PackageTests/BuildDeps/TargetSpecificDeps1/lemon.hs
+  tests/PackageTests/BuildDeps/TargetSpecificDeps1/MyLibrary.hs
+  tests/PackageTests/BuildDeps/TargetSpecificDeps2/my.cabal
+  tests/PackageTests/BuildDeps/TargetSpecificDeps2/lemon.hs
+  tests/PackageTests/BuildDeps/TargetSpecificDeps2/MyLibrary.hs
+  tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
+  tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
+  tests/PackageTests/BuildDeps/TargetSpecificDeps3/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary0/my.cabal
+  tests/PackageTests/BuildDeps/InternalLibrary0/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary0/programs/lemon.hs
+  tests/PackageTests/BuildDeps/InternalLibrary1/my.cabal
+  tests/PackageTests/BuildDeps/InternalLibrary1/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary1/programs/lemon.hs
+  tests/PackageTests/BuildDeps/InternalLibrary2/to-install/my.cabal
+  tests/PackageTests/BuildDeps/InternalLibrary2/to-install/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary2/my.cabal
+  tests/PackageTests/BuildDeps/InternalLibrary2/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary2/programs/lemon.hs
+  tests/PackageTests/BuildDeps/InternalLibrary3/to-install/my.cabal
+  tests/PackageTests/BuildDeps/InternalLibrary3/to-install/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary3/my.cabal
+  tests/PackageTests/BuildDeps/InternalLibrary3/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary3/programs/lemon.hs
+  tests/PackageTests/BuildDeps/InternalLibrary4/to-install/my.cabal
+  tests/PackageTests/BuildDeps/InternalLibrary4/to-install/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary4/my.cabal
+  tests/PackageTests/BuildDeps/InternalLibrary4/MyLibrary.hs
+  tests/PackageTests/BuildDeps/InternalLibrary4/programs/lemon.hs
+  tests/PackageTests/BuildDeps/SameDepsAllRound/SameDepsAllRound.cabal
+  tests/PackageTests/BuildDeps/SameDepsAllRound/lemon.hs
+  tests/PackageTests/BuildDeps/SameDepsAllRound/MyLibrary.hs
+  tests/PackageTests/BuildDeps/SameDepsAllRound/pineapple.hs
+  tests/PackageTests/BuildTestSuiteDetailedV09/my.cabal
+  tests/PackageTests/BuildTestSuiteDetailedV09/Dummy.hs
+  tests/PackageTests/BenchmarkExeV10/benchmarks/bench-Foo.hs
+  tests/PackageTests/BenchmarkExeV10/my.cabal
+  tests/PackageTests/BenchmarkExeV10/Foo.hs
+  tests/PackageTests/BenchmarkStanza/my.cabal
+  tests/PackageTests/TestStanza/my.cabal
+  tests/PackageTests/PreProcess/my.cabal
+  tests/PackageTests/PreProcess/Main.hs
+  tests/PackageTests/TestOptions/TestOptions.cabal
+  tests/PackageTests/TestOptions/test-TestOptions.hs
+  tests/Setup.hs
+  tests/hackage/unpack.sh
+  tests/hackage/check.sh
+  tests/hackage/download.sh
+
 source-repository head
   type:     git
   location: https://github.com/haskell/cabal/
