@@ -54,10 +54,6 @@ module Distribution.Simple.SrcDist (
   -- * The top level action
   sdist,
 
-  -- * Actual implemenation of 'sdist', for reuse by 'cabal sdist'
-  CreateArchiveFun,
-  sdistWith,
-
   -- ** Parts of 'sdist'
   printPackageProblems,
   prepareTree,
@@ -123,19 +119,6 @@ sdist :: PackageDescription     -- ^information from the tarball
       -> [PPSuffixHandler]      -- ^ extra preprocessors (includes suffixes)
       -> IO ()
 sdist pkg mb_lbi flags mkTmpDir pps =
-  sdistWith pkg mb_lbi flags mkTmpDir pps createArchive
-
--- |Create a source distribution, parametrised by the createArchive function
--- (for reuse by cabal-install).
-sdistWith :: PackageDescription        -- ^information from the tarball
-             -> Maybe LocalBuildInfo   -- ^Information from configure
-             -> SDistFlags             -- ^verbosity & snapshot
-             -> (FilePath -> FilePath) -- ^build prefix (temp dir)
-             -> [PPSuffixHandler]      -- ^extra preprocessors (includes
-                                       -- suffixes)
-             -> CreateArchiveFun
-             -> IO ()
-sdistWith pkg mb_lbi flags mkTmpDir pps createArchiveFun = do
 
   -- When given --list-sources, just output the list of sources to a file.
   case (sDistListSources flags) of
@@ -143,6 +126,8 @@ sdistWith pkg mb_lbi flags mkTmpDir pps createArchiveFun = do
       (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
       mapM_ (hPutStrLn outHandle) ordinary
       mapM_ (hPutStrLn outHandle) maybeExecutable
+      notice verbosity $ "List of package sources written to file '"
+                         ++ path ++ "'"
     NoFlag    -> do
       -- do some QA
       printPackageProblems verbosity pkg
@@ -164,7 +149,7 @@ sdistWith pkg mb_lbi flags mkTmpDir pps createArchiveFun = do
           withTempDirectory verbosity False tmpTargetDir "sdist." $ \tmpDir -> do
             let targetDir = tmpDir </> tarBallName pkg'
             generateSourceDir targetDir pkg'
-            targzFile <- createArchiveFun verbosity pkg' mb_lbi tmpDir targetPref
+            targzFile <- createArchive verbosity pkg' mb_lbi tmpDir targetPref
             notice verbosity $ "Source tarball created: " ++ targzFile
 
   where
