@@ -6,31 +6,31 @@ module Distribution.Client.SrcDist (
   )  where
 
 
-import Distribution.Simple.SrcDist
-         ( CreateArchiveFun, sdistWith )
+import Distribution.Client.SetupWrapper
+        ( SetupScriptOptions(..), defaultSetupScriptOptions, setupWrapper )
 import Distribution.Client.Tar (createTarGzFile)
 
 import Distribution.Package
          ( Package(..) )
 import Distribution.PackageDescription
          ( PackageDescription )
+import Distribution.PackageDescription.Configuration
+         ( flattenPackageDescription )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Utils
-         ( defaultPackageDesc, die )
+         ( createDirectoryIfMissingVerbose, defaultPackageDesc
+         , die, notice, withTempDirectory )
 import Distribution.Client.Setup
          ( SDistFlags(..), SDistExFlags(..), ArchiveFormat(..) )
 import Distribution.Simple.Setup
-         ( fromFlag )
-import Distribution.Simple.PreProcess (knownSuffixHandlers)
+         ( Flag(..), sdistCommand, flagToList, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.BuildPaths ( srcPref)
-import Distribution.Simple.Configure(maybeGetPersistBuildConfig)
-import Distribution.PackageDescription.Configuration
-         ( flattenPackageDescription )
 import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
 import Distribution.Simple.Program.Db (emptyProgramDb)
-import Distribution.Text
-         ( display )
+import Distribution.Text ( display )
+import Distribution.Verbosity (Verbosity)
+import Distribution.Version   (Version(..), orLaterVersion)
 
 import System.FilePath ((</>), (<.>))
 import Control.Monad (when, unless)
@@ -42,15 +42,42 @@ import System.Exit    (ExitCode(..))
 sdist :: SDistFlags -> SDistExFlags -> IO ()
 sdist flags exflags = do
   pkg <- return . flattenPackageDescription
-     =<< readPackageDescription verbosity
-     =<< defaultPackageDesc verbosity
-  mb_lbi <- maybeGetPersistBuildConfig distPref
+         =<< readPackageDescription verbosity
+         =<< defaultPackageDesc verbosity
+  let withDir = if isOutDirectory then (\f -> f tmpTargetDir)
+                else withTempDirectory verbosity False tmpTargetDir "sdist."
+  -- Otherwise 'withTempDir' fails...
+  createDirectoryIfMissingVerbose verbosity True tmpTargetDir
+  withDir $ \tmpDir -> do
+    let outDir = if isOutDirectory then tmpDir else tmpDir </> tarBallName pkg
+        flags' = if isOutDirectory then flags
+                 else flags { sDistDirectory = Flag outDir }
 
-  sdistWith pkg mb_lbi flags srcPref knownSuffixHandlers createArchive
+    createDirectoryIfMissingVerbose verbosity True outDir
+
+    -- Run 'setup sdist --output-directory=tmpDir'
+    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags') []
+
+    -- And unless we were given --list-sources or --output-directory ourselves,
+    -- create an archive.
+    unless (isListSources || isOutDirectory) $
+      createArchive verbosity pkg tmpDir distPref
 
   where
-    verbosity     = fromFlag (sDistVerbosity flags)
-    distPref      = fromFlag (sDistDistPref flags)
+    flagEnabled f  = not . null . flagToList . f $ flags
+
+    isListSources  = flagEnabled sDistListSources
+    isOutDirectory = flagEnabled sDistDirectory
+    verbosity      = fromFlag (sDistVerbosity flags)
+    distPref       = fromFlag (sDistDistPref flags)
+    tmpTargetDir   = fromFlagOrDefault (srcPref distPref) (sDistDirectory flags)
+    setupOpts      = defaultSetupScriptOptions {
+      -- The '--output-directory' sdist flag was introduced in Cabal 1.12, and
+      -- '--list-sources' in 1.17.
+      useCabalVersion = if isListSources
+                        then orLaterVersion $ Version [1,17,0] []
+                        else orLaterVersion $ Version [1,12,0] []
+      }
     format        = fromFlag (sDistFormat exflags)
     createArchive = case format of
       TargzFormat -> createTarGzArchive
@@ -60,16 +87,18 @@ tarBallName :: PackageDescription -> String
 tarBallName = display . packageId
 
 -- | Create a tar.gz archive from a tree of source files.
-createTarGzArchive :: CreateArchiveFun
-createTarGzArchive _verbosity pkg _mlbi tmpDir targetPref = do
+createTarGzArchive :: Verbosity -> PackageDescription -> FilePath -> FilePath
+                    -> IO ()
+createTarGzArchive verbosity pkg tmpDir targetPref = do
     createTarGzFile tarBallFilePath tmpDir (tarBallName pkg)
-    return tarBallFilePath
+    notice verbosity $ "Source tarball created: " ++ tarBallFilePath
   where
     tarBallFilePath = targetPref </> tarBallName pkg <.> "tar.gz"
 
 -- | Create a zip archive from a tree of source files.
-createZipArchive :: CreateArchiveFun
-createZipArchive verbosity pkg _mlbi tmpDir targetPref = do
+createZipArchive :: Verbosity -> PackageDescription -> FilePath -> FilePath
+                    -> IO ()
+createZipArchive verbosity pkg tmpDir targetPref = do
     let dir       = tarBallName pkg
         zipfile   = targetPref </> dir <.> "zip"
     (zipProg, _) <- requireProgram verbosity zipProgram emptyProgramDb
@@ -94,6 +123,6 @@ createZipArchive verbosity pkg _mlbi tmpDir targetPref = do
     unless (exitCode == ExitSuccess) $
       die $ "Generating the zip file failed "
          ++ "(zip returned exit code " ++ show exitCode ++ ")"
-    return zipfile
+    notice verbosity $ "Source zip archive created: " ++ zipfileAbs
   where
     zipProgram = simpleProgram "zip"
