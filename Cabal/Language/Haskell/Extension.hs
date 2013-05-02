@@ -734,4 +734,3 @@ knownExtensionTable =
     [ (head str, (str, extension))
     | extension <- [toEnum 0 ..]
     , let str = show extension ]
-
