@@ -144,6 +144,7 @@ library
     Distribution.PackageDescription.Parse,
     Distribution.PackageDescription.Check,
     Distribution.PackageDescription.PrettyPrint,
+    Distribution.PackageDescription.Utils,
     Distribution.ParseUtils,
     Distribution.ReadE,
     Distribution.Simple,

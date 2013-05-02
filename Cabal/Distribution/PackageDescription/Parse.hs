@@ -84,6 +84,8 @@ import Text.PrettyPrint
 
 import Distribution.ParseUtils hiding (parseFields)
 import Distribution.PackageDescription
+import Distribution.PackageDescription.Utils
+         ( cabalBug, userBug )
 import Distribution.Package
          ( PackageIdentifier(..), Dependency(..), packageName, packageVersion )
 import Distribution.ModuleName ( ModuleName )
@@ -576,7 +578,7 @@ constraintFieldNames = ["build-depends"]
 parseConstraint :: Field -> ParseResult [Dependency]
 parseConstraint (F l n v)
     | n == "build-depends" = runP l n (parseCommaList parse) v
-parseConstraint f = bug $ "Constraint was expected (got: " ++ show f ++ ")"
+parseConstraint f = userBug $ "Constraint was expected (got: " ++ show f ++ ")"
 
 {-
 headerFieldNames :: [String]
@@ -785,7 +787,7 @@ parsePackageDescription file = do
               | e == "executable" =
                   let (efs, r') = break ((=="executable") . fName) r
                   in Just (Section l "executable" n (deps ++ efs), r')
-            toExe _ = bug "unexpeced input to 'toExe'"
+            toExe _ = cabalBug "unexpected input to 'toExe'"
           in
             hdr ++
            (if null libfs then []
@@ -1017,7 +1019,7 @@ parsePackageDescription file = do
                    es -> do fs <- collectFields parser es
                             return (Just fs)
             return (cnd, t', e')
-        processIfs _ = bug "processIfs called with wrong field type"
+        processIfs _ = cabalBug "processIfs called with wrong field type"
 
     parseLibFields :: [Field] -> PM Library
     parseLibFields = lift . parseFields libFieldDescrs storeXFieldsLib emptyLibrary
@@ -1095,7 +1097,7 @@ parseField [] unrec (a,us) (F l f val) = return $
   case unrec (f,val) a of        -- no fields matched, see if the 'unrec'
     Just a' -> (a',us)           -- function wants to do anything with it
     Nothing -> (a, (l,f):us)
-parseField _ _ _ _ = bug "'parseField' called on a non-field"
+parseField _ _ _ _ = cabalBug "'parseField' called on a non-field"
 
 deprecatedFields :: [(String,String)]
 deprecatedFields =
@@ -1117,7 +1119,7 @@ deprecField (F line fld val) = do
                       ++ "\" is deprecated, please use \"" ++ newName ++ "\""
               return newName
   return (F line fld' val)
-deprecField _ = bug "'deprecField' called on a non-field"
+deprecField _ = cabalBug "'deprecField' called on a non-field"
 
 
 parseHookedBuildInfo :: String -> ParseResult HookedBuildInfo
@@ -1139,7 +1141,7 @@ parseHookedBuildInfo inp = do
             = do bis <- parseBI bi
                  return (mName, bis)
         | otherwise = syntaxError line "expecting 'executable' at top of stanza"
-    parseExe (_:_) = bug "`parseExe' called on a non-field"
+    parseExe (_:_) = cabalBug "`parseExe' called on a non-field"
     parseExe [] = syntaxError 0 "error in parsing buildinfo file. Expected executable stanza"
 
     parseBI st = parseFields binfoFieldDescrs storeXFieldsBI emptyBuildInfo st
@@ -1203,6 +1205,3 @@ findIndentTabs = concatMap checkLine
 
 --test_findIndentTabs = findIndentTabs $ unlines $
 --    [ "foo", "  bar", " \t baz", "\t  biz\t", "\t\t \t mib" ]
-
-bug :: String -> a
-bug msg = error $ msg ++ ". Consider this a bug."

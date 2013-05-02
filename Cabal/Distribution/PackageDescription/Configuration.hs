@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Configuration
+-- Module      :  Distribution.PackageDescription.Configuration
 -- Copyright   :  Thomas Schilling, 2007
 --
 -- Maintainer  :  cabal-devel@haskell.org
@@ -65,6 +65,8 @@ import Distribution.PackageDescription
          , Flag(..), FlagName(..), FlagAssignment
          , Benchmark(..), CondTree(..), ConfVar(..), Condition(..)
          , TestSuite(..) )
+import Distribution.PackageDescription.Utils
+         ( cabalBug, userBug )
 import Distribution.Version
          ( VersionRange, anyVersion, intersectVersionRanges, withinRange )
 import Distribution.Compiler
@@ -394,7 +396,7 @@ flattenTaggedTargets :: TargetSet PDTagged ->
         , [(String, Benchmark)])
 flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) targets
   where
-    untag (_, Lib _) (Just _, _, _, _) = bug "Only one library expected"
+    untag (_, Lib _) (Just _, _, _, _) = userBug "Only one library expected"
     untag (deps, Lib l) (Nothing, exes, tests, bms) =
         (Just l', exes, tests, bms)
       where
@@ -402,18 +404,24 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) tar
                 libBuildInfo = (libBuildInfo l) { targetBuildDepends = fromDepMap deps }
             }
     untag (deps, Exe n e) (mlib, exes, tests, bms)
-        | any ((== n) . fst) exes = bug "Exe with same name found"
-        | any ((== n) . fst) tests = bug "Test sharing name of exe found"
-        | any ((== n) . fst) bms = bug "Benchmark sharing name of exe found"
+        | any ((== n) . fst) exes =
+          userBug $ "There exist several exes with the same name: '" ++ n ++ "'"
+        | any ((== n) . fst) tests =
+          userBug $ "There exists a test with the same name as an exe: '" ++ n ++ "'"
+        | any ((== n) . fst) bms =
+          userBug $ "There exists a benchmark with the same name as an exe: '" ++ n ++ "'"
         | otherwise = (mlib, exes ++ [(n, e')], tests, bms)
       where
         e' = e {
                 buildInfo = (buildInfo e) { targetBuildDepends = fromDepMap deps }
             }
     untag (deps, Test n t) (mlib, exes, tests, bms)
-        | any ((== n) . fst) tests = bug "Test with same name found"
-        | any ((== n) . fst) exes = bug "Test sharing name of exe found"
-        | any ((== n) . fst) bms = bug "Test sharing name of benchmark found"
+        | any ((== n) . fst) tests =
+          userBug $ "There exist several tests with the same name: '" ++ n ++ "'"
+        | any ((== n) . fst) exes =
+          userBug $ "There exists an exe with the same name as the test: '" ++ n ++ "'"
+        | any ((== n) . fst) bms =
+          userBug $ "There exists a benchmark with the same name as the test: '" ++ n ++ "'"
         | otherwise = (mlib, exes, tests ++ [(n, t')], bms)
       where
         t' = t {
@@ -421,9 +429,12 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) tar
                 { targetBuildDepends = fromDepMap deps }
             }
     untag (deps, Bench n b) (mlib, exes, tests, bms)
-        | any ((== n) . fst) bms = bug "Benchmark with same name found"
-        | any ((== n) . fst) exes = bug "Benchmark sharing name of exe found"
-        | any ((== n) . fst) tests = bug "Benchmark sharing name of test found"
+        | any ((== n) . fst) bms =
+          userBug $ "There exist several benchmarks with the same name: '" ++ n ++ "'"
+        | any ((== n) . fst) exes =
+          userBug $ "There exists an exe with the same name as the benchmark: '" ++ n ++ "'"
+        | any ((== n) . fst) tests =
+          userBug $ "There exists a test with the same name as the benchmark: '" ++ n ++ "'"
         | otherwise = (mlib, exes, tests, bms ++ [(n, b')])
       where
         b' = b {
@@ -452,7 +463,7 @@ instance Monoid PDTagged where
     Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
     Test n t `mappend` Test n' t' | n == n' = Test n (t `mappend` t')
     Bench n b `mappend` Bench n' b' | n == n' = Bench n (b `mappend` b')
-    _ `mappend` _ = bug "Cannot combine incompatible tags"
+    _ `mappend` _ = cabalBug "Cannot combine incompatible tags"
 
 -- | Create a package description with all configurations resolved.
 --
@@ -610,6 +621,3 @@ biFillInDefaults bi =
     if null (hsSourceDirs bi)
     then bi { hsSourceDirs = [currentDir] }
     else bi
-
-bug :: String -> a
-bug msg = error $ msg ++ ". Consider this a bug."
