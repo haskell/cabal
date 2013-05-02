@@ -50,7 +50,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile )
 import Distribution.Client.Targets
-         ( readUserTargets )
+         ( UserTarget(UserTargetLocalDir), readUserTargets )
 import qualified Distribution.Client.List as List
          ( list, info )
 
@@ -81,6 +81,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,maybeWithSandboxDirOnSearchPath
                                               ,WereDepsReinstalled(..)
                                               ,maybeReinstallAddSourceDeps
+                                              ,reinstallAddSourceDeps
                                               ,maybeUpdateSandboxConfig
                                               ,tryGetIndexFilePath
 
@@ -238,8 +239,8 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
     maybeUpdateSandboxConfig verbosity config configFlags''
 
-    -- If we've switched to a new compiler, we need to add a timestamp record
-    -- for this compiler to the timestamp file.
+    -- If we've switched to a new compiler, we may need to add a timestamp
+    -- record for this compiler to the timestamp file.
     indexFile     <- tryGetIndexFilePath config
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
       (compilerId comp) platform
@@ -464,14 +465,31 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
 
-  -- If this a sandbox and the user has set the -w option, we may need to create
-  -- a sandbox-local package DB for this compiler.
+  -- If we're working inside a sandbox and the user has set the -w option, we
+  -- may need to create a sandbox-local package DB for this compiler.
   let configFlags'' = case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir
                                    comp platform configFlags'
   when (isUseSandbox useSandbox) $
     initPackageDBIfNeeded verbosity configFlags'' comp conf
+
+  -- If we're working inside a sandbox and "." is among the targets, we should
+  -- reinstall add-source dependencies for this compiler.
+  whenUsingSandbox useSandbox $ \sandboxDir -> do
+    -- If the 'install' command was invoked with '-w', we may need to add a
+    -- timestamp record for this compiler to the timestamp file.
+    indexFile     <- tryGetIndexFilePath config
+    maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
+      (compilerId comp) platform
+
+    when (null targets || (UserTargetLocalDir ".") `elem` targets) $ do
+      -- 'install .' always runs 'configure', so we don't need to check whether
+      -- we need to reconfigure.
+      _ <- reinstallAddSourceDeps verbosity config configFlags'' configExFlags'
+                                  installFlags' globalFlags'
+                                  sandboxDir
+      return ()
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     install verbosity
