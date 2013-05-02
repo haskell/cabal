@@ -17,36 +17,36 @@ module Distribution.Client.Sandbox.Timestamp (
   withModifiedDeps,
   ) where
 
+import Control.Exception                             (finally)
 import Control.Monad                                 (filterM, forM, when)
 import Data.Char                                     (isSpace)
 import Data.List                                     (partition)
-import Data.Maybe                                    (maybeToList)
-import System.Directory                              (renameFile)
-import System.FilePath                               (isAbsolute, (<.>), (</>))
+import System.Directory                              (removeFile, renameFile)
+import System.FilePath                               ((<.>), (</>))
 
 import Distribution.Compiler                         (CompilerId)
-import Distribution.PackageDescription               (BuildInfo (..),
-                                                      Executable (..),
-                                                      Library (..),
-                                                      PackageDescription (..))
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parse         (readPackageDescription)
-import Distribution.Simple.PreProcess                (knownSuffixHandlers)
-import Distribution.Simple.SrcDist                   (allSourcesBuildInfo,
-                                                      filterAutogenModule,
-                                                      findIncludeFile,
-                                                      findMainExeFile,
-                                                      findSetupFile)
-import Distribution.Simple.Utils                     (defaultPackageDesc, die,
-                                                      debug, findPackageDesc,
-                                                      matchFileGlob, warn)
+import Distribution.Simple.Setup                     (Flag (..),
+                                                      SDistFlags (..),
+                                                      defaultSDistFlags,
+                                                      sdistCommand)
+import Distribution.Simple.Utils                     (debug, die,
+                                                      findPackageDesc, warn)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
-import Distribution.Verbosity                        (Verbosity)
+import Distribution.Verbosity                        (Verbosity, lessVerbose,
+                                                      normal)
+import Distribution.Version                          (Version (..),
+                                                      orLaterVersion)
 
-import Distribution.Client.Utils                     (inDir, tryCanonicalizePath)
 import Distribution.Client.Sandbox.Index
-       (ListIgnoredBuildTreeRefs(..), listBuildTreeRefs)
+  (ListIgnoredBuildTreeRefs (..), listBuildTreeRefs)
+import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
+                                                      defaultSetupScriptOptions,
+                                                      setupWrapper)
+import Distribution.Client.Utils                     (inDir,
+                                                      tryCanonicalizePath)
 
 import Distribution.Compat.Exception                 (catchIO)
 import Distribution.Compat.Time                      (EpochTime, getCurTime,
@@ -212,47 +212,25 @@ withActionOnCompilerTimestamps f sandboxDir compId platform act = do
 -- FIXME: This function is not thread-safe because of 'inDir'.
 allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
 allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
-  pkgDesc <- fmap (filterAutogenModule . flattenPackageDescription)
-             . readPackageDescription verbosity =<< findPackageDesc packageDir
-  -- NOTE: This is patterned after "Distribution.Simple.SrcDist.prepareTree".
-  libSources <- withLib pkgDesc $
-                \Library { exposedModules = modules, libBuildInfo = libBi } ->
-                allSourcesBuildInfo libBi pps modules
-  exeSources <- withExe pkgDesc $
-                \Executable { modulePath = mainPath, buildInfo = exeBi } -> do
-                biSrcs  <- allSourcesBuildInfo exeBi pps []
-                mainSrc <- findMainExeFile exeBi pps mainPath
-                return (mainSrc:biSrcs)
+  pkg <- fmap (flattenPackageDescription)
+         . readPackageDescription verbosity =<< findPackageDesc packageDir
 
-  -- We don't care about test and benchmark sources.
+  let file      = "cabal-sdist-list-sources"
+      flags     = defaultSDistFlags {
+        sDistVerbosity   = Flag $ if verbosity == normal
+                                  then lessVerbose verbosity else verbosity,
+        sDistListSources = Flag file
+        }
+      setupOpts = defaultSetupScriptOptions {
+        -- 'sdist --list-sources' was introduced in Cabal 1.17.
+        useCabalVersion = orLaterVersion $ Version [1,17,0] []
+        }
 
-  dataFs    <- forM (dataFiles pkgDesc) $ \filename ->
-    matchFileGlob (dataDir pkgDesc </> filename)
-
-  extraSrcs <- forM (extraSrcFiles pkgDesc) $ \fpath ->
-    matchFileGlob fpath
-
-  incFiles  <- withLib pkgDesc $ \ l -> do
-    let lbi = libBuildInfo l
-        relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
-    mapM (fmap snd . findIncludeFile relincdirs) (installIncludes lbi)
-
-  mSetupFile <- findSetupFile
-  descFile   <- defaultPackageDesc verbosity
-
-  mapM tryCanonicalizePath . map (packageDir </>) $
-    descFile : (maybeToList mSetupFile)
-    ++ incFiles ++ (concat extraSrcs) ++ (concat dataFs)
-    ++ (concat exeSources) ++ libSources
-
-  where
-    -- We have to deal with all libs and executables, so we have local
-    -- versions of these functions that ignore the 'buildable' attribute:
-    withLib pkgDesc action = maybe (return []) action (library pkgDesc)
-    withExe pkgDesc action = mapM action (executables pkgDesc)
-
-    pps = knownSuffixHandlers
-
+  -- Run setup sdist --list-sources=TMPFILE
+  (flip finally) (removeFile file) $ do
+    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
+    srcs <- fmap lines . readFile $ file
+    mapM tryCanonicalizePath srcs
 
 -- | Has this dependency been modified since we have last looked at it?
 isDepModified :: Verbosity -> EpochTime -> AddSourceTimestamp -> IO Bool

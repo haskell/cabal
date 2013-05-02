@@ -176,7 +176,7 @@ Test-Suite unit-tests
 
         test-framework,
         test-framework-hunit,
-        test-framework-quickcheck2,
+        test-framework-quickcheck2 >= 0.3,
         HUnit,
         QuickCheck >= 2.5
 
