@@ -498,7 +498,7 @@ reinstallAddSourceDeps verbosity config configFlags configExFlags
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
 maybeReinstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
-                             -> IO (UseSandbox, WereDepsReinstalled)
+                               -> IO (UseSandbox, WereDepsReinstalled)
 maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags' = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
