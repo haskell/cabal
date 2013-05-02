@@ -28,8 +28,8 @@ extra-source-files:
 
   -- Generated with
   --
-  -- find tests -type f -name '*.hs' -or -name '*.c' -or -name '*.sh' -or -name '*.cabal'
-  -- | awk '/Check.hs$|UnitTests|PackageTester|autogen|PackageTests.hs/
+  -- find tests -type f -name '*.hs' -or -name '*.c' -or -name '*.sh' -or -name '*.cabal' -or name '*.hsc'
+  -- | awk '/Check.hs$|UnitTests|PackageTester|autogen|PackageTests.hs|CreatePipe/
   -- { next } { print }'
 
   tests/PackageTests/BenchmarkExeV10/Foo.hs
@@ -86,6 +86,7 @@ extra-source-files:
   tests/PackageTests/PathsModule/Executable/Main.hs
   tests/PackageTests/PathsModule/Executable/my.cabal
   tests/PackageTests/PathsModule/Library/my.cabal
+  tests/PackageTests/PreProcess/Foo.hsc
   tests/PackageTests/PreProcess/Main.hs
   tests/PackageTests/PreProcess/my.cabal
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
@@ -213,6 +214,7 @@ library
 test-suite unit-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
+  other-modules: UnitTests.Distribution.Compat.ReadP
   main-is: UnitTests.hs
   build-depends:
     base,
@@ -246,6 +248,7 @@ test-suite package-tests
     PackageTests.BuildDeps.TargetSpecificDeps2.Check
     PackageTests.BuildDeps.TargetSpecificDeps3.Check
     PackageTests.BuildTestSuiteDetailedV09.Check
+    PackageTests.EmptyLib.Check
     PackageTests.CMain.Check
     PackageTests.PackageTester
     PackageTests.PathsModule.Executable.Check
