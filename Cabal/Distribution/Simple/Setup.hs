@@ -324,9 +324,9 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configGHCiLib      = Flag False,
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = Flag True,
-    configTests  = Flag False,
+    configTests        = Flag False,
     configBenchmarks   = Flag False,
-    configLibCoverage = Flag False
+    configLibCoverage  = Flag False
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
