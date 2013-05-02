@@ -36,9 +36,9 @@ module Distribution.Client.Sandbox (
   ) where
 
 import Distribution.Client.Setup
-  ( SandboxFlags(..), ConfigFlags(..), GlobalFlags(..), InstallFlags(..)
-  , defaultConfigExFlags, defaultInstallFlags, defaultSandboxLocation
-  , globalRepos )
+  ( SandboxFlags(..), ConfigFlags(..), ConfigExFlags(..), InstallFlags(..)
+  , GlobalFlags(..), defaultConfigExFlags, defaultInstallFlags
+  , defaultSandboxLocation, globalRepos )
 import Distribution.Client.Sandbox.Timestamp  ( maybeAddCompilerTimestampRecord
                                               , withAddTimestamps
                                               , withRemoveTimestamps
@@ -434,21 +434,15 @@ maybeWithSandboxDirOnSearchPath (UseSandbox sandboxDir) act =
 data WereDepsReinstalled = ReinstalledSomeDeps | NoDepsReinstalled
 
 -- | Reinstall those add-source dependencies that have been modified since
--- we've last installed them.
-reinstallAddSourceDeps :: Verbosity -> SavedConfig -> Flag (Maybe Int)
-                          -> FilePath -> GlobalFlags
+-- we've last installed them. Assumes that we're working inside a sandbox.
+reinstallAddSourceDeps :: Verbosity
+                          -> SavedConfig
+                          -> ConfigFlags  -> ConfigExFlags
+                          -> InstallFlags -> GlobalFlags
+                          -> FilePath
                           -> IO WereDepsReinstalled
-reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
-  let configFlags    = savedConfigureFlags   config
-      configExFlags  = defaultConfigExFlags         `mappend`
-                       savedConfigureExFlags config
-      installFlags'  = defaultInstallFlags          `mappend`
-                       savedInstallFlags     config
-      installFlags   = installFlags' {
-        installNumJobs = installNumJobs installFlags' `mappend` numJobsFlag
-        }
-      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-
+reinstallAddSourceDeps verbosity config configFlags configExFlags
+                       installFlags globalFlags sandboxDir = do
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity
                           Index.DontListIgnored indexFile
@@ -469,9 +463,9 @@ reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
 
         let args :: InstallArgs
             args = ((configPackageDB' configFlags ForceGlobalInstall)
-                   ,(globalRepos globalFlags')
+                   ,(globalRepos globalFlags)
                    ,comp, platform, conf
-                   ,globalFlags', configFlags, configExFlags, installFlags
+                   ,globalFlags, configFlags, configExFlags, installFlags
                    ,mempty)
 
             logMsg message rest = debugNoWrap verbosity message >> rest
@@ -486,7 +480,7 @@ reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
             makeInstallContext verbosity args targets
 
           toPrune <- resolveUserTargets verbosity
-                     (fromFlag $ globalWorldFile globalFlags')
+                     (fromFlag $ globalWorldFile globalFlags)
                      (packageIndex sourcePkgDb)
                      targetsToPrune
 
@@ -504,8 +498,8 @@ reinstallAddSourceDeps verbosity config numJobsFlag sandboxDir globalFlags = do
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
 maybeReinstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
-                             -> IO (UseSandbox, WereDepsReinstalled)
-maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
+                               -> IO (UseSandbox, WereDepsReinstalled)
+maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags' = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
@@ -513,14 +507,29 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags = do
     UserPackageEnvironment    -> return (NoSandbox, NoDepsReinstalled)
     SandboxPackageEnvironment -> do
       (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
-                              (globalConfigFile globalFlags) mempty
-      let sandboxDir = case useSandbox of
-            UseSandbox d -> d;
-            _            -> error "Distribution.Client.Sandbox.\
-                                  \maybeInstallAddSourceDeps: can't happen"
-      depsReinstalled <- reinstallAddSourceDeps verbosity config
-                                   numJobsFlag sandboxDir globalFlags
-      return (useSandbox, depsReinstalled)
+                              (globalConfigFile globalFlags') mempty
+      case useSandbox of
+        UseSandbox sandboxDir -> do
+          let configFlags    = savedConfigureFlags config
+              configExFlags  = defaultConfigExFlags
+                               `mappend` savedConfigureExFlags config
+              installFlags'  = defaultInstallFlags
+                               `mappend` savedInstallFlags config
+              installFlags   = installFlags' {
+                installNumJobs  = installNumJobs installFlags'
+                                  `mappend` numJobsFlag
+                }
+              globalFlags    = savedGlobalFlags config
+                               `mappend` globalFlags'
+
+          depsReinstalled <- reinstallAddSourceDeps verbosity config
+                             configFlags configExFlags installFlags globalFlags
+                             sandboxDir
+          return (useSandbox, depsReinstalled)
+
+        NoSandbox -> error $
+                     "Distribution.Client.Sandbox.maybeReinstallAddSourceDeps: "
+                     ++ "can't happen."
 
 -- | Update the 'with-compiler' and 'package-db' fields in the auto-generated
 -- sandbox config file if the user has configured the project with a different
