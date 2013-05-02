@@ -50,7 +50,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile )
 import Distribution.Client.Targets
-         ( readUserTargets )
+         ( UserTarget(UserTargetLocalDir), readUserTargets )
 import qualified Distribution.Client.List as List
          ( list, info )
 
@@ -73,7 +73,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,dumpPackageEnvironment
 
                                               ,UseSandbox(..)
-                                              ,isUseSandbox, whenUsingSandbox
+                                              ,whenUsingSandbox
                                               ,ForceGlobalInstall(..)
                                               ,maybeForceGlobalInstall
                                               ,loadConfigOrSandboxConfig
@@ -81,6 +81,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,maybeWithSandboxDirOnSearchPath
                                               ,WereDepsReinstalled(..)
                                               ,maybeReinstallAddSourceDeps
+                                              ,reinstallAddSourceDeps
                                               ,maybeUpdateSandboxConfig
                                               ,tryGetIndexFilePath
 
@@ -226,9 +227,10 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux configFlags'
 
-  -- If this a sandbox and the user has set the -w option, we may need to create
-  -- a sandbox-local package DB for this compiler and rewrite the
-  -- 'with-compiler' and 'package-db' fields in the cabal.sandbox.config file.
+  -- If we're working inside a sandbox and the user has set the -w option, we
+  -- may need to create a sandbox-local package DB for this compiler, rewrite
+  -- the 'with-compiler' and 'package-db' fields in the 'cabal.sandbox.config'
+  -- file and add a timestamp record for this compiler to the timestamp file.
   let configFlags''  = case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir
@@ -238,8 +240,6 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
     maybeUpdateSandboxConfig verbosity config configFlags''
 
-    -- If we've switched to a new compiler, we need to add a timestamp record
-    -- for this compiler to the timestamp file.
     indexFile     <- tryGetIndexFilePath config
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
       (compilerId comp) platform
@@ -464,14 +464,32 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
 
-  -- If this a sandbox and the user has set the -w option, we may need to create
-  -- a sandbox-local package DB for this compiler.
+  -- If we're working inside a sandbox and the user has set the -w option, we
+  -- may need to create a sandbox-local package DB for this compiler and add a
+  -- timestamp record for this compiler to the timestamp file.
   let configFlags'' = case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir
                                    comp platform configFlags'
-  when (isUseSandbox useSandbox) $
+
+  whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
+
+    indexFile     <- tryGetIndexFilePath config
+    maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
+      (compilerId comp) platform
+
+    -- If "." is among the targets, we should reinstall add-source dependencies
+    -- for this compiler and maybe rewrite the 'with-compiler' and 'package-db'
+    -- fields in the 'cabal.sandbox.config' file.
+    when (null targets || (UserTargetLocalDir ".") `elem` targets) $ do
+      maybeUpdateSandboxConfig verbosity config configFlags''
+      -- 'install .' always runs 'configure', so we don't need to force
+      -- reconfigure ourselves.
+      _ <- reinstallAddSourceDeps verbosity config configFlags'' configExFlags'
+                                  installFlags' globalFlags'
+                                  sandboxDir
+      return ()
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     install verbosity
