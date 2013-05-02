@@ -72,11 +72,15 @@ module Distribution.Simple.Utils (
         copyFileVerbose,
         copyDirectoryRecursiveVerbose,
         copyFiles,
+        copyFileTo,
 
         -- * installing files
         installOrdinaryFile,
         installExecutableFile,
+        installMaybeExecutableFile,
         installOrdinaryFiles,
+        installExecutableFiles,
+        installMaybeExecutableFiles,
         installDirectoryContents,
 
         -- * File permissions
@@ -151,8 +155,8 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 import System.Directory
-    ( getDirectoryContents, doesDirectoryExist, doesFileExist, removeFile
-    , findExecutable )
+    ( Permissions(executable), getDirectoryContents, getPermissions
+    , doesDirectoryExist, doesFileExist, removeFile, findExecutable )
 import System.Environment
     ( getProgName )
 import System.Cmd
@@ -796,6 +800,38 @@ installExecutableFile verbosity src dest = do
   info verbosity ("Installing executable " ++ src ++ " to " ++ dest)
   copyExecutableFile src dest
 
+-- | Install a file that may or not be executable, preserving permissions.
+installMaybeExecutableFile :: Verbosity -> FilePath -> FilePath -> IO ()
+installMaybeExecutableFile verbosity src dest = do
+  perms <- getPermissions src
+  if (executable perms) --only checks user x bit
+    then installExecutableFile verbosity src dest
+    else installOrdinaryFile   verbosity src dest
+
+-- | Given a relative path to a file, copy it to the given directory, preserving
+-- the relative path and creating the parent directories if needed.
+copyFileTo :: Verbosity -> FilePath -> FilePath -> IO ()
+copyFileTo verbosity dir file = do
+  let targetFile = dir </> file
+  createDirectoryIfMissingVerbose verbosity True (takeDirectory targetFile)
+  installOrdinaryFile verbosity file targetFile
+
+-- | Common implementation of 'copyFiles', 'installOrdinaryFiles',
+-- 'installExecutableFiles' and 'installMaybeExecutableFiles'.
+copyFilesWith :: (Verbosity -> FilePath -> FilePath -> IO ())
+              -> Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
+copyFilesWith doCopy verbosity targetDir srcFiles = do
+
+  -- Create parent directories for everything
+  let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
+  mapM_ (createDirectoryIfMissingVerbose verbosity True) dirs
+
+  -- Copy all the files
+  sequence_ [ let src  = srcBase   </> srcFile
+                  dest = targetDir </> srcFile
+               in doCopy verbosity src dest
+            | (srcBase, srcFile) <- srcFiles ]
+
 -- | Copies a bunch of files to a target directory, preserving the directory
 -- structure in the target location. The target directories are created if they
 -- do not exist.
@@ -818,32 +854,24 @@ installExecutableFile verbosity src dest = do
 -- anything goes wrong.
 --
 copyFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
-copyFiles verbosity targetDir srcFiles = do
-
-  -- Create parent directories for everything
-  let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
-  mapM_ (createDirectoryIfMissingVerbose verbosity True) dirs
-
-  -- Copy all the files
-  sequence_ [ let src  = srcBase   </> srcFile
-                  dest = targetDir </> srcFile
-               in copyFileVerbose verbosity src dest
-            | (srcBase, srcFile) <- srcFiles ]
+copyFiles = copyFilesWith copyFileVerbose
 
 -- | This is like 'copyFiles' but uses 'installOrdinaryFile'.
 --
 installOrdinaryFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)] -> IO ()
-installOrdinaryFiles verbosity targetDir srcFiles = do
+installOrdinaryFiles = copyFilesWith installOrdinaryFile
 
-  -- Create parent directories for everything
-  let dirs = map (targetDir </>) . nub . map (takeDirectory . snd) $ srcFiles
-  mapM_ (createDirectoryIfMissingVerbose verbosity True) dirs
+-- | This is like 'copyFiles' but uses 'installExecutableFile'.
+--
+installExecutableFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)]
+                          -> IO ()
+installExecutableFiles = copyFilesWith installExecutableFile
 
-  -- Copy all the files
-  sequence_ [ let src  = srcBase   </> srcFile
-                  dest = targetDir </> srcFile
-               in installOrdinaryFile verbosity src dest
-            | (srcBase, srcFile) <- srcFiles ]
+-- | This is like 'copyFiles' but uses 'installMaybeExecutableFile'.
+--
+installMaybeExecutableFiles :: Verbosity -> FilePath -> [(FilePath, FilePath)]
+                               -> IO ()
+installMaybeExecutableFiles = copyFilesWith installMaybeExecutableFile
 
 -- | This installs all the files in a directory to a target location,
 -- preserving the directory layout. All the files are assumed to be ordinary

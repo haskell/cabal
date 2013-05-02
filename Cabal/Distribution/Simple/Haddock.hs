@@ -91,7 +91,7 @@ import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.Utils
-         ( die, warn, notice, intercalate, setupMessage
+         ( die, copyFileTo, warn, notice, intercalate, setupMessage
          , createDirectoryIfMissingVerbose, withTempFile, copyFileVerbose
          , withTempDirectory, matchFileGlob
          , findFileWithExtension, findFile )
@@ -112,7 +112,6 @@ import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        normalise, splitPath, joinPath )
 import System.IO (hClose, hPutStrLn)
 import Distribution.Version
-import Distribution.Simple.SrcDist (copyFileTo)
 
 -- Types
 
