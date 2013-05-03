@@ -18,6 +18,10 @@ import Distribution.Client.Dependency.Modular.Tree (FailReason(..))
 -- Parameterized over the type of actual messages and the final result.
 type Log m a = Progress m () a
 
+-- | Turns a log into a list of messages paired with a final result. A final result
+-- of 'Nothing' indicates failure. A final result of 'Just' indicates success.
+-- Keep in mind that forcing the second component of the returned pair will force the
+-- entire log.
 runLog :: Log m a -> ([m], Maybe a)
 runLog (Done x)       = ([], Just x)
 runLog (Fail _)       = ([], Nothing)
