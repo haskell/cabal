@@ -496,19 +496,36 @@ reinstallAddSourceDeps verbosity config configFlags configExFlags
 
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
-maybeReinstallAddSourceDeps :: Verbosity -> Flag (Maybe Int) -> GlobalFlags
+maybeReinstallAddSourceDeps :: Verbosity
+                               -> Flag (Maybe Int) -- ^ The '-j' flag
+                               -> ConfigFlags      -- ^ Saved configure flags
+                                                   -- (from dist/setup-config)
+                               -> GlobalFlags
                                -> IO (UseSandbox, WereDepsReinstalled)
-maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags' = do
+maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags' globalFlags' = do
   currentDir <- getCurrentDirectory
   pkgEnvType <- classifyPackageEnvironment currentDir
   case pkgEnvType of
     AmbientPackageEnvironment -> return (NoSandbox, NoDepsReinstalled)
     UserPackageEnvironment    -> return (NoSandbox, NoDepsReinstalled)
     SandboxPackageEnvironment -> do
-      (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
-                              (globalConfigFile globalFlags') mempty
+      (useSandbox, config') <- loadConfigOrSandboxConfig verbosity
+                               (globalConfigFile globalFlags') mempty
       case useSandbox of
         UseSandbox sandboxDir -> do
+
+          -- If the saved configure flags and the sandbox config are
+          -- desynchronised for some reason (can happen if the user did 'install
+          -- . A B C -w $NEW_COMPILER' and then aborted the installation after
+          -- the sandbox config was updated, but before the current project was
+          -- configured), synchronise them.
+          config <- if sandboxConfigUpdateNeeded config' configFlags'
+                     then do updateSandboxConfig verbosity configFlags'
+                             fmap snd $ loadConfigOrSandboxConfig verbosity
+                               (globalConfigFile globalFlags') mempty
+                     else return config'
+
+          -- Actually reinstall the modified add-source deps.
           let configFlags    = savedConfigureFlags config
               configExFlags  = defaultConfigExFlags
                                `mappend` savedConfigureExFlags config
@@ -519,6 +536,10 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags' = do
                                   `mappend` numJobsFlag
                 }
               globalFlags    = savedGlobalFlags config
+              -- This makes it possible to override things like
+              -- 'remote-repo-cache' from the command line. These options are
+              -- hidden, and are only useful for debugging, so this should be
+              -- fine.
                                `mappend` globalFlags'
 
           depsReinstalled <- reinstallAddSourceDeps verbosity config
@@ -534,12 +555,21 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag globalFlags' = do
 -- sandbox config file if the user has configured the project with a different
 -- compiler. Note that we don't auto-enable things like 'library-profiling' (for
 -- now?) even if the user has passed '--enable-library-profiling' to
--- 'configure'. These options are supposed to be set in cabal.config.
+-- 'configure'. These options are supposed to be set in 'cabal.config'.
 maybeUpdateSandboxConfig :: Verbosity
-                            -> SavedConfig -- ^ old config
+                            -> SavedConfig -- ^ old 'cabal.sandbox.config'
                             -> ConfigFlags -- ^ new configure flags
                             -> IO ()
 maybeUpdateSandboxConfig verbosity savedConfig newConfigFlags = do
+  when (sandboxConfigUpdateNeeded savedConfig newConfigFlags) $
+    updateSandboxConfig verbosity newConfigFlags
+
+-- | Given the flags from an old 'cabal.sandbox.config' and the most current
+-- 'configure' flags, should we rewrite the auto-generated sandbox config file?
+sandboxConfigUpdateNeeded :: SavedConfig    -- ^ old 'cabal.sandbox.config'
+                             -> ConfigFlags -- ^ new configure flags
+                             -> Bool
+sandboxConfigUpdateNeeded savedConfig newConfigFlags =
   let oldConfigFlags = savedConfigureFlags savedConfig
 
       oldHcFlavor    = configHcFlavor   oldConfigFlags
@@ -549,13 +579,19 @@ maybeUpdateSandboxConfig verbosity savedConfig newConfigFlags = do
       newHcFlavor    = configHcFlavor   newConfigFlags
       newHcPath      = configHcPath     newConfigFlags
       newPackageDBs  = configPackageDBs newConfigFlags
+  in (oldHcFlavor  /= newHcFlavor)
+     || (oldHcPath /= newHcPath)
+     || (oldPackageDBs /= newPackageDBs)
 
-  when ((oldHcFlavor /= newHcFlavor)
-        || (oldHcPath /= newHcPath)
-        || (oldPackageDBs /= newPackageDBs)) $ do
-    pkgEnvDir <- getCurrentDirectory
-    updatePackageEnvironment verbosity pkgEnvDir
-      newHcFlavor newHcPath newPackageDBs
+-- | Actually update the sandbox config.
+updateSandboxConfig :: Verbosity -> ConfigFlags -> IO ()
+updateSandboxConfig verbosity newConfigFlags = do
+  pkgEnvDir <- getCurrentDirectory
+  let newHcFlavor    = configHcFlavor   newConfigFlags
+      newHcPath      = configHcPath     newConfigFlags
+      newPackageDBs  = configPackageDBs newConfigFlags
+  updatePackageEnvironment verbosity pkgEnvDir
+    newHcFlavor newHcPath newPackageDBs
 
 --
 -- Utils (transitionary)

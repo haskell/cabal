@@ -374,7 +374,7 @@ reconfigure verbosity distPref    addConfigFlags
                           (useDistPref defaultSetupScriptOptions)
                           (configDistPref configFlags)
       (useSandbox, depsReinstalled) <- maybeReinstallAddSourceDeps verbosity
-                                       numJobsFlag globalFlags
+                                       numJobsFlag flags globalFlags
 
       -- Determine what message, if any, to display to the user if
       -- reconfiguration is required.
