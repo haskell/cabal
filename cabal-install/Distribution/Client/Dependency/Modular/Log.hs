@@ -63,7 +63,7 @@ logToProgress mbj l = let
     -- in parallel with the full log, but we also want to retain the reference to its
     -- beginning for when we print it. This trick prevents a space leak!
     --
-    -- The thirs argument is the full log, the fifth and six error conditions.
+    -- The third argument is the full log, the fifth and six error conditions.
     --
     -- The order of arguments is important! In particular 's' must not be evaluated
     -- unless absolutely necessary. It contains the final result, and if we shortcut
