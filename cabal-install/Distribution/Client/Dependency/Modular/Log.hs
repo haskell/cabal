@@ -18,6 +18,10 @@ import Distribution.Client.Dependency.Modular.Tree (FailReason(..))
 -- Parameterized over the type of actual messages and the final result.
 type Log m a = Progress m () a
 
+-- | Turns a log into a list of messages paired with a final result. A final result
+-- of 'Nothing' indicates failure. A final result of 'Just' indicates success.
+-- Keep in mind that forcing the second component of the returned pair will force the
+-- entire log.
 runLog :: Log m a -> ([m], Maybe a)
 runLog (Done x)       = ([], Just x)
 runLog (Fail _)       = ([], Nothing)
@@ -32,19 +36,24 @@ runLog (Step m p)     = let
 logToProgress :: Maybe Int -> Log Message a -> Progress String String a
 logToProgress mbj l = let
                         (ms, s) = runLog l
+                        -- 'Nothing' for 's' means search tree exhaustively searched and failed
                         (es, e) = proc 0 ms -- catch first error (always)
+                        -- 'Nothing' in 'e' means no backjump found
                         (ns, t) = case mbj of
                                      Nothing -> (ms, Nothing)
                                      Just n  -> proc n ms
+                        -- 'Nothing' in 't' means backjump limit not reached
                         -- prefer first error over later error
-                        r       = case t of
-                                    Nothing -> case s of
-                                                 Nothing -> e
-                                                 Just _  -> Nothing
-                                    Just _  -> e
+                        (exh, r) = case t of
+                                     -- backjump limit not reached
+                                     Nothing -> case s of
+                                                  Nothing -> (True, e) -- failed after exhaustive search
+                                                  Just _  -> (True, Nothing) -- success
+                                     -- backjump limit reached; prefer first error
+                                     Just _  -> (False, e) -- failed after backjump limit was reached
                       in go es es -- trace for first error
                             (showMessages (const True) True ns) -- shortened run
-                            r s
+                            r s exh
   where
     -- Proc takes the allowed number of backjumps and a list of messages and explores the
     -- message list until the maximum number of backjumps has been reached. The log until
@@ -63,18 +72,22 @@ logToProgress mbj l = let
     -- in parallel with the full log, but we also want to retain the reference to its
     -- beginning for when we print it. This trick prevents a space leak!
     --
-    -- The thirs argument is the full log, the fifth and six error conditions.
+    -- The third argument is the full log, the fifth and six error conditions.
+    -- The seventh argument indicates whether the search was exhaustive.
     --
     -- The order of arguments is important! In particular 's' must not be evaluated
     -- unless absolutely necessary. It contains the final result, and if we shortcut
     -- with an error due to backjumping, evaluating 's' would still require traversing
     -- the entire tree.
-    go ms (_ : ns) (x : xs) r         s        = Step x (go ms ns xs r s)
-    go ms []       (x : xs) r         s        = Step x (go ms [] xs r s)
-    go ms _        []       (Just cs) _        = Fail ("Could not resolve dependencies:\n" ++
-                                                 unlines (showMessages (L.foldr (\ v _ -> v `S.member` cs) True) False ms))
-    go _  _        []       _         (Just s) = Done s
-    go _  _        []       _         _        = Fail ("Could not resolve dependencies.") -- should not happen
+    go ms (_ : ns) (x : xs) r         s        exh = Step x (go ms ns xs r s exh)
+    go ms []       (x : xs) r         s        exh = Step x (go ms [] xs r s exh)
+    go ms _        []       (Just cs) _        exh = Fail $
+                                                     "Could not resolve dependencies:\n" ++
+                                                     unlines (showMessages (L.foldr (\ v _ -> v `S.member` cs) True) False ms) ++
+                                                     (if exh then "Dependency tree exhaustively searched.\n"
+                                                             else "Backjump limit reached (change with --max-backjumps).\n")
+    go _  _        []       _         (Just s) _   = Done s
+    go _  _        []       _         _        _   = Fail ("Could not resolve dependencies; something strange happened.") -- should not happen
 
 logToProgress' :: Log Message a -> Progress String String a
 logToProgress' l = let
