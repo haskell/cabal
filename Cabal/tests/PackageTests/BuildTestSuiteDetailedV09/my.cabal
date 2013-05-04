@@ -13,7 +13,7 @@ Library
     exposed-modules: Dummy
     build-depends: base, Cabal
 
-test-suite dummy
+test-suite test-Dummy
   type:       detailed-0.9
   test-module: Dummy
   build-depends: base, Cabal
