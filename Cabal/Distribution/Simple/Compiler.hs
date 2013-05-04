@@ -57,6 +57,8 @@ module Distribution.Simple.Compiler (
         PackageDB(..),
         PackageDBStack,
         registrationPackageDB,
+        absolutePackageDBPaths,
+        absolutePackageDBPath,
 
         -- * Support for optimisation levels
         OptimisationLevel(..),
@@ -75,8 +77,10 @@ import Distribution.Version (Version(..))
 import Distribution.Text (display)
 import Language.Haskell.Extension (Language(Haskell98), Extension)
 
+import Control.Monad (liftM)
 import Data.List (nub)
 import Data.Maybe (catMaybes, isNothing)
+import System.Directory (canonicalizePath)
 
 data Compiler = Compiler {
         compilerId              :: CompilerId,
@@ -134,6 +138,17 @@ type PackageDBStack = [PackageDB]
 registrationPackageDB :: PackageDBStack -> PackageDB
 registrationPackageDB []  = error "internal error: empty package db set"
 registrationPackageDB dbs = last dbs
+
+-- | Make package paths absolute
+
+
+absolutePackageDBPaths :: PackageDBStack -> IO PackageDBStack
+absolutePackageDBPaths = mapM absolutePackageDBPath
+
+absolutePackageDBPath :: PackageDB -> IO PackageDB
+absolutePackageDBPath GlobalPackageDB        = return GlobalPackageDB
+absolutePackageDBPath UserPackageDB          = return UserPackageDB
+absolutePackageDBPath (SpecificPackageDB db) = SpecificPackageDB `liftM` canonicalizePath db
 
 -- ------------------------------------------------------------
 -- * Optimisation levels

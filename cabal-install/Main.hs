@@ -43,7 +43,9 @@ import Distribution.Simple.Setup
          , CleanFlags(..), cleanCommand
          , TestFlags(..), testCommand
          , BenchmarkFlags(..), benchmarkCommand
-         , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag )
+         , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag
+         , configAbsolutePaths
+         )
 
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
@@ -467,7 +469,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- If we're working inside a sandbox and the user has set the -w option, we
   -- may need to create a sandbox-local package DB for this compiler and add a
   -- timestamp record for this compiler to the timestamp file.
-  let configFlags'' = case useSandbox of
+  configFlags'' <- configAbsolutePaths $ case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir
                                    comp platform configFlags'
