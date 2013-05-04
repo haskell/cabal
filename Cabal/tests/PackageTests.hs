@@ -40,6 +40,7 @@ import PackageTests.EmptyLib.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
+import PackageTests.OrderFlags.Check
 
 hunit :: TestName -> HUnit.Test -> Test
 hunit name test = testGroup name $ hUnitTestToTests test
@@ -81,6 +82,8 @@ tests version inplaceSpec =
       PackageTests.EmptyLib.Check.emptyLib
     , hunit "BuildTestSuiteDetailedV09"
       $ PackageTests.BuildTestSuiteDetailedV09.Check.suite inplaceSpec
+    , hunit "OrderFlags"
+      PackageTests.OrderFlags.Check.suite
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []
