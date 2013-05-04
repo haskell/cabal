@@ -440,8 +440,10 @@ reinstallAddSourceDeps :: Verbosity
                           -> InstallFlags -> GlobalFlags
                           -> FilePath
                           -> IO WereDepsReinstalled
-reinstallAddSourceDeps verbosity config configFlags configExFlags
+reinstallAddSourceDeps verbosity config configFlags' configExFlags
                        installFlags globalFlags sandboxDir = do
+  let configFlags       = configFlags'
+                          { configDistPref = Flag "sandbox-dist" }
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity
                           Index.DontListIgnored indexFile
