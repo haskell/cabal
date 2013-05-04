@@ -63,7 +63,7 @@ module Distribution.ParseUtils (
         field, simpleField, listField, spaceListField, commaListField,
         optsField, liftField, boolField, parseQuoted,
 
-        UnrecFieldParser, warnUnrec, ignoreUnrec,
+        UnrecFieldParser, warnUnrec, ignoreUnrec, composeUnrec
   ) where
 
 import Distribution.Compiler (CompilerFlavor, parseCompilerFlavorCompat)
@@ -89,6 +89,7 @@ import qualified Data.Map as Map
 import Control.Monad (foldM)
 import System.FilePath (normalise)
 import Data.List (sortBy)
+import Control.Monad (mplus)
 
 -- -----------------------------------------------------------------------------
 
@@ -315,6 +316,11 @@ warnUnrec _ _ = Nothing
 --   returning the structure being built unmodified.
 ignoreUnrec :: UnrecFieldParser a
 ignoreUnrec _ x = Just x
+
+-- | Compose two parsers: if the first parser doesn't incorporate the
+-- unrecognized field, then run the field past the second parser.
+composeUnrec :: UnrecFieldParser a -> UnrecFieldParser a -> UnrecFieldParser a
+composeUnrec p1 p2 = \p x -> p1 p x `mplus` p2 p x
 
 ------------------------------------------------------------------------------
 
