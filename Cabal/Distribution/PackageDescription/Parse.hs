@@ -120,11 +120,7 @@ pkgDescrFieldDescrs =
            license                (\l pkg -> pkg{license=l})
  , listField "license-files"
            showFilePath           parseFilePathQ
-           licenseFiles           (\l pkg -> pkg{licenseFiles=l})
- -- Alias for the common case where there is only one license file.
- , simpleField "license-file"
-           showFilePath           parseFilePathQ
-           (head . licenseFiles) (\l pkg -> pkg{licenseFiles=[l]})
+           licenseFiles           (\val pkg -> pkg{licenseFiles=val})
  , simpleField "copyright"
            showFreeText           parseFreeText
            copyright              (\val pkg -> pkg{copyright=val})
@@ -181,6 +177,12 @@ storeXFieldsPD :: UnrecFieldParser PackageDescription
 storeXFieldsPD (f@('x':'-':_),val) pkg = Just pkg{ customFieldsPD =
                                                         (customFieldsPD pkg) ++ [(f,val)]}
 storeXFieldsPD _ _ = Nothing
+
+-- | Store 'license-file' field, which is an alias for 'license-files' for the
+--   very common case where there is only one license file.
+storeLicenseFileFieldPD :: UnrecFieldParser PackageDescription
+storeLicenseFileFieldPD ("license-file",val) pkg =
+    Just pkg{ licenseFiles = [val] }
 
 -- ---------------------------------------------------------------------------
 -- The Library type
@@ -698,7 +700,7 @@ parsePackageDescription file = do
           -- the partially filled-out 'PackageDescription' inside the
           -- 'GenericPackageDescription'.
         pkg <- lift $ parseFields pkgDescrFieldDescrs
-                                  storeXFieldsPD
+                                  (storeXFieldsPD `composeUnrec` storeLicenseFileFieldPD)
                                   emptyPackageDescription
                                   header_fields
 
