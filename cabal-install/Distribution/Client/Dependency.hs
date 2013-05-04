@@ -420,6 +420,7 @@ interpretPackagesPreference selected defaultPref prefs =
     installPrefDefault = case defaultPref of
       PreferAllLatest         -> \_       -> PreferLatest
       PreferAllInstalled      -> \_       -> PreferInstalled
+      PreferAllOldest         -> \_       -> PreferOldest
       PreferLatestForSelected -> \pkgname ->
         -- When you say cabal install foo, what you really mean is, prefer the
         -- latest version of foo, but the installed version of everything else
@@ -471,6 +472,7 @@ resolveWithoutDependencies (DepResolverParams targets constraints
                           (installPref pkg, versionPref pkg, packageVersion pkg)
         installPref   = case preferInstalled of
           PreferLatest    -> const False
+          PreferOldest    -> const False
           PreferInstalled -> not . null . InstalledPackageIndex.lookupSourcePackageId
                                                      installedPkgIndex
                            . packageId

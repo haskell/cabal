@@ -139,9 +139,9 @@ data PackageConstraint
 data PackagePreferences = PackagePreferences VersionRange InstalledPreference
 
 -- | Wether we prefer an installed version of a package or simply the latest
--- version.
+-- version. We can also choose the oldest version for debugging purposes
 --
-data InstalledPreference = PreferInstalled | PreferLatest
+data InstalledPreference = PreferInstalled | PreferLatest | PreferOldest
 
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.
@@ -166,6 +166,10 @@ data PackagesPreferenceDefault =
      -- * This is the standard policy for install.
      --
    | PreferLatestForSelected
+
+     -- | Always prefer the oldest versions. This is useful for debugging puposes
+
+   | PreferAllOldest
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final

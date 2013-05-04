@@ -117,6 +117,9 @@ explore pref (ChoiceNode _ choices)  =
           comparing (\(p,_) -> (               isPreferred p, packageId p))
         PreferInstalled ->
           comparing (\(p,_) -> (isInstalled p, isPreferred p, packageId p))
+        PreferOldest    ->
+          flip $ comparing (\(p,_) -> packageVersion p)
+          
       where
         isInstalled (SourceOnly _) = False
         isInstalled _              = True
