@@ -59,7 +59,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
-  ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
+  ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand, configAbsolutePaths,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
@@ -102,7 +102,7 @@ import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
-         , OptimisationLevel(..), flagToOptimisationLevel )
+         , OptimisationLevel(..), flagToOptimisationLevel, absolutePackageDBPath )
 import Distribution.Simple.Utils
          ( wrapLine, lowercase, intercalate )
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
@@ -116,6 +116,7 @@ import Distribution.Simple.InstallDirs
            PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Verbosity
 
+import Control.Monad (liftM)
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
 import Data.Monoid ( Monoid(..) )
@@ -305,6 +306,10 @@ data ConfigFlags = ConfigFlags {
     configLibCoverage :: Flag Bool    -- ^ Enable test suite program coverage
   }
   deriving (Read,Show)
+
+configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
+configAbsolutePaths f = (\v -> f { configPackageDBs = v })
+               `liftM` mapM (maybe (return Nothing) (liftM Just . absolutePackageDBPath)) (configPackageDBs f)
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
