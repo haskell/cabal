@@ -148,7 +148,8 @@ absolutePackageDBPaths = mapM absolutePackageDBPath
 absolutePackageDBPath :: PackageDB -> IO PackageDB
 absolutePackageDBPath GlobalPackageDB        = return GlobalPackageDB
 absolutePackageDBPath UserPackageDB          = return UserPackageDB
-absolutePackageDBPath (SpecificPackageDB db) = SpecificPackageDB `liftM` canonicalizePath db
+absolutePackageDBPath (SpecificPackageDB db) =
+  SpecificPackageDB `liftM` canonicalizePath db
 
 -- ------------------------------------------------------------
 -- * Optimisation levels
