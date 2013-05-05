@@ -30,6 +30,7 @@ module Distribution.Client.Sandbox (
     maybeUpdateSandboxConfig,
 
     tryGetIndexFilePath,
+    sandboxBuildDir,
 
     -- FIXME: move somewhere else
     configPackageDB', configCompilerAux'
@@ -110,6 +111,11 @@ import System.FilePath                        ( (</>), getSearchPath
 -- dependencies.
 snapshotDirectoryName :: FilePath
 snapshotDirectoryName = "snapshots"
+
+-- | Non-standard build dir that is used for building add-source deps instead of
+-- "dist". Fixes surprising behaviour in some cases (see issue #1281).
+sandboxBuildDir :: FilePath
+sandboxBuildDir = "dist/sandbox-dist"
 
 --
 -- * Basic sandbox functions.
@@ -443,7 +449,7 @@ reinstallAddSourceDeps :: Verbosity
 reinstallAddSourceDeps verbosity config configFlags' configExFlags
                        installFlags globalFlags sandboxDir = do
   let configFlags       = configFlags'
-                          { configDistPref = Flag "sandbox-dist" }
+                          { configDistPref = Flag sandboxBuildDir }
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity
                           Index.DontListIgnored indexFile

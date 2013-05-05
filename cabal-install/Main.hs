@@ -86,6 +86,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,reinstallAddSourceDeps
                                               ,maybeUpdateSandboxConfig
                                               ,tryGetIndexFilePath
+                                              ,sandboxBuildDir
 
                                               ,configCompilerAux'
                                               ,configPackageDB')
@@ -461,7 +462,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   let configFlags'   =
         let flags    = savedConfigureFlags   config `mappend` configFlags
         in if isUseSandbox useSandbox
-           then flags {configDistPref = Flag "sandbox-dist"}
+           then flags {configDistPref = Flag sandboxBuildDir }
            else flags
 
       configExFlags' = defaultConfigExFlags         `mappend`
