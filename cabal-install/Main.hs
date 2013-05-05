@@ -475,9 +475,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- If we're working inside a sandbox and the user has set the -w option, we
   -- may need to create a sandbox-local package DB for this compiler and add a
   -- timestamp record for this compiler to the timestamp file.
-  configFlags'' <- configAbsolutePaths $ case useSandbox of
-        NoSandbox               -> configFlags'
-        (UseSandbox sandboxDir) -> setPackageDB sandboxDir
+  configFlags'' <- case useSandbox of
+        NoSandbox               -> configAbsolutePaths $ configFlags'
+        (UseSandbox sandboxDir) -> return $
+                                   setPackageDB sandboxDir
                                    comp platform configFlags'
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
