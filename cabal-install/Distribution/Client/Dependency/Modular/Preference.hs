@@ -52,9 +52,10 @@ preferPackagePreferences pcs = packageOrderFor (const True) preference
       preferInstalledOrdering v1 v2 `mappend` preferLatestOrdering v1 v2
     locationsOrdering PreferLatest v1 v2 =
       preferLatestOrdering v1 v2 `mappend` preferInstalledOrdering v1 v2
-    -- For the oldest ordering we just prefer the oldest version
-    locationsOrdering PreferOldest v1 v2 = preferOldestOrdering v1 v2
-      
+    -- For the oldest ordering we just prefer the oldest installed version
+    locationsOrdering PreferOldest v1 v2 = 
+      preferInstalledOrdering v1 v2 `mappend` preferLatestOrdering v2 v1
+
 -- | Ordering that treats installed instances as greater than uninstalled ones.
 preferInstalledOrdering :: I -> I -> Ordering
 preferInstalledOrdering (I _ (Inst _)) (I _ (Inst _)) = EQ
@@ -65,10 +66,6 @@ preferInstalledOrdering _              _              = EQ
 -- | Compare instances by their version numbers.
 preferLatestOrdering :: I -> I -> Ordering
 preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
-
--- | Compare instances by their version numbers.
-preferOldestOrdering :: I -> I -> Ordering
-preferOldestOrdering (I v1 _) (I v2 _) = compare v2 v1
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given instance for a P-node. Translates the constraint into a

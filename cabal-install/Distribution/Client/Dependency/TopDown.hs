@@ -60,7 +60,7 @@ import Data.List
 import Data.Maybe
          ( fromJust, fromMaybe, catMaybes )
 import Data.Monoid
-         ( Monoid(mempty) )
+         ( Monoid(mempty, mappend) )
 import Control.Monad
          ( guard )
 import qualified Data.Set as Set
@@ -117,9 +117,10 @@ explore pref (ChoiceNode _ choices)  =
           comparing (\(p,_) -> (               isPreferred p, packageId p))
         PreferInstalled ->
           comparing (\(p,_) -> (isInstalled p, isPreferred p, packageId p))
-        PreferOldest    ->
-          flip $ comparing (\(p,_) -> packageVersion p)
-          
+        PreferOldest    -> \v1 v2 ->
+                    comparing (\(p,_) -> (isInstalled p, isPreferred p)) v1 v2 
+          `mappend` comparing (packageId . fst) v2 v1
+
       where
         isInstalled (SourceOnly _) = False
         isInstalled _              = True
