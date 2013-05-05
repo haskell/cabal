@@ -75,7 +75,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,dumpPackageEnvironment
 
                                               ,UseSandbox(..)
-                                              ,whenUsingSandbox
+                                              ,isUseSandbox, whenUsingSandbox
                                               ,ForceGlobalInstall(..)
                                               ,maybeForceGlobalInstall
                                               ,loadConfigOrSandboxConfig
@@ -458,7 +458,12 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                           (configUserInstall configFlags)
   targets <- readUserTargets verbosity extraArgs
 
-  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+  let configFlags'   =
+        let flags    = savedConfigureFlags   config `mappend` configFlags
+        in if isUseSandbox useSandbox
+           then flags {configDistPref = Flag "sandbox-dist"}
+           else flags
+
       configExFlags' = defaultConfigExFlags         `mappend`
                        savedConfigureExFlags config `mappend` configExFlags
       installFlags'  = defaultInstallFlags          `mappend`
