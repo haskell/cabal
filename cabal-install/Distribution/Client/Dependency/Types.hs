@@ -167,7 +167,7 @@ data PackagesPreferenceDefault =
      --
    | PreferLatestForSelected
 
-     -- | Always prefer the oldest versions. This is useful for debugging puposes
+     -- | Always prefer the oldest versions for direct dependencies. This is useful for debugging puposes.
 
    | PreferAllOldest
 
