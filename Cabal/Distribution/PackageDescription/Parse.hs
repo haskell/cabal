@@ -72,6 +72,7 @@ import Data.Char  (isSpace)
 import Data.Maybe (listToMaybe, isJust)
 import Data.Monoid ( Monoid(..) )
 import Data.List  (nub, unfoldr, partition, (\\))
+import Control.Arrow (second)
 import Control.Monad (liftM, foldM, when, unless)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -636,6 +637,32 @@ peekField = liftM listToMaybe get
 skipField :: PM ()
 skipField = modify tail
 
+-- | Propagate global build dependencies to each buildable component,
+-- so that `build-depends', which is an option local to sections in
+-- new-style .cabal files, can be placed in the global section and is
+-- taken into account.
+propagateGlobalBuildDeps
+  :: GenericPackageDescription -> GenericPackageDescription
+propagateGlobalBuildDeps
+  (GenericPackageDescription pkg flags mlib exes tests bms) =
+    GenericPackageDescription pkg flags mlib' exes' tests' bms'
+  where
+    mlib'  = fmap           prependGlobalBuildDeps mlib
+    exes'  = (map . second) prependGlobalBuildDeps exes
+    tests' = (map . second) prependGlobalBuildDeps tests
+    bms'   = (map . second) prependGlobalBuildDeps bms
+
+    globalBuildDeps = buildDepends pkg
+    prependGlobalBuildDeps = mapTreeConstraints (globalBuildDeps ++)
+
+    mapTreeConstraints f = go
+      where
+        go (CondNode treeData treeConstraints treeComponents) =
+          CondNode
+            treeData
+            (f treeConstraints)
+            [(c, go t, fmap go me) | (c, t, me) <- treeComponents]
+
 --FIXME: this should take a ByteString, not a String. We have to be able to
 -- decode UTF8 and handle the BOM.
 
@@ -712,7 +739,8 @@ parsePackageDescription file = do
           -- warn about using old/new syntax with wrong cabal-version:
         maybeWarnCabalVersion (not $ oldSyntax fields0) pkg
         checkForUndefinedFlags flags mlib exes tests
-        return $ GenericPackageDescription
+        return $ propagateGlobalBuildDeps
+               $ GenericPackageDescription
                    pkg { sourceRepos = repos }
                    flags mlib exes tests bms
 

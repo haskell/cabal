@@ -1,0 +1,19 @@
+name: PropagateGlobalBuildDeps
+version: 0.1
+license: BSD3
+author: Oleksandr Manzyuk
+stability: stable
+category: PackageTests
+build-type: Simple
+cabal-version: >= 1.2
+
+description:
+    Check that Cabal propagates dependencies specified with
+    the `build-depends' option in the global section to the
+    `library' component.
+
+build-depends: base
+
+library
+  exposed-modules:
+    Foo
