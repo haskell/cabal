@@ -291,11 +291,9 @@ planPackages comp platform solver configFlags configExFlags installFlags
 
       . setShadowPkgs shadowPkgs
 
-      . setPreferenceDefault (if upgradeDeps
-                              then PreferAllLatest
-                              else if oldestDeps
-                              then PreferAllOldest
-                              else PreferLatestForSelected
+      . setPreferenceDefault (if      upgradeDeps then PreferAllLatest
+                              else if oldestDeps  then PreferAllOldest
+                                                  else PreferLatestForSelected
                              )
 
       . addPreferences
