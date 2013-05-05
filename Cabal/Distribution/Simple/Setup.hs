@@ -59,7 +59,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
-  ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand, configAbsolutePaths,
+  ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
+  configAbsolutePaths,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
@@ -102,7 +103,8 @@ import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
-         , OptimisationLevel(..), flagToOptimisationLevel, absolutePackageDBPath )
+         , OptimisationLevel(..), flagToOptimisationLevel
+         , absolutePackageDBPath )
 import Distribution.Simple.Utils
          ( wrapLine, lowercase, intercalate )
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
@@ -308,8 +310,10 @@ data ConfigFlags = ConfigFlags {
   deriving (Read,Show)
 
 configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
-configAbsolutePaths f = (\v -> f { configPackageDBs = v })
-               `liftM` mapM (maybe (return Nothing) (liftM Just . absolutePackageDBPath)) (configPackageDBs f)
+configAbsolutePaths f =
+  (\v -> f { configPackageDBs = v })
+  `liftM` mapM (maybe (return Nothing) (liftM Just . absolutePackageDBPath))
+  (configPackageDBs f)
 
 defaultConfigFlags :: ProgramConfiguration -> ConfigFlags
 defaultConfigFlags progConf = emptyConfigFlags {
@@ -1083,7 +1087,8 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
     shortDesc  = "Generate Haddock HTML documentation."
     longDesc   = Just $ \_ -> "Requires the program haddock, either version 0.x or 2.x.\n"
     options showOrParseArgs =
-      [optionVerbosity haddockVerbosity (\v flags -> flags { haddockVerbosity = v })
+      [optionVerbosity haddockVerbosity
+       (\v flags -> flags { haddockVerbosity = v })
       ,optionDistPref
          haddockDistPref (\d flags -> flags { haddockDistPref = d })
          showOrParseArgs
