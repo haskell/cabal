@@ -138,7 +138,7 @@ data PackageConstraint
 --
 data PackagePreferences = PackagePreferences VersionRange InstalledPreference
 
--- | Wether we prefer an installed version of a package or simply the latest
+-- | Whether we prefer an installed version of a package or simply the latest
 -- version.
 --
 data InstalledPreference = PreferInstalled | PreferLatest
@@ -175,8 +175,8 @@ data Progress step fail done = Step step (Progress step fail done)
                              | Fail fail
                              | Done done
 
--- | Consume a 'Progres' calculation. Much like 'foldr' for lists but with
--- two base cases, one for a final result and one for failure.
+-- | Consume a 'Progress' calculation. Much like 'foldr' for lists but with two
+-- base cases, one for a final result and one for failure.
 --
 -- Eg to convert into a simple 'Either' result use:
 --
