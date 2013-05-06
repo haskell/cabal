@@ -75,7 +75,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,dumpPackageEnvironment
 
                                               ,UseSandbox(..)
-                                              ,isUseSandbox, whenUsingSandbox
+                                              ,whenUsingSandbox
                                               ,ForceGlobalInstall(..)
                                               ,maybeForceGlobalInstall
                                               ,loadConfigOrSandboxConfig
@@ -459,12 +459,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                           (configUserInstall configFlags)
   targets <- readUserTargets verbosity extraArgs
 
-  let configFlags'   =
-        let flags    = savedConfigureFlags   config `mappend` configFlags
-        in if isUseSandbox useSandbox
-           then flags {configDistPref = Flag sandboxBuildDir }
-           else flags
-
+  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = defaultConfigExFlags         `mappend`
                        savedConfigureExFlags config `mappend` configExFlags
       installFlags'  = defaultInstallFlags          `mappend`
@@ -477,9 +472,10 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- timestamp record for this compiler to the timestamp file.
   configFlags'' <- case useSandbox of
         NoSandbox               -> configAbsolutePaths $ configFlags'
-        (UseSandbox sandboxDir) -> return $
-                                   setPackageDB sandboxDir
-                                   comp platform configFlags'
+        (UseSandbox sandboxDir) ->
+          return $ (setPackageDB sandboxDir comp platform configFlags') {
+            configDistPref = Flag (sandboxBuildDir sandboxDir)
+            }
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
