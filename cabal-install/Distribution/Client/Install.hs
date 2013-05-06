@@ -291,8 +291,10 @@ planPackages comp platform solver configFlags configExFlags installFlags
 
       . setShadowPkgs shadowPkgs
 
-      . setPreferenceDefault (if upgradeDeps then PreferAllLatest
-                                             else PreferLatestForSelected)
+      . setPreferenceDefault (if      upgradeDeps then PreferAllLatest
+                              else if oldestDeps  then PreferAllOldest
+                                                  else PreferLatestForSelected
+                             )
 
       . addPreferences
           -- preferences from the config file or command line
@@ -334,7 +336,8 @@ planPackages comp platform solver configFlags configExFlags installFlags
     maxBackjumps     = fromFlag (installMaxBackjumps     installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps      installFlags)
     onlyDeps         = fromFlag (installOnlyDeps         installFlags)
-
+    oldestDeps       = fromFlag (installOldestDeps       installFlags)
+ 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package pkg => [PackageSpecifier pkg] -> InstallPlan
                     -> Progress String String InstallPlan

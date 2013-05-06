@@ -52,6 +52,9 @@ preferPackagePreferences pcs = packageOrderFor (const True) preference
       preferInstalledOrdering v1 v2 `mappend` preferLatestOrdering v1 v2
     locationsOrdering PreferLatest v1 v2 =
       preferLatestOrdering v1 v2 `mappend` preferInstalledOrdering v1 v2
+    -- For the oldest ordering we just prefer the oldest installed version
+    locationsOrdering PreferOldest v1 v2 = 
+      preferInstalledOrdering v1 v2 `mappend` preferLatestOrdering v2 v1
 
 -- | Ordering that treats installed instances as greater than uninstalled ones.
 preferInstalledOrdering :: I -> I -> Ordering

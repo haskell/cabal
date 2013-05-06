@@ -674,6 +674,7 @@ data InstallFlags = InstallFlags {
     installAvoidReinstalls  :: Flag Bool,
     installOverrideReinstall :: Flag Bool,
     installUpgradeDeps      :: Flag Bool,
+    installOldestDeps       :: Flag Bool,
     installOnly             :: Flag Bool,
     installOnlyDeps         :: Flag Bool,
     installRootCmd          :: Flag String,
@@ -698,6 +699,7 @@ defaultInstallFlags = InstallFlags {
     installAvoidReinstalls = Flag False,
     installOverrideReinstall = Flag False,
     installUpgradeDeps     = Flag False,
+    installOldestDeps      = Flag False,
     installOnly            = Flag False,
     installOnlyDeps        = Flag False,
     installRootCmd         = mempty,
@@ -817,6 +819,11 @@ installOptions showOrParseArgs =
           installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
           (yesNoOpt showOrParseArgs)
 
+      , option [] ["oldest-dependencies"]
+          "Pick the oldest version for all dependencies, useful for debugging purposes."
+          installOldestDeps (\v flags -> flags { installOldestDeps = v })
+          (yesNoOpt showOrParseArgs)
+
       , option [] ["only-dependencies"]
           "Install only the dependencies necessary to build the given packages"
           installOnlyDeps (\v flags -> flags { installOnlyDeps = v })
@@ -887,6 +894,7 @@ instance Monoid InstallFlags where
     installOverrideReinstall = mempty,
     installMaxBackjumps    = mempty,
     installUpgradeDeps     = mempty,
+    installOldestDeps      = mempty,
     installReorderGoals    = mempty,
     installIndependentGoals= mempty,
     installShadowPkgs      = mempty,
@@ -909,6 +917,7 @@ instance Monoid InstallFlags where
     installOverrideReinstall = combine installOverrideReinstall,
     installMaxBackjumps    = combine installMaxBackjumps,
     installUpgradeDeps     = combine installUpgradeDeps,
+    installOldestDeps      = combine installOldestDeps,
     installReorderGoals    = combine installReorderGoals,
     installIndependentGoals= combine installIndependentGoals,
     installShadowPkgs      = combine installShadowPkgs,
