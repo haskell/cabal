@@ -89,9 +89,13 @@ import qualified Distribution.Client.Sandbox.Index as Index
 import qualified Distribution.Simple.Register      as Register
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
+import Data.Bits                              ( shiftL, shiftR, xor )
+import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
-import Data.List                              ( (\\), delete )
+import Data.List                              ( (\\), delete, foldl' )
 import Data.Monoid                            ( mempty, mappend )
+import Data.Word                              ( Word32 )
+import Numeric                                ( showHex )
 import System.Directory                       ( createDirectory
                                               , doesDirectoryExist
                                               , doesFileExist
@@ -114,8 +118,29 @@ snapshotDirectoryName = "snapshots"
 
 -- | Non-standard build dir that is used for building add-source deps instead of
 -- "dist". Fixes surprising behaviour in some cases (see issue #1281).
-sandboxBuildDir :: FilePath
-sandboxBuildDir = "dist/sandbox-dist"
+sandboxBuildDir :: FilePath -> FilePath
+sandboxBuildDir sandboxDir = "dist/dist-sandbox-" ++ showHex sandboxDirHash ""
+  where
+    sandboxDirHash = jenkins sandboxDir
+
+    -- See http://en.wikipedia.org/wiki/Jenkins_hash_function
+    jenkins :: String -> Word32
+    jenkins str = loop_finish $ foldl' loop 0 str
+      where
+        loop :: Word32 -> Char -> Word32
+        loop hash key_i' = hash'''
+          where
+            key_i   = toEnum . ord $ key_i'
+            hash'   = hash + key_i
+            hash''  = hash' + (shiftL hash' 10)
+            hash''' = hash'' `xor` (shiftR hash'' 6)
+
+        loop_finish :: Word32 -> Word32
+        loop_finish hash = hash'''
+          where
+            hash'   = hash + (shiftL hash 3)
+            hash''  = hash' `xor` (shiftR hash' 11)
+            hash''' = hash'' + (shiftL hash'' 15)
 
 --
 -- * Basic sandbox functions.
@@ -449,7 +474,7 @@ reinstallAddSourceDeps :: Verbosity
 reinstallAddSourceDeps verbosity config configFlags' configExFlags
                        installFlags globalFlags sandboxDir = do
   let configFlags       = configFlags'
-                          { configDistPref = Flag sandboxBuildDir }
+                          { configDistPref = Flag (sandboxBuildDir sandboxDir)  }
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity
                           Index.DontListIgnored indexFile
