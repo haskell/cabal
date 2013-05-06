@@ -123,8 +123,8 @@ instance NFData PackageIdentifier where
 -- * Installed Package Ids
 -- ------------------------------------------------------------
 
--- | An InstalledPackageId uniquely identifies an instance of an installed package.
--- There can be at most one package with a given 'InstalledPackageId'
+-- | An InstalledPackageId uniquely identifies an instance of an installed
+-- package.  There can be at most one package with a given 'InstalledPackageId'
 -- in a package database, or overlay of databases.
 --
 newtype InstalledPackageId = InstalledPackageId String
