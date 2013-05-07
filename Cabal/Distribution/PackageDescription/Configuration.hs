@@ -326,7 +326,7 @@ simplifyCondTree :: (Monoid a, Monoid d) =>
                  -> CondTree v d a
                  -> (d, a)
 simplifyCondTree env (CondNode a d ifs) =
-    foldr mappend (d, a) $ catMaybes $ map simplifyIf ifs
+    mconcat $ (d, a) : catMaybes (map simplifyIf ifs)
   where
     simplifyIf (cnd, t, me) =
         case simplifyCondition cnd env of

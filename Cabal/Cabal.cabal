@@ -83,6 +83,8 @@ extra-source-files:
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal
   tests/PackageTests/EmptyLib/empty/empty.cabal
+  tests/PackageTests/OrderFlags/Foo.hs
+  tests/PackageTests/OrderFlags/my.cabal
   tests/PackageTests/PathsModule/Executable/Main.hs
   tests/PackageTests/PathsModule/Executable/my.cabal
   tests/PackageTests/PathsModule/Library/my.cabal
@@ -248,8 +250,9 @@ test-suite package-tests
     PackageTests.BuildDeps.TargetSpecificDeps2.Check
     PackageTests.BuildDeps.TargetSpecificDeps3.Check
     PackageTests.BuildTestSuiteDetailedV09.Check
-    PackageTests.EmptyLib.Check
     PackageTests.CMain.Check
+    PackageTests.EmptyLib.Check
+    PackageTests.OrderFlags.Check
     PackageTests.PackageTester
     PackageTests.PathsModule.Executable.Check
     PackageTests.PathsModule.Library.Check
