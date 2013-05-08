@@ -69,7 +69,8 @@ import Distribution.Client.Init.Types
 import Distribution.Client.Init.Licenses
   ( bsd3, gplv2, gplv3, lgpl2, lgpl3, apache20 )
 import Distribution.Client.Init.Heuristics
-  ( guessPackageName, guessAuthorNameMail, SourceFileEntry(..), scanForModules, neededBuildPrograms )
+  ( guessPackageName, guessAuthorNameMail, SourceFileEntry(..),
+    scanForModules, neededBuildPrograms )
 
 import Distribution.License
   ( License(..), knownLicenses )
@@ -794,4 +795,3 @@ generateWarnings flags = do
 message :: InitFlags -> String -> IO ()
 message (InitFlags{quiet = Flag True}) _ = return ()
 message _ s = putStrLn s
-
