@@ -41,7 +41,8 @@ import Distribution.Version                          (Version (..),
                                                       orLaterVersion)
 
 import Distribution.Client.Sandbox.Index
-  (ListIgnoredBuildTreeRefs (..), listBuildTreeRefs)
+  (ListIgnoredBuildTreeRefs (DontListIgnored), RefTypesToList(OnlyLinks)
+  ,listBuildTreeRefs)
 import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
                                                       defaultSetupScriptOptions,
                                                       setupWrapper)
@@ -141,7 +142,8 @@ maybeAddCompilerTimestampRecord :: Verbosity -> FilePath -> FilePath
                                    -> IO ()
 maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
                                 compId platform = do
-  buildTreeRefs <- listBuildTreeRefs verbosity DontListIgnored indexFile
+  buildTreeRefs <- listBuildTreeRefs verbosity DontListIgnored OnlyLinks
+                                     indexFile
   withTimestampFile sandboxDir $ \timestampRecords -> do
     let key = timestampRecordKey compId platform
     case lookup key timestampRecords of

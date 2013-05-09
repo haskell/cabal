@@ -11,7 +11,7 @@ module Distribution.Client.Sandbox.Index (
     createEmpty,
     addBuildTreeRefs,
     removeBuildTreeRefs,
-    ListIgnoredBuildTreeRefs(..),
+    ListIgnoredBuildTreeRefs(..), RefTypesToList(..),
     listBuildTreeRefs,
     validateIndexPath,
 
@@ -19,7 +19,10 @@ module Distribution.Client.Sandbox.Index (
   ) where
 
 import qualified Distribution.Client.Tar as Tar
-import Distribution.Client.IndexUtils ( getSourcePackagesStrict )
+import Distribution.Client.IndexUtils ( BuildTreeRefType(..)
+                                      , refTypeFromTypeCode
+                                      , typeCodeFromRefType
+                                      , getSourcePackagesStrict )
 import Distribution.Client.PackageIndex ( allPackages )
 import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackageDb(..)
@@ -33,7 +36,7 @@ import Distribution.Verbosity    ( Verbosity )
 import qualified Data.ByteString.Lazy as BS
 import Control.Exception         ( evaluate )
 import Control.Monad             ( liftM, unless )
-import Data.List                 ( (\\), nub )
+import Data.List                 ( (\\), intersect, nub )
 import Data.Maybe                ( catMaybes )
 import System.Directory          ( createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
@@ -43,55 +46,56 @@ import System.IO                 ( IOMode(..), SeekMode(..)
                                  , hSeek, withBinaryFile )
 
 -- | A reference to a local build tree.
-newtype BuildTreeRef = BuildTreeRef {
-  buildTreePath :: FilePath
+data BuildTreeRef = BuildTreeRef {
+  buildTreeRefType :: !BuildTreeRefType,
+  buildTreePath     :: !FilePath
   }
 
 defaultIndexFileName :: FilePath
 defaultIndexFileName = "00-index.tar"
 
 -- | Given a path, ensure that it refers to a local build tree.
-buildTreeRefFromPath :: FilePath -> IO (Maybe BuildTreeRef)
-buildTreeRefFromPath dir = do
+buildTreeRefFromPath :: BuildTreeRefType -> FilePath -> IO (Maybe BuildTreeRef)
+buildTreeRefFromPath refType dir = do
   dirExists <- doesDirectoryExist dir
   unless dirExists $
     die $ "directory '" ++ dir ++ "' does not exist"
   _ <- findPackageDesc dir
-  return . Just $ BuildTreeRef { buildTreePath = dir }
+  return . Just $ BuildTreeRef refType dir
 
 -- | Given a tar archive entry, try to parse it as a local build tree reference.
-readBuildTreePath :: Tar.Entry -> Maybe FilePath
-readBuildTreePath entry = case Tar.entryContent entry of
+readBuildTreeRef :: Tar.Entry -> Maybe BuildTreeRef
+readBuildTreeRef entry = case Tar.entryContent entry of
   (Tar.OtherEntryType typeCode bs size)
-    | (typeCode == Tar.buildTreeRefTypeCode)
-      && (size == BS.length bs) -> Just $ byteStringToFilePath bs
+    | (Tar.isBuildTreeRefTypeCode typeCode)
+      && (size == BS.length bs) -> Just $! BuildTreeRef
+                                   (refTypeFromTypeCode typeCode)
+                                   (byteStringToFilePath bs)
     | otherwise                 -> Nothing
   _ -> Nothing
 
 -- | Given a sequence of tar archive entries, extract all references to local
 -- build trees.
-readBuildTreePaths :: Tar.Entries -> [FilePath]
-readBuildTreePaths =
+readBuildTreeRefs :: Tar.Entries -> [BuildTreeRef]
+readBuildTreeRefs =
   catMaybes
-  . Tar.foldrEntries (\e r -> readBuildTreePath e : r)
+  . Tar.foldrEntries (\e r -> readBuildTreeRef e : r)
   [] error
 
 -- | Given a path to a tar archive, extract all references to local build trees.
-readBuildTreePathsFromFile :: FilePath -> IO [FilePath]
-readBuildTreePathsFromFile = liftM (readBuildTreePaths . Tar.read)
-                                  . BS.readFile
+readBuildTreeRefsFromFile :: FilePath -> IO [BuildTreeRef]
+readBuildTreeRefsFromFile = liftM (readBuildTreeRefs . Tar.read) . BS.readFile
 
--- | Given a local build tree, serialise it to a tar archive entry.
+-- | Given a local build tree ref, serialise it to a tar archive entry.
 writeBuildTreeRef :: BuildTreeRef -> Tar.Entry
-writeBuildTreeRef lbt = Tar.simpleEntry tarPath content
+writeBuildTreeRef (BuildTreeRef refType path) = Tar.simpleEntry tarPath content
   where
     bs       = filePathToByteString path
-    path     = buildTreePath lbt
-    -- fromRight can't fail because the path is shorter than 255 characters.
-    tarPath  = fromRight $ Tar.toTarPath True tarPath'
     -- Provide a filename for tools that treat custom entries as ordinary files.
     tarPath' = "local-build-tree-reference"
-    content  = Tar.OtherEntryType Tar.buildTreeRefTypeCode bs (BS.length bs)
+    -- fromRight can't fail because the path is shorter than 255 characters.
+    tarPath  = fromRight $ Tar.toTarPath True tarPath'
+    content  = Tar.OtherEntryType (typeCodeFromRefType refType) bs (BS.length bs)
 
     -- TODO: Move this to D.C.Utils?
     fromRight (Left err) = error err
@@ -123,15 +127,16 @@ createEmpty verbosity path = do
     BS.writeFile path zeros
 
 -- | Add given local build tree references to the index.
-addBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO ()
-addBuildTreeRefs _         _   [] =
+addBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> BuildTreeRefType
+                    -> IO ()
+addBuildTreeRefs _         _   []  _ =
   error "Distribution.Client.Sandbox.Index.addBuildTreeRefs: unexpected"
-addBuildTreeRefs verbosity path l' = do
+addBuildTreeRefs verbosity path l' refType = do
   checkIndexExists path
   l <- liftM nub . mapM tryCanonicalizePath $ l'
-  treesInIndex <- readBuildTreePathsFromFile path
+  treesInIndex <- fmap (map buildTreePath) (readBuildTreeRefsFromFile path)
   -- Add only those paths that aren't already in the index.
-  treesToAdd <- mapM buildTreeRefFromPath (l \\ treesInIndex)
+  treesToAdd <- mapM (buildTreeRefFromPath refType) (l \\ treesInIndex)
   let entries = map writeBuildTreeRef (catMaybes treesToAdd)
   unless (null entries) $ do
     offset <-
@@ -162,9 +167,12 @@ removeBuildTreeRefs verbosity path l' = do
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ path ++ "'"
     where
-      p l entry = case readBuildTreePath entry of
-        Nothing    -> True
-        (Just pth) -> pth `notElem` l
+      p l entry = case readBuildTreeRef entry of
+        Nothing                     -> True
+        -- FIXME: removing snapshot deps is done with `delete-source
+        -- .cabal-sandbox/snapshots/$SNAPSHOT_NAME`. Perhaps we also want to
+        -- support removing snapshots by providing the original path.
+        (Just (BuildTreeRef _ pth)) -> pth `notElem` l
 
 -- | A build tree ref can become ignored if the user later adds a build tree ref
 -- with the same package ID. We display ignored build tree refs when the user
@@ -172,25 +180,50 @@ removeBuildTreeRefs verbosity path l' = do
 -- 'reinstallAddSourceDeps'.
 data ListIgnoredBuildTreeRefs = ListIgnored | DontListIgnored
 
+-- | Which types of build tree refs should be listed?
+data RefTypesToList = OnlySnapshots | OnlyLinks | LinksAndSnapshots
+
 -- | List the local build trees that are referred to from the index.
-listBuildTreeRefs :: Verbosity -> ListIgnoredBuildTreeRefs -> FilePath
+listBuildTreeRefs :: Verbosity -> ListIgnoredBuildTreeRefs -> RefTypesToList
+                     -> FilePath
                      -> IO [FilePath]
-listBuildTreeRefs verbosity listIgnored path = do
+listBuildTreeRefs verbosity listIgnored refTypesToList path = do
   checkIndexExists path
   buildTreeRefs <-
     case listIgnored of
       DontListIgnored -> do
+        paths <- listWithoutIgnored
+        case refTypesToList of
+          LinksAndSnapshots -> return paths
+          _                 -> do
+            allPathsFiltered <- fmap (map buildTreePath . filter predicate)
+                                listWithIgnored
+            _ <- evaluate (length allPathsFiltered)
+            return (paths `intersect` allPathsFiltered)
+
+      ListIgnored -> fmap (map buildTreePath . filter predicate) listWithIgnored
+
+  _ <- evaluate (length buildTreeRefs)
+  return buildTreeRefs
+
+    where
+      predicate :: BuildTreeRef -> Bool
+      predicate = case refTypesToList of
+        OnlySnapshots     -> (==) SnapshotRef . buildTreeRefType
+        OnlyLinks         -> (==) LinkRef     . buildTreeRefType
+        LinksAndSnapshots -> const True
+
+      listWithIgnored :: IO [BuildTreeRef]
+      listWithIgnored = readBuildTreeRefsFromFile $ path
+
+      listWithoutIgnored :: IO [FilePath]
+      listWithoutIgnored = do
         let repo = Repo { repoKind = Right LocalRepo
                         , repoLocalDir = takeDirectory path }
         pkgIndex <- fmap packageIndex
                     . getSourcePackagesStrict verbosity $ [repo]
         return [ pkgPath | (LocalUnpackedPackage pkgPath) <-
                     map packageSource . allPackages $ pkgIndex ]
-
-      ListIgnored -> readBuildTreePathsFromFile path
-
-  _ <- evaluate (length buildTreeRefs)
-  return buildTreeRefs
 
 
 -- | Check that the package index file exists and exit with error if it does not.

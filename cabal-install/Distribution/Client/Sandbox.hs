@@ -46,6 +46,7 @@ import Distribution.Client.Sandbox.Timestamp  ( maybeAddCompilerTimestampRecord
                                               , withModifiedDeps )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
 import Distribution.Client.Dependency         ( foldProgress )
+import Distribution.Client.IndexUtils         ( BuildTreeRefType(..) )
 import Distribution.Client.Install            ( InstallArgs,
                                                 makeInstallContext,
                                                 makeInstallPlan,
@@ -288,8 +289,10 @@ sandboxDelete verbosity _sandboxFlags globalFlags = do
       removeDirectoryRecursive sandboxDir
 
 -- Common implementation of 'sandboxAddSource' and 'sandboxAddSourceSnapshot'.
-doAddSource :: Verbosity -> [FilePath] -> FilePath -> PackageEnvironment -> IO ()
-doAddSource verbosity buildTreeRefs sandboxDir pkgEnv = do
+doAddSource :: Verbosity -> [FilePath] -> FilePath -> PackageEnvironment
+               -> BuildTreeRefType
+               -> IO ()
+doAddSource verbosity buildTreeRefs sandboxDir pkgEnv refType = do
   let savedConfig       = pkgEnvSavedConfig pkgEnv
   indexFile            <- tryGetIndexFilePath savedConfig
 
@@ -303,7 +306,7 @@ doAddSource verbosity buildTreeRefs sandboxDir pkgEnv = do
     -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
     -- twice because of the timestamps file.
     buildTreeRefs' <- mapM tryCanonicalizePath buildTreeRefs
-    Index.addBuildTreeRefs verbosity indexFile buildTreeRefs'
+    Index.addBuildTreeRefs verbosity indexFile buildTreeRefs' refType
     return buildTreeRefs'
 
 -- | Entry point for the 'cabal sandbox add-source' command.
@@ -315,7 +318,7 @@ sandboxAddSource verbosity buildTreeRefs sandboxFlags globalFlags = do
 
   if fromFlagOrDefault False (sandboxSnapshot sandboxFlags)
     then sandboxAddSourceSnapshot verbosity buildTreeRefs sandboxDir pkgEnv
-    else doAddSource verbosity buildTreeRefs sandboxDir pkgEnv
+    else doAddSource verbosity buildTreeRefs sandboxDir pkgEnv LinkRef
 
 -- | Entry point for the 'cabal sandbox add-source --snapshot' command.
 sandboxAddSourceSnapshot :: Verbosity -> [FilePath] -> FilePath
@@ -360,7 +363,7 @@ sandboxAddSourceSnapshot verbosity buildTreeRefs sandboxDir pkgEnv = do
     return targetDir
 
   -- Once the packages are copied, just 'add-source' them as usual.
-  doAddSource verbosity snapshots sandboxDir pkgEnv
+  doAddSource verbosity snapshots sandboxDir pkgEnv SnapshotRef
 
 -- | Entry point for the 'cabal sandbox delete-source' command.
 sandboxDeleteSource :: Verbosity -> [FilePath] -> SandboxFlags -> GlobalFlags
@@ -385,7 +388,8 @@ sandboxListSources verbosity _sandboxFlags globalFlags = do
                            (globalConfigFile globalFlags)
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
-  refs <- Index.listBuildTreeRefs verbosity Index.ListIgnored indexFile
+  refs <- Index.listBuildTreeRefs verbosity
+          Index.ListIgnored Index.LinksAndSnapshots indexFile
   when (null refs) $
     notice verbosity $ "Index file '" ++ indexFile
     ++ "' has no references to local build trees."
@@ -477,7 +481,7 @@ reinstallAddSourceDeps verbosity config configFlags' configExFlags
                           { configDistPref = Flag (sandboxBuildDir sandboxDir)  }
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity
-                          Index.DontListIgnored indexFile
+                          Index.DontListIgnored Index.OnlyLinks indexFile
   retVal               <- newIORef NoDepsReinstalled
 
   unless (null buildTreeRefs) $ do
