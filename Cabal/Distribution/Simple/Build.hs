@@ -58,6 +58,7 @@ import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
+import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import qualified Distribution.Simple.Build.Macros      as Build.Macros
 import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
@@ -470,6 +471,7 @@ buildLib verbosity pkg_descr lbi lib clbi =
     Hugs -> Hugs.buildLib verbosity pkg_descr lbi lib clbi
     NHC  -> NHC.buildLib  verbosity pkg_descr lbi lib clbi
     UHC  -> UHC.buildLib  verbosity pkg_descr lbi lib clbi
+    HaskellSuite {} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
     _    -> die "Building is not supported with this compiler."
 
 buildExe :: Verbosity -> PackageDescription -> LocalBuildInfo

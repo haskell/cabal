@@ -76,6 +76,7 @@ import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
+import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Distribution.Simple.Compiler
          ( compilerVersion, Compiler, CompilerFlavor(..), compilerFlavor
          , PackageDBStack, registrationPackageDB )
@@ -214,6 +215,7 @@ initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath
 initPackageDB verbosity comp conf dbPath =
   case (compilerFlavor comp) of
     GHC -> GHC.initPackageDB verbosity conf dbPath
+    HaskellSuite {} -> HaskellSuite.initPackageDB verbosity conf dbPath
     _   -> die "Distribution.Simple.Register.initPackageDB: \
                \not implemented for this compiler"
 
@@ -246,6 +248,8 @@ registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
     UHC  -> UHC.registerPackage  verbosity installedPkgInfo pkg lbi inplace packageDbs
     JHC  -> notice verbosity "Registering for jhc (nothing to do)"
     NHC  -> notice verbosity "Registering for nhc98 (nothing to do)"
+    HaskellSuite {} ->
+      HaskellSuite.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
     _    -> die "Registering is not implemented for this compiler"
 
 
