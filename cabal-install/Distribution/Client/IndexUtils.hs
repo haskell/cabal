@@ -20,6 +20,8 @@ module Distribution.Client.IndexUtils (
   parsePackageIndex,
   readRepoIndex,
   updateRepoIndexCache,
+
+  BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
 
 import qualified Distribution.Client.Tar as Tar
@@ -189,8 +191,8 @@ readRepoIndex verbosity repo mode =
         packageInfoId      = pkgid,
         packageDescription = packageDesc pkgEntry,
         packageSource      = case pkgEntry of
-          NormalPackage _ _ _ _    -> RepoTarballPackage repo pkgid Nothing
-          BuildTreeRef  _ _ path _ -> LocalUnpackedPackage path,
+          NormalPackage _ _ _ _       -> RepoTarballPackage repo pkgid Nothing
+          BuildTreeRef  _  _ _ path _ -> LocalUnpackedPackage path,
         packageDescrOverride = case pkgEntry of
           NormalPackage _ _ pkgtxt _ -> Just pkgtxt
           _                          -> Nothing
@@ -250,17 +252,33 @@ whenCacheOutOfDate origFile cacheFile action = do
 -- | An index entry is either a normal package, or a local build tree reference.
 data PackageEntry =
   NormalPackage  PackageId GenericPackageDescription ByteString BlockNo
-  | BuildTreeRef PackageId GenericPackageDescription FilePath   BlockNo
+  | BuildTreeRef BuildTreeRefType
+                 PackageId GenericPackageDescription FilePath   BlockNo
+
+-- | A build tree reference is either a link or a snapshot.
+data BuildTreeRefType = SnapshotRef | LinkRef
+                      deriving Eq
+
+refTypeFromTypeCode :: Tar.TypeCode -> BuildTreeRefType
+refTypeFromTypeCode t
+  | t == Tar.buildTreeRefTypeCode      = LinkRef
+  | t == Tar.buildTreeSnapshotTypeCode = SnapshotRef
+  | otherwise                          =
+    error "Distribution.Client.IndexUtils.refTypeFromTypeCode: unknown type code"
+
+typeCodeFromRefType :: BuildTreeRefType -> Tar.TypeCode
+typeCodeFromRefType LinkRef     = Tar.buildTreeRefTypeCode
+typeCodeFromRefType SnapshotRef = Tar.buildTreeSnapshotTypeCode
 
 type MkPackageEntry = IO PackageEntry
 
 instance Package PackageEntry where
-  packageId (NormalPackage pkgid _ _ _) = pkgid
-  packageId (BuildTreeRef  pkgid _ _ _) = pkgid
+  packageId (NormalPackage  pkgid _ _ _) = pkgid
+  packageId (BuildTreeRef _ pkgid _ _ _) = pkgid
 
 packageDesc :: PackageEntry -> GenericPackageDescription
-packageDesc (NormalPackage _ descr _ _) = descr
-packageDesc (BuildTreeRef  _ descr _ _) = descr
+packageDesc (NormalPackage  _ descr _ _) = descr
+packageDesc (BuildTreeRef _ _ descr _ _) = descr
 
 -- | Read a compressed \"00-index.tar.gz\" file into a 'PackageIndex'.
 --
@@ -332,12 +350,13 @@ extractPkg entry blockNo = case Tar.entryContent entry of
         _ -> Nothing
 
   Tar.OtherEntryType typeCode content _
-    | typeCode == Tar.buildTreeRefTypeCode ->
+    | Tar.isBuildTreeRefTypeCode typeCode ->
       Just $ do
         let path   = byteStringToFilePath content
         cabalFile <- findPackageDesc path
         descr     <- PackageDesc.Parse.readPackageDescription normal cabalFile
-        return $ BuildTreeRef (packageId descr) descr path blockNo
+        return $ BuildTreeRef (refTypeFromTypeCode typeCode) (packageId descr)
+                              descr path blockNo
 
   _ -> Nothing
 
@@ -375,8 +394,8 @@ updatePackageIndexCacheFile indexFile cacheFile = do
         [ CachePreference pref          | pref <- prefs ]
      ++ [ CachePackageId pkgid blockNo
         | (NormalPackage pkgid _ _ blockNo) <- pkgs ]
-     ++ [ CacheBuildTreeRef blockNo
-        | (BuildTreeRef _ _ _ blockNo) <- pkgs]
+     ++ [ CacheBuildTreeRef refType blockNo
+        | (BuildTreeRef refType _ _ _ blockNo) <- pkgs]
 
 data ReadPackageIndexMode = ReadPackageIndexStrict
                           | ReadPackageIndexLazyIO
@@ -430,14 +449,14 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
                                             pkgtxt blockno)
       accum (srcpkg:srcpkgs) prefs entries
 
-    accum srcpkgs prefs (CacheBuildTreeRef blockno : entries) = do
+    accum srcpkgs prefs (CacheBuildTreeRef refType blockno : entries) = do
       -- We have to read the .cabal file eagerly here because we can't cache the
       -- package id for build tree references - the user might edit the .cabal
       -- file after the reference was added to the index.
       path <- liftM byteStringToFilePath . getEntryContent $ blockno
       pkg  <- do cabalFile <- findPackageDesc path
                  PackageDesc.Parse.readPackageDescription normal cabalFile
-      let srcpkg = mkPkg (BuildTreeRef (packageId pkg) pkg path blockno)
+      let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum (srcpkg:srcpkgs) prefs entries
 
     accum srcpkgs prefs (CachePreference pref : entries) =
@@ -457,7 +476,7 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
           case Tar.entryContent e of
             Tar.NormalFile _ size -> return size
             Tar.OtherEntryType typecode _ size
-              | typecode == Tar.buildTreeRefTypeCode
+              | Tar.isBuildTreeRefTypeCode typecode
                                   -> return size
             _                     -> interror "unexpected tar entry type"
         _ -> interror "could not read tar file entry"
@@ -482,9 +501,9 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
 type BlockNo = Int
 
 data IndexCacheEntry = CachePackageId PackageId BlockNo
-                     | CacheBuildTreeRef BlockNo
+                     | CacheBuildTreeRef BuildTreeRefType BlockNo
                      | CachePreference Dependency
-  deriving (Eq, Show)
+  deriving (Eq)
 
 readIndexCacheEntry :: BSS.ByteString -> Maybe IndexCacheEntry
 readIndexCacheEntry = \line ->
@@ -496,10 +515,12 @@ readIndexCacheEntry = \line ->
         (Just pkgname, Just pkgver, Just blockno)
           -> Just (CachePackageId (PackageIdentifier pkgname pkgver) blockno)
         _ -> Nothing
-    [key, blocknostr] | key == buildTreeRefKey ->
-      case parseBlockNo blocknostr of
-        Just blockno -> Just (CacheBuildTreeRef blockno)
-        _            -> Nothing
+    [key, typecodestr, blocknostr] | key == buildTreeRefKey ->
+      case (parseRefType typecodestr, parseBlockNo blocknostr) of
+        (Just refType, Just blockno)
+          -> Just (CacheBuildTreeRef refType blockno)
+        _ -> Nothing
+
     (key: remainder) | key == preferredVersionKey ->
       fmap CachePreference (simpleParse (BSS.unpack (BSS.unwords remainder)))
     _  -> Nothing
@@ -527,12 +548,20 @@ readIndexCacheEntry = \line ->
         Just (blockno, remainder) | BSS.null remainder -> Just blockno
         _                                              -> Nothing
 
+    parseRefType str =
+      case BSS.uncons str of
+        Just (typeCode, remainder)
+          | BSS.null remainder && Tar.isBuildTreeRefTypeCode typeCode
+            -> Just (refTypeFromTypeCode typeCode)
+        _   -> Nothing
+
 showIndexCacheEntry :: IndexCacheEntry -> String
 showIndexCacheEntry entry = case entry of
    CachePackageId pkgid b -> "pkg: " ++ display (packageName pkgid)
                                   ++ " " ++ display (packageVersion pkgid)
                           ++ " b# " ++ show b
-   CacheBuildTreeRef b    -> "build-tree-ref: " ++ show b
+   CacheBuildTreeRef t b  -> "build-tree-ref: " ++ (typeCodeFromRefType t:" ")
+                             ++ show b
    CachePreference dep    -> "pref-ver: " ++ display dep
 
 readIndexCache :: BSS.ByteString -> [IndexCacheEntry]
