@@ -540,45 +540,18 @@ platformDefines :: LocalBuildInfo -> [String]
 platformDefines lbi =
   case compilerFlavor comp of
     GHC  ->
-        let ghcOS = case hostOS of
-                    Linux     -> ["linux"]
-                    Windows   -> ["mingw32"]
-                    OSX       -> ["darwin"]
-                    FreeBSD   -> ["freebsd"]
-                    OpenBSD   -> ["openbsd"]
-                    NetBSD    -> ["netbsd"]
-                    Solaris   -> ["solaris2"]
-                    AIX       -> ["aix"]
-                    HPUX      -> ["hpux"]
-                    IRIX      -> ["irix"]
-                    HaLVM     -> []
-                    IOS       -> ["ios"]
-                    OtherOS _ -> []
-            ghcArch = case hostArch of
-                      I386        -> ["i386"]
-                      X86_64      -> ["x86_64"]
-                      PPC         -> ["powerpc"]
-                      PPC64       -> ["powerpc64"]
-                      Sparc       -> ["sparc"]
-                      Arm         -> ["arm"]
-                      Mips        -> ["mips"]
-                      SH          -> []
-                      IA64        -> ["ia64"]
-                      S390        -> ["s390"]
-                      Alpha       -> ["alpha"]
-                      Hppa        -> ["hppa"]
-                      Rs6000      -> ["rs6000"]
-                      M68k        -> ["m68k"]
-                      Vax         -> ["vax"]
-                      OtherArch _ -> []
-        in ["-D__GLASGOW_HASKELL__=" ++ versionInt version] ++
-           ["-D" ++ os   ++ "_BUILD_OS=1"] ++
-           ["-D" ++ arch ++ "_BUILD_ARCH=1"] ++
-           map (\os'   -> "-D" ++ os'   ++ "_HOST_OS=1")   ghcOS ++
-           map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") ghcArch
+      ["-D__GLASGOW_HASKELL__=" ++ versionInt version] ++
+      ["-D" ++ os   ++ "_BUILD_OS=1"] ++
+      ["-D" ++ arch ++ "_BUILD_ARCH=1"] ++
+      map (\os'   -> "-D" ++ os'   ++ "_HOST_OS=1")   osStr ++
+      map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") archStr
     JHC  -> ["-D__JHC__=" ++ versionInt version]
     NHC  -> ["-D__NHC__=" ++ versionInt version]
     Hugs -> ["-D__HUGS__"]
+    HaskellSuite {} ->
+      ["-D__HASKELL_SUITE__"] ++
+        map (\os'   -> "-D" ++ os'   ++ "_HOST_OS=1")   osStr ++
+        map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") archStr
     _    -> []
   where
     comp = compiler lbi
@@ -599,6 +572,37 @@ platformDefines lbi =
                      _ : _ : _ -> ""
                      _         -> "0"
         in s1 ++ middle ++ s2
+    osStr = case hostOS of
+      Linux     -> ["linux"]
+      Windows   -> ["mingw32"]
+      OSX       -> ["darwin"]
+      FreeBSD   -> ["freebsd"]
+      OpenBSD   -> ["openbsd"]
+      NetBSD    -> ["netbsd"]
+      Solaris   -> ["solaris2"]
+      AIX       -> ["aix"]
+      HPUX      -> ["hpux"]
+      IRIX      -> ["irix"]
+      HaLVM     -> []
+      IOS       -> ["ios"]
+      OtherOS _ -> []
+    archStr = case hostArch of
+      I386        -> ["i386"]
+      X86_64      -> ["x86_64"]
+      PPC         -> ["powerpc"]
+      PPC64       -> ["powerpc64"]
+      Sparc       -> ["sparc"]
+      Arm         -> ["arm"]
+      Mips        -> ["mips"]
+      SH          -> []
+      IA64        -> ["ia64"]
+      S390        -> ["s390"]
+      Alpha       -> ["alpha"]
+      Hppa        -> ["hppa"]
+      Rs6000      -> ["rs6000"]
+      M68k        -> ["m68k"]
+      Vax         -> ["vax"]
+      OtherArch _ -> []
 
 ppHappy :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHappy _ lbi = pp { platformIndependent = True }

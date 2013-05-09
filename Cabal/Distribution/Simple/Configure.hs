@@ -141,6 +141,7 @@ import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
+import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Monad
     ( when, unless, foldM, filterM )
@@ -698,6 +699,8 @@ getInstalledPackages verbosity comp packageDBs progconf = do
     LHC -> LHC.getInstalledPackages verbosity packageDBs progconf
     NHC -> NHC.getInstalledPackages verbosity packageDBs progconf
     UHC -> UHC.getInstalledPackages verbosity comp packageDBs progconf
+    HaskellSuite {} ->
+      HaskellSuite.getInstalledPackages verbosity packageDBs progconf
     flv -> die $ "don't know how to find the installed packages for "
               ++ display flv
 
@@ -878,6 +881,7 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
     Hugs -> Hugs.configure verbosity hcPath hcPkg conf
     NHC  -> NHC.configure  verbosity hcPath hcPkg conf
     UHC  -> UHC.configure  verbosity hcPath hcPkg conf
+    HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg conf
     _    -> die "Unknown compiler"
   return (comp, fromMaybe buildPlatform maybePlatform, programsConfig)
 

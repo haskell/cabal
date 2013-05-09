@@ -79,6 +79,7 @@ import qualified Data.Char as Char (toLower, isDigit, isAlphaNum)
 import Control.Monad (when)
 
 data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
+                    | HaskellSuite String -- string is the id of the actual compiler
                     | OtherCompiler String
   deriving (Show, Read, Eq, Ord, Typeable, Data)
 
@@ -87,6 +88,7 @@ knownCompilerFlavors = [GHC, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
 
 instance Text CompilerFlavor where
   disp (OtherCompiler name) = Disp.text name
+  disp (HaskellSuite name)  = Disp.text name
   disp NHC                  = Disp.text "nhc98"
   disp other                = Disp.text (lowercase (show other))
 

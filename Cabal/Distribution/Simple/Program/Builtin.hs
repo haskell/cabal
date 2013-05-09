@@ -25,6 +25,8 @@ module Distribution.Simple.Program.Builtin (
     jhcProgram,
     hugsProgram,
     ffihugsProgram,
+    haskellSuiteProgram,
+    haskellSuitePkgProgram,
     uhcProgram,
     gccProgram,
     ranlibProgram,
@@ -66,6 +68,8 @@ builtinPrograms =
     , ghcPkgProgram
     , hugsProgram
     , ffihugsProgram
+    , haskellSuiteProgram
+    , haskellSuitePkgProgram
     , nhcProgram
     , hmakeProgram
     , jhcProgram
@@ -174,6 +178,39 @@ hugsProgram = simpleProgram "hugs"
 
 ffihugsProgram :: Program
 ffihugsProgram = simpleProgram "ffihugs"
+
+-- This represents a haskell-suite compiler. Of course, the compiler
+-- itself probably is not called "haskell-suite", so this is not a real
+-- program. (But we don't know statically the name of the actual compiler,
+-- so this is the best we can do.)
+--
+-- Having this Program value serves two purposes:
+--
+-- 1. We can accept options for the compiler in the form of
+--
+--   --haskell-suite-option(s)=...
+--
+-- 2. We can find a program later using this static id (with
+-- requireProgram).
+--
+-- The path to the real compiler is found and recorded in the ProgramDb
+-- during the configure phase.
+haskellSuiteProgram :: Program
+haskellSuiteProgram = (simpleProgram "haskell-suite") {
+    -- pretend that the program exists, otherwise it won't be in the
+    -- "configured" state
+    programFindLocation =
+      \_verbosity _searchPath -> return $ Just "haskell-suite-dummy-location"
+  }
+
+-- This represent a haskell-suite package manager. See the comments for
+-- haskellSuiteProgram.
+haskellSuitePkgProgram :: Program
+haskellSuitePkgProgram = (simpleProgram "haskell-suite-pkg") {
+    programFindLocation =
+      \_verbosity _searchPath -> return $ Just "haskell-suite-pkg-dummy-location"
+  }
+
 
 happyProgram :: Program
 happyProgram = (simpleProgram "happy") {
