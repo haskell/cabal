@@ -40,6 +40,8 @@ module Distribution.Client.Tar (
   TypeCode,
   Format(..),
   buildTreeRefTypeCode,
+  buildTreeSnapshotTypeCode,
+  isBuildTreeRefTypeCode,
   entrySizeInBlocks,
   entrySizeInBytes,
 
@@ -158,6 +160,17 @@ data Entry = Entry {
 -- path.
 buildTreeRefTypeCode :: TypeCode
 buildTreeRefTypeCode = 'C'
+
+-- | Type code for the local build tree snapshot entry type.
+buildTreeSnapshotTypeCode :: TypeCode
+buildTreeSnapshotTypeCode = 'S'
+
+-- | Is this a type code for a build tree reference?
+isBuildTreeRefTypeCode :: TypeCode -> Bool
+isBuildTreeRefTypeCode typeCode
+  | (typeCode == buildTreeRefTypeCode
+     || typeCode == buildTreeSnapshotTypeCode) = True
+  | otherwise                                  = False
 
 -- | Native 'FilePath' of the file or directory within the archive.
 --
