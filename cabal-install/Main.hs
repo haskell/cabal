@@ -17,7 +17,8 @@ import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, globalRepos
          , ConfigFlags(..)
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
-         , BuildFlags(..), buildCommand
+         , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
+         , buildCommand, testCommand, benchmarkCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
@@ -41,8 +42,7 @@ import Distribution.Simple.Setup
          , CopyFlags(..), copyCommand
          , RegisterFlags(..), registerCommand
          , CleanFlags(..), cleanCommand
-         , TestFlags(..), testCommand
-         , BenchmarkFlags(..), benchmarkCommand
+         , TestFlags(..), BenchmarkFlags(..)
          , Flag(..), fromFlag, fromFlagOrDefault, flagToMaybe, toFlag
          , configAbsolutePaths
          )
@@ -102,6 +102,8 @@ import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
          , ConfigStateFileErrorType(..), tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
+import Distribution.Simple.Program (defaultProgramConfiguration)
+import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, info, topHandler )
 import Distribution.Text
@@ -250,16 +252,19 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
               (globalRepos globalFlags')
               comp platform conf configFlags'' configExFlags' extraArgs
 
-buildAction :: BuildFlags -> [String] -> GlobalFlags -> IO ()
-buildAction buildFlags extraArgs globalFlags = do
-  let distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                 (buildDistPref buildFlags)
-      verbosity = fromFlagOrDefault normal (buildVerbosity buildFlags)
+buildAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
+  let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                    (buildDistPref buildFlags)
+      verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
+      noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
+                    (buildOnly buildExFlags)
 
   -- Calls 'configureAction' to do the real work, so nothing special has to be
   -- done to support sandboxes.
   useSandbox <- reconfigure verbosity distPref
-                mempty [] globalFlags (buildNumJobs buildFlags) (const Nothing)
+                mempty [] globalFlags noAddSource (buildNumJobs buildExFlags)
+                (const Nothing)
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref buildFlags extraArgs
@@ -271,10 +276,11 @@ buildAction buildFlags extraArgs globalFlags = do
 build :: Verbosity -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity distPref buildFlags extraArgs =
   setupWrapper verbosity setupOptions Nothing
-               buildCommand (const buildFlags') extraArgs
+               (Cabal.buildCommand progConf) (const buildFlags') extraArgs
   where
+    progConf     = defaultProgramConfiguration
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
-    buildFlags' = buildFlags
+    buildFlags'  = buildFlags
       { buildVerbosity = toFlag verbosity
       , buildDistPref = toFlag distPref
       }
@@ -322,6 +328,9 @@ reconfigure :: Verbosity    -- ^ Verbosity setting
                             -- set them here.
             -> [String]     -- ^ Extra arguments
             -> GlobalFlags  -- ^ Global flags
+            -> SkipAddSourceDepsCheck
+                            -- ^ Should we skip the timestamp check for modified
+                            -- add-source dependencies?
             -> Flag (Maybe Int)
                             -- ^ -j flag for reinstalling add-source deps.
             -> (ConfigFlags -> Maybe String)
@@ -334,8 +343,8 @@ reconfigure :: Verbosity    -- ^ Verbosity setting
                             -- automatically; this function need not check
                             -- for it.
             -> IO UseSandbox
-reconfigure verbosity distPref    addConfigFlags
-            extraArgs globalFlags numJobsFlag checkFlags = do
+reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
+            skipAddSourceDepsCheck numJobsFlag    checkFlags = do
   eLbi <- tryGetPersistBuildConfig distPref
 
   case eLbi of
@@ -372,8 +381,14 @@ reconfigure verbosity distPref    addConfigFlags
           savedDistPref = fromFlagOrDefault
                           (useDistPref defaultSetupScriptOptions)
                           (configDistPref configFlags)
-      (useSandbox, depsReinstalled) <- maybeReinstallAddSourceDeps verbosity
-                                       numJobsFlag flags globalFlags
+      (useSandbox, depsReinstalled) <-
+        case skipAddSourceDepsCheck of
+        DontSkipAddSourceDepsCheck     ->
+          maybeReinstallAddSourceDeps verbosity numJobsFlag flags globalFlags
+        SkipAddSourceDepsCheck -> do
+          (useSandbox, _) <- loadConfigOrSandboxConfig verbosity
+                             (globalConfigFile globalFlags) mempty
+          return (useSandbox, NoDepsReinstalled)
 
       -- Determine what message, if any, to display to the user if
       -- reconfiguration is required.
@@ -501,52 +516,58 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
             installFlags' haddockFlags
             targets
 
-testAction :: TestFlags -> [String] -> GlobalFlags -> IO ()
-testAction testFlags extraArgs globalFlags = do
-  let verbosity = fromFlagOrDefault normal (testVerbosity testFlags)
-      distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                                     (testDistPref testFlags)
-      setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+testAction :: (TestFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+testAction (testFlags, buildExFlags) extraArgs globalFlags = do
+  let verbosity      = fromFlagOrDefault normal (testVerbosity testFlags)
+      distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                       (testDistPref testFlags)
+      setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
       addConfigFlags = mempty { configTests = toFlag True }
       checkFlags flags
         | fromFlagOrDefault False (configTests flags) = Nothing
-        | otherwise = Just "Re-configuring with test suites enabled."
-
+        | otherwise  = Just "Re-configuring with test suites enabled."
+      noAddSource    = fromFlagOrDefault DontSkipAddSourceDepsCheck
+                       (buildOnly buildExFlags)
 
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
   -- deps if needed.
   useSandbox <- reconfigure verbosity distPref addConfigFlags []
-                globalFlags (testNumJobs testFlags) checkFlags
+                globalFlags noAddSource (buildNumJobs buildExFlags) checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref mempty []
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
-      testCommand (const testFlags) extraArgs
+      Cabal.testCommand (const testFlags) extraArgs
 
-benchmarkAction :: BenchmarkFlags -> [String] -> GlobalFlags -> IO ()
-benchmarkAction benchmarkFlags extraArgs globalFlags = do
-  let verbosity = fromFlagOrDefault normal (benchmarkVerbosity benchmarkFlags)
-      distPref = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                                     (benchmarkDistPref benchmarkFlags)
-      setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+benchmarkAction :: (BenchmarkFlags, BuildExFlags) -> [String] -> GlobalFlags
+                   -> IO ()
+benchmarkAction (benchmarkFlags, buildExFlags) extraArgs globalFlags = do
+  let verbosity      = fromFlagOrDefault normal
+                       (benchmarkVerbosity benchmarkFlags)
+      distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                       (benchmarkDistPref benchmarkFlags)
+      setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
       addConfigFlags = mempty { configBenchmarks = toFlag True }
       checkFlags flags
         | fromFlagOrDefault False (configBenchmarks flags) = Nothing
         | otherwise = Just "Re-configuring with benchmarks enabled."
+      noAddSource   = fromFlagOrDefault DontSkipAddSourceDepsCheck
+                      (buildOnly buildExFlags)
 
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
   -- deps if needed.
   useSandbox <- reconfigure verbosity distPref addConfigFlags []
-                globalFlags (benchmarkNumJobs benchmarkFlags) checkFlags
+                globalFlags noAddSource (buildNumJobs buildExFlags)
+                checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref mempty []
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
-      benchmarkCommand (const benchmarkFlags) extraArgs
+      Cabal.benchmarkCommand (const benchmarkFlags) extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
@@ -680,16 +701,19 @@ reportAction reportFlags extraArgs globalFlags = do
     (flagToMaybe $ reportUsername reportFlags')
     (flagToMaybe $ reportPassword reportFlags')
 
-runAction :: BuildFlags -> [String] -> GlobalFlags -> IO ()
-runAction buildFlags extraArgs globalFlags = do
-  let verbosity    = fromFlagOrDefault normal (buildVerbosity buildFlags)
-      distPref     = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                     (buildDistPref buildFlags)
+runAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
+  let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
+      distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                    (buildDistPref buildFlags)
+      noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
+                    (buildOnly buildExFlags)
 
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
   -- deps if needed.
   useSandbox <- reconfigure verbosity distPref mempty []
-                globalFlags (buildNumJobs buildFlags) (const Nothing)
+                globalFlags noAddSource (buildNumJobs buildExFlags)
+                (const Nothing)
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref mempty []
