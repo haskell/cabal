@@ -237,6 +237,7 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
 -- | Has this dependency been modified since we have last looked at it?
 isDepModified :: Verbosity -> EpochTime -> AddSourceTimestamp -> IO Bool
 isDepModified verbosity now (packageDir, timestamp) = do
+  debug verbosity ("Checking whether the dependency is modified: " ++ packageDir)
   depSources <- allPackageSourceFiles verbosity packageDir
   go depSources
 
