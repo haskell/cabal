@@ -15,7 +15,8 @@ module Distribution.Client.Setup
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
-    , buildCommand, BuildFlags(..)
+    , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
+    , testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
@@ -56,8 +57,9 @@ import Distribution.Simple.Program
 import Distribution.Simple.Command hiding (boolOpt)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), BuildFlags(..), SDistFlags(..), HaddockFlags(..)
-         , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList, numJobsParser
+         ( ConfigFlags(..), BuildFlags(..), TestFlags(..), BenchmarkFlags(..)
+         , SDistFlags(..), HaddockFlags(..)
+         , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
          , optionVerbosity, boolOpt, trueArg, falseArg )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, toPathTemplate, fromPathTemplate )
@@ -319,10 +321,94 @@ instance Monoid ConfigExFlags where
 -- * Build flags
 -- ------------------------------------------------------------
 
-buildCommand :: CommandUI BuildFlags
-buildCommand = (Cabal.buildCommand defaultProgramConfiguration) {
-    commandDefaultFlags = mempty
+data SkipAddSourceDepsCheck =
+  SkipAddSourceDepsCheck | DontSkipAddSourceDepsCheck
+  deriving Eq
+
+data BuildExFlags = BuildExFlags {
+  buildNumJobs  :: Flag (Maybe Int),
+  buildOnly     :: Flag SkipAddSourceDepsCheck
+}
+
+buildExOptions :: ShowOrParseArgs -> [OptionField BuildExFlags]
+buildExOptions _showOrParseArgs =
+  option "j" ["jobs"]
+  "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)"
+  buildNumJobs (\v flags -> flags { buildNumJobs = v })
+  (optArg "NUM" (fmap Flag numJobsParser)
+   (Flag Nothing)
+   (map (Just . maybe "$ncpus" show) . flagToList))
+
+  : option [] ["only"]
+  "Don't reinstall add-source dependencies (sandbox-only)"
+  buildOnly (\v flags -> flags { buildOnly = v })
+  (noArg (Flag SkipAddSourceDepsCheck))
+
+  : []
+
+buildCommand :: CommandUI (BuildFlags, BuildExFlags)
+buildCommand = parent {
+    commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandOptions      =
+      \showOrParseArgs -> liftOptions fst setFst
+                          (commandOptions parent showOrParseArgs)
+                          ++
+                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
   }
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+    parent = Cabal.buildCommand defaultProgramConfiguration
+
+instance Monoid BuildExFlags where
+  mempty = BuildExFlags {
+    buildNumJobs = mempty,
+    buildOnly    = mempty
+  }
+  mappend a b = BuildExFlags {
+    buildNumJobs = combine buildNumJobs,
+    buildOnly    = combine buildOnly
+  }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Test command
+-- ------------------------------------------------------------
+
+testCommand :: CommandUI (TestFlags, BuildExFlags)
+testCommand = parent {
+  commandDefaultFlags = (commandDefaultFlags parent, mempty),
+  commandOptions      =
+    \showOrParseArgs -> liftOptions fst setFst
+                        (commandOptions parent showOrParseArgs)
+                        ++
+                        liftOptions snd setSnd (buildExOptions showOrParseArgs)
+  }
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+    parent = Cabal.testCommand
+
+-- ------------------------------------------------------------
+-- * Bench command
+-- ------------------------------------------------------------
+
+benchmarkCommand :: CommandUI (BenchmarkFlags, BuildExFlags)
+benchmarkCommand = parent {
+  commandDefaultFlags = (commandDefaultFlags parent, mempty),
+  commandOptions      =
+    \showOrParseArgs -> liftOptions fst setFst
+                        (commandOptions parent showOrParseArgs)
+                        ++
+                        liftOptions snd setSnd (buildExOptions showOrParseArgs)
+  }
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+    parent = Cabal.benchmarkCommand
 
 -- ------------------------------------------------------------
 -- * Fetch command
@@ -439,19 +525,27 @@ checkCommand = CommandUI {
     commandOptions      = \_ -> []
   }
 
-runCommand :: CommandUI BuildFlags
+runCommand :: CommandUI (BuildFlags, BuildExFlags)
 runCommand = CommandUI {
     commandName         = "run",
     commandSynopsis     = "Runs the compiled executable.",
     commandDescription  = Nothing,
     commandUsage        =
-      (\pname -> "Usage: " ++ pname
-                 ++ " run [FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]\n\n"
-                 ++ "Flags for run:"),
+      \pname -> "Usage: " ++ pname
+                ++ " run [FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]\n\n"
+                ++ "Flags for run:",
     commandDefaultFlags = mempty,
-    commandOptions      = Cabal.buildOptions progConf
+    commandOptions      =
+      \showOrParseArgs -> liftOptions fst setFst
+                          (Cabal.buildOptions progConf showOrParseArgs)
+                          ++
+                          liftOptions snd setSnd
+                          (buildExOptions showOrParseArgs)
   }
   where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
     progConf = defaultProgramConfiguration
 
 -- ------------------------------------------------------------
@@ -1323,6 +1417,21 @@ instance Monoid SandboxFlags where
     }
     where combine field = field a `mappend` field b
 
+-- ------------------------------------------------------------
+-- * Shared options utils
+-- ------------------------------------------------------------
+
+-- | Common parser for the @-j@ flag of @build@ and @install@.
+numJobsParser :: ReadE (Maybe Int)
+numJobsParser = ReadE $ \s ->
+  case s of
+    "$ncpus" -> Right Nothing
+    _        -> case reads s of
+      [(n, "")]
+        | n < 1     -> Left "The number of jobs should be 1 or more."
+        | n > 64    -> Left "You probably don't want that many jobs."
+        | otherwise -> Right (Just n)
+      _             -> Left "The jobs value should be a number or '$ncpus'"
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils

@@ -80,7 +80,6 @@ module Distribution.Simple.Setup (
   buildOptions, installDirsOptions,
 
   defaultDistPref,
-  numJobsParser,
 
   Flag(..),
   toFlag,
@@ -1252,7 +1251,6 @@ data BuildFlags = BuildFlags {
     buildProgramArgs :: [(String, [String])],
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity,
-    buildNumJobs     :: Flag (Maybe Int),
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -1269,7 +1267,6 @@ defaultBuildFlags  = BuildFlags {
     buildProgramArgs = [],
     buildDistPref    = Flag defaultDistPref,
     buildVerbosity   = Flag normal,
-    buildNumJobs     = mempty,
     buildArgs        = []
   }
 
@@ -1289,13 +1286,6 @@ buildOptions progConf showOrParseArgs =
   buildDistPref (\d flags -> flags { buildDistPref = d })
   showOrParseArgs
 
-  : option "j" ["jobs"]
-  "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
-  buildNumJobs (\v flags -> flags { buildNumJobs = v })
-  (optArg "NUM" (fmap Flag numJobsParser)
-   (Flag Nothing)
-   (map (Just . maybe "$ncpus" show) . flagToList))
-
   : programConfigurationPaths   progConf showOrParseArgs
   buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
 
@@ -1311,7 +1301,6 @@ instance Monoid BuildFlags where
     buildProgramArgs = mempty,
     buildVerbosity   = mempty,
     buildDistPref    = mempty,
-    buildNumJobs     = mempty,
     buildArgs        = mempty
   }
   mappend a b = BuildFlags {
@@ -1319,7 +1308,6 @@ instance Monoid BuildFlags where
     buildProgramArgs = combine buildProgramArgs,
     buildVerbosity   = combine buildVerbosity,
     buildDistPref    = combine buildDistPref,
-    buildNumJobs     = combine buildNumJobs,
     buildArgs        = combine buildArgs
   }
     where combine field = field a `mappend` field b
@@ -1357,7 +1345,6 @@ data TestFlags = TestFlags {
     testMachineLog  :: Flag PathTemplate,
     testShowDetails :: Flag TestShowDetails,
     testKeepTix     :: Flag Bool,
-    testNumJobs     :: Flag (Maybe Int),
     --TODO: eliminate the test list and pass it directly as positional args to
     --the testHook
     testList        :: Flag [String],
@@ -1373,7 +1360,6 @@ defaultTestFlags  = TestFlags {
     testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
     testShowDetails = toFlag Failures,
     testKeepTix     = toFlag False,
-    testNumJobs     = mempty,
     testList        = Flag [],
     testOptions     = []
   }
@@ -1418,12 +1404,6 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
             "keep .tix files for HPC between test runs"
             testKeepTix (\v flags -> flags { testKeepTix = v})
             trueArg
-      , option "j" ["jobs"]
-            "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
-            testNumJobs (\v flags -> flags { testNumJobs = v })
-            (optArg "NUM" (fmap Flag numJobsParser)
-             (Flag Nothing)
-             (map (Just . maybe "$ncpus" show) . flagToList))
       , option [] ["test-options"]
             ("give extra options to test executables "
              ++ "(name templates can use $pkgid, $compiler, "
@@ -1452,7 +1432,6 @@ instance Monoid TestFlags where
     testMachineLog  = mempty,
     testShowDetails = mempty,
     testKeepTix     = mempty,
-    testNumJobs     = mempty,
     testList        = mempty,
     testOptions     = mempty
   }
@@ -1463,7 +1442,6 @@ instance Monoid TestFlags where
     testMachineLog  = combine testMachineLog,
     testShowDetails = combine testShowDetails,
     testKeepTix     = combine testKeepTix,
-    testNumJobs     = combine testNumJobs,
     testList        = combine testList,
     testOptions     = combine testOptions
   }
@@ -1476,16 +1454,14 @@ instance Monoid TestFlags where
 data BenchmarkFlags = BenchmarkFlags {
     benchmarkDistPref  :: Flag FilePath,
     benchmarkVerbosity :: Flag Verbosity,
-    benchmarkOptions   :: [PathTemplate],
-    benchmarkNumJobs   :: Flag (Maybe Int)
+    benchmarkOptions   :: [PathTemplate]
   }
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {
     benchmarkDistPref  = Flag defaultDistPref,
     benchmarkVerbosity = Flag normal,
-    benchmarkOptions   = [],
-    benchmarkNumJobs   = mempty
+    benchmarkOptions   = []
   }
 
 benchmarkCommand :: CommandUI BenchmarkFlags
@@ -1516,12 +1492,6 @@ benchmarkCommand = makeCommand name shortDesc
             benchmarkOptions (\v flags -> flags { benchmarkOptions = v })
             (reqArg' "TEMPLATE" (\x -> [toPathTemplate x])
                 (map fromPathTemplate))
-      , option "j" ["jobs"]
-            "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
-            benchmarkNumJobs (\v flags -> flags { benchmarkNumJobs = v })
-            (optArg "NUM" (fmap Flag numJobsParser)
-             (Flag Nothing)
-             (map (Just . maybe "$ncpus" show) . flagToList))
       ]
 
 emptyBenchmarkFlags :: BenchmarkFlags
@@ -1531,32 +1501,18 @@ instance Monoid BenchmarkFlags where
   mempty = BenchmarkFlags {
     benchmarkDistPref  = mempty,
     benchmarkVerbosity = mempty,
-    benchmarkOptions   = mempty,
-    benchmarkNumJobs   = mempty
+    benchmarkOptions   = mempty
   }
   mappend a b = BenchmarkFlags {
     benchmarkDistPref  = combine benchmarkDistPref,
     benchmarkVerbosity = combine benchmarkVerbosity,
-    benchmarkOptions   = combine benchmarkOptions,
-    benchmarkNumJobs   = combine benchmarkNumJobs
+    benchmarkOptions   = combine benchmarkOptions
   }
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
 -- * Shared options utils
 -- ------------------------------------------------------------
-
--- | Common parser for the @-j@ flag of @build@ and @install@.
-numJobsParser :: ReadE (Maybe Int)
-numJobsParser = ReadE $ \s ->
-  case s of
-    "$ncpus" -> Right Nothing
-    _        -> case reads s of
-      [(n, "")]
-        | n < 1     -> Left "The number of jobs should be 1 or more."
-        | n > 64    -> Left "You probably don't want that many jobs."
-        | otherwise -> Right (Just n)
-      _             -> Left "The jobs value should be a number or '$ncpus'"
 
 programFlagsDescription :: ProgramConfiguration -> String
 programFlagsDescription progConf =
