@@ -226,6 +226,12 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
                           (globalConfigFile globalFlags)
                           (configUserInstall configFlags)
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+                       -- See the comment in D.C.Sandbox. Otherwise configure
+                       -- adds the user package DB to the package DB stack.
+                       -- FIXME: Maybe we should set configUserInstall = False
+                       -- and fix the sudo issue in some other way?
+                       { configUserInstall = Flag False}
+
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux configFlags'
