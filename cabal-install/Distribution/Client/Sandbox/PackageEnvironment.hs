@@ -127,7 +127,10 @@ commonPackageEnvironmentConfig :: FilePath -> SavedConfig
 commonPackageEnvironmentConfig sandboxDir =
   mempty {
     savedConfigureFlags = mempty {
-       configUserInstall = toFlag True,
+       -- TODOи: Currently, we follow cabal-dev and set 'user-install: False' in
+       -- the config file. In the future we may want to distinguish between
+       -- global, sandbox and user install types.
+       configUserInstall = toFlag False,
        configInstallDirs = installDirs
        },
     savedUserInstallDirs   = installDirs,

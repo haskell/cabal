@@ -56,7 +56,6 @@ import Distribution.Client.Dependency.Types
          ( Solver(..) )
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
--- import qualified Distribution.Client.Info as Info
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -67,6 +66,7 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
          ( defaultCabalDir )
+import Distribution.Client.Sandbox.Types ( isUseSandbox )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
@@ -905,7 +905,9 @@ performInstallations verbosity
 
     miscOptions  = InstallMisc {
       rootCmd    = if fromFlag (configUserInstall configFlags)
-                     then Nothing      -- ignore --root-cmd if --user.
+                      || isUseSandbox (installUseSandbox installFlags)
+                     then Nothing      -- ignore --root-cmd if --user
+                                       -- or working inside a sandbox.
                      else flagToMaybe (installRootCmd installFlags),
       libVersion = flagToMaybe (configCabalVersion configExFlags)
     }
