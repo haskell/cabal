@@ -50,7 +50,7 @@ module Distribution.Simple.Utils (
         -- * logging and errors
         die,
         dieWithLocation,
-        topHandler,
+        topHandler, topHandlerWith,
         warn, notice, setupMessage, info, debug,
         debugNoWrap, chattyTry,
 
@@ -238,14 +238,14 @@ dieWithLocation filename lineno msg =
 die :: String -> IO a
 die msg = ioError (userError msg)
 
-topHandler :: IO a -> IO a
-topHandler prog = catchIO prog handle
+topHandlerWith :: (Exception.IOException -> IO a) -> IO a -> IO a
+topHandlerWith cont prog = catchIO prog handle
   where
     handle ioe = do
       hFlush stdout
       pname <- getProgName
       hPutStr stderr (mesage pname)
-      exitWith (ExitFailure 1)
+      cont ioe
       where
         mesage pname = wrapText (pname ++ ": " ++ file ++ detail)
         file         = case ioeGetFileName ioe of
@@ -255,6 +255,9 @@ topHandler prog = catchIO prog handle
                          l@(n:_) | n >= '0' && n <= '9' -> ':' : l
                          _                              -> ""
         detail       = ioeGetErrorString ioe
+
+topHandler :: IO a -> IO a
+topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
 
 -- | Non fatal conditions that may be indicative of an error or problem.
 --
