@@ -18,8 +18,6 @@ module Distribution.Client.Sandbox (
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
-    UseSandbox(..), isUseSandbox, whenUsingSandbox,
-    ForceGlobalInstall(UseDefaultPackageDBStack), maybeForceGlobalInstall,
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
@@ -59,6 +57,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
   , commentPackageEnvironment, showPackageEnvironmentWithComments
   , sandboxPackageEnvironmentFile, updatePackageEnvironment
   , userPackageEnvironmentFile )
+import Distribution.Client.Sandbox.Types      ( UseSandbox(..) )
 import Distribution.Client.Targets            ( UserTarget(..)
                                               , readUserTargets
                                               , resolveUserTargets )
@@ -407,29 +406,10 @@ sandboxHcPkg verbosity _sandboxFlags globalFlags extraArgs = do
   (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity
                            (globalConfigFile globalFlags)
   let configFlags = savedConfigureFlags . pkgEnvSavedConfig $ pkgEnv
-      dbStack     = configPackageDB' configFlags ForceGlobalInstall
+      dbStack     = configPackageDB' configFlags
   (comp, _platform, conf) <- configCompilerAux' configFlags
 
   Register.invokeHcPkg verbosity comp conf dbStack extraArgs
-
---
--- * Helpers for writing code that works both inside and outside a sandbox.
---
-
--- | Are we using a sandbox?
-data UseSandbox = UseSandbox FilePath | NoSandbox
-
--- | Convert a @UseSandbox@ value to a boolean. Useful in conjunction with
--- @when@.
-isUseSandbox :: UseSandbox -> Bool
-isUseSandbox (UseSandbox _) = True
-isUseSandbox NoSandbox      = False
-
--- | Execute an action only if we're in a sandbox, feeding to it the path to the
--- sandbox directory.
-whenUsingSandbox :: UseSandbox -> (FilePath -> IO ()) -> IO ()
-whenUsingSandbox NoSandbox               _   = return ()
-whenUsingSandbox (UseSandbox sandboxDir) act = act sandboxDir
 
 -- | Check which type of package environment we're in and return a
 -- correctly-initialised @SavedConfig@ and a @UseSandbox@ value that indicates
@@ -498,7 +478,7 @@ reinstallAddSourceDeps verbosity config configFlags' configExFlags
         targets <- readUserTargets verbosity targetNames
 
         let args :: InstallArgs
-            args = ((configPackageDB' configFlags ForceGlobalInstall)
+            args = ((configPackageDB' configFlags)
                    ,(globalRepos globalFlags)
                    ,comp, platform, conf
                    ,globalFlags, configFlags, configExFlags, installFlags
@@ -576,8 +556,9 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags' globalFlags' = do
               installFlags'  = defaultInstallFlags
                                `mappend` savedInstallFlags config
               installFlags   = installFlags' {
-                installNumJobs  = installNumJobs installFlags'
-                                  `mappend` numJobsFlag
+                installNumJobs    = installNumJobs installFlags'
+                                    `mappend` numJobsFlag,
+                installUseSandbox = useSandbox
                 }
               globalFlags    = savedGlobalFlags config
               -- This makes it possible to override things like
@@ -644,35 +625,11 @@ updateSandboxConfig verbosity newConfigFlags = do
 -- module
 --
 
--- | Force the usage of the global package DB even though @configUserInstall@
--- may be @True@.
---
--- We use @userInstallDirs@ in sandbox mode to prevent @cabal-install@ from
--- doing unnecessary things like invoking itself via @sudo@ (see commit
--- 7b2e3630f2ada8a56bf9100144e1bb9acbe6dc6a and 'rootCmd' in
--- "Distribution.Client.Install"), but in this particular case we want
--- @configUserInstall@ to be @False@ to prevent @UserPackageDB@ from being added
--- to the package DB stack (see #1183 and @interpretPackageDbFlags@ in
--- "Distribution.Simple.Configure").
---
--- In the future we may want to distinguish between global, user and sandbox
--- install types.
-data ForceGlobalInstall = ForceGlobalInstall
-                        | UseDefaultPackageDBStack
-
--- | If we're in a sandbox, add only the global package db to the package db
--- stack, otherwise use the default behaviour.
-maybeForceGlobalInstall :: UseSandbox -> ForceGlobalInstall
-maybeForceGlobalInstall NoSandbox      = UseDefaultPackageDBStack
-maybeForceGlobalInstall (UseSandbox _) = ForceGlobalInstall
-
-configPackageDB' :: ConfigFlags -> ForceGlobalInstall -> PackageDBStack
-configPackageDB' cfg force =
+configPackageDB' :: ConfigFlags -> PackageDBStack
+configPackageDB' cfg =
     interpretPackageDbFlags userInstall (configPackageDBs cfg)
   where
-    userInstall = case force of
-      ForceGlobalInstall       -> False
-      UseDefaultPackageDBStack -> fromFlagOrDefault True (configUserInstall cfg)
+    userInstall = fromFlagOrDefault True (configUserInstall cfg)
 
 configCompilerAux' :: ConfigFlags
                    -> IO (Compiler, Platform, ProgramConfiguration)

@@ -93,6 +93,7 @@ executable cabal
         Distribution.Client.Sandbox.Index
         Distribution.Client.Sandbox.PackageEnvironment
         Distribution.Client.Sandbox.Timestamp
+        Distribution.Client.Sandbox.Types
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
         Distribution.Client.SrcDist

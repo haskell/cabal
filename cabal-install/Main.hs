@@ -74,10 +74,6 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxHcPkg
                                               ,dumpPackageEnvironment
 
-                                              ,UseSandbox(..)
-                                              ,whenUsingSandbox
-                                              ,ForceGlobalInstall(..)
-                                              ,maybeForceGlobalInstall
                                               ,loadConfigOrSandboxConfig
                                               ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
@@ -93,6 +89,7 @@ import Distribution.Client.Sandbox            (sandboxInit
 import Distribution.Client.Sandbox.PackageEnvironment
                                               (setPackageDB)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
+import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
@@ -226,12 +223,6 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
                           (globalConfigFile globalFlags)
                           (configUserInstall configFlags)
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
-                       -- See the comment in D.C.Sandbox. Otherwise configure
-                       -- adds the user package DB to the package DB stack.
-                       -- FIXME: Maybe we should set configUserInstall = False
-                       -- and fix the sudo issue in some other way?
-                       { configUserInstall = Flag False}
-
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux configFlags'
@@ -255,8 +246,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     configure verbosity
-              (configPackageDB' configFlags''
-               (maybeForceGlobalInstall useSandbox))
+              (configPackageDB' configFlags'')
               (globalRepos globalFlags')
               comp platform conf configFlags'' configExFlags' extraArgs
 
@@ -470,6 +460,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                        savedConfigureExFlags config `mappend` configExFlags
       installFlags'  = defaultInstallFlags          `mappend`
                        savedInstallFlags     config `mappend` installFlags
+                       { installUseSandbox = useSandbox }
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
 
@@ -504,7 +495,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     install verbosity
-            (configPackageDB' configFlags'' (maybeForceGlobalInstall useSandbox))
+            (configPackageDB' configFlags'')
             (globalRepos globalFlags')
             comp platform conf globalFlags' configFlags'' configExFlags'
             installFlags' haddockFlags
@@ -566,7 +557,7 @@ listAction listFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
   List.list verbosity
-       (configPackageDB' configFlags UseDefaultPackageDBStack)
+       (configPackageDB' configFlags)
        (globalRepos globalFlags')
        comp
        conf
@@ -583,7 +574,7 @@ infoAction infoFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux configFlags
   List.info verbosity
-       (configPackageDB' configFlags UseDefaultPackageDBStack)
+       (configPackageDB' configFlags)
        (globalRepos globalFlags')
        comp
        conf
@@ -624,7 +615,7 @@ fetchAction fetchFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags
   fetch verbosity
-        (configPackageDB' configFlags UseDefaultPackageDBStack)
+        (configPackageDB' configFlags)
         (globalRepos globalFlags')
         comp platform conf globalFlags' fetchFlags
         targets
@@ -733,7 +724,7 @@ initAction initFlags _extraArgs globalFlags = do
   let configFlags  = savedConfigureFlags config
   (comp, _, conf) <- configCompilerAux' configFlags
   initCabal verbosity
-            (configPackageDB' configFlags UseDefaultPackageDBStack)
+            (configPackageDB' configFlags)
             comp
             conf
             initFlags
