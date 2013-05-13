@@ -76,9 +76,9 @@ import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..)
                                               , fromFlag, fromFlagOrDefault )
 import Distribution.Simple.SrcDist            ( prepareTree )
-import Distribution.Simple.Utils              ( die, debug, notice, info
+import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
-                                              , intercalate
+                                              , intercalate, topHandlerWith
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
 import Distribution.System                    ( Platform )
@@ -476,7 +476,7 @@ reinstallAddSourceDeps :: Verbosity
                           -> FilePath
                           -> IO WereDepsReinstalled
 reinstallAddSourceDeps verbosity config configFlags' configExFlags
-                       installFlags globalFlags sandboxDir = do
+                       installFlags globalFlags sandboxDir = topHandler' $ do
   let configFlags       = configFlags'
                           { configDistPref = Flag (sandboxBuildDir sandboxDir)  }
   indexFile            <- tryGetIndexFilePath config
@@ -530,6 +530,13 @@ reinstallAddSourceDeps verbosity config configFlags' configExFlags
           writeIORef retVal ReinstalledSomeDeps
 
   readIORef retVal
+
+    where
+      topHandler' = topHandlerWith $ \_ -> do
+        warn verbosity "Couldn't reinstall some add-source dependencies."
+        -- Here we can't know whether any deps have been reinstalled, so we have
+        -- to be conservative.
+        return ReinstalledSomeDeps
 
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
