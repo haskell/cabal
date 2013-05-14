@@ -54,7 +54,7 @@ import Text.PrettyPrint hiding (mode, cat)
 import Data.Version
   ( Version(..) )
 import Distribution.Version
-  ( orLaterVersion, withinVersion, VersionRange )
+  ( orLaterVersion, earlierVersion, intersectVersionRanges, VersionRange )
 import Distribution.Verbosity
   ( Verbosity )
 import Distribution.ModuleName
@@ -400,7 +400,18 @@ chooseDep flags (m, Just ps)
                             (pvpize . maximum . map P.pkgVersion $ pids)
 
     pvpize :: Version -> VersionRange
-    pvpize v = withinVersion $ v { versionBranch = take 2 (versionBranch v) }
+    pvpize v = orLaterVersion v'
+               `intersectVersionRanges`
+               earlierVersion (incVersion 1 v')
+      where v' = (v { versionBranch = take 2 (versionBranch v) })
+
+incVersion :: Int -> Version -> Version
+incVersion n (Version vlist tags) = Version (incVersion' n vlist) tags
+  where
+    incVersion' 0 []     = [1]
+    incVersion' 0 (v:_)  = [v+1]
+    incVersion' m []     = replicate m 0 ++ [1]
+    incVersion' m (v:vs) = v : incVersion' (m-1) vs
 
 ---------------------------------------------------------------------------
 --  Prompting/user interaction  -------------------------------------------
