@@ -62,7 +62,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.GHC (
         getGhcInfo,
-        configure, getInstalledPackages,
+        configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,
         installLib, installExe,
         libAbiHash,
@@ -488,30 +488,49 @@ oldLanguageExtensions =
     ,(DeriveDataTypeable         , fglasgowExts)
     ,(ConstrainedClassMethods    , fglasgowExts)
     ]
+-- | Given a single package DB, return all installed packages.
+getPackageDBContents :: Verbosity -> PackageDB -> ProgramConfiguration
+                        -> IO PackageIndex
+getPackageDBContents verbosity packagedb conf = do
+  pkgss <- getInstalledPackages' verbosity [packagedb] conf
+  toPackageIndex verbosity pkgss conf
 
+-- | Given a package DB stack, return all installed packages.
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
                      -> IO PackageIndex
 getInstalledPackages verbosity packagedbs conf = do
   checkPackageDbEnvVar
   checkPackageDbStack packagedbs
   pkgss <- getInstalledPackages' verbosity packagedbs conf
-  topDir <- ghcLibDir' verbosity ghcProg
-  let indexes = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
-                | (_, pkgs) <- pkgss ]
-  return $! hackRtsPackage (mconcat indexes)
+  index <- toPackageIndex verbosity pkgss conf
+  return $! hackRtsPackage index
 
   where
-    -- On Windows, various fields have $topdir/foo rather than full
-    -- paths. We need to substitute the right value in so that when
-    -- we, for example, call gcc, we have proper paths to give it
-    Just ghcProg = lookupProgram ghcProgram conf
-
     hackRtsPackage index =
       case PackageIndex.lookupPackageName index (PackageName "rts") of
         [(_,[rts])]
            -> PackageIndex.insert (removeMingwIncludeDir rts) index
         _  -> index -- No (or multiple) ghc rts package is registered!!
                     -- Feh, whatever, the ghc testsuite does some crazy stuff.
+
+-- | Given a list of @(PackageDB, InstalledPackageInfo)@ pairs, produce a
+-- @PackageIndex@. Helper function used by 'getPackageDBContents' and
+-- 'getInstalledPackages'.
+toPackageIndex :: Verbosity
+               -> [(PackageDB, [InstalledPackageInfo])]
+               -> ProgramConfiguration
+               -> IO PackageIndex
+toPackageIndex verbosity pkgss conf = do
+  -- On Windows, various fields have $topdir/foo rather than full
+  -- paths. We need to substitute the right value in so that when
+  -- we, for example, call gcc, we have proper paths to give it.
+  topDir <- ghcLibDir' verbosity ghcProg
+  let indices = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
+                | (_, pkgs) <- pkgss ]
+  return $! (mconcat indices)
+
+  where
+    Just ghcProg = lookupProgram ghcProgram conf
 
 ghcLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 ghcLibDir verbosity lbi =

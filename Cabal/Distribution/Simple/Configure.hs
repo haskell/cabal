@@ -57,7 +57,7 @@ module Distribution.Simple.Configure (configure,
                                       tryGetPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
                                       localBuildInfoFile,
-                                      getInstalledPackages,
+                                      getInstalledPackages, getPackageDBContents,
                                       configCompiler, configCompilerAux,
                                       ccLdOptionsBuildInfo,
                                       checkForeignDeps,
@@ -689,6 +689,19 @@ getInstalledPackages verbosity comp packageDBs progconf = do
     UHC -> UHC.getInstalledPackages verbosity comp packageDBs progconf
     flv -> die $ "don't know how to find the installed packages for "
               ++ display flv
+
+-- | Like 'getInstalledPackages', but for a single package DB.
+getPackageDBContents :: Verbosity -> Compiler
+                     -> PackageDB -> ProgramConfiguration
+                     -> IO PackageIndex
+getPackageDBContents verbosity comp packageDB progconf = do
+  info verbosity "Reading installed packages..."
+  case compilerFlavor comp of
+    GHC -> GHC.getPackageDBContents verbosity packageDB progconf
+
+    -- For other compilers, try to fall back on 'getInstalledPackages'.
+    _   -> getInstalledPackages verbosity comp [packageDB] progconf
+
 
 -- | The user interface specifies the package dbs to use with a combination of
 -- @--global@, @--user@ and @--package-db=global|user|clear|$file@.
