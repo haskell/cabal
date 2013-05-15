@@ -33,6 +33,9 @@ module Distribution.Client.Dependency (
     standardInstallPolicy,
     PackageSpecifier(..),
 
+    -- ** Sandbox policy
+    sandboxInstallPolicy,
+
     -- ** Extra policy options
     dontUpgradeBasePackage,
     hideBrokenInstalledPackages,
@@ -70,13 +73,15 @@ import Distribution.Client.Dependency.Types
          , PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
+import Distribution.Client.Sandbox.Types
+         ( SandboxPackageInfo(..) )
 import Distribution.Client.Targets
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( PackageName(..), PackageId, Package(..), packageVersion
+         ( PackageName(..), PackageId, Package(..), packageName, packageVersion
          , InstalledPackageId, Dependency(Dependency))
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion, withinRange
+         ( Version(..), VersionRange, anyVersion, thisVersion, withinRange
          , simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerId(..), CompilerFlavor(..) )
@@ -316,6 +321,41 @@ standardInstallPolicy
   $ basicDepResolverParams
       installedPkgIndex sourcePkgIndex
 
+sandboxInstallPolicy :: SandboxPackageInfo
+                     -> InstalledPackageIndex.PackageIndex
+                     -> SourcePackageDb
+                     -> [PackageSpecifier SourcePackage]
+                     -> DepResolverParams
+sandboxInstallPolicy
+    (SandboxPackageInfo modifiedDeps otherDeps allSandboxPkgs)
+    installedPkgIndex sourcePackageDb pkgSpecifiers
+
+  = addPreferences [ PackageInstalledPreference n PreferInstalled
+                   | n <- installedNotModified ]
+
+  . addTargets installedNotModified
+
+  . addConstraints
+      [ PackageConstraintVersion (packageName pkg)
+        (thisVersion (packageVersion pkg)) | pkg <- modifiedDeps ++ otherDeps ]
+
+  . addTargets [ packageName pkg | pkg <- modifiedDeps ]
+
+  . hideInstalledPackagesSpecificBySourcePackageId
+      [ packageId pkg | pkg <- modifiedDeps ]
+
+  -- We don't need to add source packages for add-source deps to the
+  -- 'installedPkgIndex' since 'getSourcePackages' did that for us.
+
+  $ standardInstallPolicy installedPkgIndex sourcePackageDb pkgSpecifiers
+
+  where
+    installedPkgIds =
+      map fst . InstalledPackageIndex.allPackagesBySourcePackageId
+      $ allSandboxPkgs
+    modifiedPkgIds       = map packageId modifiedDeps
+    installedNotModified = [ packageName pkg | pkg <- installedPkgIds,
+                             pkg `notElem` modifiedPkgIds ]
 
 -- ------------------------------------------------------------
 -- * Interface to the standard resolver
