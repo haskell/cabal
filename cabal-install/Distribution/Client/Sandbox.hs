@@ -29,6 +29,7 @@ module Distribution.Client.Sandbox (
 
     tryGetIndexFilePath,
     sandboxBuildDir,
+    getInstalledPackagesInSandbox,
 
     -- FIXME: move somewhere else
     configPackageDB', configCompilerAux'
@@ -69,7 +70,8 @@ import Distribution.PackageDescription.Parse  ( readPackageDescription )
 import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
                                               , PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAux
-                                              , interpretPackageDbFlags )
+                                              , interpretPackageDbFlags
+                                              , getPackageDBContents )
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..)
@@ -86,6 +88,7 @@ import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Env                ( lookupEnv, setEnv )
 import Distribution.Compat.FilePerms          ( setFileHidden )
 import qualified Distribution.Client.Sandbox.Index as Index
+import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import qualified Distribution.Simple.Register      as Register
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
@@ -176,6 +179,14 @@ tryGetIndexFilePath config = do
   where
     checkConfiguration = "Please check your configuration ('"
                          ++ userPackageEnvironmentFile ++ "')."
+
+-- | Which packages are installed in the sandbox package DB?
+getInstalledPackagesInSandbox :: Verbosity -> ConfigFlags
+                                 -> Compiler -> ProgramConfiguration
+                                 -> IO InstalledPackageIndex.PackageIndex
+getInstalledPackagesInSandbox verbosity configFlags comp conf = do
+    let [Just sandboxDB@(SpecificPackageDB _)] = configPackageDBs configFlags
+    getPackageDBContents verbosity comp sandboxDB conf
 
 -- | Temporarily add $SANDBOX_DIR/bin to $PATH.
 withSandboxBinDirOnSearchPath :: FilePath -> IO a -> IO a
