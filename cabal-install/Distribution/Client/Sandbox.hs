@@ -49,8 +49,7 @@ import Distribution.Client.IndexUtils         ( BuildTreeRefType(..) )
 import Distribution.Client.Install            ( InstallArgs,
                                                 makeInstallContext,
                                                 makeInstallPlan,
-                                                processInstallPlan,
-                                                pruneInstallPlan )
+                                                processInstallPlan )
 import Distribution.Client.Sandbox.PackageEnvironment
   ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
   , createPackageEnvironment, classifyPackageEnvironment
@@ -58,11 +57,10 @@ import Distribution.Client.Sandbox.PackageEnvironment
   , commentPackageEnvironment, showPackageEnvironmentWithComments
   , sandboxPackageEnvironmentFile, updatePackageEnvironment
   , userPackageEnvironmentFile )
-import Distribution.Client.Sandbox.Types      ( UseSandbox(..) )
-import Distribution.Client.Targets            ( UserTarget(..)
-                                              , readUserTargets
-                                              , resolveUserTargets )
-import Distribution.Client.Types              ( SourcePackageDb(..) )
+import Distribution.Client.Sandbox.Types      ( SandboxPackageInfo(..)
+                                              , UseSandbox(..) )
+import Distribution.Client.Types              ( PackageLocation(..)
+                                              , SourcePackage(..) )
 import Distribution.Client.Utils              ( inDir, tryCanonicalizePath )
 import Distribution.PackageDescription.Configuration
                                               ( flattenPackageDescription )
@@ -74,11 +72,11 @@ import Distribution.Simple.Configure          ( configCompilerAux
                                               , getPackageDBContents )
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramConfiguration )
-import Distribution.Simple.Setup              ( Flag(..)
-                                              , fromFlag, fromFlagOrDefault )
+import Distribution.Simple.Setup              ( Flag(..), fromFlagOrDefault )
 import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
+                                              , findPackageDesc
                                               , intercalate, topHandlerWith
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
@@ -90,6 +88,7 @@ import Distribution.Compat.FilePerms          ( setFileHidden )
 import qualified Distribution.Client.Sandbox.Index as Index
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import qualified Distribution.Simple.Register      as Register
+import qualified Data.Map                          as M
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
 import Data.Bits                              ( shiftL, shiftR, xor )
@@ -469,7 +468,7 @@ reinstallAddSourceDeps :: Verbosity
 reinstallAddSourceDeps verbosity config configFlags' configExFlags
                        installFlags globalFlags sandboxDir = topHandler' $ do
   let configFlags       = configFlags'
-                          { configDistPref = Flag (sandboxBuildDir sandboxDir)  }
+                          { configDistPref = Flag (sandboxBuildDir sandboxDir) }
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity
                           Index.DontListIgnored Index.OnlyLinks indexFile
@@ -482,52 +481,79 @@ reinstallAddSourceDeps verbosity config configFlags' configExFlags
     withModifiedDeps verbosity sandboxDir compId platform $ \modifiedDeps -> do
       assert (null $ modifiedDeps \\ buildTreeRefs) (return ())
       unless (null modifiedDeps) $ do
-        let targetNames    = (".":modifiedDeps)
-            targetsToPrune = [UserTargetLocalDir "."]
+        sandboxPkgInfo <- makeSandboxPackageInfo verbosity configFlags
+                          comp conf buildTreeRefs modifiedDeps
+        let modifiedAndInstalledDeps = modifiedAddSourceDependencies
+                                       sandboxPkgInfo
 
-        notice verbosity "Installing add-source dependencies..."
-        targets <- readUserTargets verbosity targetNames
+        unless (null modifiedAndInstalledDeps) $ do
+          notice verbosity "Installing add-source dependencies..."
 
-        let args :: InstallArgs
-            args = ((configPackageDB' configFlags)
-                   ,(globalRepos globalFlags)
-                   ,comp, platform, conf
-                   ,globalFlags, configFlags, configExFlags, installFlags
-                   ,mempty)
+          let args :: InstallArgs
+              args = ((configPackageDB' configFlags)
+                     ,(globalRepos globalFlags)
+                     ,comp, platform, conf, Just sandboxPkgInfo
+                     ,globalFlags, configFlags, configExFlags, installFlags
+                     ,mempty)
 
-            logMsg message rest = debugNoWrap verbosity message >> rest
+          -- This can actually be replaced by a call to 'install', but we use a
+          -- lower-level API because of layer separation reasons. Additionally,
+          -- we might want to extend this in the future.
+          withSandboxBinDirOnSearchPath sandboxDir $ do
+            installContext <- makeInstallContext verbosity args Nothing
+            installPlan    <- foldProgress logMsg die return =<<
+                              makeInstallPlan verbosity args installContext
 
-        -- Using the low-level install interface instead of the high-level
-        -- 'install' action allows us to make changes to the install plan before
-        -- processing it. Here we need to prune the "." target from the install
-        -- plan. The same mechanism is used to implement 'install
-        -- --only-dependencies'.
-        withSandboxBinDirOnSearchPath sandboxDir $ do
-          installContext@(_,sourcePkgDb,_,_) <-
-            makeInstallContext verbosity args targets
-
-          toPrune <- resolveUserTargets verbosity
-                     (fromFlag $ globalWorldFile globalFlags)
-                     (packageIndex sourcePkgDb)
-                     targetsToPrune
-
-          installPlan     <- foldProgress logMsg die return =<<
-                             (fmap (\p -> p >>= if not . null $ targetsToPrune
-                                                then pruneInstallPlan toPrune
-                                                else return)
-                              $ makeInstallPlan verbosity args installContext)
-
-          processInstallPlan verbosity args installContext installPlan
-          writeIORef retVal ReinstalledSomeDeps
+            processInstallPlan verbosity args installContext installPlan
+            writeIORef retVal ReinstalledSomeDeps
 
   readIORef retVal
 
     where
+      logMsg message rest = debugNoWrap verbosity message >> rest
+
       topHandler' = topHandlerWith $ \_ -> do
         warn verbosity "Couldn't reinstall some add-source dependencies."
         -- Here we can't know whether any deps have been reinstalled, so we have
         -- to be conservative.
         return ReinstalledSomeDeps
+
+-- | Given a list of all add-source deps and a list of modified add-source deps,
+-- produce a 'SandboxPackageInfo'.
+makeSandboxPackageInfo :: Verbosity -> ConfigFlags
+                          -> Compiler -> ProgramConfiguration
+                          -> [FilePath] -> [FilePath]
+                          -> IO SandboxPackageInfo
+makeSandboxPackageInfo verbosity configFlags comp conf
+                       allAddSourceDeps modifiedAddSourceDeps = do
+  -- List all packages installed in the sandbox.
+  installedPkgIndex <- getInstalledPackagesInSandbox verbosity
+                       configFlags comp conf
+
+  -- Get the package descriptions of all add-source deps.
+  depsCabalFiles <- mapM findPackageDesc allAddSourceDeps
+  depsPkgDescs   <- mapM (readPackageDescription verbosity) depsCabalFiles
+  let depsMap     = M.fromList (zip allAddSourceDeps depsPkgDescs)
+
+  -- Get the package ids of modified (and installed) add-source deps.
+  let isInstalled pkgid = not . null
+        . InstalledPackageIndex.lookupSourcePackageId installedPkgIndex $ pkgid
+      isModified path   = path `elem` modifiedAddSourceDeps
+      modifiedDepsMap   = M.filterWithKey
+        (\path pkgDesc -> isInstalled (packageId pkgDesc) && isModified path )
+        depsMap
+      modifiedDeps      = M.assocs modifiedDepsMap
+
+  -- Get the package ids of the remaining add-source deps (some are possibly not
+  -- installed).
+  let otherDeps        = M.assocs (depsMap `M.difference` modifiedDepsMap)
+
+  return $ SandboxPackageInfo (map toSourcePackage modifiedDeps)
+    (map toSourcePackage otherDeps) installedPkgIndex
+
+    where
+      toSourcePackage (path, pkgDesc) = SourcePackage
+        (packageId pkgDesc) pkgDesc (LocalUnpackedPackage path) Nothing
 
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
