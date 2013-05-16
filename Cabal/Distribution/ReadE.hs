@@ -63,7 +63,7 @@ succeedReadE :: (String -> a) -> ReadE a
 succeedReadE f = ReadE (Right . f)
 
 failReadE :: ErrorMsg -> ReadE a
-failReadE = ReadE . const Left
+failReadE = ReadE . const . Left
 
 parseReadE :: ReadE a -> ReadP r a
 parseReadE (ReadE p) = do
