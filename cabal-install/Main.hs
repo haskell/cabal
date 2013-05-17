@@ -77,9 +77,9 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,loadConfigOrSandboxConfig
                                               ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
+                                              ,maybeWithSandboxPackageInfo
                                               ,WereDepsReinstalled(..)
                                               ,maybeReinstallAddSourceDeps
-                                              ,reinstallAddSourceDeps
                                               ,maybeUpdateSandboxConfig
                                               ,tryGetIndexFilePath
                                               ,sandboxBuildDir
@@ -471,7 +471,6 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                         savedConfigureExFlags config `mappend` configExFlags
       installFlags'   = defaultInstallFlags          `mappend`
                         savedInstallFlags     config `mappend` installFlags
-                       { installUseSandbox = useSandbox }
       globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
       haddockFlags'   = haddockFlags { haddockDistPref = sandboxDistPref }
   (comp, platform, conf) <- configCompilerAux' configFlags'
@@ -493,26 +492,32 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
       (compilerId comp) platform
 
-    -- If "." is among the targets, we should reinstall add-source dependencies
-    -- for this compiler and maybe rewrite the 'with-compiler' and 'package-db'
-    -- fields in the 'cabal.sandbox.config' file.
-    when (null targets || (UserTargetLocalDir ".") `elem` targets) $ do
+    -- If "." is among the targets, we may need to rewrite the 'with-compiler'
+    -- and 'package-db' fields in the 'cabal.sandbox.config' file (since the
+    -- current package will be configured with the new compiler).
+    when (containsCurrentDir targets) $
       maybeUpdateSandboxConfig verbosity config configFlags''
-      -- 'install .' always runs 'configure', so we don't need to force
-      -- reconfigure ourselves.
-      _ <- reinstallAddSourceDeps verbosity config configFlags'' configExFlags'
-                                  installFlags' globalFlags'
-                                  sandboxDir
-      return ()
 
-  maybeWithSandboxDirOnSearchPath useSandbox $
-    install verbosity
-            (configPackageDB' configFlags'')
-            (globalRepos globalFlags')
-            comp platform conf
-            Nothing -- FIXME
-            globalFlags' configFlags'' configExFlags' installFlags' haddockFlags'
-            targets
+  -- FIXME: Passing 'SandboxPackageInfo' unconditionally means that 'install'
+  -- will sometimes reinstall modified add-source deps. Probably not a big
+  -- problem since 'build', 'test' etc are already doing it.
+  maybeWithSandboxPackageInfo verbosity configFlags'' globalFlags'
+                              comp platform conf useSandbox $ \mSandboxPkgInfo ->
+                              maybeWithSandboxDirOnSearchPath useSandbox $
+      install verbosity
+              (configPackageDB' configFlags'')
+              (globalRepos globalFlags')
+              comp platform conf
+              useSandbox mSandboxPkgInfo
+              globalFlags' configFlags'' configExFlags'
+              installFlags' haddockFlags'
+              targets
+
+  where
+    -- FIXME: Should also check for absolute path and UserTargetLocalCabalFile.
+    containsCurrentDir targets = null targets
+                                 || (UserTargetLocalDir ".") `elem` targets
+
 
 testAction :: (TestFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
 testAction (testFlags, buildExFlags) extraArgs globalFlags = do
