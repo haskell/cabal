@@ -66,7 +66,7 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
          ( defaultCabalDir )
-import Distribution.Client.Sandbox.Types ( isUseSandbox )
+import Distribution.Client.Sandbox.Types ( SandboxPackageInfo(..), isUseSandbox )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
@@ -154,6 +154,7 @@ install
   -> Compiler
   -> Platform
   -> ProgramConfiguration
+  -> Maybe SandboxPackageInfo
   -> GlobalFlags
   -> ConfigFlags
   -> ConfigExFlags
@@ -161,18 +162,18 @@ install
   -> HaddockFlags
   -> [UserTarget]
   -> IO ()
-install verbosity packageDBs repos comp platform conf
+install verbosity packageDBs repos comp platform conf mSandboxPkgInfo
   globalFlags configFlags configExFlags installFlags haddockFlags
   userTargets0 = do
 
-    installContext <- makeInstallContext verbosity args userTargets0
+    installContext <- makeInstallContext verbosity args (Just userTargets0)
     installPlan    <- foldProgress logMsg die return =<<
                       makeInstallPlan verbosity args installContext
 
     processInstallPlan verbosity args installContext installPlan
   where
     args :: InstallArgs
-    args = (packageDBs, repos, comp, platform, conf,
+    args = (packageDBs, repos, comp, platform, conf, mSandboxPkgInfo,
             globalFlags, configFlags, configExFlags, installFlags,
             haddockFlags)
 
@@ -191,6 +192,7 @@ type InstallArgs = ( PackageDBStack
                    , Compiler
                    , Platform
                    , ProgramConfiguration
+                   , Maybe SandboxPackageInfo
                    , GlobalFlags
                    , ConfigFlags
                    , ConfigExFlags
@@ -198,24 +200,32 @@ type InstallArgs = ( PackageDBStack
                    , HaddockFlags )
 
 -- | Make an install context given install arguments.
-makeInstallContext :: Verbosity -> InstallArgs -> [UserTarget]
+makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
-  (packageDBs, repos, comp, _, conf,
-   globalFlags, _, _, _, _) userTargets0 = do
+  (packageDBs, repos, comp, _, conf,_,
+   globalFlags, _, _, _, _) mUserTargets = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
-    let -- For install, if no target is given it means we use the
-        -- current directory as the single target
-        userTargets | null userTargets0 = [UserTargetLocalDir "."]
-                    | otherwise         = userTargets0
+    (userTargets, pkgSpecifiers) <- case mUserTargets of
+      Nothing           ->
+        -- We want to distinguish between the case where the user has given an
+        -- empty list of targets on the command-line and the case where we
+        -- specifically want to have an empty list of targets.
+        return ([], [])
+      Just userTargets0 -> do
+        -- For install, if no target is given it means we use the current
+        -- directory as the single target.
+        let userTargets | null userTargets0 = [UserTargetLocalDir "."]
+                        | otherwise         = userTargets0
 
-    pkgSpecifiers <- resolveUserTargets verbosity
-                     (fromFlag $ globalWorldFile globalFlags)
-                     (packageIndex sourcePkgDb)
-                     userTargets
+        pkgSpecifiers <- resolveUserTargets verbosity
+                         (fromFlag $ globalWorldFile globalFlags)
+                         (packageIndex sourcePkgDb)
+                         userTargets
+        return (userTargets, pkgSpecifiers)
 
     return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers)
 
@@ -223,7 +233,7 @@ makeInstallContext verbosity
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                 -> IO (Progress String String InstallPlan)
 makeInstallPlan verbosity
-  (_, _, comp, platform, _,
+  (_, _, comp, platform, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
    _)
   (installedPkgIndex, sourcePkgDb,
@@ -232,15 +242,16 @@ makeInstallPlan verbosity
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerId comp)
     notice verbosity "Resolving dependencies..."
-    return $ planPackages comp platform solver configFlags configExFlags
-      installFlags installedPkgIndex sourcePkgDb pkgSpecifiers
+    return $ planPackages comp platform mSandboxPkgInfo solver
+      configFlags configExFlags installFlags
+      installedPkgIndex sourcePkgDb pkgSpecifiers
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> InstallPlan
                    -> IO ()
 processInstallPlan verbosity
-  args@(_, _, _, _, _, _, _, _, installFlags, _)
+  args@(_,_, _, _, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
    userTargets, pkgSpecifiers) installPlan = do
     checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
@@ -259,6 +270,7 @@ processInstallPlan verbosity
 
 planPackages :: Compiler
              -> Platform
+             -> Maybe SandboxPackageInfo
              -> Solver
              -> ConfigFlags
              -> ConfigExFlags
@@ -267,7 +279,8 @@ planPackages :: Compiler
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
-planPackages comp platform solver configFlags configExFlags installFlags
+planPackages comp platform mSandboxPkgInfo solver
+             configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
         resolveDependencies
@@ -317,7 +330,8 @@ planPackages comp platform solver configFlags configExFlags installFlags
 
       . (if reinstall then reinstallTargets else id)
 
-      $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
+      $ (maybe standardInstallPolicy sandboxInstallPolicy mSandboxPkgInfo)
+        installedPkgIndex sourcePkgDb pkgSpecifiers
 
     stanzas = concat
         [ if testsEnabled then [TestStanzas] else []
@@ -602,7 +616,7 @@ postInstallActions :: Verbosity
                    -> InstallPlan
                    -> IO ()
 postInstallActions verbosity
-  (packageDBs, _, comp, platform, conf, globalFlags, configFlags
+  (packageDBs, _, comp, platform, conf, _, globalFlags, configFlags
   , _, installFlags, _)
   targets installPlan = do
 
@@ -799,7 +813,7 @@ performInstallations :: Verbosity
                      -> InstallPlan
                      -> IO InstallPlan
 performInstallations verbosity
-  (packageDBs, _, comp, _, conf,
+  (packageDBs, _, comp, _, conf,_,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
