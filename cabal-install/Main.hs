@@ -512,8 +512,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     install verbosity
             (configPackageDB' configFlags'')
             (globalRepos globalFlags')
-            comp platform conf globalFlags' configFlags'' configExFlags'
-            installFlags' haddockFlags
+            comp platform conf
+            Nothing -- FIXME
+            globalFlags' configFlags'' configExFlags' installFlags' haddockFlags
             targets
 
 testAction :: (TestFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
