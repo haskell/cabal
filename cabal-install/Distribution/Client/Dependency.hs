@@ -34,7 +34,7 @@ module Distribution.Client.Dependency (
     PackageSpecifier(..),
 
     -- ** Sandbox policy
-    sandboxInstallPolicy,
+    applySandboxInstallPolicy,
 
     -- ** Extra policy options
     dontUpgradeBasePackage,
@@ -321,14 +321,12 @@ standardInstallPolicy
   $ basicDepResolverParams
       installedPkgIndex sourcePkgIndex
 
-sandboxInstallPolicy :: SandboxPackageInfo
-                     -> InstalledPackageIndex.PackageIndex
-                     -> SourcePackageDb
-                     -> [PackageSpecifier SourcePackage]
-                     -> DepResolverParams
-sandboxInstallPolicy
-    (SandboxPackageInfo modifiedDeps otherDeps allSandboxPkgs)
-    installedPkgIndex sourcePackageDb pkgSpecifiers
+applySandboxInstallPolicy :: SandboxPackageInfo
+                             -> DepResolverParams
+                             -> DepResolverParams
+applySandboxInstallPolicy
+  (SandboxPackageInfo modifiedDeps otherDeps allSandboxPkgs)
+  params
 
   = addPreferences [ PackageInstalledPreference n PreferInstalled
                    | n <- installedNotModified ]
@@ -347,7 +345,7 @@ sandboxInstallPolicy
   -- We don't need to add source packages for add-source deps to the
   -- 'installedPkgIndex' since 'getSourcePackages' did that for us.
 
-  $ standardInstallPolicy installedPkgIndex sourcePackageDb pkgSpecifiers
+  $ params
 
   where
     installedPkgIds =
