@@ -52,7 +52,7 @@ import Distribution.Client.SetupWrapper
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile )
 import Distribution.Client.Targets
-         ( UserTarget(UserTargetLocalDir), readUserTargets )
+         ( readUserTargets )
 import qualified Distribution.Client.List as List
          ( list, info )
 
@@ -80,7 +80,6 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,maybeWithSandboxPackageInfo
                                               ,WereDepsReinstalled(..)
                                               ,maybeReinstallAddSourceDeps
-                                              ,maybeUpdateSandboxConfig
                                               ,tryGetIndexFilePath
                                               ,sandboxBuildDir
 
@@ -230,9 +229,8 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   (comp, platform, conf) <- configCompilerAux configFlags'
 
   -- If we're working inside a sandbox and the user has set the -w option, we
-  -- may need to create a sandbox-local package DB for this compiler, rewrite
-  -- the 'with-compiler' and 'package-db' fields in the 'cabal.sandbox.config'
-  -- file and add a timestamp record for this compiler to the timestamp file.
+  -- may need to create a sandbox-local package DB for this compiler and add a
+  -- timestamp record for this compiler to the timestamp file.
   let configFlags''  = case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir
@@ -240,7 +238,6 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
-    maybeUpdateSandboxConfig verbosity config configFlags''
 
     indexFile     <- tryGetIndexFilePath config
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
@@ -463,6 +460,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                           (configUserInstall configFlags)
   targets <- readUserTargets verbosity extraArgs
 
+  -- TODO: It'd be nice if 'cabal install' picked up the '-w' flag passed to
+  -- 'configure' when run inside a sandbox.  Right now, running
+  --
+  -- $ cabal sandbox init && cabal configure -w /path/to/ghc
+  --   && cabal build && cabal install
+  --
+  -- performs the compilation twice unless you also pass -w to 'install'.
+  -- However, this is the same behaviour that 'cabal install' has in the normal
+  -- mode of operation, so we stick to it for consistency.
+
   let sandboxDistPref = case useSandbox of
         NoSandbox             -> NoFlag
         UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir
@@ -492,15 +499,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
       (compilerId comp) platform
 
-    -- If "." is among the targets, we may need to rewrite the 'with-compiler'
-    -- and 'package-db' fields in the 'cabal.sandbox.config' file (since the
-    -- current package will be configured with the new compiler).
-    when (containsCurrentDir targets) $
-      maybeUpdateSandboxConfig verbosity config configFlags''
-
-  -- FIXME: Passing 'SandboxPackageInfo' unconditionally means that 'install'
-  -- will sometimes reinstall modified add-source deps. Probably not a big
-  -- problem since 'build', 'test' etc are already doing it.
+  -- FIXME: Passing 'SandboxPackageInfo' to install unconditionally here means
+  -- that 'cabal install some-package' inside a sandbox will sometimes reinstall
+  -- modified add-source deps, even if they are not among the dependencies of
+  -- 'some-package'. Probably not a big problem since 'build', 'test' etc are
+  -- already reinstalling modified add-source deps.
   maybeWithSandboxPackageInfo verbosity configFlags'' globalFlags'
                               comp platform conf useSandbox $ \mSandboxPkgInfo ->
                               maybeWithSandboxDirOnSearchPath useSandbox $
@@ -512,12 +515,6 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               globalFlags' configFlags'' configExFlags'
               installFlags' haddockFlags'
               targets
-
-  where
-    -- FIXME: Should also check for absolute path and UserTargetLocalCabalFile.
-    containsCurrentDir targets = null targets
-                                 || (UserTargetLocalDir ".") `elem` targets
-
 
 testAction :: (TestFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
 testAction (testFlags, buildExFlags) extraArgs globalFlags = do
