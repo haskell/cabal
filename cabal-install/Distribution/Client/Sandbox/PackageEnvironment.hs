@@ -14,7 +14,6 @@ module Distribution.Client.Sandbox.PackageEnvironment (
   , PackageEnvironmentType(..)
   , classifyPackageEnvironment
   , createPackageEnvironment
-  , updatePackageEnvironment
   , tryLoadSandboxPackageEnvironment
   , readPackageEnvironmentFile
   , showPackageEnvironment
@@ -36,8 +35,7 @@ import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
                                        , defaultSandboxLocation )
-import Distribution.Simple.Compiler    ( Compiler, CompilerFlavor(..)
-                                       , PackageDB(..)
+import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
                                        , showCompilerId )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
                                        , fromPathTemplate, toPathTemplate )
@@ -338,33 +336,6 @@ createPackageEnvironment verbosity sandboxDir pkgEnvDir incComments
   commentPkgEnv <- commentPackageEnvironment sandboxDir
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
   writePackageEnvironmentFile path incComments commentPkgEnv initialPkgEnv
-
--- | Update the values of certain flags in the saved package environment. See
--- 'maybeUpdateSandboxConfig' in "Distribution.Client.Sandbox".
-updatePackageEnvironment :: Verbosity -> FilePath
-                            -> (Flag CompilerFlavor)
-                            -> (Flag FilePath)
-                            -> [Maybe PackageDB]
-                            -> IO ()
-updatePackageEnvironment verbosity pkgEnvDir
-                         newHcFlavor newHcPath newPackageDBs = do
-  let path = pkgEnvDir </> sandboxPackageEnvironmentFile
-  mPkgEnv   <- readPackageEnvironmentFile mempty path
-  oldPkgEnv <- handleParseResult verbosity path mPkgEnv
-  let oldSavedConfig = pkgEnvSavedConfig oldPkgEnv
-      oldConfigFlags = savedConfigureFlags oldSavedConfig
-      newConfigFlags = oldConfigFlags {
-        configHcFlavor   = newHcFlavor,
-        configHcPath     = newHcPath,
-        configPackageDBs = newPackageDBs
-        }
-      newSavedConfig = oldSavedConfig {
-        savedConfigureFlags = newConfigFlags
-        }
-      newPkgEnv      = oldPkgEnv {
-        pkgEnvSavedConfig = newSavedConfig
-        }
-  writePackageEnvironmentFile path NoComments mempty newPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
