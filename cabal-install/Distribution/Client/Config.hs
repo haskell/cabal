@@ -266,7 +266,7 @@ loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
         ("default config file",  Just `liftM` defaultConfigFile) ]
 
       getSource [] = error "no config file path candidate found."
-      getSource ((msg,action): xs) = 
+      getSource ((msg,action): xs) =
                         action >>= maybe (getSource xs) (return . (,) msg)
 
   (source, configFile) <- getSource sources
