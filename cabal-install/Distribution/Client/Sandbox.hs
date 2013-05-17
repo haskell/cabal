@@ -72,7 +72,8 @@ import Distribution.Simple.Configure          ( configCompilerAux
                                               , getPackageDBContents )
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramConfiguration )
-import Distribution.Simple.Setup              ( Flag(..), fromFlagOrDefault )
+import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
+                                              , fromFlagOrDefault )
 import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
@@ -467,8 +468,11 @@ reinstallAddSourceDeps :: Verbosity
                           -> IO WereDepsReinstalled
 reinstallAddSourceDeps verbosity config configFlags' configExFlags
                        installFlags globalFlags sandboxDir = topHandler' $ do
-  let configFlags       = configFlags'
-                          { configDistPref = Flag (sandboxBuildDir sandboxDir) }
+  let sandboxDistPref   = sandboxBuildDir sandboxDir
+      configFlags       = configFlags'
+                          { configDistPref  = Flag sandboxDistPref }
+      haddockFlags      = mempty
+                          { haddockDistPref = Flag sandboxDistPref }
   indexFile            <- tryGetIndexFilePath config
   buildTreeRefs        <- Index.listBuildTreeRefs verbosity
                           Index.DontListIgnored Index.OnlyLinks indexFile
@@ -494,7 +498,7 @@ reinstallAddSourceDeps verbosity config configFlags' configExFlags
                      ,(globalRepos globalFlags)
                      ,comp, platform, conf, Just sandboxPkgInfo
                      ,globalFlags, configFlags, configExFlags, installFlags
-                     ,mempty)
+                     ,haddockFlags)
 
           -- This can actually be replaced by a call to 'install', but we use a
           -- lower-level API because of layer separation reasons. Additionally,
