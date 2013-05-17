@@ -499,9 +499,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
       (compilerId comp) platform
 
-  -- FIXME: Passing 'SandboxPackageInfo' unconditionally means that 'install'
-  -- will sometimes reinstall modified add-source deps. Probably not a big
-  -- problem since 'build', 'test' etc are already doing it.
+  -- FIXME: Passing 'SandboxPackageInfo' to install unconditionally here means
+  -- that 'cabal install some-package' inside a sandbox will sometimes reinstall
+  -- modified add-source deps, even if they are not among the dependencies of
+  -- 'some-package'. Probably not a big problem since 'build', 'test' etc are
+  -- already reinstalling modified add-source deps.
   maybeWithSandboxPackageInfo verbosity configFlags'' globalFlags'
                               comp platform conf useSandbox $ \mSandboxPkgInfo ->
                               maybeWithSandboxDirOnSearchPath useSandbox $
