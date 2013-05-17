@@ -470,13 +470,17 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                           (configUserInstall configFlags)
   targets <- readUserTargets verbosity extraArgs
 
-  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
-      configExFlags' = defaultConfigExFlags         `mappend`
-                       savedConfigureExFlags config `mappend` configExFlags
-      installFlags'  = defaultInstallFlags          `mappend`
-                       savedInstallFlags     config `mappend` installFlags
+  let sandboxDistPref = case useSandbox of
+        NoSandbox             -> NoFlag
+        UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir
+      configFlags'    = savedConfigureFlags   config `mappend` configFlags
+      configExFlags'  = defaultConfigExFlags         `mappend`
+                        savedConfigureExFlags config `mappend` configExFlags
+      installFlags'   = defaultInstallFlags          `mappend`
+                        savedInstallFlags     config `mappend` installFlags
                        { installUseSandbox = useSandbox }
-      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
+      globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
+      haddockFlags'   = haddockFlags { haddockDistPref = sandboxDistPref }
   (comp, platform, conf) <- configCompilerAux' configFlags'
 
   -- If we're working inside a sandbox and the user has set the -w option, we
@@ -486,7 +490,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
         NoSandbox               -> configAbsolutePaths $ configFlags'
         (UseSandbox sandboxDir) ->
           return $ (setPackageDB sandboxDir comp platform configFlags') {
-            configDistPref = Flag (sandboxBuildDir sandboxDir)
+            configDistPref = sandboxDistPref
             }
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
@@ -514,7 +518,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
             (globalRepos globalFlags')
             comp platform conf
             Nothing -- FIXME
-            globalFlags' configFlags'' configExFlags' installFlags' haddockFlags
+            globalFlags' configFlags'' configExFlags' installFlags' haddockFlags'
             targets
 
 testAction :: (TestFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
