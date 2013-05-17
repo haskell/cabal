@@ -16,6 +16,7 @@ import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.Types (SourcePackage)
 
 import Data.Monoid
+import qualified Data.Set as S
 
 -- | Are we using a sandbox?
 data UseSandbox = UseSandbox FilePath | NoSandbox
@@ -50,8 +51,11 @@ data SandboxPackageInfo = SandboxPackageInfo {
   -- ^ Remaining add-source deps. Some of these may be not installed in the
   -- sandbox.
 
-  otherInstalledSandboxPackages :: InstalledPackageIndex.PackageIndex
+  otherInstalledSandboxPackages :: InstalledPackageIndex.PackageIndex,
   -- ^ All packages installed in the sandbox. Intersection with
   -- 'modifiedAddSourceDependencies' and/or 'otherAddSourceDependencies' can be
   -- non-empty.
+
+  allAddSourceDependencies :: S.Set FilePath
+  -- ^ A set of paths to all add-source dependencies, for convenience.
   }

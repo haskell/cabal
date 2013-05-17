@@ -325,7 +325,7 @@ applySandboxInstallPolicy :: SandboxPackageInfo
                              -> DepResolverParams
                              -> DepResolverParams
 applySandboxInstallPolicy
-  (SandboxPackageInfo modifiedDeps otherDeps allSandboxPkgs)
+  (SandboxPackageInfo modifiedDeps otherDeps allSandboxPkgs _allDeps)
   params
 
   = addPreferences [ PackageInstalledPreference n PreferInstalled

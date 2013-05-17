@@ -27,6 +27,9 @@ module Distribution.Client.Sandbox (
     maybeReinstallAddSourceDeps,
     maybeUpdateSandboxConfig,
 
+    SandboxPackageInfo(..),
+    maybeWithSandboxPackageInfo,
+
     tryGetIndexFilePath,
     sandboxBuildDir,
     getInstalledPackagesInSandbox,
@@ -39,10 +42,10 @@ import Distribution.Client.Setup
   ( SandboxFlags(..), ConfigFlags(..), ConfigExFlags(..), InstallFlags(..)
   , GlobalFlags(..), defaultConfigExFlags, defaultInstallFlags
   , defaultSandboxLocation, globalRepos )
-import Distribution.Client.Sandbox.Timestamp  ( maybeAddCompilerTimestampRecord
+import Distribution.Client.Sandbox.Timestamp  ( listModifiedDeps
+                                              , maybeAddCompilerTimestampRecord
                                               , withAddTimestamps
-                                              , withRemoveTimestamps
-                                              , withModifiedDeps )
+                                              , withRemoveTimestamps )
 import Distribution.Client.Config             ( SavedConfig(..), loadConfig )
 import Distribution.Client.Dependency         ( foldProgress )
 import Distribution.Client.IndexUtils         ( BuildTreeRefType(..) )
@@ -90,12 +93,13 @@ import qualified Distribution.Client.Sandbox.Index as Index
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import qualified Distribution.Simple.Register      as Register
 import qualified Data.Map                          as M
+import qualified Data.Set                          as S
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
 import Data.Bits                              ( shiftL, shiftR, xor )
 import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
-import Data.List                              ( (\\), delete, foldl' )
+import Data.List                              ( delete, foldl' )
 import Data.Monoid                            ( mempty, mappend )
 import Data.Word                              ( Word32 )
 import Numeric                                ( showHex )
@@ -167,8 +171,13 @@ tryLoadSandboxConfig verbosity configFileFlag = do
 
 -- | Return the name of the package index file for this package environment.
 tryGetIndexFilePath :: SavedConfig -> IO FilePath
-tryGetIndexFilePath config = do
-  let paths = globalLocalRepos . savedGlobalFlags $ config
+tryGetIndexFilePath config = tryGetIndexFilePath' (savedGlobalFlags config)
+
+-- | The same as 'tryGetIndexFilePath', but takes 'GlobalFlags' instead of
+-- 'SavedConfig'.
+tryGetIndexFilePath' :: GlobalFlags -> IO FilePath
+tryGetIndexFilePath' globalFlags = do
+  let paths = globalLocalRepos globalFlags
   case paths of
     []  -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "no local repos found. " ++ checkConfiguration
@@ -461,55 +470,42 @@ data WereDepsReinstalled = ReinstalledSomeDeps | NoDepsReinstalled
 -- | Reinstall those add-source dependencies that have been modified since
 -- we've last installed them. Assumes that we're working inside a sandbox.
 reinstallAddSourceDeps :: Verbosity
-                          -> SavedConfig
                           -> ConfigFlags  -> ConfigExFlags
                           -> InstallFlags -> GlobalFlags
                           -> FilePath
                           -> IO WereDepsReinstalled
-reinstallAddSourceDeps verbosity config configFlags' configExFlags
+reinstallAddSourceDeps verbosity configFlags' configExFlags
                        installFlags globalFlags sandboxDir = topHandler' $ do
-  let sandboxDistPref   = sandboxBuildDir sandboxDir
-      configFlags       = configFlags'
-                          { configDistPref  = Flag sandboxDistPref }
-      haddockFlags      = mempty
-                          { haddockDistPref = Flag sandboxDistPref }
-  indexFile            <- tryGetIndexFilePath config
-  buildTreeRefs        <- Index.listBuildTreeRefs verbosity
-                          Index.DontListIgnored Index.OnlyLinks indexFile
-  retVal               <- newIORef NoDepsReinstalled
+  let sandboxDistPref     = sandboxBuildDir sandboxDir
+      configFlags         = configFlags'
+                            { configDistPref  = Flag sandboxDistPref }
+      haddockFlags        = mempty
+                            { haddockDistPref = Flag sandboxDistPref }
+  (comp, platform, conf) <- configCompilerAux' configFlags
+  retVal                 <- newIORef NoDepsReinstalled
 
-  unless (null buildTreeRefs) $ do
-    (comp, platform, conf) <- configCompilerAux' configFlags
-    let compId              = compilerId comp
+  withSandboxPackageInfo verbosity configFlags globalFlags
+                         comp platform conf sandboxDir $ \sandboxPkgInfo ->
+    unless (null $ modifiedAddSourceDependencies sandboxPkgInfo) $ do
 
-    withModifiedDeps verbosity sandboxDir compId platform $ \modifiedDeps -> do
-      assert (null $ modifiedDeps \\ buildTreeRefs) (return ())
-      unless (null modifiedDeps) $ do
-        sandboxPkgInfo <- makeSandboxPackageInfo verbosity configFlags
-                          comp conf buildTreeRefs modifiedDeps
-        let modifiedAndInstalledDeps = modifiedAddSourceDependencies
-                                       sandboxPkgInfo
+      let args :: InstallArgs
+          args = ((configPackageDB' configFlags)
+                 ,(globalRepos globalFlags)
+                 ,comp, platform, conf
+                 ,UseSandbox sandboxDir, Just sandboxPkgInfo
+                 ,globalFlags, configFlags, configExFlags, installFlags
+                 ,haddockFlags)
 
-        unless (null modifiedAndInstalledDeps) $ do
-          notice verbosity "Installing add-source dependencies..."
+      -- This can actually be replaced by a call to 'install', but we use a
+      -- lower-level API because of layer separation reasons. Additionally, we
+      -- might want to use some lower-level features this in the future.
+      withSandboxBinDirOnSearchPath sandboxDir $ do
+        installContext <- makeInstallContext verbosity args Nothing
+        installPlan    <- foldProgress logMsg die return =<<
+                          makeInstallPlan verbosity args installContext
 
-          let args :: InstallArgs
-              args = ((configPackageDB' configFlags)
-                     ,(globalRepos globalFlags)
-                     ,comp, platform, conf, Just sandboxPkgInfo
-                     ,globalFlags, configFlags, configExFlags, installFlags
-                     ,haddockFlags)
-
-          -- This can actually be replaced by a call to 'install', but we use a
-          -- lower-level API because of layer separation reasons. Additionally,
-          -- we might want to extend this in the future.
-          withSandboxBinDirOnSearchPath sandboxDir $ do
-            installContext <- makeInstallContext verbosity args Nothing
-            installPlan    <- foldProgress logMsg die return =<<
-                              makeInstallPlan verbosity args installContext
-
-            processInstallPlan verbosity args installContext installPlan
-            writeIORef retVal ReinstalledSomeDeps
+        processInstallPlan verbosity args installContext installPlan
+        writeIORef retVal ReinstalledSomeDeps
 
   readIORef retVal
 
@@ -522,24 +518,34 @@ reinstallAddSourceDeps verbosity config configFlags' configExFlags
         -- to be conservative.
         return ReinstalledSomeDeps
 
--- | Given a list of all add-source deps and a list of modified add-source deps,
--- produce a 'SandboxPackageInfo'.
-makeSandboxPackageInfo :: Verbosity -> ConfigFlags
-                          -> Compiler -> ProgramConfiguration
-                          -> [FilePath] -> [FilePath]
-                          -> IO SandboxPackageInfo
-makeSandboxPackageInfo verbosity configFlags comp conf
-                       allAddSourceDeps modifiedAddSourceDeps = do
+-- | Produce a 'SandboxPackageInfo' and feed it to the given action. Note that
+-- we don't update the timestamp file here - this is done in
+-- 'postInstallActions'.
+withSandboxPackageInfo :: Verbosity -> ConfigFlags -> GlobalFlags
+                          -> Compiler -> Platform -> ProgramConfiguration
+                          -> FilePath
+                          -> (SandboxPackageInfo -> IO ())
+                          -> IO ()
+withSandboxPackageInfo verbosity configFlags globalFlags
+                       comp platform conf sandboxDir cont = do
+  -- List all add-source deps.
+  indexFile              <- tryGetIndexFilePath' globalFlags
+  buildTreeRefs          <- Index.listBuildTreeRefs verbosity
+                            Index.DontListIgnored Index.OnlyLinks indexFile
+  let allAddSourceDepsSet = S.fromList buildTreeRefs
+
   -- List all packages installed in the sandbox.
   installedPkgIndex <- getInstalledPackagesInSandbox verbosity
                        configFlags comp conf
 
-  -- Get the package descriptions of all add-source deps.
-  depsCabalFiles <- mapM findPackageDesc allAddSourceDeps
+  -- Get the package descriptions for all add-source deps.
+  depsCabalFiles <- mapM findPackageDesc buildTreeRefs
   depsPkgDescs   <- mapM (readPackageDescription verbosity) depsCabalFiles
-  let depsMap     = M.fromList (zip allAddSourceDeps depsPkgDescs)
+  let depsMap     = M.fromList (zip buildTreeRefs depsPkgDescs)
 
   -- Get the package ids of modified (and installed) add-source deps.
+  modifiedAddSourceDeps <- listModifiedDeps verbosity sandboxDir
+                           (compilerId comp) platform
   let isInstalled pkgid = not . null
         . InstalledPackageIndex.lookupSourcePackageId installedPkgIndex $ pkgid
       isModified path   = path `elem` modifiedAddSourceDeps
@@ -548,16 +554,38 @@ makeSandboxPackageInfo verbosity configFlags comp conf
         depsMap
       modifiedDeps      = M.assocs modifiedDepsMap
 
+  assert (all (`S.member` allAddSourceDepsSet) modifiedAddSourceDeps) (return ())
+  unless (null modifiedDeps) $
+    notice verbosity $ "Some add-source dependencies have been modified. "
+                       ++ "They will be reinstalled..."
+
   -- Get the package ids of the remaining add-source deps (some are possibly not
   -- installed).
-  let otherDeps        = M.assocs (depsMap `M.difference` modifiedDepsMap)
+  let otherDeps         = M.assocs (depsMap `M.difference` modifiedDepsMap)
 
-  return $ SandboxPackageInfo (map toSourcePackage modifiedDeps)
-    (map toSourcePackage otherDeps) installedPkgIndex
+  -- Finally, assemble a 'SandboxPackageInfo'.
+  cont $ SandboxPackageInfo (map toSourcePackage modifiedDeps)
+    (map toSourcePackage otherDeps) installedPkgIndex allAddSourceDepsSet
 
-    where
-      toSourcePackage (path, pkgDesc) = SourcePackage
-        (packageId pkgDesc) pkgDesc (LocalUnpackedPackage path) Nothing
+  where
+    toSourcePackage (path, pkgDesc) = SourcePackage
+      (packageId pkgDesc) pkgDesc (LocalUnpackedPackage path) Nothing
+
+-- | Same as 'withSandboxPackageInfo' if we're inside a sandbox and a no-op
+-- otherwise.
+maybeWithSandboxPackageInfo :: Verbosity -> ConfigFlags -> GlobalFlags
+                               -> Compiler -> Platform -> ProgramConfiguration
+                               -> UseSandbox
+                               -> (Maybe SandboxPackageInfo -> IO ())
+                               -> IO ()
+maybeWithSandboxPackageInfo verbosity configFlags globalFlags
+                            comp platform conf useSandbox cont =
+  case useSandbox of
+    NoSandbox             -> cont Nothing
+    UseSandbox sandboxDir -> withSandboxPackageInfo verbosity
+                             configFlags globalFlags
+                             comp platform conf sandboxDir
+                             (\spi -> cont (Just spi))
 
 -- | Check if a sandbox is present and call @reinstallAddSourceDeps@ in that
 -- case.
@@ -598,8 +626,7 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags' globalFlags' = do
                                `mappend` savedInstallFlags config
               installFlags   = installFlags' {
                 installNumJobs    = installNumJobs installFlags'
-                                    `mappend` numJobsFlag,
-                installUseSandbox = useSandbox
+                                    `mappend` numJobsFlag
                 }
               globalFlags    = savedGlobalFlags config
               -- This makes it possible to override things like
@@ -608,7 +635,7 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags' globalFlags' = do
               -- fine.
                                `mappend` globalFlags'
 
-          depsReinstalled <- reinstallAddSourceDeps verbosity config
+          depsReinstalled <- reinstallAddSourceDeps verbosity
                              configFlags configExFlags installFlags globalFlags
                              sandboxDir
           return (useSandbox, depsReinstalled)
