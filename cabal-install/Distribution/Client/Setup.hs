@@ -45,8 +45,6 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..) )
-import Distribution.Client.Sandbox.Types
-         ( UseSandbox(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -778,8 +776,7 @@ data InstallFlags = InstallFlags {
     installBuildReports     :: Flag ReportLevel,
     installSymlinkBinDir    :: Flag FilePath,
     installOneShot          :: Flag Bool,
-    installNumJobs          :: Flag (Maybe Int),
-    installUseSandbox       :: UseSandbox
+    installNumJobs          :: Flag (Maybe Int)
   }
 
 defaultInstallFlags :: InstallFlags
@@ -803,8 +800,7 @@ defaultInstallFlags = InstallFlags {
     installBuildReports    = Flag NoReports,
     installSymlinkBinDir   = mempty,
     installOneShot         = Flag False,
-    installNumJobs         = mempty,
-    installUseSandbox      = mempty
+    installNumJobs         = mempty
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
@@ -996,8 +992,7 @@ instance Monoid InstallFlags where
     installBuildReports    = mempty,
     installSymlinkBinDir   = mempty,
     installOneShot         = mempty,
-    installNumJobs         = mempty,
-    installUseSandbox      = mempty
+    installNumJobs         = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation   = combine installDocumentation,
@@ -1019,8 +1014,7 @@ instance Monoid InstallFlags where
     installBuildReports    = combine installBuildReports,
     installSymlinkBinDir   = combine installSymlinkBinDir,
     installOneShot         = combine installOneShot,
-    installNumJobs         = combine installNumJobs,
-    installUseSandbox      = combine installUseSandbox
+    installNumJobs         = combine installNumJobs
   }
     where combine field = field a `mappend` field b
 
