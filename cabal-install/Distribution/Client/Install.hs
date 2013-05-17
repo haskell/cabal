@@ -328,9 +328,11 @@ planPackages comp platform mSandboxPkgInfo solver
           [ PackageConstraintStanzas (pkgSpecifierTarget pkgSpecifier) stanzas
           | pkgSpecifier <- pkgSpecifiers ]
 
+      . maybe id applySandboxInstallPolicy mSandboxPkgInfo
+
       . (if reinstall then reinstallTargets else id)
 
-      $ (maybe standardInstallPolicy sandboxInstallPolicy mSandboxPkgInfo)
+      $ standardInstallPolicy
         installedPkgIndex sourcePkgDb pkgSpecifiers
 
     stanzas = concat
