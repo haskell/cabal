@@ -452,13 +452,6 @@ installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installAction (configFlags, _, installFlags, _) _ _globalFlags
   | fromFlagOrDefault False (installOnly installFlags)
   = let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    -- TODO: It'd be nice if this picked up the '-w' flag passed to
-    -- 'configure'.  Right now, running
-    --
-    -- $ cabal sandbox init && cabal configure -w /path/to/ghc
-    --   && cabal build && cabal install
-    --
-    -- performs the compilation twice unless you also pass -w to 'install'.
     in setupWrapper verbosity defaultSetupScriptOptions Nothing
          installCommand (const mempty) []
 
