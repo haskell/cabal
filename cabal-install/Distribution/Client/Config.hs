@@ -50,6 +50,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
          , installDirsOptions
+         , programConfigurationPaths, programConfigurationOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
@@ -496,28 +497,49 @@ parseConfig initial = \str -> do
   config <- parse others
   let user0   = savedUserInstallDirs config
       global0 = savedGlobalInstallDirs config
-  (user, global) <- foldM parseSections (user0, global0) knownSections
+  (user, global, paths, args) <-
+    foldM parseSections (user0, global0, [], []) knownSections
   return config {
+    savedConfigureFlags    = (savedConfigureFlags config) {
+       configProgramPaths  = paths,
+       configProgramArgs   = args
+       },
     savedUserInstallDirs   = user,
     savedGlobalInstallDirs = global
   }
 
   where
-    isKnownSection (ParseUtils.Section _ "install-dirs" _ _) = True
-    isKnownSection _                                          = False
+    isKnownSection (ParseUtils.Section _ "install-dirs" _ _)            = True
+    isKnownSection (ParseUtils.Section _ "program-locations" _ _)       = True
+    isKnownSection (ParseUtils.Section _ "program-default-options" _ _) = True
+    isKnownSection _                                                    = False
 
     parse = parseFields (configFieldDescriptions
                       ++ deprecatedFieldDescriptions) initial
 
-    parseSections accum@(u,g) (ParseUtils.Section _ "install-dirs" name fs)
+    parseSections accum@(u,g,p,a) (ParseUtils.Section _ "install-dirs" name fs)
       | name' == "user"   = do u' <- parseFields installDirsFields u fs
-                               return (u', g)
+                               return (u', g, p, a)
       | name' == "global" = do g' <- parseFields installDirsFields g fs
-                               return (u, g')
+                               return (u, g', p, a)
       | otherwise         = do
           warning "The install-paths section should be for 'user' or 'global'"
           return accum
       where name' = lowercase name
+    parseSections accum@(u,g,p,a)
+                 (ParseUtils.Section _ "program-locations" name fs)
+      | name == ""        = do p' <- parseFields withProgramsFields p fs
+                               return (u, g, p', a)
+      | otherwise         = do
+          warning "The 'program-locations' section should be unnamed"
+          return accum
+    parseSections accum@(u, g, p, a)
+                  (ParseUtils.Section _ "program-default-options" name fs)
+      | name == ""        = do a' <- parseFields withProgramOptionsFields a fs
+                               return (u, g, p, a')
+      | otherwise         = do
+          warning "The 'program-default-options' section should be unnamed"
+          return accum
     parseSections accum f = do
       warning $ "Unrecognized stanza on line " ++ show (lineNo f)
       return accum
@@ -532,11 +554,35 @@ showConfigWithComments comment vals = Disp.render $
   $+$ installDirsSection "user"   savedUserInstallDirs
   $+$ Disp.text ""
   $+$ installDirsSection "global" savedGlobalInstallDirs
+  $+$ Disp.text ""
+  $+$ configFlagsSection "program-locations" withProgramsFields
+                         configProgramPaths
+  $+$ Disp.text ""
+  $+$ configFlagsSection "program-default-options" withProgramOptionsFields
+                         configProgramArgs
   where
     mcomment = Just comment
     installDirsSection name field =
       ppSection "install-dirs" name installDirsFields
                 (fmap field mcomment) (field vals)
+    configFlagsSection name fields field =
+      ppSection name "" fields
+               (fmap (field . savedConfigureFlags) mcomment)
+               ((field . savedConfigureFlags) vals)
+
 
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
+
+-- | Fields for the 'program-locations' section.
+withProgramsFields :: [FieldDescr [(String, FilePath)]]
+withProgramsFields =
+  map viewAsFieldDescr $
+  programConfigurationPaths defaultProgramConfiguration ParseArgs id (++)
+
+-- | Fields for the 'program-default-options' section.
+withProgramOptionsFields :: [FieldDescr [(String, [String])]]
+withProgramOptionsFields =
+  map viewAsFieldDescr $
+  programConfigurationOptions' (++ "-location") defaultProgramConfiguration
+                               ParseArgs id (++)

@@ -78,6 +78,7 @@ module Distribution.Simple.Setup (
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
   buildOptions, installDirsOptions,
+  programConfigurationOptions, programConfigurationPaths',
 
   defaultDistPref,
 
@@ -349,9 +350,10 @@ configureCommand progConf = makeCommand name shortDesc
          configureOptions showOrParseArgs
       ++ programConfigurationPaths   progConf showOrParseArgs
            configProgramPaths (\v fs -> fs { configProgramPaths = v })
+      ++ programConfigurationOption progConf showOrParseArgs
+           configProgramArgs (\v fs -> fs { configProgramArgs = v })
       ++ programConfigurationOptions progConf showOrParseArgs
            configProgramArgs (\v fs -> fs { configProgramArgs = v })
-
 
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions showOrParseArgs =
@@ -1146,6 +1148,8 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
       ]
       ++ programConfigurationPaths   progConf ParseArgs
              haddockProgramPaths (\v flags -> flags { haddockProgramPaths = v})
+      ++ programConfigurationOption  progConf showOrParseArgs
+             haddockProgramArgs (\v fs -> fs { haddockProgramArgs = v })
       ++ programConfigurationOptions progConf ParseArgs
              haddockProgramArgs  (\v flags -> flags { haddockProgramArgs = v})
     progConf = addKnownProgram haddockProgram
@@ -1288,6 +1292,9 @@ buildOptions progConf showOrParseArgs =
 
   : programConfigurationPaths   progConf showOrParseArgs
   buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
+
+  ++ programConfigurationOption progConf showOrParseArgs
+  buildProgramArgs (\v fs -> fs { buildProgramArgs = v })
 
   ++ programConfigurationOptions progConf showOrParseArgs
   buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
@@ -1522,6 +1529,8 @@ programFlagsDescription progConf =
      [ programName prog | (prog, _) <- knownPrograms progConf ]
   ++ "\n"
 
+-- | For each known program @PROG@ in 'progConf', produce a @with-PROG@
+-- 'OptionField'.
 programConfigurationPaths
   :: ProgramConfiguration
   -> ShowOrParseArgs
@@ -1529,6 +1538,17 @@ programConfigurationPaths
   -> ([(String, FilePath)] -> (flags -> flags))
   -> [OptionField flags]
 programConfigurationPaths progConf showOrParseArgs get set =
+  programConfigurationPaths' ("with-" ++) progConf showOrParseArgs get set
+
+-- | Like 'programConfigurationPaths', but allows to customise the option name.
+programConfigurationPaths'
+  :: (String -> String)
+  -> ProgramConfiguration
+  -> ShowOrParseArgs
+  -> (flags -> [(String, FilePath)])
+  -> ([(String, FilePath)] -> (flags -> flags))
+  -> [OptionField flags]
+programConfigurationPaths' mkName progConf showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
     ShowArgs  -> [withProgramPath "PROG"]
@@ -1536,33 +1556,27 @@ programConfigurationPaths progConf showOrParseArgs get set =
                  (knownPrograms progConf)
   where
     withProgramPath prog =
-      option "" ["with-" ++ prog]
+      option "" [mkName prog]
         ("give the path to " ++ prog)
         get set
         (reqArg' "PATH" (\path -> [(prog, path)])
           (\progPaths -> [ path | (prog', path) <- progPaths, prog==prog' ]))
 
-programConfigurationOptions
+-- | For each known program @PROG@ in 'progConf', produce a @PROG-option@
+-- 'OptionField'.
+programConfigurationOption
   :: ProgramConfiguration
   -> ShowOrParseArgs
   -> (flags -> [(String, [String])])
   -> ([(String, [String])] -> (flags -> flags))
   -> [OptionField flags]
-programConfigurationOptions progConf showOrParseArgs get set =
+programConfigurationOption progConf showOrParseArgs get set =
   case showOrParseArgs of
     -- we don't want a verbose help text list so we just show a generic one:
-    ShowArgs  -> [programOptions  "PROG", programOption   "PROG"]
-    ParseArgs -> map (programOptions . programName . fst)
-                 (knownPrograms progConf)
-              ++ map (programOption  . programName . fst)
+    ShowArgs  -> [programOption "PROG"]
+    ParseArgs -> map (programOption  . programName . fst)
                  (knownPrograms progConf)
   where
-    programOptions prog =
-      option "" [prog ++ "-options"]
-        ("give extra options to " ++ prog)
-        get set
-        (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
-
     programOption prog =
       option "" [prog ++ "-option"]
         ("give an extra option to " ++ prog ++
@@ -1572,6 +1586,26 @@ programConfigurationOptions progConf showOrParseArgs get set =
            (\progArgs -> concat [ args
                                 | (prog', args) <- progArgs, prog==prog' ]))
 
+-- | For each known program @PROG@ in 'progConf', produce a @PROG-options@
+-- 'OptionField'.
+programConfigurationOptions
+  :: ProgramConfiguration
+  -> ShowOrParseArgs
+  -> (flags -> [(String, [String])])
+  -> ([(String, [String])] -> (flags -> flags))
+  -> [OptionField flags]
+programConfigurationOptions progConf showOrParseArgs get set =
+  case showOrParseArgs of
+    -- we don't want a verbose help text list so we just show a generic one:
+    ShowArgs  -> [programOptions  "PROG"]
+    ParseArgs -> map (programOptions . programName . fst)
+                 (knownPrograms progConf)
+  where
+    programOptions prog =
+      option "" [prog ++ "-options"]
+        ("give extra options to " ++ prog)
+        get set
+        (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils
