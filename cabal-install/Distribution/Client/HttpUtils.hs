@@ -11,7 +11,7 @@ module Distribution.Client.HttpUtils (
 
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
-         , Header(..), HeaderName(..) )
+         , Header(..), HeaderName(..), lookupHeader )
 import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
 import Network.URI
          ( URI (..), URIAuth (..) )
@@ -35,6 +35,10 @@ import Distribution.Text
 import Data.Char ( isSpace )
 import qualified System.FilePath.Posix as FilePath.Posix
          ( splitDirectories )
+import System.FilePath
+         ( (<.>) )
+import System.Directory
+         ( doesFileExist )
 
 -- Trime
 trim :: String -> String
@@ -53,17 +57,18 @@ proxy _verbosity = do
       if uri' == "" then NoProxy else Proxy uri' auth
     _ -> p
 
-mkRequest :: URI -> Request ByteString
-mkRequest uri = Request{ rqURI     = uri
-                       , rqMethod  = GET
-                       , rqHeaders = [Header HdrUserAgent userAgent]
-                       , rqBody    = ByteString.empty }
+mkRequest :: URI -> Maybe String -> Request ByteString
+mkRequest uri etag = Request{ rqURI     = uri
+                            , rqMethod  = GET
+                            , rqHeaders = Header HdrUserAgent userAgent : ifNoneMatchHdr
+                            , rqBody    = ByteString.empty }
   where userAgent = "cabal-install/" ++ display Paths_cabal_install.version
+        ifNoneMatchHdr = maybe [] (\t -> [Header HdrIfNoneMatch t]) etag
 
 -- |Carry out a GET request, using the local proxy settings
-getHTTP :: Verbosity -> URI -> IO (Result (Response ByteString))
-getHTTP verbosity uri = liftM (\(_, resp) -> Right resp) $
-                              cabalBrowse verbosity (return ()) (request (mkRequest uri))
+getHTTP :: Verbosity -> URI -> Maybe String -> IO (Result (Response ByteString))
+getHTTP verbosity uri etag = liftM (\(_, resp) -> Right resp) $
+                                   cabalBrowse verbosity (return ()) (request (mkRequest uri etag))
 
 cabalBrowse :: Verbosity
             -> BrowserAction s ()
@@ -86,25 +91,36 @@ downloadURI :: Verbosity
 downloadURI verbosity uri path | uriScheme uri == "file:" =
   copyFileVerbose verbosity (uriPath uri) path
 downloadURI verbosity uri path = do
-  result <- getHTTP verbosity uri
+  let etagPath = path <.> "etag"
+  etagPathExists <- doesFileExist etagPath
+  etag <- if etagPathExists
+            then liftM Just $ readFile etagPath
+            else return Nothing
+
+  result <- getHTTP verbosity uri etag
   let result' = case result of
         Left  err -> Left err
         Right rsp -> case rspCode rsp of
-          (2,0,0) -> Right (rspBody rsp)
-          (a,b,c) -> Left err
+          (2,0,0) -> Right rsp
+          (3,0,4) -> Left . ErrorMisc $ "Repo ETag matches. Nothing to do."
+          (a,b,c) -> Left . ErrorMisc $ "Failed to download " ++ show uri ++ " : " ++ err
             where
-              err = ErrorMisc $ "Unsucessful HTTP code: "
-                             ++ concatMap show [a,b,c]
+              err = "Unsucessful HTTP code: " ++ concatMap show [a,b,c]
 
   case result' of
-    Left err   -> die $ "Failed to download " ++ show uri ++ " : " ++ show err
-    Right body -> do
+    Left _ -> return ()
+    Right rsp -> case lookupHeader HdrETag (rspHeaders rsp) of
+      Nothing -> return ()
+      Just newEtag -> writeFile etagPath newEtag
+
+  case result' of
+    Left err   -> die $ show err
+    Right rsp -> do
       info verbosity ("Downloaded to " ++ path)
-      writeFileAtomic path body
+      writeFileAtomic path $ rspBody rsp
       --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.
-      --      remember the ETag so we can not re-download if nothing changed.
 
 -- Utility function for legacy support.
 isOldHackageURI :: URI -> Bool
