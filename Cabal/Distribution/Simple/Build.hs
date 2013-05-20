@@ -130,8 +130,6 @@ build    :: PackageDescription  -- ^ Mostly information from the .cabal file
          -> [ PPSuffixHandler ] -- ^ preprocessors to run before compiling
          -> IO ()
 build pkg_descr lbi flags suffixes = do
-  let distPref  = fromFlag (buildDistPref flags)
-      verbosity = fromFlag (buildVerbosity flags)
 
   targets  <- readBuildTargets pkg_descr (buildArgs flags)
   targets' <- checkBuildTargets verbosity pkg_descr targets
@@ -144,17 +142,27 @@ build pkg_descr lbi flags suffixes = do
     -- Only bother with this message if we're building the whole package
     setupMessage verbosity "Building" (packageId pkg_descr)
 
+  -- Create internal package db on which the build will operate
   internalPackageDB <- createInternalPackageDB distPref
 
-  withComponentsInBuildOrder pkg_descr lbi componentsToBuild $ \comp clbi ->
-    let bi     = componentBuildInfo comp
-        progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
-        lbi'   = lbi {
-                   withPrograms  = progs',
-                   withPackageDB = withPackageDB lbi ++ [internalPackageDB]
-                 }
-    in buildComponent verbosity (buildNumJobs flags) pkg_descr
-                      lbi' suffixes comp clbi distPref
+  -- Build all components passed in
+  withComponentsInBuildOrder pkg_descr lbi componentsToBuild
+                             (buildComponentInternal internalPackageDB)
+
+  where
+    distPref  = fromFlag (buildDistPref flags)
+    verbosity = fromFlag (buildVerbosity flags)
+
+    -- Builds the component against the internal package db
+    buildComponentInternal internalPackageDB comp clbi = do
+      let bi     = componentBuildInfo comp
+          progs' = addInternalBuildTools pkg_descr lbi bi (withPrograms lbi)
+          lbi'   = lbi {
+                     withPrograms  = progs',
+                     withPackageDB = withPackageDB lbi ++ [internalPackageDB]
+                   }
+      buildComponent verbosity (buildNumJobs flags) pkg_descr
+                     lbi' suffixes comp clbi distPref
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file
