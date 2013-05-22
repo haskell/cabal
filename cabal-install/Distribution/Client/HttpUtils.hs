@@ -129,7 +129,7 @@ downloadURI verbosity uri path = do
       (2,0,0) -> do
         info verbosity ("Downloaded to " ++ path)
         writeFileAtomic path $ rspBody rsp
-      (3,0,4) -> notice verbosity "Skipping download: Local and remote repositories match."
+      (3,0,4) -> notice verbosity "Skipping download: Local and remote files match."
       (_,_,_) -> return ()
       --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
