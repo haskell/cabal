@@ -57,7 +57,9 @@ proxy _verbosity = do
       if uri' == "" then NoProxy else Proxy uri' auth
     _ -> p
 
-mkRequest :: URI -> Maybe String -> Request ByteString
+mkRequest :: URI
+          -> Maybe String -- ^ optional etag to be set in the If-None-Match HTTP header
+          -> Request ByteString
 mkRequest uri etag = Request{ rqURI     = uri
                             , rqMethod  = GET
                             , rqHeaders = Header HdrUserAgent userAgent : ifNoneMatchHdr
@@ -66,7 +68,10 @@ mkRequest uri etag = Request{ rqURI     = uri
         ifNoneMatchHdr = maybe [] (\t -> [Header HdrIfNoneMatch t]) etag
 
 -- |Carry out a GET request, using the local proxy settings
-getHTTP :: Verbosity -> URI -> Maybe String -> IO (Result (Response ByteString))
+getHTTP :: Verbosity
+        -> URI
+        -> Maybe String -- ^ optional etag to check if we already have the latest file
+        -> IO (Result (Response ByteString))
 getHTTP verbosity uri etag = liftM (\(_, resp) -> Right resp) $
                                    cabalBrowse verbosity (return ()) (request (mkRequest uri etag))
 
