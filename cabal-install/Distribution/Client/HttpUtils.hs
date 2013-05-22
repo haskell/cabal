@@ -102,7 +102,7 @@ downloadURI verbosity uri path = do
         Left  err -> Left err
         Right rsp -> case rspCode rsp of
           (2,0,0) -> Right rsp
-          (3,0,4) -> Left . ErrorMisc $ "Repo ETag matches. Nothing to do."
+          (3,0,4) -> Left . ErrorMisc $ "Skipping download: Local and remote repositories match."
           (a,b,c) -> Left . ErrorMisc $ "Failed to download " ++ show uri ++ " : " ++ err
             where
               err = "Unsucessful HTTP code: " ++ concatMap show [a,b,c]
