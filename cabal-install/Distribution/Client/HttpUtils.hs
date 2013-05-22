@@ -58,7 +58,7 @@ proxy _verbosity = do
     _ -> p
 
 mkRequest :: URI
-          -> Maybe String -- ^ optional etag to be set in the If-None-Match HTTP header
+          -> Maybe String -- ^ Optional etag to be set in the If-None-Match HTTP header.
           -> Request ByteString
 mkRequest uri etag = Request{ rqURI     = uri
                             , rqMethod  = GET
@@ -70,7 +70,7 @@ mkRequest uri etag = Request{ rqURI     = uri
 -- |Carry out a GET request, using the local proxy settings
 getHTTP :: Verbosity
         -> URI
-        -> Maybe String -- ^ optional etag to check if we already have the latest file
+        -> Maybe String -- ^ Optional etag to check if we already have the latest file.
         -> IO (Result (Response ByteString))
 getHTTP verbosity uri etag = liftM (\(_, resp) -> Right resp) $
                                    cabalBrowse verbosity (return ()) (request (mkRequest uri etag))
@@ -113,8 +113,8 @@ downloadURI verbosity uri path = do
               err = ErrorMisc $ "Unsucessful HTTP code: " 
                             ++ concatMap show [a,b,c]
 
-  -- only write the etag if we get a 200 response code
-  -- since a 304 still sends us an etag header
+  -- Only write the etag if we get a 200 response code.
+  -- A 304 still sends us an etag header.
   case result' of
     Left _ -> return ()
     Right rsp -> case rspCode rsp of
