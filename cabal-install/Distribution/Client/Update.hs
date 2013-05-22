@@ -55,10 +55,11 @@ updateRepo verbosity repo = case repoKind repo of
   Left remoteRepo -> do
     notice verbosity $ "Downloading the latest package list from "
                     ++ remoteRepoName remoteRepo
-    indexPath <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
-    writeFileAtomic (dropExtension indexPath) . maybeDecompress
-                                            =<< BS.readFile indexPath
-    updateRepoIndexCache verbosity repo
+    (indexPath, isCached) <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
+    unless isCached $ do
+      writeFileAtomic (dropExtension indexPath) . maybeDecompress
+                                              =<< BS.readFile indexPath
+      updateRepoIndexCache verbosity repo
 
 checkForSelfUpgrade :: Verbosity -> [Repo] -> IO ()
 checkForSelfUpgrade verbosity repos = do

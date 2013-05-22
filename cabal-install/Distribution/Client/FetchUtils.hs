@@ -113,7 +113,7 @@ fetchPackage verbosity loc = case loc of
       tmpdir <- getTemporaryDirectory
       (path, hnd) <- openTempFile tmpdir "cabal-.tar.gz"
       hClose hnd
-      downloadURI verbosity uri path
+      _ <- downloadURI verbosity uri path
       return path
 
 
@@ -136,12 +136,15 @@ fetchRepoTarball verbosity repo pkgid = do
             dir  = packageDir       repo pkgid
             path = packageFile      repo pkgid
         createDirectoryIfMissing True dir
-        downloadURI verbosity uri path
+        _ <- downloadURI verbosity uri path
         return path
 
 -- | Downloads an index file to [config-dir/packages/serv-id].
 --
-downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO FilePath
+downloadIndex :: Verbosity
+              -> RemoteRepo
+              -> FilePath
+              -> IO (FilePath, Bool) -- ^ Path and if the file is cached.
 downloadIndex verbosity repo cacheDir = do
   let uri = (remoteRepoURI repo) {
               uriPath = uriPath (remoteRepoURI repo)
@@ -149,8 +152,8 @@ downloadIndex verbosity repo cacheDir = do
             }
       path = cacheDir </> "00-index" <.> "tar.gz"
   createDirectoryIfMissing True cacheDir
-  downloadURI verbosity uri path
-  return path
+  isCached <- downloadURI verbosity uri path
+  return (path, isCached)
 
 
 -- ------------------------------------------------------------
