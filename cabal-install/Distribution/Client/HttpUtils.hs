@@ -107,22 +107,30 @@ downloadURI verbosity uri path = do
         Left  err -> Left err
         Right rsp -> case rspCode rsp of
           (2,0,0) -> Right rsp
-          (3,0,4) -> Left . ErrorMisc $ "Skipping download: Local and remote repositories match."
-          (a,b,c) -> Left . ErrorMisc $ "Failed to download " ++ show uri ++ " : " ++ err
+          (3,0,4) -> Right rsp
+          (a,b,c) -> Left err
             where
-              err = "Unsucessful HTTP code: " ++ concatMap show [a,b,c]
+              err = ErrorMisc $ "Unsucessful HTTP code: " 
+                            ++ concatMap show [a,b,c]
 
+  -- only write the etag if we get a 200 response code
+  -- since a 304 still sends us an etag header
   case result' of
     Left _ -> return ()
-    Right rsp -> case lookupHeader HdrETag (rspHeaders rsp) of
-      Nothing -> return ()
-      Just newEtag -> writeFile etagPath newEtag
+    Right rsp -> case rspCode rsp of
+      (2,0,0) -> case lookupHeader HdrETag (rspHeaders rsp) of
+        Nothing -> return ()
+        Just newEtag -> writeFile etagPath newEtag
+      (_,_,_) -> return ()
 
   case result' of
-    Left err   -> die $ show err
-    Right rsp -> do
-      info verbosity ("Downloaded to " ++ path)
-      writeFileAtomic path $ rspBody rsp
+    Left err   -> die $ "Failed to download " ++ show uri ++ " : " ++ show err
+    Right rsp -> case rspCode rsp of
+      (2,0,0) -> do
+        info verbosity ("Downloaded to " ++ path)
+        writeFileAtomic path $ rspBody rsp
+      (3,0,4) -> putStrLn "Skipping download: Local and remote repositories match."
+      (_,_,_) -> return ()
       --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.
