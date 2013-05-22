@@ -92,9 +92,12 @@ cabalBrowse verbosity auth act = do
 downloadURI :: Verbosity
             -> URI      -- ^ What to download
             -> FilePath -- ^ Where to put it
-            -> IO ()
-downloadURI verbosity uri path | uriScheme uri == "file:" =
+            -> IO Bool  -- ^ If we have a cached version.
+downloadURI verbosity uri path | uriScheme uri == "file:" = do
   copyFileVerbose verbosity (uriPath uri) path
+  return False
+  -- Can we store the hash of the file so we can safely return True when the
+  -- hash matches to avoid unnecessary computation?
 downloadURI verbosity uri path = do
   let etagPath = path <.> "etag"
   etagPathExists <- doesFileExist etagPath
@@ -129,8 +132,11 @@ downloadURI verbosity uri path = do
       (2,0,0) -> do
         info verbosity ("Downloaded to " ++ path)
         writeFileAtomic path $ rspBody rsp
-      (3,0,4) -> notice verbosity "Skipping download: Local and remote files match."
-      (_,_,_) -> return ()
+        return False
+      (3,0,4) -> do
+        notice verbosity "Skipping download: Local and remote files match."
+        return True
+      (_,_,_) -> return False
       --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.
