@@ -16,8 +16,10 @@ module Distribution.Client.Update
 
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), LocalRepo(..), SourcePackageDb(..) )
+import Distribution.Client.HttpUtils
+         ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
-         ( downloadIndex, DownloadResult(..) )
+         ( downloadIndex )
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
          ( getSourcePackages, updateRepoIndexCache )

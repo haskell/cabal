@@ -23,12 +23,11 @@ module Distribution.Client.FetchUtils (
 
     -- * fetching other things
     downloadIndex,
-    DownloadResult(..),
   ) where
 
 import Distribution.Client.Types
 import Distribution.Client.HttpUtils
-         ( downloadURI, isOldHackageURI )
+         ( downloadURI, isOldHackageURI, DownloadResult(..) )
 
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
@@ -50,8 +49,6 @@ import qualified System.FilePath.Posix as FilePath.Posix
          ( combine, joinPath )
 import Network.URI
          ( URI(uriPath) )
-
-data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
 -- ------------------------------------------------------------
 -- * Actually fetch things
@@ -152,10 +149,7 @@ downloadIndex verbosity repo cacheDir = do
             }
       path = cacheDir </> "00-index" <.> "tar.gz"
   createDirectoryIfMissing True cacheDir
-  isCached <- downloadURI verbosity uri path
-  if isCached
-    then return FileAlreadyInCache
-    else return (FileDownloaded path)
+  downloadURI verbosity uri path
 
 
 -- ------------------------------------------------------------
