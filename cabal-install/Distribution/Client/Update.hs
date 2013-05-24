@@ -17,7 +17,7 @@ module Distribution.Client.Update
 import Distribution.Client.Types
          ( Repo(..), RemoteRepo(..), LocalRepo(..), SourcePackageDb(..) )
 import Distribution.Client.FetchUtils
-         ( downloadIndex )
+         ( downloadIndex, DownloadResult(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
          ( getSourcePackages, updateRepoIndexCache )
@@ -55,11 +55,13 @@ updateRepo verbosity repo = case repoKind repo of
   Left remoteRepo -> do
     notice verbosity $ "Downloading the latest package list from "
                     ++ remoteRepoName remoteRepo
-    (indexPath, isCached) <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
-    unless isCached $ do
-      writeFileAtomic (dropExtension indexPath) . maybeDecompress
-                                              =<< BS.readFile indexPath
-      updateRepoIndexCache verbosity repo
+    downloadResult <- downloadIndex verbosity remoteRepo (repoLocalDir repo)
+    case downloadResult of
+      FileAlreadyInCache -> return ()
+      FileDownloaded indexPath -> do
+        writeFileAtomic (dropExtension indexPath) . maybeDecompress
+                                                =<< BS.readFile indexPath
+        updateRepoIndexCache verbosity repo
 
 checkForSelfUpgrade :: Verbosity -> [Repo] -> IO ()
 checkForSelfUpgrade verbosity repos = do

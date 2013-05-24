@@ -23,6 +23,7 @@ module Distribution.Client.FetchUtils (
 
     -- * fetching other things
     downloadIndex,
+    DownloadResult(..),
   ) where
 
 import Distribution.Client.Types
@@ -49,6 +50,8 @@ import qualified System.FilePath.Posix as FilePath.Posix
          ( combine, joinPath )
 import Network.URI
          ( URI(uriPath) )
+
+data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
 -- ------------------------------------------------------------
 -- * Actually fetch things
@@ -141,10 +144,7 @@ fetchRepoTarball verbosity repo pkgid = do
 
 -- | Downloads an index file to [config-dir/packages/serv-id].
 --
-downloadIndex :: Verbosity
-              -> RemoteRepo
-              -> FilePath
-              -> IO (FilePath, Bool) -- ^ Path and if the file is cached.
+downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO DownloadResult
 downloadIndex verbosity repo cacheDir = do
   let uri = (remoteRepoURI repo) {
               uriPath = uriPath (remoteRepoURI repo)
@@ -153,7 +153,9 @@ downloadIndex verbosity repo cacheDir = do
       path = cacheDir </> "00-index" <.> "tar.gz"
   createDirectoryIfMissing True cacheDir
   isCached <- downloadURI verbosity uri path
-  return (path, isCached)
+  if isCached
+    then return FileAlreadyInCache
+    else return (FileDownloaded path)
 
 
 -- ------------------------------------------------------------
