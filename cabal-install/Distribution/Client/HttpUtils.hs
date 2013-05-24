@@ -2,6 +2,7 @@
 -- | Separate module for HTTP actions, using a proxy server if one exists 
 -----------------------------------------------------------------------------
 module Distribution.Client.HttpUtils (
+    DownloadResult(..),
     downloadURI,
     getHTTP,
     cabalBrowse,
@@ -39,6 +40,8 @@ import System.FilePath
          ( (<.>) )
 import System.Directory
          ( doesFileExist )
+
+data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
 -- Trime
 trim :: String -> String
@@ -92,11 +95,11 @@ cabalBrowse verbosity auth act = do
 downloadURI :: Verbosity
             -> URI      -- ^ What to download
             -> FilePath -- ^ Where to put it
-            -> IO Bool  -- ^ If we have a cached version.
+            -> IO DownloadResult
 downloadURI verbosity uri path | uriScheme uri == "file:" = do
   copyFileVerbose verbosity (uriPath uri) path
-  return False
-  -- Can we store the hash of the file so we can safely return True when the
+  return (FileDownloaded path)
+  -- Can we store the hash of the file so we can safely return path when the
   -- hash matches to avoid unnecessary computation?
 downloadURI verbosity uri path = do
   let etagPath = path <.> "etag"
@@ -132,11 +135,11 @@ downloadURI verbosity uri path = do
       (2,0,0) -> do
         info verbosity ("Downloaded to " ++ path)
         writeFileAtomic path $ rspBody rsp
-        return False
+        return (FileDownloaded path)
       (3,0,4) -> do
         notice verbosity "Skipping download: Local and remote files match."
-        return True
-      (_,_,_) -> return False
+        return FileAlreadyInCache
+      (_,_,_) -> return (FileDownloaded path)
       --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.
