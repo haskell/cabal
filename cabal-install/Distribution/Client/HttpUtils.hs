@@ -2,6 +2,7 @@
 -- | Separate module for HTTP actions, using a proxy server if one exists 
 -----------------------------------------------------------------------------
 module Distribution.Client.HttpUtils (
+    DownloadResult(..),
     downloadURI,
     getHTTP,
     cabalBrowse,
@@ -11,7 +12,7 @@ module Distribution.Client.HttpUtils (
 
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
-         , Header(..), HeaderName(..) )
+         , Header(..), HeaderName(..), lookupHeader )
 import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
 import Network.URI
          ( URI (..), URIAuth (..) )
@@ -28,13 +29,19 @@ import Data.ByteString.Lazy (ByteString)
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
-         ( die, info, warn, debug
+         ( die, info, warn, debug, notice
          , copyFileVerbose, writeFileAtomic )
 import Distribution.Text
          ( display )
 import Data.Char ( isSpace )
 import qualified System.FilePath.Posix as FilePath.Posix
          ( splitDirectories )
+import System.FilePath
+         ( (<.>) )
+import System.Directory
+         ( doesFileExist )
+
+data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
 -- Trime
 trim :: String -> String
@@ -53,17 +60,23 @@ proxy _verbosity = do
       if uri' == "" then NoProxy else Proxy uri' auth
     _ -> p
 
-mkRequest :: URI -> Request ByteString
-mkRequest uri = Request{ rqURI     = uri
-                       , rqMethod  = GET
-                       , rqHeaders = [Header HdrUserAgent userAgent]
-                       , rqBody    = ByteString.empty }
+mkRequest :: URI
+          -> Maybe String -- ^ Optional etag to be set in the If-None-Match HTTP header.
+          -> Request ByteString
+mkRequest uri etag = Request{ rqURI     = uri
+                            , rqMethod  = GET
+                            , rqHeaders = Header HdrUserAgent userAgent : ifNoneMatchHdr
+                            , rqBody    = ByteString.empty }
   where userAgent = "cabal-install/" ++ display Paths_cabal_install.version
+        ifNoneMatchHdr = maybe [] (\t -> [Header HdrIfNoneMatch t]) etag
 
 -- |Carry out a GET request, using the local proxy settings
-getHTTP :: Verbosity -> URI -> IO (Result (Response ByteString))
-getHTTP verbosity uri = liftM (\(_, resp) -> Right resp) $
-                              cabalBrowse verbosity (return ()) (request (mkRequest uri))
+getHTTP :: Verbosity
+        -> URI
+        -> Maybe String -- ^ Optional etag to check if we already have the latest file.
+        -> IO (Result (Response ByteString))
+getHTTP verbosity uri etag = liftM (\(_, resp) -> Right resp) $
+                                   cabalBrowse verbosity (return ()) (request (mkRequest uri etag))
 
 cabalBrowse :: Verbosity
             -> BrowserAction s ()
@@ -82,29 +95,54 @@ cabalBrowse verbosity auth act = do
 downloadURI :: Verbosity
             -> URI      -- ^ What to download
             -> FilePath -- ^ Where to put it
-            -> IO ()
-downloadURI verbosity uri path | uriScheme uri == "file:" =
+            -> IO DownloadResult
+downloadURI verbosity uri path | uriScheme uri == "file:" = do
   copyFileVerbose verbosity (uriPath uri) path
+  return (FileDownloaded path)
+  -- Can we store the hash of the file so we can safely return path when the
+  -- hash matches to avoid unnecessary computation?
 downloadURI verbosity uri path = do
-  result <- getHTTP verbosity uri
+  let etagPath = path <.> "etag"
+  etagPathExists <- doesFileExist etagPath
+  etag <- if etagPathExists
+            then liftM Just $ readFile etagPath
+            else return Nothing
+
+  result <- getHTTP verbosity uri etag
   let result' = case result of
         Left  err -> Left err
         Right rsp -> case rspCode rsp of
-          (2,0,0) -> Right (rspBody rsp)
+          (2,0,0) -> Right rsp
+          (3,0,4) -> Right rsp
           (a,b,c) -> Left err
             where
-              err = ErrorMisc $ "Unsucessful HTTP code: "
-                             ++ concatMap show [a,b,c]
+              err = ErrorMisc $ "Unsucessful HTTP code: " 
+                            ++ concatMap show [a,b,c]
+
+  -- Only write the etag if we get a 200 response code.
+  -- A 304 still sends us an etag header.
+  case result' of
+    Left _ -> return ()
+    Right rsp -> case rspCode rsp of
+      (2,0,0) -> case lookupHeader HdrETag (rspHeaders rsp) of
+        Nothing -> return ()
+        Just newEtag -> writeFile etagPath newEtag
+      (_,_,_) -> return ()
 
   case result' of
     Left err   -> die $ "Failed to download " ++ show uri ++ " : " ++ show err
-    Right body -> do
-      info verbosity ("Downloaded to " ++ path)
-      writeFileAtomic path body
+    Right rsp -> case rspCode rsp of
+      (2,0,0) -> do
+        info verbosity ("Downloaded to " ++ path)
+        writeFileAtomic path $ rspBody rsp
+        return (FileDownloaded path)
+      (3,0,4) -> do
+        notice verbosity "Skipping download: Local and remote files match."
+        return FileAlreadyInCache
+      (_,_,_) -> return (FileDownloaded path)
       --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.
-      --      remember the ETag so we can not re-download if nothing changed.
 
 -- Utility function for legacy support.
 isOldHackageURI :: URI -> Bool
