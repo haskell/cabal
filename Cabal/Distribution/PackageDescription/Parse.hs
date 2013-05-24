@@ -395,14 +395,14 @@ binfoFieldDescrs =
  , commaListField  "build-tools"
            disp               parseBuildTool
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
- , spaceListField "cpp-options"
-           showToken          parseTokenQ'
+ , externalOptsField "cpp-options"
+           showToken
            cppOptions          (\val binfo -> binfo{cppOptions=val})
- , spaceListField "cc-options"
-           showToken          parseTokenQ'
+ , externalOptsField "cc-options"
+           showToken
            ccOptions          (\val binfo -> binfo{ccOptions=val})
- , spaceListField "ld-options"
-           showToken          parseTokenQ'
+ , externalOptsField "ld-options"
+           showToken
            ldOptions          (\val binfo -> binfo{ldOptions=val})
  , commaListField  "pkgconfig-depends"
            disp               parsePkgconfigDependency
