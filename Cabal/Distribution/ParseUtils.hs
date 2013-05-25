@@ -230,7 +230,16 @@ commaListField name showF readF get set =
 -- Does accept trailing spaces after Haskell String literals (and consumes
 -- them as such).
 commandLineArgument :: ReadP r String
-commandLineArgument = concat `fmap` many1 ((show `fmap` parseHaskellString) <++ singleNonSpace)
+-- Try to parse it as a Haskell string first;
+-- * if that works, the whole argument is enclosed in quotes and we don't want
+--   to have them as part of the returned string,
+-- * otherwise parse it as a conventional argument; if quotes are found inside,
+--   they become part of the returned string (using show).
+commandLineArgument = parseHaskellString <++ argumentWithPotentialQuotesInside
+  where
+    literalHaskellString = show `fmap` parseHaskellString
+    argumentWithPotentialQuotesInside =
+      concat `fmap` many1 (literalHaskellString <++ singleNonSpace)
 
 -- | Parses a single non-space character and returns it as a string.
 singleNonSpace :: ReadP r String
