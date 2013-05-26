@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Client.JobControl
+-- Module      :  Distribution.Simple.JobControl
 -- Copyright   :  (c) Duncan Coutts 2012
 -- License     :  BSD-like
 --
@@ -10,7 +10,7 @@
 --
 -- A job control concurrency abstraction
 -----------------------------------------------------------------------------
-module Distribution.Client.JobControl (
+module Distribution.Simple.JobControl (
     JobControl,
     newSerialJobControl,
     newParallelJobControl,
@@ -26,10 +26,11 @@ module Distribution.Client.JobControl (
     criticalSection
   ) where
 
+import Control.Applicative
 import Control.Monad
-import Control.Concurrent hiding (QSem, newQSem, waitQSem, signalQSem)
+import Control.Concurrent
 import Control.Exception (SomeException, bracket_, mask, throw, try)
-import Distribution.Client.Compat.Semaphore
+import Distribution.Simple.BoundedResource
 
 data JobControl m a = JobControl {
        spawnJob    :: m a -> m (),
@@ -70,20 +71,19 @@ newParallelJobControl = do
     collect resultVar =
       takeMVar resultVar >>= either throw return
 
-data JobLimit = JobLimit QSem
+
+newtype JobLimit = JobLimit BoundedResource
 
 newJobLimit :: Int -> IO JobLimit
-newJobLimit n =
-  fmap JobLimit (newQSem n)
+newJobLimit n = JobLimit <$> newBoundedResource n
 
 withJobLimit :: JobLimit -> IO a -> IO a
-withJobLimit (JobLimit sem) =
-  bracket_ (waitQSem sem) (signalQSem sem)
+withJobLimit (JobLimit res) io = withResource res io
 
 newtype Lock = Lock (MVar ())
 
 newLock :: IO Lock
-newLock = fmap Lock $ newMVar ()
+newLock = Lock <$> newMVar ()
 
 criticalSection :: Lock -> IO a -> IO a
 criticalSection (Lock lck) act = bracket_ (takeMVar lck) (putMVar lck ()) act

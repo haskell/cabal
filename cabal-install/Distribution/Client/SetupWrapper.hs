@@ -64,7 +64,7 @@ import Distribution.Client.Config
          ( defaultCabalDir )
 import Distribution.Client.IndexUtils
          ( getInstalledPackages )
-import Distribution.Client.JobControl
+import Distribution.Simple.JobControl
          ( Lock, criticalSection )
 import Distribution.Simple.Setup
          ( Flag(..) )
