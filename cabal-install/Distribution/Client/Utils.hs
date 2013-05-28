@@ -3,11 +3,14 @@
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
                                  , moreRecentFile, inDir, numberOfProcessors
+                                 , removeExistingFile
                                  , makeAbsoluteToCwd, filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath)
        where
 
 import qualified Data.ByteString.Lazy as BS
+import Control.Monad
+         ( when )
 import Data.Bits
          ( (.|.), shiftL, shiftR )
 import Data.Char
@@ -21,7 +24,7 @@ import qualified Control.Exception as Exception
          ( finally )
 import System.Directory
          ( canonicalizePath, doesFileExist, getModificationTime
-         , getCurrentDirectory, setCurrentDirectory )
+         , getCurrentDirectory, removeFile, setCurrentDirectory )
 import System.FilePath
          ( (</>), isAbsolute )
 import System.IO.Unsafe ( unsafePerformIO )
@@ -73,6 +76,14 @@ moreRecentFile a b = do
     else do tb <- getModificationTime b
             ta <- getModificationTime a
             return (ta > tb)
+
+-- | Like 'removeFile', but does not throw an exception when the file does not
+-- exist.
+removeExistingFile :: FilePath -> IO ()
+removeExistingFile path = do
+  exists <- doesFileExist path
+  when exists $
+    removeFile path
 
 -- | Executes the action in the specified directory.
 inDir :: Maybe FilePath -> IO a -> IO a
