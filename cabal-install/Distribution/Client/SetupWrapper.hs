@@ -265,7 +265,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     index <- maybeGetInstalledPackages options' comp conf
     let cabalDep = Dependency (PackageName "Cabal") (useCabalVersion options')
     case PackageIndex.lookupDependency index cabalDep of
-      []   -> die $ "The package requires Cabal library version "
+      []   -> die $ "The package '" ++ display (packageName pkg)
+                 ++ "' requires Cabal library version "
                  ++ display (useCabalVersion options)
                  ++ " but no suitable version is installed."
       pkgs -> return $ bestVersion id (map fst pkgs)
@@ -294,7 +295,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     index <- maybeGetInstalledPackages options' compiler conf
     let cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
     case PackageIndex.lookupSourcePackageId index cabalPkgid of
-      []           -> die $ "The package requires Cabal library version "
+      []           -> die $ "The package '" ++ display (packageName pkg)
+                      ++ "' requires Cabal library version "
                       ++ display (cabalLibVersion)
                       ++ " but no suitable version is installed."
       iPkgInfos   -> return . Just . installedPackageId
