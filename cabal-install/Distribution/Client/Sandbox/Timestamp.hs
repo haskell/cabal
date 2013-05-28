@@ -21,7 +21,7 @@ import Control.Exception                             (finally)
 import Control.Monad                                 (filterM, forM, when)
 import Data.Char                                     (isSpace)
 import Data.List                                     (partition)
-import System.Directory                              (removeFile, renameFile)
+import System.Directory                              (renameFile)
 import System.FilePath                               ((<.>), (</>))
 
 import Distribution.Compiler                         (CompilerId)
@@ -46,7 +46,7 @@ import Distribution.Client.Sandbox.Index
 import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
                                                       defaultSetupScriptOptions,
                                                       setupWrapper)
-import Distribution.Client.Utils                     (inDir,
+import Distribution.Client.Utils                     (inDir, removeExistingFile,
                                                       tryCanonicalizePath)
 
 import Distribution.Compat.Exception                 (catchIO)
@@ -228,7 +228,7 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
         }
 
   -- Run setup sdist --list-sources=TMPFILE
-  (flip finally) (removeFile file) $ do
+  (flip finally) (removeExistingFile file) $ do
     setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
     srcs <- fmap lines . readFile $ file
     mapM tryCanonicalizePath srcs
