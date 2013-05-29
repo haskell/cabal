@@ -479,7 +479,6 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       installFlags'   = defaultInstallFlags          `mappend`
                         savedInstallFlags     config `mappend` installFlags
       globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
-      haddockFlags'   = haddockFlags { haddockDistPref = sandboxDistPref }
   (comp, platform, conf) <- configCompilerAux' configFlags'
 
   -- If we're working inside a sandbox and the user has set the -w option, we
@@ -513,7 +512,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               comp platform conf
               useSandbox mSandboxPkgInfo
               globalFlags' configFlags'' configExFlags'
-              installFlags' haddockFlags'
+              installFlags' haddockFlags
               targets
 
 testAction :: (TestFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
