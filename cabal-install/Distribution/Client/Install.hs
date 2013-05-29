@@ -1203,7 +1203,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
     }
     shouldHaddock    = fromFlag (installDocumentation installConfigFlags)
     haddockFlags' _   = haddockFlags {
-      haddockVerbosity = toFlag verbosity'
+      haddockVerbosity = toFlag verbosity',
+      haddockDistPref  = configDistPref configFlags
     }
     testsEnabled = fromFlag (configTests configFlags)
     testFlags _ = Cabal.emptyTestFlags {
