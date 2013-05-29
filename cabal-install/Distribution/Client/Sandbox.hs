@@ -187,12 +187,32 @@ tryGetIndexFilePath' globalFlags = do
     checkConfiguration = "Please check your configuration ('"
                          ++ userPackageEnvironmentFile ++ "')."
 
+-- | Try to extract a 'PackageDB' from 'ConfigFlags'. Gives a better error
+-- message than just pattern-matching.
+getSandboxPackageDB :: ConfigFlags -> IO PackageDB
+getSandboxPackageDB configFlags = do
+  case configPackageDBs configFlags of
+    [Just sandboxDB@(SpecificPackageDB _)] -> return sandboxDB
+    -- TODO: should we allow multiple package DBs (e.g. with 'inherit')?
+
+    []                                     ->
+      die $ "Sandbox package DB is not specified. " ++ sandboxConfigCorrupt
+    [_]                                    ->
+      die $ "Unexpected contents of the 'package-db' field. "
+            ++ sandboxConfigCorrupt
+    _                                      ->
+      die $ "Too many package DBs provided. " ++ sandboxConfigCorrupt
+
+  where
+    sandboxConfigCorrupt = "Your 'cabal.sandbox.config' is probably corrupt."
+
+
 -- | Which packages are installed in the sandbox package DB?
 getInstalledPackagesInSandbox :: Verbosity -> ConfigFlags
                                  -> Compiler -> ProgramConfiguration
                                  -> IO InstalledPackageIndex.PackageIndex
 getInstalledPackagesInSandbox verbosity configFlags comp conf = do
-    let [Just sandboxDB@(SpecificPackageDB _)] = configPackageDBs configFlags
+    sandboxDB <- getSandboxPackageDB configFlags
     getPackageDBContents verbosity comp sandboxDB conf
 
 -- | Temporarily add $SANDBOX_DIR/bin to $PATH.
@@ -224,8 +244,7 @@ initPackageDBIfNeeded :: Verbosity -> ConfigFlags
                          -> Compiler -> ProgramConfiguration
                          -> IO ()
 initPackageDBIfNeeded verbosity configFlags comp conf = do
-  -- TODO: Is pattern-matching here really safe?
-  let [Just (SpecificPackageDB dbPath)] = configPackageDBs configFlags
+  SpecificPackageDB dbPath <- getSandboxPackageDB configFlags
   packageDBExists <- doesDirectoryExist dbPath
   unless packageDBExists $
     Register.initPackageDB verbosity comp conf dbPath
