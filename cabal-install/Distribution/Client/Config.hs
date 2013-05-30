@@ -50,7 +50,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
          , installDirsOptions
-         , programConfigurationPaths, programConfigurationOptions
+         , programConfigurationPaths', programConfigurationOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..), defaultInstallDirs
@@ -578,11 +578,11 @@ installDirsFields = map viewAsFieldDescr installDirsOptions
 withProgramsFields :: [FieldDescr [(String, FilePath)]]
 withProgramsFields =
   map viewAsFieldDescr $
-  programConfigurationPaths defaultProgramConfiguration ParseArgs id (++)
+  programConfigurationPaths' (++ "-location") defaultProgramConfiguration
+                             ParseArgs id (++)
 
 -- | Fields for the 'program-default-options' section.
 withProgramOptionsFields :: [FieldDescr [(String, [String])]]
 withProgramOptionsFields =
   map viewAsFieldDescr $
-  programConfigurationOptions' (++ "-location") defaultProgramConfiguration
-                               ParseArgs id (++)
+  programConfigurationOptions defaultProgramConfiguration ParseArgs id (++)
