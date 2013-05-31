@@ -1074,7 +1074,8 @@ componentCcGhcOptions verbosity lbi bi clbi pref filename =
       ghcOptMode           = toFlag GhcModeCompile,
       ghcOptInputFiles     = [filename],
 
-      ghcOptCppIncludePath = odir : PD.includeDirs bi,
+      ghcOptCppIncludePath = [autogenModulesDir lbi, odir]
+                                   ++ PD.includeDirs bi,
       ghcOptPackageDBs     = withPackageDB lbi,
       ghcOptPackages       = componentPackageDeps clbi,
       ghcOptCcOptions      = PD.ccOptions bi
