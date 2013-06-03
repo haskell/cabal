@@ -561,6 +561,8 @@ withSandboxPackageInfo verbosity configFlags globalFlags
   let depsMap     = M.fromList (zip buildTreeRefs depsPkgDescs)
 
   -- Get the package ids of modified (and installed) add-source deps.
+  -- TODO: Skip the timestamp check for those add-source deps which are not
+  -- installed.
   modifiedAddSourceDeps <- listModifiedDeps verbosity sandboxDir
                            (compilerId comp) platform
   let isInstalled pkgid = not . null
