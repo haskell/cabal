@@ -23,6 +23,7 @@ import Data.Char                                     (isSpace)
 import Data.List                                     (partition)
 import System.Directory                              (renameFile)
 import System.FilePath                               ((<.>), (</>))
+import qualified Data.Map as M
 
 import Distribution.Compiler                         (CompilerId)
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
@@ -257,14 +258,18 @@ isDepModified verbosity now (packageDir, timestamp) = do
 
 -- | List all modified dependencies.
 listModifiedDeps :: Verbosity -> FilePath -> CompilerId -> Platform
+                    -> M.Map FilePath a
+                       -- ^ The set of all installed add-source deps.
                     -> IO [FilePath]
-listModifiedDeps verbosity sandboxDir compId platform = do
+listModifiedDeps verbosity sandboxDir compId platform installedDepsMap = do
   timestampRecords <- readTimestampFile (sandboxDir </> timestampFileName)
   let needle        = timestampRecordKey compId platform
   timestamps       <- maybe noTimestampRecord return
                       (lookup needle timestampRecords)
   now <- getCurTime
-  fmap (map fst) . filterM (isDepModified verbosity now) $ timestamps
+  fmap (map fst) . filterM (isDepModified verbosity now)
+    . filter (\ts -> fst ts `M.member` installedDepsMap)
+    $ timestamps
 
   where
     noTimestampRecord = die $ "Сouldn't find a timestamp record for the given "

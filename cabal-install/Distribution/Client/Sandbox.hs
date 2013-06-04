@@ -98,6 +98,7 @@ import Data.Bits                              ( shiftL, shiftR, xor )
 import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
 import Data.List                              ( delete, foldl' )
+import Data.Maybe                             ( fromJust )
 import Data.Monoid                            ( mempty, mappend )
 import Data.Word                              ( Word32 )
 import Numeric                                ( showHex )
@@ -558,20 +559,19 @@ withSandboxPackageInfo verbosity configFlags globalFlags
   -- Get the package descriptions for all add-source deps.
   depsCabalFiles <- mapM findPackageDesc buildTreeRefs
   depsPkgDescs   <- mapM (readPackageDescription verbosity) depsCabalFiles
-  let depsMap     = M.fromList (zip buildTreeRefs depsPkgDescs)
+  let depsMap           = M.fromList (zip buildTreeRefs depsPkgDescs)
+      isInstalled pkgid = not . null
+        . InstalledPackageIndex.lookupSourcePackageId installedPkgIndex $ pkgid
+      installedDepsMap  = M.filter (isInstalled . packageId) depsMap
 
   -- Get the package ids of modified (and installed) add-source deps.
-  -- TODO: Skip the timestamp check for those add-source deps which are not
-  -- installed.
   modifiedAddSourceDeps <- listModifiedDeps verbosity sandboxDir
-                           (compilerId comp) platform
-  let isInstalled pkgid = not . null
-        . InstalledPackageIndex.lookupSourcePackageId installedPkgIndex $ pkgid
-      isModified path   = path `elem` modifiedAddSourceDeps
-      modifiedDepsMap   = M.filterWithKey
-        (\path pkgDesc -> isInstalled (packageId pkgDesc) && isModified path )
-        depsMap
-      modifiedDeps      = M.assocs modifiedDepsMap
+                           (compilerId comp) platform installedDepsMap
+  -- 'fromJust' here is safe because 'modifiedAddSourceDeps' are guaranteed to
+  -- be a subset of the keys of 'depsMap'.
+  let modifiedDeps    = [ (modDepPath, fromJust $ M.lookup modDepPath depsMap)
+                        | modDepPath <- modifiedAddSourceDeps ]
+      modifiedDepsMap = M.fromList modifiedDeps
 
   assert (all (`S.member` allAddSourceDepsSet) modifiedAddSourceDeps) (return ())
   unless (null modifiedDeps) $
@@ -580,7 +580,7 @@ withSandboxPackageInfo verbosity configFlags globalFlags
 
   -- Get the package ids of the remaining add-source deps (some are possibly not
   -- installed).
-  let otherDeps         = M.assocs (depsMap `M.difference` modifiedDepsMap)
+  let otherDeps = M.assocs (depsMap `M.difference` modifiedDepsMap)
 
   -- Finally, assemble a 'SandboxPackageInfo'.
   cont $ SandboxPackageInfo (map toSourcePackage modifiedDeps)
