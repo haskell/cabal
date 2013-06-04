@@ -221,8 +221,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
 
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
-                          (globalConfigFile globalFlags)
-                          (configUserInstall configFlags)
+                          globalFlags (configUserInstall configFlags)
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
@@ -363,8 +362,7 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
             $ msg ++ " Configuring with default flags." ++ configureManually
           configureAction (defaultFlags, defaultConfigExFlags)
             extraArgs globalFlags
-      (useSandbox, _) <- loadConfigOrSandboxConfig verbosity
-                         (globalConfigFile globalFlags) mempty
+      (useSandbox, _) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
       return useSandbox
 
     -- Package has been configured, but the configuration may be out of
@@ -384,7 +382,7 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
           maybeReinstallAddSourceDeps verbosity numJobsFlag flags globalFlags
         SkipAddSourceDepsCheck -> do
           (useSandbox, _) <- loadConfigOrSandboxConfig verbosity
-                             (globalConfigFile globalFlags) mempty
+                             globalFlags mempty
           return (useSandbox, NoDepsReinstalled)
 
       -- Determine what message, if any, to display to the user if
@@ -456,8 +454,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               extraArgs globalFlags = do
   let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity
-                          (globalConfigFile globalFlags)
-                          (configUserInstall configFlags)
+                          globalFlags (configUserInstall configFlags)
   targets <- readUserTargets verbosity extraArgs
 
   -- TODO: It'd be nice if 'cabal install' picked up the '-w' flag passed to
@@ -571,8 +568,7 @@ benchmarkAction (benchmarkFlags, buildExFlags) extraArgs globalFlags = do
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
-  (_, config) <- loadConfigOrSandboxConfig verbosity
-                 (globalConfigFile globalFlags) mempty
+  (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
@@ -588,8 +584,7 @@ infoAction :: InfoFlags -> [String] -> GlobalFlags -> IO ()
 infoAction infoFlags extraArgs globalFlags = do
   let verbosity = fromFlag (infoVerbosity infoFlags)
   targets <- readUserTargets verbosity extraArgs
-  (_, config) <- loadConfigOrSandboxConfig verbosity
-                 (globalConfigFile globalFlags) mempty
+  (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux configFlags
