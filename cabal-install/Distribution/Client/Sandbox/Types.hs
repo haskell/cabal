@@ -43,19 +43,19 @@ whenUsingSandbox (UseSandbox sandboxDir) act = act sandboxDir
 -- | Data about the packages installed in the sandbox that is passed from
 -- 'reinstallAddSourceDeps' to the solver.
 data SandboxPackageInfo = SandboxPackageInfo {
-  modifiedAddSourceDependencies  :: [SourcePackage],
+  modifiedAddSourceDependencies :: ![SourcePackage],
   -- ^ Modified add-source deps that we want to reinstall. These are guaranteed
   -- to be already installed in the sandbox.
 
-  otherAddSourceDependencies     :: [SourcePackage],
+  otherAddSourceDependencies    :: ![SourcePackage],
   -- ^ Remaining add-source deps. Some of these may be not installed in the
   -- sandbox.
 
-  otherInstalledSandboxPackages :: InstalledPackageIndex.PackageIndex,
+  otherInstalledSandboxPackages :: !InstalledPackageIndex.PackageIndex,
   -- ^ All packages installed in the sandbox. Intersection with
   -- 'modifiedAddSourceDependencies' and/or 'otherAddSourceDependencies' can be
   -- non-empty.
 
-  allAddSourceDependencies :: S.Set FilePath
+  allAddSourceDependencies      :: !(S.Set FilePath)
   -- ^ A set of paths to all add-source dependencies, for convenience.
   }
