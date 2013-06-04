@@ -55,13 +55,13 @@ module Distribution.ParseUtils (
         FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
         showFields, showSingleNamedField, showSimpleSingleNamedField,
         parseFields, parseFieldsFlat,
-        parseFilePathQ, parseTokenQ, parseTokenQ',
+        parseFilePathQ, parseTokenQ,
         parseModuleNameQ, parseBuildTool, parsePkgconfigDependency,
         parseOptVersion, parsePackageNameQ, parseVersionRangeQ,
         parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
-        field, simpleField, listField, spaceListField, commaListField,
+        field, simpleField, listField, externalOptsField, commaListField,
         optsField, liftField, boolField, parseQuoted,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
@@ -215,11 +215,43 @@ commaListField name showF readF get set =
   where
     set' xs b = set (get b ++ xs) b
 
-spaceListField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-spaceListField name showF readF get set =
+-- TODO This fact should go in user-visible documentation.
+
+-- | Parses a single command line argument, like "-O2", separated from its
+-- environment by a space.
+-- Can handle arguments which have spaces inside of quotes, as long as
+-- the "string literal" looks like a Haskell string literal (reads is used).
+-- Therefore it can also parse
+--     -with-rtsopts="-N4 -A1000 -H1000 -K1000"
+-- as a single command line argument (but not with 'single quotes' since
+-- those are not used in Haskell string literals).
+--
+-- Does not accept leading spaces.
+-- Does accept trailing spaces after Haskell String literals (and consumes
+-- them as such).
+commandLineArgument :: ReadP r String
+-- Try to parse it as a Haskell string first;
+-- * if that works, the whole argument is enclosed in quotes and we don't want
+--   to have them as part of the returned string,
+-- * otherwise parse it as a conventional argument; if quotes are found inside,
+--   they become part of the returned string (using show).
+commandLineArgument = parseHaskellString <++ argumentWithPotentialQuotesInside
+  where
+    literalHaskellString = show `fmap` parseHaskellString
+    argumentWithPotentialQuotesInside =
+      concat `fmap` many1 (literalHaskellString <++ singleNonSpace)
+
+-- | Parses a single non-space character and returns it as a string.
+singleNonSpace :: ReadP r String
+singleNonSpace = (:[]) `fmap` satisfy (not . isSpace)
+
+-- | Parses a field for command line options to an external tool/compiler,
+-- e.g. cpp-options, cc-options, ld-options.
+externalOptsField :: String -> (String -> Doc)
+                     -> (b -> [String]) -> ([String] -> b -> b) -> FieldDescr b
+externalOptsField name showF get set =
   liftField get set' $
-    field name (fsep . map showF) (parseSpaceList readF)
+    field name (fsep . map showF) (sepBy commandLineArgument (munch1 isSpace))
   where
     set' xs b = set (get b ++ xs) b
 
@@ -231,13 +263,18 @@ listField name showF readF get set =
   where
     set' xs b = set (get b ++ xs) b
 
+-- | Parses a field for command line options to a Haskell compiler,
+-- e.g. ghc-options or hugs-options.
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])])
              -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
 optsField name flavor get set =
    liftField (fromMaybe [] . lookup flavor . get)
              (\opts b -> set (reorder (update flavor opts (get b))) b) $
         field name (hsep . map text)
-                   (sepBy parseTokenQ' (munch1 isSpace))
+                   (sepBy commandLineArgument (munch1 isSpace))
+                   -- Note that this will not accept trailing spaces after
+                   -- commandLineArgument, but it doesn't matter since
+                   -- runP throws them away anyway.
   where
         update _ opts l | all null opts = l  --empty opts as if no opts
         update f opts [] = [(f,opts)]
@@ -664,24 +701,23 @@ parseLanguageQ = parseQuoted parse <++ parse
 parseExtensionQ :: ReadP r Extension
 parseExtensionQ = parseQuoted parse <++ parse
 
+-- | Parses a Haskell String literal (using `reads`).
+-- Does not allow leading whitespace.
 parseHaskellString :: ReadP r String
-parseHaskellString = readS_to_P reads
+parseHaskellString = do
+    remaining <- look -- forbid leading whitespace (reads allows it)
+    case remaining of
+      '"':_ -> readS_to_P reads
+      _     -> pfail
 
 parseTokenQ :: ReadP r String
 parseTokenQ = parseHaskellString <++ munch1 (\x -> not (isSpace x) && x /= ',')
-
-parseTokenQ' :: ReadP r String
-parseTokenQ' = parseHaskellString <++ munch1 (not . isSpace)
 
 parseSepList :: ReadP r b
              -> ReadP r a -- ^The parser for the stuff between commas
              -> ReadP r [a]
 parseSepList sepr p = sepBy p separator
     where separator = betweenSpaces sepr
-
-parseSpaceList :: ReadP r a -- ^The parser for the stuff between commas
-               -> ReadP r [a]
-parseSpaceList p = sepBy p skipSpaces
 
 parseCommaList :: ReadP r a -- ^The parser for the stuff between commas
                -> ReadP r [a]

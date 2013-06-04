@@ -484,11 +484,12 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
     readPackageDescription :: ByteString -> IO GenericPackageDescription
     readPackageDescription content =
       case parsePackageDescription . fromUTF8 . BS.Char8.unpack $ content of
-        ParseOk _ d -> return d
-        _           -> interror "failed to parse .cabal file"
+        ParseOk _ d     -> return d
+        ParseFailed err -> interror $
+                             "failed to parse .cabal file (" ++ show err ++ ")"
 
     interror msg = die $ "internal error when reading package index: " ++ msg
-                      ++ "The package index or index cache is probably "
+                      ++ "\nThe package index or index cache is probably "
                       ++ "corrupt. Running cabal update might fix it."
 
 ------------------------------------------------------------------------

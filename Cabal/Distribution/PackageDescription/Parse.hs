@@ -395,14 +395,14 @@ binfoFieldDescrs =
  , commaListField  "build-tools"
            disp               parseBuildTool
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
- , spaceListField "cpp-options"
-           showToken          parseTokenQ'
+ , externalOptsField "cpp-options"
+           showToken
            cppOptions          (\val binfo -> binfo{cppOptions=val})
- , spaceListField "cc-options"
-           showToken          parseTokenQ'
+ , externalOptsField "cc-options"
+           showToken
            ccOptions          (\val binfo -> binfo{ccOptions=val})
- , spaceListField "ld-options"
-           showToken          parseTokenQ'
+ , externalOptsField "ld-options"
+           showToken
            ldOptions          (\val binfo -> binfo{ldOptions=val})
  , commaListField  "pkgconfig-depends"
            disp               parsePkgconfigDependency
@@ -458,13 +458,13 @@ binfoFieldDescrs =
            text               parseTokenQ
            ghcSharedOptions      (\val binfo -> binfo{ghcSharedOptions=val})
  , optsField   "ghc-options"  GHC
-           options            (\path  binfo -> binfo{options=path})
+           options            (\val binfo -> binfo{options=val})
  , optsField   "hugs-options" Hugs
-           options            (\path  binfo -> binfo{options=path})
+           options            (\val binfo -> binfo{options=val})
  , optsField   "nhc98-options"  NHC
-           options            (\path  binfo -> binfo{options=path})
+           options            (\val binfo -> binfo{options=val})
  , optsField   "jhc-options"  JHC
-           options            (\path  binfo -> binfo{options=path})
+           options            (\val binfo -> binfo{options=val})
  ]
 
 storeXFieldsBI :: UnrecFieldParser BuildInfo
