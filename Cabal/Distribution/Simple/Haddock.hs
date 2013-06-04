@@ -58,7 +58,8 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), allExtensions
-         , Library(..), hasLibs, Executable(..) )
+         , Library(..), hasLibs, Executable(..)
+         , TestSuite(..), TestSuiteInterface(..) )
 import Distribution.Simple.Compiler
          ( Compiler(..), compilerVersion )
 import Distribution.Simple.GHC ( componentGhcOptions, ghcLibDir )
@@ -151,10 +152,12 @@ data Output = Html | Hoogle
 haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockFlags -> IO ()
 haddock pkg_descr _ _ haddockFlags
   |    not (hasLibs pkg_descr)
-    && not (fromFlag $ haddockExecutables haddockFlags) =
+    && not (fromFlag $ haddockExecutables haddockFlags)
+    && not (fromFlag $ haddockTestSuites  haddockFlags) =
       warn (fromFlag $ haddockVerbosity haddockFlags) $
            "No documentation was generated as this package does not contain "
-        ++ "a library. Perhaps you want to use the --executables flag."
+        ++ "a library. Perhaps you want to use the --executables or --tests "
+        ++ "flags."
 
 haddock pkg_descr lbi suffixes flags = do
 
@@ -214,6 +217,14 @@ haddock pkg_descr lbi suffixes flags = do
             runHaddock verbosity keepTempFiles confHaddock libArgs'
         CExe exe -> when (flag haddockExecutables) $ do
           withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
+            let bi = buildInfo exe
+            exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
+            exeArgs' <- prepareSources verbosity tmp
+                          lbi isVersion2 bi (commonArgs `mappend` exeArgs)
+            runHaddock verbosity keepTempFiles confHaddock exeArgs'
+        CTest test -> when (flag haddockTestSuites) $ do
+          withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
+            exe <- testToExe test
             let bi = buildInfo exe
             exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
             exeArgs' <- prepareSources verbosity tmp
@@ -382,6 +393,16 @@ fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
   where
     bi = buildInfo exe
     ghcVersion = compilerVersion (compiler lbi)
+
+testToExe :: TestSuite -> IO Executable
+testToExe test@TestSuite { testInterface = TestSuiteExeV10 _ f } =
+  return Executable {
+    exeName    = testName test,
+    modulePath = f,
+    buildInfo  = testBuildInfo test
+  }
+
+testToExe _ = die "No support for documenting this test suite type."
 
 getInterfaces :: Verbosity
               -> LocalBuildInfo

@@ -1052,6 +1052,7 @@ data HaddockFlags = HaddockFlags {
     haddockHtml         :: Flag Bool,
     haddockHtmlLocation :: Flag String,
     haddockExecutables  :: Flag Bool,
+    haddockTestSuites   :: Flag Bool,
     haddockInternal     :: Flag Bool,
     haddockCss          :: Flag FilePath,
     haddockHscolour     :: Flag Bool,
@@ -1071,6 +1072,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHtml         = Flag False,
     haddockHtmlLocation = NoFlag,
     haddockExecutables  = Flag False,
+    haddockTestSuites   = Flag False,
     haddockInternal     = Flag False,
     haddockCss          = NoFlag,
     haddockHscolour     = Flag False,
@@ -1117,6 +1119,11 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
       ,option "" ["executables"]
          "Run haddock for Executables targets"
          haddockExecutables (\v flags -> flags { haddockExecutables = v })
+         trueArg
+
+      ,option "" ["tests"]
+         "Run haddock for Test Suite targets"
+         haddockTestSuites (\v flags -> flags { haddockTestSuites = v })
          trueArg
 
       ,option "" ["internal"]
@@ -1167,6 +1174,7 @@ instance Monoid HaddockFlags where
     haddockHtml         = mempty,
     haddockHtmlLocation = mempty,
     haddockExecutables  = mempty,
+    haddockTestSuites   = mempty,
     haddockInternal     = mempty,
     haddockCss          = mempty,
     haddockHscolour     = mempty,
@@ -1184,6 +1192,7 @@ instance Monoid HaddockFlags where
     haddockHtmlLocation = combine haddockHtmlLocation,
     haddockExecutables  = combine haddockExecutables,
     haddockInternal     = combine haddockInternal,
+    haddockTestSuites   = combine haddockTestSuites,
     haddockCss          = combine haddockCss,
     haddockHscolour     = combine haddockHscolour,
     haddockHscolourCss  = combine haddockHscolourCss,
