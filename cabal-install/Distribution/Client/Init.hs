@@ -67,7 +67,7 @@ import Language.Haskell.Extension ( Language(..) )
 import Distribution.Client.Init.Types
   ( InitFlags(..), PackageType(..), Category(..) )
 import Distribution.Client.Init.Licenses
-  ( bsd3, gplv2, gplv3, lgpl2, lgpl3, apache20 )
+  ( bsd3, gplv2, gplv3, lgpl2, lgpl3, agplv3, apache20 )
 import Distribution.Client.Init.Heuristics
   ( guessPackageName, guessAuthorNameMail, SourceFileEntry(..),
     scanForModules, neededBuildPrograms )
@@ -179,7 +179,7 @@ getLicense flags = do
   return $ flags { license = maybeToFlag lic }
   where
     listedLicenses =
-      knownLicenses \\ [GPL Nothing, LGPL Nothing, Apache Nothing, OtherLicense]
+      knownLicenses \\ [GPL Nothing, LGPL Nothing, AGPL Nothing, Apache Nothing, OtherLicense]
 
 -- | The author's name and email. Prompt, or try to guess from an existing
 --   darcs repo.
@@ -553,6 +553,9 @@ writeLicense flags = do
 
           Flag (LGPL (Just (Version {versionBranch = [3]})))
             -> Just lgpl3
+
+          Flag (AGPL (Just (Version {versionBranch = [3]})))
+            -> Just agplv3
 
           Flag (Apache (Just (Version {versionBranch = [2, 0]})))
             -> Just apache20
