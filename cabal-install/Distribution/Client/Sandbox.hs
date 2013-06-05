@@ -329,7 +329,7 @@ sandboxDelete verbosity _sandboxFlags globalFlags = do
             pkgEnvFile /= (curDir </> sandboxPackageEnvironmentFile)
 
       if isNonDefaultConfigLocation
-        then warn $ "Sandbox config file is in non-default location: '"
+        then warn verbosity $ "Sandbox config file is in non-default location: '"
                     ++ pkgEnvFile ++ "'.\n Please delete manually."
         else removeFile pkgEnvFile
 
