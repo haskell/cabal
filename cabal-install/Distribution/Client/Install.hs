@@ -70,7 +70,8 @@ import Distribution.Client.Config
 import Distribution.Client.Sandbox.Timestamp
          ( withUpdateTimestamps )
 import Distribution.Client.Sandbox.Types
-         ( SandboxPackageInfo(..), UseSandbox(..), isUseSandbox )
+         ( SandboxPackageInfo(..), UseSandbox(..), isUseSandbox
+         , whenUsingSandbox )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
@@ -846,6 +847,12 @@ performInstallations verbosity
   (packageDBs, _, comp, _, conf, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
+
+  -- With 'install -j' it can be a bit hard to tell whether a sandbox is used.
+  whenUsingSandbox useSandbox $ \sandboxDir ->
+    when parallelBuild $
+      notice verbosity $ "Notice: installing into a sandbox located at "
+                         ++ sandboxDir
 
   jobControl   <- if parallelBuild then newParallelJobControl
                                    else newSerialJobControl
