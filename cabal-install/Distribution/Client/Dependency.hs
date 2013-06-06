@@ -333,9 +333,13 @@ applySandboxInstallPolicy
 
   . addTargets installedNotModified
 
+  . addPreferences
+      [ PackageVersionPreference (packageName pkg)
+        (thisVersion (packageVersion pkg)) | pkg <- otherDeps ]
+
   . addConstraints
       [ PackageConstraintVersion (packageName pkg)
-        (thisVersion (packageVersion pkg)) | pkg <- modifiedDeps ++ otherDeps ]
+        (thisVersion (packageVersion pkg)) | pkg <- modifiedDeps ]
 
   . addTargets [ packageName pkg | pkg <- modifiedDeps ]
 
