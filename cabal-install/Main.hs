@@ -498,8 +498,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- FIXME: Passing 'SandboxPackageInfo' to install unconditionally here means
   -- that 'cabal install some-package' inside a sandbox will sometimes reinstall
   -- modified add-source deps, even if they are not among the dependencies of
-  -- 'some-package'. Probably not a big problem since 'build', 'test' etc are
-  -- already reinstalling modified add-source deps.
+  -- 'some-package'. This can also prevent packages that depend on older
+  -- versions of add-source'd packages from building (see #1362).
   maybeWithSandboxPackageInfo verbosity configFlags'' globalFlags'
                               comp platform conf useSandbox $ \mSandboxPkgInfo ->
                               maybeWithSandboxDirOnSearchPath useSandbox $
