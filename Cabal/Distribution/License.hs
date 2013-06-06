@@ -16,7 +16,7 @@
 -- and it's useful if we can automatically recognise that (eg so we can display
 -- it on the hackage web pages). So you can also specify the license itself in
 -- the @.cabal@ file from a short enumeration defined in this module. It
--- includes 'GPL', 'LGPL' and 'BSD3' licenses.
+-- includes 'GPL', 'AGPL', 'LGPL', 'Apache 2.0', 'MIT' and 'BSD3' licenses.
 
 {- All rights reserved.
 
@@ -79,6 +79,9 @@ data License =
     -- | GNU Public License. Source code must accompany alterations.
     GPL (Maybe Version)
 
+    -- | GNU Affero General Public License
+  | AGPL (Maybe Version)
+
     -- | Lesser GPL, Less restrictive than GPL, useful for libraries.
   | LGPL (Maybe Version)
 
@@ -114,6 +117,7 @@ data License =
 knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
                 , LGPL unversioned, LGPL (version [2,1]), LGPL (version [3])
+                , AGPL unversioned,                       AGPL (version [3])
                 , BSD3, MIT
                 , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
@@ -124,6 +128,7 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
 instance Text License where
   disp (GPL  version)         = Disp.text "GPL"  <> dispOptVersion version
   disp (LGPL version)         = Disp.text "LGPL" <> dispOptVersion version
+  disp (AGPL version)         = Disp.text "AGPL" <> dispOptVersion version
   disp (Apache version)       = Disp.text "Apache" <> dispOptVersion version
   disp (UnknownLicense other) = Disp.text other
   disp other                  = Disp.text (show other)
@@ -134,6 +139,7 @@ instance Text License where
     return $! case (name, version :: Maybe Version) of
       ("GPL",               _      ) -> GPL  version
       ("LGPL",              _      ) -> LGPL version
+      ("AGPL",              _      ) -> AGPL version
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
       ("MIT",               Nothing) -> MIT
