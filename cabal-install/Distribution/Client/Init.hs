@@ -179,7 +179,8 @@ getLicense flags = do
   return $ flags { license = maybeToFlag lic }
   where
     listedLicenses =
-      knownLicenses \\ [GPL Nothing, LGPL Nothing, AGPL Nothing, Apache Nothing, OtherLicense]
+      knownLicenses \\ [GPL Nothing, LGPL Nothing, AGPL Nothing
+                       , Apache Nothing, OtherLicense]
 
 -- | The author's name and email. Prompt, or try to guess from an existing
 --   darcs repo.
