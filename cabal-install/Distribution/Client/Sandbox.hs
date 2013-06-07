@@ -429,11 +429,7 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   indexFile            <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
 
   withRemoveTimestamps sandboxDir $ do
-    -- FIXME: path canonicalisation is done in addBuildTreeRefs, but we do it
-    -- twice because of the timestamps file.
-    buildTreeRefs' <- mapM tryCanonicalizePath buildTreeRefs
-    Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs'
-    return buildTreeRefs'
+    Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
 
 -- | Entry point for the 'cabal sandbox list-sources' command.
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags

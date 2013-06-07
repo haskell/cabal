@@ -28,7 +28,8 @@ import Distribution.Client.Types ( Repo(..), LocalRepo(..)
                                  , SourcePackageDb(..)
                                  , SourcePackage(..), PackageLocation(..) )
 import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
-                                 , makeAbsoluteToCwd, tryCanonicalizePath )
+                                 , makeAbsoluteToCwd, tryCanonicalizePath
+                                 , canonicalizePathNoThrow )
 
 import Distribution.Simple.Utils ( die, debug, findPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
@@ -150,12 +151,12 @@ addBuildTreeRefs verbosity path l' refType = do
       debug verbosity $ "Successfully appended to '" ++ path ++ "'"
 
 -- | Remove given local build tree references from the index.
-removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO ()
+removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO [FilePath]
 removeBuildTreeRefs _         _   [] =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
 removeBuildTreeRefs verbosity path l' = do
   checkIndexExists path
-  l <- mapM tryCanonicalizePath l'
+  l <- mapM canonicalizePathNoThrow l'
   let tmpFile = path <.> "tmp"
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
@@ -166,6 +167,8 @@ removeBuildTreeRefs verbosity path l' = do
   renameFile tmpFile path
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ path ++ "'"
+  -- FIXME: return only the refs that vere actually removed.
+  return l
     where
       p l entry = case readBuildTreeRef entry of
         Nothing                     -> True

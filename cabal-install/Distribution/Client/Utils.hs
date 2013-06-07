@@ -5,9 +5,11 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , moreRecentFile, inDir, numberOfProcessors
                                  , removeExistingFile
                                  , makeAbsoluteToCwd, filePathToByteString
-                                 , byteStringToFilePath, tryCanonicalizePath)
+                                 , byteStringToFilePath, tryCanonicalizePath
+                                 , canonicalizePathNoThrow )
        where
 
+import Distribution.Compat.Exception ( catchIO )
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad
          ( when )
@@ -155,3 +157,9 @@ tryCanonicalizePath path = do
                 ++ "(No such file or directory)"
 #endif
   return ret
+
+-- | A non-throwing wrapper for 'canonicalizePath'. If 'canonicalizePath' throws
+-- an exception, returns the path argument unmodified.
+canonicalizePathNoThrow :: FilePath -> IO FilePath
+canonicalizePathNoThrow path = do
+  canonicalizePath path `catchIO` (\_ -> return path)
