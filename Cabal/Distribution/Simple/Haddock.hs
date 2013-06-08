@@ -224,12 +224,18 @@ haddock pkg_descr lbi suffixes flags = do
             runHaddock verbosity keepTempFiles confHaddock exeArgs'
         CTest test -> when (flag haddockTestSuites) $ do
           withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
-            exe <- testToExe test
-            let bi = buildInfo exe
-            exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
-            exeArgs' <- prepareSources verbosity tmp
-                          lbi isVersion2 bi (commonArgs `mappend` exeArgs)
-            runHaddock verbosity keepTempFiles confHaddock exeArgs'
+            let exeified = testToExe test
+            case exeified of
+              Just exe -> do
+                let bi = buildInfo exe
+                exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
+                exeArgs' <- prepareSources verbosity tmp
+                              lbi isVersion2 bi (commonArgs `mappend` exeArgs)
+                runHaddock verbosity keepTempFiles confHaddock exeArgs'
+              Nothing -> do
+               warn (fromFlag $ haddockVerbosity flags)
+                 "Unsupported test suite, skipping..."
+               return ()
         _ -> return ()
 
     forM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
@@ -394,15 +400,15 @@ fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
     bi = buildInfo exe
     ghcVersion = compilerVersion (compiler lbi)
 
-testToExe :: TestSuite -> IO Executable
+testToExe :: TestSuite -> Maybe Executable
 testToExe test@TestSuite { testInterface = TestSuiteExeV10 _ f } =
-  return Executable {
+  Just Executable {
     exeName    = testName test,
     modulePath = f,
     buildInfo  = testBuildInfo test
   }
 
-testToExe _ = die "No support for documenting this test suite type."
+testToExe _ = Nothing
 
 getInterfaces :: Verbosity
               -> LocalBuildInfo
