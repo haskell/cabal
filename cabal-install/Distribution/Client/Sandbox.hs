@@ -647,8 +647,9 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags' globalFlags' = do
 
       -- Actually reinstall the modified add-source deps.
       let config         = pkgEnvSavedConfig pkgEnv
-          configFlags    = mappendSomeSavedFlags configFlags' $
-                           savedConfigureFlags config
+          configFlags    = savedConfigureFlags config
+                           `mappendSomeSavedFlags`
+                           configFlags'
           configExFlags  = defaultConfigExFlags
                            `mappend` savedConfigureExFlags config
           installFlags'  = defaultInstallFlags
@@ -669,24 +670,28 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags' globalFlags' = do
 
   where
 
-    -- NOTE: we can't simply `mappend` configFlags' because we don't want to
-    -- auto-enable things like 'library-profiling' for all add-source
-    -- dependencies even if the user has passed '--enable-library-profiling' to
-    -- 'cabal configure'. These options are supposed to be set in
-    -- 'cabal.config'.
+    -- NOTE: we can't simply do @sandboxConfigFlags `mappend` savedFlags@
+    -- because we don't want to auto-enable things like 'library-profiling' for
+    -- all add-source dependencies even if the user has passed
+    -- '--enable-library-profiling' to 'cabal configure'. These options are
+    -- supposed to be set in 'cabal.config'.
     mappendSomeSavedFlags :: ConfigFlags -> ConfigFlags -> ConfigFlags
-    mappendSomeSavedFlags savedFlags configFlags =
-      configFlags {
-        configHcFlavor   = configHcFlavor configFlags
-                           `mappend` configHcFlavor savedFlags,
-        configHcPath     = configHcPath configFlags
-                           `mappend` configHcPath savedFlags,
-        configHcPkg      = configHcPkg configFlags
-                           `mappend` configHcPkg savedFlags,
-        -- NOTE: since configPackageDBs is a list instead of a flag, we override
-        -- instead of mappending. We know that the list is not empty since it
-        -- was passed to us from 'configure' (see 'setPackageDB' in 'Main.hs').
-        configPackageDBs = configPackageDBs savedFlags
+    mappendSomeSavedFlags sandboxConfigFlags savedFlags =
+      sandboxConfigFlags {
+        configHcFlavor     = configHcFlavor sandboxConfigFlags
+                             `mappend` configHcFlavor savedFlags,
+        configHcPath       = configHcPath sandboxConfigFlags
+                             `mappend` configHcPath savedFlags,
+        configHcPkg        = configHcPkg sandboxConfigFlags
+                             `mappend` configHcPkg savedFlags,
+        configProgramPaths = configProgramPaths sandboxConfigFlags
+                             `mappend` configProgramPaths savedFlags,
+        configProgramArgs  = configProgramArgs sandboxConfigFlags
+                             `mappend` configProgramArgs savedFlags,
+        -- NOTE: We don't touch the @configPackageDBs@ field because
+        -- @sandboxConfigFlags@ contains the sandbox location which was set when
+        -- creating @cabal.sandbox.config@.
+        -- FIXME: Is this compatible with the 'inherit' feature?
         }
 
 --
