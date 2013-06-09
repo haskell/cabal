@@ -342,14 +342,18 @@ reconfigure :: Verbosity    -- ^ Verbosity setting
 reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
             skipAddSourceDepsCheck numJobsFlag    checkFlags = do
   eLbi <- tryGetPersistBuildConfig distPref
-
   case eLbi of
+    Left (err, errCode) -> onNoBuildConfig err errCode
+    Right lbi           -> onBuildConfig lbi
+
+  where
 
     -- We couldn't load the saved package config file.
     --
     -- If we're in a sandbox: add-source deps don't have to be reinstalled
     -- (since we don't know the compiler & platform).
-    Left (err, errCode) -> do
+    onNoBuildConfig :: String -> ConfigStateFileErrorType -> IO UseSandbox
+    onNoBuildConfig err errCode = do
       let msg = case errCode of
             ConfigStateFileMissing    -> "Package has never been configured."
             ConfigStateFileCantParse  -> "Saved package config file seems "
@@ -370,7 +374,8 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
     --
     -- If we're in a sandbox: reinstall the modified add-source deps and
     -- force reconfigure if we did.
-    Right lbi -> do
+    onBuildConfig :: LBI.LocalBuildInfo -> IO UseSandbox
+    onBuildConfig lbi = do
       let configFlags = LBI.configFlags lbi
           flags = mconcat [configFlags, addConfigFlags, distVerbFlags]
           savedDistPref = fromFlagOrDefault
@@ -421,7 +426,7 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
           configureAction (flags, defaultConfigExFlags)
             extraArgs globalFlags
           return useSandbox
-  where
+
     defaultFlags = mappend addConfigFlags distVerbFlags
     distVerbFlags = mempty
         { configVerbosity = toFlag verbosity
