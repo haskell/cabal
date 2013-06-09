@@ -430,7 +430,7 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
     defaultFlags = mappend addConfigFlags distVerbFlags
     distVerbFlags = mempty
         { configVerbosity = toFlag verbosity
-        , configDistPref = toFlag distPref
+        , configDistPref  = toFlag distPref
         }
     reconfiguringMostRecent = " Re-configuring with most recently used options."
     configureManually       = " If this fails, please run configure manually."
