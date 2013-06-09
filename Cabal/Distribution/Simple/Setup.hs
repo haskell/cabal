@@ -1053,6 +1053,7 @@ data HaddockFlags = HaddockFlags {
     haddockHtmlLocation :: Flag String,
     haddockExecutables  :: Flag Bool,
     haddockTestSuites   :: Flag Bool,
+    haddockBenchmarks   :: Flag Bool,
     haddockInternal     :: Flag Bool,
     haddockCss          :: Flag FilePath,
     haddockHscolour     :: Flag Bool,
@@ -1073,6 +1074,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHtmlLocation = NoFlag,
     haddockExecutables  = Flag False,
     haddockTestSuites   = Flag False,
+    haddockBenchmarks   = Flag False,
     haddockInternal     = Flag False,
     haddockCss          = NoFlag,
     haddockHscolour     = Flag False,
@@ -1126,6 +1128,11 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
          haddockTestSuites (\v flags -> flags { haddockTestSuites = v })
          trueArg
 
+      ,option "" ["benchmarks"]
+         "Run haddock for Benchmark targets"
+         haddockBenchmarks (\v flags -> flags { haddockBenchmarks = v })
+         trueArg
+
       ,option "" ["internal"]
          "Run haddock for internal modules and include all symbols"
          haddockInternal (\v flags -> flags { haddockInternal = v })
@@ -1175,6 +1182,7 @@ instance Monoid HaddockFlags where
     haddockHtmlLocation = mempty,
     haddockExecutables  = mempty,
     haddockTestSuites   = mempty,
+    haddockBenchmarks   = mempty,
     haddockInternal     = mempty,
     haddockCss          = mempty,
     haddockHscolour     = mempty,
@@ -1191,8 +1199,9 @@ instance Monoid HaddockFlags where
     haddockHtml         = combine haddockHoogle,
     haddockHtmlLocation = combine haddockHtmlLocation,
     haddockExecutables  = combine haddockExecutables,
-    haddockInternal     = combine haddockInternal,
     haddockTestSuites   = combine haddockTestSuites,
+    haddockBenchmarks   = combine haddockBenchmarks,
+    haddockInternal     = combine haddockInternal,
     haddockCss          = combine haddockCss,
     haddockHscolour     = combine haddockHscolour,
     haddockHscolourCss  = combine haddockHscolourCss,

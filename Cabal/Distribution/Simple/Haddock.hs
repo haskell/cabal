@@ -59,7 +59,8 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), allExtensions
          , Library(..), hasLibs, Executable(..)
-         , TestSuite(..), TestSuiteInterface(..) )
+         , TestSuite(..), TestSuiteInterface(..)
+         , Benchmark(..), BenchmarkInterface(..) )
 import Distribution.Simple.Compiler
          ( Compiler(..), compilerVersion )
 import Distribution.Simple.GHC ( componentGhcOptions, ghcLibDir )
@@ -153,11 +154,12 @@ haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockF
 haddock pkg_descr _ _ haddockFlags
   |    not (hasLibs pkg_descr)
     && not (fromFlag $ haddockExecutables haddockFlags)
-    && not (fromFlag $ haddockTestSuites  haddockFlags) =
+    && not (fromFlag $ haddockTestSuites  haddockFlags)
+    && not (fromFlag $ haddockBenchmarks  haddockFlags) =
       warn (fromFlag $ haddockVerbosity haddockFlags) $
            "No documentation was generated as this package does not contain "
-        ++ "a library. Perhaps you want to use the --executables or --tests "
-        ++ "flags."
+        ++ "a library. Perhaps you want to use the --executables, --tests or"
+        ++ " --benchmarks flags."
 
 haddock pkg_descr lbi suffixes flags = do
 
@@ -236,7 +238,20 @@ haddock pkg_descr lbi suffixes flags = do
                warn (fromFlag $ haddockVerbosity flags)
                  "Unsupported test suite, skipping..."
                return ()
-        _ -> return ()
+        CBench bench -> when (flag haddockBenchmarks) $ do
+          withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
+            let exeified = benchToExe bench
+            case exeified of
+              Just exe -> do
+                let bi = buildInfo exe
+                exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
+                exeArgs' <- prepareSources verbosity tmp
+                              lbi isVersion2 bi (commonArgs `mappend` exeArgs)
+                runHaddock verbosity keepTempFiles confHaddock exeArgs'
+              Nothing -> do
+               warn (fromFlag $ haddockVerbosity flags)
+                 "Unsupported benchmark, skipping..."
+               return ()
 
     forM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
@@ -409,6 +424,16 @@ testToExe test@TestSuite { testInterface = TestSuiteExeV10 _ f } =
   }
 
 testToExe _ = Nothing
+
+benchToExe :: Benchmark -> Maybe Executable
+benchToExe bench@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f } =
+  Just Executable {
+    exeName    = benchmarkName bench,
+    modulePath = f,
+    buildInfo  = benchmarkBuildInfo bench
+  }
+
+benchToExe _ = Nothing
 
 getInterfaces :: Verbosity
               -> LocalBuildInfo
