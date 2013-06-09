@@ -377,10 +377,7 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
     onBuildConfig :: LBI.LocalBuildInfo -> IO UseSandbox
     onBuildConfig lbi = do
       let configFlags = LBI.configFlags lbi
-          flags = mconcat [configFlags, addConfigFlags, distVerbFlags]
-          savedDistPref = fromFlagOrDefault
-                          (useDistPref defaultSetupScriptOptions)
-                          (configDistPref configFlags)
+          flags       = mconcat [configFlags, addConfigFlags, distVerbFlags]
       (useSandbox, depsReinstalled) <-
         case skipAddSourceDepsCheck of
         DontSkipAddSourceDepsCheck     ->
@@ -390,10 +387,33 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
                              globalFlags mempty
           return (useSandbox, NoDepsReinstalled)
 
-      -- Determine what message, if any, to display to the user if
-      -- reconfiguration is required.
-      message <- case depsReinstalled of
-        ReinstalledSomeDeps -> return $! Just $! reinstalledDepsMessage
+      mMsg <- determineMessageToShow lbi configFlags depsReinstalled
+      case mMsg of
+
+        -- No message for the user indicates that reconfiguration
+        -- is not required.
+        Nothing -> return useSandbox
+
+        -- Show the message and reconfigure.
+        Just msg -> do
+          notice verbosity msg
+          configureAction (flags, defaultConfigExFlags)
+            extraArgs globalFlags
+          return useSandbox
+
+    -- Determine what message, if any, to display to the user if reconfiguration
+    -- is required.
+    determineMessageToShow :: LBI.LocalBuildInfo -> ConfigFlags
+                            -> WereDepsReinstalled
+                            -> IO (Maybe String)
+    determineMessageToShow lbi configFlags depsReinstalled = do
+      let savedDistPref = fromFlagOrDefault
+                          (useDistPref defaultSetupScriptOptions)
+                          (configDistPref configFlags)
+      case depsReinstalled of
+        ReinstalledSomeDeps ->
+          -- Some add-source deps were reinstalled.
+          return $! Just $! reinstalledDepsMessage
         NoDepsReinstalled ->
           case checkFlags configFlags of
             -- Flag required by the caller is not set.
@@ -414,18 +434,6 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
                   return $! if outdated
                             then Just $! outdatedMessage pdFile
                             else Nothing
-
-      case message of
-
-        -- No message for the user indicates that reconfiguration
-        -- is not required.
-        Nothing -> return useSandbox
-
-        Just msg -> do
-          notice verbosity msg
-          configureAction (flags, defaultConfigExFlags)
-            extraArgs globalFlags
-          return useSandbox
 
     defaultFlags = mappend addConfigFlags distVerbFlags
     distVerbFlags = mempty
