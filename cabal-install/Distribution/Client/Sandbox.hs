@@ -687,7 +687,7 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags' globalFlags' = do
         configProgramPaths = configProgramPaths sandboxConfigFlags
                              `mappend` configProgramPaths savedFlags,
         configProgramArgs  = configProgramArgs sandboxConfigFlags
-                             `mappend` configProgramArgs savedFlags,
+                             `mappend` configProgramArgs savedFlags
         -- NOTE: We don't touch the @configPackageDBs@ field because
         -- @sandboxConfigFlags@ contains the sandbox location which was set when
         -- creating @cabal.sandbox.config@.
