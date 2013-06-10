@@ -421,7 +421,10 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
     checkSandboxConfigNewer = do
       sandboxConfig  <- getSandboxConfigFilePath globalFlags
       let buildConfig = localBuildInfoFile distPref
-      sandboxConfig `moreRecentFile` buildConfig
+      sandboxConfigExists <- doesFileExist sandboxConfig
+      if sandboxConfigExists
+        then sandboxConfig `moreRecentFile` buildConfig
+        else return False
 
     -- Determine what message, if any, to display to the user if reconfiguration
     -- is required.
