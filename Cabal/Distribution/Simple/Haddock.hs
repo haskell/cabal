@@ -209,6 +209,19 @@ haddock pkg_descr lbi suffixes flags = do
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
     withAllComponentsInBuildOrder pkg_descr lbi $ \comp clbi -> do
       pre comp
+      let
+        doExe com = case (compToExe com) of
+          Just exe -> do
+            withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
+              let bi = buildInfo exe
+              exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
+              exeArgs' <- prepareSources verbosity tmp
+                            lbi isVersion2 bi (commonArgs `mappend` exeArgs)
+              runHaddock verbosity keepTempFiles confHaddock exeArgs'
+          Nothing -> do
+           warn (fromFlag $ haddockVerbosity flags)
+             "Unsupported component, skipping..."
+           return ()
       case comp of
         CLib lib -> do
           withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
@@ -217,41 +230,9 @@ haddock pkg_descr lbi suffixes flags = do
             libArgs' <- prepareSources verbosity tmp
                           lbi isVersion2 bi (commonArgs `mappend` libArgs)
             runHaddock verbosity keepTempFiles confHaddock libArgs'
-        CExe exe -> when (flag haddockExecutables) $ do
-          withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
-            let bi = buildInfo exe
-            exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
-            exeArgs' <- prepareSources verbosity tmp
-                          lbi isVersion2 bi (commonArgs `mappend` exeArgs)
-            runHaddock verbosity keepTempFiles confHaddock exeArgs'
-        CTest test -> when (flag haddockTestSuites) $ do
-          withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
-            let exeified = testToExe test
-            case exeified of
-              Just exe -> do
-                let bi = buildInfo exe
-                exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
-                exeArgs' <- prepareSources verbosity tmp
-                              lbi isVersion2 bi (commonArgs `mappend` exeArgs)
-                runHaddock verbosity keepTempFiles confHaddock exeArgs'
-              Nothing -> do
-               warn (fromFlag $ haddockVerbosity flags)
-                 "Unsupported test suite, skipping..."
-               return ()
-        CBench bench -> when (flag haddockBenchmarks) $ do
-          withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
-            let exeified = benchToExe bench
-            case exeified of
-              Just exe -> do
-                let bi = buildInfo exe
-                exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
-                exeArgs' <- prepareSources verbosity tmp
-                              lbi isVersion2 bi (commonArgs `mappend` exeArgs)
-                runHaddock verbosity keepTempFiles confHaddock exeArgs'
-              Nothing -> do
-               warn (fromFlag $ haddockVerbosity flags)
-                 "Unsupported benchmark, skipping..."
-               return ()
+        CExe   _ -> when (flag haddockExecutables) $ doExe comp
+        CTest  _ -> when (flag haddockTestSuites)  $ doExe comp
+        CBench _ -> when (flag haddockBenchmarks)  $ doExe comp
 
     forM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
@@ -260,7 +241,7 @@ haddock pkg_descr lbi suffixes flags = do
     verbosity     = flag haddockVerbosity
     keepTempFiles = flag haddockKeepTempFiles
     flag f        = fromFlag $ f flags
-    htmlTemplate = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $ flags
+    htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $ flags
 
 -- | performs cpp and unlit preprocessing where needed on the files in
 -- | argTargets, which must have an .hs or .lhs extension.
@@ -415,25 +396,23 @@ fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
     bi = buildInfo exe
     ghcVersion = compilerVersion (compiler lbi)
 
-testToExe :: TestSuite -> Maybe Executable
-testToExe test@TestSuite { testInterface = TestSuiteExeV10 _ f } =
-  Just Executable {
-    exeName    = testName test,
-    modulePath = f,
-    buildInfo  = testBuildInfo test
-  }
-
-testToExe _ = Nothing
-
-benchToExe :: Benchmark -> Maybe Executable
-benchToExe bench@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f } =
-  Just Executable {
-    exeName    = benchmarkName bench,
-    modulePath = f,
-    buildInfo  = benchmarkBuildInfo bench
-  }
-
-benchToExe _ = Nothing
+compToExe :: Component -> Maybe Executable
+compToExe comp =
+  case comp of
+    CTest test@TestSuite { testInterface = TestSuiteExeV10 _ f } ->
+      Just Executable {
+        exeName    = testName test,
+        modulePath = f,
+        buildInfo  = testBuildInfo test
+      }
+    CBench bench@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f } ->
+      Just Executable {
+        exeName    = benchmarkName bench,
+        modulePath = f,
+        buildInfo  = benchmarkBuildInfo bench
+      }
+    CExe exe -> Just exe
+    _ -> Nothing
 
 getInterfaces :: Verbosity
               -> LocalBuildInfo
