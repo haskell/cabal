@@ -18,6 +18,7 @@ module Distribution.Client.Sandbox (
     dumpPackageEnvironment,
     withSandboxBinDirOnSearchPath,
 
+    getSandboxConfigFilePath,
     loadConfigOrSandboxConfig,
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
@@ -164,8 +165,8 @@ getPkgEnvDir globalFlags = do
 
 -- | Return the path to the sandbox config file - either the default or the one
 -- specified with @--sandbox-config-file@.
-getPkgEnvFilePath :: GlobalFlags -> IO FilePath
-getPkgEnvFilePath globalFlags = do
+getSandboxConfigFilePath :: GlobalFlags -> IO FilePath
+getSandboxConfigFilePath globalFlags = do
   let sandboxConfigFileFlag = globalSandboxConfigFile globalFlags
   case sandboxConfigFileFlag of
     NoFlag -> do pkgEnvDir <- getCurrentDirectory
@@ -179,7 +180,7 @@ getPkgEnvFilePath globalFlags = do
 tryLoadSandboxConfig :: Verbosity -> GlobalFlags
                         -> IO (FilePath, PackageEnvironment)
 tryLoadSandboxConfig verbosity globalFlags = do
-  path <- getPkgEnvFilePath globalFlags
+  path <- getSandboxConfigFilePath globalFlags
   tryLoadSandboxPackageEnvironmentFile verbosity path
     (globalConfigFile globalFlags)
 
@@ -299,7 +300,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   (comp, platform, _) <- configCompilerAux (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
-  pkgEnvFile <- getPkgEnvFilePath globalFlags
+  pkgEnvFile <- getSandboxConfigFilePath globalFlags
   createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile
     NoComments comp platform
   (_, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
@@ -321,7 +322,7 @@ sandboxDelete verbosity _sandboxFlags globalFlags = do
     NoSandbox -> die "Not in a sandbox."
     UseSandbox sandboxDir -> do
       curDir     <- getCurrentDirectory
-      pkgEnvFile <- getPkgEnvFilePath globalFlags
+      pkgEnvFile <- getSandboxConfigFilePath globalFlags
 
       -- Remove the @cabal.sandbox.config@ file, unless it's in a non-standard
       -- location.
