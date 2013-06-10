@@ -74,6 +74,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxHcPkg
                                               ,dumpPackageEnvironment
 
+                                              ,getSandboxConfigFilePath
                                               ,loadConfigOrSandboxConfig
                                               ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
@@ -90,6 +91,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Init               (initCabal)
+import Distribution.Client.Utils              (moreRecentFile)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
 import Distribution.Simple.Command
@@ -99,7 +101,8 @@ import Distribution.Simple.Compiler
          ( Compiler(..) )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
-         , ConfigStateFileErrorType(..), tryGetPersistBuildConfig )
+         , ConfigStateFileErrorType(..), localBuildInfoFile
+         , tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
@@ -378,8 +381,17 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
     onBuildConfig lbi = do
       let configFlags = LBI.configFlags lbi
           flags       = mconcat [configFlags, addConfigFlags, distVerbFlags]
+
+      -- Was the sandbox created after the package was already configured? We
+      -- may need to skip reinstallation of add-source deps and force
+      -- reconfigure.
+      isSandboxConfigNewer <- checkSandboxConfigNewer
+      let skipAddSourceDepsCheck'
+            | isSandboxConfigNewer = SkipAddSourceDepsCheck
+            | otherwise            = skipAddSourceDepsCheck
+
       (useSandbox, depsReinstalled) <-
-        case skipAddSourceDepsCheck of
+        case skipAddSourceDepsCheck' of
         DontSkipAddSourceDepsCheck     ->
           maybeReinstallAddSourceDeps verbosity numJobsFlag flags globalFlags
         SkipAddSourceDepsCheck -> do
@@ -388,6 +400,7 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
           return (useSandbox, NoDepsReinstalled)
 
       mMsg <- determineMessageToShow lbi configFlags depsReinstalled
+                                     isSandboxConfigNewer
       case mMsg of
 
         -- No message for the user indicates that reconfiguration
@@ -401,12 +414,25 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
             extraArgs globalFlags
           return useSandbox
 
+    -- Is @cabal.sandbox.config@ newer than @dist/setup-config@? Then we need to
+    -- force-reconfigure without reinstalling add-source deps (the sandbox was
+    -- created after the package was already configured).
+    checkSandboxConfigNewer :: IO Bool
+    checkSandboxConfigNewer = do
+      sandboxConfig  <- getSandboxConfigFilePath globalFlags
+      let buildConfig = localBuildInfoFile distPref
+      sandboxConfig `moreRecentFile` buildConfig
+
     -- Determine what message, if any, to display to the user if reconfiguration
     -- is required.
     determineMessageToShow :: LBI.LocalBuildInfo -> ConfigFlags
-                            -> WereDepsReinstalled
+                            -> WereDepsReinstalled -> Bool
                             -> IO (Maybe String)
-    determineMessageToShow lbi configFlags depsReinstalled = do
+    determineMessageToShow _   _           _               True =
+      -- The sandbox was created after the package was already configured.
+      return $! Just $! sandboxConfigNewerMessage
+
+    determineMessageToShow lbi configFlags depsReinstalled False = do
       let savedDistPref = fromFlagOrDefault
                           (useDistPref defaultSetupScriptOptions)
                           (configDistPref configFlags)
@@ -442,6 +468,10 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
         }
     reconfiguringMostRecent = " Re-configuring with most recently used options."
     configureManually       = " If this fails, please run configure manually."
+    sandboxConfigNewerMessage =
+        "The sandbox was created after the package was already configured."
+        ++ reconfiguringMostRecent
+        ++ configureManually
     distPrefMessage =
         "Package previously configured with different \"dist\" prefix."
         ++ reconfiguringMostRecent
