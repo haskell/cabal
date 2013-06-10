@@ -985,6 +985,8 @@ instance Monoid RegisterFlags where
 data HscolourFlags = HscolourFlags {
     hscolourCSS         :: Flag FilePath,
     hscolourExecutables :: Flag Bool,
+    hscolourTestSuites  :: Flag Bool,
+    hscolourBenchmarks  :: Flag Bool,
     hscolourDistPref    :: Flag FilePath,
     hscolourVerbosity   :: Flag Verbosity
   }
@@ -997,6 +999,8 @@ defaultHscolourFlags :: HscolourFlags
 defaultHscolourFlags = HscolourFlags {
     hscolourCSS         = NoFlag,
     hscolourExecutables = Flag False,
+    hscolourTestSuites  = Flag False,
+    hscolourBenchmarks  = Flag False,
     hscolourDistPref    = Flag defaultDistPref,
     hscolourVerbosity   = Flag normal
   }
@@ -1005,12 +1009,16 @@ instance Monoid HscolourFlags where
   mempty = HscolourFlags {
     hscolourCSS         = mempty,
     hscolourExecutables = mempty,
+    hscolourTestSuites  = mempty,
+    hscolourBenchmarks  = mempty,
     hscolourDistPref    = mempty,
     hscolourVerbosity   = mempty
   }
   mappend a b = HscolourFlags {
     hscolourCSS         = combine hscolourCSS,
     hscolourExecutables = combine hscolourExecutables,
+    hscolourTestSuites  = combine hscolourTestSuites,
+    hscolourBenchmarks  = combine hscolourBenchmarks,
     hscolourDistPref    = combine hscolourDistPref,
     hscolourVerbosity   = combine hscolourVerbosity
   }
@@ -1033,6 +1041,16 @@ hscolourCommand = makeCommand name shortDesc longDesc
       ,option "" ["executables"]
          "Run hscolour for Executables targets"
          hscolourExecutables (\v flags -> flags { hscolourExecutables = v })
+         trueArg
+
+      ,option "" ["tests"]
+         "Run hscolour for Test Suite targets"
+         hscolourTestSuites (\v flags -> flags { hscolourTestSuites = v })
+         trueArg
+
+      ,option "" ["benchmarks"]
+         "Run hscolour for Benchmark targets"
+         hscolourBenchmarks (\v flags -> flags { hscolourBenchmarks = v })
          trueArg
 
       ,option "" ["css"]

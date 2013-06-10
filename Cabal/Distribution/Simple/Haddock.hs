@@ -597,14 +597,22 @@ hscolour' pkg_descr lbi suffixes flags = do
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
     withAllComponentsInBuildOrder pkg_descr lbi $ \comp _ -> do
       pre comp
+      let
+        doExe com = case (compToExe com) of
+          Just exe -> do
+            let outputDir = hscolourPref distPref pkg_descr </> exeName exe </> "src"
+            runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe
+          Nothing -> do
+           warn (fromFlag $ hscolourVerbosity flags)
+             "Unsupported component, skipping..."
+           return ()
       case comp of
         CLib lib -> do
           let outputDir = hscolourPref distPref pkg_descr </> "src"
           runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib
-        CExe exe | fromFlag (hscolourExecutables flags) -> do
-          let outputDir = hscolourPref distPref pkg_descr </> exeName exe </> "src"
-          runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe
-        _ -> return ()
+        CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
+        CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp
+        CBench _ -> when (fromFlag (hscolourBenchmarks  flags)) $ doExe comp
   where
     stylesheet = flagToMaybe (hscolourCSS flags)
 
@@ -631,6 +639,8 @@ haddockToHscolour flags =
     HscolourFlags {
       hscolourCSS         = haddockHscolourCss flags,
       hscolourExecutables = haddockExecutables flags,
+      hscolourTestSuites  = haddockTestSuites  flags,
+      hscolourBenchmarks  = haddockBenchmarks  flags,
       hscolourVerbosity   = haddockVerbosity   flags,
       hscolourDistPref    = haddockDistPref    flags
     }
