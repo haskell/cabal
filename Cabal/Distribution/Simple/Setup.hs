@@ -194,6 +194,9 @@ flagToList :: Flag a -> [a]
 flagToList (Flag x) = [x]
 flagToList NoFlag   = []
 
+allFlags :: [Flag Bool] -> Flag Bool
+allFlags flags = toFlag $ all (\f -> fromFlagOrDefault False f) flags
+
 -- ------------------------------------------------------------
 -- * Global flags
 -- ------------------------------------------------------------
@@ -1053,6 +1056,16 @@ hscolourCommand = makeCommand name shortDesc longDesc
          hscolourBenchmarks (\v flags -> flags { hscolourBenchmarks = v })
          trueArg
 
+      ,option "" ["all"]
+         "Run hscolour for all targets"
+         (\f -> allFlags [ hscolourExecutables f
+                         , hscolourTestSuites  f
+                         , hscolourBenchmarks  f])
+         (\v flags -> flags { hscolourExecutables = v
+                            , hscolourTestSuites  = v
+                            , hscolourBenchmarks  = v })
+         trueArg
+
       ,option "" ["css"]
          "Use a cascading style sheet"
          hscolourCSS (\v flags -> flags { hscolourCSS = v })
@@ -1149,6 +1162,16 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
       ,option "" ["benchmarks"]
          "Run haddock for Benchmark targets"
          haddockBenchmarks (\v flags -> flags { haddockBenchmarks = v })
+         trueArg
+
+      ,option "" ["all"]
+         "Run haddock for all targets"
+         (\f -> allFlags [ haddockExecutables f
+                         , haddockTestSuites  f
+                         , haddockBenchmarks  f])
+         (\v flags -> flags { haddockExecutables = v
+                            , haddockTestSuites  = v
+                            , haddockBenchmarks  = v })
          trueArg
 
       ,option "" ["internal"]
