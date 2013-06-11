@@ -86,7 +86,7 @@ import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, getDirectoryContents, removeDirectoryRecursive
-    , removeFile )
+    , removeFile, setCurrentDirectory )
 import System.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>), (<.>) )
@@ -499,7 +499,10 @@ simpleTestStub m = unlines
 stubMain :: IO [Test] -> IO ()
 stubMain tests = do
     (f, n) <- fmap read getContents
-    tests >>= stubRunTests >>= stubWriteLog f n
+    dir <- getCurrentDirectory
+    results <- tests >>= stubRunTests
+    setCurrentDirectory dir
+    stubWriteLog f n results
 
 -- | The test runner used in library "TestSuite" stub executables.  Runs a list
 -- of 'Test's.  An executable calling this function is meant to be invoked as
