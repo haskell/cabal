@@ -775,10 +775,6 @@ getAction getFlags extraArgs globalFlags = do
 
 unpackAction :: GetFlags -> [String] -> GlobalFlags -> IO ()
 unpackAction getFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (getVerbosity getFlags)
-  notice verbosity $ "The 'unpack' command is deprecated "
-    ++ "and will be removed in a future release. "
-    ++ "Please use 'cabal get' instead."
   getAction getFlags extraArgs globalFlags
 
 initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
