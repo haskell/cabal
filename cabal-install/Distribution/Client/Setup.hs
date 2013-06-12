@@ -635,7 +635,11 @@ getCommand :: CommandUI GetFlags
 getCommand = CommandUI {
     commandName         = "get",
     commandSynopsis     = "Gets a package's source code.",
-    commandDescription  = Nothing,
+    commandDescription  = Just $ \_ ->
+          "Creates a local copy of a package's source code. By default it gets "
+       ++ "the source\ntarball and unpacks it in a local subdirectory. "
+       ++ "Alternatively, with -s it will\nget the code from the source "
+       ++ "repository specified by the package.\n",
     commandUsage        = usagePackages "get",
     commandDefaultFlags = mempty,
     commandOptions      = \_ -> [
@@ -647,7 +651,7 @@ getCommand = CommandUI {
          (reqArgFlag "PATH")
 
        ,option "s" ["source-repository"]
-         "Fork the package's source repository."
+         "Copy the package's source repository (ie git clone, darcs get, etc as appropriate)."
          getSourceRepository (\v flags -> flags { getSourceRepository = v })
         (optArg "[head|this|...]" (readP_to_E (const "invalid source-repository")
                                               (fmap (toFlag . Just) parse))
