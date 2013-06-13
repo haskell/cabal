@@ -194,6 +194,9 @@ flagToList :: Flag a -> [a]
 flagToList (Flag x) = [x]
 flagToList NoFlag   = []
 
+allFlags :: [Flag Bool] -> Flag Bool
+allFlags flags = toFlag $ all (\f -> fromFlagOrDefault False f) flags
+
 -- ------------------------------------------------------------
 -- * Global flags
 -- ------------------------------------------------------------
@@ -985,6 +988,8 @@ instance Monoid RegisterFlags where
 data HscolourFlags = HscolourFlags {
     hscolourCSS         :: Flag FilePath,
     hscolourExecutables :: Flag Bool,
+    hscolourTestSuites  :: Flag Bool,
+    hscolourBenchmarks  :: Flag Bool,
     hscolourDistPref    :: Flag FilePath,
     hscolourVerbosity   :: Flag Verbosity
   }
@@ -997,6 +1002,8 @@ defaultHscolourFlags :: HscolourFlags
 defaultHscolourFlags = HscolourFlags {
     hscolourCSS         = NoFlag,
     hscolourExecutables = Flag False,
+    hscolourTestSuites  = Flag False,
+    hscolourBenchmarks  = Flag False,
     hscolourDistPref    = Flag defaultDistPref,
     hscolourVerbosity   = Flag normal
   }
@@ -1005,12 +1012,16 @@ instance Monoid HscolourFlags where
   mempty = HscolourFlags {
     hscolourCSS         = mempty,
     hscolourExecutables = mempty,
+    hscolourTestSuites  = mempty,
+    hscolourBenchmarks  = mempty,
     hscolourDistPref    = mempty,
     hscolourVerbosity   = mempty
   }
   mappend a b = HscolourFlags {
     hscolourCSS         = combine hscolourCSS,
     hscolourExecutables = combine hscolourExecutables,
+    hscolourTestSuites  = combine hscolourTestSuites,
+    hscolourBenchmarks  = combine hscolourBenchmarks,
     hscolourDistPref    = combine hscolourDistPref,
     hscolourVerbosity   = combine hscolourVerbosity
   }
@@ -1035,6 +1046,26 @@ hscolourCommand = makeCommand name shortDesc longDesc
          hscolourExecutables (\v flags -> flags { hscolourExecutables = v })
          trueArg
 
+      ,option "" ["tests"]
+         "Run hscolour for Test Suite targets"
+         hscolourTestSuites (\v flags -> flags { hscolourTestSuites = v })
+         trueArg
+
+      ,option "" ["benchmarks"]
+         "Run hscolour for Benchmark targets"
+         hscolourBenchmarks (\v flags -> flags { hscolourBenchmarks = v })
+         trueArg
+
+      ,option "" ["all"]
+         "Run hscolour for all targets"
+         (\f -> allFlags [ hscolourExecutables f
+                         , hscolourTestSuites  f
+                         , hscolourBenchmarks  f])
+         (\v flags -> flags { hscolourExecutables = v
+                            , hscolourTestSuites  = v
+                            , hscolourBenchmarks  = v })
+         trueArg
+
       ,option "" ["css"]
          "Use a cascading style sheet"
          hscolourCSS (\v flags -> flags { hscolourCSS = v })
@@ -1052,6 +1083,8 @@ data HaddockFlags = HaddockFlags {
     haddockHtml         :: Flag Bool,
     haddockHtmlLocation :: Flag String,
     haddockExecutables  :: Flag Bool,
+    haddockTestSuites   :: Flag Bool,
+    haddockBenchmarks   :: Flag Bool,
     haddockInternal     :: Flag Bool,
     haddockCss          :: Flag FilePath,
     haddockHscolour     :: Flag Bool,
@@ -1071,6 +1104,8 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHtml         = Flag False,
     haddockHtmlLocation = NoFlag,
     haddockExecutables  = Flag False,
+    haddockTestSuites   = Flag False,
+    haddockBenchmarks   = Flag False,
     haddockInternal     = Flag False,
     haddockCss          = NoFlag,
     haddockHscolour     = Flag False,
@@ -1117,6 +1152,26 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
       ,option "" ["executables"]
          "Run haddock for Executables targets"
          haddockExecutables (\v flags -> flags { haddockExecutables = v })
+         trueArg
+
+      ,option "" ["tests"]
+         "Run haddock for Test Suite targets"
+         haddockTestSuites (\v flags -> flags { haddockTestSuites = v })
+         trueArg
+
+      ,option "" ["benchmarks"]
+         "Run haddock for Benchmark targets"
+         haddockBenchmarks (\v flags -> flags { haddockBenchmarks = v })
+         trueArg
+
+      ,option "" ["all"]
+         "Run haddock for all targets"
+         (\f -> allFlags [ haddockExecutables f
+                         , haddockTestSuites  f
+                         , haddockBenchmarks  f])
+         (\v flags -> flags { haddockExecutables = v
+                            , haddockTestSuites  = v
+                            , haddockBenchmarks  = v })
          trueArg
 
       ,option "" ["internal"]
@@ -1167,6 +1222,8 @@ instance Monoid HaddockFlags where
     haddockHtml         = mempty,
     haddockHtmlLocation = mempty,
     haddockExecutables  = mempty,
+    haddockTestSuites   = mempty,
+    haddockBenchmarks   = mempty,
     haddockInternal     = mempty,
     haddockCss          = mempty,
     haddockHscolour     = mempty,
@@ -1183,6 +1240,8 @@ instance Monoid HaddockFlags where
     haddockHtml         = combine haddockHoogle,
     haddockHtmlLocation = combine haddockHtmlLocation,
     haddockExecutables  = combine haddockExecutables,
+    haddockTestSuites   = combine haddockTestSuites,
+    haddockBenchmarks   = combine haddockBenchmarks,
     haddockInternal     = combine haddockInternal,
     haddockCss          = combine haddockCss,
     haddockHscolour     = combine haddockHscolour,
