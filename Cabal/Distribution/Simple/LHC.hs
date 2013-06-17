@@ -206,7 +206,7 @@ configureToolchain lhcProg =
       tempDir <- getTemporaryDirectory
       ldx <- withTempFile False tempDir ".c" $ \testcfile testchnd ->
              withTempFile False tempDir ".o" $ \testofile testohnd -> do
-               hPutStrLn testchnd "int foo() {}"
+               hPutStrLn testchnd "int foo() { return 0; }"
                hClose testchnd; hClose testohnd
                rawSystemProgram verbosity lhcProg ["-c", testcfile,
                                                    "-o", testofile]
