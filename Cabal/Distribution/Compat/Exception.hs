@@ -1,6 +1,4 @@
 module Distribution.Compat.Exception (
-     Exception.IOException,
-     onException,
      catchIO,
      catchExit,
      throwIOIO,
@@ -9,9 +7,6 @@ module Distribution.Compat.Exception (
 
 import System.Exit
 import qualified Control.Exception as Exception
-
-onException :: IO a -> IO b -> IO a
-onException = Exception.onException
 
 throwIOIO :: Exception.IOException -> IO a
 throwIOIO = Exception.throwIO

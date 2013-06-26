@@ -187,7 +187,7 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
     (Version(..))
 
-import Control.Exception (evaluate)
+import Control.Exception (IOException, evaluate)
 import System.Process (runProcess)
 
 import Control.Concurrent (forkIO)
@@ -202,7 +202,7 @@ import Distribution.Compat.CopyFile
 import Distribution.Compat.TempFile
          ( openTempFile, createTempDirectory )
 import Distribution.Compat.Exception
-         ( IOException, throwIOIO, tryIO, catchIO, catchExit )
+         ( throwIOIO, tryIO, catchIO, catchExit )
 import Distribution.Verbosity
 
 #ifdef VERSION_base
