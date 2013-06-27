@@ -13,11 +13,9 @@ module Distribution.Compat.CopyFile (
 import Control.Monad
          ( when )
 import Control.Exception
-         ( bracket, bracketOnError )
+         ( bracket, bracketOnError, throwIO )
 import Distribution.Compat.Exception
          ( catchIO )
-import Distribution.Compat.Exception
-         ( throwIOIO )
 import System.IO.Error
          ( ioeSetLocation )
 import System.Directory
@@ -64,7 +62,7 @@ setDirOrdinary = setFileExecutable
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
   copy
-    `catchIO` (\ioe -> throwIOIO (ioeSetLocation ioe "copyFile"))
+    `catchIO` (\ioe -> throwIO (ioeSetLocation ioe "copyFile"))
     where copy = bracket (openBinaryFile fromFPath ReadMode) hClose $ \hFrom ->
                  bracketOnError openTmp cleanTmp $ \(tmpFPath, hTmp) ->
                  do allocaBytes bufferSize $ copyContents hFrom hTmp

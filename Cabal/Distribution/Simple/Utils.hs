@@ -191,7 +191,7 @@ import qualified Distribution.ModuleName as ModuleName
 import Distribution.Version
     (Version(..))
 
-import Control.Exception (evaluate)
+import Control.Exception (IOException, evaluate, throwIO)
 import System.Process (runProcess)
 
 import Control.Concurrent (forkIO)
@@ -206,7 +206,7 @@ import Distribution.Compat.CopyFile
 import Distribution.Compat.TempFile
          ( openTempFile, createTempDirectory )
 import Distribution.Compat.Exception
-         ( IOException, throwIOIO, tryIO, catchIO, catchExit )
+         ( tryIO, catchIO, catchExit )
 import Distribution.Verbosity
 
 #ifdef VERSION_base
@@ -742,11 +742,11 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
     parents = reverse . scanl1 (</>) . splitDirectories . normalise
 
     createDirs []         = return ()
-    createDirs (dir:[])   = createDir dir throwIOIO
+    createDirs (dir:[])   = createDir dir throwIO
     createDirs (dir:dirs) =
       createDir dir $ \_ -> do
         createDirs dirs
-        createDir dir throwIOIO
+        createDir dir throwIO
 
     createDir :: FilePath -> (IOException -> IO ()) -> IO ()
     createDir dir notExistHandler = do
@@ -765,9 +765,9 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
           | isAlreadyExistsError e -> (do
               isDir <- doesDirectoryExist dir
               if isDir then return ()
-                       else throwIOIO e
+                       else throwIO e
               ) `catchIO` ((\_ -> return ()) :: IOException -> IO ())
-          | otherwise              -> throwIOIO e
+          | otherwise              -> throwIO e
 
 createDirectoryVerbose :: Verbosity -> FilePath -> IO ()
 createDirectoryVerbose verbosity dir = do

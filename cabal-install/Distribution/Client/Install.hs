@@ -33,13 +33,12 @@ import qualified Data.Set as S
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Control.Exception as Exception
-         ( bracket, handleJust )
-import Control.Exception as Exception
-         ( Exception(toException), catches, Handler(Handler), IOException )
+         ( Exception(toException), bracket, catches, Handler(Handler), handleJust
+         , IOException, SomeException )
 import System.Exit
          ( ExitCode )
 import Distribution.Compat.Exception
-         ( SomeException, catchIO, catchExit )
+         ( catchIO, catchExit )
 import Control.Monad
          ( when, unless )
 import System.Directory
