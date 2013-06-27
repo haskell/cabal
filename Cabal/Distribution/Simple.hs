@@ -136,7 +136,8 @@ import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit
 import System.IO.Error   (isDoesNotExistError)
-import Distribution.Compat.Exception (catchIO, throwIOIO)
+import Control.Exception (throwIO)
+import Distribution.Compat.Exception (catchIO)
 
 import Control.Monad   (when)
 import Data.List       (intercalate, unionBy, nub, (\\))
@@ -646,7 +647,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
       = action
           `catchIO` \ioe -> if isDoesNotExistError ioe
                               then die notFoundMsg
-                              else throwIOIO ioe
+                              else throwIO ioe
 
     notFoundMsg = "The package has a './configure' script. This requires a "
                ++ "Unix compatibility toolchain such as MinGW+MSYS or Cygwin."
