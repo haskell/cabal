@@ -30,7 +30,7 @@ import Distribution.Version
 import Data.Map (Map)
 import Network.URI (URI)
 import Data.ByteString.Lazy (ByteString)
-import Distribution.Compat.Exception
+import Control.Exception
          ( SomeException )
 
 newtype Username = Username { unUsername :: String }
