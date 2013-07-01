@@ -13,6 +13,7 @@
 # programs, you can override these by setting environment vars
 GHC=${GHC:-ghc}
 GHC_PKG=${GHC_PKG:-ghc-pkg}
+PACKAGE_DB=${PACKAGE_DB:-package-db}
 WGET=${WGET:-wget}
 CURL=${CURL:-curl}
 FETCH=${FETCH:-fetch}
@@ -159,13 +160,13 @@ install_pkg () {
 
   ./Setup configure ${SCOPE_OF_INSTALLATION} "--prefix=${PREFIX}" \
     --with-compiler=${GHC} --with-hc-pkg=${GHC_PKG} \
-    ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
+    --package-db=${PACKAGE_DB} ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
     || die "Configuring the ${PKG} package failed"
 
   ./Setup build ${VERBOSE} \
     || die "Building the ${PKG} package failed"
 
-  ./Setup install ${VERBOSE} \
+  ./Setup install ${SCOPE_OF_INSTALLATION} ${VERBOSE} \
     || die "Installing the ${PKG} package failed"
 }
 
