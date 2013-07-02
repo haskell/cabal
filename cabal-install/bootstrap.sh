@@ -9,6 +9,8 @@
 # install settings, you can override these by setting environment vars
 #VERBOSE
 #EXTRA_CONFIGURE_OPTS
+#EXTRA_BUILD_OPTS
+#EXTRA_INSTALL_OPTS
 
 # programs, you can override these by setting environment vars
 GHC=${GHC:-ghc}
@@ -160,13 +162,13 @@ install_pkg () {
 
   ./Setup configure ${SCOPE_OF_INSTALLATION} "--prefix=${PREFIX}" \
     --with-compiler=${GHC} --with-hc-pkg=${GHC_PKG} \
-    --package-db=${PACKAGE_DB} ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
+    ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
     || die "Configuring the ${PKG} package failed"
 
-  ./Setup build ${VERBOSE} \
+  ./Setup build ${EXTRA_BUILD_OPTS} ${VERBOSE} \
     || die "Building the ${PKG} package failed"
 
-  ./Setup install ${SCOPE_OF_INSTALLATION} ${VERBOSE} \
+  ./Setup install ${SCOPE_OF_INSTALLATION} ${EXTRA_INSTALL_OPTS} ${VERBOSE} \
     || die "Installing the ${PKG} package failed"
 }
 
