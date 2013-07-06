@@ -138,7 +138,7 @@ executable cabal
       build-depends: Win32 >= 2 && < 3
       cpp-options: -DWIN32
     else
-      build-depends: unix >= 1.0 && < 2.7
+      build-depends: unix >= 2.0 && < 2.8
 
     if arch(arm)
        cc-options:  -DCABAL_NO_THREADED
