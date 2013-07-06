@@ -159,8 +159,6 @@ import System.Directory
     , doesDirectoryExist, doesFileExist, removeFile, findExecutable )
 import System.Environment
     ( getProgName )
-import System.Cmd
-    ( rawSystem )
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
@@ -192,7 +190,7 @@ import Distribution.Version
     (Version(..))
 
 import Control.Exception (IOException, evaluate, throwIO)
-import System.Process (runProcess)
+import System.Process (rawSystem, runProcess)
 
 import Control.Concurrent (forkIO)
 import System.Process (runInteractiveProcess, waitForProcess)
