@@ -125,8 +125,8 @@ fetch_pkg () {
   then
     ${WGET} -c ${URL} || die "Failed to download ${PKG}."
   elif which ${FETCH} > /dev/null
- 	then
- 	  ${FETCH} ${URL} || die "Failed to download ${PKG}."
+    then
+      ${FETCH} ${URL} || die "Failed to download ${PKG}."
   else
     die "Failed to find a downloader. 'curl', 'wget' or 'fetch' is required."
   fi
