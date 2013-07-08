@@ -924,7 +924,7 @@ buildExe verbosity _pkg_descr lbi
                  }
 
   -- For building exe's for profiling that use TH we actually
-  -- have to build twice, once without profiling and the again
+  -- have to build twice, once without profiling and then again
   -- with profiling. This is because the code that TH needs to
   -- run at compile time needs to be the vanilla ABI so it can
   -- be loaded up and run by the compiler.
