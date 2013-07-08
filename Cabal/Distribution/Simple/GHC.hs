@@ -888,10 +888,11 @@ buildExe verbosity _pkg_descr lbi
       cObjs         = map (`replaceExtension` objExtension) cSrcs
       baseOpts   = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
                     `mappend` mempty {
-                      ghcOptMode           = toFlag GhcModeMake,
-                      ghcOptInputFiles     = [ srcMainFile  |     isHaskellMain],
-                      ghcOptInputModules   = [ m            | not isHaskellMain
-                                                            , m <- exeModules exe]
+                      ghcOptMode         = toFlag GhcModeMake,
+                      ghcOptInputFiles   =
+                        [ srcMainFile | isHaskellMain],
+                      ghcOptInputModules =
+                        [ m | not isHaskellMain, m <- exeModules exe]
                     }
       staticOpts = baseOpts `mappend` mempty {
                       ghcOptDynamic        = toFlag False
