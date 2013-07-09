@@ -274,7 +274,8 @@ test-suite package-tests
     directory,
     filepath,
     extensible-exceptions,
-    bytestring
+    bytestring,
+    regex-posix
   if !os(windows)
     build-depends: unix
   ghc-options: -Wall
