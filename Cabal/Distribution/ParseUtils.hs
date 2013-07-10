@@ -87,7 +87,7 @@ import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
 import Data.Maybe       (fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
 import qualified Data.Map as Map
-import Control.Monad (foldM) 
+import Control.Monad (foldM, join) 
 import Control.Applicative (Applicative(..))
 import System.FilePath (normalise)
 import Data.List (sortBy)
@@ -122,7 +122,7 @@ instance Functor ParseResult where
         
 instance Applicative ParseResult where
         pure = ParseOk []
-        f <*> a = join $ fmap (\f' -> fmap f' a)
+        f <*> a = f >>= \f' -> fmap f' a
 
 instance Monad ParseResult where
         return = ParseOk []
