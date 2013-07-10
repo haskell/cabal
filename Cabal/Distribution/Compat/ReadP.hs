@@ -72,7 +72,6 @@ module Distribution.Compat.ReadP
 import Control.Monad( MonadPlus(..), liftM2 )
 import Data.Char (isSpace)
 import Control.Applicative (Applicative(..))
-import Control.Monad (join)
 
 infixr 5 +++, <++
 
