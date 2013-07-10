@@ -87,7 +87,8 @@ import Data.Char (isSpace, toLower, isAlphaNum, isDigit)
 import Data.Maybe       (fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
 import qualified Data.Map as Map
-import Control.Monad (foldM)
+import Control.Monad (foldM) 
+import Control.Applicative (Applicative(..))
 import System.FilePath (normalise)
 import Data.List (sortBy)
 
@@ -114,6 +115,14 @@ showPWarning fpath (UTFWarning line fname) =
 
 data ParseResult a = ParseFailed PError | ParseOk [PWarning] a
         deriving Show
+
+instance Functor ParseResult where
+        fmap f (ParseFailed err) = ParseFailed err
+        fmap f (ParseOk ws x) = ParseOk ws $ f x
+        
+instance Applicative ParseResult where
+        pure = ParseOk []
+        f <*> a = join $ fmap (\f' -> fmap f' a)
 
 instance Monad ParseResult where
         return = ParseOk []
