@@ -69,7 +69,7 @@ module Distribution.Compat.ReadP
   )
  where
 
-import Control.Monad( MonadPlus(..), liftM2 )
+import Control.Monad( MonadPlus(..), liftM2, ap )
 import Data.Char (isSpace)
 import Control.Applicative (Applicative(..))
 
@@ -93,8 +93,7 @@ instance Functor (P s) where
 
 instance Applicative (P s) where
   pure = return
-
-  f <*> a = f >>= \f' -> fmap f' a
+  (<*>) = ap
 
 instance Monad (P s) where
   return x = Result x Fail
@@ -149,7 +148,7 @@ instance Functor (Parser r s) where
 
 instance Applicative (Parser r s) where
   pure = return
-  f <*> a = f >>= \f' -> fmap f' a
+  (<*>) = ap
 
 instance Monad (Parser r s) where
   return x  = R (\k -> k x)
