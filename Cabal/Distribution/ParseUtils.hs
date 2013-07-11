@@ -121,7 +121,7 @@ instance Functor ParseResult where
         fmap f (ParseOk ws x) = ParseOk ws $ f x
         
 instance Applicative ParseResult where
-        pure = ParseOk []
+        pure = return
         (<*>) = ap
         
 
