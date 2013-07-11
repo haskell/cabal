@@ -72,7 +72,9 @@ import Data.Char  (isSpace)
 import Data.Maybe (listToMaybe, isJust)
 import Data.Monoid ( Monoid(..) )
 import Data.List  (nub, unfoldr, partition, (\\))
-import Control.Monad (liftM, foldM, when, unless)
+import Control.Monad (liftM, foldM, when, unless, ap)
+import Control.Applicative (Applicative(..))
+import Control.Arrow (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -601,6 +603,13 @@ buildInfoNames = map fieldName binfoFieldDescrs
 -- A minimal implementation of the StateT monad transformer to avoid depending
 -- on the 'mtl' package.
 newtype StT s m a = StT { runStT :: s -> m (a,s) }
+
+instance Functor f => Functor (StT s f) where
+    fmap g (StT f) = StT $ fmap (first g)  . f
+
+instance (Monad m, Functor m) => Applicative (StT s m) where
+    pure = return
+    (<*>) = ap
 
 instance Monad m => Monad (StT s m) where
     return a = StT (\s -> return (a,s))
