@@ -74,6 +74,7 @@ import Data.Monoid ( Monoid(..) )
 import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless, ap)
 import Control.Applicative (Applicative(..))
+import Control.Arrow (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
@@ -604,7 +605,7 @@ buildInfoNames = map fieldName binfoFieldDescrs
 newtype StT s m a = StT { runStT :: s -> m (a,s) }
 
 instance Functor f => Functor (StT s f) where
-    fmap g (StT f) = StT $ \s -> fmap (\(a,s') -> (g a,s')) $ f s
+    fmap g (StT f) = StT $ fmap (first g)  . f
 
 instance (Monad m, Functor m) => Applicative (StT s m) where
     pure = return
