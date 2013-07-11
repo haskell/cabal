@@ -71,6 +71,8 @@ tests version inplaceSpec =
     , hunit "BenchmarkExeV10/Test"
       PackageTests.BenchmarkExeV10.Check.checkBenchmark
     , hunit "BenchmarkOptions" PackageTests.BenchmarkOptions.Check.suite
+    , hunit "TemplateHaskell/vanilla"
+      PackageTests.TemplateHaskell.Check.vanilla
     , hunit "TemplateHaskell/profiling"
       PackageTests.TemplateHaskell.Check.profiling
     , hunit "TemplateHaskell/dynamic"
