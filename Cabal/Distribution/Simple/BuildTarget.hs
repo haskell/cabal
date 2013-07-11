@@ -55,6 +55,7 @@ import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
 import Control.Monad
+import Control.Applicative (Applicative(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
@@ -768,6 +769,10 @@ instance Functor Match where
   fmap _ (NoMatch      d ms) = NoMatch      d ms
   fmap f (ExactMatch   d xs) = ExactMatch   d (fmap f xs)
   fmap f (InexactMatch d xs) = InexactMatch d (fmap f xs)
+
+instance Applicative Match where
+  pure = return
+  (<*>) = ap
 
 instance Monad Match where
   return a                = ExactMatch 0 [a]
