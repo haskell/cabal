@@ -917,9 +917,11 @@ buildExe verbosity _pkg_descr lbi
                                      "-dynhisuf", "dyn_hi",
                                      "-dynosuf", "dyn_o"]
                     }
-      compileOpts | withProfExe lbi = profOpts
+      commonOpts  | withProfExe lbi = profOpts
                   | withDynExe  lbi = dynOpts
                   | otherwise       = staticOpts
+      compileOpts | useDynToo = dynTooOpts
+                  | otherwise = commonOpts
       withStaticExe = (not $ withProfExe lbi) && (not $ withDynExe lbi)
 
       -- For building exe's that use TH with -prof or -dynamic we actually have
@@ -940,7 +942,7 @@ buildExe verbosity _pkg_descr lbi
         | isGhcDynamic = doingTH && (withProfExe lbi || withStaticExe)
         | otherwise    = doingTH && (withProfExe lbi || withDynExe lbi)
 
-      linkOpts = compileOpts `mappend` mempty {
+      linkOpts = commonOpts `mappend` mempty {
                       ghcOptLinkOptions    = PD.ldOptions exeBi,
                       ghcOptLinkLibs       = extraLibs exeBi,
                       ghcOptLinkLibPath    = extraLibDirs exeBi,
@@ -953,9 +955,7 @@ buildExe verbosity _pkg_descr lbi
   when compileForTH $
     runGhcProg compileTHOpts { ghcOptNoLink = toFlag True }
 
-  let compileOpts' | useDynToo = dynTooOpts
-                   | otherwise = compileOpts
-    in runGhcProg compileOpts' { ghcOptNoLink = toFlag True }
+  runGhcProg compileOpts { ghcOptNoLink = toFlag True }
 
   -- build any C sources
   unless (null cSrcs) $ do
