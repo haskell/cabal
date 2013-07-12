@@ -4,6 +4,13 @@ import PackageTests.PackageTester
 import System.FilePath
 import Test.HUnit
 
+vanilla :: Test
+vanilla = TestCase $ do
+  let spec = PackageSpec ("PackageTests" </>
+                          "TemplateHaskell" </> "vanilla") []
+  result <- cabal_build spec
+  assertBuildSucceeded result
+
 profiling :: Test
 profiling = TestCase $ do
    let flags = ["--enable-library-profiling"
