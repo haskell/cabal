@@ -883,8 +883,9 @@ buildExe verbosity _pkg_descr lbi
 
   -- build executables
 
-  srcMainFile <- findFile (exeDir : hsSourceDirs exeBi) modPath
-  isGhcDynamic <- ghcDynamic verbosity ghcProg
+  srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
+  isGhcDynamic        <- ghcDynamic verbosity ghcProg
+  dynamicTooSupported <- ghcSupportsDynamicToo verbosity ghcProg
 
   let isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
       cSrcs         = cSources exeBi ++ [srcMainFile | not isHaskellMain]
@@ -912,7 +913,11 @@ buildExe verbosity _pkg_descr lbi
                       ghcOptObjSuffix      = toFlag "dyn_o",
                       ghcOptExtra          = ghcSharedOptions exeBi
                     }
-
+      dynTooOpts = staticOpts `mappend` mempty {
+                      ghcOptExtra = ["-dynamic-too",
+                                     "-dynhisuf", "dyn_hi",
+                                     "-dynosuf", "dyn_o"]
+                    }
       compileOpts | withProfExe lbi = profOpts
                   | withDynExe  lbi = dynOpts
                   | otherwise       = staticOpts
@@ -926,9 +931,13 @@ buildExe verbosity _pkg_descr lbi
       -- With dynamic-by-default GHC the TH object files loaded at compile-time
       -- need to be .dyn_o instead of .o.
       doingTH = EnableExtension TemplateHaskell `elem` allExtensions exeBi
+      -- Should we use -dynamic-too instead of compilng twice?
+      useDynToo = dynamicTooSupported && isGhcDynamic
+                  && doingTH && withStaticExe && null (ghcSharedOptions exeBi)
       compileTHOpts | isGhcDynamic = dynOpts
                     | otherwise    = staticOpts
       compileForTH
+        | useDynToo    = False
         | isGhcDynamic = doingTH && (withProfExe lbi || withStaticExe)
         | otherwise    = doingTH && (withProfExe lbi || withDynExe lbi)
 
@@ -942,11 +951,12 @@ buildExe verbosity _pkg_descr lbi
                  }
 
   -- Build static/dynamic object files for TH, if needed.
-  -- TODO: use -dynamic-too when possible
   when compileForTH $
     runGhcProg compileTHOpts { ghcOptNoLink = toFlag True }
 
-  runGhcProg compileOpts { ghcOptNoLink = toFlag True }
+  let compileOpts' | useDynToo = dynTooOpts
+                   | otherwise = compileOpts
+    in runGhcProg compileOpts' { ghcOptNoLink = toFlag True }
 
   -- build any C sources
   unless (null cSrcs) $ do
