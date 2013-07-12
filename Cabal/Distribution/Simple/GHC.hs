@@ -710,15 +710,14 @@ buildLib verbosity pkg_descr lbi lib clbi = do
                                              "-dynosuf", "dyn_o"]
                           }
 
-  -- TODO: the logic in this fragment is quite convoluted. Should be possible to
-  -- simplify/refactor.
   unless (null (libModules lib)) $
     do let vanilla = whenVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
            shared  = whenSharedLib  forceSharedLib  (runGhcProg sharedOpts)
-       if dynamicTooSupported &&
-          (forceVanillaLib || withVanillaLib lbi) &&
-          (forceSharedLib  || withSharedLib  lbi)  &&
-          null (ghcSharedOptions libBi)
+           useDynToo = dynamicTooSupported &&
+                       (forceVanillaLib || withVanillaLib lbi) &&
+                       (forceSharedLib  || withSharedLib  lbi) &&
+                       null (ghcSharedOptions libBi)
+       if useDynToo
            then runGhcProg vanillaSharedOpts
            else if isGhcDynamic then do shared;  vanilla
                                 else do vanilla; shared
