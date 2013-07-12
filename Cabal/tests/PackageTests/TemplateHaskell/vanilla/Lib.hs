@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Main where
+module Lib where
 
 import TH
 
-main = print $(splice)
+val = $(splice)
