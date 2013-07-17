@@ -36,8 +36,9 @@ import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
                                        , defaultSandboxLocation )
 import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
-                                       , showCompilerId )
+                                       , compilerFlavor, showCompilerId )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
+                                       , defaultInstallDirs, combineInstallDirs
                                        , fromPathTemplate, toPathTemplate )
 import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..),
                                          fromFlagOrDefault, toFlag )
@@ -175,9 +176,15 @@ basePackageEnvironment =
 initialPackageEnvironment :: FilePath -> Compiler -> Platform
                              -> IO PackageEnvironment
 initialPackageEnvironment sandboxDir compiler platform = do
+  defInstallDirs <- defaultInstallDirs (compilerFlavor compiler)
+                    {- userInstall= -} False {- _hasLibs= -} False
   let initialConfig = commonPackageEnvironmentConfig sandboxDir
+      installDirs   = combineInstallDirs (\d f -> Flag $ fromFlagOrDefault d f)
+                      defInstallDirs (savedUserInstallDirs initialConfig)
   return $ mempty {
     pkgEnvSavedConfig = initialConfig {
+       savedUserInstallDirs   = installDirs,
+       savedGlobalInstallDirs = installDirs,
        savedGlobalFlags = (savedGlobalFlags initialConfig) {
           globalLocalRepos = [sandboxDir </> "packages"]
           },
