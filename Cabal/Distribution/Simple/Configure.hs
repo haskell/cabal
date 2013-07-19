@@ -1036,8 +1036,8 @@ checkForeignDeps pkg lbi verbosity = do
 
         builds program args = do
             tempDir <- getTemporaryDirectory
-            withTempFile False tempDir ".c" $ \cName cHnd ->
-              withTempFile False tempDir "" $ \oNname oHnd -> do
+            withTempFile tempDir ".c" $ \cName cHnd ->
+              withTempFile tempDir "" $ \oNname oHnd -> do
                 hPutStrLn cHnd program
                 hClose cHnd
                 hClose oHnd

@@ -362,13 +362,13 @@ configureToolchain ghcProg ghcInfo =
     configureLd' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
     configureLd' verbosity ldProg = do
       tempDir <- getTemporaryDirectory
-      ldx <- withTempFile False tempDir ".c" $ \testcfile testchnd ->
-             withTempFile False tempDir ".o" $ \testofile testohnd -> do
+      ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
+             withTempFile tempDir ".o" $ \testofile testohnd -> do
                hPutStrLn testchnd "int foo() { return 0; }"
                hClose testchnd; hClose testohnd
                rawSystemProgram verbosity ghcProg ["-c", testcfile,
                                                    "-o", testofile]
-               withTempFile False tempDir ".o" $ \testofile' testohnd' ->
+               withTempFile tempDir ".o" $ \testofile' testohnd' ->
                  do
                    hClose testohnd'
                    _ <- rawSystemProgramStdout verbosity ldProg

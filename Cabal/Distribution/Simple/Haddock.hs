@@ -94,8 +94,10 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.Utils
          ( die, copyFileTo, warn, notice, intercalate, setupMessage
-         , createDirectoryIfMissingVerbose, withTempFile, copyFileVerbose
-         , withTempDirectory, matchFileGlob
+         , createDirectoryIfMissingVerbose
+         , TempFileOptions(..), defaultTempFileOptions
+         , withTempFileEx, copyFileVerbose
+         , withTempDirectoryEx, matchFileGlob
          , findFileWithExtension, findFile )
 import Distribution.Text
          ( display, simpleParse )
@@ -212,24 +214,24 @@ haddock pkg_descr lbi suffixes flags = do
       let
         doExe com = case (compToExe com) of
           Just exe -> do
-            withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
+            withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $ \tmp -> do
               let bi = buildInfo exe
               exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
               exeArgs' <- prepareSources verbosity tmp
                             lbi isVersion2 bi (commonArgs `mappend` exeArgs)
-              runHaddock verbosity keepTempFiles confHaddock exeArgs'
+              runHaddock verbosity tmpFileOpts confHaddock exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
            return ()
       case comp of
         CLib lib -> do
-          withTempDirectory verbosity keepTempFiles (buildDir lbi) "tmp" $ \tmp -> do
+          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $ \tmp -> do
             let bi = libBuildInfo lib
             libArgs  <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
             libArgs' <- prepareSources verbosity tmp
                           lbi isVersion2 bi (commonArgs `mappend` libArgs)
-            runHaddock verbosity keepTempFiles confHaddock libArgs'
+            runHaddock verbosity tmpFileOpts confHaddock libArgs'
         CExe   _ -> when (flag haddockExecutables) $ doExe comp
         CTest  _ -> when (flag haddockTestSuites)  $ doExe comp
         CBench _ -> when (flag haddockBenchmarks)  $ doExe comp
@@ -240,6 +242,7 @@ haddock pkg_descr lbi suffixes flags = do
   where
     verbosity     = flag haddockVerbosity
     keepTempFiles = flag haddockKeepTempFiles
+    tmpFileOpts   = defaultTempFileOptions { optKeepTempFiles = keepTempFiles }
     flag f        = fromFlag $ f flags
     htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $ flags
 
@@ -439,11 +442,15 @@ getGhcLibDir verbosity lbi isVersion2
 ----------------------------------------------------------------------------------------------
 
 -- | Call haddock with the specified arguments.
-runHaddock :: Verbosity -> Bool -> ConfiguredProgram -> HaddockArgs -> IO ()
-runHaddock verbosity keepTempFiles confHaddock args = do
+runHaddock :: Verbosity
+              -> TempFileOptions
+              -> ConfiguredProgram
+              -> HaddockArgs
+              -> IO ()
+runHaddock verbosity tmpFileOpts confHaddock args = do
   let haddockVersion = fromMaybe (error "unable to determine haddock version")
                        (programVersion confHaddock)
-  renderArgs verbosity keepTempFiles haddockVersion args $ \(flags,result)-> do
+  renderArgs verbosity tmpFileOpts haddockVersion args $ \(flags,result)-> do
 
       rawSystemProgram verbosity confHaddock flags
 
@@ -451,14 +458,14 @@ runHaddock verbosity keepTempFiles confHaddock args = do
 
 
 renderArgs :: Verbosity
-              -> Bool
+              -> TempFileOptions
               -> Version
               -> HaddockArgs
               -> (([String], FilePath) -> IO a)
               -> IO a
-renderArgs verbosity keepTempFiles version args k = do
+renderArgs verbosity tmpFileOpts version args k = do
   createDirectoryIfMissingVerbose verbosity True outputDir
-  withTempFile keepTempFiles outputDir "haddock-prolog.txt" $ \prologFileName h -> do
+  withTempFileEx tmpFileOpts outputDir "haddock-prolog.txt" $ \prologFileName h -> do
           do
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h
