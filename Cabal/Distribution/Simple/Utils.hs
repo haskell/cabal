@@ -109,8 +109,9 @@ module Distribution.Simple.Utils (
         FileGlob(..),
 
         -- * temp files and dirs
-        withTempFile,
-        withTempDirectory,
+        TempFileOptions(..), defaultTempFileOptions,
+        withTempFile, withTempFileEx,
+        withTempDirectory, withTempDirectoryEx,
 
         -- * .cabal and .buildinfo files
         defaultPackageDesc,
@@ -906,17 +907,33 @@ copyDirectoryRecursiveVerbose verbosity srcDir destDir = do
 ---------------------------
 -- Temporary files and dirs
 
+-- | Advanced options for 'withTempFile' and 'withTempDirectory'.
+data TempFileOptions = TempFileOptions {
+  optKeepTempFiles :: Bool  -- ^ Keep temporary files?
+  }
+
+defaultTempFileOptions :: TempFileOptions
+defaultTempFileOptions = TempFileOptions { optKeepTempFiles = False }
+
 -- | Use a temporary filename that doesn't already exist.
 --
-withTempFile :: Bool     -- ^ Keep temporary files?
-             -> FilePath -- ^ Temp dir to create the file in
-             -> String   -- ^ File name template. See 'openTempFile'.
-             -> (FilePath -> Handle -> IO a) -> IO a
-withTempFile keepTempFiles tmpDir template action =
+withTempFile :: FilePath    -- ^ Temp dir to create the file in
+                -> String   -- ^ File name template. See 'openTempFile'.
+                -> (FilePath -> Handle -> IO a) -> IO a
+withTempFile tmpDir template action =
+  withTempFileEx defaultTempFileOptions tmpDir template action
+
+-- | A version of 'withTempFile' that additionally takes a 'TempFileOptions'
+-- argument.
+withTempFileEx :: TempFileOptions
+                 -> FilePath -- ^ Temp dir to create the file in
+                 -> String   -- ^ File name template. See 'openTempFile'.
+                 -> (FilePath -> Handle -> IO a) -> IO a
+withTempFileEx opts tmpDir template action =
   Exception.bracket
     (openTempFile tmpDir template)
     (\(name, handle) -> do hClose handle
-                           unless keepTempFiles $ removeFile name)
+                           unless (optKeepTempFiles opts) $ removeFile name)
     (uncurry action)
 
 -- | Create and use a temporary directory.
@@ -930,12 +947,19 @@ withTempFile keepTempFiles tmpDir template action =
 -- @src/sdist.342@.
 --
 withTempDirectory :: Verbosity
-                  -> Bool     -- ^ Keep temporary files?
-                  -> FilePath -> String -> (FilePath -> IO a) -> IO a
-withTempDirectory _verbosity keepTempFiles targetDir template =
+                     -> FilePath -> String -> (FilePath -> IO a) -> IO a
+withTempDirectory verbosity targetDir template =
+  withTempDirectoryEx verbosity defaultTempFileOptions targetDir template
+
+-- | A version of 'withTempDirectory' that additionally takes a
+-- 'TempFileOptions' argument.
+withTempDirectoryEx :: Verbosity
+                       -> TempFileOptions
+                       -> FilePath -> String -> (FilePath -> IO a) -> IO a
+withTempDirectoryEx _verbosity opts targetDir template =
   Exception.bracket
     (createTempDirectory targetDir template)
-    (unless keepTempFiles . removeDirectoryRecursive)
+    (unless (optKeepTempFiles opts) . removeDirectoryRecursive)
 
 -----------------------------------
 -- Safely reading and writing files

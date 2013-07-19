@@ -45,7 +45,7 @@ sdist flags exflags = do
          =<< readPackageDescription verbosity
          =<< defaultPackageDesc verbosity
   let withDir = if not needMakeArchive then (\f -> f tmpTargetDir)
-                else withTempDirectory verbosity False tmpTargetDir "sdist."
+                else withTempDirectory verbosity tmpTargetDir "sdist."
   -- 'withTempDir' fails if we don't create 'tmpTargetDir'...
   when needMakeArchive $
     createDirectoryIfMissingVerbose verbosity True tmpTargetDir
