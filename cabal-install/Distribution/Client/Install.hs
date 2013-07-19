@@ -65,7 +65,7 @@ import Distribution.Client.Setup
          , ConfigFlags(..), configureCommand, filterConfigureFlags
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
-         ( defaultCabalDir )
+         ( defaultCabalDir, defaultUserInstall )
 import Distribution.Client.Sandbox.Timestamp
          ( withUpdateTimestamps )
 import Distribution.Client.Sandbox.Types
@@ -1161,6 +1161,15 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                     ++ " with the latest revision from the index."
       writeFileAtomic descFilePath pkgtxt
 
+  -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if
+  -- the setup script was compiled against an old version of the Cabal lib).
+  configFlags' <- addDefaultInstallDirs configFlags
+  -- Filter out flags not supported by the old versions of the Cabal lib.
+  let configureFlags :: Version -> ConfigFlags
+      configureFlags  = filterConfigureFlags configFlags' {
+        configVerbosity = toFlag verbosity'
+      }
+
   -- Configure phase
   onFailure ConfigureFailed $ withJobLimit buildLimit $ do
     when (numJobs > 1) $ notice verbosity $
@@ -1199,9 +1208,6 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
   where
     pkgid            = packageId pkg
-    configureFlags   = filterConfigureFlags configFlags {
-      configVerbosity = toFlag verbosity'
-    }
     buildCommand'    = buildCommand defaultProgramConfiguration
     buildFlags   _   = emptyBuildFlags {
       buildDistPref  = configDistPref configFlags,
@@ -1221,6 +1227,19 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       Cabal.installVerbosity = toFlag verbosity'
     }
     verbosity' = maybe verbosity snd useLogFile
+
+    addDefaultInstallDirs :: ConfigFlags -> IO ConfigFlags
+    addDefaultInstallDirs configFlags' = do
+      defInstallDirs <- InstallDirs.defaultInstallDirs flavor userInstall False
+      return $ configFlags' {
+          configInstallDirs = InstallDirs.combineInstallDirs combine
+                              defInstallDirs (configInstallDirs configFlags)
+          }
+        where
+          CompilerId flavor _ = compid
+          combine     = \d f -> Cabal.Flag $ fromFlagOrDefault d f
+          userInstall = fromFlagOrDefault defaultUserInstall
+                        (configUserInstall configFlags')
 
     setup cmd flags  = do
       Exception.bracket
