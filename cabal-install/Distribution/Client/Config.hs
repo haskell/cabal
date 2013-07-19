@@ -24,6 +24,7 @@ module Distribution.Client.Config (
     defaultCacheDir,
     defaultCompiler,
     defaultLogsDir,
+    defaultUserInstall,
 
     baseSavedConfig,
     commentSavedConfig,
