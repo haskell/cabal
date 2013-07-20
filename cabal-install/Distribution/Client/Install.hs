@@ -1232,12 +1232,14 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
     addDefaultInstallDirs configFlags' = do
       defInstallDirs <- InstallDirs.defaultInstallDirs flavor userInstall False
       return $ configFlags' {
-          configInstallDirs = InstallDirs.combineInstallDirs combine
+          configInstallDirs = fmap Cabal.Flag .
+                              InstallDirs.substituteInstallDirTemplates env $
+                              InstallDirs.combineInstallDirs fromFlagOrDefault
                               defInstallDirs (configInstallDirs configFlags)
           }
         where
           CompilerId flavor _ = compid
-          combine     = \d f -> Cabal.Flag $ fromFlagOrDefault d f
+          env         = initialPathTemplateEnv pkgid compid platform
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
 
