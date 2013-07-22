@@ -527,8 +527,8 @@ checkEntryTarbomb _ entry | nonFilesystemEntry = Nothing
 checkEntryTarbomb expectedTopDir entry =
   case FilePath.Native.splitDirectories (entryPath entry) of
     (topDir:_) | topDir == expectedTopDir -> Nothing
-    s -> Just $ "File in tar archive is not in the expected directory "
-             ++ show expectedTopDir
+    s -> Just $ "File in tar archive is not in the expected directory. "
+             ++ "Expected: " ++ show expectedTopDir
              ++ " but got the following hierarchy: "
              ++ show s
 
