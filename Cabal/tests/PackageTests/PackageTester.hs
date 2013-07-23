@@ -158,7 +158,7 @@ compileSetup packageDir = do
          ]
     requireSuccess r
 
--- | Returns the command that was issued, the return code, and hte output text
+-- | Returns the command that was issued, the return code, and the output text.
 cabal :: PackageSpec -> [String] -> IO (String, ExitCode, String)
 cabal spec cabalArgs = do
     customSetup <- doesFileExist (directory spec </> "Setup.hs")
