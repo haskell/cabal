@@ -236,8 +236,8 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
 
       onFailedListSources :: IO ()
       onFailedListSources = warn verbosity $
-          "Coud not list sources of the add-source dependency '"
-          ++ display (packageName pkg) ++ "'. Assuming that it wasn't changed."
+          "Could not list sources of the add-source dependency '"
+          ++ display (packageName pkg) ++ "'. Skipping the timestamp check."
 
   -- Run setup sdist --list-sources=TMPFILE
   ret <- doListSources `catchIO` (\_ -> onFailedListSources >> return [])
