@@ -26,6 +26,7 @@ import System.FilePath                               ((<.>), (</>))
 import qualified Data.Map as M
 
 import Distribution.Compiler                         (CompilerId)
+import Distribution.Package                          (packageName)
 import Distribution.PackageDescription.Configuration (flattenPackageDescription)
 import Distribution.PackageDescription.Parse         (readPackageDescription)
 import Distribution.Simple.Setup                     (Flag (..),
@@ -228,8 +229,14 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
         useCabalVersion = orLaterVersion $ Version [1,17,0] []
         }
 
+      onFailedListSources :: IO ()
+      onFailedListSources = do
+        warn verbosity $ "Couldn't list sources of the package '"
+          ++ display (packageName pkg) ++ "'"
+        removeExistingFile file
+
   -- Run setup sdist --list-sources=TMPFILE
-  (flip finally) (removeExistingFile file) $ do
+  (flip finally) (onFailedListSources) $ do
     setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
     srcs <- fmap lines . readFile $ file
     mapM tryCanonicalizePath srcs
