@@ -542,7 +542,7 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
       -- might want to use some lower-level features this in the future.
       withSandboxBinDirOnSearchPath sandboxDir $ do
         installContext <- makeInstallContext verbosity args Nothing
-        installPlan    <- foldProgress logMsg die return =<<
+        installPlan    <- foldProgress logMsg die' return =<<
                           makeInstallPlan verbosity args installContext
 
         processInstallPlan verbosity args installContext installPlan
@@ -551,6 +551,13 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
   readIORef retVal
 
     where
+      die' message = die (message ++ installFailedInSandbox)
+      -- TODO: use a better error message, remove duplication.
+      installFailedInSandbox =
+        "Note: when using a sandbox, all packages are required to have \
+        \consistent dependencies. \
+        \Try reinstalling/unregistering the offending packages or \
+        \recreating the sandbox."
       logMsg message rest = debugNoWrap verbosity message >> rest
 
       topHandler' = topHandlerWith $ \_ -> do
