@@ -17,7 +17,6 @@ module Distribution.Client.Sandbox.Timestamp (
   listModifiedDeps,
   ) where
 
-import Control.Exception                             (finally, onException)
 import Control.Monad                                 (filterM, forM, when)
 import Data.Char                                     (isSpace)
 import Data.List                                     (partition)
@@ -235,15 +234,15 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
         srcs <- fmap lines . readFile $ file
         mapM tryCanonicalizePath srcs
 
-      cleanupAfterListSources, onFailedListSources :: IO ()
-      cleanupAfterListSources = removeExistingFile file
-      onFailedListSources     =
-        warn verbosity $ "Couldn't list sources of the package '"
-          ++ display (packageName pkg) ++ "'"
+      onFailedListSources :: IO ()
+      onFailedListSources = warn verbosity $
+          "Coud not list sources of the add-source dependency '"
+          ++ display (packageName pkg) ++ "'. Assuming that it wasn't changed."
 
   -- Run setup sdist --list-sources=TMPFILE
-  (doListSources `finally` cleanupAfterListSources)
-    `onException` onFailedListSources
+  ret <- doListSources `catchIO` (\_ -> onFailedListSources >> return [])
+  removeExistingFile file
+  return ret
 
 -- | Has this dependency been modified since we have last looked at it?
 isDepModified :: Verbosity -> EpochTime -> AddSourceTimestamp -> IO Bool
