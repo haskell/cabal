@@ -17,7 +17,7 @@ module Distribution.Client.Sandbox.Timestamp (
   listModifiedDeps,
   ) where
 
-import Control.Exception                             (finally)
+import Control.Exception                             (finally, onException)
 import Control.Monad                                 (filterM, forM, when)
 import Data.Char                                     (isSpace)
 import Data.List                                     (partition)
@@ -229,17 +229,21 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
         useCabalVersion = orLaterVersion $ Version [1,17,0] []
         }
 
-      onFailedListSources :: IO ()
-      onFailedListSources = do
+      doListSources :: IO [FilePath]
+      doListSources = do
+        setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
+        srcs <- fmap lines . readFile $ file
+        mapM tryCanonicalizePath srcs
+
+      cleanupAfterListSources, onFailedListSources :: IO ()
+      cleanupAfterListSources = removeExistingFile file
+      onFailedListSources     =
         warn verbosity $ "Couldn't list sources of the package '"
           ++ display (packageName pkg) ++ "'"
-        removeExistingFile file
 
   -- Run setup sdist --list-sources=TMPFILE
-  (flip finally) (onFailedListSources) $ do
-    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
-    srcs <- fmap lines . readFile $ file
-    mapM tryCanonicalizePath srcs
+  (doListSources `finally` cleanupAfterListSources)
+    `onException` onFailedListSources
 
 -- | Has this dependency been modified since we have last looked at it?
 isDepModified :: Verbosity -> EpochTime -> AddSourceTimestamp -> IO Bool
