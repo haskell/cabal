@@ -16,6 +16,7 @@ module Distribution.Client.Setup
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
+    , replCommand, ReplFlags(..)
     , testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
@@ -323,6 +324,52 @@ instance Monoid ConfigExFlags where
     configPreferences  = combine configPreferences,
     configSolver       = combine configSolver
   }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Repl flags
+-- ------------------------------------------------------------
+
+data ReplFlags = ReplFlags {
+  replVerbosity     :: Flag Verbosity,
+  replDistPref      :: Flag FilePath
+}
+
+defaultReplFlags :: ReplFlags
+defaultReplFlags = ReplFlags {
+  replVerbosity     = toFlag normal,
+  replDistPref      = toFlag Cabal.defaultDistPref
+  }
+
+replCommand :: CommandUI ReplFlags
+replCommand = CommandUI {
+  commandName         = "repl",
+  commandSynopsis     = "Open an interpreter session.",
+  commandDescription  = Nothing,
+  commandUsage        = \pname -> "Usage: " ++ pname ++ " repl\n\n"
+    ++ "Flags for repl:",
+
+  commandDefaultFlags = defaultReplFlags,
+  commandOptions      = \showOrParseArgs ->
+    [ optionVerbosity replVerbosity
+      (\v flags -> flags { replVerbosity = v })
+
+    , Cabal.optionDistPref
+      replDistPref (\d flags -> flags { replDistPref = d })
+      showOrParseArgs
+    ]
+
+  }
+
+instance Monoid ReplFlags where
+  mempty = ReplFlags {
+    replVerbosity     = mempty,
+    replDistPref      = mempty
+    }
+  mappend a b = ReplFlags {
+    replVerbosity     = combine replVerbosity,
+    replDistPref      = combine replDistPref
+    }
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------

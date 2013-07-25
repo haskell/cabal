@@ -64,6 +64,7 @@ module Distribution.Simple.GHC (
         getGhcInfo,
         configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,
+        runRepl,
         installLib, installExe,
         libAbiHash,
         initPackageDB,
@@ -642,6 +643,21 @@ substTopDir topDir ipo
    }
     where f ('$':'t':'o':'p':'d':'i':'r':rest) = topDir ++ rest
           f x = x
+
+-- -----------------------------------------------------------------------------
+-- Repl
+
+-- | Open a GHCi session.
+--
+runRepl :: Verbosity -> ProgramConfiguration -> PackageDBStack -> IO ()
+runRepl verbosity programDB packageDBs = do
+  let ghciOpts = mempty {
+        ghcOptMode       = toFlag GhcModeInteractive,
+        ghcOptPackageDBs = packageDBs
+      }
+
+  (ghcProg, _) <- requireProgram verbosity ghcProgram programDB
+  runGHC verbosity ghcProg ghciOpts
 
 -- -----------------------------------------------------------------------------
 -- Building

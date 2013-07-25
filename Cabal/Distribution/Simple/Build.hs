@@ -46,7 +46,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Build (
-    build,
+    build, repl,
 
     initialBuildSteps,
     writeAutogenFiles,
@@ -66,7 +66,7 @@ import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
          , Dependency(..), thisPackageVersion )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
+         ( CompilerFlavor(..), compilerFlavor, PackageDB(..), PackageDBStack )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
@@ -151,6 +151,16 @@ build pkg_descr lbi flags suffixes = do
                    withPackageDB = withPackageDB lbi ++ [internalPackageDB]
                  }
     in buildComponent verbosity pkg_descr lbi' suffixes comp clbi distPref
+
+repl     :: Verbosity
+         -> CompilerFlavor -- ^ The interpreter to run
+         -> ProgramDb      -- ^ Path configuration information
+         -> PackageDBStack -- ^ Package DBs to use
+         -> IO ()
+repl verbosity compFlavor programDB packageDBs =
+  case compFlavor of
+    GHC  -> GHC.runRepl verbosity programDB packageDBs
+    _    -> die "Interpreter sessions are not supported with this compiler."
 
 
 buildComponent :: Verbosity
