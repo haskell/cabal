@@ -327,8 +327,8 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   cabalConfig <- loadConfig verbosity configFileFlag NoFlag
   return (sandboxDir,
           (base `mappend` (toPkgEnv cabalConfig) `mappend`
-           common `mappend` inherited `mappend` user)
-          `overrideSandboxSettings` pkgEnv)
+           common `mappend` inherited)
+          `overrideSandboxSettings` pkgEnv `overrideSandboxSettings` user)
     where
       toPkgEnv config = mempty { pkgEnvSavedConfig = config }
 
