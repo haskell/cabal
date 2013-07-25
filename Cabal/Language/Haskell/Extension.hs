@@ -657,6 +657,11 @@ data KnownExtension =
   -- * <http://www.haskell.org/haskellwiki/GHC/Data_Parallel_Haskell>
   | ParallelArrays
 
+  -- | Enable explicit role annotations, like in (@data T a\@R@).
+  --
+  -- * <http://ghc.haskell.org/trac/ghc/wiki/Roles>
+  | RoleAnnotations
+
   deriving (Show, Read, Eq, Enum, Bounded, Typeable, Data)
 
 {-# DEPRECATED knownExtensions
