@@ -214,10 +214,7 @@ overrideSandboxSettings :: PackageEnvironment -> PackageEnvironment ->
 overrideSandboxSettings pkgEnv0 pkgEnv =
   pkgEnv {
     pkgEnvSavedConfig = mappendedConf {
-       savedGlobalFlags = (savedGlobalFlags mappendedConf) {
-          globalLocalRepos = globalLocalRepos pkgEnvGlobalFlags
-          }
-       , savedConfigureFlags = (savedConfigureFlags mappendedConf) {
+         savedConfigureFlags = (savedConfigureFlags mappendedConf) {
           configPackageDBs = configPackageDBs pkgEnvConfigureFlags
           }
        , savedInstallFlags = (savedInstallFlags mappendedConf) {
@@ -229,7 +226,6 @@ overrideSandboxSettings pkgEnv0 pkgEnv =
   where
     pkgEnvConf           = pkgEnvSavedConfig pkgEnv
     mappendedConf        = (pkgEnvSavedConfig pkgEnv0) `mappend` pkgEnvConf
-    pkgEnvGlobalFlags    = savedGlobalFlags pkgEnvConf
     pkgEnvConfigureFlags = savedConfigureFlags pkgEnvConf
     pkgEnvInstallFlags   = savedInstallFlags pkgEnvConf
 
