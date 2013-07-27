@@ -196,10 +196,7 @@ tryGetIndexFilePath' globalFlags = do
   case paths of
     []  -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "no local repos found. " ++ checkConfiguration
-    [p] -> return $ p </> Index.defaultIndexFileName
-    _   -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
-           "too many local repos found. " ++ checkConfiguration
-
+    _   -> return $ (last paths) </> Index.defaultIndexFileName
   where
     checkConfiguration = "Please check your configuration ('"
                          ++ userPackageEnvironmentFile ++ "')."
