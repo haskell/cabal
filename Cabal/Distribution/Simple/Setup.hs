@@ -80,7 +80,7 @@ module Distribution.Simple.Setup (
   buildOptions, installDirsOptions,
   programConfigurationOptions, programConfigurationPaths',
 
-  defaultDistPref,
+  defaultDistPref, optionDistPref,
 
   Flag(..),
   toFlag,

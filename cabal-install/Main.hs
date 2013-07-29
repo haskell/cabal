@@ -19,6 +19,7 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
          , buildCommand, testCommand, benchmarkCommand
+         , ReplFlags(..), replCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
@@ -50,7 +51,7 @@ import Distribution.Simple.Setup
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
-         ( SavedConfig(..), loadConfig, defaultConfigFile )
+         ( SavedConfig(..), loadConfig, defaultConfigFile, defaultCompiler )
 import Distribution.Client.Targets
          ( readUserTargets )
 import qualified Distribution.Client.List as List
@@ -98,11 +99,13 @@ import Distribution.Simple.Command
          ( CommandParse(..), CommandUI(..), Command
          , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Compiler
-         ( Compiler(..) )
+         ( Compiler(..), compilerFlavor )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAux
          , ConfigStateFileErrorType(..), localBuildInfoFile
          , tryGetPersistBuildConfig )
+import Distribution.Simple.Build
+         ( repl )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
@@ -182,6 +185,7 @@ mainWorker args = topHandler $
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
       ,buildCommand           `commandAddAction` buildAction
+      ,replCommand            `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
@@ -268,6 +272,26 @@ buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref buildFlags extraArgs
 
+replAction :: ReplFlags -> [String] -> GlobalFlags -> IO ()
+replAction replFlags _extraArgs globalFlags = do
+  let verbosity = fromFlagOrDefault normal (replVerbosity replFlags)
+      distPref  = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                  (replDistPref replFlags)
+
+  eLbi                  <- tryGetPersistBuildConfig distPref
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                           globalFlags (toFlag True)
+
+  let configFlags = savedConfigureFlags config
+      -- TODO: allow choosing between --user, --global and --sandbox.
+      packageDBs  = case eLbi of
+        Left _    -> configPackageDB' configFlags
+        Right lbi -> LBI.withPackageDB lbi
+      (compFlavor, programDB) = case eLbi of
+        Left _    -> (defaultCompiler, defaultProgramConfiguration)
+        Right lbi -> (compilerFlavor . LBI.compiler $ lbi, LBI.withPrograms lbi)
+
+  repl verbosity compFlavor programDB packageDBs
 
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
