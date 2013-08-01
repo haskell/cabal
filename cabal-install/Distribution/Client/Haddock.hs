@@ -21,7 +21,7 @@ import Data.List (maximumBy)
 import Control.Monad (guard)
 import System.Directory (createDirectoryIfMissing, doesFileExist,
                          renameFile)
-import System.FilePath ((</>), splitFileName)
+import System.FilePath ((</>), splitFileName, isAbsolute)
 import Distribution.Package
          ( Package(..), packageVersion )
 import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
@@ -57,7 +57,7 @@ regenerateHaddockIndex verbosity pkgs conf index = do
                     , "--gen-index"
                     , "--odir=" ++ tempDir
                     , "--title=Haskell modules on this system" ]
-                 ++ [ "--read-interface=" ++ html ++ "," ++ interface
+                 ++ [ "--read-interface=" ++ mkUrl html ++ "," ++ interface
                     | (interface, html) <- paths ]
         rawSystemProgram verbosity confHaddock flags
         renameFile (tempDir </> "index.html") (tempDir </> destFile)
@@ -69,6 +69,11 @@ regenerateHaddockIndex verbosity pkgs conf index = do
             | (_pname, pkgvers) <- allPackagesByName pkgs
             , let pkgvers' = filter exposed pkgvers
             , not (null pkgvers') ]
+    -- See https://github.com/haskell/cabal/issues/1064
+    mkUrl f =
+      if isAbsolute f
+        then "file://" ++ f
+        else f
 
 haddockPackagePaths :: [InstalledPackageInfo]
                        -> IO ([(FilePath, FilePath)], Maybe String)
