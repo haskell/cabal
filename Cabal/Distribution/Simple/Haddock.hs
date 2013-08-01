@@ -113,7 +113,7 @@ import Data.Monoid
 import Data.Maybe    ( fromMaybe, listToMaybe )
 
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
-                       normalise, splitPath, joinPath )
+                       normalise, splitPath, joinPath, isAbsolute )
 import System.IO (hClose, hPutStrLn)
 import Distribution.Version
 
@@ -513,13 +513,20 @@ renderPureArgs version args = concat
      argTargets $ args
     ]
     where
-      renderInterfaces = map (\(i,mh) -> "--read-interface=" ++ maybe "" (++",") mh ++ i)
+      renderInterfaces =
+        map (\(i,mh) -> "--read-interface=" ++
+          maybe "" ((++",") . mkUrl) mh ++ i)
       bool a b c = if c then a else b
       isVersion2 = version >= Version [2,0] []
       isVersion2_5 = version >= Version [2,5] []
       verbosityFlag
        | isVersion2_5 = "--verbosity=1"
        | otherwise = "--verbose"
+      -- See https://github.com/haskell/cabal/issues/1064
+      mkUrl f =
+        if isAbsolute f
+          then "file://" ++ f
+          else f
 
 -----------------------------------------------------------------------------------------------------------
 
