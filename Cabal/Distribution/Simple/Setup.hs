@@ -588,6 +588,11 @@ installDirsOptions =
       "installation directory for haddock interfaces"
       haddockdir (\v flags -> flags { haddockdir = v })
       installDirArg
+
+  , option "" ["sysconfdir"]
+      "installation directory for configuration files"
+      sysconfdir (\v flags -> flags { sysconfdir = v })
+      installDirArg
   ]
   where
     installDirArg _sf _lf d get set =
@@ -1727,6 +1732,7 @@ configureArgs bcHack flags
  ++ optFlag' "libdir"      libdir
  ++ optFlag' "libexecdir"  libexecdir
  ++ optFlag' "datadir"     datadir
+ ++ optFlag' "sysconfdir"  sysconfdir
  ++ configConfigureArgs flags
   where
         hc_flag = case (configHcFlavor flags, configHcPath flags) of
