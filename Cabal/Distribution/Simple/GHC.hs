@@ -136,8 +136,7 @@ import qualified Data.Map as M  ( Map, fromList, lookup )
 import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
-         ( removeFile, getDirectoryContents, doesFileExist
-         , getTemporaryDirectory )
+         ( getDirectoryContents, doesFileExist, getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
@@ -861,11 +860,6 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
             else return []
 
   unless (null hObjs && null cObjs && null stubObjs) $ do
-    -- first remove library files if they exists
-    unless forRepl $ sequence_
-      [ removeFile libFilePath `catchIO` \_ -> return ()
-      | libFilePath <- [vanillaLibFilePath, profileLibFilePath
-                       ,sharedLibFilePath,  ghciLibFilePath] ]
 
     let staticObjectFiles =
                hObjs
