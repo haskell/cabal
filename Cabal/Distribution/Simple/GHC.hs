@@ -126,6 +126,7 @@ import Distribution.Text
 import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
+import Control.Concurrent       ( forkIO, newEmptyMVar, putMVar, takeMVar )
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import Data.List
@@ -759,11 +760,16 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                        (forceVanillaLib || withVanillaLib lbi) &&
                        (forceSharedLib  || withSharedLib  lbi) &&
                        null (ghcSharedOptions libBi)
-       if useDynToo
+
+       -- MVar for building (vanilla/shared) and profiling in parallel
+       -- TODO: We probably need to add a bit of terminate-early code.
+       m <- newEmptyMVar
+       _ <- forkIO $ if useDynToo
            then runGhcProg vanillaSharedOpts
-           else if isGhcDynamic then do shared;  vanilla
-                                else do vanilla; shared
+           else if isGhcDynamic then do shared;  vanilla; putMVar m ()
+                                else do vanilla; shared;  putMVar m ()
        whenProfLib (runGhcProg profOpts)
+       takeMVar m
 
   -- build any C sources
   unless (null (cSources libBi)) $ do
