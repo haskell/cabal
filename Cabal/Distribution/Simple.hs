@@ -101,7 +101,7 @@ import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Build        ( build )
+import Distribution.Simple.Build        ( build, repl )
 import Distribution.Simple.SrcDist      ( sdist )
 import Distribution.Simple.Register
          ( register, unregister )
@@ -199,6 +199,7 @@ defaultMainHelper hooks args = topHandler $
       [configureCommand progs `commandAddAction` \fs as ->
                                                  configureAction    hooks fs as >> return ()
       ,buildCommand     progs `commandAddAction` buildAction        hooks
+      ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
       ,haddockCommand         `commandAddAction` haddockAction      hooks
@@ -274,6 +275,24 @@ buildAction hooks flags args = do
   hookedAction preBuild buildHook postBuild
                (return lbi { withPrograms = progs })
                hooks flags { buildArgs = args } args
+
+replAction :: UserHooks -> ReplFlags -> Args -> IO ()
+replAction hooks flags args = do
+  let distPref  = fromFlag $ replDistPref flags
+      verbosity = fromFlag $ replVerbosity flags
+
+  lbi <- getBuildConfig hooks verbosity distPref
+  progs <- reconfigurePrograms verbosity
+             (replProgramPaths flags)
+             (replProgramArgs flags)
+             (withPrograms lbi)
+
+  pbi <- preRepl hooks args flags
+  let lbi' = lbi { withPrograms = progs }
+      pkg_descr0 = localPkgDescr lbi'
+      pkg_descr = updatePackageDescription pbi pkg_descr0
+  replHook hooks pkg_descr lbi' hooks flags args
+  postRepl hooks args flags pkg_descr lbi'
 
 hscolourAction :: UserHooks -> HscolourFlags -> Args -> IO ()
 hscolourAction hooks flags args
@@ -517,6 +536,7 @@ simpleUserHooks =
        confHook  = configure,
        postConf  = finalChecks,
        buildHook = defaultBuildHook,
+       replHook  = defaultReplHook,
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
        testHook = defaultTestHook,
        benchHook = defaultBenchHook,
@@ -692,6 +712,11 @@ defaultBuildHook :: PackageDescription -> LocalBuildInfo
         -> UserHooks -> BuildFlags -> IO ()
 defaultBuildHook pkg_descr localbuildinfo hooks flags =
   build pkg_descr localbuildinfo flags (allSuffixHandlers hooks)
+
+defaultReplHook :: PackageDescription -> LocalBuildInfo
+        -> UserHooks -> ReplFlags -> [String] -> IO ()
+defaultReplHook pkg_descr localbuildinfo hooks flags args =
+  repl pkg_descr localbuildinfo flags (allSuffixHandlers hooks) args
 
 defaultRegHook :: PackageDescription -> LocalBuildInfo
         -> UserHooks -> RegisterFlags -> IO ()
