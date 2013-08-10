@@ -294,10 +294,7 @@ configureProgram verbosity prog conf = do
             programOverrideEnv  = [],
             programLocation     = location
           }
-      extraArgs <- programPostConf prog verbosity configuredProg
-      let configuredProg'       = configuredProg {
-            programDefaultArgs  = extraArgs
-          }
+      configuredProg' <- programPostConf prog verbosity configuredProg
       return (updateConfiguredProgs (Map.insert name configuredProg') conf)
 
 
