@@ -203,11 +203,15 @@ initialSavedConfig = do
   cacheDir   <- defaultCacheDir
   logsDir    <- defaultLogsDir
   worldFile  <- defaultWorldFile
+  extraPath  <- defaultExtraPath
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
       globalRemoteRepos  = [defaultRemoteRepo],
       globalWorldFile    = toFlag worldFile
+    },
+    savedConfigureFlags  = mempty {
+      configProgramPathExtra = extraPath
     },
     savedInstallFlags    = mempty {
       installSummaryFile = [toPathTemplate (logsDir </> "build.log")],
@@ -241,6 +245,11 @@ defaultWorldFile :: IO FilePath
 defaultWorldFile = do
   dir <- defaultCabalDir
   return $ dir </> "world"
+
+defaultExtraPath :: IO [FilePath]
+defaultExtraPath = do
+  dir <- defaultCabalDir
+  return [dir </> "bin"]
 
 defaultCompiler :: CompilerFlavor
 defaultCompiler = fromMaybe GHC defaultCompilerFlavor
