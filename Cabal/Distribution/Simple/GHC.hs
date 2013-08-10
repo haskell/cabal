@@ -98,7 +98,7 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
-         , ProgramLocation(..), ProgramSearchPath
+         , ProgramLocation(..), ProgramSearchPath, ProgramSearchPathEntry(..)
          , rawSystemProgram
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , getProgramInvocationOutput
@@ -282,30 +282,18 @@ configureToolchain :: ConfiguredProgram -> [(String, String)]
                                         -> ProgramConfiguration
 configureToolchain ghcProg ghcInfo =
     addKnownProgram gccProgram {
-      programFindLocation = findProg gccProgram
-                              [ if ghcVersion >= Version [6,12] []
-                                  then mingwBinDir </> binPrefix ++ "gcc.exe"
-                                  else baseDir     </> "gcc.exe" ],
+      programFindLocation = findProg gccProgram extraGccPath,
       programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
-      programFindLocation = findProg ldProgram
-                              [ if ghcVersion >= Version [6,12] []
-                                  then mingwBinDir </> binPrefix ++ "ld.exe"
-                                  else libDir      </> "ld.exe" ],
+      programFindLocation = findProg ldProgram extraLdPath,
       programPostConf     = configureLd
     }
   . addKnownProgram arProgram {
-      programFindLocation = findProg arProgram
-                              [ if ghcVersion >= Version [6,12] []
-                                  then mingwBinDir </> binPrefix ++ "ar.exe"
-                                  else libDir      </> "ar.exe" ]
+      programFindLocation = findProg arProgram extraArPath
     }
   . addKnownProgram stripProgram {
-      programFindLocation = findProg stripProgram
-                              [ if ghcVersion >= Version [6,12] []
-                                  then mingwBinDir </> binPrefix ++ "strip.exe"
-                                  else libDir      </> "strip.exe" ]
+      programFindLocation = findProg stripProgram extraStripPath
     }
   where
     Just ghcVersion = programVersion ghcProg
@@ -317,20 +305,27 @@ configureToolchain ghcProg ghcInfo =
     isWindows   = case buildOS of Windows -> True; _ -> False
     binPrefix   = ""
 
-    -- on Windows finding and configuring ghc's gcc and ld is a bit special
-    findProg :: Program -> [FilePath] -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
-    findProg prog locations
-      | isWindows = \verbosity -> look locations verbosity
-      | otherwise = programFindLocation prog
+    -- on Windows finding and configuring ghc's gcc & binutils is a bit special
+    extraGccPath
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "gcc.exe"
+      | otherwise                       = baseDir     </> "gcc.exe"
+    extraLdPath
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "ld.exe"
+      | otherwise                       = libDir      </> "ld.exe"
+    extraArPath
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "ar.exe"
+      | otherwise                       = libDir      </> "ar.exe"
+    extraStripPath
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "strip.exe"
+      | otherwise                       = libDir      </> "strip.exe"
+
+    findProg :: Program -> FilePath
+             -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+    findProg prog extraPath v searchpath =
+        programFindLocation prog v searchpath'
       where
-        look [] verbosity searchpath = do
-          warn verbosity ("Couldn't find " ++ programName prog
-                          ++ " where I expected it. Trying the search path.")
-          programFindLocation prog verbosity searchpath
-        look (f:fs) verbosity searchpath = do
-          exists <- doesFileExist f
-          if exists then return (Just f)
-                    else look fs verbosity searchpath
+        searchpath' | isWindows = ProgramSearchPathDir extraPath : searchpath
+                    | otherwise = searchpath
 
     ccFlags        = getFlags "C compiler flags"
     gccLinkerFlags = getFlags "Gcc Linker flags"
