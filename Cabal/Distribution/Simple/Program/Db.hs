@@ -291,6 +291,7 @@ configureProgram verbosity prog conf = do
             programVersion      = version,
             programDefaultArgs  = [],
             programOverrideArgs = userSpecifiedArgs prog conf,
+            programOverrideEnv  = [],
             programLocation     = location
           }
       extraArgs <- programPostConf prog verbosity configuredProg

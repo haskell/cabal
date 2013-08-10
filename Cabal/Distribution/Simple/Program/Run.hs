@@ -85,7 +85,8 @@ programInvocation prog args =
     progInvokePath = programPath prog,
     progInvokeArgs = programDefaultArgs prog
                   ++ args
-                  ++ programOverrideArgs prog
+                  ++ programOverrideArgs prog,
+    progInvokeEnv  = programOverrideEnv prog
   }
 
 

@@ -84,6 +84,11 @@ data ConfiguredProgram = ConfiguredProgram {
        -- all earlier flags.
        programOverrideArgs :: [String],
 
+       -- | Override environment variables for this program.
+       -- These env vars will extend\/override the prevailing environment of
+       -- the current to form the environment for the new process.
+       programOverrideEnv :: [(String, Maybe String)],
+
        -- | Location of the program. eg. @\/usr\/bin\/ghc-6.4@
        programLocation :: ProgramLocation
      } deriving (Read, Show, Eq)
@@ -127,5 +132,6 @@ simpleConfiguredProgram name loc = ConfiguredProgram {
      programVersion      = Nothing,
      programDefaultArgs  = [],
      programOverrideArgs = [],
+     programOverrideEnv  = [],
      programLocation     = loc
   }
