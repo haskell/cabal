@@ -17,6 +17,8 @@
 module Distribution.Simple.Program.Types (
     -- * Program and functions for constructing them
     Program(..),
+    ProgramSearchPath,
+    ProgramSearchPathEntry(..),
     simpleProgram,
 
     -- * Configured program and related functions
@@ -27,8 +29,9 @@ module Distribution.Simple.Program.Types (
     simpleConfiguredProgram,
   ) where
 
-import Distribution.Simple.Utils
-         ( findProgramLocation )
+import Distribution.Simple.Program.Find
+         ( ProgramSearchPath, ProgramSearchPathEntry(..)
+         , findProgramOnSearchPath )
 import Distribution.Version
          ( Version )
 import Distribution.Verbosity
@@ -45,8 +48,11 @@ data Program = Program {
 
        -- | A function to search for the program if its location was not
        -- specified by the user. Usually this will just be a call to
-       -- @findProgramLocation@.
-       programFindLocation :: Verbosity -> IO (Maybe FilePath),
+       -- 'findProgramOnSearchPath'.
+       --
+       -- It is supplied with the prevailing search path which will typically
+       -- just be used as-is, but can be extended or ignored as needed.
+       programFindLocation :: Verbosity -> ProgramSearchPath -> IO (Maybe FilePath),
 
        -- | Try to find the version of the program. For many programs this is
        -- not possible or is not necessary so it's ok to return Nothing.
@@ -116,7 +122,7 @@ programPath = locationPath . programLocation
 simpleProgram :: String -> Program
 simpleProgram name = Program {
     programName         = name,
-    programFindLocation = \v   -> findProgramLocation v name,
+    programFindLocation = \v p -> findProgramOnSearchPath v p name,
     programFindVersion  = \_ _ -> return Nothing,
     programPostConf     = \_ p -> return p
   }

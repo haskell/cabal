@@ -98,7 +98,8 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
-         , ProgramLocation(..), rawSystemProgram
+         , ProgramLocation(..), ProgramSearchPath
+         , rawSystemProgram
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , getProgramInvocationOutput
          , requireProgramVersion, requireProgram, getProgramOutput
@@ -214,28 +215,30 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 -- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg(.exe)
 --
-guessToolFromGhcPath :: FilePath -> ConfiguredProgram -> Verbosity
+guessToolFromGhcPath :: Program -> ConfiguredProgram
+                     -> Verbosity -> ProgramSearchPath
                      -> IO (Maybe FilePath)
-guessToolFromGhcPath tool ghcProg verbosity
-  = do let path              = programPath ghcProg
+guessToolFromGhcPath tool ghcProg verbosity searchpath
+  = do let toolname          = programName tool
+           path              = programPath ghcProg
            dir               = takeDirectory path
            versionSuffix     = takeVersionSuffix (dropExeExtension path)
-           guessNormal       = dir </> tool <.> exeExtension
-           guessGhcVersioned = dir </> (tool ++ "-ghc" ++ versionSuffix)
+           guessNormal       = dir </> toolname <.> exeExtension
+           guessGhcVersioned = dir </> (toolname ++ "-ghc" ++ versionSuffix)
                                <.> exeExtension
-           guessVersioned    = dir </> (tool ++ versionSuffix) <.> exeExtension
+           guessVersioned    = dir </> (toolname ++ versionSuffix) <.> exeExtension
            guesses | null versionSuffix = [guessNormal]
                    | otherwise          = [guessGhcVersioned,
                                            guessVersioned,
                                            guessNormal]
-       info verbosity $ "looking for tool " ++ show tool
+       info verbosity $ "looking for tool " ++ toolname
          ++ " near compiler in " ++ dir
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
                    -- If we can't find it near ghc, fall back to the usual
                    -- method.
-         []     -> findProgramLocation verbosity tool
-         (fp:_) -> do info verbosity $ "found " ++ tool ++ " in " ++ fp
+         []     -> programFindLocation tool verbosity searchpath
+         (fp:_) -> do info verbosity $ "found " ++ toolname ++ " in " ++ fp
                       return (Just fp)
 
   where takeVersionSuffix :: FilePath -> String
@@ -256,8 +259,9 @@ guessToolFromGhcPath tool ghcProg verbosity
 -- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg(.exe)
 --
-guessGhcPkgFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
-guessGhcPkgFromGhcPath = guessToolFromGhcPath "ghc-pkg"
+guessGhcPkgFromGhcPath :: ConfiguredProgram
+                       -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+guessGhcPkgFromGhcPath = guessToolFromGhcPath ghcPkgProgram
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
 -- corresponding hsc2hs, we try looking for both a versioned and unversioned
@@ -267,8 +271,9 @@ guessGhcPkgFromGhcPath = guessToolFromGhcPath "ghc-pkg"
 -- > /usr/local/bin/hsc2hs-6.6.1(.exe)
 -- > /usr/local/bin/hsc2hs(.exe)
 --
-guessHsc2hsFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
-guessHsc2hsFromGhcPath = guessToolFromGhcPath "hsc2hs"
+guessHsc2hsFromGhcPath :: ConfiguredProgram
+                       -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+guessHsc2hsFromGhcPath = guessToolFromGhcPath hsc2hsProgram
 
 -- | Adjust the way we find and configure gcc and ld
 --
@@ -313,19 +318,19 @@ configureToolchain ghcProg ghcInfo =
     binPrefix   = ""
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
-    findProg :: Program -> [FilePath] -> Verbosity -> IO (Maybe FilePath)
+    findProg :: Program -> [FilePath] -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
     findProg prog locations
       | isWindows = \verbosity -> look locations verbosity
       | otherwise = programFindLocation prog
       where
-        look [] verbosity = do
+        look [] verbosity searchpath = do
           warn verbosity ("Couldn't find " ++ programName prog
                           ++ " where I expected it. Trying the search path.")
-          programFindLocation prog verbosity
-        look (f:fs) verbosity = do
+          programFindLocation prog verbosity searchpath
+        look (f:fs) verbosity searchpath = do
           exists <- doesFileExist f
           if exists then return (Just f)
-                    else look fs verbosity
+                    else look fs verbosity searchpath
 
     ccFlags        = getFlags "C compiler flags"
     gccLinkerFlags = getFlags "Gcc Linker flags"
