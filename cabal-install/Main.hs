@@ -39,6 +39,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Setup
          ( HaddockFlags(..), haddockCommand
          , HscolourFlags(..), hscolourCommand
+         , ReplFlags(..), replCommand
          , CopyFlags(..), copyCommand
          , RegisterFlags(..), registerCommand
          , CleanFlags(..), cleanCommand
@@ -182,6 +183,8 @@ mainWorker args = topHandler $
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
       ,buildCommand           `commandAddAction` buildAction
+      ,replCommand defaultProgramConfiguration
+                              `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
@@ -283,6 +286,32 @@ build verbosity distPref buildFlags extraArgs =
       { buildVerbosity = toFlag verbosity
       , buildDistPref = toFlag distPref
       }
+
+replAction :: ReplFlags -> [String] -> GlobalFlags -> IO ()
+replAction replFlags extraArgs globalFlags = do
+  let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                    (replDistPref replFlags)
+      verbosity   = fromFlagOrDefault normal (replVerbosity replFlags)
+      noAddSource = case replReload replFlags of
+                      Flag True -> SkipAddSourceDepsCheck
+                      _         -> DontSkipAddSourceDepsCheck
+
+  -- Calls 'configureAction' to do the real work, so nothing special has to be
+  -- done to support sandboxes.
+  useSandbox <- reconfigure verbosity distPref
+                mempty [] globalFlags noAddSource NoFlag
+                (const Nothing)
+
+  maybeWithSandboxDirOnSearchPath useSandbox $
+    let progConf     = defaultProgramConfiguration
+        setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+        replFlags'   = replFlags
+          { replVerbosity = toFlag verbosity
+          , replDistPref  = toFlag distPref
+          }
+    in setupWrapper verbosity setupOptions Nothing
+         (Cabal.replCommand progConf) (const replFlags') extraArgs
+
 
 -- | Re-configure the package in the current directory if needed. Deciding
 -- when to reconfigure and with which options is convoluted:
