@@ -20,6 +20,7 @@ module Distribution.Simple.Program.Run (
     runProgramInvocation,
     getProgramInvocationOutput,
 
+    getEffectiveEnvironment,
   ) where
 
 import Distribution.Simple.Program.Types
