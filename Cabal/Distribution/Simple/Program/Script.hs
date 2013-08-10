@@ -44,8 +44,7 @@ invocationAsShellScript
     progInvokeInput = minput
   } = unlines $
           [ "#!/bin/sh" ]
-       ++ [ "export " ++ var ++ "=" ++ quote val
-          | (var,val) <- envExtra ]
+       ++ concatMap setEnv envExtra
        ++ [ "cd " ++ quote cwd | cwd <- maybeToList mcwd ]
        ++ [ (case minput of
               Nothing    -> ""
@@ -53,6 +52,9 @@ invocationAsShellScript
          ++ unwords (map quote $ path : args) ++ " \"$@\""]
 
   where
+    setEnv (var, Nothing)  = ["unset " ++ var, "export " ++ var]
+    setEnv (var, Just val) = ["export " ++ var ++ "=" ++ quote val]
+
     quote :: String -> String
     quote s = "'" ++ escape s ++ "'"
 
@@ -73,7 +75,7 @@ invocationAsBatchFile
     progInvokeInput = minput
   } = unlines $
           [ "@echo off" ]
-       ++ [ "set " ++ var ++ "=" ++ escape val | (var,val) <- envExtra ]
+       ++ map setEnv envExtra
        ++ [ "cd \"" ++ cwd ++ "\"" | cwd <- maybeToList mcwd ]
        ++ case minput of
             Nothing    ->
@@ -87,6 +89,9 @@ invocationAsBatchFile
                ++ concatMap (\arg -> ' ':quote arg) args ]
 
   where
+    setEnv (var, Nothing)  = "set " ++ var ++ "="
+    setEnv (var, Just val) = "set " ++ var ++ "=" ++ escape val
+
     quote :: String -> String
     quote s = "\"" ++ escapeQ s ++ "\""
 

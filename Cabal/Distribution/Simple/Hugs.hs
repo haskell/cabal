@@ -149,6 +149,7 @@ configure verbosity hcPath _hcPkgPath conf = do
 getVersion :: Verbosity -> FilePath -> IO (Maybe Version)
 getVersion verbosity hugsPath = do
   (output, _err, exit) <- rawSystemStdInOut verbosity hugsPath []
+                              Nothing Nothing
                               (Just (":quit", False)) False
   if exit == ExitSuccess
     then return $! findVersion output
