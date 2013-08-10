@@ -53,10 +53,9 @@ data Program = Program {
        programFindVersion :: Verbosity -> FilePath -> IO (Maybe Version),
 
        -- | A function to do any additional configuration after we have
-       -- located the program (and perhaps identified its version). It is
-       -- allowed to return additional flags that will be passed to the
-       -- program on every invocation.
-       programPostConf :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+       -- located the program (and perhaps identified its version). For example
+       -- it could add args, or environment vars.
+       programPostConf :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
      }
 
 type ProgArg = String
@@ -119,7 +118,7 @@ simpleProgram name = Program {
     programName         = name,
     programFindLocation = \v   -> findProgramLocation v name,
     programFindVersion  = \_ _ -> return Nothing,
-    programPostConf     = \_ _ -> return []
+    programPostConf     = \_ p -> return p
   }
 
 -- | Make a simple 'ConfiguredProgram'.

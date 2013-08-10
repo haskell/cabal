@@ -97,7 +97,7 @@ import Distribution.Package
          ( Package(..), PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
          , ProgramLocation(..), rawSystemProgram
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , getProgramInvocationOutput
@@ -125,7 +125,7 @@ import Distribution.Text
 import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
-import Control.Monad            ( unless, when, liftM )
+import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import Data.List
 import Data.Maybe               ( catMaybes, fromMaybe )
@@ -338,11 +338,15 @@ configureToolchain ghcProg ghcInfo =
                        [(args, "")] -> args
                        _ -> [] -- XXX Should should be an error really
 
-    configureGcc :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
-    configureGcc v cp = liftM (++ (ccFlags ++ gccLinkerFlags))
-                      $ configureGcc' v cp
+    configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureGcc v gccProg = do
+      gccProg' <- configureGcc' v gccProg
+      return gccProg' {
+        programDefaultArgs = programDefaultArgs gccProg'
+                             ++ ccFlags ++ gccLinkerFlags
+      }
 
-    configureGcc' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+    configureGcc' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureGcc'
       | isWindows = \_ gccProg -> case programLocation gccProg of
           -- if it's found on system then it means we're using the result
@@ -352,15 +356,20 @@ configureToolchain ghcProg ghcInfo =
           -- various files:
           FoundOnSystem {}
            | ghcVersion < Version [6,11] [] ->
-              return ["-B" ++ libDir, "-I" ++ includeDir]
-          _ -> return []
-      | otherwise = \_ _   -> return []
+               return gccProg { programDefaultArgs = ["-B" ++ libDir,
+                                                      "-I" ++ includeDir] }
+          _ -> return gccProg
+      | otherwise = \_ gccProg -> return gccProg
 
-    configureLd :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
-    configureLd v cp = liftM (++ ldLinkerFlags) $ configureLd' v cp
+    configureLd :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureLd v ldProg = do
+      ldProg' <- configureLd' v ldProg
+      return ldProg' {
+        programDefaultArgs = programDefaultArgs ldProg' ++ ldLinkerFlags
+      }
 
     -- we need to find out if ld supports the -x flag
-    configureLd' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+    configureLd' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureLd' verbosity ldProg = do
       tempDir <- getTemporaryDirectory
       ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
@@ -378,8 +387,8 @@ configureToolchain ghcProg ghcInfo =
                  `catchIO`   (\_ -> return False)
                  `catchExit` (\_ -> return False)
       if ldx
-        then return ["-x"]
-        else return []
+        then return ldProg { programDefaultArgs = ["-x"] }
+        else return ldProg
 
 getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Flag)]
 getLanguages _ ghcProg
