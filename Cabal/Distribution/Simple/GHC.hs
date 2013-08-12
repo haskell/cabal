@@ -713,7 +713,10 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                       ghcOptExtra       = ghcSharedOptions libBi
                     }
       
-      replOpts    = vanillaOpts `mappend` mempty {
+      replOpts    = vanillaOpts {
+                      ghcOptExtra        = filterGhciFlags (ghcOptExtra vanillaOpts)
+                    }
+                    `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeInteractive,
                       ghcOptOptimisation = toFlag GhcNoOptimisation
                     }
@@ -944,7 +947,10 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
                       ghcOptDynHiSuffix    = toFlag "dyn_hi",
                       ghcOptDynObjSuffix   = toFlag "dyn_o"
                     }
-      replOpts   = baseOpts `mappend` mempty {
+      replOpts   = baseOpts {
+                      ghcOptExtra          = filterGhciFlags (ghcOptExtra baseOpts)
+                   }
+                   `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeInteractive,
                       ghcOptOptimisation   = toFlag GhcNoOptimisation
                    }
@@ -1031,6 +1037,19 @@ hackThreadedFlag verbosity comp prof bi
     filterHcOptions p hcoptss =
       [ (hc, if hc == GHC then filter p opts else opts)
       | (hc, opts) <- hcoptss ]
+
+-- | Strip out flags that are not supported in ghci
+filterGhciFlags :: [String] -> [String]
+filterGhciFlags = filter supported
+  where
+    supported ('-':'O':_) = False
+    supported "-debug"    = False
+    supported "-threaded" = False
+    supported "-ticky"    = False
+    supported "-eventlog" = False
+    supported "-prof"     = False
+    supported "-unreg"    = False
+    supported _           = True
 
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
