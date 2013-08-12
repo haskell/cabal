@@ -1463,6 +1463,9 @@ replCommand progConf = CommandUI {
       : programConfigurationPaths   progConf showOrParseArgs
           replProgramPaths (\v flags -> flags { replProgramPaths = v})
 
+     ++ programConfigurationOption progConf showOrParseArgs
+          replProgramArgs (\v flags -> flags { replProgramArgs = v})
+
      ++ programConfigurationOptions progConf showOrParseArgs
           replProgramArgs (\v flags -> flags { replProgramArgs = v})
 
