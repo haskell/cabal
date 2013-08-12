@@ -706,11 +706,11 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                     }
 
       sharedOpts  = vanillaOpts `mappend` mempty {
-                      ghcOptDynamic   = toFlag True,
-                      ghcOptFPic      = toFlag True,
-                      ghcOptHiSuffix  = toFlag "dyn_hi",
-                      ghcOptObjSuffix = toFlag "dyn_o",
-                      ghcOptExtra     = ghcSharedOptions libBi
+                      ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                      ghcOptFPic        = toFlag True,
+                      ghcOptHiSuffix    = toFlag "dyn_hi",
+                      ghcOptObjSuffix   = toFlag "dyn_o",
+                      ghcOptExtra       = ghcSharedOptions libBi
                     }
       
       replOpts    = vanillaOpts `mappend` mempty {
@@ -719,10 +719,10 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                     }
 
       vanillaSharedOpts = vanillaOpts `mappend` mempty {
-                              ghcOptExtra = ["-dynamic-too",
-                                             "-dynhisuf", "dyn_hi",
-                                             "-dynosuf", "dyn_o"]
-                          }
+                      ghcOptDynLinkMode  = toFlag GhcStaticAndDynamic,
+                      ghcOptDynHiSuffix  = toFlag "dyn_hi",
+                      ghcOptDynObjSuffix = toFlag "dyn_o"
+                    }
 
   unless (null (libModules lib)) $
     do let vanilla = whenVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
@@ -748,9 +748,9 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                                   ghcOptObjSuffix     = toFlag "p_o"
                                 }
                 sharedCcOpts  = vanillaCcOpts `mappend` mempty {
-                                  ghcOptFPic      = toFlag True,
-                                  ghcOptDynamic   = toFlag True,
-                                  ghcOptObjSuffix = toFlag "dyn_o"
+                                  ghcOptFPic        = toFlag True,
+                                  ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                                  ghcOptObjSuffix   = toFlag "dyn_o"
                                 }
                 odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
             createDirectoryIfMissingVerbose verbosity True odir
@@ -838,7 +838,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
         ghcSharedLinkArgs =
             mempty {
               ghcOptShared             = toFlag True,
-              ghcOptDynamic            = toFlag True,
+              ghcOptDynLinkMode        = toFlag GhcDynamicOnly,
               ghcOptInputFiles         = dynamicObjectFiles,
               ghcOptOutputFile         = toFlag sharedLibFilePath,
               -- For dynamic libs, Mac OS/X needs to know the install location
@@ -925,7 +925,7 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
                         [ m | not isHaskellMain, m <- exeModules exe]
                     }
       staticOpts = baseOpts `mappend` mempty {
-                      ghcOptDynamic        = toFlag False
+                      ghcOptDynLinkMode    = toFlag GhcStaticOnly
                    }
       profOpts   = baseOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
@@ -934,15 +934,15 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
                       ghcOptExtra          = ghcProfOptions exeBi
                     }
       dynOpts    = baseOpts `mappend` mempty {
-                      ghcOptDynamic        = toFlag True,
+                      ghcOptDynLinkMode    = toFlag GhcDynamicOnly,
                       ghcOptHiSuffix       = toFlag "dyn_hi",
                       ghcOptObjSuffix      = toFlag "dyn_o",
                       ghcOptExtra          = ghcSharedOptions exeBi
                     }
       dynTooOpts = staticOpts `mappend` mempty {
-                      ghcOptExtra = ["-dynamic-too",
-                                     "-dynhisuf", "dyn_hi",
-                                     "-dynosuf", "dyn_o"]
+                      ghcOptDynLinkMode    = toFlag GhcStaticAndDynamic,
+                      ghcOptDynHiSuffix    = toFlag "dyn_hi",
+                      ghcOptDynObjSuffix   = toFlag "dyn_o"
                     }
       replOpts   = baseOpts `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeInteractive,
@@ -980,7 +980,7 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
                       ghcOptLinkLibPath    = extraLibDirs exeBi,
                       ghcOptLinkFrameworks = PD.frameworks exeBi,
                       ghcOptInputFiles     = [exeDir </> x | x <- cObjs],
-                      ghcOptExtra          = ["-no-hs-main" | not isHaskellMain ]
+                      ghcOptLinkNoHsMain   = toFlag (not isHaskellMain)
                  }
 
   -- Build static/dynamic object files for TH, if needed.
@@ -996,7 +996,9 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
    sequence_
      [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
                          exeDir filename) `mappend` mempty {
-                       ghcOptDynamic       = toFlag (withDynExe lbi),
+                       ghcOptDynLinkMode   = toFlag (if withDynExe lbi
+                                                       then GhcDynamicOnly
+                                                       else GhcStaticOnly),
                        ghcOptProfilingMode = toFlag (withProfExe lbi)
                      }
               odir = fromFlag (ghcOptObjDir opts)
@@ -1069,11 +1071,11 @@ libAbiHash verbosity pkg_descr lbi lib clbi = do
           ghcOptInputModules = exposedModules lib
         }
       sharedArgs = vanillaArgs `mappend` mempty {
-                       ghcOptDynamic   = toFlag True,
-                       ghcOptFPic      = toFlag True,
-                       ghcOptHiSuffix  = toFlag "dyn_hi",
-                       ghcOptObjSuffix = toFlag "dyn_o",
-                       ghcOptExtra     = ghcSharedOptions libBi
+                       ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                       ghcOptFPic        = toFlag True,
+                       ghcOptHiSuffix    = toFlag "dyn_hi",
+                       ghcOptObjSuffix   = toFlag "dyn_o",
+                       ghcOptExtra       = ghcSharedOptions libBi
                    }
       profArgs = vanillaArgs `mappend` mempty {
                      ghcOptProfilingMode = toFlag True,
