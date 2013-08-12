@@ -64,7 +64,8 @@ import Distribution.PackageDescription as PD
 import Distribution.Simple.Compiler
          ( Compiler(..), compilerVersion )
 import Distribution.Simple.GHC ( componentGhcOptions, ghcLibDir )
-import Distribution.Simple.Program.GHC ( GhcOptions(..), renderGhcOptions )
+import Distribution.Simple.Program.GHC
+         ( GhcOptions(..), GhcDynLinkMode(..), renderGhcOptions )
 import Distribution.Simple.Program
          ( ConfiguredProgram(..), requireProgramVersion
          , rawSystemProgram, rawSystemProgramStdout
@@ -340,11 +341,11 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate = do
                           ghcOptStubDir = toFlag tmp
                       }
         sharedOpts = vanillaOpts {
-                         ghcOptDynamic   = toFlag True,
-                         ghcOptFPic      = toFlag True,
-                         ghcOptHiSuffix  = toFlag "dyn_hi",
-                         ghcOptObjSuffix = toFlag "dyn_o",
-                         ghcOptExtra     = ghcSharedOptions bi
+                         ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                         ghcOptFPic        = toFlag True,
+                         ghcOptHiSuffix    = toFlag "dyn_hi",
+                         ghcOptObjSuffix   = toFlag "dyn_o",
+                         ghcOptExtra       = ghcSharedOptions bi
                      }
     opts <- if withVanillaLib lbi
             then return vanillaOpts
@@ -378,11 +379,11 @@ fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
                           ghcOptStubDir = toFlag tmp
                       }
         sharedOpts = vanillaOpts {
-                         ghcOptDynamic   = toFlag True,
-                         ghcOptFPic      = toFlag True,
-                         ghcOptHiSuffix  = toFlag "dyn_hi",
-                         ghcOptObjSuffix = toFlag "dyn_o",
-                         ghcOptExtra     = ghcSharedOptions bi
+                         ghcOptDynLinkMode = toFlag GhcDynamicOnly,
+                         ghcOptFPic        = toFlag True,
+                         ghcOptHiSuffix    = toFlag "dyn_hi",
+                         ghcOptObjSuffix   = toFlag "dyn_o",
+                         ghcOptExtra       = ghcSharedOptions bi
                      }
     opts <- if withVanillaLib lbi
             then return vanillaOpts
