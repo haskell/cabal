@@ -1,7 +1,7 @@
 If you want to hack on Cabal, don't be intimidated!
 
 Read the guide to the source code:
-  http://hackage.haskell.org/trac/hackage/wiki/SourceGuide
+  https://github.com/haskell/cabal/wiki/Source-Guide
 
 There are other resources listed on the dev wiki:
   http://hackage.haskell.org/trac/hackage/
