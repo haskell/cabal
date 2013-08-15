@@ -90,8 +90,9 @@ import Distribution.Package
          ( Package(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
-         , ProgramLocation(..), rawSystemProgram, rawSystemProgramConf
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
+         , ProgramSearchPath, ProgramLocation(..)
+         , rawSystemProgram, rawSystemProgramConf
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , requireProgramVersion
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
@@ -181,27 +182,31 @@ configureToolchain lhcProg =
     isWindows   = case buildOS of Windows -> True; _ -> False
 
     -- on Windows finding and configuring ghc's gcc and ld is a bit special
-    findProg :: Program -> FilePath -> Verbosity -> IO (Maybe FilePath)
-    findProg prog location | isWindows = \verbosity -> do
+    findProg :: Program -> FilePath
+             -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+    findProg prog location | isWindows = \verbosity searchpath -> do
         exists <- doesFileExist location
         if exists then return (Just location)
                   else do warn verbosity ("Couldn't find " ++ programName prog ++ " where I expected it. Trying the search path.")
-                          programFindLocation prog verbosity
+                          programFindLocation prog verbosity searchpath
       | otherwise = programFindLocation prog
 
-    configureGcc :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+    configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureGcc
       | isWindows = \_ gccProg -> case programLocation gccProg of
           -- if it's found on system then it means we're using the result
           -- of programFindLocation above rather than a user-supplied path
           -- that means we should add this extra flag to tell ghc's gcc
           -- where it lives and thus where gcc can find its various files:
-          FoundOnSystem {} -> return ["-B" ++ libDir, "-I" ++ includeDir]
-          UserSpecified {} -> return []
-      | otherwise = \_ _   -> return []
+          FoundOnSystem {} -> return gccProg {
+                                programDefaultArgs = ["-B" ++ libDir,
+                                                      "-I" ++ includeDir]
+                              }
+          UserSpecified {} -> return gccProg
+      | otherwise = \_ gccProg -> return gccProg
 
     -- we need to find out if ld supports the -x flag
-    configureLd :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+    configureLd :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureLd verbosity ldProg = do
       tempDir <- getTemporaryDirectory
       ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
@@ -219,8 +224,8 @@ configureToolchain lhcProg =
                  `catchIO`   (\_ -> return False)
                  `catchExit` (\_ -> return False)
       if ldx
-        then return ["-x"]
-        else return []
+        then return ldProg { programDefaultArgs = ["-x"] }
+        else return ldProg
 
 getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Flag)]
 getLanguages _ _ = return [(Haskell98, "")]
