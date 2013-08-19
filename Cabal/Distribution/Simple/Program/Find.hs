@@ -114,4 +114,3 @@ programSearchPathAsPATHVar searchpath = do
     getEntries ProgramSearchPathDefault   = do
       env <- getEnvironment
       return (maybe [] splitSearchPath (lookup "PATH" env))
-
