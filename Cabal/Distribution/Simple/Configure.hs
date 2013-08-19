@@ -297,9 +297,9 @@ configure (pkg_descr0, pbi) cfg
         createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
         let programsConfig = mkProgramsConfig cfg (configPrograms cfg)
-            userInstall = fromFlag (configUserInstall cfg)
-            packageDbs  = interpretPackageDbFlags userInstall
-                            (configPackageDBs cfg)
+            userInstall    = fromFlag (configUserInstall cfg)
+            packageDbs     = interpretPackageDbFlags userInstall
+                             (configPackageDBs cfg)
 
         -- detect compiler
         (comp, compPlatform, programsConfig') <- configCompiler
