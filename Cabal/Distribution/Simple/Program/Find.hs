@@ -84,6 +84,9 @@ findProgramOnSearchPath verbosity searchpath prog = do
     tryPathElem (ProgramSearchPathDir dir) =
         findFirstExe [ dir </> prog <.> ext | ext <- extensions ]
       where
+        -- Possible improvement: on Windows, read the list of extensions from
+        -- the PATHEXT environment variable. By default PATHEXT is ".com; .exe;
+        -- .bat; .cmd".
         extensions = case buildOS of
                        Windows -> ["", "exe"]
                        _       -> [""]
