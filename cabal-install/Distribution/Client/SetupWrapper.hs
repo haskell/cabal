@@ -429,7 +429,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   invokeSetupScript :: SetupScriptOptions -> FilePath -> [String] -> IO ()
   invokeSetupScript options' path args = do
     info verbosity $ unwords (path : args)
-    case useLoggingHandle options of
+    case useLoggingHandle options' of
       Nothing        -> return ()
       Just logHandle -> info verbosity $ "Redirecting build log to "
                                       ++ show logHandle
@@ -445,7 +445,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
 
     process <- runProcess path' args
-                 (useWorkingDir options) env
-                 Nothing (useLoggingHandle options) (useLoggingHandle options)
+                 (useWorkingDir options') env
+                 Nothing (useLoggingHandle options') (useLoggingHandle options')
     exitCode <- waitForProcess process
     unless (exitCode == ExitSuccess) $ exitWith exitCode
