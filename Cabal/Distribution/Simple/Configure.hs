@@ -296,13 +296,7 @@ configure (pkg_descr0, pbi) cfg
 
         createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
-        let programsConfig =
-               userSpecifyArgss (configProgramArgs cfg)
-             . userSpecifyPaths (configProgramPaths cfg)
-             . setProgramSearchPath searchpath
-             $ configPrograms cfg
-            searchpath  = getProgramSearchPath (configPrograms cfg)
-                       ++ map ProgramSearchPathDir (configProgramPathExtra cfg)
+        let programsConfig = mkProgramsConfig cfg (configPrograms cfg)
             userInstall = fromFlag (configUserInstall cfg)
             packageDbs  = interpretPackageDbFlags userInstall
                             (configPackageDBs cfg)
@@ -593,6 +587,16 @@ configure (pkg_descr0, pbi) cfg
                       , executables = modifyExecutable  `map`
                                       executables pkg_descr}
 
+mkProgramsConfig :: ConfigFlags -> ProgramConfiguration -> ProgramConfiguration
+mkProgramsConfig cfg initialProgramsConfig = programsConfig
+  where
+    programsConfig = userSpecifyArgss (configProgramArgs cfg)
+                   . userSpecifyPaths (configProgramPaths cfg)
+                   . setProgramSearchPath searchpath
+                   $ initialProgramsConfig
+    searchpath     = getProgramSearchPath (initialProgramsConfig)
+                  ++ map ProgramSearchPathDir (configProgramPathExtra cfg)
+
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies
 
@@ -856,12 +860,7 @@ configCompilerAux cfg = configCompiler (flagToMaybe $ configHcFlavor cfg)
                                        programsConfig
                                        (fromFlag (configVerbosity cfg))
   where
-    programsConfig = userSpecifyArgss (configProgramArgs cfg)
-                   . userSpecifyPaths (configProgramPaths cfg)
-                   . setProgramSearchPath searchpath
-                   $ defaultProgramConfiguration
-    searchpath     = getProgramSearchPath (defaultProgramConfiguration)
-                  ++ map ProgramSearchPathDir (configProgramPathExtra cfg)
+    programsConfig = mkProgramsConfig cfg defaultProgramConfiguration
 
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                -> ProgramConfiguration -> Verbosity
