@@ -44,7 +44,7 @@ import Data.List
          ( intercalate )
 
 
--- | A search path to use when locating executables. This is analagous
+-- | A search path to use when locating executables. This is analogous
 -- to the unix @$PATH@ or win32 @%PATH%@ but with the ability to use
 -- the system default method for finding executables ('findExecutable' which
 -- on unix is simply looking on the @$PATH@ but on win32 is a bit more
