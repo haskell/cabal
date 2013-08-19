@@ -223,8 +223,8 @@ testController flags pkg_descr lbi suite preTest cmd postTest logNamer = do
               hLog <- openFile tempLog AppendMode
               hIn  <- openFile tempInput ReadMode
               -- these handles get closed by rawSystemIOWithEnv
-              rawSystemIOWithEnv verbosity cmd opts shellEnv (Just hIn)
-                  (Just hLog) (Just hLog)
+              rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
+                                 (Just hIn) (Just hLog) (Just hLog)
 
             -- Generate TestSuiteLog from executable exit code and a machine-
             -- readable test log

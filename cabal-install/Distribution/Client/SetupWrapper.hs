@@ -46,7 +46,11 @@ import Distribution.Simple.Compiler
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
-         , getDbProgramOutput, runDbProgram, ghcProgram )
+         , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram )
+import Distribution.Simple.Program.Find
+         ( programSearchPathAsPATHVar )
+import Distribution.Simple.Program.Run
+         ( getEffectiveEnvironment )
 import Distribution.Simple.BuildPaths
          ( defaultDistPref, exeExtension )
 import Distribution.Simple.Command
@@ -217,7 +221,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     -- types?
     Simple -> getCachedSetupExecutable options' cabalLibVersion setupHs
     _      -> compileSetupExecutable options' cabalLibVersion setupHs False
-  invokeSetupScript path (mkargs cabalLibVersion)
+  invokeSetupScript options' path (mkargs cabalLibVersion)
 
   where
   workingDir       = case fromMaybe "" (useWorkingDir options) of
@@ -422,8 +426,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     where
       setupProgFile = setupDir </> "setup" <.> exeExtension
 
-  invokeSetupScript :: FilePath -> [String] -> IO ()
-  invokeSetupScript path args = do
+  invokeSetupScript :: SetupScriptOptions -> FilePath -> [String] -> IO ()
+  invokeSetupScript options' path args = do
     info verbosity $ unwords (path : args)
     case useLoggingHandle options of
       Nothing        -> return ()
@@ -436,8 +440,12 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     -- working directory.
     path' <- tryCanonicalizePath path
 
+    searchpath <- programSearchPathAsPATHVar
+                    (getProgramSearchPath (useProgramConfig options'))
+    env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+
     process <- runProcess path' args
-                 (useWorkingDir options) Nothing
+                 (useWorkingDir options) env
                  Nothing (useLoggingHandle options) (useLoggingHandle options)
     exitCode <- waitForProcess process
     unless (exitCode == ExitSuccess) $ exitWith exitCode
