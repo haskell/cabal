@@ -20,22 +20,26 @@ module Distribution.Simple.Program.Run (
     runProgramInvocation,
     getProgramInvocationOutput,
 
+    getEffectiveEnvironment,
   ) where
 
 import Distribution.Simple.Program.Types
          ( ConfiguredProgram(..), programPath )
 import Distribution.Simple.Utils
-         ( die, rawSystemExit, rawSystemStdInOut
+         ( die, rawSystemExit, rawSystemIOWithEnv, rawSystemStdInOut
          , toUTF8, fromUTF8, normaliseLineEndings )
 import Distribution.Verbosity
          ( Verbosity )
 
 import Data.List
          ( foldl', unfoldr )
+import qualified Data.Map as Map
 import Control.Monad
          ( when )
 import System.Exit
-         ( ExitCode(..) )
+         ( ExitCode(..), exitWith )
+import System.Environment
+         ( getEnvironment )
 
 -- | Represents a specific invocation of a specific program.
 --
@@ -47,7 +51,7 @@ import System.Exit
 data ProgramInvocation = ProgramInvocation {
        progInvokePath  :: FilePath,
        progInvokeArgs  :: [String],
-       progInvokeEnv   :: [(String, String)],
+       progInvokeEnv   :: [(String, Maybe String)],
        progInvokeCwd   :: Maybe FilePath,
        progInvokeInput :: Maybe String,
        progInvokeInputEncoding  :: IOEncoding,
@@ -82,7 +86,8 @@ programInvocation prog args =
     progInvokePath = programPath prog,
     progInvokeArgs = programDefaultArgs prog
                   ++ args
-                  ++ programOverrideArgs prog
+                  ++ programOverrideArgs prog,
+    progInvokeEnv  = programOverrideEnv prog
   }
 
 
@@ -101,14 +106,32 @@ runProgramInvocation verbosity
   ProgramInvocation {
     progInvokePath  = path,
     progInvokeArgs  = args,
-    progInvokeEnv   = [],
-    progInvokeCwd   = Nothing,
+    progInvokeEnv   = envOverrides,
+    progInvokeCwd   = mcwd,
+    progInvokeInput = Nothing
+  } = do
+    menv <- getEffectiveEnvironment envOverrides
+    exitCode <- rawSystemIOWithEnv verbosity
+                                   path args
+                                   mcwd menv
+                                   Nothing Nothing Nothing
+    when (exitCode /= ExitSuccess) $
+      exitWith exitCode
+
+runProgramInvocation verbosity
+  ProgramInvocation {
+    progInvokePath  = path,
+    progInvokeArgs  = args,
+    progInvokeEnv   = envOverrides,
+    progInvokeCwd   = mcwd,
     progInvokeInput = Just inputStr,
     progInvokeInputEncoding = encoding
   } = do
+    menv <- getEffectiveEnvironment envOverrides
     (_, errors, exitCode) <- rawSystemStdInOut verbosity
                                     path args
-                                    (Just input) False
+                                    mcwd menv
+                                    (Just input) True
     when (exitCode /= ExitSuccess) $
       die errors
   where
@@ -116,34 +139,48 @@ runProgramInvocation verbosity
               IOEncodingText -> (inputStr, False)
               IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
 
-runProgramInvocation _ _ =
-   die "runProgramInvocation: not yet implemented for this form of invocation"
-
 
 getProgramInvocationOutput :: Verbosity -> ProgramInvocation -> IO String
 getProgramInvocationOutput verbosity
   ProgramInvocation {
     progInvokePath  = path,
     progInvokeArgs  = args,
-    progInvokeEnv   = [],
-    progInvokeCwd   = Nothing,
-    progInvokeInput = Nothing,
+    progInvokeEnv   = envOverrides,
+    progInvokeCwd   = mcwd,
+    progInvokeInput = minputStr,
     progInvokeOutputEncoding = encoding
   } = do
-  let utf8 = case encoding of IOEncodingUTF8 -> True; _ -> False
-      decode | utf8      = fromUTF8 . normaliseLineEndings
-             | otherwise = id
-  (output, errors, exitCode) <- rawSystemStdInOut verbosity
-                                  path args
-                                  Nothing utf8
-  when (exitCode /= ExitSuccess) $
-    die errors
-  return (decode output)
+    let utf8 = case encoding of IOEncodingUTF8 -> True; _ -> False
+        decode | utf8      = fromUTF8 . normaliseLineEndings
+               | otherwise = id
+    menv <- getEffectiveEnvironment envOverrides
+    (output, errors, exitCode) <- rawSystemStdInOut verbosity
+                                    path args
+                                    mcwd menv
+                                    input utf8
+    when (exitCode /= ExitSuccess) $
+      die errors
+    return (decode output)
+  where
+    input =
+      case minputStr of
+        Nothing       -> Nothing
+        Just inputStr -> Just $
+          case encoding of
+            IOEncodingText -> (inputStr, False)
+            IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
 
 
-getProgramInvocationOutput _ _ =
-   die "getProgramInvocationOutput: not yet implemented for this form of invocation"
-
+-- | Return the current environment extended with the given overrides.
+--
+getEffectiveEnvironment :: [(String, Maybe String)] -> IO (Maybe [(String, String)])
+getEffectiveEnvironment []        = return Nothing
+getEffectiveEnvironment overrides =
+    fmap (Just . Map.toList . apply overrides . Map.fromList) getEnvironment
+  where
+    apply os env = foldl' (flip update) env os
+    update (var, Nothing)  = Map.delete var
+    update (var, Just val) = Map.insert var val
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you

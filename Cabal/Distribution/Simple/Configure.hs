@@ -98,6 +98,7 @@ import Distribution.Simple.Hpc ( enableCoverage )
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
+    , ProgramSearchPathEntry(..), getProgramSearchPath, setProgramSearchPath
     , configureAllKnownPrograms, knownPrograms, lookupKnownProgram
     , userSpecifyArgss, userSpecifyPaths
     , requireProgram, requireProgramVersion
@@ -295,9 +296,13 @@ configure (pkg_descr0, pbi) cfg
 
         createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
-        let programsConfig = userSpecifyArgss (configProgramArgs cfg)
-                           . userSpecifyPaths (configProgramPaths cfg)
-                           $ configPrograms cfg
+        let programsConfig =
+               userSpecifyArgss (configProgramArgs cfg)
+             . userSpecifyPaths (configProgramPaths cfg)
+             . setProgramSearchPath searchpath
+             $ configPrograms cfg
+            searchpath  = getProgramSearchPath (configPrograms cfg)
+                       ++ map ProgramSearchPathDir (configProgramPathExtra cfg)
             userInstall = fromFlag (configUserInstall cfg)
             packageDbs  = interpretPackageDbFlags userInstall
                             (configPackageDBs cfg)
@@ -853,7 +858,10 @@ configCompilerAux cfg = configCompiler (flagToMaybe $ configHcFlavor cfg)
   where
     programsConfig = userSpecifyArgss (configProgramArgs cfg)
                    . userSpecifyPaths (configProgramPaths cfg)
+                   . setProgramSearchPath searchpath
                    $ defaultProgramConfiguration
+    searchpath     = getProgramSearchPath (defaultProgramConfiguration)
+                  ++ map ProgramSearchPathDir (configProgramPathExtra cfg)
 
 configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
                -> ProgramConfiguration -> Verbosity

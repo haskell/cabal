@@ -97,8 +97,9 @@ import Distribution.Package
          ( Package(..), PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
-         ( Program(..), ConfiguredProgram(..), ProgramConfiguration, ProgArg
-         , ProgramLocation(..), rawSystemProgram
+         ( Program(..), ConfiguredProgram(..), ProgramConfiguration
+         , ProgramLocation(..), ProgramSearchPath, ProgramSearchPathEntry(..)
+         , rawSystemProgram
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , getProgramInvocationOutput
          , requireProgramVersion, requireProgram, getProgramOutput
@@ -125,7 +126,7 @@ import Distribution.Text
 import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
-import Control.Monad            ( unless, when, liftM )
+import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import Data.List
 import Data.Maybe               ( catMaybes, fromMaybe )
@@ -214,28 +215,30 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 -- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg(.exe)
 --
-guessToolFromGhcPath :: FilePath -> ConfiguredProgram -> Verbosity
+guessToolFromGhcPath :: Program -> ConfiguredProgram
+                     -> Verbosity -> ProgramSearchPath
                      -> IO (Maybe FilePath)
-guessToolFromGhcPath tool ghcProg verbosity
-  = do let path              = programPath ghcProg
+guessToolFromGhcPath tool ghcProg verbosity searchpath
+  = do let toolname          = programName tool
+           path              = programPath ghcProg
            dir               = takeDirectory path
            versionSuffix     = takeVersionSuffix (dropExeExtension path)
-           guessNormal       = dir </> tool <.> exeExtension
-           guessGhcVersioned = dir </> (tool ++ "-ghc" ++ versionSuffix)
+           guessNormal       = dir </> toolname <.> exeExtension
+           guessGhcVersioned = dir </> (toolname ++ "-ghc" ++ versionSuffix)
                                <.> exeExtension
-           guessVersioned    = dir </> (tool ++ versionSuffix) <.> exeExtension
+           guessVersioned    = dir </> (toolname ++ versionSuffix) <.> exeExtension
            guesses | null versionSuffix = [guessNormal]
                    | otherwise          = [guessGhcVersioned,
                                            guessVersioned,
                                            guessNormal]
-       info verbosity $ "looking for tool " ++ show tool
+       info verbosity $ "looking for tool " ++ toolname
          ++ " near compiler in " ++ dir
        exists <- mapM doesFileExist guesses
        case [ file | (file, True) <- zip guesses exists ] of
                    -- If we can't find it near ghc, fall back to the usual
                    -- method.
-         []     -> findProgramLocation verbosity tool
-         (fp:_) -> do info verbosity $ "found " ++ tool ++ " in " ++ fp
+         []     -> programFindLocation tool verbosity searchpath
+         (fp:_) -> do info verbosity $ "found " ++ toolname ++ " in " ++ fp
                       return (Just fp)
 
   where takeVersionSuffix :: FilePath -> String
@@ -256,8 +259,9 @@ guessToolFromGhcPath tool ghcProg verbosity
 -- > /usr/local/bin/ghc-pkg-6.6.1(.exe)
 -- > /usr/local/bin/ghc-pkg(.exe)
 --
-guessGhcPkgFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
-guessGhcPkgFromGhcPath = guessToolFromGhcPath "ghc-pkg"
+guessGhcPkgFromGhcPath :: ConfiguredProgram
+                       -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+guessGhcPkgFromGhcPath = guessToolFromGhcPath ghcPkgProgram
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
 -- corresponding hsc2hs, we try looking for both a versioned and unversioned
@@ -267,8 +271,9 @@ guessGhcPkgFromGhcPath = guessToolFromGhcPath "ghc-pkg"
 -- > /usr/local/bin/hsc2hs-6.6.1(.exe)
 -- > /usr/local/bin/hsc2hs(.exe)
 --
-guessHsc2hsFromGhcPath :: ConfiguredProgram -> Verbosity -> IO (Maybe FilePath)
-guessHsc2hsFromGhcPath = guessToolFromGhcPath "hsc2hs"
+guessHsc2hsFromGhcPath :: ConfiguredProgram
+                       -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+guessHsc2hsFromGhcPath = guessToolFromGhcPath hsc2hsProgram
 
 -- | Adjust the way we find and configure gcc and ld
 --
@@ -277,30 +282,18 @@ configureToolchain :: ConfiguredProgram -> [(String, String)]
                                         -> ProgramConfiguration
 configureToolchain ghcProg ghcInfo =
     addKnownProgram gccProgram {
-      programFindLocation = findProg gccProgram
-                              [ if ghcVersion >= Version [6,12] []
-                                  then mingwBinDir </> binPrefix ++ "gcc.exe"
-                                  else baseDir     </> "gcc.exe" ],
+      programFindLocation = findProg gccProgram extraGccPath,
       programPostConf     = configureGcc
     }
   . addKnownProgram ldProgram {
-      programFindLocation = findProg ldProgram
-                              [ if ghcVersion >= Version [6,12] []
-                                  then mingwBinDir </> binPrefix ++ "ld.exe"
-                                  else libDir      </> "ld.exe" ],
+      programFindLocation = findProg ldProgram extraLdPath,
       programPostConf     = configureLd
     }
   . addKnownProgram arProgram {
-      programFindLocation = findProg arProgram
-                              [ if ghcVersion >= Version [6,12] []
-                                  then mingwBinDir </> binPrefix ++ "ar.exe"
-                                  else libDir      </> "ar.exe" ]
+      programFindLocation = findProg arProgram extraArPath
     }
   . addKnownProgram stripProgram {
-      programFindLocation = findProg stripProgram
-                              [ if ghcVersion >= Version [6,12] []
-                                  then mingwBinDir </> binPrefix ++ "strip.exe"
-                                  else libDir      </> "strip.exe" ]
+      programFindLocation = findProg stripProgram extraStripPath
     }
   where
     Just ghcVersion = programVersion ghcProg
@@ -312,20 +305,27 @@ configureToolchain ghcProg ghcInfo =
     isWindows   = case buildOS of Windows -> True; _ -> False
     binPrefix   = ""
 
-    -- on Windows finding and configuring ghc's gcc and ld is a bit special
-    findProg :: Program -> [FilePath] -> Verbosity -> IO (Maybe FilePath)
-    findProg prog locations
-      | isWindows = \verbosity -> look locations verbosity
-      | otherwise = programFindLocation prog
+    -- on Windows finding and configuring ghc's gcc & binutils is a bit special
+    extraGccPath
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "gcc.exe"
+      | otherwise                       = baseDir     </> "gcc.exe"
+    extraLdPath
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "ld.exe"
+      | otherwise                       = libDir      </> "ld.exe"
+    extraArPath
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "ar.exe"
+      | otherwise                       = libDir      </> "ar.exe"
+    extraStripPath
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "strip.exe"
+      | otherwise                       = libDir      </> "strip.exe"
+
+    findProg :: Program -> FilePath
+             -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+    findProg prog extraPath v searchpath =
+        programFindLocation prog v searchpath'
       where
-        look [] verbosity = do
-          warn verbosity ("Couldn't find " ++ programName prog
-                          ++ " where I expected it. Trying the search path.")
-          programFindLocation prog verbosity
-        look (f:fs) verbosity = do
-          exists <- doesFileExist f
-          if exists then return (Just f)
-                    else look fs verbosity
+        searchpath' | isWindows = ProgramSearchPathDir extraPath : searchpath
+                    | otherwise = searchpath
 
     ccFlags        = getFlags "C compiler flags"
     gccLinkerFlags = getFlags "Gcc Linker flags"
@@ -338,11 +338,15 @@ configureToolchain ghcProg ghcInfo =
                        [(args, "")] -> args
                        _ -> [] -- XXX Should should be an error really
 
-    configureGcc :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
-    configureGcc v cp = liftM (++ (ccFlags ++ gccLinkerFlags))
-                      $ configureGcc' v cp
+    configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureGcc v gccProg = do
+      gccProg' <- configureGcc' v gccProg
+      return gccProg' {
+        programDefaultArgs = programDefaultArgs gccProg'
+                             ++ ccFlags ++ gccLinkerFlags
+      }
 
-    configureGcc' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+    configureGcc' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureGcc'
       | isWindows = \_ gccProg -> case programLocation gccProg of
           -- if it's found on system then it means we're using the result
@@ -352,15 +356,20 @@ configureToolchain ghcProg ghcInfo =
           -- various files:
           FoundOnSystem {}
            | ghcVersion < Version [6,11] [] ->
-              return ["-B" ++ libDir, "-I" ++ includeDir]
-          _ -> return []
-      | otherwise = \_ _   -> return []
+               return gccProg { programDefaultArgs = ["-B" ++ libDir,
+                                                      "-I" ++ includeDir] }
+          _ -> return gccProg
+      | otherwise = \_ gccProg -> return gccProg
 
-    configureLd :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
-    configureLd v cp = liftM (++ ldLinkerFlags) $ configureLd' v cp
+    configureLd :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
+    configureLd v ldProg = do
+      ldProg' <- configureLd' v ldProg
+      return ldProg' {
+        programDefaultArgs = programDefaultArgs ldProg' ++ ldLinkerFlags
+      }
 
     -- we need to find out if ld supports the -x flag
-    configureLd' :: Verbosity -> ConfiguredProgram -> IO [ProgArg]
+    configureLd' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureLd' verbosity ldProg = do
       tempDir <- getTemporaryDirectory
       ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
@@ -378,8 +387,8 @@ configureToolchain ghcProg ghcInfo =
                  `catchIO`   (\_ -> return False)
                  `catchExit` (\_ -> return False)
       if ldx
-        then return ["-x"]
-        else return []
+        then return ldProg { programDefaultArgs = ["-x"] }
+        else return ldProg
 
 getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Flag)]
 getLanguages _ ghcProg

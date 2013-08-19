@@ -32,6 +32,8 @@ module Distribution.Simple.Program.Db (
     addKnownPrograms,
     lookupKnownProgram,
     knownPrograms,
+    getProgramSearchPath,
+    setProgramSearchPath,
     userSpecifyPath,
     userSpecifyPaths,
     userMaybeSpecifyPath,
@@ -52,10 +54,13 @@ module Distribution.Simple.Program.Db (
 
 import Distribution.Simple.Program.Types
          ( Program(..), ProgArg, ConfiguredProgram(..), ProgramLocation(..) )
+import Distribution.Simple.Program.Find
+         ( ProgramSearchPath, defaultProgramSearchPath
+         , findProgramOnSearchPath, programSearchPathAsPATHVar )
 import Distribution.Simple.Program.Builtin
          ( builtinPrograms )
 import Distribution.Simple.Utils
-         ( die, findProgramLocation )
+         ( die )
 import Distribution.Version
          ( Version, VersionRange, isAnyVersion, withinRange )
 import Distribution.Text
@@ -88,6 +93,7 @@ import System.Directory
 -- 'Program' but also any user-provided arguments and location for the program.
 data ProgramDb = ProgramDb {
         unconfiguredProgs :: UnconfiguredProgs,
+        progSearchPath    :: ProgramSearchPath,
         configuredProgs   :: ConfiguredProgs
     }
 
@@ -97,8 +103,7 @@ type ConfiguredProgs     = Map.Map String ConfiguredProgram
 
 
 emptyProgramDb :: ProgramDb
-emptyProgramDb = ProgramDb Map.empty Map.empty
-
+emptyProgramDb = ProgramDb Map.empty defaultProgramSearchPath Map.empty
 
 defaultProgramDb :: ProgramDb
 defaultProgramDb = restoreProgramDb builtinPrograms emptyProgramDb
@@ -166,6 +171,21 @@ knownPrograms conf =
   [ (p,p') | (p,_,_) <- Map.elems (unconfiguredProgs conf)
            , let p' = Map.lookup (programName p) (configuredProgs conf) ]
 
+-- | Get the current 'ProgramSearchPath' used by the 'ProgramDb'.
+-- This is the default list of locations where programs are looked for when
+-- configuring them. This can be overriden for specific programs (with
+-- 'userSpecifyPath'), and specific known programs can modify or ignore this
+-- search path in their own configuration code.
+--
+getProgramSearchPath :: ProgramDb -> ProgramSearchPath
+getProgramSearchPath = progSearchPath
+
+-- | Change the current 'ProgramSearchPath' used by the 'ProgramDb'.
+-- This will affect programs that are configured from here on, so you
+-- should usually set it before configuring any programs.
+--
+setProgramSearchPath :: ProgramSearchPath -> ProgramDb -> ProgramDb
+setProgramSearchPath searchpath db = db { progSearchPath = searchpath }
 
 -- |User-specify this path.  Basically override any path information
 -- for this program in the configuration. If it's not a known
@@ -272,13 +292,13 @@ configureProgram :: Verbosity
 configureProgram verbosity prog conf = do
   let name = programName prog
   maybeLocation <- case userSpecifiedPath prog conf of
-    Nothing   -> programFindLocation prog verbosity
+    Nothing   -> programFindLocation prog verbosity (progSearchPath conf)
              >>= return . fmap FoundOnSystem
     Just path -> do
       absolute <- doesFileExist path
       if absolute
         then return (Just (UserSpecified path))
-        else findProgramLocation verbosity path
+        else findProgramOnSearchPath verbosity (progSearchPath conf) path
          >>= maybe (die notFound) (return . Just . UserSpecified)
       where notFound = "Cannot find the program '" ++ name ++ "' at '"
                      ++ path ++ "' or on the path"
@@ -286,17 +306,16 @@ configureProgram verbosity prog conf = do
     Nothing -> return conf
     Just location -> do
       version <- programFindVersion prog verbosity (locationPath location)
+      newPath <- programSearchPathAsPATHVar (progSearchPath conf)
       let configuredProg        = ConfiguredProgram {
             programId           = name,
             programVersion      = version,
             programDefaultArgs  = [],
             programOverrideArgs = userSpecifiedArgs prog conf,
+            programOverrideEnv  = [("PATH", Just newPath)],
             programLocation     = location
           }
-      extraArgs <- programPostConf prog verbosity configuredProg
-      let configuredProg'       = configuredProg {
-            programDefaultArgs  = extraArgs
-          }
+      configuredProg' <- programPostConf prog verbosity configuredProg
       return (updateConfiguredProgs (Map.insert name configuredProg') conf)
 
 
