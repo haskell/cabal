@@ -212,7 +212,7 @@ instance Monoid d => Monoid (DepTestRslt d) where
 data BT a = BTN a | BTB (BT a) (BT a)  -- very simple binary tree
 
 
--- | Try to find a flag assignment that satisfies the constaints of all trees.
+-- | Try to find a flag assignment that satisfies the constraints of all trees.
 --
 -- Returns either the missing dependencies, or a tuple containing the
 -- resulting data, the associated dependencies, and the chosen flag
