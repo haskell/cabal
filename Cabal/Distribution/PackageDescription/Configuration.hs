@@ -410,7 +410,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) tar
           userBug $ "There exists a test with the same name as an exe: '" ++ n ++ "'"
         | any ((== n) . fst) bms =
           userBug $ "There exists a benchmark with the same name as an exe: '" ++ n ++ "'"
-        | otherwise = (mlib, exes ++ [(n, e')], tests, bms)
+        | otherwise = (mlib, (n, e'):exes, tests, bms)
       where
         e' = e {
                 buildInfo = (buildInfo e) { targetBuildDepends = fromDepMap deps }
@@ -422,7 +422,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) tar
           userBug $ "There exists an exe with the same name as the test: '" ++ n ++ "'"
         | any ((== n) . fst) bms =
           userBug $ "There exists a benchmark with the same name as the test: '" ++ n ++ "'"
-        | otherwise = (mlib, exes, tests ++ [(n, t')], bms)
+        | otherwise = (mlib, exes, (n, t'):tests, bms)
       where
         t' = t {
             testBuildInfo = (testBuildInfo t)
@@ -435,7 +435,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) tar
           userBug $ "There exists an exe with the same name as the benchmark: '" ++ n ++ "'"
         | any ((== n) . fst) tests =
           userBug $ "There exists a test with the same name as the benchmark: '" ++ n ++ "'"
-        | otherwise = (mlib, exes, tests, bms ++ [(n, b')])
+        | otherwise = (mlib, exes, tests, (n, b'):bms)
       where
         b' = b {
             benchmarkBuildInfo = (benchmarkBuildInfo b)
