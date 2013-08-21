@@ -237,7 +237,7 @@ haddock pkg_descr lbi suffixes flags = do
         CTest  _ -> when (flag haddockTestSuites)  $ doExe comp
         CBench _ -> when (flag haddockBenchmarks)  $ doExe comp
 
-    forM_ (extraHtmlFiles pkg_descr) $ \ fpath -> do
+    forM_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
       forM_ files $ copyFileTo verbosity (unDir $ argOutputDir commonArgs)
   where
