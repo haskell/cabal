@@ -852,11 +852,11 @@ checkPaths pkg =
       _            -> False
     -- paths that must be relative
     relPaths =
-         [ (path, "extra-src-files")  | path <- extraSrcFiles  pkg ]
-      ++ [ (path, "extra-tmp-files")  | path <- extraTmpFiles  pkg ]
-      ++ [ (path, "extra-html-files") | path <- extraHtmlFiles pkg ]
-      ++ [ (path, "data-files")       | path <- dataFiles      pkg ]
-      ++ [ (path, "data-dir")         | path <- [dataDir       pkg]]
+         [ (path, "extra-src-files") | path <- extraSrcFiles pkg ]
+      ++ [ (path, "extra-tmp-files") | path <- extraTmpFiles pkg ]
+      ++ [ (path, "extra-doc-files") | path <- extraDocFiles pkg ]
+      ++ [ (path, "data-files")      | path <- dataFiles     pkg ]
+      ++ [ (path, "data-dir")        | path <- [dataDir      pkg]]
       ++ concat
          [    [ (path, "c-sources")        | path <- cSources        bi ]
            ++ [ (path, "install-includes") | path <- installIncludes bi ]
