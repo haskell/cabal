@@ -174,9 +174,9 @@ pkgDescrFieldDescrs =
  , listField "extra-tmp-files"
            showFilePath       parseFilePathQ
            extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
- , listField "extra-html-files"
+ , listField "extra-doc-files"
            showFilePath    parseFilePathQ
-           extraHtmlFiles         (\val pkg -> pkg{extraHtmlFiles=val})
+           extraDocFiles          (\val pkg -> pkg{extraDocFiles=val})
  ]
 
 -- | Store any fields beginning with "x-" in the customFields field of

@@ -195,7 +195,7 @@ data PackageDescription
         dataDir        :: FilePath,
         extraSrcFiles  :: [FilePath],
         extraTmpFiles  :: [FilePath],
-        extraHtmlFiles :: [FilePath]
+        extraDocFiles  :: [FilePath]
     }
     deriving (Show, Read, Eq, Typeable, Data)
 
@@ -259,7 +259,7 @@ emptyPackageDescription
                       dataDir      = "",
                       extraSrcFiles = [],
                       extraTmpFiles = [],
-                      extraHtmlFiles = []
+                      extraDocFiles = []
                      }
 
 -- | The type of build system used by this package.
