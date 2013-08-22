@@ -581,7 +581,7 @@ commandsRun globalCommand commands args =
 
      where globalHelp = commandHelp globalCommand'
     helpCommandUI =
-      (makeCommand "help" "Help about commands" Nothing () (const [])) {
+      (makeCommand "help" "Help about commands." Nothing () (const [])) {
         commandUsage = \pname ->
              "Usage: " ++ pname ++ " help [FLAGS]\n"
           ++ "   or: " ++ pname ++ " help COMMAND [FLAGS]\n\n"
