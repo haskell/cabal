@@ -498,7 +498,7 @@ fetchCommand = CommandUI {
 updateCommand  :: CommandUI (Flag Verbosity)
 updateCommand = CommandUI {
     commandName         = "update",
-    commandSynopsis     = "Updates list of known packages",
+    commandSynopsis     = "Updates list of known packages.",
     commandDescription  = Nothing,
     commandUsage        = usageFlags "update",
     commandDefaultFlags = toFlag normal,
@@ -529,7 +529,7 @@ cleanCommand = makeCommand name shortDesc longDesc emptyFlags options
 checkCommand  :: CommandUI (Flag Verbosity)
 checkCommand = CommandUI {
     commandName         = "check",
-    commandSynopsis     = "Check the package for common mistakes",
+    commandSynopsis     = "Check the package for common mistakes.",
     commandDescription  = Nothing,
     commandUsage        = \pname -> "Usage: " ++ pname ++ " check\n",
     commandDefaultFlags = toFlag normal,
@@ -1057,7 +1057,7 @@ defaultUploadFlags = UploadFlags {
 uploadCommand :: CommandUI UploadFlags
 uploadCommand = CommandUI {
     commandName         = "upload",
-    commandSynopsis     = "Uploads source packages to Hackage",
+    commandSynopsis     = "Uploads source packages to Hackage.",
     commandDescription  = Just $ \_ ->
          "You can store your Hackage login in the ~/.cabal/config file\n",
     commandUsage        = \pname ->
@@ -1388,7 +1388,7 @@ defaultSandboxFlags = SandboxFlags {
 sandboxCommand :: CommandUI SandboxFlags
 sandboxCommand = CommandUI {
   commandName         = "sandbox",
-  commandSynopsis     = "Create/modify/delete a sandbox",
+  commandSynopsis     = "Create/modify/delete a sandbox.",
   commandDescription  = Nothing,
   commandUsage        = \pname ->
        "Usage: " ++ pname ++ " sandbox init\n"
