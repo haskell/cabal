@@ -5,7 +5,7 @@
 After you've unpacked a Cabal package, you can build it by moving into
 the root directory of the package and running the `cabal` tool there:
 
-> `cabal` [_command_] [_option_...]
+> `cabal [command] [option...]`
 
 The _command_ argument selects a particular step in the build/install process.
 
@@ -15,7 +15,7 @@ You can also get a summary of the command syntax with
 
 Alternatively, you can also use the `Setup.hs` or `Setup.lhs` script:
 
-> `_runhaskell_ Setup.hs` [_command_] [_option_...]
+> `runhaskell Setup.hs [command] [option...]`
 
 For the summary of the command syntax, run:
 
