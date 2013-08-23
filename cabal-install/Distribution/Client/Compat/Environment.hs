@@ -33,7 +33,7 @@ import Foreign.C.Error (throwErrnoIfMinus1_)
 import System.Environment (lookupEnv)
 #else
 import System.Environment (getEnv)
-import Distribution.Client.Compat.Exception (catchIO)
+import Distribution.Compat.Exception (catchIO)
 #endif
 
 import System.Posix.Internals ( withFilePath )

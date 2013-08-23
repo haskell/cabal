@@ -78,7 +78,7 @@ import Distribution.Text
          ( display )
 import Distribution.Verbosity
          ( Verbosity )
-import Distribution.Client.Compat.Exception
+import Distribution.Compat.Exception
          ( catchIO )
 
 import System.Directory  ( doesFileExist )

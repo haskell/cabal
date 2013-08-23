@@ -65,7 +65,7 @@ import System.FilePath
 import Prelude hiding (ioError)
 import System.IO.Error
          ( isDoesNotExistError, ioError )
-import Distribution.Client.Compat.Exception ( catchIO )
+import Distribution.Compat.Exception ( catchIO )
 import Control.Exception
          ( assert )
 import Data.Maybe
