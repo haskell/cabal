@@ -60,7 +60,8 @@ import Distribution.Simple.Setup
          , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
          , optionVerbosity, boolOpt, trueArg, falseArg )
 import Distribution.Simple.InstallDirs
-         ( PathTemplate, toPathTemplate, fromPathTemplate )
+         ( PathTemplate, InstallDirs(sysconfdir)
+         , toPathTemplate, fromPathTemplate )
 import Distribution.Version
          ( Version(Version), anyVersion, thisVersion )
 import Distribution.Package
@@ -249,8 +250,10 @@ filterConfigureFlags flags cabalLibVersion
   -- A no-op that silences the "pattern match is non-exhaustive" warning.
   | otherwise = flags
   where
-    -- Cabal < 1.17.0 doesn't know about --extra-prog-path.
-    flags_1_17_0 = flags        { configProgramPathExtra = [] }
+    -- Cabal < 1.17.0 doesn't know about --extra-prog-path and --sysconfdir.
+    flags_1_17_0 = flags        { configProgramPathExtra = []
+                                , configInstallDirs = configInstallDirs_1_17_0}
+    configInstallDirs_1_17_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
     -- Cabal < 1.14.0 doesn't know about --disable-benchmarks.
     flags_1_14_0 = flags_1_17_0 { configBenchmarks  = NoFlag }
     -- Cabal < 1.10.0 doesn't know about --disable-tests.
