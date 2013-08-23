@@ -89,11 +89,11 @@ import System.Directory
          , getPermissions, createDirectoryIfMissing, copyFile )
 import qualified System.Directory as Permissions
          ( Permissions(executable) )
-import Distribution.Compat.FilePerms
+import Distribution.Client.Compat.FilePerms
          ( setFileExecutable )
 import System.Posix.Types
          ( FileMode )
-import Distribution.Compat.Time
+import Distribution.Client.Compat.Time
 import System.IO
          ( IOMode(ReadMode), openBinaryFile, hFileSize )
 import System.IO.Unsafe (unsafeInterleaveIO)

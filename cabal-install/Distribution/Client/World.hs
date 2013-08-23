@@ -40,7 +40,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( Text(..), display, simpleParse )
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.Exception ( catchIO )
+import Distribution.Client.Compat.Exception ( catchIO )
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ( (<>), (<+>) )
 

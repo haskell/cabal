@@ -2,7 +2,7 @@
 
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Distribution.Compat.Env
+-- Module      :  Distribution.Client.Compat.Environment
 -- Copyright   :  (c) Simon Hengel 2012
 -- License     :  BSD-style (see the file LICENSE)
 --
@@ -14,7 +14,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Distribution.Compat.Env (
+module Distribution.Client.Compat.Environment (
   lookupEnv, setEnv
 ) where
 
@@ -33,7 +33,7 @@ import Foreign.C.Error (throwErrnoIfMinus1_)
 import System.Environment (lookupEnv)
 #else
 import System.Environment (getEnv)
-import Distribution.Compat.Exception (catchIO)
+import Distribution.Client.Compat.Exception (catchIO)
 #endif
 
 import System.Posix.Internals ( withFilePath )

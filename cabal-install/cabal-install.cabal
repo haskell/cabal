@@ -105,11 +105,11 @@ executable cabal
         Distribution.Client.Utils
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
-        Distribution.Compat.Exception
-        Distribution.Compat.Env
-        Distribution.Compat.FilePerms
-        Distribution.Compat.Semaphore
-        Distribution.Compat.Time
+        Distribution.Client.Compat.Exception
+        Distribution.Client.Compat.Environment
+        Distribution.Client.Compat.FilePerms
+        Distribution.Client.Compat.Semaphore
+        Distribution.Client.Compat.Time
         Paths_cabal_install
 
     build-depends:

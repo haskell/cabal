@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK hide #-}
-module Distribution.Compat.Exception (
+module Distribution.Client.Compat.Exception (
   mask,
   mask_,
   catchIO,
