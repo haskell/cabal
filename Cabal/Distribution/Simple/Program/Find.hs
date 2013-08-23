@@ -36,7 +36,7 @@ import Distribution.System
          ( OS(..), buildOS )
 import System.Directory
          ( findExecutable, doesFileExist, Permissions(..), getPermissions )
-import System.Environment
+import Distribution.Compat.Environment
          ( getEnvironment )
 import System.FilePath
          ( (</>), (<.>), splitSearchPath, searchPathSeparator )

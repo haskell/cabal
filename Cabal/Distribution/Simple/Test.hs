@@ -87,7 +87,7 @@ import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, getDirectoryContents, removeDirectoryRecursive
     , removeFile, setCurrentDirectory )
-import System.Environment ( getEnvironment )
+import Distribution.Compat.Environment ( getEnvironment )
 import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>), (<.>) )
 import System.IO ( hClose, IOMode(..), openFile )
