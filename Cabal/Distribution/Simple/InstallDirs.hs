@@ -294,7 +294,7 @@ substituteInstallDirTemplates env dirs = dirs'
       htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
       haddockdir = subst haddockdir (prefixBinLibDataVars ++
                                       [docdirVar, htmldirVar]),
-      sysconfdir = subst sysconfdir []
+      sysconfdir = subst sysconfdir [prefixVar]
     }
     subst dir env' = substPathTemplate (env'++env) (dir dirs)
 
