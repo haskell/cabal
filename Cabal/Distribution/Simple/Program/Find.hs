@@ -42,6 +42,8 @@ import System.FilePath
          ( (</>), (<.>), splitSearchPath, searchPathSeparator )
 import Data.List
          ( intercalate )
+import qualified Data.Char as Char
+         ( toUpper )
 
 
 -- | A search path to use when locating executables. This is analogous
@@ -116,4 +118,7 @@ programSearchPathAsPATHVar searchpath = do
     getEntries (ProgramSearchPathDir dir) = return [dir]
     getEntries ProgramSearchPathDefault   = do
       env <- getEnvironment
-      return (maybe [] splitSearchPath (lookup "PATH" env))
+      return (maybe [] splitSearchPath (lookup "PATH" $ normalizeKeys env))
+    -- Win32 is case-insensitive and often there is "Path" but no "PATH",
+    -- so convert all names to upper case before looking them up.
+    normalizeKeys = map (\(name, value) -> (map Char.toUpper name, value))

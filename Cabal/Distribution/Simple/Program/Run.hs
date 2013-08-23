@@ -31,6 +31,8 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
          ( Verbosity )
 
+import qualified Data.Char as Char
+         ( toUpper )
 import Data.List
          ( foldl', unfoldr )
 import qualified Data.Map as Map
@@ -178,11 +180,15 @@ getEffectiveEnvironment :: [(String, Maybe String)]
                         -> IO (Maybe [(String, String)])
 getEffectiveEnvironment []        = return Nothing
 getEffectiveEnvironment overrides =
-    fmap (Just . Map.toList . apply overrides . Map.fromList) getEnvironment
+    fmap (Just . stripKeys . Map.toList . apply overrides . Map.fromList . appendKeys) getEnvironment
   where
     apply os env = foldl' (flip update) env os
     update (var, Nothing)  = Map.delete var
-    update (var, Just val) = Map.insert var val
+    update (var, Just val) = Map.insert var (var, val)
+    -- Make sure that all keys are compared case-insensitively
+    -- while preserving their original case.
+    appendKeys = map $ \(name, val) -> (map Char.toUpper name, (name, val))
+    stripKeys  = map snd
 
 -- | Like the unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
