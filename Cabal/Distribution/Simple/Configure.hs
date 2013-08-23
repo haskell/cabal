@@ -59,6 +59,7 @@ module Distribution.Simple.Configure (configure,
                                       localBuildInfoFile,
                                       getInstalledPackages, getPackageDBContents,
                                       configCompiler, configCompilerAux,
+                                      configCompilerEx, configCompilerAuxEx,
                                       ccLdOptionsBuildInfo,
                                       checkForeignDeps,
                                       interpretPackageDbFlags,
@@ -302,7 +303,7 @@ configure (pkg_descr0, pbi) cfg
                              (configPackageDBs cfg)
 
         -- detect compiler
-        (comp, compPlatform, programsConfig') <- configCompiler
+        (comp, compPlatform, programsConfig') <- configCompilerEx
           (flagToMaybe $ configHcFlavor cfg)
           (flagToMaybe $ configHcPath cfg) (flagToMaybe $ configHcPkg cfg)
           programsConfig (lessVerbose verbosity)
@@ -853,20 +854,21 @@ ccLdOptionsBuildInfo cflags ldflags =
 -- -----------------------------------------------------------------------------
 -- Determining the compiler details
 
-configCompilerAux :: ConfigFlags -> IO (Compiler, Platform, ProgramConfiguration)
-configCompilerAux cfg = configCompiler (flagToMaybe $ configHcFlavor cfg)
-                                       (flagToMaybe $ configHcPath cfg)
-                                       (flagToMaybe $ configHcPkg cfg)
-                                       programsConfig
-                                       (fromFlag (configVerbosity cfg))
+configCompilerAuxEx :: ConfigFlags
+                    -> IO (Compiler, Platform, ProgramConfiguration)
+configCompilerAuxEx cfg = configCompilerEx (flagToMaybe $ configHcFlavor cfg)
+                                           (flagToMaybe $ configHcPath cfg)
+                                           (flagToMaybe $ configHcPkg cfg)
+                                           programsConfig
+                                           (fromFlag (configVerbosity cfg))
   where
     programsConfig = mkProgramsConfig cfg defaultProgramConfiguration
 
-configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
-               -> ProgramConfiguration -> Verbosity
-               -> IO (Compiler, Platform, ProgramConfiguration)
-configCompiler Nothing _ _ _ _ = die "Unknown compiler"
-configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
+configCompilerEx :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
+                 -> ProgramConfiguration -> Verbosity
+                 -> IO (Compiler, Platform, ProgramConfiguration)
+configCompilerEx Nothing _ _ _ _ = die "Unknown compiler"
+configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
   (comp, maybePlatform, programsConfig) <- case hcFlavor of
     GHC  -> GHC.configure  verbosity hcPath hcPkg conf
     JHC  -> JHC.configure  verbosity hcPath hcPkg conf
@@ -878,6 +880,24 @@ configCompiler (Just hcFlavor) hcPath hcPkg conf verbosity = do
     _    -> die "Unknown compiler"
   return (comp, fromMaybe buildPlatform maybePlatform, programsConfig)
 
+-- Ideally we would like to not have separate configCompiler* and
+-- configCompiler*Ex sets of functions, but there are many custom setup scripts
+-- in the wild that are using them, so the versions with old types are kept for
+-- backwards compatibility. Platform was added to the return triple in 1.18.
+
+{-# DEPRECATED configCompiler
+    "'configCompiler' is deprecated. Use 'configCompilerEx' instead." #-}
+configCompiler :: Maybe CompilerFlavor -> Maybe FilePath -> Maybe FilePath
+               -> ProgramConfiguration -> Verbosity
+               -> IO (Compiler, ProgramConfiguration)
+configCompiler mFlavor hcPath hcPkg conf verbosity =
+  fmap (\(a,_,b) -> (a,b)) $ configCompilerEx mFlavor hcPath hcPkg conf verbosity
+
+{-# DEPRECATED configCompilerAux
+    "configCompilerAux is deprecated. Use 'configCompilerAuxEx' instead." #-}
+configCompilerAux :: ConfigFlags
+                  -> IO (Compiler, ProgramConfiguration)
+configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 
 -- -----------------------------------------------------------------------------
 -- Making the internal component graph
