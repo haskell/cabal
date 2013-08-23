@@ -386,7 +386,8 @@ data PathTemplateVariable =
      | ArchVar       -- ^ The cpu architecture name, eg @i386@ or @x86_64@
      | ExecutableNameVar -- ^ The executable name; used in shell wrappers
      | TestSuiteNameVar   -- ^ The name of the test suite being run
-     | TestSuiteResultVar -- ^ The result of the test suite being run, eg @pass@, @fail@, or @error@.
+     | TestSuiteResultVar -- ^ The result of the test suite being run, eg
+                          -- @pass@, @fail@, or @error@.
      | BenchmarkNameVar   -- ^ The name of the benchmark being run
   deriving Eq
 
@@ -417,7 +418,8 @@ substPathTemplate environment (PathTemplate template) =
                   Nothing                        -> [component]
 
 -- | The initial environment has all the static stuff but no paths
-initialPathTemplateEnv :: PackageIdentifier -> CompilerId -> Platform -> PathTemplateEnv
+initialPathTemplateEnv :: PackageIdentifier -> CompilerId -> Platform
+                       -> PathTemplateEnv
 initialPathTemplateEnv pkgId compilerId platform =
      packageTemplateEnv  pkgId
   ++ compilerTemplateEnv compilerId
