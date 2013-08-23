@@ -118,6 +118,7 @@ import qualified Paths_cabal_install (version)
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
+import System.IO                (BufferMode(LineBuffering), hSetBuffering, stdout)
 import System.Directory         (doesFileExist)
 import Data.List                (intercalate)
 import Data.Monoid              (Monoid(..))
@@ -126,7 +127,11 @@ import Control.Monad            (when, unless)
 -- | Entry point
 --
 main :: IO ()
-main = getArgs >>= mainWorker
+main = do
+  -- Enable line buffering so that we can get fast feedback even when piped.
+  -- This is especially important for CI and build systems.
+  hSetBuffering stdout LineBuffering
+  getArgs >>= mainWorker
 
 mainWorker :: [String] -> IO ()
 mainWorker args = topHandler $
