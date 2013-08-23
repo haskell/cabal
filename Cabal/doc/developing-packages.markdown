@@ -1553,12 +1553,11 @@ a few options:
     `unregister`, `clean`, `dist` and `docs`. Some options to commands
     are passed through as follows:
 
-      * The `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`,
-        `--datadir` and `--libexecdir` options to the `configure`
-        command are passed on to the `configure` script. In addition the
-        value of the `--with-compiler` option is passed in a `--with-hc`
-        option and all options specified with `--configure-option=` are
-        passed on.
+      * The `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--datadir`,
+        `--libexecdir` and `--sysconfdir` options to the `configure` command are
+        passed on to the `configure` script. In addition the value of the
+        `--with-compiler` option is passed in a `--with-hc` option and all
+        options specified with `--configure-option=` are passed on.
 
       * The `--destdir` option to the `copy` command becomes a setting
         of a `destdir` variable on the invocation of `make copy`. The
@@ -1571,7 +1570,8 @@ a few options:
                                 bindir=$(destdir)/$(bindir) \
                                 libdir=$(destdir)/$(libdir) \
                                 datadir=$(destdir)/$(datadir) \
-                                libexecdir=$(destdir)/$(libexecdir)
+                                libexecdir=$(destdir)/$(libexecdir) \
+                                sysconfdir=$(destdir)/$(sysconfdir) \
         ~~~~~~~~~~~~~~~~
 
   * You can write your own setup script conforming to the interface

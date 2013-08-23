@@ -221,8 +221,8 @@ private file read by later stages.
 If a user-supplied `configure` script is run (see the section on
 [system-dependent parameters](#system-dependent-parameters) or on
 [complex packages](#complex-packages)), it is passed the
-`--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--datadir` and
-`--libexecdir` options. In addition the value of the `--with-compiler`
+`--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--datadir`, `--libexecdir`
+and `--sysconfdir` options. In addition the value of the `--with-compiler`
 option is passed in a `--with-hc` option and all options specified with
 `--configure-option=` are passed on.
 
@@ -326,6 +326,13 @@ package:
     In the simple build system, _dir_ may contain the following path
     variables: `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`, `$pkg`,
     `$version`, `$compiler`, `$os`, `$arch`
+
+`--sysconfdir=`_dir_
+:   Installation directory for the configuration files.
+
+    In the simple build system, _dir_ may contain the following path variables:
+    `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`, `$pkg`, `$version`,
+    `$compiler`, `$os`, `$arch`
 
 In addition the simple build system supports the following installation path options:
 
@@ -446,6 +453,7 @@ Option                     Windows Default                                      
 `--datadir` (library)      `C:\Program Files\Haskell`                                `$prefix/share`
 `--datasubdir`             `$pkgid`                                                  `$pkgid`
 `--docdir`                 `$prefix\doc\$pkgid`                                      `$datadir/doc/$pkgid`
+`--sysconfdir`             `$prefix\etc`                                             `$prefix/etc`
 `--htmldir`                `$docdir\html`                                            `$docdir/html`
 `--program-prefix`         (empty)                                                   (empty)
 `--program-suffix`         (empty)                                                   (empty)
