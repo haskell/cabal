@@ -68,7 +68,7 @@ generate pkg_descr lbi =
         "module " ++ display paths_modulename ++ " (\n"++
         "    version,\n"++
         "    getBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
-        "    getDataFileName\n"++
+        "    getDataFileName, getSysconfDir\n"++
         "  ) where\n"++
         "\n"++
         foreign_imports++
@@ -85,17 +85,19 @@ generate pkg_descr lbi =
 
        body
         | absolute =
-          "\nbindir, libdir, datadir, libexecdir :: FilePath\n"++
+          "\nbindir, libdir, datadir, libexecdir, sysconfdir :: FilePath\n"++
           "\nbindir     = " ++ show flat_bindir ++
           "\nlibdir     = " ++ show flat_libdir ++
           "\ndatadir    = " ++ show flat_datadir ++
           "\nlibexecdir = " ++ show flat_libexecdir ++
+          "\nsysconfdir = " ++ show flat_sysconfdir ++
           "\n"++
-          "\ngetBinDir, getLibDir, getDataDir, getLibexecDir :: IO FilePath\n"++
+          "\ngetBinDir, getLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
           "getBinDir = "++mkGetEnvOr "bindir" "return bindir"++"\n"++
           "getLibDir = "++mkGetEnvOr "libdir" "return libdir"++"\n"++
           "getDataDir = "++mkGetEnvOr "datadir" "return datadir"++"\n"++
           "getLibexecDir = "++mkGetEnvOr "libexecdir" "return libexecdir"++"\n"++
+          "getSysconfDir = "++mkGetEnvOr "sysconfdir" "return sysconfdir"++"\n"++
           "\n"++
           "getDataFileName :: FilePath -> IO FilePath\n"++
           "getDataFileName name = do\n"++
@@ -115,6 +117,8 @@ generate pkg_descr lbi =
                               (mkGetDir flat_datadir flat_datadirrel)++"\n\n"++
           "getLibexecDir :: IO FilePath\n"++
           "getLibexecDir = "++mkGetDir flat_libexecdir flat_libexecdirrel++"\n\n"++
+          "getSysconfDir :: IO FilePath\n"++
+          "getSysconfDir = "++mkGetDir flat_sysconfdir flat_sysconfdirrel++"\n\n"++
           "getDataFileName :: FilePath -> IO FilePath\n"++
           "getDataFileName name = do\n"++
           "  dir <- getDataDir\n"++
@@ -131,13 +135,15 @@ generate pkg_descr lbi =
           bindir     = flat_bindir,
           libdir     = flat_libdir,
           datadir    = flat_datadir,
-          libexecdir = flat_libexecdir
+          libexecdir = flat_libexecdir,
+          sysconfdir = flat_sysconfdir
         } = absoluteInstallDirs pkg_descr lbi NoCopyDest
         InstallDirs {
           bindir     = flat_bindirrel,
           libdir     = flat_libdirrel,
           datadir    = flat_datadirrel,
           libexecdir = flat_libexecdirrel,
+          sysconfdir = flat_sysconfdirrel,
           progdir    = flat_progdirrel
         } = prefixRelativeInstallDirs (packageId pkg_descr) lbi
 
@@ -181,7 +187,7 @@ generate pkg_descr lbi =
 -- component of interest.
 pkgPathEnvVar :: PackageDescription
               -> String     -- ^ path component; one of \"bindir\", \"libdir\",
-                            -- \"datadir\" or \"libexecdir\"
+                            -- \"datadir\", \"libexecdir\", or \"sysconfdir\"
               -> String     -- ^ environment variable name
 pkgPathEnvVar pkg_descr var =
     showPkgName (packageName pkg_descr) ++ "_" ++ var

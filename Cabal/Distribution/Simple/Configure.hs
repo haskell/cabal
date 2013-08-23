@@ -570,6 +570,7 @@ configure (pkg_descr0, pbi) cfg
         dirinfo "Private binaries" (libexecdir dirs) (libexecdir relative)
         dirinfo "Data files"       (datadir dirs)    (datadir relative)
         dirinfo "Documentation"    (docdir dirs)     (docdir relative)
+        dirinfo "Configuration files" (sysconfdir dirs) (sysconfdir relative)
 
         sequence_ [ reportProgram verbosity prog configuredProg
                   | (prog, configuredProg) <- knownPrograms programsConfig''' ]
