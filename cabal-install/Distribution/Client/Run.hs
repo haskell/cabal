@@ -28,7 +28,7 @@ import Distribution.Verbosity                (Verbosity)
 import Data.Functor                          ((<$>))
 import Data.List                             (find)
 import System.Directory                      (getCurrentDirectory)
-import System.Environment                    (getEnvironment)
+import Distribution.Compat.Environment       (getEnvironment)
 import System.FilePath                       ((<.>), (</>))
 
 

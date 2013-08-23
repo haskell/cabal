@@ -131,12 +131,13 @@ import Distribution.Text
          ( display )
 
 -- Base
-import System.Environment(getArgs, getProgName, getEnvironment)
+import System.Environment(getArgs, getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
 import System.Exit
 import System.IO.Error   (isDoesNotExistError)
 import Control.Exception (throwIO)
+import Distribution.Compat.Environment (getEnvironment)
 import Distribution.Compat.Exception (catchIO)
 
 import Control.Monad   (when)

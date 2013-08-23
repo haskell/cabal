@@ -43,7 +43,7 @@ import Data.Monoid ( mempty, mconcat )
 import qualified Data.Set as Set ( fromList, toList )
 import System.Directory ( getDirectoryContents,
                           doesDirectoryExist, doesFileExist, getHomeDirectory, )
-import System.Environment ( getEnvironment )
+import Distribution.Compat.Environment ( getEnvironment )
 import System.FilePath ( takeExtension, takeBaseName, dropExtension,
                          (</>), (<.>), splitDirectories, makeRelative )
 import System.Process ( readProcessWithExitCode )

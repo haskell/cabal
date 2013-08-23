@@ -38,7 +38,7 @@ import Control.Monad
          ( when )
 import System.Exit
          ( ExitCode(..), exitWith )
-import System.Environment
+import Distribution.Compat.Environment
          ( getEnvironment )
 
 -- | Represents a specific invocation of a specific program.
