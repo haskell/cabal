@@ -141,6 +141,7 @@ library
 
   exposed-modules:
     Distribution.Compat.Environment
+    Distribution.Compat.Exception
     Distribution.Compat.ReadP
     Distribution.Compiler
     Distribution.InstalledPackageInfo
@@ -208,7 +209,6 @@ library
 
   other-modules:
     Distribution.Compat.CopyFile
-    Distribution.Compat.Exception
     Distribution.Compat.TempFile
     Distribution.GetOpt
     Distribution.Simple.GHC.IPI641

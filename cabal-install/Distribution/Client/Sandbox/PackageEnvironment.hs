@@ -53,8 +53,7 @@ import Distribution.Verbosity          ( Verbosity, normal )
 import Control.Monad                   ( foldM, when, unless )
 import Data.List                       ( partition )
 import Data.Monoid                     ( Monoid(..) )
-import Distribution.Client.Compat.Exception
-                                       ( catchIO )
+import Distribution.Compat.Exception   ( catchIO )
 import System.Directory                ( doesDirectoryExist, doesFileExist,
                                          renameFile )
 import System.FilePath                 ( (<.>), (</>), takeDirectory )

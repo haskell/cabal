@@ -9,7 +9,7 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , canonicalizePathNoThrow )
        where
 
-import Distribution.Client.Compat.Exception ( catchIO )
+import Distribution.Compat.Exception ( catchIO )
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad
          ( when )
