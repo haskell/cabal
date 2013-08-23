@@ -6,6 +6,10 @@ module Distribution.Compat.Environment (getEnvironment)
 
 import qualified System.Environment as System
 
+#ifdef mingw32_HOST_OS
+import qualified Data.Char as Char (toUpper)
+#endif
+
 getEnvironment :: IO [(String, String)]
 #ifdef mingw32_HOST_OS
 -- On Windows, the names of environment variables are case-insensitive, but are
