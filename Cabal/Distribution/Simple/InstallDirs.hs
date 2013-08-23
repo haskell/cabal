@@ -116,7 +116,8 @@ data InstallDirs dir = InstallDirs {
         docdir       :: dir,
         mandir       :: dir,
         htmldir      :: dir,
-        haddockdir   :: dir
+        haddockdir   :: dir,
+        sysconfdir   :: dir
     } deriving (Read, Show)
 
 instance Functor InstallDirs where
@@ -134,7 +135,8 @@ instance Functor InstallDirs where
     docdir       = f (docdir dirs),
     mandir       = f (mandir dirs),
     htmldir      = f (htmldir dirs),
-    haddockdir   = f (haddockdir dirs)
+    haddockdir   = f (haddockdir dirs),
+    sysconfdir   = f (sysconfdir dirs)
   }
 
 instance Monoid dir => Monoid (InstallDirs dir) where
@@ -152,7 +154,8 @@ instance Monoid dir => Monoid (InstallDirs dir) where
       docdir       = mempty,
       mandir       = mempty,
       htmldir      = mempty,
-      haddockdir   = mempty
+      haddockdir   = mempty,
+      sysconfdir   = mempty
   }
   mappend = combineInstallDirs mappend
 
@@ -174,7 +177,8 @@ combineInstallDirs combine a b = InstallDirs {
     docdir       = docdir a     `combine` docdir b,
     mandir       = mandir a     `combine` mandir b,
     htmldir      = htmldir a    `combine` htmldir b,
-    haddockdir   = haddockdir a `combine` haddockdir b
+    haddockdir   = haddockdir a `combine` haddockdir b,
+    sysconfdir   = sysconfdir a `combine` sysconfdir b
   }
 
 appendSubdirs :: (a -> a -> a) -> InstallDirs a -> InstallDirs a
@@ -250,7 +254,8 @@ defaultInstallDirs comp userInstall _hasLibs = do
       docdir       = "$datadir" </> "doc" </> "$arch-$os-$compiler" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
-      haddockdir   = "$htmldir"
+      haddockdir   = "$htmldir",
+      sysconfdir   = "$prefix" </> "etc"
   }
 
 -- ---------------------------------------------------------------------------
@@ -288,7 +293,8 @@ substituteInstallDirTemplates env dirs = dirs'
       mandir     = subst mandir     (prefixBinLibDataVars ++ [docdirVar]),
       htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
       haddockdir = subst haddockdir (prefixBinLibDataVars ++
-                                      [docdirVar, htmldirVar])
+                                      [docdirVar, htmldirVar]),
+      sysconfdir = subst sysconfdir []
     }
     subst dir env' = substPathTemplate (env'++env) (dir dirs)
 
