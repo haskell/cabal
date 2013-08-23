@@ -34,6 +34,7 @@ builders and users to work with Cabal packages.
   * [Building and installing packages](installing-packages.html)
       - [Building and installing a system package](installing-packages.html#building-and-installing-a-system-package)
       - [Building and installing a user package](installing-packages.html#building-and-installing-a-user-package)
+      - [Installing packages from Hackage](installing-packages.html#installing-packages-from-hackage)
       - [Creating a binary package](installing-packages.html#creating-a-binary-package)
       - [setup configure](installing-packages.html#setup-configure)
           + [Programs used for building](installing-packages.html#programs-used-for-building)
