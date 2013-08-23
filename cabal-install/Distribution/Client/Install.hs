@@ -37,7 +37,7 @@ import Control.Exception as Exception
          , IOException, SomeException )
 import System.Exit
          ( ExitCode )
-import Distribution.Compat.Exception
+import Distribution.Client.Compat.Exception
          ( catchIO, catchExit )
 import Control.Monad
          ( when, unless )

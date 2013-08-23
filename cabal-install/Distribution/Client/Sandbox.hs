@@ -86,8 +86,8 @@ import Distribution.Package                   ( Package(..) )
 import Distribution.System                    ( Platform )
 import Distribution.Text                      ( display )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
-import Distribution.Compat.Env                ( lookupEnv, setEnv )
-import Distribution.Compat.FilePerms          ( setFileHidden )
+import Distribution.Client.Compat.Environment ( lookupEnv, setEnv )
+import Distribution.Client.Compat.FilePerms   ( setFileHidden )
 import qualified Distribution.Client.Sandbox.Index as Index
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import qualified Distribution.Simple.Register      as Register

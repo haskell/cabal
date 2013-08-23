@@ -70,16 +70,17 @@ import qualified Data.ByteString.Char8 as BSS
 import Data.ByteString.Lazy (ByteString)
 import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils (byteStringToFilePath)
+import Distribution.Client.Compat.Exception (catchIO)
+import Distribution.Client.Compat.Time
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
 import System.IO
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO.Error (isDoesNotExistError)
-import Distribution.Compat.Exception (catchIO)
 import System.Directory
          ( getModificationTime, doesFileExist )
-import Distribution.Compat.Time
+
 
 
 getInstalledPackages :: Verbosity -> Compiler

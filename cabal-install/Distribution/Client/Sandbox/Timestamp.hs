@@ -50,8 +50,8 @@ import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
 import Distribution.Client.Utils                     (inDir, removeExistingFile,
                                                       tryCanonicalizePath)
 
-import Distribution.Compat.Exception                 (catchIO)
-import Distribution.Compat.Time                      (EpochTime, getCurTime,
+import Distribution.Client.Compat.Exception          (catchIO)
+import Distribution.Client.Compat.Time               (EpochTime, getCurTime,
                                                       getModTime)
 
 

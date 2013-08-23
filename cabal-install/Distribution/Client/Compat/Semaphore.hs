@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-module Distribution.Compat.Semaphore
+module Distribution.Client.Compat.Semaphore
     ( QSem
     , newQSem
     , waitQSem
@@ -13,7 +13,7 @@ import Control.Exception (onException)
 import Control.Monad (join, when)
 import Data.Typeable (Typeable)
 
-import Distribution.Compat.Exception (mask_)
+import Distribution.Client.Compat.Exception (mask_)
 
 -- | 'QSem' is a quantity semaphore in which the resource is aqcuired
 -- and released in units of one. It provides guaranteed FIFO ordering

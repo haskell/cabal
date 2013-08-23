@@ -104,7 +104,7 @@ import System.Environment
          ( getEnvironment )
 import System.IO.Error
          ( isDoesNotExistError )
-import Distribution.Compat.Exception
+import Distribution.Client.Compat.Exception
          ( catchIO )
 
 --
