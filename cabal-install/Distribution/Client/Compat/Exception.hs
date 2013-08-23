@@ -4,6 +4,9 @@ module Distribution.Client.Compat.Exception (
   mask_
   ) where
 
+-- We can't move these functions to Distribution.Compat.Exception because the
+-- usage of the MIN_VERSION_base macro breaks bootstrapping.
+
 #if MIN_VERSION_base(4,3,0)
 -- it's much less of a headache if we re-export the "real" mask and mask_
 -- so there's never more than one definition to conflict
