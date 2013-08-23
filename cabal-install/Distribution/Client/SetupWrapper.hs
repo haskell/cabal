@@ -38,7 +38,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Configure
-         ( configCompiler )
+         ( configCompilerEx )
 import Distribution.Compiler ( buildCompilerId )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(GHC), Compiler(compilerId)
@@ -306,7 +306,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     (comp, conf) <- case useCompiler options' of
       Just comp -> return (comp, useProgramConfig options')
       Nothing   -> do (comp, _, conf) <-
-                        configCompiler (Just GHC) Nothing Nothing
+                        configCompilerEx (Just GHC) Nothing Nothing
                         (useProgramConfig options') verbosity
                       return (comp, conf)
     -- Whenever we need to call configureCompiler, we also need to access the
