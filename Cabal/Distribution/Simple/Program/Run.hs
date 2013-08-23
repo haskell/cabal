@@ -137,7 +137,8 @@ runProgramInvocation verbosity
   where
     input = case encoding of
               IOEncodingText -> (inputStr, False)
-              IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
+              IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for
+                                                        -- utf8
 
 
 getProgramInvocationOutput :: Verbosity -> ProgramInvocation -> IO String
@@ -173,7 +174,8 @@ getProgramInvocationOutput verbosity
 
 -- | Return the current environment extended with the given overrides.
 --
-getEffectiveEnvironment :: [(String, Maybe String)] -> IO (Maybe [(String, String)])
+getEffectiveEnvironment :: [(String, Maybe String)]
+                        -> IO (Maybe [(String, String)])
 getEffectiveEnvironment []        = return Nothing
 getEffectiveEnvironment overrides =
     fmap (Just . Map.toList . apply overrides . Map.fromList) getEnvironment
