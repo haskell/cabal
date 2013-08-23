@@ -271,7 +271,7 @@ data ComponentDisabledReason = DisabledComponent
 componentDisabledReason :: Component -> Maybe ComponentDisabledReason
 componentDisabledReason (CLib  lib)
   | not (buildable (libBuildInfo lib))      = Just DisabledComponent
-componentDisabledReason (CExe  exe) 
+componentDisabledReason (CExe  exe)
   | not (buildable (buildInfo exe))         = Just DisabledComponent
 componentDisabledReason (CTest tst)
   | not (buildable (testBuildInfo tst))     = Just DisabledComponent
@@ -381,7 +381,7 @@ componentsInBuildOrder lbi cnames =
   where
     (graph, vertexToNode, keyToVertex) =
       graphFromEdges (map (\(a,b,c) -> (b,a,c)) (componentsConfigs lbi))
-                     
+
     noSuchComp cname = error $ "internal error: componentsInBuildOrder: "
                             ++ "no such component: " ++ show cname
 
