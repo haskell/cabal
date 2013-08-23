@@ -1,16 +1,23 @@
 % Cabal User Guide
 
-
 # Building and installing packages #
 
 After you've unpacked a Cabal package, you can build it by moving into
-the root directory of the package and using the `Setup.hs` or
-`Setup.lhs` script there:
+the root directory of the package and running the `cabal` tool there:
+
+> `cabal` [_command_] [_option_...]
+
+The _command_ argument selects a particular step in the build/install process.
+
+You can also get a summary of the command syntax with
+
+> `cabal help`
+
+Alternatively, you can also use the `Setup.hs` or `Setup.lhs` script:
 
 > `_runhaskell_ Setup.hs` [_command_] [_option_...]
 
-The _command_ argument selects a particular step in the build/install
-process. You can also get a summary of the command syntax with
+For the summary of the command syntax, run:
 
 > `runhaskell Setup.hs --help`
 
@@ -37,6 +44,17 @@ runhaskell Setup.hs install
 
 The package is installed under the user's home directory and is
 registered in the user's package database (`--user`).
+
+## Installing packages from Hackage ##
+
+The `cabal` tool also can download, configure, build and install a [Hackage]
+package and all of its dependencies in a single step. To do this, run:
+
+~~~~~~~~~~~~~~~~
+cabal install [PACKAGE...]
+~~~~~~~~~~~~~~~~
+
+To browse the list of available packages, visit the [Hackage] web site.
 
 ## Creating a binary package ##
 
