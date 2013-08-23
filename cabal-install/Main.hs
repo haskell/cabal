@@ -101,7 +101,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Compiler
          ( Compiler(..) )
 import Distribution.Simple.Configure
-         ( checkPersistBuildConfigOutdated, configCompilerAux
+         ( checkPersistBuildConfigOutdated, configCompilerAuxEx
          , ConfigStateFileErrorType(..), localBuildInfoFile
          , tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
@@ -231,7 +231,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let configFlags'   = savedConfigureFlags   config `mappend` configFlags
       configExFlags' = savedConfigureExFlags config `mappend` configExFlags
       globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
-  (comp, platform, conf) <- configCompilerAux configFlags'
+  (comp, platform, conf) <- configCompilerAuxEx configFlags'
 
   -- If we're working inside a sandbox and the user has set the -w option, we
   -- may need to create a sandbox-local package DB for this compiler and add a
@@ -662,7 +662,7 @@ infoAction infoFlags extraArgs globalFlags = do
   (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let configFlags  = savedConfigureFlags config
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
-  (comp, _, conf) <- configCompilerAux configFlags
+  (comp, _, conf) <- configCompilerAuxEx configFlags
   List.info verbosity
        (configPackageDB' configFlags)
        (globalRepos globalFlags')
