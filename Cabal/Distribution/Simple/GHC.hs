@@ -956,9 +956,17 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
                       ghcOptDynHiSuffix    = toFlag "dyn_hi",
                       ghcOptDynObjSuffix   = toFlag "dyn_o"
                     }
+      linkerOpts = mempty {
+                      ghcOptLinkOptions    = PD.ldOptions exeBi,
+                      ghcOptLinkLibs       = extraLibs exeBi,
+                      ghcOptLinkLibPath    = extraLibDirs exeBi,
+                      ghcOptLinkFrameworks = PD.frameworks exeBi,
+                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs]
+                   }
       replOpts   = baseOpts {
                       ghcOptExtra          = filterGhciFlags (ghcOptExtra baseOpts)
                    }
+                   `mappend` linkerOpts
                    `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeInteractive,
                       ghcOptOptimisation   = toFlag GhcNoOptimisation
@@ -989,12 +997,8 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
         | isGhcDynamic = doingTH && (withProfExe lbi || withStaticExe)
         | otherwise    = doingTH && (withProfExe lbi || withDynExe lbi)
 
-      linkOpts = commonOpts `mappend` mempty {
-                      ghcOptLinkOptions    = PD.ldOptions exeBi,
-                      ghcOptLinkLibs       = extraLibs exeBi,
-                      ghcOptLinkLibPath    = extraLibDirs exeBi,
-                      ghcOptLinkFrameworks = PD.frameworks exeBi,
-                      ghcOptInputFiles     = [exeDir </> x | x <- cObjs],
+      linkOpts = commonOpts `mappend`
+                 linkerOpts `mappend` mempty {
                       ghcOptLinkNoHsMain   = toFlag (not isHaskellMain)
                  }
 
