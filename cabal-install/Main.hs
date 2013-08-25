@@ -92,7 +92,6 @@ import Distribution.Client.Sandbox.PackageEnvironment
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Init               (initCabal)
-import Distribution.Client.Utils              (moreRecentFile)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
 import Distribution.Simple.Command
@@ -108,7 +107,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, info, topHandler )
+         ( cabalVersion, die, notice, info, moreRecentFile, topHandler )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -118,7 +117,8 @@ import qualified Paths_cabal_install (version)
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
-import System.IO                (BufferMode(LineBuffering), hSetBuffering, stdout)
+import System.IO                (BufferMode(LineBuffering),
+                                 hSetBuffering, stdout)
 import System.Directory         (doesFileExist)
 import Data.List                (intercalate)
 import Data.Monoid              (Monoid(..))

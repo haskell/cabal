@@ -2,7 +2,7 @@
 
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
-                                 , moreRecentFile, inDir, numberOfProcessors
+                                 , inDir, numberOfProcessors
                                  , removeExistingFile
                                  , makeAbsoluteToCwd, filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath
@@ -25,8 +25,8 @@ import Foreign.C.Types ( CInt(..) )
 import qualified Control.Exception as Exception
          ( finally )
 import System.Directory
-         ( canonicalizePath, doesFileExist, getModificationTime
-         , getCurrentDirectory, removeFile, setCurrentDirectory )
+         ( canonicalizePath, doesFileExist, getCurrentDirectory
+         , removeFile, setCurrentDirectory )
 import System.FilePath
          ( (</>), isAbsolute )
 import System.IO.Unsafe ( unsafePerformIO )
@@ -64,20 +64,6 @@ duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
                _  -> False
     moreThanOne (_:_:_) = True
     moreThanOne _       = False
-
--- | Compare the modification times of two files to see if the first is newer
--- than the second. The first file must exist but the second need not.
--- The expected use case is when the second file is generated using the first.
--- In this use case, if the result is True then the second file is out of date.
---
-moreRecentFile :: FilePath -> FilePath -> IO Bool
-moreRecentFile a b = do
-  exists <- doesFileExist b
-  if not exists
-    then return True
-    else do tb <- getModificationTime b
-            ta <- getModificationTime a
-            return (ta > tb)
 
 -- | Like 'removeFile', but does not throw an exception when the file does not
 -- exist.

@@ -70,9 +70,9 @@ import Distribution.Simple.Setup
 import Distribution.Simple.Utils
          ( die, debug, info, cabalVersion, findPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
-         , rewriteFile, intercalate )
+         , moreRecentFile, rewriteFile, intercalate )
 import Distribution.Client.Utils
-         ( moreRecentFile, inDir, tryCanonicalizePath )
+         ( inDir, tryCanonicalizePath )
 import Distribution.System ( Platform(..), buildPlatform )
 import Distribution.Text
          ( display )
