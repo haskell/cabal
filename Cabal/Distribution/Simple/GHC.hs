@@ -1159,6 +1159,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptObjDir          = toFlag odir,
       ghcOptHiDir           = toFlag odir,
       ghcOptStubDir         = toFlag odir,
+      ghcOptOutputDir       = toFlag odir,
       ghcOptOptimisation    = toGhcOptimisation (withOptimization lbi),
       ghcOptExtra           = hcOptions GHC bi,
       ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
