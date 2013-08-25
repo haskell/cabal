@@ -973,6 +973,11 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
                       ghcOptExtra          = filterGhciFlags
                                              (ghcOptExtra baseOpts)
                    }
+                   -- For a normal compile we do separate invocations of ghc for
+                   -- compiling as for linking. But for repl we have to do just
+                   -- the one invocation, so that one has to include all the
+                   -- linker stuff too, like -l flags and any .o files from C
+                   -- files etc.
                    `mappend` linkerOpts
                    `mappend` mempty {
                       ghcOptMode           = toFlag GhcModeInteractive,
