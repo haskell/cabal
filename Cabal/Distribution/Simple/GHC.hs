@@ -1189,7 +1189,9 @@ componentCcGhcOptions verbosity lbi bi clbi pref filename =
       ghcOptCcOptions      = PD.ccOptions bi
                              ++ case withOptimization lbi of
                                   NoOptimisation -> []
-                                  _              -> ["-O2"],
+                                  _              -> ["-O2"]
+                             ++ ["-include"
+                                ,autogenModulesDir lbi </> cppHeaderName],
       ghcOptObjDir         = toFlag odir
     }
   where
