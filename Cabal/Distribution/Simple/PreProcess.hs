@@ -80,7 +80,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths (autogenModulesDir,cppHeaderName)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
-         , die, setupMessage, intercalate, copyFileVerbose
+         , die, setupMessage, intercalate, copyFileVerbose, moreRecentFile
          , findFileWithExtension, findFileWithExtension' )
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), programPath
@@ -98,7 +98,7 @@ import Distribution.Verbosity
 
 import Data.Maybe (fromMaybe)
 import Data.List (nub)
-import System.Directory (getModificationTime, doesFileExist)
+import System.Directory (doesFileExist)
 import System.Info (os, arch)
 import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
                         takeDirectory, normalise, replaceExtension)
@@ -298,10 +298,8 @@ preprocessFile searchLoc buildLoc forSDist baseFile verbosity builtinSuffixes ha
               ppsrcFiles <- findFileWithExtension builtinSuffixes [buildLoc] baseFile
               recomp <- case ppsrcFiles of
                           Nothing -> return True
-                          Just ppsrcFile -> do
-                              btime <- getModificationTime ppsrcFile
-                              ptime <- getModificationTime psrcFile
-                              return (btime < ptime)
+                          Just ppsrcFile ->
+                              psrcFile `moreRecentFile` ppsrcFile
               when recomp $ do
                 let destDir = buildLoc </> dirName srcStem
                 createDirectoryIfMissingVerbose verbosity True destDir

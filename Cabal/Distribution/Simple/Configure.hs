@@ -117,7 +117,8 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
-    ( die, warn, info, setupMessage, createDirectoryIfMissingVerbose
+    ( die, warn, info, setupMessage
+    , createDirectoryIfMissingVerbose, moreRecentFile
     , intercalate, cabalVersion
     , withFileContents, writeFileAtomic
     , withTempFile )
@@ -148,8 +149,7 @@ import Data.Maybe
 import Data.Monoid
     ( Monoid(..) )
 import System.Directory
-    ( doesFileExist, getModificationTime,
-      createDirectoryIfMissing, getTemporaryDirectory )
+    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
     ( (</>), isAbsolute )
 import qualified System.Info
@@ -272,9 +272,7 @@ parseHeader header = case words header of
 -- .cabal file.
 checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
 checkPersistBuildConfigOutdated distPref pkg_descr_file = do
-  t0 <- getModificationTime pkg_descr_file
-  t1 <- getModificationTime $ localBuildInfoFile distPref
-  return (t0 > t1)
+  pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
 
 -- |@dist\/setup-config@
 localBuildInfoFile :: FilePath -> FilePath

@@ -108,6 +108,9 @@ module Distribution.Simple.Utils (
         parseFileGlob,
         FileGlob(..),
 
+        -- * modification time
+        moreRecentFile,
+
         -- * temp files and dirs
         TempFileOptions(..), defaultTempFileOptions,
         withTempFile, withTempFileEx,
@@ -157,7 +160,8 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
-    , doesDirectoryExist, doesFileExist, removeFile, findExecutable )
+    , doesDirectoryExist, doesFileExist, removeFile, findExecutable
+    , getModificationTime )
 import System.Environment
     ( getProgName )
 import System.Exit
@@ -730,6 +734,23 @@ matchDirFileGlob dir filepath = case parseFileGlob filepath of
       []      -> die $ "filepath wildcard '" ++ filepath
                     ++ "' does not match any files."
       matches -> return matches
+
+--------------------
+-- Modification time
+
+-- | Compare the modification times of two files to see if the first is newer
+-- than the second. The first file must exist but the second need not.
+-- The expected use case is when the second file is generated using the first.
+-- In this use case, if the result is True then the second file is out of date.
+--
+moreRecentFile :: FilePath -> FilePath -> IO Bool
+moreRecentFile a b = do
+  exists <- doesFileExist b
+  if not exists
+    then return True
+    else do tb <- getModificationTime b
+            ta <- getModificationTime a
+            return (ta > tb)
 
 ----------------------------------------
 -- Copying and installing files and dirs

@@ -85,7 +85,7 @@ import qualified System.FilePath         as FilePath.Native
 import qualified System.FilePath.Windows as FilePath.Windows
 import qualified System.FilePath.Posix   as FilePath.Posix
 import System.Directory
-         ( getDirectoryContents, doesDirectoryExist, getModificationTime
+         ( getDirectoryContents, doesDirectoryExist
          , getPermissions, createDirectoryIfMissing, copyFile )
 import qualified System.Directory as Permissions
          ( Permissions(executable) )
