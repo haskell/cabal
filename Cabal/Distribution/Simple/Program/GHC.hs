@@ -163,6 +163,7 @@ data GhcOptions = GhcOptions {
   ghcOptDynObjSuffix  :: Flag String,   -- ^ only in 'GhcStaticAndDynamic' mode
   ghcOptHiDir         :: Flag FilePath,
   ghcOptObjDir        :: Flag FilePath,
+  ghcOptOutputDir     :: Flag FilePath,
   ghcOptStubDir       :: Flag FilePath,
 
   --------------------
@@ -277,6 +278,7 @@ renderGhcOptions version@(Version ver _) opts =
   , concat [ ["-hisuf",   suf] | suf <- flag ghcOptHiSuffix  ]
   , concat [ ["-dynosuf", suf] | suf <- flag ghcOptDynObjSuffix ]
   , concat [ ["-dynhisuf",suf] | suf <- flag ghcOptDynHiSuffix  ]
+  , concat [ ["-outputdir", dir] | dir <- flag ghcOptOutputDir, ver >= [6,10] ]
   , concat [ ["-odir",    dir] | dir <- flag ghcOptObjDir ]
   , concat [ ["-hidir",   dir] | dir <- flag ghcOptHiDir  ]
   , concat [ ["-stubdir", dir] | dir <- flag ghcOptStubDir, ver >= [6,8] ]
@@ -430,6 +432,7 @@ instance Monoid GhcOptions where
     ghcOptDynObjSuffix       = mempty,
     ghcOptHiDir              = mempty,
     ghcOptObjDir             = mempty,
+    ghcOptOutputDir          = mempty,
     ghcOptStubDir            = mempty,
     ghcOptDynLinkMode        = mempty,
     ghcOptShared             = mempty,
@@ -477,6 +480,7 @@ instance Monoid GhcOptions where
     ghcOptDynObjSuffix       = combine ghcOptDynObjSuffix,
     ghcOptHiDir              = combine ghcOptHiDir,
     ghcOptObjDir             = combine ghcOptObjDir,
+    ghcOptOutputDir          = combine ghcOptOutputDir,
     ghcOptStubDir            = combine ghcOptStubDir,
     ghcOptDynLinkMode        = combine ghcOptDynLinkMode,
     ghcOptShared             = combine ghcOptShared,
