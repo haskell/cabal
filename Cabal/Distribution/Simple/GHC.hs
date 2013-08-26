@@ -704,7 +704,8 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
-  let baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
+  let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
+      baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptPackageName  = toFlag pkgid,
@@ -725,11 +726,18 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                       ghcOptObjSuffix   = toFlag "dyn_o",
                       ghcOptExtra       = ghcSharedOptions libBi
                     }
-
+      linkerOpts = mempty {
+                      ghcOptLinkOptions    = PD.ldOptions libBi,
+                      ghcOptLinkLibs       = extraLibs libBi,
+                      ghcOptLinkLibPath    = extraLibDirs libBi,
+                      ghcOptLinkFrameworks = PD.frameworks libBi,
+                      ghcOptInputFiles     = [pref </> x | x <- cObjs]
+                   }
       replOpts    = vanillaOpts {
                       ghcOptExtra        = filterGhciFlags
                                            (ghcOptExtra vanillaOpts)
                     }
+                    `mappend` linkerOpts
                     `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeInteractive,
                       ghcOptOptimisation = toFlag GhcNoOptimisation
@@ -785,8 +793,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
 
   -- link:
   info verbosity "Linking..."
-  let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
-      cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
+  let cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
                     (cSources libBi)
       cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
                     (cSources libBi)
