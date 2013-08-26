@@ -48,6 +48,7 @@ module Distribution.Simple.Program (
     , ProgramLocation(..)
     , runProgram
     , getProgramOutput
+    , suppressOverrideArgs
 
     -- * Program invocations
     , ProgramInvocation(..)
