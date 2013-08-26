@@ -52,7 +52,8 @@ data Program = Program {
        --
        -- It is supplied with the prevailing search path which will typically
        -- just be used as-is, but can be extended or ignored as needed.
-       programFindLocation :: Verbosity -> ProgramSearchPath -> IO (Maybe FilePath),
+       programFindLocation :: Verbosity -> ProgramSearchPath
+                              -> IO (Maybe FilePath),
 
        -- | Try to find the version of the program. For many programs this is
        -- not possible or is not necessary so it's ok to return Nothing.
