@@ -675,7 +675,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
              [] -> die "No library name found when building library"
              _  -> die "Multiple library names found when building library"
 
-  let pref = buildDir lbi
+  let libTargetDir = buildDir lbi
       pkgid = packageId pkg_descr
       whenVanillaLib forceVanilla =
         when (not forRepl && (forceVanilla || withVanillaLib lbi))
@@ -695,8 +695,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
 
   isGhcDynamic <- ghcDynamic verbosity ghcProg
   dynamicTooSupported <- ghcSupportsDynamicToo verbosity ghcProg
-  let libTargetDir = pref
-      doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
+  let doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
       forceVanillaLib = doingTH && not isGhcDynamic
       forceSharedLib  = doingTH &&     isGhcDynamic
       -- TH always needs default libs, even when building for profiling
@@ -704,7 +703,8 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
-  let baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
+  let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
+      baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptPackageName  = toFlag pkgid,
@@ -725,11 +725,18 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                       ghcOptObjSuffix   = toFlag "dyn_o",
                       ghcOptExtra       = ghcSharedOptions libBi
                     }
-
+      linkerOpts = mempty {
+                      ghcOptLinkOptions    = PD.ldOptions libBi,
+                      ghcOptLinkLibs       = extraLibs libBi,
+                      ghcOptLinkLibPath    = extraLibDirs libBi,
+                      ghcOptLinkFrameworks = PD.frameworks libBi,
+                      ghcOptInputFiles     = [libTargetDir </> x | x <- cObjs]
+                   }
       replOpts    = vanillaOpts {
                       ghcOptExtra        = filterGhciFlags
                                            (ghcOptExtra vanillaOpts)
                     }
+                    `mappend` linkerOpts
                     `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeInteractive,
                       ghcOptOptimisation = toFlag GhcNoOptimisation
@@ -759,7 +766,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
      info verbosity "Building C Sources..."
      sequence_
        [ do let vanillaCcOpts = (componentCcGhcOptions verbosity lbi
-                                    libBi clbi pref filename)
+                                    libBi clbi libTargetDir filename)
                 profCcOpts    = vanillaCcOpts `mappend` mempty {
                                   ghcOptProfilingMode = toFlag True,
                                   ghcOptObjSuffix     = toFlag "p_o"
@@ -785,8 +792,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
 
   -- link:
   info verbosity "Linking..."
-  let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
-      cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
+  let cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
                     (cSources libBi)
       cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
                     (cSources libBi)
@@ -815,16 +821,16 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
     , x <- libModules lib ]
 
   hObjs     <- getHaskellObjects lib lbi
-                    pref objExtension True
+                    libTargetDir objExtension True
   hProfObjs <-
     if (withProfLib lbi)
             then getHaskellObjects lib lbi
-                    pref ("p_" ++ objExtension) True
+                    libTargetDir ("p_" ++ objExtension) True
             else return []
   hSharedObjs <-
     if (withSharedLib lbi)
             then getHaskellObjects lib lbi
-                    pref ("dyn_" ++ objExtension) False
+                    libTargetDir ("dyn_" ++ objExtension) False
             else return []
 
   unless (null hObjs && null cObjs && null stubObjs) $ do
@@ -836,19 +842,19 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
 
     let staticObjectFiles =
                hObjs
-            ++ map (pref </>) cObjs
+            ++ map (libTargetDir </>) cObjs
             ++ stubObjs
         profObjectFiles =
                hProfObjs
-            ++ map (pref </>) cProfObjs
+            ++ map (libTargetDir </>) cProfObjs
             ++ stubProfObjs
         ghciObjFiles =
                hObjs
-            ++ map (pref </>) cObjs
+            ++ map (libTargetDir </>) cObjs
             ++ stubObjs
         dynamicObjectFiles =
                hSharedObjs
-            ++ map (pref </>) cSharedObjs
+            ++ map (libTargetDir </>) cSharedObjs
             ++ stubSharedObjs
         -- After the relocation lib is created we invoke ghc -shared
         -- with the dependencies spelled out as -package arguments
@@ -904,7 +910,6 @@ buildOrReplExe :: Bool -> Verbosity
                -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildOrReplExe forRepl verbosity _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
-  let pref = buildDir lbi
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg
@@ -918,7 +923,7 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
                        then exeExtension
                        else "")
 
-  let targetDir = pref </> exeName'
+  let targetDir = (buildDir lbi) </> exeName'
   let exeDir    = targetDir </> (exeName' ++ "-tmp")
   createDirectoryIfMissingVerbose verbosity True targetDir
   createDirectoryIfMissingVerbose verbosity True exeDir
