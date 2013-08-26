@@ -101,8 +101,8 @@ import Distribution.Simple.Program
          , ProgramLocation(..), ProgramSearchPath, ProgramSearchPathEntry(..)
          , rawSystemProgram
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
-         , getProgramInvocationOutput
-         , requireProgramVersion, requireProgram, getProgramOutput
+         , getProgramOutput, getProgramInvocationOutput, suppressOverrideArgs
+         , requireProgramVersion, requireProgram
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, hsc2hsProgram
          , arProgram, ranlibProgram, ldProgram
@@ -142,20 +142,6 @@ import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
 import Distribution.System (Platform, platformFromTriple)
 
-getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
-getGhcInfo verbosity ghcProg =
-    case programVersion ghcProg of
-    Just ghcVersion
-     | ghcVersion >= Version [6,7] [] ->
-        do xs <- getProgramOutput verbosity ghcProg ["--info"]
-           case reads xs of
-               [(i, ss)]
-                | all isSpace ss ->
-                   return i
-               _ ->
-                   die "Can't parse --info output of GHC"
-    _ ->
-        return []
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -401,11 +387,27 @@ getLanguages _ ghcProg
   where
     Just ghcVersion = programVersion ghcProg
 
+getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
+getGhcInfo verbosity ghcProg =
+    case programVersion ghcProg of
+    Just ghcVersion
+     | ghcVersion >= Version [6,7] [] ->
+        do xs <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
+                 ["--info"]
+           case reads xs of
+               [(i, ss)]
+                | all isSpace ss ->
+                   return i
+               _ ->
+                   die "Can't parse --info output of GHC"
+    _ ->
+        return []
+
 getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
 getExtensions verbosity ghcProg
   | ghcVersion >= Version [6,7] [] = do
 
-    str <- rawSystemStdout verbosity (programPath ghcProg)
+    str <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
               ["--supported-languages"]
     let extStrs = if ghcVersion >= Version [7] []
                   then lines str
