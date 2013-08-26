@@ -24,6 +24,7 @@ module Distribution.Simple.Program.Types (
     -- * Configured program and related functions
     ConfiguredProgram(..),
     programPath,
+    suppressOverrideArgs,
     ProgArg,
     ProgramLocation(..),
     simpleConfiguredProgram,
@@ -52,7 +53,8 @@ data Program = Program {
        --
        -- It is supplied with the prevailing search path which will typically
        -- just be used as-is, but can be extended or ignored as needed.
-       programFindLocation :: Verbosity -> ProgramSearchPath -> IO (Maybe FilePath),
+       programFindLocation :: Verbosity -> ProgramSearchPath
+                              -> IO (Maybe FilePath),
 
        -- | Try to find the version of the program. For many programs this is
        -- not possible or is not necessary so it's ok to return Nothing.
@@ -111,6 +113,10 @@ data ProgramLocation
 -- | The full path of a configured program.
 programPath :: ConfiguredProgram -> FilePath
 programPath = locationPath . programLocation
+
+-- | Suppress any extra arguments added by the user.
+suppressOverrideArgs :: ConfiguredProgram -> ConfiguredProgram
+suppressOverrideArgs prog = prog { programOverrideArgs = [] }
 
 -- | Make a simple named program.
 --
