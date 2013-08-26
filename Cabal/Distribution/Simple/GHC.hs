@@ -142,21 +142,6 @@ import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
 import Distribution.System (Platform, platformFromTriple)
 
-getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
-getGhcInfo verbosity ghcProg =
-    case programVersion ghcProg of
-    Just ghcVersion
-     | ghcVersion >= Version [6,7] [] ->
-        do xs <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
-                 ["--info"]
-           case reads xs of
-               [(i, ss)]
-                | all isSpace ss ->
-                   return i
-               _ ->
-                   die "Can't parse --info output of GHC"
-    _ ->
-        return []
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -401,6 +386,22 @@ getLanguages _ ghcProg
   | otherwise                    = return [(Haskell98,   "")]
   where
     Just ghcVersion = programVersion ghcProg
+
+getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
+getGhcInfo verbosity ghcProg =
+    case programVersion ghcProg of
+    Just ghcVersion
+     | ghcVersion >= Version [6,7] [] ->
+        do xs <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
+                 ["--info"]
+           case reads xs of
+               [(i, ss)]
+                | all isSpace ss ->
+                   return i
+               _ ->
+                   die "Can't parse --info output of GHC"
+    _ ->
+        return []
 
 getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
 getExtensions verbosity ghcProg
