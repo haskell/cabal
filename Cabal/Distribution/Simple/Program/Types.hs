@@ -24,6 +24,7 @@ module Distribution.Simple.Program.Types (
     -- * Configured program and related functions
     ConfiguredProgram(..),
     programPath,
+    suppressOverrideArgs,
     ProgArg,
     ProgramLocation(..),
     simpleConfiguredProgram,
@@ -112,6 +113,10 @@ data ProgramLocation
 -- | The full path of a configured program.
 programPath :: ConfiguredProgram -> FilePath
 programPath = locationPath . programLocation
+
+-- | Suppress any extra arguments added by the user.
+suppressOverrideArgs :: ConfiguredProgram -> ConfiguredProgram
+suppressOverrideArgs prog = prog { programOverrideArgs = [] }
 
 -- | Make a simple named program.
 --
