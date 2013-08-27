@@ -21,24 +21,24 @@ import qualified Distribution.Verbosity as Verbosity
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteExeV10"
 
-checkTest :: Test
-checkTest = TestCase $ do
+checkTest :: FilePath -> Test
+checkTest ghcPath = TestCase $ do
     let spec = PackageSpec dir ["--enable-tests"]
-    buildResult <- cabal_build spec
+    buildResult <- cabal_build spec ghcPath
     assertBuildSucceeded buildResult
-    testResult <- cabal_test spec []
+    testResult <- cabal_test spec [] ghcPath
     assertTestSucceeded testResult
 
-checkTestWithHpc :: Test
-checkTestWithHpc = TestCase $ do
+checkTestWithHpc :: FilePath -> Test
+checkTestWithHpc ghcPath = TestCase $ do
     isCorrectVersion <- checkHpcVersion
     when isCorrectVersion $ do
       let spec = PackageSpec dir [ "--enable-tests"
                                  , "--enable-library-coverage"
                                  ]
-      buildResult <- cabal_build spec
+      buildResult <- cabal_build spec ghcPath
       assertBuildSucceeded buildResult
-      testResult <- cabal_test spec []
+      testResult <- cabal_test spec [] ghcPath
       assertTestSucceeded testResult
       let dummy = emptyTestSuite { testName = "test-Foo" }
           tixFile = tixFilePath (dir </> "dist") $ testName dummy

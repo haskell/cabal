@@ -21,12 +21,12 @@ import Distribution.Compiler
         ( CompilerId(..), CompilerFlavor(..) )
 import Distribution.Text
 
-suite :: Test
-suite = TestCase $ do
+suite :: FilePath -> Test
+suite ghcPath = TestCase $ do
     let dir = "PackageTests" </> "BenchmarkStanza"
         pdFile = dir </> "my" <.> "cabal"
         spec = PackageSpec dir []
-    result <- cabal_configure spec
+    result <- cabal_configure spec ghcPath
     assertOutputDoesNotContain "unknown section type" result
     genPD <- readPackageDescription silent pdFile
     let compiler = CompilerId GHC $ Version [6, 12, 2] []

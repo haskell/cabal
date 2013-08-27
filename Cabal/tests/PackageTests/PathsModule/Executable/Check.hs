@@ -5,9 +5,9 @@ import PackageTests.PackageTester
 import System.FilePath
 import Test.HUnit
 
-suite :: Test
-suite = TestCase $ do
+suite :: FilePath -> Test
+suite ghcPath = TestCase $ do
     let spec = PackageSpec ("PackageTests" </> "PathsModule" </> "Executable")
                []
-    result <- cabal_build spec
+    result <- cabal_build spec ghcPath
     assertBuildSucceeded result

@@ -8,10 +8,10 @@ import Control.Exception
 import Prelude hiding (catch)
 
 
-suite :: Test
-suite = TestCase $ do
+suite :: FilePath -> Test
+suite ghcPath = TestCase $ do
     let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "GlobalBuildDepsNotAdditive2") []
-    result <- cabal_build spec
+    result <- cabal_build spec ghcPath
     do
         assertEqual "cabal build should fail - see test-log.txt" False (successful result)
         let sb = "Could not find module `Prelude'"

@@ -7,10 +7,10 @@ import Control.Exception
 import Prelude hiding (catch)
 
 
-suite :: Test
-suite = TestCase $ do
+suite :: FilePath -> Test
+suite ghcPath = TestCase $ do
     let spec = PackageSpec ("PackageTests" </> "OrderFlags") []
-    result <- cabal_build spec
+    result <- cabal_build spec ghcPath
     do
         assertEqual "cabal build should succeed - see test-log.txt" True (successful result)
       `catch` \exc -> do

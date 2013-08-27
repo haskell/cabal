@@ -6,17 +6,17 @@ import System.FilePath
 import Test.HUnit
 
 
-suite :: Test
-suite = TestCase $ do
+suite :: FilePath -> FilePath -> Test
+suite ghcPath ghcPkgPath = TestCase $ do
     let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "InternalLibrary3") []
     let specTI = PackageSpec (directory spec </> "to-install") []
 
-    unregister "InternalLibrary3"
-    iResult <- cabal_install specTI                     
+    unregister "InternalLibrary3" ghcPkgPath
+    iResult <- cabal_install specTI ghcPath                  
     assertInstallSucceeded iResult
-    bResult <- cabal_build spec
+    bResult <- cabal_build spec ghcPath
     assertBuildSucceeded bResult
-    unregister "InternalLibrary3"
+    unregister "InternalLibrary3"ghcPkgPath
 
     (_, _, output) <- run (Just $ directory spec) "dist/build/lemon/lemon" []
     C.appendFile (directory spec </> "test-log.txt") (C.pack $ "\ndist/build/lemon/lemon\n"++output)
