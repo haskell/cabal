@@ -55,7 +55,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info, fromUTF8, findPackageDesc, moreRecentFile )
+         ( die, warn, info, fromUTF8, findPackageDesc )
 
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (mapMaybe, fromMaybe)
@@ -72,6 +72,7 @@ import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils (byteStringToFilePath)
 import Distribution.Compat.Exception (catchIO)
 import Distribution.Client.Compat.Time
+import System.Directory (doesFileExist)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.FilePath.Posix as FilePath.Posix
          ( takeFileName )
@@ -234,9 +235,13 @@ updateRepoIndexCache verbosity repo =
 
 whenCacheOutOfDate :: FilePath -> FilePath -> IO () -> IO ()
 whenCacheOutOfDate origFile cacheFile action = do
-  cacheOutOfDate <- origFile `moreRecentFile` cacheFile
-  when cacheOutOfDate action
-
+  exists <- doesFileExist cacheFile
+  if not exists
+    then action
+    else do
+      origTime  <- getModTime origFile
+      cacheTime <- getModTime cacheFile
+      when (origTime >= cacheTime) action
 
 ------------------------------------------------------------------------
 -- Reading the index file
