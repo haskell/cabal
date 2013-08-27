@@ -5,8 +5,8 @@ import System.FilePath
 import Test.HUnit
 
 
-suite :: Test
-suite = TestCase $ do
+suite :: FilePath -> Test
+suite ghcPath = TestCase $ do
     let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "InternalLibrary1") []
-    result <- cabal_build spec
+    result <- cabal_build spec ghcPath
     assertBuildSucceeded result

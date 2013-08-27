@@ -7,10 +7,10 @@ import System.FilePath
 import Test.HUnit
 
 
-suite :: Version -> Test
-suite cabalVersion = TestCase $ do
+suite :: Version -> FilePath -> Test
+suite cabalVersion ghcPath = TestCase $ do
     let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "InternalLibrary0") []
-    result <- cabal_build spec
+    result <- cabal_build spec ghcPath
     assertBuildFailed result
     when (cabalVersion >= Version [1, 7] []) $ do
         let sb = "library which is defined within the same package."
