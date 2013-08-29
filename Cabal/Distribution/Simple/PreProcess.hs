@@ -74,7 +74,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.CCompiler
          ( cSourceExtensions )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion )
+         ( CompilerFlavor(..), compilerFlavor, compilerVersion )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), Component(..) )
 import Distribution.Simple.BuildPaths (autogenModulesDir,cppHeaderName)
