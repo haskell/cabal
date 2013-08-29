@@ -27,6 +27,7 @@ import Control.Monad
 import Foreign.C.Types
 import Foreign.C.String
 import Foreign.C.Error (throwErrnoIfMinus1_)
+import System.Posix.Internals ( withFilePath )
 #endif /* mingw32_HOST_OS */
 
 #if MIN_VERSION_base(4,6,0)
@@ -35,8 +36,6 @@ import System.Environment (lookupEnv)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchIO)
 #endif
-
-import System.Posix.Internals ( withFilePath )
 
 #if !MIN_VERSION_base(4,6,0)
 -- | @lookupEnv var@ returns the value of the environment variable @var@, or
