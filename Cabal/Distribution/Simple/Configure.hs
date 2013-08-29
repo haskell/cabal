@@ -67,6 +67,7 @@ module Distribution.Simple.Configure (configure,
                                       ConfigStateFileErrorType(..),
                                       ConfigStateFileError,
                                       tryGetConfigStateFile,
+                                      platformDefines,
                                      )
     where
 
@@ -76,6 +77,7 @@ import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack )
+import Distribution.Simple.PreProcess ( platformDefines )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(..), PackageId
     , packageName, packageVersion, Package(..)
@@ -123,7 +125,7 @@ import Distribution.Simple.Utils
     , withFileContents, writeFileAtomic
     , withTempFile )
 import Distribution.System
-    ( OS(..), buildOS, Arch(..), Platform(..), buildPlatform )
+    ( OS(..), buildOS, Platform, buildPlatform )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
@@ -1025,7 +1027,7 @@ checkForeignDeps pkg lbi verbosity = do
 
         libExists lib = builds (makeProgram []) (makeLdArgs [lib])
 
-        commonCppArgs = hcDefines (compiler lbi)
+        commonCppArgs = platformDefines lbi
                      ++ [ "-I" ++ autogenModulesDir lbi ]
                      ++ [ "-I" ++ dir | dir <- collectField PD.includeDirs ]
                      ++ ["-I."]
@@ -1123,68 +1125,6 @@ checkForeignDeps pkg lbi verbosity = do
              "The header file contains a compile error. "
           ++ "You can re-run configure with the verbosity flag "
           ++ "-v3 to see the error messages from the C compiler."
-
-        --FIXME: share this with the PreProcessor module
-        hcDefines :: Compiler -> [String]
-        hcDefines comp =
-          case compilerFlavor comp of
-            GHC  ->
-                let ghcOS = case hostOS of
-                            Linux     -> ["linux"]
-                            Windows   -> ["mingw32"]
-                            OSX       -> ["darwin"]
-                            FreeBSD   -> ["freebsd"]
-                            OpenBSD   -> ["openbsd"]
-                            NetBSD    -> ["netbsd"]
-                            Solaris   -> ["solaris2"]
-                            AIX       -> ["aix"]
-                            HPUX      -> ["hpux"]
-                            IRIX      -> ["irix"]
-                            HaLVM     -> []
-                            IOS       -> ["ios"]
-                            OtherOS _ -> []
-                    ghcArch = case hostArch of
-                              I386        -> ["i386"]
-                              X86_64      -> ["x86_64"]
-                              PPC         -> ["powerpc"]
-                              PPC64       -> ["powerpc64"]
-                              Sparc       -> ["sparc"]
-                              Arm         -> ["arm"]
-                              Mips        -> ["mips"]
-                              SH          -> []
-                              IA64        -> ["ia64"]
-                              S390        -> ["s390"]
-                              Alpha       -> ["alpha"]
-                              Hppa        -> ["hppa"]
-                              Rs6000      -> ["rs6000"]
-                              M68k        -> ["m68k"]
-                              Vax         -> ["vax"]
-                              OtherArch _ -> []
-                in ["-D__GLASGOW_HASKELL__=" ++ versionInt version] ++
-                   map (\os   -> "-D" ++ os   ++ "_HOST_OS=1")   ghcOS ++
-                   map (\arch -> "-D" ++ arch ++ "_HOST_ARCH=1") ghcArch
-            JHC  -> ["-D__JHC__=" ++ versionInt version]
-            NHC  -> ["-D__NHC__=" ++ versionInt version]
-            Hugs -> ["-D__HUGS__"]
-            _    -> []
-          where
-            Platform hostArch hostOS = hostPlatform lbi
-            version = compilerVersion comp
-                      -- TODO: move this into the compiler abstraction
-            -- FIXME: this forces GHC's crazy 4.8.2 -> 408 convention on all
-            -- the other compilers. Check if that's really what they want.
-            versionInt :: Version -> String
-            versionInt (Version { versionBranch = [] }) = "1"
-            versionInt (Version { versionBranch = [n] }) = show n
-            versionInt (Version { versionBranch = n1:n2:_ })
-              = -- 6.8.x -> 608
-                -- 6.10.x -> 610
-                let s1 = show n1
-                    s2 = show n2
-                    middle = case s2 of
-                             _ : _ : _ -> ""
-                             _         -> "0"
-                in s1 ++ middle ++ s2
 
 -- | Output package check warnings and errors. Exit if any errors.
 checkPackageProblems :: Verbosity
