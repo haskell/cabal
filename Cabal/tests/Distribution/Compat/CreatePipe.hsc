@@ -11,7 +11,7 @@ import qualified System.Posix.IO as Posix
 # include <fcntl.h>     /* for _O_BINARY */
 import Control.Exception (onException)
 import Foreign.C.Error (throwErrnoIfMinus1_)
-import Foreign.C.Types (CInt(CInt), CUInt(CUInt))
+import Foreign.C.Types (CInt, CUInt)
 import Foreign.Ptr (Ptr)
 import Foreign.Marshal.Array (allocaArray)
 import Foreign.Storable (peek, peekElemOff)
