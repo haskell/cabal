@@ -290,7 +290,6 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   createDirectoryIfMissingVerbose verbosity True sandboxDir'
   sandboxDir <- tryCanonicalizePath sandboxDir'
   setFileHidden sandboxDir
-  notice verbosity $ "Using a sandbox located at " ++ sandboxDir
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
   userConfig <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
@@ -304,6 +303,10 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
   -- Create the index file if it doesn't exist.
   indexFile <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
+  indexFileExists <- doesFileExist indexFile
+  if indexFileExists
+    then notice verbosity $ "Using an existing sandbox located at " ++ sandboxDir
+    else notice verbosity $ "Creating a new sandbox at " ++ sandboxDir
   Index.createEmpty verbosity indexFile
 
   -- We don't create the package DB for the default compiler here: it's created
