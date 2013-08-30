@@ -293,26 +293,28 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
   userConfig <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
-  (comp, platform, _) <- configCompilerAuxEx (savedConfigureFlags userConfig)
+  (comp, platform, conf) <- configCompilerAuxEx (savedConfigureFlags userConfig)
 
   -- Create the package environment file.
   pkgEnvFile <- getSandboxConfigFilePath globalFlags
   createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile
     NoComments comp platform
-  (_, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
+  (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
+  let config      = pkgEnvSavedConfig pkgEnv
+      configFlags = savedConfigureFlags config
 
   -- Create the index file if it doesn't exist.
-  indexFile <- tryGetIndexFilePath (pkgEnvSavedConfig pkgEnv)
+  indexFile <- tryGetIndexFilePath config
   indexFileExists <- doesFileExist indexFile
   if indexFileExists
     then notice verbosity $ "Using an existing sandbox located at " ++ sandboxDir
     else notice verbosity $ "Creating a new sandbox at " ++ sandboxDir
   Index.createEmpty verbosity indexFile
 
-  -- We don't create the package DB for the default compiler here: it's created
-  -- by demand in 'install' and 'configure'. This way, if you run 'sandbox init'
-  -- and then 'configure -w /path/to/nondefault-ghc', you'll end up with a
-  -- package DB for only one compiler instead of two.
+  -- Create the package DB for the default compiler.
+  initPackageDBIfNeeded verbosity configFlags comp conf
+  maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
+    (compilerId comp) platform
 
 -- | Entry point for the 'cabal sandbox-delete' command.
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
