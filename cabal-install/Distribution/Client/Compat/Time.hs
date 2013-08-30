@@ -19,7 +19,7 @@ import System.Time (ClockTime(..), getClockTime
 import Data.Int         (Int32)
 import Data.Word        (Word32)
 import Foreign          (Ptr, allocaBytes, peekByteOff)
-import Foreign.C.Types  (CChar(..))
+import Foreign.C.Types  (CChar)
 import Foreign.C.String (withCString)
 import System.IO.Error  (mkIOError, doesNotExistErrorType)
 
