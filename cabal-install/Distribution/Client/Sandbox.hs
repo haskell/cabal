@@ -429,9 +429,10 @@ sandboxDeleteSource verbosity buildTreeRefs _sandboxFlags globalFlags = do
   withRemoveTimestamps sandboxDir $ do
     Index.removeBuildTreeRefs verbosity indexFile buildTreeRefs
 
-  notice verbosity $ "Note: 'sandbox delete-source' only deletes the" ++
-    "add-source record, but does not unregister the package " ++
-    "from the package DB.\n\nUse 'sandbox hc-pkg -- unregister' to do that."
+  notice verbosity $ "Note: 'sandbox delete-source' only unregisters the " ++
+    "source dependency, but does not remove the package " ++
+    "from the sandbox package DB.\n\n" ++
+    "Use 'sandbox hc-pkg -- unregister' to do that."
 
 -- | Entry point for the 'cabal sandbox list-sources' command.
 sandboxListSources :: Verbosity -> SandboxFlags -> GlobalFlags
