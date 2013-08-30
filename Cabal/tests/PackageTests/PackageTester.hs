@@ -40,6 +40,7 @@ import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess)
 import Test.HUnit (Assertion, assertFailure)
 
+import Distribution.Simple.BuildPaths (exeExtension)
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.ReadE (readEOrFail)
 import Distribution.Verbosity (Verbosity, deafening, flagToVerbosity, normal,
@@ -175,9 +176,11 @@ cabal spec cabalArgs ghcPath = do
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
 run cwd path args = do
     verbosity <- getVerbosity
-    printRawCommandAndArgs verbosity path args
+    path' <- do pathExists <- doesFileExist path
+                return (if pathExists then path else path <.> exeExtension)
+    printRawCommandAndArgs verbosity path' args
     (readh, writeh) <- createPipe
-    pid <- runProcess path args cwd Nothing Nothing (Just writeh) (Just writeh)
+    pid <- runProcess path' args cwd Nothing Nothing (Just writeh) (Just writeh)
 
     -- fork off a thread to start consuming the output
     out <- suckH [] readh
@@ -185,7 +188,7 @@ run cwd path args = do
 
     -- wait for the program to terminate
     exitcode <- waitForProcess pid
-    let fullCmd = unwords (path : args)
+    let fullCmd = unwords (path' : args)
     return ("\"" ++ fullCmd ++ "\" in " ++ fromMaybe "" cwd, exitcode, out)
   where
     suckH output h = do
@@ -242,19 +245,23 @@ assertInstallSucceeded result = unless (successful result) $
 
 assertOutputContains :: String -> Result -> Assertion
 assertOutputContains needle result =
-    unless (needle `isInfixOf` (unwords $ lines output)) $
+    unless (needle `isInfixOf` (concatOutput output)) $
     assertFailure $
-    " expected: " ++ needle ++
-    "in output: " ++ output
+    " expected: " ++ needle ++ "\n" ++
+    " in output: " ++ output ++ ""
   where output = outputText result
 
 assertOutputDoesNotContain :: String -> Result -> Assertion
 assertOutputDoesNotContain needle result =
-    when (needle `isInfixOf` (unwords $ lines output)) $
+    when (needle `isInfixOf` (concatOutput output)) $
     assertFailure $
     "unexpected: " ++ needle ++
     " in output: " ++ output
   where output = outputText result
+
+-- | Replace line breaks with spaces, correctly handling "\r\n".
+concatOutput :: String -> String
+concatOutput = unwords . lines . filter ((/=) '\r')
 
 ------------------------------------------------------------------------
 -- Verbosity
