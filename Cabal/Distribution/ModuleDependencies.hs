@@ -41,17 +41,63 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.ModuleDependencies (
         ModuleHierarchy (..),
+        parse,
         allModules
   ) where
 
+import Control.Applicative
+import Data.Char (isSpace, isLower)
 import Data.Data (Data)
+import Data.Function (on)
+import Data.List (isPrefixOf, stripPrefix, intercalate, groupBy, sortBy)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Ord (comparing)
 import Data.Typeable (Typeable)
-import Distribution.ModuleName (ModuleName)
+import Distribution.ModuleName (ModuleName, fromString)
 
 -- | A module with a list of dependencies.
 newtype ModuleHierarchy = ModuleHierarchy { unModuleHierarchy :: [(ModuleName, [ModuleName])] }
   deriving (Eq, Ord, Read, Show, Typeable, Data)
 
+parse :: FilePath -> IO ModuleHierarchy
+parse file = buildHierarchy . parseMakefile <$> readFile file
+
 allModules :: ModuleHierarchy -> [ModuleName]
 allModules = map fst . unModuleHierarchy
+
+buildHierarchy :: [(ModuleName, ModuleName)] -> ModuleHierarchy
+buildHierarchy = ModuleHierarchy
+               . map (\xs -> (fst (head xs), map snd xs))
+               . groupBy (equating fst)
+               . sortBy (comparing fst)
+        where equating = ((==) `on`)
+
+parseMakefile :: String -> [(ModuleName, ModuleName)]
+parseMakefile = map toModules
+              . splitRule
+              . noEmptyLine
+              . noComments
+              . lines
+
+     where noComments  = filter (not . isPrefixOf "#")
+           noEmptyLine = filter (not . all isSpace)
+           splitRule   = mapMaybe onColon
+           onColon   s = case break (== ':') s of
+                           (_, "") -> Nothing
+                           (a, _:b) -> Just (a, b)
+           trim        = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+           toModules (a, b) = (toModule a, toModule b)
+           toModule    = fromString
+                       . intercalate "."
+                       . map (dropExts ["hs", "hi", "o"])
+                       . dropWhile (all isLower . take 1)
+                       . split '/'
+                       . trim
+           dropExt ext s = fmap reverse $ stripPrefix (reverse ('.' : ext)) (reverse s)
+           dropExts []     s = s
+           dropExts (e:es) s = dropExts es s `fromMaybe` dropExt e s
+           split x = go
+             where go s = case break (== x) s of
+                             (a, "")  -> [a]
+                             (a, _:b) -> a : go b
 
