@@ -12,7 +12,7 @@ import Test.HUnit.Base hiding (Test) --(assertBool, (@?=), (@=?))
 
 import Data.Function (on)
 import Data.List (sortBy)
-import Data.Maybe (isJust, fromJust)
+import Data.Maybe (isJust)
 import Data.Ord (comparing)
 
 tests :: [Test]
@@ -22,7 +22,7 @@ tests =
   , testProperty "Parsing reversible" $ parsingReversibleProp
   ] ++ map testDatumToTest testData
 
-type TestDatum = (TestName, String, FilePath, Maybe PathTemplateEnv) 
+type TestDatum = (TestName, String, FilePath, Maybe (PathTemplateEnv, String))
 
 testDatumToTest :: TestDatum -> Test
 testDatumToTest (msg, strPathTemplate, filePath, expectedResult) =
@@ -30,20 +30,26 @@ testDatumToTest (msg, strPathTemplate, filePath, expectedResult) =
 
 testData :: [TestDatum]
 testData =
-  [ ("empty pattern &  matching string", "", "", Just [])
-  , ("empty pattern & !matching string", "", "a", Nothing)
-  , ("literal pattern &  matching string", "foo", "foo", Just [])
+  [ ("empty pattern &  matching string", "", "", Just ([], ""))
+  , ("empty pattern & !matching string", "", "a", Just ([], "a"))
+  , ("literal pattern &  matching string", "foo", "foo", Just ([], ""))
   , ("literal pattern & !matching string", "foo", "bar", Nothing)
-  , ("pattern with var 1 &  matching string", "foo$os", "foo-asdassa", Just [(OSVar, toPathTemplate "-asdassa")])
-  , ("pattern with var 2 &  matching string", "foo$pkgid", "foo-asdassa", Just [(PkgIdVar, toPathTemplate "-asdassa")])
-  , ("pattern with var 3 &  matching string", "foo$pkgid", "fooasdassa", Just [(PkgIdVar, toPathTemplate "asdassa")])
-  , ("pattern with var 4 &  matching string", "foo$os-bar", "foo-asdassa-bar", Just [(OSVar, toPathTemplate "-asdassa")])
+  , ("pattern with var 1 &  matching string", "foo$os", "foo-asdassa", Just ([(OSVar, toPathTemplate "-")], "asdassa"))
+  , ("pattern with var 2 &  matching string", "foo$pkgid", "foo-asdassa", Just ([(PkgIdVar, toPathTemplate "-")], "asdassa"))
+  , ("pattern with var 3 &  matching string", "foo$pkgid", "fooasdassa", Just ([(PkgIdVar, toPathTemplate "a")], "sdassa"))
+  , ("pattern with var 4 &  matching string", "foo$os-bar", "foo-asdassa-bar", Just ([(OSVar, toPathTemplate "-asdassa")], ""))
   , ("pattern with var 4 & !matching string", "foo$os-bar", "foo-asdassa-ba", Nothing)
   ]
 
-testPattern :: String -> FilePath -> Maybe PathTemplateEnv -> Assertion
-testPattern strPathTemplate filePath expectedResult =
-  compareAssocList expectedResult $ parseTemplate (toPathTemplate strPathTemplate) filePath
+testPattern :: String -> FilePath -> Maybe (PathTemplateEnv, String) -> Assertion
+testPattern strPathTemplate filePath expectedResult = do
+--expectedParse expectedInputRest
+  (compareAssocList `on` fmap fst) expectedResult actualResult
+  ((@=?) `on` fmap snd) expectedResult actualResult
+  where
+    actualResult = parseTemplate (toPathTemplate strPathTemplate) filePath
+--    actualParse = fmap fst actualResult
+--    actualInputRest = fmap snd actualResult
 
 compareAssocList :: (Ord a, Eq b, Show a, Show b) => Maybe [(a, b)] -> Maybe [(a, b)] -> Assertion
 compareAssocList = (@=?) `on` fmap (sortBy (comparing fst))
@@ -52,22 +58,24 @@ compareAssocList = (@=?) `on` fmap (sortBy (comparing fst))
 
 -- | Check that pretty-printing the environment and the template returns the
 -- given filePath.
-parsingReversible :: PathTemplateEnv -> PathTemplate -> FilePath -> Bool
-parsingReversible env pathTemplate filePath =
-  fromPathTemplate (substPathTemplate env pathTemplate) == filePath
+parsingReversible :: PathTemplateEnv -> String -> PathTemplate -> FilePath -> Bool
+parsingReversible env inputRest pathTemplate filePath =
+  fromPathTemplate (substPathTemplate env pathTemplate) ++ inputRest == filePath
 
 checkParsingReversible :: String -> FilePath -> Assertion
 checkParsingReversible strPathTemplate filePath =
-  case parsedEnv of
-    Just env -> assert $ parsingReversible env pathTemplate filePath
+  case parseTemplateRes of
+    Just (parsedEnv, inputRest) -> assert $ parsingReversible parsedEnv inputRest pathTemplate filePath
     Nothing -> assertFailure "Bug in test - parsing failed in checkParsingReversible"
   where
     pathTemplate = toPathTemplate strPathTemplate
-    parsedEnv = parseTemplate pathTemplate filePath
+    parseTemplateRes = parseTemplate pathTemplate filePath
 
 parsingReversibleProp :: String -> FilePath -> Property
 parsingReversibleProp strPathTemplate filePath =
-  isJust parsedEnv ==> parsingReversible (fromJust parsedEnv) pathTemplate filePath
+  isJust parseTemplateRes ==>
+    let (Just (parsedEnv, inputRest)) = parseTemplateRes in
+    parsingReversible parsedEnv inputRest pathTemplate filePath
   where
     pathTemplate = toPathTemplate strPathTemplate
-    parsedEnv = parseTemplate pathTemplate filePath
+    parseTemplateRes = parseTemplate pathTemplate filePath

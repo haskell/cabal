@@ -543,11 +543,11 @@ pathComponentParser (Variable var) = singletonEnvStr var `fmap` dotStar
 pathTemplateParser :: PathTemplate -> Parse.ReadP r PathTemplateEnv
 pathTemplateParser (PathTemplate pathComponents) = fmap concat $ mapM pathComponentParser pathComponents
 
-parseTemplate :: PathTemplate -> FilePath -> Maybe PathTemplateEnv
+parseTemplate :: PathTemplate -> FilePath -> Maybe (PathTemplateEnv, String)
 parseTemplate pathTemplate path =
-  case [ p | (p, rest) <- Parse.readP_to_S (pathTemplateParser pathTemplate) path ] of
+  case Parse.readP_to_S (pathTemplateParser pathTemplate) path of
     []    -> Nothing
-    (p:_) -> Just p
+    (p, rest): _ -> Just (p, rest)
 
 instance Read PathComponent where
   -- for some reason we colapse multiple $ symbols here
