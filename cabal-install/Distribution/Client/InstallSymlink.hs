@@ -135,17 +135,20 @@ symlinkBinaries configFlags installFlags plan =
         Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
         Right (desc, _) -> desc
 
-    -- This is sadly rather complicated. We're kind of re-doing part of the
-    -- configuration for the package. :-(
-    pkgBinDir :: PackageDescription -> IO FilePath
-    pkgBinDir pkg = do
+    getTemplateDirs pkg = do
       defaultDirs <- InstallDirs.defaultInstallDirs
                        compilerFlavor
                        (fromFlag (configUserInstall configFlags))
                        (PackageDescription.hasLibs pkg)
-      let templateDirs = InstallDirs.combineInstallDirs fromFlagOrDefault
+      return $ InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
-          absoluteDirs = InstallDirs.absoluteInstallDirs
+
+    -- This is sadly rather complicated. We're kind of re-doing part of the
+    -- configuration for the package. :-(
+    pkgBinDir :: PackageDescription -> IO FilePath
+    pkgBinDir pkg = do
+      templateDirs <- getTemplateDirs pkg
+      let absoluteDirs = InstallDirs.absoluteInstallDirs
                            (packageId pkg) compilerId InstallDirs.NoCopyDest
                            platform templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
