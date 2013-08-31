@@ -102,8 +102,9 @@ import Distribution.Simple.Setup
          , buildCommand, BuildFlags(..), emptyBuildFlags
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.Setup as Cabal
-         ( installCommand, InstallFlags(..), TestFlags(..), emptyInstallFlags
-         , emptyTestFlags, testCommand, Flag(..) )
+         ( Flag(..)
+         , installCommand, InstallFlags(..), emptyInstallFlags
+         , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
          ( rawSystemExit, comparing, writeFileAtomic )
 import Distribution.Simple.InstallDirs as InstallDirs
