@@ -192,7 +192,7 @@ data GhcMode = GhcModeCompile     -- ^ @ghc -c@
              | GhcModeMake        -- ^ @ghc --make@
              | GhcModeInteractive -- ^ @ghci@ \/ @ghc --interactive@
              | GhcModeAbiHash     -- ^ @ghc --abi-hash@
---             | GhcModeDepAnalysis -- ^ @ghc -M@
+             | GhcModeDepAnalysis -- ^ @ghc -M@
 --             | GhcModeEvaluate    -- ^ @ghc -e@
  deriving (Show, Eq)
 
@@ -230,7 +230,7 @@ renderGhcOptions version@(Version ver _) opts =
        Just GhcModeMake        -> ["--make"]
        Just GhcModeInteractive -> ["--interactive"]
        Just GhcModeAbiHash     -> ["--abi-hash"]
---     Just GhcModeDepAnalysis -> ["-M"]
+       Just GhcModeDepAnalysis -> ["-M"]
 --     Just GhcModeEvaluate    -> ["-e", expr]
 
   , flags ghcOptExtraDefault
