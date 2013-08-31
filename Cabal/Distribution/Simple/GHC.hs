@@ -75,6 +75,7 @@ module Distribution.Simple.GHC (
         ghcDynamic,
  ) where
 
+import qualified Distribution.ModuleDependencies as Dependencies
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
@@ -126,11 +127,13 @@ import Distribution.Text
 import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
-import Control.Monad            ( unless, when )
+import Control.Applicative
+import Control.Monad            ( unless, when, forM_ )
 import Data.Char                ( isSpace )
 import Data.List
 import Data.Maybe               ( catMaybes, fromMaybe )
 import Data.Monoid              ( Monoid(..) )
+import qualified Data.Set as Set
 import System.Directory
          ( removeFile, getDirectoryContents, doesFileExist
          , getTemporaryDirectory )
@@ -750,6 +753,24 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                       ghcOptDynObjSuffix = toFlag "dyn_o"
                     }
 
+      makefileOpts = baseOpts `mappend` mempty {
+                       ghcOptMode         = toFlag GhcModeDepAnalysis,
+                       ghcOptInputModules = libModules lib
+                     }
+
+  -- Invoke GHC to create Makefile containing module dependencies. We'll parse
+  -- the dependencies and warn for all modules that aren't explictly exported
+  -- by the Exported-Modules section.
+
+  unless (null (libModules lib)) $
+    do runGhcProg makefileOpts
+       mods <- Dependencies.allModules <$> Dependencies.parse "Makefile"
+       let diff = Set.toList $ Set.difference
+                    (Set.fromList mods)
+                    (Set.fromList (libModules lib))
+       forM_ diff $ \m ->
+         warn verbosity $ "Used module '" ++ display m ++ "' absent from cabal file.\n"
+
   unless (null (libModules lib)) $
     do let vanilla = whenVanillaLib forceVanillaLib (runGhcProg vanillaOpts)
            shared  = whenSharedLib  forceSharedLib  (runGhcProg sharedOpts)
@@ -897,7 +918,6 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
 
     whenSharedLib False $
       runGhcProg ghcSharedLinkArgs
-
 
 -- | Build an executable with GHC.
 --
