@@ -928,45 +928,6 @@ This command takes the following option:
 :   Append today's date (in "YYYYMMDD" format) to the version number for
     the generated source package.  The original package is unaffected.
 
-## setup sandbox ##
-
-By default, any dependencies of the package are installed into the
-global or user package databases (e.g. using `cabal install
---only-dependencies`). If you're building several different packages
-that have incompatible dependencies, this can cause the build to fail.
-By installing all dependencies in a package database specific to each
-sandbox, these problems can be avoided.
-
-Typical usage:
-
-~~~~~~~~~~~~~~~~
-runhaskell Setup.hs sandbox init  # only once per directory
-runhaskell Setup.hs configure
-runhaskell Setup.hs build
-~~~~~~~~~~~~~~~~
-
-### setup sandbox init ###
-
-Create a sandbox. This command only needs to be run once per build
-directory (i.e. the directory in which the `.cabal` file resides).
-
-### setup sandbox delete ###
-
-Delete the sandbox and all package's installed into it.
-
-### setup sandbox add-source ###
-
-Make package source directory available to the sandbox. This lets you
-depend on yet unreleased packages while developing your current
-package.
-
-Example usage:
-
-~~~~~~~~~~~~~~~~
-runhaskell Setup.hs sandbox add-source ../otherpkg
-runhaskell Setup.hs configure
-~~~~~~~~~~~~~~~~
-
 
 [dist-simple]:  ../libraries/Cabal/Distribution-Simple.html
 [dist-make]:    ../libraries/Cabal/Distribution-Make.html
