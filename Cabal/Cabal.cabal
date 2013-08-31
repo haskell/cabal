@@ -147,6 +147,7 @@ library
     Distribution.InstalledPackageInfo
     Distribution.License
     Distribution.Make
+    Distribution.ModuleDependencies
     Distribution.ModuleName
     Distribution.Package
     Distribution.PackageDescription
