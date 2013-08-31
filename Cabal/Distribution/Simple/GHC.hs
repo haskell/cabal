@@ -128,6 +128,7 @@ import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
 import Control.Applicative
+import Control.Exception        ( handle, SomeException(SomeException) )
 import Control.Monad            ( unless, when, forM_ )
 import Data.Char                ( isSpace )
 import Data.List
@@ -1354,29 +1355,36 @@ registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
 
 warnUsedButUnlistedModule :: Verbosity -> Library -> (GhcOptions -> IO a) -> IO ()
 warnUsedButUnlistedModule verbosity lib runGhcProg =
-  do tempDir <- getTemporaryDirectory
-     withTempFile tempDir ".depend" $ \makefile handle ->
-       do -- We won't use the handle directly, close before invoking GHC.
-          hClose handle
 
-          -- Invoke GHC to produce the makefile with module dependencies.
-          let makefileOpts = mempty {
-                               ghcOptMode         = toFlag GhcModeDepAnalysis,
-                               ghcOptInputModules = libModules lib,
-                               ghcOptDepMakefile  = toFlag makefile
-                             }
-          _ <- runGhcProg makefileOpts
+  -- Invoking `ghc -M` might fail, e.g. when we have cyclic dependencies.
+  -- We just print a warning and continue with the build.
+  handle warning $
 
-          -- Parse the dependencies and compute a diff with the libModules.
-          mods <- Dependencies.allModules <$> Dependencies.parse makefile
-          let diff = Set.toList $ Set.difference
-                       (Set.fromList mods)
-                       (Set.fromList (libModules lib))
+    do tempDir <- getTemporaryDirectory
+       withTempFile tempDir ".depend" $ \makefile fh ->
+         do -- We won't use the handle directly, close before invoking GHC.
+            hClose fh
 
-          -- Warn for all used but unlisted modules.
-          forM_ diff $ \m ->
-            warn verbosity $ "Module '" ++ display m
-                          ++ "' used but absent from cabal file.\n"
+            -- Invoke GHC to produce the makefile with module dependencies.
+            _ <- runGhcProg mempty {
+                                 ghcOptMode         = toFlag GhcModeDepAnalysis,
+                                 ghcOptInputModules = libModules lib,
+                                 ghcOptDepMakefile  = toFlag makefile
+                               }
+
+            -- Parse the dependencies and compute a diff with the libModules.
+            mods <- Dependencies.allModules <$> Dependencies.parse makefile
+            let diff = Set.toList $ Set.difference
+                         (Set.fromList mods)
+                         (Set.fromList (libModules lib))
+
+            -- Warn for all used but unlisted modules.
+            forM_ diff $ \m ->
+              warn verbosity $ "Module '" ++ display m
+                            ++ "' used but absent from cabal file\n"
+
+  where warning SomeException {} =
+          warn verbosity "Unable to probe GHC for module dependencies"
 
 -- -----------------------------------------------------------------------------
 -- Utils
