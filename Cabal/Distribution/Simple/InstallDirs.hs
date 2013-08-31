@@ -545,7 +545,7 @@ pathTemplateParser (PathTemplate pathComponents) = fmap concat $ mapM pathCompon
 
 parseTemplate :: PathTemplate -> FilePath -> Maybe PathTemplateEnv
 parseTemplate pathTemplate path =
-  case [ p | (p, []) <- Parse.readP_to_S (pathTemplateParser pathTemplate) path ] of
+  case [ p | (p, rest) <- Parse.readP_to_S (pathTemplateParser pathTemplate) path ] of
     []    -> Nothing
     (p:_) -> Just p
 
