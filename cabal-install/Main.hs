@@ -611,7 +611,7 @@ testAction (testFlags, buildExFlags) extraArgs globalFlags = do
                 globalFlags noAddSource (buildNumJobs buildExFlags) checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity distPref mempty []
+    build verbosity distPref mempty extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
@@ -639,7 +639,7 @@ benchmarkAction (benchmarkFlags, buildExFlags) extraArgs globalFlags = do
                 checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity distPref mempty []
+    build verbosity distPref mempty extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
