@@ -103,7 +103,8 @@ import Distribution.Simple.Setup
          , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.Setup as Cabal
          ( Flag(..)
-         , installCommand, InstallFlags(..), emptyInstallFlags
+         , copyCommand, CopyFlags(..), emptyCopyFlags
+         , registerCommand, RegisterFlags(..), emptyRegisterFlags
          , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
          ( rawSystemExit, comparing, writeFileAtomic )
@@ -1212,7 +1213,10 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           withWin32SelfUpgrade verbosity configFlags compid platform pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
-              Nothing    -> setup Cabal.installCommand installFlags
+              Nothing    -> do
+                setup Cabal.copyCommand copyFlags
+                when shouldRegister $ do
+                  setup Cabal.registerCommand registerFlags
             return (Right (BuildOk docsResult testsResult))
 
   where
@@ -1231,9 +1235,15 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
     testFlags _ = Cabal.emptyTestFlags {
       Cabal.testDistPref = configDistPref configFlags
     }
-    installFlags _   = Cabal.emptyInstallFlags {
-      Cabal.installDistPref  = configDistPref configFlags,
-      Cabal.installVerbosity = toFlag verbosity'
+    copyFlags _ = Cabal.emptyCopyFlags {
+      Cabal.copyDistPref   = configDistPref configFlags,
+      Cabal.copyDest       = toFlag InstallDirs.NoCopyDest,
+      Cabal.copyVerbosity  = toFlag verbosity'
+    }
+    shouldRegister = PackageDescription.hasLibs pkg
+    registerFlags _ = Cabal.emptyRegisterFlags {
+      Cabal.regDistPref   = configDistPref configFlags,
+      Cabal.regVerbosity  = toFlag verbosity'
     }
     verbosity' = maybe verbosity snd useLogFile
 
