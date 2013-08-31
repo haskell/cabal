@@ -165,6 +165,7 @@ data GhcOptions = GhcOptions {
   ghcOptObjDir        :: Flag FilePath,
   ghcOptOutputDir     :: Flag FilePath,
   ghcOptStubDir       :: Flag FilePath,
+  ghcOptDepMakefile   :: Flag FilePath,
 
   --------------------
   -- Dynamic linking
@@ -282,6 +283,7 @@ renderGhcOptions version@(Version ver _) opts =
   , concat [ ["-odir",    dir] | dir <- flag ghcOptObjDir ]
   , concat [ ["-hidir",   dir] | dir <- flag ghcOptHiDir  ]
   , concat [ ["-stubdir", dir] | dir <- flag ghcOptStubDir, ver >= [6,8] ]
+  , concat [ ["-dep-makefile", dep] | dep <- flag ghcOptDepMakefile ]
 
   -----------------------
   -- Source search path
@@ -434,6 +436,7 @@ instance Monoid GhcOptions where
     ghcOptObjDir             = mempty,
     ghcOptOutputDir          = mempty,
     ghcOptStubDir            = mempty,
+    ghcOptDepMakefile        = mempty,
     ghcOptDynLinkMode        = mempty,
     ghcOptShared             = mempty,
     ghcOptFPic               = mempty,
@@ -482,6 +485,7 @@ instance Monoid GhcOptions where
     ghcOptObjDir             = combine ghcOptObjDir,
     ghcOptOutputDir          = combine ghcOptOutputDir,
     ghcOptStubDir            = combine ghcOptStubDir,
+    ghcOptDepMakefile        = combine ghcOptDepMakefile,
     ghcOptDynLinkMode        = combine ghcOptDynLinkMode,
     ghcOptShared             = combine ghcOptShared,
     ghcOptFPic               = combine ghcOptFPic,
