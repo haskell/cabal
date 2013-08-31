@@ -67,6 +67,7 @@ module Distribution.Simple.InstallDirs (
         compilerTemplateEnv,
         packageTemplateEnv,
         installDirsTemplateEnv,
+        parseTemplate
   ) where
 
 
@@ -77,14 +78,23 @@ import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
 
+import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion )
+         ( PackageIdentifier, packageName, packageVersion)
+
+{-
+import Distribution.Version ( Version )
+import Distribution.Package
+         ( PackageName )
+import Distribution.System ( Arch )
+-}
+
 import Distribution.System
          ( OS(..), buildOS, Platform(..) )
 import Distribution.Compiler
          ( CompilerId, CompilerFlavor(..) )
 import Distribution.Text
-         ( display )
+         ( Text, display )
 
 #if mingw32_HOST_OS
 import Foreign
@@ -369,6 +379,7 @@ prefixRelativeInstallDirs pkgId compilerId platform dirs =
 -- substituted for to get a real 'FilePath'.
 --
 newtype PathTemplate = PathTemplate [PathComponent]
+     deriving Eq
 
 data PathComponent =
        Ordinary FilePath
@@ -395,7 +406,7 @@ data PathTemplateVariable =
      | TestSuiteResultVar -- ^ The result of the test suite being run, eg
                           -- @pass@, @fail@, or @error@.
      | BenchmarkNameVar   -- ^ The name of the benchmark being run
-  deriving Eq
+  deriving (Eq, Ord)
 
 type PathTemplateEnv = [(PathTemplateVariable, PathTemplate)]
 
@@ -430,6 +441,13 @@ initialPathTemplateEnv pkgId compilerId platform =
      packageTemplateEnv  pkgId
   ++ compilerTemplateEnv compilerId
   ++ platformTemplateEnv platform
+
+singletonEnvStr :: PathTemplateVariable -> String -> PathTemplateEnv
+singletonEnvStr var str = [(var, PathTemplate [Ordinary str])]
+
+-- Do we want this?
+singletonEnv :: Text t => PathTemplateVariable -> t -> PathTemplateEnv
+singletonEnv var val = singletonEnvStr var $ display val
 
 packageTemplateEnv :: PackageIdentifier -> PathTemplateEnv
 packageTemplateEnv pkgId =
@@ -520,6 +538,51 @@ instance Show PathComponent where
   show (Ordinary path) = path
   show (Variable var)  = '$':show var
   showList = foldr (\x -> (shows x .)) id
+
+dotStar :: Parse.ReadP r String
+dotStar = Parse.many1 Parse.get
+
+pathComponentParser :: PathComponent -> Parse.ReadP r PathTemplateEnv
+pathComponentParser (Ordinary path) = Parse.string path >> return []
+
+pathComponentParser (Variable var) = singletonEnvStr var `fmap` dotStar
+
+{-
+-- Alternative implementation - this does not work, because it relies on parse
+-- to be non-greedy, while it is greedy in many/all cases
+
+pkgIdTemplateEnv :: PackageIdentifier -> PathTemplateEnv
+pkgIdTemplateEnv = singletonEnv PkgIdVar
+
+pkgNameTemplateEnv :: PackageName -> PathTemplateEnv
+pkgNameTemplateEnv = singletonEnv PkgNameVar
+
+pkgVerTemplateEnv :: Version -> PathTemplateEnv
+pkgVerTemplateEnv = singletonEnv PkgVerVar
+
+osTemplateEnv :: OS -> PathTemplateEnv
+osTemplateEnv = singletonEnv OSVar
+
+archTemplateEnv :: Arch -> PathTemplateEnv
+archTemplateEnv = singletonEnv ArchVar
+
+-- The typechecker would not ensure this code is correct!
+pathComponentParser (Variable PkgIdVar) = fmap pkgIdTemplateEnv parse
+pathComponentParser (Variable PkgNameVar) = fmap pkgNameTemplateEnv parse
+pathComponentParser (Variable PkgVerVar) = fmap pkgVerTemplateEnv parse
+pathComponentParser (Variable CompilerVar) = fmap compilerTemplateEnv parse
+pathComponentParser (Variable OSVar) = fmap osTemplateEnv parse
+pathComponentParser (Variable ArchVar) = fmap archTemplateEnv parse
+-}
+
+pathTemplateParser :: PathTemplate -> Parse.ReadP r PathTemplateEnv
+pathTemplateParser (PathTemplate pathComponents) = fmap concat $ mapM pathComponentParser pathComponents
+
+parseTemplate :: PathTemplate -> FilePath -> Maybe PathTemplateEnv
+parseTemplate pathTemplate path =
+  case [ p | (p, []) <- Parse.readP_to_S (pathTemplateParser pathTemplate) path ] of
+    []    -> Nothing
+    (p:_) -> Just p
 
 instance Read PathComponent where
   -- for some reason we colapse multiple $ symbols here
