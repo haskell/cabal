@@ -82,13 +82,6 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion)
 
-{-
-import Distribution.Version ( Version )
-import Distribution.Package
-         ( PackageName )
-import Distribution.System ( Arch )
--}
-
 import Distribution.System
          ( OS(..), buildOS, Platform(..) )
 import Distribution.Compiler
@@ -546,34 +539,6 @@ pathComponentParser :: PathComponent -> Parse.ReadP r PathTemplateEnv
 pathComponentParser (Ordinary path) = Parse.string path >> return []
 
 pathComponentParser (Variable var) = singletonEnvStr var `fmap` dotStar
-
-{-
--- Alternative implementation - this does not work, because it relies on parse
--- to be non-greedy, while it is greedy in many/all cases
-
-pkgIdTemplateEnv :: PackageIdentifier -> PathTemplateEnv
-pkgIdTemplateEnv = singletonEnv PkgIdVar
-
-pkgNameTemplateEnv :: PackageName -> PathTemplateEnv
-pkgNameTemplateEnv = singletonEnv PkgNameVar
-
-pkgVerTemplateEnv :: Version -> PathTemplateEnv
-pkgVerTemplateEnv = singletonEnv PkgVerVar
-
-osTemplateEnv :: OS -> PathTemplateEnv
-osTemplateEnv = singletonEnv OSVar
-
-archTemplateEnv :: Arch -> PathTemplateEnv
-archTemplateEnv = singletonEnv ArchVar
-
--- The typechecker would not ensure this code is correct!
-pathComponentParser (Variable PkgIdVar) = fmap pkgIdTemplateEnv parse
-pathComponentParser (Variable PkgNameVar) = fmap pkgNameTemplateEnv parse
-pathComponentParser (Variable PkgVerVar) = fmap pkgVerTemplateEnv parse
-pathComponentParser (Variable CompilerVar) = fmap compilerTemplateEnv parse
-pathComponentParser (Variable OSVar) = fmap osTemplateEnv parse
-pathComponentParser (Variable ArchVar) = fmap archTemplateEnv parse
--}
 
 pathTemplateParser :: PathTemplate -> Parse.ReadP r PathTemplateEnv
 pathTemplateParser (PathTemplate pathComponents) = fmap concat $ mapM pathComponentParser pathComponents
