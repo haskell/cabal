@@ -174,7 +174,7 @@ symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
                           --   just propagate as exceptions.
 symlinkBinary publicBindir privateBindir publicName privateName = do
   ok <- targetOkToOverwrite (publicBindir </> publicName)
-                            (privateBindir </> privateName)
+                            privateBindir
   case ok of
     NotOurFile    ->                     return False
     NotExists     ->           mkLink >> return True
@@ -191,16 +191,17 @@ symlinkBinary publicBindir privateBindir publicName privateName = do
 --
 targetOkToOverwrite :: FilePath -- ^ The filepath of the symlink to the private
                                 -- binary that we would like to create
-                    -> FilePath -- ^ The canonical path of the private binary.
-                                -- Use 'canonicalizePath' to make this.
+                    -> FilePath -- ^ The canonical path of the private bin dir
+                                -- eg @/home/user/.cabal/bin@
                     -> IO SymlinkStatus
-targetOkToOverwrite symlink target = handleNotExist $ do
+targetOkToOverwrite symlink privateBinDir = handleNotExist $ do
   status <- getSymbolicLinkStatus symlink
   if not (isSymbolicLink status)
     then return NotOurFile
     else do target' <- canonicalizePath symlink
             -- This relies on canonicalizePath handling symlinks
-            if target == target'
+            if isJust $
+               InstallDirs.parseTemplate (InstallDirs.toPathTemplate privateBinDir) target'
               then return OkToOverwrite
               else return NotOurFile
 
