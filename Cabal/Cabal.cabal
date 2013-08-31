@@ -222,7 +222,9 @@ library
 test-suite unit-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
-  other-modules: UnitTests.Distribution.Compat.ReadP
+  other-modules:
+    UnitTests.Distribution.Compat.ReadP
+    UnitTests.Distribution.Simple.InstallDirs
   main-is: UnitTests.hs
   build-depends:
     base,
