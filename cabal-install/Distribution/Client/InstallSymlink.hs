@@ -184,7 +184,7 @@ symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
               -> String   -- ^ The name of the executable to in the private bin
                           --   dir, eg @foo-1.0@
               -> InstallDirs.PathTemplate   -- ^ The template for the private bin dir
-              -> IO Bool  -- ^ If creating the symlink was sucessful. @False@
+              -> IO Bool  -- ^ If creating the symlink was successful. @False@
                           --   if there was another file there already that we
                           --   did not own. Other errors like permission errors
                           --   just propagate as exceptions.
@@ -232,7 +232,7 @@ targetOkToOverwrite symlink privateBinDirTemplate = handleNotExist $ do
 data SymlinkStatus
    = NotExists     -- ^ The file doesn't exist so we can make a symlink.
    | OkToOverwrite -- ^ A symlink already exists, though it is ours. We'll
-                   -- have to delete it first bemore we make a new symlink.
+                   -- have to delete it first before we make a new symlink.
    | NotOurFile    -- ^ A file already exists and it is not one of our existing
                    -- symlinks (either because it is not a symlink or because
                    -- it points somewhere other than our managed space).

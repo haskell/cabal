@@ -95,7 +95,7 @@ import Foreign.C
 #endif
 
 -- ---------------------------------------------------------------------------
--- Instalation directories
+-- Installation directories
 
 
 -- | The directories where we will install files for packages.
