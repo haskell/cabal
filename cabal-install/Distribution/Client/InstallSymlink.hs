@@ -39,6 +39,7 @@ import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.Utils (canonicalizePathNoThrow)
 
 import Distribution.Package
          ( PackageIdentifier, Package(packageId) )
@@ -213,7 +214,8 @@ targetOkToOverwrite symlink privateBinDirTemplate = handleNotExist $ do
   status <- getSymbolicLinkStatus symlink
   if not (isSymbolicLink status)
     then return NotOurFile
-    else do target' <- canonicalizePath symlink
+    -- We should *not* fail if the current symlink destination does not exist.
+    else do target' <- canonicalizePathNoThrow symlink
             -- This relies on canonicalizePath handling symlinks
             if isJust $
                InstallDirs.parseTemplate privateBinDirTemplate target'
