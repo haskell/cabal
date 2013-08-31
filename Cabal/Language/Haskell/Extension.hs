@@ -662,6 +662,38 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/roles.html>
   | RoleAnnotations
 
+  -- | Enable overloading of list literals, arithmetic sequences and
+  -- list patterns using the 'IsList' type class.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#overloaded-lists>
+  | OverloadedLists
+
+  -- | Enables case expressions that have no alternatives. Also applies to lambda-case expressions if they are enabled.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#empty-case>
+  | EmptyCase
+
+  -- | Triggers the generation of derived 'Typeable' instances for every
+  -- datatype and type class declaration.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/deriving.html#auto-derive-typeable>
+  | AutoDeriveTypeable
+
+  -- | Desugars negative literals directly (without using negate).
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#negative-literals>
+  | NegativeLiterals
+
+  -- | Allows the use of floating literal syntax for all instances of 'Num', including 'Int' and 'Integer'.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#num-decimals>
+  | NumDecimals
+
+  -- | Enables support for type classes with no type parameter.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#nullary-type-classes>
+  | NullaryTypeClasses
+
   deriving (Show, Read, Eq, Enum, Bounded, Typeable, Data)
 
 {-# DEPRECATED knownExtensions
