@@ -176,8 +176,10 @@ cabal spec cabalArgs ghcPath = do
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
 run cwd path args = do
     verbosity <- getVerbosity
+    -- path is relative to the current directory; canonicalizePath makes it
+    -- absolute, so that runProcess will find it even when changing directory.
     path' <- do pathExists <- doesFileExist path
-                return (if pathExists then path else path <.> exeExtension)
+                canonicalizePath (if pathExists then path else path <.> exeExtension)
     printRawCommandAndArgs verbosity path' args
     (readh, writeh) <- createPipe
     pid <- runProcess path' args cwd Nothing Nothing (Just writeh) (Just writeh)
