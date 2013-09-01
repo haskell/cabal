@@ -75,7 +75,6 @@ module Distribution.Simple.GHC (
         ghcDynamic,
  ) where
 
-import qualified Distribution.ModuleDependencies as Dependencies
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
@@ -93,6 +92,7 @@ import Distribution.Simple.LocalBuildInfo
          , LibraryName(..), absoluteInstallDirs )
 import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
+import qualified Distribution.Simple.ModuleDependencies as Dependencies
 import Distribution.Simple.Utils
 import Distribution.Package
          ( Package(..), PackageName(..) )

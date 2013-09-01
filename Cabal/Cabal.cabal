@@ -147,7 +147,6 @@ library
     Distribution.InstalledPackageInfo
     Distribution.License
     Distribution.Make
-    Distribution.ModuleDependencies
     Distribution.ModuleName
     Distribution.Package
     Distribution.PackageDescription
@@ -178,6 +177,7 @@ library
     Distribution.Simple.JHC
     Distribution.Simple.LHC
     Distribution.Simple.LocalBuildInfo
+    Distribution.Simple.ModuleDependencies
     Distribution.Simple.NHC
     Distribution.Simple.PackageIndex
     Distribution.Simple.PreProcess
