@@ -2,6 +2,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Distribution.Compat.CopyFile (
   copyFile,
+  filesEqual,
   copyOrdinaryFile,
   copyExecutableFile,
   setFileOrdinary,
@@ -10,10 +11,13 @@ module Distribution.Compat.CopyFile (
   ) where
 
 
+import Control.Applicative
+         ( (<$>), (<*>) )
 import Control.Monad
          ( when )
 import Control.Exception
-         ( bracket, bracketOnError, throwIO )
+         ( bracket, bracketOnError, evaluate, throwIO )
+import qualified Data.ByteString.Lazy as BSL
 import Distribution.Compat.Exception
          ( catchIO )
 import System.IO.Error
@@ -25,7 +29,8 @@ import Distribution.Compat.TempFile
 import System.FilePath
          ( takeDirectory )
 import System.IO
-         ( openBinaryFile, IOMode(ReadMode), hClose, hGetBuf, hPutBuf )
+         ( openBinaryFile, IOMode(ReadMode), hClose, hGetBuf, hPutBuf
+         , withBinaryFile )
 import Foreign
          ( allocaBytes )
 
@@ -79,3 +84,11 @@ copyFile fromFPath toFPath =
                   when (count > 0) $ do
                           hPutBuf hTo buffer count
                           copyContents hFrom hTo buffer
+
+-- | Checks if two files are byte-identical.
+-- Returns False if either of the files do not exist.
+filesEqual :: FilePath -> FilePath -> IO Bool
+filesEqual f1 f2 = (`catchIO` \ _ -> return False) $ do
+  withBinaryFile f1 ReadMode $ \ h1 -> do
+  withBinaryFile f2 ReadMode $ \ h2 -> do
+  evaluate =<< (==) <$> BSL.hGetContents h1 <*> BSL.hGetContents h2
