@@ -300,7 +300,7 @@ fromFlags env flags =
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env) (haddockContents flags),
       argVerbose = maybe mempty (Any . (>= deafening)) . flagToMaybe $ haddockVerbosity flags,
-      argOutput = 
+      argOutput =
           Flag $ case [ Html | Flag True <- [haddockHtml flags] ] ++
                       [ Hoogle | Flag True <- [haddockHoogle flags] ]
                  of [] -> [ Html ]
