@@ -694,6 +694,16 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#nullary-type-classes>
   | NullaryTypeClasses
 
+  -- | Enable explicit namespaces in module import/export lists.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#explicit-namespaces>
+  | ExplicitNamespaces
+
+  -- | Allow the user to write ambiguous types, and the type inference engine to infer them.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#ambiguity>
+  | AllowAmbiguousTypes
+
   deriving (Show, Read, Eq, Enum, Bounded, Typeable, Data)
 
 {-# DEPRECATED knownExtensions
