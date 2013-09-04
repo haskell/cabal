@@ -97,7 +97,9 @@ import Distribution.Text
          ( Text(..), display )
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
-import Distribution.Package ( Dependency(..) )
+import Distribution.Package ( Dependency(..)
+                            , PackageName
+                            , InstalledPackageId )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
@@ -307,6 +309,7 @@ data ConfigFlags = ConfigFlags {
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies
+    configDependencies :: [(PackageName, InstalledPackageId)], -- ^The packages depended on
     configConfigurationsFlags :: FlagAssignment,
     configTests :: Flag Bool,     -- ^Enable test suite compilation
     configBenchmarks :: Flag Bool,     -- ^Enable benchmark compilation
@@ -506,14 +509,24 @@ configureOptions showOrParseArgs =
          (reqArg "DEPENDENCY"
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parse))
                  (map (\x -> display x)))
+
+      ,option "" ["dependency"]
+         "A list of exact dependencies. E.g., --dependency=\"void=void-0.5.8-177d5cdf20962d0581fe2e4932a6c309\""
+         configDependencies (\v flags -> flags { configDependencies = v})
+         (reqArg "NAME=ID"
+                 (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parseDependency))
+                 (map (\x -> display (fst x) ++ "=" ++ display (snd x))))
+
       ,option "" ["tests"]
          "dependency checking and compilation for test suites listed in the package description file."
          configTests (\v flags -> flags { configTests = v })
          (boolOpt [] [])
+
       ,option "" ["library-coverage"]
          "build library and test suites with Haskell Program Coverage enabled. (GHC only)"
          configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
+
       ,option "" ["benchmarks"]
          "dependency checking and compilation for benchmarks listed in the package description file."
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
@@ -549,6 +562,13 @@ configureOptions showOrParseArgs =
     reqPathTemplateArgFlag title _sf _lf d get set =
       reqArgFlag title _sf _lf d
         (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
+
+parseDependency :: Parse.ReadP r (PackageName, InstalledPackageId)
+parseDependency = do
+  x <- parse
+  _ <- Parse.char '='
+  y <- parse
+  return (x, y)
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =
@@ -644,6 +664,7 @@ instance Monoid ConfigFlags where
     configStripExes     = mempty,
     configExtraLibDirs  = mempty,
     configConstraints   = mempty,
+    configDependencies  = mempty,
     configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty,
     configTests   = mempty,
@@ -678,6 +699,7 @@ instance Monoid ConfigFlags where
     configStripExes     = combine configStripExes,
     configExtraLibDirs  = combine configExtraLibDirs,
     configConstraints   = combine configConstraints,
+    configDependencies  = combine configDependencies,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests = combine configTests,
