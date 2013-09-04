@@ -82,7 +82,7 @@ import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(..), PackageId
     , packageName, packageVersion, Package(..)
     , Dependency(Dependency), simplifyDependency
-    , InstalledPackageId(..) )
+    , InstalledPackageId(..), thisPackageVersion )
 import Distribution.InstalledPackageInfo as Installed
     ( InstalledPackageInfo, InstalledPackageInfo_(..)
     , emptyInstalledPackageInfo )
@@ -158,7 +158,7 @@ import System.IO
 import Distribution.Text
     ( Text(disp), display, simpleParse )
 import Text.PrettyPrint
-    ( comma, punctuate, render, nest, sep )
+    ( comma, punctuate, render, nest, sep, parens, (<>), (<+>) )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -352,13 +352,71 @@ configure (pkg_descr0, pbi) cfg
             pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
                                       , condBenchmarks = flaggedBenchmarks }
 
+            derivedDependencies :: [InstalledPackageId]
+            derivedDependencies = map snd $ configDependencies cfg
+
+            givenNames :: [PackageName]
+            givenNames = map fst $ configDependencies cfg
+
+            derivedNames :: [Maybe PackageName]
+            derivedNames = map (fmap (pkgName . packageId)) mDerivedPackageInfos
+
+            badNames :: [(PackageName, PackageName)]
+            badNames = filter (uncurry (/=)) $
+                       catMaybes $
+                       map f $
+                       zip givenNames derivedNames
+              where
+                f :: Monad m => (a, m b) -> m (a, b)
+                f (a, mb) = mb >>= \b -> return (a, b)
+
+            mDerivedPackageInfos :: [Maybe InstalledPackageInfo]
+            mDerivedPackageInfos =
+              map (PackageIndex.lookupInstalledPackageId installedPackageSet)
+                  derivedDependencies
+
+            derivedPackageInfos :: [InstalledPackageInfo]
+            derivedPackageInfos = catMaybes mDerivedPackageInfos
+
+            derivedConstraints :: [Dependency]
+            derivedConstraints =
+              map thisPackageVersion $
+              map sourcePackageId $
+              derivedPackageInfos
+
+            idConstrainMap :: [(Dependency, InstalledPackageInfo)]
+            idConstrainMap = zip derivedConstraints derivedPackageInfos
+
+            badInstalledPackageIds :: [InstalledPackageId]
+            badInstalledPackageIds = map snd $
+                                     filter (isNothing . fst) $
+                                     zip mDerivedPackageInfos derivedDependencies
+
+            -- Note these can be from the .cabal file as well as from
+            -- the command line.
+            specifiedConstraints :: [Dependency]
+            specifiedConstraints = configConstraints cfg
+
+            allConstraints :: [Dependency]
+            allConstraints = derivedConstraints ++
+                             specifiedConstraints
+
+        unless (null badInstalledPackageIds) $
+          die $ "The following dependencies do not exist:\n" ++
+                (render $ nest 4 $ sep $ punctuate comma $ map disp badInstalledPackageIds)
+
+        unless (null badNames) $
+          die $ "The following names do match their hash name:\n" ++
+                (let dispPair (x, y) = parens (disp x <> comma <+> disp y) in
+                  render $ nest 4 $ sep $ punctuate comma $ map dispPair badNames)
+
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
                        (configConfigurationsFlags cfg)
                        dependencySatisfiable
                        compPlatform
                        (compilerId comp)
-                       (configConstraints cfg)
+                       allConstraints
                        pkg_descr0''
                 of Right r -> return r
                    Left missing ->
@@ -381,12 +439,14 @@ configure (pkg_descr0, pbi) cfg
         checkPackageProblems verbosity pkg_descr0
           (updatePackageDescription pbi pkg_descr)
 
-        let selectDependencies =
+        let selectDependencies :: [Dependency] ->
+                                  ([FailedDependency], [ResolvedDependency])
+            selectDependencies =
                 (\xs -> ([ x | Left x <- xs ], [ x | Right x <- xs ]))
-              . map (selectDependency internalPackageSet installedPackageSet)
+              . map (selectDependency internalPackageSet installedPackageSet idConstrainMap)
 
             (failedDeps, allPkgDeps) =
-              selectDependencies (buildDepends pkg_descr)
+              selectDependencies $ buildDepends pkg_descr
 
             internalPkgDeps = [ pkgid
                               | InternalDependency _ pkgid <- allPkgDeps ]
@@ -620,9 +680,12 @@ data FailedDependency = DependencyNotExists PackageName
 -- | Test for a package dependency and record the version we have installed.
 selectDependency :: PackageIndex  -- ^ Internally defined packages
                  -> PackageIndex  -- ^ Installed packages
+                 -> [(Dependency, InstalledPackageInfo)]
+                    -- ^ The exact id and their equivalent constraint
+                    -- where it is known
                  -> Dependency
                  -> Either FailedDependency ResolvedDependency
-selectDependency internalIndex installedIndex
+selectDependency internalIndex installedIndex exactIds
   dep@(Dependency pkgname vr) =
   -- If the dependency specification matches anything in the internal package
   -- index, then we prefer that match to anything in the second.
@@ -645,9 +708,14 @@ selectDependency internalIndex installedIndex
     _      -> case PackageIndex.lookupDependency installedIndex dep of
       []   -> Left  $ DependencyNotExists pkgname
       pkgs -> Right $ ExternalDependency dep $
-                -- by default we just pick the latest
-                case last pkgs of
-                  (_ver, instances) -> head instances -- the first preference
+                case lookup dep exactIds of
+                  Nothing ->
+                    -- by default we just pick the latest
+                    case last pkgs of
+                      (_ver, instances) -> head instances -- the first preference
+                  Just instPkgInfo ->
+                    -- if we know the exact id then use it
+                    instPkgInfo
 
 reportSelectedDependencies :: Verbosity
                            -> [ResolvedDependency] -> IO ()
