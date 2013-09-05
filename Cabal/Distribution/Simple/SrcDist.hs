@@ -259,10 +259,16 @@ listPackageSourcesOrdinary verbosity pkg_descr pps createSetup =
     . forM (dataFiles pkg_descr) $ \filename ->
        matchFileGlob (dataDir pkg_descr </> filename)
 
+    -- Extra doc files.
+  , fmap concat
+    . forM (extraDocFiles pkg_descr) $ \ filename ->
+      matchFileGlob filename
+
     -- License file.
   , return $ case [licenseFile pkg_descr]
              of [[]] -> []
                 l    -> l
+
     -- Install-include files.
   , withLib $ \ l -> do
        let lbi = libBuildInfo l
