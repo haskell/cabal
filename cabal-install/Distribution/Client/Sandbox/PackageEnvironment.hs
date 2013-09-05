@@ -340,7 +340,7 @@ createPackageEnvironmentFile :: Verbosity -> FilePath -> FilePath
                                 -> IO ()
 createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile incComments
   compiler platform = do
-  notice verbosity $ "Writing default package environment to " ++ pkgEnvFile
+  notice verbosity $ "Writing a default package environment file to " ++ pkgEnvFile
 
   commentPkgEnv <- commentPackageEnvironment sandboxDir
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
