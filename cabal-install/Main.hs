@@ -111,7 +111,9 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
-       ( Verbosity, normal )
+         ( Verbosity, normal )
+import Distribution.Version
+         ( Version(..), orLaterVersion )
 import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
@@ -309,7 +311,10 @@ replAction replFlags extraArgs globalFlags = do
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     let progConf     = defaultProgramConfiguration
-        setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+        setupOptions = defaultSetupScriptOptions
+          { useCabalVersion = orLaterVersion $ Version [1,18,0] []
+          , useDistPref     = distPref
+          }
         replFlags'   = replFlags
           { replVerbosity = toFlag verbosity
           , replDistPref  = toFlag distPref
