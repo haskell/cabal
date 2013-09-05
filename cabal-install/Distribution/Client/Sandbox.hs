@@ -275,14 +275,14 @@ dumpPackageEnvironment verbosity _sandboxFlags globalFlags = do
 -- | Entry point for the 'cabal sandbox-init' command.
 sandboxInit :: Verbosity -> SandboxFlags  -> GlobalFlags -> IO ()
 sandboxInit verbosity sandboxFlags globalFlags = do
-  -- Check that there is no 'cabal-dev' directory.
+  -- Warn if there's a 'cabal-dev' sandbox.
   isCabalDevSandbox <- liftM2 (&&) (doesDirectoryExist "cabal-dev")
                        (doesFileExist $ "cabal-dev" </> "cabal.config")
   when isCabalDevSandbox $
-    die $
+    warn verbosity $
     "You are apparently using a legacy (cabal-dev) sandbox. "
-    ++ "To use native cabal sandboxing, please delete the 'cabal-dev' directory "
-    ++  "and run 'cabal sandbox init'."
+    ++ "Legacy sandboxes may interact badly with native Cabal sandboxes. "
+    ++ "You may want to delete the 'cabal-dev' directory to prevent issues."
 
   -- Create the sandbox directory.
   let sandboxDir' = fromFlagOrDefault defaultSandboxLocation
