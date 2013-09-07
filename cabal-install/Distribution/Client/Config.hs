@@ -367,7 +367,7 @@ configFieldDescriptions =
 
      toSavedConfig liftGlobalFlag
        (commandOptions globalCommand ParseArgs)
-       ["version", "numeric-version", "config-file"] []
+       ["version", "numeric-version", "config-file", "sandbox-config-file"] []
 
   ++ toSavedConfig liftConfigFlag
        (configureOptions ParseArgs)
