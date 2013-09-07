@@ -87,7 +87,7 @@ import System.IO         ( Handle, hPutStr )
 import System.Exit       ( ExitCode(..), exitWith )
 import System.Process    ( runProcess, waitForProcess )
 import Control.Monad     ( when, unless )
-import Data.List         ( maximumBy )
+import Data.List         ( foldl1' )
 import Data.Maybe        ( fromMaybe, isJust )
 import Data.Monoid       ( mempty )
 import Data.Char         ( isSpace )
@@ -270,8 +270,24 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       pkgs -> return $ bestVersion id (map fst pkgs)
 
   bestVersion :: (a -> Version) -> [a] -> a
-  bestVersion f = maximumBy (comparing (preference . f))
+  bestVersion f = firstMaximumBy (comparing (preference . f))
     where
+      -- Like maximumBy, but picks the first maximum element instead of the
+      -- last. In general, we expect the preferred version to go first in the
+      -- list. For the default case, this has the effect of choosing the version
+      -- installed in the user package DB instead of the global one. See #1463.
+      --
+      -- Note: firstMaximumBy could be written as just
+      -- `maximumBy cmp . reverse`, but the problem is that the behaviour of
+      -- maximumBy is not fully specified in the case when there is not a single
+      -- greatest element.
+      firstMaximumBy :: (a -> a -> Ordering) -> [a] -> a
+      firstMaximumBy _ []   =
+        error "Distribution.Client.firstMaximumBy: empty list"
+      firstMaximumBy cmp xs =  foldl1' maxBy xs
+        where
+          maxBy x y = case cmp x y of { GT -> x; EQ -> x; LT -> y; }
+
       preference version   = (sameVersion, sameMajorVersion
                              ,stableVersion, latestVersion)
         where
