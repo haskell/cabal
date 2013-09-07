@@ -224,8 +224,8 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
         sDistListSources = Flag file
         }
       setupOpts = defaultSetupScriptOptions {
-        -- 'sdist --list-sources' was introduced in Cabal 1.17.
-        useCabalVersion = orLaterVersion $ Version [1,17,0] []
+        -- 'sdist --list-sources' was introduced in Cabal 1.18.
+        useCabalVersion = orLaterVersion $ Version [1,18,0] []
         }
 
       doListSources :: IO [FilePath]
