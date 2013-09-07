@@ -88,9 +88,11 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,configCompilerAux'
                                               ,configPackageDB')
 import Distribution.Client.Sandbox.PackageEnvironment
-                                              (setPackageDB)
+                                              (setPackageDB
+                                              ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
-import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
+import Distribution.Client.Sandbox.Types      (UseSandbox(..), isUseSandbox
+                                              ,whenUsingSandbox)
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
@@ -424,7 +426,11 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
       -- Was the sandbox created after the package was already configured? We
       -- may need to skip reinstallation of add-source deps and force
       -- reconfigure.
-      isSandboxConfigNewer <- checkSandboxConfigNewer
+      let buildConfig       = localBuildInfoFile distPref
+      sandboxConfig        <- getSandboxConfigFilePath globalFlags
+      isSandboxConfigNewer <-
+        sandboxConfig `existsAndIsMoreRecentThan` buildConfig
+
       let skipAddSourceDepsCheck'
             | isSandboxConfigNewer = SkipAddSourceDepsCheck
             | otherwise            = skipAddSourceDepsCheck
@@ -438,8 +444,18 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
                              globalFlags mempty
           return (useSandbox, NoDepsReinstalled)
 
+      -- Is the @cabal.config@ file newer than @dist/setup.config@? Then we need
+      -- to force reconfigure.
+      isUserPackageEnvironmentFileNewer <-
+        if isUseSandbox useSandbox
+        then userPackageEnvironmentFile `existsAndIsMoreRecentThan` buildConfig
+        else return False
+
+      -- Determine whether we need to reconfigure and which message to show to
+      -- the user if that is the case.
       mMsg <- determineMessageToShow lbi configFlags depsReinstalled
                                      isSandboxConfigNewer
+                                     isUserPackageEnvironmentFileNewer
       case mMsg of
 
         -- No message for the user indicates that reconfiguration
@@ -453,28 +469,28 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
             extraArgs globalFlags
           return useSandbox
 
-    -- Is @cabal.sandbox.config@ newer than @dist/setup-config@? Then we need to
-    -- force-reconfigure without reinstalling add-source deps (the sandbox was
-    -- created after the package was already configured).
-    checkSandboxConfigNewer :: IO Bool
-    checkSandboxConfigNewer = do
-      sandboxConfig  <- getSandboxConfigFilePath globalFlags
-      let buildConfig = localBuildInfoFile distPref
-      sandboxConfigExists <- doesFileExist sandboxConfig
-      if sandboxConfigExists
-        then sandboxConfig `moreRecentFile` buildConfig
-        else return False
+    -- True if the first file exists and is more recent than the second file.
+    existsAndIsMoreRecentThan :: FilePath -> FilePath -> IO Bool
+    existsAndIsMoreRecentThan a b = do
+      exists <- doesFileExist a
+      if not exists
+        then return False
+        else a `moreRecentFile` b
 
     -- Determine what message, if any, to display to the user if reconfiguration
     -- is required.
     determineMessageToShow :: LBI.LocalBuildInfo -> ConfigFlags
-                            -> WereDepsReinstalled -> Bool
+                            -> WereDepsReinstalled -> Bool -> Bool
                             -> IO (Maybe String)
-    determineMessageToShow _   _           _               True =
+    determineMessageToShow _   _           _               True  _     =
       -- The sandbox was created after the package was already configured.
       return $! Just $! sandboxConfigNewerMessage
 
-    determineMessageToShow lbi configFlags depsReinstalled False = do
+    determineMessageToShow _   _           _               False True  =
+      -- The user package environment file was modified.
+      return $! Just $! userPackageEnvironmentFileModifiedMessage
+
+    determineMessageToShow lbi configFlags depsReinstalled False False = do
       let savedDistPref = fromFlagOrDefault
                           (useDistPref defaultSetupScriptOptions)
                           (configDistPref configFlags)
@@ -512,6 +528,11 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
     configureManually       = " If this fails, please run configure manually."
     sandboxConfigNewerMessage =
         "The sandbox was created after the package was already configured."
+        ++ reconfiguringMostRecent
+        ++ configureManually
+    userPackageEnvironmentFileModifiedMessage =
+        "The user package environment file ('"
+        ++ userPackageEnvironmentFile ++ "') was modified."
         ++ reconfiguringMostRecent
         ++ configureManually
     distPrefMessage =
