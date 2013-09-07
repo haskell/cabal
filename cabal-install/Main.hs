@@ -91,8 +91,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
                                               (setPackageDB
                                               ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
-import Distribution.Client.Sandbox.Types      (UseSandbox(..), isUseSandbox
-                                              ,whenUsingSandbox)
+import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 
@@ -445,11 +444,10 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
           return (useSandbox, NoDepsReinstalled)
 
       -- Is the @cabal.config@ file newer than @dist/setup.config@? Then we need
-      -- to force reconfigure.
+      -- to force reconfigure. Note that it's possible to use @cabal.config@
+      -- even without sandboxes.
       isUserPackageEnvironmentFileNewer <-
-        if isUseSandbox useSandbox
-        then userPackageEnvironmentFile `existsAndIsMoreRecentThan` buildConfig
-        else return False
+        userPackageEnvironmentFile `existsAndIsMoreRecentThan` buildConfig
 
       -- Determine whether we need to reconfigure and which message to show to
       -- the user if that is the case.
