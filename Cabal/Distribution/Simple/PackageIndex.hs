@@ -106,6 +106,8 @@ data PackageIndex = PackageIndex
   -- of the same package version. These are unique by InstalledPackageId
   -- and are kept in preference order.
   --
+  -- FIXME: Clarify what "preference order" means. Check that this invariant is
+  -- preserved. See #1463 for discussion.
   !(Map PackageName (Map Version [InstalledPackageInfo]))
 
   deriving (Show, Read)
