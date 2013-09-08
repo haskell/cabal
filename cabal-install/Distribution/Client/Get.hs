@@ -51,8 +51,6 @@ import Data.Monoid
          ( mempty )
 import Data.Ord
          ( comparing )
-import System.Cmd
-         ( rawSystem )
 import System.Directory
          ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
          , getCurrentDirectory, setCurrentDirectory
@@ -62,7 +60,7 @@ import System.Exit
 import System.FilePath
          ( (</>), (<.>), addTrailingPathSeparator )
 import System.Process
-         ( readProcessWithExitCode )
+         ( rawSystem, readProcessWithExitCode )
 
 
 -- | Entry point for the 'cabal get' command.
