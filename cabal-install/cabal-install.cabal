@@ -1,5 +1,5 @@
 Name:               cabal-install
-Version:            1.18.0
+Version:            1.18.0.1
 Synopsis:           The command-line interface for Cabal and Hackage.
 Description:
     The \'cabal\' command-line program simplifies the process of managing
