@@ -39,7 +39,7 @@ import Distribution.Client.IndexUtils as IndexUtils
         ( getSourcePackages )
 
 import Control.Exception
-         ( finally )
+         ( catch, finally )
 import Control.Monad
          ( filterM, forM_, unless, when )
 import Data.List
@@ -204,7 +204,7 @@ allBranchers =
 -- exits successfully, that brancher is considered usable.
 findUsableBranchers :: IO (Data.Map.Map PD.RepoType Brancher)
 findUsableBranchers = do
-    let usable (_, brancher) = do
+    let usable (_, brancher) = flip catch (const (return False) :: IOError -> IO Bool) $ do
          let cmd = brancherBinary brancher
          (exitCode, _, _) <- readProcessWithExitCode cmd ["--help"] ""
          return (exitCode == ExitSuccess)
