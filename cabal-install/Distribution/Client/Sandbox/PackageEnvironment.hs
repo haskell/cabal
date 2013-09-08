@@ -322,11 +322,24 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   -- Layer the package environment settings over settings from ~/.cabal/config.
   cabalConfig <- loadConfig verbosity configFileFlag NoFlag
   return (sandboxDir,
+          updateInstallDirs $
           (base `mappend` (toPkgEnv cabalConfig) `mappend`
            common `mappend` inherited `mappend` user)
           `overrideSandboxSettings` pkgEnv)
     where
       toPkgEnv config = mempty { pkgEnvSavedConfig = config }
+
+      updateInstallDirs pkgEnv =
+        let config         = pkgEnvSavedConfig pkgEnv
+            configureFlags = savedConfigureFlags config
+            installDirs    = savedUserInstallDirs config
+        in pkgEnv {
+          pkgEnvSavedConfig = config {
+             savedConfigureFlags = configureFlags {
+                configInstallDirs = installDirs
+                }
+             }
+          }
 
 -- | Should the generated package environment file include comments?
 data IncludeComments = IncludeComments | NoComments
