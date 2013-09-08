@@ -112,7 +112,8 @@ import qualified Distribution.Simple.Setup as Cabal
          , registerCommand, RegisterFlags(..), emptyRegisterFlags
          , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
-         ( rawSystemExit, comparing, writeFileAtomic )
+         ( rawSystemExit, comparing, writeFileAtomic
+         , withTempFile , withFileContents )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
@@ -1225,7 +1226,24 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                         | otherwise = TestsNotTried
 
       -- Install phase
-        onFailure InstallFailed $ criticalSection installLock $
+        onFailure InstallFailed $ criticalSection installLock $ do
+          -- Capture installed package configuration file
+          maybePkgConf <-
+            if shouldRegister then do
+              tmp <- getTemporaryDirectory
+              withTempFile tmp (tempTemplate "pkgConf") $ \pkgConfFile handle -> do
+                hClose handle
+                let registerFlags' version = (registerFlags version) {
+                      Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
+                    }
+                setup Cabal.registerCommand registerFlags'
+                withFileContents pkgConfFile $ \pkgConfText ->
+                  case Installed.parseInstalledPackageInfo pkgConfText of
+                    Installed.ParseFailed perror -> error (show perror)
+                    Installed.ParseOk warnings pkgConf -> return (Just pkgConf)
+            else return Nothing
+
+          -- Actual installation
           withWin32SelfUpgrade verbosity configFlags compid platform pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
@@ -1233,7 +1251,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                 setup Cabal.copyCommand copyFlags
                 when shouldRegister $ do
                   setup Cabal.registerCommand registerFlags
-            return (Right (BuildOk docsResult testsResult))
+          return (Right (BuildOk docsResult testsResult))
 
   where
     pkgid            = packageId pkg
@@ -1262,6 +1280,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       Cabal.regVerbosity  = toFlag verbosity'
     }
     verbosity' = maybe verbosity snd useLogFile
+    tempTemplate name = name ++ "-" ++ display pkgid
 
     addDefaultInstallDirs :: ConfigFlags -> IO ConfigFlags
     addDefaultInstallDirs configFlags' = do
