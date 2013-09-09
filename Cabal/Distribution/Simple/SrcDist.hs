@@ -124,7 +124,6 @@ sdist pkg mb_lbi flags mkTmpDir pps =
   case (sDistListSources flags) of
     Flag path -> withFile path WriteMode $ \outHandle -> do
       (ordinary, maybeExecutable) <- listPackageSources verbosity pkg pps
-                                     DontCreateDefaultSetupScript
       mapM_ (hPutStrLn outHandle) ordinary
       mapM_ (hPutStrLn outHandle) maybeExecutable
       notice verbosity $ "List of package sources written to file '"
@@ -168,11 +167,6 @@ sdist pkg mb_lbi flags mkTmpDir pps =
     targetPref   = distPref
     tmpTargetDir = mkTmpDir distPref
 
--- | Should a default @Setup.hs@ be created if none exists? We do this in
--- @sdist@, but not in @sdist --list-sources@.
-data CreateDefaultSetupScript = CreateDefaultSetupScript
-                              | DontCreateDefaultSetupScript
-
 -- | List all source files of a package. Returns a tuple of lists: first
 -- component is a list of ordinary files, second one is a list of those files
 -- that may be executable.
@@ -180,13 +174,10 @@ listPackageSources :: Verbosity          -- ^ verbosity
                    -> PackageDescription -- ^ info from the cabal file
                    -> [PPSuffixHandler]  -- ^ extra preprocessors (include
                                          -- suffixes)
-                   -> CreateDefaultSetupScript   -- ^ create a default
-                                                 -- @Setup.hs@ ?
                    -> IO ([FilePath], [FilePath])
-listPackageSources verbosity pkg_descr0 pps createSetup = do
+listPackageSources verbosity pkg_descr0 pps = do
   -- Call helpers that actually do all work.
   ordinary        <- listPackageSourcesOrdinary        verbosity pkg_descr pps
-                                                       createSetup
   maybeExecutable <- listPackageSourcesMaybeExecutable pkg_descr
   return (ordinary, maybeExecutable)
   where
@@ -202,9 +193,8 @@ listPackageSourcesMaybeExecutable pkg_descr =
 listPackageSourcesOrdinary :: Verbosity
                            -> PackageDescription
                            -> [PPSuffixHandler]
-                           -> CreateDefaultSetupScript
                            -> IO [FilePath]
-listPackageSourcesOrdinary verbosity pkg_descr pps createSetup =
+listPackageSourcesOrdinary verbosity pkg_descr pps =
   fmap concat . sequence $
   [
     -- Library sources.
@@ -275,17 +265,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps createSetup =
            relincdirs = "." : filter (not.isAbsolute) (includeDirs lbi)
        mapM (fmap snd . findIncludeFile relincdirs) (installIncludes lbi)
 
-    -- Setup script.
-  , do mSetupFile <- findSetupFile
-       case mSetupFile of
-         Just setupFile -> return [setupFile]
-         Nothing        -> case createSetup of
-           DontCreateDefaultSetupScript -> return []
-           CreateDefaultSetupScript     -> do
-             writeUTF8File "Setup.hs" $ unlines [
-               "import Distribution.Simple",
-               "main = defaultMain"]
-             return ["Setup.hs"]
+    -- Setup script, if it exists.
+  , fmap (maybe [] (\f -> [f])) $ findSetupFile ""
 
     -- The .cabal file itself.
   , fmap (\d -> [d]) (defaultPackageDesc verbosity)
@@ -318,17 +299,17 @@ prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
     _ -> return ()
 
   (ordinary, mExecutable)  <- listPackageSources verbosity pkg_descr0 pps
-                              CreateDefaultSetupScript
   installOrdinaryFiles        verbosity targetDir (zip (repeat []) ordinary)
   installMaybeExecutableFiles verbosity targetDir (zip (repeat []) mExecutable)
+  maybeCreateDefaultSetupScript targetDir
 
   where
     pkg_descr = filterAutogenModule pkg_descr0
 
 -- | Find the setup script file, if it exists.
-findSetupFile :: IO (Maybe FilePath)
-findSetupFile = do
-  hsExists <- doesFileExist setupHs
+findSetupFile :: FilePath -> IO (Maybe FilePath)
+findSetupFile targetDir = do
+  hsExists  <- doesFileExist setupHs
   lhsExists <- doesFileExist setupLhs
   if hsExists
     then return (Just setupHs)
@@ -336,8 +317,19 @@ findSetupFile = do
          then return (Just setupLhs)
          else return Nothing
     where
-      setupHs  = "Setup.hs"
-      setupLhs = "Setup.lhs"
+      setupHs  = targetDir </> "Setup.hs"
+      setupLhs = targetDir </> "Setup.lhs"
+
+-- | Create a default setup script in the target directory, if it doesn't exist.
+maybeCreateDefaultSetupScript :: FilePath -> IO ()
+maybeCreateDefaultSetupScript targetDir = do
+  mSetupFile <- findSetupFile targetDir
+  case mSetupFile of
+    Just _setupFile -> return ()
+    Nothing         -> do
+      writeUTF8File (targetDir </> "Setup.hs") $ unlines [
+        "import Distribution.Simple",
+        "main = defaultMain"]
 
 -- | Find the main executable file.
 findMainExeFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
