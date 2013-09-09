@@ -233,8 +233,7 @@ betweenVersionsInclusive v1 v2 =
   IntersectVersionRanges (orLaterVersion v1) (orEarlierVersion v2)
 
 {-# DEPRECATED betweenVersionsInclusive
-    "In practice this is not very useful because we normally use inclusive lower bounds and exclusive upper bounds"
-  #-}
+    "In practice this is not very useful because we normally use inclusive lower bounds and exclusive upper bounds" #-}
 
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
 --
