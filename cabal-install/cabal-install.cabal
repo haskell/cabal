@@ -112,6 +112,8 @@ executable cabal
         Distribution.Client.Compat.Time
         Paths_cabal_install
 
+    -- NOTE: when updating build-depends, don't forget to update version regexps
+    -- in bootstrap.sh.
     build-depends:
         array      >= 0.1      && < 0.5,
         base       >= 4        && < 5,
