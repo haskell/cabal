@@ -37,9 +37,11 @@ import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
         ( getSourcePackages )
+import Distribution.Compat.Exception
+        ( catchIO )
 
 import Control.Exception
-         ( catch, finally )
+         ( finally )
 import Control.Monad
          ( filterM, forM_, unless, when )
 import Data.List
@@ -202,7 +204,7 @@ allBranchers =
 -- exits successfully, that brancher is considered usable.
 findUsableBranchers :: IO (Data.Map.Map PD.RepoType Brancher)
 findUsableBranchers = do
-    let usable (_, brancher) = flip catch (const (return False) :: IOError -> IO Bool) $ do
+    let usable (_, brancher) = flip catchIO (const (return False)) $ do
          let cmd = brancherBinary brancher
          (exitCode, _, _) <- readProcessWithExitCode cmd ["--help"] ""
          return (exitCode == ExitSuccess)
