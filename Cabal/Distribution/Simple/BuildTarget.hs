@@ -55,7 +55,7 @@ import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
 import Control.Monad
-import Control.Applicative (Applicative(..))
+import Control.Applicative (Applicative(..), Alternative(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )
@@ -744,6 +744,10 @@ data MatchError = MatchErrorExpected String String
                 | MatchErrorNoSuch   String String
   deriving (Show, Eq)
 
+
+instance Alternative Match where
+      empty = mzero
+      (<|>) = mplus
 
 instance MonadPlus Match where
   mzero = matchZero
