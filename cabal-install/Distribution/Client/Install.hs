@@ -187,7 +187,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
                                    then installFailedInSandbox else [])
     -- TODO: use a better error message, remove duplication.
     installFailedInSandbox =
-      "Note: when using a sandbox, all packages are required to have \
+      "\nNote: when using a sandbox, all packages are required to have \
       \consistent dependencies. \
       \Try reinstalling/unregistering the offending packages or \
       \recreating the sandbox."
