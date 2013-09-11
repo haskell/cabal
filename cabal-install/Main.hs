@@ -814,7 +814,7 @@ runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
                 (const Nothing)
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity distPref mempty []
+    build verbosity distPref mempty extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     run verbosity buildFlags extraArgs
