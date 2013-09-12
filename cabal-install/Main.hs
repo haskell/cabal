@@ -813,8 +813,9 @@ runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
                 globalFlags noAddSource (buildNumJobs buildExFlags)
                 (const Nothing)
 
+  let components = takeWhile (/= "--") extraArgs
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity distPref mempty extraArgs
+    build verbosity distPref mempty components
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     run verbosity buildFlags extraArgs
