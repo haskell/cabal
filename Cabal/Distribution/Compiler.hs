@@ -20,7 +20,7 @@
 -- Unfortunately we cannot make this change yet without breaking the
 -- 'UserHooks' api, which would break all custom @Setup.hs@ files, so for the
 -- moment we just have to live with this deficiency. If you're interested, see
--- ticket #50.
+-- ticket #57.
 
 {- All rights reserved.
 
