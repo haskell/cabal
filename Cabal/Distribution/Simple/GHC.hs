@@ -788,9 +788,11 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                                 }
                 odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
             createDirectoryIfMissingVerbose verbosity True odir
-            runGhcProg vanillaCcOpts
+            m <- newEmptyMVar
+            _ <- forkIO $ runGhcProg vanillaCcOpts >> putMVar m ()
             whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
             whenProfLib (runGhcProg profCcOpts)
+            takeMVar m
        | filename <- cSources libBi]
 
   -- TODO: problem here is we need the .c files built first, so we can load them
