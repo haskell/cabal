@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable, StandaloneDeriving #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, StandaloneDeriving #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Version
@@ -121,8 +121,10 @@ data VersionRange
   | VersionRangeParens     VersionRange -- just '(exp)' parentheses syntax
   deriving (Show,Read,Eq,Typeable,Data)
 
--- TODO orphan
+#if __GLASGOW_HASKELL__ < 707
+-- starting with ghc-7.7/base-4.7 this instance is provided in "Data.Data"
 deriving instance Data Version
+#endif
 
 {-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
 {-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
