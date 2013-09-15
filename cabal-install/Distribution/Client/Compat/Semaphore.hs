@@ -9,11 +9,9 @@ module Distribution.Client.Compat.Semaphore
 
 import Control.Concurrent.STM (TVar, atomically, newTVar, readTVar, retry,
                                writeTVar)
-import Control.Exception (onException)
+import Control.Exception (mask_, onException)
 import Control.Monad (join, when)
 import Data.Typeable (Typeable)
-
-import Distribution.Client.Compat.Exception (mask_)
 
 -- | 'QSem' is a quantity semaphore in which the resource is aqcuired
 -- and released in units of one. It provides guaranteed FIFO ordering
