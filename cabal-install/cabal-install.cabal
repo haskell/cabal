@@ -106,7 +106,6 @@ executable cabal
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.Environment
-        Distribution.Client.Compat.Exception
         Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Semaphore
         Distribution.Client.Compat.Time
