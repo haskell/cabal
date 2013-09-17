@@ -260,6 +260,8 @@ files of a package:
     name of a program that can be found on the program search path. For
     example: `--with-ghc=ghc-6.6.1` or
     `--with-cpphs=/usr/local/bin/cpphs`.
+    The full list of accepted programs is not enumerated in this user guide.
+    Rather, run `cabal install --help` to view the list.
 
 `--`_`prog`_`-options=`_options_
 :   Specify additional options to the program _prog_. Any program known
