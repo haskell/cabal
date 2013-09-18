@@ -492,12 +492,13 @@ linearizeInstallPlan installedPkgIndex plan =
   where
     next plan' = case InstallPlan.ready plan' of
       []      -> Nothing
-      (pkg:_) -> Just ((pkg, status), plan'')
+      ((pkg ,_):_) -> Just ((pkg, status), plan'')
         where
           pkgid  = packageId pkg
           status = packageStatus installedPkgIndex pkg
           plan'' = InstallPlan.completed pkgid
-                     (BuildOk DocsNotTried TestsNotTried)
+                     -- FIXME: Should this be Nothing?
+                     (BuildOk DocsNotTried TestsNotTried Nothing)
                      (InstallPlan.processing [pkg] plan')
           --FIXME: This is a bit of a hack,
           -- pretending that each package is installed
@@ -751,7 +752,7 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf
         normalUserInstall     = (UserPackageDB `elem` packageDBs)
                              && all (not . isSpecificPackageDB) packageDBs
 
-        installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _)) = True
+        installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _ _)) = True
         installedDocs _                                            = False
         isSpecificPackageDB (SpecificPackageDB _) = True
         isSpecificPackageDB _                     = False
@@ -887,14 +888,20 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  executeInstallPlan verbosity jobControl useLogFile installPlan $ \cpkg ->
+  executeInstallPlan verbosity jobControl useLogFile installPlan $ \cpkg deps ->
     installConfiguredPackage platform compid configFlags
                              cpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
+          let configFlags'' = configFlags' { configDependencies =
+                                                zip
+                                                (map packageName $
+                                                 map Installed.sourcePackageId deps)
+                                                (map Installed.installedPackageId deps)
+                                           } in
           installUnpackedPackage verbosity buildLimit installLock numJobs
                                  (setupScriptOptions installedPkgIndex cacheLock)
-                                 miscOptions configFlags' installFlags haddockFlags
+                                 miscOptions configFlags'' installFlags haddockFlags
                                  compid platform pkg pkgoverride mpath useLogFile
 
   where
@@ -994,7 +1001,7 @@ executeInstallPlan :: Verbosity
                    -> JobControl IO (PackageId, BuildResult)
                    -> UseLogFile
                    -> InstallPlan
-                   -> (ConfiguredPackage -> IO BuildResult)
+                   -> (ConfiguredPackage -> [Installed.InstalledPackageInfo] -> IO BuildResult)
                    -> IO InstallPlan
 executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
     tryNewTasks 0 plan0
@@ -1007,13 +1014,13 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
           sequence_
             [ do info verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
-                   buildResult <- installPkg pkg
+                   buildResult <- installPkg pkg deps
                    return (packageId pkg, buildResult)
-            | pkg <- pkgs
+            | (pkg, deps) <- pkgs
             , let pkgid = packageId pkg]
 
           let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing pkgs plan
+              plan'      = InstallPlan.processing (map fst pkgs) plan
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do
@@ -1240,7 +1247,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                 withFileContents pkgConfFile $ \pkgConfText ->
                   case Installed.parseInstalledPackageInfo pkgConfText of
                     Installed.ParseFailed perror -> error (show perror)
-                    Installed.ParseOk warnings pkgConf -> return (Just pkgConf)
+                    -- FIXME: Should we something with warnings?
+                    Installed.ParseOk _warnings pkgConf -> return (Just pkgConf)
             else return Nothing
 
           -- Actual installation
@@ -1251,7 +1259,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                 setup Cabal.copyCommand copyFlags
                 when shouldRegister $ do
                   setup Cabal.registerCommand registerFlags
-          return (Right (BuildOk docsResult testsResult))
+          return (Right (BuildOk docsResult testsResult maybePkgConf))
 
   where
     pkgid            = packageId pkg

@@ -47,7 +47,8 @@ module Distribution.Client.InstallPlan (
 
 import Distribution.Client.Types
          ( SourcePackage(packageDescription), ConfiguredPackage(..)
-         , InstalledPackage, BuildFailure, BuildSuccess, enableStanzas )
+         , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas,
+           InstalledPackage (..) )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , PackageFixedDeps(..), Dependency(..) )
@@ -73,6 +74,7 @@ import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing, intercalate )
+import qualified Distribution.InstalledPackageInfo as Installed
 
 import Data.List
          ( sort, sortBy )
@@ -204,15 +206,34 @@ remove shouldRemove plan =
 -- configured state and have all their dependencies installed already.
 -- The plan is complete if the result is @[]@.
 --
-ready :: InstallPlan -> [ConfiguredPackage]
+ready :: InstallPlan -> [(ConfiguredPackage, [Installed.InstalledPackageInfo])]
 ready plan = assert check readyPackages
   where
-    check = if null readyPackages && null processingPackages
+    check = if null (map fst readyPackages) && null processingPackages
               then null configuredPackages
               else True
     configuredPackages = [ pkg | Configured pkg <- toList plan ]
     processingPackages = [ pkg | Processing pkg <- toList plan]
-    readyPackages = filter (all isInstalled . depends) configuredPackages
+
+    readyPackages :: [(ConfiguredPackage, [Installed.InstalledPackageInfo])]
+    readyPackages = [ (pkg, map getInstalledDeps deps)
+                    | pkg <- configuredPackages
+                    , let deps = depends pkg
+                    , all isInstalled deps
+                    ]
+
+    getInstalledDeps :: PackageIdentifier -> Installed.InstalledPackageInfo
+    getInstalledDeps pkg =
+      case PackageIndex.lookupPackageId (planIndex plan) pkg of
+        Just (Configured  _)                                  -> internalError "guard failed"
+        Just (Processing  _)                                  -> internalError "guard failed"
+        Just (Failed    _ _)                                  -> internalError "guard failed"
+        Just (PreExisting (InstalledPackage instPkg _))       -> instPkg
+        Just (Installed _cfgPkg (BuildOk _ _ Nothing))        -> internalError "guard failed"
+        Just (Installed _cfgPkg (BuildOk _ _ (Just instPkg))) -> instPkg
+        Nothing                                               -> internalError "guard failed"
+
+    isInstalled :: PackageIdentifier -> Bool
     isInstalled pkg =
       case PackageIndex.lookupPackageId (planIndex plan) pkg of
         Just (Configured  _) -> False
