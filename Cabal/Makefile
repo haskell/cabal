@@ -71,7 +71,10 @@ PANDOC_HTML_CSS=Cabal.css
 users-guide: $(USERGUIDE_STAMP) doc/*.markdown
 $(USERGUIDE_STAMP): doc/*.markdown
 	mkdir -p $(PANDOC_HTML_OUTDIR)
-	for file in $^; do $(PANDOC) $(PANDOC_OPTIONS) --from=markdown --to=html --output $(PANDOC_HTML_OUTDIR)/$$(basename $${file} .markdown).html $${file}; done
+	for file in $^; do \
+		[ $${file} != doc/index.markdown ] && TOC=--table-of-contents || TOC=; \
+		$(PANDOC) $(PANDOC_OPTIONS) $${TOC} --from=markdown --to=html --output $(PANDOC_HTML_OUTDIR)/$$(basename $${file} .markdown).html $${file}; \
+	done
 	cp doc/$(PANDOC_HTML_CSS) $(PANDOC_HTML_OUTDIR)
 
 docs: haddock users-guide

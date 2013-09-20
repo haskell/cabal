@@ -37,3 +37,9 @@ a:link    { color:      #0000C8 }
 a:hover   { background: #FFFFA8 }
 a:active  { color:      #D00000 }
 a:visited { color:      #680098 }
+
+h1 a:link, h2 a:link, h3 a:link, h4 a:link, h5 a:link, h6 a:link,
+h1 a:visited, h2 a:visited, h3 a:visited, h4 a:visited, h5 a:visited, h6 a:visited {
+  color: #005A9C;
+  text-decoration: none
+}
