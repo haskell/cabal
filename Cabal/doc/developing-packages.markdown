@@ -207,43 +207,6 @@ packages and details needed for distributing packages to other people.
 The previous chapter covers building and installing packages -- your own
 packages or ones developed by other people.
 
-# Developing packages #
-
-The Cabal package is the unit of distribution. When installed, its
-purpose is to make available:
-
-  * One or more Haskell programs.
-
-  * At most one library, exposing a number of Haskell modules.
-
-However having both a library and executables in a package does not work
-very well; if the executables depend on the library, they must
-explicitly list all the modules they directly or indirectly import from
-that library.  Fortunately, starting with Cabal 1.8.0.4, executables can
-also declare the package that they are in as a dependency, and Cabal
-will treat them as if they were in another package that dependended on
-the library.
-
-Internally, the package may consist of much more than a bunch of Haskell
-modules: it may also have C source code and header files, source code
-meant for preprocessing, documentation, test cases, auxiliary tools etc.
-
-A package is identified by a globally-unique _package name_, which
-consists of one or more alphanumeric words separated by hyphens.  To
-avoid ambiguity, each of these words should contain at least one letter.
-Chaos will result if two distinct packages with the same name are
-installed on the same system. A particular version of the package is
-distinguished by a _version number_, consisting of a sequence of one or
-more integers separated by dots.  These can be combined to form a single
-text string called the _package ID_, using a hyphen to separate the name
-from the version, e.g. "`HUnit-1.1`".
-
-Note: Packages are not part of the Haskell language; they simply
-populate the hierarchical space of module names. In GHC 6.6 and later a
-program may contain multiple modules with the same name if they come
-from separate packages; in all other current Haskell systems packages
-may not overlap in the modules they provide, including hidden modules.
-
 
 # Package concepts #
 
@@ -468,6 +431,44 @@ options and more generally there is a configuration mechanism to
 customise many aspects of how a package is built depending on the
 Haskell implementation, the operating system, computer architecture and
 user-specified configuration flags.
+
+
+# Developing packages #
+
+The Cabal package is the unit of distribution. When installed, its
+purpose is to make available:
+
+  * One or more Haskell programs.
+
+  * At most one library, exposing a number of Haskell modules.
+
+However having both a library and executables in a package does not work
+very well; if the executables depend on the library, they must
+explicitly list all the modules they directly or indirectly import from
+that library.  Fortunately, starting with Cabal 1.8.0.4, executables can
+also declare the package that they are in as a dependency, and Cabal
+will treat them as if they were in another package that dependended on
+the library.
+
+Internally, the package may consist of much more than a bunch of Haskell
+modules: it may also have C source code and header files, source code
+meant for preprocessing, documentation, test cases, auxiliary tools etc.
+
+A package is identified by a globally-unique _package name_, which
+consists of one or more alphanumeric words separated by hyphens.  To
+avoid ambiguity, each of these words should contain at least one letter.
+Chaos will result if two distinct packages with the same name are
+installed on the same system. A particular version of the package is
+distinguished by a _version number_, consisting of a sequence of one or
+more integers separated by dots.  These can be combined to form a single
+text string called the _package ID_, using a hyphen to separate the name
+from the version, e.g. "`HUnit-1.1`".
+
+Note: Packages are not part of the Haskell language; they simply
+populate the hierarchical space of module names. In GHC 6.6 and later a
+program may contain multiple modules with the same name if they come
+from separate packages; in all other current Haskell systems packages
+may not overlap in the modules they provide, including hidden modules.
 
 
 ## Creating a package ##
