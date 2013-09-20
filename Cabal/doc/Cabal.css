@@ -1,3 +1,7 @@
+body {
+  max-width: 18cm;
+}
+
 div {
   font-family: sans-serif;
   color: black;
