@@ -28,8 +28,7 @@ module Distribution.Client.JobControl (
 
 import Control.Monad
 import Control.Concurrent hiding (QSem, newQSem, waitQSem, signalQSem)
-import Control.Exception (SomeException, bracket_, throw, try)
-import Distribution.Client.Compat.Exception (mask)
+import Control.Exception (SomeException, bracket_, mask, throw, try)
 import Distribution.Client.Compat.Semaphore
 
 data JobControl m a = JobControl {
