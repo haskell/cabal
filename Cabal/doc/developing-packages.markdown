@@ -1,4 +1,211 @@
-% Cabal User Guide
+% Cabal User Guide: Developing Cabal packages
+
+
+# Quickstart #
+
+
+Lets assume we have created a project directory and already have a
+Haskell module or two.
+
+Every project needs a name, we'll call this example "proglet".
+
+~~~~~~~~~~~
+$ cd proglet/
+$ ls
+Proglet.hs
+~~~~~~~~~~~
+
+It is assumed that (apart from external dependencies) all the files that
+make up a package live under a common project root directory. This
+simple example has all the project files in one directory, but most
+packages will use one or more subdirectories. See section [TODO](#TODO)
+for the standard practices for organising the files in your project
+directory.
+
+To turn this into a Cabal package we need two extra files in the
+project's root directory:
+
+ * `proglet.cabal`: containing package metadata and build information.
+ * `Setup.hs`: containing any customisation of the build system.
+
+We can create both manually or we can use `cabal init` to create them
+for us.
+
+### Using "cabal init" ###
+
+The `cabal init` command is interactive. It asks us a number of
+questions starting with the package name and version.
+
+~~~~~~~~~~
+$ cabal init
+Package name [default "proglet"]? 
+Package version [default "0.1"]? 
+...
+~~~~~~~~~~
+
+It also asks questions about various other bits of package metadata. For
+a package that you never intend to distribute to others, these fields can
+be left blank.
+
+One of the important questions is whether the package contains a library
+or an executable. Libraries are collections of Haskell modules that can
+be re-used by other Haskell libraries and programs, while executables
+are standalone programs.
+
+~~~~~~~~~~
+What does the package build:
+   1) Library
+   2) Executable
+Your choice?
+~~~~~~~~~~
+
+For the moment these are the only choices. For more complex packages
+(e.g. a library and multiple executables or test suites) the `.cabal`
+file can be edited afterwards.
+
+Finally, `cabal init` creates the initial `proglet.cabal` and `Setup.hs`
+files, and depending on your choice of license, a `LICENSE` file as well.
+
+~~~~~~~~~~
+Generating LICENSE...
+Generating Setup.hs...
+Generating proglet.cabal...
+
+You may want to edit the .cabal file and add a Description field.
+~~~~~~~~~~
+
+As this stage the `proglet.cabal` is not quite complete and before you
+are able to build the package you will need to edit the file and add
+some build information about the library or executable.
+
+### Editing the .cabal file ###
+
+Load up the `.cabal` file in a text editor. The first part of the
+`.cabal` file has the package metadata and towards the end of the file
+you will find the `executable` or `library` section.
+
+You will see that the fields that have yet to be filled in are commented
+out. Cabal files use "`--`" Haskell-style comment syntax. (Note that
+comments are only allowed on lines on their own. Trailing comments on
+other lines are not allowed because they could be confused with program
+options.)
+
+If you selected earlier to create a library package then your `.cabal`
+file will have a section that looks like this:
+
+~~~~~~~~~~~~~~~~~
+library
+  exposed-modules:     Proglet
+  -- other-modules:
+  -- build-depends:
+~~~~~~~~~~~~~~~~~
+
+Alternatively, if you selected an executable then there will be a
+section like:
+
+~~~~~~~~~~~~~~~~~
+executable proglet
+  -- main-is:
+  -- other-modules:
+  -- build-depends:
+~~~~~~~~~~~~~~~~~
+
+The build information fields listed (but commented out) are just the few
+most important and common fields. There are many others that are covered
+later in this chapter.
+
+Most of the build information fields are the same between libraries and
+executables. The difference is that libraries have a number of "exposed"
+modules that make up the public interface of the library, while
+executables have a file containing a `Main` module.
+
+The name of a library always matches the name of the package, so it is
+not specified in the library section. Executables often follow the name
+of the package too, but this is not required and the name is given
+explicitly.
+
+### Modules included in the package ###
+
+For a library, `cabal init` looks in the project directory for files
+that look like Haskell modules and adds all the modules to the
+`exposed-modules` field. For modules that do not form part of your
+package's public interface, you can move those modules to the
+`other-modules` field. Either way, all modules in the library need to be
+listed.
+
+For an executable, `cabal init` does not try to guess which file
+contains your program's `Main` module. You will need to fill in the
+`main-is` field with the file name of your program's `Main` module
+(including `.hs` or `.lhs` extension). Other modules included in the
+executable should be listed in the `other-modules` field.
+
+### Modules imported from other packages ###
+
+While your library or executable may include a number of modules, it
+almost certainly also imports a number of external modules from the
+standard libraries or other pre-packaged libraries. (These other
+libraries are of course just Cabal packages that contain a library.)
+
+You have to list all of the library packages that your library or
+executable imports modules from. Or to put it another way: you have to
+list all the other packages that your package depends on.
+
+For example, suppose the example `Proglet` module imports the module
+`Data.Map`. The `Data.Map` module comes from the `containers` package,
+so we must list it:
+
+~~~~~~~~~~~~~~~~~
+library
+  exposed-modules:     Proglet
+  other-modules:
+  build-depends:       containers, base == 4.*
+~~~~~~~~~~~~~~~~~
+
+In addition, almost every package also depends on the `base` library
+package because it exports the standard `Prelude` module plus other
+basic modules like `Data.List`.
+
+You will notice that we have listed `base == 4.*`. This gives a
+constraint on the version of the base package that our package will work
+with. The most common kinds of constraints are:
+
+ * `pkgname >= n`
+ * `pkgname >= n && < m`
+ * `pkgname == n.*`
+
+The last is just shorthand, for example `base == 4.*` means exactly the
+same thing as `base >= 4 && < 5`.
+
+### Building the package ###
+
+For simple packages that's it! We can now try configuring and building
+the package:
+
+~~~~~~~~~~~~~~~~
+cabal configure
+cabal build
+~~~~~~~~~~~~~~~~
+
+Assuming those two steps worked then you can also install the package:
+
+~~~~~~~~~~~~~~~~
+cabal install
+~~~~~~~~~~~~~~~~
+
+For libraries this makes them available for use in GHCi or to be used by
+other packages. For executables it installs the program so that you can
+run it (though you may first need to adjust your system's `$PATH`).
+
+### Next steps ###
+
+What we have covered so far should be enough for very simple packages
+that you use on your own system.
+
+The next few sections cover more details needed for more complex
+packages and details needed for distributing packages to other people.
+
+The previous chapter covers building and installing packages -- your own
+packages or ones developed by other people.
 
 # Developing packages #
 
