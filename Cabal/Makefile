@@ -1,5 +1,5 @@
 
-VERSION=1.18.0
+VERSION=1.18.1
 
 #KIND=devel
 KIND=rc
@@ -8,6 +8,7 @@ KIND=rc
 PREFIX=/usr/local
 HC=ghc
 GHCFLAGS=-Wall
+SSH-USER=tibbe
 
 all: build
 
@@ -115,7 +116,7 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	cp -r dist/doc/html $(DISTLOC)/Cabal-$(VERSION)/doc/API
 	cp -r dist/doc/users-guide $(DISTLOC)/Cabal-$(VERSION)/doc/
 	cp changelog $(DISTLOC)/Cabal-$(VERSION)/
-	tar -C $(DISTLOC) -c Cabal-$(VERSION) -zf $(DISTLOC)/Cabal-$(VERSION).tar.gz
+	tar -C $(DISTLOC) -czf $(DISTLOC)/Cabal-$(VERSION).tar.gz Cabal-$(VERSION)
 	mv $(DISTLOC)/Cabal-$(VERSION)/doc $(DISTLOC)/
 	mv $(DISTLOC)/Cabal-$(VERSION)/changelog $(DISTLOC)/
 	rm -r $(DISTLOC)/Cabal-$(VERSION)/
@@ -123,8 +124,8 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	@echo "Release fileset prepared: $(DISTLOC)/"
 
 release: $(DIST_STAMP)
-	scp -r $(DISTLOC) haskell.org:/srv/web/haskell.org/cabal/release/cabal-$(VERSION)
-	ssh haskell.org 'cd /srv/web/haskell.org/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
+	scp -r $(DISTLOC) $(SSH-USER)@haskell.org:/srv/web/haskell.org/cabal/release/cabal-$(VERSION)
+	ssh $(SSH-USER)@haskell.org 'cd /srv/web/haskell.org/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
 
 # tags...
 
