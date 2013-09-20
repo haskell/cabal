@@ -124,8 +124,6 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 	@echo "Release fileset prepared: $(DISTLOC)/"
 
 release: $(DIST_STAMP)
-	@echo "Uploading to Hackage..."
-	cabal upload $(DIST_STAMP)
 	scp -r $(DISTLOC) $(SSH-USER)@haskell.org:/srv/web/haskell.org/cabal/release/cabal-$(VERSION)
 	ssh $(SSH-USER)@haskell.org 'cd /srv/web/haskell.org/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
 
