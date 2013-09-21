@@ -22,6 +22,7 @@ import Distribution.Client.Setup
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
+         , FreezeFlags(..), freezeCommand
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
          , updateCommand
@@ -61,6 +62,7 @@ import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
 import Distribution.Client.Update             (update)
 import Distribution.Client.Fetch              (fetch)
+import Distribution.Client.Freeze             (freeze)
 import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
 import Distribution.Client.Upload as Upload   (upload, check, report)
@@ -184,6 +186,7 @@ mainWorker args = topHandler $
       ,listCommand            `commandAddAction` listAction
       ,infoCommand            `commandAddAction` infoAction
       ,fetchCommand           `commandAddAction` fetchAction
+      ,freezeCommand          `commandAddAction` freezeAction
       ,getCommand             `commandAddAction` getAction
       ,hiddenCommand $
        unpackCommand          `commandAddAction` unpackAction
@@ -771,6 +774,24 @@ fetchAction fetchFlags extraArgs globalFlags = do
         (globalRepos globalFlags')
         comp platform conf globalFlags' fetchFlags
         targets
+
+freezeAction :: FreezeFlags -> [String] -> GlobalFlags -> IO ()
+freezeAction freezeFlags _extraArgs globalFlags = do
+  let verbosity = fromFlag (freezeVerbosity freezeFlags)
+  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  let configFlags  = savedConfigureFlags config
+      globalFlags' = savedGlobalFlags config `mappend` globalFlags
+  (comp, platform, conf) <- configCompilerAux' configFlags
+
+  maybeWithSandboxPackageInfo verbosity configFlags globalFlags'
+                              comp platform conf useSandbox $ \mSandboxPkgInfo ->
+                              maybeWithSandboxDirOnSearchPath useSandbox $
+      freeze verbosity
+            (configPackageDB' configFlags)
+            (globalRepos globalFlags')
+            comp platform conf
+            mSandboxPkgInfo
+            globalFlags' freezeFlags
 
 uploadAction :: UploadFlags -> [String] -> GlobalFlags -> IO ()
 uploadAction uploadFlags extraArgs globalFlags = do

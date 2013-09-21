@@ -23,6 +23,7 @@ module Distribution.Client.Setup
     , upgradeCommand
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
+    , freezeCommand, FreezeFlags(..)
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
     , uploadCommand, UploadFlags(..)
@@ -499,6 +500,57 @@ fetchCommand = CommandUI {
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
+
+  }
+
+-- ------------------------------------------------------------
+-- * Freeze command
+-- ------------------------------------------------------------
+
+data FreezeFlags = FreezeFlags {
+      freezeDryRun           :: Flag Bool,
+      freezeSolver           :: Flag PreSolver,
+      freezeMaxBackjumps     :: Flag Int,
+      freezeReorderGoals     :: Flag Bool,
+      freezeIndependentGoals :: Flag Bool,
+      freezeShadowPkgs       :: Flag Bool,
+      freezeVerbosity        :: Flag Verbosity
+    }
+
+defaultFreezeFlags :: FreezeFlags
+defaultFreezeFlags = FreezeFlags {
+    freezeDryRun           = toFlag False,
+    freezeSolver           = Flag defaultSolver,
+    freezeMaxBackjumps     = Flag defaultMaxBackjumps,
+    freezeReorderGoals     = Flag False,
+    freezeIndependentGoals = Flag False,
+    freezeShadowPkgs       = Flag False,
+    freezeVerbosity        = toFlag normal
+   }
+
+freezeCommand :: CommandUI FreezeFlags
+freezeCommand = CommandUI {
+    commandName         = "freeze",
+    commandSynopsis     = "Freeze dependencies.",
+    commandDescription  = Nothing,
+    commandUsage        = usagePackages "freeze",
+    commandDefaultFlags = defaultFreezeFlags,
+    commandOptions      = \ showOrParseArgs -> [
+         optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
+
+       , option [] ["dry-run"]
+           "Do not freeze anything, only print what would be frozen"
+           freezeDryRun (\v flags -> flags { freezeDryRun = v })
+           trueArg
+
+       ] ++
+
+       optionSolver      freezeSolver           (\v flags -> flags { freezeSolver           = v }) :
+       optionSolverFlags showOrParseArgs
+                         freezeMaxBackjumps     (\v flags -> flags { freezeMaxBackjumps     = v })
+                         freezeReorderGoals     (\v flags -> flags { freezeReorderGoals     = v })
+                         freezeIndependentGoals (\v flags -> flags { freezeIndependentGoals = v })
+                         freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
 
   }
 

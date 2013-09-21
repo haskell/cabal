@@ -71,6 +71,7 @@ executable cabal
         Distribution.Client.Dependency.Modular.Version
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
+        Distribution.Client.Freeze
         Distribution.Client.Get
         Distribution.Client.GZipUtils
         Distribution.Client.Haddock
