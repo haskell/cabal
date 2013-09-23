@@ -1032,9 +1032,10 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
       -- The modules we want to check against the generated Makefile by GHC.
       -- This includes all used modules together with the Main module and the
       -- auto generated module for this package.
-      checkModules = autogenModuleName _pkg_descr
-                   : ModuleName.main
-                   : usedModules
+      checkModules = Set.toList
+                   . Set.insert (autogenModuleName _pkg_descr)
+                   . Set.insert ModuleName.main
+                   $ Set.fromList usedModules
 
   unless (null checkModules) $
     warnUsedButUnlistedModule verbosity checkModules (runGhcProg . mappend baseOpts)
