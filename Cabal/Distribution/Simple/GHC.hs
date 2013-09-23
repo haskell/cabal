@@ -1029,8 +1029,15 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
                       ghcOptLinkNoHsMain   = toFlag (not isHaskellMain)
                  }
 
-  unless (null usedModules) $
-    warnUsedButUnlistedModule verbosity usedModules (runGhcProg . mappend baseOpts)
+      -- The modules we want to check against the generated Makefile by GHC.
+      -- This includes all used modules together with the Main module and the
+      -- auto generated module for this package.
+      checkModules = autogenModuleName _pkg_descr
+                   : ModuleName.main
+                   : usedModules
+
+  unless (null checkModules) $
+    warnUsedButUnlistedModule verbosity checkModules (runGhcProg . mappend baseOpts)
 
   -- Build static/dynamic object files for TH, if needed.
   when compileForTH $
