@@ -98,11 +98,12 @@ import System.Directory
          ( doesFileExist, doesDirectoryExist, getDirectoryContents
          , removeFile, getHomeDirectory )
 
-import Data.Char ( toLower )
-import Data.List ( nub )
-import Data.Maybe    ( catMaybes )
-import Data.Monoid   ( Monoid(..) )
-import Control.Monad ( when, unless )
+import Data.Char               ( toLower )
+import Data.List               ( nub )
+import Data.Maybe              ( catMaybes )
+import qualified Data.Map as M ( empty )
+import Data.Monoid             ( Monoid(..) )
+import Control.Monad           ( when, unless )
 import Distribution.Compat.Exception
 import Distribution.System ( Platform )
 
@@ -133,7 +134,8 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
         compilerId         = CompilerId NHC nhcVersion,
         compilerLanguages  = nhcLanguages,
-        compilerExtensions     = nhcLanguageExtensions
+        compilerExtensions = nhcLanguageExtensions,
+        compilerProperties = M.empty
       }
       compPlatform = Nothing
   return (comp, compPlatform,  conf'''')
