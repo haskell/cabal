@@ -130,10 +130,6 @@ import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose )
-import Distribution.Simple.Program.Db
-    ( lookupProgram )
-import Distribution.Simple.Program.Builtin
-    ( ghcProgram )
 
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
@@ -502,17 +498,13 @@ configure (pkg_descr0, pbi) cfg
                                           "--enable-split-objs; ignoring")
                                     return False
 
-
-        sharedLibsByDefault <-
-            case compilerId comp of
-            CompilerId GHC _ ->
-                case lookupProgram ghcProgram programsConfig''' of
-                Just ghcProg ->
-                    -- if ghc is dynamic, then ghci needs a shared
-                    -- library, so we build one by default.
-                    GHC.ghcDynamic verbosity ghcProg
-                Nothing -> return False
-            _ -> return False
+        let sharedLibsByDefault =
+              case compilerId comp of
+                CompilerId GHC _ ->
+                  -- if ghc is dynamic, then ghci needs a shared
+                  -- library, so we build one by default.
+                  GHC.ghcDynamic comp
+                _ -> False
 
         let lbi = LocalBuildInfo {
                     configFlags         = cfg,
