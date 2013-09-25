@@ -79,13 +79,19 @@ import Language.Haskell.Extension (Language(Haskell98), Extension)
 
 import Control.Monad (liftM)
 import Data.List (nub)
+import qualified Data.Map as M (Map)
 import Data.Maybe (catMaybes, isNothing)
 import System.Directory (canonicalizePath)
 
 data Compiler = Compiler {
         compilerId              :: CompilerId,
+        -- ^ Compiler flavour and version.
         compilerLanguages       :: [(Language, Flag)],
-        compilerExtensions      :: [(Extension, Flag)]
+        -- ^ Supported language standards.
+        compilerExtensions      :: [(Extension, Flag)],
+        -- ^ Supported extensions.
+        compilerProperties      :: M.Map String String
+        -- ^ A key-value map for properties not covered by the above fields.
     }
     deriving (Show, Read)
 

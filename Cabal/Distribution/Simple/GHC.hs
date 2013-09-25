@@ -129,6 +129,7 @@ import Language.Haskell.Extension (Language(..), Extension(..)
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import Data.List
+import qualified Data.Map as M  ( empty )
 import Data.Maybe               ( catMaybes, fromMaybe )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
@@ -184,7 +185,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
   let comp = Compiler {
         compilerId             = CompilerId GHC ghcVersion,
         compilerLanguages      = languages,
-        compilerExtensions     = extensions
+        compilerExtensions     = extensions,
+        compilerProperties     = M.empty
       }
       compPlatform = targetPlatform ghcInfo
       conf4 = configureToolchain ghcProg ghcInfo conf3 -- configure gcc and ld
