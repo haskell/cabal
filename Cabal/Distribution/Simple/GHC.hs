@@ -111,7 +111,10 @@ import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
 import Distribution.Simple.Program.GHC
-import Distribution.Simple.Setup (toFlag, fromFlag)
+import Distribution.Simple.Setup
+         ( toFlag, fromFlag, fromFlagOrDefault )
+import qualified Distribution.Simple.Setup as Cabal
+        ( Flag )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack
@@ -681,22 +684,23 @@ substTopDir topDir ipo
 
 -- | Build a library with GHC.
 --
-buildLib, replLib :: Verbosity
+buildLib, replLib :: Verbosity          -> Cabal.Flag (Maybe Int)
                   -> PackageDescription -> LocalBuildInfo
                   -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib = buildOrReplLib False
 replLib  = buildOrReplLib True
 
-buildOrReplLib :: Bool -> Verbosity
+buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
+buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
   libName <- case componentLibraries clbi of
              [libName] -> return libName
              [] -> die "No library name found when building library"
              _  -> die "Multiple library names found when building library"
 
   let libTargetDir = buildDir lbi
+      numJobs = fromMaybe 1 $ fromFlagOrDefault Nothing numJobsFlag
       pkgid = packageId pkg_descr
       whenVanillaLib forceVanilla =
         when (not forRepl && (forceVanilla || withVanillaLib lbi))
@@ -728,6 +732,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
+                      ghcOptNumJobs      = toFlag numJobs,
                       ghcOptPackageName  = toFlag pkgid,
                       ghcOptInputModules = libModules lib
                     }
@@ -755,7 +760,8 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
                    }
       replOpts    = vanillaOpts {
                       ghcOptExtra        = filterGhciFlags
-                                           (ghcOptExtra vanillaOpts)
+                                           (ghcOptExtra vanillaOpts),
+                      ghcOptNumJobs      = mempty
                     }
                     `mappend` linkerOpts
                     `mappend` mempty {
@@ -920,20 +926,22 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
 
 -- | Build an executable with GHC.
 --
-buildExe, replExe :: Verbosity
+buildExe, replExe :: Verbosity          -> Cabal.Flag (Maybe Int)
                   -> PackageDescription -> LocalBuildInfo
                   -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildExe = buildOrReplExe False
 replExe  = buildOrReplExe True
 
-buildOrReplExe :: Bool -> Verbosity
+buildOrReplExe :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Executable         -> ComponentLocalBuildInfo -> IO ()
-buildOrReplExe forRepl verbosity _pkg_descr lbi
+buildOrReplExe forRepl verbosity numJobsFlag _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let comp       = compiler lbi
+      numJobs    = fromMaybe 1 $
+                   fromFlagOrDefault Nothing numJobsFlag
       runGhcProg = runGHC verbosity ghcProg comp
 
   exeBi <- hackThreadedFlag verbosity
@@ -1042,10 +1050,12 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
 
   -- Build static/dynamic object files for TH, if needed.
   when compileForTH $
-    runGhcProg compileTHOpts { ghcOptNoLink = toFlag True }
+    runGhcProg compileTHOpts { ghcOptNoLink  = toFlag True
+                             , ghcOptNumJobs = toFlag numJobs }
 
   unless forRepl $
-    runGhcProg compileOpts { ghcOptNoLink = toFlag True }
+    runGhcProg compileOpts { ghcOptNoLink  = toFlag True
+                           , ghcOptNumJobs = toFlag numJobs }
 
   -- build any C sources
   unless (null cSrcs) $ do
