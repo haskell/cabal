@@ -42,7 +42,6 @@ import Distribution.Simple.Configure
 import Distribution.Compiler ( buildCompilerId )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(GHC), Compiler(compilerId)
-         , compilerVersion
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
@@ -430,7 +429,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
               (\cabalInstalledPkgId -> [(cabalInstalledPkgId, cabalPkgid)])
               maybeCabalInstalledPkgId
             }
-      let ghcCmdLine = renderGhcOptions (compilerVersion compiler) ghcOptions
+      let ghcCmdLine = renderGhcOptions compiler ghcOptions
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity ghcProgram conf ghcCmdLine
 

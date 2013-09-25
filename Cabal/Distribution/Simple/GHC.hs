@@ -709,7 +709,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
       ghcVersion = compilerVersion comp
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  let runGhcProg = runGHC verbosity ghcProg
+  let runGhcProg = runGHC verbosity ghcProg comp
 
   libBi <- hackThreadedFlag verbosity
              comp (withProfLib lbi) (libBuildInfo lib)
@@ -933,8 +933,8 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  let runGhcProg = runGHC verbosity ghcProg
-      comp       = compiler lbi
+  let comp       = compiler lbi
+      runGhcProg = runGHC verbosity ghcProg comp
 
   exeBi <- hackThreadedFlag verbosity
              comp (withProfExe lbi) (buildInfo exe)
@@ -1134,6 +1134,7 @@ libAbiHash verbosity pkg_descr lbi lib clbi = do
   libBi <- hackThreadedFlag verbosity
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
   let
+      comp        = compiler lbi
       vanillaArgs =
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
@@ -1160,7 +1161,7 @@ libAbiHash verbosity pkg_descr lbi lib clbi = do
            else error "libAbiHash: Can't find an enabled library way"
   --
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  getProgramInvocationOutput verbosity (ghcInvocation ghcProg ghcArgs)
+  getProgramInvocationOutput verbosity (ghcInvocation ghcProg comp ghcArgs)
 
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
