@@ -58,7 +58,7 @@ import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
          , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
-         , optionVerbosity, boolOpt, trueArg, falseArg )
+         , optionVerbosity, boolOpt, trueArg, falseArg, numJobsParser )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
          , toPathTemplate, fromPathTemplate )
@@ -344,20 +344,12 @@ data SkipAddSourceDepsCheck =
   deriving Eq
 
 data BuildExFlags = BuildExFlags {
-  buildNumJobs  :: Flag (Maybe Int),
   buildOnly     :: Flag SkipAddSourceDepsCheck
 }
 
 buildExOptions :: ShowOrParseArgs -> [OptionField BuildExFlags]
 buildExOptions _showOrParseArgs =
-  option "j" ["jobs"]
-  "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)"
-  buildNumJobs (\v flags -> flags { buildNumJobs = v })
-  (optArg "NUM" (fmap Flag numJobsParser)
-   (Flag Nothing)
-   (map (Just . maybe "$ncpus" show) . flagToList))
-
-  : option [] ["only"]
+  option [] ["only"]
   "Don't reinstall add-source dependencies (sandbox-only)"
   buildOnly (\v flags -> flags { buildOnly = v })
   (noArg (Flag SkipAddSourceDepsCheck))
@@ -381,11 +373,9 @@ buildCommand = parent {
 
 instance Monoid BuildExFlags where
   mempty = BuildExFlags {
-    buildNumJobs = mempty,
     buildOnly    = mempty
   }
   mappend a b = BuildExFlags {
-    buildNumJobs = combine buildNumJobs,
     buildOnly    = combine buildOnly
   }
     where combine field = field a `mappend` field b
@@ -394,39 +384,51 @@ instance Monoid BuildExFlags where
 -- * Test command
 -- ------------------------------------------------------------
 
-testCommand :: CommandUI (TestFlags, BuildExFlags)
+testCommand :: CommandUI (TestFlags, BuildFlags, BuildExFlags)
 testCommand = parent {
-  commandDefaultFlags = (commandDefaultFlags parent, mempty),
+  commandDefaultFlags = (commandDefaultFlags parent,
+                         Cabal.defaultBuildFlags, mempty),
   commandOptions      =
-    \showOrParseArgs -> liftOptions fst setFst
+    \showOrParseArgs -> liftOptions get1 set1
                         (commandOptions parent showOrParseArgs)
                         ++
-                        liftOptions snd setSnd (buildExOptions showOrParseArgs)
+                        liftOptions get2 set2
+                        (Cabal.buildOptions progConf showOrParseArgs)
+                        ++
+                        liftOptions get3 set3 (buildExOptions showOrParseArgs)
   }
   where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
+    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
+    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
+    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
 
-    parent = Cabal.testCommand
+    parent   = Cabal.testCommand
+    progConf = defaultProgramConfiguration
 
 -- ------------------------------------------------------------
 -- * Bench command
 -- ------------------------------------------------------------
 
-benchmarkCommand :: CommandUI (BenchmarkFlags, BuildExFlags)
+benchmarkCommand :: CommandUI (BenchmarkFlags, BuildFlags, BuildExFlags)
 benchmarkCommand = parent {
-  commandDefaultFlags = (commandDefaultFlags parent, mempty),
+  commandDefaultFlags = (commandDefaultFlags parent,
+                         Cabal.defaultBuildFlags, mempty),
   commandOptions      =
-    \showOrParseArgs -> liftOptions fst setFst
+    \showOrParseArgs -> liftOptions get1 set1
                         (commandOptions parent showOrParseArgs)
                         ++
-                        liftOptions snd setSnd (buildExOptions showOrParseArgs)
+                        liftOptions get2 set2
+                        (Cabal.buildOptions progConf showOrParseArgs)
+                        ++
+                        liftOptions get3 set3 (buildExOptions showOrParseArgs)
   }
   where
-    setFst a (_,b) = (a,b)
-    setSnd b (a,_) = (a,b)
+    get1 (a,_,_) = a; set1 a (_,b,c) = (a,b,c)
+    get2 (_,b,_) = b; set2 b (a,_,c) = (a,b,c)
+    get3 (_,_,c) = c; set3 c (a,b,_) = (a,b,c)
 
-    parent = Cabal.benchmarkCommand
+    parent   = Cabal.benchmarkCommand
+    progConf = defaultProgramConfiguration
 
 -- ------------------------------------------------------------
 -- * Fetch command
@@ -1434,22 +1436,6 @@ instance Monoid SandboxFlags where
     sandboxLocation  = combine sandboxLocation
     }
     where combine field = field a `mappend` field b
-
--- ------------------------------------------------------------
--- * Shared options utils
--- ------------------------------------------------------------
-
--- | Common parser for the @-j@ flag of @build@ and @install@.
-numJobsParser :: ReadE (Maybe Int)
-numJobsParser = ReadE $ \s ->
-  case s of
-    "$ncpus" -> Right Nothing
-    _        -> case reads s of
-      [(n, "")]
-        | n < 1     -> Left "The number of jobs should be 1 or more."
-        | n > 64    -> Left "You probably don't want that many jobs."
-        | otherwise -> Right (Just n)
-      _             -> Left "The jobs value should be a number or '$ncpus'"
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils

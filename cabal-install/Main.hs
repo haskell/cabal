@@ -275,7 +275,7 @@ buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   -- Calls 'configureAction' to do the real work, so nothing special has to be
   -- done to support sandboxes.
   useSandbox <- reconfigure verbosity distPref
-                mempty [] globalFlags noAddSource (buildNumJobs buildExFlags)
+                mempty [] globalFlags noAddSource (buildNumJobs buildFlags)
                 (const Nothing)
 
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -621,8 +621,9 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               installFlags' haddockFlags
               targets
 
-testAction :: (TestFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
-testAction (testFlags, buildExFlags) extraArgs globalFlags = do
+testAction :: (TestFlags, BuildFlags, BuildExFlags) -> [String] -> GlobalFlags
+              -> IO ()
+testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
   let verbosity      = fromFlagOrDefault normal (testVerbosity testFlags)
       distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                        (testDistPref testFlags)
@@ -637,7 +638,7 @@ testAction (testFlags, buildExFlags) extraArgs globalFlags = do
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
   -- deps if needed.
   useSandbox <- reconfigure verbosity distPref addConfigFlags []
-                globalFlags noAddSource (buildNumJobs buildExFlags) checkFlags
+                globalFlags noAddSource (buildNumJobs buildFlags) checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity distPref mempty extraArgs
@@ -646,9 +647,11 @@ testAction (testFlags, buildExFlags) extraArgs globalFlags = do
     setupWrapper verbosity setupOptions Nothing
       Cabal.testCommand (const testFlags) extraArgs
 
-benchmarkAction :: (BenchmarkFlags, BuildExFlags) -> [String] -> GlobalFlags
+benchmarkAction :: (BenchmarkFlags, BuildFlags, BuildExFlags)
+                   -> [String] -> GlobalFlags
                    -> IO ()
-benchmarkAction (benchmarkFlags, buildExFlags) extraArgs globalFlags = do
+benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
+                extraArgs globalFlags = do
   let verbosity      = fromFlagOrDefault normal
                        (benchmarkVerbosity benchmarkFlags)
       distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
@@ -664,7 +667,7 @@ benchmarkAction (benchmarkFlags, buildExFlags) extraArgs globalFlags = do
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
   -- deps if needed.
   useSandbox <- reconfigure verbosity distPref addConfigFlags []
-                globalFlags noAddSource (buildNumJobs buildExFlags)
+                globalFlags noAddSource (buildNumJobs buildFlags)
                 checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
@@ -815,7 +818,7 @@ runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
   -- deps if needed.
   useSandbox <- reconfigure verbosity distPref mempty []
-                globalFlags noAddSource (buildNumJobs buildExFlags)
+                globalFlags noAddSource (buildNumJobs buildFlags)
                 (const Nothing)
 
   lbi <- getPersistBuildConfig distPref

@@ -89,7 +89,7 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
-  boolOpt, boolOpt', trueArg, falseArg, optionVerbosity ) where
+  boolOpt, boolOpt', trueArg, falseArg, optionVerbosity, numJobsParser ) where
 
 import Distribution.Compiler ()
 import Distribution.ReadE
@@ -1356,6 +1356,7 @@ data BuildFlags = BuildFlags {
     buildProgramArgs :: [(String, [String])],
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity,
+    buildNumJobs     :: Flag (Maybe Int),
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -1372,6 +1373,7 @@ defaultBuildFlags  = BuildFlags {
     buildProgramArgs = [],
     buildDistPref    = Flag defaultDistPref,
     buildVerbosity   = Flag normal,
+    buildNumJobs     = mempty,
     buildArgs        = []
   }
 
@@ -1405,6 +1407,13 @@ buildOptions progConf showOrParseArgs =
   buildDistPref (\d flags -> flags { buildDistPref = d })
   showOrParseArgs
 
+  : option "j" ["jobs"]
+  "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)"
+  buildNumJobs (\v flags -> flags { buildNumJobs = v })
+  (optArg "NUM" (fmap Flag numJobsParser)
+   (Flag Nothing)
+   (map (Just . maybe "$ncpus" show) . flagToList))
+
   : programConfigurationPaths   progConf showOrParseArgs
   buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
 
@@ -1423,6 +1432,7 @@ instance Monoid BuildFlags where
     buildProgramArgs = mempty,
     buildVerbosity   = mempty,
     buildDistPref    = mempty,
+    buildNumJobs     = mempty,
     buildArgs        = mempty
   }
   mappend a b = BuildFlags {
@@ -1430,6 +1440,7 @@ instance Monoid BuildFlags where
     buildProgramArgs = combine buildProgramArgs,
     buildVerbosity   = combine buildVerbosity,
     buildDistPref    = combine buildDistPref,
+    buildNumJobs     = combine buildNumJobs,
     buildArgs        = combine buildArgs
   }
     where combine field = field a `mappend` field b
@@ -1807,6 +1818,18 @@ programConfigurationOptions progConf showOrParseArgs get set =
         ("give extra options to " ++ prog)
         get set
         (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
+
+-- | Common parser for the @-j@ flag of @build@ and @install@.
+numJobsParser :: ReadE (Maybe Int)
+numJobsParser = ReadE $ \s ->
+  case s of
+    "$ncpus" -> Right Nothing
+    _        -> case reads s of
+      [(n, "")]
+        | n < 1     -> Left "The number of jobs should be 1 or more."
+        | n > 64    -> Left "You probably don't want that many jobs."
+        | otherwise -> Right (Just n)
+      _             -> Left "The jobs value should be a number or '$ncpus'"
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils
