@@ -129,7 +129,7 @@ import Language.Haskell.Extension (Language(..), Extension(..)
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import Data.List
-import qualified Data.Map as M  ( empty )
+import qualified Data.Map as M  ( fromList, lookup )
 import Data.Maybe               ( catMaybes, fromMaybe )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
@@ -186,7 +186,7 @@ configure verbosity hcPath hcPkgPath conf0 = do
         compilerId             = CompilerId GHC ghcVersion,
         compilerLanguages      = languages,
         compilerExtensions     = extensions,
-        compilerProperties     = M.empty
+        compilerProperties     = M.fromList ghcInfo
       }
       compPlatform = targetPlatform ghcInfo
       conf4 = configureToolchain ghcProg ghcInfo conf3 -- configure gcc and ld
@@ -697,9 +697,9 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
   libBi <- hackThreadedFlag verbosity
              comp (withProfLib lbi) (libBuildInfo lib)
 
-  isGhcDynamic <- ghcDynamic verbosity ghcProg
-  dynamicTooSupported <- ghcSupportsDynamicToo verbosity ghcProg
-  let doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
+  let isGhcDynamic        = ghcDynamic comp
+      dynamicTooSupported = ghcSupportsDynamicToo comp
+      doingTH = EnableExtension TemplateHaskell `elem` allExtensions libBi
       forceVanillaLib = doingTH && not isGhcDynamic
       forceSharedLib  = doingTH &&     isGhcDynamic
       -- TH always needs default libs, even when building for profiling
@@ -917,9 +917,10 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg
+      comp       = compiler lbi
 
   exeBi <- hackThreadedFlag verbosity
-             (compiler lbi) (withProfExe lbi) (buildInfo exe)
+             comp (withProfExe lbi) (buildInfo exe)
 
   -- exeNameReal, the name that GHC really uses (with .exe on Windows)
   let exeNameReal = exeName' <.>
@@ -937,10 +938,9 @@ buildOrReplExe forRepl verbosity _pkg_descr lbi
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
-  isGhcDynamic        <- ghcDynamic verbosity ghcProg
-  dynamicTooSupported <- ghcSupportsDynamicToo verbosity ghcProg
-
-  let isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
+  let isGhcDynamic        = ghcDynamic comp
+      dynamicTooSupported = ghcSupportsDynamicToo comp
+      isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
       cSrcs         = cSources exeBi ++ [srcMainFile | not isHaskellMain]
       cObjs         = map (`replaceExtension` objExtension) cSrcs
       baseOpts   = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
@@ -1348,16 +1348,14 @@ registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
 -- -----------------------------------------------------------------------------
 -- Utils
 
-ghcDynamic :: Verbosity -> ConfiguredProgram -> IO Bool
-ghcDynamic verbosity ghcProg
-    = do xs <- getGhcInfo verbosity ghcProg
-         return $ case lookup "GHC Dynamic" xs of
-                  Just "YES" -> True
-                  _          -> False
+ghcLookupProperty :: String -> Compiler -> Bool
+ghcLookupProperty prop comp =
+  case M.lookup prop (compilerProperties comp) of
+    Just "YES" -> True
+    _          -> False
 
-ghcSupportsDynamicToo :: Verbosity -> ConfiguredProgram -> IO Bool
-ghcSupportsDynamicToo verbosity ghcProg
-    = do xs <- getGhcInfo verbosity ghcProg
-         return $ case lookup "Support dynamic-too" xs of
-                  Just "YES" -> True
-                  _          -> False
+ghcDynamic :: Compiler -> Bool
+ghcDynamic = ghcLookupProperty "GHC Dynamic"
+
+ghcSupportsDynamicToo :: Compiler -> Bool
+ghcSupportsDynamicToo = ghcLookupProperty "Support dynamic-too"
