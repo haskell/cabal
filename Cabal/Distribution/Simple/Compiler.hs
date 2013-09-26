@@ -69,7 +69,8 @@ module Distribution.Simple.Compiler (
         languageToFlags,
         unsupportedLanguages,
         extensionsToFlags,
-        unsupportedExtensions
+        unsupportedExtensions,
+        parmakeSupported
   ) where
 
 import Distribution.Compiler
@@ -79,7 +80,7 @@ import Language.Haskell.Extension (Language(Haskell98), Extension)
 
 import Control.Monad (liftM)
 import Data.List (nub)
-import qualified Data.Map as M (Map)
+import qualified Data.Map as M (Map, lookup)
 import Data.Maybe (catMaybes, isNothing)
 import System.Directory (canonicalizePath)
 
@@ -214,3 +215,12 @@ extensionsToFlags comp = nub . filter (not . null)
 
 extensionToFlag :: Compiler -> Extension -> Maybe Flag
 extensionToFlag comp ext = lookup ext (compilerExtensions comp)
+
+-- | Does this compiler support parallel --make mode?
+parmakeSupported :: Compiler -> Bool
+parmakeSupported comp =
+  case compilerFlavor comp of
+    GHC -> case M.lookup "Support parallel --make" (compilerProperties comp) of
+      Just "YES" -> True
+      _          -> False
+    _   -> False

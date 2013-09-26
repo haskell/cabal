@@ -25,7 +25,6 @@ import Distribution.Version
 import Language.Haskell.Extension   ( Language(..), Extension(..) )
 
 import Data.Monoid
-import qualified Data.Map as M      ( lookup )
 
 -- | A structured set of GHC options/flags
 --
@@ -265,11 +264,11 @@ renderGhcOptions comp opts
   , [ "-split-objs" | flagBool ghcOptSplitObjs ]
 
 
-  , let numJobs = fromFlagOrDefault 1 (ghcOptNumJobs opts) in
-    case M.lookup "Support parallel --make" (compilerProperties comp) of
-    Just "YES" ->
-      if numJobs > 1 then ["-j" ++ show numJobs] else []
-    _          -> []
+  , if parmakeSupported comp
+    then
+      let numJobs = fromFlagOrDefault 1 (ghcOptNumJobs opts)
+      in if numJobs > 1 then ["-j" ++ show numJobs] else []
+    else []
 
   --------------------
   -- Dynamic linking
