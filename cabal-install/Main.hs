@@ -94,6 +94,7 @@ import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
+import Distribution.Client.Utils              (determineNumJobs)
 
 import Distribution.PackageDescription
          ( Executable(..) )
@@ -265,8 +266,12 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
               comp platform conf configFlags'' configExFlags' extraArgs
 
 buildAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
-buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
-  let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+buildAction (buildFlags', buildExFlags) extraArgs globalFlags = do
+  let buildFlags  = buildFlags' {
+        buildNumJobs = Flag . Just . determineNumJobs . buildNumJobs $
+                       buildFlags'
+        }
+      distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                     (buildDistPref buildFlags)
       verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
       noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
@@ -623,8 +628,12 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
 
 testAction :: (TestFlags, BuildFlags, BuildExFlags) -> [String] -> GlobalFlags
               -> IO ()
-testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
-  let verbosity      = fromFlagOrDefault normal (testVerbosity testFlags)
+testAction (testFlags, buildFlags', buildExFlags) extraArgs globalFlags = do
+  let buildFlags  = buildFlags' {
+        buildNumJobs = Flag . Just . determineNumJobs . buildNumJobs $
+                       buildFlags'
+        }
+      verbosity      = fromFlagOrDefault normal (testVerbosity testFlags)
       distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                        (testDistPref testFlags)
       setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
@@ -650,9 +659,13 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
 benchmarkAction :: (BenchmarkFlags, BuildFlags, BuildExFlags)
                    -> [String] -> GlobalFlags
                    -> IO ()
-benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
+benchmarkAction (benchmarkFlags, buildFlags', buildExFlags)
                 extraArgs globalFlags = do
-  let verbosity      = fromFlagOrDefault normal
+  let buildFlags  = buildFlags' {
+        buildNumJobs = Flag . Just . determineNumJobs . buildNumJobs $
+                       buildFlags'
+        }
+      verbosity      = fromFlagOrDefault normal
                        (benchmarkVerbosity benchmarkFlags)
       distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                        (benchmarkDistPref benchmarkFlags)
@@ -808,8 +821,12 @@ reportAction reportFlags extraArgs globalFlags = do
     (flagToMaybe $ reportPassword reportFlags')
 
 runAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
-runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
-  let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
+runAction (buildFlags', buildExFlags) extraArgs globalFlags = do
+  let buildFlags  = buildFlags' {
+        buildNumJobs = Flag . Just . determineNumJobs . buildNumJobs $
+                       buildFlags'
+        }
+      verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
       distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                     (buildDistPref buildFlags)
       noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
