@@ -134,7 +134,7 @@ import Distribution.Version
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debugNoWrap, die, intercalate, withTempDirectory )
 import Distribution.Client.Utils
-         ( numberOfProcessors, inDir, mergeBy, MergeResult(..)
+         ( determineNumJobs, inDir, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
@@ -904,10 +904,7 @@ performInstallations verbosity
     platform = InstallPlan.planPlatform installPlan
     compid   = InstallPlan.planCompiler installPlan
 
-    numJobs  = case installNumJobs installFlags of
-      Cabal.NoFlag        -> 1
-      Cabal.Flag Nothing  -> numberOfProcessors
-      Cabal.Flag (Just n) -> n
+    numJobs  = determineNumJobs (installNumJobs installFlags)
     numFetchJobs  = 2
     parallelBuild = numJobs >= 2
 
