@@ -47,11 +47,12 @@ import Distribution.Compat.Exception
 import Control.Monad
          ( when, unless )
 import System.Directory
-         ( getTemporaryDirectory, doesFileExist, createDirectoryIfMissing )
+         ( getTemporaryDirectory, doesFileExist, createDirectoryIfMissing,
+           removeFile )
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
-         ( openFile, IOMode(WriteMode), hClose )
+         ( openFile, IOMode(AppendMode), hClose )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -1207,21 +1208,24 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
         configVerbosity = toFlag verbosity'
       }
 
+  -- Path to the optional log file.
+  mLogPath <- maybeLogPath
+
   -- Configure phase
   onFailure ConfigureFailed $ withJobLimit buildLimit $ do
     when (numJobs > 1) $ notice verbosity $
       "Configuring " ++ display pkgid ++ "..."
-    setup configureCommand configureFlags
+    setup configureCommand configureFlags mLogPath
 
   -- Build phase
     onFailure BuildFailed $ do
       when (numJobs > 1) $ notice verbosity $
         "Building " ++ display pkgid ++ "..."
-      setup buildCommand' buildFlags
+      setup buildCommand' buildFlags mLogPath
 
   -- Doc generation phase
       docsResult <- if shouldHaddock
-        then (do setup haddockCommand haddockFlags'
+        then (do setup haddockCommand haddockFlags' mLogPath
                  return DocsOk)
                `catchIO`   (\_ -> return DocsFailed)
                `catchExit` (\_ -> return DocsFailed)
@@ -1230,7 +1234,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
   -- Tests phase
       onFailure TestsFailed $ do
         when (testsEnabled && PackageDescription.hasTests pkg) $
-            setup Cabal.testCommand testFlags
+            setup Cabal.testCommand testFlags mLogPath
 
         let testsResult | testsEnabled = TestsOk
                         | otherwise = TestsNotTried
@@ -1238,16 +1242,16 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       -- Install phase
         onFailure InstallFailed $ criticalSection installLock $ do
           -- Capture installed package configuration file
-          maybePkgConf <- maybeGenPkgConf
+          maybePkgConf <- maybeGenPkgConf mLogPath
 
           -- Actual installation
           withWin32SelfUpgrade verbosity configFlags compid platform pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
               Nothing    -> do
-                setup Cabal.copyCommand copyFlags
+                setup Cabal.copyCommand copyFlags mLogPath
                 when shouldRegister $ do
-                  setup Cabal.registerCommand registerFlags
+                  setup Cabal.registerCommand registerFlags mLogPath
           return (Right (BuildOk docsResult testsResult maybePkgConf))
 
   where
@@ -1294,8 +1298,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
 
-    maybeGenPkgConf :: IO (Maybe Installed.InstalledPackageInfo)
-    maybeGenPkgConf =
+    maybeGenPkgConf :: Maybe FilePath
+                    -> IO (Maybe Installed.InstalledPackageInfo)
+    maybeGenPkgConf mLogPath =
       if shouldRegister then do
         tmp <- getTemporaryDirectory
         withTempFile tmp (tempTemplate "pkgConf") $ \pkgConfFile handle -> do
@@ -1303,7 +1308,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           let registerFlags' version = (registerFlags version) {
                 Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
               }
-          setup Cabal.registerCommand registerFlags'
+          setup Cabal.registerCommand registerFlags' mLogPath
           withFileContents pkgConfFile $ \pkgConfText ->
             case Installed.parseInstalledPackageInfo pkgConfText of
               Installed.ParseFailed perror    -> pkgConfParseFailed perror
@@ -1318,25 +1323,30 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
             ++ show perror
 
-    setup cmd flags  = do
+    maybeLogPath :: IO (Maybe FilePath)
+    maybeLogPath =
+      case useLogFile of
+         Nothing                 -> return Nothing
+         Just (mkLogFileName, _) -> do
+           let logFileName = mkLogFileName (packageId pkg)
+               logDir      = takeDirectory logFileName
+           unless (null logDir) $ createDirectoryIfMissing True logDir
+           logFileExists <- doesFileExist logFileName
+           when logFileExists $ removeFile logFileName
+           return (Just logFileName)
+
+    setup cmd flags mLogPath =
       Exception.bracket
-              (case useLogFile of
-               Nothing                   -> return Nothing
-               Just (mkLogFileName, _) -> do
-                 let logFileName = mkLogFileName (packageId pkg)
-                     logDir      = takeDirectory logFileName
-                 unless (null logDir) $ createDirectoryIfMissing True logDir
-                 logFile <- openFile logFileName WriteMode
-                 return (Just logFile))
-              (\mHandle -> case mHandle of
-                           Just handle -> hClose handle
-                           Nothing -> return ())
-              (\logFileHandle ->
-               setupWrapper verbosity
-                 scriptOptions { useLoggingHandle = logFileHandle
-                               , useWorkingDir    = workingDir }
-                 (Just pkg)
-                 cmd flags [])
+      (maybe (return Nothing)
+             (\path -> Just `fmap` openFile path AppendMode) mLogPath)
+      (maybe (return ()) hClose)
+      (\logFileHandle ->
+        setupWrapper verbosity
+          scriptOptions { useLoggingHandle = logFileHandle
+                        , useWorkingDir    = workingDir }
+          (Just pkg)
+          cmd flags [])
+
     reexec cmd = do
       -- look for our on executable file and re-exec ourselves using
       -- a helper program like sudo to elevate priviledges:
