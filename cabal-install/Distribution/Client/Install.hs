@@ -879,12 +879,12 @@ performInstallations verbosity
 
   -- With 'install -j' it can be a bit hard to tell whether a sandbox is used.
   whenUsingSandbox useSandbox $ \sandboxDir ->
-    when parallelBuild $
+    when parallelInstall $
       notice verbosity $ "Notice: installing into a sandbox located at "
                          ++ sandboxDir
 
-  jobControl   <- if parallelBuild then newParallelJobControl
-                                   else newSerialJobControl
+  jobControl   <- if parallelInstall then newParallelJobControl
+                                     else newSerialJobControl
   buildLimit   <- newJobLimit numJobs
   fetchLimit   <- newJobLimit (min numJobs numFetchJobs)
   installLock  <- newLock -- serialise installation
@@ -906,7 +906,7 @@ performInstallations verbosity
 
     numJobs  = determineNumJobs (installNumJobs installFlags)
     numFetchJobs  = 2
-    parallelBuild = numJobs >= 2
+    parallelInstall = numJobs >= 2
 
     setupScriptOptions index lock = SetupScriptOptions {
       useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
@@ -930,7 +930,7 @@ performInstallations verbosity
                            (configDistPref configFlags),
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing,
-      forceExternalSetupMethod = parallelBuild,
+      forceExternalSetupMethod = parallelInstall,
       setupCacheLock   = Just lock
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
@@ -963,14 +963,14 @@ performInstallations verbosity
         useDefaultTemplate
           | reportingLevel == DetailedReports = True
           | isJust installLogFile'            = False
-          | parallelBuild                     = True
+          | parallelInstall                   = True
           | otherwise                         = False
 
         overrideVerbosity :: Bool
         overrideVerbosity
           | reportingLevel == DetailedReports = True
           | isJust installLogFile'            = True
-          | parallelBuild                     = False
+          | parallelInstall                   = False
           | otherwise                         = False
 
     substLogFileName :: PathTemplate -> PackageIdentifier -> FilePath
