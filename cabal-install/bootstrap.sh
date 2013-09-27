@@ -122,7 +122,7 @@ fetch_pkg () {
   URL=${HACKAGE_URL}/${PKG}/${VER}/${PKG}-${VER}.tar.gz
   if which ${CURL} > /dev/null
   then
-    ${CURL} --fail -C - -O ${URL} || die "Failed to download ${PKG}."
+    ${CURL} -L --fail -C - -O ${URL} || die "Failed to download ${PKG}."
   elif which ${WGET} > /dev/null
   then
     ${WGET} -c ${URL} || die "Failed to download ${PKG}."
