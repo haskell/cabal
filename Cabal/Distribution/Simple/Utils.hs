@@ -968,7 +968,7 @@ withTempFileEx opts tmpDir template action =
 -- Creates a new temporary directory inside the given directory, making use
 -- of the template. The temp directory is deleted after use. For example:
 --
--- > withTempDirectory verbosity "src" "sdist." $ \tmpDir -> do ...
+-- > withTempDirectory verbosity False "src" "sdist." $ \tmpDir -> do ...
 --
 -- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
 -- @src/sdist.342@.
