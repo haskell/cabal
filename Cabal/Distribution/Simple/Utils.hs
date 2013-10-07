@@ -195,13 +195,19 @@ import Distribution.Version
     (Version(..))
 
 import Control.Exception (IOException, evaluate, throwIO)
-import System.Process (rawSystem, runProcess)
+import System.Process (rawSystem, CreateProcess(..))
 
 import Control.Concurrent (forkIO)
-import System.Process (runInteractiveProcess, waitForProcess)
+import System.Process (runInteractiveProcess, waitForProcess, proc, StdStream(..))
 #if __GLASGOW_HASKELL__ >= 702
 import System.Process (showCommandForUser)
 #endif
+
+#if !mingw32_HOST_OS
+import System.Posix.Signals ( installHandler, sigINT, sigQUIT, Handler(..) )
+#endif
+
+import System.Process.Internals ( runGenProcess_, defaultSignal )
 
 import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile
@@ -381,6 +387,34 @@ printRawCommandAndArgsAndEnv verbosity path args env
  | verbosity >= verbose   = putStrLn $ unwords (path : args)
  | otherwise              = return ()
 
+
+-- This is taken directly from the process package.
+-- The reason we need it is that runProcess doesn't handle ^C in the same
+-- way that rawSystem handles it, but rawSystem doesn't allow us to pass
+-- an environment.
+syncProcess :: String -> CreateProcess -> IO ExitCode
+#if mingw32_HOST_OS
+syncProcess _fun c = do
+  (_,_,_,p) <- createProcess c
+  waitForProcess p
+#else
+syncProcess fun c = do
+  -- The POSIX version of system needs to do some manipulation of signal
+  -- handlers.  Since we're going to be synchronously waiting for the child,
+  -- we want to ignore ^C in the parent, but handle it the default way
+  -- in the child (using SIG_DFL isn't really correct, it should be the
+  -- original signal handler, but the GHC RTS will have already set up
+  -- its own handler and we don't want to use that).
+  old_int  <- installHandler sigINT  Ignore Nothing
+  old_quit <- installHandler sigQUIT Ignore Nothing
+  (_,_,_,p) <- runGenProcess_ fun c
+                (Just defaultSignal) (Just defaultSignal)
+  r <- waitForProcess p
+  _ <- installHandler sigINT  old_int Nothing
+  _ <- installHandler sigQUIT old_quit Nothing
+  return r
+#endif  /* mingw32_HOST_OS */
+
 -- Exit with the same exitcode if the subcommand fails
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
 rawSystemExit verbosity path args = do
@@ -405,11 +439,10 @@ rawSystemExitWithEnv :: Verbosity
                      -> [String]
                      -> [(String, String)]
                      -> IO ()
-rawSystemExitWithEnv verbosity path args env = do
-    printRawCommandAndArgsAndEnv verbosity path args env
+rawSystemExitWithEnv verbosity path args env' = do
+    printRawCommandAndArgsAndEnv verbosity path args env'
     hFlush stdout
-    ph <- runProcess path args Nothing (Just env) Nothing Nothing Nothing
-    exitcode <- waitForProcess ph
+    exitcode <- syncProcess "rawSystemExitWithEnv" (proc path args) { env = Just env' }
     unless (exitcode == ExitSuccess) $ do
         debug verbosity $ path ++ " returned " ++ show exitcode
         exitWith exitcode
@@ -428,11 +461,19 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
     maybe (printRawCommandAndArgs       verbosity path args)
           (printRawCommandAndArgsAndEnv verbosity path args) menv
     hFlush stdout
-    ph <- runProcess path args mcwd menv inp out err
-    exitcode <- waitForProcess ph
+    exitcode <- syncProcess "rawSystemIOWithEnv" (proc path args) { cwd     = mcwd
+                                                                  , env     = menv
+                                                                  , std_in  = mbToStd inp
+                                                                  , std_out = mbToStd out
+                                                                  , std_err = mbToStd err }
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
     return exitcode
+  where
+  -- Also taken from System.Process
+  mbToStd :: Maybe Handle -> StdStream
+  mbToStd Nothing    = Inherit
+  mbToStd (Just hdl) = UseHandle hdl
 
 -- | Run a command and return its output.
 --
