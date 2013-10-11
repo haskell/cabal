@@ -108,6 +108,7 @@ import Distribution.ParseUtils
 import Distribution.Verbosity
 
 import Data.Char                ( isSpace )
+import qualified Data.Map as M  ( empty )
 import Data.Maybe               ( mapMaybe, catMaybes )
 import Data.Monoid              ( Monoid(..) )
 import Control.Monad            ( unless, when, filterM )
@@ -138,7 +139,8 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
         compilerId             = CompilerId Hugs version,
         compilerLanguages      = hugsLanguages,
-        compilerExtensions     = hugsLanguageExtensions
+        compilerExtensions     = hugsLanguageExtensions,
+        compilerProperties     = M.empty
       }
       compPlatform = Nothing
   return (comp, compPlatform, conf'')
