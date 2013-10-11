@@ -114,7 +114,7 @@ executable cabal
     -- NOTE: when updating build-depends, don't forget to update version regexps
     -- in bootstrap.sh.
     build-depends:
-        array      >= 0.1      && < 0.5,
+        array      >= 0.1      && < 0.6,
         base       >= 4        && < 5,
         bytestring >= 0.9      && < 1,
         Cabal      >= 1.19.0   && < 1.20,
