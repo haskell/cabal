@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Install
@@ -33,10 +34,10 @@ import qualified Data.Set as S
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Control.Exception as Exception
-         ( Exception(toException), bracket, catches, Handler(Handler), handleJust
-         , IOException, SomeException )
+         ( Exception(fromException, toException), bracket, catches
+         , Handler(Handler), handleJust, IOException, SomeException )
 import System.Exit
-         ( ExitCode )
+         ( ExitCode(..) )
 import Distribution.Compat.Exception
          ( catchIO, catchExit )
 import Control.Monad
@@ -187,10 +188,10 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
                                    then installFailedInSandbox else [])
     -- TODO: use a better error message, remove duplication.
     installFailedInSandbox =
-      "\nNote: when using a sandbox, all packages are required to have \
-      \consistent dependencies. \
-      \Try reinstalling/unregistering the offending packages or \
-      \recreating the sandbox."
+      "\nNote: when using a sandbox, all packages are required to have "
+      ++ "consistent dependencies. "
+      ++ "Try reinstalling/unregistering the offending packages or "
+      ++ "recreating the sandbox."
     logMsg message rest = debugNoWrap verbosity message >> rest
 
 -- TODO: Make InstallContext a proper datatype with documented fields.
@@ -801,17 +802,28 @@ printBuildFailures plan =
       DependentFailed pkgid -> " depends on " ++ display pkgid
                             ++ " which failed to install."
       DownloadFailed  e -> " failed while downloading the package."
-                        ++ " The exception was:\n  " ++ show e
+                        ++ showException e
       UnpackFailed    e -> " failed while unpacking the package."
-                        ++ " The exception was:\n  " ++ show e
+                        ++ showException e
       ConfigureFailed e -> " failed during the configure step."
-                        ++ " The exception was:\n  " ++ show e
+                        ++ showException e
       BuildFailed     e -> " failed during the building phase."
-                        ++ " The exception was:\n  " ++ show e
+                        ++ showException e
       TestsFailed     e -> " failed during the tests phase."
-                        ++ " The exception was:\n  " ++ show e
+                        ++ showException e
       InstallFailed   e -> " failed during the final install step."
-                        ++ " The exception was:\n  " ++ show e
+                        ++ showException e
+
+    showException e   =  " The exception was:\n  " ++ show e ++ maybeOOM e
+#ifdef mingw32_HOST_OS
+    maybeOOM _        = ""
+#else
+    maybeOOM e                    = maybe "" onExitFailure (fromException e)
+    onExitFailure (ExitFailure 9) =
+      "\nThis may be due to an out-of-memory condition."
+    onExitFailure _               = ""
+#endif
+
 
 -- | If we're working inside a sandbox and some add-source deps were installed,
 -- update the timestamps of those deps.
