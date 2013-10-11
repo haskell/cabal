@@ -116,6 +116,7 @@ import Language.Haskell.Extension
 
 import Control.Monad            ( unless, when )
 import Data.List
+import qualified Data.Map as M  ( empty )
 import Data.Maybe               ( catMaybes )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory         ( removeFile, renameFile,
@@ -155,7 +156,8 @@ configure verbosity hcPath hcPkgPath conf = do
   let comp = Compiler {
         compilerId             = CompilerId LHC lhcVersion,
         compilerLanguages      = languages,
-        compilerExtensions     = extensions
+        compilerExtensions     = extensions,
+        compilerProperties     = M.empty
       }
       conf''' = configureToolchain lhcProg conf'' -- configure gcc and ld
       compPlatform = Nothing
