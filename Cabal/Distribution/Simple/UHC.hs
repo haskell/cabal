@@ -53,6 +53,7 @@ module Distribution.Simple.UHC (
 
 import Control.Monad
 import Data.List
+import qualified Data.Map as M ( empty )
 import Distribution.Compat.ReadP
 import Distribution.InstalledPackageInfo
 import Distribution.Package
@@ -86,7 +87,8 @@ configure verbosity hcPath _hcPkgPath conf = do
   let comp = Compiler {
                compilerId         =  CompilerId UHC uhcVersion,
                compilerLanguages  =  uhcLanguages,
-               compilerExtensions =  uhcLanguageExtensions
+               compilerExtensions =  uhcLanguageExtensions,
+               compilerProperties =  M.empty
              }
       compPlatform = Nothing
   return (comp, compPlatform, conf')
