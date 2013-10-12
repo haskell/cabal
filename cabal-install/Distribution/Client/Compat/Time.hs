@@ -16,25 +16,33 @@ import System.Time (ClockTime(..), getClockTime
 
 #if defined mingw32_HOST_OS
 
-import Data.Int         (Int32)
-import Data.Word        (Word32)
-import Foreign          (Ptr, allocaBytes, peekByteOff)
-import Foreign.C.Types  (CChar)
-import Foreign.C.String (withCString)
-import System.IO.Error  (mkIOError, doesNotExistErrorType)
+import Data.Bits          ((.|.), bitSize, unsafeShiftL)
+import Data.Int           (Int32)
+import Data.Word          (Word64)
+import Foreign            (allocaBytes, peekByteOff)
+import System.IO.Error    (mkIOError, doesNotExistErrorType)
+import System.Win32.Types (BOOL, DWORD, LPCTSTR, LPVOID, withTString)
 
-type WIN32_FILE_ATTRIBUTE_DATA = Ptr ()
-type LPCSTR = Ptr CChar
 
-foreign import stdcall "Windows.h GetFileAttributesExA"
-  c_getFileAttributesEx :: LPCSTR -> Int32
-                           -> WIN32_FILE_ATTRIBUTE_DATA -> IO Bool
+foreign import stdcall "windows.h GetFileAttributesExW"
+  c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> IO BOOL
+
+getFileAttributesEx :: String -> LPVOID -> IO BOOL
+getFileAttributesEx path lpFileInformation =
+  withTString path $ \c_path ->
+      c_getFileAttributesEx c_path getFileExInfoStandard lpFileInformation
+
+getFileExInfoStandard :: Int32
+getFileExInfoStandard = 0
 
 size_WIN32_FILE_ATTRIBUTE_DATA :: Int
 size_WIN32_FILE_ATTRIBUTE_DATA = 36
 
 index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime :: Int
 index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime = 20
+
+index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime :: Int
+index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime = 24
 
 #else
 
@@ -60,21 +68,32 @@ getModTime :: FilePath -> IO EpochTime
 #if defined mingw32_HOST_OS
 
 -- Directly against the Win32 API.
-getModTime path = withCString path $ \file ->
-  allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
-    res <- c_getFileAttributesEx file 0 info
-    if not res
-      then do
-        let err = mkIOError doesNotExistErrorType
-                  "Distribution.Client.Compat.Time.getModTime"
-                  Nothing (Just path)
-        ioError err
-      else do
-        dword <- peekByteOff info
-                 index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime
-        -- TODO: Convert Windows seconds to POSIX seconds. ATM we don't care
-        -- since we only use the value for comparisons.
-        return $! fromIntegral (dword :: Word32)
+getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
+  res <- getFileAttributesEx path info
+  if not res
+    then do
+      let err = mkIOError doesNotExistErrorType
+                "Distribution.Client.Compat.Time.getModTime"
+                Nothing (Just path)
+      ioError err
+    else do
+      dwLow  <- peekByteOff info
+                index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwLowDateTime
+      dwHigh <- peekByteOff info
+                index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime
+      return $! windowsTimeToPOSIXSeconds dwLow dwHigh
+        where
+          windowsTimeToPOSIXSeconds :: DWORD -> DWORD -> EpochTime
+          windowsTimeToPOSIXSeconds dwLow dwHigh =
+            let wINDOWS_TICK      = 10000000
+                sEC_TO_UNIX_EPOCH = 11644473600
+                qwTime = (fromIntegral dwHigh `unsafeShiftL` bitSize dwHigh)
+                         .|. (fromIntegral dwLow)
+                res    = ((qwTime :: Word64) `div` wINDOWS_TICK)
+                         - sEC_TO_UNIX_EPOCH
+            -- TODO: What if the result is not representable as POSIX seconds?
+            -- Probably fine to return garbage.
+            in fromIntegral res
 #else
 
 -- Directly against the unix library.
