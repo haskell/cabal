@@ -195,19 +195,22 @@ import Distribution.Version
     (Version(..))
 
 import Control.Exception (IOException, evaluate, throwIO)
-import System.Process (rawSystem, CreateProcess(..))
+import System.Process (rawSystem)
+import qualified System.Process as Process (CreateProcess(..))
 
 import Control.Concurrent (forkIO)
-import System.Process (runInteractiveProcess, waitForProcess, proc, StdStream(..))
+import System.Process (runInteractiveProcess, waitForProcess, proc,
+                       StdStream(..))
 #if __GLASGOW_HASKELL__ >= 702
 import System.Process (showCommandForUser)
 #endif
 
-#if !mingw32_HOST_OS
-import System.Posix.Signals ( installHandler, sigINT, sigQUIT, Handler(..) )
+#ifndef mingw32_HOST_OS
+import System.Posix.Signals (installHandler, sigINT, sigQUIT, Handler(..))
+import System.Process.Internals (defaultSignal, runGenProcess_)
+#else
+import System.Process (createProcess)
 #endif
-
-import System.Process.Internals ( runGenProcess_, defaultSignal )
 
 import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile
@@ -392,7 +395,7 @@ printRawCommandAndArgsAndEnv verbosity path args env
 -- The reason we need it is that runProcess doesn't handle ^C in the same
 -- way that rawSystem handles it, but rawSystem doesn't allow us to pass
 -- an environment.
-syncProcess :: String -> CreateProcess -> IO ExitCode
+syncProcess :: String -> Process.CreateProcess -> IO ExitCode
 #if mingw32_HOST_OS
 syncProcess _fun c = do
   (_,_,_,p) <- createProcess c
@@ -439,10 +442,11 @@ rawSystemExitWithEnv :: Verbosity
                      -> [String]
                      -> [(String, String)]
                      -> IO ()
-rawSystemExitWithEnv verbosity path args env' = do
-    printRawCommandAndArgsAndEnv verbosity path args env'
+rawSystemExitWithEnv verbosity path args env = do
+    printRawCommandAndArgsAndEnv verbosity path args env
     hFlush stdout
-    exitcode <- syncProcess "rawSystemExitWithEnv" (proc path args) { env = Just env' }
+    exitcode <- syncProcess "rawSystemExitWithEnv" (proc path args)
+                { Process.env = Just env }
     unless (exitcode == ExitSuccess) $ do
         debug verbosity $ path ++ " returned " ++ show exitcode
         exitWith exitcode
@@ -461,11 +465,12 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
     maybe (printRawCommandAndArgs       verbosity path args)
           (printRawCommandAndArgsAndEnv verbosity path args) menv
     hFlush stdout
-    exitcode <- syncProcess "rawSystemIOWithEnv" (proc path args) { cwd     = mcwd
-                                                                  , env     = menv
-                                                                  , std_in  = mbToStd inp
-                                                                  , std_out = mbToStd out
-                                                                  , std_err = mbToStd err }
+    exitcode <- syncProcess "rawSystemIOWithEnv" (proc path args)
+                { Process.cwd     = mcwd
+                , Process.env     = menv
+                , Process.std_in  = mbToStd inp
+                , Process.std_out = mbToStd out
+                , Process.std_err = mbToStd err }
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
     return exitcode
