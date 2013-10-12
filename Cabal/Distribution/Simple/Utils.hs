@@ -718,7 +718,8 @@ getDirectoryContentsRecursive topdir = recurseDirectories [""]
       return (files ++ files')
 
       where
-        collect files dirs' []              = return (reverse files, reverse dirs')
+        collect files dirs' []              = return (reverse files
+                                                     ,reverse dirs')
         collect files dirs' (entry:entries) | ignore entry
                                             = collect files dirs' entries
         collect files dirs' (entry:entries) = do
