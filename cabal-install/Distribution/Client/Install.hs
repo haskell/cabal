@@ -34,8 +34,12 @@ import qualified Data.Set as S
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Control.Exception as Exception
-         ( Exception(fromException, toException), bracket, catches
+         ( Exception(toException), bracket, catches
          , Handler(Handler), handleJust, IOException, SomeException )
+#ifndef mingw32_HOST_OS
+import Control.Exception as Exception
+         ( Exception(fromException) )
+#endif
 import System.Exit
          ( ExitCode(..) )
 import Distribution.Compat.Exception
