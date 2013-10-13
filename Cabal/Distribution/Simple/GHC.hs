@@ -129,7 +129,7 @@ import Language.Haskell.Extension (Language(..), Extension(..)
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import Data.List
-import qualified Data.Map as M  ( fromList, lookup )
+import qualified Data.Map as M  ( Map, fromList, lookup )
 import Data.Maybe               ( catMaybes, fromMaybe )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
@@ -181,15 +181,16 @@ configure verbosity hcPath hcPkgPath conf0 = do
   extensions <- getExtensions verbosity ghcProg
 
   ghcInfo <- getGhcInfo verbosity ghcProg
+  let ghcInfoMap = M.fromList ghcInfo
 
   let comp = Compiler {
-        compilerId             = CompilerId GHC ghcVersion,
-        compilerLanguages      = languages,
-        compilerExtensions     = extensions,
-        compilerProperties     = M.fromList ghcInfo
+        compilerId         = CompilerId GHC ghcVersion,
+        compilerLanguages  = languages,
+        compilerExtensions = extensions,
+        compilerProperties = ghcInfoMap
       }
       compPlatform = targetPlatform ghcInfo
-      conf4 = configureToolchain ghcProg ghcInfo conf3 -- configure gcc and ld
+      conf4 = configureToolchain ghcProg ghcInfoMap conf3 -- configure gcc and ld
   return (comp, compPlatform, conf4)
 
 targetPlatform :: [(String, String)] -> Maybe Platform
@@ -266,7 +267,7 @@ guessHsc2hsFromGhcPath = guessToolFromGhcPath hsc2hsProgram
 
 -- | Adjust the way we find and configure gcc and ld
 --
-configureToolchain :: ConfiguredProgram -> [(String, String)]
+configureToolchain :: ConfiguredProgram -> M.Map String String
                                         -> ProgramConfiguration
                                         -> ProgramConfiguration
 configureToolchain ghcProg ghcInfo =
@@ -321,7 +322,7 @@ configureToolchain ghcProg ghcInfo =
     gccLinkerFlags = getFlags "Gcc Linker flags"
     ldLinkerFlags  = getFlags "Ld Linker flags"
 
-    getFlags key = case lookup key ghcInfo of
+    getFlags key = case M.lookup key ghcInfo of
                    Nothing -> []
                    Just flags ->
                        case reads flags of
