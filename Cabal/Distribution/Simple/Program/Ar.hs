@@ -15,35 +15,37 @@ module Distribution.Simple.Program.Ar (
     multiStageProgramInvocation,
   ) where
 
-import Control.Applicative ((<$>))
-import Control.Exception (evaluate)
-import Control.Monad (when)
+import Control.Monad (unless)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import qualified Data.ByteString.Lazy as BSL
 import Data.Char (isSpace)
+import Distribution.Compat.CopyFile (filesEqual)
 import Distribution.Simple.Program.Types
          ( ConfiguredProgram(..) )
 import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
+import Distribution.Simple.Utils
+         ( dieWithLocation, withTempDirectory )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Verbosity
          ( Verbosity, deafening, verbose )
-import System.Directory
-         ( renameFile, doesFileExist, removeFile )
-import System.FilePath
-         ( (<.>) )
+import System.Directory (doesFileExist, renameFile)
+import System.FilePath ((</>), splitFileName)
 import System.IO
-         ( IOMode(ReadMode, ReadWriteMode), SeekMode(AbsoluteSeek)
-         , hSeek, withBinaryFile, hFileSize )
+         ( Handle, IOMode(ReadWriteMode), SeekMode(AbsoluteSeek)
+         , hFileSize, hSeek, withBinaryFile )
 
 -- | Call @ar@ to create a library archive from a bunch of object files.
 --
 createArLibArchive :: Verbosity -> ConfiguredProgram
                    -> FilePath -> [FilePath] -> IO ()
-createArLibArchive verbosity ar target files = do
+createArLibArchive verbosity ar targetPath files = do
+
+  let (targetDir, targetName) = splitFileName targetPath
+  withTempDirectory verbosity targetDir targetName $ \ tmpDir -> do
+  let tmpPath = tmpDir </> targetName
 
   -- The args to use with "ar" are actually rather subtle and system-dependent.
   -- In particular we have the following issues:
@@ -58,14 +60,6 @@ createArLibArchive verbosity ar target files = do
   -- Our solution is to use "ar r" in the simple case when one call is enough.
   -- When we need to call ar multiple times we use "ar q" and for the last
   -- call on OSX we use "ar qs" so that it'll make the index.
-  --
-  -- "ar" by default writes file modification time stamps, which would
-  -- generates different outputs for same inputs and breaks re-linking
-  -- avoidance. We set these time stamps to 0 ourselves.
-  --
-  -- If there is an old target file and the are produces the very same output,
-  -- we avoid touching the old target file to help tools like GHC and make
-  -- exiting early.
 
   let simpleArgs  = case buildOS of
              OSX -> ["-r", "-s"]
@@ -76,99 +70,90 @@ createArLibArchive verbosity ar target files = do
              OSX -> ["-q", "-s"]
              _   -> ["-q"]
 
-      tmpTarget   = target <.> "tmp"
-
-      extraArgs   = verbosityOpts verbosity ++ [tmpTarget]
+      extraArgs   = verbosityOpts verbosity ++ [tmpPath]
 
       simple  = programInvocation ar (simpleArgs  ++ extraArgs)
       initial = programInvocation ar (initialArgs ++ extraArgs)
       middle  = initial
       final   = programInvocation ar (finalArgs   ++ extraArgs)
 
-  -- Delete old .a.tmp file (we use -r, which fails if the file is malformed)
-  tmpExists <- doesFileExist tmpTarget
-  when tmpExists $ removeFile tmpTarget
-
   sequence_
-    [ runProgramInvocation verbosity inv
-    | inv <- multiStageProgramInvocation
-               simple (initial, middle, final) files ]
+        [ runProgramInvocation verbosity inv
+        | inv <- multiStageProgramInvocation
+                   simple (initial, middle, final) files ]
 
-  -- If this "ar" invocation has actually created something new,
-  -- copy the temporary file to the target.
-
-  -- First wipe off the timestamp from the temporary .a archive.
-  -- We could use "ar -D", but many platforms don't support that.
-  arFileWipeTimeStamps tmpTarget
-
-  writeTarget <- do
-    oldExists <- doesFileExist target
-    if not oldExists then return True
-                     else not <$> filesEqual target tmpTarget
-
-  when writeTarget $ renameFile tmpTarget target
+  wipeMetadata tmpPath
+  equal <- filesEqual tmpPath targetPath
+  unless equal $ renameFile tmpPath targetPath
 
   where
     verbosityOpts v | v >= deafening = ["-v"]
                     | v >= verbose   = []
                     | otherwise      = ["-c"]
 
+-- | @ar@ by default includes various metadata for each object file in their
+-- respective headers, so the output can differ for the same inputs, making
+-- it difficult to avoid re-linking. GNU @ar@(1) has a deterministic mode
+-- (@-D@) flag that always writes zero for the mtime, UID and GID, and 0644
+-- for the file mode. However detecting whether @-D@ is supported seems
+-- rather harder than just re-implementing this feature.
+wipeMetadata :: FilePath -> IO ()
+wipeMetadata path = do
+    -- Check for existence first (ReadWriteMode would create one otherwise)
+    exists <- doesFileExist path
+    unless exists $ wipeError "Temporary file disappeared"
+    withBinaryFile path ReadWriteMode $ \ h -> hFileSize h >>= wipeArchive h
 
--- | Compares two files for equality.
--- Uses lazy ByteStrings to not load them into memory.
-filesEqual :: FilePath -> FilePath -> IO Bool
-filesEqual f1 f2 =
-  withBinaryFile f1 ReadMode $ \h1 ->
-    withBinaryFile f2 ReadMode $ \h2 -> do
-      c1 <- BSL.hGetContents h1
-      c2 <- BSL.hGetContents h2
-      evaluate (c1 == c2)
+  where
+    wipeError msg = dieWithLocation path Nothing $
+        "Distribution.Simple.Program.Ar.wipeMetadata: " ++ msg
+    archLF = "!<arch>\x0a" -- global magic, 8 bytes
+    x60LF = "\x60\x0a" -- header magic, 2 bytes
+    metadata = BS.concat
+        [ "0           " -- mtime, 12 bytes
+        , "0     " -- UID, 6 bytes
+        , "0     " -- GID, 6 bytes
+        , "0644    " -- mode, 8 bytes
+        ]
+    headerSize = 60
 
+    -- http://en.wikipedia.org/wiki/Ar_(Unix)#File_format_details
+    wipeArchive :: Handle -> Integer -> IO ()
+    wipeArchive h archiveSize = do
+        global <- BS.hGet h (BS.length archLF)
+        unless (global == archLF) $ wipeError "Bad global header"
+        wipeHeader (toInteger $ BS.length archLF)
 
--- | Removes the time stamps of all files in the .a file.
-arFileWipeTimeStamps :: FilePath -> IO ()
-arFileWipeTimeStamps path = do
+      where
+        wipeHeader :: Integer -> IO ()
+        wipeHeader offset = case compare offset archiveSize of
+            EQ -> return ()
+            GT -> wipeError (atOffset "Archive truncated")
+            LT -> do
+                header <- BS.hGet h headerSize
+                unless (BS.length header == headerSize) $
+                    wipeError (atOffset "Short header")
+                let magic = BS.drop 58 header
+                unless (magic == x60LF) . wipeError . atOffset $
+                    "Bad magic " ++ show magic ++ " in header"
 
-  -- Check for file existence (ReadWriteMode would create one otherwise)
-  exsists <- doesFileExist path
-  when (not exsists) $ error $ "arFileWipeTimeStamps: No such file: " ++ path
+                let name = BS.take 16 header
+                let size = BS.take 10 $ BS.drop 48 header
+                objSize <- case reads (BS8.unpack size) of
+                    [(n, s)] | all isSpace s -> return n
+                    _ -> wipeError (atOffset "Bad file size in header")
 
-  withBinaryFile path ReadWriteMode $ \h -> do
+                let replacement = BS.concat [ name, metadata, size, magic ]
+                unless (BS.length replacement == headerSize) $
+                    wipeError (atOffset "Something has gone terribly wrong")
+                hSeek h AbsoluteSeek offset
+                BS.hPut h replacement
 
-    -- We iterate through the archive stepping from one file header to the next,
-    -- setting the time stamp field to zero.
-    -- The size field tells us where the next header is.
-    -- See: http://en.wikipedia.org/wiki/Ar_%28Unix%29.
-
-    archiveSize <- hFileSize h
-
-    let go entryOffset | entryOffset == archiveSize = return () -- done, at end
-                       | entryOffset >  archiveSize = die "Archive truncated"
-                       -- Headers are aligned to even bytes
-                       | odd entryOffset            = go (entryOffset + 1)
-                       | otherwise = do
-
-          -- Sanity check
-          magic <- goto 58 >> BS.hGet h 2
-          when (magic /= "\x60\x0a") $ die "Bad ar magic"
-
-          -- Get size (to find following file)
-          size <- goto 48 >> parseSize . BS8.unpack <$> BS.hGet h 10
-
-          -- Wipe time stamp
-          goto 16 >> BS.hPut h "0           " -- 12 chars
-
-          -- Seek to next file at header + file size
-          go (entryOffset + 60 + size)
+                let nextHeader = offset + toInteger headerSize +
+                        -- Odd objects are padded with an extra '\x0a'
+                        if odd objSize then objSize + 1 else objSize
+                hSeek h AbsoluteSeek nextHeader
+                wipeHeader nextHeader
 
           where
-            goto pos = hSeek h AbsoluteSeek (entryOffset + pos)
-
-            parseSize x = case reads x of
-              [(s, r)] | all isSpace r -> s
-              _                        -> die "Malformed header"
-
-            die msg = error $ "arFileWipeTimeStamps: " ++ path ++ ": "
-                              ++ msg ++ " at offset " ++ show entryOffset
-
-    go 8 -- 8 == size of global header, before first file header
+            atOffset msg = msg ++ " at offset " ++ show offset
