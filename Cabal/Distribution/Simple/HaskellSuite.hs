@@ -4,6 +4,7 @@ import Control.Monad
 import Control.Applicative
 import Data.Maybe
 import Data.Version
+import qualified Data.Map as M (empty)
 
 import Distribution.Simple.Program
 import Distribution.Simple.Compiler as Compiler
@@ -73,7 +74,8 @@ configure verbosity mbHcPath hcPkgPath conf0 = do
         comp = Compiler {
           compilerId             = CompilerId (HaskellSuite compName) compVersion,
           compilerLanguages      = languages,
-          compilerExtensions     = extensions
+          compilerExtensions     = extensions,
+          compilerProperties     = M.empty
         }
 
       return (comp, confdCompiler, conf2)
