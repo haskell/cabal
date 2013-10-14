@@ -67,6 +67,7 @@ import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.LHC  as LHC
 import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
+import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Control.Monad (when, unless)
 import System.Directory
@@ -175,6 +176,9 @@ install pkg_descr lbi flags = do
      NHC  -> do withLibLBI pkg_descr lbi $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)
                 withExe pkg_descr $ NHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref)
      UHC  -> do withLib pkg_descr $ UHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
+     HaskellSuite {} ->
+       withLib pkg_descr $
+         HaskellSuite.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
      _    -> die $ "installing with "
                 ++ display (compilerFlavor (compiler lbi))
                 ++ " is not implemented"

@@ -170,6 +170,7 @@ library
     Distribution.Simple.Configure
     Distribution.Simple.GHC
     Distribution.Simple.Haddock
+    Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc
     Distribution.Simple.Hugs
     Distribution.Simple.Install
