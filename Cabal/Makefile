@@ -8,7 +8,7 @@ KIND=rc
 PREFIX=/usr/local
 HC=ghc
 GHCFLAGS=-Wall
-SSH-USER=tibbe
+#SSH-USER=SOME_USER
 
 all: build
 
