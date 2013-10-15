@@ -71,7 +71,8 @@ import Data.Int      (Int64)
 import Data.Bits     (Bits, shiftL, testBit)
 import Data.List     (foldl')
 import Numeric       (readOct, showOct)
-import Control.Monad (MonadPlus(mplus), when)
+import Control.Applicative (Applicative(..))
+import Control.Monad (MonadPlus(mplus), when, ap, liftM)
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -675,6 +676,13 @@ data Partial a = Error String | Ok a
 partial :: Partial a -> Either String a
 partial (Error msg) = Left msg
 partial (Ok x)      = Right x
+
+instance Functor Partial where
+    fmap          = liftM
+
+instance Applicative Partial where
+    pure          = return
+    (<*>)         = ap
 
 instance Monad Partial where
     return        = Ok
