@@ -130,7 +130,7 @@ import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import Data.List
 import qualified Data.Map as M  ( Map, fromList, lookup )
-import Data.Maybe               ( catMaybes, fromMaybe )
+import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
          ( removeFile, getDirectoryContents, doesFileExist
@@ -295,28 +295,44 @@ configureToolchain ghcProg ghcInfo =
     isWindows   = case buildOS of Windows -> True; _ -> False
     binPrefix   = ""
 
-    -- on Windows finding and configuring ghc's gcc & binutils is a bit special
-    extraGccPath
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "gcc.exe"
-      | otherwise                       = baseDir     </> "gcc.exe"
-    extraLdPath
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "ld.exe"
-      | otherwise                       = libDir      </> "ld.exe"
-    extraArPath
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++ "ar.exe"
-      | otherwise                       = libDir      </> "ar.exe"
-    extraStripPath
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix ++
-                                          "strip.exe"
-      | otherwise                       = libDir      </> "strip.exe"
+    mkExtraPath :: Maybe FilePath -> FilePath -> [FilePath]
+    mkExtraPath mbPath mingwPath | isWindows = mbDir ++ [mingwPath]
+                                 | otherwise = mbDir
+      where
+        mbDir = maybeToList . fmap takeDirectory $ mbPath
 
-    findProg :: Program -> FilePath
+    extraGccPath   = mkExtraPath mbGccLocation   windowsExtraGccDir
+    extraLdPath    = mkExtraPath mbLdLocation    windowsExtraLdDir
+    extraArPath    = mkExtraPath mbArLocation    windowsExtraArDir
+    extraStripPath = mkExtraPath mbStripLocation windowsExtraStripDir
+
+    -- on Windows finding and configuring ghc's gcc & binutils is a bit special
+    windowsExtraGccDir
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
+      | otherwise                       = baseDir
+    windowsExtraLdDir
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
+      | otherwise                       = libDir
+    windowsExtraArDir
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
+      | otherwise                       = libDir
+    windowsExtraStripDir
+      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
+      | otherwise                       = libDir
+
+    findProg :: Program -> [FilePath]
              -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
     findProg prog extraPath v searchpath =
         programFindLocation prog v searchpath'
       where
-        searchpath' | isWindows = ProgramSearchPathDir extraPath : searchpath
-                    | otherwise = searchpath
+        searchpath' = (map ProgramSearchPathDir extraPath) ++ searchpath
+
+    -- Read tool locations from the 'ghc --info' output. Useful when
+    -- cross-compiling.
+    mbGccLocation   = M.lookup "C compiler command" ghcInfo
+    mbLdLocation    = M.lookup "ld command" ghcInfo
+    mbArLocation    = M.lookup "ar command" ghcInfo
+    mbStripLocation = M.lookup "strip command" ghcInfo
 
     ccFlags        = getFlags "C compiler flags"
     gccLinkerFlags = getFlags "Gcc Linker flags"
