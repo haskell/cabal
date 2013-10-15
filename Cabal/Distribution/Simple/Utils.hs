@@ -408,14 +408,20 @@ syncProcess fun c = do
   -- in the child (using SIG_DFL isn't really correct, it should be the
   -- original signal handler, but the GHC RTS will have already set up
   -- its own handler and we don't want to use that).
-  old_int  <- installHandler sigINT  Ignore Nothing
-  old_quit <- installHandler sigQUIT Ignore Nothing
-  (_,_,_,p) <- runGenProcess_ fun c
-                (Just defaultSignal) (Just defaultSignal)
+  (_,_,_,p) <- Exception.bracket (installHandlers) (restoreHandlers) $
+               (\_ -> runGenProcess_ fun c
+                      (Just defaultSignal) (Just defaultSignal))
   r <- waitForProcess p
-  _ <- installHandler sigINT  old_int Nothing
-  _ <- installHandler sigQUIT old_quit Nothing
   return r
+    where
+      installHandlers = do
+        old_int  <- installHandler sigINT  Ignore Nothing
+        old_quit <- installHandler sigQUIT Ignore Nothing
+        return (old_int, old_quit)
+      restoreHandlers (old_int, old_quit) = do
+        _ <- installHandler sigINT  old_int Nothing
+        _ <- installHandler sigQUIT old_quit Nothing
+        return ()
 #endif  /* mingw32_HOST_OS */
 
 -- Exit with the same exitcode if the subcommand fails
@@ -471,9 +477,9 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
                 , Process.std_in  = mbToStd inp
                 , Process.std_out = mbToStd out
                 , Process.std_err = mbToStd err }
+                `Exception.finally` (mapM_ maybeClose [inp, out, err])
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
-    mapM_ maybeClose [inp, out, err]
     return exitcode
   where
   -- Also taken from System.Process
