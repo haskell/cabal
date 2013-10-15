@@ -175,7 +175,7 @@ import System.Directory
 import System.IO
     ( Handle, openFile, openBinaryFile, openBinaryTempFile
     , IOMode(ReadMode), hSetBinaryMode
-    , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
+    , hGetContents, stdin, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( isDoesNotExistError, isAlreadyExistsError
     , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
@@ -473,9 +473,15 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
                 , Process.std_err = mbToStd err }
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
+    mapM_ maybeClose [inp, out, err]
     return exitcode
   where
   -- Also taken from System.Process
+  maybeClose :: Maybe Handle -> IO ()
+  maybeClose (Just  hdl)
+    | hdl /= stdin && hdl /= stdout && hdl /= stderr = hClose hdl
+  maybeClose _ = return ()
+
   mbToStd :: Maybe Handle -> StdStream
   mbToStd Nothing    = Inherit
   mbToStd (Just hdl) = UseHandle hdl
