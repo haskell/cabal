@@ -6,12 +6,12 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- This module deals with the @haddock@ and @hscolour@ commands. Sadly this is
--- a rather complicated module. It deals with two versions of haddock (0.x and
--- 2.x). It has to do pre-processing for haddock 0.x which involves
--- \'unlit\'ing and using @-DHADDOCK@ for any source code that uses @cpp@. It
--- uses information about installed packages (from @ghc-pkg@) to find the
--- locations of documentation for dependent packages, so it can create links.
+-- This module deals with the @haddock@ and @hscolour@ commands. Sadly this is a
+-- rather complicated module. It deals with two versions of haddock (0.x and
+-- 2.x). It has to do pre-processing which involves \'unlit\'ing and using
+-- @-D__HADDOCK__@ for any source code that uses @cpp@. It uses information
+-- about installed packages (from @ghc-pkg@) to find the locations of
+-- documentation for dependent packages, so it can create links.
 --
 -- The @hscolour@ support allows generating html versions of the original
 -- source, with coloured syntax highlighting.
@@ -219,7 +219,7 @@ haddock pkg_descr lbi suffixes flags = do
               let bi = buildInfo exe
               exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
               exeArgs' <- prepareSources verbosity tmp
-                            lbi isVersion2 bi (commonArgs `mappend` exeArgs)
+                            lbi version bi (commonArgs `mappend` exeArgs)
               runHaddock verbosity tmpFileOpts confHaddock exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
@@ -231,7 +231,7 @@ haddock pkg_descr lbi suffixes flags = do
             let bi = libBuildInfo lib
             libArgs  <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
             libArgs' <- prepareSources verbosity tmp
-                          lbi isVersion2 bi (commonArgs `mappend` libArgs)
+                          lbi version bi (commonArgs `mappend` libArgs)
             runHaddock verbosity tmpFileOpts confHaddock libArgs'
         CExe   _ -> when (flag haddockExecutables) $ doExe comp
         CTest  _ -> when (flag haddockTestSuites)  $ doExe comp
@@ -252,11 +252,11 @@ haddock pkg_descr lbi suffixes flags = do
 prepareSources :: Verbosity
                   -> FilePath
                   -> LocalBuildInfo
-                  -> Bool            -- haddock >= 2.0
+                  -> Version
                   -> BuildInfo
                   -> HaddockArgs
                   -> IO HaddockArgs
-prepareSources verbosity tmp lbi isVersion2 bi args@HaddockArgs{argTargets=files} =
+prepareSources verbosity tmp lbi haddockVersion bi args@HaddockArgs{argTargets=files} =
               mapM (mockPP tmp) files >>= \targets -> return args {argTargets=targets}
           where
             mockPP pref file = do
@@ -282,9 +282,14 @@ prepareSources verbosity tmp lbi isVersion2 bi args@HaddockArgs{argTargets=files
                      removeFile targetFile
 
                  return hsFile
-            needsCpp = EnableExtension CPP `elem` allExtensions bi
-            defines | isVersion2 = []
-                    | otherwise  = ["-D__HADDOCK__"]
+            needsCpp             = EnableExtension CPP `elem` allExtensions bi
+            isVersion2           = haddockVersion >= Version [2,0] []
+            defines | isVersion2 = [haddockVersionMacro]
+                    | otherwise  = ["-D__HADDOCK__", haddockVersionMacro]
+            haddockVersionMacro  = "-D__HADDOCK_VERSION__="
+                                   ++ show (v1 * 1000 + v2 * 10 + v3)
+              where
+                [v1, v2, v3] = take 3 $ versionBranch haddockVersion ++ [0,0]
 
 --------------------------------------------------------------------------------------------------
 -- constributions to HaddockArgs
