@@ -1958,6 +1958,13 @@ automatically-generated header file, which is included when
 preprocessing Haskell source code by passing options to the C
 preprocessor.
 
+Cabal also allows to detect when the source code is being used for generating
+documentation. The `__HADDOCK_VERSION__` macro is defined only when compiling
+via [haddock][] instead of a normal Haskell compiler. The value of the
+`__HADDOCK_VERSION__` macro is defined as `A*1000 + B*10 + C`, where `A.B.C` is
+the Haddock version. This can be useful for working around bugs in Haddock or
+generating prettier documentation in some special cases.
+
 ## More complex packages ##
 
 For packages that don't fit the simple schemes described above, you have
