@@ -105,7 +105,7 @@ import Distribution.Simple.Program
          , requireProgramVersion, requireProgram
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
          , ghcProgram, ghcPkgProgram, hsc2hsProgram
-         , arProgram, ranlibProgram, ldProgram
+         , arProgram, ldProgram
          , gccProgram, stripProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
@@ -1304,12 +1304,6 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   whenGHCi    $ mapM_ (copy builtDir targetDir)             ghciLibNames
   whenShared  $ mapM_ (copyShared builtDir dynlibTargetDir) sharedLibNames
 
-  -- run ranlib if necessary:
-  whenVanilla $ mapM_ (updateLibArchive verbosity lbi . (targetDir </>))
-                      vanillaLibNames
-  whenProf    $ mapM_ (updateLibArchive verbosity lbi . (targetDir </>))
-                      profileLibNames
-
   where
     cid = compilerId (compiler lbi)
     libNames = componentLibraries clbi
@@ -1324,18 +1318,6 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     whenProf    = when (hasLib && withProfLib    lbi)
     whenGHCi    = when (hasLib && withGHCiLib    lbi)
     whenShared  = when (hasLib && withSharedLib  lbi)
-
--- | On MacOS X we have to call @ranlib@ to regenerate the archive index after
--- copying. This is because the silly MacOS X linker checks that the archive
--- index is not older than the file itself, which means simply
--- copying/installing the file breaks it!!
---
-updateLibArchive :: Verbosity -> LocalBuildInfo -> FilePath -> IO ()
-updateLibArchive verbosity lbi path
-  | buildOS == OSX = do
-    (ranlib, _) <- requireProgram verbosity ranlibProgram (withPrograms lbi)
-    rawSystemProgram verbosity ranlib [path]
-  | otherwise = return ()
 
 -- -----------------------------------------------------------------------------
 -- Registering
