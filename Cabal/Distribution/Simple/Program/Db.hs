@@ -42,6 +42,7 @@ module Distribution.Simple.Program.Db (
     userSpecifiedArgs,
     lookupProgram,
     updateProgram,
+    configuredPrograms,
 
     -- ** Query and manipulate the program db
     configureProgram,
@@ -267,6 +268,10 @@ updateProgram :: ConfiguredProgram -> ProgramDb
 updateProgram prog = updateConfiguredProgs $
   Map.insert (programId prog) prog
 
+
+-- | List all configured programs.
+configuredPrograms :: ProgramDb -> [ConfiguredProgram]
+configuredPrograms = Map.elems . configuredProgs
 
 -- ---------------------------
 -- Configuring known programs
