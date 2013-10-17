@@ -57,7 +57,8 @@ generatePackageVersionMacros pkgids = concat
     ,"#define MIN_VERSION_",pkgname,"(major1,major2,minor) (\\\n"
     ,"  (major1) <  ",major1," || \\\n"
     ,"  (major1) == ",major1," && (major2) <  ",major2," || \\\n"
-    ,"  (major1) == ",major1," && (major2) == ",major2," && (minor) <= ",minor,")"
+    ,"  (major1) == ",major1
+    ," && (major2) == ",major2," && (minor) <= ",minor,")"
     ,"\n\n"
     ]
   | pkgid@(PackageIdentifier name version) <- pkgids
@@ -66,4 +67,3 @@ generatePackageVersionMacros pkgids = concat
   ]
   where fixchar '-' = '_'
         fixchar c   = c
-
