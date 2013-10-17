@@ -1953,6 +1953,10 @@ the actual version of the package in use is greater than or equal to
 lexicographic on the sequence, but numeric on each component, so for
 example 1.2.0 is greater than 1.0.3).
 
+Since version 1.20, there is also the `MIN_TOOL_VERSION_`_`tool`_ family of
+macros for conditioning on the version of build tools used to build the program
+(e.g. `hsc2hs`).
+
 Cabal places the definitions of these macros into an
 automatically-generated header file, which is included when
 preprocessing Haskell source code by passing options to the C
