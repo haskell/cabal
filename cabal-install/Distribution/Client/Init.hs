@@ -34,9 +34,13 @@ import Data.Time
 import Data.Char
   ( toUpper )
 import Data.List
-  ( intercalate, nub, groupBy, (\\) )
+  ( intercalate, nub, groupBy, (\\), sortBy, isInfixOf, isSuffixOf )
 import Data.Maybe
-  ( fromMaybe, isJust, catMaybes )
+  ( fromMaybe, isJust, catMaybes, listToMaybe )
+import Data.Ord
+  ( comparing )
+import Data.Monoid
+  ( mappend )
 import Data.Function
   ( on )
 import qualified Data.Map as M
@@ -266,8 +270,45 @@ getLibOrExec flags = do
                                    [Library, Executable]
                                    Nothing display False)
            ?>> return (Just Library)
+  mainFile <- if isLib /= Just Executable then return Nothing else
+                    return (mainIs flags)
+                ?>> guessAndPromptMainFile flags
 
-  return $ flags { packageType = maybeToFlag isLib }
+  return $ flags { packageType = maybeToFlag isLib
+                 , mainIs = mainFile
+                 }
+
+-- | Try to guess the main file of the executable, and prompt the user to
+--   choose one of them.  Top-level modules including the word 'Main' will
+--   be candidates, and shorter filenames will be preferred.
+guessAndPromptMainFile :: InitFlags -> IO (Maybe FilePath)
+guessAndPromptMainFile flags = do
+  dir <-
+    maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
+  files <- getDirectoryContents dir
+  let existingCandidates = filter isMain files
+      -- We always want to give the user at least one default choice.  If
+      -- either Main.hs or Main.lhs has already been created, then we don't
+      -- want to suggest the other; however, if neither has been
+      -- created, then we suggest both.
+      newCandidates =
+        if any (`elem` existingCandidates) ["Main.hs", "Main.lhs"]
+        then []
+        else ["Main.hs", "Main.lhs"]
+      candidates =
+        sortBy (\x y -> comparing (length . either id id) x y `mappend` compare x y)
+               (map Left newCandidates ++ map Right existingCandidates)
+      showCandidate = either (++" (does not yet exist)") id
+      defaultFile = listToMaybe candidates
+  maybePrompt flags (either id (either id id) `fmap`
+                      promptList "What is the main module of the executable"
+                      candidates
+                      defaultFile showCandidate True)
+    ?>> return (fmap (either id id) defaultFile)
+
+  where
+    isMain f =    isInfixOf "Main" f
+               && (isSuffixOf ".hs" f || isSuffixOf ".lhs" f)
 
 -- | Ask for the base language of the package.
 getLanguage :: InitFlags -> IO InitFlags
@@ -715,7 +756,7 @@ generateCabalFile fileName c =
              text "\nexecutable" <+>
              text (maybe "" display . flagToMaybe $ packageName c) $$
              nest 2 (vcat
-             [ fieldS "main-is" NoFlag (Just ".hs or .lhs file containing the Main module.") True
+             [ fieldS "main-is" (maybeToFlag $ mainIs c) (Just ".hs or .lhs file containing the Main module.") True
 
              , generateBuildInfo Executable c
              ])
