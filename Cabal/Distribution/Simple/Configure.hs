@@ -352,63 +352,11 @@ configure (pkg_descr0, pbi) cfg
             pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
                                       , condBenchmarks = flaggedBenchmarks }
 
-            derivedDependencies :: [InstalledPackageId]
-            derivedDependencies = map snd $ configDependencies cfg
+            constraintsAndMap = getConstraintsAndMap cfg installedPackageSet
 
-            givenNames :: [PackageName]
-            givenNames = map fst $ configDependencies cfg
-
-            derivedNames :: [Maybe PackageName]
-            derivedNames = map (fmap (pkgName . packageId)) mDerivedPackageInfos
-
-            badNames :: [(PackageName, PackageName)]
-            badNames = filter (uncurry (/=)) $
-                       catMaybes $
-                       map f $
-                       zip givenNames derivedNames
-              where
-                f :: Monad m => (a, m b) -> m (a, b)
-                f (a, mb) = mb >>= \b -> return (a, b)
-
-            mDerivedPackageInfos :: [Maybe InstalledPackageInfo]
-            mDerivedPackageInfos =
-              map (PackageIndex.lookupInstalledPackageId installedPackageSet)
-                  derivedDependencies
-
-            derivedPackageInfos :: [InstalledPackageInfo]
-            derivedPackageInfos = catMaybes mDerivedPackageInfos
-
-            derivedConstraints :: [Dependency]
-            derivedConstraints =
-              map thisPackageVersion $
-              map sourcePackageId $
-              derivedPackageInfos
-
-            idConstrainMap :: [(Dependency, InstalledPackageInfo)]
-            idConstrainMap = zip derivedConstraints derivedPackageInfos
-
-            badInstalledPackageIds :: [InstalledPackageId]
-            badInstalledPackageIds = map snd $
-                                     filter (isNothing . fst) $
-                                     zip mDerivedPackageInfos derivedDependencies
-
-            -- Note these can be from the .cabal file as well as from
-            -- the command line.
-            specifiedConstraints :: [Dependency]
-            specifiedConstraints = configConstraints cfg
-
-            allConstraints :: [Dependency]
-            allConstraints = derivedConstraints ++
-                             specifiedConstraints
-
-        unless (null badInstalledPackageIds) $
-          die $ "The following dependencies do not exist:\n" ++
-                (render $ nest 4 $ sep $ punctuate comma $ map disp badInstalledPackageIds)
-
-        unless (null badNames) $
-          die $ "The following names do match their hash name:\n" ++
-                (let dispPair (x, y) = parens (disp x <> comma <+> disp y) in
-                  render $ nest 4 $ sep $ punctuate comma $ map dispPair badNames)
+        (allConstraints, idConstraintMap) <- case constraintsAndMap of
+                                                  Left err -> die err
+                                                  Right ok -> return ok
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -443,7 +391,7 @@ configure (pkg_descr0, pbi) cfg
                                   ([FailedDependency], [ResolvedDependency])
             selectDependencies =
                 (\xs -> ([ x | Left x <- xs ], [ x | Right x <- xs ]))
-              . map (selectDependency internalPackageSet installedPackageSet idConstrainMap)
+              . map (selectDependency internalPackageSet installedPackageSet idConstraintMap)
 
             (failedDeps, allPkgDeps) =
               selectDependencies $ buildDepends pkg_descr
@@ -805,6 +753,80 @@ newPackageDepsBehaviourMinVersion = Version { versionBranch = [1,7,1],
 newPackageDepsBehaviour :: PackageDescription -> Bool
 newPackageDepsBehaviour pkg =
    specVersion pkg >= newPackageDepsBehaviourMinVersion
+
+getConstraintsAndMap :: ConfigFlags ->
+                        PackageIndex ->
+                        Either String ([Dependency], [(Dependency, InstalledPackageInfo)])
+getConstraintsAndMap cfg installedPackageSet =
+
+  if not $ null badInstalledPackageIds
+  then Left $ "The following dependencies do not exist:\n" ++
+              (render $ nest 4 $ sep $ punctuate comma $ map disp badInstalledPackageIds)
+  else if not $ null badNames
+       then Left $ "The following names do match their hash name:\n" ++
+                   (let dispPair (x, y) = parens (disp x <> comma <+> disp y) in
+                     render $ nest 4 $ sep $ punctuate comma $ map dispPair badNames)
+       else Right (allConstraints, idConstraintMap)
+
+  where
+
+    -- Derived means they were (probably) derived by the solver
+    -- although they can be explicitly given by e.g. a user.
+    derivedDependencies :: [InstalledPackageId]
+    derivedDependencies = map snd $ configDependencies cfg
+
+    givenNames :: [PackageName]
+    givenNames = map fst $ configDependencies cfg
+
+    mDerivedPackageInfos :: [Maybe InstalledPackageInfo]
+    mDerivedPackageInfos =
+      map (PackageIndex.lookupInstalledPackageId installedPackageSet)
+          derivedDependencies
+
+    derivedNames :: [Maybe PackageName]
+    derivedNames = map (fmap (pkgName . packageId)) mDerivedPackageInfos
+
+    -- If someone has written e.g.
+    -- dependency="foo=MyOtherLib-1.0-07...5bf30" then they have
+    -- probably made a mistake.
+    badNames :: [(PackageName, PackageName)]
+    badNames = filter (uncurry (/=)) $
+               catMaybes $
+               map f $
+               zip givenNames derivedNames
+      where
+        f :: Monad m => (a, m b) -> m (a, b)
+        f (a, mb) = mb >>= \b -> return (a, b)
+
+    derivedPackageInfos :: [InstalledPackageInfo]
+    derivedPackageInfos = catMaybes mDerivedPackageInfos
+
+    derivedConstraints :: [Dependency]
+    derivedConstraints =
+      map thisPackageVersion $
+      map sourcePackageId $
+      derivedPackageInfos
+
+    idConstraintMap :: [(Dependency, InstalledPackageInfo)]
+    idConstraintMap = zip derivedConstraints derivedPackageInfos
+
+    -- If we looked up a package specified by an installed package id
+    -- (i.e. someone has written a hash) and didn't find it then it's
+    -- an error.
+    badInstalledPackageIds :: [InstalledPackageId]
+    badInstalledPackageIds = map snd $
+                             filter (isNothing . fst) $
+                             zip mDerivedPackageInfos derivedDependencies
+
+    -- Note these can be from the .cabal file as well as from
+    -- the command line.
+    specifiedConstraints :: [Dependency]
+    specifiedConstraints = configConstraints cfg
+
+    allConstraints :: [Dependency]
+    allConstraints = derivedConstraints ++
+                     specifiedConstraints
+
 
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
