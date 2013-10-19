@@ -770,21 +770,19 @@ getConstraintsAndMap cfg installedPackageSet =
 
   where
 
-    -- Derived means they were (probably) derived by the solver
-    -- although they can be explicitly given by e.g. a user.
-    derivedDependencies :: [InstalledPackageId]
-    derivedDependencies = map snd $ configDependencies cfg
+    givenDependencies :: [InstalledPackageId]
+    givenDependencies = map snd $ configDependencies cfg
 
     givenNames :: [PackageName]
     givenNames = map fst $ configDependencies cfg
 
-    mDerivedPackageInfos :: [Maybe InstalledPackageInfo]
-    mDerivedPackageInfos =
+    mGivenPackageInfos :: [Maybe InstalledPackageInfo]
+    mGivenPackageInfos =
       map (PackageIndex.lookupInstalledPackageId installedPackageSet)
-          derivedDependencies
+          givenDependencies
 
     derivedNames :: [Maybe PackageName]
-    derivedNames = map (fmap (pkgName . packageId)) mDerivedPackageInfos
+    derivedNames = map (fmap (pkgName . packageId)) mGivenPackageInfos
 
     -- If someone has written e.g.
     -- dependency="foo=MyOtherLib-1.0-07...5bf30" then they have
@@ -798,17 +796,17 @@ getConstraintsAndMap cfg installedPackageSet =
         f :: Monad m => (a, m b) -> m (a, b)
         f (a, mb) = mb >>= \b -> return (a, b)
 
-    derivedPackageInfos :: [InstalledPackageInfo]
-    derivedPackageInfos = catMaybes mDerivedPackageInfos
+    givenPackageInfos :: [InstalledPackageInfo]
+    givenPackageInfos = catMaybes mGivenPackageInfos
 
-    derivedConstraints :: [Dependency]
-    derivedConstraints =
+    givenConstraints :: [Dependency]
+    givenConstraints =
       map thisPackageVersion $
       map sourcePackageId $
-      derivedPackageInfos
+      givenPackageInfos
 
     idConstraintMap :: [(Dependency, InstalledPackageInfo)]
-    idConstraintMap = zip derivedConstraints derivedPackageInfos
+    idConstraintMap = zip givenConstraints givenPackageInfos
 
     -- If we looked up a package specified by an installed package id
     -- (i.e. someone has written a hash) and didn't find it then it's
@@ -816,7 +814,7 @@ getConstraintsAndMap cfg installedPackageSet =
     badInstalledPackageIds :: [InstalledPackageId]
     badInstalledPackageIds = map snd $
                              filter (isNothing . fst) $
-                             zip mDerivedPackageInfos derivedDependencies
+                             zip mGivenPackageInfos givenDependencies
 
     -- Note these can be from the .cabal file as well as from
     -- the command line.
@@ -824,7 +822,7 @@ getConstraintsAndMap cfg installedPackageSet =
     specifiedConstraints = configConstraints cfg
 
     allConstraints :: [Dependency]
-    allConstraints = derivedConstraints ++
+    allConstraints = givenConstraints ++
                      specifiedConstraints
 
 
