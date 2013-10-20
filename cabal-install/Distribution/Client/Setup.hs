@@ -246,12 +246,15 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
   | cabalLibVersion <  Version [1,14,0] [] = flags_1_14_0
   | cabalLibVersion <  Version [1,18,0] [] = flags_1_18_0
+  | cabalLibVersion <  Version [1,19,0] [] = flags_1_19_0
 
   -- A no-op that silences the "pattern match is non-exhaustive" warning.
   | otherwise = flags
   where
+    -- Cabal < 1.19.0 does not grok the dependency flag.
+    flags_1_19_0 = flags        { configDependencies = [] }
     -- Cabal < 1.18.0 doesn't know about --extra-prog-path and --sysconfdir.
-    flags_1_18_0 = flags        { configProgramPathExtra = []
+    flags_1_18_0 = flags_1_19_0 { configProgramPathExtra = []
                                 , configInstallDirs = configInstallDirs_1_18_0}
     configInstallDirs_1_18_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
     -- Cabal < 1.14.0 doesn't know about --disable-benchmarks.

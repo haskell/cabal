@@ -754,6 +754,8 @@ newPackageDepsBehaviour :: PackageDescription -> Bool
 newPackageDepsBehaviour pkg =
    specVersion pkg >= newPackageDepsBehaviourMinVersion
 
+-- Given explicit dependencies via hashes in the config return the
+-- actual dependency together with auxilliary information.
 getConstraintsAndMap :: ConfigFlags ->
                         PackageIndex ->
                         Either String ([Dependency], [(Dependency, InstalledPackageInfo)])
