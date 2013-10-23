@@ -843,7 +843,7 @@ unpackAction getFlags extraArgs globalFlags = do
 initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
 initAction initFlags _extraArgs globalFlags = do
   let verbosity = fromFlag (initVerbosity initFlags)
-  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let configFlags  = savedConfigureFlags config
   (comp, _, conf) <- configCompilerAux' configFlags
   initCabal verbosity
