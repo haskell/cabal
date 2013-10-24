@@ -136,6 +136,8 @@ module Distribution.Simple.Utils (
         normaliseLineEndings,
 
         -- * generic utils
+        elemBy,
+        notElemBy,
         equating,
         comparing,
         isInfixOf,
@@ -1270,6 +1272,16 @@ normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 -- ------------------------------------------------------------
 -- * Common utils
 -- ------------------------------------------------------------
+
+-- | Like 'elemBy', but takes a custom comparison function.
+elemBy :: (a -> b -> Bool) -> a -> [b] -> Bool
+elemBy _ _ []     = False
+elemBy f a (b:bs) = f a b || elemBy f a bs
+
+-- | Like 'notElemBy', but takes a custom comparison function.
+notElemBy :: (a -> b -> Bool) -> a -> [b] -> Bool
+notElemBy _ _ []     = True
+notElemBy f a (b:bs) = not (f a b) && notElemBy f a bs
 
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y
