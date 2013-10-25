@@ -147,6 +147,8 @@ import Data.Maybe
     ( isNothing, catMaybes, fromMaybe )
 import Data.Monoid
     ( Monoid(..) )
+import qualified Data.Map as Map
+import Data.Map (Map)
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
@@ -158,7 +160,8 @@ import System.IO
 import Distribution.Text
     ( Text(disp), display, simpleParse )
 import Text.PrettyPrint
-    ( comma, punctuate, render, nest, sep, parens, (<>), (<+>) )
+    ( render, (<>), ($+$), char, text, comma
+    , quotes, punctuate, nest, sep, hsep )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -352,11 +355,10 @@ configure (pkg_descr0, pbi) cfg
             pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
                                       , condBenchmarks = flaggedBenchmarks }
 
-            constraintsAndMap = getConstraintsAndMap cfg installedPackageSet
-
-        (allConstraints, idConstraintMap) <- case constraintsAndMap of
-                                                  Left err -> die err
-                                                  Right ok -> return ok
+        (allConstraints, requiredDepsMap) <- either die return $
+          combinedConstraints (configConstraints cfg)
+                              (configDependencies cfg)
+                              installedPackageSet
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -391,10 +393,11 @@ configure (pkg_descr0, pbi) cfg
                                   ([FailedDependency], [ResolvedDependency])
             selectDependencies =
                 (\xs -> ([ x | Left x <- xs ], [ x | Right x <- xs ]))
-              . map (selectDependency internalPackageSet installedPackageSet idConstraintMap)
+              . map (selectDependency internalPackageSet installedPackageSet
+                                      requiredDepsMap)
 
             (failedDeps, allPkgDeps) =
-              selectDependencies $ buildDepends pkg_descr
+              selectDependencies (buildDepends pkg_descr)
 
             internalPkgDeps = [ pkgid
                               | InternalDependency _ pkgid <- allPkgDeps ]
@@ -628,12 +631,11 @@ data FailedDependency = DependencyNotExists PackageName
 -- | Test for a package dependency and record the version we have installed.
 selectDependency :: PackageIndex  -- ^ Internally defined packages
                  -> PackageIndex  -- ^ Installed packages
-                 -> [(Dependency, InstalledPackageInfo)]
-                    -- ^ The exact id and their equivalent constraint
-                    -- where it is known
+                 -> Map PackageName InstalledPackageInfo
+                    -- ^ Packages for which we have been given specific deps to use
                  -> Dependency
                  -> Either FailedDependency ResolvedDependency
-selectDependency internalIndex installedIndex exactIds
+selectDependency internalIndex installedIndex requiredDepsMap
   dep@(Dependency pkgname vr) =
   -- If the dependency specification matches anything in the internal package
   -- index, then we prefer that match to anything in the second.
@@ -656,14 +658,14 @@ selectDependency internalIndex installedIndex exactIds
     _      -> case PackageIndex.lookupDependency installedIndex dep of
       []   -> Left  $ DependencyNotExists pkgname
       pkgs -> Right $ ExternalDependency dep $
-                case lookup dep exactIds of
+                case Map.lookup pkgname requiredDepsMap of
+                  -- if we know the exact pkg to use then use it
+                  Just pkginstance -> pkginstance
+                  -- otherwise we just pick an arbirary instance of the
+                  -- latest version
                   Nothing ->
-                    -- by default we just pick the latest
                     case last pkgs of
-                      (_ver, instances) -> head instances -- the first preference
-                  Just instPkgInfo ->
-                    -- if we know the exact id then use it
-                    instPkgInfo
+                      (_ver, pkginstances) -> head pkginstances
 
 reportSelectedDependencies :: Verbosity
                            -> [ResolvedDependency] -> IO ()
@@ -754,77 +756,78 @@ newPackageDepsBehaviour :: PackageDescription -> Bool
 newPackageDepsBehaviour pkg =
    specVersion pkg >= newPackageDepsBehaviourMinVersion
 
-getConstraintsAndMap :: ConfigFlags ->
-                        PackageIndex ->
-                        Either String ([Dependency], [(Dependency, InstalledPackageInfo)])
-getConstraintsAndMap cfg installedPackageSet =
+-- We are given both --constraint="foo < 2.0" style constraints and also
+-- specific packages to pick via --dependency="foo=foo-2.0-177d5cdf20962d0581".
+--
+-- When finalising the package we have to take into account the specific
+-- installed deps we've been given, and the finalise function expects
+-- constraints, so we have to translate these deps into version constraints.
+--
+-- But after finalising we then have to make sure we pick the right specific
+-- deps in the end. So we still need to remember which installed packages to
+-- pick.
+combinedConstraints :: [Dependency] ->
+                       [(PackageName, InstalledPackageId)] ->
+                       PackageIndex ->
+                       Either String ([Dependency], 
+                                      Map PackageName InstalledPackageInfo)
+combinedConstraints constraints dependencies installedPackages = do
 
-  if not $ null badInstalledPackageIds
-  then Left $ "The following dependencies do not exist:\n" ++
-              (render $ nest 4 $ sep $ punctuate comma $ map disp badInstalledPackageIds)
-  else if not $ null badNames
-       then Left $ "The following names do match their hash name:\n" ++
-                   (let dispPair (x, y) = parens (disp x <> comma <+> disp y) in
-                     render $ nest 4 $ sep $ punctuate comma $ map dispPair badNames)
-       else Right (allConstraints, idConstraintMap)
+    when (not (null badInstalledPackageIds)) $
+      Left $ render $ text "The following package dependencies were requested"
+         $+$ nest 4 (dispDependencies badInstalledPackageIds)
+         $+$ text "however the given installed package instance does not exist."
+
+    when (not (null badNames)) $
+      Left $ render $ text "The following package dependencies were requested"
+         $+$ nest 4 (dispDependencies badNames)
+         $+$ text "however the installed package's name does not match the name given."
+
+    --TODO: we don't check that all dependencies are used!
+
+    return (allConstraints, idConstraintMap)
 
   where
+    allConstraints :: [Dependency]
+    allConstraints = constraints
+                  ++ [ thisPackageVersion (packageId pkg)
+                     | (_, _, Just pkg) <- dependenciesPkgInfo ]
 
-    givenDependencies :: [InstalledPackageId]
-    givenDependencies = map snd $ configDependencies cfg
+    idConstraintMap :: Map PackageName InstalledPackageInfo
+    idConstraintMap = Map.fromList
+                        [ (packageName pkg, pkg)
+                        | (_, _, Just pkg) <- dependenciesPkgInfo ]
 
-    givenNames :: [PackageName]
-    givenNames = map fst $ configDependencies cfg
-
-    mGivenPackageInfos :: [Maybe InstalledPackageInfo]
-    mGivenPackageInfos =
-      map (PackageIndex.lookupInstalledPackageId installedPackageSet)
-          givenDependencies
-
-    derivedNames :: [Maybe PackageName]
-    derivedNames = map (fmap (pkgName . packageId)) mGivenPackageInfos
-
-    -- If someone has written e.g.
-    -- dependency="foo=MyOtherLib-1.0-07...5bf30" then they have
-    -- probably made a mistake.
-    badNames :: [(PackageName, PackageName)]
-    badNames = filter (uncurry (/=)) $
-               catMaybes $
-               map f $
-               zip givenNames derivedNames
-      where
-        f :: Monad m => (a, m b) -> m (a, b)
-        f (a, mb) = mb >>= \b -> return (a, b)
-
-    givenPackageInfos :: [InstalledPackageInfo]
-    givenPackageInfos = catMaybes mGivenPackageInfos
-
-    givenConstraints :: [Dependency]
-    givenConstraints =
-      map thisPackageVersion $
-      map sourcePackageId $
-      givenPackageInfos
-
-    idConstraintMap :: [(Dependency, InstalledPackageInfo)]
-    idConstraintMap = zip givenConstraints givenPackageInfos
+    -- The dependencies along with the installed package info, if it exists
+    dependenciesPkgInfo :: [(PackageName, InstalledPackageId,
+                             Maybe InstalledPackageInfo)]
+    dependenciesPkgInfo =
+      [ (pkgname, ipkgid, mpkg)
+      | (pkgname, ipkgid) <- dependencies
+      , let mpkg = PackageIndex.lookupInstalledPackageId
+                     installedPackages ipkgid
+      ]
 
     -- If we looked up a package specified by an installed package id
     -- (i.e. someone has written a hash) and didn't find it then it's
     -- an error.
-    badInstalledPackageIds :: [InstalledPackageId]
-    badInstalledPackageIds = map snd $
-                             filter (isNothing . fst) $
-                             zip mGivenPackageInfos givenDependencies
+    badInstalledPackageIds =
+      [ (pkgname, ipkgid)
+      | (pkgname, ipkgid, Nothing) <- dependenciesPkgInfo ]
 
-    -- Note these can be from the .cabal file as well as from
-    -- the command line.
-    specifiedConstraints :: [Dependency]
-    specifiedConstraints = configConstraints cfg
+    -- If someone has written e.g.
+    -- --dependency="foo=MyOtherLib-1.0-07...5bf30" then they have
+    -- probably made a mistake.
+    badNames =
+      [ (requestedPkgName, ipkgid)
+      | (requestedPkgName, ipkgid, Just pkg) <- dependenciesPkgInfo
+      , let foundPkgName = packageName pkg
+      , requestedPkgName /= foundPkgName ]
 
-    allConstraints :: [Dependency]
-    allConstraints = givenConstraints ++
-                     specifiedConstraints
-
+    dispDependencies deps =
+      hsep [    text "--dependency="
+             <> quotes (disp pkgname <> char '=' <> disp ipkgid)
+           | (pkgname, ipkgid) <- deps ]
 
 -- -----------------------------------------------------------------------------
 -- Configuring program dependencies
