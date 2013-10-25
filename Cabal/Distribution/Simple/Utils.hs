@@ -408,10 +408,10 @@ syncProcess fun c = do
   -- in the child (using SIG_DFL isn't really correct, it should be the
   -- original signal handler, but the GHC RTS will have already set up
   -- its own handler and we don't want to use that).
-  (_,_,_,p) <- Exception.bracket (installHandlers) (restoreHandlers) $
-               (\_ -> runGenProcess_ fun c
-                      (Just defaultSignal) (Just defaultSignal))
-  r <- waitForProcess p
+  r <- Exception.bracket (installHandlers) (restoreHandlers) $
+       (\_ -> do (_,_,_,p) <- runGenProcess_ fun c
+                              (Just defaultSignal) (Just defaultSignal)
+                 waitForProcess p)
   return r
     where
       installHandlers = do
