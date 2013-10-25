@@ -874,7 +874,7 @@ describe the package as a whole:
     built with [`setup sdist`](#setup-sdist). As with `data-files` it
     can use a limited form of `*` wildcards in file names.
 
-`extra-html-files:` _filename list_
+`extra-doc-files:` _filename list_
 :   A list of additional files to be included in source distributions,
     and also copied to the html directory when Haddock documentation is
     generated. As with `data-files` it can use a limited form of `*`
