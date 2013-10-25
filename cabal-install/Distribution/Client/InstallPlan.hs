@@ -79,7 +79,7 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import Data.List
          ( sort, sortBy )
 import Data.Maybe
-         ( fromMaybe )
+         ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
 import Control.Exception
@@ -209,41 +209,36 @@ remove shouldRemove plan =
 ready :: InstallPlan -> [(ConfiguredPackage, [Installed.InstalledPackageInfo])]
 ready plan = assert check readyPackages
   where
-    check = if null (map fst readyPackages) && null processingPackages
+    check = if null readyPackages && null processingPackages
               then null configuredPackages
               else True
     configuredPackages = [ pkg | Configured pkg <- toList plan ]
     processingPackages = [ pkg | Processing pkg <- toList plan]
 
     readyPackages :: [(ConfiguredPackage, [Installed.InstalledPackageInfo])]
-    readyPackages = [ (pkg, map getInstalledDeps deps)
-                    | pkg <- configuredPackages
-                    , let deps = depends pkg
-                    , all isInstalled deps
-                    ]
+    readyPackages =
+      [ (pkg, deps)
+      | pkg <- configuredPackages
+        -- select only the package that have all of their deps installed:
+      , deps <- maybeToList (hasAllInstalledDeps pkg)
+      ]
 
-    getInstalledDeps :: PackageIdentifier -> Installed.InstalledPackageInfo
-    getInstalledDeps pkg =
-      case PackageIndex.lookupPackageId (planIndex plan) pkg of
-        Just (Configured  _)                                  -> internalError "guard failed"
-        Just (Processing  _)                                  -> internalError "guard failed"
-        Just (Failed    _ _)                                  -> internalError "guard failed"
-        Just (PreExisting (InstalledPackage instPkg _))       -> instPkg
-        Just (Installed _cfgPkg (BuildOk _ _ Nothing))        -> internalError "guard failed"
-        Just (Installed _cfgPkg (BuildOk _ _ (Just instPkg))) -> instPkg
-        Nothing                                               -> internalError "guard failed"
+    hasAllInstalledDeps :: ConfiguredPackage -> Maybe [Installed.InstalledPackageInfo]
+    hasAllInstalledDeps = mapM isInstalledDep . depends
 
-    isInstalled :: PackageIdentifier -> Bool
-    isInstalled pkg =
-      case PackageIndex.lookupPackageId (planIndex plan) pkg of
-        Just (Configured  _) -> False
-        Just (Processing  _) -> False
-        Just (Failed    _ _) -> internalError depOnFailed
-        Just (PreExisting _) -> True
-        Just (Installed _ _) -> True
-        Nothing              -> internalError incomplete
+    isInstalledDep :: PackageIdentifier -> Maybe Installed.InstalledPackageInfo
+    isInstalledDep pkgid =
+      case PackageIndex.lookupPackageId (planIndex plan) pkgid of
+        Just (Configured  _)                            -> Nothing
+        Just (Processing  _)                            -> Nothing
+        Just (Failed    _ _)                            -> internalError depOnFailed
+        Just (PreExisting (InstalledPackage instPkg _)) -> Just instPkg
+        Just (Installed _ (BuildOk _ _ (Just instPkg))) -> Just instPkg
+        Just (Installed _ (BuildOk _ _ Nothing))        -> internalError depOnNonLib
+        Nothing                                         -> internalError incomplete
     incomplete  = "install plan is not closed"
     depOnFailed = "configured package depends on failed package"
+    depOnNonLib = "configured package depends on a non-library package"
 
 -- | Marks packages in the graph as currently processing (e.g. building).
 --
