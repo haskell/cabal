@@ -187,7 +187,8 @@ data BuildFailure = DependentFailed PackageId
                   | BuildFailed     SomeException
                   | TestsFailed     SomeException
                   | InstallFailed   SomeException
-data BuildSuccess = BuildOk         DocsResult TestsResult (Maybe InstalledPackageInfo)
+data BuildSuccess = BuildOk         DocsResult TestsResult
+                                    (Maybe InstalledPackageInfo)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
 data TestsResult = TestsNotTried | TestsOk
