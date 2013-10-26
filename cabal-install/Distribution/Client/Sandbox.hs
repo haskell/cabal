@@ -77,7 +77,7 @@ import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
                                               , fromFlagOrDefault )
 import Distribution.Simple.SrcDist            ( prepareTree )
-import Distribution.Simple.Utils              ( die, debug, notice, warn
+import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
                                               , findPackageDesc
                                               , intercalate, topHandlerWith
@@ -611,9 +611,10 @@ withSandboxPackageInfo verbosity configFlags globalFlags
       modifiedDepsMap = M.fromList modifiedDeps
 
   assert (all (`S.member` allAddSourceDepsSet) modifiedAddSourceDeps) (return ())
-  unless (null modifiedDeps) $
-    notice verbosity $ "Some add-source dependencies have been modified. "
-                       ++ "They will be reinstalled..."
+  if (null modifiedDeps)
+    then info   verbosity $ "Found no modified add-source deps."
+    else notice verbosity $ "Some add-source dependencies have been modified. "
+                            ++ "They will be reinstalled..."
 
   -- Get the package ids of the remaining add-source deps (some are possibly not
   -- installed).
