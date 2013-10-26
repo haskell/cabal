@@ -890,18 +890,12 @@ performInstallations verbosity
 
   executeInstallPlan verbosity jobControl useLogFile installPlan $ \cpkg deps ->
     installConfiguredPackage platform compid configFlags
-                             cpkg $ \configFlags' src pkg pkgoverride ->
+                             cpkg deps $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
-          let configFlags'' = configFlags' { configDependencies =
-                                                zip
-                                                (map packageName $
-                                                 map Installed.sourcePackageId deps)
-                                                (map Installed.installedPackageId deps)
-                                           } in
           installUnpackedPackage verbosity buildLimit installLock numJobs
                                  (setupScriptOptions installedPkgIndex cacheLock)
-                                 miscOptions configFlags'' installFlags haddockFlags
+                                 miscOptions configFlags' installFlags haddockFlags
                                  compid platform pkg pkgoverride mpath useLogFile
 
   where
@@ -1001,7 +995,8 @@ executeInstallPlan :: Verbosity
                    -> JobControl IO (PackageId, BuildResult)
                    -> UseLogFile
                    -> InstallPlan
-                   -> (ConfiguredPackage -> [Installed.InstalledPackageInfo] -> IO BuildResult)
+                   -> (ConfiguredPackage -> [Installed.InstalledPackageInfo]
+                                         -> IO BuildResult)
                    -> IO InstallPlan
 executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
     tryNewTasks 0 plan0
@@ -1075,17 +1070,26 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
 -- assignment or dependency constraints and use the new ones.
 --
 installConfiguredPackage :: Platform -> CompilerId
-                         ->  ConfigFlags -> ConfiguredPackage
+                         -> ConfigFlags
+                         -> ConfiguredPackage
+                         -> [Installed.InstalledPackageInfo]
                          -> (ConfigFlags -> PackageLocation (Maybe FilePath)
                                          -> PackageDescription
                                          -> PackageDescriptionOverride -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
   (ConfiguredPackage (SourcePackage _ gpkg source pkgoverride)
-   flags stanzas deps)
+   flags stanzas _) deps
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
-    configConstraints = map thisPackageVersion deps,
+    -- We generate the legacy constraints as well as the new style precise deps.
+    -- In the end only one set gets passed to Setup.hs configure, depending on
+    -- the Cabal version we are talking to.
+    configConstraints  = [ thisPackageVersion (packageId deppkg)
+                         | deppkg <- deps ],
+    configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
+                            Installed.installedPackageId deppkg)
+                         | deppkg <- deps ],
     configBenchmarks = toFlag False,
     configTests = toFlag (TestStanzas `elem` stanzas)
   } source pkg pkgoverride
