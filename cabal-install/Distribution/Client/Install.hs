@@ -127,6 +127,8 @@ import Distribution.PackageDescription
          , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
+import Distribution.ParseUtils
+         ( showPWarning )
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
@@ -1307,10 +1309,17 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           setup Cabal.registerCommand registerFlags'
           withFileContents pkgConfFile $ \pkgConfText ->
             case Installed.parseInstalledPackageInfo pkgConfText of
-              Installed.ParseFailed perror -> error (show perror)
-              -- FIXME: Should we do something with warnings?
-              Installed.ParseOk _warnings pkgConf -> return (Just pkgConf)
+              Installed.ParseFailed perror    -> pkgConfParseFailed perror
+              Installed.ParseOk warns pkgConf -> do
+                unless (null warns) $
+                  warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
+                return (Just pkgConf)
       else return Nothing
+
+    pkgConfParseFailed :: Installed.PError -> IO a
+    pkgConfParseFailed perror =
+      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
+            ++ show perror
 
     setup cmd flags  = do
       Exception.bracket
