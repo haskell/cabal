@@ -1239,21 +1239,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       -- Install phase
         onFailure InstallFailed $ criticalSection installLock $ do
           -- Capture installed package configuration file
-          maybePkgConf <-
-            if shouldRegister then do
-              tmp <- getTemporaryDirectory
-              withTempFile tmp (tempTemplate "pkgConf") $ \pkgConfFile handle -> do
-                hClose handle
-                let registerFlags' version = (registerFlags version) {
-                      Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
-                    }
-                setup Cabal.registerCommand registerFlags'
-                withFileContents pkgConfFile $ \pkgConfText ->
-                  case Installed.parseInstalledPackageInfo pkgConfText of
-                    Installed.ParseFailed perror -> error (show perror)
-                    -- FIXME: Should we do something with warnings?
-                    Installed.ParseOk _warnings pkgConf -> return (Just pkgConf)
-            else return Nothing
+          maybePkgConf <- maybeRegister
 
           -- Actual installation
           withWin32SelfUpgrade verbosity configFlags compid platform pkg $ do
@@ -1308,6 +1294,23 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           env         = initialPathTemplateEnv pkgid compid platform
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
+
+    maybeRegister :: IO (Maybe Installed.InstalledPackageInfo)
+    maybeRegister =
+      if shouldRegister then do
+        tmp <- getTemporaryDirectory
+        withTempFile tmp (tempTemplate "pkgConf") $ \pkgConfFile handle -> do
+          hClose handle
+          let registerFlags' version = (registerFlags version) {
+                Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
+              }
+          setup Cabal.registerCommand registerFlags'
+          withFileContents pkgConfFile $ \pkgConfText ->
+            case Installed.parseInstalledPackageInfo pkgConfText of
+              Installed.ParseFailed perror -> error (show perror)
+              -- FIXME: Should we do something with warnings?
+              Installed.ParseOk _warnings pkgConf -> return (Just pkgConf)
+      else return Nothing
 
     setup cmd flags  = do
       Exception.bracket
