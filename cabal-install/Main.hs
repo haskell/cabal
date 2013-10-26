@@ -436,6 +436,9 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
             | isSandboxConfigNewer = SkipAddSourceDepsCheck
             | otherwise            = skipAddSourceDepsCheck
 
+      when (skipAddSourceDepsCheck' == SkipAddSourceDepsCheck) $
+        info verbosity "Skipping add-source deps check..."
+
       (useSandbox, depsReinstalled) <-
         case skipAddSourceDepsCheck' of
         DontSkipAddSourceDepsCheck     ->
