@@ -1251,7 +1251,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                 withFileContents pkgConfFile $ \pkgConfText ->
                   case Installed.parseInstalledPackageInfo pkgConfText of
                     Installed.ParseFailed perror -> error (show perror)
-                    -- FIXME: Should we something with warnings?
+                    -- FIXME: Should we do something with warnings?
                     Installed.ParseOk _warnings pkgConf -> return (Just pkgConf)
             else return Nothing
 
