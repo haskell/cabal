@@ -115,7 +115,7 @@ executable cabal
     -- in bootstrap.sh.
     build-depends:
         array      >= 0.1      && < 0.6,
-        base       >= 4        && < 5,
+        base       >= 4.3      && < 5,
         bytestring >= 0.9      && < 1,
         Cabal      >= 1.19.0   && < 1.20,
         containers >= 0.1      && < 0.6,
