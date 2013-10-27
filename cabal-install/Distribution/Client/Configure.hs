@@ -45,7 +45,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Version
          ( anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, debug, die )
+         ( notice, debug, die )
 import Distribution.System
          ( Platform )
 import Distribution.Verbosity as Verbosity
@@ -77,10 +77,7 @@ configure verbosity packageDBs repos comp platform conf
   maybePlan <- foldProgress logMsg (return . Left) (return . Right)
                             progress
   case maybePlan of
-    Left message -> do
-      info verbosity message
-      setupWrapper verbosity (setupScriptOptions installedPkgIndex) Nothing
-        configureCommand (const configFlags) extraArgs
+    Left message -> die message
 
     Right installPlan -> case InstallPlan.ready installPlan of
       [pkg@(ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] ->
