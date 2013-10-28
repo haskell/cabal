@@ -244,7 +244,7 @@ checkLibrary _pkg lib =
   catMaybes [
 
     check (not (null moduleDuplicates)) $
-       PackageBuildWarning $
+       PackageBuildImpossible $
             "Duplicate modules in library: "
          ++ commaSep (map display moduleDuplicates)
   ]
@@ -275,7 +275,7 @@ checkExecutable pkg exe =
         ++ "To use this feature you must specify 'cabal-version: >= 1.18'."
 
   , check (not (null moduleDuplicates)) $
-       PackageBuildWarning $
+       PackageBuildImpossible $
             "Duplicate modules in executable '" ++ exeName exe ++ "': "
          ++ commaSep (map display moduleDuplicates)
   ]
@@ -301,7 +301,7 @@ checkTestSuite pkg test =
       _ -> Nothing
 
   , check (not $ null moduleDuplicates) $
-      PackageBuildWarning $
+      PackageBuildImpossible $
            "Duplicate modules in test suite '" ++ testName test ++ "': "
         ++ commaSep (map display moduleDuplicates)
 
@@ -359,7 +359,7 @@ checkBenchmark pkg bm =
       _ -> Nothing
 
   , check (not $ null moduleDuplicates) $
-      PackageBuildWarning $
+      PackageBuildImpossible $
            "Duplicate modules in benchmark '" ++ benchmarkName bm ++ "': "
         ++ commaSep (map display moduleDuplicates)
 
