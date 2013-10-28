@@ -182,8 +182,9 @@ pkgDescrFieldDescrs =
 -- | Store any fields beginning with "x-" in the customFields field of
 --   a PackageDescription.  All other fields will generate a warning.
 storeXFieldsPD :: UnrecFieldParser PackageDescription
-storeXFieldsPD (f@('x':'-':_),val) pkg = Just pkg{ customFieldsPD =
-                                                        customFieldsPD pkg ++ [(f,val)]}
+storeXFieldsPD (f@('x':'-':_),val) pkg =
+  Just pkg{ customFieldsPD =
+               customFieldsPD pkg ++ [(f,val)]}
 storeXFieldsPD _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -201,7 +202,8 @@ libFieldDescrs =
 
 storeXFieldsLib :: UnrecFieldParser Library
 storeXFieldsLib (f@('x':'-':_), val) l@(Library { libBuildInfo = bi }) =
-    Just $ l {libBuildInfo = bi{ customFieldsBI = customFieldsBI bi ++ [(f,val)]}}
+    Just $ l {libBuildInfo =
+                 bi{ customFieldsBI = customFieldsBI bi ++ [(f,val)]}}
 storeXFieldsLib _ _ = Nothing
 
 -- ---------------------------------------------------------------------------
@@ -1035,7 +1037,8 @@ parsePackageDescription file = do
 
     -- Note: we don't parse the "executable" field here, hence the tail hack.
     parseExeFields :: [Field] -> PM Executable
-    parseExeFields = lift . parseFields (tail executableFieldDescrs) storeXFieldsExe emptyExecutable
+    parseExeFields = lift . parseFields (tail executableFieldDescrs)
+                                        storeXFieldsExe emptyExecutable
 
     parseTestFields :: LineNo -> [Field] -> PM TestSuite
     parseTestFields line fields = do
