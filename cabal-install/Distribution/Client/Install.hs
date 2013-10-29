@@ -499,8 +499,8 @@ linearizeInstallPlan installedPkgIndex plan =
           pkgid  = packageId pkg
           status = packageStatus installedPkgIndex pkg
           plan'' = InstallPlan.completed pkgid
-                     -- FIXME: Should this be Nothing?
-                     (BuildOk DocsNotTried TestsNotTried Nothing)
+                     (BuildOk DocsNotTried TestsNotTried
+                              (Just Installed.emptyInstalledPackageInfo))
                      (InstallPlan.processing [pkg] plan')
           --FIXME: This is a bit of a hack,
           -- pretending that each package is installed
