@@ -75,7 +75,8 @@ import Distribution.ParseUtils
          , parseFreeText, showFreeText )
 import Distribution.License     ( License(..) )
 import Distribution.Package
-         ( PackageName(..), PackageIdentifier(..), PackageId, InstalledPackageId(..)
+         ( PackageName(..), PackageIdentifier(..)
+         , PackageId, InstalledPackageId(..)
          , packageName, packageVersion )
 import qualified Distribution.Package as Package
          ( Package(..) )

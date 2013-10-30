@@ -80,7 +80,7 @@ configure verbosity packageDBs repos comp platform conf
     Left message -> die message
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [pkg@(ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] ->
+      [(pkg@(ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _), _)] ->
         configurePackage verbosity
           (InstallPlan.planPlatform installPlan)
           (InstallPlan.planCompiler installPlan)

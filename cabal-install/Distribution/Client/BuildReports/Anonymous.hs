@@ -146,17 +146,17 @@ new os' arch' comp (ConfiguredPackage pkg flags _ deps) result =
       Left  (BR.BuildFailed     _) -> BuildFailed
       Left  (BR.TestsFailed     _) -> TestsFailed
       Left  (BR.InstallFailed   _) -> InstallFailed
-      Right (BR.BuildOk       _ _) -> InstallOk
+      Right (BR.BuildOk       _ _ _) -> InstallOk
     convertDocsOutcome = case result of
       Left _                                -> NotTried
-      Right (BR.BuildOk BR.DocsNotTried _)  -> NotTried
-      Right (BR.BuildOk BR.DocsFailed _)    -> Failed
-      Right (BR.BuildOk BR.DocsOk _)        -> Ok
+      Right (BR.BuildOk BR.DocsNotTried _ _)  -> NotTried
+      Right (BR.BuildOk BR.DocsFailed _ _)    -> Failed
+      Right (BR.BuildOk BR.DocsOk _ _)        -> Ok
     convertTestsOutcome = case result of
       Left  (BR.TestsFailed _)              -> Failed
       Left _                                -> NotTried
-      Right (BR.BuildOk _ BR.TestsNotTried) -> NotTried
-      Right (BR.BuildOk _ BR.TestsOk)       -> Ok
+      Right (BR.BuildOk _ BR.TestsNotTried _) -> NotTried
+      Right (BR.BuildOk _ BR.TestsOk _)       -> Ok
 
 cabalInstallID :: PackageIdentifier
 cabalInstallID =

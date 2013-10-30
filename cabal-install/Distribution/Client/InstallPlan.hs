@@ -47,7 +47,8 @@ module Distribution.Client.InstallPlan (
 
 import Distribution.Client.Types
          ( SourcePackage(packageDescription), ConfiguredPackage(..)
-         , InstalledPackage, BuildFailure, BuildSuccess, enableStanzas )
+         , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas,
+           InstalledPackage (..) )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , PackageFixedDeps(..), Dependency(..) )
@@ -73,11 +74,12 @@ import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
          ( comparing, intercalate )
+import qualified Distribution.InstalledPackageInfo as Installed
 
 import Data.List
          ( sort, sortBy )
 import Data.Maybe
-         ( fromMaybe )
+         ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
 import Data.Graph (Graph)
 import Control.Exception
@@ -204,7 +206,7 @@ remove shouldRemove plan =
 -- configured state and have all their dependencies installed already.
 -- The plan is complete if the result is @[]@.
 --
-ready :: InstallPlan -> [ConfiguredPackage]
+ready :: InstallPlan -> [(ConfiguredPackage, [Installed.InstalledPackageInfo])]
 ready plan = assert check readyPackages
   where
     check = if null readyPackages && null processingPackages
@@ -212,17 +214,31 @@ ready plan = assert check readyPackages
               else True
     configuredPackages = [ pkg | Configured pkg <- toList plan ]
     processingPackages = [ pkg | Processing pkg <- toList plan]
-    readyPackages = filter (all isInstalled . depends) configuredPackages
-    isInstalled pkg =
-      case PackageIndex.lookupPackageId (planIndex plan) pkg of
-        Just (Configured  _) -> False
-        Just (Processing  _) -> False
-        Just (Failed    _ _) -> internalError depOnFailed
-        Just (PreExisting _) -> True
-        Just (Installed _ _) -> True
-        Nothing              -> internalError incomplete
+
+    readyPackages :: [(ConfiguredPackage, [Installed.InstalledPackageInfo])]
+    readyPackages =
+      [ (pkg, deps)
+      | pkg <- configuredPackages
+        -- select only the package that have all of their deps installed:
+      , deps <- maybeToList (hasAllInstalledDeps pkg)
+      ]
+
+    hasAllInstalledDeps :: ConfiguredPackage -> Maybe [Installed.InstalledPackageInfo]
+    hasAllInstalledDeps = mapM isInstalledDep . depends
+
+    isInstalledDep :: PackageIdentifier -> Maybe Installed.InstalledPackageInfo
+    isInstalledDep pkgid =
+      case PackageIndex.lookupPackageId (planIndex plan) pkgid of
+        Just (Configured  _)                            -> Nothing
+        Just (Processing  _)                            -> Nothing
+        Just (Failed    _ _)                            -> internalError depOnFailed
+        Just (PreExisting (InstalledPackage instPkg _)) -> Just instPkg
+        Just (Installed _ (BuildOk _ _ (Just instPkg))) -> Just instPkg
+        Just (Installed _ (BuildOk _ _ Nothing))        -> internalError depOnNonLib
+        Nothing                                         -> internalError incomplete
     incomplete  = "install plan is not closed"
     depOnFailed = "configured package depends on failed package"
+    depOnNonLib = "configured package depends on a non-library package"
 
 -- | Marks packages in the graph as currently processing (e.g. building).
 --
