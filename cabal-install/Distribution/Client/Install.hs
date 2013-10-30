@@ -112,7 +112,8 @@ import qualified Distribution.Simple.Setup as Cabal
          , registerCommand, RegisterFlags(..), emptyRegisterFlags
          , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
-         ( rawSystemExit, comparing, writeFileAtomic )
+         ( rawSystemExit, comparing, writeFileAtomic
+         , withTempFile , withFileContents )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
@@ -126,6 +127,8 @@ import Distribution.PackageDescription
          , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
+import Distribution.ParseUtils
+         ( showPWarning )
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
@@ -491,12 +494,13 @@ linearizeInstallPlan installedPkgIndex plan =
   where
     next plan' = case InstallPlan.ready plan' of
       []      -> Nothing
-      (pkg:_) -> Just ((pkg, status), plan'')
+      ((pkg ,_):_) -> Just ((pkg, status), plan'')
         where
           pkgid  = packageId pkg
           status = packageStatus installedPkgIndex pkg
           plan'' = InstallPlan.completed pkgid
-                     (BuildOk DocsNotTried TestsNotTried)
+                     (BuildOk DocsNotTried TestsNotTried
+                              (Just Installed.emptyInstalledPackageInfo))
                      (InstallPlan.processing [pkg] plan')
           --FIXME: This is a bit of a hack,
           -- pretending that each package is installed
@@ -750,7 +754,7 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf
         normalUserInstall     = (UserPackageDB `elem` packageDBs)
                              && all (not . isSpecificPackageDB) packageDBs
 
-        installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _)) = True
+        installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _ _)) = True
         installedDocs _                                            = False
         isSpecificPackageDB (SpecificPackageDB _) = True
         isSpecificPackageDB _                     = False
@@ -886,9 +890,9 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  executeInstallPlan verbosity jobControl useLogFile installPlan $ \cpkg ->
+  executeInstallPlan verbosity jobControl useLogFile installPlan $ \cpkg deps ->
     installConfiguredPackage platform compid configFlags
-                             cpkg $ \configFlags' src pkg pkgoverride ->
+                             cpkg deps $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs
@@ -993,7 +997,8 @@ executeInstallPlan :: Verbosity
                    -> JobControl IO (PackageId, BuildResult)
                    -> UseLogFile
                    -> InstallPlan
-                   -> (ConfiguredPackage -> IO BuildResult)
+                   -> (ConfiguredPackage -> [Installed.InstalledPackageInfo]
+                                         -> IO BuildResult)
                    -> IO InstallPlan
 executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
     tryNewTasks 0 plan0
@@ -1006,13 +1011,13 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
           sequence_
             [ do info verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
-                   buildResult <- installPkg pkg
+                   buildResult <- installPkg pkg deps
                    return (packageId pkg, buildResult)
-            | pkg <- pkgs
+            | (pkg, deps) <- pkgs
             , let pkgid = packageId pkg]
 
           let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing pkgs plan
+              plan'      = InstallPlan.processing (map fst pkgs) plan
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do
@@ -1067,17 +1072,26 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
 -- assignment or dependency constraints and use the new ones.
 --
 installConfiguredPackage :: Platform -> CompilerId
-                         ->  ConfigFlags -> ConfiguredPackage
+                         -> ConfigFlags
+                         -> ConfiguredPackage
+                         -> [Installed.InstalledPackageInfo]
                          -> (ConfigFlags -> PackageLocation (Maybe FilePath)
                                          -> PackageDescription
                                          -> PackageDescriptionOverride -> a)
                          -> a
 installConfiguredPackage platform comp configFlags
   (ConfiguredPackage (SourcePackage _ gpkg source pkgoverride)
-   flags stanzas deps)
+   flags stanzas _) deps
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
-    configConstraints = map thisPackageVersion deps,
+    -- We generate the legacy constraints as well as the new style precise deps.
+    -- In the end only one set gets passed to Setup.hs configure, depending on
+    -- the Cabal version we are talking to.
+    configConstraints  = [ thisPackageVersion (packageId deppkg)
+                         | deppkg <- deps ],
+    configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
+                            Installed.installedPackageId deppkg)
+                         | deppkg <- deps ],
     configBenchmarks = toFlag False,
     configTests = toFlag (TestStanzas `elem` stanzas)
   } source pkg pkgoverride
@@ -1225,7 +1239,11 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                         | otherwise = TestsNotTried
 
       -- Install phase
-        onFailure InstallFailed $ criticalSection installLock $
+        onFailure InstallFailed $ criticalSection installLock $ do
+          -- Capture installed package configuration file
+          maybePkgConf <- maybeRegister
+
+          -- Actual installation
           withWin32SelfUpgrade verbosity configFlags compid platform pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
@@ -1233,7 +1251,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                 setup Cabal.copyCommand copyFlags
                 when shouldRegister $ do
                   setup Cabal.registerCommand registerFlags
-            return (Right (BuildOk docsResult testsResult))
+          return (Right (BuildOk docsResult testsResult maybePkgConf))
 
   where
     pkgid            = packageId pkg
@@ -1262,6 +1280,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       Cabal.regVerbosity  = toFlag verbosity'
     }
     verbosity' = maybe verbosity snd useLogFile
+    tempTemplate name = name ++ "-" ++ display pkgid
 
     addDefaultInstallDirs :: ConfigFlags -> IO ConfigFlags
     addDefaultInstallDirs configFlags' = do
@@ -1277,6 +1296,30 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           env         = initialPathTemplateEnv pkgid compid platform
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
+
+    maybeRegister :: IO (Maybe Installed.InstalledPackageInfo)
+    maybeRegister =
+      if shouldRegister then do
+        tmp <- getTemporaryDirectory
+        withTempFile tmp (tempTemplate "pkgConf") $ \pkgConfFile handle -> do
+          hClose handle
+          let registerFlags' version = (registerFlags version) {
+                Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
+              }
+          setup Cabal.registerCommand registerFlags'
+          withFileContents pkgConfFile $ \pkgConfText ->
+            case Installed.parseInstalledPackageInfo pkgConfText of
+              Installed.ParseFailed perror    -> pkgConfParseFailed perror
+              Installed.ParseOk warns pkgConf -> do
+                unless (null warns) $
+                  warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
+                return (Just pkgConf)
+      else return Nothing
+
+    pkgConfParseFailed :: Installed.PError -> IO a
+    pkgConfParseFailed perror =
+      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
+            ++ show perror
 
     setup cmd flags  = do
       Exception.bracket
