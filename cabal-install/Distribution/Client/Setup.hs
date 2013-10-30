@@ -241,17 +241,18 @@ configureOptions = commandOptions configureCommand
 
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
+  | cabalLibVersion >= Version [1,19,1] [] = flags_latest
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
   | cabalLibVersion <  Version [1,14,0] [] = flags_1_14_0
   | cabalLibVersion <  Version [1,18,0] [] = flags_1_18_0
-  | cabalLibVersion <  Version [1,19,0] [] = flags_1_19_0
+  | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_0
   | otherwise = flags_latest
   where
     -- Cabal >= 1.19.1 uses --dependency and does not need --constraint
     flags_latest = flags        { configConstraints = [] }
 
-    -- Cabal < 1.19.0 does not grok the --dependency flag.
+    -- Cabal < 1.19.1 does not grok the --dependency flag.
     flags_1_19_0 = flags        { configDependencies = [] }
     -- Cabal < 1.18.0 doesn't know about --extra-prog-path and --sysconfdir.
     flags_1_18_0 = flags_1_19_0 { configProgramPathExtra = []
