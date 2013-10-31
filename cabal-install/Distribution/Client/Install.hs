@@ -1241,7 +1241,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       -- Install phase
         onFailure InstallFailed $ criticalSection installLock $ do
           -- Capture installed package configuration file
-          maybePkgConf <- maybeRegister
+          maybePkgConf <- maybeGenPkgConf
 
           -- Actual installation
           withWin32SelfUpgrade verbosity configFlags compid platform pkg $ do
@@ -1297,8 +1297,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
 
-    maybeRegister :: IO (Maybe Installed.InstalledPackageInfo)
-    maybeRegister =
+    maybeGenPkgConf :: IO (Maybe Installed.InstalledPackageInfo)
+    maybeGenPkgConf =
       if shouldRegister then do
         tmp <- getTemporaryDirectory
         withTempFile tmp (tempTemplate "pkgConf") $ \pkgConfFile handle -> do
