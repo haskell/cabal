@@ -110,16 +110,22 @@ data PackageEnvironmentType =
 
 -- | Is there a 'cabal.sandbox.config' or 'cabal.config' in this
 -- directory?
-classifyPackageEnvironment :: FilePath -> IO PackageEnvironmentType
-classifyPackageEnvironment pkgEnvDir = do
-  isSandbox <- configExists sandboxPackageEnvironmentFile
-  isUser    <- configExists userPackageEnvironmentFile
-  case (isSandbox, isUser) of
-    (True,  _)     -> return SandboxPackageEnvironment
-    (False, True)  -> return UserPackageEnvironment
-    (False, False) -> return AmbientPackageEnvironment
+classifyPackageEnvironment :: FilePath -> (Flag FilePath)
+                              -> IO PackageEnvironmentType
+classifyPackageEnvironment pkgEnvDir sandboxConfigFileFlag =
+  case sandboxConfigFileFlag of
+    NoFlag -> doClassify
+    Flag _ -> return SandboxPackageEnvironment
   where
-    configExists fname = doesFileExist (pkgEnvDir </> fname)
+    doClassify = do
+      isSandbox <- configExists sandboxPackageEnvironmentFile
+      isUser    <- configExists userPackageEnvironmentFile
+      case (isSandbox, isUser) of
+        (True,  _)     -> return SandboxPackageEnvironment
+        (False, True)  -> return UserPackageEnvironment
+        (False, False) -> return AmbientPackageEnvironment
+      where
+        configExists fname = doesFileExist (pkgEnvDir </> fname)
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.

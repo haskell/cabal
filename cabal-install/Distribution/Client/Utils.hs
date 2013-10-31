@@ -2,7 +2,7 @@
 
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
-                                 , inDir, numberOfProcessors
+                                 , inDir, determineNumJobs, numberOfProcessors
                                  , removeExistingFile
                                  , makeAbsoluteToCwd, filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath
@@ -10,6 +10,7 @@ module Distribution.Client.Utils ( MergeResult(..)
        where
 
 import Distribution.Compat.Exception ( catchIO )
+import Distribution.Simple.Setup     ( Flag(..) )
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad
          ( when )
@@ -87,6 +88,14 @@ foreign import ccall "getNumberOfProcessors" c_getNumberOfProcessors :: IO CInt
 -- program, so unsafePerformIO is safe here.
 numberOfProcessors :: Int
 numberOfProcessors = fromEnum $ unsafePerformIO c_getNumberOfProcessors
+
+-- | Determine the number of jobs to use given the value of the '-j' flag.
+determineNumJobs :: Flag (Maybe Int) -> Int
+determineNumJobs numJobsFlag =
+  case numJobsFlag of
+    NoFlag        -> 1
+    Flag Nothing  -> numberOfProcessors
+    Flag (Just n) -> n
 
 -- | Given a relative path, make it absolute relative to the current
 -- directory. Absolute paths are returned unmodified.
