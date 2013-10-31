@@ -14,17 +14,17 @@ module Distribution.Simple.Program.GHC (
 import Distribution.Package
 import Distribution.ModuleName
 import Distribution.Simple.Compiler hiding (Flag)
-import Distribution.Simple.Setup    (Flag(..), flagToMaybe, fromFlagOrDefault, flagToList)
+import Distribution.Simple.Setup    ( Flag(..), flagToMaybe, fromFlagOrDefault,
+                                      flagToList )
 --import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Run
 import Distribution.Text
 import Distribution.Verbosity
 import Distribution.Version
-import Language.Haskell.Extension ( Language(..), Extension(..) )
+import Language.Haskell.Extension   ( Language(..), Extension(..) )
 
 import Data.Monoid
-
 
 -- | A structured set of GHC options/flags
 --
@@ -148,6 +148,9 @@ data GhcOptions = GhcOptions {
   -- | Use the \"split object files\" feature; the @ghc -split-objs@ flag.
   ghcOptSplitObjs     :: Flag Bool,
 
+  -- | Run N jobs simultaneously (if possible).
+  ghcOptNumJobs       :: Flag Int,
+
   ----------------
   -- GHCi
 
@@ -208,20 +211,22 @@ data GhcDynLinkMode = GhcStaticOnly       -- ^ @-static@
  deriving (Show, Eq)
 
 
-runGHC :: Verbosity -> ConfiguredProgram -> GhcOptions -> IO ()
-runGHC verbosity ghcProg opts = do
-  runProgramInvocation verbosity (ghcInvocation ghcProg opts)
+runGHC :: Verbosity -> ConfiguredProgram -> Compiler -> GhcOptions -> IO ()
+runGHC verbosity ghcProg comp opts = do
+  runProgramInvocation verbosity (ghcInvocation ghcProg comp opts)
 
 
-ghcInvocation :: ConfiguredProgram -> GhcOptions -> ProgramInvocation
-ghcInvocation ConfiguredProgram { programVersion = Nothing } _ =
-    error "ghcInvocation: the programVersion must not be Nothing"
-ghcInvocation prog@ConfiguredProgram { programVersion = Just ver } opts =
-    programInvocation prog (renderGhcOptions ver opts)
+ghcInvocation :: ConfiguredProgram -> Compiler -> GhcOptions -> ProgramInvocation
+ghcInvocation prog comp opts =
+    programInvocation prog (renderGhcOptions comp opts)
 
 
-renderGhcOptions :: Version -> GhcOptions -> [String]
-renderGhcOptions version@(Version ver _) opts =
+renderGhcOptions :: Compiler -> GhcOptions -> [String]
+renderGhcOptions comp opts
+  | compilerFlavor comp /= GHC =
+    error $ "Distribution.Simple.Program.GHC.renderGhcOptions: "
+    ++ "compiler flavor must be 'GHC'!"
+  | otherwise =
   concat
   [ case flagToMaybe (ghcOptMode opts) of
        Nothing                 -> []
@@ -257,6 +262,13 @@ renderGhcOptions version@(Version ver _) opts =
   , [ "-prof" | flagBool ghcOptProfilingMode ]
 
   , [ "-split-objs" | flagBool ghcOptSplitObjs ]
+
+
+  , if parmakeSupported comp
+    then
+      let numJobs = fromFlagOrDefault 1 (ghcOptNumJobs opts)
+      in if numJobs > 1 then ["-j" ++ show numJobs] else []
+    else []
 
   --------------------
   -- Dynamic linking
@@ -330,8 +342,8 @@ renderGhcOptions version@(Version ver _) opts =
 
   , [ case lookup ext (ghcOptExtensionMap opts) of
         Just arg -> arg
-        Nothing  -> error $ "renderGhcOptions: " ++ display ext
-                          ++ " not present in ghcOptExtensionMap."
+        Nothing  -> error $ "Distribution.Simple.Program.GHC.renderGhcOptions: "
+                          ++ display ext ++ " not present in ghcOptExtensionMap."
     | ext <- ghcOptExtensions opts ]
 
   ----------------
@@ -362,6 +374,7 @@ renderGhcOptions version@(Version ver _) opts =
     flags    flg = flg opts
     flagBool flg = fromFlagOrDefault False (flg opts)
 
+    version@(Version ver _) = compilerVersion comp
 
 verbosityOpts :: Verbosity -> [String]
 verbosityOpts verbosity
@@ -425,6 +438,7 @@ instance Monoid GhcOptions where
     ghcOptOptimisation       = mempty,
     ghcOptProfilingMode      = mempty,
     ghcOptSplitObjs          = mempty,
+    ghcOptNumJobs            = mempty,
     ghcOptGHCiScripts        = mempty,
     ghcOptHiSuffix           = mempty,
     ghcOptObjSuffix          = mempty,
@@ -473,6 +487,7 @@ instance Monoid GhcOptions where
     ghcOptOptimisation       = combine ghcOptOptimisation,
     ghcOptProfilingMode      = combine ghcOptProfilingMode,
     ghcOptSplitObjs          = combine ghcOptSplitObjs,
+    ghcOptNumJobs            = combine ghcOptNumJobs,
     ghcOptGHCiScripts        = combine ghcOptGHCiScripts,
     ghcOptHiSuffix           = combine ghcOptHiSuffix,
     ghcOptObjSuffix          = combine ghcOptObjSuffix,
