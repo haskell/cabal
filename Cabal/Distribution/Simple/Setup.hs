@@ -160,7 +160,7 @@ instance Functor Flag where
 instance Monoid (Flag a) where
   mempty = NoFlag
   _ `mappend` f@(Flag _) = f
-  f `mappend` NoFlag    = f
+  f `mappend` NoFlag     = f
 
 instance Bounded a => Bounded (Flag a) where
   minBound = toFlag minBound
