@@ -265,18 +265,6 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
               (globalRepos globalFlags')
               comp platform conf configFlags'' configExFlags' extraArgs
 
--- | Set the 'buildNumJobs' field to 'determineNumJobs (configFileValue
--- `mappend` commandLineValue)'.
-setNumJobsFlag :: SavedConfig -> BuildFlags -> BuildFlags
-setNumJobsFlag config buildFlags =
-  let numJobsConfigFlag  = installNumJobs . savedInstallFlags $ config
-      numJobsCmdLineFlag = buildNumJobs buildFlags
-      buildFlags'   = buildFlags {
-        buildNumJobs = Flag . Just . determineNumJobs $
-                       (numJobsConfigFlag `mappend` numJobsCmdLineFlag)
-        }
-  in buildFlags'
-
 buildAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
 buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
@@ -290,32 +278,47 @@ buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   (useSandbox, config) <- reconfigure verbosity distPref
                           mempty [] globalFlags noAddSource
                           (buildNumJobs buildFlags) (const Nothing)
-  let buildFlags'       = setNumJobsFlag config buildFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity distPref buildFlags' extraArgs
+    build verbosity config distPref buildFlags extraArgs
 
 
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
 -- 'reconfigure' twice.
-build :: Verbosity -> FilePath -> BuildFlags -> [String] -> IO ()
-build verbosity distPref buildFlags extraArgs =
+build :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
+build verbosity config distPref buildFlags extraArgs =
   setupWrapper verbosity setupOptions Nothing
                (Cabal.buildCommand progConf) mkBuildFlags extraArgs
   where
     progConf     = defaultProgramConfiguration
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+
+    mkBuildFlags version = filterBuildFlags version config buildFlags'
     buildFlags' = buildFlags
       { buildVerbosity = toFlag verbosity
       , buildDistPref  = toFlag distPref
       }
-    mkBuildFlags version
-      | version >= Version [1,19,1] [] = buildFlags'
-      -- Cabal < 1.19.1 doesn't support 'build -j'.
-      | otherwise                     = buildFlags' {
-        buildNumJobs = NoFlag
-        }
+
+-- | Make sure that we don't pass new flags to setup scripts compiled against
+-- old versions of Cabal.
+filterBuildFlags :: Version -> SavedConfig -> BuildFlags -> BuildFlags
+filterBuildFlags version config buildFlags
+  | version >= Version [1,19,1] [] = buildFlags_latest
+  -- Cabal < 1.19.1 doesn't support 'build -j'.
+  | otherwise                      = buildFlags_pre_1_19_1
+  where
+    buildFlags_pre_1_19_1 = buildFlags {
+      buildNumJobs = NoFlag
+      }
+    buildFlags_latest     = buildFlags {
+      -- Take the 'jobs' setting '~/.cabal/config' into account.
+      buildNumJobs = Flag . Just . determineNumJobs $
+                     (numJobsConfigFlag `mappend` numJobsCmdLineFlag)
+      }
+    numJobsConfigFlag  = installNumJobs . savedInstallFlags $ config
+    numJobsCmdLineFlag = buildNumJobs buildFlags
+
 
 replAction :: ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction replFlags extraArgs globalFlags = do
@@ -660,10 +663,9 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
   (useSandbox, config) <- reconfigure verbosity distPref addConfigFlags []
                           globalFlags noAddSource
                           (buildNumJobs buildFlags) checkFlags
-  let buildFlags'       = setNumJobsFlag config buildFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity distPref buildFlags' extraArgs
+    build verbosity config distPref buildFlags extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
@@ -691,10 +693,9 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
   (useSandbox, config) <- reconfigure verbosity distPref addConfigFlags []
                           globalFlags noAddSource (buildNumJobs buildFlags)
                           checkFlags
-  let buildFlags'       = setNumJobsFlag config buildFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity distPref buildFlags' extraArgs
+    build verbosity config distPref buildFlags extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
@@ -843,13 +844,12 @@ runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   (useSandbox, config) <- reconfigure verbosity distPref mempty []
                           globalFlags noAddSource (buildNumJobs buildFlags)
                           (const Nothing)
-  let buildFlags'       = setNumJobsFlag config buildFlags
 
   lbi <- getPersistBuildConfig distPref
   (exe, exeArgs) <- splitRunArgs lbi extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity distPref buildFlags' ["exe:" ++ exeName exe]
+    build verbosity config distPref buildFlags ["exe:" ++ exeName exe]
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     run verbosity lbi exe exeArgs
