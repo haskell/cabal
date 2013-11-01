@@ -302,14 +302,20 @@ buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
 build :: Verbosity -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity distPref buildFlags extraArgs =
   setupWrapper verbosity setupOptions Nothing
-               (Cabal.buildCommand progConf) (const buildFlags') extraArgs
+               (Cabal.buildCommand progConf) mkBuildFlags extraArgs
   where
     progConf     = defaultProgramConfiguration
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
-    buildFlags'  = buildFlags
+    buildFlags' = buildFlags
       { buildVerbosity = toFlag verbosity
-      , buildDistPref = toFlag distPref
+      , buildDistPref  = toFlag distPref
       }
+    mkBuildFlags version
+      | version >= Version [1,19,1] [] = buildFlags'
+      -- Cabal < 1.19.1 doesn't support 'build -j'.
+      | otherwise                     = buildFlags' {
+        buildNumJobs = NoFlag
+        }
 
 replAction :: ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction replFlags extraArgs globalFlags = do
