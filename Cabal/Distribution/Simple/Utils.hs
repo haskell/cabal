@@ -110,6 +110,7 @@ module Distribution.Simple.Utils (
 
         -- * modification time
         moreRecentFile,
+        existsAndIsMoreRecentThan,
 
         -- * temp files and dirs
         TempFileOptions(..), defaultTempFileOptions,
@@ -810,6 +811,14 @@ moreRecentFile a b = do
     else do tb <- getModificationTime b
             ta <- getModificationTime a
             return (ta > tb)
+
+-- | Like 'moreRecentFile', but also checks that the first file exists.
+existsAndIsMoreRecentThan :: FilePath -> FilePath -> IO Bool
+existsAndIsMoreRecentThan a b = do
+  exists <- doesFileExist a
+  if not exists
+    then return False
+    else a `moreRecentFile` b
 
 ----------------------------------------
 -- Copying and installing files and dirs
