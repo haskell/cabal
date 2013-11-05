@@ -215,13 +215,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   createDirectoryIfMissingVerbose verbosity True setupDir
   (cabalLibVersion, mCabalLibInstalledPkgId, options') <- cabalLibVersionToUse
   debug verbosity $ "Using Cabal library version " ++ display cabalLibVersion
-  path <- case bt of
-    -- TODO: Should we also cache the setup exe for the Make and Configure build
-    -- types?
-    Simple -> getCachedSetupExecutable options'
-              cabalLibVersion mCabalLibInstalledPkgId
-    _      -> compileSetupExecutable   options'
-              cabalLibVersion mCabalLibInstalledPkgId False
+  path <- if useCachedSetupExecutable
+          then getCachedSetupExecutable options'
+               cabalLibVersion mCabalLibInstalledPkgId
+          else compileSetupExecutable   options'
+               cabalLibVersion mCabalLibInstalledPkgId False
   invokeSetupScript options' path (mkargs cabalLibVersion)
 
   where
@@ -232,6 +230,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   setupVersionFile = setupDir   </> "setup" <.> "version"
   setupHs          = setupDir   </> "setup" <.> "hs"
   setupProgFile    = setupDir   </> "setup" <.> exeExtension
+
+  useCachedSetupExecutable = (bt == Simple || bt == Configure || bt == Make)
 
   maybeGetInstalledPackages :: SetupScriptOptions -> Compiler
                                -> ProgramConfiguration -> IO PackageIndex
@@ -255,11 +255,12 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       _ -> installedVersion
     where
       canUseExistingSetup :: Version -> IO Bool
-      canUseExistingSetup version = case bt of
-        Simple -> do
+      canUseExistingSetup version =
+        if useCachedSetupExecutable
+        then do
           (_, cachedSetupProgFile) <- cachedSetupDirAndProg options version
           doesFileExist cachedSetupProgFile
-        _      ->
+        else
           (&&) <$> setupProgFile `existsAndIsMoreRecentThan` setupHs
                <*> setupProgFile `existsAndIsMoreRecentThan` setupVersionFile
 
@@ -410,12 +411,14 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     cabalDir <- defaultCabalDir
     let setupCacheDir       = cabalDir </> "setup-exe-cache"
         cachedSetupProgFile = setupCacheDir
-                              </> ("setup-" ++ cabalVersionString ++ "-"
+                              </> ("setup-" ++ buildTypeString ++ "-"
+                                   ++ cabalVersionString ++ "-"
                                    ++ platformString ++ "-"
                                    ++ compilerVersionString)
                               <.> exeExtension
     return (setupCacheDir, cachedSetupProgFile)
       where
+        buildTypeString       = show bt
         cabalVersionString    = "Cabal-" ++ (display cabalLibVersion)
         compilerVersionString = display $
                                 fromMaybe buildCompilerId
