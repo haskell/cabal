@@ -42,6 +42,7 @@ import PackageTests.PathsModule.Library.Check
 import PackageTests.PreProcess.Check
 import PackageTests.TemplateHaskell.Check
 import PackageTests.CMain.Check
+import PackageTests.DeterministicAr.Check
 import PackageTests.EmptyLib.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
@@ -86,6 +87,8 @@ tests version inplaceSpec ghcPath ghcPkgPath =
     , hunit "PathsModule/Executable"
       (PackageTests.PathsModule.Executable.Check.suite ghcPath)
     , hunit "PathsModule/Library" (PackageTests.PathsModule.Library.Check.suite ghcPath)
+    , hunit "DeterministicAr"
+        (PackageTests.DeterministicAr.Check.suite ghcPath ghcPkgPath)
     , hunit "EmptyLib/emptyLib"
       (PackageTests.EmptyLib.Check.emptyLib ghcPath)
     , hunit "BuildTestSuiteDetailedV09"
