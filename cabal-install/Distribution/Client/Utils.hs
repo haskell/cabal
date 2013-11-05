@@ -33,8 +33,10 @@ import System.FilePath
 import System.IO.Unsafe ( unsafePerformIO )
 
 #if defined(mingw32_HOST_OS)
+import Prelude hiding (ioError)
 import Control.Monad (liftM2, unless)
 import System.Directory (doesDirectoryExist)
+import System.IO.Error (ioError, mkIOError, doesNotExistErrorType)
 #endif
 
 -- | Generic merging utility. For sorted input lists this is a full outer join.
@@ -148,8 +150,8 @@ tryCanonicalizePath path = do
 #if defined(mingw32_HOST_OS)
   exists <- liftM2 (||) (doesFileExist ret) (doesDirectoryExist ret)
   unless exists $
-    error $ ret ++ ": canonicalizePath: does not exist "
-                ++ "(No such file or directory)"
+    ioError $ mkIOError doesNotExistErrorType "canonicalizePath"
+                        Nothing (Just ret)
 #endif
   return ret
 
