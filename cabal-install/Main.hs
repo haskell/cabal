@@ -111,7 +111,8 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, info, moreRecentFile, topHandler )
+         ( cabalVersion, die, notice, info
+         , existsAndIsMoreRecentThan, topHandler )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -494,14 +495,6 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
           configureAction (flags, defaultConfigExFlags)
             extraArgs globalFlags
           return (useSandbox, config)
-
-    -- True if the first file exists and is more recent than the second file.
-    existsAndIsMoreRecentThan :: FilePath -> FilePath -> IO Bool
-    existsAndIsMoreRecentThan a b = do
-      exists <- doesFileExist a
-      if not exists
-        then return False
-        else a `moreRecentFile` b
 
     -- Determine what message, if any, to display to the user if reconfiguration
     -- is required.
