@@ -100,7 +100,6 @@ module Distribution.Simple.Program (
     , ffihugsProgram
     , uhcProgram
     , gccProgram
-    , ranlibProgram
     , arProgram
     , stripProgram
     , happyProgram
