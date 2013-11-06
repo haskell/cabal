@@ -254,6 +254,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                 else installedVersion
       _ -> installedVersion
     where
+      -- TODO: fold this check into 'getCachedSetupExecutable'
+      -- so that it's not done twice.
       canUseExistingSetup :: Version -> IO Bool
       canUseExistingSetup version =
         if useCachedSetupExecutable
