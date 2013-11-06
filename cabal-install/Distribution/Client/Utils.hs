@@ -6,11 +6,13 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , removeExistingFile
                                  , makeAbsoluteToCwd, filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath
-                                 , canonicalizePathNoThrow )
+                                 , canonicalizePathNoThrow
+                                 , moreRecentFile, existsAndIsMoreRecentThan )
        where
 
-import Distribution.Compat.Exception ( catchIO )
-import Distribution.Simple.Setup     ( Flag(..) )
+import Distribution.Compat.Exception   ( catchIO )
+import Distribution.Client.Compat.Time ( getModTime )
+import Distribution.Simple.Setup       ( Flag(..) )
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad
          ( when )
@@ -160,3 +162,26 @@ tryCanonicalizePath path = do
 canonicalizePathNoThrow :: FilePath -> IO FilePath
 canonicalizePathNoThrow path = do
   canonicalizePath path `catchIO` (\_ -> return path)
+
+--------------------
+-- Modification time
+
+-- | Like Distribution.Simple.Utils.moreRecentFile, but uses getModTime instead
+-- of getModificationTime for higher precision. We can't merge the two because
+-- Distribution.Client.Time uses MIN_VERSION macros.
+moreRecentFile :: FilePath -> FilePath -> IO Bool
+moreRecentFile a b = do
+  exists <- doesFileExist b
+  if not exists
+    then return True
+    else do tb <- getModTime b
+            ta <- getModTime a
+            return (ta > tb)
+
+-- | Like 'moreRecentFile', but also checks that the first file exists.
+existsAndIsMoreRecentThan :: FilePath -> FilePath -> IO Bool
+existsAndIsMoreRecentThan a b = do
+  exists <- doesFileExist a
+  if not exists
+    then return False
+    else a `moreRecentFile` b
