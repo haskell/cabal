@@ -94,7 +94,8 @@ import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
-import Distribution.Client.Utils              (determineNumJobs)
+import Distribution.Client.Utils              (determineNumJobs
+                                              ,existsAndIsMoreRecentThan)
 
 import Distribution.PackageDescription
          ( Executable(..) )
@@ -111,8 +112,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, info
-         , existsAndIsMoreRecentThan, topHandler )
+         ( cabalVersion, die, notice, info, topHandler )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
