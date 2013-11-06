@@ -248,14 +248,18 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     case savedVer of
       Just version | version `withinRange` useCabalVersion options
         -> do updateSetupScript version bt
+              -- Does the previously compiled setup executable still exist and
+              -- is it up-to date?
               useExisting <- canUseExistingSetup version
               if useExisting
                 then return (version, Nothing, options)
                 else installedVersion
       _ -> installedVersion
     where
-      -- TODO: fold this check into 'getCachedSetupExecutable'
-      -- so that it's not done twice.
+      -- This check duplicates the checks in 'getCachedSetupExecutable' /
+      -- 'compileSetupExecutable'. Unfortunately, we have to perform it twice
+      -- because the selected Cabal version may change as a result of this
+      -- check.
       canUseExistingSetup :: Version -> IO Bool
       canUseExistingSetup version =
         if useCachedSetupExecutable
