@@ -1092,6 +1092,7 @@ writeFileAtomic targetPath content = do
 -- the same as the existing content then leave the file as is so that we do not
 -- update the file's modification time.
 --
+-- NB: the file is assumed to be ASCII-encoded.
 rewriteFile :: FilePath -> String -> IO ()
 rewriteFile path newContent =
   flip catchIO mightNotExist $ do
