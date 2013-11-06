@@ -280,6 +280,34 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           [(version,s)] | all isSpace s -> return (Just version)
           _                             -> return Nothing
 
+  -- | Update a Setup.hs script, creating it if necessary.
+  updateSetupScript :: Version -> BuildType -> IO ()
+  updateSetupScript _ Custom = do
+    useHs  <- doesFileExist customSetupHs
+    useLhs <- doesFileExist customSetupLhs
+    unless (useHs || useLhs) $ die
+      "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
+    let src = (if useHs then customSetupHs else customSetupLhs)
+    srcNewer <- src `moreRecentFile` setupHs
+    when srcNewer $ copyFileVerbose verbosity src setupHs
+    where
+      customSetupHs   = workingDir </> "Setup.hs"
+      customSetupLhs  = workingDir </> "Setup.lhs"
+
+  updateSetupScript cabalLibVersion _ =
+    rewriteFile setupHs (buildTypeScript cabalLibVersion)
+
+  buildTypeScript :: Version -> String
+  buildTypeScript cabalLibVersion = case bt of
+    Simple    -> "import Distribution.Simple; main = defaultMain\n"
+    Configure -> "import Distribution.Simple; main = defaultMainWithHooks "
+              ++ if cabalLibVersion >= Version [1,3,10] []
+                   then "autoconfUserHooks\n"
+                   else "defaultUserHooks\n"
+    Make      -> "import Distribution.Make; main = defaultMain\n"
+    Custom             -> error "buildTypeScript Custom"
+    UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
+
   installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramConfiguration
                         -> IO (Version, Maybe InstalledPackageId
                               ,SetupScriptOptions)
@@ -344,34 +372,28 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                                    usePackageIndex  = Just index,
                                    useProgramConfig = conf })
 
-  -- | Update a Setup.hs script, creating it if necessary.
-  updateSetupScript :: Version -> BuildType -> IO ()
-  updateSetupScript _ Custom = do
-    useHs  <- doesFileExist customSetupHs
-    useLhs <- doesFileExist customSetupLhs
-    unless (useHs || useLhs) $ die
-      "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
-    let src = (if useHs then customSetupHs else customSetupLhs)
-    srcNewer <- src `moreRecentFile` setupHs
-    when srcNewer $ copyFileVerbose verbosity src setupHs
-    where
-      customSetupHs   = workingDir </> "Setup.hs"
-      customSetupLhs  = workingDir </> "Setup.lhs"
-
-  updateSetupScript cabalLibVersion _ =
-    rewriteFile setupHs (buildTypeScript cabalLibVersion)
-
-
-  buildTypeScript :: Version -> String
-  buildTypeScript cabalLibVersion = case bt of
-    Simple    -> "import Distribution.Simple; main = defaultMain\n"
-    Configure -> "import Distribution.Simple; main = defaultMainWithHooks "
-              ++ if cabalLibVersion >= Version [1,3,10] []
-                   then "autoconfUserHooks\n"
-                   else "defaultUserHooks\n"
-    Make      -> "import Distribution.Make; main = defaultMain\n"
-    Custom             -> error "buildTypeScript Custom"
-    UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
+  -- | Path to the setup exe cache directory and path to the cached setup
+  -- executable.
+  cachedSetupDirAndProg :: SetupScriptOptions -> Version
+                        -> IO (FilePath, FilePath)
+  cachedSetupDirAndProg options' cabalLibVersion = do
+    cabalDir <- defaultCabalDir
+    let setupCacheDir       = cabalDir </> "setup-exe-cache"
+        cachedSetupProgFile = setupCacheDir
+                              </> ("setup-" ++ buildTypeString ++ "-"
+                                   ++ cabalVersionString ++ "-"
+                                   ++ platformString ++ "-"
+                                   ++ compilerVersionString)
+                              <.> exeExtension
+    return (setupCacheDir, cachedSetupProgFile)
+      where
+        buildTypeString       = show bt
+        cabalVersionString    = "Cabal-" ++ (display cabalLibVersion)
+        compilerVersionString = display $
+                                fromMaybe buildCompilerId
+                                (fmap compilerId . useCompiler $ options')
+        platformString        = display $
+                                fromMaybe buildPlatform (usePlatform options')
 
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
@@ -402,30 +424,6 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       where
         criticalSection'      = fromMaybe id
                                 (fmap criticalSection $ setupCacheLock options')
-
-  -- | Path to the setup exe cache directory and path to the cached setup
-  -- executable.
-  cachedSetupDirAndProg :: SetupScriptOptions -> Version
-                        -> IO (FilePath, FilePath)
-  cachedSetupDirAndProg options' cabalLibVersion = do
-    cabalDir <- defaultCabalDir
-    let setupCacheDir       = cabalDir </> "setup-exe-cache"
-        cachedSetupProgFile = setupCacheDir
-                              </> ("setup-" ++ buildTypeString ++ "-"
-                                   ++ cabalVersionString ++ "-"
-                                   ++ platformString ++ "-"
-                                   ++ compilerVersionString)
-                              <.> exeExtension
-    return (setupCacheDir, cachedSetupProgFile)
-      where
-        buildTypeString       = show bt
-        cabalVersionString    = "Cabal-" ++ (display cabalLibVersion)
-        compilerVersionString = display $
-                                fromMaybe buildCompilerId
-                                (fmap compilerId . useCompiler $ options')
-        platformString        = display $
-                                fromMaybe buildPlatform (usePlatform options')
-
 
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
   -- Currently this is GHC only. It should really be generalised.
