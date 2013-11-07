@@ -22,7 +22,8 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.Setup
-         ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
+         ( ConfigExFlags(..), InstallFlags(..)
+         , configureCommand, filterConfigureFlags )
 import Distribution.Client.Types as Source
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
@@ -34,7 +35,8 @@ import Distribution.Simple.Compiler
          , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
+         ( ConfigFlags(..), Flag(..)
+         , fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
@@ -60,16 +62,26 @@ import Data.Monoid (Monoid(..))
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags.
-chooseCabalVersion :: ConfigExFlags -> Maybe Version -> VersionRange
-chooseCabalVersion configExFlags maybeVersion =
+chooseCabalVersion :: ConfigExFlags
+                   -> InstallFlags
+                   -> Int            -- ^ Number of simultaneous jobs.
+                   -> Maybe Version  -- ^ Cabal version forced by the user.
+                   -> VersionRange
+chooseCabalVersion configExFlags installFlags numJobs maybeVersion =
   maybe defaultVersionRange thisVersion maybeVersion
   where
-    allowNewer = fromFlagOrDefault False $
-                 fmap isAllowNewer (configAllowNewer configExFlags)
+    defaultVersionRange
+      | maxLinkerJobsUsed = orLaterVersion (Version [1,19,3] [])
+      | allowNewerUsed    = orLaterVersion (Version [1,19,2] [])
+      | otherwise         = anyVersion
 
-    defaultVersionRange = if allowNewer
-                          then orLaterVersion (Version [1,19,2] [])
-                          else anyVersion
+    -- '--max-linker-jobs' was added in 1.19.3.
+    maxLinkerJobsUsed = (numJobs > 1) && case installMaxLinkerJobs installFlags
+                                         of { Flag _ -> True; NoFlag -> False }
+
+    -- '--allow-newer' was added in 1.19.2.
+    allowNewerUsed    = fromFlagOrDefault False $
+                        fmap isAllowNewer (configAllowNewer configExFlags)
 
 -- | Configure the package found in the local directory
 configure :: Verbosity
@@ -110,7 +122,7 @@ configure verbosity packageDBs repos comp platform conf
 
   where
     setupScriptOptions index = SetupScriptOptions {
-      useCabalVersion  = chooseCabalVersion configExFlags
+      useCabalVersion  = chooseCabalVersion configExFlags mempty 1
                          (flagToMaybe (configCabalVersion configExFlags)),
       useCompiler      = Just comp,
       usePlatform      = Just platform,
