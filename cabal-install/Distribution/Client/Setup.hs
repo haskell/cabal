@@ -16,6 +16,7 @@ module Distribution.Client.Setup
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
+    , filterBuildFlags
     , testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
@@ -385,6 +386,25 @@ data SkipAddSourceDepsCheck =
 data BuildExFlags = BuildExFlags {
   buildOnly     :: Flag SkipAddSourceDepsCheck
 }
+
+-- | Make sure that we don't pass new flags to setup scripts compiled against
+-- old versions of Cabal.
+filterBuildFlags :: BuildFlags -> Version -> BuildFlags
+filterBuildFlags buildFlags version
+  | version >= Version [1,19,3] [] = buildFlags_latest
+  | version >= Version [1,19,1] [] = buildFlags_pre_1_19_3
+  | otherwise                      = buildFlags_pre_1_19_1
+  where
+    buildFlags_latest     = buildFlags
+
+    -- Cabal < 1.19.3 doesn't support 'build --max-linker-jobs-semaphore'
+    buildFlags_pre_1_19_3 = buildFlags_latest     {
+      buildMaxLinkerJobsSemaphore = NoFlag
+      }
+    -- Cabal < 1.19.1 doesn't support 'build -j'.
+    buildFlags_pre_1_19_1 = buildFlags_pre_1_19_3 {
+      buildNumJobs                = NoFlag
+      }
 
 buildExOptions :: ShowOrParseArgs -> [OptionField BuildExFlags]
 buildExOptions _showOrParseArgs =

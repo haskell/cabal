@@ -70,7 +70,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
          ( GlobalFlags(..)
-         , ConfigFlags(..), configureCommand, filterConfigureFlags
+         , ConfigFlags(..), configureCommand
+         , filterConfigureFlags, filterBuildFlags
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
          ( defaultCabalDir, defaultUserInstall )
@@ -1294,9 +1295,10 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
   where
     pkgid            = packageId pkg
     buildCommand'    = buildCommand defaultProgramConfiguration
-    buildFlags   _   = emptyBuildFlags {
-      buildDistPref  = configDistPref configFlags,
-      buildVerbosity = toFlag verbosity'
+    buildFlags       = filterBuildFlags $ emptyBuildFlags {
+      buildMaxLinkerJobsSemaphore = Cabal.NoFlag,
+      buildDistPref               = configDistPref configFlags,
+      buildVerbosity              = toFlag verbosity'
     }
     shouldHaddock    = fromFlag (installDocumentation installConfigFlags)
     haddockFlags' _   = haddockFlags {
