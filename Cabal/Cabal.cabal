@@ -26,12 +26,7 @@ build-type: Custom
 extra-source-files:
   README tests/README changelog
 
-  -- Generated with
-  --
-  -- find tests -type f -name '*.hs' -or -name '*.c' -or -name '*.sh' -or -name '*.cabal' -or name '*.hsc'
-  -- | awk '/Check.hs$|UnitTests|PackageTester|autogen|PackageTests.hs|CreatePipe/
-  -- { next } { print }'
-
+  -- Generated with 'misc/gen-extra-source-files.sh' & 'M-x sort-lines':
   tests/PackageTests/BenchmarkExeV10/Foo.hs
   tests/PackageTests/BenchmarkExeV10/benchmarks/bench-Foo.hs
   tests/PackageTests/BenchmarkExeV10/my.cabal
@@ -82,6 +77,8 @@ extra-source-files:
   tests/PackageTests/CMain/Setup.hs
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal
+  tests/PackageTests/DeterministicAr/Lib.hs
+  tests/PackageTests/DeterministicAr/my.cabal
   tests/PackageTests/EmptyLib/empty/empty.cabal
   tests/PackageTests/OrderFlags/Foo.hs
   tests/PackageTests/OrderFlags/my.cabal
@@ -91,10 +88,6 @@ extra-source-files:
   tests/PackageTests/PreProcess/Foo.hsc
   tests/PackageTests/PreProcess/Main.hs
   tests/PackageTests/PreProcess/my.cabal
-  tests/PackageTests/TemplateHaskell/vanilla/Exe.hs
-  tests/PackageTests/TemplateHaskell/vanilla/Lib.hs
-  tests/PackageTests/TemplateHaskell/vanilla/TH.hs
-  tests/PackageTests/TemplateHaskell/vanilla/my.cabal
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
   tests/PackageTests/TemplateHaskell/dynamic/Lib.hs
   tests/PackageTests/TemplateHaskell/dynamic/TH.hs
@@ -103,6 +96,10 @@ extra-source-files:
   tests/PackageTests/TemplateHaskell/profiling/Lib.hs
   tests/PackageTests/TemplateHaskell/profiling/TH.hs
   tests/PackageTests/TemplateHaskell/profiling/my.cabal
+  tests/PackageTests/TemplateHaskell/vanilla/Exe.hs
+  tests/PackageTests/TemplateHaskell/vanilla/Lib.hs
+  tests/PackageTests/TemplateHaskell/vanilla/TH.hs
+  tests/PackageTests/TemplateHaskell/vanilla/my.cabal
   tests/PackageTests/TestOptions/TestOptions.cabal
   tests/PackageTests/TestOptions/test-TestOptions.hs
   tests/PackageTests/TestStanza/my.cabal
@@ -258,6 +255,7 @@ test-suite package-tests
     PackageTests.BuildDeps.TargetSpecificDeps3.Check
     PackageTests.BuildTestSuiteDetailedV09.Check
     PackageTests.CMain.Check
+    PackageTests.DeterministicAr.Check
     PackageTests.EmptyLib.Check
     PackageTests.OrderFlags.Check
     PackageTests.PackageTester
