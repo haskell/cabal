@@ -400,7 +400,8 @@ buildCommand = parent {
     commandDefaultFlags = (commandDefaultFlags parent, mempty),
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
-                          (commandOptions parent showOrParseArgs)
+                          (filterBuildOptions $
+                           commandOptions parent showOrParseArgs)
                           ++
                           liftOptions snd setSnd (buildExOptions showOrParseArgs)
   }
@@ -409,6 +410,13 @@ buildCommand = parent {
     setSnd b (a,_) = (a,b)
 
     parent = Cabal.buildCommand defaultProgramConfiguration
+
+-- | Filter out the options that only make sense in the setup script context
+-- (i.e., for 'runhaskell Setup.hs build').
+filterBuildOptions :: [OptionField a] -> [OptionField a]
+filterBuildOptions = filter ((not . flip elem blacklist) . optionName)
+  where
+    blacklist = ["max-linker-jobs-semaphore"]
 
 instance Monoid BuildExFlags where
   mempty = BuildExFlags {
@@ -432,7 +440,8 @@ testCommand = parent {
                         (commandOptions parent showOrParseArgs)
                         ++
                         liftOptions get2 set2
-                        (Cabal.buildOptions progConf showOrParseArgs)
+                        (filterBuildOptions $
+                         Cabal.buildOptions progConf showOrParseArgs)
                         ++
                         liftOptions get3 set3 (buildExOptions showOrParseArgs)
   }
@@ -457,7 +466,8 @@ benchmarkCommand = parent {
                         (commandOptions parent showOrParseArgs)
                         ++
                         liftOptions get2 set2
-                        (Cabal.buildOptions progConf showOrParseArgs)
+                        (filterBuildOptions $
+                         Cabal.buildOptions progConf showOrParseArgs)
                         ++
                         liftOptions get3 set3 (buildExOptions showOrParseArgs)
   }
@@ -647,7 +657,8 @@ runCommand = CommandUI {
     commandDefaultFlags = mempty,
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
-                          (Cabal.buildOptions progConf showOrParseArgs)
+                          (filterBuildOptions $
+                           Cabal.buildOptions progConf showOrParseArgs)
                           ++
                           liftOptions snd setSnd
                           (buildExOptions showOrParseArgs)
