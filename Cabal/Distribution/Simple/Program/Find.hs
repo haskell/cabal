@@ -91,19 +91,31 @@ findProgramOnSearchPath verbosity searchpath prog = do
                        Windows -> ["", "exe"]
                        _       -> [""]
 
-    tryPathElem ProgramSearchPathDefault =
-      findExecutable prog
+    tryPathElem ProgramSearchPathDefault = do
+      -- 'findExecutable' doesn't check that the path really refers to an
+      -- executable on Windows (at least with GHC < 7.8). See
+      -- https://ghc.haskell.org/trac/ghc/ticket/2184
+      mExe <- findExecutable prog
+      case mExe of
+        Just exe -> do isExe <- checkExe exe
+                       if isExe
+                         then return mExe
+                         else return Nothing
+        _        -> return mExe
 
     findFirstExe []     = return Nothing
     findFirstExe (f:fs) = do
+      isExe <- checkExe f
+      if isExe
+        then return (Just f)
+        else findFirstExe fs
+
+    checkExe f = do
       exists <- doesFileExist f
       if exists
         then do perms <- getPermissions f
-                if executable perms
-                  then return (Just f)
-                  else findFirstExe fs
-        else findFirstExe fs
-
+                return (executable perms)
+        else return False
 
 -- | Interpret a 'ProgramSearchPath' to construct a new @$PATH@ env var.
 -- Note that this is close but not perfect because on Windows the search
