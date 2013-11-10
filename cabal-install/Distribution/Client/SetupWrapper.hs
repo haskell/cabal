@@ -43,6 +43,8 @@ import Distribution.Compiler ( buildCompilerId )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(GHC), Compiler(compilerId)
          , PackageDB(..), PackageDBStack )
+import Distribution.Simple.PreProcess
+         ( runSimplePreProcessor, ppUnlit )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram )
@@ -295,7 +297,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       "Using 'build-type: Custom' but there is no Setup.hs or Setup.lhs script."
     let src = (if useHs then customSetupHs else customSetupLhs)
     srcNewer <- src `moreRecentFile` setupHs
-    when srcNewer $ copyFileVerbose verbosity src setupHs
+    when srcNewer $ if useHs
+                    then copyFileVerbose verbosity src setupHs
+                    else runSimplePreProcessor ppUnlit src setupHs verbosity
     where
       customSetupHs   = workingDir </> "Setup.hs"
       customSetupLhs  = workingDir </> "Setup.lhs"
