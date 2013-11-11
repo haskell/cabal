@@ -168,6 +168,7 @@ data GhcOptions = GhcOptions {
   ghcOptObjDir        :: Flag FilePath,
   ghcOptOutputDir     :: Flag FilePath,
   ghcOptStubDir       :: Flag FilePath,
+  ghcOptDepMakefile   :: Flag FilePath,
 
   --------------------
   -- Dynamic linking
@@ -195,7 +196,7 @@ data GhcMode = GhcModeCompile     -- ^ @ghc -c@
              | GhcModeMake        -- ^ @ghc --make@
              | GhcModeInteractive -- ^ @ghci@ \/ @ghc --interactive@
              | GhcModeAbiHash     -- ^ @ghc --abi-hash@
---             | GhcModeDepAnalysis -- ^ @ghc -M@
+             | GhcModeDepAnalysis -- ^ @ghc -M@
 --             | GhcModeEvaluate    -- ^ @ghc -e@
  deriving (Show, Eq)
 
@@ -235,7 +236,7 @@ renderGhcOptions comp opts
        Just GhcModeMake        -> ["--make"]
        Just GhcModeInteractive -> ["--interactive"]
        Just GhcModeAbiHash     -> ["--abi-hash"]
---     Just GhcModeDepAnalysis -> ["-M"]
+       Just GhcModeDepAnalysis -> ["-M"]
 --     Just GhcModeEvaluate    -> ["-e", expr]
 
   , flags ghcOptExtraDefault
@@ -294,6 +295,7 @@ renderGhcOptions comp opts
   , concat [ ["-odir",    dir] | dir <- flag ghcOptObjDir ]
   , concat [ ["-hidir",   dir] | dir <- flag ghcOptHiDir  ]
   , concat [ ["-stubdir", dir] | dir <- flag ghcOptStubDir, ver >= [6,8] ]
+  , concat [ ["-dep-makefile", dep] | dep <- flag ghcOptDepMakefile ]
 
   -----------------------
   -- Source search path
@@ -448,6 +450,7 @@ instance Monoid GhcOptions where
     ghcOptObjDir             = mempty,
     ghcOptOutputDir          = mempty,
     ghcOptStubDir            = mempty,
+    ghcOptDepMakefile        = mempty,
     ghcOptDynLinkMode        = mempty,
     ghcOptShared             = mempty,
     ghcOptFPic               = mempty,
@@ -497,6 +500,7 @@ instance Monoid GhcOptions where
     ghcOptObjDir             = combine ghcOptObjDir,
     ghcOptOutputDir          = combine ghcOptOutputDir,
     ghcOptStubDir            = combine ghcOptStubDir,
+    ghcOptDepMakefile        = combine ghcOptDepMakefile,
     ghcOptDynLinkMode        = combine ghcOptDynLinkMode,
     ghcOptShared             = combine ghcOptShared,
     ghcOptFPic               = combine ghcOptFPic,
