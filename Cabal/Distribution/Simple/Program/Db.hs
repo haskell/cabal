@@ -61,7 +61,7 @@ import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Builtin
          ( builtinPrograms )
 import Distribution.Simple.Utils
-         ( die )
+         ( die, doesExecutableExist )
 import Distribution.Version
          ( Version, VersionRange, isAnyVersion, withinRange )
 import Distribution.Text
@@ -76,9 +76,6 @@ import Data.Maybe
 import qualified Data.Map as Map
 import Control.Monad
          ( join, foldM )
-import System.Directory
-         ( doesFileExist )
-
 
 -- ------------------------------------------------------------
 -- * Programs database
@@ -300,7 +297,7 @@ configureProgram verbosity prog conf = do
     Nothing   -> programFindLocation prog verbosity (progSearchPath conf)
              >>= return . fmap FoundOnSystem
     Just path -> do
-      absolute <- doesFileExist path
+      absolute <- doesExecutableExist path
       if absolute
         then return (Just (UserSpecified path))
         else findProgramOnSearchPath verbosity (progSearchPath conf) path
