@@ -31,11 +31,11 @@ module Distribution.Simple.Program.Find (
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Simple.Utils
-         ( debug )
+         ( debug, doesExecutableExist )
 import Distribution.System
          ( OS(..), buildOS )
 import System.Directory
-         ( findExecutable, doesFileExist, Permissions(..), getPermissions )
+         ( findExecutable )
 import Distribution.Compat.Environment
          ( getEnvironment )
 import System.FilePath
@@ -97,25 +97,19 @@ findProgramOnSearchPath verbosity searchpath prog = do
       -- https://ghc.haskell.org/trac/ghc/ticket/2184
       mExe <- findExecutable prog
       case mExe of
-        Just exe -> do isExe <- checkExe exe
-                       if isExe
-                         then return mExe
-                         else return Nothing
+        Just exe -> do
+          exeExists <- doesExecutableExist exe
+          if exeExists
+            then return mExe
+            else return Nothing
         _        -> return mExe
 
     findFirstExe []     = return Nothing
     findFirstExe (f:fs) = do
-      isExe <- checkExe f
+      isExe <- doesExecutableExist f
       if isExe
         then return (Just f)
         else findFirstExe fs
-
-    checkExe f = do
-      exists <- doesFileExist f
-      if exists
-        then do perms <- getPermissions f
-                return (executable perms)
-        else return False
 
 -- | Interpret a 'ProgramSearchPath' to construct a new @$PATH@ env var.
 -- Note that this is close but not perfect because on Windows the search

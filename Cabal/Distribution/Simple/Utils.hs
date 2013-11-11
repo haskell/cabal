@@ -84,6 +84,7 @@ module Distribution.Simple.Utils (
         installDirectoryContents,
 
         -- * File permissions
+        doesExecutableExist,
         setFileOrdinary,
         setFileExecutable,
 
@@ -979,6 +980,18 @@ installDirectoryContents verbosity srcDir destDir = do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   srcFiles <- getDirectoryContentsRecursive srcDir
   installOrdinaryFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
+
+-------------------
+-- File permissions
+
+-- | Like 'doesFileExist', but also checks that the file is executable.
+doesExecutableExist :: FilePath -> IO Bool
+doesExecutableExist f = do
+  exists <- doesFileExist f
+  if exists
+    then do perms <- getPermissions f
+            return (executable perms)
+    else return False
 
 ---------------------------------
 -- Deprecated file copy functions
