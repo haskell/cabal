@@ -302,8 +302,10 @@ configureProgram verbosity prog conf = do
         then return (Just (UserSpecified path))
         else findProgramOnSearchPath verbosity (progSearchPath conf) path
          >>= maybe (die notFound) (return . Just . UserSpecified)
-      where notFound = "Cannot find the program '" ++ name ++ "' at '"
-                     ++ path ++ "' or on the path"
+      where notFound = "Cannot find the program '" ++ name
+                     ++ "'. User-specified path '"
+                     ++ path ++ "' does not refer to an executable and "
+                     ++ "the program is not on the system path."
   case maybeLocation of
     Nothing -> return conf
     Just location -> do
