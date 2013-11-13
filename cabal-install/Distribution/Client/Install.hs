@@ -47,8 +47,8 @@ import Distribution.Compat.Exception
 import Control.Monad
          ( when, unless )
 import System.Directory
-         ( getTemporaryDirectory, doesFileExist, createDirectoryIfMissing,
-           removeFile )
+         ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
+           createDirectoryIfMissing, removeFile, renameDirectory )
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
@@ -106,15 +106,15 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
-         , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe )
+         , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe, defaultDistPref )
 import qualified Distribution.Simple.Setup as Cabal
          ( Flag(..)
          , copyCommand, CopyFlags(..), emptyCopyFlags
          , registerCommand, RegisterFlags(..), emptyRegisterFlags
          , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
-         ( rawSystemExit, comparing, writeFileAtomic
-         , withTempFile , withFileContents )
+         ( createDirectoryIfMissingVerbose, rawSystemExit, comparing
+         , writeFileAtomic, withTempFile , withFileContents )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
@@ -133,7 +133,8 @@ import Distribution.ParseUtils
 import Distribution.Version
          ( Version, anyVersion, thisVersion )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, warn, debugNoWrap, die, intercalate, withTempDirectory )
+         ( notice, info, warn, debug, debugNoWrap, die
+         , intercalate, withTempDirectory )
 import Distribution.Client.Utils
          ( determineNumJobs, inDir, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
@@ -895,7 +896,8 @@ performInstallations verbosity
     installConfiguredPackage platform compid configFlags
                              cpkg deps $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
-        installLocalPackage verbosity buildLimit (packageId pkg) src' $ \mpath ->
+        installLocalPackage verbosity buildLimit
+                            (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs
                                  (setupScriptOptions installedPkgIndex cacheLock)
                                  miscOptions configFlags' installFlags haddockFlags
@@ -905,9 +907,11 @@ performInstallations verbosity
     platform = InstallPlan.planPlatform installPlan
     compid   = InstallPlan.planCompiler installPlan
 
-    numJobs  = determineNumJobs (installNumJobs installFlags)
-    numFetchJobs  = 2
+    numJobs         = determineNumJobs (installNumJobs installFlags)
+    numFetchJobs    = 2
     parallelInstall = numJobs >= 2
+    distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                      (configDistPref configFlags)
 
     setupScriptOptions index lock = SetupScriptOptions {
       useCabalVersion  = maybe anyVersion thisVersion (libVersion miscOptions),
@@ -926,9 +930,7 @@ performInstallations verbosity
                            then Just index
                            else Nothing,
       useProgramConfig = conf,
-      useDistPref      = fromFlagOrDefault
-                           (useDistPref defaultSetupScriptOptions)
-                           (configDistPref configFlags),
+      useDistPref      = distPref,
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing,
       forceExternalSetupMethod = parallelInstall,
@@ -1119,10 +1121,10 @@ fetchSourcePackage verbosity fetchLimit src installPkg = do
 installLocalPackage
   :: Verbosity
   -> JobLimit
-  -> PackageIdentifier -> PackageLocation FilePath
+  -> PackageIdentifier -> PackageLocation FilePath -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installLocalPackage verbosity jobLimit pkgid location installPkg =
+installLocalPackage verbosity jobLimit pkgid location distPref installPkg =
 
   case location of
 
@@ -1131,24 +1133,25 @@ installLocalPackage verbosity jobLimit pkgid location installPkg =
 
     LocalTarballPackage tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath installPkg
+        pkgid tarballPath distPref installPkg
 
     RemoteTarballPackage _ tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath installPkg
+        pkgid tarballPath distPref installPkg
 
     RepoTarballPackage _ _ tarballPath ->
       installLocalTarballPackage verbosity jobLimit
-        pkgid tarballPath installPkg
+        pkgid tarballPath distPref installPkg
 
 
 installLocalTarballPackage
   :: Verbosity
   -> JobLimit
-  -> PackageIdentifier -> FilePath
+  -> PackageIdentifier -> FilePath -> FilePath
   -> (Maybe FilePath -> IO BuildResult)
   -> IO BuildResult
-installLocalTarballPackage verbosity jobLimit pkgid tarballPath installPkg = do
+installLocalTarballPackage verbosity jobLimit pkgid
+                           tarballPath distPref installPkg = do
   tmp <- getTemporaryDirectory
   withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
     onFailure UnpackFailed $ do
@@ -1163,8 +1166,33 @@ installLocalTarballPackage verbosity jobLimit pkgid tarballPath installPkg = do
         exists <- doesFileExist descFilePath
         when (not exists) $
           die $ "Package .cabal file not found: " ++ show descFilePath
+        maybeRenameDistDir absUnpackedPath
+
       installPkg (Just absUnpackedPath)
 
+  where
+    -- 'cabal sdist' puts pre-generated files in the 'dist' directory. This
+    -- fails when we use a nonstandard build directory name (as is the case
+    -- with sandboxes), so we need to rename the 'dist' dir here.
+    --
+    -- TODO: 'cabal get happy && cd sandbox && cabal install ../happy' still
+    -- fails even with this workaround. We probably can live with that.
+    maybeRenameDistDir :: FilePath -> IO ()
+    maybeRenameDistDir absUnpackedPath = do
+      let distDirPath    = absUnpackedPath </> defaultDistPref
+          distDirPathTmp = absUnpackedPath </> (defaultDistPref ++ "-tmp")
+          distDirPathNew = absUnpackedPath </> distPref
+      distDirExists <- doesDirectoryExist distDirPath
+      when distDirExists $ do
+        -- NB: we need to handle the case when 'distDirPathNew' is a
+        -- subdirectory of 'distDirPath' (e.g. 'dist/dist-sandbox-3688fbc2').
+        debug verbosity $ "Renaming '" ++ distDirPath ++ "' to '"
+          ++ distDirPathTmp ++ "'."
+        renameDirectory distDirPath distDirPathTmp
+        createDirectoryIfMissingVerbose verbosity False distDirPath
+        debug verbosity $ "Renaming '" ++ distDirPathTmp ++ "' to '"
+          ++ distDirPathNew ++ "'."
+        renameDirectory distDirPathTmp distDirPathNew
 
 installUnpackedPackage
   :: Verbosity
