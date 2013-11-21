@@ -130,6 +130,7 @@ Sometimes one wants to share a single sandbox between multiple packages. This
 can be easily done with the `--sandbox` option:
 
 ~~~~~~~~~~~~~~~
+$ mkdir -p /path/to/shared-sandbox
 $ cd /path/to/shared-sandbox
 $ cabal sandbox init --sandbox .
 $ cd /path/to/package-a
@@ -137,6 +138,11 @@ $ cabal sandbox init --sandbox /path/to/shared-sandbox
 $ cd /path/to/package-b
 $ cabal sandbox init --sandbox /path/to/shared-sandbox
 ~~~~~~~~~~~~~~~
+
+Note that `cabal sandbox init --sandbox .` puts all sandbox files into the
+current directory. By default, `cabal sandbox init` initialises a new sandbox in
+a newly-created subdirectory of the current working directory
+(`./.cabal-sandbox`).
 
 Using multiple different compiler versions simultaneously is also supported, via
 the `-w` option:
