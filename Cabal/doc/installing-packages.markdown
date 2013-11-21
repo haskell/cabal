@@ -133,9 +133,9 @@ can be easily done with the `--sandbox` option:
 $ cd /path/to/shared-sandbox
 $ cabal sandbox init --sandbox .
 $ cd /path/to/package-a
-$ cabal sandbox init --sandbox /path/to/shared-sandbox
+$ cabal sandbox init --sandbox /path/to/shared-sandbox/.cabal-sandbox
 $ cd /path/to/package-b
-$ cabal sandbox init --sandbox /path/to/shared-sandbox
+$ cabal sandbox init --sandbox /path/to/shared-sandbox/.cabal-sandbox
 ~~~~~~~~~~~~~~~
 
 Using multiple different compiler versions simultaneously is also supported, via
