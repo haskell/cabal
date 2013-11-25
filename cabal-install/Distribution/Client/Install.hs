@@ -667,7 +667,8 @@ postInstallActions verbosity
   regenerateHaddockIndex verbosity packageDBs comp platform conf
                          configFlags installFlags installPlan
 
-  symlinkBinaries verbosity configFlags installFlags installPlan
+  unless (isUseSandbox useSandbox) $
+    symlinkBinaries verbosity configFlags installFlags installPlan
 
   printBuildFailures installPlan
 
