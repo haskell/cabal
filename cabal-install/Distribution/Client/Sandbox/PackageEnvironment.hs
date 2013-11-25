@@ -326,7 +326,8 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   inherited <- inheritedPackageEnvironment verbosity user
 
   -- Layer the package environment settings over settings from ~/.cabal/config.
-  cabalConfig <- loadConfig verbosity configFileFlag NoFlag
+  cabalConfig <- fmap unsetSymlinkBinDir $
+                 loadConfig verbosity configFileFlag NoFlag
   return (sandboxDir,
           updateInstallDirs $
           (base `mappend` (toPkgEnv cabalConfig) `mappend`
@@ -336,14 +337,24 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
       toPkgEnv config = mempty { pkgEnvSavedConfig = config }
 
       updateInstallDirs pkgEnv =
-        let config         = pkgEnvSavedConfig pkgEnv
-            configureFlags = savedConfigureFlags config
+        let config         = pkgEnvSavedConfig    pkgEnv
+            configureFlags = savedConfigureFlags  config
             installDirs    = savedUserInstallDirs config
         in pkgEnv {
           pkgEnvSavedConfig = config {
              savedConfigureFlags = configureFlags {
                 configInstallDirs = installDirs
                 }
+             }
+          }
+
+      -- We don't want to inherit the value of 'symlink-bindir' from
+      -- '~/.cabal/config'. See #1514.
+      unsetSymlinkBinDir config =
+        let installFlags = savedInstallFlags config
+        in config {
+          savedInstallFlags = installFlags {
+             installSymlinkBinDir = NoFlag
              }
           }
 
