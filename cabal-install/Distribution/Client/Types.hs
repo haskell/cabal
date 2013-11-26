@@ -91,6 +91,27 @@ instance Package ConfiguredPackage where
 instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ _ deps) = deps
 
+-- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
+-- installed already, hence itself ready to be installed.
+data ReadyPackage = ReadyPackage
+       SourcePackage           -- see 'ConfiguredPackage'.
+       FlagAssignment          --
+       [OptionalStanza]        --
+       [InstalledPackageInfo]  -- Installed dependencies.
+  deriving Show
+
+instance Package ReadyPackage where
+  packageId (ReadyPackage pkg _ _ _) = packageId pkg
+
+instance PackageFixedDeps ReadyPackage where
+  depends (ReadyPackage _ _ _ deps) = map packageId deps
+
+-- | Sometimes we need to convert a 'ReadyPackage' back to a
+-- 'ConfiguredPackage'. For example, a failed 'PlanPackage' can be *either*
+-- Ready or Configured.
+readyPackageToConfiguredPackage :: ReadyPackage -> ConfiguredPackage
+readyPackageToConfiguredPackage (ReadyPackage srcpkg flags stanzas deps) =
+  ConfiguredPackage srcpkg flags stanzas (map packageId deps)
 
 -- | A package description along with the location of the package sources.
 --
