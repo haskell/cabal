@@ -490,13 +490,13 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
 
 linearizeInstallPlan :: PackageIndex
                      -> InstallPlan
-                     -> [(ConfiguredPackage, PackageStatus)]
+                     -> [(ReadyPackage, PackageStatus)]
 linearizeInstallPlan installedPkgIndex plan =
     unfoldr next plan
   where
     next plan' = case InstallPlan.ready plan' of
       []      -> Nothing
-      ((pkg ,_):_) -> Just ((pkg, status), plan'')
+      (pkg:_) -> Just ((pkg, status), plan'')
         where
           pkgid  = packageId pkg
           status = packageStatus installedPkgIndex pkg
@@ -517,7 +517,7 @@ extractReinstalls :: PackageStatus -> [InstalledPackageId]
 extractReinstalls (Reinstall ipids _) = ipids
 extractReinstalls _                   = []
 
-packageStatus :: PackageIndex -> ConfiguredPackage -> PackageStatus
+packageStatus :: PackageIndex -> ReadyPackage -> PackageStatus
 packageStatus installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
@@ -531,7 +531,7 @@ packageStatus installedPkgIndex cpkg =
   where
 
     changes :: Installed.InstalledPackageInfo
-            -> ConfiguredPackage
+            -> ReadyPackage
             -> [MergeResult PackageIdentifier PackageIdentifier]
     changes pkg pkg' =
       filter changed
@@ -550,7 +550,7 @@ packageStatus installedPkgIndex cpkg =
 
 printPlan :: Bool -- is dry run
           -> Verbosity
-          -> [(ConfiguredPackage, PackageStatus)]
+          -> [(ReadyPackage, PackageStatus)]
           -> SourcePackageDb
           -> IO ()
 printPlan dryRun verbosity plan sourcePkgDb = case plan of
@@ -581,7 +581,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
                 []   -> ""
                 diff -> " changes: "  ++ intercalate ", " (map change diff)
 
-    showLatest :: ConfiguredPackage -> String
+    showLatest :: ReadyPackage -> String
     showLatest pkg = case mLatestVersion of
         Just latestVersion ->
             if pkgVersion < latestVersion
@@ -600,15 +600,15 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     toFlagAssignment :: [Flag] -> FlagAssignment
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
-    nonDefaultFlags :: ConfiguredPackage -> FlagAssignment
-    nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
+    nonDefaultFlags :: ReadyPackage -> FlagAssignment
+    nonDefaultFlags (ReadyPackage spkg fa _ _) =
       let defaultAssignment =
             toFlagAssignment
              (genPackageFlags (Source.packageDescription spkg))
       in  fa \\ defaultAssignment
 
-    stanzas :: ConfiguredPackage -> [OptionalStanza]
-    stanzas (ConfiguredPackage _ _ sts _) = sts
+    stanzas :: ReadyPackage -> [OptionalStanza]
+    stanzas (ReadyPackage _ _ sts _) = sts
 
     showStanzas :: [OptionalStanza] -> String
     showStanzas = concatMap ((' ' :) . showStanza)
@@ -848,7 +848,7 @@ updateSandboxTimestampsFile (UseSandbox sandboxDir)
   withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
     let allInstalled = [ pkg | InstallPlan.Installed pkg _
                             <- InstallPlan.toList installPlan ]
-        allSrcPkgs   = [ pkg | ConfiguredPackage pkg _ _ _ <- allInstalled ]
+        allSrcPkgs   = [ pkg | ReadyPackage pkg _ _ _ <- allInstalled ]
         allPaths     = [ pth | LocalUnpackedPackage pth
                             <- map packageSource allSrcPkgs]
     allPathsCanonical <- mapM tryCanonicalizePath allPaths
@@ -892,9 +892,9 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  executeInstallPlan verbosity jobControl useLogFile installPlan $ \cpkg deps ->
-    installConfiguredPackage platform compid configFlags
-                             cpkg deps $ \configFlags' src pkg pkgoverride ->
+  executeInstallPlan verbosity jobControl useLogFile installPlan $ \rpkg ->
+    installReadyPackage platform compid configFlags
+                        rpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit
                             (packageId pkg) src' distPref $ \mpath ->
@@ -997,8 +997,7 @@ executeInstallPlan :: Verbosity
                    -> JobControl IO (PackageId, BuildResult)
                    -> UseLogFile
                    -> InstallPlan
-                   -> (ConfiguredPackage -> [Installed.InstalledPackageInfo]
-                                         -> IO BuildResult)
+                   -> (ReadyPackage -> IO BuildResult)
                    -> IO InstallPlan
 executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
     tryNewTasks 0 plan0
@@ -1011,13 +1010,13 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
           sequence_
             [ do info verbosity $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
-                   buildResult <- installPkg pkg deps
+                   buildResult <- installPkg pkg
                    return (packageId pkg, buildResult)
-            | (pkg, deps) <- pkgs
+            | pkg <- pkgs
             , let pkgid = packageId pkg]
 
           let taskCount' = taskCount + length pkgs
-              plan'      = InstallPlan.processing (map fst pkgs) plan
+              plan'      = InstallPlan.processing pkgs plan
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do
@@ -1066,22 +1065,23 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
       mapM_ putStrLn (drop toDrop lns)
 
 -- | Call an installer for an 'SourcePackage' but override the configure
--- flags with the ones given by the 'ConfiguredPackage'. In particular the
--- 'ConfiguredPackage' specifies an exact 'FlagAssignment' and exactly
+-- flags with the ones given by the 'ReadyPackage'. In particular the
+-- 'ReadyPackage' specifies an exact 'FlagAssignment' and exactly
 -- versioned package dependencies. So we ignore any previous partial flag
 -- assignment or dependency constraints and use the new ones.
 --
-installConfiguredPackage :: Platform -> CompilerId
-                         -> ConfigFlags
-                         -> ConfiguredPackage
-                         -> [Installed.InstalledPackageInfo]
-                         -> (ConfigFlags -> PackageLocation (Maybe FilePath)
-                                         -> PackageDescription
-                                         -> PackageDescriptionOverride -> a)
-                         -> a
-installConfiguredPackage platform comp configFlags
-  (ConfiguredPackage (SourcePackage _ gpkg source pkgoverride)
-   flags stanzas _) deps
+-- NB: when updating this function, don't forget to also update
+-- 'configurePackage' in D.C.Configure.
+installReadyPackage :: Platform -> CompilerId
+                       -> ConfigFlags
+                       -> ReadyPackage
+                       -> (ConfigFlags -> PackageLocation (Maybe FilePath)
+                                       -> PackageDescription
+                                       -> PackageDescriptionOverride -> a)
+                       -> a
+installReadyPackage platform comp configFlags
+  (ReadyPackage (SourcePackage _ gpkg source pkgoverride)
+   flags stanzas deps)
   installPkg = installPkg configFlags {
     configConfigurationsFlags = flags,
     -- We generate the legacy constraints as well as the new style precise deps.
@@ -1099,7 +1099,7 @@ installConfiguredPackage platform comp configFlags
     pkg = case finalizePackageDescription flags
            (const True)
            platform comp [] (enableStanzas stanzas gpkg) of
-      Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
+      Left _ -> error "finalizePackageDescription ReadyPackage failed"
       Right (desc, _) -> desc
 
 fetchSourcePackage

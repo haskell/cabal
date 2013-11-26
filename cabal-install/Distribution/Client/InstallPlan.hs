@@ -47,8 +47,9 @@ module Distribution.Client.InstallPlan (
 
 import Distribution.Client.Types
          ( SourcePackage(packageDescription), ConfiguredPackage(..)
-         , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas,
-           InstalledPackage (..) )
+         , ReadyPackage(..), readyPackageToConfiguredPackage
+         , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas
+         , InstalledPackage (..) )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , PackageFixedDeps(..), Dependency(..) )
@@ -129,9 +130,11 @@ import Control.Exception
 
 data PlanPackage = PreExisting InstalledPackage
                  | Configured  ConfiguredPackage
-                 | Processing  ConfiguredPackage
-                 | Installed   ConfiguredPackage BuildSuccess
+                 | Processing  ReadyPackage
+                 | Installed   ReadyPackage BuildSuccess
                  | Failed      ConfiguredPackage BuildFailure
+                   -- ^ NB: packages in the Failed state can be *either* Ready
+                   -- or Configured.
 
 instance Package PlanPackage where
   packageId (PreExisting pkg) = packageId pkg
@@ -206,7 +209,7 @@ remove shouldRemove plan =
 -- configured state and have all their dependencies installed already.
 -- The plan is complete if the result is @[]@.
 --
-ready :: InstallPlan -> [(ConfiguredPackage, [Installed.InstalledPackageInfo])]
+ready :: InstallPlan -> [ReadyPackage]
 ready plan = assert check readyPackages
   where
     check = if null readyPackages && null processingPackages
@@ -215,10 +218,10 @@ ready plan = assert check readyPackages
     configuredPackages = [ pkg | Configured pkg <- toList plan ]
     processingPackages = [ pkg | Processing pkg <- toList plan]
 
-    readyPackages :: [(ConfiguredPackage, [Installed.InstalledPackageInfo])]
+    readyPackages :: [ReadyPackage]
     readyPackages =
-      [ (pkg, deps)
-      | pkg <- configuredPackages
+      [ ReadyPackage srcPkg flags stanzas deps
+      | pkg@(ConfiguredPackage srcPkg flags stanzas _) <- configuredPackages
         -- select only the package that have all of their deps installed:
       , deps <- maybeToList (hasAllInstalledDeps pkg)
       ]
@@ -244,7 +247,7 @@ ready plan = assert check readyPackages
 --
 -- * The package must exist in the graph and be in the configured state.
 --
-processing :: [ConfiguredPackage] -> InstallPlan -> InstallPlan
+processing :: [ReadyPackage] -> InstallPlan -> InstallPlan
 processing pkgs plan = assert (invariant plan') plan'
   where
     plan' = plan {
@@ -286,7 +289,7 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
                }
     pkg      = lookupProcessingPackage plan pkgid
     failures = PackageIndex.fromList
-             $ Failed pkg buildResult
+             $ Failed (readyPackageToConfiguredPackage pkg) buildResult
              : [ Failed pkg' buildResult'
                | Just pkg' <- map checkConfiguredPackage
                             $ packagesThatDependOn plan pkgid ]
@@ -303,7 +306,7 @@ packagesThatDependOn plan = map (planPkgOf plan)
 -- | Lookup a package that we expect to be in the processing state.
 --
 lookupProcessingPackage :: InstallPlan
-                        -> PackageIdentifier -> ConfiguredPackage
+                        -> PackageIdentifier -> ReadyPackage
 lookupProcessingPackage plan pkgid =
   case PackageIndex.lookupPackageId (planIndex plan) pkgid of
     Just (Processing pkg) -> pkg
