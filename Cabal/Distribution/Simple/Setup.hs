@@ -338,7 +338,12 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configDistPref     = Flag defaultDistPref,
     configVerbosity    = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
+#if defined(mingw32_HOST_OS)
+    -- See #1589.
+    configGHCiLib      = Flag True,
+#else
     configGHCiLib      = Flag False,
+#endif
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = Flag True,
     configTests        = Flag False,
