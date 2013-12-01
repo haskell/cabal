@@ -392,6 +392,3 @@ readS_to_P :: ReadS a -> ReadP r a
 --   parser, and therefore a possible inefficiency.
 readS_to_P r =
   R (\k -> Look (\s -> final [bs'' | (a,s') <- r s, bs'' <- run (k a) s']))
-
-
-
