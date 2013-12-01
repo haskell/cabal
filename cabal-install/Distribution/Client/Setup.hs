@@ -18,6 +18,7 @@ module Distribution.Client.Setup
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
+    , AllowNewer(..)
     , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand
@@ -65,7 +66,8 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version(Version), anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
+         ( PackageIdentifier, PackageName, packageName, packageVersion
+         , Dependency(..) )
 import Distribution.PackageDescription
          ( RepoKind(..) )
 import Distribution.Text
@@ -73,7 +75,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, (+++) )
+         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, sepBy1, (+++) )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -802,7 +804,8 @@ data InstallFlags = InstallFlags {
     installBuildReports     :: Flag ReportLevel,
     installSymlinkBinDir    :: Flag FilePath,
     installOneShot          :: Flag Bool,
-    installNumJobs          :: Flag (Maybe Int)
+    installNumJobs          :: Flag (Maybe Int),
+    installAllowNewer       :: Flag AllowNewer
   }
 
 defaultInstallFlags :: InstallFlags
@@ -826,10 +829,27 @@ defaultInstallFlags = InstallFlags {
     installBuildReports    = Flag NoReports,
     installSymlinkBinDir   = mempty,
     installOneShot         = Flag False,
-    installNumJobs         = mempty
+    installNumJobs         = mempty,
+    installAllowNewer      = Flag AllowNewerNone
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
+
+data AllowNewer = AllowNewerNone | AllowNewerSome [PackageName] | AllowNewerAll
+                deriving (Eq, Show)
+
+allowNewerParser :: ReadE AllowNewer
+allowNewerParser = ReadE $ \s ->
+  case s of
+    ""      -> Right AllowNewerNone
+    "False" -> Right AllowNewerNone
+    "True"  -> Right AllowNewerAll
+    _       ->
+      case readPToMaybe pkgsParser s of
+        Just pkgs -> Right . AllowNewerSome $ pkgs
+        Nothing   -> Left ("Cannot parse the list of packages: " ++ s)
+  where
+    pkgsParser = Parse.sepBy1 parse (Parse.char ',')
 
 defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 200
@@ -933,6 +953,18 @@ installOptions showOrParseArgs =
           installOverrideReinstall (\v flags -> flags { installOverrideReinstall = v })
           (yesNoOpt showOrParseArgs)
 
+      , option [] ["allow-newer"]
+          "Ignore upper bounds in dependencies on some or all packages."
+          installAllowNewer (\v flags -> flags { installAllowNewer = v})
+          (optArg "PKGS"
+             (fmap Flag allowNewerParser) (Flag AllowNewerAll)
+             (\f -> case f of
+                 Flag AllowNewerNone        -> [Just "False"]
+                 Flag AllowNewerAll         -> [Just "True"]
+                 Flag (AllowNewerSome pkgs) ->
+                   [Just . intercalate "," . map display $ pkgs]
+                 NoFlag                     -> []))
+
       , option [] ["upgrade-dependencies"]
           "Pick the latest version for all dependencies, rather than trying to pick an installed version."
           installUpgradeDeps (\v flags -> flags { installUpgradeDeps = v })
@@ -1019,7 +1051,8 @@ instance Monoid InstallFlags where
     installBuildReports    = mempty,
     installSymlinkBinDir   = mempty,
     installOneShot         = mempty,
-    installNumJobs         = mempty
+    installNumJobs         = mempty,
+    installAllowNewer      = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation   = combine installDocumentation,
@@ -1041,7 +1074,8 @@ instance Monoid InstallFlags where
     installBuildReports    = combine installBuildReports,
     installSymlinkBinDir   = combine installSymlinkBinDir,
     installOneShot         = combine installOneShot,
-    installNumJobs         = combine installNumJobs
+    installNumJobs         = combine installNumJobs,
+    installAllowNewer      = combine installAllowNewer
   }
     where combine field = field a `mappend` field b
 
