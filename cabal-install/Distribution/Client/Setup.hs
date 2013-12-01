@@ -861,7 +861,8 @@ installCommand = CommandUI {
      ++ "    Constrained package version\n",
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
-       liftOptions get1 set1 (filter ((/="constraint") . optionName) $
+       liftOptions get1 set1
+       (filter ((`notElem` ["constraint", "dependency"]) . optionName) $
                               configureOptions   showOrParseArgs)
     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
     ++ liftOptions get3 set3 (installOptions     showOrParseArgs)

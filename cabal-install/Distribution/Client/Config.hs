@@ -371,7 +371,8 @@ configFieldDescriptions =
 
   ++ toSavedConfig liftConfigFlag
        (configureOptions ParseArgs)
-       (["builddir", "configure-option", "constraint"] ++ map fieldName installDirsFields)
+       (["builddir", "configure-option", "constraint", "dependency"]
+        ++ map fieldName installDirsFields)
 
         --FIXME: this is only here because viewAsFieldDescr gives us a parser
         -- that only recognises 'ghc' etc, the case-sensitive flag names, not
