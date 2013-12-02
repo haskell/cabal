@@ -131,7 +131,7 @@ data HaddockArgs = HaddockArgs {
  argContents :: Flag String,                      -- ^ optional url to contents page
  argVerbose :: Any,
  argOutput :: Flag [Output],                      -- ^ Html or Hoogle doc or both?                                   required.
- argInterfaces :: [(FilePath, Maybe FilePath)],   -- ^ [(interface file, path to the html docs for links)]
+ argInterfaces :: [(FilePath, Maybe String)],     -- ^ [(interface file, URL to the html docs for links)]
  argOutputDir :: Directory,                       -- ^ where to generate the documentation.
  argTitle :: Flag String,                         -- ^ page's title,                                         required.
  argPrologue :: Flag String,                      -- ^ prologue text,                                        required.
@@ -525,25 +525,20 @@ renderPureArgs version comp args = concat
     where
       renderInterfaces =
         map (\(i,mh) -> "--read-interface=" ++
-          maybe "" ((++",") . mkUrl) mh ++ i)
+          maybe "" (++",") mh ++ i)
       bool a b c = if c then a else b
       isVersion2 = version >= Version [2,0] []
       isVersion2_5 = version >= Version [2,5] []
       verbosityFlag
        | isVersion2_5 = "--verbosity=1"
        | otherwise = "--verbose"
-      -- See https://github.com/haskell/cabal/issues/1064
-      mkUrl f =
-        if isAbsolute f
-          then "file://" ++ f
-          else f
 
 -----------------------------------------------------------------------------------------------------------
 
 haddockPackageFlags :: LocalBuildInfo
                     -> ComponentLocalBuildInfo
                     -> Maybe PathTemplate
-                    -> IO ([(FilePath,Maybe FilePath)], Maybe String)
+                    -> IO ([(FilePath,Maybe String)], Maybe String)
 haddockPackageFlags lbi clbi htmlTemplate = do
   let allPkgs = installedPkgs lbi
       directDeps = map fst (componentPackageDeps clbi)
@@ -578,12 +573,20 @@ haddockPackageFlags lbi clbi htmlTemplate = do
     interfaceAndHtmlPath pkg = do
       interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
       html <- case htmlTemplate of
-        Nothing -> listToMaybe (InstalledPackageInfo.haddockHTMLs pkg)
+        Nothing -> fmap fixFileUrl
+                        (listToMaybe (InstalledPackageInfo.haddockHTMLs pkg))
         Just htmlPathTemplate -> Just (expandTemplateVars htmlPathTemplate)
       return (interface, html)
 
-      where expandTemplateVars = fromPathTemplate . substPathTemplate env
-            env = haddockTemplateEnv lbi (packageId pkg)
+      where
+        expandTemplateVars = fromPathTemplate . substPathTemplate env
+        env = haddockTemplateEnv lbi (packageId pkg)
+
+        -- the 'haddock-html' field in the hc-pkg output is often set as a
+        -- native path, but we need it as a URL.
+        -- See https://github.com/haskell/cabal/issues/1064
+        fixFileUrl f | isAbsolute f = "file://" ++ f
+                     | otherwise    = f
 
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id = (PrefixVar, prefix (installDirTemplates lbi))
