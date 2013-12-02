@@ -89,6 +89,9 @@ newtype PackageIndex pkg = PackageIndex
 
   deriving (Show, Read)
 
+instance Functor PackageIndex where
+  fmap f (PackageIndex m) = PackageIndex (fmap (map f) m)
+
 instance Package pkg => Monoid (PackageIndex pkg) where
   mempty  = PackageIndex Map.empty
   mappend = merge
