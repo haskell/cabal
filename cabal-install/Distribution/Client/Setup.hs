@@ -18,7 +18,6 @@ module Distribution.Client.Setup
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
-    , AllowNewer(..)
     , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand
@@ -45,7 +44,7 @@ import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..) )
+         ( AllowNewer(..), PreSolver(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -66,8 +65,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.Version
          ( Version(Version), anyVersion, thisVersion )
 import Distribution.Package
-         ( PackageIdentifier, PackageName, packageName, packageVersion
-         , Dependency(..) )
+         ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
          ( RepoKind(..) )
 import Distribution.Text
@@ -834,9 +832,6 @@ defaultInstallFlags = InstallFlags {
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
-
-data AllowNewer = AllowNewerNone | AllowNewerSome [PackageName] | AllowNewerAll
-                deriving (Eq, Show)
 
 allowNewerParser :: ReadE AllowNewer
 allowNewerParser = ReadE $ \s ->
