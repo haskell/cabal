@@ -40,4 +40,3 @@ checkVR = flip CV.withinRange
 -- | Make a version number.
 mkV :: [Int] -> Ver
 mkV xs = CV.Version xs []
-
