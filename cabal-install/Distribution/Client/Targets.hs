@@ -177,7 +177,6 @@ data PackageSpecifier pkg =
    | SpecificSourcePackage pkg
   deriving Show
 
-
 pkgSpecifierTarget :: Package pkg => PackageSpecifier pkg -> PackageName
 pkgSpecifierTarget (NamedPackage name _)       = name
 pkgSpecifierTarget (SpecificSourcePackage pkg) = packageName pkg
