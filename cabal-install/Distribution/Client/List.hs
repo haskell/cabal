@@ -70,7 +70,7 @@ import System.Directory
          ( doesDirectoryExist )
 
 
--- |Returns list of packages matching a search strings
+-- | Return a list of packages matching given search strings.
 getPkgList :: Verbosity
            -> PackageDBStack
            -> [Repo]
@@ -112,7 +112,7 @@ getPkgList verbosity packageDBs repos comp conf listFlags pats = do
       , pkg <- search index pat ]
 
 
--- |Show information about packages
+-- | Show information about packages.
 list :: Verbosity
      -> PackageDBStack
      -> [Repo]
