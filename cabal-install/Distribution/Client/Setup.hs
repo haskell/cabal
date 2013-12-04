@@ -275,7 +275,8 @@ data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [UserConstraint],
     configPreferences  :: [Dependency],
-    configSolver       :: Flag PreSolver
+    configSolver       :: Flag PreSolver,
+    configAllowNewer   :: Flag AllowNewer
   }
 
 defaultConfigExFlags :: ConfigExFlags
@@ -318,6 +319,14 @@ configureExOptions _showOrParseArgs =
               (map display))
 
   , optionSolver configSolver (\v flags -> flags { configSolver = v })
+
+  , option [] ["allow-newer"]
+    "Ignore upper bounds in dependencies on some or all packages."
+    configAllowNewer (\v flags -> flags { configAllowNewer = v})
+    (optArg "PKGS"
+     (fmap Flag allowNewerParser) (Flag AllowNewerAll)
+     allowNewerPrinter)
+
   ]
 
 instance Monoid ConfigExFlags where
@@ -325,13 +334,15 @@ instance Monoid ConfigExFlags where
     configCabalVersion = mempty,
     configExConstraints= mempty,
     configPreferences  = mempty,
-    configSolver       = mempty
+    configSolver       = mempty,
+    configAllowNewer   = mempty
   }
   mappend a b = ConfigExFlags {
     configCabalVersion = combine configCabalVersion,
     configExConstraints= combine configExConstraints,
     configPreferences  = combine configPreferences,
-    configSolver       = combine configSolver
+    configSolver       = combine configSolver,
+    configAllowNewer   = combine configAllowNewer
   }
     where combine field = field a `mappend` field b
 
@@ -846,6 +857,14 @@ allowNewerParser = ReadE $ \s ->
   where
     pkgsParser = Parse.sepBy1 parse (Parse.char ',')
 
+allowNewerPrinter :: Flag AllowNewer -> [Maybe String]
+allowNewerPrinter (Flag AllowNewerNone)        = [Just "False"]
+allowNewerPrinter (Flag AllowNewerAll)         = [Just "True"]
+allowNewerPrinter (Flag (AllowNewerSome pkgs)) =
+  [Just . intercalate "," . map display $ pkgs]
+allowNewerPrinter NoFlag                       = []
+
+
 defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 200
 
@@ -879,7 +898,9 @@ installCommand = CommandUI {
        liftOptions get1 set1
        (filter ((`notElem` ["constraint", "dependency"]) . optionName) $
                               configureOptions   showOrParseArgs)
-    ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
+    ++ liftOptions get2 set2
+       (filter ((/=) "allow-newer" . optionName)
+               $ configureExOptions showOrParseArgs)
     ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
   }
@@ -953,12 +974,7 @@ installOptions showOrParseArgs =
           installAllowNewer (\v flags -> flags { installAllowNewer = v})
           (optArg "PKGS"
              (fmap Flag allowNewerParser) (Flag AllowNewerAll)
-             (\f -> case f of
-                 Flag AllowNewerNone        -> [Just "False"]
-                 Flag AllowNewerAll         -> [Just "True"]
-                 Flag (AllowNewerSome pkgs) ->
-                   [Just . intercalate "," . map display $ pkgs]
-                 NoFlag                     -> []))
+             allowNewerPrinter)
 
       , option [] ["upgrade-dependencies"]
           "Pick the latest version for all dependencies, rather than trying to pick an installed version."
