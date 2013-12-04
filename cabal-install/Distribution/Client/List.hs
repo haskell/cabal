@@ -70,17 +70,16 @@ import System.Directory
          ( doesDirectoryExist )
 
 
--- |Show information about packages
-list :: Verbosity
-     -> PackageDBStack
-     -> [Repo]
-     -> Compiler
-     -> ProgramConfiguration
-     -> ListFlags
-     -> [String]
-     -> IO ()
-list verbosity packageDBs repos comp conf listFlags pats = do
-
+-- |Returns list of packages matching a search strings
+getPkgList :: Verbosity
+           -> PackageDBStack
+           -> [Repo]
+           -> Compiler
+           -> ProgramConfiguration
+           -> ListFlags
+           -> [String]
+           -> IO [PackageDisplayInfo]
+getPkgList verbosity packageDBs repos comp conf listFlags pats = do
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
     let sourcePkgIndex = packageIndex sourcePkgDb
@@ -104,6 +103,26 @@ list verbosity packageDBs repos comp conf listFlags pats = do
                   , not onlyInstalled || not (null installedPkgs)
                   , let pref        = prefs pkgname
                         selectedPkg = latestWithPref pref sourcePkgs ]
+    return matches
+  where
+    onlyInstalled = fromFlag (listInstalled listFlags)
+    matchingPackages search index =
+      [ pkg
+      | pat <- pats
+      , pkg <- search index pat ]
+
+
+-- |Show information about packages
+list :: Verbosity
+     -> PackageDBStack
+     -> [Repo]
+     -> Compiler
+     -> ProgramConfiguration
+     -> ListFlags
+     -> [String]
+     -> IO ()
+list verbosity packageDBs repos comp conf listFlags pats = do
+    matches <- getPkgList verbosity packageDBs repos comp conf listFlags pats
 
     if simpleOutput
       then putStr $ unlines
