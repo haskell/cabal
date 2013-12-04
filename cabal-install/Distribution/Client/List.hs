@@ -143,11 +143,6 @@ list verbosity packageDBs repos comp conf listFlags pats = do
     onlyInstalled = fromFlag (listInstalled listFlags)
     simpleOutput  = fromFlag (listSimpleOutput listFlags)
 
-    matchingPackages search index =
-      [ pkg
-      | pat <- pats
-      , pkg <- search index pat ]
-
 info :: Verbosity
      -> PackageDBStack
      -> [Repo]
