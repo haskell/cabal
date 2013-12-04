@@ -117,9 +117,10 @@ fromPlanPackage :: Platform -> CompilerId
                 -> Maybe (BuildReport, Repo)
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
 
-  InstallPlan.Installed pkg@(ConfiguredPackage (SourcePackage {
+  InstallPlan.Installed pkg@(ReadyPackage (SourcePackage {
                           packageSource = RepoTarballPackage repo _ _ }) _ _ _) result
-    -> Just $ (BuildReport.new os arch comp pkg (Right result), repo)
+    -> Just $ (BuildReport.new os arch comp
+               (readyPackageToConfiguredPackage pkg) (Right result), repo)
 
   InstallPlan.Failed pkg@(ConfiguredPackage (SourcePackage {
                        packageSource = RepoTarballPackage repo _ _ }) _ _ _) result
