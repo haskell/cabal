@@ -36,6 +36,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
+import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( Package(..), packageName, Dependency(..), thisPackageVersion )
 import Distribution.PackageDescription.Parse
@@ -80,7 +81,7 @@ configure verbosity packageDBs repos comp platform conf
     Left message -> die message
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [(pkg@(ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _), _)] ->
+      [pkg@(ReadyPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] ->
         configurePackage verbosity
           (InstallPlan.planPlatform installPlan)
           (InstallPlan.planCompiler installPlan)
@@ -181,20 +182,22 @@ planLocalPackage verbosity comp platform configFlags configExFlags installedPkgI
 
 
 -- | Call an installer for an 'SourcePackage' but override the configure
--- flags with the ones given by the 'ConfiguredPackage'. In particular the
--- 'ConfiguredPackage' specifies an exact 'FlagAssignment' and exactly
+-- flags with the ones given by the 'ReadyPackage'. In particular the
+-- 'ReadyPackage' specifies an exact 'FlagAssignment' and exactly
 -- versioned package dependencies. So we ignore any previous partial flag
 -- assignment or dependency constraints and use the new ones.
 --
+-- NB: when updating this function, don't forget to also update
+-- 'installReadyPackage' in D.C.Install.
 configurePackage :: Verbosity
                  -> Platform -> CompilerId
                  -> SetupScriptOptions
                  -> ConfigFlags
-                 -> ConfiguredPackage
+                 -> ReadyPackage
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-  (ConfiguredPackage (SourcePackage _ gpkg _ _) flags stanzas deps) extraArgs =
+  (ReadyPackage (SourcePackage _ gpkg _ _) flags stanzas deps) extraArgs =
 
   setupWrapper verbosity
     scriptOptions (Just pkg) configureCommand configureFlags extraArgs
@@ -202,7 +205,14 @@ configurePackage verbosity platform comp scriptOptions configFlags
   where
     configureFlags   = filterConfigureFlags configFlags {
       configConfigurationsFlags = flags,
-      configConstraints         = map thisPackageVersion deps,
+      -- We generate the legacy constraints as well as the new style precise
+      -- deps.  In the end only one set gets passed to Setup.hs configure,
+      -- depending on the Cabal version we are talking to.
+      configConstraints  = [ thisPackageVersion (packageId deppkg)
+                           | deppkg <- deps ],
+      configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
+                              Installed.installedPackageId deppkg)
+                           | deppkg <- deps ],
       configVerbosity           = toFlag verbosity,
       configBenchmarks          = toFlag (BenchStanzas `elem` stanzas),
       configTests               = toFlag (TestStanzas `elem` stanzas)
@@ -211,5 +221,5 @@ configurePackage verbosity platform comp scriptOptions configFlags
     pkg = case finalizePackageDescription flags
            (const True)
            platform comp [] (enableStanzas stanzas gpkg) of
-      Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
+      Left _ -> error "finalizePackageDescription ReadyPackage failed"
       Right (desc, _) -> desc

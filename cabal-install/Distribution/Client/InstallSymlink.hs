@@ -35,7 +35,7 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( SourcePackage(..), ConfiguredPackage(..), enableStanzas )
+         ( SourcePackage(..), ReadyPackage(..), enableStanzas )
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -127,12 +127,12 @@ symlinkBinaries configFlags installFlags plan =
       , exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
 
-    pkgDescription :: ConfiguredPackage -> PackageDescription
-    pkgDescription (ConfiguredPackage (SourcePackage _ pkg _ _) flags stanzas _) =
+    pkgDescription :: ReadyPackage -> PackageDescription
+    pkgDescription (ReadyPackage (SourcePackage _ pkg _ _) flags stanzas _) =
       case finalizePackageDescription flags
              (const True)
              platform compilerId [] (enableStanzas stanzas pkg) of
-        Left _ -> error "finalizePackageDescription ConfiguredPackage failed"
+        Left _ -> error "finalizePackageDescription ReadyPackage failed"
         Right (desc, _) -> desc
 
     -- This is sadly rather complicated. We're kind of re-doing part of the
