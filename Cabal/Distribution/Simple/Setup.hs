@@ -315,7 +315,10 @@ data ConfigFlags = ConfigFlags {
     configConfigurationsFlags :: FlagAssignment,
     configTests :: Flag Bool,     -- ^Enable test suite compilation
     configBenchmarks :: Flag Bool,     -- ^Enable benchmark compilation
-    configLibCoverage :: Flag Bool    -- ^ Enable test suite program coverage
+    configLibCoverage :: Flag Bool,    -- ^Enable test suite program coverage
+    configExactConfiguration :: Flag Bool
+    -- ^All direct dependencies and flags are provided on the command line by
+    -- the user via the '--dependency' and '--flags' options.
   }
   deriving (Read,Show)
 
@@ -350,7 +353,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configStripExes    = Flag True,
     configTests        = Flag False,
     configBenchmarks   = Flag False,
-    configLibCoverage  = Flag False
+    configLibCoverage  = Flag False,
+    configExactConfiguration = Flag False
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -534,6 +538,12 @@ configureOptions showOrParseArgs =
          configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
 
+      ,option "" ["exact-configuration"]
+         "All direct dependencies and flags are provided on the command line."
+         configExactConfiguration
+         (\v flags -> flags { configExactConfiguration = v })
+         (boolOpt [] [])
+
       ,option "" ["benchmarks"]
          "dependency checking and compilation for benchmarks listed in the package description file."
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
@@ -676,6 +686,7 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = mempty,
     configTests   = mempty,
     configLibCoverage = mempty,
+    configExactConfiguration = mempty,
     configBenchmarks    = mempty
   }
   mappend a b =  ConfigFlags {
@@ -711,6 +722,7 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests = combine configTests,
     configLibCoverage = combine configLibCoverage,
+    configExactConfiguration = combine configExactConfiguration,
     configBenchmarks    = combine configBenchmarks
   }
     where combine field = field a `mappend` field b

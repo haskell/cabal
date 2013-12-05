@@ -241,28 +241,32 @@ configureOptions = commandOptions configureCommand
 
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
-  | cabalLibVersion >= Version [1,19,1] [] = flags_latest
+  | cabalLibVersion >= Version [1,19,2] [] = flags_latest
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
   | cabalLibVersion <  Version [1,14,0] [] = flags_1_14_0
   | cabalLibVersion <  Version [1,18,0] [] = flags_1_18_0
   | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_0
+  | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_1
   | otherwise = flags_latest
   where
-    -- Cabal >= 1.19.1 uses --dependency and does not need --constraint
+    -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
     flags_latest = flags        { configConstraints = [] }
 
-    -- Cabal < 1.19.1 does not grok the --dependency flag.
-    flags_1_19_0 = flags        { configDependencies = [] }
+    -- Cabal < 1.19.2 doesn't know about '--exact-configuration'.
+    flags_1_19_1 = flags_latest { configExactConfiguration = NoFlag }
+    -- Cabal < 1.19.1 uses '--constraint' instead of '--dependency'.
+    flags_1_19_0 = flags_1_19_1 { configDependencies = []
+                                , configConstraints  = configConstraints flags }
     -- Cabal < 1.18.0 doesn't know about --extra-prog-path and --sysconfdir.
     flags_1_18_0 = flags_1_19_0 { configProgramPathExtra = []
                                 , configInstallDirs = configInstallDirs_1_18_0}
     configInstallDirs_1_18_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
-    -- Cabal < 1.14.0 doesn't know about --disable-benchmarks.
+    -- Cabal < 1.14.0 doesn't know about '--disable-benchmarks'.
     flags_1_14_0 = flags_1_18_0 { configBenchmarks  = NoFlag }
-    -- Cabal < 1.10.0 doesn't know about --disable-tests.
+    -- Cabal < 1.10.0 doesn't know about '--disable-tests'.
     flags_1_10_0 = flags_1_14_0 { configTests       = NoFlag }
-    -- Cabal < 1.3.10 does not grok the --constraints flag.
+    -- Cabal < 1.3.10 does not grok the '--constraints' flag.
     flags_1_3_10 = flags_1_10_0 { configConstraints = [] }
 
 -- ------------------------------------------------------------
@@ -286,8 +290,9 @@ configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 configureExCommand = configureCommand {
     commandDefaultFlags = (mempty, defaultConfigExFlags),
     commandOptions      = \showOrParseArgs ->
-         liftOptions fst setFst (filter ((/="constraint") . optionName) $
-                                 configureOptions   showOrParseArgs)
+         liftOptions fst setFst
+         (filter ((`notElem` ["constraint", "exact-configuration"])
+                  . optionName) $ configureOptions  showOrParseArgs)
       ++ liftOptions snd setSnd (configureExOptions showOrParseArgs)
   }
   where
@@ -896,7 +901,9 @@ installCommand = CommandUI {
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
-       (filter ((`notElem` ["constraint", "dependency"]) . optionName) $
+       (filter ((`notElem` ["constraint", "dependency"
+                           , "exact-configuration"])
+                . optionName) $
                               configureOptions   showOrParseArgs)
     ++ liftOptions get2 set2
        (filter ((/=) "allow-newer" . optionName)
