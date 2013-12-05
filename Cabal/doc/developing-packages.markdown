@@ -766,9 +766,9 @@ describe the package as a whole:
 
 `build-type:` _identifier_
 :   The type of build used by this package. Build types are the
-    constructors of the [BuildType][] type, defaulting to `Custom`. 
+    constructors of the [BuildType][] type, defaulting to `Custom`.
 
-    If the built type is anything other than `Custom`, then the
+    If the build type is anything other than `Custom`, then the
     `Setup.hs` file *must* be exactly the standardized content
     discussed below. This is because in these cases, `cabal` will
     ignore the `Setup.hs` file completely, whereas other methods of
@@ -789,7 +789,7 @@ describe the package as a whole:
     ~~~~~~~~~~~~~~~~
     import Distribution.Simple
     main = defaultMainWithHooks autoconfUserHooks
-    ~~~~~~~~~~~~~~~~    
+    ~~~~~~~~~~~~~~~~
 
     For build type `Make` (see the section on [more complex
     packages](#more-complex-packages) below), the contents of
@@ -798,12 +798,12 @@ describe the package as a whole:
     ~~~~~~~~~~~~~~~~
     import Distribution.Make
     main = defaultMain
-    ~~~~~~~~~~~~~~~~    
+    ~~~~~~~~~~~~~~~~
 
     For build type `Custom`, the file `Setup.hs` can be customized,
     and will be used both by `cabal` and other tools.
 
-    For most packages, the build type `Simple` is sufficient. 
+    For most packages, the build type `Simple` is sufficient.
 
 `license:` _identifier_ (default: `AllRightsReserved`)
 :   The type of license under which this package is distributed.
