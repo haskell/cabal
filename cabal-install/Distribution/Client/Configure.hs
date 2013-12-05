@@ -218,9 +218,9 @@ configurePackage verbosity platform comp scriptOptions configFlags
                            | deppkg <- deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
-      configVerbosity           = toFlag verbosity,
-      configBenchmarks          = toFlag (BenchStanzas `elem` stanzas),
-      configTests               = toFlag (TestStanzas `elem` stanzas)
+      configVerbosity          = toFlag verbosity,
+      configBenchmarks         = toFlag (BenchStanzas `elem` stanzas),
+      configTests              = toFlag (TestStanzas `elem` stanzas)
     }
 
     pkg = case finalizePackageDescription flags
