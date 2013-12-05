@@ -339,9 +339,30 @@ configure (pkg_descr0, pbi) cfg
         installedPackageSet <- getInstalledPackages (lessVerbose verbosity) comp
                                       packageDbs programsConfig'
 
-        let -- Constraint test function for the solver
-            dependencySatisfiable =
-                not . null . PackageIndex.lookupDependency pkgs'
+        (allConstraints, requiredDepsMap) <- either die return $
+          combinedConstraints (configConstraints cfg)
+                              (configDependencies cfg)
+                              installedPackageSet
+
+        let exactConf = fromFlagOrDefault False (configExactConfiguration cfg)
+            -- Constraint test function for the solver
+            dependencySatisfiable d@(Dependency depName verRange)
+              | exactConf =
+                -- When we're given '--exact-configuration', we assume that all
+                -- dependencies and flags are exactly specified on the command
+                -- line. Thus we only consult the 'requiredDepsMap'. Note that
+                -- we're not doing the version check.
+                --
+                -- TODO: mention '--exact-configuration' in the error message
+                -- when this fails?
+                (depName `Map.member` requiredDepsMap)
+                || (pkgName pid == depName
+                    && pkgVersion pid `withinRange` verRange)
+
+              | otherwise =
+                -- Normal operation: just look up dependency in the package
+                -- index.
+                not . null . PackageIndex.lookupDependency pkgs' $ d
               where
                 pkgs' = PackageIndex.insert internalPackage installedPackageSet
             enableTest t = t { testEnabled = fromFlag (configTests cfg) }
@@ -354,11 +375,6 @@ configure (pkg_descr0, pbi) cfg
                                (condBenchmarks pkg_descr0)
             pkg_descr0'' = pkg_descr0 { condTestSuites = flaggedTests
                                       , condBenchmarks = flaggedBenchmarks }
-
-        (allConstraints, requiredDepsMap) <- either die return $
-          combinedConstraints (configConstraints cfg)
-                              (configDependencies cfg)
-                              installedPackageSet
 
         (pkg_descr0', flags) <-
                 case finalizePackageDescription
@@ -655,17 +671,15 @@ selectDependency internalIndex installedIndex requiredDepsMap
     [(_,[pkg])] | packageVersion pkg `withinRange` vr
            -> Right $ InternalDependency dep (packageId pkg)
 
-    _      -> case PackageIndex.lookupDependency installedIndex dep of
-      []   -> Left  $ DependencyNotExists pkgname
-      pkgs -> Right $ ExternalDependency dep $
-                case Map.lookup pkgname requiredDepsMap of
-                  -- if we know the exact pkg to use then use it
-                  Just pkginstance -> pkginstance
-                  -- otherwise we just pick an arbirary instance of the
-                  -- latest version
-                  Nothing ->
-                    case last pkgs of
-                      (_ver, pkginstances) -> head pkginstances
+    _      -> case Map.lookup pkgname requiredDepsMap of
+      -- If we know the exact pkg to use, then use it.
+      Just pkginstance -> Right (ExternalDependency dep pkginstance)
+      -- Otherwise we just pick an arbitrary instance of the latest version.
+      Nothing -> case PackageIndex.lookupDependency installedIndex dep of
+        []   -> Left  $ DependencyNotExists pkgname
+        pkgs -> Right $ ExternalDependency dep $
+                case last pkgs of
+                  (_ver, pkginstances) -> head pkginstances
 
 reportSelectedDependencies :: Verbosity
                            -> [ResolvedDependency] -> IO ()
