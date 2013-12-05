@@ -26,10 +26,12 @@ To turn this into a Cabal package we need two extra files in the
 project's root directory:
 
  * `proglet.cabal`: containing package metadata and build information.
- * `Setup.hs`: containing any customisation of the build system.
 
-We can create both manually or we can use `cabal init` to create them
-for us.
+ * `Setup.hs`: usually containing a few standardized lines of code, but
+   can be customized if necessary.
+
+We can create both files manually or we can use `cabal init` to create
+them for us.
 
 ### Using "cabal init" ###
 
@@ -489,9 +491,10 @@ _package_`.cabal`
     the interface described in the section on [building and installing
     packages](#building-and-installing-a-package)). This module should
     import only modules that will be present in all Haskell
-    implementations, including modules of the Cabal library.  In most
-    cases it will be trivial, calling on the Cabal library to do most of
-    the work.
+    implementations, including modules of the Cabal library. The
+    content of this file is determined by the `build-type` setting in
+    the `.cabal` file. In most cases it will be trivial, calling on
+    the Cabal library to do most of the work.
 
 Once you have these, you can create a source bundle of this directory
 for distribution. Building of the package is discussed in the section on
@@ -763,11 +766,44 @@ describe the package as a whole:
 
 `build-type:` _identifier_
 :   The type of build used by this package. Build types are the
-    constructors of the [BuildType][] type, defaulting to `Custom`. If
-    this field is given a value other than `Custom`, some tools such as
-    `cabal-install` will be able to build the package without using the
-    setup script. So if you are just using the default `Setup.hs` then
-    set the build type as `Simple`.
+    constructors of the [BuildType][] type, defaulting to `Custom`. 
+
+    If the built type is anything other than `Custom`, then the
+    `Setup.hs` file *must* be exactly the standardized content
+    discussed below. This is because in these cases, `cabal` will
+    ignore the `Setup.hs` file completely, whereas other methods of
+    package management, such as `runhaskell Setup.hs [CMD]`, still
+    rely on the `Setup.hs` file.
+
+    For build type `Simple`, the contents of `Setup.hs` must be:
+
+    ~~~~~~~~~~~~~~~~
+    import Distribution.Simple
+    main = defaultMain
+    ~~~~~~~~~~~~~~~~
+
+    For build type `Configure` (see the section on [system-dependent
+    parameters](#system-dependent-parameters) below), the contents of
+    `Setup.hs` must be:
+
+    ~~~~~~~~~~~~~~~~
+    import Distribution.Simple
+    main = defaultMainWithHooks autoconfUserHooks
+    ~~~~~~~~~~~~~~~~    
+
+    For build type `Make` (see the section on [more complex
+    packages](#more-complex-packages) below), the contents of
+    `Setup.hs` must be:
+
+    ~~~~~~~~~~~~~~~~
+    import Distribution.Make
+    main = defaultMain
+    ~~~~~~~~~~~~~~~~    
+
+    For build type `Custom`, the file `Setup.hs` can be customized,
+    and will be used both by `cabal` and other tools.
+
+    For most packages, the build type `Simple` is sufficient. 
 
 `license:` _identifier_ (default: `AllRightsReserved`)
 :   The type of license under which this package is distributed.
@@ -1806,19 +1842,18 @@ field.
 
 For some packages, especially those interfacing with C libraries,
 implementation details and the build procedure depend on the build
-environment.  A variant of the simple build infrastructure (the
-`build-type` `Configure`) handles many such situations using a slightly
-longer `Setup.hs`:
+environment. The `build-type` `Configure` can be used to handle many
+such situations. In this case, `Setup.hs` should be:
 
 ~~~~~~~~~~~~~~~~
 import Distribution.Simple
 main = defaultMainWithHooks autoconfUserHooks
 ~~~~~~~~~~~~~~~~
 
-Most packages, however, would probably do better with
-[configurations](#configurations).
+Most packages, however, would probably do better using the `Simple`
+build type and [configurations](#configurations).
 
-This program differs from `defaultMain` in two ways:
+The `build-type` `Configure` differs from `Simple` in two ways:
 
 * The package root directory must contain a shell script called
   `configure`. The configure step will run the script. This `configure`
@@ -1986,18 +2021,28 @@ generating prettier documentation in some special cases.
 For packages that don't fit the simple schemes described above, you have
 a few options:
 
-  * You can customize the simple build infrastructure using _hooks_.
-    These allow you to perform additional actions before and after each
-    command is run, and also to specify additional preprocessors.  See
-    `UserHooks` in [Distribution.Simple][dist-simple] for the details,
-    but note that this interface is experimental, and likely to change
-    in future releases.
+  * By using the `build-type` `Custom`, you can supply your own
+    `Setup.hs` file, and customize the simple build infrastructure
+    using _hooks_.  These allow you to perform additional actions
+    before and after each command is run, and also to specify
+    additional preprocessors. A typical `Setup.hs` may look like this:
+
+    ~~~~~~~~~~~~~~~~
+    import Distribution.Simple
+    main = defaultMainWithHooks simpleUserHooks { postHaddock = posthaddock }
+
+    posthaddock args flags desc info = ....
+    ~~~~~~~~~~~~~~~~
+
+    See `UserHooks` in [Distribution.Simple][dist-simple] for the
+    details, but note that this interface is experimental, and likely
+    to change in future releases.
 
   * You could delegate all the work to `make`, though this is unlikely
     to be very portable. Cabal supports this with the `build-type`
     `Make` and a trivial setup library [Distribution.Make][dist-make],
     which simply parses the command line arguments and invokes `make`.
-    Here `Setup.hs` looks like
+    Here `Setup.hs` should look like this:
 
     ~~~~~~~~~~~~~~~~
     import Distribution.Make
@@ -2031,11 +2076,12 @@ a few options:
                                 sysconfdir=$(destdir)/$(sysconfdir) \
         ~~~~~~~~~~~~~~~~
 
-  * You can write your own setup script conforming to the interface
+  * Finally, with the `build-type` `Custom`, you can also write your
+    own setup script from scratch. It must conform to the interface
     described in the section on [building and installing
-    packages](#building-and-installing-a-package), possibly using the
-    Cabal library for part of the work.  One option is to copy the
-    source of `Distribution.Simple`, and alter it for your needs.
+    packages](#building-and-installing-a-package), and you may use the
+    Cabal library for all or part of the work.  One option is to copy
+    the source of `Distribution.Simple`, and alter it for your needs.
     Good luck.
 
 
