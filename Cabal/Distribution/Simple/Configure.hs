@@ -769,7 +769,7 @@ newPackageDepsBehaviour pkg =
 combinedConstraints :: [Dependency] ->
                        [(PackageName, InstalledPackageId)] ->
                        PackageIndex ->
-                       Either String ([Dependency], 
+                       Either String ([Dependency],
                                       Map PackageName InstalledPackageInfo)
 combinedConstraints constraints dependencies installedPackages = do
 

@@ -1097,8 +1097,8 @@ installReadyPackage platform comp configFlags
                          | deppkg <- deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
-    configBenchmarks = toFlag False,
-    configTests = toFlag (TestStanzas `elem` stanzas)
+    configBenchmarks         = toFlag False,
+    configTests              = toFlag (TestStanzas `elem` stanzas)
   } source pkg pkgoverride
   where
     pkg = case finalizePackageDescription flags

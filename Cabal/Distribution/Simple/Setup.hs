@@ -310,15 +310,17 @@ data ConfigFlags = ConfigFlags {
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
-                                       -- dependencies
-    configDependencies :: [(PackageName, InstalledPackageId)], -- ^The packages depended on
+                                       -- dependencies.
+    configDependencies :: [(PackageName, InstalledPackageId)],
+      -- ^The packages depended on.
     configConfigurationsFlags :: FlagAssignment,
-    configTests :: Flag Bool,     -- ^Enable test suite compilation
-    configBenchmarks :: Flag Bool,     -- ^Enable benchmark compilation
-    configLibCoverage :: Flag Bool,    -- ^Enable test suite program coverage
-    configExactConfiguration :: Flag Bool
-    -- ^All direct dependencies and flags are provided on the command line by
-    -- the user via the '--dependency' and '--flags' options.
+    configTests               :: Flag Bool, -- ^Enable test suite compilation
+    configBenchmarks          :: Flag Bool, -- ^Enable benchmark compilation
+    configLibCoverage         :: Flag Bool,
+      -- ^Enable test suite program coverage.
+    configExactConfiguration  :: Flag Bool
+      -- ^All direct dependencies and flags are provided on the command line by
+      -- the user via the '--dependency' and '--flags' options.
   }
   deriving (Read,Show)
 
@@ -684,10 +686,10 @@ instance Monoid ConfigFlags where
     configDependencies  = mempty,
     configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty,
-    configTests   = mempty,
-    configLibCoverage = mempty,
-    configExactConfiguration = mempty,
-    configBenchmarks    = mempty
+    configTests               = mempty,
+    configLibCoverage         = mempty,
+    configExactConfiguration  = mempty,
+    configBenchmarks          = mempty
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -720,10 +722,10 @@ instance Monoid ConfigFlags where
     configDependencies  = combine configDependencies,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags,
-    configTests = combine configTests,
-    configLibCoverage = combine configLibCoverage,
-    configExactConfiguration = combine configExactConfiguration,
-    configBenchmarks    = combine configBenchmarks
+    configTests               = combine configTests,
+    configLibCoverage         = combine configLibCoverage,
+    configExactConfiguration  = combine configExactConfiguration,
+    configBenchmarks          = combine configBenchmarks
   }
     where combine field = field a `mappend` field b
 
