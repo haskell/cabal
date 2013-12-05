@@ -159,8 +159,8 @@ planLocalPackage verbosity comp platform configFlags configExFlags installedPkgI
 
         . addConstraints
             -- version constraints from the config file or command line
-            -- TODO: should warn or error on constraints that are not on direct deps
-            -- or flag constraints not on the package in question.
+            -- TODO: should warn or error on constraints that are not on direct
+            -- deps or flag constraints not on the package in question.
             (map userToPackageConstraint (configExConstraints configExFlags))
 
         . addConstraints
