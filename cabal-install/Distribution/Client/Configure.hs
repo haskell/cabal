@@ -216,6 +216,8 @@ configurePackage verbosity platform comp scriptOptions configFlags
       configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                               Installed.installedPackageId deppkg)
                            | deppkg <- deps ],
+      -- Use '--exact-configuration' if supported.
+      configExactConfiguration = toFlag True,
       configVerbosity           = toFlag verbosity,
       configBenchmarks          = toFlag (BenchStanzas `elem` stanzas),
       configTests               = toFlag (TestStanzas `elem` stanzas)

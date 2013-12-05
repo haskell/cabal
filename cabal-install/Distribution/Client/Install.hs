@@ -1095,6 +1095,8 @@ installReadyPackage platform comp configFlags
     configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                             Installed.installedPackageId deppkg)
                          | deppkg <- deps ],
+    -- Use '--exact-configuration' if supported.
+    configExactConfiguration = toFlag True,
     configBenchmarks = toFlag False,
     configTests = toFlag (TestStanzas `elem` stanzas)
   } source pkg pkgoverride
