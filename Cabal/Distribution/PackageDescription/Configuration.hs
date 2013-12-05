@@ -542,9 +542,10 @@ finalizePackageDescription userflags satisfyDep
                       | manual -> [b]
                       | otherwise -> [b, not b]
     --flagDefaults = map (\(n,x:_) -> (n,x)) flagChoices
-    check ds     = if all satisfyDep ds
-                   then DepOk
-                   else MissingDeps $ filter (not . satisfyDep) ds
+    check ds     = let missingDeps = filter (not . satisfyDep) ds
+                   in if null missingDeps
+                      then DepOk
+                      else MissingDeps missingDeps
 
 {-
 let tst_p = (CondNode [1::Int] [Distribution.Package.Dependency "a" AnyVersion] [])
