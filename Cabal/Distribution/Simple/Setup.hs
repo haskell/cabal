@@ -542,7 +542,7 @@ configureOptions showOrParseArgs =
          "All direct dependencies and flags are provided on the command line."
          configExactConfiguration
          (\v flags -> flags { configExactConfiguration = v })
-         (boolOpt [] [])
+         trueArg
 
       ,option "" ["benchmarks"]
          "dependency checking and compilation for benchmarks listed in the package description file."
