@@ -291,7 +291,7 @@ configureExCommand = configureCommand {
     commandDefaultFlags = (mempty, defaultConfigExFlags),
     commandOptions      = \showOrParseArgs ->
          liftOptions fst setFst
-         (filter ((`notElem` ["constraint", "exact-configuration"])
+         (filter ((`notElem` ["constraint", "dependency", "exact-configuration"])
                   . optionName) $ configureOptions  showOrParseArgs)
       ++ liftOptions snd setSnd (configureExOptions showOrParseArgs)
   }
