@@ -149,8 +149,8 @@ planLocalPackage verbosity comp platform configFlags configExFlags installedPkgI
         fromFlagOrDefault False $ configBenchmarks configFlags
 
       resolverParams =
-          relaxUpperBounds (fromFlagOrDefault AllowNewerNone $
-                            configAllowNewer configExFlags)
+          removeUpperBounds (fromFlagOrDefault AllowNewerNone $
+                             configAllowNewer configExFlags)
 
         . addPreferences
             -- preferences from the config file or command line

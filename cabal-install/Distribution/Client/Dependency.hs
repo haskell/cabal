@@ -55,7 +55,7 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesSpecificByInstalledPackageId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
-    relaxUpperBounds
+    removeUpperBounds
   ) where
 
 import Distribution.Client.Dependency.TopDown
@@ -88,7 +88,7 @@ import Distribution.PackageDescription (BuildInfo(targetBuildDepends))
 import Distribution.PackageDescription.Configuration (mapCondTree)
 import Distribution.Version
          ( Version(..), VersionRange, anyVersion, thisVersion, withinRange
-         , relaxUpperBound, simplifyVersionRange )
+         , removeUpperBound, simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerId(..), CompilerFlavor(..) )
 import Distribution.System
@@ -290,12 +290,12 @@ hideBrokenInstalledPackages params =
            . InstalledPackageIndex.brokenPackages
            $ depResolverInstalledPkgIndex params
 
--- | Relax upper bounds in dependencies using the policy specified by the
+-- | Remove upper bounds in dependencies using the policy specified by the
 -- 'AllowNewer' argument (all/some/none).
-relaxUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
-relaxUpperBounds allowNewer params =
+removeUpperBounds :: AllowNewer -> DepResolverParams -> DepResolverParams
+removeUpperBounds allowNewer params =
     params {
-      -- NB: It's important to apply 'relaxUpperBounds' after
+      -- NB: It's important to apply 'removeUpperBounds' after
       -- 'addSourcePackages'. Otherwise, the packages inserted by
       -- 'addSourcePackages' won't have upper bounds in dependencies relaxed.
 
@@ -312,14 +312,14 @@ relaxUpperBounds allowNewer params =
     relaxAllPackageDeps = onAllBuildDepends doRelax
       where
         doRelax (Dependency pkgName verRange) =
-          Dependency pkgName (relaxUpperBound verRange)
+          Dependency pkgName (removeUpperBound verRange)
 
     relaxSomePackageDeps :: [PackageName] -> SourcePackage -> SourcePackage
     relaxSomePackageDeps pkgNames = onAllBuildDepends doRelax
       where
         doRelax d@(Dependency pkgName verRange)
           | pkgName `elem` pkgNames = Dependency pkgName
-                                      (relaxUpperBound verRange)
+                                      (removeUpperBound verRange)
           | otherwise               = d
 
     -- Walk a 'GenericPackageDescription' and apply 'f' to all 'build-depends'
