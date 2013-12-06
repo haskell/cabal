@@ -334,7 +334,7 @@ planPackages comp platform mSandboxPkgInfo solver
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)
 
-      . relaxUpperBounds allowNewer
+      . removeUpperBounds allowNewer
 
       . addPreferences
           -- preferences from the config file or command line

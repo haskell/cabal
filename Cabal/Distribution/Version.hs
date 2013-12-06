@@ -69,7 +69,7 @@ module Distribution.Version (
   foldVersionRange',
 
   -- ** Modification
-  relaxUpperBound,
+  removeUpperBound,
 
   -- * Version intervals view
   asVersionIntervals,
@@ -242,8 +242,8 @@ betweenVersionsInclusive v1 v2 =
 
 -- | Given a version range, remove the highest upper bound. Example: @(>= 1 && <
 -- 3) || (>= 4 && < 5)@ is converted to @(>= 1 && < 3) || (>= 4)@.
-relaxUpperBound :: VersionRange -> VersionRange
-relaxUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
+removeUpperBound :: VersionRange -> VersionRange
+removeUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
   where
     relaxLastInterval (VersionIntervals intervals) =
       VersionIntervals (relaxLastInterval' intervals)
