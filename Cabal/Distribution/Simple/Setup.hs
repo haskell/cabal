@@ -62,7 +62,7 @@ module Distribution.Simple.Setup (
 
   GlobalFlags(..),   emptyGlobalFlags,   defaultGlobalFlags,   globalCommand,
   ConfigFlags(..),   emptyConfigFlags,   defaultConfigFlags,   configureCommand,
-  configAbsolutePaths,
+  configAbsolutePaths, readPackageDbList, showPackageDbList,
   CopyFlags(..),     emptyCopyFlags,     defaultCopyFlags,     copyCommand,
   InstallFlags(..),  emptyInstallFlags,  defaultInstallFlags,  installCommand,
   HaddockFlags(..),  emptyHaddockFlags,  defaultHaddockFlags,  haddockCommand,
@@ -549,26 +549,27 @@ configureOptions showOrParseArgs =
     showFlagList fs = [ if not set then '-':fname else fname
                       | (FlagName fname, set) <- fs]
 
-    readPackageDbList :: String -> [Maybe PackageDB]
-    readPackageDbList "clear"  = [Nothing]
-    readPackageDbList "global" = [Just GlobalPackageDB]
-    readPackageDbList "user"   = [Just UserPackageDB]
-    readPackageDbList other    = [Just (SpecificPackageDB other)]
-
-    showPackageDbList :: [Maybe PackageDB] -> [String]
-    showPackageDbList = map showPackageDb
-      where
-        showPackageDb Nothing                       = "clear"
-        showPackageDb (Just GlobalPackageDB)        = "global"
-        showPackageDb (Just UserPackageDB)          = "user"
-        showPackageDb (Just (SpecificPackageDB db)) = db
-
     liftInstallDirs =
       liftOption configInstallDirs (\v flags -> flags { configInstallDirs = v })
 
     reqPathTemplateArgFlag title _sf _lf d get set =
       reqArgFlag title _sf _lf d
         (fmap fromPathTemplate . get) (set . fmap toPathTemplate)
+
+readPackageDbList :: String -> [Maybe PackageDB]
+readPackageDbList "clear"  = [Nothing]
+readPackageDbList "global" = [Just GlobalPackageDB]
+readPackageDbList "user"   = [Just UserPackageDB]
+readPackageDbList other    = [Just (SpecificPackageDB other)]
+
+showPackageDbList :: [Maybe PackageDB] -> [String]
+showPackageDbList = map showPackageDb
+  where
+    showPackageDb Nothing                       = "clear"
+    showPackageDb (Just GlobalPackageDB)        = "global"
+    showPackageDb (Just UserPackageDB)          = "user"
+    showPackageDb (Just (SpecificPackageDB db)) = db
+
 
 parseDependency :: Parse.ReadP r (PackageName, InstalledPackageId)
 parseDependency = do

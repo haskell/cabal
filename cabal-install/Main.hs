@@ -698,7 +698,11 @@ listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
   (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
-  let configFlags  = savedConfigureFlags config
+  let configFlags' = savedConfigureFlags config
+      configFlags  = configFlags' {
+        configPackageDBs = configPackageDBs configFlags'
+                           `mappend` listPackageDBs listFlags
+        }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
   List.list verbosity
@@ -714,7 +718,11 @@ infoAction infoFlags extraArgs globalFlags = do
   let verbosity = fromFlag (infoVerbosity infoFlags)
   targets <- readUserTargets verbosity extraArgs
   (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
-  let configFlags  = savedConfigureFlags config
+  let configFlags' = savedConfigureFlags config
+      configFlags  = configFlags' {
+        configPackageDBs = configPackageDBs configFlags'
+                           `mappend` infoPackageDBs infoFlags
+        }
       globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAuxEx configFlags
   List.info verbosity
