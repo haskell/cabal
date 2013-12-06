@@ -355,9 +355,7 @@ configure (pkg_descr0, pbi) cfg
                 --
                 -- TODO: mention '--exact-configuration' in the error message
                 -- when this fails?
-                (depName `Map.member` requiredDepsMap)
-                || (pkgName pid == depName
-                    && pkgVersion pid `withinRange` verRange)
+                (depName `Map.member` requiredDepsMap) || isInternalDep
 
               | otherwise =
                 -- Normal operation: just look up dependency in the package
@@ -365,6 +363,8 @@ configure (pkg_descr0, pbi) cfg
                 not . null . PackageIndex.lookupDependency pkgs' $ d
               where
                 pkgs' = PackageIndex.insert internalPackage installedPackageSet
+                isInternalDep = pkgName pid == depName
+                                && pkgVersion pid `withinRange` verRange
             enableTest t = t { testEnabled = fromFlag (configTests cfg) }
             flaggedTests = map (\(n, t) -> (n, mapTreeData enableTest t))
                                (condTestSuites pkg_descr0)
