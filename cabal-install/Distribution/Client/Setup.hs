@@ -284,7 +284,8 @@ data ConfigExFlags = ConfigExFlags {
   }
 
 defaultConfigExFlags :: ConfigExFlags
-defaultConfigExFlags = mempty { configSolver = Flag defaultSolver }
+defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver
+                              , configAllowNewer = Flag AllowNewerNone }
 
 configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 configureExCommand = configureCommand {
@@ -818,8 +819,7 @@ data InstallFlags = InstallFlags {
     installBuildReports     :: Flag ReportLevel,
     installSymlinkBinDir    :: Flag FilePath,
     installOneShot          :: Flag Bool,
-    installNumJobs          :: Flag (Maybe Int),
-    installAllowNewer       :: Flag AllowNewer
+    installNumJobs          :: Flag (Maybe Int)
   }
 
 defaultInstallFlags :: InstallFlags
@@ -843,8 +843,7 @@ defaultInstallFlags = InstallFlags {
     installBuildReports    = Flag NoReports,
     installSymlinkBinDir   = mempty,
     installOneShot         = Flag False,
-    installNumJobs         = mempty,
-    installAllowNewer      = Flag AllowNewerNone
+    installNumJobs         = mempty
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
@@ -905,9 +904,7 @@ installCommand = CommandUI {
                            , "exact-configuration"])
                 . optionName) $
                               configureOptions   showOrParseArgs)
-    ++ liftOptions get2 set2
-       (filter ((/=) "allow-newer" . optionName)
-               $ configureExOptions showOrParseArgs)
+    ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
     ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
   }
@@ -975,13 +972,6 @@ installOptions showOrParseArgs =
           "Reinstall packages even if they will most likely break other installed packages."
           installOverrideReinstall (\v flags -> flags { installOverrideReinstall = v })
           (yesNoOpt showOrParseArgs)
-
-      , option [] ["allow-newer"]
-          "Ignore upper bounds in dependencies on some or all packages."
-          installAllowNewer (\v flags -> flags { installAllowNewer = v})
-          (optArg "PKGS"
-             (fmap Flag allowNewerParser) (Flag AllowNewerAll)
-             allowNewerPrinter)
 
       , option [] ["upgrade-dependencies"]
           "Pick the latest version for all dependencies, rather than trying to pick an installed version."
@@ -1069,8 +1059,7 @@ instance Monoid InstallFlags where
     installBuildReports    = mempty,
     installSymlinkBinDir   = mempty,
     installOneShot         = mempty,
-    installNumJobs         = mempty,
-    installAllowNewer      = mempty
+    installNumJobs         = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation   = combine installDocumentation,
@@ -1092,8 +1081,7 @@ instance Monoid InstallFlags where
     installBuildReports    = combine installBuildReports,
     installSymlinkBinDir   = combine installSymlinkBinDir,
     installOneShot         = combine installOneShot,
-    installNumJobs         = combine installNumJobs,
-    installAllowNewer      = combine installAllowNewer
+    installNumJobs         = combine installNumJobs
   }
     where combine field = field a `mappend` field b
 
