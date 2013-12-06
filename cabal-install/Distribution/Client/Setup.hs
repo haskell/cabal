@@ -50,6 +50,7 @@ import qualified Distribution.Client.Init.Types as IT
 import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
 
+import Distribution.Simple.Compiler (PackageDB)
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Command hiding (boolOpt)
@@ -57,6 +58,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
+         , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
          , optionVerbosity, boolOpt, trueArg, falseArg, numJobsParser )
 import Distribution.Simple.InstallDirs
@@ -700,16 +702,18 @@ instance Monoid GetFlags where
 -- ------------------------------------------------------------
 
 data ListFlags = ListFlags {
-    listInstalled :: Flag Bool,
+    listInstalled    :: Flag Bool,
     listSimpleOutput :: Flag Bool,
-    listVerbosity :: Flag Verbosity
+    listVerbosity    :: Flag Verbosity,
+    listPackageDBs   :: [Maybe PackageDB]
   }
 
 defaultListFlags :: ListFlags
 defaultListFlags = ListFlags {
-    listInstalled = Flag False,
+    listInstalled    = Flag False,
     listSimpleOutput = Flag False,
-    listVerbosity = toFlag normal
+    listVerbosity    = toFlag normal,
+    listPackageDBs   = []
   }
 
 listCommand  :: CommandUI ListFlags
@@ -732,15 +736,26 @@ listCommand = CommandUI {
             listSimpleOutput (\v flags -> flags { listSimpleOutput = v })
             trueArg
 
+        , option "" ["package-db"]
+          "Use a given package database. May be a specific file, 'global', 'user' or 'clear'."
+          listPackageDBs (\v flags -> flags { listPackageDBs = v })
+          (reqArg' "DB" readPackageDbList showPackageDbList)
+
         ]
   }
 
 instance Monoid ListFlags where
-  mempty = defaultListFlags
+  mempty = ListFlags {
+    listInstalled    = mempty,
+    listSimpleOutput = mempty,
+    listVerbosity    = mempty,
+    listPackageDBs   = mempty
+    }
   mappend a b = ListFlags {
-    listInstalled = combine listInstalled,
+    listInstalled    = combine listInstalled,
     listSimpleOutput = combine listSimpleOutput,
-    listVerbosity = combine listVerbosity
+    listVerbosity    = combine listVerbosity,
+    listPackageDBs   = combine listPackageDBs
   }
     where combine field = field a `mappend` field b
 
@@ -749,12 +764,14 @@ instance Monoid ListFlags where
 -- ------------------------------------------------------------
 
 data InfoFlags = InfoFlags {
-    infoVerbosity :: Flag Verbosity
+    infoVerbosity  :: Flag Verbosity,
+    infoPackageDBs :: [Maybe PackageDB]
   }
 
 defaultInfoFlags :: InfoFlags
 defaultInfoFlags = InfoFlags {
-    infoVerbosity = toFlag normal
+    infoVerbosity  = toFlag normal,
+    infoPackageDBs = []
   }
 
 infoCommand  :: CommandUI InfoFlags
@@ -766,13 +783,23 @@ infoCommand = CommandUI {
     commandDefaultFlags = defaultInfoFlags,
     commandOptions      = \_ -> [
         optionVerbosity infoVerbosity (\v flags -> flags { infoVerbosity = v })
+
+        , option "" ["package-db"]
+          "Use a given package database. May be a specific file, 'global', 'user' or 'clear'."
+          infoPackageDBs (\v flags -> flags { infoPackageDBs = v })
+          (reqArg' "DB" readPackageDbList showPackageDbList)
+
         ]
   }
 
 instance Monoid InfoFlags where
-  mempty = defaultInfoFlags
+  mempty = InfoFlags {
+    infoVerbosity  = mempty,
+    infoPackageDBs = mempty
+    }
   mappend a b = InfoFlags {
-    infoVerbosity = combine infoVerbosity
+    infoVerbosity  = combine infoVerbosity,
+    infoPackageDBs = combine infoPackageDBs
   }
     where combine field = field a `mappend` field b
 
