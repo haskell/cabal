@@ -92,7 +92,7 @@ import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , FlagName(..), TestSuite(..), Benchmark(..) )
+    , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..) )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
@@ -142,7 +142,7 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Control.Monad
     ( when, unless, foldM, filterM )
 import Data.List
-    ( nub, partition, isPrefixOf, inits )
+    ( (\\), nub, partition, isPrefixOf, inits )
 import Data.Maybe
     ( isNothing, catMaybes, fromMaybe )
 import Data.Monoid
@@ -392,6 +392,17 @@ configure (pkg_descr0, pbi) cfg
                          ++ (render . nest 4 . sep . punctuate comma
                                     . map (disp . simplifyDependency)
                                     $ missing)
+
+        -- Sanity check: if '--exact-configuration' was given, ensure that the
+        -- complete flag assignment was specified on the command line.
+        when exactConf $ do
+          let cmdlineFlags = map fst (configConfigurationsFlags cfg)
+              allFlags     = map flagName . genPackageFlags $ pkg_descr0
+              diffFlags    = allFlags \\ cmdlineFlags
+          when (not . null $ diffFlags) $
+            die $ "'--exact-conf' was given, "
+            ++ "but the following flags were not specified: "
+            ++ intercalate ", " (map show diffFlags)
 
         -- add extra include/lib dirs as specified in cfg
         -- we do it here so that those get checked too
