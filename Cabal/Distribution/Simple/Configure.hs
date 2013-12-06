@@ -351,7 +351,9 @@ configure (pkg_descr0, pbi) cfg
                 -- When we're given '--exact-configuration', we assume that all
                 -- dependencies and flags are exactly specified on the command
                 -- line. Thus we only consult the 'requiredDepsMap'. Note that
-                -- we're not doing the version check.
+                -- we're not doing the version range check, so if there's some
+                -- dependency that wasn't specified on the command line,
+                -- 'finalizePackageDescription' will fail.
                 --
                 -- TODO: mention '--exact-configuration' in the error message
                 -- when this fails?
