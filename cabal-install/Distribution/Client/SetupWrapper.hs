@@ -69,7 +69,7 @@ import Distribution.Client.JobControl
 import Distribution.Simple.Setup
          ( Flag(..) )
 import Distribution.Simple.Utils
-         ( die, debug, info, cabalVersion, findPackageDesc, comparing
+         ( die, debug, info, cabalVersion, tryFindPackageDesc, comparing
          , createDirectoryIfMissingVerbose, installExecutableFile
          , copyFileVerbose, rewriteFile, intercalate )
 import Distribution.Client.Utils
@@ -159,7 +159,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
   checkBuildType buildType'
   setupMethod verbosity options' (packageId pkg) buildType' mkArgs
   where
-    getPkg = findPackageDesc (fromMaybe "." (useWorkingDir options))
+    getPkg = tryFindPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readPackageDescription verbosity
          >>= return . packageDescription
 
