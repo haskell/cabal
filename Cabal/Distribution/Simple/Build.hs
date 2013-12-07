@@ -47,6 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Build (
     build, repl,
+    startInterpreter,
 
     initialBuildSteps,
     writeAutogenFiles,
@@ -67,7 +68,8 @@ import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
          , Dependency(..), thisPackageVersion )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), compilerFlavor, PackageDB(..) )
+         ( Compiler, CompilerFlavor(..), compilerFlavor
+         , PackageDB(..), PackageDBStack )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
@@ -201,6 +203,13 @@ repl pkg_descr lbi flags suffixes args = do
       lbi' = lbiForComponent comp lbi
    in replComponent verbosity pkg_descr lbi' suffixes comp clbi distPref
 
+
+-- | Start an interpreter without loading any package files.
+startInterpreter :: Verbosity -> ProgramDb -> Compiler -> PackageDBStack -> IO ()
+startInterpreter verbosity programDb comp packageDBs =
+  case compilerFlavor comp of
+    GHC -> GHC.startInterpreter verbosity programDb comp packageDBs
+    _   -> die "A REPL is not supported with this compiler."
 
 buildComponent :: Verbosity
                -> Flag (Maybe Int)

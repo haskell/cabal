@@ -65,6 +65,7 @@ module Distribution.Simple.GHC (
         configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,
         replLib, replExe,
+        startInterpreter,
         installLib, installExe,
         libAbiHash,
         initPackageDB,
@@ -917,6 +918,17 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
     whenSharedLib False $
       runGhcProg ghcSharedLinkArgs
 
+-- | Start a REPL without loading any source files.
+startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
+                 -> PackageDBStack -> IO ()
+startInterpreter verbosity conf comp packageDBs = do
+  let replOpts = mempty {
+        ghcOptMode       = toFlag GhcModeInteractive,
+        ghcOptPackageDBs = packageDBs
+        }
+  checkPackageDbStack packageDBs
+  (ghcProg, _) <- requireProgram verbosity ghcProgram conf
+  runGHC verbosity ghcProg comp replOpts
 
 -- | Build an executable with GHC.
 --
