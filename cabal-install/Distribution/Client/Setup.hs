@@ -44,7 +44,7 @@ import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..) )
+         ( AllowNewer(..), PreSolver(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -75,7 +75,7 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, (+++) )
+         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, sepBy1, (+++) )
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -243,28 +243,32 @@ configureOptions = commandOptions configureCommand
 
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
-  | cabalLibVersion >= Version [1,19,1] [] = flags_latest
+  | cabalLibVersion >= Version [1,19,2] [] = flags_latest
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
   | cabalLibVersion <  Version [1,14,0] [] = flags_1_14_0
   | cabalLibVersion <  Version [1,18,0] [] = flags_1_18_0
   | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_0
+  | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_1
   | otherwise = flags_latest
   where
-    -- Cabal >= 1.19.1 uses --dependency and does not need --constraint
+    -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
     flags_latest = flags        { configConstraints = [] }
 
-    -- Cabal < 1.19.1 does not grok the --dependency flag.
-    flags_1_19_0 = flags        { configDependencies = [] }
+    -- Cabal < 1.19.2 doesn't know about '--exact-configuration'.
+    flags_1_19_1 = flags_latest { configExactConfiguration = NoFlag }
+    -- Cabal < 1.19.1 uses '--constraint' instead of '--dependency'.
+    flags_1_19_0 = flags_1_19_1 { configDependencies = []
+                                , configConstraints  = configConstraints flags }
     -- Cabal < 1.18.0 doesn't know about --extra-prog-path and --sysconfdir.
     flags_1_18_0 = flags_1_19_0 { configProgramPathExtra = []
                                 , configInstallDirs = configInstallDirs_1_18_0}
     configInstallDirs_1_18_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
-    -- Cabal < 1.14.0 doesn't know about --disable-benchmarks.
+    -- Cabal < 1.14.0 doesn't know about '--disable-benchmarks'.
     flags_1_14_0 = flags_1_18_0 { configBenchmarks  = NoFlag }
-    -- Cabal < 1.10.0 doesn't know about --disable-tests.
+    -- Cabal < 1.10.0 doesn't know about '--disable-tests'.
     flags_1_10_0 = flags_1_14_0 { configTests       = NoFlag }
-    -- Cabal < 1.3.10 does not grok the --constraints flag.
+    -- Cabal < 1.3.10 does not grok the '--constraints' flag.
     flags_1_3_10 = flags_1_10_0 { configConstraints = [] }
 
 -- ------------------------------------------------------------
@@ -277,18 +281,21 @@ data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
     configExConstraints:: [UserConstraint],
     configPreferences  :: [Dependency],
-    configSolver       :: Flag PreSolver
+    configSolver       :: Flag PreSolver,
+    configAllowNewer   :: Flag AllowNewer
   }
 
 defaultConfigExFlags :: ConfigExFlags
-defaultConfigExFlags = mempty { configSolver = Flag defaultSolver }
+defaultConfigExFlags = mempty { configSolver     = Flag defaultSolver
+                              , configAllowNewer = Flag AllowNewerNone }
 
 configureExCommand :: CommandUI (ConfigFlags, ConfigExFlags)
 configureExCommand = configureCommand {
     commandDefaultFlags = (mempty, defaultConfigExFlags),
     commandOptions      = \showOrParseArgs ->
-         liftOptions fst setFst (filter ((/="constraint") . optionName) $
-                                 configureOptions   showOrParseArgs)
+         liftOptions fst setFst
+         (filter ((`notElem` ["constraint", "dependency", "exact-configuration"])
+                  . optionName) $ configureOptions  showOrParseArgs)
       ++ liftOptions snd setSnd (configureExOptions showOrParseArgs)
   }
   where
@@ -320,6 +327,14 @@ configureExOptions _showOrParseArgs =
               (map display))
 
   , optionSolver configSolver (\v flags -> flags { configSolver = v })
+
+  , option [] ["allow-newer"]
+    "Ignore upper bounds in dependencies on some or all packages."
+    configAllowNewer (\v flags -> flags { configAllowNewer = v})
+    (optArg "PKGS"
+     (fmap Flag allowNewerParser) (Flag AllowNewerAll)
+     allowNewerPrinter)
+
   ]
 
 instance Monoid ConfigExFlags where
@@ -327,13 +342,15 @@ instance Monoid ConfigExFlags where
     configCabalVersion = mempty,
     configExConstraints= mempty,
     configPreferences  = mempty,
-    configSolver       = mempty
+    configSolver       = mempty,
+    configAllowNewer   = mempty
   }
   mappend a b = ConfigExFlags {
     configCabalVersion = combine configCabalVersion,
     configExConstraints= combine configExConstraints,
     configPreferences  = combine configPreferences,
-    configSolver       = combine configSolver
+    configSolver       = combine configSolver,
+    configAllowNewer   = combine configAllowNewer
   }
     where combine field = field a `mappend` field b
 
@@ -858,6 +875,27 @@ defaultInstallFlags = InstallFlags {
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
 
+allowNewerParser :: ReadE AllowNewer
+allowNewerParser = ReadE $ \s ->
+  case s of
+    ""      -> Right AllowNewerNone
+    "False" -> Right AllowNewerNone
+    "True"  -> Right AllowNewerAll
+    _       ->
+      case readPToMaybe pkgsParser s of
+        Just pkgs -> Right . AllowNewerSome $ pkgs
+        Nothing   -> Left ("Cannot parse the list of packages: " ++ s)
+  where
+    pkgsParser = Parse.sepBy1 parse (Parse.char ',')
+
+allowNewerPrinter :: Flag AllowNewer -> [Maybe String]
+allowNewerPrinter (Flag AllowNewerNone)        = [Just "False"]
+allowNewerPrinter (Flag AllowNewerAll)         = [Just "True"]
+allowNewerPrinter (Flag (AllowNewerSome pkgs)) =
+  [Just . intercalate "," . map display $ pkgs]
+allowNewerPrinter NoFlag                       = []
+
+
 defaultMaxBackjumps :: Int
 defaultMaxBackjumps = 200
 
@@ -889,7 +927,9 @@ installCommand = CommandUI {
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
-       (filter ((`notElem` ["constraint", "dependency"]) . optionName) $
+       (filter ((`notElem` ["constraint", "dependency"
+                           , "exact-configuration"])
+                . optionName) $
                               configureOptions   showOrParseArgs)
     ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
     ++ liftOptions get3 set3 (installOptions     showOrParseArgs)

@@ -334,6 +334,8 @@ planPackages comp platform mSandboxPkgInfo solver
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)
 
+      . removeUpperBounds allowNewer
+
       . addPreferences
           -- preferences from the config file or command line
           [ PackageVersionPreference name ver
@@ -377,6 +379,7 @@ planPackages comp platform mSandboxPkgInfo solver
     maxBackjumps     = fromFlag (installMaxBackjumps     installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps      installFlags)
     onlyDeps         = fromFlag (installOnlyDeps         installFlags)
+    allowNewer       = fromFlag (configAllowNewer        configExFlags)
 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package pkg => [PackageSpecifier pkg] -> InstallPlan
@@ -1092,8 +1095,10 @@ installReadyPackage platform comp configFlags
     configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                             Installed.installedPackageId deppkg)
                          | deppkg <- deps ],
-    configBenchmarks = toFlag False,
-    configTests = toFlag (TestStanzas `elem` stanzas)
+    -- Use '--exact-configuration' if supported.
+    configExactConfiguration = toFlag True,
+    configBenchmarks         = toFlag False,
+    configTests              = toFlag (TestStanzas `elem` stanzas)
   } source pkg pkgoverride
   where
     pkg = case finalizePackageDescription flags

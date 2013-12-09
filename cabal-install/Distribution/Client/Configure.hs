@@ -15,6 +15,7 @@ module Distribution.Client.Configure (
   ) where
 
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Types (AllowNewer(..))
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
@@ -148,16 +149,18 @@ planLocalPackage verbosity comp platform configFlags configExFlags installedPkgI
         fromFlagOrDefault False $ configBenchmarks configFlags
 
       resolverParams =
+          removeUpperBounds (fromFlagOrDefault AllowNewerNone $
+                             configAllowNewer configExFlags)
 
-          addPreferences
+        . addPreferences
             -- preferences from the config file or command line
             [ PackageVersionPreference name ver
             | Dependency name ver <- configPreferences configExFlags ]
 
         . addConstraints
             -- version constraints from the config file or command line
-            -- TODO: should warn or error on constraints that are not on direct deps
-            -- or flag constraints not on the package in question.
+            -- TODO: should warn or error on constraints that are not on direct
+            -- deps or flag constraints not on the package in question.
             (map userToPackageConstraint (configExConstraints configExFlags))
 
         . addConstraints
@@ -213,9 +216,11 @@ configurePackage verbosity platform comp scriptOptions configFlags
       configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                               Installed.installedPackageId deppkg)
                            | deppkg <- deps ],
-      configVerbosity           = toFlag verbosity,
-      configBenchmarks          = toFlag (BenchStanzas `elem` stanzas),
-      configTests               = toFlag (TestStanzas `elem` stanzas)
+      -- Use '--exact-configuration' if supported.
+      configExactConfiguration = toFlag True,
+      configVerbosity          = toFlag verbosity,
+      configBenchmarks         = toFlag (BenchStanzas `elem` stanzas),
+      configTests              = toFlag (TestStanzas `elem` stanzas)
     }
 
     pkg = case finalizePackageDescription flags
