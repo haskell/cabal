@@ -150,8 +150,10 @@ mainWorker args = topHandler $
     CommandErrors errs                 -> printErrors errs
     CommandReadyToGo (globalflags, commandParse)  ->
       case commandParse of
-        _ | fromFlag (globalVersion globalflags)        -> printVersion
-          | fromFlag (globalNumericVersion globalflags) -> printNumericVersion
+        _ | fromFlagOrDefault False (globalVersion globalflags)
+            -> printVersion
+          | fromFlagOrDefault False (globalNumericVersion globalflags)
+            -> printNumericVersion
         CommandHelp     help           -> printCommandHelp help
         CommandList     opts           -> printOptionsList opts
         CommandErrors   errs           -> printErrors errs
@@ -700,7 +702,7 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
-  (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let configFlags' = savedConfigureFlags config
       configFlags  = configFlags' {
         configPackageDBs = configPackageDBs configFlags'
@@ -720,7 +722,7 @@ infoAction :: InfoFlags -> [String] -> GlobalFlags -> IO ()
 infoAction infoFlags extraArgs globalFlags = do
   let verbosity = fromFlag (infoVerbosity infoFlags)
   targets <- readUserTargets verbosity extraArgs
-  (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let configFlags' = savedConfigureFlags config
       configFlags  = configFlags' {
         configPackageDBs = configPackageDBs configFlags'
