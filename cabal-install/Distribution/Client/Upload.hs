@@ -3,6 +3,9 @@
 
 module Distribution.Client.Upload (check, upload, report) where
 
+import qualified Data.ByteString.Lazy.Char8 as B (concat, length, pack, readFile, unpack)
+import           Data.ByteString.Lazy.Char8 (ByteString)
+
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
 import Distribution.Client.HttpUtils (isOldHackageURI, cabalBrowse)
 
@@ -25,8 +28,7 @@ import Network.URI (URI(uriPath), parseURI)
 
 import Data.Char        (intToDigit)
 import Numeric          (showHex)
-import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho
-                        ,openBinaryFile, IOMode(ReadMode), hGetContents)
+import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
 import Control.Exception (bracket)
 import System.Random    (randomRIO)
 import System.FilePath  ((</>), takeExtension, takeFileName)
@@ -120,7 +122,7 @@ check verbosity paths = do
             notice verbosity $ "Checking " ++ path ++ "... "
             handlePackage verbosity checkURI (return ()) path
 
-handlePackage :: Verbosity -> URI -> BrowserAction (HandleStream String) ()
+handlePackage :: Verbosity -> URI -> BrowserAction (HandleStream ByteString) ()
               -> FilePath -> IO ()
 handlePackage verbosity uri auth path =
   do req <- mkRequest uri path
@@ -135,31 +137,31 @@ handlePackage verbosity uri auth path =
                      case findHeader HdrContentType resp of
                        Just contenttype
                          | takeWhile (/= ';') contenttype == "text/plain"
-                         -> notice verbosity $ rspBody resp
-                       _ -> debug verbosity $ rspBody resp
+                         -> notice verbosity $ B.unpack $ rspBody resp
+                       _ -> debug verbosity $ B.unpack $ rspBody resp
 
-mkRequest :: URI -> FilePath -> IO (Request String)
+mkRequest :: URI -> FilePath -> IO (Request ByteString)
 mkRequest uri path = 
     do pkg <- readBinaryFile path
        boundary <- genBoundary
-       let body = printMultiPart boundary (mkFormData path pkg)
+       let body = printMultiPart (B.pack boundary) (mkFormData path pkg)
        return $ Request {
                          rqURI = uri,
                          rqMethod = POST,
                          rqHeaders = [Header HdrContentType ("multipart/form-data; boundary="++boundary),
-                                      Header HdrContentLength (show (length body)),
+                                      Header HdrContentLength (show (B.length body)),
                                       Header HdrAccept ("text/plain")],
                          rqBody = body
                         }
 
-readBinaryFile :: FilePath -> IO String
-readBinaryFile path = openBinaryFile path ReadMode >>= hGetContents
+readBinaryFile :: FilePath -> IO ByteString
+readBinaryFile = B.readFile
 
 genBoundary :: IO String
 genBoundary = do i <- randomRIO (0x10000000000000,0xFFFFFFFFFFFFFF) :: IO Integer
                  return $ showHex i ""
 
-mkFormData :: FilePath -> String -> [BodyPart]
+mkFormData :: FilePath -> ByteString -> [BodyPart]
 mkFormData path pkg =
   -- yes, web browsers are that stupid (re quoting)
   [BodyPart [Header hdrContentDisposition $
@@ -172,14 +174,17 @@ hdrContentDisposition = HdrCustom "Content-disposition"
 
 -- * Multipart, partly stolen from the cgi package.
 
-data BodyPart = BodyPart [Header] String
+data BodyPart = BodyPart [Header] ByteString
 
-printMultiPart :: String -> [BodyPart] -> String
-printMultiPart boundary xs = 
-    concatMap (printBodyPart boundary) xs ++ crlf ++ "--" ++ boundary ++ "--" ++ crlf
+printMultiPart :: ByteString -> [BodyPart] -> ByteString
+printMultiPart boundary xs =
+    B.concat $ map (printBodyPart boundary) xs ++ [crlf, dd, boundary, dd, crlf]
 
-printBodyPart :: String -> BodyPart -> String
-printBodyPart boundary (BodyPart hs c) = crlf ++ "--" ++ boundary ++ crlf ++ concatMap show hs ++ crlf ++ c
+printBodyPart :: ByteString -> BodyPart -> ByteString
+printBodyPart boundary (BodyPart hs c) = B.concat $ [crlf, dd, boundary, crlf] ++ map (B.pack . show) hs ++ [crlf, c]
 
-crlf :: String
-crlf = "\r\n"
+crlf :: ByteString
+crlf = B.pack "\r\n"
+
+dd :: ByteString
+dd = B.pack "--"
