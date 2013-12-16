@@ -15,18 +15,20 @@ module Distribution.Client.Freeze (
     freeze,
   ) where
 
+import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Types
 import Distribution.Client.Targets
-import Distribution.Client.Dependency
+import Distribution.Client.Dependency hiding ( addConstraints )
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
          ( PlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
-         ( GlobalFlags(..), FreezeFlags(..) )
+         ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..) )
 import Distribution.Client.Sandbox.PackageEnvironment
-         ( userPackageEnvironmentFile )
+         ( loadUserConfig, pkgEnvSavedConfig, showPackageEnvironment,
+           userPackageEnvironmentFile )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
@@ -40,7 +42,7 @@ import Distribution.Simple.Program
 import Distribution.Simple.Setup
          ( fromFlag )
 import Distribution.Simple.Utils
-         ( die, notice, debug, intercalate, writeFileAtomic )
+         ( die, notice, debug, writeFileAtomic )
 import Distribution.System
          ( Platform )
 import Distribution.Text
@@ -49,8 +51,12 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import Data.Monoid
+         ( mempty )
 import Data.Version
          ( showVersion )
+import Distribution.Version
+         ( thisVersion )
 
 -- ------------------------------------------------------------
 -- * The freeze command
@@ -98,7 +104,7 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
                      "The following packages would be frozen:"
                    : formatPkgs pkgs
 
-             else freezePackages pkgs
+             else freezePackages verbosity pkgs
 
   where
     dryRun = fromFlag (freezeDryRun freezeFlags)
@@ -151,17 +157,24 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
     shadowPkgs       = fromFlag (freezeShadowPkgs       freezeFlags)
     maxBackjumps     = fromFlag (freezeMaxBackjumps     freezeFlags)
 
-freezePackages :: [PlanPackage] -> IO ()
-freezePackages pkgs =
-    writeFileAtomic userPackageEnvironmentFile $ constraints pkgs
+freezePackages :: Verbosity -> [PlanPackage] -> IO ()
+freezePackages verbosity pkgs = do
+    pkgEnv <- fmap (createPkgEnv . addConstraints) $ loadUserConfig verbosity ""
+    writeFileAtomic userPackageEnvironmentFile $ showPkgEnv pkgEnv
   where
-    constraints = BS.Char8.pack
-                . (++ "\n")
-                . (prefix' ++)
-                . intercalate separator
-                . formatPkgs
-    prefix' = "constraints: "
-    separator = "\n" ++ (replicate (length prefix' - 2) ' ') ++ ", "
+    addConstraints config =
+        config {
+            savedConfigureExFlags = (savedConfigureExFlags config) {
+                configExConstraints = constraints pkgs
+            }
+        }
+    constraints = map $ pkgIdToConstraint . packageId
+      where
+        pkgIdToConstraint pkg =
+            UserConstraintVersion (packageName pkg)
+                                  (thisVersion $ packageVersion pkg)
+    createPkgEnv config = mempty { pkgEnvSavedConfig = config }
+    showPkgEnv = BS.Char8.pack . showPackageEnvironment
 
 
 formatPkgs :: [PlanPackage] -> [String]
