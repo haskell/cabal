@@ -2,6 +2,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Distribution.Compat.CopyFile (
   copyFile,
+  copyFileChanged,
   filesEqual,
   copyOrdinaryFile,
   copyExecutableFile,
@@ -12,7 +13,7 @@ module Distribution.Compat.CopyFile (
 
 
 import Control.Monad
-         ( when )
+         ( when, unless )
 import Control.Exception
          ( bracket, bracketOnError, throwIO )
 import qualified Data.ByteString.Lazy as BSL
@@ -62,6 +63,8 @@ setFileExecutable _ = return ()
 -- This happens to be true on Unix and currently on Windows too:
 setDirOrdinary = setFileExecutable
 
+-- | Copies a file to a new destination.
+-- Often you should use `copyFileChanged` instead.
 copyFile :: FilePath -> FilePath -> IO ()
 copyFile fromFPath toFPath =
   copy
@@ -82,6 +85,14 @@ copyFile fromFPath toFPath =
                   when (count > 0) $ do
                           hPutBuf hTo buffer count
                           copyContents hFrom hTo buffer
+
+-- | Like `copyFileAlways`, but does not touch the target if source and destination
+-- are already byte-identical. This is recommended as it is useful for
+-- time-stamp based recompilation avoidance.
+copyFileChanged :: FilePath -> FilePath -> IO ()
+copyFileChanged src dest = do
+  equal <- filesEqual src dest
+  unless equal $ copyFile src dest
 
 -- | Checks if two files are byte-identical.
 -- Returns False if either of the files do not exist.
