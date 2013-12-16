@@ -11,19 +11,17 @@ module Distribution.Compat.CopyFile (
   ) where
 
 
-import Control.Applicative
-         ( (<$>), (<*>) )
 import Control.Monad
          ( when )
 import Control.Exception
-         ( bracket, bracketOnError, evaluate, throwIO )
+         ( bracket, bracketOnError, throwIO )
 import qualified Data.ByteString.Lazy as BSL
 import Distribution.Compat.Exception
          ( catchIO )
 import System.IO.Error
          ( ioeSetLocation )
 import System.Directory
-         ( renameFile, removeFile )
+         ( doesFileExist, renameFile, removeFile )
 import Distribution.Compat.TempFile
          ( openBinaryTempFile )
 import System.FilePath
@@ -88,7 +86,13 @@ copyFile fromFPath toFPath =
 -- | Checks if two files are byte-identical.
 -- Returns False if either of the files do not exist.
 filesEqual :: FilePath -> FilePath -> IO Bool
-filesEqual f1 f2 = (`catchIO` \ _ -> return False) $ do
-  withBinaryFile f1 ReadMode $ \ h1 -> do
-  withBinaryFile f2 ReadMode $ \ h2 -> do
-  evaluate =<< (==) <$> BSL.hGetContents h1 <*> BSL.hGetContents h2
+filesEqual f1 f2 = do
+  ex1 <- doesFileExist f1
+  ex2 <- doesFileExist f2
+  if not (ex1 && ex2) then return False else do
+
+    withBinaryFile f1 ReadMode $ \h1 ->
+      withBinaryFile f2 ReadMode $ \h2 -> do
+        c1 <- BSL.hGetContents h1
+        c2 <- BSL.hGetContents h2
+        return $! c1 == c2
