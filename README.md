@@ -4,8 +4,8 @@
 
 This Cabal git repository contains multiple packages:
 
- * Cabal/          -- the Cabal library package
- * cabal-install/  -- the cabal-install package containing the 'cabal' tool.
+ * `Cabal`          -- the Cabal library package
+ * `cabal-install`  -- the cabal-install package containing the `cabal` tool.
 
 See the README in each subdir for more details.
 
