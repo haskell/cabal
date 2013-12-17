@@ -1424,26 +1424,24 @@ buildCommand progConf = makeCommand name shortDesc longDesc
 buildOptions :: ProgramConfiguration -> ShowOrParseArgs
                 -> [OptionField BuildFlags]
 buildOptions progConf showOrParseArgs =
-  optionVerbosity buildVerbosity (\v flags -> flags { buildVerbosity = v })
-  : optionDistPref
-  buildDistPref (\d flags -> flags { buildDistPref = d })
-  showOrParseArgs
+  [ optionVerbosity
+      buildVerbosity (\v flags -> flags { buildVerbosity = v })
 
-  : option "j" ["jobs"]
-  "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)"
-  buildNumJobs (\v flags -> flags { buildNumJobs = v })
-  (optArg "NUM" (fmap Flag numJobsParser)
-   (Flag Nothing)
-   (map (Just . maybe "$ncpus" show) . flagToList))
+  , optionDistPref
+      buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
 
-  : programConfigurationPaths   progConf showOrParseArgs
-  buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
+  , optionNumJobs
+      buildNumJobs (\v flags -> flags { buildNumJobs = v })
+  ] ++
 
-  ++ programConfigurationOption progConf showOrParseArgs
-  buildProgramArgs (\v fs -> fs { buildProgramArgs = v })
+  programConfigurationPaths progConf showOrParseArgs
+    buildProgramPaths (\v flags -> flags { buildProgramPaths = v}) ++
 
-  ++ programConfigurationOptions progConf showOrParseArgs
-  buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
+  programConfigurationOption progConf showOrParseArgs
+    buildProgramArgs (\v fs -> fs { buildProgramArgs = v }) ++
+
+  programConfigurationOptions progConf showOrParseArgs
+    buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
 
 emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty
@@ -1898,6 +1896,17 @@ optionVerbosity get set =
     (optArg "n" (fmap Flag flagToVerbosity)
                 (Flag verbose) -- default Value if no n is given
                 (fmap (Just . showForCabal) . flagToList))
+
+optionNumJobs :: (flags -> Flag (Maybe Int))
+              -> (Flag (Maybe Int) -> flags -> flags)
+              -> OptionField flags
+optionNumJobs get set =
+  option "j" ["jobs"]
+    "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+    get set
+    (optArg "NUM" (fmap Flag numJobsParser)
+                  (Flag Nothing)
+                  (map (Just . maybe "$ncpus" show) . flagToList))
 
 -- ------------------------------------------------------------
 -- * Other Utils
