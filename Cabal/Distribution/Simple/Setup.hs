@@ -1432,16 +1432,16 @@ buildOptions progConf showOrParseArgs =
 
   , optionNumJobs
       buildNumJobs (\v flags -> flags { buildNumJobs = v })
-  ] ++
+  ]
 
-  programConfigurationPaths progConf showOrParseArgs
-    buildProgramPaths (\v flags -> flags { buildProgramPaths = v}) ++
+  ++ programConfigurationPaths progConf showOrParseArgs
+       buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
 
-  programConfigurationOption progConf showOrParseArgs
-    buildProgramArgs (\v fs -> fs { buildProgramArgs = v }) ++
+  ++ programConfigurationOption progConf showOrParseArgs
+       buildProgramArgs (\v fs -> fs { buildProgramArgs = v })
 
-  programConfigurationOptions progConf showOrParseArgs
-    buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
+  ++ programConfigurationOptions progConf showOrParseArgs
+       buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
 
 emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty
