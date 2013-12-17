@@ -61,7 +61,7 @@ import Distribution.Simple.Setup
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
-         , optionVerbosity, boolOpt, trueArg, falseArg, numJobsParser )
+         , optionVerbosity, boolOpt, trueArg, falseArg, optionNumJobs )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
          , toPathTemplate, fromPathTemplate )
@@ -1101,12 +1101,9 @@ installOptions showOrParseArgs =
           installOneShot (\v flags -> flags { installOneShot = v })
           (yesNoOpt showOrParseArgs)
 
-      , option "j" ["jobs"]
-        "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+      , optionNumJobs
         installNumJobs (\v flags -> flags { installNumJobs = v })
-        (optArg "NUM" (fmap Flag numJobsParser)
-                      (Flag Nothing)
-                      (map (Just . maybe "$ncpus" show) . flagToList))
+
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install"
                                         -- avoids
           ParseArgs ->
