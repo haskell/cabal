@@ -14,6 +14,7 @@ before_install:
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
 
 install:
+ - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
  - cabal-1.18 update
  - cd Cabal
  - cabal-1.18 install --only-dependencies --enable-tests --enable-benchmarks
