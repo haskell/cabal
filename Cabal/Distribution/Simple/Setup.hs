@@ -91,7 +91,7 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
-  boolOpt, boolOpt', trueArg, falseArg, optionVerbosity, numJobsParser ) where
+  boolOpt, boolOpt', trueArg, falseArg, optionVerbosity, optionNumJobs ) where
 
 import Distribution.Compiler ()
 import Distribution.ReadE
@@ -1839,18 +1839,6 @@ programConfigurationOptions progConf showOrParseArgs get set =
         get set
         (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
 
--- | Common parser for the @-j@ flag of @build@ and @install@.
-numJobsParser :: ReadE (Maybe Int)
-numJobsParser = ReadE $ \s ->
-  case s of
-    "$ncpus" -> Right Nothing
-    _        -> case reads s of
-      [(n, "")]
-        | n < 1     -> Left "The number of jobs should be 1 or more."
-        | n > 64    -> Left "You probably don't want that many jobs."
-        | otherwise -> Right (Just n)
-      _             -> Left "The jobs value should be a number or '$ncpus'"
-
 -- ------------------------------------------------------------
 -- * GetOpt Utils
 -- ------------------------------------------------------------
@@ -1907,6 +1895,17 @@ optionNumJobs get set =
     (optArg "NUM" (fmap Flag numJobsParser)
                   (Flag Nothing)
                   (map (Just . maybe "$ncpus" show) . flagToList))
+  where
+    numJobsParser :: ReadE (Maybe Int)
+    numJobsParser = ReadE $ \s ->
+      case s of
+        "$ncpus" -> Right Nothing
+        _        -> case reads s of
+          [(n, "")]
+            | n < 1     -> Left "The number of jobs should be 1 or more."
+            | n > 64    -> Left "You probably don't want that many jobs."
+            | otherwise -> Right (Just n)
+          _             -> Left "The jobs value should be a number or '$ncpus'"
 
 -- ------------------------------------------------------------
 -- * Other Utils
