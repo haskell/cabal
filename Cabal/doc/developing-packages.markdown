@@ -968,6 +968,21 @@ cabal repl test:bar
 cabal repl bench:baz
 ~~~~~~~~~~~~~~~~
 
+#### Freezing dependency versions ####
+
+If a package is built in several different environments, such as a development
+environment, a staging environment and a production environment, it may be
+necessary or desirable to ensure that the same dependency versions are
+selected in each environment. This can be done with the `freeze` command:
+
+~~~~~~~~~~~~~~~~
+cabal freeze
+~~~~~~~~~~~~~~~~
+
+The command writes the selected version for all depenencies to the
+`cabal.config` file.  All environments which share this file will use the
+depenency versions specified in it.
+
 ### Executables ###
 
 Executable sections (if present) describe executable programs contained
