@@ -992,12 +992,12 @@ parsePackageDescription file = do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
             skipField
             getBody
-      Just f@(F lineno _ _) -> do
+      Just f@(F {}) -> do
             _ <- lift $ syntaxError (lineNo f) $
               "Plain fields are not allowed in between stanzas: " ++ show f
             skipField
             getBody
-      Just f@(IfBlock lineno _ _ _) -> do
+      Just f@(IfBlock {}) -> do
             _ <- lift $ syntaxError (lineNo f) $
               "If-blocks are not allowed in between stanzas: " ++ show f
             skipField
