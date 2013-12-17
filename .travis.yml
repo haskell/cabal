@@ -36,3 +36,9 @@ script:
       echo "expected '$SRC_TGZ' not found";
       exit 1;
    fi
+
+matrix:
+  allow_failures:
+   - env: GHCVER=7.0.4
+   - env: GHCVER=7.4.2
+   - env: GHCVER=7.6.3
