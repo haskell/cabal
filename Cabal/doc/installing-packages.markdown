@@ -19,6 +19,10 @@ Alternatively, you can also use the `Setup.hs` or `Setup.lhs` script:
 
 For the summary of the command syntax, run:
 
+> `cabal help`
+
+or
+
 > `runhaskell Setup.hs --help`
 
 ## Building and installing a system package ##
