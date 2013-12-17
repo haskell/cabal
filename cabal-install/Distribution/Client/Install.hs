@@ -505,7 +505,8 @@ linearizeInstallPlan installedPkgIndex plan =
           status = packageStatus installedPkgIndex pkg
           plan'' = InstallPlan.completed pkgid
                      (BuildOk DocsNotTried TestsNotTried
-                              (Just Installed.emptyInstalledPackageInfo))
+                              (Just $ Installed.emptyInstalledPackageInfo
+                              { Installed.sourcePackageId = pkgid }))
                      (InstallPlan.processing [pkg] plan')
           --FIXME: This is a bit of a hack,
           -- pretending that each package is installed
