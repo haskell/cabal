@@ -1,3 +1,7 @@
+# Cabal
+
+[![Build Status](https://secure.travis-ci.org/haskell/cabal.png?branch=master)](http://travis-ci.org/haskell/cabal)
+
 This Cabal git repository contains multiple packages:
 
  * Cabal/          -- the Cabal library package
