@@ -37,6 +37,8 @@ script:
       exit 1;
    fi
 
+# TODO: either disable TemplateHaskell/{dynamic,profiling} tests or use GHCs
+# with dynamic/profiling libs included.
 matrix:
   allow_failures:
    - env: GHCVER=7.0.4
