@@ -57,9 +57,11 @@ import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
 import Distribution.Client.Targets
+import Distribution.Client.Configure
+         ( chooseCabalVersion )
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
-         ( AllowNewer, Solver(..), isAllowNewer )
+         ( Solver(..) )
 import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.IndexUtils as IndexUtils
@@ -131,7 +133,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion, thisVersion )
+         ( Version )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
          , intercalate, withTempDirectory )
@@ -916,14 +918,10 @@ performInstallations verbosity
     parallelInstall = numJobs >= 2
     distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                       (configDistPref configFlags)
-    allowNewer      = fromFlagOrDefault False $
-                      fmap isAllowNewer (configAllowNewer configExFlags)
 
     setupScriptOptions index lock = SetupScriptOptions {
-      useCabalVersion  = maybe (if allowNewer
-                                then orLaterVersion (Version [1,19,2] [])
-                                else anyVersion)
-                         thisVersion (libVersion miscOptions),
+      useCabalVersion  = chooseCabalVersion configExFlags
+                         (libVersion miscOptions),
       useCompiler      = Just comp,
       usePlatform      = Just platform,
       -- Hack: we typically want to allow the UserPackageDB for finding the
