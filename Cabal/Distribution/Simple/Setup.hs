@@ -309,6 +309,7 @@ data ConfigFlags = ConfigFlags {
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
+    configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
     configDependencies :: [(PackageName, InstalledPackageId)],
@@ -353,6 +354,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
 #endif
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = Flag True,
+    configStripLibs    = Flag True,
     configTests        = Flag False,
     configBenchmarks   = Flag False,
     configLibCoverage  = Flag False,
@@ -479,6 +481,11 @@ configureOptions showOrParseArgs =
       ,option "" ["executable-stripping"]
          "strip executables upon installation to reduce binary sizes"
          configStripExes (\v flags -> flags { configStripExes = v })
+         (boolOpt [] [])
+
+      ,option "" ["library-stripping"]
+         "strip libraries upon installation to reduce binary sizes"
+         configStripLibs (\v flags -> flags { configStripLibs = v })
          (boolOpt [] [])
 
       ,option "" ["configure-option"]
@@ -682,6 +689,7 @@ instance Monoid ConfigFlags where
     configGHCiLib       = mempty,
     configSplitObjs     = mempty,
     configStripExes     = mempty,
+    configStripLibs     = mempty,
     configExtraLibDirs  = mempty,
     configConstraints   = mempty,
     configDependencies  = mempty,
@@ -718,6 +726,7 @@ instance Monoid ConfigFlags where
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
     configStripExes     = combine configStripExes,
+    configStripLibs     = combine configStripExes,
     configExtraLibDirs  = combine configExtraLibDirs,
     configConstraints   = combine configConstraints,
     configDependencies  = combine configDependencies,
