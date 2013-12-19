@@ -86,7 +86,7 @@ copyFile fromFPath toFPath =
                           hPutBuf hTo buffer count
                           copyContents hFrom hTo buffer
 
--- | Like `copyFileAlways`, but does not touch the target if source and destination
+-- | Like `copyFile`, but does not touch the target if source and destination
 -- are already byte-identical. This is recommended as it is useful for
 -- time-stamp based recompilation avoidance.
 copyFileChanged :: FilePath -> FilePath -> IO ()
