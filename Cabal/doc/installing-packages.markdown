@@ -176,6 +176,13 @@ Using a sandbox located at /path/to/.cabal-sandbox
 [...]
 ~~~~~~~~~~~~~~~
 
+The `--require-sandbox` option makes all sandbox-aware commands
+(`install`/`build`/etc.) exit with error if there is no sandbox present. This
+makes it harder to accidentally modify the user package database. The option can
+be also turned on via the per-user configuration file (`~/.cabal/config`) or the
+per-project one (`$PROJECT_DIR/cabal.config`). The error can be squelched with
+`--no-require-sandbox`.
+
 ## Creating a binary package ##
 
 When creating binary packages (e.g. for RedHat or Debian) one needs to
