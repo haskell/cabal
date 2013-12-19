@@ -17,7 +17,7 @@ module Distribution.Client.Dependency.Types (
     Solver(..),
     DependencyResolver,
 
-    AllowNewer(..),
+    AllowNewer(..), isAllowNewer,
     PackageConstraint(..),
     PackagePreferences(..),
     InstalledPreference(..),
@@ -183,6 +183,12 @@ data AllowNewer =
 
   -- | Ignore upper bounds in dependencies on all packages.
   | AllowNewerAll
+
+-- | Convert 'AllowNewer' to a boolean.
+isAllowNewer :: AllowNewer -> Bool
+isAllowNewer AllowNewerNone     = False
+isAllowNewer (AllowNewerSome _) = True
+isAllowNewer AllowNewerAll      = True
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
