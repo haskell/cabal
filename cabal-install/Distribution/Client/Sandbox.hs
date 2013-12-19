@@ -496,12 +496,26 @@ loadConfigOrSandboxConfig verbosity globalFlags userInstallFlag = do
     UserPackageEnvironment    -> do
       config <- loadConfig verbosity configFileFlag userInstallFlag
       userConfig <- loadUserConfig verbosity pkgEnvDir
-      return (NoSandbox, config `mappend` userConfig)
+      let config' = config `mappend` userConfig
+      dieIfSandboxRequired config'
+      return (NoSandbox, config')
 
     -- Neither @cabal.sandbox.config@ nor @cabal.config@ are present.
     AmbientPackageEnvironment -> do
       config <- loadConfig verbosity configFileFlag userInstallFlag
+      dieIfSandboxRequired config
       return (NoSandbox, config)
+
+  where
+    dieIfSandboxRequired :: SavedConfig -> IO ()
+    dieIfSandboxRequired config = checkFlag flag
+      where
+        flag = (globalRequireSandbox . savedGlobalFlags $ config)
+               `mappend` (globalRequireSandbox globalFlags)
+        checkFlag (Flag True)  =
+          die $ "'require-sandbox' is set to True, but no sandbox is present."
+        checkFlag (Flag False) = return ()
+        checkFlag (NoFlag)     = return ()
 
 -- | If we're in a sandbox, call @withSandboxBinDirOnSearchPath@, otherwise do
 -- nothing.
