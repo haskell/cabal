@@ -79,7 +79,7 @@ import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
 import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
-                                              , findPackageDesc
+                                              , tryFindPackageDesc
                                               , intercalate, topHandlerWith
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
@@ -592,7 +592,7 @@ withSandboxPackageInfo verbosity configFlags globalFlags
                        configFlags comp conf
 
   -- Get the package descriptions for all add-source deps.
-  depsCabalFiles <- mapM findPackageDesc buildTreeRefs
+  depsCabalFiles <- mapM tryFindPackageDesc buildTreeRefs
   depsPkgDescs   <- mapM (readPackageDescription verbosity) depsCabalFiles
   let depsMap           = M.fromList (zip buildTreeRefs depsPkgDescs)
       isInstalled pkgid = not . null

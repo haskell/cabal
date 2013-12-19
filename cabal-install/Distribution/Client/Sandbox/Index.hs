@@ -31,7 +31,7 @@ import Distribution.Client.Utils ( byteStringToFilePath, filePathToByteString
                                  , makeAbsoluteToCwd, tryCanonicalizePath
                                  , canonicalizePathNoThrow )
 
-import Distribution.Simple.Utils ( die, debug, findPackageDesc )
+import Distribution.Simple.Utils ( die, debug, tryFindPackageDesc )
 import Distribution.Verbosity    ( Verbosity )
 
 import qualified Data.ByteString.Lazy as BS
@@ -61,7 +61,7 @@ buildTreeRefFromPath refType dir = do
   dirExists <- doesDirectoryExist dir
   unless dirExists $
     die $ "directory '" ++ dir ++ "' does not exist"
-  _ <- findPackageDesc dir
+  _ <- tryFindPackageDesc dir
   return . Just $ BuildTreeRef refType dir
 
 -- | Given a tar archive entry, try to parse it as a local build tree reference.
