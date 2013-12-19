@@ -71,7 +71,7 @@ import Data.ByteString.Lazy (ByteString)
 import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils (byteStringToFilePath)
 import Distribution.Compat.Exception (catchIO)
-import Distribution.Client.Compat.Time
+import Distribution.Client.Compat.Time (getFileAge, getModTime)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.FilePath.Posix as FilePath.Posix
