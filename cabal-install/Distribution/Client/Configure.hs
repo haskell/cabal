@@ -12,6 +12,7 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Configure (
     configure,
+    chooseCabalVersion,
   ) where
 
 import Distribution.Client.Dependency
@@ -53,9 +54,22 @@ import Distribution.System
 import Distribution.Verbosity as Verbosity
          ( Verbosity )
 import Distribution.Version
-         ( Version(..), orLaterVersion )
+         ( Version(..), VersionRange, orLaterVersion )
 
 import Data.Monoid (Monoid(..))
+
+-- | Choose the Cabal version such that the setup scripts compiled against this
+-- version will support the given command-line flags.
+chooseCabalVersion :: ConfigExFlags -> Maybe Version -> VersionRange
+chooseCabalVersion configExFlags maybeVersion =
+  maybe defaultVersionRange thisVersion maybeVersion
+  where
+    allowNewer = fromFlagOrDefault False $
+                 fmap isAllowNewer (configAllowNewer configExFlags)
+
+    defaultVersionRange = if allowNewer
+                          then orLaterVersion (Version [1,19,2] [])
+                          else anyVersion
 
 -- | Configure the package found in the local directory
 configure :: Verbosity
@@ -95,13 +109,8 @@ configure verbosity packageDBs repos comp platform conf
               ++ "one local ready package."
 
   where
-    allowNewer = fromFlagOrDefault False $
-                 fmap isAllowNewer (configAllowNewer configExFlags)
     setupScriptOptions index = SetupScriptOptions {
-      useCabalVersion  = maybe (if allowNewer
-                                then orLaterVersion (Version [1,19,2] [])
-                                else anyVersion)
-                         thisVersion
+      useCabalVersion  = chooseCabalVersion configExFlags
                          (flagToMaybe (configCabalVersion configExFlags)),
       useCompiler      = Just comp,
       usePlatform      = Just platform,
