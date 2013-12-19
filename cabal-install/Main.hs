@@ -101,6 +101,8 @@ import Distribution.Client.Utils              (determineNumJobs
 
 import Distribution.PackageDescription
          ( Executable(..) )
+import Distribution.Simple.Build
+         ( startInterpreter )
 import Distribution.Simple.Command
          ( CommandParse(..), CommandUI(..), Command
          , commandsRun, commandAddAction, hiddenCommand )
@@ -114,7 +116,7 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, info, topHandler )
+         ( cabalVersion, die, notice, info, topHandler, findPackageDesc )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -128,7 +130,7 @@ import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
 import System.IO                (BufferMode(LineBuffering),
                                  hSetBuffering, stdout)
-import System.Directory         (doesFileExist)
+import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.List                (intercalate)
 import Data.Monoid              (Monoid(..))
 import Control.Monad            (when, unless)
@@ -326,32 +328,47 @@ filterBuildFlags version config buildFlags
 
 replAction :: ReplFlags -> [String] -> GlobalFlags -> IO ()
 replAction replFlags extraArgs globalFlags = do
-  let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                    (replDistPref replFlags)
-      verbosity   = fromFlagOrDefault normal (replVerbosity replFlags)
-      noAddSource = case replReload replFlags of
-                      Flag True -> SkipAddSourceDepsCheck
-                      _         -> DontSkipAddSourceDepsCheck
+  cwd     <- getCurrentDirectory
+  pkgDesc <- findPackageDesc cwd
+  either (const onNoPkgDesc) (const onPkgDesc) pkgDesc
+  where
+    verbosity = fromFlagOrDefault normal (replVerbosity replFlags)
 
-  -- Calls 'configureAction' to do the real work, so nothing special has to be
-  -- done to support sandboxes.
-  (useSandbox, _config) <- reconfigure verbosity distPref
-                           mempty [] globalFlags noAddSource NoFlag
-                           (const Nothing)
+    -- There is a .cabal file in the current directory: start a REPL and load
+    -- the project's modules.
+    onPkgDesc = do
+      let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                        (replDistPref replFlags)
+          noAddSource = case replReload replFlags of
+                          Flag True -> SkipAddSourceDepsCheck
+                          _         -> DontSkipAddSourceDepsCheck
+          progConf     = defaultProgramConfiguration
+          setupOptions = defaultSetupScriptOptions
+            { useCabalVersion = orLaterVersion $ Version [1,18,0] []
+            , useDistPref     = distPref
+            }
+          replFlags'   = replFlags
+            { replVerbosity = toFlag verbosity
+            , replDistPref  = toFlag distPref
+            }
+      -- Calls 'configureAction' to do the real work, so nothing special has to
+      -- be done to support sandboxes.
+      (useSandbox, _config) <- reconfigure verbosity distPref
+                               mempty [] globalFlags noAddSource NoFlag
+                               (const Nothing)
 
-  maybeWithSandboxDirOnSearchPath useSandbox $
-    let progConf     = defaultProgramConfiguration
-        setupOptions = defaultSetupScriptOptions
-          { useCabalVersion = orLaterVersion $ Version [1,18,0] []
-          , useDistPref     = distPref
-          }
-        replFlags'   = replFlags
-          { replVerbosity = toFlag verbosity
-          , replDistPref  = toFlag distPref
-          }
-    in setupWrapper verbosity setupOptions Nothing
-         (Cabal.replCommand progConf) (const replFlags') extraArgs
+      maybeWithSandboxDirOnSearchPath useSandbox $
+        setupWrapper verbosity setupOptions Nothing
+        (Cabal.replCommand progConf) (const replFlags') extraArgs
 
+    -- No .cabal file in the current directory: just start the REPL (possibly
+    -- using the sandbox package DB).
+    onNoPkgDesc = do
+      (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+                               mempty
+      let configFlags = savedConfigureFlags config
+      (comp, _platform, programDb) <- configCompilerAux' configFlags
+      startInterpreter verbosity programDb comp (configPackageDB' configFlags)
 
 -- | Re-configure the package in the current directory if needed. Deciding
 -- when to reconfigure and with which options is convoluted:
