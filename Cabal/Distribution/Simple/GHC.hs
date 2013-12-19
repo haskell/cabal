@@ -1258,14 +1258,8 @@ installExe verbosity lbi installDirs buildPref
   installBinary (binDir </> fixedExeBaseName)
 
 stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
-stripExe verbosity lbi name path = when (stripExes lbi) $
-  case lookupProgram stripProgram (withPrograms lbi) of
-    Just strip -> rawSystemProgram verbosity strip args
-    Nothing    -> unless (buildOS == Windows) $
-                  -- Don't bother warning on windows, we don't expect them to
-                  -- have the strip program anyway.
-                  warn verbosity $ "Unable to strip executable '" ++ name
-                                ++ "' (missing the 'strip' program)"
+stripExe verbosity lbi name path =
+  when (stripExes lbi) $ runStrip verbosity (withPrograms lbi) name args
   where
     args = path : case buildOS of
        OSX -> ["-x"] -- By default, stripping the ghc binary on at least
@@ -1273,6 +1267,22 @@ stripExe verbosity lbi name path = when (stripExes lbi) $
                      --     HSbase-3.0.o: unknown symbol `_environ'"
                      -- The -x flag fixes that.
        _   -> []
+
+runStrip :: Verbosity -> ProgramConfiguration -> FilePath -> [String] -> IO ()
+runStrip verbosity progConf name args =
+  case lookupProgram stripProgram progConf of
+    Just strip -> rawSystemProgram verbosity strip args
+    Nothing    -> unless (buildOS == Windows) $
+                  -- Don't bother warning on windows, we don't expect them to
+                  -- have the strip program anyway.
+                  warn verbosity $ "Unable to strip executable or library '"
+                                   ++ name ++ "' (missing the 'strip' program)"
+
+stripLib :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
+stripLib verbosity lbi name path =
+  when (stripLibs lbi) $ runStrip verbosity (withPrograms lbi) name args
+  where
+    args = [path, "--strip-unneeded"]
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
@@ -1286,25 +1296,33 @@ installLib    :: Verbosity
               -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   -- copy .hi files over:
-  let copyHelper installFun src dst n = do
-        createDirectoryIfMissingVerbose verbosity True dst
-        installFun verbosity (src </> n) (dst </> n)
-      copy       = copyHelper installOrdinaryFile
-      copyShared = copyHelper installExecutableFile
-      copyModuleFiles ext =
-        findModuleFiles [builtDir] [ext] (libModules lib)
-          >>= installOrdinaryFiles verbosity targetDir
   whenVanilla $ copyModuleFiles "hi"
   whenProf    $ copyModuleFiles "p_hi"
   whenShared  $ copyModuleFiles "dyn_hi"
 
   -- copy the built library files over:
-  whenVanilla $ mapM_ (copy builtDir targetDir)             vanillaLibNames
-  whenProf    $ mapM_ (copy builtDir targetDir)             profileLibNames
-  whenGHCi    $ mapM_ (copy builtDir targetDir)             ghciLibNames
-  whenShared  $ mapM_ (copyShared builtDir dynlibTargetDir) sharedLibNames
+  whenVanilla $ mapM_ (installOrdinary builtDir targetDir)       vanillaLibNames
+  whenProf    $ mapM_ (installOrdinary builtDir targetDir)       profileLibNames
+  whenGHCi    $ mapM_ (installOrdinary builtDir targetDir)       ghciLibNames
+  whenShared  $ mapM_ (installShared   builtDir dynlibTargetDir) sharedLibNames
 
   where
+    install isShared srcDir dstDir name = do
+      let src = srcDir </> name
+          dst = dstDir </> name
+      createDirectoryIfMissingVerbose verbosity True dstDir
+      stripLib verbosity lbi name src
+      if isShared
+        then installExecutableFile verbosity src dst
+        else installOrdinaryFile   verbosity src dst
+
+    installOrdinary = install False
+    installShared   = install True
+
+    copyModuleFiles ext =
+      findModuleFiles [builtDir] [ext] (libModules lib)
+      >>= installOrdinaryFiles verbosity targetDir
+
     cid = compilerId (compiler lbi)
     libNames = componentLibraries clbi
     vanillaLibNames = map mkLibName             libNames
