@@ -170,7 +170,7 @@ globalCommand = CommandUI {
          (reqArgFlag "FILE")
 
       ,option [] ["require-sandbox"]
-         "Require the presence of a sandbox for sandbox-aware commands"
+         "requiring the presence of a sandbox for sandbox-aware commands"
          globalRequireSandbox (\v flags -> flags { globalRequireSandbox = v })
          (boolOpt' ([], ["require-sandbox"]) ([], ["no-require-sandbox"]))
 
