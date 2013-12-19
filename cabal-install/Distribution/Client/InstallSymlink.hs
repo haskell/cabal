@@ -13,7 +13,6 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.InstallSymlink (
     symlinkBinaries,
-    symlinkBinary,
   ) where
 
 #if mingw32_HOST_OS || mingw32_TARGET_OS
@@ -40,6 +39,7 @@ import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
+import Distribution.Client.Utils (canonicalizePathNoThrow)
 
 import Distribution.Package
          ( PackageIdentifier, Package(packageId) )
@@ -69,7 +69,7 @@ import Distribution.Compat.Exception ( catchIO )
 import Control.Exception
          ( assert )
 import Data.Maybe
-         ( catMaybes )
+         ( catMaybes, isJust )
 
 -- | We would like by default to install binaries into some location that is on
 -- the user's PATH. For per-user installations on Unix systems that basically
@@ -106,9 +106,11 @@ symlinkBinaries configFlags installFlags plan =
 --      createDirectoryIfMissing True publicBinDir
       fmap catMaybes $ sequence
         [ do privateBinDir <- pkgBinDir pkg
+             privateBinDirTemplate <- pkgBinDirTemplate pkg
              ok <- symlinkBinary
                      publicBinDir  privateBinDir
                      publicExeName privateExeName
+                     privateBinDirTemplate
              if ok
                then return Nothing
                else return (Just (pkgid, publicExeName,
@@ -135,20 +137,33 @@ symlinkBinaries configFlags installFlags plan =
         Left _ -> error "finalizePackageDescription ReadyPackage failed"
         Right (desc, _) -> desc
 
-    -- This is sadly rather complicated. We're kind of re-doing part of the
-    -- configuration for the package. :-(
-    pkgBinDir :: PackageDescription -> IO FilePath
-    pkgBinDir pkg = do
+    getTemplateDirs pkg = do
       defaultDirs <- InstallDirs.defaultInstallDirs
                        compilerFlavor
                        (fromFlag (configUserInstall configFlags))
                        (PackageDescription.hasLibs pkg)
-      let templateDirs = InstallDirs.combineInstallDirs fromFlagOrDefault
+      return $ InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
-          absoluteDirs = InstallDirs.absoluteInstallDirs
+
+    -- This is sadly rather complicated. We're kind of re-doing part of the
+    -- configuration for the package. :-(
+    pkgBinDir :: PackageDescription -> IO FilePath
+    pkgBinDir pkg = do
+      templateDirs <- getTemplateDirs pkg
+      let absoluteDirs = InstallDirs.absoluteInstallDirs
                            (packageId pkg) compilerId InstallDirs.NoCopyDest
                            platform templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
+
+    pkgBinDirTemplate :: PackageDescription -> IO InstallDirs.PathTemplate
+    pkgBinDirTemplate pkg =
+      -- substituteInstallDirTemplates [] will expand occurrences of $prefix in
+      -- bindir, and nothing else.
+      --
+      -- Hence, if e.g. prefix = /Library/Haskell/$compiler/lib/$pkgid (as on
+      -- Haskell Platform on Mac, by default), and bindir = $prefix/bin, this
+      -- will return /Library/Haskell/$compiler/lib/$pkgid/bin.
+      fmap (InstallDirs.bindir . InstallDirs.substituteInstallDirTemplates []) $ getTemplateDirs pkg
 
     substTemplate pkgid = InstallDirs.fromPathTemplate
                         . InstallDirs.substPathTemplate env
@@ -168,13 +183,14 @@ symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
                           --   bin dir, eg @foo@
               -> String   -- ^ The name of the executable to in the private bin
                           --   dir, eg @foo-1.0@
-              -> IO Bool  -- ^ If creating the symlink was sucessful. @False@
+              -> InstallDirs.PathTemplate   -- ^ The template for the private bin dir
+              -> IO Bool  -- ^ If creating the symlink was successful. @False@
                           --   if there was another file there already that we
                           --   did not own. Other errors like permission errors
                           --   just propagate as exceptions.
-symlinkBinary publicBindir privateBindir publicName privateName = do
+symlinkBinary publicBindir privateBindir publicName privateName privateBinDirTemplate = do
   ok <- targetOkToOverwrite (publicBindir </> publicName)
-                            (privateBindir </> privateName)
+                            privateBinDirTemplate
   case ok of
     NotOurFile    ->                     return False
     NotExists     ->           mkLink >> return True
@@ -186,21 +202,23 @@ symlinkBinary publicBindir privateBindir publicName privateName = do
     rmLink = removeLink (publicBindir </> publicName)
 
 -- | Check a filepath of a symlink that we would like to create to see if it
--- is ok. For it to be ok to overwrite it must either not already exist yet or
--- be a symlink to our target (in which case we can assume ownership).
+-- is ok. For it to be ok to overwrite it must either not already exist yet, or
+-- the current target must match 'privateBinDirTemplate'.
+-- (in which case we can assume ownership).
 --
 targetOkToOverwrite :: FilePath -- ^ The filepath of the symlink to the private
                                 -- binary that we would like to create
-                    -> FilePath -- ^ The canonical path of the private binary.
-                                -- Use 'canonicalizePath' to make this.
+                    -> InstallDirs.PathTemplate
                     -> IO SymlinkStatus
-targetOkToOverwrite symlink target = handleNotExist $ do
+targetOkToOverwrite symlink privateBinDirTemplate = handleNotExist $ do
   status <- getSymbolicLinkStatus symlink
   if not (isSymbolicLink status)
     then return NotOurFile
-    else do target' <- canonicalizePath symlink
+    -- We should *not* fail if the current symlink destination does not exist.
+    else do target' <- canonicalizePathNoThrow symlink
             -- This relies on canonicalizePath handling symlinks
-            if target == target'
+            if isJust $
+               InstallDirs.parseTemplate privateBinDirTemplate target'
               then return OkToOverwrite
               else return NotOurFile
 
@@ -214,7 +232,7 @@ targetOkToOverwrite symlink target = handleNotExist $ do
 data SymlinkStatus
    = NotExists     -- ^ The file doesn't exist so we can make a symlink.
    | OkToOverwrite -- ^ A symlink already exists, though it is ours. We'll
-                   -- have to delete it first bemore we make a new symlink.
+                   -- have to delete it first before we make a new symlink.
    | NotOurFile    -- ^ A file already exists and it is not one of our existing
                    -- symlinks (either because it is not a symlink or because
                    -- it points somewhere other than our managed space).
