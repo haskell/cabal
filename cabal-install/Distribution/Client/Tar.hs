@@ -95,6 +95,7 @@ import Distribution.Client.Compat.FilePerms
 import System.Posix.Types
          ( FileMode )
 import Distribution.Client.Compat.Time
+         ( EpochTime, getModTime )
 import System.IO
          ( IOMode(ReadMode), openBinaryFile, hFileSize )
 import System.IO.Unsafe (unsafeInterleaveIO)
