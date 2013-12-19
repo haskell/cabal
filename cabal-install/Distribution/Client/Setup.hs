@@ -734,7 +734,7 @@ getCommand = CommandUI {
        ++ "Alternatively, with -s it will\nget the code from the source "
        ++ "repository specified by the package.\n",
     commandUsage        = usagePackages "get",
-    commandDefaultFlags = mempty,
+    commandDefaultFlags = defaultGetFlags,
     commandOptions      = \_ -> [
         optionVerbosity getVerbosity (\v flags -> flags { getVerbosity = v })
 
@@ -767,7 +767,12 @@ unpackCommand = getCommand {
   }
 
 instance Monoid GetFlags where
-  mempty = defaultGetFlags
+  mempty = GetFlags {
+    getDestDir          = mempty,
+    getPristine         = mempty,
+    getSourceRepository = mempty,
+    getVerbosity        = mempty
+    }
   mappend a b = GetFlags {
     getDestDir          = combine getDestDir,
     getPristine         = combine getPristine,
@@ -1494,10 +1499,12 @@ win32SelfUpgradeCommand = CommandUI {
 }
 
 instance Monoid Win32SelfUpgradeFlags where
-  mempty = defaultWin32SelfUpgradeFlags
+  mempty      = Win32SelfUpgradeFlags {
+    win32SelfUpgradeVerbosity = mempty
+    }
   mappend a b = Win32SelfUpgradeFlags {
     win32SelfUpgradeVerbosity = combine win32SelfUpgradeVerbosity
-  }
+    }
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
