@@ -118,4 +118,3 @@ checkMetadata dir = withBinaryFile path ReadMode $ \ h -> do
 
           where
             atOffset msg = msg ++ " at offset " ++ show offset
-
