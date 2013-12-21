@@ -13,6 +13,7 @@
 module Distribution.Simple.Program.Ar (
     createArLibArchive,
     multiStageProgramInvocation,
+    wipeMetadata
   ) where
 
 import Control.Monad (unless)

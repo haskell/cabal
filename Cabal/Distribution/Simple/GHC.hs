@@ -1290,9 +1290,12 @@ runStrip verbosity progConf name args =
                   warn verbosity $ "Unable to strip executable or library '"
                                    ++ name ++ "' (missing the 'strip' program)"
 
+-- TODO: Move into createArLibArchive?
 stripLib :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
 stripLib verbosity lbi name path =
-  when (stripLibs lbi) $ runStrip verbosity (withPrograms lbi) name args
+  when (stripLibs lbi) $ do runStrip verbosity (withPrograms lbi) name args
+                            -- 'strip' messes with object file metadata.
+                            Ar.wipeMetadata path
   where
     args = [path, "--strip-unneeded"]
 
