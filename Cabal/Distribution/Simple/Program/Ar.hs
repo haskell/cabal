@@ -12,20 +12,21 @@
 
 module Distribution.Simple.Program.Ar (
     createArLibArchive,
-    multiStageProgramInvocation,
-    wipeMetadata
+    multiStageProgramInvocation
   ) where
 
-import Control.Monad (unless)
+import Control.Monad (when, unless)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
 import Distribution.Compat.CopyFile (filesEqual)
-import Distribution.Simple.Program.Types
-         ( ConfiguredProgram(..) )
+import Distribution.Simple.Program
+         ( ProgramConfiguration, arProgram, requireProgram )
 import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
+import qualified Distribution.Simple.Program.Strip as Strip
+         ( stripLib )
 import Distribution.Simple.Utils
          ( dieWithLocation, withTempDirectory )
 import Distribution.System
@@ -40,9 +41,10 @@ import System.IO
 
 -- | Call @ar@ to create a library archive from a bunch of object files.
 --
-createArLibArchive :: Verbosity -> ConfiguredProgram
+createArLibArchive :: Verbosity -> ProgramConfiguration -> Bool
                    -> FilePath -> [FilePath] -> IO ()
-createArLibArchive verbosity ar targetPath files = do
+createArLibArchive verbosity progConf stripLib targetPath files = do
+  (ar, _) <- requireProgram verbosity arProgram progConf
 
   let (targetDir, targetName) = splitFileName targetPath
   withTempDirectory verbosity targetDir targetName $ \ tmpDir -> do
@@ -83,6 +85,7 @@ createArLibArchive verbosity ar targetPath files = do
         | inv <- multiStageProgramInvocation
                    simple (initial, middle, final) files ]
 
+  when stripLib $ Strip.stripLib verbosity progConf tmpPath
   wipeMetadata tmpPath
   equal <- filesEqual tmpPath targetPath
   unless equal $ renameFile tmpPath targetPath

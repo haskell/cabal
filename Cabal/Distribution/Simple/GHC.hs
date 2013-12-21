@@ -111,6 +111,7 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
+import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
          ( toFlag, fromFlag, fromFlagOrDefault )
@@ -901,13 +902,11 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
             }
 
     whenVanillaLib False $ do
-      (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
-      Ar.createArLibArchive verbosity arProg
+      Ar.createArLibArchive verbosity (withPrograms lbi) (stripLibs lbi)
         vanillaLibFilePath staticObjectFiles
 
     whenProfLib $ do
-      (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
-      Ar.createArLibArchive verbosity arProg
+      Ar.createArLibArchive verbosity (withPrograms lbi) (stripLibs lbi)
         profileLibFilePath profObjectFiles
 
     whenGHCiLib $ do
@@ -1266,38 +1265,9 @@ installExe verbosity lbi installDirs buildPref
           installExecutableFile verbosity
             (buildPref </> exeName exe </> exeFileName)
             (dest <.> exeExtension)
-          stripExe verbosity lbi exeFileName (dest <.> exeExtension)
+          when (stripExes lbi) $
+            Strip.stripExe verbosity (withPrograms lbi) (dest <.> exeExtension)
   installBinary (binDir </> fixedExeBaseName)
-
-stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
-stripExe verbosity lbi name path =
-  when (stripExes lbi) $ runStrip verbosity (withPrograms lbi) name args
-  where
-    args = path : case buildOS of
-       OSX -> ["-x"] -- By default, stripping the ghc binary on at least
-                     -- some OS X installations causes:
-                     --     HSbase-3.0.o: unknown symbol `_environ'"
-                     -- The -x flag fixes that.
-       _   -> []
-
-runStrip :: Verbosity -> ProgramConfiguration -> FilePath -> [String] -> IO ()
-runStrip verbosity progConf name args =
-  case lookupProgram stripProgram progConf of
-    Just strip -> rawSystemProgram verbosity strip args
-    Nothing    -> unless (buildOS == Windows) $
-                  -- Don't bother warning on windows, we don't expect them to
-                  -- have the strip program anyway.
-                  warn verbosity $ "Unable to strip executable or library '"
-                                   ++ name ++ "' (missing the 'strip' program)"
-
--- TODO: Move into createArLibArchive?
-stripLib :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
-stripLib verbosity lbi name path =
-  when (stripLibs lbi) $ do runStrip verbosity (withPrograms lbi) name args
-                            -- 'strip' messes with object file metadata.
-                            Ar.wipeMetadata path
-  where
-    args = [path, "--strip-unneeded"]
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
@@ -1326,9 +1296,10 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       let src = srcDir </> name
           dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
-      stripLib verbosity lbi name src
       if isShared
-        then installExecutableFile verbosity src dst
+        then do when (stripLibs lbi) $
+                  Strip.stripLib verbosity (withPrograms lbi) src
+                installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
 
     installOrdinary = install False
