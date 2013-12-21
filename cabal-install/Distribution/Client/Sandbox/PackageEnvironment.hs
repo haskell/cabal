@@ -44,7 +44,7 @@ import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
 import Distribution.Simple.Program     ( defaultProgramConfiguration )
 import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..)
                                        , programConfigurationOptions
-                                       , fromFlagOrDefault, toFlag )
+                                       , fromFlagOrDefault, toFlag, flagToMaybe )
 import Distribution.Simple.Utils       ( die, info, notice, warn, lowercase )
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , commaListField
@@ -53,8 +53,9 @@ import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , showPWarning, simpleField, syntaxError )
 import Distribution.System             ( Platform )
 import Distribution.Verbosity          ( Verbosity, normal )
-import Control.Monad                   ( foldM, when, unless )
+import Control.Monad                   ( foldM, liftM2, when, unless )
 import Data.List                       ( partition )
+import Data.Maybe                      ( isJust )
 import Data.Monoid                     ( Monoid(..) )
 import Distribution.Compat.Exception   ( catchIO )
 import System.Directory                ( doesDirectoryExist, doesFileExist
@@ -113,22 +114,23 @@ data PackageEnvironmentType =
 
 -- | Is there a 'cabal.sandbox.config' or 'cabal.config' in this
 -- directory?
-classifyPackageEnvironment :: FilePath -> (Flag FilePath)
+classifyPackageEnvironment :: FilePath -> Flag FilePath -> Flag Bool
                               -> IO PackageEnvironmentType
-classifyPackageEnvironment pkgEnvDir sandboxConfigFileFlag =
-  case sandboxConfigFileFlag of
-    NoFlag -> doClassify
-    Flag _ -> return SandboxPackageEnvironment
+classifyPackageEnvironment pkgEnvDir sandboxConfigFileFlag ignoreSandboxFlag =
+  do isSandbox <- liftM2 (||) (return forceSandboxConfig)
+                  (configExists sandboxPackageEnvironmentFile)
+     isUser    <- configExists userPackageEnvironmentFile
+     return (classify isSandbox isUser)
   where
-    doClassify = do
-      isSandbox <- configExists sandboxPackageEnvironmentFile
-      isUser    <- configExists userPackageEnvironmentFile
-      case (isSandbox, isUser) of
-        (True,  _)     -> return SandboxPackageEnvironment
-        (False, True)  -> return UserPackageEnvironment
-        (False, False) -> return AmbientPackageEnvironment
-      where
-        configExists fname = doesFileExist (pkgEnvDir </> fname)
+    configExists fname   = doesFileExist (pkgEnvDir </> fname)
+    ignoreSandbox        = fromFlagOrDefault False ignoreSandboxFlag
+    forceSandboxConfig   = isJust . flagToMaybe $ sandboxConfigFileFlag
+
+    classify :: Bool -> Bool -> PackageEnvironmentType
+    classify True _
+      | not ignoreSandbox = SandboxPackageEnvironment
+    classify _    True    = UserPackageEnvironment
+    classify _    False   = AmbientPackageEnvironment
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.
