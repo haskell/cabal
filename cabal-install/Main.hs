@@ -86,6 +86,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,maybeReinstallAddSourceDeps
                                               ,tryGetIndexFilePath
                                               ,sandboxBuildDir
+                                              ,updateSandboxConfigFileFlag
 
                                               ,configCompilerAux'
                                               ,configPackageDB')
@@ -150,16 +151,18 @@ mainWorker args = topHandler $
     CommandHelp   help                 -> printGlobalHelp help
     CommandList   opts                 -> printOptionsList opts
     CommandErrors errs                 -> printErrors errs
-    CommandReadyToGo (globalflags, commandParse)  ->
+    CommandReadyToGo (globalFlags, commandParse)  ->
       case commandParse of
-        _ | fromFlagOrDefault False (globalVersion globalflags)
+        _ | fromFlagOrDefault False (globalVersion globalFlags)
             -> printVersion
-          | fromFlagOrDefault False (globalNumericVersion globalflags)
+          | fromFlagOrDefault False (globalNumericVersion globalFlags)
             -> printNumericVersion
         CommandHelp     help           -> printCommandHelp help
         CommandList     opts           -> printOptionsList opts
         CommandErrors   errs           -> printErrors errs
-        CommandReadyToGo action        -> action globalflags
+        CommandReadyToGo action        -> do
+          globalFlags' <- updateSandboxConfigFileFlag globalFlags
+          action globalFlags'
 
   where
     printCommandHelp help = do
