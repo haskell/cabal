@@ -183,6 +183,25 @@ be also turned on via the per-user configuration file (`~/.cabal/config`) or the
 per-project one (`$PROJECT_DIR/cabal.config`). The error can be squelched with
 `--no-require-sandbox`.
 
+The option `--sandbox-config-file` allows to specify the location of the
+`cabal.sandbox.config` file (by default, `cabal` searches for it in the current
+directory). This provides the same functionality as shared sandboxes, but
+sometimes can be more convenient. Example:
+
+~~~~~~~~~~~~~~~
+$ mkdir my/sandbox
+$ cabal sandbox init
+$ cd my/project
+$ cabal --sandbox-config-file=/path/to/my/sandbox/cabal.sandbox.config install
+# Uses the sandbox located at /path/to/my/sandbox/.cabal-sandbox
+$ cd ~
+$ cabal --sandbox-config-file=/path/to/my/sandbox/cabal.sandbox.config install
+# Still uses the same sandbox
+~~~~~~~~~~~~~~~
+
+The sandbox config file can be also specified via the `CABAL_SANDBOX_CONFIG`
+environment variable.
+
 ## Creating a binary package ##
 
 When creating binary packages (e.g. for RedHat or Debian) one needs to
