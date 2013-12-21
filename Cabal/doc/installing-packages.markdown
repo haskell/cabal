@@ -190,8 +190,9 @@ sometimes can be more convenient. Example:
 
 ~~~~~~~~~~~~~~~
 $ mkdir my/sandbox
+$ cd my/sandbox
 $ cabal sandbox init
-$ cd my/project
+$ cd /path/to/my/project
 $ cabal --sandbox-config-file=/path/to/my/sandbox/cabal.sandbox.config install
 # Uses the sandbox located at /path/to/my/sandbox/.cabal-sandbox
 $ cd ~
@@ -201,6 +202,17 @@ $ cabal --sandbox-config-file=/path/to/my/sandbox/cabal.sandbox.config install
 
 The sandbox config file can be also specified via the `CABAL_SANDBOX_CONFIG`
 environment variable.
+
+Finally, the flag `--ignore-sandbox` lets you temporarily ignore an existing
+sandbox:
+
+~~~~~~~~~~~~~~~
+$ mkdir my/sandbox
+$ cd my/sandbox
+$ cabal sandbox init
+$ cabal --ignore-sandbox install text
+# Installs 'text' in the user package database ('~/.cabal').
+~~~~~~~~~~~~~~~
 
 ## Creating a binary package ##
 

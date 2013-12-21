@@ -484,10 +484,11 @@ loadConfigOrSandboxConfig :: Verbosity
 loadConfigOrSandboxConfig verbosity globalFlags userInstallFlag = do
   let configFileFlag        = globalConfigFile        globalFlags
       sandboxConfigFileFlag = globalSandboxConfigFile globalFlags
+      ignoreSandboxFlag     = globalIgnoreSandbox globalFlags
 
   pkgEnvDir  <- getPkgEnvDir sandboxConfigFileFlag
   pkgEnvType <- classifyPackageEnvironment pkgEnvDir sandboxConfigFileFlag
-
+                                           ignoreSandboxFlag
   case pkgEnvType of
     -- A @cabal.sandbox.config@ file (and possibly @cabal.config@) is present.
     SandboxPackageEnvironment -> do

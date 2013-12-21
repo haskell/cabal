@@ -113,7 +113,8 @@ data GlobalFlags = GlobalFlags {
     globalLocalRepos        :: [FilePath],
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
-    globalRequireSandbox    :: Flag Bool
+    globalRequireSandbox    :: Flag Bool,
+    globalIgnoreSandbox     :: Flag Bool
   }
 
 defaultGlobalFlags :: GlobalFlags
@@ -127,7 +128,8 @@ defaultGlobalFlags  = GlobalFlags {
     globalLocalRepos        = mempty,
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
-    globalRequireSandbox    = Flag False
+    globalRequireSandbox    = Flag False,
+    globalIgnoreSandbox     = Flag False
   }
 
 globalCommand :: CommandUI GlobalFlags
@@ -147,7 +149,7 @@ globalCommand = CommandUI {
       ++ "  " ++ pname ++ " update\n",
     commandDefaultFlags = mempty,
     commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 5; ParseArgs -> id)
+      (case showOrParseArgs of ShowArgs -> take 6; ParseArgs -> id)
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -173,6 +175,11 @@ globalCommand = CommandUI {
          "requiring the presence of a sandbox for sandbox-aware commands"
          globalRequireSandbox (\v flags -> flags { globalRequireSandbox = v })
          (boolOpt' ([], ["require-sandbox"]) ([], ["no-require-sandbox"]))
+
+      ,option [] ["ignore-sandbox"]
+         "Ignore any existing sandbox"
+         globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
+         trueArg
 
       ,option [] ["remote-repo"]
          "The name and url for a remote repository"
@@ -212,7 +219,8 @@ instance Monoid GlobalFlags where
     globalLocalRepos        = mempty,
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
-    globalRequireSandbox    = mempty
+    globalRequireSandbox    = mempty,
+    globalIgnoreSandbox     = mempty
   }
   mappend a b = GlobalFlags {
     globalVersion           = combine globalVersion,
@@ -224,7 +232,8 @@ instance Monoid GlobalFlags where
     globalLocalRepos        = combine globalLocalRepos,
     globalLogsDir           = combine globalLogsDir,
     globalWorldFile         = combine globalWorldFile,
-    globalRequireSandbox    = combine globalRequireSandbox
+    globalRequireSandbox    = combine globalRequireSandbox,
+    globalIgnoreSandbox     = combine globalIgnoreSandbox
   }
     where combine field = field a `mappend` field b
 
