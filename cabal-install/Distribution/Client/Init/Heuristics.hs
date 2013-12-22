@@ -46,7 +46,8 @@ import System.Directory ( getDirectoryContents,
 import Distribution.Compat.Environment ( getEnvironment )
 import System.FilePath ( takeExtension, takeBaseName, dropExtension,
                          (</>), (<.>), splitDirectories, makeRelative )
-import System.Process ( readProcessWithExitCode )
+
+import Distribution.Client.Compat.Process ( readProcessWithExitCode )
 import System.Exit ( ExitCode(..) )
 
 -- |Guess the package name based on the given root directory
