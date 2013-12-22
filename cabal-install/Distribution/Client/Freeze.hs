@@ -26,6 +26,8 @@ import Distribution.Client.InstallPlan
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..) )
+import Distribution.Client.Sandbox
+         ( getPkgEnvDir )
 import Distribution.Client.Sandbox.PackageEnvironment
          ( loadUserConfig, pkgEnvSavedConfig, showPackageEnvironment,
            userPackageEnvironmentFile )
@@ -104,7 +106,7 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
                      "The following packages would be frozen:"
                    : formatPkgs pkgs
 
-             else freezePackages verbosity pkgs
+             else freezePackages verbosity globalFlags pkgs
 
   where
     dryRun = fromFlag (freezeDryRun freezeFlags)
@@ -157,9 +159,11 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
     shadowPkgs       = fromFlag (freezeShadowPkgs       freezeFlags)
     maxBackjumps     = fromFlag (freezeMaxBackjumps     freezeFlags)
 
-freezePackages :: Verbosity -> [PlanPackage] -> IO ()
-freezePackages verbosity pkgs = do
-    pkgEnv <- fmap (createPkgEnv . addConstraints) $ loadUserConfig verbosity ""
+freezePackages :: Verbosity -> GlobalFlags -> [PlanPackage] -> IO ()
+freezePackages verbosity globalFlags pkgs = do
+    pkgEnvDir  <- getPkgEnvDir globalFlags
+    pkgEnv <- fmap (createPkgEnv . addConstraints) $
+                   loadUserConfig verbosity pkgEnvDir
     writeFileAtomic userPackageEnvironmentFile $ showPkgEnv pkgEnv
   where
     addConstraints config =
