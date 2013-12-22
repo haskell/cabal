@@ -37,6 +37,8 @@ import Distribution.Client.FetchUtils
 import qualified Distribution.Client.Tar as Tar (extractTarGzFile)
 import Distribution.Client.IndexUtils as IndexUtils
         ( getSourcePackages )
+import Distribution.Client.Compat.Process
+        ( readProcessWithExitCode )
 import Distribution.Compat.Exception
         ( catchIO )
 
@@ -62,7 +64,7 @@ import System.Exit
 import System.FilePath
          ( (</>), (<.>), addTrailingPathSeparator )
 import System.Process
-         ( rawSystem, readProcessWithExitCode )
+         ( rawSystem )
 
 
 -- | Entry point for the 'cabal get' command.
