@@ -32,6 +32,7 @@ module Distribution.Client.Sandbox (
 
     tryGetIndexFilePath,
     sandboxBuildDir,
+    getPkgEnvDir,
     getInstalledPackagesInSandbox,
 
     -- FIXME: move somewhere else
