@@ -726,7 +726,7 @@ instance Monoid ConfigFlags where
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
     configStripExes     = combine configStripExes,
-    configStripLibs     = combine configStripExes,
+    configStripLibs     = combine configStripLibs,
     configExtraLibDirs  = combine configExtraLibDirs,
     configConstraints   = combine configConstraints,
     configDependencies  = combine configDependencies,
