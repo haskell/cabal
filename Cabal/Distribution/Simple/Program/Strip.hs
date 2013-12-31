@@ -42,7 +42,8 @@ stripExe verbosity conf path =
        _   -> []
 
 stripLib :: Verbosity -> ProgramConfiguration -> FilePath -> IO ()
-stripLib verbosity conf path = do
-  runStrip verbosity conf path args
+stripLib verbosity conf path = case buildOS of
+    OSX -> return () 
+    _ -> runStrip verbosity conf path args
   where
     args = ["--strip-unneeded"]
