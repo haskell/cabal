@@ -151,4 +151,3 @@ prop_ReadS r s =
 
 evenChar :: Char -> Bool
 evenChar = even . fromEnum
-

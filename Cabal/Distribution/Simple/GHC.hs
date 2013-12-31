@@ -65,6 +65,7 @@ module Distribution.Simple.GHC (
         configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,
         replLib, replExe,
+        startInterpreter,
         installLib, installExe,
         libAbiHash,
         initPackageDB,
@@ -110,6 +111,7 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
+import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
          ( toFlag, fromFlag, fromFlagOrDefault )
@@ -900,13 +902,11 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
             }
 
     whenVanillaLib False $ do
-      (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
-      Ar.createArLibArchive verbosity arProg
+      Ar.createArLibArchive verbosity (withPrograms lbi) (stripLibs lbi)
         vanillaLibFilePath staticObjectFiles
 
     whenProfLib $ do
-      (arProg, _) <- requireProgram verbosity arProgram (withPrograms lbi)
-      Ar.createArLibArchive verbosity arProg
+      Ar.createArLibArchive verbosity (withPrograms lbi) (stripLibs lbi)
         profileLibFilePath profObjectFiles
 
     whenGHCiLib $ do
@@ -917,6 +917,17 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
     whenSharedLib False $
       runGhcProg ghcSharedLinkArgs
 
+-- | Start a REPL without loading any source files.
+startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
+                 -> PackageDBStack -> IO ()
+startInterpreter verbosity conf comp packageDBs = do
+  let replOpts = mempty {
+        ghcOptMode       = toFlag GhcModeInteractive,
+        ghcOptPackageDBs = packageDBs
+        }
+  checkPackageDbStack packageDBs
+  (ghcProg, _) <- requireProgram verbosity ghcProgram conf
+  runGHC verbosity ghcProg comp replOpts
 
 -- | Build an executable with GHC.
 --
@@ -1254,25 +1265,9 @@ installExe verbosity lbi installDirs buildPref
           installExecutableFile verbosity
             (buildPref </> exeName exe </> exeFileName)
             (dest <.> exeExtension)
-          stripExe verbosity lbi exeFileName (dest <.> exeExtension)
+          when (stripExes lbi) $
+            Strip.stripExe verbosity (withPrograms lbi) (dest <.> exeExtension)
   installBinary (binDir </> fixedExeBaseName)
-
-stripExe :: Verbosity -> LocalBuildInfo -> FilePath -> FilePath -> IO ()
-stripExe verbosity lbi name path = when (stripExes lbi) $
-  case lookupProgram stripProgram (withPrograms lbi) of
-    Just strip -> rawSystemProgram verbosity strip args
-    Nothing    -> unless (buildOS == Windows) $
-                  -- Don't bother warning on windows, we don't expect them to
-                  -- have the strip program anyway.
-                  warn verbosity $ "Unable to strip executable '" ++ name
-                                ++ "' (missing the 'strip' program)"
-  where
-    args = path : case buildOS of
-       OSX -> ["-x"] -- By default, stripping the ghc binary on at least
-                     -- some OS X installations causes:
-                     --     HSbase-3.0.o: unknown symbol `_environ'"
-                     -- The -x flag fixes that.
-       _   -> []
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
 installLib    :: Verbosity
@@ -1286,25 +1281,34 @@ installLib    :: Verbosity
               -> IO ()
 installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   -- copy .hi files over:
-  let copyHelper installFun src dst n = do
-        createDirectoryIfMissingVerbose verbosity True dst
-        installFun verbosity (src </> n) (dst </> n)
-      copy       = copyHelper installOrdinaryFile
-      copyShared = copyHelper installExecutableFile
-      copyModuleFiles ext =
-        findModuleFiles [builtDir] [ext] (libModules lib)
-          >>= installOrdinaryFiles verbosity targetDir
   whenVanilla $ copyModuleFiles "hi"
   whenProf    $ copyModuleFiles "p_hi"
   whenShared  $ copyModuleFiles "dyn_hi"
 
   -- copy the built library files over:
-  whenVanilla $ mapM_ (copy builtDir targetDir)             vanillaLibNames
-  whenProf    $ mapM_ (copy builtDir targetDir)             profileLibNames
-  whenGHCi    $ mapM_ (copy builtDir targetDir)             ghciLibNames
-  whenShared  $ mapM_ (copyShared builtDir dynlibTargetDir) sharedLibNames
+  whenVanilla $ mapM_ (installOrdinary builtDir targetDir)       vanillaLibNames
+  whenProf    $ mapM_ (installOrdinary builtDir targetDir)       profileLibNames
+  whenGHCi    $ mapM_ (installOrdinary builtDir targetDir)       ghciLibNames
+  whenShared  $ mapM_ (installShared   builtDir dynlibTargetDir) sharedLibNames
 
   where
+    install isShared srcDir dstDir name = do
+      let src = srcDir </> name
+          dst = dstDir </> name
+      createDirectoryIfMissingVerbose verbosity True dstDir
+      if isShared
+        then do when (stripLibs lbi) $
+                  Strip.stripLib verbosity (withPrograms lbi) src
+                installExecutableFile verbosity src dst
+        else installOrdinaryFile   verbosity src dst
+
+    installOrdinary = install False
+    installShared   = install True
+
+    copyModuleFiles ext =
+      findModuleFiles [builtDir] [ext] (libModules lib)
+      >>= installOrdinaryFiles verbosity targetDir
+
     cid = compilerId (compiler lbi)
     libNames = componentLibraries clbi
     vanillaLibNames = map mkLibName             libNames

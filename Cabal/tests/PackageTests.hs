@@ -6,21 +6,6 @@
 
 module Main where
 
-import Data.Version (Version(Version))
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Program.Types (programPath)
-import Distribution.Simple.Program.Builtin (ghcProgram, ghcPkgProgram)
-import Distribution.Simple.Program.Db (requireProgram)
-import Distribution.Simple.Utils (cabalVersion, die, withFileContents)
-import Distribution.Text (display)
-import Distribution.Verbosity (normal)
-import System.Directory (doesFileExist, getCurrentDirectory,
-                         setCurrentDirectory)
-import System.FilePath ((</>))
-import Test.Framework (Test, TestName, defaultMain, testGroup)
-import Test.Framework.Providers.HUnit (hUnitTestToTests)
-import qualified Test.HUnit as HUnit
-
 import PackageTests.BenchmarkExeV10.Check
 import PackageTests.BenchmarkOptions.Check
 import PackageTests.BenchmarkStanza.Check
@@ -49,11 +34,31 @@ import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
 import PackageTests.OrderFlags.Check
 
+import Distribution.Compat.Exception (catchIO)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
+import Distribution.Simple.Program.Types (programPath)
+import Distribution.Simple.Program.Builtin (ghcProgram, ghcPkgProgram)
+import Distribution.Simple.Program.Db (requireProgram)
+import Distribution.Simple.Utils (cabalVersion, die, withFileContents)
+import Distribution.Text (display)
+import Distribution.Verbosity (normal)
+import Distribution.Version (Version(Version))
+
+import Data.Maybe (isJust)
+import System.Directory (doesFileExist, getCurrentDirectory,
+                         setCurrentDirectory)
+import System.Environment (getEnv)
+import System.FilePath ((</>))
+import Test.Framework (Test, TestName, defaultMain, testGroup)
+import Test.Framework.Providers.HUnit (hUnitTestToTests)
+import qualified Test.HUnit as HUnit
+
+
 hunit :: TestName -> HUnit.Test -> Test
 hunit name test = testGroup name $ hUnitTestToTests test
 
-tests :: Version -> PackageSpec -> FilePath -> FilePath -> [Test]
-tests version inplaceSpec ghcPath ghcPkgPath =
+tests :: Version -> PackageSpec -> FilePath -> FilePath -> Bool -> [Test]
+tests version inplaceSpec ghcPath ghcPkgPath runningOnTravis =
     [ hunit "BuildDeps/SameDepsAllRound"
       (PackageTests.BuildDeps.SameDepsAllRound.Check.suite ghcPath)
       -- The two following tests were disabled by Johan Tibell as
@@ -80,10 +85,6 @@ tests version inplaceSpec ghcPath ghcPkgPath =
     , hunit "BenchmarkOptions" (PackageTests.BenchmarkOptions.Check.suite ghcPath)
     , hunit "TemplateHaskell/vanilla"
       (PackageTests.TemplateHaskell.Check.vanilla ghcPath)
-    , hunit "TemplateHaskell/profiling"
-      (PackageTests.TemplateHaskell.Check.profiling ghcPath)
-    , hunit "TemplateHaskell/dynamic"
-      (PackageTests.TemplateHaskell.Check.dynamic ghcPath)
     , hunit "PathsModule/Executable"
       (PackageTests.PathsModule.Executable.Check.suite ghcPath)
     , hunit "PathsModule/Library" (PackageTests.PathsModule.Library.Check.suite ghcPath)
@@ -96,6 +97,15 @@ tests version inplaceSpec ghcPath ghcPkgPath =
     , hunit "OrderFlags"
       (PackageTests.OrderFlags.Check.suite ghcPath)
     ] ++
+    -- These tests are expected to fail on Travis because hvr's PPA GHCs don't
+    -- include profiling and dynamic libs.
+    (if not runningOnTravis
+     then [ hunit "TemplateHaskell/profiling"
+            (PackageTests.TemplateHaskell.Check.profiling ghcPath)
+          , hunit "TemplateHaskell/dynamic"
+            (PackageTests.TemplateHaskell.Check.dynamic ghcPath)
+          ]
+     else []) ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []
      then [ hunit "BuildDeps/TargetSpecificDeps1"
@@ -137,9 +147,19 @@ main = do
     putStrLn $ "Using ghc: " ++ ghcPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     setCurrentDirectory "tests"
+    -- Are we running on Travis-CI?
+    runningOnTravis <- checkRunningOnTravis
     -- Create a shared Setup executable to speed up Simple tests
     compileSetup "." ghcPath
-    defaultMain (tests cabalVersion inplaceSpec ghcPath ghcPkgPath)
+    defaultMain (tests cabalVersion inplaceSpec
+                 ghcPath ghcPkgPath runningOnTravis)
+
+-- | Is the test suite running on the Travis-CI build bot?
+checkRunningOnTravis :: IO Bool
+checkRunningOnTravis = fmap isJust (lookupEnv "CABAL_TEST_RUNNING_ON_TRAVIS")
+  where
+    lookupEnv :: String -> IO (Maybe String)
+    lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
 
 -- Like Distribution.Simple.Configure.getPersistBuildConfig but
 -- doesn't check that the Cabal version matches, which it doesn't when

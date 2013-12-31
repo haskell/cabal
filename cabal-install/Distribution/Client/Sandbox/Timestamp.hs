@@ -33,7 +33,7 @@ import Distribution.Simple.Setup                     (Flag (..),
                                                       defaultSDistFlags,
                                                       sdistCommand)
 import Distribution.Simple.Utils                     (debug, die,
-                                                      findPackageDesc, warn)
+                                                      tryFindPackageDesc, warn)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
 import Distribution.Verbosity                        (Verbosity, lessVerbose,
@@ -215,7 +215,7 @@ withActionOnCompilerTimestamps f sandboxDir compId platform act = do
 allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
 allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
   pkg <- fmap (flattenPackageDescription)
-         . readPackageDescription verbosity =<< findPackageDesc packageDir
+         . readPackageDescription verbosity =<< tryFindPackageDesc packageDir
 
   let file      = "cabal-sdist-list-sources"
       flags     = defaultSDistFlags {

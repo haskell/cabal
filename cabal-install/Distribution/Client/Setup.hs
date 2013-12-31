@@ -11,7 +11,7 @@
 --
 -----------------------------------------------------------------------------
 module Distribution.Client.Setup
-    ( globalCommand, GlobalFlags(..), globalRepos
+    ( globalCommand, GlobalFlags(..), defaultGlobalFlags, globalRepos
     , configureCommand, ConfigFlags(..), filterConfigureFlags
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
@@ -54,14 +54,15 @@ import Distribution.Client.Targets
 import Distribution.Simple.Compiler (PackageDB)
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
-import Distribution.Simple.Command hiding (boolOpt)
+import Distribution.Simple.Command hiding (boolOpt, boolOpt')
+import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
          ( ConfigFlags(..), BuildFlags(..), TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
-         , optionVerbosity, boolOpt, trueArg, falseArg, numJobsParser )
+         , optionVerbosity, boolOpt, boolOpt', trueArg, falseArg, optionNumJobs )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, InstallDirs(sysconfdir)
          , toPathTemplate, fromPathTemplate )
@@ -111,7 +112,9 @@ data GlobalFlags = GlobalFlags {
     globalCacheDir          :: Flag FilePath,
     globalLocalRepos        :: [FilePath],
     globalLogsDir           :: Flag FilePath,
-    globalWorldFile         :: Flag FilePath
+    globalWorldFile         :: Flag FilePath,
+    globalRequireSandbox    :: Flag Bool,
+    globalIgnoreSandbox     :: Flag Bool
   }
 
 defaultGlobalFlags :: GlobalFlags
@@ -120,11 +123,13 @@ defaultGlobalFlags  = GlobalFlags {
     globalNumericVersion    = Flag False,
     globalConfigFile        = mempty,
     globalSandboxConfigFile = mempty,
-    globalRemoteRepos       = [],
+    globalRemoteRepos       = mempty,
     globalCacheDir          = mempty,
     globalLocalRepos        = mempty,
     globalLogsDir           = mempty,
-    globalWorldFile         = mempty
+    globalWorldFile         = mempty,
+    globalRequireSandbox    = Flag False,
+    globalIgnoreSandbox     = Flag False
   }
 
 globalCommand :: CommandUI GlobalFlags
@@ -142,9 +147,9 @@ globalCommand = CommandUI {
       ++ "  " ++ pname ++ " install foo [--dry-run]\n\n"
       ++ "Occasionally you need to update the list of available packages:\n"
       ++ "  " ++ pname ++ " update\n",
-    commandDefaultFlags = defaultGlobalFlags,
+    commandDefaultFlags = mempty,
     commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 4; ParseArgs -> id)
+      (case showOrParseArgs of ShowArgs -> take 6; ParseArgs -> id)
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -165,6 +170,16 @@ globalCommand = CommandUI {
          \(default: './cabal.sandbox.config')"
          globalConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
          (reqArgFlag "FILE")
+
+      ,option [] ["require-sandbox"]
+         "requiring the presence of a sandbox for sandbox-aware commands"
+         globalRequireSandbox (\v flags -> flags { globalRequireSandbox = v })
+         (boolOpt' ([], ["require-sandbox"]) ([], ["no-require-sandbox"]))
+
+      ,option [] ["ignore-sandbox"]
+         "Ignore any existing sandbox"
+         globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
+         trueArg
 
       ,option [] ["remote-repo"]
          "The name and url for a remote repository"
@@ -203,7 +218,9 @@ instance Monoid GlobalFlags where
     globalCacheDir          = mempty,
     globalLocalRepos        = mempty,
     globalLogsDir           = mempty,
-    globalWorldFile         = mempty
+    globalWorldFile         = mempty,
+    globalRequireSandbox    = mempty,
+    globalIgnoreSandbox     = mempty
   }
   mappend a b = GlobalFlags {
     globalVersion           = combine globalVersion,
@@ -214,7 +231,9 @@ instance Monoid GlobalFlags where
     globalCacheDir          = combine globalCacheDir,
     globalLocalRepos        = combine globalLocalRepos,
     globalLogsDir           = combine globalLogsDir,
-    globalWorldFile         = combine globalWorldFile
+    globalWorldFile         = combine globalWorldFile,
+    globalRequireSandbox    = combine globalRequireSandbox,
+    globalIgnoreSandbox     = combine globalIgnoreSandbox
   }
     where combine field = field a `mappend` field b
 
@@ -724,7 +743,7 @@ getCommand = CommandUI {
        ++ "Alternatively, with -s it will\nget the code from the source "
        ++ "repository specified by the package.\n",
     commandUsage        = usagePackages "get",
-    commandDefaultFlags = mempty,
+    commandDefaultFlags = defaultGetFlags,
     commandOptions      = \_ -> [
         optionVerbosity getVerbosity (\v flags -> flags { getVerbosity = v })
 
@@ -757,7 +776,12 @@ unpackCommand = getCommand {
   }
 
 instance Monoid GetFlags where
-  mempty = defaultGetFlags
+  mempty = GetFlags {
+    getDestDir          = mempty,
+    getPristine         = mempty,
+    getSourceRepository = mempty,
+    getVerbosity        = mempty
+    }
   mappend a b = GetFlags {
     getDestDir          = combine getDestDir,
     getPristine         = combine getPristine,
@@ -1101,12 +1125,9 @@ installOptions showOrParseArgs =
           installOneShot (\v flags -> flags { installOneShot = v })
           (yesNoOpt showOrParseArgs)
 
-      , option "j" ["jobs"]
-        "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+      , optionNumJobs
         installNumJobs (\v flags -> flags { installNumJobs = v })
-        (optArg "NUM" (fmap Flag numJobsParser)
-                      (Flag Nothing)
-                      (map (Just . maybe "$ncpus" show) . flagToList))
+
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install"
                                         -- avoids
           ParseArgs ->
@@ -1487,10 +1508,12 @@ win32SelfUpgradeCommand = CommandUI {
 }
 
 instance Monoid Win32SelfUpgradeFlags where
-  mempty = defaultWin32SelfUpgradeFlags
+  mempty      = Win32SelfUpgradeFlags {
+    win32SelfUpgradeVerbosity = mempty
+    }
   mappend a b = Win32SelfUpgradeFlags {
     win32SelfUpgradeVerbosity = combine win32SelfUpgradeVerbosity
-  }
+    }
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
@@ -1571,7 +1594,7 @@ liftOptions get set = map (liftOption get set)
 
 yesNoOpt :: ShowOrParseArgs -> MkOptDescr (b -> Flag Bool) (Flag Bool -> b -> b) b
 yesNoOpt ShowArgs sf lf = trueArg sf lf
-yesNoOpt _        sf lf = boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf
+yesNoOpt _        sf lf = Command.boolOpt' flagToMaybe Flag (sf, lf) ([], map ("no-" ++) lf) sf lf
 
 optionSolver :: (flags -> Flag PreSolver)
              -> (Flag PreSolver -> flags -> flags)

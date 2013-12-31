@@ -992,9 +992,14 @@ parsePackageDescription file = do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
             skipField
             getBody
-      Just f -> do
+      Just f@(F {}) -> do
             _ <- lift $ syntaxError (lineNo f) $
-              "Construct not supported at this position: " ++ show f
+              "Plain fields are not allowed in between stanzas: " ++ show f
+            skipField
+            getBody
+      Just f@(IfBlock {}) -> do
+            _ <- lift $ syntaxError (lineNo f) $
+              "If-blocks are not allowed in between stanzas: " ++ show f
             skipField
             getBody
       Nothing -> return ([], [], Nothing, [], [], [])
