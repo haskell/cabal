@@ -190,6 +190,7 @@ library
     Distribution.Simple.Program.Ld
     Distribution.Simple.Program.Run
     Distribution.Simple.Program.Script
+    Distribution.Simple.Program.Strip
     Distribution.Simple.Program.Types
     Distribution.Simple.Register
     Distribution.Simple.Setup

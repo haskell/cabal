@@ -349,7 +349,7 @@ showPlanProblem (PackageInvalid pkg packageProblems) =
 
 showPlanProblem (PackageMissingDeps pkg missingDeps) =
      "Package " ++ display (packageId pkg)
-  ++ " depends on the following packages which are missing from the plan "
+  ++ " depends on the following packages which are missing from the plan: "
   ++ intercalate ", " (map display missingDeps)
 
 showPlanProblem (PackageCycle cycleGroup) =

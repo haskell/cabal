@@ -5,6 +5,7 @@ env:
  - GHCVER=7.0.4
  - GHCVER=7.4.2
  - GHCVER=7.6.3
+ - GHCVER=head
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
@@ -12,8 +13,10 @@ before_install:
  - sudo apt-get update
  - sudo apt-get install cabal-install-1.18 ghc-$GHCVER happy
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
+ - export CABAL_TEST_RUNNING_ON_TRAVIS=1
 
 install:
+ - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
  - cabal-1.18 update
  - cd Cabal
  - cabal-1.18 install --only-dependencies --enable-tests --enable-benchmarks
@@ -35,3 +38,7 @@ script:
       echo "expected '$SRC_TGZ' not found";
       exit 1;
    fi
+
+matrix:
+  allow_failures:
+   - env: GHCVER=head

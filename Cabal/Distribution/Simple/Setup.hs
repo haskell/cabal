@@ -91,7 +91,7 @@ module Distribution.Simple.Setup (
   fromFlagOrDefault,
   flagToMaybe,
   flagToList,
-  boolOpt, boolOpt', trueArg, falseArg, optionVerbosity, numJobsParser ) where
+  boolOpt, boolOpt', trueArg, falseArg, optionVerbosity, optionNumJobs ) where
 
 import Distribution.Compiler ()
 import Distribution.ReadE
@@ -309,6 +309,7 @@ data ConfigFlags = ConfigFlags {
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
+    configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
     configDependencies :: [(PackageName, InstalledPackageId)],
@@ -353,6 +354,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
 #endif
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = Flag True,
+    configStripLibs    = Flag True,
     configTests        = Flag False,
     configBenchmarks   = Flag False,
     configLibCoverage  = Flag False,
@@ -479,6 +481,11 @@ configureOptions showOrParseArgs =
       ,option "" ["executable-stripping"]
          "strip executables upon installation to reduce binary sizes"
          configStripExes (\v flags -> flags { configStripExes = v })
+         (boolOpt [] [])
+
+      ,option "" ["library-stripping"]
+         "strip libraries upon installation to reduce binary sizes"
+         configStripLibs (\v flags -> flags { configStripLibs = v })
          (boolOpt [] [])
 
       ,option "" ["configure-option"]
@@ -682,6 +689,7 @@ instance Monoid ConfigFlags where
     configGHCiLib       = mempty,
     configSplitObjs     = mempty,
     configStripExes     = mempty,
+    configStripLibs     = mempty,
     configExtraLibDirs  = mempty,
     configConstraints   = mempty,
     configDependencies  = mempty,
@@ -718,6 +726,7 @@ instance Monoid ConfigFlags where
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
     configStripExes     = combine configStripExes,
+    configStripLibs     = combine configStripLibs,
     configExtraLibDirs  = combine configExtraLibDirs,
     configConstraints   = combine configConstraints,
     configDependencies  = combine configDependencies,
@@ -1424,26 +1433,24 @@ buildCommand progConf = makeCommand name shortDesc longDesc
 buildOptions :: ProgramConfiguration -> ShowOrParseArgs
                 -> [OptionField BuildFlags]
 buildOptions progConf showOrParseArgs =
-  optionVerbosity buildVerbosity (\v flags -> flags { buildVerbosity = v })
-  : optionDistPref
-  buildDistPref (\d flags -> flags { buildDistPref = d })
-  showOrParseArgs
+  [ optionVerbosity
+      buildVerbosity (\v flags -> flags { buildVerbosity = v })
 
-  : option "j" ["jobs"]
-  "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)"
-  buildNumJobs (\v flags -> flags { buildNumJobs = v })
-  (optArg "NUM" (fmap Flag numJobsParser)
-   (Flag Nothing)
-   (map (Just . maybe "$ncpus" show) . flagToList))
+  , optionDistPref
+      buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
 
-  : programConfigurationPaths   progConf showOrParseArgs
-  buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
+  , optionNumJobs
+      buildNumJobs (\v flags -> flags { buildNumJobs = v })
+  ]
+
+  ++ programConfigurationPaths progConf showOrParseArgs
+       buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
 
   ++ programConfigurationOption progConf showOrParseArgs
-  buildProgramArgs (\v fs -> fs { buildProgramArgs = v })
+       buildProgramArgs (\v fs -> fs { buildProgramArgs = v })
 
   ++ programConfigurationOptions progConf showOrParseArgs
-  buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
+       buildProgramArgs (\v flags -> flags { buildProgramArgs = v})
 
 emptyBuildFlags :: BuildFlags
 emptyBuildFlags = mempty
@@ -1841,18 +1848,6 @@ programConfigurationOptions progConf showOrParseArgs get set =
         get set
         (reqArg' "OPTS" (\args -> [(prog, splitArgs args)]) (const []))
 
--- | Common parser for the @-j@ flag of @build@ and @install@.
-numJobsParser :: ReadE (Maybe Int)
-numJobsParser = ReadE $ \s ->
-  case s of
-    "$ncpus" -> Right Nothing
-    _        -> case reads s of
-      [(n, "")]
-        | n < 1     -> Left "The number of jobs should be 1 or more."
-        | n > 64    -> Left "You probably don't want that many jobs."
-        | otherwise -> Right (Just n)
-      _             -> Left "The jobs value should be a number or '$ncpus'"
-
 -- ------------------------------------------------------------
 -- * GetOpt Utils
 -- ------------------------------------------------------------
@@ -1898,6 +1893,28 @@ optionVerbosity get set =
     (optArg "n" (fmap Flag flagToVerbosity)
                 (Flag verbose) -- default Value if no n is given
                 (fmap (Just . showForCabal) . flagToList))
+
+optionNumJobs :: (flags -> Flag (Maybe Int))
+              -> (Flag (Maybe Int) -> flags -> flags)
+              -> OptionField flags
+optionNumJobs get set =
+  option "j" ["jobs"]
+    "Run NUM jobs simultaneously (or '$ncpus' if no NUM is given)."
+    get set
+    (optArg "NUM" (fmap Flag numJobsParser)
+                  (Flag Nothing)
+                  (map (Just . maybe "$ncpus" show) . flagToList))
+  where
+    numJobsParser :: ReadE (Maybe Int)
+    numJobsParser = ReadE $ \s ->
+      case s of
+        "$ncpus" -> Right Nothing
+        _        -> case reads s of
+          [(n, "")]
+            | n < 1     -> Left "The number of jobs should be 1 or more."
+            | n > 64    -> Left "You probably don't want that many jobs."
+            | otherwise -> Right (Just n)
+          _             -> Left "The jobs value should be a number or '$ncpus'"
 
 -- ------------------------------------------------------------
 -- * Other Utils

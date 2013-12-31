@@ -55,7 +55,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info, fromUTF8, findPackageDesc )
+         ( die, warn, info, fromUTF8, tryFindPackageDesc )
 
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (mapMaybe, fromMaybe)
@@ -71,7 +71,7 @@ import Data.ByteString.Lazy (ByteString)
 import Distribution.Client.GZipUtils (maybeDecompress)
 import Distribution.Client.Utils (byteStringToFilePath)
 import Distribution.Compat.Exception (catchIO)
-import Distribution.Client.Compat.Time
+import Distribution.Client.Compat.Time (getFileAge, getModTime)
 import System.Directory (doesFileExist)
 import System.FilePath ((</>), takeExtension, splitDirectories, normalise)
 import System.FilePath.Posix as FilePath.Posix
@@ -351,7 +351,7 @@ extractPkg entry blockNo = case Tar.entryContent entry of
     | Tar.isBuildTreeRefTypeCode typeCode ->
       Just $ do
         let path   = byteStringToFilePath content
-        cabalFile <- findPackageDesc path
+        cabalFile <- tryFindPackageDesc path
         descr     <- PackageDesc.Parse.readPackageDescription normal cabalFile
         return $ BuildTreeRef (refTypeFromTypeCode typeCode) (packageId descr)
                               descr path blockNo
@@ -452,7 +452,7 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
       -- package id for build tree references - the user might edit the .cabal
       -- file after the reference was added to the index.
       path <- liftM byteStringToFilePath . getEntryContent $ blockno
-      pkg  <- do cabalFile <- findPackageDesc path
+      pkg  <- do cabalFile <- tryFindPackageDesc path
                  PackageDesc.Parse.readPackageDescription normal cabalFile
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum (srcpkg:srcpkgs) prefs entries

@@ -968,6 +968,21 @@ cabal repl test:bar
 cabal repl bench:baz
 ~~~~~~~~~~~~~~~~
 
+#### Freezing dependency versions ####
+
+If a package is built in several different environments, such as a development
+environment, a staging environment and a production environment, it may be
+necessary or desirable to ensure that the same dependency versions are
+selected in each environment. This can be done with the `freeze` command:
+
+~~~~~~~~~~~~~~~~
+cabal freeze
+~~~~~~~~~~~~~~~~
+
+The command writes the selected version for all dependencies to the
+`cabal.config` file.  All environments which share this file will use the
+dependency versions specified in it.
+
 ### Executables ###
 
 Executable sections (if present) describe executable programs contained
@@ -1973,7 +1988,7 @@ can update the necessary fields programmatically instead of using the
 ## Conditional compilation ##
 
 Sometimes you want to write code that works with more than one version
-of a dependency.  You can specify a range of versions for the depenency
+of a dependency.  You can specify a range of versions for the dependency
 in the `build-depends`, but how do you then write the code that can use
 different versions of the API?
 

@@ -19,6 +19,10 @@ Alternatively, you can also use the `Setup.hs` or `Setup.lhs` script:
 
 For the summary of the command syntax, run:
 
+> `cabal help`
+
+or
+
 > `runhaskell Setup.hs --help`
 
 ## Building and installing a system package ##
@@ -170,6 +174,44 @@ Using a sandbox located at /path/to/.cabal-sandbox
     '--package-conf=/path/to/.cabal-sandbox/i386-linux-ghc-7.4.2-packages.conf.d'
     'list'
 [...]
+~~~~~~~~~~~~~~~
+
+The `--require-sandbox` option makes all sandbox-aware commands
+(`install`/`build`/etc.) exit with error if there is no sandbox present. This
+makes it harder to accidentally modify the user package database. The option can
+be also turned on via the per-user configuration file (`~/.cabal/config`) or the
+per-project one (`$PROJECT_DIR/cabal.config`). The error can be squelched with
+`--no-require-sandbox`.
+
+The option `--sandbox-config-file` allows to specify the location of the
+`cabal.sandbox.config` file (by default, `cabal` searches for it in the current
+directory). This provides the same functionality as shared sandboxes, but
+sometimes can be more convenient. Example:
+
+~~~~~~~~~~~~~~~
+$ mkdir my/sandbox
+$ cd my/sandbox
+$ cabal sandbox init
+$ cd /path/to/my/project
+$ cabal --sandbox-config-file=/path/to/my/sandbox/cabal.sandbox.config install
+# Uses the sandbox located at /path/to/my/sandbox/.cabal-sandbox
+$ cd ~
+$ cabal --sandbox-config-file=/path/to/my/sandbox/cabal.sandbox.config install
+# Still uses the same sandbox
+~~~~~~~~~~~~~~~
+
+The sandbox config file can be also specified via the `CABAL_SANDBOX_CONFIG`
+environment variable.
+
+Finally, the flag `--ignore-sandbox` lets you temporarily ignore an existing
+sandbox:
+
+~~~~~~~~~~~~~~~
+$ mkdir my/sandbox
+$ cd my/sandbox
+$ cabal sandbox init
+$ cabal --ignore-sandbox install text
+# Installs 'text' in the user package database ('~/.cabal').
 ~~~~~~~~~~~~~~~
 
 ## Creating a binary package ##
@@ -673,6 +715,46 @@ followingcommand line options.
     These extra directories will be used while building the package and
     for libraries it is also saved in the package registration
     information and used when compiling modules that use the library.
+
+`--allow-newer`[=_pkgs_]
+:   Selectively relax upper bounds in dependencies without editing the
+    package description.
+
+    If you want to install a package A that depends on B >= 1.0 && < 2.0, but
+    you have the version 2.0 of B installed, you can compile A against B 2.0 by
+    using `cabal install --allow-newer=B A`. This works for the whole package
+    index: if A also depends on C that in turn depends on B < 2.0, C's
+    dependency on B will be also relaxed.
+
+    Example:
+
+    ~~~~~~~~~~~~~~~~
+    $ cd foo
+    $ cabal configure
+    Resolving dependencies...
+    cabal: Could not resolve dependencies:
+    [...]
+    $ cabal configure --allow-newer
+    Resolving dependencies...
+    Configuring foo...
+    ~~~~~~~~~~~~~~~~
+
+    Additional examples:
+
+    ~~~~~~~~~~~~~~~~
+    # Relax upper bounds in all dependencies.
+    $ cabal install --allow-newer foo
+
+    # Relax upper bounds only in dependencies on bar, baz and quux.
+    $ cabal install --allow-newer=bar,baz,quux foo
+
+    # Relax the upper bound on bar and force bar==2.1.
+    $ cabal install --allow-newer=bar --constraint="bar==2.1" foo
+    ~~~~~~~~~~~~~~~~
+
+    It's also possible to enable `--allow-newer` permanently by setting
+    `allow-newer: True` in the `~/.cabal/config` file.
+
 
 In the simple build infrastructure, an additional option is recognized:
 

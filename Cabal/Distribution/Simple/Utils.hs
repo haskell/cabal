@@ -121,6 +121,7 @@ module Distribution.Simple.Utils (
         -- * .cabal and .buildinfo files
         defaultPackageDesc,
         findPackageDesc,
+        tryFindPackageDesc,
         defaultHookedPackageDesc,
         findHookedPackageDesc,
 
@@ -148,7 +149,7 @@ module Distribution.Simple.Utils (
   ) where
 
 import Control.Monad
-    ( when, unless, filterM )
+    ( join, when, unless, filterM )
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.List
@@ -1130,12 +1131,12 @@ currentDir = "."
 
 -- |Package description file (/pkgname/@.cabal@)
 defaultPackageDesc :: Verbosity -> IO FilePath
-defaultPackageDesc _verbosity = findPackageDesc currentDir
+defaultPackageDesc _verbosity = tryFindPackageDesc currentDir
 
 -- |Find a package description file in the given directory.  Looks for
 -- @.cabal@ files.
-findPackageDesc :: FilePath    -- ^Where to look
-                -> IO FilePath -- ^<pkgname>.cabal
+findPackageDesc :: FilePath                    -- ^Where to look
+                -> IO (Either String FilePath) -- ^<pkgname>.cabal
 findPackageDesc dir
  = do files <- getDirectoryContents dir
       -- to make sure we do not mistake a ~/.cabal/ dir for a <pkgname>.cabal
@@ -1146,19 +1147,23 @@ findPackageDesc dir
                        , let (name, ext) = splitExtension file
                        , not (null name) && ext == ".cabal" ]
       case cabalFiles of
-        []          -> noDesc
-        [cabalFile] -> return cabalFile
-        multiple    -> multiDesc multiple
+        []          -> return (Left  noDesc)
+        [cabalFile] -> return (Right cabalFile)
+        multiple    -> return (Left  $ multiDesc multiple)
 
   where
-    noDesc :: IO a
-    noDesc = die $ "No cabal file found.\n"
-                ++ "Please create a package description file <pkgname>.cabal"
+    noDesc :: String
+    noDesc = "No cabal file found.\n"
+             ++ "Please create a package description file <pkgname>.cabal"
 
-    multiDesc :: [String] -> IO a
-    multiDesc l = die $ "Multiple cabal files found.\n"
-                    ++ "Please use only one of: "
-                    ++ intercalate ", " l
+    multiDesc :: [String] -> String
+    multiDesc l = "Multiple cabal files found.\n"
+                  ++ "Please use only one of: "
+                  ++ intercalate ", " l
+
+-- |Like 'findPackageDesc', but calls 'die' in case of error.
+tryFindPackageDesc :: FilePath -> IO FilePath
+tryFindPackageDesc dir = join . fmap (either die return) $ findPackageDesc dir
 
 -- |Optional auxiliary package information file (/pkgname/@.buildinfo@)
 defaultHookedPackageDesc :: IO (Maybe FilePath)
