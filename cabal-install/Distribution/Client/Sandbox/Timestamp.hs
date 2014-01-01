@@ -13,7 +13,6 @@ module Distribution.Client.Sandbox.Timestamp (
   withRemoveTimestamps,
   withUpdateTimestamps,
   maybeAddCompilerTimestampRecord,
-  isDepModified,
   listModifiedDeps,
   ) where
 
