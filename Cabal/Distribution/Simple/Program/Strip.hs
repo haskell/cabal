@@ -13,7 +13,7 @@ module Distribution.Simple.Program.Strip (stripLib, stripExe)
 import Distribution.Simple.Program (ProgramConfiguration, lookupProgram
                                    ,rawSystemProgram, stripProgram)
 import Distribution.Simple.Utils   (warn)
-import Distribution.System         (OS (..), buildOS)
+import Distribution.System         (Platform(..), OS (..), buildOS)
 import Distribution.Verbosity      (Verbosity)
 
 import Control.Monad               (unless)
@@ -30,19 +30,22 @@ runStrip verbosity progConf path args =
                                    ++ (takeBaseName path)
                                    ++ "' (missing the 'strip' program)"
 
-stripExe :: Verbosity -> ProgramConfiguration -> FilePath -> IO ()
-stripExe verbosity conf path =
+stripExe :: Verbosity -> Platform -> ProgramConfiguration -> FilePath -> IO ()
+stripExe verbosity (Platform _arch os) conf path =
   runStrip verbosity conf path args
   where
-    args = case buildOS of
+    args = case os of
        OSX -> ["-x"] -- By default, stripping the ghc binary on at least
                      -- some OS X installations causes:
                      --     HSbase-3.0.o: unknown symbol `_environ'"
                      -- The -x flag fixes that.
        _   -> []
 
-stripLib :: Verbosity -> ProgramConfiguration -> FilePath -> IO ()
-stripLib verbosity conf path = do
-  runStrip verbosity conf path args
+stripLib :: Verbosity -> Platform -> ProgramConfiguration -> FilePath -> IO ()
+stripLib verbosity (Platform _arch os) conf path = do
+  case os of
+    OSX -> -- '--strip-unneeded' is not supported on OS X. See #1630.
+           return ()
+    _   -> runStrip verbosity conf path args
   where
     args = ["--strip-unneeded"]

@@ -20,8 +20,9 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
 import Distribution.Compat.CopyFile (filesEqual)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program
-         ( ProgramConfiguration, arProgram, requireProgram )
+         ( arProgram, requireProgram )
 import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
@@ -41,9 +42,9 @@ import System.IO
 
 -- | Call @ar@ to create a library archive from a bunch of object files.
 --
-createArLibArchive :: Verbosity -> ProgramConfiguration -> Bool
+createArLibArchive :: Verbosity -> LocalBuildInfo
                    -> FilePath -> [FilePath] -> IO ()
-createArLibArchive verbosity progConf stripLib targetPath files = do
+createArLibArchive verbosity lbi targetPath files = do
   (ar, _) <- requireProgram verbosity arProgram progConf
 
   let (targetDir, targetName) = splitFileName targetPath
@@ -85,12 +86,15 @@ createArLibArchive verbosity progConf stripLib targetPath files = do
         | inv <- multiStageProgramInvocation
                    simple (initial, middle, final) files ]
 
-  when stripLib $ Strip.stripLib verbosity progConf tmpPath
+  when stripLib $ Strip.stripLib verbosity platform progConf tmpPath
   wipeMetadata tmpPath
   equal <- filesEqual tmpPath targetPath
   unless equal $ renameFile tmpPath targetPath
 
   where
+    progConf = withPrograms lbi
+    stripLib = stripLibs    lbi
+    platform = hostPlatform lbi
     verbosityOpts v | v >= deafening = ["-v"]
                     | v >= verbose   = []
                     | otherwise      = ["-c"]
