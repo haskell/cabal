@@ -902,12 +902,10 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
             }
 
     whenVanillaLib False $ do
-      Ar.createArLibArchive verbosity (withPrograms lbi) (stripLibs lbi)
-        vanillaLibFilePath staticObjectFiles
+      Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
 
     whenProfLib $ do
-      Ar.createArLibArchive verbosity (withPrograms lbi) (stripLibs lbi)
-        profileLibFilePath profObjectFiles
+      Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
 
     whenGHCiLib $ do
       (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
@@ -1266,7 +1264,8 @@ installExe verbosity lbi installDirs buildPref
             (buildPref </> exeName exe </> exeFileName)
             (dest <.> exeExtension)
           when (stripExes lbi) $
-            Strip.stripExe verbosity (withPrograms lbi) (dest <.> exeExtension)
+            Strip.stripExe verbosity (hostPlatform lbi) (withPrograms lbi)
+                           (dest <.> exeExtension)
   installBinary (binDir </> fixedExeBaseName)
 
 -- |Install for ghc, .hi, .a and, if --with-ghci given, .o
@@ -1297,8 +1296,8 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
           dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
       if isShared
-        then do when (stripLibs lbi) $
-                  Strip.stripLib verbosity (withPrograms lbi) src
+        then do when (stripLibs lbi) $ Strip.stripLib verbosity
+                                       (hostPlatform lbi) (withPrograms lbi) src
                 installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
 
