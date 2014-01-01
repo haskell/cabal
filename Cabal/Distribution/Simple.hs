@@ -648,7 +648,7 @@ runConfigureScript verbosity backwardsCompatHack flags lbi = do
   -- a way to pass its flags too
   let env' = appendToEnvironment ("CFLAGS",  unwords ccFlags)
              env
-      args' = args ++ ["--with-gcc=" ++ ccProg]
+      args' = args ++ ["--with-gcc=\"" ++ ccProg ++ "\""]
   handleNoWindowsSH $
     rawSystemExitWithEnv verbosity "sh" args' env'
 
