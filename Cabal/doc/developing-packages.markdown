@@ -809,9 +809,12 @@ describe the package as a whole:
 :   The type of license under which this package is distributed.
     License names are the constants of the [License][dist-license] type.
 
-`license-file:` _filename_
-:   The name of a file containing the precise license for this package.
-    It will be installed with the package.
+`license-file:` _filename_ or `license-files:` _filename list_
+:   The name of a file(s) containing the precise copyright license for
+    this package. The license file(s) will be installed with the package.
+
+    If you have multiple license files then use the `license-files`
+    field instead of (or in addition to) the `license-file` field.
 
 `copyright:` _freeform_
 :   The content of a copyright notice, typically the name of the holder

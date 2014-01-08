@@ -254,10 +254,8 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     . forM (extraDocFiles pkg_descr) $ \ filename ->
       matchFileGlob filename
 
-    -- License file.
-  , return $ case [licenseFile pkg_descr]
-             of [[]] -> []
-                l    -> l
+    -- License file(s).
+  , return (licenseFiles pkg_descr)
 
     -- Install-include files.
   , withLib $ \ l -> do
