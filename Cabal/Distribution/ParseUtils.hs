@@ -711,7 +711,8 @@ parseFreeText = ReadP.munch (const True)
 -- ** Pretty printing
 
 showFilePath :: FilePath -> Doc
-showFilePath = showToken
+showFilePath "" = empty
+showFilePath x  = showToken x
 
 showToken :: String -> Doc
 showToken str
