@@ -137,10 +137,12 @@ install pkg_descr lbi flags = do
         installOrdinaryFile verbosity haddockInterfaceFileSrc
                                       haddockInterfaceFileDest
 
-  let lfile = licenseFile pkg_descr
-  unless (null lfile) $ do
+  let lfiles = licenseFiles pkg_descr
+  unless (null lfiles) $ do
     createDirectoryIfMissingVerbose verbosity True docPref
-    installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
+    sequence_
+      [ installOrdinaryFile verbosity lfile (docPref </> takeFileName lfile)
+      | lfile <- lfiles ]
 
   let buildPref = buildDir lbi
   when (hasLibs pkg_descr) $
