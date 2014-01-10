@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -17,7 +18,11 @@ module Distribution.Client.Compat.Process (
   readProcessWithExitCode
 ) where
 
-import           Control.Exception (throw)
+#if !MIN_VERSION_base(4,6,0)
+import           Prelude           hiding (catch)
+#endif
+
+import           Control.Exception (catch, throw)
 import           System.Exit       (ExitCode (ExitFailure))
 import           System.IO.Error   (isDoesNotExistError)
 import qualified System.Process    as P
