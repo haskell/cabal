@@ -84,12 +84,14 @@ knownOSs = [Linux, Windows, OSX
            ,IOS]
 
 osAliases :: ClassificationStrictness -> OS -> [String]
-osAliases Permissive Windows = ["mingw32", "cygwin32"]
+osAliases Permissive Windows = ["mingw32", "win32", "cygwin32"]
 osAliases Compat     Windows = ["mingw32", "win32"]
 osAliases _          OSX     = ["darwin"]
 osAliases _          IOS     = ["ios"]
 osAliases Permissive FreeBSD = ["kfreebsdgnu"]
+osAliases Compat     FreeBSD = ["kfreebsdgnu"]
 osAliases Permissive Solaris = ["solaris2"]
+osAliases Compat     Solaris = ["solaris2"]
 osAliases _          _       = []
 
 instance Text OS where
