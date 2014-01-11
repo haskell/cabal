@@ -49,9 +49,9 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
-PARSEC_VER="3.1.4";    PARSEC_VER_REGEXP="[23]\."              # == 2.* || == 3.*
+PARSEC_VER="3.1.5";    PARSEC_VER_REGEXP="[23]\."              # == 2.* || == 3.*
 DEEPSEQ_VER="1.3.0.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."         # >= 1.1 && < 2
-TEXT_VER="1.0.0.1";    TEXT_VER_REGEXP="((1\.0\.)|(0\.([2-9]|(1[0-1]))\.))" # >= 0.2 && < 1.1
+TEXT_VER="1.1.0.0";    TEXT_VER_REGEXP="((1\.[01]\.)|(0\.([2-9]|(1[0-1]))\.))" # >= 0.2 && < 1.2
 NETWORK_VER="2.4.2.2"; NETWORK_VER_REGEXP="2\."                # == 2.*
 CABAL_VER="1.19.2";    CABAL_VER_REGEXP="1\.1[9]\."            # >= 1.19 && < 1.20
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."            # >= 0.2.* && < 0.4.*
