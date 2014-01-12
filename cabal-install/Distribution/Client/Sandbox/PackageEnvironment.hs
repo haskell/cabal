@@ -19,6 +19,7 @@ module Distribution.Client.Sandbox.PackageEnvironment (
   , showPackageEnvironment
   , showPackageEnvironmentWithComments
   , setPackageDB
+  , sandboxPackageDBPath
   , loadUserConfig
 
   , basePackageEnvironment
@@ -210,14 +211,23 @@ initialPackageEnvironment sandboxDir compiler platform = do
        }
     }
 
+-- | Return the path to the sandbox package database.
+sandboxPackageDBPath :: FilePath -> Compiler -> Platform -> String
+sandboxPackageDBPath sandboxDir compiler platform =
+    sandboxDir
+         </> (Text.display platform ++ "-"
+             ++ showCompilerId compiler
+             ++ "-packages.conf.d")
+
+
 -- | Use the package DB location specific for this compiler.
 setPackageDB :: FilePath -> Compiler -> Platform -> ConfigFlags -> ConfigFlags
 setPackageDB sandboxDir compiler platform configFlags =
   configFlags {
-    configPackageDBs = [Just (SpecificPackageDB $ sandboxDir
-                              </> (Text.display platform ++ "-"
-                                   ++ showCompilerId compiler
-                                   ++ "-packages.conf.d"))]
+    configPackageDBs = [Just (SpecificPackageDB $ sandboxPackageDBPath
+                                                      sandboxDir
+                                                      compiler
+                                                      platform)]
     }
 
 -- | Almost the same as 'savedConf `mappend` pkgEnv', but some settings are

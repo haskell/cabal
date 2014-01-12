@@ -34,6 +34,7 @@ module Distribution.Client.Setup
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
+    , execCommand, ExecFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -1605,6 +1606,44 @@ instance Monoid SandboxFlags where
     sandboxVerbosity = combine sandboxVerbosity,
     sandboxSnapshot  = combine sandboxSnapshot,
     sandboxLocation  = combine sandboxLocation
+    }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Exec Flags
+-- ------------------------------------------------------------
+
+data ExecFlags = ExecFlags {
+  execVerbosity :: Flag Verbosity
+}
+
+defaultExecFlags :: ExecFlags
+defaultExecFlags = ExecFlags {
+  execVerbosity = toFlag normal
+  }
+
+execCommand :: CommandUI ExecFlags
+execCommand = CommandUI {
+  commandName         = "exec",
+  commandSynopsis     = "Run a command with the cabal environment",
+  commandDescription  = Nothing,
+  commandUsage        = \pname ->
+       "Usage: " ++ pname ++ " exec [FLAGS] COMMAND [-- [ARGS...]]\n\n"
+    ++ "Flags for exec:",
+
+  commandDefaultFlags = defaultExecFlags,
+  commandOptions      = \_ ->
+    [ optionVerbosity execVerbosity
+      (\v flags -> flags { execVerbosity = v })
+    ]
+  }
+
+instance Monoid ExecFlags where
+  mempty = ExecFlags {
+    execVerbosity = mempty
+    }
+  mappend a b = ExecFlags {
+    execVerbosity = combine execVerbosity
     }
     where combine field = field a `mappend` field b
 
