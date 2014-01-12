@@ -36,6 +36,7 @@ import Distribution.Client.Setup
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , SandboxFlags(..), sandboxCommand
+         , ExecFlags(..), execCommand
          , reportCommand
          )
 import Distribution.Simple.Setup
@@ -123,7 +124,7 @@ import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, info, topHandler
-         , findPackageDesc, tryFindPackageDesc )
+         , findPackageDesc, tryFindPackageDesc , rawSystemExit )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -214,6 +215,7 @@ mainWorker args = topHandler $
       ,replCommand defaultProgramConfiguration
                               `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
+      ,execCommand            `commandAddAction` execAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
       ,wrapperAction haddockCommand
@@ -986,6 +988,17 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
 
   where
     noExtraArgs = (<1) . length
+
+execAction :: ExecFlags -> [String] -> GlobalFlags -> IO ()
+execAction execFlags extraArgs globalFlags = do
+  let verbosity = fromFlag (execVerbosity execFlags)
+  (useSandbox, _config) <- loadConfigOrSandboxConfig verbosity globalFlags
+                           mempty
+  case extraArgs of
+    (exec:args) -> maybeWithSandboxDirOnSearchPath useSandbox $
+      rawSystemExit verbosity exec args
+    -- Error handling.
+    [] -> die $ "Please specify an executable to run"
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
