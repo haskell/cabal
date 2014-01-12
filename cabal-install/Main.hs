@@ -36,10 +36,11 @@ import Distribution.Client.Setup
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , SandboxFlags(..), sandboxCommand
+         , ExecFlags(..), execCommand
          , reportCommand
          )
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), haddockCommand, defaultHaddockFlags
+         ( HaddockFlags(..), haddockCommand
          , HscolourFlags(..), hscolourCommand
          , ReplFlags(..), replCommand
          , CopyFlags(..), copyCommand
@@ -77,6 +78,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxListSources
                                               ,sandboxHcPkg
                                               ,dumpPackageEnvironment
+                                              ,withSandboxBinDirOnSearchPath
 
                                               ,getSandboxConfigFilePath
                                               ,loadConfigOrSandboxConfig
@@ -93,6 +95,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,configPackageDB')
 import Distribution.Client.Sandbox.PackageEnvironment
                                               (setPackageDB
+                                              ,sandboxPackageDBPath
                                               ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
@@ -119,11 +122,14 @@ import Distribution.Simple.Configure
          , ConfigStateFileErrorType(..), localBuildInfoFile
          , getPersistBuildConfig, tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Program (defaultProgramConfiguration)
+import Distribution.Simple.GHC (ghcGlobalPackageDB)
+import Distribution.Simple.Program (defaultProgramConfiguration, lookupProgram, ghcProgram)
+import Distribution.Simple.Program.Run (getEffectiveEnvironment)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, info, topHandler
-         , findPackageDesc, tryFindPackageDesc )
+         ( cabalVersion, debug, die, notice, info, topHandler
+         , findPackageDesc, tryFindPackageDesc , rawSystemExit
+         , rawSystemExitWithEnv )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -214,9 +220,11 @@ mainWorker args = topHandler $
       ,replCommand defaultProgramConfiguration
                               `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
-      ,haddockCommand         `commandAddAction` haddockAction
+      ,execCommand            `commandAddAction` execAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
+      ,wrapperAction haddockCommand
+                     haddockVerbosity  haddockDistPref
       ,wrapperAction cleanCommand
                      cleanVerbosity    cleanDistPref
       ,wrapperAction hscolourCommand
@@ -630,14 +638,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   let sandboxDistPref = case useSandbox of
         NoSandbox             -> NoFlag
         UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir
-      configFlags'    = maybeForceTests installFlags' $
-                        savedConfigureFlags   config `mappend` configFlags
+      configFlags'    = savedConfigureFlags   config `mappend` configFlags
       configExFlags'  = defaultConfigExFlags         `mappend`
                         savedConfigureExFlags config `mappend` configExFlags
       installFlags'   = defaultInstallFlags          `mappend`
                         savedInstallFlags     config `mappend` installFlags
-      haddockFlags'   = defaultHaddockFlags          `mappend`
-                        savedHaddockFlags     config `mappend` haddockFlags
       globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
 
@@ -672,15 +677,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               comp platform conf
               useSandbox mSandboxPkgInfo
               globalFlags' configFlags'' configExFlags'
-              installFlags' haddockFlags'
+              installFlags' haddockFlags
               targets
-
-    where
-      -- '--run-tests' implies '--enable-tests'.
-      maybeForceTests installFlags' configFlags' =
-        if fromFlagOrDefault False (installRunTests installFlags')
-        then configFlags' { configTests = toFlag True }
-        else configFlags'
 
 testAction :: (TestFlags, BuildFlags, BuildExFlags) -> [String] -> GlobalFlags
               -> IO ()
@@ -743,20 +741,6 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
       Cabal.benchmarkCommand (const benchmarkFlags) extraArgs
-
-haddockAction :: HaddockFlags -> [String] -> GlobalFlags -> IO ()
-haddockAction haddockFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (haddockVerbosity haddockFlags)
-  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
-  let haddockFlags' = defaultHaddockFlags      `mappend`
-                      savedHaddockFlags config `mappend` haddockFlags
-      setupScriptOptions = defaultSetupScriptOptions {
-        useDistPref = fromFlagOrDefault
-                      (useDistPref defaultSetupScriptOptions)
-                      (haddockDistPref haddockFlags')
-        }
-  setupWrapper verbosity setupScriptOptions Nothing
-    haddockCommand (const haddockFlags') extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
@@ -1009,6 +993,37 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
 
   where
     noExtraArgs = (<1) . length
+
+execAction :: ExecFlags -> [String] -> GlobalFlags -> IO ()
+execAction execFlags extraArgs globalFlags = do
+  let verbosity = fromFlag (execVerbosity execFlags)
+  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+                           mempty
+  case extraArgs of
+    (exec:args) -> do
+      case useSandbox of
+          NoSandbox ->
+              rawSystemExit verbosity exec args
+          (UseSandbox sandboxDir) -> do
+              let configFlags = savedConfigureFlags config
+              (comp, platform, conf) <- configCompilerAux' configFlags
+              withSandboxBinDirOnSearchPath sandboxDir $ do
+                  menv <- newEnv sandboxDir comp platform conf verbosity
+                  case menv of
+                      Just env -> rawSystemExitWithEnv verbosity exec args env
+                      Nothing  -> rawSystemExit        verbosity exec args
+    -- Error handling.
+    [] -> die $ "Please specify an executable to run"
+  where
+    newEnv sandboxDir comp platform conf verbosity = do
+        let s = sandboxPackageDBPath sandboxDir comp platform
+        case lookupProgram ghcProgram conf of
+            Nothing -> do
+                debug verbosity "sandbox exec only works with GHC"
+                exitFailure
+            Just ghcProg ->  do
+                g <- ghcGlobalPackageDB verbosity ghcProg
+                getEffectiveEnvironment [("GHC_PACKAGE_PATH", Just $ s ++ ":" ++ g)]
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
