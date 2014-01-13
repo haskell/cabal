@@ -90,6 +90,7 @@ module Distribution.Simple.Setup (
   fromFlag,
   fromFlagOrDefault,
   flagToMaybe,
+  maybeToFlag,
   flagToList,
   boolOpt, boolOpt', trueArg, falseArg, optionVerbosity, optionNumJobs ) where
 
@@ -194,6 +195,10 @@ fromFlagOrDefault def NoFlag   = def
 flagToMaybe :: Flag a -> Maybe a
 flagToMaybe (Flag x) = Just x
 flagToMaybe NoFlag   = Nothing
+
+maybeToFlag :: Maybe a -> Flag a
+maybeToFlag (Just a) = Flag a
+maybeToFlag Nothing  = NoFlag
 
 flagToList :: Flag a -> [a]
 flagToList (Flag x) = [x]
@@ -1383,14 +1388,15 @@ instance Monoid CleanFlags where
 -- ------------------------------------------------------------
 
 data BuildFlags = BuildFlags {
-    buildProgramPaths :: [(String, FilePath)],
-    buildProgramArgs :: [(String, [String])],
-    buildDistPref    :: Flag FilePath,
-    buildVerbosity   :: Flag Verbosity,
-    buildNumJobs     :: Flag (Maybe Int),
+    buildProgramPaths           :: [(String, FilePath)],
+    buildProgramArgs            :: [(String, [String])],
+    buildDistPref               :: Flag FilePath,
+    buildVerbosity              :: Flag Verbosity,
+    buildNumJobs                :: Flag (Maybe Int),
+    buildMaxLinkerJobsSemaphore :: Flag FilePath,
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
-    buildArgs :: [String]
+    buildArgs                   :: [String]
   }
   deriving Show
 
@@ -1400,12 +1406,13 @@ buildVerbose = fromFlagOrDefault normal . buildVerbosity
 
 defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
-    buildProgramPaths = mempty,
-    buildProgramArgs = [],
-    buildDistPref    = Flag defaultDistPref,
-    buildVerbosity   = Flag normal,
-    buildNumJobs     = mempty,
-    buildArgs        = []
+    buildProgramPaths           = mempty,
+    buildProgramArgs            = [],
+    buildDistPref               = Flag defaultDistPref,
+    buildVerbosity              = Flag normal,
+    buildNumJobs                = mempty,
+    buildMaxLinkerJobsSemaphore = mempty,
+    buildArgs                   = []
   }
 
 buildCommand :: ProgramConfiguration -> CommandUI BuildFlags
@@ -1446,6 +1453,16 @@ buildOptions progConf showOrParseArgs =
   ++ programConfigurationPaths progConf showOrParseArgs
        buildProgramPaths (\v flags -> flags { buildProgramPaths = v})
 
+  ++ case showOrParseArgs of
+      ParseArgs ->
+        [ option "" ["max-linker-jobs-semaphore"]
+          "Semaphore for limiting the number of concurrent linker invocations."
+          buildMaxLinkerJobsSemaphore
+          (\v flags -> flags { buildMaxLinkerJobsSemaphore = v })
+          (reqArgFlag "PATH")
+        ]
+      ShowArgs -> []
+
   ++ programConfigurationOption progConf showOrParseArgs
        buildProgramArgs (\v fs -> fs { buildProgramArgs = v })
 
@@ -1457,20 +1474,22 @@ emptyBuildFlags = mempty
 
 instance Monoid BuildFlags where
   mempty = BuildFlags {
-    buildProgramPaths = mempty,
-    buildProgramArgs = mempty,
-    buildVerbosity   = mempty,
-    buildDistPref    = mempty,
-    buildNumJobs     = mempty,
-    buildArgs        = mempty
+    buildProgramPaths           = mempty,
+    buildProgramArgs            = mempty,
+    buildVerbosity              = mempty,
+    buildDistPref               = mempty,
+    buildNumJobs                = mempty,
+    buildMaxLinkerJobsSemaphore = mempty,
+    buildArgs                   = mempty
   }
   mappend a b = BuildFlags {
-    buildProgramPaths = combine buildProgramPaths,
-    buildProgramArgs = combine buildProgramArgs,
-    buildVerbosity   = combine buildVerbosity,
-    buildDistPref    = combine buildDistPref,
-    buildNumJobs     = combine buildNumJobs,
-    buildArgs        = combine buildArgs
+    buildProgramPaths           = combine buildProgramPaths,
+    buildProgramArgs            = combine buildProgramArgs,
+    buildVerbosity              = combine buildVerbosity,
+    buildDistPref               = combine buildDistPref,
+    buildNumJobs                = combine buildNumJobs,
+    buildMaxLinkerJobsSemaphore = combine buildMaxLinkerJobsSemaphore,
+    buildArgs                   = combine buildArgs
   }
     where combine field = field a `mappend` field b
 

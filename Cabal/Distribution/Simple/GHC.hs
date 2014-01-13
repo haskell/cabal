@@ -145,6 +145,7 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
+import Distribution.Compat.IPC       (Semaphore, withWaitSemaphore)
 import Distribution.System (Platform, platformFromTriple)
 
 
@@ -685,16 +686,20 @@ substTopDir topDir ipo
 
 -- | Build a library with GHC.
 --
-buildLib, replLib :: Verbosity          -> Cabal.Flag (Maybe Int)
-                  -> PackageDescription -> LocalBuildInfo
-                  -> Library            -> ComponentLocalBuildInfo -> IO ()
+buildLib, replLib :: Verbosity
+                  -> PackageDescription     -> LocalBuildInfo
+                  -> Library                -> ComponentLocalBuildInfo
+                  -> Cabal.Flag (Maybe Int) -> Maybe Semaphore
+                  -> IO ()
 buildLib = buildOrReplLib False
 replLib  = buildOrReplLib True
 
-buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
-               -> PackageDescription -> LocalBuildInfo
-               -> Library            -> ComponentLocalBuildInfo -> IO ()
-buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
+buildOrReplLib :: Bool                   -> Verbosity
+               -> PackageDescription     -> LocalBuildInfo
+               -> Library                -> ComponentLocalBuildInfo
+               -> Cabal.Flag (Maybe Int) -> Maybe Semaphore
+               -> IO ()
+buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi numJobsFlag mSem = do
   libName <- case componentLibraries clbi of
              [libName] -> return libName
              [] -> die "No library name found when building library"
@@ -819,101 +824,102 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
 
 
   -- link:
-  info verbosity "Linking..."
-  let cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
-                    (cSources libBi)
-      cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
-                    (cSources libBi)
-      cid = compilerId (compiler lbi)
-      vanillaLibFilePath = libTargetDir </> mkLibName           libName
-      profileLibFilePath = libTargetDir </> mkProfLibName       libName
-      sharedLibFilePath  = libTargetDir </> mkSharedLibName cid libName
-      ghciLibFilePath    = libTargetDir </> mkGHCiLibName       libName
-      libInstallPath = libdir $ absoluteInstallDirs pkg_descr lbi NoCopyDest
-      sharedLibInstallPath = libInstallPath </> mkSharedLibName cid libName
+  maybeWaitSemaphore mSem $ do
+    info verbosity "Linking..."
+    let cProfObjs   = map (`replaceExtension` ("p_" ++ objExtension))
+                      (cSources libBi)
+        cSharedObjs = map (`replaceExtension` ("dyn_" ++ objExtension))
+                      (cSources libBi)
+        cid = compilerId (compiler lbi)
+        vanillaLibFilePath = libTargetDir </> mkLibName           libName
+        profileLibFilePath = libTargetDir </> mkProfLibName       libName
+        sharedLibFilePath  = libTargetDir </> mkSharedLibName cid libName
+        ghciLibFilePath    = libTargetDir </> mkGHCiLibName       libName
+        libInstallPath = libdir $ absoluteInstallDirs pkg_descr lbi NoCopyDest
+        sharedLibInstallPath = libInstallPath </> mkSharedLibName cid libName
 
-  stubObjs <- fmap catMaybes $ sequence
-    [ findFileWithExtension [objExtension] [libTargetDir]
-        (ModuleName.toFilePath x ++"_stub")
-    | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
-    , x <- libModules lib ]
-  stubProfObjs <- fmap catMaybes $ sequence
-    [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
-        (ModuleName.toFilePath x ++"_stub")
-    | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
-    , x <- libModules lib ]
-  stubSharedObjs <- fmap catMaybes $ sequence
-    [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
-        (ModuleName.toFilePath x ++"_stub")
-    | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
-    , x <- libModules lib ]
+    stubObjs <- fmap catMaybes $ sequence
+      [ findFileWithExtension [objExtension] [libTargetDir]
+          (ModuleName.toFilePath x ++"_stub")
+      | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+      , x <- libModules lib ]
+    stubProfObjs <- fmap catMaybes $ sequence
+      [ findFileWithExtension ["p_" ++ objExtension] [libTargetDir]
+          (ModuleName.toFilePath x ++"_stub")
+      | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+      , x <- libModules lib ]
+    stubSharedObjs <- fmap catMaybes $ sequence
+      [ findFileWithExtension ["dyn_" ++ objExtension] [libTargetDir]
+          (ModuleName.toFilePath x ++"_stub")
+      | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
+      , x <- libModules lib ]
 
-  hObjs     <- getHaskellObjects lib lbi
-                    libTargetDir objExtension True
-  hProfObjs <-
-    if (withProfLib lbi)
-            then getHaskellObjects lib lbi
-                    libTargetDir ("p_" ++ objExtension) True
-            else return []
-  hSharedObjs <-
-    if (withSharedLib lbi)
-            then getHaskellObjects lib lbi
-                    libTargetDir ("dyn_" ++ objExtension) False
-            else return []
+    hObjs     <- getHaskellObjects lib lbi
+                      libTargetDir objExtension True
+    hProfObjs <-
+      if (withProfLib lbi)
+              then getHaskellObjects lib lbi
+                      libTargetDir ("p_" ++ objExtension) True
+              else return []
+    hSharedObjs <-
+      if (withSharedLib lbi)
+              then getHaskellObjects lib lbi
+                      libTargetDir ("dyn_" ++ objExtension) False
+              else return []
 
-  unless (null hObjs && null cObjs && null stubObjs) $ do
+    unless (null hObjs && null cObjs && null stubObjs) $ do
 
-    let staticObjectFiles =
-               hObjs
-            ++ map (libTargetDir </>) cObjs
-            ++ stubObjs
-        profObjectFiles =
-               hProfObjs
-            ++ map (libTargetDir </>) cProfObjs
-            ++ stubProfObjs
-        ghciObjFiles =
-               hObjs
-            ++ map (libTargetDir </>) cObjs
-            ++ stubObjs
-        dynamicObjectFiles =
-               hSharedObjs
-            ++ map (libTargetDir </>) cSharedObjs
-            ++ stubSharedObjs
-        -- After the relocation lib is created we invoke ghc -shared
-        -- with the dependencies spelled out as -package arguments
-        -- and ghc invokes the linker with the proper library paths
-        ghcSharedLinkArgs =
-            mempty {
-              ghcOptShared             = toFlag True,
-              ghcOptDynLinkMode        = toFlag GhcDynamicOnly,
-              ghcOptInputFiles         = dynamicObjectFiles,
-              ghcOptOutputFile         = toFlag sharedLibFilePath,
-              -- For dynamic libs, Mac OS/X needs to know the install location
-              -- at build time.
-              ghcOptDylibName          = if buildOS == OSX
-                                          then toFlag sharedLibInstallPath
-                                          else mempty,
-              ghcOptPackageName        = toFlag pkgid,
-              ghcOptNoAutoLinkPackages = toFlag True,
-              ghcOptPackageDBs         = withPackageDB lbi,
-              ghcOptPackages           = componentPackageDeps clbi,
-              ghcOptLinkLibs           = extraLibs libBi,
-              ghcOptLinkLibPath        = extraLibDirs libBi
-            }
+      let staticObjectFiles =
+                 hObjs
+              ++ map (libTargetDir </>) cObjs
+              ++ stubObjs
+          profObjectFiles =
+                 hProfObjs
+              ++ map (libTargetDir </>) cProfObjs
+              ++ stubProfObjs
+          ghciObjFiles =
+                 hObjs
+              ++ map (libTargetDir </>) cObjs
+              ++ stubObjs
+          dynamicObjectFiles =
+                 hSharedObjs
+              ++ map (libTargetDir </>) cSharedObjs
+              ++ stubSharedObjs
+          -- After the relocation lib is created we invoke ghc -shared
+          -- with the dependencies spelled out as -package arguments
+          -- and ghc invokes the linker with the proper library paths
+          ghcSharedLinkArgs =
+              mempty {
+                ghcOptShared             = toFlag True,
+                ghcOptDynLinkMode        = toFlag GhcDynamicOnly,
+                ghcOptInputFiles         = dynamicObjectFiles,
+                ghcOptOutputFile         = toFlag sharedLibFilePath,
+                -- For dynamic libs, Mac OS/X needs to know the install location
+                -- at build time.
+                ghcOptDylibName          = if buildOS == OSX
+                                            then toFlag sharedLibInstallPath
+                                            else mempty,
+                ghcOptPackageName        = toFlag pkgid,
+                ghcOptNoAutoLinkPackages = toFlag True,
+                ghcOptPackageDBs         = withPackageDB lbi,
+                ghcOptPackages           = componentPackageDeps clbi,
+                ghcOptLinkLibs           = extraLibs libBi,
+                ghcOptLinkLibPath        = extraLibDirs libBi
+              }
 
-    whenVanillaLib False $ do
-      Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
+      whenVanillaLib False $ do
+        Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
 
-    whenProfLib $ do
-      Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
+      whenProfLib $ do
+        Ar.createArLibArchive verbosity lbi profileLibFilePath profObjectFiles
 
-    whenGHCiLib $ do
-      (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
-      Ld.combineObjectFiles verbosity ldProg
-        ghciLibFilePath ghciObjFiles
+      whenGHCiLib $ do
+        (ldProg, _) <- requireProgram verbosity ldProgram (withPrograms lbi)
+        Ld.combineObjectFiles verbosity ldProg
+          ghciLibFilePath ghciObjFiles
 
-    whenSharedLib False $
-      runGhcProg ghcSharedLinkArgs
+      whenSharedLib False $
+        runGhcProg ghcSharedLinkArgs
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
@@ -929,17 +935,20 @@ startInterpreter verbosity conf comp packageDBs = do
 
 -- | Build an executable with GHC.
 --
-buildExe, replExe :: Verbosity          -> Cabal.Flag (Maybe Int)
-                  -> PackageDescription -> LocalBuildInfo
-                  -> Executable         -> ComponentLocalBuildInfo -> IO ()
+buildExe, replExe :: Verbosity
+                  -> PackageDescription     -> LocalBuildInfo
+                  -> Executable             -> ComponentLocalBuildInfo
+                  -> Cabal.Flag (Maybe Int) -> Maybe Semaphore -> IO ()
 buildExe = buildOrReplExe False
 replExe  = buildOrReplExe True
 
-buildOrReplExe :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
-               -> PackageDescription -> LocalBuildInfo
-               -> Executable         -> ComponentLocalBuildInfo -> IO ()
-buildOrReplExe forRepl verbosity numJobsFlag _pkg_descr lbi
-  exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
+buildOrReplExe :: Bool                   -> Verbosity
+               -> PackageDescription     -> LocalBuildInfo
+               -> Executable             -> ComponentLocalBuildInfo
+               -> Cabal.Flag (Maybe Int) -> Maybe Semaphore -> IO ()
+buildOrReplExe forRepl verbosity _pkg_descr lbi
+  exe@Executable { exeName = exeName', modulePath = modPath } clbi
+  numJobsFlag mSem = do
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let comp       = compiler lbi
@@ -1082,7 +1091,7 @@ buildOrReplExe forRepl verbosity numJobsFlag _pkg_descr lbi
   when forRepl $ runGhcProg replOpts
 
   -- link:
-  unless forRepl $ do
+  unless forRepl $ maybeWaitSemaphore mSem $ do
     info verbosity "Linking..."
     runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 
@@ -1354,6 +1363,10 @@ registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
 
 -- -----------------------------------------------------------------------------
 -- Utils
+
+maybeWaitSemaphore :: Maybe Semaphore -> IO a -> IO a
+maybeWaitSemaphore (Just sem) act = withWaitSemaphore sem act
+maybeWaitSemaphore Nothing    act = act
 
 ghcLookupProperty :: String -> Compiler -> Bool
 ghcLookupProperty prop comp =

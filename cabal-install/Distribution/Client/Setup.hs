@@ -16,6 +16,7 @@ module Distribution.Client.Setup
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
+    , filterBuildFlags
     , testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
@@ -386,6 +387,25 @@ data BuildExFlags = BuildExFlags {
   buildOnly     :: Flag SkipAddSourceDepsCheck
 }
 
+-- | Make sure that we don't pass new flags to setup scripts compiled against
+-- old versions of Cabal.
+filterBuildFlags :: BuildFlags -> Version -> BuildFlags
+filterBuildFlags buildFlags version
+  | version >= Version [1,19,3] [] = buildFlags_latest
+  | version >= Version [1,19,1] [] = buildFlags_pre_1_19_3
+  | otherwise                      = buildFlags_pre_1_19_1
+  where
+    buildFlags_latest     = buildFlags
+
+    -- Cabal < 1.19.3 doesn't support 'build --max-linker-jobs-semaphore'
+    buildFlags_pre_1_19_3 = buildFlags_latest     {
+      buildMaxLinkerJobsSemaphore = NoFlag
+      }
+    -- Cabal < 1.19.1 doesn't support 'build -j'.
+    buildFlags_pre_1_19_1 = buildFlags_pre_1_19_3 {
+      buildNumJobs                = NoFlag
+      }
+
 buildExOptions :: ShowOrParseArgs -> [OptionField BuildExFlags]
 buildExOptions _showOrParseArgs =
   option [] ["only"]
@@ -400,7 +420,8 @@ buildCommand = parent {
     commandDefaultFlags = (commandDefaultFlags parent, mempty),
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
-                          (commandOptions parent showOrParseArgs)
+                          (filterBuildOptions $
+                           commandOptions parent showOrParseArgs)
                           ++
                           liftOptions snd setSnd (buildExOptions showOrParseArgs)
   }
@@ -409,6 +430,13 @@ buildCommand = parent {
     setSnd b (a,_) = (a,b)
 
     parent = Cabal.buildCommand defaultProgramConfiguration
+
+-- | Filter out the options that only make sense in the setup script context
+-- (i.e., for 'runhaskell Setup.hs build').
+filterBuildOptions :: [OptionField a] -> [OptionField a]
+filterBuildOptions = filter ((not . flip elem blacklist) . optionName)
+  where
+    blacklist = ["max-linker-jobs-semaphore"]
 
 instance Monoid BuildExFlags where
   mempty = BuildExFlags {
@@ -432,7 +460,8 @@ testCommand = parent {
                         (commandOptions parent showOrParseArgs)
                         ++
                         liftOptions get2 set2
-                        (Cabal.buildOptions progConf showOrParseArgs)
+                        (filterBuildOptions $
+                         Cabal.buildOptions progConf showOrParseArgs)
                         ++
                         liftOptions get3 set3 (buildExOptions showOrParseArgs)
   }
@@ -457,7 +486,8 @@ benchmarkCommand = parent {
                         (commandOptions parent showOrParseArgs)
                         ++
                         liftOptions get2 set2
-                        (Cabal.buildOptions progConf showOrParseArgs)
+                        (filterBuildOptions $
+                         Cabal.buildOptions progConf showOrParseArgs)
                         ++
                         liftOptions get3 set3 (buildExOptions showOrParseArgs)
   }
@@ -647,7 +677,8 @@ runCommand = CommandUI {
     commandDefaultFlags = mempty,
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
-                          (Cabal.buildOptions progConf showOrParseArgs)
+                          (filterBuildOptions $
+                           Cabal.buildOptions progConf showOrParseArgs)
                           ++
                           liftOptions snd setSnd
                           (buildExOptions showOrParseArgs)
@@ -922,7 +953,8 @@ data InstallFlags = InstallFlags {
     installBuildReports     :: Flag ReportLevel,
     installSymlinkBinDir    :: Flag FilePath,
     installOneShot          :: Flag Bool,
-    installNumJobs          :: Flag (Maybe Int)
+    installNumJobs          :: Flag (Maybe Int),
+    installMaxLinkerJobs    :: Flag Int
   }
 
 defaultInstallFlags :: InstallFlags
@@ -946,7 +978,8 @@ defaultInstallFlags = InstallFlags {
     installBuildReports    = Flag NoReports,
     installSymlinkBinDir   = mempty,
     installOneShot         = Flag False,
-    installNumJobs         = mempty
+    installNumJobs         = mempty,
+    installMaxLinkerJobs   = mempty
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
@@ -1128,6 +1161,11 @@ installOptions showOrParseArgs =
       , optionNumJobs
         installNumJobs (\v flags -> flags { installNumJobs = v })
 
+      , option "" ["max-linker-jobs"]
+        "Limit the maximum number of linker jobs being run simultaneously."
+        installMaxLinkerJobs (\v flags -> flags { installMaxLinkerJobs = v })
+        reqIntArg
+
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install"
                                         -- avoids
           ParseArgs ->
@@ -1159,7 +1197,8 @@ instance Monoid InstallFlags where
     installBuildReports    = mempty,
     installSymlinkBinDir   = mempty,
     installOneShot         = mempty,
-    installNumJobs         = mempty
+    installNumJobs         = mempty,
+    installMaxLinkerJobs   = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation   = combine installDocumentation,
@@ -1181,7 +1220,8 @@ instance Monoid InstallFlags where
     installBuildReports    = combine installBuildReports,
     installSymlinkBinDir   = combine installSymlinkBinDir,
     installOneShot         = combine installOneShot,
-    installNumJobs         = combine installNumJobs
+    installNumJobs         = combine installNumJobs,
+    installMaxLinkerJobs   = combine installMaxLinkerJobs
   }
     where combine field = field a `mappend` field b
 
@@ -1617,9 +1657,7 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
-      (reqArg "NUM" (readP_to_E ("Cannot parse number: "++)
-                                (fmap toFlag (Parse.readS_to_P reads)))
-                    (map show . flagToList))
+      reqIntArg
   , option [] ["reorder-goals"]
       "Try to reorder goals according to certain heuristics. Slows things down on average, but may make backtracking faster for some packages."
       getrg setrg
@@ -1637,6 +1675,10 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
       trueArg
   ]
 
+reqIntArg :: MkOptDescr (a -> Flag Int) (Flag Int -> a -> a) a
+reqIntArg = reqArg "NUM" (readP_to_E ("Cannot parse number: "++)
+                          (fmap toFlag (Parse.readS_to_P reads)))
+            (map show . flagToList)
 
 usageFlagsOrPackages :: String -> String -> String
 usageFlagsOrPackages name pname =

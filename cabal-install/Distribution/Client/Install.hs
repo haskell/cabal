@@ -70,7 +70,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup
          ( GlobalFlags(..)
-         , ConfigFlags(..), configureCommand, filterConfigureFlags
+         , ConfigFlags(..), configureCommand
+         , filterConfigureFlags, filterBuildFlags
          , ConfigExFlags(..), InstallFlags(..) )
 import Distribution.Client.Config
          ( defaultCabalDir, defaultUserInstall )
@@ -97,6 +98,8 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
 
+import Distribution.Compat.IPC
+         ( Semaphore(semaphoreName), withNewSemaphore )
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , PackageDB(..), PackageDBStack )
@@ -108,7 +111,8 @@ import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
-         , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe, defaultDistPref )
+         , toFlag, fromFlag, fromFlagOrDefault, flagToMaybe, maybeToFlag
+         , defaultDistPref )
 import qualified Distribution.Simple.Setup as Cabal
          ( Flag(..)
          , copyCommand, CopyFlags(..), emptyCopyFlags
@@ -133,7 +137,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
-         ( Version )
+         ( Version(..) )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
          , intercalate, withTempDirectory )
@@ -898,16 +902,17 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  executeInstallPlan verbosity jobControl useLogFile installPlan $ \rpkg ->
-    installReadyPackage platform compid configFlags
-                        rpkg $ \configFlags' src pkg pkgoverride ->
-      fetchSourcePackage verbosity fetchLimit src $ \src' ->
-        installLocalPackage verbosity buildLimit
-                            (packageId pkg) src' distPref $ \mpath ->
-          installUnpackedPackage verbosity buildLimit installLock numJobs
-                                 (setupScriptOptions installedPkgIndex cacheLock)
-                                 miscOptions configFlags' installFlags haddockFlags
-                                 compid platform pkg pkgoverride mpath useLogFile
+  maybeCreateSemaphore $ \mSem ->
+    executeInstallPlan verbosity jobControl useLogFile installPlan $ \rpkg ->
+      installReadyPackage platform compid configFlags
+                               rpkg $ \configFlags' src pkg pkgoverride ->
+        fetchSourcePackage verbosity fetchLimit src $ \src' ->
+          installLocalPackage verbosity buildLimit
+                              (packageId pkg) src' distPref $ \mpath ->
+            installUnpackedPackage verbosity buildLimit installLock numJobs mSem
+                                   (setupScriptOptions installedPkgIndex cacheLock)
+                                   miscOptions configFlags' installFlags haddockFlags
+                                   compid platform pkg pkgoverride mpath useLogFile
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -919,8 +924,17 @@ performInstallations verbosity
     distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                       (configDistPref configFlags)
 
+    -- Support for '--max-linker-jobs'
+    semaphoreFlag = installMaxLinkerJobs installFlags
+    useSemaphore  = case semaphoreFlag of
+      Cabal.Flag _ | parallelInstall -> True
+      _                              -> False
+    maybeCreateSemaphore act
+      | useSemaphore = withNewSemaphore (fromFlag semaphoreFlag) (act . Just)
+      | otherwise    = act Nothing
+
     setupScriptOptions index lock = SetupScriptOptions {
-      useCabalVersion  = chooseCabalVersion configExFlags
+      useCabalVersion  = chooseCabalVersion configExFlags installFlags numJobs
                          (libVersion miscOptions),
       useCompiler      = Just comp,
       usePlatform      = Just platform,
@@ -1208,6 +1222,7 @@ installUnpackedPackage
   -> JobLimit
   -> Lock
   -> Int
+  -> Maybe Semaphore
   -> SetupScriptOptions
   -> InstallMisc
   -> ConfigFlags
@@ -1220,7 +1235,7 @@ installUnpackedPackage
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
   -> UseLogFile -- ^ File to log output to (if any)
   -> IO BuildResult
-installUnpackedPackage verbosity buildLimit installLock numJobs
+installUnpackedPackage verbosity buildLimit installLock numJobs mSem
                        scriptOptions miscOptions
                        configFlags installConfigFlags haddockFlags
                        compid platform pkg pkgoverride workingDir useLogFile = do
@@ -1294,9 +1309,10 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
   where
     pkgid            = packageId pkg
     buildCommand'    = buildCommand defaultProgramConfiguration
-    buildFlags   _   = emptyBuildFlags {
-      buildDistPref  = configDistPref configFlags,
-      buildVerbosity = toFlag verbosity'
+    buildFlags       = filterBuildFlags $ emptyBuildFlags {
+      buildMaxLinkerJobsSemaphore = fmap semaphoreName . maybeToFlag $ mSem,
+      buildDistPref               = configDistPref configFlags,
+      buildVerbosity              = toFlag verbosity'
     }
     shouldHaddock    = fromFlag (installDocumentation installConfigFlags)
     haddockFlags' _   = haddockFlags {

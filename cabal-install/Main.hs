@@ -18,7 +18,7 @@ import Distribution.Client.Setup
          , ConfigFlags(..)
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
-         , buildCommand, testCommand, benchmarkCommand
+         , filterBuildFlags, buildCommand, testCommand, benchmarkCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
@@ -305,27 +305,14 @@ build verbosity config distPref buildFlags extraArgs =
     progConf     = defaultProgramConfiguration
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
 
-    mkBuildFlags version = filterBuildFlags version config buildFlags'
-    buildFlags' = buildFlags
+    mkBuildFlags = filterBuildFlags buildFlags'
+    buildFlags'  = buildFlags
       { buildVerbosity = toFlag verbosity
       , buildDistPref  = toFlag distPref
-      }
+        -- Take the 'jobs' setting from '~/.cabal/config' into account.
+      , buildNumJobs = Flag . Just . determineNumJobs $
+                       (numJobsConfigFlag `mappend` numJobsCmdLineFlag)
 
--- | Make sure that we don't pass new flags to setup scripts compiled against
--- old versions of Cabal.
-filterBuildFlags :: Version -> SavedConfig -> BuildFlags -> BuildFlags
-filterBuildFlags version config buildFlags
-  | version >= Version [1,19,1] [] = buildFlags_latest
-  -- Cabal < 1.19.1 doesn't support 'build -j'.
-  | otherwise                      = buildFlags_pre_1_19_1
-  where
-    buildFlags_pre_1_19_1 = buildFlags {
-      buildNumJobs = NoFlag
-      }
-    buildFlags_latest     = buildFlags {
-      -- Take the 'jobs' setting '~/.cabal/config' into account.
-      buildNumJobs = Flag . Just . determineNumJobs $
-                     (numJobsConfigFlag `mappend` numJobsCmdLineFlag)
       }
     numJobsConfigFlag  = installNumJobs . savedInstallFlags $ config
     numJobsCmdLineFlag = buildNumJobs buildFlags
