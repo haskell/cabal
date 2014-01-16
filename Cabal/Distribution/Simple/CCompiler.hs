@@ -59,7 +59,7 @@ data CDialect = C
               | ObjectiveC
               | CPlusPlus
               | ObjectiveCPlusPlus
-              deriving (Show)
+              deriving (Eq, Show)
 
 instance Monoid CDialect where
   mempty = C
