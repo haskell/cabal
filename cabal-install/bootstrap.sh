@@ -62,7 +62,7 @@ TIME_VER="1.4.1"       TIME_VER_REGEXP="1\.[1234]\.?"          # >= 1.1 && < 1.5
 RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\."              # >= 1 && < 1.1
 STM_VER="2.4.2";       STM_VER_REGEXP="2\."                    # == 2.*
 
-HACKAGE_URL="http://hackage.haskell.org/packages/archive"
+HACKAGE_URL="http://hackage.haskell.org/package"
 
 die () {
   echo
@@ -119,7 +119,7 @@ fetch_pkg () {
   PKG=$1
   VER=$2
 
-  URL=${HACKAGE_URL}/${PKG}/${VER}/${PKG}-${VER}.tar.gz
+  URL=${HACKAGE_URL}/${PKG}-${VER}/${PKG}-${VER}.tar.gz
   if which ${CURL} > /dev/null
   then
     ${CURL} -L --fail -C - -O ${URL} || die "Failed to download ${PKG}."
