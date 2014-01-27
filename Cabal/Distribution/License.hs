@@ -85,6 +85,10 @@ data License =
     -- | Lesser GPL, Less restrictive than GPL, useful for libraries.
   | LGPL (Maybe Version)
 
+    -- | 2-clause BSD license, used by FreeBSD, et al. Omits non-endorsement
+    -- clause.
+  | BSD2
+
     -- | 3-clause BSD license, newer, no advertising clause. Very free license.
   | BSD3
 
@@ -118,7 +122,7 @@ knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
                 , LGPL unversioned, LGPL (version [2,1]), LGPL (version [3])
                 , AGPL unversioned,                       AGPL (version [3])
-                , BSD3, MIT
+                , BSD2, BSD3, MIT
                 , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
  where
@@ -140,6 +144,7 @@ instance Text License where
       ("GPL",               _      ) -> GPL  version
       ("LGPL",              _      ) -> LGPL version
       ("AGPL",              _      ) -> AGPL version
+      ("BSD2",              Nothing) -> BSD2
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
       ("MIT",               Nothing) -> MIT
