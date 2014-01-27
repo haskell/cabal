@@ -99,9 +99,11 @@ data License =
     -- | The MIT license, similar to the BSD3. Very free license.
   | MIT
 
+    -- | Mozilla Public License, a weak copyleft license.
+  | MPL (Maybe Version)
+
     -- | The Apache License. Version 2.0 is the current version,
     -- previous versions are considered historical.
-
   | Apache (Maybe Version)
 
     -- | Holder makes no claim to ownership, least restrictive license.
@@ -120,9 +122,9 @@ data License =
 
 knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
-                , LGPL unversioned, LGPL (version [2,1]), LGPL (version [3])
+                , LGPL unversioned, LGPL (version [2, 1]), LGPL (version [3])
                 , AGPL unversioned,                       AGPL (version [3])
-                , BSD2, BSD3, MIT
+                , BSD2, BSD3, MIT, MPL (version [2, 0])
                 , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
  where
@@ -133,6 +135,7 @@ instance Text License where
   disp (GPL  version)         = Disp.text "GPL"  <> dispOptVersion version
   disp (LGPL version)         = Disp.text "LGPL" <> dispOptVersion version
   disp (AGPL version)         = Disp.text "AGPL" <> dispOptVersion version
+  disp (MPL  version)         = Disp.text "MPL"  <> dispOptVersion version
   disp (Apache version)       = Disp.text "Apache" <> dispOptVersion version
   disp (UnknownLicense other) = Disp.text other
   disp other                  = Disp.text (show other)
@@ -148,6 +151,7 @@ instance Text License where
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
       ("MIT",               Nothing) -> MIT
+      ("MPL",               _      ) -> MPL version
       ("Apache",            _      ) -> Apache version
       ("PublicDomain",      Nothing) -> PublicDomain
       ("AllRightsReserved", Nothing) -> AllRightsReserved
