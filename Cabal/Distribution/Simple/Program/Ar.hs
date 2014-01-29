@@ -31,7 +31,7 @@ import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Utils
          ( dieWithLocation, withTempDirectory )
 import Distribution.System
-         ( OS(..), buildOS )
+         ( Arch(..), OS(..), Platform(..) )
 import Distribution.Verbosity
          ( Verbosity, deafening, verbose )
 import System.Directory (doesFileExist, renameFile)
@@ -65,12 +65,12 @@ createArLibArchive verbosity lbi targetPath files = do
   -- When we need to call ar multiple times we use "ar q" and for the last
   -- call on OSX we use "ar qs" so that it'll make the index.
 
-  let simpleArgs  = case buildOS of
+  let simpleArgs  = case hostOS of
              OSX -> ["-r", "-s"]
              _   -> ["-r"]
 
       initialArgs = ["-q"]
-      finalArgs   = case buildOS of
+      finalArgs   = case hostOS of
              OSX -> ["-q", "-s"]
              _   -> ["-q"]
 
@@ -87,14 +87,15 @@ createArLibArchive verbosity lbi targetPath files = do
                    simple (initial, middle, final) files ]
 
   when stripLib $ Strip.stripLib verbosity platform progConf tmpPath
-  wipeMetadata tmpPath
+  unless (hostArch == Arm) $ -- See #1537
+    wipeMetadata tmpPath
   equal <- filesEqual tmpPath targetPath
   unless equal $ renameFile tmpPath targetPath
 
   where
     progConf = withPrograms lbi
     stripLib = stripLibs    lbi
-    platform = hostPlatform lbi
+    platform@(Platform hostArch hostOS) = hostPlatform lbi
     verbosityOpts v | v >= deafening = ["-v"]
                     | v >= verbose   = []
                     | otherwise      = ["-c"]
