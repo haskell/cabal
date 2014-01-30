@@ -119,7 +119,7 @@ import Distribution.Simple.Compiler
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
-         ( OS(..), buildOS )
+         ( Platform(..), OS(..), buildOS, platformFromTriple )
 import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
@@ -140,7 +140,6 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
-import Distribution.System (Platform, platformFromTriple)
 
 
 -- -----------------------------------------------------------------------------
@@ -688,6 +687,7 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
       ifReplLib = when forRepl
       comp = compiler lbi
       ghcVersion = compilerVersion comp
+      (Platform _hostArch hostOS) = hostPlatform lbi
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg
@@ -868,8 +868,10 @@ buildOrReplLib forRepl verbosity pkg_descr lbi lib clbi = do
               ghcOptInputFiles         = dynamicObjectFiles,
               ghcOptOutputFile         = toFlag sharedLibFilePath,
               -- For dynamic libs, Mac OS/X needs to know the install location
-              -- at build time.
-              ghcOptDylibName          = if buildOS == OSX
+              -- at build time. This only applies to GHC < 7.8 - see the
+              -- discussion in #1660.
+              ghcOptDylibName          = if (hostOS == OSX
+                                             && ghcVersion < Version [7,8] [])
                                           then toFlag sharedLibInstallPath
                                           else mempty,
               ghcOptPackageName        = toFlag pkgid,
