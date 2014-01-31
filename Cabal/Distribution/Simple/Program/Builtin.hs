@@ -47,7 +47,7 @@ module Distribution.Simple.Program.Builtin (
   ) where
 
 import Distribution.Simple.Program.Types
-         ( Program(..), simpleProgram )
+         ( Program(..), simpleProgram, simpleProgramFromEnvironment )
 import Distribution.Simple.Program.Find
          ( findProgramOnSearchPath )
 import Distribution.Simple.Utils
@@ -231,12 +231,12 @@ alexProgram = (simpleProgram "alex") {
   }
 
 gccProgram :: Program
-gccProgram = (simpleProgram "gcc") {
+gccProgram = (simpleProgramFromEnvironment "gcc" "CC") {
     programFindVersion = findProgramVersion "-dumpversion" id
   }
 
 arProgram :: Program
-arProgram = simpleProgram "ar"
+arProgram = simpleProgramFromEnvironment "ar" "AR"
 
 stripProgram :: Program
 stripProgram = simpleProgram "strip"
@@ -289,13 +289,13 @@ greencardProgram :: Program
 greencardProgram = simpleProgram "greencard"
 
 ldProgram :: Program
-ldProgram = simpleProgram "ld"
+ldProgram = simpleProgramFromEnvironment "ld" "LD"
 
 tarProgram :: Program
 tarProgram = simpleProgram "tar"
 
 cppProgram :: Program
-cppProgram = simpleProgram "cpp"
+cppProgram = simpleProgramFromEnvironment "cpp" "CPP"
 
 pkgConfigProgram :: Program
 pkgConfigProgram = (simpleProgram "pkg-config") {

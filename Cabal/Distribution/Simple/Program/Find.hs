@@ -26,6 +26,7 @@ module Distribution.Simple.Program.Find (
     defaultProgramSearchPath,
     findProgramOnSearchPath,
     programSearchPathAsPATHVar,
+    getProgramFromEnvironment
   ) where
 
 import Distribution.Verbosity
@@ -123,3 +124,16 @@ programSearchPathAsPATHVar searchpath = do
     getEntries ProgramSearchPathDefault   = do
       env <- getEnvironment
       return (maybe [] splitSearchPath (lookup "PATH" env))
+
+getProgramFromEnvironment :: Verbosity -> ProgramSearchPath -> String -> String -> IO (Maybe FilePath)
+getProgramFromEnvironment verbosity searchpath prog var = do
+  debug verbosity $
+    "searching for " ++ prog ++ " in the environment (as " ++ var ++ ")."
+  res <- lookup var `fmap` getEnvironment
+  case res of
+    Nothing -> do
+      debug verbosity $ "falling back to searching in the path."
+      findProgramOnSearchPath verbosity searchpath prog
+    v@(Just val) -> do
+      debug verbosity $ "found as " ++ val ++ "."
+      return v
