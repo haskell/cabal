@@ -20,6 +20,7 @@ module Distribution.Simple.Program.Types (
     ProgramSearchPath,
     ProgramSearchPathEntry(..),
     simpleProgram,
+    simpleProgramFromEnvironment,
 
     -- * Configured program and related functions
     ConfiguredProgram(..),
@@ -32,7 +33,7 @@ module Distribution.Simple.Program.Types (
 
 import Distribution.Simple.Program.Find
          ( ProgramSearchPath, ProgramSearchPathEntry(..)
-         , findProgramOnSearchPath )
+         , findProgramOnSearchPath, getProgramFromEnvironment )
 import Distribution.Version
          ( Version )
 import Distribution.Verbosity
@@ -129,6 +130,21 @@ simpleProgram :: String -> Program
 simpleProgram name = Program {
     programName         = name,
     programFindLocation = \v p -> findProgramOnSearchPath v p name,
+    programFindVersion  = \_ _ -> return Nothing,
+    programPostConf     = \_ p -> return p
+  }
+
+-- | Make a simple named program from an environment variable.
+--
+-- When the given environment variable is not set, it falls back to the
+-- behavior specified at `simpleProgram`.
+--
+-- > simpleProgramFromEnvironment "foo" "FOO"
+--
+simpleProgramFromEnvironment :: String -> String -> Program
+simpleProgramFromEnvironment name var = Program {
+    programName         = name,
+    programFindLocation = \v p -> getProgramFromEnvironment v p name var,
     programFindVersion  = \_ _ -> return Nothing,
     programPostConf     = \_ p -> return p
   }
