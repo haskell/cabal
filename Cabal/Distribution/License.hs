@@ -85,6 +85,10 @@ data License =
     -- | Lesser GPL, Less restrictive than GPL, useful for libraries.
   | LGPL (Maybe Version)
 
+    -- | 2-clause BSD license, used by FreeBSD, et al. Omits non-endorsement
+    -- clause.
+  | BSD2
+
     -- | 3-clause BSD license, newer, no advertising clause. Very free license.
   | BSD3
 
@@ -92,12 +96,21 @@ data License =
     -- certainly want to use the BSD3 license instead.
   | BSD4
 
+    -- | Common Development and Distribution License, limited copyleft based
+    -- on MPL 1.1. Incompatible with GPL.
+  | CDDL (Maybe Version)
+
     -- | The MIT license, similar to the BSD3. Very free license.
   | MIT
 
+    -- | Mozilla Public License, a weak copyleft license.
+  | MPL (Maybe Version)
+
+    -- | Eclipse Public License, limited copyleft, incompatible with GPL.
+  | EPL (Maybe Version)
+
     -- | The Apache License. Version 2.0 is the current version,
     -- previous versions are considered historical.
-
   | Apache (Maybe Version)
 
     -- | Holder makes no claim to ownership, least restrictive license.
@@ -116,9 +129,10 @@ data License =
 
 knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
-                , LGPL unversioned, LGPL (version [2,1]), LGPL (version [3])
+                , LGPL unversioned, LGPL (version [2, 1]), LGPL (version [3])
                 , AGPL unversioned,                       AGPL (version [3])
-                , BSD3, MIT
+                , BSD2, BSD3, MIT, CDDL (version [1, 0]), MPL (version [2, 0])
+                , EPL (version [1, 0])
                 , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
  where
@@ -129,6 +143,9 @@ instance Text License where
   disp (GPL  version)         = Disp.text "GPL"  <> dispOptVersion version
   disp (LGPL version)         = Disp.text "LGPL" <> dispOptVersion version
   disp (AGPL version)         = Disp.text "AGPL" <> dispOptVersion version
+  disp (CDDL version)         = Disp.text "CDDL" <> dispOptVersion version
+  disp (MPL  version)         = Disp.text "MPL"  <> dispOptVersion version
+  disp (EPL  version)         = Disp.text "EPL"  <> dispOptVersion version
   disp (Apache version)       = Disp.text "Apache" <> dispOptVersion version
   disp (UnknownLicense other) = Disp.text other
   disp other                  = Disp.text (show other)
@@ -140,9 +157,13 @@ instance Text License where
       ("GPL",               _      ) -> GPL  version
       ("LGPL",              _      ) -> LGPL version
       ("AGPL",              _      ) -> AGPL version
+      ("BSD2",              Nothing) -> BSD2
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
+      ("CDDL",              _      ) -> CDDL version
       ("MIT",               Nothing) -> MIT
+      ("MPL",               _      ) -> MPL version
+      ("EPL",               _      ) -> EPL version
       ("Apache",            _      ) -> Apache version
       ("PublicDomain",      Nothing) -> PublicDomain
       ("AllRightsReserved", Nothing) -> AllRightsReserved
