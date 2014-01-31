@@ -13,6 +13,8 @@
 #EXTRA_INSTALL_OPTS
 
 # programs, you can override these by setting environment vars
+CC=${CC:-gcc}
+LD=${LD:-ld}
 GHC=${GHC:-ghc}
 GHC_PKG=${GHC_PKG:-ghc-pkg}
 WGET=${WGET:-wget}
@@ -75,6 +77,10 @@ die () {
 grep "cabal-install" ./cabal-install.cabal > /dev/null 2>&1 \
   || die "The bootstrap.sh script must be run in the cabal-install directory"
 
+${CC} --version > /dev/null \
+  || die "${CC} not found (or could not be run).  If this C compiler is installed make sure it is on your PATH or set the CC variable."
+${LD} --version > /dev/null \
+  || die "${LD} not found (or could not be run).  If this linker is installed make sure it is on your PATH or set the LD variable."
 ${GHC} --numeric-version > /dev/null \
   || die "${GHC} not found (or could not be run). If ghc is installed make sure it is on your PATH or set the GHC and GHC_PKG vars."
 ${GHC_PKG} --version     > /dev/null \
@@ -160,7 +166,7 @@ install_pkg () {
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
 
   ./Setup configure ${SCOPE_OF_INSTALLATION} "--prefix=${PREFIX}" \
-    --with-compiler=${GHC} --with-hc-pkg=${GHC_PKG} \
+    --with-compiler=${GHC} --with-hc-pkg=${GHC_PKG} --with-gcc=${CC} --with-ld=${LD} \
     ${EXTRA_CONFIGURE_OPTS} ${VERBOSE} \
     || die "Configuring the ${PKG} package failed"
 
