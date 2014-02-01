@@ -100,7 +100,7 @@ data License =
   | MIT
 
     -- | Mozilla Public License, a weak copyleft license.
-  | MPL (Maybe Version)
+  | MPL Version
 
     -- | The Apache License. Version 2.0 is the current version,
     -- previous versions are considered historical.
@@ -121,10 +121,11 @@ data License =
   deriving (Read, Show, Eq, Typeable, Data)
 
 knownLicenses :: [License]
-knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
+knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
                 , LGPL unversioned, LGPL (version [2, 1]), LGPL (version [3])
-                , AGPL unversioned,                       AGPL (version [3])
-                , BSD2, BSD3, MIT, MPL (version [2, 0])
+                , AGPL unversioned,                        AGPL (version [3])
+                , BSD2, BSD3, MIT
+                , MPL (Version [2, 0] [])
                 , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
  where
@@ -132,10 +133,10 @@ knownLicenses = [ GPL  unversioned, GPL  (version [2]),   GPL  (version [3])
    version   v = Just (Version v [])
 
 instance Text License where
-  disp (GPL  version)         = Disp.text "GPL"  <> dispOptVersion version
-  disp (LGPL version)         = Disp.text "LGPL" <> dispOptVersion version
-  disp (AGPL version)         = Disp.text "AGPL" <> dispOptVersion version
-  disp (MPL  version)         = Disp.text "MPL"  <> dispOptVersion version
+  disp (GPL  version)         = Disp.text "GPL"    <> dispOptVersion version
+  disp (LGPL version)         = Disp.text "LGPL"   <> dispOptVersion version
+  disp (AGPL version)         = Disp.text "AGPL"   <> dispOptVersion version
+  disp (MPL  version)         = Disp.text "MPL"    <> dispVersion    version
   disp (Apache version)       = Disp.text "Apache" <> dispOptVersion version
   disp (UnknownLicense other) = Disp.text other
   disp other                  = Disp.text (show other)
@@ -151,14 +152,17 @@ instance Text License where
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
       ("MIT",               Nothing) -> MIT
-      ("MPL",               _      ) -> MPL version
+      ("MPL",         Just version') -> MPL version'
       ("Apache",            _      ) -> Apache version
       ("PublicDomain",      Nothing) -> PublicDomain
       ("AllRightsReserved", Nothing) -> AllRightsReserved
       ("OtherLicense",      Nothing) -> OtherLicense
-      _                              -> UnknownLicense $ name
-                                     ++ maybe "" (('-':) . display) version
+      _                              -> UnknownLicense $ name ++
+                                        maybe "" (('-':) . display) version
 
 dispOptVersion :: Maybe Version -> Disp.Doc
 dispOptVersion Nothing  = Disp.empty
-dispOptVersion (Just v) = Disp.char '-' <> disp v
+dispOptVersion (Just v) = dispVersion v
+
+dispVersion :: Version -> Disp.Doc
+dispVersion v = Disp.char '-' <> disp v
