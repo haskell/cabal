@@ -16,31 +16,29 @@ module Distribution.Client.Haddock
     )
     where
 
-import Data.Maybe (listToMaybe)
 import Data.List (maximumBy)
-import Control.Monad (guard)
-import System.Directory (createDirectoryIfMissing, doesFileExist,
-                         renameFile)
-import System.FilePath ((</>), splitFileName, isAbsolute)
+import System.Directory (createDirectoryIfMissing, renameFile)
+import System.FilePath ((</>), splitFileName)
 import Distribution.Package
-         ( Package(..), packageVersion )
+         ( packageVersion )
+import Distribution.Simple.Haddock (haddockPackagePaths)
 import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
                                    , rawSystemProgram, requireProgramVersion)
 import Distribution.Version (Version(Version), orLaterVersion)
 import Distribution.Verbosity (Verbosity)
-import Distribution.Text (display)
 import Distribution.Simple.PackageIndex
          ( PackageIndex, allPackagesByName )
 import Distribution.Simple.Utils
-         ( comparing, intercalate, debug
-         , installDirectoryContents, withTempDirectory )
+         ( comparing, debug, installDirectoryContents, withTempDirectory )
 import Distribution.InstalledPackageInfo as InstalledPackageInfo
-         ( InstalledPackageInfo
-         , InstalledPackageInfo_(haddockHTMLs, haddockInterfaces, exposed) )
+         ( InstalledPackageInfo_(exposed) )
 
-regenerateHaddockIndex :: Verbosity -> PackageIndex -> ProgramConfiguration -> FilePath -> IO ()
+regenerateHaddockIndex :: Verbosity
+                       -> PackageIndex -> ProgramConfiguration -> FilePath
+                       -> IO ()
 regenerateHaddockIndex verbosity pkgs conf index = do
-      (paths,warns) <- haddockPackagePaths pkgs'
+      (paths, warns) <- haddockPackagePaths pkgs' Nothing
+      let paths' = [ (interface, html) | (interface, Just html) <- paths]
       case warns of
         Nothing -> return ()
         Just m  -> debug verbosity m
@@ -58,7 +56,7 @@ regenerateHaddockIndex verbosity pkgs conf index = do
                     , "--odir=" ++ tempDir
                     , "--title=Haskell modules on this system" ]
                  ++ [ "--read-interface=" ++ html ++ "," ++ interface
-                    | (interface, html) <- paths ]
+                    | (interface, html) <- paths' ]
         rawSystemProgram verbosity confHaddock flags
         renameFile (tempDir </> "index.html") (tempDir </> destFile)
         installDirectoryContents verbosity tempDir destDir
@@ -69,40 +67,3 @@ regenerateHaddockIndex verbosity pkgs conf index = do
             | (_pname, pkgvers) <- allPackagesByName pkgs
             , let pkgvers' = filter exposed pkgvers
             , not (null pkgvers') ]
-
-haddockPackagePaths :: [InstalledPackageInfo]
-                       -> IO ([(FilePath, FilePath)], Maybe String)
-haddockPackagePaths pkgs = do
-  interfaces <- sequence
-    [ case interfaceAndHtmlPath pkg of
-        Just (interface, html) -> do
-          exists <- doesFileExist interface
-          if exists
-            then return (pkgid, Just (interface, html))
-            else return (pkgid, Nothing)
-        Nothing -> return (pkgid, Nothing)
-    | pkg <- pkgs, let pkgid = packageId pkg ]
-
-  let missing = [ pkgid | (pkgid, Nothing) <- interfaces ]
-
-      warning = "The documentation for the following packages are not "
-             ++ "installed. No links will be generated to these packages: "
-             ++ intercalate ", " (map display missing)
-
-      flags = [ x | (_, Just x) <- interfaces ]
-
-  return (flags, if null missing then Nothing else Just warning)
-
-  where
-    interfaceAndHtmlPath pkg = do
-      interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
-      html <- fmap fixFileUrl
-                   (listToMaybe (InstalledPackageInfo.haddockHTMLs pkg))
-      guard (not . null $ html)
-      return (interface, html)
-
-    -- the 'haddock-html' field in the hc-pkg output is often set as a
-    -- native path, but we need it as a URL.
-    -- See https://github.com/haskell/cabal/issues/1064
-    fixFileUrl f | isAbsolute f = "file://" ++ f
-                 | otherwise    = f

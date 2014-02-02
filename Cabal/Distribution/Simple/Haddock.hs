@@ -47,7 +47,9 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Haddock (
-  haddock, hscolour
+  haddock, hscolour,
+
+  haddockPackagePaths
   ) where
 
 -- local
@@ -110,6 +112,7 @@ import System.Directory(removeFile, doesFileExist, createDirectoryIfMissing)
 
 import Control.Monad ( when, guard, forM_ )
 import Control.Exception (assert)
+import Data.Either   ( rights )
 import Data.Monoid
 import Data.Maybe    ( fromMaybe, listToMaybe )
 
@@ -535,17 +538,12 @@ renderPureArgs version comp args = concat
 
 ---------------------------------------------------------------------------------
 
-haddockPackageFlags :: LocalBuildInfo
-                    -> ComponentLocalBuildInfo
-                    -> Maybe PathTemplate
-                    -> IO ([(FilePath,Maybe String)], Maybe String)
-haddockPackageFlags lbi clbi htmlTemplate = do
-  let allPkgs = installedPkgs lbi
-      directDeps = map fst (componentPackageDeps clbi)
-  transitiveDeps <- case dependencyClosure allPkgs directDeps of
-    Left x    -> return x
-    Right inf -> die $ "internal error when calculating transative "
-                    ++ "package dependencies.\nDebug info: " ++ show inf
+-- | Given a list of 'InstalledPackageInfo's, return a list of interfaces and
+-- HTML paths, and an optional warning for packages with missing documentation.
+haddockPackagePaths :: [InstalledPackageInfo]
+                    -> Maybe (InstalledPackageInfo -> FilePath)
+                    -> IO ([(FilePath, Maybe FilePath)], Maybe String)
+haddockPackagePaths ipkgs mkHtmlPath = do
   interfaces <- sequence
     [ case interfaceAndHtmlPath ipkg of
         Nothing -> return (Left (packageId ipkg))
@@ -553,40 +551,57 @@ haddockPackageFlags lbi clbi htmlTemplate = do
           exists <- doesFileExist interface
           if exists
             then return (Right (interface, html))
-            else return (Left (packageId ipkg))
-    | ipkg <- PackageIndex.allPackages transitiveDeps
-    , pkgName (packageId ipkg) `notElem` noHaddockWhitelist
+            else return (Left pkgid)
+    | ipkg <- ipkgs, let pkgid = packageId ipkg
+    , pkgName pkgid `notElem` noHaddockWhitelist
     ]
 
   let missing = [ pkgid | Left pkgid <- interfaces ]
       warning = "The documentation for the following packages are not "
              ++ "installed. No links will be generated to these packages: "
              ++ intercalate ", " (map display missing)
-      flags = [ (interface, if null html then Nothing else Just html)
-              | Right (interface, html) <- interfaces ]
+      flags = rights interfaces
 
   return (flags, if null missing then Nothing else Just warning)
 
   where
+    -- Don't warn about missing documentation for these packages. See #1231.
     noHaddockWhitelist = map PackageName [ "rts" ]
-    interfaceAndHtmlPath :: InstalledPackageInfo -> Maybe (FilePath, FilePath)
+
+    -- Actually extract interface and HTML paths from an 'InstalledPackageInfo'.
+    interfaceAndHtmlPath :: InstalledPackageInfo
+                         -> Maybe (FilePath, Maybe FilePath)
     interfaceAndHtmlPath pkg = do
       interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
-      html <- case htmlTemplate of
+      html <- case mkHtmlPath of
         Nothing -> fmap fixFileUrl
                         (listToMaybe (InstalledPackageInfo.haddockHTMLs pkg))
-        Just htmlPathTemplate -> Just (expandTemplateVars htmlPathTemplate)
-      return (interface, html)
-
+        Just mkPath -> Just (mkPath pkg)
+      return (interface, if null html then Nothing else Just html)
       where
-        expandTemplateVars = fromPathTemplate . substPathTemplate env
-        env = haddockTemplateEnv lbi (packageId pkg)
-
-        -- the 'haddock-html' field in the hc-pkg output is often set as a
-        -- native path, but we need it as a URL.
-        -- See https://github.com/haskell/cabal/issues/1064
+        -- The 'haddock-html' field in the hc-pkg output is often set as a
+        -- native path, but we need it as a URL. See #1064.
         fixFileUrl f | isAbsolute f = "file://" ++ f
                      | otherwise    = f
+
+haddockPackageFlags :: LocalBuildInfo
+                    -> ComponentLocalBuildInfo
+                    -> Maybe PathTemplate
+                    -> IO ([(FilePath, Maybe FilePath)], Maybe String)
+haddockPackageFlags lbi clbi htmlTemplate = do
+  let allPkgs = installedPkgs lbi
+      directDeps = map fst (componentPackageDeps clbi)
+  transitiveDeps <- case dependencyClosure allPkgs directDeps of
+    Left x    -> return x
+    Right inf -> die $ "internal error when calculating transative "
+                    ++ "package dependencies.\nDebug info: " ++ show inf
+  haddockPackagePaths (PackageIndex.allPackages transitiveDeps) mkHtmlPath
+    where
+      mkHtmlPath                  = fmap expandTemplateVars htmlTemplate
+      expandTemplateVars tmpl pkg =
+        fromPathTemplate . substPathTemplate (env pkg) $ tmpl
+      env pkg                     = haddockTemplateEnv lbi (packageId pkg)
+
 
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id =
