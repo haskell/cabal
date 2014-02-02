@@ -118,6 +118,7 @@ import System.FilePath((</>), (<.>), splitFileName, splitExtension,
 import System.IO (hClose, hPutStrLn)
 import Distribution.Version
 
+-- ------------------------------------------------------------------------------
 -- Types
 
 -- | record that represents the arguments to the haddock executable, a product monoid.
@@ -150,7 +151,7 @@ type Template = String
 
 data Output = Html | Hoogle
 
--- --------------------------------------------------------------------------
+-- ------------------------------------------------------------------------------
 -- Haddock support
 
 haddock :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HaddockFlags -> IO ()
@@ -292,8 +293,8 @@ prepareSources verbosity tmp lbi haddockVersion bi args@HaddockArgs{argTargets=f
               where
                 [v1, v2, v3] = take 3 $ versionBranch haddockVersion ++ [0,0]
 
---------------------------------------------------------------------------------------------------
--- constributions to HaddockArgs
+-- ------------------------------------------------------------------------------
+-- Contributions to HaddockArgs.
 
 fromFlags :: PathTemplateEnv -> HaddockFlags -> HaddockArgs
 fromFlags env flags =
@@ -446,8 +447,7 @@ getGhcLibDir verbosity lbi isVersion2
     | otherwise  =
         return mempty
 
-----------------------------------------------------------------------------------------------
-
+-- ------------------------------------------------------------------------------
 -- | Call haddock with the specified arguments.
 runHaddock :: Verbosity
               -> TempFileOptions
@@ -533,7 +533,7 @@ renderPureArgs version comp args = concat
        | isVersion2_5 = "--verbosity=1"
        | otherwise = "--verbose"
 
------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
 
 haddockPackageFlags :: LocalBuildInfo
                     -> ComponentLocalBuildInfo
@@ -589,12 +589,13 @@ haddockPackageFlags lbi clbi htmlTemplate = do
                      | otherwise    = f
 
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
-haddockTemplateEnv lbi pkg_id = (PrefixVar, prefix (installDirTemplates lbi))
-                                : initialPathTemplateEnv pkg_id (compilerId (compiler lbi))
-                                  (hostPlatform lbi)
+haddockTemplateEnv lbi pkg_id =
+  (PrefixVar, prefix (installDirTemplates lbi))
+  : initialPathTemplateEnv pkg_id (compilerId (compiler lbi))
+  (hostPlatform lbi)
 
--- --------------------------------------------------------------------------
--- hscolour support
+-- ------------------------------------------------------------------------------
+-- hscolour support.
 
 hscolour :: PackageDescription -> LocalBuildInfo -> [PPSuffixHandler] -> HscolourFlags -> IO ()
 hscolour pkg_descr lbi suffixes flags = do
@@ -671,7 +672,7 @@ haddockToHscolour flags =
       hscolourVerbosity   = haddockVerbosity   flags,
       hscolourDistPref    = haddockDistPref    flags
     }
-----------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------
 -- TODO these should be moved elsewhere.
 
 getLibSourceFiles :: LocalBuildInfo
@@ -708,12 +709,8 @@ getSourceFiles dirs modules = flip mapM modules $ \m -> fmap ((,) m) $
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
 exeBuildDir lbi exe = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
 
----------------------------------------------------------------------------------------------
-
-
-
-
--- boilerplate monoid instance.
+-- ------------------------------------------------------------------------------
+-- Boilerplate Monoid instance.
 instance Monoid HaddockArgs where
     mempty = HaddockArgs {
                 argInterfaceFile = mempty,
