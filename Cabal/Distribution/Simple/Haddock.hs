@@ -593,7 +593,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
       directDeps = map fst (componentPackageDeps clbi)
   transitiveDeps <- case dependencyClosure allPkgs directDeps of
     Left x    -> return x
-    Right inf -> die $ "internal error when calculating transative "
+    Right inf -> die $ "internal error when calculating transitive "
                     ++ "package dependencies.\nDebug info: " ++ show inf
   haddockPackagePaths (PackageIndex.allPackages transitiveDeps) mkHtmlPath
     where
