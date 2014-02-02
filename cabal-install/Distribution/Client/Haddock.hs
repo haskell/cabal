@@ -100,10 +100,9 @@ haddockPackagePaths pkgs = do
                    (listToMaybe (InstalledPackageInfo.haddockHTMLs pkg))
       guard (not . null $ html)
       return (interface, html)
-    
+
     -- the 'haddock-html' field in the hc-pkg output is often set as a
     -- native path, but we need it as a URL.
     -- See https://github.com/haskell/cabal/issues/1064
     fixFileUrl f | isAbsolute f = "file://" ++ f
                  | otherwise    = f
-
