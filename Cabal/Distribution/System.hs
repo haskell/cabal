@@ -65,6 +65,7 @@ data ClassificationStrictness = Permissive | Compat | Strict
 
 data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
         | FreeBSD | OpenBSD | NetBSD   -- other free unix OSs
+        | DragonFly
         | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
         | HaLVM                        -- bare metal / VMs / hypervisors
         | IOS                          -- iOS
@@ -78,7 +79,7 @@ data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
 
 knownOSs :: [OS]
 knownOSs = [Linux, Windows, OSX
-           ,FreeBSD, OpenBSD, NetBSD
+           ,FreeBSD, OpenBSD, NetBSD, DragonFly
            ,Solaris, AIX, HPUX, IRIX
            ,HaLVM
            ,IOS]

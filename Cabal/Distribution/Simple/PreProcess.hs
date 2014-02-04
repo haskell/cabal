@@ -580,6 +580,7 @@ platformDefines lbi =
       FreeBSD   -> ["freebsd"]
       OpenBSD   -> ["openbsd"]
       NetBSD    -> ["netbsd"]
+      DragonFly -> ["dragonfly"]
       Solaris   -> ["solaris2"]
       AIX       -> ["aix"]
       HPUX      -> ["hpux"]
