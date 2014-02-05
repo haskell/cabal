@@ -383,8 +383,8 @@ requireProgram verbosity prog conf = do
     Nothing             -> die notFound
     Just configuredProg -> return (configuredProg, conf')
 
-  where notFound       = "The program " ++ programName prog
-                      ++ " is required but it could not be found."
+  where notFound       = "The program '" ++ programName prog
+                      ++ "' is required but it could not be found."
 
 
 -- | Check that a program is configured and available to be run.
@@ -416,15 +416,15 @@ requireProgramVersion verbosity prog range conf = do
           | otherwise                 -> die (badVersion version location)
         Nothing                       -> die (noVersion location)
 
-  where notFound       = "The program "
-                      ++ programName prog ++ versionRequirement
+  where notFound       = "The program '"
+                      ++ programName prog ++ "'" ++ versionRequirement
                       ++ " is required but it could not be found."
-        badVersion v l = "The program "
-                      ++ programName prog ++ versionRequirement
+        badVersion v l = "The program '"
+                      ++ programName prog ++ "'" ++ versionRequirement
                       ++ " is required but the version found at "
                       ++ locationPath l ++ " is version " ++ display v
-        noVersion l    = "The program "
-                      ++ programName prog ++ versionRequirement
+        noVersion l    = "The program '"
+                      ++ programName prog ++ "'" ++ versionRequirement
                       ++ " is required but the version of "
                       ++ locationPath l ++ " could not be determined."
         versionRequirement
