@@ -914,9 +914,11 @@ configurePkgconfigPackages verbosity pkg_descr conf
         Just v | not (withinRange v range) -> die (badVersion v)
                | otherwise                 -> info verbosity (depSatisfied v)
       where
-        notFound     = "The pkg-config package " ++ pkg ++ versionRequirement
+        notFound     = "The pkg-config package '" ++ pkg ++ "'"
+                    ++ versionRequirement
                     ++ " is required but it could not be found."
-        badVersion v = "The pkg-config package " ++ pkg ++ versionRequirement
+        badVersion v = "The pkg-config package '" ++ pkg ++ "'"
+                    ++ versionRequirement
                     ++ " is required but the version installed on the"
                     ++ " system is version " ++ display v
         depSatisfied v = "Dependency " ++ display dep
@@ -1187,6 +1189,7 @@ checkForeignDeps pkg lbi verbosity = do
                 _ <- rawSystemProgramStdoutConf verbosity
                   gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
                 return True
+           --TODO: need a better error in the case of not finding gcc!
            `catchIO`   (\_ -> return False)
            `catchExit` (\_ -> return False)
 
