@@ -85,6 +85,8 @@ tests version inplaceSpec ghcPath ghcPkgPath runningOnTravis =
     , hunit "BenchmarkOptions" (PackageTests.BenchmarkOptions.Check.suite ghcPath)
     , hunit "TemplateHaskell/vanilla"
       (PackageTests.TemplateHaskell.Check.vanilla ghcPath)
+    , hunit "TemplateHaskell/profiling"
+      (PackageTests.TemplateHaskell.Check.profiling ghcPath)
     , hunit "PathsModule/Executable"
       (PackageTests.PathsModule.Executable.Check.suite ghcPath)
     , hunit "PathsModule/Library" (PackageTests.PathsModule.Library.Check.suite ghcPath)
@@ -98,11 +100,9 @@ tests version inplaceSpec ghcPath ghcPkgPath runningOnTravis =
       (PackageTests.OrderFlags.Check.suite ghcPath)
     ] ++
     -- These tests are expected to fail on Travis because hvr's PPA GHCs don't
-    -- include profiling and dynamic libs.
+    -- include dynamic libs.
     (if not runningOnTravis
-     then [ hunit "TemplateHaskell/profiling"
-            (PackageTests.TemplateHaskell.Check.profiling ghcPath)
-          , hunit "TemplateHaskell/dynamic"
+     then [ hunit "TemplateHaskell/dynamic"
             (PackageTests.TemplateHaskell.Check.dynamic ghcPath)
           ]
      else []) ++
