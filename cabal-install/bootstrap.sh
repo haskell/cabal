@@ -28,13 +28,13 @@ DEFAULT_PREFIX="${HOME}/.cabal"
 
 # Check for a C compiler.
 [ ! -x "$CC" ] && for ccc in gcc clang cc icc; do
-  ${CC} --version > /dev/null 2>&1 && CC=$ccc &&
-  echo "Using $CC for C compiler. If this is not what you want, set $CC." >&2 &&
+  ${ccc} --version > /dev/null 2>&1 && CC=$ccc &&
+  echo "Using $CC for C compiler. If this is not what you want, set CC." >&2 &&
   break
 done
 
 # None found.
-[ ! -x "$CC" ] &&
+[ ! -x `which "$CC"` ] &&
   die "C compiler not found (or could not be run).
        If a C compiler is installed make sure it is on your PATH,
        or set the CC variable."
