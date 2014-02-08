@@ -168,6 +168,9 @@ fetch_pkg () {
   URL=${HACKAGE_URL}/${PKG}-${VER}/${PKG}-${VER}.tar.gz
   if which ${CURL} > /dev/null
   then
+    # TODO: switch back to resuming curl command once
+    #       https://github.com/haskell/hackage-server/issues/111 is resolved
+    #${CURL} -L --fail -C - -O ${URL} || die "Failed to download ${PKG}."
     ${CURL} -L --fail -O ${URL} || die "Failed to download ${PKG}."
   elif which ${WGET} > /dev/null
   then
