@@ -33,7 +33,8 @@ script:
  - cabal-1.18 sdist   # tests that a source-distribution can be generated
 
 # The following scriptlet checks that the resulting source distribution can be built & installed
- - export SRC_TGZ=$(cabal-1.18 info . | awk '{print $2 ".tar.gz";exit}') ;
+ - function install_from_tarball {
+   export SRC_TGZ=$(cabal-1.18 info . | awk '{print $2 ".tar.gz";exit}') ;
    cd dist/;
    if [ -f "$SRC_TGZ" ]; then
       cabal-1.18 install "$SRC_TGZ";
@@ -41,6 +42,8 @@ script:
       echo "expected '$SRC_TGZ' not found";
       exit 1;
    fi
+   }
+ - install_from_tarball
 
 # Also build cabal-install.
  - cd ../cabal-install
@@ -49,6 +52,9 @@ script:
  - cabal-1.18 install --dependencies-only
  - cabal-1.18 configure
  - cabal-1.18 build
+ - cabal-1.18 check
+ - cabal-1.18 sdist
+ - install_from_tarball
 
 matrix:
   allow_failures:
