@@ -58,7 +58,7 @@ hunit :: TestName -> HUnit.Test -> Test
 hunit name test = testGroup name $ hUnitTestToTests test
 
 tests :: Version -> PackageSpec -> FilePath -> FilePath -> Bool -> [Test]
-tests version inplaceSpec ghcPath ghcPkgPath runningOnTravis =
+tests version inplaceSpec ghcPath ghcPkgPath noGHCDyn =
     [ hunit "BuildDeps/SameDepsAllRound"
       (PackageTests.BuildDeps.SameDepsAllRound.Check.suite ghcPath)
       -- The two following tests were disabled by Johan Tibell as
@@ -99,9 +99,9 @@ tests version inplaceSpec ghcPath ghcPkgPath runningOnTravis =
     , hunit "OrderFlags"
       (PackageTests.OrderFlags.Check.suite ghcPath)
     ] ++
-    -- These tests are expected to fail on Travis because hvr's PPA GHCs don't
-    -- include dynamic libs.
-    (if not runningOnTravis
+    -- These tests are expected to fail on some Travis configurations because
+    -- hvr's pre-7.8 PPA GHCs don't include dynamic libs.
+    (if not noGHCDyn
      then [ hunit "TemplateHaskell/dynamic"
             (PackageTests.TemplateHaskell.Check.dynamic ghcPath)
           ]
@@ -147,16 +147,17 @@ main = do
     putStrLn $ "Using ghc: " ++ ghcPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     setCurrentDirectory "tests"
-    -- Are we running on Travis-CI?
-    runningOnTravis <- checkRunningOnTravis
+    -- Does this GHC have dynamic libs installed?
+    noGHCDyn <- checkNoGHCDyn
     -- Create a shared Setup executable to speed up Simple tests
     compileSetup "." ghcPath
     defaultMain (tests cabalVersion inplaceSpec
-                 ghcPath ghcPkgPath runningOnTravis)
+                 ghcPath ghcPkgPath noGHCDyn)
 
--- | Is the test suite running on the Travis-CI build bot?
-checkRunningOnTravis :: IO Bool
-checkRunningOnTravis = fmap isJust (lookupEnv "CABAL_TEST_RUNNING_ON_TRAVIS")
+-- | Are dynamic libraries installed? Travis build bot doesn't have dynamic libs
+-- for all configurations.
+checkNoGHCDyn :: IO Bool
+checkNoGHCDyn = fmap isJust (lookupEnv "CABAL_TEST_NO_GHC_DYN")
   where
     lookupEnv :: String -> IO (Maybe String)
     lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
