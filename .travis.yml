@@ -35,11 +35,10 @@ script:
 # The following scriptlet checks that the resulting source distribution can be built & installed
  - function install_from_tarball {
    export SRC_TGZ=$(cabal-1.18 info . | awk '{print $2 ".tar.gz";exit}') ;
-   cd dist/;
-   if [ -f "$SRC_TGZ" ]; then
-      cabal-1.18 install "$SRC_TGZ";
+   if [ -f "dist/$SRC_TGZ" ]; then
+      cabal-1.18 install "dist/$SRC_TGZ";
    else
-      echo "expected '$SRC_TGZ' not found";
+      echo "expected 'dist/$SRC_TGZ' not found";
       exit 1;
    fi
    }
