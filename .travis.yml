@@ -42,6 +42,14 @@ script:
       exit 1;
    fi
 
+# Also build cabal-install.
+ - cd ../cabal-install
+ - cabal-1.18 sandbox init
+ - cabal-1.18 sandbox add-source ../Cabal
+ - cabal-1.18 install --dependencies-only
+ - cabal-1.18 configure
+ - cabal-1.18 build
+
 matrix:
   allow_failures:
    - env: GHCVER=head
