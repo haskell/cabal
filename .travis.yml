@@ -14,7 +14,9 @@ before_install:
  - sudo apt-get update
  - sudo apt-get install cabal-install-1.18 ghc-$GHCVER-prof happy
  - export PATH=/opt/ghc/$GHCVER/bin:$PATH
- - export CABAL_TEST_RUNNING_ON_TRAVIS=1
+ - if [ $GHCVER != 7.8.1 ] && [ $GHCVER != head ]; then
+      export CABAL_TEST_NO_GHC_DYN=1;
+   fi
 
 install:
  - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
