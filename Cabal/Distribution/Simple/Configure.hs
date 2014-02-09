@@ -248,7 +248,6 @@ showHeader pkgid =
      "Saved package config for " ++ display pkgid
   ++ " written by " ++ display currentCabalId
   ++      " using " ++ display currentCompilerId
-  where
 
 currentCabalId :: PackageIdentifier
 currentCabalId = PackageIdentifier (PackageName "Cabal") cabalVersion
