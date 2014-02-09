@@ -4,8 +4,10 @@ import Test.HUnit
 import PackageTests.PackageTester
 import System.FilePath
 import Control.Exception
-import Prelude hiding (catch)
 
+#if !MIN_VERSION_base(4,6,0)
+import Prelude hiding (catch)
+#endif
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
