@@ -726,10 +726,11 @@ maybeReinstallAddSourceDeps verbosity numJobsFlag configFlags' globalFlags' = do
         configProgramPaths = configProgramPaths sandboxConfigFlags
                              `mappend` configProgramPaths savedFlags,
         configProgramArgs  = configProgramArgs sandboxConfigFlags
-                             `mappend` configProgramArgs savedFlags
-        -- NOTE: We don't touch the @configPackageDBs@ field because
-        -- @sandboxConfigFlags@ contains the sandbox location which was set when
-        -- creating @cabal.sandbox.config@.
+                             `mappend` configProgramArgs savedFlags,
+        -- NOTE: Unconditionally choosing the value from
+        -- 'dist/setup-config'. Sandbox package DB location may have been
+        -- changed by 'configure -w'.
+        configPackageDBs   = configPackageDBs savedFlags
         -- FIXME: Is this compatible with the 'inherit' feature?
         }
 
