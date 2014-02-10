@@ -534,7 +534,7 @@ parseConfig initial = \str -> do
       | name' == "global" = do g' <- parseFields installDirsFields g fs
                                return (u, g', p, a)
       | otherwise         = do
-          warning "The install-paths section should be for 'user' or 'global'"
+          warning "The 'install-paths' section should be for 'user' or 'global'"
           return accum
       where name' = lowercase name
     parseSections accum@(u,g,p,a)
