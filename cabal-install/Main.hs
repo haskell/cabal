@@ -265,6 +265,9 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
+    -- NOTE: We do not write the new sandbox package DB location to
+    -- 'cabal.sandbox.config' here because 'configure -w' must not affect
+    -- subsequent 'install' (for UI compatibility with non-sandboxed mode).
 
     indexFile     <- tryGetIndexFilePath config
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
