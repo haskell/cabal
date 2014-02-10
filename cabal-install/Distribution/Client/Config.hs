@@ -30,7 +30,9 @@ module Distribution.Client.Config (
     commentSavedConfig,
     initialSavedConfig,
     configFieldDescriptions,
-    installDirsFields
+    installDirsFields,
+    withProgramsFields,
+    withProgramOptionsFields
   ) where
 
 
