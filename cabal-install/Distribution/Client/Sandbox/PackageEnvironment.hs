@@ -30,27 +30,27 @@ module Distribution.Client.Sandbox.PackageEnvironment (
 
 import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig
                                        , loadConfig, configFieldDescriptions
-                                       , installDirsFields, defaultCompiler )
+                                       , installDirsFields, withProgramsFields
+                                       , withProgramOptionsFields
+                                       , defaultCompiler )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
                                        , defaultSandboxLocation )
-import Distribution.Simple.Command     ( ShowOrParseArgs(..), viewAsFieldDescr )
 import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
                                        , compilerFlavor, showCompilerId )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
                                        , defaultInstallDirs, combineInstallDirs
                                        , fromPathTemplate, toPathTemplate )
-import Distribution.Simple.Program     ( defaultProgramConfiguration )
 import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..)
-                                       , programConfigurationOptions
                                        , fromFlagOrDefault, toFlag, flagToMaybe )
 import Distribution.Simple.Utils       ( die, info, notice, warn, lowercase )
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , commaListField
                                        , liftField, lineNo, locatedErrorMsg
                                        , parseFilePathQ, readFields
-                                       , showPWarning, simpleField, syntaxError )
+                                       , showPWarning, simpleField
+                                       , syntaxError, warning )
 import Distribution.System             ( Platform )
 import Distribution.Verbosity          ( Verbosity, normal )
 import Control.Monad                   ( foldM, liftM2, when, unless )
@@ -403,7 +403,6 @@ pkgEnvFieldDescrs = [
                   (\flags -> flags { configPreferences = v }))
   ]
   ++ map toPkgEnv configFieldDescriptions'
-  ++ map toPkgEnv programOptionsFields
   where
     optional = Parse.option mempty . fmap toFlag
 
@@ -411,14 +410,6 @@ pkgEnvFieldDescrs = [
     configFieldDescriptions' = filter
       (\(FieldDescr name _ _) -> name /= "preference" && name /= "constraint")
       configFieldDescriptions
-
-    programOptionsFields :: [FieldDescr SavedConfig]
-    programOptionsFields =
-      map viewAsFieldDescr $
-      programConfigurationOptions defaultProgramConfiguration ParseArgs
-      (configProgramArgs . savedConfigureFlags)
-      (\v cfg -> cfg { savedConfigureFlags =
-                          (savedConfigureFlags cfg) { configProgramArgs = v } })
 
     toPkgEnv :: FieldDescr SavedConfig -> FieldDescr PackageEnvironment
     toPkgEnv fieldDescr =
@@ -458,9 +449,14 @@ parsePackageEnvironment initial str = do
   let config       = pkgEnvSavedConfig pkgEnv
       installDirs0 = savedUserInstallDirs config
   -- 'install-dirs' is the only section that we care about.
-  installDirs <- foldM parseSection installDirs0 knownSections
+  (installDirs, paths, args) <- foldM parseSections (installDirs0, [], [])
+                                knownSections
   return pkgEnv {
     pkgEnvSavedConfig = config {
+       savedConfigureFlags    = (savedConfigureFlags config) {
+          configProgramPaths  = paths,
+          configProgramArgs   = args
+          },
        savedUserInstallDirs   = installDirs,
        savedGlobalInstallDirs = installDirs
        }
@@ -468,26 +464,46 @@ parsePackageEnvironment initial str = do
 
   where
     isKnownSection :: ParseUtils.Field -> Bool
-    isKnownSection (ParseUtils.Section _ "install-dirs" _ _) = True
-    isKnownSection _                                         = False
+    isKnownSection (ParseUtils.Section _ "install-dirs" _ _)            = True
+    isKnownSection (ParseUtils.Section _ "program-locations" _ _)       = True
+    isKnownSection (ParseUtils.Section _ "program-default-options" _ _) = True
+    isKnownSection _                                                    = False
 
     parse :: [ParseUtils.Field] -> ParseResult PackageEnvironment
     parse = parseFields pkgEnvFieldDescrs initial
 
-    parseSection :: InstallDirs (Flag PathTemplate)
-                    -> ParseUtils.Field
-                    -> ParseResult (InstallDirs (Flag PathTemplate))
-    parseSection accum (ParseUtils.Section line "install-dirs" name fs)
-      | name' == "" = do accum' <- parseFields installDirsFields accum fs
-                         return accum'
+    parseSections :: SectionsAccum -> ParseUtils.Field
+                     -> ParseResult SectionsAccum
+    parseSections (d,p,a) (ParseUtils.Section line "install-dirs" name fs)
+      | name' == "" = do d' <- parseFields installDirsFields d fs
+                         return (d',p,a)
       | otherwise   =
         syntaxError line $
         "Named 'install-dirs' section: '" ++ name
         ++ "'. Note that named 'install-dirs' sections are not allowed in the '"
         ++ userPackageEnvironmentFile ++ "' file."
       where name' = lowercase name
-    parseSection _accum f =
-      syntaxError (lineNo f)  "Unrecognized stanza."
+    parseSections accum@(d,p,a)
+                  (ParseUtils.Section _ "program-locations" name fs)
+      | name == ""  = do p' <- parseFields withProgramsFields p fs
+                         return (d, p', a)
+      | otherwise         = do
+          warning "The 'program-locations' section should be unnamed"
+          return accum
+    parseSections accum@(d, p, a)
+                  (ParseUtils.Section _ "program-default-options" name fs)
+      | name == ""        = do a' <- parseFields withProgramOptionsFields a fs
+                               return (d, p, a')
+      | otherwise         = do
+          warning "The 'program-default-options' section should be unnamed"
+          return accum
+    parseSections accum f = do
+      warning $ "Unrecognized stanza on line " ++ show (lineNo f)
+      return accum
+
+-- | Accumulator type for 'parseSections'.
+type SectionsAccum = (InstallDirs (Flag PathTemplate)
+                     , [(String, FilePath)], [(String, [String])])
 
 -- | Write out the package environment file.
 writePackageEnvironmentFile :: FilePath -> IncludeComments
