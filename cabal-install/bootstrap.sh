@@ -89,6 +89,9 @@ do
       SCOPE_OF_INSTALLATION=${arg}
       DEFAULT_PREFIX="/usr/local"
       shift;;
+    "--no-doc")
+      NO_DOCUMENTATION=1
+      shift;;
     *)
       echo "Unknown argument or option, quitting: ${arg}"
       echo "usage: bootstrap.sh [OPTION]"
@@ -96,9 +99,16 @@ do
       echo "options:"
       echo "   --user    Install for the local user (default)"
       echo "   --global  Install systemwide (must be run as root)"
+      echo "   --no-doc  Do not generate documentation for installed packages"
       exit;;
   esac
 done
+
+# Check for haddock unless no documentation should be generated.
+if [ ! ${NO_DOCUMENTATION} ]
+then
+  ${HADDOCK} --version     > /dev/null 2>&1  || die "${HADDOCK} not found."
+fi
 
 PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 
@@ -215,8 +225,11 @@ install_pkg () {
   ./Setup build ${EXTRA_BUILD_OPTS} ${VERBOSE} ||
      die "Building the ${PKG} package failed."
 
-  ./Setup haddock --with-ghc=${GHC} --with-haddock=${HADDOCK} ${VERBOSE} ||
-     die "Documenting the ${PKG} package failed."
+  if [ ! ${NO_DOCUMENTATION} ]
+  then
+    ./Setup haddock --with-ghc=${GHC} --with-haddock=${HADDOCK} ${VERBOSE} ||
+      die "Documenting the ${PKG} package failed."
+  fi
 
   ./Setup install ${SCOPE_OF_INSTALLATION} ${EXTRA_INSTALL_OPTS} ${VERBOSE} ||
      die "Installing the ${PKG} package failed."
