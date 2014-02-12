@@ -58,7 +58,7 @@ hunit :: TestName -> HUnit.Test -> Test
 hunit name test = testGroup name $ hUnitTestToTests test
 
 tests :: Version -> PackageSpec -> FilePath -> FilePath -> Bool -> [Test]
-tests version inplaceSpec ghcPath ghcPkgPath noGHCDyn =
+tests version inplaceSpec ghcPath ghcPkgPath =
     [ hunit "BuildDeps/SameDepsAllRound"
       (PackageTests.BuildDeps.SameDepsAllRound.Check.suite ghcPath)
       -- The two following tests were disabled by Johan Tibell as
@@ -98,14 +98,9 @@ tests version inplaceSpec ghcPath ghcPkgPath noGHCDyn =
       (PackageTests.BuildTestSuiteDetailedV09.Check.suite inplaceSpec ghcPath)
     , hunit "OrderFlags"
       (PackageTests.OrderFlags.Check.suite ghcPath)
+    , hunit "TemplateHaskell/dynamic"
+      (PackageTests.TemplateHaskell.Check.dynamic ghcPath)
     ] ++
-    -- These tests are expected to fail on some Travis configurations because
-    -- hvr's pre-7.8 PPA GHCs don't include dynamic libs.
-    (if not noGHCDyn
-     then [ hunit "TemplateHaskell/dynamic"
-            (PackageTests.TemplateHaskell.Check.dynamic ghcPath)
-          ]
-     else []) ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []
      then [ hunit "BuildDeps/TargetSpecificDeps1"
@@ -147,20 +142,9 @@ main = do
     putStrLn $ "Using ghc: " ++ ghcPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     setCurrentDirectory "tests"
-    -- Does this GHC have dynamic libs installed?
-    noGHCDyn <- checkNoGHCDyn
     -- Create a shared Setup executable to speed up Simple tests
     compileSetup "." ghcPath
-    defaultMain (tests cabalVersion inplaceSpec
-                 ghcPath ghcPkgPath noGHCDyn)
-
--- | Are dynamic libraries installed? Travis build bot doesn't have dynamic libs
--- for all configurations.
-checkNoGHCDyn :: IO Bool
-checkNoGHCDyn = fmap isJust (lookupEnv "CABAL_TEST_NO_GHC_DYN")
-  where
-    lookupEnv :: String -> IO (Maybe String)
-    lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
+    defaultMain (tests cabalVersion inplaceSpec ghcPath ghcPkgPath)
 
 -- Like Distribution.Simple.Configure.getPersistBuildConfig but
 -- doesn't check that the Cabal version matches, which it doesn't when
