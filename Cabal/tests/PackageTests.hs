@@ -57,7 +57,7 @@ import qualified Test.HUnit as HUnit
 hunit :: TestName -> HUnit.Test -> Test
 hunit name test = testGroup name $ hUnitTestToTests test
 
-tests :: Version -> PackageSpec -> FilePath -> FilePath -> Bool -> [Test]
+tests :: Version -> PackageSpec -> FilePath -> FilePath -> [Test]
 tests version inplaceSpec ghcPath ghcPkgPath =
     [ hunit "BuildDeps/SameDepsAllRound"
       (PackageTests.BuildDeps.SameDepsAllRound.Check.suite ghcPath)
