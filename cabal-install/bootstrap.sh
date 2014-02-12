@@ -18,6 +18,7 @@ die () { printf "\nError during cabal-install bootstrap:\n$1\n" >&2 && exit 2 ;}
 GHC="${GHC:-ghc}"
 GHC_PKG="${GHC_PKG:-ghc-pkg}"
 GHC_VER="$(${GHC} --numeric-version)"
+HADDOCK=${HADDOCK:-haddock}
 WGET="${WGET:-wget}"
 CURL="${CURL:-curl}"
 FETCH="${FETCH:-fetch}"
@@ -213,6 +214,9 @@ install_pkg () {
 
   ./Setup build ${EXTRA_BUILD_OPTS} ${VERBOSE} ||
      die "Building the ${PKG} package failed."
+
+  ./Setup haddock --with-ghc=${GHC} --with-haddock=${HADDOCK} ${VERBOSE} ||
+     die "Documenting the ${PKG} package failed."
 
   ./Setup install ${SCOPE_OF_INSTALLATION} ${EXTRA_INSTALL_OPTS} ${VERBOSE} ||
      die "Installing the ${PKG} package failed."
