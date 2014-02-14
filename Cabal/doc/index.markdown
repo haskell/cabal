@@ -84,7 +84,7 @@ cabal install foo/ bar/
 
 Developers and users can use the tool to install packages from remote
 Cabal package archives. By default, the `cabal` tool is configured to
-use the centeral Haskell package archive called [Hackage] but it
+use the central Haskell package archive called [Hackage] but it
 is possible to use it with any other suitable archive.
 
 ~~~~~~~~~~~~~~~~
