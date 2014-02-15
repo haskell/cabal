@@ -150,7 +150,7 @@ anyVersion = AnyVersion
 -- This can be constructed using any unsatisfiable version range expression,
 -- for example @> 1 && < 1@.
 --
--- > withinRange v anyVersion = False
+-- > withinRange v noVersion = False
 --
 noVersion :: VersionRange
 noVersion = IntersectVersionRanges (LaterVersion v) (EarlierVersion v)
