@@ -287,7 +287,7 @@ prepareTree :: Verbosity          -- ^verbosity
             -> [PPSuffixHandler]  -- ^extra preprocessors (includes suffixes)
             -> IO ()
 prepareTree verbosity pkg_descr0 mb_lbi targetDir pps = do
-  -- If the package was configured then we can run platform independent
+  -- If the package was configured then we can run platform-independent
   -- pre-processors and include those generated files.
   case mb_lbi of
     Just lbi | not (null pps) -> do
