@@ -474,7 +474,9 @@ commandParseArgs command global args =
         -- reverse the flags here as we want to process the flags left to right
         -- but data flow in function compsition is right to left.
         accum flags = foldr (flip (.)) id [ f | Right f <- flags ]
-        unrecognised opts = [ "unrecognized option `" ++ opt ++ "'\n"
+        unrecognised opts = [ "unrecognized "
+                              ++ "'" ++ (commandName command) ++ "'"
+                              ++ " option `" ++ opt ++ "'\n"
                             | opt <- opts ]
         -- For unrecognised global flags we put them in the position just after
         -- the command, if there is one. This gives us a chance to parse them
