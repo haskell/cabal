@@ -1029,8 +1029,14 @@ parsePackageDescription file = do
 
         let simplFlds = [ F l n v | F l n v <- allflds ]
             condFlds = [ f | f@IfBlock{} <- allflds ]
+            sections = [ s | s@Section{} <- allflds ]
 
         let (depFlds, dataFlds) = partition isConstraint simplFlds
+        
+        mapM_
+            (\(Section l n _ _) -> lift . warning $
+                "Unexpected section '" ++ n ++ "' on line " ++ show l)
+            sections
 
         a <- parser dataFlds
         deps <- liftM concat . mapM (lift . parseConstraint) $ depFlds
