@@ -222,7 +222,11 @@ viewAsGetOpt (OptionField _n aa) = concatMap optDescrToGetOpt aa
                    set' (Just txt) = readEOrFail set txt
     optDescrToGetOpt (ChoiceOpt alts) =
          [GetOpt.Option sf lf (GetOpt.NoArg set) d | (d,(sf,lf),set,_) <- alts ]
-    optDescrToGetOpt (BoolOpt d (sfT,lfT) (sfF, lfF) set _) =
+    optDescrToGetOpt (BoolOpt d (sfT, lfT) ([],  [])  set _) =
+         [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True))  d ]
+    optDescrToGetOpt (BoolOpt d ([],  [])  (sfF, lfF) set _) =
+         [ GetOpt.Option sfF lfF (GetOpt.NoArg (set False)) d ]
+    optDescrToGetOpt (BoolOpt d (sfT,lfT)  (sfF, lfF) set _) =
          [ GetOpt.Option sfT lfT (GetOpt.NoArg (set True))  ("Enable " ++ d)
          , GetOpt.Option sfF lfF (GetOpt.NoArg (set False)) ("Disable " ++ d) ]
 
@@ -329,12 +333,15 @@ commandShowOptions command v = concat
   [ showOptDescr v  od | o <- commandOptions command ParseArgs
                        , od <- optionDescr o]
   where
+    maybePrefix []       = []
+    maybePrefix (lOpt:_) = ["--" ++ lOpt]
+
     showOptDescr :: a -> OptDescr a -> [String]
-    showOptDescr x (BoolOpt _ (_,lfT:_) (_,lfF:_) _ enabled)
+    showOptDescr x (BoolOpt _ (_,lfTs) (_,lfFs) _ enabled)
       = case enabled x of
           Nothing -> []
-          Just True  -> ["--" ++ lfT]
-          Just False -> ["--" ++ lfF]
+          Just True  -> maybePrefix lfTs
+          Just False -> maybePrefix lfFs
     showOptDescr x c@ChoiceOpt{}
       = ["--" ++ val | val <- getCurrentChoice c x]
     showOptDescr x (ReqArg _ (_ssff,lf:_) _ _ showflag)
