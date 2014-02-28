@@ -1840,10 +1840,9 @@ boolOpt' :: OptFlags -> OptFlags
             -> MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
 boolOpt' = Command.boolOpt' flagToMaybe Flag
 
-trueArg, falseArg :: SFlags -> LFlags -> Description -> (b -> Flag Bool) ->
-                     (Flag Bool -> (b -> b)) -> OptDescr b
-trueArg  = noArg (Flag True)
-falseArg = noArg (Flag False)
+trueArg, falseArg :: MkOptDescr (a -> Flag Bool) (Flag Bool -> a -> a) a
+trueArg  sfT lfT = boolOpt' (sfT, lfT) ([], [])   sfT lfT
+falseArg sfF lfF = boolOpt' ([],  [])  (sfF, lfF) sfF lfF
 
 reqArgFlag :: ArgPlaceHolder -> SFlags -> LFlags -> Description ->
               (b -> Flag String) -> (Flag String -> b -> b) -> OptDescr b
