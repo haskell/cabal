@@ -51,7 +51,7 @@ module Distribution.Simple.Setup (
   defaultBenchmarkFlags, benchmarkCommand,
   CopyDest(..),
   configureArgs, configureOptions, configureCCompiler, configureLinker,
-  buildOptions, installDirsOptions,
+  buildOptions, haddockOptions, installDirsOptions,
   programConfigurationOptions, programConfigurationPaths',
 
   defaultDistPref,
@@ -1166,85 +1166,7 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
     name       = "haddock"
     shortDesc  = "Generate Haddock HTML documentation."
     longDesc   = Just $ \_ -> "Requires the program haddock, either version 0.x or 2.x.\n"
-    options showOrParseArgs =
-      [optionVerbosity haddockVerbosity
-       (\v flags -> flags { haddockVerbosity = v })
-      ,optionDistPref
-         haddockDistPref (\d flags -> flags { haddockDistPref = d })
-         showOrParseArgs
-
-      ,option "" ["keep-temp-files"]
-         "Keep temporary files"
-         haddockKeepTempFiles (\b flags -> flags { haddockKeepTempFiles = b })
-         trueArg
-
-      ,option "" ["hoogle"]
-         "Generate a hoogle database"
-         haddockHoogle (\v flags -> flags { haddockHoogle = v })
-         trueArg
-
-      ,option "" ["html"]
-         "Generate HTML documentation (the default)"
-         haddockHtml (\v flags -> flags { haddockHtml = v })
-         trueArg
-
-      ,option "" ["html-location"]
-         "Location of HTML documentation for pre-requisite packages"
-         haddockHtmlLocation (\v flags -> flags { haddockHtmlLocation = v })
-         (reqArgFlag "URL")
-
-      ,option "" ["executables"]
-         "Run haddock for Executables targets"
-         haddockExecutables (\v flags -> flags { haddockExecutables = v })
-         trueArg
-
-      ,option "" ["tests"]
-         "Run haddock for Test Suite targets"
-         haddockTestSuites (\v flags -> flags { haddockTestSuites = v })
-         trueArg
-
-      ,option "" ["benchmarks"]
-         "Run haddock for Benchmark targets"
-         haddockBenchmarks (\v flags -> flags { haddockBenchmarks = v })
-         trueArg
-
-      ,option "" ["all"]
-         "Run haddock for all targets"
-         (\f -> allFlags [ haddockExecutables f
-                         , haddockTestSuites  f
-                         , haddockBenchmarks  f])
-         (\v flags -> flags { haddockExecutables = v
-                            , haddockTestSuites  = v
-                            , haddockBenchmarks  = v })
-         trueArg
-
-      ,option "" ["internal"]
-         "Run haddock for internal modules and include all symbols"
-         haddockInternal (\v flags -> flags { haddockInternal = v })
-         trueArg
-
-      ,option "" ["css"]
-         "Use PATH as the haddock stylesheet"
-         haddockCss (\v flags -> flags { haddockCss = v })
-         (reqArgFlag "PATH")
-
-      ,option "" ["hyperlink-source","hyperlink-sources"]
-         "Hyperlink the documentation to the source code (using HsColour)"
-         haddockHscolour (\v flags -> flags { haddockHscolour = v })
-         trueArg
-
-      ,option "" ["hscolour-css"]
-         "Use PATH as the HsColour stylesheet"
-         haddockHscolourCss (\v flags -> flags { haddockHscolourCss = v })
-         (reqArgFlag "PATH")
-
-      ,option "" ["contents-location"]
-         "Bake URL in as the location for the contents page"
-         haddockContents (\v flags -> flags { haddockContents = v })
-         (reqArg' "URL"
-                (toFlag . toPathTemplate)
-                (flagToList . fmap fromPathTemplate))
-      ]
+    options showOrParseArgs = haddockOptions showOrParseArgs
       ++ programConfigurationPaths   progConf ParseArgs
              haddockProgramPaths (\v flags -> flags { haddockProgramPaths = v})
       ++ programConfigurationOption  progConf showOrParseArgs
@@ -1254,6 +1176,87 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
     progConf = addKnownProgram haddockProgram
              $ addKnownProgram ghcProgram
              $ emptyProgramConfiguration
+
+haddockOptions :: ShowOrParseArgs -> [OptionField HaddockFlags]
+haddockOptions showOrParseArgs =
+  [optionVerbosity haddockVerbosity
+   (\v flags -> flags { haddockVerbosity = v })
+  ,optionDistPref
+   haddockDistPref (\d flags -> flags { haddockDistPref = d })
+   showOrParseArgs
+
+  ,option "" ["keep-temp-files"]
+   "Keep temporary files"
+   haddockKeepTempFiles (\b flags -> flags { haddockKeepTempFiles = b })
+   trueArg
+
+  ,option "" ["hoogle"]
+   "Generate a hoogle database"
+   haddockHoogle (\v flags -> flags { haddockHoogle = v })
+   trueArg
+
+  ,option "" ["html"]
+   "Generate HTML documentation (the default)"
+   haddockHtml (\v flags -> flags { haddockHtml = v })
+   trueArg
+
+  ,option "" ["html-location"]
+   "Location of HTML documentation for pre-requisite packages"
+   haddockHtmlLocation (\v flags -> flags { haddockHtmlLocation = v })
+   (reqArgFlag "URL")
+
+  ,option "" ["executables"]
+   "Run haddock for Executables targets"
+   haddockExecutables (\v flags -> flags { haddockExecutables = v })
+   trueArg
+
+  ,option "" ["tests"]
+   "Run haddock for Test Suite targets"
+   haddockTestSuites (\v flags -> flags { haddockTestSuites = v })
+   trueArg
+
+  ,option "" ["benchmarks"]
+   "Run haddock for Benchmark targets"
+   haddockBenchmarks (\v flags -> flags { haddockBenchmarks = v })
+   trueArg
+
+  ,option "" ["all"]
+   "Run haddock for all targets"
+   (\f -> allFlags [ haddockExecutables f
+                   , haddockTestSuites  f
+                   , haddockBenchmarks  f])
+         (\v flags -> flags { haddockExecutables = v
+                            , haddockTestSuites  = v
+                            , haddockBenchmarks  = v })
+         trueArg
+
+  ,option "" ["internal"]
+   "Run haddock for internal modules and include all symbols"
+   haddockInternal (\v flags -> flags { haddockInternal = v })
+   trueArg
+
+  ,option "" ["css"]
+   "Use PATH as the haddock stylesheet"
+   haddockCss (\v flags -> flags { haddockCss = v })
+   (reqArgFlag "PATH")
+
+  ,option "" ["hyperlink-source","hyperlink-sources"]
+   "Hyperlink the documentation to the source code (using HsColour)"
+   haddockHscolour (\v flags -> flags { haddockHscolour = v })
+   trueArg
+
+  ,option "" ["hscolour-css"]
+   "Use PATH as the HsColour stylesheet"
+   haddockHscolourCss (\v flags -> flags { haddockHscolourCss = v })
+   (reqArgFlag "PATH")
+
+  ,option "" ["contents-location"]
+   "Bake URL in as the location for the contents page"
+   haddockContents (\v flags -> flags { haddockContents = v })
+   (reqArg' "URL"
+    (toFlag . toPathTemplate)
+    (flagToList . fmap fromPathTemplate))
+  ]
 
 emptyHaddockFlags :: HaddockFlags
 emptyHaddockFlags = mempty
