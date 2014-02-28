@@ -171,7 +171,9 @@ flagToList (Flag x) = [x]
 flagToList NoFlag   = []
 
 allFlags :: [Flag Bool] -> Flag Bool
-allFlags flags = toFlag $ all (\f -> fromFlagOrDefault False f) flags
+allFlags flags = if all (\f -> fromFlagOrDefault False f) flags
+                 then Flag True
+                 else NoFlag
 
 -- ------------------------------------------------------------
 -- * Global flags
