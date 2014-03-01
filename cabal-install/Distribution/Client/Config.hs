@@ -30,6 +30,7 @@ module Distribution.Client.Config (
     commentSavedConfig,
     initialSavedConfig,
     configFieldDescriptions,
+    haddockFlagsFields,
     installDirsFields,
     withProgramsFields,
     withProgramOptionsFields
