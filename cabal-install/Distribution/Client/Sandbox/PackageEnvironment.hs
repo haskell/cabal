@@ -493,23 +493,23 @@ parsePackageEnvironment initial str = do
                   (ParseUtils.Section line "install-dirs" name fs)
       | name == "" = do d' <- parseFields installDirsFields d fs
                         return (h, d',p,a)
-      | otherwise   =
+      | otherwise  =
         syntaxError line $
         "Named 'install-dirs' section: '" ++ name
         ++ "'. Note that named 'install-dirs' sections are not allowed in the '"
         ++ userPackageEnvironmentFile ++ "' file."
     parseSections accum@(h, d,p,a)
                   (ParseUtils.Section _ "program-locations" name fs)
-      | name == ""  = do p' <- parseFields withProgramsFields p fs
-                         return (h, d, p', a)
-      | otherwise         = do
+      | name == "" = do p' <- parseFields withProgramsFields p fs
+                        return (h, d, p', a)
+      | otherwise  = do
           warning "The 'program-locations' section should be unnamed"
           return accum
     parseSections accum@(h, d, p, a)
                   (ParseUtils.Section _ "program-default-options" name fs)
-      | name == ""        = do a' <- parseFields withProgramOptionsFields a fs
-                               return (h, d, p, a')
-      | otherwise         = do
+      | name == "" = do a' <- parseFields withProgramOptionsFields a fs
+                        return (h, d, p, a')
+      | otherwise  = do
           warning "The 'program-default-options' section should be unnamed"
           return accum
     parseSections accum f = do
