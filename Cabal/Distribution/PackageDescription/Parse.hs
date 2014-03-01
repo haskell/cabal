@@ -118,7 +118,7 @@ pkgDescrFieldDescrs =
  , simpleField "maintainer"
            showFreeText           parseFreeText
            maintainer             (\val pkg -> pkg{maintainer=val})
- , commaListField  "build-depends"
+ , commaListFieldWithSep vcat "build-depends"
            disp                   parse
            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
@@ -148,19 +148,19 @@ pkgDescrFieldDescrs =
  , listField "tested-with"
            showTestedWith         parseTestedWithQ
            testedWith             (\val pkg -> pkg{testedWith=val})
- , listField "data-files"
+ , listFieldWithSep vcat "data-files"
            showFilePath           parseFilePathQ
            dataFiles              (\val pkg -> pkg{dataFiles=val})
  , simpleField "data-dir"
            showFilePath           parseFilePathQ
            dataDir                (\val pkg -> pkg{dataDir=val})
- , listField "extra-source-files"
+ , listFieldWithSep vcat "extra-source-files"
            showFilePath    parseFilePathQ
            extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
- , listField "extra-tmp-files"
+ , listFieldWithSep vcat "extra-tmp-files"
            showFilePath       parseFilePathQ
            extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
- , listField "extra-doc-files"
+ , listFieldWithSep vcat "extra-doc-files"
            showFilePath    parseFilePathQ
            extraDocFiles          (\val pkg -> pkg{extraDocFiles=val})
  ]
@@ -178,7 +178,7 @@ storeXFieldsPD _ _ = Nothing
 
 libFieldDescrs :: [FieldDescr Library]
 libFieldDescrs =
-  [ listField "exposed-modules" disp parseModuleNameQ
+  [ listFieldWithSep vcat "exposed-modules" disp parseModuleNameQ
       exposedModules (\mods lib -> lib{exposedModules=mods})
 
   , boolField "exposed"
@@ -400,7 +400,7 @@ binfoFieldDescrs =
  , listField "frameworks"
            showToken          parseTokenQ
            frameworks         (\val binfo -> binfo{frameworks=val})
- , listField   "c-sources"
+ , listFieldWithSep vcat "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})
 
@@ -420,16 +420,16 @@ binfoFieldDescrs =
            disp               parseExtensionQ
            oldExtensions      (\exts  binfo -> binfo{oldExtensions=exts})
 
- , listField   "extra-libraries"
+ , listFieldWithSep vcat "extra-libraries"
            showToken          parseTokenQ
            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , listField   "extra-lib-dirs"
            showFilePath       parseFilePathQ
            extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})
- , listField   "includes"
+ , listFieldWithSep vcat "includes"
            showFilePath       parseFilePathQ
            includes           (\paths binfo -> binfo{includes=paths})
- , listField   "install-includes"
+ , listFieldWithSep vcat "install-includes"
            showFilePath       parseFilePathQ
            installIncludes    (\paths binfo -> binfo{installIncludes=paths})
  , listField   "include-dirs"
@@ -438,7 +438,7 @@ binfoFieldDescrs =
  , listField   "hs-source-dirs"
            showFilePath       parseFilePathQ
            hsSourceDirs       (\paths binfo -> binfo{hsSourceDirs=paths})
- , listField   "other-modules"
+ , listFieldWithSep vcat "other-modules"
            disp               parseModuleNameQ
            otherModules       (\val binfo -> binfo{otherModules=val})
  , listField   "ghc-prof-options"
