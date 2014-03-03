@@ -27,6 +27,10 @@ GZIP="${GZIP:-gzip}"
 SCOPE_OF_INSTALLATION="--user"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
+# Try to respect $TMPDIR but override if needed - see #1710.
+[ -"$TMPDIR"- = -""- ] || echo "$TMPDIR" | grep -q ld &&
+  export TMPDIR=/tmp/cabal-$(echo $(od -XN4 -An /dev/random)) && mkdir $TMPDIR
+
 # Check for a C compiler.
 [ ! -x "$CC" ] && for ccc in gcc clang cc icc; do
   ${ccc} --version > /dev/null 2>&1 && CC=$ccc &&
@@ -35,7 +39,8 @@ DEFAULT_PREFIX="${HOME}/.cabal"
 done
 
 # None found.
-[ ! -x `which "$CC"` ] &&
+# `command command -v` is ugly, but `which` is non-standard (see man 1 which).
+[ ! -x "$(command command -v "$CC")" ] &&
   die "C compiler not found (or could not be run).
        If a C compiler is installed make sure it is on your PATH,
        or set the CC variable."
