@@ -39,8 +39,7 @@ DEFAULT_PREFIX="${HOME}/.cabal"
 done
 
 # None found.
-# `command command -v` is ugly, but `which` is non-standard (see man 1 which).
-[ ! -x "$(command command -v "$CC")" ] &&
+[ ! -x `which "$CC"` ] &&
   die "C compiler not found (or could not be run).
        If a C compiler is installed make sure it is on your PATH,
        or set the CC variable."
