@@ -672,6 +672,8 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
       distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                        (testDistPref testFlags)
       setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
+      buildFlags'    = buildFlags { buildVerbosity = testVerbosity testFlags
+                                  , buildDistPref  = testDistPref testFlags }
       addConfigFlags = mempty { configTests = toFlag True }
       checkFlags flags
         | fromFlagOrDefault False (configTests flags) = Nothing
@@ -683,10 +685,10 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
   -- deps if needed.
   (useSandbox, config) <- reconfigure verbosity distPref addConfigFlags []
                           globalFlags noAddSource
-                          (buildNumJobs buildFlags) checkFlags
+                          (buildNumJobs buildFlags') checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity config distPref buildFlags extraArgs
+    build verbosity config distPref buildFlags' extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
@@ -702,6 +704,9 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
       distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                        (benchmarkDistPref benchmarkFlags)
       setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
+      buildFlags'    = buildFlags
+        { buildVerbosity = benchmarkVerbosity benchmarkFlags
+        , buildDistPref  = benchmarkDistPref  benchmarkFlags }
       addConfigFlags = mempty { configBenchmarks = toFlag True }
       checkFlags flags
         | fromFlagOrDefault False (configBenchmarks flags) = Nothing
@@ -712,11 +717,11 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
   -- deps if needed.
   (useSandbox, config) <- reconfigure verbosity distPref addConfigFlags []
-                          globalFlags noAddSource (buildNumJobs buildFlags)
+                          globalFlags noAddSource (buildNumJobs buildFlags')
                           checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity config distPref buildFlags extraArgs
+    build verbosity config distPref buildFlags' extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
