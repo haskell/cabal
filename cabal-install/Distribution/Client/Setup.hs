@@ -1024,10 +1024,10 @@ haddockOptions showOrParseArgs
                           | descr <- optionDescr opt] }
     | opt <- commandOptions Cabal.haddockCommand showOrParseArgs
     , let name = optionName opt
-    , name `elem` ["hoogle", "html", "html-location",
-                   "executables", "internal", "css",
-                   "hyperlink-source", "hscolour-css",
-                   "contents-location"]
+    , name `elem` ["hoogle", "html", "html-location"
+                  ,"executables", "tests", "benchmarks", "all", "internal", "css"
+                  ,"hyperlink-source", "hscolour-css"
+                  ,"contents-location"]
     ]
   where
     fmapOptFlags :: (OptFlags -> OptFlags) -> OptDescr a -> OptDescr a
