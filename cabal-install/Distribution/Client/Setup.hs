@@ -647,7 +647,7 @@ runCommand = CommandUI {
     commandDefaultFlags = mempty,
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
-                          (Cabal.buildOptions progConf showOrParseArgs)
+                          (commandOptions parent showOrParseArgs)
                           ++
                           liftOptions snd setSnd
                           (buildExOptions showOrParseArgs)
@@ -656,7 +656,7 @@ runCommand = CommandUI {
     setFst a (_,b) = (a,b)
     setSnd b (a,_) = (a,b)
 
-    progConf = defaultProgramConfiguration
+    parent = Cabal.buildCommand defaultProgramConfiguration
 
 -- ------------------------------------------------------------
 -- * Report flags

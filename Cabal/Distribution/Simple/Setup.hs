@@ -1380,8 +1380,17 @@ defaultBuildFlags  = BuildFlags {
   }
 
 buildCommand :: ProgramConfiguration -> CommandUI BuildFlags
-buildCommand progConf = makeCommand name shortDesc longDesc
-                        defaultBuildFlags (buildOptions progConf)
+buildCommand progConf =
+  makeCommand name shortDesc longDesc
+  defaultBuildFlags
+  (\showOrParseArgs ->
+    [ optionVerbosity
+      buildVerbosity (\v flags -> flags { buildVerbosity = v })
+
+    , optionDistPref
+      buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
+    ]
+    ++ buildOptions progConf showOrParseArgs)
   where
     name       = "build"
     shortDesc  = "Compile all targets or specific targets."
@@ -1390,7 +1399,8 @@ buildCommand progConf = makeCommand name shortDesc longDesc
         ++ "  " ++ pname ++ " build           "
         ++ "    All the components in the package\n"
         ++ "  " ++ pname ++ " build foo       "
-        ++ "    A component (i.e. lib, exe, test suite)\n"
+        ++ "    A component (i.e. lib, exe, test suite)\n\n"
+        ++ programFlagsDescription progConf
 --TODO: re-enable once we have support for module/file targets
 --        ++ "  " ++ pname ++ " build Foo.Bar   "
 --        ++ "    A module\n"
@@ -1404,13 +1414,7 @@ buildCommand progConf = makeCommand name shortDesc longDesc
 buildOptions :: ProgramConfiguration -> ShowOrParseArgs
                 -> [OptionField BuildFlags]
 buildOptions progConf showOrParseArgs =
-  [ optionVerbosity
-      buildVerbosity (\v flags -> flags { buildVerbosity = v })
-
-  , optionDistPref
-      buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
-
-  , optionNumJobs
+  [ optionNumJobs
       buildNumJobs (\v flags -> flags { buildNumJobs = v })
   ]
 
