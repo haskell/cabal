@@ -68,7 +68,7 @@ import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName, exeExtension )
 import Distribution.Simple.Register
          ( registerPackage, inplaceInstalledPackageInfo )
-import Distribution.Simple.Test ( stubFilePath, stubName )
+import Distribution.Simple.Test.LibV09 ( stubFilePath, stubName )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, debug, warn, setupMessage )

@@ -197,6 +197,9 @@ library
     Distribution.Simple.Setup
     Distribution.Simple.SrcDist
     Distribution.Simple.Test
+    Distribution.Simple.Test.ExeV10
+    Distribution.Simple.Test.LibV09
+    Distribution.Simple.Test.Log
     Distribution.Simple.UHC
     Distribution.Simple.UserHooks
     Distribution.Simple.Utils
