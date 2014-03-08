@@ -137,6 +137,7 @@ library
   ghc-options: -Wall -fno-ignore-asserts -fwarn-tabs
 
   exposed-modules:
+    Distribution.Compat.CreatePipe
     Distribution.Compat.Environment
     Distribution.Compat.Exception
     Distribution.Compat.ReadP
@@ -239,7 +240,6 @@ test-suite package-tests
   type: exitcode-stdio-1.0
   main-is: PackageTests.hs
   other-modules:
-    Distribution.Compat.CreatePipe
     PackageTests.BenchmarkExeV10.Check
     PackageTests.BenchmarkOptions.Check
     PackageTests.BenchmarkStanza.Check

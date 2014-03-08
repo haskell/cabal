@@ -14,7 +14,7 @@ all: build
 
 # build the library itself
 
-SOURCES=Distribution/*.hs Distribution/Simple/*.hs Distribution/PackageDescription/*.hs Distribution/Simple/GHC/*.hs Distribution/Simple/Build/*.hs Distribution/Compat/*.hs Distribution/Simple/Program/*.hs
+SOURCES=Distribution/*.hs Distribution/Simple/*.hs Distribution/PackageDescription/*.hs Distribution/Simple/GHC/*.hs Distribution/Simple/Build/*.hs Distribution/Compat/*.hs Distribution/Simple/Program/*.hs Distribution/Compat/CreatePipe.hs
 CONFIG_STAMP=dist/setup-config
 BUILD_STAMP=dist/build/libHSCabal-$(VERSION).a
 HADDOCK_STAMP=dist/doc/html/Cabal/index.html
@@ -24,6 +24,9 @@ DISTLOC=dist/release
 DIST_STAMP=$(DISTLOC)/Cabal-$(VERSION).tar.gz
 
 COMMA=,
+
+Distribution/Compat/CreatePipe.hs: Distribution/Compat/CreatePipe.hsc
+	hsc2hs Distribution/Compat/CreatePipe.hsc
 
 setup: $(SOURCES) Setup.hs
 	-mkdir -p dist/setup
@@ -83,6 +86,7 @@ docs: haddock users-guide
 clean:
 	rm -rf dist/
 	rm -f setup
+	rm Distribution/Compat/CreatePipe.hs
 
 # testing...
 
