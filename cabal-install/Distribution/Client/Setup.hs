@@ -26,6 +26,7 @@ module Distribution.Client.Setup
     , freezeCommand, FreezeFlags(..)
     , getCommand, unpackCommand, GetFlags(..)
     , checkCommand
+    , formatCommand
     , uploadCommand, UploadFlags(..)
     , reportCommand, ReportFlags(..)
     , runCommand
@@ -631,6 +632,16 @@ checkCommand = CommandUI {
     commandSynopsis     = "Check the package for common mistakes.",
     commandDescription  = Nothing,
     commandUsage        = \pname -> "Usage: " ++ pname ++ " check\n",
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = \_ -> []
+  }
+
+formatCommand  :: CommandUI (Flag Verbosity)
+formatCommand = CommandUI {
+    commandName         = "format",
+    commandSynopsis     = "Reformat the .cabal file using the standard style.",
+    commandDescription  = Nothing,
+    commandUsage        = \pname -> "Usage: " ++ pname ++ " format [FILE]\n",
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> []
   }

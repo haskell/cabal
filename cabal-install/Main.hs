@@ -25,6 +25,7 @@ import Distribution.Client.Setup
          , FreezeFlags(..), freezeCommand
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
+         , formatCommand
          , updateCommand
          , ListFlags(..), listCommand
          , InfoFlags(..), infoCommand
@@ -102,6 +103,10 @@ import Distribution.Client.Utils              (determineNumJobs
 
 import Distribution.PackageDescription
          ( Executable(..) )
+import Distribution.PackageDescription.Parse
+         ( readPackageDescription )
+import Distribution.PackageDescription.PrettyPrint
+         ( writeGenericPackageDescription )
 import Distribution.Simple.Build
          ( startInterpreter )
 import Distribution.Simple.Command
@@ -117,7 +122,8 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, info, topHandler, findPackageDesc )
+         ( cabalVersion, die, notice, info, topHandler
+         , findPackageDesc, tryFindPackageDesc )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -220,6 +226,8 @@ mainWorker args = topHandler $
                      regVerbosity      regDistPref
       ,testCommand            `commandAddAction` testAction
       ,benchmarkCommand       `commandAddAction` benchmarkAction
+      ,hiddenCommand $
+       formatCommand          `commandAddAction` formatAction
       ,hiddenCommand $
        upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $
@@ -862,6 +870,16 @@ checkAction verbosityFlag extraArgs _globalFlags = do
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
 
+formatAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+formatAction verbosityFlag extraArgs _globalFlags = do
+  let verbosity = fromFlag verbosityFlag
+  path <- case extraArgs of
+    [] -> do cwd <- getCurrentDirectory
+             tryFindPackageDesc cwd
+    (p:_) -> return p
+  pkgDesc <- readPackageDescription verbosity path
+  -- Uses 'writeFileAtomic' under the hood.
+  writeGenericPackageDescription path pkgDesc
 
 sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (sdistFlags, sdistExFlags) extraArgs _globalFlags = do
