@@ -101,7 +101,7 @@ data HaddockArgs = HaddockArgs {
  argPackageName :: Flag PackageIdentifier,        -- ^ package name,                                         required.
  argHideModules :: (All,[ModuleName.ModuleName]), -- ^ (hide modules ?, modules to hide)
  argIgnoreExports :: Any,                         -- ^ ingore export lists in modules?
- argLinkSource :: Flag (Template,Template),       -- ^ (template for modules, template for symbols)
+ argLinkSource :: Flag (Template,Template,Template), -- ^ (template for modules, template for symbols, template for lines)
  argCssFile :: Flag FilePath,                     -- ^ optinal custom css file.
  argContents :: Flag String,                      -- ^ optional url to contents page
  argVerbose :: Any,
@@ -276,7 +276,8 @@ fromFlags env flags =
       argHideModules = (maybe mempty (All . not) $ flagToMaybe (haddockInternal flags), mempty),
       argLinkSource = if fromFlag (haddockHscolour flags)
                                then Flag ("src/%{MODULE/./-}.html"
-                                         ,"src/%{MODULE/./-}.html#%{NAME}")
+                                         ,"src/%{MODULE/./-}.html#%{NAME}"
+                                         ,"src/%{MODULE/./-}.html#line-%{LINE}")
                                else NoFlag,
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env) (haddockContents flags),
@@ -480,8 +481,11 @@ renderPureArgs version comp args = concat
                   else ["--package=" ++ pname]) . display . fromFlag . argPackageName $ args,
      (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b) . argHideModules $ args,
      bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args,
-     maybe [] (\(m,e) -> ["--source-module=" ++ m
-                         ,"--source-entity=" ++ e]) . flagToMaybe . argLinkSource $ args,
+     maybe [] (\(m,e,l) -> ["--source-module=" ++ m
+                           ,"--source-entity=" ++ e]
+                           ++ if isVersion2_15 then ["--source-entity-line=" ++ l]
+                                               else []
+              ) . flagToMaybe . argLinkSource $ args,
      maybe [] ((:[]).("--css="++)) . flagToMaybe . argCssFile $ args,
      maybe [] ((:[]).("--use-contents="++)) . flagToMaybe . argContents $ args,
      bool [] [verbosityFlag] . getAny . argVerbose $ args,
@@ -503,6 +507,7 @@ renderPureArgs version comp args = concat
       bool a b c = if c then a else b
       isVersion2 = version >= Version [2,0] []
       isVersion2_5 = version >= Version [2,5] []
+      isVersion2_15 = version >= Version [2,15] []
       verbosityFlag
        | isVersion2_5 = "--verbosity=1"
        | otherwise = "--verbose"
