@@ -2,7 +2,7 @@ module Distribution.Simple.Test.ExeV10
        ( runTest
        ) where
 
-import Distribution.Compat.CreatePipe ( createPipe )
+import Distribution.Compat.CreatePipe ( createPipe, tee )
 import Distribution.Compat.Environment ( getEnvironment )
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
@@ -26,7 +26,7 @@ import System.Directory
     , getCurrentDirectory, removeDirectoryRecursive )
 import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( hGetContents )
+import System.IO ( hGetContents, stdout )
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
@@ -58,17 +58,21 @@ runTest pkg_descr lbi flags suite = do
 
     -- Run test executable
     (rLog, wLog) <- createPipe
-    exit <- do
-        let opts = map (testOption pkg_descr lbi suite)
-                       (testOptions flags)
-            dataDirPath = pwd </> PD.dataDir pkg_descr
-            shellEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                       : ("HPCTIXFILE", (</>) pwd
-                           $ tixFilePath distPref $ PD.testName suite)
-                       : existingEnv
-        rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
-                           -- these handles are automatically closed
-                           Nothing (Just wLog) (Just wLog)
+    let opts = map (testOption pkg_descr lbi suite)
+                   (testOptions flags)
+        dataDirPath = pwd </> PD.dataDir pkg_descr
+        shellEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
+                   : ("HPCTIXFILE", (</>) pwd
+                       $ tixFilePath distPref $ PD.testName suite)
+                   : existingEnv
+
+    (rOut, wOut) <- createPipe
+    let outHandles | details == Streaming = [(stdout, False)]
+                   | otherwise = []
+    tee rOut $ (wLog, True) : outHandles
+    exit <- rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
+                               -- these handles are automatically closed
+                               Nothing (Just wOut) (Just wOut)
 
     -- Generate TestSuiteLog from executable exit code and a machine-
     -- readable test log
@@ -87,10 +91,11 @@ runTest pkg_descr lbi flags suite = do
 
     -- Show the contents of the human-readable log file on the terminal
     -- if there is a failure and/or detailed output is requested
-    let details = fromFlag $ testShowDetails flags
+    let
         whenPrinting = when $ (details > Never)
             && (not (suitePassed $ testLogs suiteLog) || details == Always)
-            && verbosity >= normal
+            && verbosity >= normal -- verbosity overrides show-details
+            && details /= Streaming -- If streaming, we already printed the log
     whenPrinting $ putStr $ unlines $ lines logText
 
     -- Write summary notice to terminal indicating end of test suite
@@ -103,6 +108,7 @@ runTest pkg_descr lbi flags suite = do
   where
     distPref = fromFlag $ testDistPref flags
     verbosity = fromFlag $ testVerbosity flags
+    details = fromFlag $ testShowDetails flags
     testLogDir = distPref </> "test"
 
     buildLog exit =
