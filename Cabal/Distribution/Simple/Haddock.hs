@@ -483,7 +483,7 @@ renderPureArgs version comp args = concat
      bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args,
      maybe [] (\(m,e,l) -> ["--source-module=" ++ m
                            ,"--source-entity=" ++ e]
-                           ++ if isVersion2_15 then ["--source-entity-line=" ++ l]
+                           ++ if isVersion2_14 then ["--source-entity-line=" ++ l]
                                                else []
               ) . flagToMaybe . argLinkSource $ args,
      maybe [] ((:[]).("--css="++)) . flagToMaybe . argCssFile $ args,
@@ -507,7 +507,7 @@ renderPureArgs version comp args = concat
       bool a b c = if c then a else b
       isVersion2 = version >= Version [2,0] []
       isVersion2_5 = version >= Version [2,5] []
-      isVersion2_15 = version >= Version [2,15] []
+      isVersion2_14 = version >= Version [2,14] []
       verbosityFlag
        | isVersion2_5 = "--verbosity=1"
        | otherwise = "--verbose"
