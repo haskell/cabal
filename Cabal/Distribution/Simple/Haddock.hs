@@ -505,8 +505,8 @@ renderPureArgs version comp args = concat
         map (\(i,mh) -> "--read-interface=" ++
           maybe "" (++",") mh ++ i)
       bool a b c = if c then a else b
-      isVersion2 = version >= Version [2,0] []
-      isVersion2_5 = version >= Version [2,5] []
+      isVersion2    = version >= Version [2,0]  []
+      isVersion2_5  = version >= Version [2,5]  []
       isVersion2_14 = version >= Version [2,14] []
       verbosityFlag
        | isVersion2_5 = "--verbosity=1"
