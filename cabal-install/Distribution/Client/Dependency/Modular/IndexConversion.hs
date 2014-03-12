@@ -164,7 +164,7 @@ convBranch os arch cid@(CompilerId cf cv) pi fds p (c', t', mf') =
     go (CNot c)    t f = go c f t
     go (CAnd c d)  t f = go c (go d t f) f
     go (COr  c d)  t f = go c t (go d t f)
-    go (Var (Flag fn)) t f = [Flagged (FN pi fn) (fds ! fn) t f]
+    go (Var (Flag fn)) t f = extractCommon t f ++ [Flagged (FN pi fn) (fds ! fn) t f]
     go (Var (OS os')) t f
       | os == os'      = t
       | otherwise      = f
@@ -174,6 +174,14 @@ convBranch os arch cid@(CompilerId cf cv) pi fds p (c', t', mf') =
     go (Var (Impl cf' cvr')) t f
       | cf == cf' && checkVR cvr' cv = t
       | otherwise      = f
+
+    -- If both branches contain the same package as a simple dep, we lift it to
+    -- the next higher-level, but without constraints. This heuristic together
+    -- with deferring flag choices will then usually first resolve this package,
+    -- and try an already installed version before imposing a default flag choice
+    -- that might not be what we want.
+    extractCommon :: FlaggedDeps PN -> FlaggedDeps PN -> FlaggedDeps PN
+    extractCommon ps ps' = [ D.Simple (Dep pn (Constrained [])) | D.Simple (Dep pn _) <- ps, D.Simple (Dep pn' _) <- ps', pn == pn' ]
 
 -- | Convert a Cabal dependency to a solver-specific dependency.
 convDep :: PN -> Dependency -> Dep PN

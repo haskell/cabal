@@ -40,8 +40,9 @@ solve sc idx userPrefs userConstraints userGoals =
   where
     explorePhase     = exploreTreeLog . backjump
     heuristicsPhase  = P.firstGoal . -- after doing goal-choice heuristics, commit to the first choice (saves space)
+                       P.deferAllFlagChoices .
                        if preferEasyGoalChoices sc
-                         then P.preferBaseGoalChoice . P.deferDefaultFlagChoices . P.lpreferEasyGoalChoices
+                         then P.preferBaseGoalChoice . P.lpreferEasyGoalChoices
                          else P.preferBaseGoalChoice
     preferencesPhase = P.preferPackagePreferences userPrefs
     validationPhase  = P.enforceManualFlags . -- can only be done after user constraints
