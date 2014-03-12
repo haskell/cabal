@@ -241,18 +241,25 @@ preferEasyGoalChoices = trav go
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing choices) xs)
     go x                = x
 
--- | Transformation that tries to avoid making inconsequential
--- flag choices early.
-deferDefaultFlagChoices :: Tree a -> Tree a
-deferDefaultFlagChoices = trav go
+-- | Transformation that tries to avoid making flag choices early.
+deferFlagChoices :: (Bool -> Bool) -> Tree a -> Tree a
+deferFlagChoices f = trav go
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy defer xs)
     go x                = x
 
     defer :: Tree a -> Tree a -> Ordering
-    defer (FChoice _ _ True _ _) _ = GT
-    defer _ (FChoice _ _ True _ _) = LT
-    defer _ _                      = EQ
+    defer (FChoice _ _ b _ _) _ | f b = GT
+    defer _ (FChoice _ _ b _ _) | f b = LT
+    defer _ _                         = EQ
+
+-- | Avoid trivial flag choices early in the process.
+deferTrivialFlagChoices :: Tree a -> Tree a
+deferTrivialFlagChoices = deferFlagChoices id
+
+-- | Avoid all flag choices as long as possible.
+deferAllFlagChoices :: Tree a -> Tree a
+deferAllFlagChoices = deferFlagChoices (const True)
 
 -- | Variant of 'preferEasyGoalChoices'.
 --
