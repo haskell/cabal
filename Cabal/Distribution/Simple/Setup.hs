@@ -1359,6 +1359,7 @@ data BuildFlags = BuildFlags {
     buildDistPref    :: Flag FilePath,
     buildVerbosity   :: Flag Verbosity,
     buildNumJobs     :: Flag (Maybe Int),
+    buildOnlyPreprocess :: Flag Bool,
     -- TODO: this one should not be here, it's just that the silly
     -- UserHooks stop us from passing extra info in other ways
     buildArgs :: [String]
@@ -1376,6 +1377,7 @@ defaultBuildFlags  = BuildFlags {
     buildDistPref    = Flag defaultDistPref,
     buildVerbosity   = Flag normal,
     buildNumJobs     = mempty,
+    buildOnlyPreprocess = Flag False,
     buildArgs        = []
   }
 
@@ -1415,7 +1417,11 @@ buildOptions :: ProgramConfiguration -> ShowOrParseArgs
                 -> [OptionField BuildFlags]
 buildOptions progConf showOrParseArgs =
   [ optionNumJobs
-      buildNumJobs (\v flags -> flags { buildNumJobs = v })
+      buildNumJobs (\v flags -> flags { buildNumJobs = v }),
+      option "" ["only-preprocess"]
+        "Only run preprocessors (for use by cabal repl)"
+        buildOnlyPreprocess (\v flags -> flags { buildOnlyPreprocess = v })
+        (noArg (Flag True))
   ]
 
   ++ programConfigurationPaths progConf showOrParseArgs
@@ -1437,6 +1443,7 @@ instance Monoid BuildFlags where
     buildVerbosity   = mempty,
     buildDistPref    = mempty,
     buildNumJobs     = mempty,
+    buildOnlyPreprocess = mempty,
     buildArgs        = mempty
   }
   mappend a b = BuildFlags {
@@ -1445,6 +1452,7 @@ instance Monoid BuildFlags where
     buildVerbosity   = combine buildVerbosity,
     buildDistPref    = combine buildDistPref,
     buildNumJobs     = combine buildNumJobs,
+    buildOnlyPreprocess = combine buildOnlyPreprocess,
     buildArgs        = combine buildArgs
   }
     where combine field = field a `mappend` field b

@@ -739,6 +739,9 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
                       ghcOptMode         = toFlag GhcModeInteractive,
                       ghcOptOptimisation = toFlag GhcNoOptimisation
                     }
+                    `mappend` mempty {
+                      ghcOptGHCiScripts = [ autogenModulesDir lbi </> "ghci" ]
+                    }
 
       vanillaSharedOpts = vanillaOpts `mappend` mempty {
                       ghcOptDynLinkMode  = toFlag GhcStaticAndDynamic,
