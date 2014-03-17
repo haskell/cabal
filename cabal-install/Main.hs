@@ -631,7 +631,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   let sandboxDistPref = case useSandbox of
         NoSandbox             -> NoFlag
         UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir
-      configFlags'    = savedConfigureFlags   config `mappend` configFlags
+      configFlags'    = maybeForceTests installFlags' $
+                        savedConfigureFlags   config `mappend` configFlags
       configExFlags'  = defaultConfigExFlags         `mappend`
                         savedConfigureExFlags config `mappend` configExFlags
       installFlags'   = defaultInstallFlags          `mappend`
@@ -672,6 +673,13 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               globalFlags' configFlags'' configExFlags'
               installFlags' haddockFlags
               targets
+
+    where
+      -- '--run-tests' implies '--enable-tests'.
+      maybeForceTests installFlags' configFlags' =
+        if fromFlagOrDefault False (installRunTests installFlags')
+        then configFlags' { configTests = toFlag True }
+        else configFlags'
 
 testAction :: (TestFlags, BuildFlags, BuildExFlags) -> [String] -> GlobalFlags
               -> IO ()
