@@ -1222,7 +1222,7 @@ installUnpackedPackage
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs
                        scriptOptions miscOptions
-                       configFlags installConfigFlags haddockFlags
+                       configFlags installFlags haddockFlags
                        compid platform pkg pkgoverride workingDir useLogFile = do
 
   -- Override the .cabal file if necessary
@@ -1298,12 +1298,13 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       buildDistPref  = configDistPref configFlags,
       buildVerbosity = toFlag verbosity'
     }
-    shouldHaddock    = fromFlag (installDocumentation installConfigFlags)
+    shouldHaddock    = fromFlag (installDocumentation installFlags)
     haddockFlags' _   = haddockFlags {
       haddockVerbosity = toFlag verbosity',
       haddockDistPref  = configDistPref configFlags
     }
     testsEnabled = fromFlag (configTests configFlags)
+                   && fromFlagOrDefault False (installRunTests installFlags)
     testFlags _ = Cabal.emptyTestFlags {
       Cabal.testDistPref = configDistPref configFlags
     }
