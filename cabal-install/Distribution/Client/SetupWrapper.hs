@@ -463,6 +463,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptPackages        = maybe []
                                       (\ipkgid -> [(ipkgid, cabalPkgid)])
                                       maybeCabalLibInstalledPkgId
+            , ghcOptExtra           = ["-threaded"]
             }
       let ghcCmdLine = renderGhcOptions compiler ghcOptions
       case useLoggingHandle options of
