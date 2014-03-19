@@ -1539,7 +1539,7 @@ replCommand progConf = CommandUI {
 -- * Test flags
 -- ------------------------------------------------------------
 
-data TestShowDetails = Never | Failures | Always
+data TestShowDetails = Never | Failures | Always | Streaming
     deriving (Eq, Ord, Enum, Bounded, Show)
 
 knownTestShowDetails :: [TestShowDetails]
