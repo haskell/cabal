@@ -1389,6 +1389,12 @@ initCommand = CommandUI {
         (\v flags -> flags { IT.packageType = v })
         (noArg (Flag IT.Executable))
 
+      , option [] ["main-is"]
+        "Specify the main module."
+        IT.mainIs
+        (\v flags -> flags { IT.mainIs = v })
+        (reqArg' "FILE" Just maybeToList)
+
       , option [] ["language"]
         "Specify the default language."
         IT.language
