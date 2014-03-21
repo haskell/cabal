@@ -62,7 +62,7 @@ module Distribution.ParseUtils (
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, simpleNestedField, listField, spaceListField, commaListField,
-        optsField, liftField, boolField, parseQuoted,
+        optsField, liftField, boolField, parseQuoted, indentWith,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -75,7 +75,6 @@ import Distribution.Package     ( PackageName(..), Dependency(..) )
 import Distribution.ModuleName (ModuleName)
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE
-import Distribution.PackageDescription.PrettyPrintIndent (indentWith)
 import Distribution.Text
          ( Text(..) )
 import Distribution.Simple.Utils
@@ -761,3 +760,7 @@ lines_ s                 =  let (l, s') = break (== '\n') s
                             in  l : case s' of
                                         []    -> []
                                         (_:s'') -> lines_ s''
+
+-- | the indentation used for pretty printing
+indentWith :: Int
+indentWith = 4
