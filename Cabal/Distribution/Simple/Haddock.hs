@@ -89,7 +89,7 @@ import Data.Maybe    ( fromMaybe, listToMaybe )
 
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        normalise, splitPath, joinPath, isAbsolute )
-import System.IO (hClose, hPutStrLn)
+import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
 import Distribution.Version
 
 -- ------------------------------------------------------------------------------
@@ -452,6 +452,7 @@ renderArgs verbosity tmpFileOpts version comp args k = do
   createDirectoryIfMissingVerbose verbosity True outputDir
   withTempFileEx tmpFileOpts outputDir "haddock-prolog.txt" $ \prologFileName h -> do
           do
+             when (version >= Version [2,15] []) (hSetEncoding h utf8)
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h
              let pflag = "--prologue=" ++ prologFileName
