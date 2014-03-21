@@ -59,12 +59,11 @@ import Text.PrettyPrint
        (hsep, comma, punctuate, parens, char, nest, empty,
         isEmpty, ($$), (<+>), colon, (<>), text, vcat, ($+$), Doc, render)
 import Distribution.Simple.Utils (writeUTF8File)
-import Distribution.ParseUtils (showFreeText, FieldDescr(..))
+import Distribution.ParseUtils (showFreeText, FieldDescr(..), indentWith)
 import Distribution.PackageDescription.Parse (pkgDescrFieldDescrs,binfoFieldDescrs,libFieldDescrs,
        sourceRepoFieldDescrs)
 import Distribution.Package (Dependency(..))
 import Distribution.Text (Text(..))
-import Distribution.PackageDescription.PrettyPrintIndent (indentWith)
 import Data.Maybe (isJust, fromJust, isNothing)
 
 -- | Recompile with false for regression testing
