@@ -67,7 +67,7 @@ import Language.Haskell.Extension ( Language(..) )
 import Distribution.Client.Init.Types
   ( InitFlags(..), PackageType(..), Category(..) )
 import Distribution.Client.Init.Licenses
-  ( bsd2, bsd3, gplv2, gplv3, lgpl2, lgpl3, agplv3, apache20, mpl20 )
+  ( bsd2, bsd3, gplv2, gplv3, lgpl2, lgpl3, agplv3, apache20, mit, mpl20 )
 import Distribution.Client.Init.Heuristics
   ( guessPackageName, guessAuthorNameMail, SourceFileEntry(..),
     scanForModules, neededBuildPrograms )
@@ -561,6 +561,9 @@ writeLicense flags = do
 
           Flag (Apache (Just (Version {versionBranch = [2, 0]})))
             -> Just apache20
+
+          Flag MIT
+            -> Just $ mit authors year
 
           Flag (MPL (Version {versionBranch = [2, 0]}))
             -> Just mpl20
