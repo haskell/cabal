@@ -37,8 +37,10 @@ import System.Directory
          , removeFile, setCurrentDirectory )
 import System.FilePath
          ( (</>), isAbsolute )
+#if MIN_VERSION_base(4,4,0)
 import System.IO
          ( Handle, hGetEncoding, hSetEncoding )
+#endif
 import System.IO.Unsafe ( unsafePerformIO )
 
 #if defined(mingw32_HOST_OS)
@@ -197,12 +199,16 @@ existsAndIsMoreRecentThan a b = do
 -- characters into one present in the encoding (i.e., \'?\').
 -- This is opposed to the default behavior, which is to throw an exception on
 -- error. This function will ignore file handles that have a Unicode encoding
--- set.
+-- set. It's a no-op for versions of `base` less than 4.4.
 relaxEncodingErrors :: Handle -> IO ()
 relaxEncodingErrors handle = do
+#if MIN_VERSION_base(4,4,0)
   maybeEncoding <- hGetEncoding handle
   case maybeEncoding of
     Just (TextEncoding name decoder encoder) | not ("UTF" `isPrefixOf` name) ->
       let relax x = x { recover = recoverEncode TransliterateCodingFailure }
       in hSetEncoding handle (TextEncoding name decoder (fmap relax encoder))
     _ -> return ()
+#else
+  return ()
+#endif
