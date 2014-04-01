@@ -143,7 +143,7 @@ RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\."
 STM_VER="2.4.2";       STM_VER_REGEXP="2\."
                        # == 2.*
 
-HACKAGE_URL="http://hackage.haskell.org/package"
+HACKAGE_URL="https://hackage.haskell.org/package"
 
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
