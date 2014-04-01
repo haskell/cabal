@@ -33,6 +33,12 @@ import System.Directory
          , removeFile, setCurrentDirectory )
 import System.FilePath
          ( (</>), isAbsolute )
+import System.IO
+         ( Handle
+#if MIN_VERSION_base(4,4,0)
+         , hGetEncoding, hSetEncoding
+#endif
+         )
 import System.IO.Unsafe ( unsafePerformIO )
 
 #if MIN_VERSION_base(4,4,0)
@@ -40,8 +46,6 @@ import GHC.IO.Encoding
          ( recover, TextEncoding(TextEncoding) )
 import GHC.IO.Encoding.Failure
          ( recoverEncode, CodingFailureMode(TransliterateCodingFailure) )
-import System.IO
-         ( Handle, hGetEncoding, hSetEncoding )
 #endif
 
 #if defined(mingw32_HOST_OS)
