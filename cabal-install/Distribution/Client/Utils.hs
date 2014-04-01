@@ -26,10 +26,6 @@ import Data.List
 import Data.Word
          ( Word8, Word32)
 import Foreign.C.Types ( CInt(..) )
-import GHC.IO.Encoding
-         ( recover, TextEncoding(TextEncoding) )
-import GHC.IO.Encoding.Failure
-         ( recoverEncode, CodingFailureMode(TransliterateCodingFailure) )
 import qualified Control.Exception as Exception
          ( finally )
 import System.Directory
@@ -37,11 +33,16 @@ import System.Directory
          , removeFile, setCurrentDirectory )
 import System.FilePath
          ( (</>), isAbsolute )
+import System.IO.Unsafe ( unsafePerformIO )
+
 #if MIN_VERSION_base(4,4,0)
+import GHC.IO.Encoding
+         ( recover, TextEncoding(TextEncoding) )
+import GHC.IO.Encoding.Failure
+         ( recoverEncode, CodingFailureMode(TransliterateCodingFailure) )
 import System.IO
          ( Handle, hGetEncoding, hSetEncoding )
 #endif
-import System.IO.Unsafe ( unsafePerformIO )
 
 #if defined(mingw32_HOST_OS)
 import Prelude hiding (ioError)
