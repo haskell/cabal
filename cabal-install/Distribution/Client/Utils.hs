@@ -213,7 +213,6 @@ relaxEncodingErrors handle = do
     Just (TextEncoding name decoder encoder) | not ("UTF" `isPrefixOf` name) ->
       let relax x = x { recover = recoverEncode TransliterateCodingFailure }
       in hSetEncoding handle (TextEncoding name decoder (fmap relax encoder))
-    _ -> return ()
-#else
-  return ()
+    _ ->
 #endif
+      return ()
