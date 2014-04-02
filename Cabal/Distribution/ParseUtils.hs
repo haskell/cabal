@@ -33,7 +33,7 @@ module Distribution.ParseUtils (
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
         field, simpleField, listField, spaceListField, commaListField,
-        optsField, liftField, boolField, parseQuoted,
+        commaNewLineListField, optsField, liftField, boolField, parseQuoted,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -188,13 +188,21 @@ simpleField :: String -> (a -> Doc) -> ReadP a a
 simpleField name showF readF get set
   = liftField get set $ field name showF readF
 
-commaListField :: String -> (a -> Doc) -> ReadP [a] a
+commaListField' :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListField name showF readF get set =
+commaListField' separator name showF readF get set =
   liftField get set' $
-    field name (fsep . punctuate comma . map showF) (parseCommaList readF)
+    field name (separator . punctuate comma . map showF) (parseCommaList readF)
   where
     set' xs b = set (get b ++ xs) b
+
+commaListField :: String -> (a -> Doc) -> ReadP [a] a
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaListField = commaListField' fsep
+
+commaNewLineListField :: String -> (a -> Doc) -> ReadP [a] a
+                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaNewLineListField = commaListField' sep
 
 spaceListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
