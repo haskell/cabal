@@ -2103,11 +2103,11 @@ a few options:
 
 
 
-[dist-simple]:  http://hackage.haskell.org/packages/archive/Cabal/latest/doc/html/Distribution-Simple.html
-[dist-make]:    http://hackage.haskell.org/packages/archive/Cabal/latest/doc/html/Distribution-Make.html
-[dist-license]: http://hackage.haskell.org/packages/archive/Cabal/latest/doc/html/Distribution-License.html#t:License
-[extension]:    http://hackage.haskell.org/packages/archive/Cabal/latest/doc/html/Language-Haskell-Extension.html#t:Extension
-[BuildType]:    http://hackage.haskell.org/packages/archive/Cabal/latest/doc/html/Distribution-PackageDescription.html#t:BuildType
+[dist-simple]:  ../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html
+[dist-make]:    ../release/cabal-latest/doc/API/Cabal/Distribution-Make.html
+[dist-license]: ../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License
+[extension]:    ../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension
+[BuildType]:    ../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType
 [data-version]: http://hackage.haskell.org/packages/archive/base/latest/doc/html/Data-Version.html
 [alex]:       http://www.haskell.org/alex/
 [autoconf]:   http://www.gnu.org/software/autoconf/

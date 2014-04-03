@@ -1021,11 +1021,11 @@ This command takes the following option:
     the generated source package.  The original package is unaffected.
 
 
-[dist-simple]:  ../libraries/Cabal/Distribution-Simple.html
-[dist-make]:    ../libraries/Cabal/Distribution-Make.html
-[dist-license]: ../libraries/Cabal/Distribution-License.html#t:License
-[extension]:    ../libraries/Cabal/Language-Haskell-Extension.html#t:Extension
-[BuildType]:    ../libraries/Cabal/Distribution-PackageDescription.html#t:BuildType
+[dist-simple]:  ../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html
+[dist-make]:    ../release/cabal-latest/doc/API/Cabal/Distribution-Make.html
+[dist-license]: ../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License
+[extension]:    ../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension
+[BuildType]:    ../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType
 [alex]:       http://www.haskell.org/alex/
 [autoconf]:   http://www.gnu.org/software/autoconf/
 [c2hs]:       http://www.cse.unsw.edu.au/~chak/haskell/c2hs/
