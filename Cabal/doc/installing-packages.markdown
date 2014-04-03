@@ -267,12 +267,13 @@ infrastructure, the values supplied via these options are recorded in a
 private file read by later stages.
 
 If a user-supplied `configure` script is run (see the section on
-[system-dependent parameters](#system-dependent-parameters) or on
-[complex packages](#complex-packages)), it is passed the
-`--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--datadir`, `--libexecdir`
-and `--sysconfdir` options. In addition the value of the `--with-compiler`
-option is passed in a `--with-hc` option and all options specified with
-`--configure-option=` are passed on.
+[system-dependent
+parameters](developing-packages.html#system-dependent-parameters) or on
+[complex packages](developing-packages.html#more-complex-packages)), it
+is passed the `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`,
+`--datadir`, `--libexecdir` and `--sysconfdir` options. In addition the
+value of the `--with-compiler` option is passed in a `--with-hc` option
+and all options specified with `--configure-option=` are passed on.
 
 ### Programs used for building ###
 
@@ -528,8 +529,9 @@ have baked-in all absolute paths.
 
 The application need do nothing special to achieve prefix-independence.
 If it finds any files using `getDataFileName` and the [other functions
-provided for the purpose](#accessing-data-files-from-package-code), the
-files will be accessed relative to the location of the current
+provided for the
+purpose](developing-packages.html#accessing-data-files-from-package-code),
+the files will be accessed relative to the location of the current
 executable.
 
 A library cannot (currently) be prefix-independent, because it will be
@@ -539,8 +541,8 @@ to the library package.
 ### Controlling Flag Assignments ###
 
 Flag assignments (see the [resolution of conditions and
-flags](#resolution-of-conditions-and-flags)) can be controlled with the
-followingcommand line options.
+flags](developing-packages.html#resolution-of-conditions-and-flags)) can
+be controlled with the following command line options.
 
 `-f` _flagname_ or `-f` `-`_flagname_
 :   Force the specified flag to `true` or `false` (if preceded with a `-`). Later
@@ -685,8 +687,8 @@ followingcommand line options.
 `--configure-option=`_str_
 :   An extra option to an external `configure` script, if one is used
     (see the section on [system-dependent
-    parameters](#system-dependent-parameters)).  There can be several of
-    these options.
+    parameters](developing-packages.html#system-dependent-parameters)).
+    There can be several of these options.
 
 `--extra-include-dirs`[=_dir_]
 :   An extra directory to search for C header files. You can use this

@@ -61,7 +61,7 @@ the API are more prone to change than others. The rest of this section
 gives some informal advice on what level of API stability you can expect
 between major releases.
 
-[PVP]: http://haskell.org/haskellwiki/Package_versioning_policy
+[PVP]: http://www.haskell.org/haskellwiki/Package_versioning_policy
 
 ### Very Stable API ###
 
