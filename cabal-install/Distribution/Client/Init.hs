@@ -154,7 +154,7 @@ getPackageName flags = do
               ?>> Just `fmap` (getCurrentDirectory >>= guessPackageName)
 
   pkgName' <-     return (flagToMaybe $ packageName flags)
-              ?>> maybePrompt flags (promptStr "Package name" guess)
+              ?>> maybePrompt flags (prompt "Package name" guess)
               ?>> return guess
 
   return $ flags { packageName = maybeToFlag pkgName' }
@@ -597,7 +597,7 @@ writeCabalFile flags@(InitFlags{packageName = NoFlag}) = do
   message flags "Error: no package name provided."
   return False
 writeCabalFile flags@(InitFlags{packageName = Flag p}) = do
-  let cabalFileName = p ++ ".cabal"
+  let cabalFileName = display p ++ ".cabal"
   message flags $ "Generating " ++ cabalFileName ++ "..."
   writeFileSafe flags cabalFileName (generateCabalFile cabalFileName flags)
   return True
@@ -647,7 +647,7 @@ generateCabalFile fileName c =
          $$ text ""
     else empty)
   $$
-  vcat [ fieldS "name"          (packageName   c)
+  vcat [ field  "name"          (packageName   c)
                 (Just "The name of the package.")
                 True
 
@@ -712,7 +712,9 @@ generateCabalFile fileName c =
 
        , case packageType c of
            Flag Executable ->
-             text "\nexecutable" <+> text (fromMaybe "" . flagToMaybe $ packageName c) $$ nest 2 (vcat
+             text "\nexecutable" <+>
+             text (maybe "" display . flagToMaybe $ packageName c) $$
+             nest 2 (vcat
              [ fieldS "main-is" NoFlag (Just ".hs or .lhs file containing the Main module.") True
 
              , generateBuildInfo Executable c
