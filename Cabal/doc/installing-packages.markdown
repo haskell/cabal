@@ -1029,10 +1029,10 @@ This command takes the following option:
 [alex]:       http://www.haskell.org/alex/
 [autoconf]:   http://www.gnu.org/software/autoconf/
 [c2hs]:       http://www.cse.unsw.edu.au/~chak/haskell/c2hs/
-[cpphs]:      http://www.haskell.org/cpphs/
-[greencard]:  http://www.haskell.org/greencard/
+[cpphs]:      http://projects.haskell.org/cpphs/
+[greencard]:  http://hackage.haskell.org/package/greencard
 [haddock]:    http://www.haskell.org/haddock/
 [HsColour]:   http://www.cs.york.ac.uk/fp/darcs/hscolour/
 [happy]:      http://www.haskell.org/happy/
 [Hackage]:    http://hackage.haskell.org/
-[pkg-config]: http://pkg-config.freedesktop.org/
+[pkg-config]: http://www.freedesktop.org/wiki/Software/pkg-config/
