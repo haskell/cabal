@@ -1323,7 +1323,9 @@ initCommand = CommandUI {
       , option ['p'] ["package-name"]
         "Name of the Cabal package to create."
         IT.packageName (\v flags -> flags { IT.packageName = v })
-        (reqArgFlag "PACKAGE")
+        (reqArg "PACKAGE" (readP_to_E ("Cannot parse package name: "++)
+                                      (toFlag `fmap` parse))
+                          (flagToList . fmap display))
 
       , option [] ["version"]
         "Initial version of the package."
