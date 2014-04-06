@@ -122,10 +122,12 @@ import Distribution.Simple.Configure
          , getPersistBuildConfig, tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
+import Distribution.Simple.Program.Run (getEffectiveEnvironment)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, info, topHandler
-         , findPackageDesc, tryFindPackageDesc , rawSystemExitWithEnv )
+         , findPackageDesc, tryFindPackageDesc , rawSystemExit
+         , rawSystemExitWithEnv )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -134,7 +136,7 @@ import Distribution.Version
          ( Version(..), orLaterVersion )
 import qualified Paths_cabal_install (version)
 
-import System.Environment       (getArgs, getProgName, getEnvironment)
+import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
 import System.IO                (BufferMode(LineBuffering),
@@ -1026,16 +1028,19 @@ execAction execFlags extraArgs globalFlags = do
           case extraArgs of
             (exec:args) -> do
                 maybeWithSandboxDirOnSearchPath useSandbox $ do
-                    env <- newEnv sandboxDir comp platform
-                    rawSystemExitWithEnv verbosity exec args env
+                    menv <- newEnv sandboxDir comp platform
+                    case menv of
+                        Just env -> rawSystemExitWithEnv verbosity exec args env
+                        Nothing  -> rawSystemExit        verbosity exec args
             -- Error handling.
             [] -> die $ "Please specify an executable to run"
   where
     newEnv sandboxDir comp platform = do
         let s = sandboxPackageDBPath sandboxDir comp platform
             g = "/usr/lib/" ++ showCompilerId comp ++ "/package.conf.d"
-        curEnv <- getEnvironment
-        return $ [("GHC_PACKAGE_PATH", s ++ ":" ++ g)] ++ curEnv
+        -- Sandboxes are only implemented for GHC so unconditionally
+        -- setting GHC_PACKAGE_PATH is OK.
+        getEffectiveEnvironment [("GHC_PACKAGE_PATH", Just $ s ++ ":" ++ g)]
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
