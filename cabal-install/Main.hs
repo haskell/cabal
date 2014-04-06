@@ -116,13 +116,14 @@ import Distribution.Simple.Command
          ( CommandParse(..), CommandUI(..), Command
          , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Compiler
-         ( Compiler(..), showCompilerId )
+         ( Compiler(..) )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAuxEx
          , ConfigStateFileErrorType(..), localBuildInfoFile
          , getPersistBuildConfig, tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Program (defaultProgramConfiguration)
+import Distribution.Simple.GHC (ghcGlobalPackageDB)
+import Distribution.Simple.Program (defaultProgramConfiguration, lookupProgram, ghcProgram)
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
@@ -1025,22 +1026,23 @@ execAction execFlags extraArgs globalFlags = do
       NoSandbox -> return ()
       (UseSandbox sandboxDir) -> do
           let configFlags = savedConfigureFlags config
-          (comp, platform, _programDb) <- configCompilerAux' configFlags
+          (comp, platform, conf) <- configCompilerAux' configFlags
           case extraArgs of
             (exec:args) -> do
                 withSandboxBinDirOnSearchPath sandboxDir $ do
-                    menv <- newEnv sandboxDir comp platform
+                    menv <- newEnv sandboxDir comp platform conf verbosity
                     case menv of
                         Just env -> rawSystemExitWithEnv verbosity exec args env
                         Nothing  -> rawSystemExit        verbosity exec args
             -- Error handling.
             [] -> die $ "Please specify an executable to run"
   where
-    newEnv sandboxDir comp platform = do
+    newEnv sandboxDir comp platform conf verbosity = do
+        -- Sandboxes are only implemented for GHC so both the `Just
+        -- ghcProg` and unconditionally setting GHC_PACKAGE_PATH are OK.
         let s = sandboxPackageDBPath sandboxDir comp platform
-            g = "/usr/lib/" ++ showCompilerId comp ++ "/package.conf.d"
-        -- Sandboxes are only implemented for GHC so unconditionally
-        -- setting GHC_PACKAGE_PATH is OK.
+            Just ghcProg = lookupProgram ghcProgram conf
+        g <- ghcGlobalPackageDB verbosity ghcProg
         getEffectiveEnvironment [("GHC_PACKAGE_PATH", Just $ s ++ ":" ++ g)]
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
