@@ -94,6 +94,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,configPackageDB')
 import Distribution.Client.Sandbox.PackageEnvironment
                                               (setPackageDB
+                                              ,sandboxPackageDBPath
                                               ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
@@ -1015,19 +1016,25 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
 execAction :: ExecFlags -> [String] -> GlobalFlags -> IO ()
 execAction execFlags extraArgs globalFlags = do
   let verbosity = fromFlag (execVerbosity execFlags)
-  (useSandbox, _config) <- loadConfigOrSandboxConfig verbosity globalFlags
+  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
                            mempty
-  case extraArgs of
-    (exec:args) -> do
-        maybeWithSandboxDirOnSearchPath useSandbox $ do
-          env <- newEnv
-          rawSystemExitWithEnv verbosity exec args env
-    -- Error handling.
-    [] -> die $ "Please specify an executable to run"
+  case useSandbox of
+      NoSandbox -> return ()
+      (UseSandbox sandboxDir) -> do
+          let configFlags = savedConfigureFlags config
+          (comp, platform, _programDb) <- configCompilerAux' configFlags
+          case extraArgs of
+            (exec:args) -> do
+                maybeWithSandboxDirOnSearchPath useSandbox $ do
+                    env <- newEnv sandboxDir comp platform
+                    rawSystemExitWithEnv verbosity exec args env
+            -- Error handling.
+            [] -> die $ "Please specify an executable to run"
   where
-    newEnv = do
+    newEnv sandboxDir comp platform = do
+        let s = sandboxPackageDBPath sandboxDir comp platform
         curEnv <- getEnvironment
-        return $ [("GHC_PACKAGE_PATH",".cabal-sandbox/x86_64-linux-ghc-7.6.3-packages.conf.d/:")] ++ curEnv
+        return $ [("GHC_PACKAGE_PATH", s ++ ":")] ++ curEnv
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
