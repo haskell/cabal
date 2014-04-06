@@ -124,7 +124,7 @@ import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, info, topHandler
-         , findPackageDesc, tryFindPackageDesc , rawSystemExit )
+         , findPackageDesc, tryFindPackageDesc , rawSystemExitWithEnv )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -133,7 +133,7 @@ import Distribution.Version
          ( Version(..), orLaterVersion )
 import qualified Paths_cabal_install (version)
 
-import System.Environment       (getArgs, getProgName)
+import System.Environment       (getArgs, getProgName, getEnvironment)
 import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
 import System.IO                (BufferMode(LineBuffering),
@@ -1018,10 +1018,16 @@ execAction execFlags extraArgs globalFlags = do
   (useSandbox, _config) <- loadConfigOrSandboxConfig verbosity globalFlags
                            mempty
   case extraArgs of
-    (exec:args) -> maybeWithSandboxDirOnSearchPath useSandbox $
-      rawSystemExit verbosity exec args
+    (exec:args) -> do
+        maybeWithSandboxDirOnSearchPath useSandbox $ do
+          env <- newEnv
+          rawSystemExitWithEnv verbosity exec args env
     -- Error handling.
     [] -> die $ "Please specify an executable to run"
+  where
+    newEnv = do
+        curEnv <- getEnvironment
+        return $ [("GHC_PACKAGE_PATH",".cabal-sandbox/x86_64-linux-ghc-7.6.3-packages.conf.d/:")] ++ curEnv
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
