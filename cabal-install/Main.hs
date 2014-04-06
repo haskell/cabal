@@ -115,7 +115,7 @@ import Distribution.Simple.Command
          ( CommandParse(..), CommandUI(..), Command
          , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Compiler
-         ( Compiler(..) )
+         ( Compiler(..), showCompilerId )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAuxEx
          , ConfigStateFileErrorType(..), localBuildInfoFile
@@ -1033,8 +1033,9 @@ execAction execFlags extraArgs globalFlags = do
   where
     newEnv sandboxDir comp platform = do
         let s = sandboxPackageDBPath sandboxDir comp platform
+            g = "/usr/lib/" ++ showCompilerId comp ++ "/package.conf.d"
         curEnv <- getEnvironment
-        return $ [("GHC_PACKAGE_PATH", s ++ ":")] ++ curEnv
+        return $ [("GHC_PACKAGE_PATH", s ++ ":" ++ g)] ++ curEnv
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
