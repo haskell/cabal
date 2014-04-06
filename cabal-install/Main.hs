@@ -78,6 +78,7 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxListSources
                                               ,sandboxHcPkg
                                               ,dumpPackageEnvironment
+                                              ,withSandboxBinDirOnSearchPath
 
                                               ,getSandboxConfigFilePath
                                               ,loadConfigOrSandboxConfig
@@ -1027,7 +1028,7 @@ execAction execFlags extraArgs globalFlags = do
           (comp, platform, _programDb) <- configCompilerAux' configFlags
           case extraArgs of
             (exec:args) -> do
-                maybeWithSandboxDirOnSearchPath useSandbox $ do
+                withSandboxBinDirOnSearchPath sandboxDir $ do
                     menv <- newEnv sandboxDir comp platform
                     case menv of
                         Just env -> rawSystemExitWithEnv verbosity exec args env
