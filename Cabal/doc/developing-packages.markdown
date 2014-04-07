@@ -18,9 +18,7 @@ Proglet.hs
 It is assumed that (apart from external dependencies) all the files that
 make up a package live under a common project root directory. This
 simple example has all the project files in one directory, but most
-packages will use one or more subdirectories. See section [TODO](#TODO)
-for the standard practices for organising the files in your project
-directory.
+packages will use one or more subdirectories.
 
 To turn this into a Cabal package we need two extra files in the
 project's root directory:
@@ -655,8 +653,8 @@ several sections.
   information](#build-information).
 
 * Following is an arbitrary number of executable sections
-  which describe an [executable program](#executable) and relevant
-  [build information](#build-information).
+  which describe an executable program and relevant [build
+  information](#build-information).
 
 Each section consists of a number of property descriptions
 in the form of field/value pairs, with a syntax roughly like mail
@@ -724,8 +722,7 @@ These fields may occur in the first top-level properties section and
 describe the package as a whole:
 
 `name:` _package-name_ (required)
-:   The unique name of the [package](#packages), without the version
-    number.
+:   The unique name of the package, without the version number.
 
 `version:` _numbers_ (required)
 :   The package version number, usually consisting of a sequence of
@@ -792,8 +789,8 @@ describe the package as a whole:
     ~~~~~~~~~~~~~~~~
 
     For build type `Make` (see the section on [more complex
-    packages](#more-complex-packages) below), the contents of
-    `Setup.hs` must be:
+    packages](installing-packages.html#more-complex-packages) below),
+    the contents of `Setup.hs` must be:
 
     ~~~~~~~~~~~~~~~~
     import Distribution.Make
@@ -866,8 +863,8 @@ describe the package as a whole:
     package before.
 
     For library packages, this field is used as prologue text by [`setup
-    haddock`](#setup-haddock), and thus may contain the same markup as
-    [haddock][] documentation comments.
+    haddock`](installing-packages.html#setup-haddock), and thus may
+    contain the same markup as [haddock][] documentation comments.
 
 `category:` _freeform_
 :   A classification category for future use by the package catalogue [Hackage].  These
@@ -910,8 +907,9 @@ describe the package as a whole:
 
 `extra-source-files:` _filename list_
 :   A list of additional files to be included in source distributions
-    built with [`setup sdist`](#setup-sdist). As with `data-files` it
-    can use a limited form of `*` wildcards in file names.
+    built with [`setup sdist`](installing-packages.html#setup-sdist). As
+    with `data-files` it can use a limited form of `*` wildcards in file
+    names.
 
 `extra-doc-files:` _filename list_
 :   A list of additional files to be included in source distributions,
@@ -921,9 +919,10 @@ describe the package as a whole:
 
 `extra-tmp-files:` _filename list_
 :   A list of additional files or directories to be removed by [`setup
-    clean`](#setup-clean). These would typically be additional files
-    created by additional hooks, such as the scheme described in the
-    section on [system-dependent parameters](#system-dependent-parameters).
+    clean`](installing-packages.html#setup-clean). These would typically
+    be additional files created by additional hooks, such as the scheme
+    described in the section on [system-dependent
+    parameters](#system-dependent-parameters).
 
 ### Library ###
 
@@ -1536,12 +1535,12 @@ following fields.
 :   The default value of this flag.
 
     Note that this value may be [overridden in several
-    ways](#controlling-flag-assignments"). The rationale for having
-    flags default to True is that users usually want new features as
-    soon as they are available. Flags representing features that are not
-    (yet) recommended for most users (such as experimental features or
-    debugging support) should therefore explicitly override the default
-    to False.
+    ways](installing-packages.html#controlling-flag-assignments"). The
+    rationale for having flags default to True is that users usually
+    want new features as soon as they are available. Flags representing
+    features that are not (yet) recommended for most users (such as
+    experimental features or debugging support) should therefore
+    explicitly override the default to False.
 
 `manual:` _boolean_ (default: `False`)
 :   By default, Cabal will first try to satisfy dependencies with the
@@ -1828,9 +1827,9 @@ The `get` command supports the following options:
 The placement on the target system of files listed in the `data-files`
 field varies between systems, and in some cases one can even move
 packages around after installation (see [prefix
-independence](#prefix-independence)).  To enable packages to find these
-files in a portable way, Cabal generates a module called
-`Paths_`_pkgname_ (with any hyphens in _pkgname_ replaced by
+independence](installing-packages.html#prefix-independence)). To enable
+packages to find these files in a portable way, Cabal generates a module
+called `Paths_`_pkgname_ (with any hyphens in _pkgname_ replaced by
 underscores) during building, so that it may be imported by modules of
 the package.  This module defines a function
 
@@ -2097,27 +2096,27 @@ a few options:
   * Finally, with the `build-type` `Custom`, you can also write your
     own setup script from scratch. It must conform to the interface
     described in the section on [building and installing
-    packages](#building-and-installing-a-package), and you may use the
-    Cabal library for all or part of the work.  One option is to copy
-    the source of `Distribution.Simple`, and alter it for your needs.
-    Good luck.
+    packages](installing-packages.html), and you may use the Cabal
+    library for all or part of the work.  One option is to copy the
+    source of `Distribution.Simple`, and alter it for your needs. Good
+    luck.
 
 
 
-[dist-simple]:  ../libraries/Cabal/Distribution-Simple.html
-[dist-make]:    ../libraries/Cabal/Distribution-Make.html
-[dist-license]: ../libraries/Cabal/Distribution-License.html#t:License
-[extension]:    ../libraries/Cabal/Language-Haskell-Extension.html#t:Extension
-[BuildType]:    ../libraries/Cabal/Distribution-PackageDescription.html#t:BuildType
+[dist-simple]:  ../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html
+[dist-make]:    ../release/cabal-latest/doc/API/Cabal/Distribution-Make.html
+[dist-license]: ../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License
+[extension]:    ../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension
+[BuildType]:    ../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType
 [data-version]: http://hackage.haskell.org/packages/archive/base/latest/doc/html/Data-Version.html
 [alex]:       http://www.haskell.org/alex/
 [autoconf]:   http://www.gnu.org/software/autoconf/
 [c2hs]:       http://www.cse.unsw.edu.au/~chak/haskell/c2hs/
-[cpphs]:      http://www.haskell.org/cpphs/
-[greencard]:  http://www.haskell.org/greencard/
+[cpphs]:      http://projects.haskell.org/cpphs/
+[greencard]:  http://hackage.haskell.org/package/greencard
 [haddock]:    http://www.haskell.org/haddock/
 [HsColour]:   http://www.cs.york.ac.uk/fp/darcs/hscolour/
 [happy]:      http://www.haskell.org/happy/
 [Hackage]:    http://hackage.haskell.org/
-[pkg-config]: http://pkg-config.freedesktop.org/
+[pkg-config]: http://www.freedesktop.org/wiki/Software/pkg-config/
 [REPL]:       http://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop
