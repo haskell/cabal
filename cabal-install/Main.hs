@@ -39,7 +39,7 @@ import Distribution.Client.Setup
          , reportCommand
          )
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), haddockCommand
+         ( HaddockFlags(..), haddockCommand, defaultHaddockFlags
          , HscolourFlags(..), hscolourCommand
          , ReplFlags(..), replCommand
          , CopyFlags(..), copyCommand
@@ -214,10 +214,9 @@ mainWorker args = topHandler $
       ,replCommand defaultProgramConfiguration
                               `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
+      ,haddockCommand         `commandAddAction` haddockAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
-      ,wrapperAction haddockCommand
-                     haddockVerbosity  haddockDistPref
       ,wrapperAction cleanCommand
                      cleanVerbosity    cleanDistPref
       ,wrapperAction hscolourCommand
@@ -636,6 +635,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                         savedConfigureExFlags config `mappend` configExFlags
       installFlags'   = defaultInstallFlags          `mappend`
                         savedInstallFlags     config `mappend` installFlags
+      haddockFlags'   = defaultHaddockFlags          `mappend`
+                        savedHaddockFlags     config `mappend` haddockFlags
       globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
 
@@ -670,7 +671,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
               comp platform conf
               useSandbox mSandboxPkgInfo
               globalFlags' configFlags'' configExFlags'
-              installFlags' haddockFlags
+              installFlags' haddockFlags'
               targets
 
 testAction :: (TestFlags, BuildFlags, BuildExFlags) -> [String] -> GlobalFlags
@@ -734,6 +735,20 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
       Cabal.benchmarkCommand (const benchmarkFlags) extraArgs
+
+haddockAction :: HaddockFlags -> [String] -> GlobalFlags -> IO ()
+haddockAction haddockFlags extraArgs globalFlags = do
+  let verbosity = fromFlag (haddockVerbosity haddockFlags)
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  let haddockFlags' = defaultHaddockFlags      `mappend`
+                      savedHaddockFlags config `mappend` haddockFlags
+      setupScriptOptions = defaultSetupScriptOptions {
+        useDistPref = fromFlagOrDefault
+                      (useDistPref defaultSetupScriptOptions)
+                      (haddockDistPref haddockFlags')
+        }
+  setupWrapper verbosity setupScriptOptions Nothing
+    haddockCommand (const haddockFlags') extraArgs
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
