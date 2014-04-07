@@ -551,6 +551,7 @@ ghcLibDir' verbosity ghcProg =
      rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
 
 
+-- | Return the 'FilePath' to the global GHC package database.
 ghcGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 ghcGlobalPackageDB verbosity ghcProg =
     (reverse . dropWhile isSpace . reverse) `fmap`

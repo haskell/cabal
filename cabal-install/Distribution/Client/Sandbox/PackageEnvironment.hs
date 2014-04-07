@@ -209,6 +209,7 @@ initialPackageEnvironment sandboxDir compiler platform = do
        }
     }
 
+-- | Return the path to the sandbox package database.
 sandboxPackageDBPath :: FilePath -> Compiler -> Platform -> String
 sandboxPackageDBPath sandboxDir compiler platform =
     sandboxDir
