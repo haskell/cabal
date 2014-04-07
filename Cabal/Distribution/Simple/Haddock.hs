@@ -2,6 +2,7 @@
 -- |
 -- Module      :  Distribution.Simple.Haddock
 -- Copyright   :  Isaac Jones 2003-2005
+-- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
@@ -15,36 +16,6 @@
 --
 -- The @hscolour@ support allows generating html versions of the original
 -- source, with coloured syntax highlighting.
-
-{- All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-
-    * Neither the name of Isaac Jones nor the names of other
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.Simple.Haddock (
   haddock, hscolour,
@@ -118,7 +89,7 @@ import Data.Maybe    ( fromMaybe, listToMaybe )
 
 import System.FilePath((</>), (<.>), splitFileName, splitExtension,
                        normalise, splitPath, joinPath, isAbsolute )
-import System.IO (hClose, hPutStrLn)
+import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
 import Distribution.Version
 
 -- ------------------------------------------------------------------------------
@@ -130,7 +101,7 @@ data HaddockArgs = HaddockArgs {
  argPackageName :: Flag PackageIdentifier,        -- ^ package name,                                         required.
  argHideModules :: (All,[ModuleName.ModuleName]), -- ^ (hide modules ?, modules to hide)
  argIgnoreExports :: Any,                         -- ^ ingore export lists in modules?
- argLinkSource :: Flag (Template,Template),       -- ^ (template for modules, template for symbols)
+ argLinkSource :: Flag (Template,Template,Template), -- ^ (template for modules, template for symbols, template for lines)
  argCssFile :: Flag FilePath,                     -- ^ optinal custom css file.
  argContents :: Flag String,                      -- ^ optional url to contents page
  argVerbose :: Any,
@@ -305,7 +276,8 @@ fromFlags env flags =
       argHideModules = (maybe mempty (All . not) $ flagToMaybe (haddockInternal flags), mempty),
       argLinkSource = if fromFlag (haddockHscolour flags)
                                then Flag ("src/%{MODULE/./-}.html"
-                                         ,"src/%{MODULE/./-}.html#%{NAME}")
+                                         ,"src/%{MODULE/./-}.html#%{NAME}"
+                                         ,"src/%{MODULE/./-}.html#line-%{LINE}")
                                else NoFlag,
       argCssFile = haddockCss flags,
       argContents = fmap (fromPathTemplate . substPathTemplate env) (haddockContents flags),
@@ -480,6 +452,7 @@ renderArgs verbosity tmpFileOpts version comp args k = do
   createDirectoryIfMissingVerbose verbosity True outputDir
   withTempFileEx tmpFileOpts outputDir "haddock-prolog.txt" $ \prologFileName h -> do
           do
+             when (version >= Version [2,15] []) (hSetEncoding h utf8)
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h
              let pflag = "--prologue=" ++ prologFileName
@@ -509,8 +482,11 @@ renderPureArgs version comp args = concat
                   else ["--package=" ++ pname]) . display . fromFlag . argPackageName $ args,
      (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b) . argHideModules $ args,
      bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args,
-     maybe [] (\(m,e) -> ["--source-module=" ++ m
-                         ,"--source-entity=" ++ e]) . flagToMaybe . argLinkSource $ args,
+     maybe [] (\(m,e,l) -> ["--source-module=" ++ m
+                           ,"--source-entity=" ++ e]
+                           ++ if isVersion2_14 then ["--source-entity-line=" ++ l]
+                                               else []
+              ) . flagToMaybe . argLinkSource $ args,
      maybe [] ((:[]).("--css="++)) . flagToMaybe . argCssFile $ args,
      maybe [] ((:[]).("--use-contents="++)) . flagToMaybe . argContents $ args,
      bool [] [verbosityFlag] . getAny . argVerbose $ args,
@@ -530,8 +506,9 @@ renderPureArgs version comp args = concat
         map (\(i,mh) -> "--read-interface=" ++
           maybe "" (++",") mh ++ i)
       bool a b c = if c then a else b
-      isVersion2 = version >= Version [2,0] []
-      isVersion2_5 = version >= Version [2,5] []
+      isVersion2    = version >= Version [2,0]  []
+      isVersion2_5  = version >= Version [2,5]  []
+      isVersion2_14 = version >= Version [2,14] []
       verbosityFlag
        | isVersion2_5 = "--verbosity=1"
        | otherwise = "--verbose"

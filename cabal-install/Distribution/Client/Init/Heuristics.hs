@@ -24,6 +24,7 @@ import Distribution.ModuleName
     ( ModuleName, toFilePath )
 import Distribution.Client.PackageIndex
     ( allPackagesByName )
+import qualified Distribution.Package as P
 import qualified Distribution.PackageDescription as PD
     ( category, packageDescription )
 import Distribution.Simple.Utils
@@ -34,8 +35,9 @@ import Language.Haskell.Extension ( Extension )
 
 import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
 import Control.Applicative ( pure, (<$>), (<*>) )
+import Control.Arrow ( first )
 import Control.Monad ( liftM )
-import Data.Char   ( isUpper, isLower, isSpace )
+import Data.Char   ( isAlphaNum, isNumber, isUpper, isLower, isSpace )
 import Data.Either ( partitionEithers )
 import Data.List   ( isPrefixOf )
 import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
@@ -50,9 +52,26 @@ import System.FilePath ( takeExtension, takeBaseName, dropExtension,
 import Distribution.Client.Compat.Process ( readProcessWithExitCode )
 import System.Exit ( ExitCode(..) )
 
--- |Guess the package name based on the given root directory
-guessPackageName :: FilePath -> IO String
-guessPackageName = liftM (last . splitDirectories) . tryCanonicalizePath
+-- | Guess the package name based on the given root directory.
+guessPackageName :: FilePath -> IO P.PackageName
+guessPackageName = liftM (P.PackageName . repair . last . splitDirectories)
+                 . tryCanonicalizePath
+  where
+    -- Treat each span of non-alphanumeric characters as a hyphen. Each
+    -- hyphenated component of a package name must contain at least one
+    -- alphabetic character. An arbitrary character ('x') will be prepended if
+    -- this is not the case for the first component, and subsequent components
+    -- will simply be run together. For example, "1+2_foo-3" will become
+    -- "x12-foo3".
+    repair = repair' ('x' :) id
+    repair' invalid valid x = case dropWhile (not . isAlphaNum) x of
+        "" -> repairComponent ""
+        x' -> let (c, r) = first repairComponent $ break (not . isAlphaNum) x'
+              in c ++ repairRest r
+      where
+        repairComponent c | all isNumber c = invalid c
+                          | otherwise      = valid c
+    repairRest = repair' id ('-' :)
 
 -- |Data type of source files found in the working directory
 data SourceFileEntry = SourceFileEntry

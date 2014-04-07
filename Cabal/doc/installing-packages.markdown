@@ -267,12 +267,13 @@ infrastructure, the values supplied via these options are recorded in a
 private file read by later stages.
 
 If a user-supplied `configure` script is run (see the section on
-[system-dependent parameters](#system-dependent-parameters) or on
-[complex packages](#complex-packages)), it is passed the
-`--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`, `--datadir`, `--libexecdir`
-and `--sysconfdir` options. In addition the value of the `--with-compiler`
-option is passed in a `--with-hc` option and all options specified with
-`--configure-option=` are passed on.
+[system-dependent
+parameters](developing-packages.html#system-dependent-parameters) or on
+[complex packages](developing-packages.html#more-complex-packages)), it
+is passed the `--with-hc-pkg`, `--prefix`, `--bindir`, `--libdir`,
+`--datadir`, `--libexecdir` and `--sysconfdir` options. In addition the
+value of the `--with-compiler` option is passed in a `--with-hc` option
+and all options specified with `--configure-option=` are passed on.
 
 ### Programs used for building ###
 
@@ -528,8 +529,9 @@ have baked-in all absolute paths.
 
 The application need do nothing special to achieve prefix-independence.
 If it finds any files using `getDataFileName` and the [other functions
-provided for the purpose](#accessing-data-files-from-package-code), the
-files will be accessed relative to the location of the current
+provided for the
+purpose](developing-packages.html#accessing-data-files-from-package-code),
+the files will be accessed relative to the location of the current
 executable.
 
 A library cannot (currently) be prefix-independent, because it will be
@@ -539,8 +541,8 @@ to the library package.
 ### Controlling Flag Assignments ###
 
 Flag assignments (see the [resolution of conditions and
-flags](#resolution-of-conditions-and-flags)) can be controlled with the
-followingcommand line options.
+flags](developing-packages.html#resolution-of-conditions-and-flags)) can
+be controlled with the following command line options.
 
 `-f` _flagname_ or `-f` `-`_flagname_
 :   Force the specified flag to `true` or `false` (if preceded with a `-`). Later
@@ -685,8 +687,8 @@ followingcommand line options.
 `--configure-option=`_str_
 :   An extra option to an external `configure` script, if one is used
     (see the section on [system-dependent
-    parameters](#system-dependent-parameters)).  There can be several of
-    these options.
+    parameters](developing-packages.html#system-dependent-parameters)).
+    There can be several of these options.
 
 `--extra-include-dirs`[=_dir_]
 :   An extra directory to search for C header files. You can use this
@@ -1019,18 +1021,18 @@ This command takes the following option:
     the generated source package.  The original package is unaffected.
 
 
-[dist-simple]:  ../libraries/Cabal/Distribution-Simple.html
-[dist-make]:    ../libraries/Cabal/Distribution-Make.html
-[dist-license]: ../libraries/Cabal/Distribution-License.html#t:License
-[extension]:    ../libraries/Cabal/Language-Haskell-Extension.html#t:Extension
-[BuildType]:    ../libraries/Cabal/Distribution-PackageDescription.html#t:BuildType
+[dist-simple]:  ../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html
+[dist-make]:    ../release/cabal-latest/doc/API/Cabal/Distribution-Make.html
+[dist-license]: ../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License
+[extension]:    ../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension
+[BuildType]:    ../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType
 [alex]:       http://www.haskell.org/alex/
 [autoconf]:   http://www.gnu.org/software/autoconf/
 [c2hs]:       http://www.cse.unsw.edu.au/~chak/haskell/c2hs/
-[cpphs]:      http://www.haskell.org/cpphs/
-[greencard]:  http://www.haskell.org/greencard/
+[cpphs]:      http://projects.haskell.org/cpphs/
+[greencard]:  http://hackage.haskell.org/package/greencard
 [haddock]:    http://www.haskell.org/haddock/
 [HsColour]:   http://www.cs.york.ac.uk/fp/darcs/hscolour/
 [happy]:      http://www.haskell.org/happy/
 [Hackage]:    http://hackage.haskell.org/
-[pkg-config]: http://pkg-config.freedesktop.org/
+[pkg-config]: http://www.freedesktop.org/wiki/Software/pkg-config/

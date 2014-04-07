@@ -49,6 +49,7 @@ import System.Directory (doesFileExist, getCurrentDirectory,
                          setCurrentDirectory)
 import System.Environment (getEnv)
 import System.FilePath ((</>))
+import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 import Test.Framework (Test, TestName, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
 import qualified Test.HUnit as HUnit
@@ -124,6 +125,10 @@ tests version inplaceSpec ghcPath ghcPkgPath =
 
 main :: IO ()
 main = do
+    -- WORKAROUND: disable buffering on stdout to get streaming test logs
+    -- test providers _should_ do this themselves
+    hSetBuffering stdout NoBuffering
+
     wd <- getCurrentDirectory
     let dbFile = wd </> "dist/package.conf.inplace"
         inplaceSpec = PackageSpec

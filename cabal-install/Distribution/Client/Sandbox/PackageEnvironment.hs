@@ -46,7 +46,7 @@ import Distribution.Simple.Setup       ( Flag(..), ConfigFlags(..)
                                        , fromFlagOrDefault, toFlag, flagToMaybe )
 import Distribution.Simple.Utils       ( die, info, notice, warn, lowercase )
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
-                                       , commaListField
+                                       , commaListField, commaNewLineListField
                                        , liftField, lineNo, locatedErrorMsg
                                        , parseFilePathQ, readFields
                                        , showPWarning, simpleField
@@ -390,7 +390,7 @@ pkgEnvFieldDescrs = [
     pkgEnvInherit (\v pkgEnv -> pkgEnv { pkgEnvInherit = v })
 
     -- FIXME: Should we make these fields part of ~/.cabal/config ?
-  , commaListField "constraints"
+  , commaNewLineListField "constraints"
     Text.disp Text.parse
     (configExConstraints . savedConfigureExFlags . pkgEnvSavedConfig)
     (\v pkgEnv -> updateConfigureExFlags pkgEnv

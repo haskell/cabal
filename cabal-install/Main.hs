@@ -25,6 +25,7 @@ import Distribution.Client.Setup
          , FreezeFlags(..), freezeCommand
          , GetFlags(..), getCommand, unpackCommand
          , checkCommand
+         , formatCommand
          , updateCommand
          , ListFlags(..), listCommand
          , InfoFlags(..), infoCommand
@@ -102,6 +103,10 @@ import Distribution.Client.Utils              (determineNumJobs
 
 import Distribution.PackageDescription
          ( Executable(..) )
+import Distribution.PackageDescription.Parse
+         ( readPackageDescription )
+import Distribution.PackageDescription.PrettyPrint
+         ( writeGenericPackageDescription )
 import Distribution.Simple.Build
          ( startInterpreter )
 import Distribution.Simple.Command
@@ -117,7 +122,8 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, info, topHandler, findPackageDesc )
+         ( cabalVersion, die, notice, info, topHandler
+         , findPackageDesc, tryFindPackageDesc )
 import Distribution.Text
          ( display )
 import Distribution.Verbosity as Verbosity
@@ -220,6 +226,8 @@ mainWorker args = topHandler $
                      regVerbosity      regDistPref
       ,testCommand            `commandAddAction` testAction
       ,benchmarkCommand       `commandAddAction` benchmarkAction
+      ,hiddenCommand $
+       formatCommand          `commandAddAction` formatAction
       ,hiddenCommand $
        upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $
@@ -672,6 +680,8 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
       distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                        (testDistPref testFlags)
       setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
+      buildFlags'    = buildFlags { buildVerbosity = testVerbosity testFlags
+                                  , buildDistPref  = testDistPref testFlags }
       addConfigFlags = mempty { configTests = toFlag True }
       checkFlags flags
         | fromFlagOrDefault False (configTests flags) = Nothing
@@ -683,10 +693,10 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
   -- deps if needed.
   (useSandbox, config) <- reconfigure verbosity distPref addConfigFlags []
                           globalFlags noAddSource
-                          (buildNumJobs buildFlags) checkFlags
+                          (buildNumJobs buildFlags') checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity config distPref buildFlags extraArgs
+    build verbosity config distPref buildFlags' extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
@@ -702,6 +712,9 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
       distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                        (benchmarkDistPref benchmarkFlags)
       setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
+      buildFlags'    = buildFlags
+        { buildVerbosity = benchmarkVerbosity benchmarkFlags
+        , buildDistPref  = benchmarkDistPref  benchmarkFlags }
       addConfigFlags = mempty { configBenchmarks = toFlag True }
       checkFlags flags
         | fromFlagOrDefault False (configBenchmarks flags) = Nothing
@@ -712,11 +725,11 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
   -- deps if needed.
   (useSandbox, config) <- reconfigure verbosity distPref addConfigFlags []
-                          globalFlags noAddSource (buildNumJobs buildFlags)
+                          globalFlags noAddSource (buildNumJobs buildFlags')
                           checkFlags
 
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity config distPref buildFlags extraArgs
+    build verbosity config distPref buildFlags' extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
@@ -857,6 +870,16 @@ checkAction verbosityFlag extraArgs _globalFlags = do
   allOk <- Check.check (fromFlag verbosityFlag)
   unless allOk exitFailure
 
+formatAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+formatAction verbosityFlag extraArgs _globalFlags = do
+  let verbosity = fromFlag verbosityFlag
+  path <- case extraArgs of
+    [] -> do cwd <- getCurrentDirectory
+             tryFindPackageDesc cwd
+    (p:_) -> return p
+  pkgDesc <- readPackageDescription verbosity path
+  -- Uses 'writeFileAtomic' under the hood.
+  writeGenericPackageDescription path pkgDesc
 
 sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (sdistFlags, sdistExFlags) extraArgs _globalFlags = do

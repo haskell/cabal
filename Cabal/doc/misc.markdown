@@ -61,7 +61,7 @@ the API are more prone to change than others. The rest of this section
 gives some informal advice on what level of API stability you can expect
 between major releases.
 
-[PVP]: http://haskell.org/haskellwiki/Package_versioning_policy
+[PVP]: http://www.haskell.org/haskellwiki/Package_versioning_policy
 
 ### Very Stable API ###
 
@@ -92,18 +92,18 @@ file. Incompatible revisions to the format would involve bumping the
 name of the index file, i.e., `00-index.tar.gz`, `01-index.tar.gz` etc.
 
 
-[dist-simple]:  ../libraries/Cabal/Distribution-Simple.html
-[dist-make]:    ../libraries/Cabal/Distribution-Make.html
-[dist-license]: ../libraries/Cabal/Distribution-License.html#t:License
-[extension]:    ../libraries/Cabal/Language-Haskell-Extension.html#t:Extension
-[BuildType]:    ../libraries/Cabal/Distribution-PackageDescription.html#t:BuildType
+[dist-simple]:  ../release/cabal-latest/doc/API/Cabal/Distribution-Simple.html
+[dist-make]:    ../release/cabal-latest/doc/API/Cabal/Distribution-Make.html
+[dist-license]: ../release/cabal-latest/doc/API/Cabal/Distribution-License.html#t:License
+[extension]:    ../release/cabal-latest/doc/API/Cabal/Language-Haskell-Extension.html#t:Extension
+[BuildType]:    ../release/cabal-latest/doc/API/Cabal/Distribution-PackageDescription.html#t:BuildType
 [alex]:       http://www.haskell.org/alex/
 [autoconf]:   http://www.gnu.org/software/autoconf/
 [c2hs]:       http://www.cse.unsw.edu.au/~chak/haskell/c2hs/
-[cpphs]:      http://www.haskell.org/cpphs/
-[greencard]:  http://www.haskell.org/greencard/
+[cpphs]:      http://projects.haskell.org/cpphs/
+[greencard]:  http://hackage.haskell.org/package/greencard
 [haddock]:    http://www.haskell.org/haddock/
 [HsColour]:   http://www.cs.york.ac.uk/fp/darcs/hscolour/
 [happy]:      http://www.haskell.org/happy/
-[HackageDB]:  http://hackage.haskell.org/
-[pkg-config]: http://pkg-config.freedesktop.org/
+[Hackage]:    http://hackage.haskell.org/
+[pkg-config]: http://www.freedesktop.org/wiki/Software/pkg-config/
