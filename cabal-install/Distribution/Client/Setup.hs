@@ -1625,10 +1625,10 @@ defaultExecFlags = ExecFlags {
 execCommand :: CommandUI ExecFlags
 execCommand = CommandUI {
   commandName         = "exec",
-  commandSynopsis     = "Run a shell command with the cabal environment",
+  commandSynopsis     = "Run a command with the cabal environment",
   commandDescription  = Nothing,
   commandUsage        = \pname ->
-       "Usage: " ++ pname ++ " exec COMMAND [ARGS]\n\n"
+       "Usage: " ++ pname ++ " exec [FLAGS] COMMAND [-- [ARGS...]]\n\n"
     ++ "Flags for exec:",
 
   commandDefaultFlags = defaultExecFlags,
