@@ -24,7 +24,7 @@ this bootstrapping problem, you can install the Cabal library directly:
 Installing as a user (no root or administrator access)
 ------------------------------------------------------
 
-    ghc --make Setup
+    ghc -threaded --make Setup
     ./Setup configure --user
     ./Setup build
     ./Setup install
@@ -43,7 +43,7 @@ configure step.
 Installing as root / Administrator
 ----------------------------------
 
-    ghc --make Setup
+    ghc -threaded --make Setup
     ./Setup configure
     ./Setup build
     sudo ./Setup install

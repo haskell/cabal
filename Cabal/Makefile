@@ -7,7 +7,7 @@ KIND=rc
 
 PREFIX=/usr/local
 HC=ghc
-GHCFLAGS=-Wall
+GHCFLAGS=-Wall -threaded
 SSH_USER=$USER
 
 all: build

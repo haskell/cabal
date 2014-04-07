@@ -19,7 +19,6 @@ thousands of libraries and applications in the Cabal package format.
       - [A tool for working with packages](#a-tool-for-working-with-packages)
   * [Building, installing and managing packages](installing-packages.html)
   * [Creating packages](developing-packages.html)
-  * [Cabal specification, design and implementation]()
   * [Reporting bugs and deficiencies](misc.html#reporting-bugs-and-deficiencies)
   * [Stability of Cabal interfaces](misc.html#stability-of-cabal-interfaces)
 

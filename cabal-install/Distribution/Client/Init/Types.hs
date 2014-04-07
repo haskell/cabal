@@ -41,7 +41,7 @@ data InitFlags =
               , noComments     :: Flag Bool
               , minimal        :: Flag Bool
 
-              , packageName  :: Flag String
+              , packageName  :: Flag P.PackageName
               , version      :: Flag Version
               , cabalVersion :: Flag VersionRange
               , license      :: Flag License
