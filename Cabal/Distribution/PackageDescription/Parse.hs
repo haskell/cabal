@@ -145,7 +145,7 @@ pkgDescrFieldDescrs =
  , simpleField "author"
            showFreeText           parseFreeText
            author                 (\val pkg -> pkg{author=val})
- , listField "tested-with"
+ , spaceListField "tested-with"
            showTestedWith         parseTestedWithQ
            testedWith             (\val pkg -> pkg{testedWith=val})
  , listField "data-files"
@@ -410,13 +410,13 @@ binfoFieldDescrs =
  , spaceListField "other-languages"
            disp               parseLanguageQ
            otherLanguages     (\langs binfo -> binfo{otherLanguages=langs})
- , listField   "default-extensions"
+ , spaceListField "default-extensions"
            disp               parseExtensionQ
            defaultExtensions  (\exts  binfo -> binfo{defaultExtensions=exts})
- , listField   "other-extensions"
+ , spaceListField "other-extensions"
            disp               parseExtensionQ
            otherExtensions    (\exts  binfo -> binfo{otherExtensions=exts})
- , listField   "extensions"
+ , spaceListField "extensions"
            disp               parseExtensionQ
            oldExtensions      (\exts  binfo -> binfo{oldExtensions=exts})
 
