@@ -49,6 +49,10 @@ solve sc idx userPrefs userConstraints userGoals =
                        validateTree idx
     prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
                        -- packages that can never be "upgraded":
-                       P.requireInstalled (`elem` [PackageName "base",
-                                                   PackageName "ghc-prim"])
+                       P.requireInstalled (`elem` [ PackageName "base"
+                                                  , PackageName "ghc-prim"
+                                                  , PackageName "integer-gmp"
+                                                  , PackageName "integer-simple"
+                                                  , PackageName "template-haskell"
+                                                  ])
     buildPhase       = buildTree idx (independentGoals sc) userGoals
