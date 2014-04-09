@@ -328,6 +328,10 @@ withAllComponentsInBuildOrder pkg lbi f =
       [ f (getComponent pkg cname) clbi
       | (cname, clbi) <- allComponentsInBuildOrder lbi ]
 
+-- | Like `withAllComponentsInBuildOrder`, but allows to pass in the
+-- components you are interested in. Your function may be called on more
+-- components than you passed in (namely on the transitive closure of
+-- dependencies as well).
 withComponentsInBuildOrder :: PackageDescription -> LocalBuildInfo
                                   -> [ComponentName]
                                   -> (Component -> ComponentLocalBuildInfo -> IO ())
@@ -343,6 +347,9 @@ allComponentsInBuildOrder lbi =
     componentsInBuildOrder lbi
       [ cname | (cname, _, _) <- componentsConfigs lbi ]
 
+-- | Given a list of components to build, calculates the build order of
+-- components to build (transitive closure). Therefore the output
+-- list can be longer than the input.
 componentsInBuildOrder :: LocalBuildInfo -> [ComponentName]
                        -> [(ComponentName, ComponentLocalBuildInfo)]
 componentsInBuildOrder lbi cnames =

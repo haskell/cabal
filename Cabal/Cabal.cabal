@@ -157,6 +157,7 @@ library
     Distribution.ReadE
     Distribution.Simple
     Distribution.Simple.Bench
+    Distribution.Simple.BoundedResource,
     Distribution.Simple.Build
     Distribution.Simple.Build.Macros
     Distribution.Simple.Build.PathsModule
@@ -174,6 +175,7 @@ library
     Distribution.Simple.Install
     Distribution.Simple.InstallDirs
     Distribution.Simple.JHC
+    Distribution.Simple.JobControl
     Distribution.Simple.LHC
     Distribution.Simple.LocalBuildInfo
     Distribution.Simple.NHC
@@ -225,7 +227,9 @@ library
 test-suite unit-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
-  other-modules: UnitTests.Distribution.Compat.ReadP
+  other-modules:
+    UnitTests.Distribution.Compat.ReadP
+    UnitTests.Distribution.Simple.JobControl
   main-is: UnitTests.hs
   build-depends:
     base,
