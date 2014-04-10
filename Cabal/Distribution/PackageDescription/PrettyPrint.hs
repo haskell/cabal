@@ -27,7 +27,7 @@ import Distribution.PackageDescription
         Flag(..), PackageDescription(..),
         GenericPackageDescription(..))
 import Text.PrettyPrint
-       (hsep, comma, punctuate, fsep, parens, char, nest, empty,
+       (hsep, comma, punctuate, parens, char, nest, empty,
         isEmpty, ($$), (<+>), colon, (<>), text, vcat, ($+$), Doc, render)
 import Distribution.Simple.Utils (writeUTF8File)
 import Distribution.ParseUtils (showFreeText, FieldDescr(..))
@@ -79,18 +79,14 @@ ppSourceRepo repo                        =
 
 ppFields :: [FieldDescr a] -> a -> Doc
 ppFields fields x                        =
-    vcat [ ppField name (getter x)
-                         | FieldDescr name getter _ <- fields]
-
-ppField :: String -> Doc -> Doc
-ppField name fielddoc | isEmpty fielddoc = empty
-                      | otherwise        = text name <> colon <+> fielddoc
+    vcat [ (getter x) | FieldDescr _ getter _ <- fields ]
 
 ppDiffFields :: [FieldDescr a] -> a -> a -> Doc
 ppDiffFields fields x y                  =
-    vcat [ ppField name (getter x)
-                         | FieldDescr name getter _ <- fields,
-                            render (getter x) /= render (getter y)]
+    vcat [ (getter x)
+         | FieldDescr _ getter _ <- fields
+         , render (getter x) /= render (getter y)
+         ]
 
 ppCustomFields :: [(String,String)] -> Doc
 ppCustomFields flds                      = vcat [ppCustomField f | f <- flds]
@@ -233,7 +229,7 @@ ppCondTree ct@(CondNode it deps ifs) mbIt ppIt =
 ppDeps :: [Dependency] -> Doc
 ppDeps []                                = empty
 ppDeps deps                              =
-    text "build-depends:" <+> fsep (punctuate comma (map disp deps))
+    text "build-depends:" $+$ nest indentWith (vcat (punctuate comma (map disp deps)))
 
 emptyLine :: Doc -> Doc
 emptyLine d                              = text " " $+$ d

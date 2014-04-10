@@ -23,7 +23,7 @@ module Distribution.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
         Field(..), fName, lineNo,
-        FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
+        FieldDescr(..), ppFields, readFields, readFieldsFlat,
         showFields, showSingleNamedField, showSimpleSingleNamedField,
         parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
@@ -32,8 +32,9 @@ module Distribution.ParseUtils (
         parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
-        field, simpleField, listField, spaceListField, commaListField,
-        commaNewLineListField, optsField, liftField, boolField, parseQuoted,
+        field, simpleField, simpleNestedField, listField, nestedListField,
+        spaceListField, commaListField, nestedCommaListField, commaNewLineListField,
+        optsField, liftField, boolField, parseQuoted, indentWith,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -186,46 +187,72 @@ liftField get set (FieldDescr name showF parseF)
 simpleField :: String -> (a -> Doc) -> ReadP a a
             -> (b -> a) -> (a -> b -> b) -> FieldDescr b
 simpleField name showF readF get set
-  = liftField get set $ field name showF readF
+  = liftField get set $ field name (showField name showF) readF
 
-commaListField' :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListField' separator name showF readF get set =
-  liftField get set' $
-    field name (separator . punctuate comma . map showF) (parseCommaList readF)
-  where
-    set' xs b = set (get b ++ xs) b
+simpleNestedField :: String -> (a -> Doc) -> ReadP a a
+            -> (b -> a) -> (a -> b -> b) -> FieldDescr b
+simpleNestedField name showF readF get set
+  = liftField get set $ field name (showNestedField name showF) readF
 
 commaListField :: String -> (a -> Doc) -> ReadP [a] a
+                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaListField name showF readF get set =
+  liftField get set' $
+    field name (showField name showF') (parseCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
+    showF'    = fsep . punctuate comma . map showF
+
+nestedCommaListField' :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
+                         -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+nestedCommaListField' separator name showF readF get set =
+  liftField get set' $
+    field name (showNestedField name showF') (parseCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
+    showF'    = separator . punctuate comma . map showF
+
+nestedCommaListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListField = commaListField' fsep
+nestedCommaListField = nestedCommaListField' vcat
 
 commaNewLineListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaNewLineListField = commaListField' sep
+commaNewLineListField = nestedCommaListField' sep
 
 spaceListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 spaceListField name showF readF get set =
   liftField get set' $
-    field name (fsep . map showF) (parseSpaceList readF)
+    field name (showField name showF') (parseSpaceList readF)
   where
     set' xs b = set (get b ++ xs) b
+    showF'    = fsep . map showF
 
 listField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+             -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 listField name showF readF get set =
   liftField get set' $
-    field name (fsep . map showF) (parseOptCommaList readF)
+    field name (showField name showF') (parseOptCommaList readF)
   where
     set' xs b = set (get b ++ xs) b
+    showF'    = fsep . map showF
+
+nestedListField :: String -> (a -> Doc) -> ReadP [a] a
+                   -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+nestedListField name showF readF get set =
+  liftField get set' $
+    field name (showNestedField name showF') (parseOptCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
+    showF'    = vcat . map showF
 
 optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])])
              -> ([(CompilerFlavor,[String])] -> b -> b) -> FieldDescr b
 optsField name flavor get set =
    liftField (fromMaybe [] . lookup flavor . get)
              (\opts b -> set (reorder (update flavor opts (get b))) b) $
-        field name (hsep . map text)
+        field name (showField name showF)
                    (sepBy parseTokenQ' (munch1 isSpace))
   where
         update _ opts l | all null opts = l  --empty opts as if no opts
@@ -234,12 +261,13 @@ optsField name flavor get set =
            | f == f'   = (f, opts' ++ opts) : rest
            | otherwise = (f',opts') : update f opts rest
         reorder = sortBy (comparing fst)
+        showF   = hsep . map text
 
 -- TODO: this is a bit smelly hack. It's because we want to parse bool fields
 --       liberally but not accept new parses. We cannot do that with ReadP
 --       because it does not support warnings. We need a new parser framework!
 boolField :: String -> (b -> Bool) -> (Bool -> b -> b) -> FieldDescr b
-boolField name get set = liftField get set (FieldDescr name showF readF)
+boolField name get set = liftField get set (FieldDescr name (showField name showF) readF)
   where
     showF = text . show
     readF line str _
@@ -254,11 +282,23 @@ boolField name get set = liftField get set (FieldDescr name showF readF)
           "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
 
 ppFields :: [FieldDescr a] -> a -> Doc
-ppFields fields x = vcat [ ppField name (getter x)
-                         | FieldDescr name getter _ <- fields]
+ppFields fields x = vcat [ getter x | FieldDescr _ getter _ <- fields ]
 
-ppField :: String -> Doc -> Doc
-ppField name fielddoc = text name <> colon <+> fielddoc
+showField :: String -> (a -> Doc) -> a -> Doc
+showField name showF a =
+  if isEmpty shown
+    then empty
+    else text name <> colon <+> shown
+  where
+    shown = showF a
+
+showNestedField :: String -> (a -> Doc) -> a -> Doc
+showNestedField name showF as =
+   if isEmpty shown
+     then empty
+     else text name <> colon $+$ nest indentWith shown
+   where
+     shown = showF as
 
 showFields :: [FieldDescr a] -> a -> String
 showFields fields = render . ($+$ text "") . ppFields fields
@@ -267,7 +307,7 @@ showSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
 showSingleNamedField fields f =
   case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
     []      -> Nothing
-    (get:_) -> Just (render . ppField f . get)
+    (get:_) -> Just (render . get)
 
 showSimpleSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
 showSimpleSingleNamedField fields f =
@@ -718,3 +758,7 @@ lines_ s                 =  let (l, s') = break (== '\n') s
                             in  l : case s' of
                                         []    -> []
                                         (_:s'') -> lines_ s''
+
+-- | the indentation used for pretty printing
+indentWith :: Int
+indentWith = 4
