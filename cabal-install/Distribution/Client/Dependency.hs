@@ -37,7 +37,7 @@ module Distribution.Client.Dependency (
     applySandboxInstallPolicy,
 
     -- ** Extra policy options
-    dontUpgradeBuiltinPackages,
+    dontUpgradeNonUpgradeablePackages,
     hideBrokenInstalledPackages,
     upgradeDependencies,
     reinstallTargets,
@@ -223,8 +223,8 @@ setMaxBackjumps n params =
 
 -- | Some packages are specific to a given compiler version and should never be
 -- upgraded.
-dontUpgradeBuiltinPackages :: DepResolverParams -> DepResolverParams
-dontUpgradeBuiltinPackages params =
+dontUpgradeNonUpgradeablePackages :: DepResolverParams -> DepResolverParams
+dontUpgradeNonUpgradeablePackages params =
     addConstraints extraConstraints params
   where
     extraConstraints =
@@ -481,7 +481,7 @@ resolveDependencies :: Platform
                     -> DepResolverParams
                     -> Progress String String InstallPlan
 
-    --TODO: is this needed here? see dontUpgradeBuiltinPackages
+    --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
 resolveDependencies platform comp _solver params
   | null (depResolverTargets params)
   = return (mkInstallPlan platform comp [])
@@ -503,7 +503,7 @@ resolveDependencies platform comp  solver params =
       indGoals
       noReinstalls
       shadowing
-      maxBkjumps      = dontUpgradeBuiltinPackages
+      maxBkjumps      = dontUpgradeNonUpgradeablePackages
                       -- TODO:
                       -- The modular solver can properly deal with broken
                       -- packages and won't select them. So the
