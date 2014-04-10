@@ -106,7 +106,7 @@ pkgDescrFieldDescrs =
                       [x] -> x
                       _   -> "")
            (\l pkg -> pkg{licenseFiles=licenseFiles pkg ++ [l]})
- , spaceListField "license-files"
+ , listField "license-files"
            showFilePath           parseFilePathQ
            (\pkg -> case licenseFiles pkg of
                       [_] -> []
@@ -136,7 +136,7 @@ pkgDescrFieldDescrs =
  , simpleField "synopsis"
            showFreeText           parseFreeText
            synopsis               (\val pkg -> pkg{synopsis=val})
- , simpleNestedField "description"
+ , simpleField "description"
            showFreeText           parseFreeText
            description            (\val pkg -> pkg{description=val})
  , simpleField "category"
@@ -397,7 +397,7 @@ binfoFieldDescrs =
  , commaListField  "pkgconfig-depends"
            disp               parsePkgconfigDependency
            pkgconfigDepends   (\xs  binfo -> binfo{pkgconfigDepends=xs})
- , spaceListField "frameworks"
+ , listField "frameworks"
            showToken          parseTokenQ
            frameworks         (\val binfo -> binfo{frameworks=val})
  , listField   "c-sources"
@@ -407,7 +407,7 @@ binfoFieldDescrs =
  , simpleField "default-language"
            (maybe empty disp) (option Nothing (fmap Just parseLanguageQ))
            defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})
- , spaceListField "other-languages"
+ , listField   "other-languages"
            disp               parseLanguageQ
            otherLanguages     (\langs binfo -> binfo{otherLanguages=langs})
  , listField   "default-extensions"
@@ -435,16 +435,16 @@ binfoFieldDescrs =
  , listField   "include-dirs"
            showFilePath       parseFilePathQ
            includeDirs        (\paths binfo -> binfo{includeDirs=paths})
- , spaceListField "hs-source-dirs"
+ , listField   "hs-source-dirs"
            showFilePath       parseFilePathQ
            hsSourceDirs       (\paths binfo -> binfo{hsSourceDirs=paths})
  , listField   "other-modules"
            disp               parseModuleNameQ
            otherModules       (\val binfo -> binfo{otherModules=val})
- , spaceListField "ghc-prof-options"
+ , listField   "ghc-prof-options"
            text               parseTokenQ
            ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
- , spaceListField "ghc-shared-options"
+ , listField   "ghc-shared-options"
            text               parseTokenQ
            ghcSharedOptions      (\val binfo -> binfo{ghcSharedOptions=val})
  , optsField   "ghc-options"  GHC
