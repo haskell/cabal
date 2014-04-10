@@ -286,12 +286,13 @@ processInstallPlan verbosity
     checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
 
-    unless dryRun $ do
+    unless (dryRun || nothingToInstall) $ do
       installPlan' <- performInstallations verbosity
                       args installedPkgIndex installPlan
       postInstallActions verbosity args userTargets installPlan'
   where
     dryRun = fromFlag (installDryRun installFlags)
+    nothingToInstall = null (InstallPlan.ready installPlan)
 
 -- ------------------------------------------------------------
 -- * Installation planning
@@ -1222,7 +1223,7 @@ installUnpackedPackage
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs
                        scriptOptions miscOptions
-                       configFlags installConfigFlags haddockFlags
+                       configFlags installFlags haddockFlags
                        compid platform pkg pkgoverride workingDir useLogFile = do
 
   -- Override the .cabal file if necessary
@@ -1298,12 +1299,13 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       buildDistPref  = configDistPref configFlags,
       buildVerbosity = toFlag verbosity'
     }
-    shouldHaddock    = fromFlag (installDocumentation installConfigFlags)
+    shouldHaddock    = fromFlag (installDocumentation installFlags)
     haddockFlags' _   = haddockFlags {
       haddockVerbosity = toFlag verbosity',
       haddockDistPref  = configDistPref configFlags
     }
     testsEnabled = fromFlag (configTests configFlags)
+                   && fromFlagOrDefault False (installRunTests installFlags)
     testFlags _ = Cabal.emptyTestFlags {
       Cabal.testDistPref = configDistPref configFlags
     }

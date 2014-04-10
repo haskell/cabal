@@ -37,7 +37,7 @@ module Distribution.Client.Dependency (
     applySandboxInstallPolicy,
 
     -- ** Extra policy options
-    dontUpgradeBasePackage,
+    dontUpgradeNonUpgradeablePackages,
     hideBrokenInstalledPackages,
     upgradeDependencies,
     reinstallTargets,
@@ -221,14 +221,17 @@ setMaxBackjumps n params =
       depResolverMaxBackjumps = n
     }
 
-dontUpgradeBasePackage :: DepResolverParams -> DepResolverParams
-dontUpgradeBasePackage params =
+-- | Some packages are specific to a given compiler version and should never be
+-- upgraded.
+dontUpgradeNonUpgradeablePackages :: DepResolverParams -> DepResolverParams
+dontUpgradeNonUpgradeablePackages params =
     addConstraints extraConstraints params
   where
     extraConstraints =
       [ PackageConstraintInstalled pkgname
       | all (/=PackageName "base") (depResolverTargets params)
-      , pkgname <-  [ PackageName "base", PackageName "ghc-prim" ]
+      , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
+                                   , "integer-simple", "template-haskell" ]
       , isInstalled pkgname ]
     -- TODO: the top down resolver chokes on the base constraints
     -- below when there are no targets and thus no dep on base.
@@ -478,7 +481,7 @@ resolveDependencies :: Platform
                     -> DepResolverParams
                     -> Progress String String InstallPlan
 
-    --TODO: is this needed here? see dontUpgradeBasePackage
+    --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
 resolveDependencies platform comp _solver params
   | null (depResolverTargets params)
   = return (mkInstallPlan platform comp [])
@@ -500,7 +503,7 @@ resolveDependencies platform comp  solver params =
       indGoals
       noReinstalls
       shadowing
-      maxBkjumps      = dontUpgradeBasePackage
+      maxBkjumps      = dontUpgradeNonUpgradeablePackages
                       -- TODO:
                       -- The modular solver can properly deal with broken
                       -- packages and won't select them. So the
