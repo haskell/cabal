@@ -76,12 +76,12 @@ ppSourceRepo repo                        =
 
 ppFields :: [FieldDescr a] -> a -> Doc
 ppFields fields x                        =
-    vcat [ (getter x) | FieldDescr _ getter _ <- fields ]
+    vcat [ (getter x) | FieldDescr name getter _ <- fields ]
 
 ppDiffFields :: [FieldDescr a] -> a -> a -> Doc
 ppDiffFields fields x y                  =
     vcat [ (getter x)
-         | FieldDescr _ getter _ <- fields
+         | FieldDescr name getter _ <- fields
          , render (getter x) /= render (getter y)
          ]
 
