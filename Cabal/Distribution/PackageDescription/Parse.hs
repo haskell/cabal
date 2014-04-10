@@ -106,7 +106,7 @@ pkgDescrFieldDescrs =
                       [x] -> x
                       _   -> "")
            (\l pkg -> pkg{licenseFiles=licenseFiles pkg ++ [l]})
- , spaceListField "license-files"
+ , listField "license-files"
            showFilePath           parseFilePathQ
            (\pkg -> case licenseFiles pkg of
                       [_] -> []
@@ -118,7 +118,7 @@ pkgDescrFieldDescrs =
  , simpleField "maintainer"
            showFreeText           parseFreeText
            maintainer             (\val pkg -> pkg{maintainer=val})
- , commaListField  "build-depends"
+ , nestedCommaListField  "build-depends"
            disp                   parse
            buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
@@ -145,22 +145,22 @@ pkgDescrFieldDescrs =
  , simpleField "author"
            showFreeText           parseFreeText
            author                 (\val pkg -> pkg{author=val})
- , spaceListField "tested-with"
+ , listField "tested-with"
            showTestedWith         parseTestedWithQ
            testedWith             (\val pkg -> pkg{testedWith=val})
- , listField "data-files"
+ , nestedListField "data-files"
            showFilePath           parseFilePathQ
            dataFiles              (\val pkg -> pkg{dataFiles=val})
  , simpleField "data-dir"
            showFilePath           parseFilePathQ
            dataDir                (\val pkg -> pkg{dataDir=val})
- , listField "extra-source-files"
+ , nestedListField "extra-source-files"
            showFilePath    parseFilePathQ
            extraSrcFiles          (\val pkg -> pkg{extraSrcFiles=val})
- , listField "extra-tmp-files"
+ , nestedListField "extra-tmp-files"
            showFilePath       parseFilePathQ
            extraTmpFiles          (\val pkg -> pkg{extraTmpFiles=val})
- , listField "extra-doc-files"
+ , nestedListField "extra-doc-files"
            showFilePath    parseFilePathQ
            extraDocFiles          (\val pkg -> pkg{extraDocFiles=val})
  ]
@@ -178,7 +178,7 @@ storeXFieldsPD _ _ = Nothing
 
 libFieldDescrs :: [FieldDescr Library]
 libFieldDescrs =
-  [ listField "exposed-modules" disp parseModuleNameQ
+  [ nestedListField "exposed-modules" disp parseModuleNameQ
       exposedModules (\mods lib -> lib{exposedModules=mods})
 
   , boolField "exposed"
@@ -397,54 +397,54 @@ binfoFieldDescrs =
  , commaListField  "pkgconfig-depends"
            disp               parsePkgconfigDependency
            pkgconfigDepends   (\xs  binfo -> binfo{pkgconfigDepends=xs})
- , spaceListField "frameworks"
+ , listField "frameworks"
            showToken          parseTokenQ
            frameworks         (\val binfo -> binfo{frameworks=val})
- , listField   "c-sources"
+ , nestedListField "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})
 
  , simpleField "default-language"
            (maybe empty disp) (option Nothing (fmap Just parseLanguageQ))
            defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})
- , spaceListField "other-languages"
+ , listField "other-languages"
            disp               parseLanguageQ
            otherLanguages     (\langs binfo -> binfo{otherLanguages=langs})
- , spaceListField "default-extensions"
+ , listField "default-extensions"
            disp               parseExtensionQ
            defaultExtensions  (\exts  binfo -> binfo{defaultExtensions=exts})
- , spaceListField "other-extensions"
+ , listField "other-extensions"
            disp               parseExtensionQ
            otherExtensions    (\exts  binfo -> binfo{otherExtensions=exts})
- , spaceListField "extensions"
+ , listField "extensions"
            disp               parseExtensionQ
            oldExtensions      (\exts  binfo -> binfo{oldExtensions=exts})
 
- , listField   "extra-libraries"
+ , nestedListField "extra-libraries"
            showToken          parseTokenQ
            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
  , listField   "extra-lib-dirs"
            showFilePath       parseFilePathQ
            extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})
- , listField   "includes"
+ , nestedListField "includes"
            showFilePath       parseFilePathQ
            includes           (\paths binfo -> binfo{includes=paths})
- , listField   "install-includes"
+ , nestedListField "install-includes"
            showFilePath       parseFilePathQ
            installIncludes    (\paths binfo -> binfo{installIncludes=paths})
  , listField   "include-dirs"
            showFilePath       parseFilePathQ
            includeDirs        (\paths binfo -> binfo{includeDirs=paths})
- , spaceListField "hs-source-dirs"
+ , listField "hs-source-dirs"
            showFilePath       parseFilePathQ
            hsSourceDirs       (\paths binfo -> binfo{hsSourceDirs=paths})
- , listField   "other-modules"
+ , nestedListField "other-modules"
            disp               parseModuleNameQ
            otherModules       (\val binfo -> binfo{otherModules=val})
- , spaceListField "ghc-prof-options"
+ , listField "ghc-prof-options"
            text               parseTokenQ
            ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
- , spaceListField "ghc-shared-options"
+ , listField "ghc-shared-options"
            text               parseTokenQ
            ghcSharedOptions      (\val binfo -> binfo{ghcSharedOptions=val})
  , optsField   "ghc-options"  GHC

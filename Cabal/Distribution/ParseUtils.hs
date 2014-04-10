@@ -32,8 +32,9 @@ module Distribution.ParseUtils (
         parseTestedWithQ, parseLicenseQ, parseLanguageQ, parseExtensionQ,
         parseSepList, parseCommaList, parseOptCommaList,
         showFilePath, showToken, showTestedWith, showFreeText, parseFreeText,
-        field, simpleField, simpleNestedField, listField, spaceListField, commaListField,
-        commaNewLineListField, optsField, liftField, boolField, parseQuoted, indentWith,
+        field, simpleField, simpleNestedField, listField, nestedListField,
+        spaceListField, commaListField, nestedCommaListField, commaNewLineListField,
+        optsField, liftField, boolField, parseQuoted, indentWith,
 
         UnrecFieldParser, warnUnrec, ignoreUnrec,
   ) where
@@ -193,22 +194,31 @@ simpleNestedField :: String -> (a -> Doc) -> ReadP a a
 simpleNestedField name showF readF get set
   = liftField get set $ field name (showNestedField name showF) readF
 
-commaListField' :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListField' separator name showF readF get set =
+commaListField :: String -> (a -> Doc) -> ReadP [a] a
+                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+commaListField name showF readF get set =
+  liftField get set' $
+    field name (showField name showF') (parseCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
+    showF'    = fsep . punctuate comma . map showF
+
+nestedCommaListField' :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
+                         -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+nestedCommaListField' separator name showF readF get set =
   liftField get set' $
     field name (showNestedField name showF') (parseCommaList readF)
   where
     set' xs b = set (get b ++ xs) b
     showF'    = separator . punctuate comma . map showF
 
-commaListField :: String -> (a -> Doc) -> ReadP [a] a
+nestedCommaListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaListField = commaListField' fsep
+nestedCommaListField = nestedCommaListField' vcat
 
 commaNewLineListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
-commaNewLineListField = commaListField' sep
+commaNewLineListField = nestedCommaListField' sep
 
 spaceListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
@@ -220,8 +230,17 @@ spaceListField name showF readF get set =
     showF'    = fsep . map showF
 
 listField :: String -> (a -> Doc) -> ReadP [a] a
-                 -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+             -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 listField name showF readF get set =
+  liftField get set' $
+    field name (showField name showF') (parseOptCommaList readF)
+  where
+    set' xs b = set (get b ++ xs) b
+    showF'    = fsep . map showF
+
+nestedListField :: String -> (a -> Doc) -> ReadP [a] a
+                   -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
+nestedListField name showF readF get set =
   liftField get set' $
     field name (showNestedField name showF') (parseOptCommaList readF)
   where
