@@ -286,12 +286,13 @@ processInstallPlan verbosity
     checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
 
-    unless dryRun $ do
+    unless (dryRun || nothingToInstall) $ do
       installPlan' <- performInstallations verbosity
                       args installedPkgIndex installPlan
       postInstallActions verbosity args userTargets installPlan'
   where
     dryRun = fromFlag (installDryRun installFlags)
+    nothingToInstall = null (InstallPlan.ready installPlan)
 
 -- ------------------------------------------------------------
 -- * Installation planning
