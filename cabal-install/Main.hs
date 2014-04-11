@@ -1022,20 +1022,21 @@ execAction execFlags extraArgs globalFlags = do
   let verbosity = fromFlag (execVerbosity execFlags)
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
                            mempty
-  case useSandbox of
-      NoSandbox -> return ()
-      (UseSandbox sandboxDir) -> do
-          let configFlags = savedConfigureFlags config
-          (comp, platform, conf) <- configCompilerAux' configFlags
-          case extraArgs of
-            (exec:args) -> do
-                withSandboxBinDirOnSearchPath sandboxDir $ do
-                    menv <- newEnv sandboxDir comp platform conf verbosity
-                    case menv of
-                        Just env -> rawSystemExitWithEnv verbosity exec args env
-                        Nothing  -> rawSystemExit        verbosity exec args
-            -- Error handling.
-            [] -> die $ "Please specify an executable to run"
+  case extraArgs of
+    (exec:args) -> do
+      case useSandbox of
+          NoSandbox ->
+              rawSystemExit verbosity exec args
+          (UseSandbox sandboxDir) -> do
+              let configFlags = savedConfigureFlags config
+              (comp, platform, conf) <- configCompilerAux' configFlags
+              withSandboxBinDirOnSearchPath sandboxDir $ do
+                  menv <- newEnv sandboxDir comp platform conf verbosity
+                  case menv of
+                      Just env -> rawSystemExitWithEnv verbosity exec args env
+                      Nothing  -> rawSystemExit        verbosity exec args
+    -- Error handling.
+    [] -> die $ "Please specify an executable to run"
   where
     newEnv sandboxDir comp platform conf verbosity = do
         -- Sandboxes are only implemented for GHC so both the `Just
