@@ -94,10 +94,10 @@ data License =
     -- | <https://www.apache.org/licenses/ Apache License, version 2.0>.
   | Apache (Maybe Version)
 
-    -- | The package's author disclaims any copyright to a package's source code
-    -- and dedicates it to the public domain. This is not a software license.
-    -- Please note that it is not possible to dedicate works to the public domain
-    -- in every jurisdiction, nor is a work that is in the public domain in one
+    -- | The author of a package disclaims any copyright to its source code and
+    -- dedicates it to the public domain. This is not a software license. Please
+    -- note that it is not possible to dedicate works to the public domain in
+    -- every jurisdiction, nor is a work that is in the public domain in one
     -- jurisdiction necessarily in the public domain elsewhere.
   | PublicDomain
 
