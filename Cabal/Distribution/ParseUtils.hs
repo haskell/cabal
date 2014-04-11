@@ -23,7 +23,7 @@ module Distribution.ParseUtils (
         LineNo, PError(..), PWarning(..), locatedErrorMsg, syntaxError, warning,
         runP, runE, ParseResult(..), catchParseError, parseFail, showPWarning,
         Field(..), fName, lineNo,
-        FieldDescr(..), ppField, ppFields, readFields, readFieldsFlat,
+        FieldDescr(..), ppFields, readFields, readFieldsFlat,
         showFields, showSingleNamedField, showSimpleSingleNamedField,
         parseFields, parseFieldsFlat,
         parseFilePathQ, parseTokenQ, parseTokenQ',
@@ -207,9 +207,10 @@ nestedCommaListField' :: ([Doc] -> Doc) -> String -> (a -> Doc) -> ReadP [a] a
                          -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 nestedCommaListField' separator name showF readF get set =
   liftField get set' $
-    field name (separator . punctuate comma . map showF) (parseCommaList readF)
+    field name (showNestedField name showF') (parseCommaList readF)
   where
     set' xs b = set (get b ++ xs) b
+    showF'    = separator . punctuate comma . map showF
 
 nestedCommaListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
@@ -251,7 +252,7 @@ optsField :: String -> CompilerFlavor -> (b -> [(CompilerFlavor,[String])])
 optsField name flavor get set =
    liftField (fromMaybe [] . lookup flavor . get)
              (\opts b -> set (reorder (update flavor opts (get b))) b) $
-        field name (hsep . map text)
+        field name (showField name showF)
                    (sepBy parseTokenQ' (munch1 isSpace))
   where
         update _ opts l | all null opts = l  --empty opts as if no opts
@@ -260,6 +261,7 @@ optsField name flavor get set =
            | f == f'   = (f, opts' ++ opts) : rest
            | otherwise = (f',opts') : update f opts rest
         reorder = sortBy (comparing fst)
+        showF   = hsep . map text
 
 -- TODO: this is a bit smelly hack. It's because we want to parse bool fields
 --       liberally but not accept new parses. We cannot do that with ReadP
@@ -280,11 +282,7 @@ boolField name get set = liftField get set (FieldDescr name (showField name show
           "The '" ++ name ++ "' field is case sensitive, use 'True' or 'False'."
 
 ppFields :: [FieldDescr a] -> a -> Doc
-ppFields fields x = vcat [ ppField name (getter x)
-                         | FieldDescr name getter _ <- fields]
-
-ppField :: String -> Doc -> Doc
-ppField name fielddoc = text name <> colon <+> fielddoc
+ppFields fields x = vcat [ getter x | FieldDescr _ getter _ <- fields ]
 
 showField :: String -> (a -> Doc) -> a -> Doc
 showField name showF a =
@@ -309,7 +307,7 @@ showSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
 showSingleNamedField fields f =
   case [ get | (FieldDescr f' get _) <- fields, f' == f ] of
     []      -> Nothing
-    (get:_) -> Just (render . ppField f . get)
+    (get:_) -> Just (render . get)
 
 showSimpleSingleNamedField :: [FieldDescr a] -> String -> Maybe (a -> String)
 showSimpleSingleNamedField fields f =
