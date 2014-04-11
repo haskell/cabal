@@ -127,7 +127,7 @@ import Distribution.Simple.Program (defaultProgramConfiguration, lookupProgram, 
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
-         ( cabalVersion, die, notice, info, topHandler
+         ( cabalVersion, debug, die, notice, info, topHandler
          , findPackageDesc, tryFindPackageDesc , rawSystemExit
          , rawSystemExitWithEnv )
 import Distribution.Text
@@ -1039,12 +1039,14 @@ execAction execFlags extraArgs globalFlags = do
     [] -> die $ "Please specify an executable to run"
   where
     newEnv sandboxDir comp platform conf verbosity = do
-        -- Sandboxes are only implemented for GHC so both the `Just
-        -- ghcProg` and unconditionally setting GHC_PACKAGE_PATH are OK.
         let s = sandboxPackageDBPath sandboxDir comp platform
-            Just ghcProg = lookupProgram ghcProgram conf
-        g <- ghcGlobalPackageDB verbosity ghcProg
-        getEffectiveEnvironment [("GHC_PACKAGE_PATH", Just $ s ++ ":" ++ g)]
+        case lookupProgram ghcProgram conf of
+            Nothing -> do
+                debug verbosity "sandbox exec only works with GHC"
+                exitFailure
+            Just ghcProg ->  do
+                g <- ghcGlobalPackageDB verbosity ghcProg
+                getEffectiveEnvironment [("GHC_PACKAGE_PATH", Just $ s ++ ":" ++ g)]
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
