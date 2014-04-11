@@ -163,7 +163,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
 -- | Remove all unneeded packages from an install plan.
 --
--- A package is uneeded if it is not a dependency (directly or
+-- A package is unneeded if it is not a dependency (directly or
 -- transitively) of any of the 'PackageSpecifier SourcePackage's.  This is
 -- useful for removing previously installed packages which are no longer
 -- required from the install plan.
