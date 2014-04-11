@@ -2,22 +2,43 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.License
+-- Description :  The License data type.
 -- Copyright   :  Isaac Jones 2003-2005
--- License     :  BSD3
 --                Duncan Coutts 2008
+-- License     :  BSD3
 --
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- The License datatype.  For more information about these and other
--- open-source licenses, you may visit <http://www.opensource.org/>.
+-- Package descriptions contain fields for specifying the name of a software
+-- license and the name of the file containing the text of that license. While
+-- package authors may choose any license they like, Cabal provides an
+-- enumeration of a small set of common free and open source software licenses.
+-- This is done so that Hackage can recognise licenses, so that tools can detect
+-- <https://en.wikipedia.org/wiki/License_compatibility licensing conflicts>,
+-- and to deter
+-- <https://en.wikipedia.org/wiki/License_proliferation license proliferation>.
 --
--- The @.cabal@ file allows you to specify a license file. Of course you can
--- use any license you like but people often pick common open source licenses
--- and it's useful if we can automatically recognise that (eg so we can display
--- it on the hackage web pages). So you can also specify the license itself in
--- the @.cabal@ file from a short enumeration defined in this module. It
--- includes 'GPL', 'AGPL', 'LGPL', 'Apache 2.0', 'MIT' and 'BSD3' licenses.
+-- It is recommended that all package authors use the @license-file@ or
+-- @license-files@ fields in their package descriptions. Further information
+-- about these fields can be found in the
+-- <http://www.haskell.org/cabal/users-guide/developing-packages.html#package-descriptions Cabal users guide>.
+--
+-- = Additional resources
+--
+-- The following websites provide information about free and open source
+-- software licenses:
+--
+-- * <http://www.opensource.org The Open Source Initiative (OSI)>
+--
+-- * <https://www.fsf.org The Free Software Foundation (FSF)>
+--
+-- = Disclaimer
+--
+-- The descriptions of software licenses provided by this documentation are
+-- intended for informational purposes only and in no way constitute legal
+-- advice. Please read the text of the licenses and consult a lawyer for any
+-- advice regarding software licensing.
 
 module Distribution.License (
     License(..),
@@ -34,63 +55,64 @@ import qualified Data.Char as Char (isAlphaNum)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 
--- |This datatype indicates the license under which your package is
--- released.  It is also wise to add your license to each source file
--- using the license-file field.  The 'AllRightsReserved' constructor
--- is not actually a license, but states that you are not giving
--- anyone else a license to use or distribute your work.  The comments
--- below are general guidelines.  Please read the licenses themselves
--- and consult a lawyer if you are unsure of your rights to release
--- the software.
---
+-- | Indicates the license under which a package's source code is released.
+-- Versions of the licenses not listed here will be rejected by Hackage and
+-- cause @cabal check@ to issue a warning.
 data License =
+    -- TODO: * remove BSD4
 
---TODO: * remove BSD4
-
-    -- | GNU Public License. Source code must accompany alterations.
+    -- | GNU General Public License,
+    -- <https://www.gnu.org/licenses/old-licenses/gpl-2.0.html version 2> or
+    -- <https://www.gnu.org/licenses/gpl.html version 3>.
     GPL (Maybe Version)
 
-    -- | GNU Affero General Public License
+    -- | <https://www.gnu.org/licenses/agpl.html GNU Affero General Public License, version 3>.
   | AGPL (Maybe Version)
 
-    -- | Lesser GPL, Less restrictive than GPL, useful for libraries.
+    -- | GNU Lesser General Public License,
+    -- <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html version 2.1> or
+    -- <https://www.gnu.org/licenses/lgpl.html version 3>.
   | LGPL (Maybe Version)
 
-    -- | 2-clause BSD license, used by FreeBSD, et al. Omits non-endorsement
-    -- clause.
+    -- | <http://www.opensource.org/licenses/bsd-license 2-clause BSD license>.
   | BSD2
 
-    -- | 3-clause BSD license, newer, no advertising clause. Very free license.
+    -- | <http://www.opensource.org/licenses/bsd-3-clause 3-clause BSD license>.
   | BSD3
 
-    -- | 4-clause BSD license, older, with advertising clause. You almost
-    -- certainly want to use the BSD3 license instead.
+    -- | <http://directory.fsf.org/wiki/License:BSD_4Clause 4-clause BSD license>.
+    -- This license has not been approved by the OSI and is incompatible with
+    -- the GNU GPL. It is provided for historical reasons and should be avoided.
   | BSD4
 
-    -- | The MIT license, similar to the BSD3. Very free license.
+    -- | <http://www.opensource.org/licenses/MIT MIT license>.
   | MIT
 
-    -- | Mozilla Public License, a weak copyleft license.
+    -- | <https://www.mozilla.org/MPL/ Mozilla Public License, version 2.0>.
   | MPL Version
 
-    -- | The Apache License. Version 2.0 is the current version,
-    -- previous versions are considered historical.
+    -- | <https://www.apache.org/licenses/ Apache License, version 2.0>.
   | Apache (Maybe Version)
 
-    -- | Holder makes no claim to ownership, least restrictive license.
+    -- | The author of a package disclaims any copyright to its source code and
+    -- dedicates it to the public domain. This is not a software license. Please
+    -- note that it is not possible to dedicate works to the public domain in
+    -- every jurisdiction, nor is a work that is in the public domain in one
+    -- jurisdiction necessarily in the public domain elsewhere.
   | PublicDomain
 
-    -- | No rights are granted to others. Undistributable. Most restrictive.
+    -- | No license. The package may not be legally modified or redistributed by
+    -- anyone but the rightsholder.
   | AllRightsReserved
 
-    -- | Some other license.
+    -- | Any other software license.
   | OtherLicense
 
-    -- | Not a recognised license.
-    -- Allows us to deal with future extensions more gracefully.
+    -- | Indicates an erroneous license name.
   | UnknownLicense String
   deriving (Read, Show, Eq, Typeable, Data)
 
+-- | The list of all currently recognised licenses.
 knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
                 , LGPL unversioned, LGPL (version [2, 1]), LGPL (version [3])
