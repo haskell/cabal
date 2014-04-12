@@ -54,7 +54,7 @@ data InitFlags =
               , extraSrc     :: Maybe [String]
 
               , packageType  :: Flag PackageType
-              , mainIs       :: Maybe FilePath
+              , mainIs       :: Flag FilePath
               , language     :: Flag Language
 
               , exposedModules :: Maybe [ModuleName]
@@ -127,7 +127,7 @@ instance Monoid InitFlags where
     , category       = combine category
     , extraSrc       = combine extraSrc
     , packageType    = combine packageType
-    , mainIs         = getLast $ combine (Last . mainIs)
+    , mainIs         = combine mainIs
     , language       = combine language
     , exposedModules = combine exposedModules
     , otherModules   = combine otherModules
