@@ -1404,7 +1404,7 @@ initCommand = CommandUI {
         "Specify the main module."
         IT.mainIs
         (\v flags -> flags { IT.mainIs = v })
-        (reqArg' "FILE" Just maybeToList)
+        (reqArgFlag "FILE")
 
       , option [] ["language"]
         "Specify the default language."
