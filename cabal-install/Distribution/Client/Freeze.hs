@@ -33,10 +33,11 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Package
-         ( packageId, packageName, packageVersion )
+         ( PackageIdentifier, packageId, packageName, packageVersion )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
 import Distribution.Simple.PackageIndex (PackageIndex)
+import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
@@ -132,7 +133,9 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
                      solver
                      resolverParams
 
-  return $ InstallPlan.toList installPlan
+  return $ either id
+                  (error "planPackages: installPlan contains broken packages")
+                  (pruneInstallPlan installPlan pkgSpecifiers)
 
   where
     resolverParams =
@@ -156,6 +159,25 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
     independentGoals = fromFlag (freezeIndependentGoals freezeFlags)
     shadowPkgs       = fromFlag (freezeShadowPkgs       freezeFlags)
     maxBackjumps     = fromFlag (freezeMaxBackjumps     freezeFlags)
+
+
+-- | Remove all unneeded packages from an install plan.
+--
+-- A package is unneeded if it is not a dependency (directly or
+-- transitively) of any of the 'PackageSpecifier SourcePackage's.  This is
+-- useful for removing previously installed packages which are no longer
+-- required from the install plan.
+pruneInstallPlan :: InstallPlan.InstallPlan
+                 -> [PackageSpecifier SourcePackage]
+                 -> Either [PlanPackage] [(PlanPackage, [PackageIdentifier])]
+pruneInstallPlan installPlan pkgSpecifiers =
+    mapLeft PackageIndex.allPackages $ PackageIndex.dependencyClosure pkgIdx pkgIds
+  where
+    pkgIdx = PackageIndex.fromList $ InstallPlan.toList installPlan
+    pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
+    mapLeft f (Left v)  = Left $ f v
+    mapLeft _ (Right v) = Right v
+
 
 freezePackages :: Verbosity -> [PlanPackage] -> IO ()
 freezePackages verbosity pkgs = do
