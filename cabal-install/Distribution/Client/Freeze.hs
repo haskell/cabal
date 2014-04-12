@@ -51,6 +51,8 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
+import Control.Monad
+         ( when )
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.Monoid
          ( mempty )
@@ -93,6 +95,7 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
                        (packageIndex sourcePkgDb)
                        [UserTargetLocalDir "."]
 
+    sanityCheck pkgSpecifiers
     pkgs  <- planPackages
                verbosity comp platform mSandboxPkgInfo freezeFlags
                installedPkgIndex sourcePkgDb pkgSpecifiers
@@ -110,6 +113,10 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
   where
     dryRun = fromFlag (freezeDryRun freezeFlags)
 
+    sanityCheck pkgSpecifiers =
+      when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
+        die $ "internal error: 'resolveUserTargets' returned "
+           ++ "unexpected named package specifiers!"
 
 planPackages :: Verbosity
              -> Compiler
