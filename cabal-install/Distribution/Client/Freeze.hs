@@ -187,7 +187,7 @@ pruneInstallPlan installPlan pkgSpecifiers =
     mapLeft _ (Right v) = Right v
 
 
-freezePackages :: Verbosity -> [PlanPackage] -> IO ()
+freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()
 freezePackages verbosity pkgs = do
     pkgEnv <- fmap (createPkgEnv . addConstraints) $ loadUserConfig verbosity ""
     writeFileAtomic userPackageEnvironmentFile $ showPkgEnv pkgEnv
