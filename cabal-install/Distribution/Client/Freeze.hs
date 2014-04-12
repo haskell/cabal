@@ -33,7 +33,7 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Package
-         ( PackageIdentifier, packageId, packageName, packageVersion )
+         ( Package, PackageIdentifier, packageId, packageName, packageVersion )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
 import Distribution.Simple.PackageIndex (PackageIndex)
@@ -200,7 +200,7 @@ freezePackages verbosity pkgs = do
     showPkgEnv = BS.Char8.pack . showPackageEnvironment
 
 
-formatPkgs :: [PlanPackage] -> [String]
+formatPkgs :: Package pkg => [pkg] -> [String]
 formatPkgs = map $ showPkg . packageId
   where
     showPkg pid = name pid ++ " == " ++ version pid
