@@ -171,7 +171,8 @@ pruneInstallPlan :: InstallPlan.InstallPlan
                  -> [PackageSpecifier SourcePackage]
                  -> Either [PlanPackage] [(PlanPackage, [PackageIdentifier])]
 pruneInstallPlan installPlan pkgSpecifiers =
-    mapLeft PackageIndex.allPackages $ PackageIndex.dependencyClosure pkgIdx pkgIds
+    mapLeft PackageIndex.allPackages $
+    PackageIndex.dependencyClosure pkgIdx pkgIds
   where
     pkgIdx = PackageIndex.fromList $ InstallPlan.toList installPlan
     pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
