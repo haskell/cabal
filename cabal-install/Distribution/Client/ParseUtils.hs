@@ -16,7 +16,7 @@ import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
 
 import Control.Monad    ( foldM )
-import Text.PrettyPrint ( (<>), (<+>), ($$) )
+import Text.PrettyPrint ( (<>), (<+>), ($+$) )
 import qualified Data.Map as Map
 import qualified Text.PrettyPrint as Disp
          ( Doc, text, colon, vcat, empty, isEmpty, nest )
@@ -52,6 +52,11 @@ ppField name mdef cur
   | otherwise        = Disp.text name <> Disp.colon <+> cur
 
 ppSection :: String -> String -> [FieldDescr a] -> (Maybe a) -> a -> Disp.Doc
-ppSection name arg fields def cur =
-     Disp.text name <+> Disp.text arg
-  $$ Disp.nest 2 (ppFields fields def cur)
+ppSection name arg fields def cur
+  | Disp.isEmpty fieldsDoc = Disp.empty
+  | otherwise              = Disp.text name <+> argDoc
+                             $+$ (Disp.nest 2 fieldsDoc)
+  where
+    fieldsDoc = ppFields fields def cur
+    argDoc | arg == "" = Disp.empty
+           | otherwise = Disp.text arg
