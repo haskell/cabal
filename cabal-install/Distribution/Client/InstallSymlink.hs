@@ -77,18 +77,18 @@ import Data.Maybe
 -- directory will be on the user's PATH. However some people are a bit nervous
 -- about letting a package manager install programs into @~/bin/@.
 --
--- A comprimise solution is that instead of installing binaries directly into
+-- A compromise solution is that instead of installing binaries directly into
 -- @~/bin/@, we could install them in a private location under @~/.cabal/bin@
 -- and then create symlinks in @~/bin/@. We can be careful when setting up the
 -- symlinks that we do not overwrite any binary that the user installed. We can
 -- check if it was a symlink we made because it would point to the private dir
 -- where we install our binaries. This means we can install normally without
 -- worrying and in a later phase set up symlinks, and if that fails then we
--- report it to the user, but even in this case the package is still in an ok
+-- report it to the user, but even in this case the package is still in an OK
 -- installed state.
 --
 -- This is an optional feature that users can choose to use or not. It is
--- controlled from the config file. Of course it only works on posix systems
+-- controlled from the config file. Of course it only works on POSIX systems
 -- with symlinks so is not available to Windows users.
 --
 symlinkBinaries :: ConfigFlags
@@ -168,7 +168,7 @@ symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
                           --   bin dir, eg @foo@
               -> String   -- ^ The name of the executable to in the private bin
                           --   dir, eg @foo-1.0@
-              -> IO Bool  -- ^ If creating the symlink was sucessful. @False@
+              -> IO Bool  -- ^ If creating the symlink was successful. @False@
                           --   if there was another file there already that we
                           --   did not own. Other errors like permission errors
                           --   just propagate as exceptions.
@@ -185,11 +185,11 @@ symlinkBinary publicBindir privateBindir publicName privateName = do
                                 (publicBindir   </> publicName)
     rmLink = removeLink (publicBindir </> publicName)
 
--- | Check a filepath of a symlink that we would like to create to see if it
--- is ok. For it to be ok to overwrite it must either not already exist yet or
+-- | Check a file path of a symlink that we would like to create to see if it
+-- is OK. For it to be OK to overwrite it must either not already exist yet or
 -- be a symlink to our target (in which case we can assume ownership).
 --
-targetOkToOverwrite :: FilePath -- ^ The filepath of the symlink to the private
+targetOkToOverwrite :: FilePath -- ^ The file path of the symlink to the private
                                 -- binary that we would like to create
                     -> FilePath -- ^ The canonical path of the private binary.
                                 -- Use 'canonicalizePath' to make this.
@@ -214,7 +214,7 @@ targetOkToOverwrite symlink target = handleNotExist $ do
 data SymlinkStatus
    = NotExists     -- ^ The file doesn't exist so we can make a symlink.
    | OkToOverwrite -- ^ A symlink already exists, though it is ours. We'll
-                   -- have to delete it first bemore we make a new symlink.
+                   -- have to delete it first before we make a new symlink.
    | NotOurFile    -- ^ A file already exists and it is not one of our existing
                    -- symlinks (either because it is not a symlink or because
                    -- it points somewhere other than our managed space).

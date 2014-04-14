@@ -117,7 +117,7 @@ createZipArchive verbosity pkg tmpDir targetPref = do
         zipfile   = targetPref </> dir <.> "zip"
     (zipProg, _) <- requireProgram verbosity zipProgram emptyProgramDb
 
-    -- zip has an annoying habbit of updating the target rather than creating
+    -- zip has an annoying habit of updating the target rather than creating
     -- it from scratch. While that might sound like an optimisation, it doesn't
     -- remove files already in the archive that are no longer present in the
     -- uncompressed tree.

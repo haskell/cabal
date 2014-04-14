@@ -118,7 +118,7 @@ packageDbPaths user system db =
     UserPackageDB           ->  [ user ]
     SpecificPackageDB path  ->  [ path ]
 
--- | Hack to add version numbers to UHC-builtin packages. This should sooner or
+-- | Hack to add version numbers to UHC-built-in packages. This should sooner or
 -- later be fixed on the UHC side.
 addBuiltinVersions :: String -> String
 {-
@@ -240,7 +240,7 @@ installLib verbosity _lbi targetDir _dynlibTargetDir builtDir pkg _library = do
     -- putStrLn $ "built: " ++ builtDir
     installDirectoryContents verbosity (builtDir </> display (packageId pkg)) targetDir
 
--- currently hardcoded UHC code generator and variant to use
+-- currently hard-coded UHC code generator and variant to use
 uhcTarget, uhcTargetVariant :: String
 uhcTarget        = "bc"
 uhcTargetVariant = "plain"

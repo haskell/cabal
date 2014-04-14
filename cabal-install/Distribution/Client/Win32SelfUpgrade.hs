@@ -25,7 +25,7 @@ module Distribution.Client.Win32SelfUpgrade (
 --
 -- * Move our own exe file to a new name
 -- * Copy a new exe file to the previous name
--- * Run the new exe file, passing our own pid and new path
+-- * Run the new exe file, passing our own PID and new path
 -- * Wait for the new process to start
 -- * Close the new exe file
 -- * Exit old process
@@ -61,7 +61,7 @@ import Prelude hiding (log)
 -- that the nested action can replace our own exe file.
 --
 -- We require that the new process accepts a command line invocation that
--- calls 'deleteOldExeFile', passing in the pid and exe file.
+-- calls 'deleteOldExeFile', passing in the PID and exe file.
 --
 possibleSelfUpgrade :: Verbosity
                     -> [FilePath]
@@ -87,7 +87,7 @@ possibleSelfUpgrade verbosity newPaths action = do
 -- old and new processes. We need to synchronise to make sure that the old
 -- process has not yet terminated by the time the new one starts up and looks
 -- for the old process. Otherwise the old one might have already terminated
--- and we could not wait on it terminating reliably (eg the pid might get
+-- and we could not wait on it terminating reliably (eg the PID might get
 -- re-used).
 --
 syncEventName :: String
@@ -131,7 +131,7 @@ scheduleOurDemise verbosity dstPath tmpPath mkArgs = do
 
 -- | Assuming we're now in the new child process, we've been asked by the old
 -- process to wait for it to terminate and then we can remove the old exe file
--- that it renamted itself to.
+-- that it renamed itself to.
 --
 deleteOldExeFile :: Verbosity -> Int -> FilePath -> IO ()
 deleteOldExeFile verbosity oldPID tmpPath = do

@@ -180,7 +180,7 @@ installLib
   :: Verbosity
   -> LocalBuildInfo
   -> FilePath  -- ^install location
-  -> FilePath  -- ^install location for dynamic librarys
+  -> FilePath  -- ^install location for dynamic libraries
   -> FilePath  -- ^Build location
   -> PackageDescription
   -> Library

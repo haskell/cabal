@@ -398,7 +398,7 @@ syncProcess fun c = do
         return ()
 #endif  /* mingw32_HOST_OS */
 
--- Exit with the same exitcode if the subcommand fails
+-- Exit with the same exit code if the subcommand fails
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
 rawSystemExit verbosity path args = do
   printRawCommandAndArgs verbosity path args
@@ -580,7 +580,7 @@ findProgramVersion versionArg selectVersion verbosity path = do
   return version
 
 
--- | Like the unix xargs program. Useful for when we've got very long command
+-- | Like the Unix xargs program. Useful for when we've got very long command
 -- lines that might overflow an OS limit on command line length and so you
 -- need to invoke a command multiple times to get all the args in.
 --
@@ -825,7 +825,7 @@ createDirectoryIfMissingVerbose verbosity create_parents path0
           -- createDirectory (and indeed POSIX mkdir) does not distinguish
           -- between a dir already existing and a file already existing. So we
           -- check for it here. Unfortunately there is a slight race condition
-          -- here, but we think it is benign. It could report an exeption in
+          -- here, but we think it is benign. It could report an exception in
           -- the case that the dir did exist but another process deletes the
           -- directory and creates a file in its place before we can check
           -- that the directory did indeed exist.
@@ -1263,7 +1263,7 @@ writeUTF8File path = writeFileAtomic path . BS.Char8.pack . toUTF8
 normaliseLineEndings :: String -> String
 normaliseLineEndings [] = []
 normaliseLineEndings ('\r':'\n':s) = '\n' : normaliseLineEndings s -- windows
-normaliseLineEndings ('\r':s)      = '\n' : normaliseLineEndings s -- old osx
+normaliseLineEndings ('\r':s)      = '\n' : normaliseLineEndings s -- old OS X
 normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 
 -- ------------------------------------------------------------

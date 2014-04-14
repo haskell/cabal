@@ -105,7 +105,7 @@ get verbosity repos globalFlags getFlags userTargets = do
 
   where
     resolverParams sourcePkgDb pkgSpecifiers =
-        --TODO: add commandline constraint and preference args for unpack
+        --TODO: add command-line constraint and preference args for unpack
         standardInstallPolicy mempty sourcePkgDb pkgSpecifiers
 
     prefix = fromFlagOrDefault "" (getDestDir getFlags)
@@ -214,7 +214,7 @@ findUsableBranchers = do
     return (Data.Map.fromList pairs)
 
 -- | Fork a single package from a remote source repository to the local
--- filesystem.
+-- file system.
 forkPackage :: Verbosity
             -> Data.Map.Map PD.RepoType Brancher
                -- ^ Branchers supported by the local machine.

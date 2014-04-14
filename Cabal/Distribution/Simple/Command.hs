@@ -89,11 +89,11 @@ data ShowOrParseArgs = ShowArgs | ParseArgs
 type Name        = String
 type Description = String
 
--- | We usually have a datatype for storing configuration values, where
+-- | We usually have a data type for storing configuration values, where
 --   every field stores a configuration option, and the user sets
 --   the value either via command line flags or a configuration file.
 --   An individual OptionField models such a field, and we usually
---   build a list of options associated to a configuration datatype.
+--   build a list of options associated to a configuration data type.
 data OptionField a = OptionField {
   optionName        :: Name,
   optionDescr       :: [OptDescr a] }
@@ -450,7 +450,7 @@ commandParseArgs command global args =
 
   where -- Note: It is crucial to use reverse function composition here or to
         -- reverse the flags here as we want to process the flags left to right
-        -- but data flow in function compsition is right to left.
+        -- but data flow in function composition is right to left.
         accum flags = foldr (flip (.)) id [ f | Right f <- flags ]
         unrecognised opts = [ "unrecognized "
                               ++ "'" ++ (commandName command) ++ "'"

@@ -761,7 +761,7 @@ parsePackageDescription file = do
     --  * an optional library section, and an arbitrary number of executable
     --    sections (in any order).
     --
-    -- The current implementatition just gathers all library-specific fields
+    -- The current implementation just gathers all library-specific fields
     -- in a library section and wraps all executable stanzas in an executable
     -- section.
     sectionizeFields :: [Field] -> [Field]

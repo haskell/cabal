@@ -41,7 +41,7 @@ convPIs os arch cid sip iidx sidx =
 -- more uniform index format of the solver.
 convIPI' :: Bool -> SI.PackageIndex -> [(PN, I, PInfo)]
 convIPI' sip idx =
-    -- apply shadowing whenever there are multple installed packages with
+    -- apply shadowing whenever there are multiple installed packages with
     -- the same version
     [ maybeShadow (convIP idx pkg)
     | (_pkgid, pkgs) <- SI.allPackagesBySourcePackageId idx

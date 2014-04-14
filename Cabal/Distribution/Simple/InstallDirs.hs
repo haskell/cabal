@@ -63,15 +63,15 @@ import Foreign.C
 #endif
 
 -- ---------------------------------------------------------------------------
--- Instalation directories
+-- Installation directories
 
 
 -- | The directories where we will install files for packages.
 --
 -- We have several different directories for different types of files since
 -- many systems have conventions whereby different types of files in a package
--- are installed in different direcotries. This is particularly the case on
--- unix style systems.
+-- are installed in different directories. This is particularly the case on
+-- Unix style systems.
 --
 data InstallDirs dir = InstallDirs {
         prefix       :: dir,
@@ -168,11 +168,11 @@ appendSubdirs append dirs = dirs {
 -- convenient for the user to override the default installation directory
 -- by only having to specify --prefix=... rather than overriding each
 -- individually. This is done by allowing $-style variables in the dirs.
--- These are expanded by textual substituion (see 'substPathTemplate').
+-- These are expanded by textual substitution (see 'substPathTemplate').
 --
 -- A few of these installation directories are split into two components, the
 -- dir and subdir. The full installation path is formed by combining the two
--- together with @\/@. The reason for this is compatibility with other unix
+-- together with @\/@. The reason for this is compatibility with other Unix
 -- build systems which also support @--libdir@ and @--datadir@. We would like
 -- users to be able to configure @--libdir=\/usr\/lib64@ for example but
 -- because by default we want to support installing multiple versions of
@@ -336,7 +336,7 @@ prefixRelativeInstallDirs pkgId compilerId platform dirs =
 -- ---------------------------------------------------------------------------
 -- Path templates
 
--- | An abstract path, posibly containing variables that need to be
+-- | An abstract path, possibly containing variables that need to be
 -- substituted for to get a real 'FilePath'.
 --
 newtype PathTemplate = PathTemplate [PathComponent]
@@ -360,7 +360,7 @@ data PathTemplateVariable =
      | PkgIdVar      -- ^ The @$pkgid@ package Id path variable, eg @foo-1.0@
      | CompilerVar   -- ^ The compiler name and version, eg @ghc-6.6.1@
      | OSVar         -- ^ The operating system name, eg @windows@ or @linux@
-     | ArchVar       -- ^ The cpu architecture name, eg @i386@ or @x86_64@
+     | ArchVar       -- ^ The CPU architecture name, eg @i386@ or @x86_64@
      | ExecutableNameVar -- ^ The executable name; used in shell wrappers
      | TestSuiteNameVar   -- ^ The name of the test suite being run
      | TestSuiteResultVar -- ^ The result of the test suite being run, eg
@@ -493,7 +493,7 @@ instance Show PathComponent where
   showList = foldr (\x -> (shows x .)) id
 
 instance Read PathComponent where
-  -- for some reason we colapse multiple $ symbols here
+  -- for some reason we collapse multiple $ symbols here
   readsPrec _ = lex0
     where lex0 [] = []
           lex0 ('$':'$':s') = lex0 ('$':s')

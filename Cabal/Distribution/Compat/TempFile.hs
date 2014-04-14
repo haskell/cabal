@@ -37,7 +37,7 @@ import qualified System.Posix
 
 -- This is here for Haskell implementations that do not come with
 -- System.IO.openTempFile. This includes nhc-1.20, hugs-2006.9.
--- TODO: Not sure about jhc
+-- TODO: Not sure about JHC
 
 -- This is a copy/paste of the openBinaryTempFile definition, but
 -- if uses 666 rather than 600 for the permissions. The base library
@@ -49,7 +49,7 @@ openNewBinaryFile dir template = do
   where
     -- We split off the last extension, so we can use .foo.ext files
     -- for temporary files (hidden on Unix OSes). Unfortunately we're
-    -- below filepath in the hierarchy here.
+    -- below file path in the hierarchy here.
     (prefix,suffix) =
        case break (== '.') $ reverse template of
          -- First case: template contains no '.'s. Just re-reverse it.
@@ -76,9 +76,9 @@ openNewBinaryFile dir template = do
            then findTempName (x+1)
            else ioError (errnoToIOError "openNewBinaryFile" errno Nothing (Just dir))
        else do
-         -- TODO: We want to tell fdToHandle what the filepath is,
+         -- TODO: We want to tell fdToHandle what the file path is,
          -- as any exceptions etc will only be able to report the
-         -- fd currently
+         -- FD currently
          h <- fdToHandle fd `onException` c_close fd
          return (filepath, h)
       where
@@ -92,7 +92,7 @@ openNewBinaryFile dir template = do
                   | last a == pathSeparator = a ++ b
                   | otherwise = a ++ [pathSeparator] ++ b
 
--- FIXME: Should use filepath library
+-- FIXME: Should use System.FilePath library
 pathSeparator :: Char
 #ifdef mingw32_HOST_OS
 pathSeparator = '\\'

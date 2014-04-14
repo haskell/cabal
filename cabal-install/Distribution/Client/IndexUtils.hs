@@ -93,7 +93,7 @@ getInstalledPackages verbosity comp packageDbs conf =
 convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
 convert index' = PackageIndex.fromList
     -- There can be multiple installed instances of each package version,
-    -- like when the same package is installed in the global & user dbs.
+    -- like when the same package is installed in the global & user DBs.
     -- InstalledPackageIndex.allPackagesBySourcePackageId gives us the
     -- installed packages with the most preferred instances first, so by
     -- picking the first we should get the user one. This is almost but not
@@ -109,7 +109,7 @@ convert index' = PackageIndex.fromList
     -- other packages that do not exist then we have a problem we cannot find
     -- the original source package id. Instead we make up a bogus package id.
     -- This should have the same effect since it should be a dependency on a
-    -- non-existant package.
+    -- nonexistent package.
     sourceDeps index ipkg =
       [ maybe (brokenPackageId depid) packageId mdep
       | let depids = InstalledPackageInfo.depends ipkg
@@ -281,7 +281,7 @@ packageDesc (BuildTreeRef _ _ descr _ _) = descr
 -- | Read a compressed \"00-index.tar.gz\" file into a 'PackageIndex'.
 --
 -- This is supposed to be an \"all in one\" way to easily get at the info in
--- the hackage package index.
+-- the Hackage package index.
 --
 -- It takes a function to map a 'GenericPackageDescription' into any more
 -- specific instance of 'Package' that you might want to use. In the simple

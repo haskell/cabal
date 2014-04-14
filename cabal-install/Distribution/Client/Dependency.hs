@@ -235,7 +235,7 @@ dontUpgradeNonUpgradeablePackages params =
       , isInstalled pkgname ]
     -- TODO: the top down resolver chokes on the base constraints
     -- below when there are no targets and thus no dep on base.
-    -- Need to refactor contraints separate from needing packages.
+    -- Need to refactor constraints separate from needing packages.
     isInstalled = not . null
                 . InstalledPackageIndex.lookupPackageName
                                  (depResolverInstalledPkgIndex params)
@@ -466,7 +466,7 @@ chooseSolver verbosity Choose        (CompilerId f v) = do
   return chosenSolver
 
 runSolver :: Solver -> SolverConfig -> DependencyResolver
-runSolver TopDown = const topDownResolver -- TODO: warn about unsuported options
+runSolver TopDown = const topDownResolver -- TODO: warn about unsupported options
 runSolver Modular = modularResolver
 
 -- | Run the dependency solver.
@@ -508,7 +508,7 @@ resolveDependencies platform comp  solver params =
                       -- The modular solver can properly deal with broken
                       -- packages and won't select them. So the
                       -- 'hideBrokenInstalledPackages' function should be moved
-                      -- into a module that is specific to the Topdown solver.
+                      -- into a module that is specific to the top-down solver.
                       . (if solver /= Modular then hideBrokenInstalledPackages
                                               else id)
                       $ params
@@ -577,7 +577,7 @@ interpretPackagesPreference selected defaultPref prefs =
 -- It is suitable for tasks such as selecting packages to download for user
 -- inspection. It is not suitable for selecting packages to install.
 --
--- Note: if no installed package index is available, it is ok to pass 'mempty'.
+-- Note: if no installed package index is available, it is OK to pass 'mempty'.
 -- It simply means preferences for installed packages will be ignored.
 --
 resolveWithoutDependencies :: DepResolverParams
