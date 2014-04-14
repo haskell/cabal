@@ -8,7 +8,7 @@
 -- Portability :  portable
 --
 -- This code was originally in Distribution.Compat.ReadP. Please see that file
--- for provenace. The tests have been integrated into the test framework.
+-- for provenance. The tests have been integrated into the test framework.
 -- Some properties cannot be tested, as they hold over arbitrary ReadP values,
 -- and we don't have a good Arbitrary instance (nor Show instance) for ReadP.
 --

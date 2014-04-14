@@ -171,7 +171,7 @@ knownPrograms conf =
 
 -- | Get the current 'ProgramSearchPath' used by the 'ProgramDb'.
 -- This is the default list of locations where programs are looked for when
--- configuring them. This can be overriden for specific programs (with
+-- configuring them. This can be overridden for specific programs (with
 -- 'userSpecifyPath'), and specific known programs can modify or ignore this
 -- search path in their own configuration code.
 --
@@ -274,8 +274,8 @@ configuredPrograms = Map.elems . configuredProgs
 -- Configuring known programs
 
 -- | Try to configure a specific program. If the program is already included in
--- the colleciton of unconfigured programs then we use any user-supplied
--- location and arguments. If the program gets configured sucessfully it gets
+-- the collection of unconfigured programs then we use any user-supplied
+-- location and arguments. If the program gets configured successfully it gets
 -- added to the configured collection.
 --
 -- Note that it is not a failure if the program cannot be configured. It's only

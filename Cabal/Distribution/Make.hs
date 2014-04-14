@@ -17,7 +17,7 @@
 -- that it works.
 --
 -- Uses the parsed command-line from "Distribution.Simple.Setup" in order to build
--- Haskell tools using a backend build system based on make. Obviously we
+-- Haskell tools using a back-end build system based on make. Obviously we
 -- assume that there is a configure script, and that after the ConfigCmd has
 -- been run, there is a Makefile. Further assumptions:
 --

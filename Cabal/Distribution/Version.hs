@@ -224,7 +224,7 @@ removeUpperBound = fromVersionIntervals . relaxLastInterval . toVersionIntervals
 
 -- | Fold over the basic syntactic structure of a 'VersionRange'.
 --
--- This provides a syntacic view of the expression defining the version range.
+-- This provides a syntactic view of the expression defining the version range.
 -- The syntactic sugar @\">= v\"@, @\"<= v\"@ and @\"== v.*\"@ is presented
 -- in terms of the other basic syntax.
 --
@@ -478,7 +478,7 @@ checkInvariant is = assert (invariant is) is
 -- | Directly construct a 'VersionIntervals' from a list of intervals.
 --
 -- Each interval must be non-empty. The sequence must be in increasing order
--- and no invervals may overlap or touch. If any of these conditions are not
+-- and no intervals may overlap or touch. If any of these conditions are not
 -- satisfied the function returns @Nothing@.
 --
 mkVersionIntervals :: [VersionInterval] -> Maybe VersionIntervals

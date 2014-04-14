@@ -76,7 +76,7 @@ import Distribution.Simple.Utils (lowercase, equating, comparing)
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
--- It can be searched effeciently by package name and version.
+-- It can be searched efficiently by package name and version.
 --
 newtype PackageIndex pkg = PackageIndex
   -- This index package names to all the package records matching that package
@@ -285,12 +285,12 @@ lookupDependency index (Dependency name versionRange) =
 
 -- | Does a case-insensitive search by package name.
 --
--- If there is only one package that compares case-insentiviely to this name
+-- If there is only one package that compares case-insensitively to this name
 -- then the search is unambiguous and we get back all versions of that package.
--- If several match case-insentiviely but one matches exactly then it is also
+-- If several match case-insensitively but one matches exactly then it is also
 -- unambiguous.
 --
--- If however several match case-insentiviely and none match exactly then we
+-- If however several match case-insensitively and none match exactly then we
 -- have an ambiguous result, and we get back all the versions of all the
 -- packages. The list of ambiguous results is split by exact package name. So
 -- it is a non-empty list of non-empty lists.

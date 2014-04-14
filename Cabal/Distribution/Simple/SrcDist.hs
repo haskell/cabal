@@ -29,7 +29,7 @@ module Distribution.Simple.SrcDist (
   prepareTree,
   createArchive,
 
-  -- ** Snaphots
+  -- ** Snapshots
   prepareSnapshotTree,
   snapshotPackage,
   snapshotVersion,

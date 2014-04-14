@@ -66,7 +66,7 @@ import Distribution.Version
 -- ------------------------------------------------------------
 
 --TODO:
--- * Don't overwrite all of `cabal.config`, just the constaints section.
+-- * Don't overwrite all of `cabal.config`, just the constraints section.
 -- * Should the package represented by `UserTargetLocalDir "."` be
 --   constrained too? What about `base`?
 

@@ -43,7 +43,7 @@ import System.Directory
 
 data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
--- Trime
+-- Trim
 trim :: String -> String
 trim = f . f
       where f = reverse . dropWhile isSpace

@@ -95,7 +95,7 @@ simplifyCondition cond i = fv . walk $ cond
       COr c1 c2  -> fv' c1 ++ fv' c2
       CAnd c1 c2 -> fv' c1 ++ fv' c2
 
--- | Simplify a configuration condition using the os and arch names.  Returns
+-- | Simplify a configuration condition using the OS and arch names.  Returns
 --   the names of all the flags occurring in the condition.
 simplifyWithSysParams :: OS -> Arch -> CompilerId -> Condition ConfVar
                       -> (Condition FlagName, [FlagName])
@@ -459,7 +459,7 @@ instance Monoid PDTagged where
 --
 finalizePackageDescription ::
      FlagAssignment  -- ^ Explicitly specified flag assignments
-  -> (Dependency -> Bool) -- ^ Is a given depenency satisfiable from the set of
+  -> (Dependency -> Bool) -- ^ Is a given dependency satisfiable from the set of
                           -- available packages?  If this is unknown then use
                           -- True.
   -> Platform      -- ^ The 'Arch' and 'OS'

@@ -692,7 +692,7 @@ deprecatedExtensions =
   ]
 -- NOTE: when adding deprecated extensions that have new alternatives
 -- we must be careful to make sure that the deprecation messages are
--- valid. We must not recomend aliases that cannot be used with older
+-- valid. We must not recommend aliases that cannot be used with older
 -- compilers, perhaps by adding support in Cabal to translate the new
 -- name to the old one for older compilers. Otherwise we are in danger
 -- of the scenario in ticket #689.
