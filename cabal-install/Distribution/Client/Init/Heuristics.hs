@@ -41,7 +41,7 @@ import Control.Monad ( liftM )
 import Data.Char   ( isAlphaNum, isNumber, isUpper, isLower, isSpace )
 import Data.Either ( partitionEithers )
 import Data.List   ( isInfixOf, isPrefixOf, isSuffixOf, sortBy )
-import Data.Maybe  ( mapMaybe, catMaybes, maybeToList, listToMaybe )
+import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
 import Data.Monoid ( mempty, mappend, mconcat, )
 import Data.Ord    ( comparing )
 import qualified Data.Set as Set ( fromList, toList )
@@ -283,18 +283,18 @@ darcsEnv :: Enviro -> AuthorGuess
 darcsEnv = maybe mempty nameAndMail . lookup "DARCS_EMAIL"
 
 gitEnv :: Enviro -> AuthorGuess
-gitEnv env = (name, email)
+gitEnv env = (name, mail)
   where
-    name  = maybeFlag "GIT_AUTHOR_NAME" env
-    email = maybeFlag "GIT_AUTHOR_EMAIL" env
+    name = maybeFlag "GIT_AUTHOR_NAME" env
+    mail = maybeFlag "GIT_AUTHOR_EMAIL" env
 
 darcsCfg :: Maybe String -> AuthorGuess
 darcsCfg = maybe mempty nameAndMail
 
 emailEnv :: Enviro -> AuthorGuess
-emailEnv env = (mempty, email)
+emailEnv env = (mempty, mail)
   where
-    email = maybeFlag "EMAIL" env
+    mail = maybeFlag "EMAIL" env
 
 gitCfg :: GitLoc -> IO AuthorGuess
 gitCfg which = do
@@ -342,10 +342,10 @@ nameAndMail :: String -> (Flag String, Flag String)
 nameAndMail str
   | all isSpace nameOrEmail = mempty
   | null erest = (mempty, Flag $ trim nameOrEmail)
-  | otherwise  = (Flag $ trim nameOrEmail, Flag email)
+  | otherwise  = (Flag $ trim nameOrEmail, Flag mail)
   where
     (nameOrEmail,erest) = break (== '<') str
-    (email,_)           = break (== '>') (tail erest)
+    (mail,_)            = break (== '>') (tail erest)
 
 trim :: String -> String
 trim = removeLeadingSpace . reverse . removeLeadingSpace . reverse
