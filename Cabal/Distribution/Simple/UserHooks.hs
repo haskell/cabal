@@ -71,7 +71,7 @@ data UserHooks = UserHooks {
     -- |Hook to run before build command.  Second arg indicates verbosity level.
     preBuild  :: Args -> BuildFlags -> IO HookedBuildInfo,
 
-    -- |Over-ride this hook to gbet different behavior during build.
+    -- |Over-ride this hook to get different behavior during build.
     buildHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> BuildFlags -> IO (),
     -- |Hook to run after build command.  Second arg indicates verbosity level.
     postBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO (),

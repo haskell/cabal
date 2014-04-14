@@ -118,7 +118,7 @@ sfToFileName projectRoot (SourceFileEntry relPath m ext _ _)
   = projectRoot </> relPath </> toFilePath m <.> ext
 
 -- |Search for source files in the given directory
--- and return pairs of guessed haskell source path and
+-- and return pairs of guessed Haskell source path and
 -- module names.
 scanForModules :: FilePath -> IO [SourceFileEntry]
 scanForModules rootDir = scanForModulesIn rootDir rootDir
@@ -329,7 +329,7 @@ maybeReadFile f = do
         then fmap Just $ readFile f
         else return Nothing
 
--- |Get list of categories used in hackage. NOTE: Very slow, needs to be cached
+-- |Get list of categories used in Hackage. NOTE: Very slow, needs to be cached
 knownCategories :: SourcePackageDb -> [String]
 knownCategories (SourcePackageDb sourcePkgIndex _) = nubSet
     [ cat | pkg <- map head (allPackagesByName sourcePkgIndex)
@@ -352,7 +352,7 @@ trim = removeLeadingSpace . reverse . removeLeadingSpace . reverse
   where
     removeLeadingSpace  = dropWhile isSpace
 
--- split string at given character, and remove whitespaces
+-- split string at given character, and remove whitespace
 splitString :: Char -> String -> [String]
 splitString sep str = go str where
     go s = if null s' then [] else tok : go rest where

@@ -12,7 +12,7 @@
 --
 module Distribution.Simple.Program.Builtin (
 
-    -- * The collection of unconfigured and configured progams
+    -- * The collection of unconfigured and configured programs
     builtinPrograms,
 
     -- * Programs that Cabal knows about

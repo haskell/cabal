@@ -420,7 +420,7 @@ getExtensions verbosity ghcProg
                       then -- ghc-6.8 introduced RecordPuns however it
                            -- should have been NamedFieldPuns. We now
                            -- encourage packages to use NamedFieldPuns
-                           -- so for compatability we fake support for
+                           -- so for compatibility we fake support for
                            -- it in ghc-6.8 by making it an alias for
                            -- the old RecordPuns extension.
                            (EnableExtension  NamedFieldPuns, "-XRecordPuns") :
@@ -518,7 +518,7 @@ getInstalledPackages verbosity packagedbs conf = do
         [(_,[rts])]
            -> PackageIndex.insert (removeMingwIncludeDir rts) index
         _  -> index -- No (or multiple) ghc rts package is registered!!
-                    -- Feh, whatever, the ghc testsuite does some crazy stuff.
+                    -- Feh, whatever, the ghc test suite does some crazy stuff.
 
 -- | Given a list of @(PackageDB, InstalledPackageInfo)@ pairs, produce a
 -- @PackageIndex@. Helper function used by 'getPackageDBContents' and
@@ -560,7 +560,7 @@ ghcGlobalPackageDB verbosity ghcProg =
 -- Cabal does not use the environment variable GHC_PACKAGE_PATH; let users
 -- know that this is the case. See ticket #335. Simply ignoring it is not a
 -- good idea, since then ghc and cabal are looking at different sets of
--- package dbs and chaos is likely to ensue.
+-- package DBs and chaos is likely to ensue.
 checkPackageDbEnvVar :: IO ()
 checkPackageDbEnvVar = do
     hasGPP <- (getEnv "GHC_PACKAGE_PATH" >> return True)
@@ -1015,7 +1015,7 @@ buildOrReplExe forRepl verbosity numJobsFlag _pkg_descr lbi
       -- With dynamic-by-default GHC the TH object files loaded at compile-time
       -- need to be .dyn_o instead of .o.
       doingTH = EnableExtension TemplateHaskell `elem` allExtensions exeBi
-      -- Should we use -dynamic-too instead of compilng twice?
+      -- Should we use -dynamic-too instead of compiling twice?
       useDynToo = dynamicTooSupported && isGhcDynamic
                   && doingTH && withStaticExe && null (ghcSharedOptions exeBi)
       compileTHOpts | isGhcDynamic = dynOpts
@@ -1252,7 +1252,7 @@ installExe verbosity lbi installDirs buildPref
 installLib    :: Verbosity
               -> LocalBuildInfo
               -> FilePath  -- ^install location
-              -> FilePath  -- ^install location for dynamic librarys
+              -> FilePath  -- ^install location for dynamic libraries
               -> FilePath  -- ^Build location
               -> PackageDescription
               -> Library

@@ -15,7 +15,7 @@
 -- different kinds of check so we can see which ones are appropriate to report
 -- in different situations. This code gets uses when configuring a package when
 -- we consider only basic problems. The higher standard is uses when when
--- preparing a source tarball and by hackage when uploading new packages. The
+-- preparing a source tarball and by Hackage when uploading new packages. The
 -- reason for this is that we want to hold packages that are expected to be
 -- distributed to a higher standard than packages that are only ever expected
 -- to be used on the author's own environment.
@@ -99,13 +99,13 @@ data PackageCheck =
      | PackageBuildWarning { explanation :: String }
 
        -- | An issue that might not be a problem for the package author but
-       -- might be annoying or determental when the package is distributed to
+       -- might be annoying or detrimental when the package is distributed to
        -- users. We should encourage distributed packages to be free from these
        -- issues, but occasionally there are justifiable reasons so we cannot
        -- ban them entirely.
      | PackageDistSuspicious { explanation :: String }
 
-       -- | An issue that is ok in the author's environment but is almost
+       -- | An issue that is OK in the author's environment but is almost
        -- certain to be a portability problem for other environments. We can
        -- quite legitimately refuse to publicly distribute packages with these
        -- problems.
@@ -131,7 +131,7 @@ checkSpecVersion pkg specver cond pc
 
 -- | Check for common mistakes and problems in package descriptions.
 --
--- This is the standard collection of checks covering all apsects except
+-- This is the standard collection of checks covering all aspects except
 -- for checks that require looking at files within the package. For those
 -- see 'checkPackageFiles'.
 --
@@ -429,7 +429,7 @@ checkFields pkg =
   , check (null (synopsis pkg) && not (null (description pkg))) $
       PackageDistSuspicious "No 'synopsis' field."
 
-    --TODO: recommend the bug reports url, author and homepage fields
+    --TODO: recommend the bug reports URL, author and homepage fields
     --TODO: recommend not using the stability field
     --TODO: recommend specifying a source repo
 
@@ -840,7 +840,7 @@ checkPaths pkg =
         ++ [ (path, "extra-lib-dirs")   | path <- extraLibDirs    bi ]
       | bi <- allBuildInfo pkg ]
 
---TODO: check sets of paths that would be interpreted differently between unix
+--TODO: check sets of paths that would be interpreted differently between Unix
 -- and windows, ie case-sensitive or insensitive. Things that might clash, or
 -- conversely be distinguished.
 
@@ -936,7 +936,7 @@ checkCabalVersion pkg =
            "The package uses wildcard syntax in the 'build-depends' field: "
         ++ commaSep (map display depsUsingWildcardSyntax)
         ++ ". To use this new syntax the package need to specify at least "
-        ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatability "
+        ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
            [ display (Dependency name (eliminateWildcardSyntax versionRange))
            | Dependency name versionRange <- depsUsingWildcardSyntax ]
@@ -956,7 +956,7 @@ checkCabalVersion pkg =
            "The package uses wildcard syntax in the 'tested-with' field: "
         ++ commaSep (map display testedWithUsingWildcardSyntax)
         ++ ". To use this new syntax the package need to specify at least "
-        ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatability "
+        ++ "'cabal-version: >= 1.6'. Alternatively, if broader compatibility "
         ++ "is important then use: " ++ commaSep
            [ display (Dependency name (eliminateWildcardSyntax versionRange))
            | Dependency name versionRange <- testedWithUsingWildcardSyntax ]
@@ -967,7 +967,7 @@ checkCabalVersion pkg =
            "Using wildcards like "
         ++ commaSep (map quote $ take 3 dataFilesUsingGlobSyntax)
         ++ " in the 'data-files' field requires 'cabal-version: >= 1.6'. "
-        ++ "Alternatively if you require compatability with earlier Cabal "
+        ++ "Alternatively if you require compatibility with earlier Cabal "
         ++ "versions then list all the files explicitly."
 
     -- check use of "extra-source-files: mk/*.in" syntax
@@ -977,7 +977,7 @@ checkCabalVersion pkg =
         ++ commaSep (map quote $ take 3 extraSrcFilesUsingGlobSyntax)
         ++ " in the 'extra-source-files' field requires "
         ++ "'cabal-version: >= 1.6'. Alternatively if you require "
-        ++ "compatability with earlier Cabal versions then list all the files "
+        ++ "compatibility with earlier Cabal versions then list all the files "
         ++ "explicitly."
 
     -- check use of "source-repository" section
@@ -993,7 +993,7 @@ checkCabalVersion pkg =
            "Unfortunately the license " ++ quote (display (license pkg))
         ++ " messes up the parser in earlier Cabal versions so you need to "
         ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
-        ++ "compatability with earlier Cabal versions then use 'OtherLicense'."
+        ++ "compatibility with earlier Cabal versions then use 'OtherLicense'."
 
     -- check for new language extensions
   , checkVersion [1,2,3] (not (null mentionedExtensionsThatNeedCabal12)) $
@@ -1002,7 +1002,7 @@ checkCabalVersion pkg =
         ++ commaSep (map (quote . display) mentionedExtensionsThatNeedCabal12)
         ++ " break the parser in earlier Cabal versions so you need to "
         ++ "specify 'cabal-version: >= 1.2.3'. Alternatively if you require "
-        ++ "compatability with earlier Cabal versions then you may be able to "
+        ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
 
   , checkVersion [1,4] (not (null mentionedExtensionsThatNeedCabal14)) $
@@ -1011,7 +1011,7 @@ checkCabalVersion pkg =
         ++ commaSep (map (quote . display) mentionedExtensionsThatNeedCabal14)
         ++ " break the parser in earlier Cabal versions so you need to "
         ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
-        ++ "compatability with earlier Cabal versions then you may be able to "
+        ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
   ]
   where
@@ -1139,7 +1139,7 @@ checkCabalVersion pkg =
 
 -- | A variation on the normal 'Text' instance, shows any ()'s in the original
 -- textual syntax. We need to show these otherwise it's confusing to users when
--- we complain of their presense but do not pretty print them!
+-- we complain of their presence but do not pretty print them!
 --
 displayRawVersionRange :: VersionRange -> String
 displayRawVersionRange =
@@ -1269,7 +1269,7 @@ checkConditionals pkg =
 -- ------------------------------------------------------------
 
 -- | Sanity check things that requires IO. It looks at the files in the
--- package and expects to find the package unpacked in at the given filepath.
+-- package and expects to find the package unpacked in at the given file path.
 --
 checkPackageFiles :: PackageDescription -> FilePath -> IO [PackageCheck]
 checkPackageFiles pkg root = checkPackageContent checkFilesIO pkg

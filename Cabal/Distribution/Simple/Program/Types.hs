@@ -57,7 +57,7 @@ data Program = Program {
                               -> IO (Maybe FilePath),
 
        -- | Try to find the version of the program. For many programs this is
-       -- not possible or is not necessary so it's ok to return Nothing.
+       -- not possible or is not necessary so it's OK to return Nothing.
        programFindVersion :: Verbosity -> FilePath -> IO (Maybe Version),
 
        -- | A function to do any additional configuration after we have
@@ -100,7 +100,7 @@ data ConfiguredProgram = ConfiguredProgram {
        programLocation :: ProgramLocation
      } deriving (Read, Show, Eq)
 
--- | Where a program was found. Also tells us whether it's specifed by user or
+-- | Where a program was found. Also tells us whether it's specified by user or
 -- not.  This includes not just the path, but the program as well.
 data ProgramLocation
     = UserSpecified { locationPath :: FilePath }

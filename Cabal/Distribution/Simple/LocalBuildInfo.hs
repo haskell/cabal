@@ -92,7 +92,7 @@ data LocalBuildInfo = LocalBuildInfo {
         -- ^ Extra args on the command line for the configuration step.
         -- Needed to re-run configuration when .cabal is out of date
         installDirTemplates :: InstallDirTemplates,
-                -- ^ The installation directories for the various differnt
+                -- ^ The installation directories for the various different
                 -- kinds of files
         --TODO: inplaceDirTemplates :: InstallDirs FilePath
         compiler      :: Compiler,

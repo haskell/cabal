@@ -130,7 +130,7 @@ data PackageConstraint
 -- | A per-package preference on the version. It is a soft constraint that the
 -- 'DependencyResolver' should try to respect where possible. It consists of
 -- a 'InstalledPreference' which says if we prefer versions of packages
--- that are already installed. It also hase a 'PackageVersionPreference' which
+-- that are already installed. It also has a 'PackageVersionPreference' which
 -- is a suggested constraint on the version number. The resolver should try to
 -- use package versions that satisfy the suggested version constraint.
 --
@@ -192,7 +192,7 @@ isAllowNewer AllowNewerAll      = True
 
 -- | A type to represent the unfolding of an expensive long running
 -- calculation that may fail. We may get intermediate steps before the final
--- retult which may be used to indicate progress and\/or logging messages.
+-- result which may be used to indicate progress and\/or logging messages.
 --
 data Progress step fail done = Step step (Progress step fail done)
                              | Fail fail

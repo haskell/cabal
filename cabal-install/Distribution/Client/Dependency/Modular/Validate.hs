@@ -23,7 +23,7 @@ import Distribution.Client.Dependency.Modular.Tree
 
 -- In practice, most constraints are implication constraints (IF we have made
 -- a number of choices, THEN we also have to ensure that). We call constraints
--- that for which the precondiditions are fulfilled ACTIVE. We maintain a set
+-- that for which the preconditions are fulfilled ACTIVE. We maintain a set
 -- of currently active constraints that we pass down the node.
 --
 -- We aim at detecting inconsistent states as early as possible.

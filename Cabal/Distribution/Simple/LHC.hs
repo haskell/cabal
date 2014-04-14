@@ -333,7 +333,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
       -- TH always needs vanilla libs, even when building for profiling
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
-  -- TODO: do we need to put hs-boot files into place for mutually recurive modules?
+  -- TODO: do we need to put hs-boot files into place for mutually recursive modules?
   let ghcArgs =
              ["-package-name", display pkgid ]
           ++ constructGHCCmdLine lbi libBi clbi libTargetDir verbosity
@@ -460,10 +460,10 @@ buildLib verbosity pkg_descr lbi lib clbi = do
 
         runAr = rawSystemProgramConf verbosity arProgram (withPrograms lbi)
 
-         --TODO: discover this at configure time or runtime on unix
-         -- The value is 32k on Windows and posix specifies a minimum of 4k
-         -- but all sensible unixes use more than 4k.
-         -- we could use getSysVar ArgumentLimit but that's in the unix lib
+         --TODO: discover this at configure time or runtime on Unix
+         -- The value is 32k on Windows and POSIX specifies a minimum of 4k
+         -- but all sensible Unixes use more than 4k.
+         -- we could use getSysVar ArgumentLimit but that's in the Unix lib
         maxCommandLineSize = 30 * 1024
 
     ifVanillaLib False $ xargs maxCommandLineSize
@@ -728,7 +728,7 @@ stripExe verbosity lbi name path = when (stripExes lbi) $
 installLib    :: Verbosity
               -> LocalBuildInfo
               -> FilePath  -- ^install location
-              -> FilePath  -- ^install location for dynamic librarys
+              -> FilePath  -- ^install location for dynamic libraries
               -> FilePath  -- ^Build location
               -> PackageDescription
               -> Library

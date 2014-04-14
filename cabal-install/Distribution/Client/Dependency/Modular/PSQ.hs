@@ -2,7 +2,7 @@ module Distribution.Client.Dependency.Modular.PSQ where
 
 -- Priority search queues.
 --
--- I am not yet sure what exactly is needed. But we need a datastructure with
+-- I am not yet sure what exactly is needed. But we need a data structure with
 -- key-based lookup that can be sorted. We're using a sequence right now with
 -- (inefficiently implemented) lookup, because I think that queue-based
 -- operations and sorting turn out to be more efficiency-critical in practice.

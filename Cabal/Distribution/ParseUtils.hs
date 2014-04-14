@@ -415,7 +415,7 @@ data Token =
        -- > else
        -- >    other
        --
-       -- this is ok
+       -- this is OK
        Line LineNo Indent HasTabs String
      | Span LineNo                String  -- ^ span in a line, following brackets
      | OpenBracket LineNo | CloseBracket LineNo
@@ -423,7 +423,7 @@ data Token =
 type Indent = Int
 type HasTabs = Bool
 
--- | Tokenise a single line, splitting on '{' '}' and the spans inbetween.
+-- | Tokenise a single line, splitting on '{' '}' and the spans in between.
 -- Also trims leading & trailing space on those spans within the line.
 tokeniseLine :: (LineNo, Indent, HasTabs, String) -> [Token]
 tokeniseLine (n0, i, t, l) = case split n0 l of
@@ -460,8 +460,8 @@ mkTree :: [Token] -> ParseResult [SyntaxTree]
 mkTree toks =
   layout 0 [] toks >>= \(trees, trailing) -> case trailing of
     []               -> return trees
-    OpenBracket  n:_ -> syntaxError n "mismatched backets, unexpected {"
-    CloseBracket n:_ -> syntaxError n "mismatched backets, unexpected }"
+    OpenBracket  n:_ -> syntaxError n "mismatched brackets, unexpected {"
+    CloseBracket n:_ -> syntaxError n "mismatched brackets, unexpected }"
     -- the following two should never happen:
     Span n     l  :_ -> syntaxError n $ "unexpected span: " ++ show l
     Line n _ _ l  :_ -> syntaxError n $ "unexpected line: " ++ show l

@@ -58,7 +58,7 @@ module Distribution.Simple.Program (
     , runProgramInvocation
     , getProgramInvocationOutput
 
-    -- * The collection of unconfigured and configured progams
+    -- * The collection of unconfigured and configured programs
     , builtinPrograms
 
     -- * The collection of configured programs we can run

@@ -45,13 +45,13 @@ import Text.PrettyPrint ((<>))
 -- The reason we have multiple ways to do the classification is because there
 -- are two situations where we need to do it.
 --
--- For parsing os and arch names in .cabal files we really want everyone to be
+-- For parsing OS and arch names in .cabal files we really want everyone to be
 -- referring to the same or or arch by the same name. Variety is not a virtue
 -- in this case. We don't mind about case though.
 --
 -- For the System.Info.os\/arch different Haskell implementations use different
 -- names for the same or\/arch. Also they tend to distinguish versions of an
--- os\/arch which we just don't care about.
+-- OS\/arch which we just don't care about.
 --
 -- The 'Compat' classification allows us to recognise aliases that are already
 -- in common use but it allows us to distinguish them from the canonical name
@@ -64,7 +64,7 @@ data ClassificationStrictness = Permissive | Compat | Strict
 -- ------------------------------------------------------------
 
 data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
-        | FreeBSD | OpenBSD | NetBSD   -- other free unix OSs
+        | FreeBSD | OpenBSD | NetBSD   -- other free Unix OSs
         | DragonFly
         | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
         | HaLVM                        -- bare metal / VMs / hypervisors
@@ -74,7 +74,7 @@ data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
 
 --TODO: decide how to handle Android and iOS.
 -- They are like Linux and OSX but with some differences.
--- Should they be separate from linux/osx, or a subtype?
+-- Should they be separate from Linux/OS X, or a subtype?
 -- e.g. should we have os(linux) && os(android) true simultaneously?
 
 knownOSs :: [OS]

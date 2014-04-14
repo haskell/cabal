@@ -250,11 +250,11 @@ data ConfigFlags = ConfigFlags {
     configPrograms      :: ProgramConfiguration, -- ^All programs that cabal may
                                                  -- run
 
-    configProgramPaths  :: [(String, FilePath)], -- ^user specifed programs paths
-    configProgramArgs   :: [(String, [String])], -- ^user specifed programs args
+    configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
+    configProgramArgs   :: [(String, [String])], -- ^user specified programs args
     configProgramPathExtra :: [FilePath],        -- ^Extend the $PATH
     configHcFlavor      :: Flag CompilerFlavor, -- ^The \"flavor\" of the
-                                                -- compiler, sugh as GHC or
+                                                -- compiler, such as GHC or
                                                 -- Hugs.
     configHcPath        :: Flag FilePath, -- ^given compiler location
     configHcPkg         :: Flag FilePath, -- ^given hc-pkg location
@@ -1411,7 +1411,7 @@ buildCommand progConf =
 --        ++ "    A module\n"
 --        ++ "  " ++ pname ++ " build Foo/Bar.hs"
 --        ++ "    A file\n\n"
---        ++ "If a target is ambigious it can be qualified with the component "
+--        ++ "If a target is ambiguous it can be qualified with the component "
 --        ++ "name, e.g.\n"
 --        ++ "  " ++ pname ++ " build foo:Foo.Bar\n"
 --        ++ "  " ++ pname ++ " build testsuite1:Foo/Bar.hs\n"
@@ -1455,7 +1455,7 @@ instance Monoid BuildFlags where
     where combine field = field a `mappend` field b
 
 -- ------------------------------------------------------------
--- * Repl Flags
+-- * REPL Flags
 -- ------------------------------------------------------------
 
 data ReplFlags = ReplFlags {
@@ -1508,7 +1508,7 @@ replCommand progConf = CommandUI {
 --        ++ "    A module\n"
 --        ++ "  " ++ pname ++ " repl Foo/Bar.hs"
 --        ++ "    A file\n\n"
---        ++ "If a target is ambigious it can be qualified with the component "
+--        ++ "If a target is ambiguous it can be qualified with the component "
 --        ++ "name, e.g.\n"
 --        ++ "  " ++ pname ++ " repl foo:Foo.Bar\n"
 --        ++ "  " ++ pname ++ " repl testsuite1:Foo/Bar.hs\n"

@@ -230,7 +230,7 @@ data Format =
      V7Format
 
      -- | The \"USTAR\" format is an extension of the classic V7 format. It was
-     -- later standardised by POSIX. It has some restructions but is the most
+     -- later standardised by POSIX. It has some restrictions but is the most
      -- portable format.
      --
    | UstarFormat
@@ -255,7 +255,7 @@ directoryPermissions :: Permissions
 directoryPermissions  = 0o0755
 
 isExecutable :: Permissions -> Bool
-isExecutable p = testBit p 0 || testBit p 6 -- user or other exectuable
+isExecutable p = testBit p 0 || testBit p 6 -- user or other executable
 
 -- | An 'Entry' with all default values except for the file name and type. It
 -- uses the portable USTAR/POSIX format (see 'UstarHeader').
@@ -319,7 +319,7 @@ directoryEntry name = simpleEntry name Directory
 --
 -- So it's understandable but rather annoying.
 --
--- * Tar paths use posix format (ie @\'/\'@ directory separators), irrespective
+-- * Tar paths use POSIX format (ie @\'/\'@ directory separators), irrespective
 --   of the local path conventions.
 --
 -- * The directory separator between the prefix and name is /not/ stored.
@@ -368,7 +368,7 @@ toTarPath isDir = splitLongPath
 -- | Take a sanitized path, split on directory separators and try to pack it
 -- into the 155 + 100 tar file name format.
 --
--- The stragey is this: take the name-directory components in reverse order
+-- The strategy is this: take the name-directory components in reverse order
 -- and try to fit as many components into the 100 long name area as possible.
 -- If all the remaining components fit in the 155 name area then we win.
 --
@@ -484,7 +484,7 @@ entriesIndex = foldlEntries (\m e -> Map.insert (entryTarPath e) e m) Map.empty
 -- * file names are valid
 --
 -- These checks are from the perspective of the current OS. That means we check
--- for \"@C:\blah@\" files on Windows and \"\/blah\" files on unix. For archive
+-- for \"@C:\blah@\" files on Windows and \"\/blah\" files on Unix. For archive
 -- entry types 'HardLink' and 'SymbolicLink' the same checks are done for the
 -- link target. A failure in any entry terminates the sequence of entries with
 -- an error.

@@ -321,7 +321,7 @@ checkConfiguredPackage pkg                =
   internalError $ "not configured or no such pkg " ++ display (packageId pkg)
 
 -- ------------------------------------------------------------
--- * Checking valididy of plans
+-- * Checking validity of plans
 -- ------------------------------------------------------------
 
 -- | A valid installation plan is a set of packages that is 'acyclic',
@@ -428,11 +428,11 @@ closed = null . PackageIndex.brokenPackages
 -- most one version of any package in the set. It only requires that of
 -- packages which have more than one other package depending on them. We could
 -- actually make the condition even more precise and say that different
--- versions are ok so long as they are not both in the transitive closure of
+-- versions are OK so long as they are not both in the transitive closure of
 -- any other package (or equivalently that their inverse closures do not
 -- intersect). The point is we do not want to have any packages depending
 -- directly or indirectly on two different versions of the same package. The
--- current definition is just a safe aproximation of that.
+-- current definition is just a safe approximation of that.
 --
 -- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
 --   find out which packages are.
