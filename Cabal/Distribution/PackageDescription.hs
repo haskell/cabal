@@ -613,7 +613,7 @@ data BuildInfo = BuildInfo {
         pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         cSources          :: [FilePath],
-        hsSourceDirs      :: [FilePath], -- ^ where to look for the haskell module hierarchy
+        hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
 
         defaultLanguage   :: Maybe Language,-- ^ language used when not explicitly specified
@@ -899,7 +899,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
 
       updateExecutable :: (String, BuildInfo) -- ^(exeName, new buildinfo)
                        -> [Executable]        -- ^list of executables to update
-                       -> [Executable]        -- ^libst with exeName updated
+                       -> [Executable]        -- ^list with exeName updated
       updateExecutable _                 []         = []
       updateExecutable exe_bi'@(name,bi) (exe:exes)
         | exeName exe == name = exe{buildInfo = bi `mappend` buildInfo exe} : exes

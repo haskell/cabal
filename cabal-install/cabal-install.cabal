@@ -146,7 +146,7 @@ executable cabal
       build-depends: unix >= 2.0 && < 2.8
 
     if arch(arm) && impl(ghc < 7.6)
-       -- older ghc on arm does not supprt -threaded
+       -- older ghc on arm does not support -threaded
        cc-options:  -DCABAL_NO_THREADED
     else
        ghc-options: -threaded

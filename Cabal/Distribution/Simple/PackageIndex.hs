@@ -89,7 +89,7 @@ import Distribution.Simple.Utils (lowercase, comparing, equating)
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
 -- Packages are uniquely identified in by their 'InstalledPackageId', they can
--- also be effeciently looked up by package name or by name and version.
+-- also be efficiently looked up by package name or by name and version.
 --
 data PackageIndex = PackageIndex
   -- The primary index. Each InstalledPackageInfo record is uniquely identified
@@ -97,7 +97,7 @@ data PackageIndex = PackageIndex
   --
   !(Map InstalledPackageId InstalledPackageInfo)
 
-  -- This auxillary index maps package names (case-sensitively) to all the
+  -- This auxiliary index maps package names (case-sensitively) to all the
   -- versions and instances of that package. This allows us to find all
   -- versions satisfying a dependency.
   --
@@ -372,12 +372,12 @@ lookupDependency (PackageIndex _ pnames) (Dependency name versionRange) =
 
 -- | Does a case-insensitive search by package name.
 --
--- If there is only one package that compares case-insentiviely to this name
+-- If there is only one package that compares case-insensitively to this name
 -- then the search is unambiguous and we get back all versions of that package.
--- If several match case-insentiviely but one matches exactly then it is also
+-- If several match case-insensitively but one matches exactly then it is also
 -- unambiguous.
 --
--- If however several match case-insentiviely and none match exactly then we
+-- If however several match case-insensitively and none match exactly then we
 -- have an ambiguous result, and we get back all the versions of all the
 -- packages. The list of ambiguous results is split by exact package name. So
 -- it is a non-empty list of non-empty lists.

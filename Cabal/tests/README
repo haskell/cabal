@@ -4,7 +4,7 @@ Writing Package Tests
 The tests under the `PackageTests` directory define and build packages which
 exercise various components of Cabal. Each test case is an `HUnit` test. The
 entry point for the test suite, where all the test cases are listed, is
-`PackageTests.hs`. There are utilites for calling the stages of Cabal's build
+`PackageTests.hs`. There are utilities for calling the stages of Cabal's build
 process in `PackageTests/PackageTester.hs`; have a look at an existing test case
 to see how they're used.
 

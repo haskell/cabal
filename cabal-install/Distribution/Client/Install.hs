@@ -207,12 +207,12 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
       ++ "recreating the sandbox."
     logMsg message rest = debugNoWrap verbosity message >> rest
 
--- TODO: Make InstallContext a proper datatype with documented fields.
+-- TODO: Make InstallContext a proper data type with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( PackageIndex, SourcePackageDb
                       , [UserTarget], [PackageSpecifier SourcePackage] )
 
--- TODO: Make InstallArgs a proper datatype with documented fields or just get
+-- TODO: Make InstallArgs a proper data type with documented fields or just get
 -- rid of it completely.
 -- | Initial arguments given to 'install' or 'makeInstallContext'.
 type InstallArgs = ( PackageDBStack
@@ -1388,7 +1388,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
     reexec cmd = do
       -- look for our own executable file and re-exec ourselves using a helper
-      -- program like sudo to elevate priviledges:
+      -- program like sudo to elevate privileges:
       self <- getExecutablePath
       weExist <- doesFileExist self
       if weExist
@@ -1412,7 +1412,7 @@ onFailure result action =
 
 
 -- ------------------------------------------------------------
--- * Wierd windows hacks
+-- * Weird windows hacks
 -- ------------------------------------------------------------
 
 withWin32SelfUpgrade :: Verbosity

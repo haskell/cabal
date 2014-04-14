@@ -240,7 +240,7 @@ sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
 
 
 -- | The info that we can display for each package. It is information per
--- package name and covers all installed and avilable versions.
+-- package name and covers all installed and available versions.
 --
 data PackageDisplayInfo = PackageDisplayInfo {
     pkgName           :: PackageName,

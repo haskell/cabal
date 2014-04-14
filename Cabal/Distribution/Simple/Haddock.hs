@@ -14,7 +14,7 @@
 -- about installed packages (from @ghc-pkg@) to find the locations of
 -- documentation for dependent packages, so it can create links.
 --
--- The @hscolour@ support allows generating html versions of the original
+-- The @hscolour@ support allows generating HTML versions of the original
 -- source, with coloured syntax highlighting.
 
 module Distribution.Simple.Haddock (
@@ -100,13 +100,13 @@ data HaddockArgs = HaddockArgs {
  argInterfaceFile :: Flag FilePath,               -- ^ path of the interface file, relative to argOutputDir, required.
  argPackageName :: Flag PackageIdentifier,        -- ^ package name,                                         required.
  argHideModules :: (All,[ModuleName.ModuleName]), -- ^ (hide modules ?, modules to hide)
- argIgnoreExports :: Any,                         -- ^ ingore export lists in modules?
+ argIgnoreExports :: Any,                         -- ^ ignore export lists in modules?
  argLinkSource :: Flag (Template,Template,Template), -- ^ (template for modules, template for symbols, template for lines)
- argCssFile :: Flag FilePath,                     -- ^ optinal custom css file.
- argContents :: Flag String,                      -- ^ optional url to contents page
+ argCssFile :: Flag FilePath,                     -- ^ optional custom CSS file.
+ argContents :: Flag String,                      -- ^ optional URL to contents page
  argVerbose :: Any,
- argOutput :: Flag [Output],                      -- ^ Html or Hoogle doc or both?                                   required.
- argInterfaces :: [(FilePath, Maybe String)],     -- ^ [(interface file, URL to the html docs for links)]
+ argOutput :: Flag [Output],                      -- ^ HTML or Hoogle doc or both?                                   required.
+ argInterfaces :: [(FilePath, Maybe String)],     -- ^ [(interface file, URL to the HTML docs for links)]
  argOutputDir :: Directory,                       -- ^ where to generate the documentation.
  argTitle :: Flag String,                         -- ^ page's title,                                         required.
  argPrologue :: Flag String,                      -- ^ prologue text,                                        required.
@@ -308,7 +308,7 @@ fromPackageDescription pkg_descr =
 fromLibrary :: Verbosity
             -> FilePath
             -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
-            -> Maybe PathTemplate -- ^ template for html location
+            -> Maybe PathTemplate -- ^ template for HTML location
             -> IO HaddockArgs
 fromLibrary verbosity tmp lbi lib clbi htmlTemplate = do
     inFiles <- map snd `fmap` getLibSourceFiles lbi lib
@@ -346,7 +346,7 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate = do
 fromExecutable :: Verbosity
                -> FilePath
                -> LocalBuildInfo -> Executable -> ComponentLocalBuildInfo
-               -> Maybe PathTemplate -- ^ template for html location
+               -> Maybe PathTemplate -- ^ template for HTML location
                -> IO HaddockArgs
 fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
     inFiles <- map snd `fmap` getExeSourceFiles lbi exe
@@ -403,7 +403,7 @@ compToExe comp =
 getInterfaces :: Verbosity
               -> LocalBuildInfo
               -> ComponentLocalBuildInfo
-              -> Maybe PathTemplate -- ^ template for html location
+              -> Maybe PathTemplate -- ^ template for HTML location
               -> IO HaddockArgs
 getInterfaces verbosity lbi clbi htmlTemplate = do
     (packageFlags, warnings) <- haddockPackageFlags lbi clbi htmlTemplate

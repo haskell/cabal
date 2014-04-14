@@ -15,7 +15,7 @@
 -- popular so we also provide a way to simply generate the package registration
 -- file which then must be manually passed to @ghc-pkg@. It is possible to
 -- generate registration information for where the package is to be installed,
--- or alternatively to register the package inplace in the build tree. The
+-- or alternatively to register the package in place in the build tree. The
 -- latter is occasionally handy, and will become more important when we try to
 -- build multi-package systems.
 --
@@ -306,10 +306,10 @@ generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
     hasLibrary = hasModules || not (null (cSources bi))
 
 
--- | Construct 'InstalledPackageInfo' for a library that is inplace in the
+-- | Construct 'InstalledPackageInfo' for a library that is in place in the
 -- build tree.
 --
--- This function knows about the layout of inplace packages.
+-- This function knows about the layout of in place packages.
 --
 inplaceInstalledPackageInfo :: FilePath -- ^ top of the build tree
                             -> FilePath -- ^ location of the dist tree
