@@ -1,3 +1,6 @@
+Contributing to Cabal
+=====================
+
 If you want to hack on Cabal, don't be intimidated!
 
 Read the guide to the source code at:

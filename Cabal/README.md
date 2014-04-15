@@ -1,15 +1,15 @@
 The Cabal library package
 =========================
 
-The [Cabal web site].
+See the [Cabal web site] for more information.
 
 If you also want the `cabal` command-line program, you need the
 [cabal-install] package in addition to this library.
 
 [cabal-install]: ../cabal-install/README.md
 
-Installation instructions for the Cabal library
-===============================================
+Installing the Cabal library
+============================
 
 If you have the `cabal` program already
 ---------------------------------------
@@ -92,22 +92,24 @@ harder but still possible.
 
 Unpack Cabal and `filepath` into separate directories. For example:
 
-    tar -xzf filepath-1.1.0.0.tar.gz
-    tar -xzf Cabal-1.6.0.0.tar.gz
+``````````````````````````````````````````````````````shell
+tar -xzf filepath-1.1.0.0.tar.gz
+tar -xzf Cabal-1.6.0.0.tar.gz
 
-    # rename to make the following instructions simpler:
-    mv filepath-1.1.0.0/ filepath/
-    mv Cabal-1.6.0.0/ Cabal/
+# rename to make the following instructions simpler:
+mv filepath-1.1.0.0/ filepath/
+mv Cabal-1.6.0.0/ Cabal/
 
-    cd Cabal
-    ghc -i../filepath -cpp --make Setup.hs -o ../filepath/setup
-    cd ../filepath/
-    ./setup configure --user
-    ./setup build
-    ./setup install
+cd Cabal
+ghc -i../filepath -cpp --make Setup.hs -o ../filepath/setup
+cd ../filepath/
+./setup configure --user
+./setup build
+./setup install
+```````````````````````````````````````````````````````````
 
-This installs `filepath` so you are then in a position to install Cabal
-by the normal method.
+This installs `filepath` so that you can install Cabal with the normal
+method.
 
 
 More information
