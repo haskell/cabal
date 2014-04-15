@@ -126,7 +126,7 @@ TEXT_VER="1.1.0.0";    TEXT_VER_REGEXP="((1\.[01]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.2
 NETWORK_VER="2.4.2.2"; NETWORK_VER_REGEXP="2\."
                        # == 2.*
-CABAL_VER="1.20.0";    CABAL_VER_REGEXP="1\.2[01]\."
+CABAL_VER="1.20.0.0";  CABAL_VER_REGEXP="1\.2[01]\."
                        # >= 1.20 && < 1.21
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."
                        # >= 0.2.* && < 0.4.*
