@@ -14,6 +14,8 @@ If you want to hack on Cabal, don't be intimidated!
 * There are other resources listed on the [development
   wiki](https://github.com/haskell/cabal/wiki).
 
+* See [Cabal/tests/README.md] for information about writing package tests.
+
 Of particular value are the open issues list and the cabal-devel mailing
 list, which is a good place to ask questions.
 
