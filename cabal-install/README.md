@@ -1,7 +1,8 @@
 The cabal-install package
 =========================
 
-[Cabal home page](http://www.haskell.org/cabal/)
+See the [Cabal web site](http://www.haskell.org/cabal/) for more
+information.
 
 The `cabal-install` package provides a command line tool named `cabal`.
 It uses the `Cabal` library and provides a convenient user interface to
@@ -38,6 +39,7 @@ be built in the standard way; to facilitate this, the process is
 partially automated. It is described below.
 
 [.cabal]: cabal-install.cabal
+[boostrap.sh]: boostrap.sh
 [network]: http://hackage.haskell.org/package/network
 
 Quick start on Unix-like systems
@@ -87,7 +89,7 @@ Next, you can get the latest list of packages by running:
 
 This will also create a default configuration file (if it does not
 already exist) at
-`C:\Documents and Settings\username\Application Data\cabal\config`
+`C:\Documents and Settings\username\Application Data\cabal\config`.
 
 [cabal.exe]: http://haskell.org/cabal/release/cabal-install-latest/cabal.exe
 
