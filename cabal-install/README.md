@@ -10,8 +10,8 @@ can build and install both local and remote packages, including
 dependencies.
 
 
-Installation instructions for the `cabal` command line tool
-===========================================================
+Installing the `cabal` command-line tool
+========================================
 
 The `cabal-install` package requires a number of other packages, most of
 which come with a standard GHC installation. It requires the [network]
@@ -40,11 +40,12 @@ partially automated. It is described below.
 [.cabal]: cabal-install.cabal
 [network]: http://hackage.haskell.org/package/network
 
-Quick start on Unix systems
----------------------------
+Quick start on Unix-like systems
+--------------------------------
 
-As a convenience for users on Unix systems, there is a [bootstrap.sh]
-script that will download and install each of the dependencies in turn.
+As a convenience for users on Unix-like systems, there is a
+[./bootstrap.sh] script that will download and install each of the
+dependencies in turn.
 
     $ ./bootstrap.sh
 
