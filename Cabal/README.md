@@ -82,7 +82,7 @@ or, if you had Cabal installed only for your user account, run:
 The `filepath` dependency
 =========================
 
-Cabal uses the `[filepath]` package, so it must be installed first.
+Cabal uses the [filepath] package, so it must be installed first.
 GHC version 6.6.1 and later come with `filepath`, however, earlier
 versions do not by default. If you do not already have `filepath`,
 you need to install it. You can use any existing version of Cabal to do

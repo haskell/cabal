@@ -26,3 +26,6 @@ accidentally be invoked:
    to see how it is used.
 
 [HUnit]: http://hackage.haskell.org/package/HUnit
+[PackageTests.hs]: PackageTests.hs
+[PackageTests/PackageTester.hs]: PackageTests/PackageTester.hs
+[PackageTests/BuildTestSuiteDetailedV09/Check.hs]: PackageTests/BuildTestSuiteDetailedV09/Check.hs
