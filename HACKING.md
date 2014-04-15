@@ -19,6 +19,7 @@ If you want to hack on Cabal, don't be intimidated!
 Of particular value are the open issues list and the cabal-devel mailing
 list, which is a good place to ask questions.
 
+[Cabal/tests/README.md]: Cabal/tests/README.md
 
 Dependencies policy
 -------------------
