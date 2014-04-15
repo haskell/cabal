@@ -19,13 +19,16 @@ accidentally be invoked:
    tests; see `compileSetup` in [PackageTests/PackageTester.hs].
 
 2. Compiling a package which depends on Cabal. In particular, packages
-   with `detailed` type test suites depend on the Cabal library directly,
-   so it is important that they are configured to use the in-place
-   package database. The test suite already creates a stub `PackageSpec`
-   for this case; see [PackageTests/BuildTestSuiteDetailedV09/Check.hs]
-   to see how it is used.
+   with the [detailed]-type test suites depend on the Cabal library
+   directly, so it is important that they are configured to use the
+   in-place package database. The test suite already creates a stub
+   `PackageSpec` for this case; see
+   [PackageTests/BuildTestSuiteDetailedV09/Check.hs] to see how it is
+   used.
 
+[PackageTests]: PackageTests
 [HUnit]: http://hackage.haskell.org/package/HUnit
 [PackageTests.hs]: PackageTests.hs
 [PackageTests/PackageTester.hs]: PackageTests/PackageTester.hs
+[detailed]: ../Distribution/TestSuite.hs
 [PackageTests/BuildTestSuiteDetailedV09/Check.hs]: PackageTests/BuildTestSuiteDetailedV09/Check.hs
