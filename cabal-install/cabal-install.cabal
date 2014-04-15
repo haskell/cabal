@@ -22,7 +22,7 @@ Copyright:          2005 Lemmih <lemmih@gmail.com>
                     2007-2012 Duncan Coutts <duncan@community.haskell.org>
 Category:           Distribution
 Build-type:         Simple
-Extra-Source-Files: README bash-completion/cabal bootstrap.sh
+Extra-Source-Files: README.md bash-completion/cabal bootstrap.sh
 Cabal-Version:      >= 1.8
 
 source-repository head

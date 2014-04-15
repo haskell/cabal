@@ -14,7 +14,7 @@ Installing the Cabal library
 If you already have the `cabal` program
 ---------------------------------------
 
-In this case it is simple, just run
+In this case run:
 
     $ cabal install
 
@@ -60,8 +60,8 @@ install into `$ProgramFiles/Haskell`. If you want to install elsewhere,
 use the `--prefix=` flag at the configure step.
 
 
-Working with older versions of GHC and Cabal
-============================================
+Using older versions of GHC and Cabal
+======================================
 
 It is recommended that you leave any pre-existing version of Cabal
 installed. In particular, it is *essential* you keep the version that
@@ -77,14 +77,12 @@ installed, you should probably remove it by running:
 
 or, if you had Cabal installed only for your user account, run:
 
-````````````````````````````shell
-$ ghc-pkg unregister Cabal --user
-`````````````````````````````````
+    $ ghc-pkg unregister Cabal --user
 
 The `filepath` dependency
 =========================
 
-Cabal uses the `filepath` package, so it must be installed first.
+Cabal uses the `[filepath]` package, so it must be installed first.
 GHC version 6.6.1 and later come with `filepath`, however, earlier
 versions do not by default. If you do not already have `filepath`,
 you need to install it. You can use any existing version of Cabal to do
@@ -93,25 +91,24 @@ harder but still possible.
 
 Unpack Cabal and `filepath` into separate directories. For example:
 
-``````````````````````````````````````````````````````shell
-tar -xzf filepath-1.1.0.0.tar.gz
-tar -xzf Cabal-1.6.0.0.tar.gz
+    tar -xzf filepath-1.1.0.0.tar.gz
+    tar -xzf Cabal-1.6.0.0.tar.gz
 
-# rename to make the following instructions simpler:
-mv filepath-1.1.0.0/ filepath/
-mv Cabal-1.6.0.0/ Cabal/
+    # rename to make the following instructions simpler:
+    mv filepath-1.1.0.0/ filepath/
+    mv Cabal-1.6.0.0/ Cabal/
 
-cd Cabal
-ghc -i../filepath -cpp --make Setup.hs -o ../filepath/setup
-cd ../filepath/
-./setup configure --user
-./setup build
-./setup install
-```````````````````````````````````````````````````````````
+    cd Cabal
+    ghc -i../filepath -cpp --make Setup.hs -o ../filepath/setup
+    cd ../filepath/
+    ./setup configure --user
+    ./setup build
+    ./setup install
 
 This installs `filepath` so that you can install Cabal with the normal
 method.
 
+[filepath]: http://hackage.haskell.org/package/filepath
 
 More information
 ================
