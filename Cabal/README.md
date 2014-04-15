@@ -11,7 +11,7 @@ If you also want the `cabal` command-line program, you need the
 Installing the Cabal library
 ============================
 
-If you have the `cabal` program already
+If you already have the `cabal` program
 ---------------------------------------
 
 In this case it is simple, just run
@@ -77,8 +77,9 @@ installed, you should probably remove it by running:
 
 or, if you had Cabal installed only for your user account, run:
 
-    $ ghc-pkg unregister Cabal --user
-
+````````````````````````````shell
+$ ghc-pkg unregister Cabal --user
+`````````````````````````````````
 
 The `filepath` dependency
 =========================
