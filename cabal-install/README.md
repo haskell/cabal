@@ -5,9 +5,9 @@ See the [Cabal web site](http://www.haskell.org/cabal/) for more
 information.
 
 The `cabal-install` package provides a command line tool named `cabal`.
-It uses the `Cabal` library and provides a convenient user interface to
-the Cabal/[Hackage] build automation and package management system. It
-can build and install both local and remote packages, including
+It uses the `Cabal` library and provides a user interface to the
+Cabal/[Hackage] build automation and package management system. It can
+build and install both local and remote packages, including
 dependencies.
 
 
@@ -22,7 +22,7 @@ for example, on Debian or Ubuntu, it is located in the
 
 `cabal` requires a few other Haskell packages that are not always
 installed. The exact list is specified in the [.cabal] file or in the
-[boostrap.sh] file. All these packages are available from [Hackage].
+[bootsrap.sh] file. All these packages are available from [Hackage].
 
 Note that on some Unix systems you may need to install an additional
 zlib development package using your system package manager; for example,
@@ -39,7 +39,7 @@ be built in the standard way; to facilitate this, the process is
 partially automated. It is described below.
 
 [.cabal]: cabal-install.cabal
-[boostrap.sh]: boostrap.sh
+[bootstrap.sh]: bootstrap.sh
 [network]: http://hackage.haskell.org/package/network
 
 Quick start on Unix-like systems

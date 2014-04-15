@@ -24,7 +24,7 @@ build-type: Custom
 -- that we build Setup.lhs using our own local Cabal source code.
 
 extra-source-files:
-  README tests/README changelog
+  README.md tests/README.md changelog
 
   -- Generated with 'misc/gen-extra-source-files.sh' & 'M-x sort-lines':
   tests/PackageTests/BenchmarkExeV10/Foo.hs
