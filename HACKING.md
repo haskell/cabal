@@ -1,20 +1,21 @@
 If you want to hack on Cabal, don't be intimidated!
 
-Read the guide to the source code:
+Read the guide to the source code at:
   https://github.com/haskell/cabal/wiki/Source-Guide
-  
-Subscribe to the mailing list:
+
+Subscribe to the mailing list at:
   http://www.haskell.org/mailman/listinfo/cabal-devel
-  
-Browse the list of open issues:
+
+Browse the list of open issues at:
   https://github.com/haskell/cabal/issues
 
-There are other resources listed on the dev wiki:
+There are other resources listed on the development wiki at:
   https://github.com/haskell/cabal/wiki
+and
   http://hackage.haskell.org/trac/hackage/ (old wiki)
 
-In particular, the open tickets and the cabal-devel mailing list
-which is a good place to ask questions.
+Of particular value are the open issues list and the cabal-devel mailing
+list, which is a good place to ask questions.
 
 
 Dependencies policy
@@ -22,4 +23,3 @@ Dependencies policy
 
 Cabal's policy is to support being built by versions of GHC that are up
 to 3 years old.
-
