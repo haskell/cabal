@@ -1,12 +1,11 @@
-# Cabal
+# Cabal [![Build Status](https://secure.travis-ci.org/haskell/cabal.png?branch=master)](http://travis-ci.org/haskell/cabal)
 
-[![Build Status](https://secure.travis-ci.org/haskell/cabal.png?branch=master)](http://travis-ci.org/haskell/cabal)
+This Cabal Git repository contains the following packages:
 
-This Cabal git repository contains multiple packages:
+ * [Cabal](Cabal/README.md): the Cabal library package ([license](Cabal/LICENSE))
+ * [cabal-install](cabal-install/README.md): the package containing the `cabal` tool ([license](cabal-install/LICENSE))
 
- * `Cabal`          -- the Cabal library package
- * `cabal-install`  -- the cabal-install package containing the `cabal` tool.
+See [HACKING.md](HACKING.md) for information about contributing.
 
-See the README in each subdir for more details.
-
-The canonical upstream repo lives at https://github.com/haskell/cabal
+The canonical upstream repository is located at
+https://github.com/haskell/cabal.
