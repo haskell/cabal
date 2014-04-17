@@ -1,5 +1,17 @@
 -*-change-log-*-
 
+1.20.0.0 Johan Tibell <johan.tibell@gmail.com> April 2014
+	* Build only selected executables
+	* Add -j flag to build/test/bench/run
+	* Improve install log file
+	* Don't symlink executables when in a sandbox
+	* Add --package-db flag to 'list' and 'info'
+	* Make upload more efficient
+	* Add --require-sandbox option
+	* Add experimental Cabal file format command
+	* Add haddock section to config file
+	* Add --main-is flag to init
+
 0.14.0 Andres Loeh <andres@well-typed.com> April 2012
 	* Works with ghc-7.4
 	* Completely new modular dependency solver (default in most cases)
