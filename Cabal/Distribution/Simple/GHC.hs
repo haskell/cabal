@@ -44,7 +44,6 @@ module Distribution.Simple.GHC (
         componentGhcOptions,
         ghcLibDir,
         ghcDynamic,
-        ghcGlobalPackageDB,
  ) where
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
@@ -549,13 +548,6 @@ ghcLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 ghcLibDir' verbosity ghcProg =
     (reverse . dropWhile isSpace . reverse) `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
-
-
--- | Return the 'FilePath' to the global GHC package database.
-ghcGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
-ghcGlobalPackageDB verbosity ghcProg =
-    (reverse . dropWhile isSpace . reverse) `fmap`
-     rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
 
 -- Cabal does not use the environment variable GHC_PACKAGE_PATH; let users
 -- know that this is the case. See ticket #335. Simply ignoring it is not a
