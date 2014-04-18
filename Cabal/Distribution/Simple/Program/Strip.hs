@@ -44,9 +44,11 @@ stripExe verbosity (Platform _arch os) conf path =
 stripLib :: Verbosity -> Platform -> ProgramConfiguration -> FilePath -> IO ()
 stripLib verbosity (Platform _arch os) conf path = do
   case os of
-    OSX -> -- '--strip-unneeded' is not supported on OS X or iOS. See #1630.
+    OSX -> -- '--strip-unneeded' is not supported on OS X, iOS or
+           -- Solaris. See #1630.
            return ()
     IOS -> return ()
+    Solaris -> return ()
     _   -> runStrip verbosity conf path args
   where
     args = ["--strip-unneeded"]
