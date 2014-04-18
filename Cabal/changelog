@@ -1,5 +1,31 @@
 -*-change-log-*-
 
+1.20.0.0 Johan Tibell <johan.tibell@gmail.com> April 2014
+	* Rewrite user guide
+	* Fix repl Ctrl+C handling
+	* Add haskell-suite compiler support
+	* Add __HADDOCK_VERSION__ define
+	* Allow specifying exact dependency version using hash
+	* Rename extra-html-files to extra-doc-files
+	* Add parallel build support for GHC 7.8 and later
+	* Don't call ranlib on OS X
+	* Avoid re-linking executables, test suites, and benchmarks
+	unnecessarily, shortening build times
+	* Add --allow-never which allows upper version bounds to be
+	ignored
+	* Add --enable-library-stripping
+	* Add command for freezing dependencies
+	* Allow repl to be used outside Cabal packages
+	* Add --require-sandbox
+	* Don't use --strip-unneeded on OS X or iOS
+	* Add new license-files field got additional licenses
+	* Fix if(solaris) on some Solaris versions
+	* Don't use -dylib-install-name on OS X with GHC > 7.8
+	* Add DragonFly as a known OS
+	* Improve pretty-printing of Cabal files
+	* Add test flag --show-details=streaming for real-time test output
+	* Add exec command
+
 1.11.x (current development version)
 
 1.10.0.x (next stable release version)
