@@ -125,7 +125,7 @@ executable cabal
         filepath   >= 1.0      && < 1.4,
         HTTP       >= 4000.2.5 && < 4000.3,
         mtl        >= 2.0      && < 3,
-        network    >= 1        && < 3,
+        network    >= 2.0      && < 2.6,
         pretty     >= 1        && < 1.2,
         random     >= 1        && < 1.1,
         stm        >= 2.0      && < 3,
