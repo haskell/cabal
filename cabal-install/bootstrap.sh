@@ -124,7 +124,7 @@ DEEPSEQ_VER="1.3.0.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
 TEXT_VER="1.1.0.1";    TEXT_VER_REGEXP="((1\.[01]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.2
-NETWORK_VER="2.5.0.0"; NETWORK_VER_REGEXP="2\.[0-5]\."
+NETWORK_VER="2.4.2.3"; NETWORK_VER_REGEXP="2\.[0-5]\."
                        # >= 2.0 && < 2.6
 CABAL_VER="1.20.0.0";  CABAL_VER_REGEXP="1\.2[01]\."
                        # >= 1.20 && < 1.21
