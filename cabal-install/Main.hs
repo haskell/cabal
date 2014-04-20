@@ -104,7 +104,7 @@ import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Client.Utils              (determineNumJobs
-#if defined(mingw32_HOST_OS) || defined(mingw32_TARGET_OS)
+#if defined(mingw32_HOST_OS)
                                               ,relaxEncodingErrors
 #endif
                                               ,existsAndIsMoreRecentThan)
@@ -147,7 +147,7 @@ import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
 import System.FilePath          (splitExtension, takeExtension)
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
-#if defined(mingw32_HOST_OS) || defined(mingw32_TARGET_OS)
+#ifdef mingw32_HOST_OS
                                 , stderr
 #endif
                                 , stdout )
@@ -163,10 +163,10 @@ main = do
   -- Enable line buffering so that we can get fast feedback even when piped.
   -- This is especially important for CI and build systems.
   hSetBuffering stdout LineBuffering
-  -- The default locale encoding for Window's CLI is not UTF-8 and printing
+  -- The default locale encoding for Windows CLI is not UTF-8 and printing
   -- Unicode characters to it will fail unless we relax the handling of encoding
   -- errors when writing to stderr and stdout.
-#if defined(mingw32_HOST_OS) || defined(mingw32_TARGET_OS)
+#ifdef mingw32_HOST_OS
   relaxEncodingErrors stdout
   relaxEncodingErrors stderr
 #endif
