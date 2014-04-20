@@ -49,6 +49,10 @@ stripLib verbosity (Platform _arch os) conf path = do
            return ()
     IOS -> return ()
     Solaris -> return ()
+    Windows -> -- Stripping triggers a bug in 'strip.exe' for
+               -- libraries with lots identically named modules. See
+               -- #1784.
+               return()
     _   -> runStrip verbosity conf path args
   where
     args = ["--strip-unneeded"]
