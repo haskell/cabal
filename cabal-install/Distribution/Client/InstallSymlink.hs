@@ -16,7 +16,7 @@ module Distribution.Client.InstallSymlink (
     symlinkBinary,
   ) where
 
-#if mingw32_HOST_OS || mingw32_TARGET_OS
+#if mingw32_HOST_OS
 
 import Distribution.Package (PackageIdentifier)
 import Distribution.Client.InstallPlan (InstallPlan)
