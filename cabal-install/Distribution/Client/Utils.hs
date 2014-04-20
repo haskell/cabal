@@ -7,7 +7,8 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , makeAbsoluteToCwd, filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath
                                  , canonicalizePathNoThrow
-                                 , moreRecentFile, existsAndIsMoreRecentThan )
+                                 , moreRecentFile, existsAndIsMoreRecentThan
+                                 , relaxEncodingErrors)
        where
 
 import Distribution.Compat.Exception   ( catchIO )
@@ -21,7 +22,7 @@ import Data.Bits
 import Data.Char
          ( ord, chr )
 import Data.List
-         ( sortBy, groupBy )
+         ( isPrefixOf, sortBy, groupBy )
 import Data.Word
          ( Word8, Word32)
 import Foreign.C.Types ( CInt(..) )
@@ -32,7 +33,20 @@ import System.Directory
          , removeFile, setCurrentDirectory )
 import System.FilePath
          ( (</>), isAbsolute )
+import System.IO
+         ( Handle
+#if MIN_VERSION_base(4,4,0)
+         , hGetEncoding, hSetEncoding
+#endif
+         )
 import System.IO.Unsafe ( unsafePerformIO )
+
+#if MIN_VERSION_base(4,4,0)
+import GHC.IO.Encoding
+         ( recover, TextEncoding(TextEncoding) )
+import GHC.IO.Encoding.Failure
+         ( recoverEncode, CodingFailureMode(TransliterateCodingFailure) )
+#endif
 
 #if defined(mingw32_HOST_OS)
 import Prelude hiding (ioError)
@@ -185,3 +199,20 @@ existsAndIsMoreRecentThan a b = do
   if not exists
     then return False
     else a `moreRecentFile` b
+
+-- | Sets the handler for encoding errors to one that transliterates invalid
+-- characters into one present in the encoding (i.e., \'?\').
+-- This is opposed to the default behavior, which is to throw an exception on
+-- error. This function will ignore file handles that have a Unicode encoding
+-- set. It's a no-op for versions of `base` less than 4.4.
+relaxEncodingErrors :: Handle -> IO ()
+relaxEncodingErrors handle = do
+#if MIN_VERSION_base(4,4,0)
+  maybeEncoding <- hGetEncoding handle
+  case maybeEncoding of
+    Just (TextEncoding name decoder encoder) | not ("UTF" `isPrefixOf` name) ->
+      let relax x = x { recover = recoverEncode TransliterateCodingFailure }
+      in hSetEncoding handle (TextEncoding name decoder (fmap relax encoder))
+    _ ->
+#endif
+      return ()
