@@ -233,7 +233,7 @@ test-suite unit-tests
     test-framework-hunit,
     test-framework-quickcheck2,
     HUnit,
-    QuickCheck < 2.7,
+    QuickCheck < 2.8,
     Cabal
   ghc-options: -Wall
   default-language: Haskell98
@@ -277,7 +277,7 @@ test-suite package-tests
     test-framework-quickcheck2 >= 0.2.12,
     test-framework-hunit,
     HUnit,
-    QuickCheck >= 2.1.0.1 && < 2.7,
+    QuickCheck >= 2.1.0.1 && < 2.8,
     Cabal,
     process,
     directory,
