@@ -105,7 +105,7 @@ import Distribution.Text
 import System.Environment(getArgs, getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
-import System.Exit
+import System.Exit       (exitWith,ExitCode(..))
 import System.IO.Error   (isDoesNotExistError)
 import Control.Exception (throwIO)
 import Distribution.Compat.Environment (getEnvironment)
