@@ -826,7 +826,7 @@ defaultInstallFlags = InstallFlags {
     docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
 
 defaultMaxBackjumps :: Int
-defaultMaxBackjumps = 200
+defaultMaxBackjumps = 2000
 
 defaultSolver :: PreSolver
 defaultSolver = Choose
