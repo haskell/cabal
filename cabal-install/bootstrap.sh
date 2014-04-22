@@ -124,7 +124,7 @@ DEEPSEQ_VER="1.3.0.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
 TEXT_VER="1.1.0.1";    TEXT_VER_REGEXP="((1\.[01]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.2
-NETWORK_VER="2.4.2.3"; NETWORK_VER_REGEXP="2\.[0-5]\."
+NETWORK_VER="2.5.0.0"; NETWORK_VER_REGEXP="2\.[0-5]\."
                        # >= 2.0 && < 2.6
 CABAL_VER="1.21.0.0";  CABAL_VER_REGEXP="1\.21\."
                        # >= 1.21 && < 1.22
@@ -132,7 +132,7 @@ TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."
                        # >= 0.2.* && < 0.4.*
 MTL_VER="2.1.3.1";     MTL_VER_REGEXP="[2]\."
                        #  == 2.*
-HTTP_VER="4000.2.12";  HTTP_VER_REGEXP="4000\.2\.[5-9]"
+HTTP_VER="4000.2.13";  HTTP_VER_REGEXP="4000\.2\.([5-9]|1[0-9]|2[0-9])"
                        # >= 4000.2.5 < 4000.3
 ZLIB_VER="0.5.4.1";    ZLIB_VER_REGEXP="0\.[45]\."
                        # == 0.4.* || == 0.5.*
