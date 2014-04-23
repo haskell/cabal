@@ -846,7 +846,7 @@ showLog (AppliedVersionConstraint pkgname ver pkgids) =
      "applying constraint " ++ display (Dependency pkgname ver)
   ++ if null pkgids
        then ""
-       else "which excludes " ++ listOf display pkgids
+       else " which excludes " ++ listOf display pkgids
 showLog (AppliedInstalledConstraint pkgname inst pkgids) =
      "applying constraint " ++ display pkgname ++ " '"
   ++ (case inst of InstalledConstraint -> "installed"; _ -> "source") ++ "' "
