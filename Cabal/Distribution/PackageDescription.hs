@@ -952,13 +952,6 @@ data ConfVar = OS OS
              | Impl CompilerFlavor VersionRange
     deriving (Eq, Show, Typeable, Data)
 
---instance Text ConfVar where
---    disp (OS os) = "os(" ++ display os ++ ")"
---    disp (Arch arch) = "arch(" ++ display arch ++ ")"
---    disp (Flag (ConfFlag f)) = "flag(" ++ f ++ ")"
---    disp (Impl c v) = "impl(" ++ display c
---                       ++ " " ++ display v ++ ")"
-
 -- | A boolean expression parameterized over the variable type used.
 data Condition c = Var c
                  | Lit Bool
@@ -966,13 +959,6 @@ data Condition c = Var c
                  | COr (Condition c) (Condition c)
                  | CAnd (Condition c) (Condition c)
     deriving (Show, Eq, Typeable, Data)
-
---instance Text c => Text (Condition c) where
---  disp (Var x) = text (show x)
---  disp (Lit b) = text (show b)
---  disp (CNot c) = char '!' <> parens (ppCond c)
---  disp (COr c1 c2) = parens $ sep [ppCond c1, text "||" <+> ppCond c2]
---  disp (CAnd c1 c2) = parens $ sep [ppCond c1, text "&&" <+> ppCond c2]
 
 data CondTree v c a = CondNode
     { condTreeData        :: a
@@ -982,16 +968,3 @@ data CondTree v c a = CondNode
                               , Maybe (CondTree v c a))]
     }
     deriving (Show, Eq, Typeable, Data)
-
---instance (Text v, Text c) => Text (CondTree v c a) where
---  disp (CondNode _dat cs ifs) =
---    (text "build-depends: " <+>
---      disp cs)
---    $+$
---    (vcat $ map ppIf ifs)
---  where
---    ppIf (c,thenTree,mElseTree) =
---        ((text "if" <+> ppCond c <> colon) $$
---          nest 2 (ppCondTree thenTree disp))
---        $+$ (maybe empty (\t -> text "else: " $$ nest 2 (ppCondTree t disp))
---                   mElseTree)
