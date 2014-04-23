@@ -131,7 +131,7 @@ data DepResolverParams = DepResolverParams {
 
 debugDepResolverParams :: DepResolverParams -> String
 debugDepResolverParams p =
-     "\ntargets: " ++ intercalate ", " (map display (depResolverTargets p))
+     "targets: " ++ intercalate ", " (map display (depResolverTargets p))
   ++ "\nconstraints: "
   ++   concatMap (("\n  " ++) . debugPackageConstraint) (depResolverConstraints p)
   ++ "\npreferences: "
