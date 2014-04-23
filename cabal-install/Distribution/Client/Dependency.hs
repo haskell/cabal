@@ -71,6 +71,7 @@ import Distribution.Client.Types
          , SourcePackage(..) )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, PackageConstraint(..)
+         , debugPackageConstraint
          , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
@@ -100,7 +101,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
-import Data.List (maximumBy, foldl')
+import Data.List (maximumBy, foldl', intercalate)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -128,6 +129,14 @@ data DepResolverParams = DepResolverParams {
        depResolverMaxBackjumps      :: Maybe Int
      }
 
+debugDepResolverParams :: DepResolverParams -> String
+debugDepResolverParams p =
+     "\ntargets: " ++ intercalate ", " (map display (depResolverTargets p))
+  ++ "\nconstraints: "
+  ++   concatMap (("\n  " ++) . debugPackageConstraint) (depResolverConstraints p)
+  ++ "\npreferences: "
+  ++   concatMap (("\n  " ++) . debugPackagePreference) (depResolverPreferences p)
+  ++ "\nstrategy: " ++ show (depResolverPreferenceDefault p)
 
 -- | A package selection preference for a particular package.
 --
@@ -142,6 +151,15 @@ data PackagePreference =
 
      -- | If we prefer versions of packages that are already installed.
    | PackageInstalledPreference PackageName InstalledPreference
+
+-- | Provide a textual representation of a package preference
+-- for debugging purposes.
+--
+debugPackagePreference :: PackagePreference -> String
+debugPackagePreference (PackageVersionPreference   pn vr) =
+  display pn ++ " " ++ display (simplifyVersionRange vr)
+debugPackagePreference (PackageInstalledPreference pn ip) =
+  display pn ++ " " ++ show ip
 
 basicDepResolverParams :: InstalledPackageIndex.PackageIndex
                        -> PackageIndex.PackageIndex SourcePackage
@@ -488,13 +506,15 @@ resolveDependencies platform comp _solver params
 
 resolveDependencies platform comp  solver params =
 
-    fmap (mkInstallPlan platform comp)
+    Step (debugDepResolverParams finalparams)
+  $ fmap (mkInstallPlan platform comp)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing maxBkjumps)
                      platform comp installedPkgIndex sourcePkgIndex
                      preferences constraints targets
   where
-    DepResolverParams
+
+    finalparams @ (DepResolverParams
       targets constraints
       prefs defpref
       installedPkgIndex
@@ -503,7 +523,7 @@ resolveDependencies platform comp  solver params =
       indGoals
       noReinstalls
       shadowing
-      maxBkjumps      = dontUpgradeNonUpgradeablePackages
+      maxBkjumps)     = dontUpgradeNonUpgradeablePackages
                       -- TODO:
                       -- The modular solver can properly deal with broken
                       -- packages and won't select them. So the
