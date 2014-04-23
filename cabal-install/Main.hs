@@ -145,7 +145,7 @@ import qualified Paths_cabal_install (version)
 
 import System.Environment       (getArgs, getProgName)
 import System.Exit              (exitFailure)
-import System.FilePath          (splitExtension, takeExtension)
+import System.FilePath          (splitExtension, takeExtension, searchPathSeparator)
 import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 #ifdef mingw32_HOST_OS
                                 , stderr
@@ -1061,7 +1061,8 @@ execAction execFlags extraArgs globalFlags = do
                 exitFailure
             Just ghcProg ->  do
                 g <- ghcGlobalPackageDB verbosity ghcProg
-                getEffectiveEnvironment [("GHC_PACKAGE_PATH", Just $ s ++ ":" ++ g)]
+                getEffectiveEnvironment
+                  [("GHC_PACKAGE_PATH", Just $ s ++ [searchPathSeparator] ++ g)]
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
