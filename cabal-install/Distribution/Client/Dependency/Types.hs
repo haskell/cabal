@@ -19,6 +19,7 @@ module Distribution.Client.Dependency.Types (
 
     AllowNewer(..), isAllowNewer,
     PackageConstraint(..),
+    debugPackageConstraint,
     PackagePreferences(..),
     InstalledPreference(..),
     PackagesPreferenceDefault(..),
@@ -36,7 +37,7 @@ import Data.Monoid
          ( Monoid(..) )
 
 import Distribution.Client.Types
-         ( OptionalStanza, SourcePackage(..) )
+         ( OptionalStanza(..), SourcePackage(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 
 import Distribution.Compat.ReadP
@@ -45,7 +46,7 @@ import Distribution.Compat.ReadP
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
 import Distribution.PackageDescription
-         ( FlagAssignment )
+         ( FlagAssignment, FlagName(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
@@ -53,13 +54,13 @@ import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Package
          ( Dependency, PackageName, InstalledPackageId )
 import Distribution.Version
-         ( VersionRange )
+         ( VersionRange, simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerId )
 import Distribution.System
          ( Platform )
 import Distribution.Text
-         ( Text(..) )
+         ( Text(..), display )
 
 import Text.PrettyPrint
          ( text )
@@ -127,6 +128,27 @@ data PackageConstraint
    | PackageConstraintStanzas   PackageName [OptionalStanza]
   deriving (Show,Eq)
 
+-- | Provide a textual representation of a package constraint
+-- for debugging purposes.
+--
+debugPackageConstraint :: PackageConstraint -> String
+debugPackageConstraint (PackageConstraintVersion pn vr) =
+  display pn ++ " " ++ display (simplifyVersionRange vr)
+debugPackageConstraint (PackageConstraintInstalled pn) =
+  display pn ++ " installed"
+debugPackageConstraint (PackageConstraintSource pn) =
+  display pn ++ " source"
+debugPackageConstraint (PackageConstraintFlags pn fs) =
+  "flags " ++ display pn ++ " " ++ unwords (map (uncurry showFlag) fs)
+  where
+    showFlag (FlagName f) True  = "+" ++ f
+    showFlag (FlagName f) False = "-" ++ f
+debugPackageConstraint (PackageConstraintStanzas pn ss) =
+  "stanzas " ++ display pn ++ " " ++ unwords (map showStanza ss)
+  where
+    showStanza TestStanzas  = "test"
+    showStanza BenchStanzas = "bench"
+
 -- | A per-package preference on the version. It is a soft constraint that the
 -- 'DependencyResolver' should try to respect where possible. It consists of
 -- a 'InstalledPreference' which says if we prefer versions of packages
@@ -143,6 +165,7 @@ data PackagePreferences = PackagePreferences VersionRange InstalledPreference
 -- version.
 --
 data InstalledPreference = PreferInstalled | PreferLatest
+  deriving Show
 
 -- | Global policy for all packages to say if we prefer package versions that
 -- are already installed locally or if we just prefer the latest available.
@@ -167,6 +190,7 @@ data PackagesPreferenceDefault =
      -- * This is the standard policy for install.
      --
    | PreferLatestForSelected
+  deriving Show
 
 -- | Policy for relaxing upper bounds in dependencies. For example, given
 -- 'build-depends: array >= 0.3 && < 0.5', are we allowed to relax the upper
