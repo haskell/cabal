@@ -32,7 +32,7 @@ import Text.PrettyPrint
 import Distribution.Simple.Utils (writeUTF8File)
 import Distribution.ParseUtils (showFreeText, FieldDescr(..), indentWith, ppField, ppFields)
 import Distribution.PackageDescription.Parse (pkgDescrFieldDescrs,binfoFieldDescrs,libFieldDescrs,
-       sourceRepoFieldDescrs)
+       sourceRepoFieldDescrs,flagFieldDescrs)
 import Distribution.Package (Dependency(..))
 import Distribution.Text (Text(..))
 import Data.Maybe (isJust, fromJust, isNothing)
@@ -74,11 +74,20 @@ ppSourceRepo repo                        =
   where
     sourceRepoFieldDescrs' = [fd | fd <- sourceRepoFieldDescrs, fieldName fd /= "kind"]
 
-ppFieldsFiltered :: [String] -> [FieldDescr a] -> a -> Doc
+ppFieldsFiltered :: [(String, String)] -> [FieldDescr a] -> a -> Doc
 ppFieldsFiltered removable fields x = ppFields (filter nondefault fields) x
   where
     nondefault (FieldDescr name getter _) =
-        name `notElem` removable || render (getter x) /= "True"
+        maybe True (render (getter x) /=) (lookup name removable)
+
+binfoDefaults :: [(String, String)]
+binfoDefaults = [("buildable", "True")]
+
+libDefaults :: [(String, String)]
+libDefaults = ("exposed", "True") : binfoDefaults
+
+flagDefaults :: [(String, String)]
+flagDefaults = [("default", "True"), ("manual", "False")]
 
 ppDiffFields :: [FieldDescr a] -> a -> a -> Doc
 ppDiffFields fields x y                  =
@@ -97,20 +106,17 @@ ppGenPackageFlags :: [Flag] -> Doc
 ppGenPackageFlags flds                   = vcat [ppFlag f | f <- flds]
 
 ppFlag :: Flag -> Doc
-ppFlag (MkFlag name desc dflt manual)    =
-    emptyLine $ text "flag" <+> ppFlagName name $+$
-            (nest indentWith ((if null desc
-                                then empty
-                                else  text "description:" <+> showFreeText desc) $+$
-                     (if dflt then empty else text "default: False") $+$
-                     (if manual then text "manual: True" else empty)))
+ppFlag flag@(MkFlag name _ _ _)    =
+    emptyLine $ text "flag" <+> ppFlagName name $+$ fields
+  where
+    fields = ppFieldsFiltered flagDefaults flagFieldDescrs flag
 
 ppLibrary :: (Maybe (CondTree ConfVar [Dependency] Library)) -> Doc
 ppLibrary Nothing                        = empty
 ppLibrary (Just condTree)                =
     emptyLine $ text "library" $+$ nest indentWith (ppCondTree condTree Nothing ppLib)
   where
-    ppLib lib Nothing     = ppFieldsFiltered ["buildable", "exposed"] libFieldDescrs lib
+    ppLib lib Nothing     = ppFieldsFiltered libDefaults libFieldDescrs lib
                             $$  ppCustomFields (customFieldsBI (libBuildInfo lib))
     ppLib lib (Just plib) = ppDiffFields libFieldDescrs lib plib
                             $$  ppCustomFields (customFieldsBI (libBuildInfo lib))
@@ -122,7 +128,7 @@ ppExecutables exes                       =
   where
     ppExe (Executable _ modulePath' buildInfo') Nothing =
         (if modulePath' == "" then empty else text "main-is:" <+> text modulePath')
-            $+$ ppFieldsFiltered ["buildable"] binfoFieldDescrs buildInfo'
+            $+$ ppFieldsFiltered binfoDefaults binfoFieldDescrs buildInfo'
             $+$  ppCustomFields (customFieldsBI buildInfo')
     ppExe (Executable _ modulePath' buildInfo')
             (Just (Executable _ modulePath2 buildInfo2)) =
@@ -144,7 +150,7 @@ ppTestSuites suites =
                             (testSuiteMainIs testsuite)
             $+$ maybe empty (\m -> text "test-module:" <+> disp m)
                             (testSuiteModule testsuite)
-            $+$ ppFieldsFiltered ["buildable"] binfoFieldDescrs (testBuildInfo testsuite)
+            $+$ ppFieldsFiltered binfoDefaults binfoFieldDescrs (testBuildInfo testsuite)
             $+$ ppCustomFields (customFieldsBI (testBuildInfo testsuite))
       where
         maybeTestType | testInterface testsuite == mempty = Nothing
@@ -174,7 +180,7 @@ ppBenchmarks suites =
                             maybeBenchmarkType
             $+$ maybe empty (\f -> text "main-is:"     <+> text f)
                             (benchmarkMainIs benchmark)
-            $+$ ppFieldsFiltered ["buildable"] binfoFieldDescrs (benchmarkBuildInfo benchmark)
+            $+$ ppFieldsFiltered binfoDefaults binfoFieldDescrs (benchmarkBuildInfo benchmark)
             $+$ ppCustomFields (customFieldsBI (benchmarkBuildInfo benchmark))
       where
         maybeBenchmarkType | benchmarkInterface benchmark == mempty = Nothing
