@@ -74,6 +74,8 @@ ppSourceRepo repo                        =
   where
     sourceRepoFieldDescrs' = [fd | fd <- sourceRepoFieldDescrs, fieldName fd /= "kind"]
 
+-- TODO: this is a temporary hack. Ideally, fields containing default values
+-- would be filtered out when the @FieldDescr a@ list is generated.
 ppFieldsFiltered :: [(String, String)] -> [FieldDescr a] -> a -> Doc
 ppFieldsFiltered removable fields x = ppFields (filter nondefault fields) x
   where
