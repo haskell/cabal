@@ -105,7 +105,7 @@ import Distribution.Client.Utils              (determineNumJobs
                                               ,existsAndIsMoreRecentThan)
 
 import Distribution.PackageDescription
-         ( Executable(..), testName )
+         ( Executable(..), benchmarkName, testName )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.PackageDescription.PrettyPrint
@@ -757,12 +757,24 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
                           globalFlags noAddSource (buildNumJobs buildFlags')
                           checkFlags
 
+  -- the package was just configured, so the LBI must be available
+  lbi <- getPersistBuildConfig distPref
+  let pkgDescr = LBI.localPkgDescr lbi
+      nameBenchsOnly = LBI.foldComponent (const Nothing)
+                                         (const Nothing)
+                                         (const Nothing)
+                                         (Just . benchmarkName)
+      benchs = mapMaybe nameBenchsOnly $ LBI.pkgComponents pkgDescr
+      extraArgs'
+        | null extraArgs = benchs
+        | otherwise = extraArgs
+
   maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity config distPref buildFlags' extraArgs
+    build verbosity config distPref buildFlags' extraArgs'
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     setupWrapper verbosity setupOptions Nothing
-      Cabal.benchmarkCommand (const benchmarkFlags) extraArgs
+      Cabal.benchmarkCommand (const benchmarkFlags) extraArgs'
 
 haddockAction :: HaddockFlags -> [String] -> GlobalFlags -> IO ()
 haddockAction haddockFlags extraArgs globalFlags = do
