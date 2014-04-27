@@ -31,8 +31,7 @@ import Distribution.Simple.Setup                     (Flag (..),
                                                       SDistFlags (..),
                                                       defaultSDistFlags,
                                                       sdistCommand)
-import Distribution.Simple.Utils                     (debug, die,
-                                                      tryFindPackageDesc, warn)
+import Distribution.Simple.Utils                     (debug, die, warn)
 import Distribution.System                           (Platform)
 import Distribution.Text                             (display)
 import Distribution.Verbosity                        (Verbosity, lessVerbose,
@@ -47,7 +46,8 @@ import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
                                                       defaultSetupScriptOptions,
                                                       setupWrapper)
 import Distribution.Client.Utils                     (inDir, removeExistingFile,
-                                                      tryCanonicalizePath)
+                                                      tryCanonicalizePath,
+                                                      tryFindAddSourcePackageDesc)
 
 import Distribution.Compat.Exception                 (catchIO)
 import Distribution.Client.Compat.Time               (EpochTime, getCurTime,
@@ -213,9 +213,10 @@ withActionOnCompilerTimestamps f sandboxDir compId platform act = do
 -- FIXME: This function is not thread-safe because of 'inDir'.
 allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
 allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
-  pkg <- fmap (flattenPackageDescription)
-         . readPackageDescription verbosity =<< tryFindPackageDesc packageDir
-
+  pkg <- do
+    let err = "Error reading source files of add-source dependency."
+    desc <- tryFindAddSourcePackageDesc packageDir err
+    flattenPackageDescription `fmap` readPackageDescription verbosity desc
   let file      = "cabal-sdist-list-sources"
       flags     = defaultSDistFlags {
         sDistVerbosity   = Flag $ if verbosity == normal

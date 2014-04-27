@@ -64,7 +64,8 @@ import Distribution.Client.Sandbox.Types      ( SandboxPackageInfo(..)
                                               , UseSandbox(..) )
 import Distribution.Client.Types              ( PackageLocation(..)
                                               , SourcePackage(..) )
-import Distribution.Client.Utils              ( inDir, tryCanonicalizePath )
+import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
+                                              , tryFindAddSourcePackageDesc )
 import Distribution.PackageDescription.Configuration
                                               ( flattenPackageDescription )
 import Distribution.PackageDescription.Parse  ( readPackageDescription )
@@ -80,7 +81,6 @@ import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
 import Distribution.Simple.SrcDist            ( prepareTree )
 import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , debugNoWrap, defaultPackageDesc
-                                              , tryFindPackageDesc
                                               , intercalate, topHandlerWith
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
@@ -618,9 +618,9 @@ withSandboxPackageInfo verbosity configFlags globalFlags
   -- List all packages installed in the sandbox.
   installedPkgIndex <- getInstalledPackagesInSandbox verbosity
                        configFlags comp conf
-
+  let err = "Error reading sandbox package information."
   -- Get the package descriptions for all add-source deps.
-  depsCabalFiles <- mapM tryFindPackageDesc buildTreeRefs
+  depsCabalFiles <- mapM (flip tryFindAddSourcePackageDesc err) buildTreeRefs
   depsPkgDescs   <- mapM (readPackageDescription verbosity) depsCabalFiles
   let depsMap           = M.fromList (zip buildTreeRefs depsPkgDescs)
       isInstalled pkgid = not . null
