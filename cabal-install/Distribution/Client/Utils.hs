@@ -8,12 +8,15 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , byteStringToFilePath, tryCanonicalizePath
                                  , canonicalizePathNoThrow
                                  , moreRecentFile, existsAndIsMoreRecentThan
+                                 , tryFindAddSourcePackageDesc
+                                 , tryFindPackageDesc
                                  , relaxEncodingErrors)
        where
 
 import Distribution.Compat.Exception   ( catchIO )
 import Distribution.Client.Compat.Time ( getModTime )
 import Distribution.Simple.Setup       ( Flag(..) )
+import Distribution.Simple.Utils       ( die, findPackageDesc )
 import qualified Data.ByteString.Lazy as BS
 import Control.Monad
          ( when )
@@ -216,3 +219,19 @@ relaxEncodingErrors handle = do
     _ ->
 #endif
       return ()
+
+-- |Like 'tryFindPackageDesc', but with error specific to add-source deps.
+tryFindAddSourcePackageDesc :: FilePath -> String -> IO FilePath
+tryFindAddSourcePackageDesc depPath err = tryFindPackageDesc depPath $
+    err ++ "\n" ++ "Failed to read cabal file of add-source dependency: "
+    ++ depPath
+
+-- |Try to find a @.cabal@ file, in directory @depPath@. Fails if one cannot be
+-- found, with @err@ prefixing the error message. This function simply allows
+-- us to give a more descriptive error than that provided by @findPackageDesc@.
+tryFindPackageDesc :: FilePath -> String -> IO FilePath
+tryFindPackageDesc depPath err = do
+    errOrCabalFile <- findPackageDesc depPath
+    case errOrCabalFile of
+        Right file -> return file
+        Left _ -> die err

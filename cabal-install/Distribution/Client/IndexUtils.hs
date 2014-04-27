@@ -55,7 +55,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info, fromUTF8, tryFindPackageDesc )
+         ( die, warn, info, fromUTF8 )
 
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (mapMaybe, fromMaybe)
@@ -69,7 +69,8 @@ import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.ByteString.Char8 as BSS
 import Data.ByteString.Lazy (ByteString)
 import Distribution.Client.GZipUtils (maybeDecompress)
-import Distribution.Client.Utils (byteStringToFilePath)
+import Distribution.Client.Utils ( byteStringToFilePath
+                                 , tryFindAddSourcePackageDesc )
 import Distribution.Compat.Exception (catchIO)
 import Distribution.Client.Compat.Time (getFileAge, getModTime)
 import System.Directory (doesFileExist)
@@ -351,7 +352,8 @@ extractPkg entry blockNo = case Tar.entryContent entry of
     | Tar.isBuildTreeRefTypeCode typeCode ->
       Just $ do
         let path   = byteStringToFilePath content
-        cabalFile <- tryFindPackageDesc path
+            err = "Error reading package index."
+        cabalFile <- tryFindAddSourcePackageDesc path err
         descr     <- PackageDesc.Parse.readPackageDescription normal cabalFile
         return $ BuildTreeRef (refTypeFromTypeCode typeCode) (packageId descr)
                               descr path blockNo
@@ -452,8 +454,9 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
       -- package id for build tree references - the user might edit the .cabal
       -- file after the reference was added to the index.
       path <- liftM byteStringToFilePath . getEntryContent $ blockno
-      pkg  <- do cabalFile <- tryFindPackageDesc path
-                 PackageDesc.Parse.readPackageDescription normal cabalFile
+      pkg  <- do let err = "Error reading package index from cache."
+                 file <- tryFindAddSourcePackageDesc path err
+                 PackageDesc.Parse.readPackageDescription normal file
       let srcpkg = mkPkg (BuildTreeRef refType (packageId pkg) pkg path blockno)
       accum (srcpkg:srcpkgs) prefs entries
 
@@ -503,31 +506,32 @@ data IndexCacheEntry = CachePackageId PackageId BlockNo
                      | CachePreference Dependency
   deriving (Eq)
 
+packageKey, blocknoKey, buildTreeRefKey, preferredVersionKey :: String
+packageKey = "pkg:"
+blocknoKey = "b#"
+buildTreeRefKey     = "build-tree-ref:"
+preferredVersionKey = "pref-ver:"
+
 readIndexCacheEntry :: BSS.ByteString -> Maybe IndexCacheEntry
 readIndexCacheEntry = \line ->
   case BSS.words line of
     [key, pkgnamestr, pkgverstr, sep, blocknostr]
-      | key == packageKey && sep == blocknoKey ->
+      | key == BSS.pack packageKey && sep == BSS.pack blocknoKey ->
       case (parseName pkgnamestr, parseVer pkgverstr [],
             parseBlockNo blocknostr) of
         (Just pkgname, Just pkgver, Just blockno)
           -> Just (CachePackageId (PackageIdentifier pkgname pkgver) blockno)
         _ -> Nothing
-    [key, typecodestr, blocknostr] | key == buildTreeRefKey ->
+    [key, typecodestr, blocknostr] | key == BSS.pack buildTreeRefKey ->
       case (parseRefType typecodestr, parseBlockNo blocknostr) of
         (Just refType, Just blockno)
           -> Just (CacheBuildTreeRef refType blockno)
         _ -> Nothing
 
-    (key: remainder) | key == preferredVersionKey ->
+    (key: remainder) | key == BSS.pack preferredVersionKey ->
       fmap CachePreference (simpleParse (BSS.unpack (BSS.unwords remainder)))
     _  -> Nothing
   where
-    packageKey = BSS.pack "pkg:"
-    blocknoKey = BSS.pack "b#"
-    buildTreeRefKey     = BSS.pack "build-tree-ref:"
-    preferredVersionKey = BSS.pack "pref-ver:"
-
     parseName str
       | BSS.all (\c -> isAlphaNum c || c == '-') str
                   = Just (PackageName (BSS.unpack str))
@@ -554,13 +558,20 @@ readIndexCacheEntry = \line ->
         _   -> Nothing
 
 showIndexCacheEntry :: IndexCacheEntry -> String
-showIndexCacheEntry entry = case entry of
-   CachePackageId pkgid b -> "pkg: " ++ display (packageName pkgid)
-                                  ++ " " ++ display (packageVersion pkgid)
-                          ++ " b# " ++ show b
-   CacheBuildTreeRef t b  -> "build-tree-ref: " ++ (typeCodeFromRefType t:" ")
-                             ++ show b
-   CachePreference dep    -> "pref-ver: " ++ display dep
+showIndexCacheEntry entry = unwords $ case entry of
+   CachePackageId pkgid b -> [ packageKey
+                             , display (packageName pkgid)
+                             , display (packageVersion pkgid)
+                             , blocknoKey
+                             , show b
+                             ]
+   CacheBuildTreeRef t b  -> [ buildTreeRefKey
+                             , [typeCodeFromRefType t]
+                             , show b
+                             ]
+   CachePreference dep    -> [ preferredVersionKey
+                             , display dep
+                             ]
 
 readIndexCache :: BSS.ByteString -> [IndexCacheEntry]
 readIndexCache = mapMaybe readIndexCacheEntry . BSS.lines
