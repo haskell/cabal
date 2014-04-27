@@ -58,6 +58,7 @@ import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
+import Distribution.Client.Utils ( tryFindPackageDesc )
 
 import Distribution.PackageDescription
          ( GenericPackageDescription, FlagName(..), FlagAssignment )
@@ -70,7 +71,7 @@ import Distribution.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
-         ( die, warn, intercalate, tryFindPackageDesc, fromUTF8, lowercase )
+         ( die, warn, intercalate, fromUTF8, lowercase )
 
 import Data.List
          ( find, nub )
@@ -422,7 +423,7 @@ expandUserTarget worldFile userTarget = case userTarget of
 
     UserTargetLocalCabalFile file -> do
       let dir = takeDirectory file
-      _   <- tryFindPackageDesc dir -- just as a check
+      _   <- tryFindPackageDesc dir (localPackageError dir) -- just as a check
       return [ PackageTargetLocation (LocalUnpackedPackage dir) ]
 
     UserTargetLocalTarball tarballFile ->
@@ -431,6 +432,9 @@ expandUserTarget worldFile userTarget = case userTarget of
     UserTargetRemoteTarball tarballURL ->
       return [ PackageTargetLocation (RemoteTarballPackage tarballURL ()) ]
 
+localPackageError :: FilePath -> String
+localPackageError dir =
+    "Error reading local package.\nCouldn't find .cabal file in: " ++ dir
 
 -- ------------------------------------------------------------
 -- * Fetching and reading package targets
@@ -468,7 +472,8 @@ readPackageTarget verbosity target = case target of
     PackageTargetLocation location -> case location of
 
       LocalUnpackedPackage dir -> do
-        pkg <- readPackageDescription verbosity =<< tryFindPackageDesc dir
+        pkg <- tryFindPackageDesc dir (localPackageError dir) >>=
+                 readPackageDescription verbosity
         return $ PackageTargetLocation $
                    SourcePackage {
                      packageInfoId        = packageId pkg,
