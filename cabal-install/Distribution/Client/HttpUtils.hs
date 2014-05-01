@@ -31,6 +31,8 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
          ( die, info, warn, debug, notice
          , copyFileVerbose, writeFileAtomic )
+import Distribution.System
+         ( buildOS, buildArch )
 import Distribution.Text
          ( display )
 import Data.Char ( isSpace )
@@ -67,7 +69,9 @@ mkRequest uri etag = Request{ rqURI     = uri
                             , rqMethod  = GET
                             , rqHeaders = Header HdrUserAgent userAgent : ifNoneMatchHdr
                             , rqBody    = ByteString.empty }
-  where userAgent = "cabal-install/" ++ display Paths_cabal_install.version
+  where userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
+                           , " (", display buildOS, "; ", display buildArch, ")"
+                           ]
         ifNoneMatchHdr = maybe [] (\t -> [Header HdrIfNoneMatch t]) etag
 
 -- |Carry out a GET request, using the local proxy settings
