@@ -149,7 +149,7 @@ import System.Directory
 import System.IO
     ( Handle, openFile, openBinaryFile, openBinaryTempFile
     , IOMode(ReadMode), hSetBinaryMode
-    , hGetContents, stdin, stderr, stdout, hPutStr, hFlush, hClose )
+    , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
     ( isDoesNotExistError, isAlreadyExistsError
     , ioeSetFileName, ioeGetFileName, ioeGetErrorString )
@@ -169,23 +169,12 @@ import Distribution.Version
     (Version(..))
 
 import Control.Exception (IOException, evaluate, throwIO)
-import System.Process (rawSystem)
-import qualified System.Process as Process (CreateProcess(..))
-
 import Control.Concurrent (forkIO)
-import System.Process (runInteractiveProcess, waitForProcess, proc,
-                       StdStream(..))
-#if __GLASGOW_HASKELL__ >= 702
-import System.Process (showCommandForUser)
-#endif
-
-#ifndef mingw32_HOST_OS
-import System.Posix.Signals (installHandler, sigINT, sigQUIT, Handler(..))
-import System.Process.Internals (defaultSignal, runGenProcess_)
-#else
-import System.Process (createProcess)
-#endif
-
+import qualified System.Process as Process
+         ( CreateProcess(..), StdStream(..), proc)
+import System.Process
+         ( createProcess, rawSystem, runInteractiveProcess
+         , showCommandForUser, waitForProcess)
 import Distribution.Compat.CopyFile
          ( copyFile, copyOrdinaryFile, copyExecutableFile
          , setFileOrdinary, setFileExecutable, setDirOrdinary )
@@ -345,12 +334,7 @@ maybeExit cmd = do
 printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
 printRawCommandAndArgs verbosity path args
  | verbosity >= deafening = print (path, args)
- | verbosity >= verbose   =
-#if __GLASGOW_HASKELL__ >= 702
-                            putStrLn $ showCommandForUser path args
-#else
-                            putStrLn $ unwords (path : args)
-#endif
+ | verbosity >= verbose   = putStrLn $ showCommandForUser path args
  | otherwise              = return ()
 
 printRawCommandAndArgsAndEnv :: Verbosity
@@ -364,39 +348,6 @@ printRawCommandAndArgsAndEnv verbosity path args env
  | verbosity >= verbose   = putStrLn $ unwords (path : args)
  | otherwise              = return ()
 
-
--- This is taken directly from the process package.
--- The reason we need it is that runProcess doesn't handle ^C in the same
--- way that rawSystem handles it, but rawSystem doesn't allow us to pass
--- an environment.
-syncProcess :: String -> Process.CreateProcess -> IO ExitCode
-#if mingw32_HOST_OS
-syncProcess _fun c = do
-  (_,_,_,p) <- createProcess c
-  waitForProcess p
-#else
-syncProcess fun c = do
-  -- The POSIX version of system needs to do some manipulation of signal
-  -- handlers.  Since we're going to be synchronously waiting for the child,
-  -- we want to ignore ^C in the parent, but handle it the default way
-  -- in the child (using SIG_DFL isn't really correct, it should be the
-  -- original signal handler, but the GHC RTS will have already set up
-  -- its own handler and we don't want to use that).
-  r <- Exception.bracket (installHandlers) (restoreHandlers) $
-       (\_ -> do (_,_,_,p) <- runGenProcess_ fun c
-                              (Just defaultSignal) (Just defaultSignal)
-                 waitForProcess p)
-  return r
-    where
-      installHandlers = do
-        old_int  <- installHandler sigINT  Ignore Nothing
-        old_quit <- installHandler sigQUIT Ignore Nothing
-        return (old_int, old_quit)
-      restoreHandlers (old_int, old_quit) = do
-        _ <- installHandler sigINT  old_int Nothing
-        _ <- installHandler sigQUIT old_quit Nothing
-        return ()
-#endif  /* mingw32_HOST_OS */
 
 -- Exit with the same exit code if the subcommand fails
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
@@ -425,8 +376,10 @@ rawSystemExitWithEnv :: Verbosity
 rawSystemExitWithEnv verbosity path args env = do
     printRawCommandAndArgsAndEnv verbosity path args env
     hFlush stdout
-    exitcode <- syncProcess "rawSystemExitWithEnv" (proc path args)
-                { Process.env = Just env }
+    (_,_,_,ph) <- createProcess $
+                  (Process.proc path args) { Process.env = (Just env)
+                                           , Process.delegate_ctlc = True }
+    exitcode <- waitForProcess ph
     unless (exitcode == ExitSuccess) $ do
         debug verbosity $ path ++ " returned " ++ show exitcode
         exitWith exitcode
@@ -445,26 +398,20 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
     maybe (printRawCommandAndArgs       verbosity path args)
           (printRawCommandAndArgsAndEnv verbosity path args) menv
     hFlush stdout
-    exitcode <- syncProcess "rawSystemIOWithEnv" (proc path args)
-                { Process.cwd     = mcwd
-                , Process.env     = menv
-                , Process.std_in  = mbToStd inp
-                , Process.std_out = mbToStd out
-                , Process.std_err = mbToStd err }
-                `Exception.finally` (mapM_ maybeClose [inp, out, err])
+    (_,_,_,ph) <- createProcess $
+                  (Process.proc path args) { Process.cwd           = mcwd
+                                           , Process.env           = menv
+                                           , Process.std_in        = mbToStd inp
+                                           , Process.std_out       = mbToStd out
+                                           , Process.std_err       = mbToStd err
+                                           , Process.delegate_ctlc = True }
+    exitcode <- waitForProcess ph
     unless (exitcode == ExitSuccess) $ do
       debug verbosity $ path ++ " returned " ++ show exitcode
     return exitcode
   where
-  -- Also taken from System.Process
-  maybeClose :: Maybe Handle -> IO ()
-  maybeClose (Just  hdl)
-    | hdl /= stdin && hdl /= stdout && hdl /= stderr = hClose hdl
-  maybeClose _ = return ()
-
-  mbToStd :: Maybe Handle -> StdStream
-  mbToStd Nothing    = Inherit
-  mbToStd (Just hdl) = UseHandle hdl
+    mbToStd :: Maybe Handle -> Process.StdStream
+    mbToStd = maybe Process.Inherit Process.UseHandle
 
 -- | Run a command and return its output.
 --
