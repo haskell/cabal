@@ -527,7 +527,9 @@ loadConfigOrSandboxConfig verbosity globalFlags userInstallFlag = do
         flag = (globalRequireSandbox . savedGlobalFlags $ config)
                `mappend` (globalRequireSandbox globalFlags)
         checkFlag (Flag True)  =
-          die $ "'require-sandbox' is set to True, but no sandbox is present."
+          die $ "'require-sandbox' is set to True, but no sandbox is present. "
+             ++ "Use '--no-require-sandbox' if you want to override "
+             ++ "'require-sandbox' temporarily."
         checkFlag (Flag False) = return ()
         checkFlag (NoFlag)     = return ()
 
