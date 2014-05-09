@@ -547,6 +547,8 @@ fetchCommand = CommandUI {
 
 data FreezeFlags = FreezeFlags {
       freezeDryRun           :: Flag Bool,
+      freezeTests            :: Flag Bool,
+      freezeBenchmarks       :: Flag Bool,
       freezeSolver           :: Flag PreSolver,
       freezeMaxBackjumps     :: Flag Int,
       freezeReorderGoals     :: Flag Bool,
@@ -558,6 +560,8 @@ data FreezeFlags = FreezeFlags {
 defaultFreezeFlags :: FreezeFlags
 defaultFreezeFlags = FreezeFlags {
     freezeDryRun           = toFlag False,
+    freezeTests            = toFlag False,
+    freezeBenchmarks       = toFlag False,
     freezeSolver           = Flag defaultSolver,
     freezeMaxBackjumps     = Flag defaultMaxBackjumps,
     freezeReorderGoals     = Flag False,
@@ -580,6 +584,16 @@ freezeCommand = CommandUI {
            "Do not freeze anything, only print what would be frozen"
            freezeDryRun (\v flags -> flags { freezeDryRun = v })
            trueArg
+
+       , option [] ["tests"]
+           "freezing of the dependencies of any tests suites in the package description file."
+           freezeTests (\v flags -> flags { freezeTests = v })
+           (boolOpt [] [])
+
+       , option [] ["benchmarks"]
+           "freezing of the dependencies of any benchmarks suites in the package description file."
+           freezeBenchmarks (\v flags -> flags { freezeBenchmarks = v })
+           (boolOpt [] [])
 
        ] ++
 
