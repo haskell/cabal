@@ -11,7 +11,7 @@
 	* Don't call ranlib on OS X
 	* Avoid re-linking executables, test suites, and benchmarks
 	unnecessarily, shortening build times
-	* Add --allow-never which allows upper version bounds to be
+	* Add --allow-newer which allows upper version bounds to be
 	ignored
 	* Add --enable-library-stripping
 	* Add command for freezing dependencies
