@@ -150,7 +150,7 @@ haddock pkg_descr lbi suffixes flags = do
     let isVersion2   = version >= Version [2,0] []
 
     when ( flag haddockHoogle
-           && version > Version [2] []
+           && version >= Version [2] []
            && version < Version [2,2] []) $
          die "haddock 2.0 and 2.1 do not support the --hoogle flag."
 
