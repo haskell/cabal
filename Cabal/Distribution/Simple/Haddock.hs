@@ -6,11 +6,10 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- This module deals with the @haddock@ and @hscolour@ commands. Sadly this is
--- a rather complicated module. It deals with two versions of haddock (0.x and
--- 2.x). It has to do pre-processing for haddock 0.x which involves
--- \'unlit\'ing and using @-DHADDOCK@ for any source code that uses @cpp@. It
--- uses information about installed packages (from @ghc-pkg@) to find the
+-- This module deals with the @haddock@ and @hscolour@ commands. Sadly this is a
+-- rather complicated module. It has to do pre-processing which involves
+-- \'unlit\'ing and using @-D__HADDOCK__@ for any source code that uses @cpp@.
+-- It uses information about installed packages (from @ghc-pkg@) to find the
 -- locations of documentation for dependent packages, so it can create links.
 --
 -- The @hscolour@ support allows generating html versions of the original
@@ -108,7 +107,7 @@ import Language.Haskell.Extension
 -- Base
 import System.Directory(removeFile, doesFileExist, createDirectoryIfMissing)
 
-import Control.Monad ( when, guard, forM_ )
+import Control.Monad ( when, forM_ )
 import Control.Exception (assert)
 import Data.Monoid
 import Data.Maybe    ( fromMaybe, listToMaybe )
@@ -135,8 +134,8 @@ data HaddockArgs = HaddockArgs {
  argOutputDir :: Directory,                       -- ^ where to generate the documentation.
  argTitle :: Flag String,                         -- ^ page's title,                                         required.
  argPrologue :: Flag String,                      -- ^ prologue text,                                        required.
- argGhcOptions :: Flag (GhcOptions, Version),     -- ^ additional flags to pass to ghc for haddock-2
- argGhcLibDir :: Flag FilePath,                   -- ^ to find the correct ghc,                              required by haddock-2.
+ argGhcOptions :: Flag (GhcOptions, Version),     -- ^ additional flags to pass to ghc
+ argGhcLibDir :: Flag FilePath,                   -- ^ to find the correct ghc,                              required.
  argTargets :: [FilePath]                         -- ^ modules to process.
 }
 
@@ -169,32 +168,25 @@ haddock pkg_descr lbi suffixes flags = do
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (confHaddock, version, _) <-
       requireProgramVersion verbosity haddockProgram
-        (orLaterVersion (Version [0,6] [])) (withPrograms lbi)
+        (orLaterVersion (Version [2,0] [])) (withPrograms lbi)
 
     -- various sanity checks
-    let isVersion2   = version >= Version [2,0] []
-
     when ( flag haddockHoogle
-           && version >= Version [2] []
            && version < Version [2,2] []) $
          die "haddock 2.0 and 2.1 do not support the --hoogle flag."
 
-    when (flag haddockHscolour && version < Version [0,8] []) $
-         die "haddock --hyperlink-source requires Haddock version 0.8 or later"
-
-    when isVersion2 $ do
-      haddockGhcVersionStr <- rawSystemProgramStdout verbosity confHaddock
-                                ["--ghc-version"]
-      case simpleParse haddockGhcVersionStr of
-        Nothing -> die "Could not get GHC version from Haddock"
-        Just haddockGhcVersion
-          | haddockGhcVersion == ghcVersion -> return ()
-          | otherwise -> die $
-                 "Haddock's internal GHC version must match the configured "
-              ++ "GHC version.\n"
-              ++ "The GHC version is " ++ display ghcVersion ++ " but "
-              ++ "haddock is using GHC version " ++ display haddockGhcVersion
-          where ghcVersion = compilerVersion (compiler lbi)
+    haddockGhcVersionStr <- rawSystemProgramStdout verbosity confHaddock
+                              ["--ghc-version"]
+    case simpleParse haddockGhcVersionStr of
+      Nothing -> die "Could not get GHC version from Haddock"
+      Just haddockGhcVersion
+        | haddockGhcVersion == ghcVersion -> return ()
+        | otherwise -> die $
+               "Haddock's internal GHC version must match the configured "
+            ++ "GHC version.\n"
+            ++ "The GHC version is " ++ display ghcVersion ++ " but "
+            ++ "haddock is using GHC version " ++ display haddockGhcVersion
+        where ghcVersion = compilerVersion (compiler lbi)
 
     -- the tools match the requests, we can proceed
 
@@ -203,7 +195,7 @@ haddock pkg_descr lbi suffixes flags = do
     when (flag haddockHscolour) $ hscolour' pkg_descr lbi suffixes $
          defaultHscolourFlags `mappend` haddockToHscolour flags
 
-    libdirArgs <- getGhcLibDir  verbosity lbi isVersion2
+    libdirArgs <- getGhcLibDir  verbosity lbi
     let commonArgs = mconcat
             [ libdirArgs
             , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
@@ -219,7 +211,7 @@ haddock pkg_descr lbi suffixes flags = do
               let bi = buildInfo exe
               exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
               exeArgs' <- prepareSources verbosity tmp
-                            lbi isVersion2 bi (commonArgs `mappend` exeArgs)
+                            lbi version bi (commonArgs `mappend` exeArgs)
               runHaddock verbosity tmpFileOpts confHaddock exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
@@ -231,7 +223,7 @@ haddock pkg_descr lbi suffixes flags = do
             let bi = libBuildInfo lib
             libArgs  <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
             libArgs' <- prepareSources verbosity tmp
-                          lbi isVersion2 bi (commonArgs `mappend` libArgs)
+                          lbi version bi (commonArgs `mappend` libArgs)
             runHaddock verbosity tmpFileOpts confHaddock libArgs'
         CExe   _ -> when (flag haddockExecutables) $ doExe comp
         CTest  _ -> when (flag haddockTestSuites)  $ doExe comp
@@ -252,11 +244,11 @@ haddock pkg_descr lbi suffixes flags = do
 prepareSources :: Verbosity
                   -> FilePath
                   -> LocalBuildInfo
-                  -> Bool            -- haddock >= 2.0
+                  -> Version
                   -> BuildInfo
                   -> HaddockArgs
                   -> IO HaddockArgs
-prepareSources verbosity tmp lbi isVersion2 bi args@HaddockArgs{argTargets=files} =
+prepareSources verbosity tmp lbi haddockVersion bi args@HaddockArgs{argTargets=files} =
               mapM (mockPP tmp) files >>= \targets -> return args {argTargets=targets}
           where
             mockPP pref file = do
@@ -282,12 +274,15 @@ prepareSources verbosity tmp lbi isVersion2 bi args@HaddockArgs{argTargets=files
                      removeFile targetFile
 
                  return hsFile
-            needsCpp = EnableExtension CPP `elem` allExtensions bi
-            defines | isVersion2 = []
-                    | otherwise  = ["-D__HADDOCK__"]
+            needsCpp             = EnableExtension CPP `elem` allExtensions bi
+            defines              = [haddockVersionMacro]
+            haddockVersionMacro  = "-D__HADDOCK_VERSION__="
+                                   ++ show (v1 * 1000 + v2 * 10 + v3)
+              where
+                [v1, v2, v3] = take 3 $ versionBranch haddockVersion ++ [0,0]
 
---------------------------------------------------------------------------------------------------
--- constributions to HaddockArgs
+-- ------------------------------------------------------------------------------
+-- Contributions to HaddockArgs.
 
 fromFlags :: PathTemplateEnv -> HaddockFlags -> HaddockArgs
 fromFlags env flags =
@@ -431,14 +426,10 @@ getInterfaces verbosity lbi clbi htmlTemplate = do
                }
 
 getGhcLibDir :: Verbosity -> LocalBuildInfo
-             -> Bool -- ^ are we using haddock-2.x ?
              -> IO HaddockArgs
-getGhcLibDir verbosity lbi isVersion2
-    | isVersion2 =
-        do l <- ghcLibDir verbosity lbi
-           return $ mempty { argGhcLibDir = Flag l }
-    | otherwise  =
-        return mempty
+getGhcLibDir verbosity lbi = do
+    l <- ghcLibDir verbosity lbi
+    return $ mempty { argGhcLibDir = Flag l }
 
 ----------------------------------------------------------------------------------------------
 
@@ -473,7 +464,6 @@ renderArgs verbosity tmpFileOpts version args k = do
              let pflag = "--prologue=" ++ prologFileName
              k (pflag : renderPureArgs version args, result)
     where
-      isVersion2 = version >= Version [2,0] []
       outputDir = (unDir $ argOutputDir args)
       result = intercalate ", "
              . map (\o -> outputDir </>
@@ -482,8 +472,7 @@ renderArgs verbosity tmpFileOpts version args k = do
                               Hoogle -> pkgstr <.> "txt")
              $ arg argOutput
             where
-              pkgstr | isVersion2 = display $ packageName pkgid
-                     | otherwise = display pkgid
+              pkgstr = display $ packageName pkgid
               pkgid = arg argPackageName
       arg f = fromFlag $ f args
 
@@ -492,9 +481,8 @@ renderPureArgs version args = concat
     [
      (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
      . fromFlag . argInterfaceFile $ args,
-     (\pname ->   if isVersion2
-                  then ["--optghc=-package-name", "--optghc=" ++ pname]
-                  else ["--package=" ++ pname]) . display . fromFlag . argPackageName $ args,
+     (\pname ->   ["--optghc=-package-name", "--optghc=" ++ pname]
+                  ) . display . fromFlag . argPackageName $ args,
      (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b) . argHideModules $ args,
      bool ["--ignore-all-exports"] [] . getAny . argIgnoreExports $ args,
      maybe [] (\(m,e) -> ["--source-module=" ++ m
@@ -507,10 +495,9 @@ renderPureArgs version args = concat
      (:[]).("--odir="++) . unDir . argOutputDir $ args,
      (:[]).("--title="++) . (bool (++" (internal documentation)") id (getAny $ argIgnoreExports args))
               . fromFlag . argTitle $ args,
-     [ "--optghc=" ++ opt | isVersion2
-                          , (opts, ghcVersion) <- flagToList (argGhcOptions args)
+     [ "--optghc=" ++ opt | (opts, ghcVersion) <- flagToList (argGhcOptions args)
                           , opt <- renderGhcOptions ghcVersion opts ],
-     maybe [] (\l -> ["-B"++l]) $ guard isVersion2 >> flagToMaybe (argGhcLibDir args), -- error if isVersion2 and Nothing?
+     maybe [] (\l -> ["-B"++l]) $ flagToMaybe (argGhcLibDir args), -- error if Nothing?
      argTargets $ args
     ]
     where
@@ -518,7 +505,6 @@ renderPureArgs version args = concat
         map (\(i,mh) -> "--read-interface=" ++
           maybe "" (++",") mh ++ i)
       bool a b c = if c then a else b
-      isVersion2 = version >= Version [2,0] []
       isVersion2_5 = version >= Version [2,5] []
       verbosityFlag
        | isVersion2_5 = "--verbosity=1"

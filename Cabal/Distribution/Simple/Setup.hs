@@ -1143,7 +1143,7 @@ haddockCommand = makeCommand name shortDesc longDesc defaultHaddockFlags options
   where
     name       = "haddock"
     shortDesc  = "Generate Haddock HTML documentation."
-    longDesc   = Just $ \_ -> "Requires the program haddock, either version 0.x or 2.x.\n"
+    longDesc   = Just $ \_ -> "Requires the program haddock, version 2.x.\n"
     options showOrParseArgs =
       [optionVerbosity haddockVerbosity
        (\v flags -> flags { haddockVerbosity = v })
