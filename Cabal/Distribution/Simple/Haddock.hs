@@ -7,9 +7,7 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- This module deals with the @haddock@ and @hscolour@ commands. Sadly this is a
--- rather complicated module. It has to do pre-processing which involves
--- \'unlit\'ing and using @-D__HADDOCK__@ for any source code that uses @cpp@.
+-- This module deals with the @haddock@ and @hscolour@ commands.
 -- It uses information about installed packages (from @ghc-pkg@) to find the
 -- locations of documentation for dependent packages, so it can create links.
 --
@@ -42,8 +40,7 @@ import Distribution.Simple.Program
          ( ConfiguredProgram(..), requireProgramVersion
          , rawSystemProgram, rawSystemProgramStdout
          , hscolourProgram, haddockProgram )
-import Distribution.Simple.PreProcess (ppCpp', ppUnlit
-                                      , PPSuffixHandler, runSimplePreProcessor
+import Distribution.Simple.PreProcess (PPSuffixHandler
                                       , preprocessComponent)
 import Distribution.Simple.Setup
         ( defaultHscolourFlags, Flag(..), toFlag, flagToMaybe, flagToList, fromFlag
@@ -78,15 +75,14 @@ import Distribution.Text
 import Distribution.Verbosity
 import Language.Haskell.Extension
 -- Base
-import System.Directory(removeFile, doesFileExist, createDirectoryIfMissing)
+import System.Directory(doesFileExist)
 
 import Control.Monad ( when, forM_ )
-import Control.Exception (assert)
 import Data.Either   ( rights )
 import Data.Monoid
 import Data.Maybe    ( fromMaybe, listToMaybe )
 
-import System.FilePath((</>), (<.>), splitFileName, splitExtension,
+import System.FilePath((</>), (<.>),
                        normalise, splitPath, joinPath, isAbsolute )
 import System.IO (hClose, hPutStrLn, hSetEncoding, utf8)
 import Distribution.Version
@@ -183,10 +179,9 @@ haddock pkg_descr lbi suffixes flags = do
         doExe com = case (compToExe com) of
           Just exe -> do
             withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $ \tmp -> do
-              let bi = buildInfo exe
-              exeArgs  <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
-              exeArgs' <- prepareSources verbosity tmp
-                            lbi version bi (commonArgs `mappend` exeArgs)
+              exeArgs <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
+                                        version
+              let exeArgs' = commonArgs `mappend` exeArgs
               runHaddock verbosity tmpFileOpts comp confHaddock exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
@@ -195,10 +190,9 @@ haddock pkg_descr lbi suffixes flags = do
       case component of
         CLib lib -> do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $ \tmp -> do
-            let bi = libBuildInfo lib
-            libArgs  <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
-            libArgs' <- prepareSources verbosity tmp
-                          lbi version bi (commonArgs `mappend` libArgs)
+            libArgs <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
+                                   version
+            let libArgs' = commonArgs `mappend` libArgs
             runHaddock verbosity tmpFileOpts comp confHaddock libArgs'
         CExe   _ -> when (flag haddockExecutables) $ doExe component
         CTest  _ -> when (flag haddockTestSuites)  $ doExe component
@@ -214,48 +208,6 @@ haddock pkg_descr lbi suffixes flags = do
     tmpFileOpts   = defaultTempFileOptions { optKeepTempFiles = keepTempFiles }
     flag f        = fromFlag $ f flags
     htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation $ flags
-
--- | performs cpp and unlit preprocessing where needed on the files in
--- | argTargets, which must have an .hs or .lhs extension.
-prepareSources :: Verbosity
-                  -> FilePath
-                  -> LocalBuildInfo
-                  -> Version
-                  -> BuildInfo
-                  -> HaddockArgs
-                  -> IO HaddockArgs
-prepareSources verbosity tmp lbi haddockVersion bi args@HaddockArgs{argTargets=files} =
-              mapM (mockPP tmp) files >>= \targets -> return args {argTargets=targets}
-          where
-            mockPP pref file = do
-                 let (filePref, fileName) = splitFileName file
-                     targetDir  = pref </> filePref
-                     targetFile = targetDir </> fileName
-                     (targetFileNoext, targetFileExt) = splitExtension $ targetFile
-                     hsFile = targetFileNoext <.> "hs"
-
-                 assert (targetFileExt `elem` [".lhs",".hs"]) $ return ()
-
-                 createDirectoryIfMissing True targetDir
-
-                 if needsCpp
-                    then do
-                      runSimplePreProcessor (ppCpp' defines bi lbi)
-                                            file targetFile verbosity
-                    else
-                      copyFileVerbose verbosity file targetFile
-
-                 when (targetFileExt == ".lhs") $ do
-                     runSimplePreProcessor ppUnlit targetFile hsFile verbosity
-                     removeFile targetFile
-
-                 return hsFile
-            needsCpp             = EnableExtension CPP `elem` allExtensions bi
-            defines              = [haddockVersionMacro]
-            haddockVersionMacro  = "-D__HADDOCK_VERSION__="
-                                   ++ show (v1 * 1000 + v2 * 10 + v3)
-              where
-                [v1, v2, v3] = take 3 $ versionBranch haddockVersion ++ [0,0]
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs.
@@ -299,8 +251,9 @@ fromLibrary :: Verbosity
             -> FilePath
             -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
             -> Maybe PathTemplate -- ^ template for HTML location
+            -> Version
             -> IO HaddockArgs
-fromLibrary verbosity tmp lbi lib clbi htmlTemplate = do
+fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
     inFiles <- map snd `fmap` getLibSourceFiles lbi lib
     ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
     let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
@@ -311,7 +264,7 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate = do
                           ghcOptObjDir  = toFlag tmp,
                           ghcOptHiDir   = toFlag tmp,
                           ghcOptStubDir = toFlag tmp
-                      }
+                      } `mappend` getGhcCppOpts haddockVersion bi
         sharedOpts = vanillaOpts {
                          ghcOptDynLinkMode = toFlag GhcDynamicOnly,
                          ghcOptFPic        = toFlag True,
@@ -337,8 +290,9 @@ fromExecutable :: Verbosity
                -> FilePath
                -> LocalBuildInfo -> Executable -> ComponentLocalBuildInfo
                -> Maybe PathTemplate -- ^ template for HTML location
+               -> Version
                -> IO HaddockArgs
-fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
+fromExecutable verbosity tmp lbi exe clbi htmlTemplate haddockVersion = do
     inFiles <- map snd `fmap` getExeSourceFiles lbi exe
     ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
     let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
@@ -349,7 +303,7 @@ fromExecutable verbosity tmp lbi exe clbi htmlTemplate = do
                           ghcOptObjDir  = toFlag tmp,
                           ghcOptHiDir   = toFlag tmp,
                           ghcOptStubDir = toFlag tmp
-                      }
+                      } `mappend` getGhcCppOpts haddockVersion bi
         sharedOpts = vanillaOpts {
                          ghcOptDynLinkMode = toFlag GhcDynamicOnly,
                          ghcOptFPic        = toFlag True,
@@ -401,6 +355,22 @@ getInterfaces verbosity lbi clbi htmlTemplate = do
     return $ mempty {
                  argInterfaces = packageFlags
                }
+
+getGhcCppOpts :: Version
+              -> BuildInfo
+              -> GhcOptions
+getGhcCppOpts haddockVersion bi =
+    mempty {
+        ghcOptExtensions   = [EnableExtension CPP | needsCpp],
+        ghcOptCppOptions   = defines
+    }
+  where
+    needsCpp             = EnableExtension CPP `elem` allExtensions bi
+    defines              = [haddockVersionMacro]
+    haddockVersionMacro  = "-D__HADDOCK_VERSION__="
+                           ++ show (v1 * 1000 + v2 * 10 + v3)
+      where
+        [v1, v2, v3] = take 3 $ versionBranch haddockVersion ++ [0,0]
 
 getGhcLibDir :: Verbosity -> LocalBuildInfo
              -> IO HaddockArgs
