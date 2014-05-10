@@ -11,6 +11,6 @@ description:
     Check that Cabal successfully invokes Haddock.
 
 Library
-    exposed-modules: CPP, Literate, Simple
+    exposed-modules: CPP, Literate, NoCPP, Simple
     other-extensions: CPP
     build-depends: base
