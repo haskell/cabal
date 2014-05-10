@@ -27,7 +27,7 @@ import Distribution.Package
          , PackageName(..), packageName )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
-         ( PackageDescription(..), BuildInfo(..), allExtensions
+         ( PackageDescription(..), BuildInfo(..), usedExtensions
          , Library(..), hasLibs, Executable(..)
          , TestSuite(..), TestSuiteInterface(..)
          , Benchmark(..), BenchmarkInterface(..) )
@@ -365,7 +365,7 @@ getGhcCppOpts haddockVersion bi =
         ghcOptCppOptions   = defines
     }
   where
-    needsCpp             = EnableExtension CPP `elem` allExtensions bi
+    needsCpp             = EnableExtension CPP `elem` usedExtensions bi
     defines              = [haddockVersionMacro]
     haddockVersionMacro  = "-D__HADDOCK_VERSION__="
                            ++ show (v1 * 1000 + v2 * 10 + v3)
