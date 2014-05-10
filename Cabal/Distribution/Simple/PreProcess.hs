@@ -54,10 +54,10 @@ import Distribution.Simple.Utils
          , findFileWithExtension, findFileWithExtension' )
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), programPath
-         , lookupProgram, requireProgram, requireProgramVersion
+         , requireProgram, requireProgramVersion
          , rawSystemProgramConf, rawSystemProgram
          , greencardProgram, cpphsProgram, hsc2hsProgram, c2hsProgram
-         , happyProgram, alexProgram, haddockProgram, ghcProgram, gccProgram )
+         , happyProgram, alexProgram, ghcProgram, gccProgram )
 import Distribution.Simple.Test.LibV09
          ( writeSimpleTestStub, stubFilePath, stubName )
 import Distribution.System
@@ -355,7 +355,6 @@ ppGhcCpp extraArgs _bi lbi =
           -- double-unlitted. In the future we might switch to
           -- using cpphs --unlit instead.
        ++ (if ghcVersion >= Version [6,6] [] then ["-x", "hs"] else [])
-       ++ (if use_optP_P lbi then ["-optP-P"] else [])
        ++ [ "-optP-include", "-optP"++ (autogenModulesDir lbi </> cppHeaderName) ]
        ++ ["-o", outFile, inFile]
        ++ extraArgs
@@ -376,16 +375,6 @@ ppCpphs extraArgs _bi lbi =
              else [])
         ++ extraArgs
   }
-
--- Haddock versions before 0.8 choke on #line and #file pragmas.  Those
--- pragmas are necessary for correct links when we preprocess.  So use
--- -optP-P only if the Haddock version is prior to 0.8.
-use_optP_P :: LocalBuildInfo -> Bool
-use_optP_P lbi
- = case lookupProgram haddockProgram (withPrograms lbi) of
-     Just (ConfiguredProgram { programVersion = Just version })
-       | version >= Version [0,8] [] -> False
-     _                               -> True
 
 ppHsc2hs :: BuildInfo -> LocalBuildInfo -> PreProcessor
 ppHsc2hs bi lbi =
