@@ -83,6 +83,10 @@ extra-source-files:
   tests/PackageTests/CMain/foo.c
   tests/PackageTests/CMain/my.cabal
   tests/PackageTests/EmptyLib/empty/empty.cabal
+  tests/PackageTests/Haddock/CPP.hs
+  tests/PackageTests/Haddock/Literate.lhs
+  tests/PackageTests/Haddock/my.cabal
+  tests/PackageTests/Haddock/Simple.hs
   tests/PackageTests/OrderFlags/Foo.hs
   tests/PackageTests/OrderFlags/my.cabal
   tests/PackageTests/PathsModule/Executable/Main.hs
@@ -258,6 +262,7 @@ test-suite package-tests
     PackageTests.BuildTestSuiteDetailedV09.Check
     PackageTests.CMain.Check
     PackageTests.EmptyLib.Check
+    PackageTests.Haddock.Check
     PackageTests.OrderFlags.Check
     PackageTests.PackageTester
     PackageTests.PathsModule.Executable.Check
