@@ -26,7 +26,7 @@ suite ghcPath = TestCase $ do
     assertHaddockSucceeded hResult
 
     let docFiles = map (haddocksDir </>)
-                       ["CPP.html", "Literate.html", "Simple.html"]
+                       ["CPP.html", "Literate.html", "NoCPP.html", "Simple.html"]
     mapM_ (assertFindInFile "For hiding needles.") docFiles
 
 assertFindInFile :: String -> FilePath -> Assertion
