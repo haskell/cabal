@@ -29,6 +29,7 @@ import PackageTests.TemplateHaskell.Check
 import PackageTests.CMain.Check
 import PackageTests.DeterministicAr.Check
 import PackageTests.EmptyLib.Check
+import PackageTests.Haddock.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
@@ -37,7 +38,8 @@ import PackageTests.OrderFlags.Check
 import Distribution.Compat.Exception (catchIO)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath)
-import Distribution.Simple.Program.Builtin (ghcProgram, ghcPkgProgram)
+import Distribution.Simple.Program.Builtin (ghcProgram, ghcPkgProgram,
+                                            haddockProgram)
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Utils (cabalVersion, die, withFileContents)
 import Distribution.Text (display)
@@ -95,6 +97,7 @@ tests version inplaceSpec ghcPath ghcPkgPath =
         (PackageTests.DeterministicAr.Check.suite ghcPath ghcPkgPath)
     , hunit "EmptyLib/emptyLib"
       (PackageTests.EmptyLib.Check.emptyLib ghcPath)
+    , hunit "Haddock" (PackageTests.Haddock.Check.suite ghcPath)
     , hunit "BuildTestSuiteDetailedV09"
       (PackageTests.BuildTestSuiteDetailedV09.Check.suite inplaceSpec ghcPath)
     , hunit "OrderFlags"
@@ -142,10 +145,13 @@ main = do
     lbi <- getPersistBuildConfig_ ("dist" </> "setup-config")
     (ghc, _) <- requireProgram normal ghcProgram (withPrograms lbi)
     (ghcPkg, _) <- requireProgram normal ghcPkgProgram (withPrograms lbi)
+    (haddock, _) <- requireProgram normal haddockProgram (withPrograms lbi)
     let ghcPath = programPath ghc
         ghcPkgPath = programPath ghcPkg
+        haddockPath = programPath haddock
     putStrLn $ "Using ghc: " ++ ghcPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
+    putStrLn $ "Using haddock: " ++ haddockPath
     setCurrentDirectory "tests"
     -- Create a shared Setup executable to speed up Simple tests
     compileSetup "." ghcPath
