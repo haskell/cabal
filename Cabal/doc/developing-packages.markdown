@@ -1390,6 +1390,10 @@ values for these fields.
 `extra-libraries:` _token list_
 :   A list of extra libraries to link with.
 
+`extra-ghci-libraries:` _token list_
+:   A list of extra libraries to be used instead of 'extra-libraries' when
+    the package is loaded with GHCi.
+
 `extra-lib-dirs:` _directory list_
 :   A list of directories to search for libraries.
 
