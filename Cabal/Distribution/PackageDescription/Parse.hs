@@ -423,6 +423,9 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "extra-libraries"
            showToken          parseTokenQ
            extraLibs          (\xs    binfo -> binfo{extraLibs=xs})
+ , listFieldWithSep vcat "extra-ghci-libraries"
+           showToken          parseTokenQ
+           extraGHCiLibs      (\xs    binfo -> binfo{extraGHCiLibs=xs})
  , listField   "extra-lib-dirs"
            showFilePath       parseFilePathQ
            extraLibDirs       (\xs    binfo -> binfo{extraLibDirs=xs})
