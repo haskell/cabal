@@ -132,9 +132,9 @@ expose verbosity hcPkg packagedb pkgid =
     (exposeInvocation hcPkg verbosity packagedb pkgid)
 
 
--- | Call @hc-pkg@ to expose a package.
+-- | Call @hc-pkg@ to hide a package.
 --
--- > hc-pkg expose [pkgid] [--user | --global | --package-db]
+-- > hc-pkg hide [pkgid] [--user | --global | --package-db]
 --
 hide :: Verbosity -> ConfiguredProgram -> PackageDB -> PackageId -> IO ()
 hide verbosity hcPkg packagedb pkgid =
