@@ -189,7 +189,7 @@ fetch_pkg () {
     ${CURL} -L --fail -O ${URL} || die "Failed to download ${PKG}."
   elif which ${WGET} > /dev/null
   then
-    ${WGET} --no-check-certificate -c ${URL} || die "Failed to download ${PKG}."
+    ${WGET} -c ${URL} || die "Failed to download ${PKG}."
   elif which ${FETCH} > /dev/null
     then
       ${FETCH} ${URL} || die "Failed to download ${PKG}."
