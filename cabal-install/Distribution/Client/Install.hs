@@ -1048,8 +1048,8 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
         -- now cannot build, we mark as failing due to 'DependentFailed'
         -- which kind of means it was not their fault.
 
-    -- Print last 10 lines of the build log if something went wrong, and
-    -- 'Installed $PKGID' otherwise.
+    -- Print build log if something went wrong, and 'Installed $PKGID'
+    -- otherwise.
     printBuildResult :: PackageId -> BuildResult -> IO ()
     printBuildResult pkgid buildResult = case buildResult of
         (Right _) -> notice verbosity $ "Installed " ++ display pkgid
@@ -1060,17 +1060,11 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
               Nothing                 -> return ()
               Just (mkLogFileName, _) -> do
                 let logName = mkLogFileName pkgid
-                    n       = 10
-                putStr $ "Last " ++ (show n)
-                  ++ " lines of the build log ( " ++ logName ++ " ):\n"
-                printLastNLines logName n
+                putStr $ "Build log ( " ++ logName ++ " ):\n"
+                printFile logName
 
-    printLastNLines :: FilePath -> Int -> IO ()
-    printLastNLines path n = do
-      lns <- fmap lines $ readFile path
-      let len = length lns
-      let toDrop = if (len > n && n > 0) then (len - n) else 0
-      mapM_ putStrLn (drop toDrop lns)
+    printFile :: FilePath -> IO ()
+    printFile path = readFile path >>= putStr
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ReadyPackage'. In particular the
