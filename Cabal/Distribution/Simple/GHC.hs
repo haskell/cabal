@@ -1207,10 +1207,10 @@ componentCcGhcOptions verbosity lbi bi clbi pref filename =
                                    ++ PD.includeDirs bi,
       ghcOptPackageDBs     = withPackageDB lbi,
       ghcOptPackages       = componentPackageDeps clbi,
-      ghcOptCcOptions      = PD.ccOptions bi
-                             ++ case withOptimization lbi of
+      ghcOptCcOptions      = (case withOptimization lbi of
                                   NoOptimisation -> []
-                                  _              -> ["-O2"],
+                                  _              -> ["-O2"]) ++
+                                  PD.ccOptions bi,
       ghcOptObjDir         = toFlag odir
     }
   where
