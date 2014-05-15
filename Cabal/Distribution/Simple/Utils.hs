@@ -24,6 +24,7 @@ module Distribution.Simple.Utils (
         topHandler, topHandlerWith,
         warn, notice, setupMessage, info, debug,
         debugNoWrap, chattyTry,
+        printRawCommandAndArgs,
 
         -- * running programs
         rawSystemExit,
