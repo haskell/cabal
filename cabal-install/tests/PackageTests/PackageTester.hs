@@ -39,10 +39,10 @@ import System.Process (runProcess, waitForProcess)
 import Test.HUnit (Assertion, assertFailure)
 
 import Distribution.Simple.BuildPaths (exeExtension)
+import Distribution.Simple.Utils (printRawCommandAndArgs)
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.ReadE (readEOrFail)
-import Distribution.Verbosity (Verbosity, deafening, flagToVerbosity, normal,
-                               verbose)
+import Distribution.Verbosity (Verbosity, flagToVerbosity, normal)
 
 data Success = Failure
              -- | ConfigureSuccess
@@ -114,13 +114,6 @@ run cwd path args = do
             else do
                 c <- hGetChar h
                 suckH (c:output) h
-
--- Copied from Distribution/Simple/Utils.hs
-printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
-printRawCommandAndArgs verbosity path args
-    | verbosity >= deafening = print (path, args)
-    | verbosity >= verbose   = putStrLn $ unwords (path : args)
-    | otherwise              = return ()
 
 ------------------------------------------------------------------------
 -- * Test helpers
