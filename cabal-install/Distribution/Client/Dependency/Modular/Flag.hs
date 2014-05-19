@@ -25,9 +25,10 @@ type Flag = FlagName
 unFlag :: Flag -> String
 unFlag (FlagName fn) = fn
 
--- | Flag info. Default value, and whether the flag is manual.
--- Manual flags can only be set explicitly.
-data FInfo = FInfo { fdefault :: Bool, fmanual :: Bool }
+-- | Flag info. Default value, whether the flag is manual, and
+-- whether the flag is weak. Manual flags can only be set explicitly.
+-- Weak flags are typically deferred by the solver.
+data FInfo = FInfo { fdefault :: Bool, fmanual :: Bool, fweak :: Bool }
   deriving (Eq, Ord, Show)
 
 -- | Flag defaults.

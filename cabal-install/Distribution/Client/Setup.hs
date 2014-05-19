@@ -437,6 +437,7 @@ data FetchFlags = FetchFlags {
       fetchReorderGoals     :: Flag Bool,
       fetchIndependentGoals :: Flag Bool,
       fetchShadowPkgs       :: Flag Bool,
+      fetchStrongFlags      :: Flag Bool,
       fetchVerbosity :: Flag Verbosity
     }
 
@@ -450,6 +451,7 @@ defaultFetchFlags = FetchFlags {
     fetchReorderGoals     = Flag False,
     fetchIndependentGoals = Flag False,
     fetchShadowPkgs       = Flag False,
+    fetchStrongFlags      = Flag False,
     fetchVerbosity = toFlag normal
    }
 
@@ -491,6 +493,7 @@ fetchCommand = CommandUI {
                          fetchReorderGoals     (\v flags -> flags { fetchReorderGoals     = v })
                          fetchIndependentGoals (\v flags -> flags { fetchIndependentGoals = v })
                          fetchShadowPkgs       (\v flags -> flags { fetchShadowPkgs       = v })
+                         fetchStrongFlags      (\v flags -> flags { fetchStrongFlags      = v })
 
   }
 
@@ -784,6 +787,7 @@ data InstallFlags = InstallFlags {
     installReorderGoals     :: Flag Bool,
     installIndependentGoals :: Flag Bool,
     installShadowPkgs       :: Flag Bool,
+    installStrongFlags      :: Flag Bool,
     installReinstall        :: Flag Bool,
     installAvoidReinstalls  :: Flag Bool,
     installOverrideReinstall :: Flag Bool,
@@ -808,6 +812,7 @@ defaultInstallFlags = InstallFlags {
     installReorderGoals    = Flag False,
     installIndependentGoals= Flag False,
     installShadowPkgs      = Flag False,
+    installStrongFlags     = Flag False,
     installReinstall       = Flag False,
     installAvoidReinstalls = Flag False,
     installOverrideReinstall = Flag False,
@@ -909,7 +914,8 @@ installOptions showOrParseArgs =
                         installMaxBackjumps     (\v flags -> flags { installMaxBackjumps     = v })
                         installReorderGoals     (\v flags -> flags { installReorderGoals     = v })
                         installIndependentGoals (\v flags -> flags { installIndependentGoals = v })
-                        installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v }) ++
+                        installShadowPkgs       (\v flags -> flags { installShadowPkgs       = v })
+                        installStrongFlags      (\v flags -> flags { installStrongFlags      = v }) ++
 
       [ option [] ["reinstall"]
           "Install even if it means installing the same version again."
@@ -1004,6 +1010,7 @@ instance Monoid InstallFlags where
     installReorderGoals    = mempty,
     installIndependentGoals= mempty,
     installShadowPkgs      = mempty,
+    installStrongFlags     = mempty,
     installOnly            = mempty,
     installOnlyDeps        = mempty,
     installRootCmd         = mempty,
@@ -1026,6 +1033,7 @@ instance Monoid InstallFlags where
     installReorderGoals    = combine installReorderGoals,
     installIndependentGoals= combine installIndependentGoals,
     installShadowPkgs      = combine installShadowPkgs,
+    installStrongFlags     = combine installStrongFlags,
     installOnly            = combine installOnly,
     installOnlyDeps        = combine installOnlyDeps,
     installRootCmd         = combine installRootCmd,
@@ -1479,8 +1487,9 @@ optionSolverFlags :: ShowOrParseArgs
                   -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
                   -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
                   -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
+                  -> (flags -> Flag Bool  ) -> (Flag Bool   -> flags -> flags)
                   -> [OptionField flags]
-optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip setsip =
+optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip setsip getstrfl setstrfl =
   [ option [] ["max-backjumps"]
       ("Maximum number of backjumps allowed while solving (default: " ++ show defaultMaxBackjumps ++ "). Use a negative number to enable unlimited backtracking. Use 0 to disable backtracking completely.")
       getmbj setmbj
@@ -1501,7 +1510,11 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
   , option [] ["shadow-installed-packages"]
       "If multiple package instances of the same version are installed, treat all but one as shadowed."
       getsip setsip
-      trueArg
+      (yesNoOpt showOrParseArgs)
+  , option [] ["strong-flags"]
+      "Do not defer flag choices (this used to be the default in cabal-install <= 1.20)."
+      getstrfl setstrfl
+      (yesNoOpt showOrParseArgs)
   ]
 
 
