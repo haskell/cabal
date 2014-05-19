@@ -138,7 +138,7 @@ enforceManualFlags = trav go
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
       let c = toConflictSet (Goal (F qfn) gr)
       in  case span isDisabled (P.toList ts) of
-            (_ , [])     -> P.fromList []
+            (xs, [])     -> P.fromList xs -- everything's already disabled, leave everything as is
             (xs, y : ys) -> P.fromList (xs ++ y : L.map (\ (b, _) -> (b, Fail c ManualFlag)) ys)
       where
         isDisabled (_, Fail _ _) = True
