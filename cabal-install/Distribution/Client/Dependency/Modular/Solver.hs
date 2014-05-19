@@ -21,6 +21,7 @@ data SolverConfig = SolverConfig {
   independentGoals      :: Bool,
   avoidReinstalls       :: Bool,
   shadowPkgs            :: Bool,
+  strongFlags           :: Bool,
   maxBackjumps          :: Maybe Int
 }
 
@@ -40,10 +41,11 @@ solve sc idx userPrefs userConstraints userGoals =
   where
     explorePhase     = exploreTreeLog . backjump
     heuristicsPhase  = P.firstGoal . -- after doing goal-choice heuristics, commit to the first choice (saves space)
-                       P.deferAllFlagChoices .
+                       P.deferWeakFlagChoices .
+                       P.preferBaseGoalChoice .
                        if preferEasyGoalChoices sc
-                         then P.preferBaseGoalChoice . P.lpreferEasyGoalChoices
-                         else P.preferBaseGoalChoice
+                         then P.lpreferEasyGoalChoices
+                         else id
     preferencesPhase = P.preferPackagePreferences userPrefs
     validationPhase  = P.enforceManualFlags . -- can only be done after user constraints
                        P.enforcePackageConstraints userConstraints .
