@@ -46,6 +46,9 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
     go :: RevDepMap -> PSQ OpenGoal () -> [OpenGoal] -> BuildState
     go g o []                                             = s { rdeps = g, open = o }
     go g o (ng@(OpenGoal (Flagged _ _ _ _)    _gr) : ngs) = go g (cons ng () o) ngs
+      -- Note: for 'Flagged' goals, we always insert, so later additions win.
+      -- This is important, because in general, if a goal is inserted twice,
+      -- the later addition will have better dependency information.
     go g o (ng@(OpenGoal (Stanza  _   _  )    _gr) : ngs) = go g (cons ng () o) ngs
     go g o (ng@(OpenGoal (Simple (Dep qpn _)) _gr) : ngs)
       | qpn == qpn'                                       = go                       g              o  ngs
@@ -69,11 +72,30 @@ scopedExtendOpen :: QPN -> I -> QGoalReasonChain -> FlaggedDeps PN -> FlagInfo -
 scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
   where
     sc     = scope s
+    -- Qualify all package names
     qfdeps = L.map (fmap (qualify sc)) fdeps -- qualify all the package names
+    -- Introduce all package flags
     qfdefs = L.map (\ (fn, b) -> Flagged (FN (PI qpn i) fn) b [] []) $ M.toList fdefs
-    gs     = L.map (flip OpenGoal gr) (qfdeps ++ qfdefs)
+    -- Combine new package and flag goals
+    gs     = L.map (flip OpenGoal gr) (qfdefs ++ qfdeps)
+    -- IMPORTANT AND SUBTLE: The order of the concatenation above is
+    -- important. Flags occur potentially multiple times: both via the
+    -- flag declaration ('qfdefs') and via dependencies ('qfdeps').
+    -- We want the information from qfdeps if it's present, because that
+    -- includes dependencies between flags. We use qfdefs mainly so that
+    -- we are forced to make choices for flags that don't affect
+    -- dependencies at all.
+    --
+    -- When goals are actually extended in 'extendOpen', later additions
+    -- override earlier additions, so it's important that the
+    -- lower-quality templates without dependency information come first.
 
-data BuildType = Goals | OneGoal OpenGoal | Instance QPN I PInfo QGoalReasonChain
+-- | Datatype that encodes what to build next
+data BuildType =
+    Goals                                  -- ^ build a goal choice node
+  | OneGoal OpenGoal                       -- ^ build a node for this goal
+  | Instance QPN I PInfo QGoalReasonChain  -- ^ build a tree for a concrete instance
+  deriving Show
 
 build :: BuildState -> Tree (QGoalReasonChain, Scope)
 build = ana go
