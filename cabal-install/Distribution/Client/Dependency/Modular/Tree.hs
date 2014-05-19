@@ -15,7 +15,7 @@ import Distribution.Client.Dependency.Modular.Version
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
     PChoice     QPN a           (PSQ I        (Tree a))
-  | FChoice     QFN a Bool Bool (PSQ Bool     (Tree a)) -- Bool indicates whether it's trivial, second Bool whether it's manual
+  | FChoice     QFN a Bool Bool (PSQ Bool     (Tree a)) -- Bool indicates whether it's weak/trivial, second Bool whether it's manual
   | SChoice     QSN a Bool      (PSQ Bool     (Tree a)) -- Bool indicates whether it's trivial
   | GoalChoice                  (PSQ OpenGoal (Tree a)) -- PSQ should never be empty
   | Done        RevDepMap
@@ -24,6 +24,11 @@ data Tree a =
   -- Above, a choice is called trivial if it clearly does not matter. The
   -- special case of triviality we actually consider is if there are no new
   -- dependencies introduced by this node.
+  --
+  -- A (flag) choice is called weak if we do want to defer it. This is the
+  -- case for flags that should be implied by what's currently installed on
+  -- the system, as opposed to flags that are used to explicitly enable or
+  -- disable some functionality.
 
 instance Functor Tree where
   fmap  f (PChoice qpn i     xs) = PChoice qpn (f i)     (fmap (fmap f) xs)
