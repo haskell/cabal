@@ -241,10 +241,11 @@ preferEasyGoalChoices = trav go
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing choices) xs)
     go x                = x
 
--- | Transformation that tries to avoid making inconsequential
--- flag choices early.
-deferDefaultFlagChoices :: Tree a -> Tree a
-deferDefaultFlagChoices = trav go
+-- | Transformation that tries to avoid making weak flag choices early.
+-- Weak flags are trivial flags (not influencing dependencies) or such
+-- flags that are explicitly declared to be weak in the index.
+deferWeakFlagChoices :: Tree a -> Tree a
+deferWeakFlagChoices = trav go
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy defer xs)
     go x                = x
