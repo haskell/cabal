@@ -1,9 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
-module Distribution.Compat.CreatePipe (createPipe, tee) where
+module Distribution.Compat.CreatePipe (createPipe) where
 
-import Control.Concurrent (forkIO)
-import Control.Monad (forM_, when)
-import System.IO (Handle, hClose, hGetContents, hPutStr)
+import System.IO (Handle)
 
 -- The mingw32_HOST_OS CPP macro is GHC-specific
 #if mingw32_HOST_OS
@@ -55,21 +53,3 @@ createPipe = do
     writeh <- fdToHandle writefd
     return (readh, writeh)
 #endif
-
--- | Copy the contents of the input handle to the output handles, like
--- the Unix command. The input handle is processed in another thread until
--- EOF is reached; 'tee' returns immediately. The 'Bool' with each output
--- handle indicates if it should be closed when EOF is reached.
--- Synchronization can be achieved by blocking on an output handle.
-tee :: Handle -- ^ input
-    -> [(Handle, Bool)] -- ^ output, close?
-    -> IO ()
-tee inH outHs = do
-    -- 'hGetContents' might cause text decoding errors on binary streams that
-    -- are not text. It might be better to read into a buffer with 'hGetBuf'
-    -- that does no text decoding, but that seems to block all threads on
-    -- Windows. This is much simpler.
-    str <- hGetContents inH
-    forM_ outHs $ \(h, close) -> forkIO $ do
-        hPutStr h str
-        when close $ hClose h
