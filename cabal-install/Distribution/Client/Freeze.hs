@@ -156,6 +156,8 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . setShadowPkgs shadowPkgs
 
+      . setStrongFlags strongFlags
+
       . addConstraints
           [ PackageConstraintStanzas (pkgSpecifierTarget pkgSpecifier) stanzas
           | pkgSpecifier <- pkgSpecifiers ]
@@ -176,6 +178,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
     reorderGoals     = fromFlag (freezeReorderGoals     freezeFlags)
     independentGoals = fromFlag (freezeIndependentGoals freezeFlags)
     shadowPkgs       = fromFlag (freezeShadowPkgs       freezeFlags)
+    strongFlags      = fromFlag (freezeStrongFlags      freezeFlags)
     maxBackjumps     = fromFlag (freezeMaxBackjumps     freezeFlags)
 
 

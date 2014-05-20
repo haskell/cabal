@@ -154,6 +154,8 @@ planPackages verbosity comp platform fetchFlags
 
       . setShadowPkgs shadowPkgs
 
+      . setStrongFlags strongFlags
+
         -- Reinstall the targets given on the command line so that the dep
         -- resolver will decide that they need fetching, even if they're
         -- already installed. Since we want to get the source packages of
@@ -168,6 +170,7 @@ planPackages verbosity comp platform fetchFlags
     reorderGoals     = fromFlag (fetchReorderGoals     fetchFlags)
     independentGoals = fromFlag (fetchIndependentGoals fetchFlags)
     shadowPkgs       = fromFlag (fetchShadowPkgs       fetchFlags)
+    strongFlags      = fromFlag (fetchStrongFlags      fetchFlags)
     maxBackjumps     = fromFlag (fetchMaxBackjumps     fetchFlags)
 
 

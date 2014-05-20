@@ -127,8 +127,8 @@ build = ana go
     -- that is indicated by the flag default.
     --
     -- TODO: Should we include the flag default in the tree?
-    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m) t f) gr) }) =
-      FChoiceF qfn (gr, sc) trivial m (P.fromList (reorder b
+    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
+      FChoiceF qfn (gr, sc) (w || trivial) m (P.fromList (reorder b
         [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True  : gr)) t) bs) { next = Goals }),
          (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False : gr)) f) bs) { next = Goals })]))
       where

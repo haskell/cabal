@@ -32,10 +32,10 @@ import Distribution.Client.Dependency.Modular.Version
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerId -> Bool ->
+convPIs :: OS -> Arch -> CompilerId -> Bool -> Bool ->
            SI.PackageIndex -> CI.PackageIndex SourcePackage -> Index
-convPIs os arch cid sip iidx sidx =
-  mkIndex (convIPI' sip iidx ++ convSPI' os arch cid sidx)
+convPIs os arch cid sip strfl iidx sidx =
+  mkIndex (convIPI' sip iidx ++ convSPI' os arch cid strfl sidx)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -82,19 +82,19 @@ convIPId pn' idx ipid =
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
-convSPI' :: OS -> Arch -> CompilerId ->
+convSPI' :: OS -> Arch -> CompilerId -> Bool ->
             CI.PackageIndex SourcePackage -> [(PN, I, PInfo)]
-convSPI' os arch cid = L.map (convSP os arch cid) . CI.allPackages
+convSPI' os arch cid strfl = L.map (convSP os arch cid strfl) . CI.allPackages
 
-convSPI :: OS -> Arch -> CompilerId ->
+convSPI :: OS -> Arch -> CompilerId -> Bool ->
            CI.PackageIndex SourcePackage -> Index
-convSPI os arch cid = mkIndex . convSPI' os arch cid
+convSPI os arch cid strfl = mkIndex . convSPI' os arch cid strfl
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerId -> SourcePackage -> (PN, I, PInfo)
-convSP os arch cid (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+convSP :: OS -> Arch -> CompilerId -> Bool -> SourcePackage -> (PN, I, PInfo)
+convSP os arch cid strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
-  in  (pn, i, convGPD os arch cid (PI pn i) gpd)
+  in  (pn, i, convGPD os arch cid strfl (PI pn i) gpd)
 
 -- We do not use 'flattenPackageDescription' or 'finalizePackageDescription'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
@@ -104,12 +104,12 @@ convSP os arch cid (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 --
 -- TODO: We currently just take all dependencies from all specified library,
 -- executable and test components. This does not quite seem fair.
-convGPD :: OS -> Arch -> CompilerId ->
+convGPD :: OS -> Arch -> CompilerId -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch cid pi
+convGPD os arch cid strfl pi
         (GenericPackageDescription _ flags libs exes tests benchs) =
   let
-    fds = flagInfo flags
+    fds = flagInfo strfl flags
   in
     PInfo
       (maybe []    (convCondTree os arch cid pi fds (const True)          ) libs    ++
@@ -126,9 +126,10 @@ prefix :: (FlaggedDeps qpn -> FlaggedDep qpn) -> [FlaggedDeps qpn] -> FlaggedDep
 prefix _ []  = []
 prefix f fds = [f (concat fds)]
 
--- | Convert flag information.
-flagInfo :: [PD.Flag] -> FlagInfo
-flagInfo = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m))
+-- | Convert flag information. Automatic flags are now considered weak
+-- unless strong flags have been selected explicitly.
+flagInfo :: Bool -> [PD.Flag] -> FlagInfo
+flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
 
 -- | Convert condition trees to flagged dependencies.
 convCondTree :: OS -> Arch -> CompilerId -> PI PN -> FlagInfo ->
@@ -164,7 +165,7 @@ convBranch os arch cid@(CompilerId cf cv) pi fds p (c', t', mf') =
     go (CNot c)    t f = go c f t
     go (CAnd c d)  t f = go c (go d t f) f
     go (COr  c d)  t f = go c t (go d t f)
-    go (Var (Flag fn)) t f = [Flagged (FN pi fn) (fds ! fn) t f]
+    go (Var (Flag fn)) t f = extractCommon t f ++ [Flagged (FN pi fn) (fds ! fn) t f]
     go (Var (OS os')) t f
       | os == os'      = t
       | otherwise      = f
@@ -174,6 +175,14 @@ convBranch os arch cid@(CompilerId cf cv) pi fds p (c', t', mf') =
     go (Var (Impl cf' cvr')) t f
       | cf == cf' && checkVR cvr' cv = t
       | otherwise      = f
+
+    -- If both branches contain the same package as a simple dep, we lift it to
+    -- the next higher-level, but without constraints. This heuristic together
+    -- with deferring flag choices will then usually first resolve this package,
+    -- and try an already installed version before imposing a default flag choice
+    -- that might not be what we want.
+    extractCommon :: FlaggedDeps PN -> FlaggedDeps PN -> FlaggedDeps PN
+    extractCommon ps ps' = [ D.Simple (Dep pn (Constrained [])) | D.Simple (Dep pn _) <- ps, D.Simple (Dep pn' _) <- ps', pn == pn' ]
 
 -- | Convert a Cabal dependency to a solver-specific dependency.
 convDep :: PN -> Dependency -> Dep PN
