@@ -18,7 +18,7 @@ module Distribution.Client.Freeze (
 import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Types
 import Distribution.Client.Targets
-import Distribution.Client.Dependency hiding ( addConstraints )
+import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
@@ -41,7 +41,7 @@ import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( fromFlag )
+         ( fromFlag, fromFlagOrDefault )
 import Distribution.Simple.Utils
          ( die, notice, debug, writeFileAtomic )
 import Distribution.System
@@ -156,11 +156,22 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
       . setShadowPkgs shadowPkgs
 
+      . addConstraints
+          [ PackageConstraintStanzas (pkgSpecifierTarget pkgSpecifier) stanzas
+          | pkgSpecifier <- pkgSpecifiers ]
+
       . maybe id applySandboxInstallPolicy mSandboxPkgInfo
 
       $ standardInstallPolicy installedPkgIndex sourcePkgDb pkgSpecifiers
 
     logMsg message rest = debug verbosity message >> rest
+
+    stanzas = concat
+        [ if testsEnabled      then [TestStanzas]  else []
+        , if benchmarksEnabled then [BenchStanzas] else []
+        ]
+    testsEnabled      = fromFlagOrDefault False $ freezeTests freezeFlags
+    benchmarksEnabled = fromFlagOrDefault False $ freezeBenchmarks freezeFlags
 
     reorderGoals     = fromFlag (freezeReorderGoals     freezeFlags)
     independentGoals = fromFlag (freezeIndependentGoals freezeFlags)
@@ -189,10 +200,11 @@ pruneInstallPlan installPlan pkgSpecifiers =
 
 freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()
 freezePackages verbosity pkgs = do
-    pkgEnv <- fmap (createPkgEnv . addConstraints) $ loadUserConfig verbosity ""
+    pkgEnv <- fmap (createPkgEnv . addFrozenConstraints) $
+                   loadUserConfig verbosity ""
     writeFileAtomic userPackageEnvironmentFile $ showPkgEnv pkgEnv
   where
-    addConstraints config =
+    addFrozenConstraints config =
         config {
             savedConfigureExFlags = (savedConfigureExFlags config) {
                 configExConstraints = constraints pkgs
