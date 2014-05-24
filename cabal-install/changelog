@@ -1,5 +1,10 @@
 -*-change-log-*-
 
+1.18.0.4 Johan Tibell <johan.tibell@gmail.com> May 2014
+	* Increase max-backjumps to 2000.
+	* Fix solver bug which led to missed install plans.
+	* Tweak solver heuristics to avoid reinstalls.
+
 0.14.0 Andres Loeh <andres@well-typed.com> April 2012
 	* Works with ghc-7.4
 	* Completely new modular dependency solver (default in most cases)
