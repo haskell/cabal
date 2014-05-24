@@ -1,5 +1,16 @@
 -*-change-log-*-
 
+1.20.0.2 Johan Tibell <johan.tibell@gmail.com> May 2014
+	* Increase max-backjumps to 2000.
+	* Fix solver bug which led to missed install plans.
+	* Fix streaming test output.
+	* Tweak solver heuristics to avoid reinstalls.
+
+1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
+	* Fix cabal repl search path bug on Windows
+	* Include OS and arch in cabal-install user agent
+	* Revert --constraint flag behavior in configure to 1.18 behavior
+
 1.20.0.0 Johan Tibell <johan.tibell@gmail.com> April 2014
 	* Build only selected executables
 	* Add -j flag to build/test/bench/run
