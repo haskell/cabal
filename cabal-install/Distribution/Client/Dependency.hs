@@ -422,7 +422,7 @@ resolveDependencies platform comp  solver params =
       noReinstalls
       shadowing
       strFlags
-      maxBkjumps      = dontUpgradeNonUpgradeablePackages
+      maxBkjumps      = dontUpgradeBasePackage
                       -- TODO:
                       -- The modular solver can properly deal with broken
                       -- packages and won't select them. So the
