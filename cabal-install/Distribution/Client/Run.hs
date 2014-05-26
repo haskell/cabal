@@ -17,7 +17,7 @@ import Distribution.PackageDescription       (Executable (..),
 import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Distribution.Simple.BuildPaths        (exeExtension)
 import Distribution.Simple.LocalBuildInfo    (LocalBuildInfo (..))
-import Distribution.Simple.Utils             (die, rawSystemExitWithEnv)
+import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv)
 import Distribution.Verbosity                (Verbosity)
 
 import Data.Functor                          ((<$>))
@@ -61,4 +61,5 @@ run verbosity lbi exe exeArgs = do
   path <- tryCanonicalizePath $
           buildPref </> exeName exe </> (exeName exe <.> exeExtension)
   env  <- (dataDirEnvVar:) <$> getEnvironment
+  notice verbosity $ "Running " ++ exeName exe ++ "..."
   rawSystemExitWithEnv verbosity path exeArgs env
