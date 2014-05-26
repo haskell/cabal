@@ -17,7 +17,7 @@ import Distribution.PackageDescription       (Executable (..),
 import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Distribution.Simple.BuildPaths        (exeExtension)
 import Distribution.Simple.LocalBuildInfo    (LocalBuildInfo (..))
-import Distribution.Simple.Utils             (die, rawSystemExitWithEnv)
+import Distribution.Simple.Utils             (die, rawSystemExitWithEnv, notice)
 import Distribution.Verbosity                (Verbosity)
 
 import Data.Functor                          ((<$>))
