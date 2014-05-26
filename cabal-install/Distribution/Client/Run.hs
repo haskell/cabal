@@ -10,7 +10,7 @@
 module Distribution.Client.Run ( run, splitRunArgs )
        where
 
-import Distribution.Client.Utils             (tryCanonicalizePath)
+import Distribution.Client.Utils             (tryCanonicalizePath, notice)
 
 import Distribution.PackageDescription       (Executable (..),
                                               PackageDescription (..))
@@ -61,4 +61,5 @@ run verbosity lbi exe exeArgs = do
   path <- tryCanonicalizePath $
           buildPref </> exeName exe </> (exeName exe <.> exeExtension)
   env  <- (dataDirEnvVar:) <$> getEnvironment
+  notice verbosity $ "Running " ++ exeName exe ++ "..."
   rawSystemExitWithEnv verbosity path exeArgs env
