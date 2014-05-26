@@ -66,13 +66,14 @@ import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), withAllComponentsInBuildOrder )
 import Distribution.Simple.BuildPaths ( autogenModuleName )
 import Distribution.Simple.Program ( defaultProgramConfiguration, requireProgram,
-                              rawSystemProgram, tarProgram )
+                                     runProgram, programProperties, tarProgram )
 import Distribution.Text
          ( display )
 
 import Control.Monad(when, unless, forM)
 import Data.Char (toLower)
 import Data.List (partition, isPrefixOf)
+import qualified Data.Map as Map
 import Data.Maybe (isNothing, catMaybes)
 import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
@@ -411,13 +412,16 @@ createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
 
   (tarProg, _) <- requireProgram verbosity tarProgram
                     (maybe defaultProgramConfiguration withPrograms mb_lbi)
-
-   -- Hmm: I could well be skating on thinner ice here by using the -C option
-   -- (=> GNU tar-specific?)  [The prev. solution used pipes and sub-command
-   -- sequences to set up the paths correctly, which is problematic in a Windows
-   -- setting.]
-  rawSystemProgram verbosity tarProg
-           ["-czf", tarBallFilePath, "-C", tmpDir, tarBallName pkg_descr]
+  let tarProgSupportsFormatOpt = maybe False (== "YES") $
+                                 Map.lookup "Supports --format"
+                                 (programProperties tarProg)
+  runProgram verbosity tarProg
+    . (if tarProgSupportsFormatOpt then (++) ["--format", "ustar"] else id)
+    -- Hmm: I could well be skating on thinner ice here by using the -C option
+    -- (=> seems to be supported at least by GNU and *BSD tar) [The
+    -- prev. solution used pipes and sub-command sequences to set up the paths
+    -- correctly, which is problematic in a Windows setting.]
+    $ ["-czf", tarBallFilePath, "-C", tmpDir, tarBallName pkg_descr]
   return tarBallFilePath
 
 -- | Given a buildinfo, return the names of all source files.
