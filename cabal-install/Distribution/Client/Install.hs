@@ -841,7 +841,8 @@ printBuildFailures plan =
     maybeOOM _        = ""
 #else
     maybeOOM e                    = maybe "" onExitFailure (fromException e)
-    onExitFailure (ExitFailure 9) =
+    onExitFailure (ExitFailure n)
+      | n == 9 || n == -9         =
       "\nThis may be due to an out-of-memory condition."
     onExitFailure _               = ""
 #endif
