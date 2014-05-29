@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
+	* Fix streaming test output.
+
 1.20.0.0 Johan Tibell <johan.tibell@gmail.com> April 2014
 	* Rewrite user guide
 	* Fix repl Ctrl+C handling
