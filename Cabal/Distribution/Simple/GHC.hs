@@ -692,7 +692,8 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
       (Platform _hostArch hostOS) = hostPlatform lbi
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  let runGhcProg = runGHC verbosity ghcProg comp
+  (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
+  let runGhcProg = runGHC verbosity ghcProg gccProg comp
 
   libBi <- hackThreadedFlag verbosity
              comp (withProfLib lbi) (libBuildInfo lib)
@@ -905,7 +906,8 @@ startInterpreter verbosity conf comp packageDBs = do
         }
   checkPackageDbStack packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram conf
-  runGHC verbosity ghcProg comp replOpts
+  (gccProg, _) <- requireProgram verbosity gccProgram conf
+  runGHC verbosity ghcProg gccProg comp replOpts
 
 -- | Build an executable with GHC.
 --
@@ -922,10 +924,11 @@ buildOrReplExe forRepl verbosity numJobsFlag _pkg_descr lbi
   exe@Executable { exeName = exeName', modulePath = modPath } clbi = do
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
+  (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
   let comp       = compiler lbi
       numJobs    = fromMaybe 1 $
                    fromFlagOrDefault Nothing numJobsFlag
-      runGhcProg = runGHC verbosity ghcProg comp
+      runGhcProg = runGHC verbosity ghcProg gccProg comp
 
   exeBi <- hackThreadedFlag verbosity
              comp (withProfExe lbi) (buildInfo exe)
@@ -1154,7 +1157,8 @@ libAbiHash verbosity pkg_descr lbi lib clbi = do
            else error "libAbiHash: Can't find an enabled library way"
   --
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  getProgramInvocationOutput verbosity (ghcInvocation ghcProg comp ghcArgs)
+  (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
+  getProgramInvocationOutput verbosity (ghcInvocation ghcProg gccProg comp ghcArgs)
 
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
