@@ -23,7 +23,7 @@ WGET="${WGET:-wget}"
 CURL="${CURL:-curl}"
 FETCH="${FETCH:-fetch}"
 TAR="${TAR:-tar}"
-GZIP="${GZIP:-gzip}"
+GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 SCOPE_OF_INSTALLATION="--user"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
@@ -205,7 +205,7 @@ unpack_pkg () {
   VER=$2
 
   rm -rf "${PKG}-${VER}.tar" "${PKG}-${VER}"
-  ${GZIP} -d < "${PKG}-${VER}.tar.gz" | ${TAR} -x
+  ${GZIP_PROGRAM} -d < "${PKG}-${VER}.tar.gz" | ${TAR} -x
   [ -d "${PKG}-${VER}" ] || die "Failed to unpack ${PKG}-${VER}.tar.gz"
 }
 

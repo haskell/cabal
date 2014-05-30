@@ -2,7 +2,7 @@ module Distribution.Simple.Test.ExeV10
        ( runTest
        ) where
 
-import Distribution.Compat.CreatePipe ( createPipe, tee )
+import Distribution.Compat.CreatePipe ( createPipe )
 import Distribution.Compat.Environment ( getEnvironment )
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
@@ -20,13 +20,14 @@ import Distribution.TestSuite
 import Distribution.Text
 import Distribution.Verbosity ( normal )
 
-import Control.Monad ( when, unless )
+import Control.Concurrent (forkIO)
+import Control.Monad ( unless, void, when )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive )
 import System.Exit ( ExitCode(..) )
 import System.FilePath ( (</>), (<.>) )
-import System.IO ( hGetContents, stdout )
+import System.IO ( hGetContents, hPutStr, stdout )
 
 runTest :: PD.PackageDescription
         -> LBI.LocalBuildInfo
@@ -56,26 +57,30 @@ runTest pkg_descr lbi flags suite = do
     -- Write summary notices indicating start of test suite
     notice verbosity $ summarizeSuiteStart $ PD.testName suite
 
-    -- Run test executable
-    (rLog, wLog) <- createPipe
+    (rOut, wOut) <- createPipe
+
+    -- Read test executable's output lazily (returns immediately)
+    logText <- hGetContents rOut
+    -- Force the IO manager to drain the test output pipe
+    void $ forkIO $ length logText `seq` return ()
+
+    -- '--show-details=streaming': print the log output in another thread
+    when (details == Streaming) $ void $ forkIO $ hPutStr stdout logText
+
+    -- Run the test executable
     let opts = map (testOption pkg_descr lbi suite)
                    (testOptions flags)
         dataDirPath = pwd </> PD.dataDir pkg_descr
+        tixFile = pwd </> (tixFilePath distPref $ PD.testName suite)
         shellEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                   : ("HPCTIXFILE", (</>) pwd
-                       $ tixFilePath distPref $ PD.testName suite)
+                   : ("HPCTIXFILE", tixFile)
                    : existingEnv
-
-    (rOut, wOut) <- createPipe
-    let outHandles | details == Streaming = [(stdout, False)]
-                   | otherwise = []
-    tee rOut $ (wLog, True) : outHandles
     exit <- rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
                                -- these handles are automatically closed
                                Nothing (Just wOut) (Just wOut)
 
     -- Generate TestSuiteLog from executable exit code and a machine-
-    -- readable test log
+    -- readable test log.
     let suiteLog = buildLog exit
 
     -- Write summary notice to log file indicating start of test suite
@@ -83,7 +88,6 @@ runTest pkg_descr lbi flags suite = do
 
     -- Append contents of temporary log file to the final human-
     -- readable log file
-    logText <- hGetContents rLog
     appendFile (logFile suiteLog) logText
 
     -- Write end-of-suite summary notice to log file
@@ -91,11 +95,13 @@ runTest pkg_descr lbi flags suite = do
 
     -- Show the contents of the human-readable log file on the terminal
     -- if there is a failure and/or detailed output is requested
-    let
-        whenPrinting = when $ (details > Never)
+    let whenPrinting = when $
+            (details > Never)
             && (not (suitePassed $ testLogs suiteLog) || details == Always)
-            && verbosity >= normal -- verbosity overrides show-details
-            && details /= Streaming -- If streaming, we already printed the log
+            -- verbosity overrides show-details
+            && verbosity >= normal
+            -- if streaming, we already printed the log
+            && details /= Streaming
     whenPrinting $ putStr $ unlines $ lines logText
 
     -- Write summary notice to terminal indicating end of test suite

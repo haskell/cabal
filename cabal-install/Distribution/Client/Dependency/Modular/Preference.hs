@@ -138,7 +138,7 @@ enforceManualFlags = trav go
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
       let c = toConflictSet (Goal (F qfn) gr)
       in  case span isDisabled (P.toList ts) of
-            (_ , [])     -> P.fromList []
+            (xs, [])     -> P.fromList xs -- everything's already disabled, leave everything as is
             (xs, y : ys) -> P.fromList (xs ++ y : L.map (\ (b, _) -> (b, Fail c ManualFlag)) ys)
       where
         isDisabled (_, Fail _ _) = True
@@ -241,10 +241,11 @@ preferEasyGoalChoices = trav go
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy (comparing choices) xs)
     go x                = x
 
--- | Transformation that tries to avoid making inconsequential
--- flag choices early.
-deferDefaultFlagChoices :: Tree a -> Tree a
-deferDefaultFlagChoices = trav go
+-- | Transformation that tries to avoid making weak flag choices early.
+-- Weak flags are trivial flags (not influencing dependencies) or such
+-- flags that are explicitly declared to be weak in the index.
+deferWeakFlagChoices :: Tree a -> Tree a
+deferWeakFlagChoices = trav go
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.sortBy defer xs)
     go x                = x

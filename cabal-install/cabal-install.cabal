@@ -22,8 +22,12 @@ Copyright:          2005 Lemmih <lemmih@gmail.com>
                     2007-2012 Duncan Coutts <duncan@community.haskell.org>
 Category:           Distribution
 Build-type:         Simple
-Extra-Source-Files: README.md bash-completion/cabal bootstrap.sh changelog
 Cabal-Version:      >= 1.8
+Extra-Source-Files:
+  README.md bash-completion/cabal bootstrap.sh changelog
+
+  -- Generated with '../Cabal/misc/gen-extra-source-files.sh | sort'
+  tests/PackageTests/Freeze/my.cabal
 
 source-repository head
   type:     git
@@ -154,6 +158,7 @@ executable cabal
     c-sources: cbits/getnumcores.c
 
 
+-- Small, fast running tests.
 Test-Suite unit-tests
   type: exitcode-stdio-1.0
   main-is: UnitTests.hs
@@ -200,3 +205,40 @@ Test-Suite unit-tests
     cc-options:  -DCABAL_NO_THREADED
   else
     ghc-options: -threaded
+
+-- Large, system tests that build packages.
+test-suite package-tests
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is: PackageTests.hs
+  other-modules:
+    PackageTests.Freeze.Check
+    PackageTests.PackageTester
+  build-depends:
+    Cabal,
+    HUnit,
+    QuickCheck >= 2.1.0.1 && < 2.8,
+    base,
+    bytestring,
+    directory,
+    extensible-exceptions,
+    filepath,
+    process,
+    regex-posix,
+    test-framework,
+    test-framework-hunit,
+    test-framework-quickcheck2 >= 0.2.12
+
+  if os(windows)
+    build-depends: Win32 >= 2 && < 3
+    cpp-options: -DWIN32
+  else
+    build-depends: unix >= 2.0 && < 2.8
+
+  if arch(arm)
+    cc-options:  -DCABAL_NO_THREADED
+  else
+    ghc-options: -threaded
+
+  ghc-options: -Wall
+  default-language: Haskell98

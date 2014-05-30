@@ -334,6 +334,8 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . setShadowPkgs shadowPkgs
 
+      . setStrongFlags strongFlags
+
       . setPreferenceDefault (if upgradeDeps then PreferAllLatest
                                              else PreferLatestForSelected)
 
@@ -379,6 +381,7 @@ planPackages comp platform mSandboxPkgInfo solver
     independentGoals = fromFlag (installIndependentGoals installFlags)
     avoidReinstalls  = fromFlag (installAvoidReinstalls  installFlags)
     shadowPkgs       = fromFlag (installShadowPkgs       installFlags)
+    strongFlags      = fromFlag (installStrongFlags      installFlags)
     maxBackjumps     = fromFlag (installMaxBackjumps     installFlags)
     upgradeDeps      = fromFlag (installUpgradeDeps      installFlags)
     onlyDeps         = fromFlag (installOnlyDeps         installFlags)
@@ -838,7 +841,8 @@ printBuildFailures plan =
     maybeOOM _        = ""
 #else
     maybeOOM e                    = maybe "" onExitFailure (fromException e)
-    onExitFailure (ExitFailure 9) =
+    onExitFailure (ExitFailure n)
+      | n == 9 || n == -9         =
       "\nThis may be due to an out-of-memory condition."
     onExitFailure _               = ""
 #endif
