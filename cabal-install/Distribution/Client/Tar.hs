@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 {-# OPTIONS_GHC -fno-warn-unused-imports #-}
 -----------------------------------------------------------------------------
 -- |
@@ -673,13 +674,11 @@ getString off len = BS.Char8.unpack . BS.Char8.takeWhile (/='\0')
                     . getBytes off len
 
 data Partial a = Error String | Ok a
+  deriving Functor
 
 partial :: Partial a -> Either String a
 partial (Error msg) = Left msg
 partial (Ok x)      = Right x
-
-instance Functor Partial where
-    fmap          = liftM
 
 instance Applicative Partial where
     pure          = return

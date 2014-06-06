@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Distribution.Client.Dependency.Modular.Dependency where
 
 import Prelude hiding (pi)
@@ -19,17 +20,12 @@ import Distribution.Client.Dependency.Modular.Version
 -- TODO: This isn't the ideal location to declare the type,
 -- but we need them for constrained instances.
 data Var qpn = P qpn | F (FN qpn) | S (SN qpn)
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor)
 
 showVar :: Var QPN -> String
 showVar (P qpn) = showQPN qpn
 showVar (F qfn) = showQFN qfn
 showVar (S qsn) = showQSN qsn
-
-instance Functor Var where
-  fmap f (P n)  = P (f n)
-  fmap f (F fn) = F (fmap f fn)
-  fmap f (S sn) = S (fmap f sn)
 
 type ConflictSet qpn = Set (Var qpn)
 
@@ -41,11 +37,7 @@ showCS = intercalate ", " . L.map showVar . S.toList
 -- is for convenience. Otherwise, it is a list of version ranges paired with
 -- the goals / variables that introduced them.
 data CI qpn = Fixed I (Goal qpn) | Constrained [VROrigin qpn]
-  deriving (Eq, Show)
-
-instance Functor CI where
-  fmap f (Fixed i g)       = Fixed i (fmap f g)
-  fmap f (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, fmap f y)) vrs)
+  deriving (Eq, Show, Functor)
 
 instance ResetGoal CI where
   resetGoal g (Fixed i _)       = Fixed i g
@@ -98,13 +90,7 @@ data FlaggedDep qpn =
     Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
   | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
   | Simple (Dep qpn)
-  deriving (Eq, Show)
-
-instance Functor FlaggedDep where
-  fmap f (Flagged x y tt ff) = Flagged (fmap f x) y
-                                       (fmap (fmap f) tt) (fmap (fmap f) ff)
-  fmap f (Stanza x tt)       = Stanza (fmap f x) (fmap (fmap f) tt)
-  fmap f (Simple d)          = Simple (fmap f d)
+  deriving (Eq, Show, Functor)
 
 type TrueFlaggedDeps  qpn = FlaggedDeps qpn
 type FalseFlaggedDeps qpn = FlaggedDeps qpn
@@ -112,7 +98,7 @@ type FalseFlaggedDeps qpn = FlaggedDeps qpn
 -- | A dependency (constraint) associates a package name with a
 -- constrained instance.
 data Dep qpn = Dep qpn (CI qpn)
-  deriving (Eq, Show)
+  deriving (Eq, Show, Functor)
 
 showDep :: Dep QPN -> String
 showDep (Dep qpn (Fixed i (Goal v _))          ) =
@@ -122,9 +108,6 @@ showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
   showVar v ++ " => " ++ showQPN qpn ++ showVR vr
 showDep (Dep qpn ci                            ) =
   showQPN qpn ++ showCI ci
-
-instance Functor Dep where
-  fmap f (Dep x y) = Dep (f x) (fmap f y)
 
 instance ResetGoal Dep where
   resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
@@ -136,10 +119,7 @@ type RevDepMap = Map QPN [QPN]
 -- | Goals are solver variables paired with information about
 -- why they have been introduced.
 data Goal qpn = Goal (Var qpn) (GoalReasonChain qpn)
-  deriving (Eq, Show)
-
-instance Functor Goal where
-  fmap f (Goal v grs) = Goal (fmap f v) (fmap (fmap f) grs)
+  deriving (Eq, Show, Functor)
 
 class ResetGoal f where
   resetGoal :: Goal qpn -> f qpn -> f qpn
@@ -158,13 +138,7 @@ data GoalReason qpn =
   | PDependency (PI qpn)
   | FDependency (FN qpn) Bool
   | SDependency (SN qpn)
-  deriving (Eq, Show)
-
-instance Functor GoalReason where
-  fmap _ UserGoal           = UserGoal
-  fmap f (PDependency pi)   = PDependency (fmap f pi)
-  fmap f (FDependency fn b) = FDependency (fmap f fn) b
-  fmap f (SDependency sn)   = SDependency (fmap f sn)
+  deriving (Eq, Show, Functor)
 
 -- | The first element is the immediate reason. The rest are the reasons
 -- for the reasons ...
