@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.Types
@@ -221,6 +222,7 @@ isAllowNewer AllowNewerAll      = True
 data Progress step fail done = Step step (Progress step fail done)
                              | Fail fail
                              | Done done
+  deriving Functor
 
 -- | Consume a 'Progress' calculation. Much like 'foldr' for lists but with two
 -- base cases, one for a final result and one for failure.
@@ -235,9 +237,6 @@ foldProgress step fail done = fold
   where fold (Step s p) = step s (fold p)
         fold (Fail f)   = fail f
         fold (Done r)   = done r
-
-instance Functor (Progress step fail) where
-  fmap f = foldProgress Step Fail (Done . f)
 
 instance Monad (Progress step fail) where
   return a = Done a

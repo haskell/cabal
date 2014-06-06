@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Distribution.Client.Dependency.Modular.Package
   (module Distribution.Client.Dependency.Modular.Package,
    module Distribution.Package) where
@@ -51,7 +52,7 @@ showI (I v (Inst (InstalledPackageId i))) = showVer v ++ "/installed" ++ shortId
 
 -- | Package instance. A package name and an instance.
 data PI qpn = PI qpn I
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor)
 
 -- | String representation of a package instance.
 showPI :: PI QPN -> String
@@ -65,9 +66,6 @@ instPI _                     = False
 instI :: I -> Bool
 instI (I _ (Inst _)) = True
 instI _              = False
-
-instance Functor PI where
-  fmap f (PI x y) = PI (f x) y
 
 -- | Package path. (Stored in "reverse" order.)
 type PP = [PN]

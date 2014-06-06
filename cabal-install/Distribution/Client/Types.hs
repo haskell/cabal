@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveFunctor #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Types
@@ -172,14 +173,7 @@ data PackageLocation local =
 --TODO:
 --  * add support for darcs and other SCM style remote repos with a local cache
 --  | ScmPackage
-  deriving Show
-
-instance Functor PackageLocation where
-  fmap _ (LocalUnpackedPackage dir)      = LocalUnpackedPackage dir
-  fmap _ (LocalTarballPackage  file)     = LocalTarballPackage  file
-  fmap f (RemoteTarballPackage uri x)    = RemoteTarballPackage uri    (f x)
-  fmap f (RepoTarballPackage repo pkg x) = RepoTarballPackage repo pkg (f x)
-
+  deriving (Show, Functor)
 
 data LocalRepo = LocalRepo
   deriving (Show,Eq)

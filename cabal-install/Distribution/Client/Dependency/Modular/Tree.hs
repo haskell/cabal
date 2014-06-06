@@ -1,6 +1,6 @@
+{-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Distribution.Client.Dependency.Modular.Tree where
 
-import Control.Applicative
 import Control.Monad hiding (mapM)
 import Data.Foldable
 import Data.Traversable
@@ -20,7 +20,7 @@ data Tree a =
   | GoalChoice                  (PSQ OpenGoal (Tree a)) -- PSQ should never be empty
   | Done        RevDepMap
   | Fail        (ConflictSet QPN) FailReason
-  deriving (Eq, Show)
+  deriving (Eq, Show, Functor)
   -- Above, a choice is called trivial if it clearly does not matter. The
   -- special case of triviality we actually consider is if there are no new
   -- dependencies introduced by this node.
@@ -29,14 +29,6 @@ data Tree a =
   -- case for flags that should be implied by what's currently installed on
   -- the system, as opposed to flags that are used to explicitly enable or
   -- disable some functionality.
-
-instance Functor Tree where
-  fmap  f (PChoice qpn i     xs) = PChoice qpn (f i)     (fmap (fmap f) xs)
-  fmap  f (FChoice qfn i b m xs) = FChoice qfn (f i) b m (fmap (fmap f) xs)
-  fmap  f (SChoice qsn i b   xs) = SChoice qsn (f i) b   (fmap (fmap f) xs)
-  fmap  f (GoalChoice        xs) = GoalChoice            (fmap (fmap f) xs)
-  fmap _f (Done    rdm         ) = Done    rdm
-  fmap _f (Fail    cs fr       ) = Fail    cs fr
 
 data FailReason = InconsistentInitialConstraints
                 | Conflicting [Dep QPN]
@@ -64,6 +56,7 @@ data TreeF a b =
   | GoalChoiceF                 (PSQ OpenGoal b)
   | DoneF       RevDepMap
   | FailF       (ConflictSet QPN) FailReason
+  deriving (Functor, Foldable, Traversable)
 
 out :: Tree a -> TreeF a (Tree a)
 out (PChoice    p i     ts) = PChoiceF    p i     ts
@@ -80,30 +73,6 @@ inn (SChoiceF    p i b   ts) = SChoice    p i b   ts
 inn (GoalChoiceF         ts) = GoalChoice         ts
 inn (DoneF       x         ) = Done       x
 inn (FailF       c x       ) = Fail       c x
-
-instance Functor (TreeF a) where
-  fmap f (PChoiceF    p i     ts) = PChoiceF    p i     (fmap f ts)
-  fmap f (FChoiceF    p i b m ts) = FChoiceF    p i b m (fmap f ts)
-  fmap f (SChoiceF    p i b   ts) = SChoiceF    p i b   (fmap f ts)
-  fmap f (GoalChoiceF         ts) = GoalChoiceF         (fmap f ts)
-  fmap _ (DoneF       x         ) = DoneF       x
-  fmap _ (FailF       c x       ) = FailF       c x
-
-instance Foldable (TreeF a) where
-  foldr op e (PChoiceF    _ _     ts) = foldr op e ts
-  foldr op e (FChoiceF    _ _ _ _ ts) = foldr op e ts
-  foldr op e (SChoiceF    _ _ _   ts) = foldr op e ts
-  foldr op e (GoalChoiceF         ts) = foldr op e ts
-  foldr _  e (DoneF       _         ) = e
-  foldr _  e (FailF       _ _       ) = e
-
-instance Traversable (TreeF a) where
-  traverse f (PChoiceF    p i     ts) = PChoiceF    <$> pure p <*> pure i <*>                       traverse f ts
-  traverse f (FChoiceF    p i b m ts) = FChoiceF    <$> pure p <*> pure i <*> pure b <*> pure m <*> traverse f ts
-  traverse f (SChoiceF    p i b   ts) = SChoiceF    <$> pure p <*> pure i <*> pure b <*>            traverse f ts
-  traverse f (GoalChoiceF         ts) = GoalChoiceF <$>                                             traverse f ts
-  traverse _ (DoneF       x         ) = DoneF       <$> pure x
-  traverse _ (FailF       c x       ) = FailF       <$> pure c <*> pure x
 
 -- | Determines whether a tree is active, i.e., isn't a failure node.
 active :: Tree a -> Bool
