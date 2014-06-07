@@ -25,6 +25,9 @@ type Flag = FlagName
 unFlag :: Flag -> String
 unFlag (FlagName fn) = fn
 
+mkFlag :: String -> Flag
+mkFlag fn = FlagName fn
+
 -- | Flag info. Default value, whether the flag is manual, and
 -- whether the flag is weak. Manual flags can only be set explicitly.
 -- Weak flags are typically deferred by the solver.
