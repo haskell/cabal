@@ -78,17 +78,21 @@ scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
     qfdefs = L.map (\ (fn, b) -> Flagged (FN (PI qpn i) fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals
     gs     = L.map (flip OpenGoal gr) (qfdefs ++ qfdeps)
-    -- IMPORTANT AND SUBTLE: The order of the concatenation above is
-    -- important. Flags occur potentially multiple times: both via the
-    -- flag declaration ('qfdefs') and via dependencies ('qfdeps').
-    -- We want the information from qfdeps if it's present, because that
-    -- includes dependencies between flags. We use qfdefs mainly so that
-    -- we are forced to make choices for flags that don't affect
-    -- dependencies at all.
+    -- NOTE:
     --
-    -- When goals are actually extended in 'extendOpen', later additions
-    -- override earlier additions, so it's important that the
-    -- lower-quality templates without dependency information come first.
+    -- In the expression @qfdefs ++ qfdeps@ above, flags occur potentially
+    -- multiple times, both via the flag declaration and via dependencies.
+    -- The order is potentially important, because the occurrences via
+    -- dependencies may record flag-dependency information. After a number
+    -- of bugs involving computing this information incorrectly, however,
+    -- we're currently not using carefully computed inter-flag dependencies
+    -- anymore, but instead use 'simplifyVar' when computing conflict sets
+    -- to map all flags of one package to a single flag for conflict set
+    -- purposes, thereby treating them all as interdependent.
+    --
+    -- If we ever move to a more clever algorithm again, then the line above
+    -- needs to be looked at very carefully, and probably be replaced by
+    -- more systematically computed flag dependency information.
 
 -- | Datatype that encodes what to build next
 data BuildType =
