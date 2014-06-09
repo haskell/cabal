@@ -56,6 +56,5 @@ solve sc idx userPrefs userConstraints userGoals =
                                                   , PackageName "ghc-prim"
                                                   , PackageName "integer-gmp"
                                                   , PackageName "integer-simple"
-                                                  , PackageName "template-haskell"
                                                   ])
     buildPhase       = buildTree idx (independentGoals sc) userGoals
