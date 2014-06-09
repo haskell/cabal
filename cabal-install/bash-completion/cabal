@@ -3,6 +3,34 @@
 #                     "Duncan Coutts"     <dcoutts@gentoo.org>
 #
 
+# List cabal targets by type, pass:
+# 	- Test-Suite for test suites
+#   - Benchmark for benchmarks
+#   - Test-Suite|Benchmark for both
+_cabal_list()
+{
+	cat *.cabal |
+	grep -E "$1" |
+	sed -e "s/.* \([^ ]*\).*/\1/"
+}
+
+# List possible targets depending on the command supplied as parameter.  The
+# ideal option would be to implement this via --list-options on cabal directly.
+# This is a temporary workaround.
+_cabal_targets()
+{
+	# If command ($*) contains build, repl, test or bench completes with
+	# targets of according type.
+	[ -f *.cabal ] || return 0
+	local comp
+	for comp in $*; do
+		[ $comp == build ] && _cabal_list "Test-Suite|Benchmark" && break
+		[ $comp == repl  ] && _cabal_list "Test-Suite|Benchmark" && break
+		[ $comp == test  ] && _cabal_list "Test-Suite"           && break
+		[ $comp == bench ] && _cabal_list            "Benchmark" && break
+	done
+}
+
 _cabal()
 {
     # get the word currently being completed
@@ -18,7 +46,7 @@ _cabal()
     cmd[${COMP_CWORD}]="--list-options"
 
     # the resulting completions should be put into this array
-    COMPREPLY=( $( compgen -W "$( ${cmd[@]} )" -- $cur ) )
+    COMPREPLY=( $( compgen -W "$( ${cmd[@]} ) $( _cabal_targets ${cmd[@]} )" -- $cur ) )
 }
 
 complete -F _cabal -o default cabal
