@@ -240,7 +240,7 @@ dontUpgradeNonUpgradeablePackages params =
       [ PackageConstraintInstalled pkgname
       | all (/=PackageName "base") (depResolverTargets params)
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
-                                   , "integer-simple", "template-haskell" ]
+                                   , "integer-simple" ]
       , isInstalled pkgname ]
     -- TODO: the top down resolver chokes on the base constraints
     -- below when there are no targets and thus no dep on base.
