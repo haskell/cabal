@@ -594,8 +594,9 @@ checkGhcOptions pkg =
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
         "'ghc-options: -fhpc' is not appropriate for a distributed package."
-
-  , check (any ("-d" `isPrefixOf`) all_ghc_options) $
+    
+    -- -dynamic is not a debug flag
+  , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic") all_ghc_options) $
       PackageDistInexcusable $
         "'ghc-options: -d*' debug flags are not appropriate for a distributed package."
 
