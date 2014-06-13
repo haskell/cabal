@@ -136,7 +136,9 @@ library
     containers >= 0.1 && < 0.6,
     array      >= 0.1 && < 0.6,
     pretty     >= 1   && < 1.2,
-    bytestring >= 0.9
+    bytestring >= 0.9,
+    transformers >= 0.3 && < 0.5,
+    exceptions   >= 0.6 && < 0.7
 
   if !os(windows)
     build-depends:

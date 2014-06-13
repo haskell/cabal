@@ -122,6 +122,9 @@ module Distribution.Simple.Utils (
 
 import Control.Monad
     ( join, when, unless, filterM )
+import Control.Monad.IO.Class ( MonadIO(..) )
+import Control.Monad.Catch ( MonadMask )
+import qualified Control.Monad.Catch as MC
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.List
@@ -945,23 +948,25 @@ defaultTempFileOptions = TempFileOptions { optKeepTempFiles = False }
 
 -- | Use a temporary filename that doesn't already exist.
 --
-withTempFile :: FilePath    -- ^ Temp dir to create the file in
+withTempFile :: (MonadIO m, MonadMask m)
+                => FilePath    -- ^ Temp dir to create the file in
                 -> String   -- ^ File name template. See 'openTempFile'.
-                -> (FilePath -> Handle -> IO a) -> IO a
+                -> (FilePath -> Handle -> m a) -> m a
 withTempFile tmpDir template action =
   withTempFileEx defaultTempFileOptions tmpDir template action
 
 -- | A version of 'withTempFile' that additionally takes a 'TempFileOptions'
 -- argument.
-withTempFileEx :: TempFileOptions
+withTempFileEx :: (MonadIO m, MonadMask m)
+                 => TempFileOptions
                  -> FilePath -- ^ Temp dir to create the file in
                  -> String   -- ^ File name template. See 'openTempFile'.
-                 -> (FilePath -> Handle -> IO a) -> IO a
+                 -> (FilePath -> Handle -> m a) -> m a
 withTempFileEx opts tmpDir template action =
-  Exception.bracket
-    (openTempFile tmpDir template)
-    (\(name, handle) -> do hClose handle
-                           unless (optKeepTempFiles opts) $ removeFile name)
+  MC.bracket
+    (liftIO (openTempFile tmpDir template))
+    (\(name, handle) -> do liftIO (hClose handle)
+                           unless (optKeepTempFiles opts) $ liftIO (removeFile name))
     (uncurry action)
 
 -- | Create and use a temporary directory.
@@ -974,20 +979,20 @@ withTempFileEx opts tmpDir template action =
 -- The @tmpDir@ will be a new subdirectory of the given directory, e.g.
 -- @src/sdist.342@.
 --
-withTempDirectory :: Verbosity
-                     -> FilePath -> String -> (FilePath -> IO a) -> IO a
+withTempDirectory :: (MonadIO m, MonadMask m) => Verbosity
+                     -> FilePath -> String -> (FilePath -> m a) -> m a
 withTempDirectory verbosity targetDir template =
   withTempDirectoryEx verbosity defaultTempFileOptions targetDir template
 
 -- | A version of 'withTempDirectory' that additionally takes a
 -- 'TempFileOptions' argument.
-withTempDirectoryEx :: Verbosity
+withTempDirectoryEx :: (MonadIO m, MonadMask m) => Verbosity
                        -> TempFileOptions
-                       -> FilePath -> String -> (FilePath -> IO a) -> IO a
+                       -> FilePath -> String -> (FilePath -> m a) -> m a
 withTempDirectoryEx _verbosity opts targetDir template =
-  Exception.bracket
-    (createTempDirectory targetDir template)
-    (unless (optKeepTempFiles opts) . removeDirectoryRecursive)
+  MC.bracket
+    (liftIO (createTempDirectory targetDir template))
+    (unless (optKeepTempFiles opts) . liftIO . removeDirectoryRecursive)
 
 -----------------------------------
 -- Safely reading and writing files
@@ -997,10 +1002,10 @@ withTempDirectoryEx _verbosity opts targetDir template =
 -- The file is read lazily but if it is not fully consumed by the action then
 -- the remaining input is truncated and the file is closed.
 --
-withFileContents :: FilePath -> (String -> IO a) -> IO a
+withFileContents :: (MonadIO m, MonadMask m) => FilePath -> (String -> m a) -> m a
 withFileContents name action =
-  Exception.bracket (openFile name ReadMode) hClose
-                    (\hnd -> hGetContents hnd >>= action)
+  MC.bracket (liftIO (openFile name ReadMode)) (liftIO . hClose)
+              (\hnd -> liftIO (hGetContents hnd) >>= action)
 
 -- | Writes a file atomically.
 --

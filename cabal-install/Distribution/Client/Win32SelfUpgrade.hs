@@ -53,7 +53,8 @@ import System.Directory (canonicalizePath)
 import System.FilePath (takeBaseName, replaceBaseName, equalFilePath)
 
 import Distribution.Verbosity as Verbosity (Verbosity, showForCabal)
-import Distribution.Simple.Utils (debug, info)
+import Distribution.Simple.Utils (debug)
+import Distribution.Client.Shell ( Shell, liftIO, info', debug' )
 
 import Prelude hiding (log)
 
@@ -65,20 +66,20 @@ import Prelude hiding (log)
 --
 possibleSelfUpgrade :: Verbosity
                     -> [FilePath]
-                    -> IO a -> IO a
+                    -> Shell a -> Shell a
 possibleSelfUpgrade verbosity newPaths action = do
-  dstPath <- canonicalizePath =<< Win32.getModuleFileName Win32.nullHANDLE
+  dstPath <- liftIO (canonicalizePath =<< Win32.getModuleFileName Win32.nullHANDLE)
 
-  newPaths' <- mapM canonicalizePath newPaths
+  newPaths' <- liftIO $ mapM canonicalizePath newPaths
   let doingSelfUpgrade = any (equalFilePath dstPath) newPaths'
 
   if not doingSelfUpgrade
     then action
     else do
-      info verbosity $ "cabal-install does the replace-own-exe-file dance..."
-      tmpPath <- moveOurExeOutOfTheWay verbosity
+      info' $ "cabal-install does the replace-own-exe-file dance..."
+      tmpPath <- moveOurExeOutOfTheWay
       result <- action
-      scheduleOurDemise verbosity dstPath tmpPath
+      scheduleOurDemise dstPath tmpPath
         (\pid path -> ["win32selfupgrade", pid, path
                       ,"--verbose=" ++ Verbosity.showForCabal verbosity])
       return result
@@ -98,36 +99,36 @@ syncEventName = "Local\\cabal-install-upgrade"
 -- while we're still running, fortunately we can rename it, at least within
 -- the same directory.
 --
-moveOurExeOutOfTheWay :: Verbosity -> IO FilePath
-moveOurExeOutOfTheWay verbosity = do
-  ourPID  <-       getCurrentProcessId
-  dstPath <- Win32.getModuleFileName Win32.nullHANDLE
+moveOurExeOutOfTheWay :: Shell FilePath
+moveOurExeOutOfTheWay = do
+  ourPID  <- liftIO getCurrentProcessId
+  dstPath <- liftIO $ Win32.getModuleFileName Win32.nullHANDLE
 
   let tmpPath = replaceBaseName dstPath (takeBaseName dstPath ++ show ourPID)
 
-  debug verbosity $ "moving " ++ dstPath ++ " to " ++ tmpPath
-  Win32.moveFile dstPath tmpPath
+  debug' $ "moving " ++ dstPath ++ " to " ++ tmpPath
+  liftIO $ Win32.moveFile dstPath tmpPath
   return tmpPath
 
 -- | Assuming we've now installed the new exe file in the right place, we
 -- launch it and ask it to delete our exe file when we eventually terminate.
 --
-scheduleOurDemise :: Verbosity -> FilePath -> FilePath
-                  -> (String -> FilePath -> [String]) -> IO ()
-scheduleOurDemise verbosity dstPath tmpPath mkArgs = do
-  ourPID <- getCurrentProcessId
-  event  <- createEvent syncEventName
+scheduleOurDemise :: FilePath -> FilePath
+                  -> (String -> FilePath -> [String]) -> Shell ()
+scheduleOurDemise dstPath tmpPath mkArgs = do
+  ourPID <- liftIO $ getCurrentProcessId
+  event  <- liftIO $ createEvent syncEventName
 
   let args = mkArgs (show ourPID) tmpPath
   log $ "launching child " ++ unwords (dstPath : map show args)
-  _ <- runProcess dstPath args Nothing Nothing Nothing Nothing Nothing
+  _ <- liftIO $ runProcess dstPath args Nothing Nothing Nothing Nothing Nothing
 
   log $ "waiting for the child to start up"
-  waitForSingleObject event (10*1000) -- wait at most 10 sec
+  liftIO $ waitForSingleObject event (10*1000) -- wait at most 10 sec
   log $ "child started ok"
 
   where
-    log msg = debug verbosity ("Win32Reinstall.parent: " ++ msg)
+    log msg = debug' ("Win32Reinstall.parent: " ++ msg)
 
 -- | Assuming we're now in the new child process, we've been asked by the old
 -- process to wait for it to terminate and then we can remove the old exe file
@@ -208,10 +209,11 @@ setEvent handle =
 
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die)
+import Distribution.Client.Shell ( Shell )
 
 possibleSelfUpgrade :: Verbosity
                     -> [FilePath]
-                    -> IO a -> IO a
+                    -> Shell a -> Shell a
 possibleSelfUpgrade _ _ action = action
 
 deleteOldExeFile :: Verbosity -> Int -> FilePath -> IO ()

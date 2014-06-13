@@ -28,47 +28,49 @@ module Distribution.Client.JobControl (
 
 import Control.Monad
 import Control.Concurrent hiding (QSem, newQSem, waitQSem, signalQSem)
-import Control.Exception (SomeException, bracket_, mask, throw, try)
+import Control.Exception (SomeException, throw)
 import Distribution.Client.Compat.Semaphore
+import Distribution.Client.Shell ( Shell, liftIO, forkIO' )
+import qualified Control.Monad.Catch as MC
+import Control.Monad.IO.Class ( MonadIO(..) )
 
 data JobControl m a = JobControl {
        spawnJob    :: m a -> m (),
        collectJob  :: m a
      }
 
-
-newSerialJobControl :: IO (JobControl IO a)
+newSerialJobControl :: MonadIO m => IO (JobControl m a)
 newSerialJobControl = do
     queue <- newChan
     return JobControl {
-      spawnJob   = spawn queue,
+      spawnJob   = liftIO . spawn queue,
       collectJob = collect queue
     }
   where
-    spawn :: Chan (IO a) -> IO a -> IO ()
+    spawn :: Chan (m a) -> m a -> IO ()
     spawn = writeChan
 
-    collect :: Chan (IO a) -> IO a
-    collect = join . readChan
+    collect :: MonadIO m => Chan (m a) -> m a
+    collect = join . liftIO . readChan
 
-newParallelJobControl :: IO (JobControl IO a)
+newParallelJobControl :: IO (JobControl Shell a)
 newParallelJobControl = do
-    resultVar <- newEmptyMVar
+    resultVar <- newEmptyMVar :: IO (MVar (Either SomeException a))
     return JobControl {
       spawnJob   = spawn resultVar,
       collectJob = collect resultVar
     }
   where
-    spawn :: MVar (Either SomeException a) -> IO a -> IO ()
+    spawn :: MVar (Either SomeException a) -> Shell a -> Shell ()
     spawn resultVar job =
-      mask $ \restore ->
-        forkIO (do res <- try (restore job)
-                   putMVar resultVar res)
-         >> return ()
+      MC.mask $ \restore ->
+        forkIO' (do res <- MC.try (restore job)
+                    liftIO (putMVar resultVar res))
+        >> return ()
 
-    collect :: MVar (Either SomeException a) -> IO a
+    collect :: MVar (Either SomeException a) -> Shell a
     collect resultVar =
-      takeMVar resultVar >>= either throw return
+      liftIO (takeMVar resultVar) >>= either throw return
 
 data JobLimit = JobLimit QSem
 
@@ -76,14 +78,14 @@ newJobLimit :: Int -> IO JobLimit
 newJobLimit n =
   fmap JobLimit (newQSem n)
 
-withJobLimit :: JobLimit -> IO a -> IO a
+withJobLimit :: (MC.MonadMask m, MonadIO m) => JobLimit -> m a -> m a
 withJobLimit (JobLimit sem) =
-  bracket_ (waitQSem sem) (signalQSem sem)
+  MC.bracket_ (liftIO (waitQSem sem)) (liftIO (signalQSem sem))
 
 newtype Lock = Lock (MVar ())
 
 newLock :: IO Lock
 newLock = fmap Lock $ newMVar ()
 
-criticalSection :: Lock -> IO a -> IO a
-criticalSection (Lock lck) act = bracket_ (takeMVar lck) (putMVar lck ()) act
+criticalSection :: (MC.MonadMask m, MonadIO m) => Lock -> m a -> m a
+criticalSection (Lock lck) act = MC.bracket_ (liftIO (takeMVar lck)) (liftIO (putMVar lck ())) act
