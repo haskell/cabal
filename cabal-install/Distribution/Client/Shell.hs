@@ -13,6 +13,7 @@
 -----------------------------------------------------------------------------
 {-# OPTIONS_GHC -Wall #-}
 module Distribution.Client.Shell ( Shell
+                                 , InstallProgress(..)
                                  , liftIO -- reexport for convenience
                                  , warn', notice', info', debug', die'
                                  , forkIO'
@@ -32,6 +33,16 @@ import Control.Monad.IO.Class
 import Control.Monad.Catch ( MonadCatch, MonadThrow, MonadMask )
 import qualified Control.Monad.Catch as MC
 
+data Message = Info String
+             | Notice String
+             | Warn String
+             | Debug String
+             | Die String
+
+data InstallProgress = InstallProgress
+                       -- lines "printed" to terminal
+                       [Message]
+
 -- | This is basically the IO monad where you only print to the terminal
 -- through special commands (warn', notice', info', etc). This lets us write
 -- a nice ncurses UI.
@@ -42,7 +53,7 @@ import qualified Control.Monad.Catch as MC
 -- This monad can be forked with forkIO'.
 -- .
 -- Shell also carries around the state of the parallel build progress.
-newtype Shell a = Shell { unShell :: CC.MVar Verbosity -> IO a }
+newtype Shell a = Shell { unShell :: CC.MVar (InstallProgress, Verbosity) -> IO a }
 
 instance Functor Shell where
   fmap f (Shell sh) = Shell (fmap f . sh)
@@ -77,41 +88,49 @@ instance MonadMask Shell where
 -- | execute the Shell action in the IO monad
 runShell :: Verbosity -> Shell a -> IO a
 runShell verbosity (Shell sh) = do
-  r <- CC.newMVar verbosity
+  r <- CC.newMVar (InstallProgress [], verbosity)
   sh r
 
 -- | wrapped version of forkIO in the Shell monad
 forkIO' :: Shell () -> Shell CC.ThreadId
 forkIO' (Shell f) = Shell $ \r -> CC.forkIO (f r)
 
+modifyState :: (InstallProgress -> InstallProgress) -> Shell ()
+modifyState f = Shell $ \r -> CC.modifyMVar_ r (\(x,y) -> return (f x, y))
+
 withVerbosity :: (Verbosity -> IO a) -> Shell a
 withVerbosity f = Shell $ \r -> do
-  v <- CC.readMVar r
+  (_,v) <- CC.readMVar r
   f v
 
 -- | Shell wrapper around `Distribution.Simple.Utils(info)`
 info' :: String -> Shell ()
 info' msg = do
+  modifyState (\(InstallProgress msgs) -> InstallProgress (Info msg:msgs))
   withVerbosity (\v -> info v msg)
 
 -- | Shell wrapper around `Distribution.Simple.Utils(notice)`
 notice' :: String -> Shell ()
 notice' msg = do
+  modifyState (\(InstallProgress msgs) -> InstallProgress (Notice msg:msgs))
   withVerbosity (\v -> notice v msg)
 
 -- | Shell wrapper around `Distribution.Simple.Utils(warn)`
 warn' :: String -> Shell ()
 warn' msg = do
+  modifyState (\(InstallProgress msgs) -> InstallProgress (Warn msg:msgs))
   withVerbosity (\v -> warn v msg)
 
 -- | Shell wrapper around `Distribution.Simple.Utils(debug)`
 debug' :: String -> Shell ()
 debug' msg = do
+  modifyState (\(InstallProgress msgs) -> InstallProgress (Debug msg:msgs))
   withVerbosity (\v -> debug v msg)
 
 -- | Shell wrapper around `Distribution.Simple.Utils(die)`
 die' :: String -> Shell a
 die' msg = do
+  modifyState (\(InstallProgress msgs) -> InstallProgress (Die msg:msgs))
   liftIO (die msg)
 
 catchIO' :: Shell a -> (Exception.IOException -> Shell a) -> Shell a
