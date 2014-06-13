@@ -905,7 +905,7 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  runShell verbosity $ executeInstallPlan verbosity jobControl useLogFile installPlan $ \rpkg ->
+  runShell installPlan verbosity $ executeInstallPlan verbosity jobControl useLogFile installPlan $ \rpkg ->
     installReadyPackage platform compid configFlags
                         rpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
@@ -1039,6 +1039,7 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
       printBuildResult pkgid buildResult
       let taskCount' = taskCount-1
           plan'      = updatePlan pkgid buildResult plan
+      packageFinished pkgid plan'
       tryNewTasks taskCount' plan'
 
     updatePlan :: PackageIdentifier -> BuildResult -> InstallPlan -> InstallPlan
@@ -1252,17 +1253,20 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
   onFailure ConfigureFailed $ withJobLimit buildLimit $ do
     when (numJobs > 1) $ notice' $
       "Configuring " ++ display pkgid ++ "..."
+    updatePackageProgress pkgid PISConfiguring
     setup configureCommand configureFlags mLogPath
 
   -- Build phase
     onFailure BuildFailed $ do
       when (numJobs > 1) $ notice' $
         "Building " ++ display pkgid ++ "..."
+      updatePackageProgress pkgid PISBuilding
       setup buildCommand' buildFlags mLogPath
 
   -- Doc generation phase
       docsResult <- if shouldHaddock
-        then (do setup haddockCommand haddockFlags' mLogPath
+        then (do updatePackageProgress pkgid PISHaddocking
+                 setup haddockCommand haddockFlags' mLogPath
                  return DocsOk)
                `catchIO'` (\_ -> return DocsFailed)
                `catchExit'` (\_ -> return DocsFailed)
@@ -1272,12 +1276,14 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
       onFailure TestsFailed $ do
         when (testsEnabled && PackageDescription.hasTests pkg) $ do
             setup Cabal.testCommand testFlags mLogPath
+            updatePackageProgress pkgid PISTesting
 
         let testsResult | testsEnabled = TestsOk
                         | otherwise = TestsNotTried
 
       -- Install phase
         onFailure InstallFailed $ criticalSection installLock $ do
+          updatePackageProgress pkgid PISInstalling
           -- Capture installed package configuration file
           maybePkgConf <- maybeGenPkgConf mLogPath
 

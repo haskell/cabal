@@ -13,14 +13,19 @@
 -----------------------------------------------------------------------------
 {-# OPTIONS_GHC -Wall #-}
 module Distribution.Client.Shell ( Shell
+                                 , PackageInstallStatus(..)
                                  , InstallProgress(..)
                                  , liftIO -- reexport for convenience
                                  , warn', notice', info', debug', die'
                                  , forkIO'
                                  , runShell
+                                 , packageFinished
+                                 , updatePackageProgress
                                  , catchIO', catchExit'
                                  ) where
 
+import Distribution.Client.InstallPlan ( InstallPlan )
+import Distribution.Package ( PackageId )
 import Distribution.Verbosity ( Verbosity )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, die )
@@ -33,13 +38,25 @@ import Control.Monad.IO.Class
 import Control.Monad.Catch ( MonadCatch, MonadThrow, MonadMask )
 import qualified Control.Monad.Catch as MC
 
+-- | status of one package which is currently being installed
+data PackageInstallStatus = PISConfiguring
+                          | PISBuilding
+                          | PISTesting
+                          | PISHaddocking
+                          | PISInstalling
+
 data Message = Info String
              | Notice String
              | Warn String
              | Debug String
              | Die String
 
+-- | current progress of the parallel install
 data InstallProgress = InstallProgress
+                       -- currently configuring/building/installing packages
+                       [(PackageId,PackageInstallStatus)]
+                       -- the whole plan
+                       InstallPlan
                        -- lines "printed" to terminal
                        [Message]
 
@@ -86,9 +103,9 @@ instance MonadMask Shell where
       where q u (Shell b) = Shell (u . b)
 
 -- | execute the Shell action in the IO monad
-runShell :: Verbosity -> Shell a -> IO a
-runShell verbosity (Shell sh) = do
-  r <- CC.newMVar (InstallProgress [], verbosity)
+runShell :: InstallPlan -> Verbosity -> Shell a -> IO a
+runShell plan0 verbosity (Shell sh) = do
+  r <- CC.newMVar (InstallProgress [] plan0 [], verbosity)
   sh r
 
 -- | wrapped version of forkIO in the Shell monad
@@ -106,32 +123,53 @@ withVerbosity f = Shell $ \r -> do
 -- | Shell wrapper around `Distribution.Simple.Utils(info)`
 info' :: String -> Shell ()
 info' msg = do
-  modifyState (\(InstallProgress msgs) -> InstallProgress (Info msg:msgs))
+  modifyState (\(InstallProgress x y msgs) -> InstallProgress x y (Info msg:msgs))
   withVerbosity (\v -> info v msg)
 
 -- | Shell wrapper around `Distribution.Simple.Utils(notice)`
 notice' :: String -> Shell ()
 notice' msg = do
-  modifyState (\(InstallProgress msgs) -> InstallProgress (Notice msg:msgs))
+  modifyState (\(InstallProgress x y msgs) -> InstallProgress x y (Notice msg:msgs))
   withVerbosity (\v -> notice v msg)
 
 -- | Shell wrapper around `Distribution.Simple.Utils(warn)`
 warn' :: String -> Shell ()
 warn' msg = do
-  modifyState (\(InstallProgress msgs) -> InstallProgress (Warn msg:msgs))
+  modifyState (\(InstallProgress x y msgs) -> InstallProgress x y (Warn msg:msgs))
   withVerbosity (\v -> warn v msg)
 
 -- | Shell wrapper around `Distribution.Simple.Utils(debug)`
 debug' :: String -> Shell ()
 debug' msg = do
-  modifyState (\(InstallProgress msgs) -> InstallProgress (Debug msg:msgs))
+  modifyState (\(InstallProgress x y msgs) -> InstallProgress x y (Debug msg:msgs))
   withVerbosity (\v -> debug v msg)
 
 -- | Shell wrapper around `Distribution.Simple.Utils(die)`
 die' :: String -> Shell a
 die' msg = do
-  modifyState (\(InstallProgress msgs) -> InstallProgress (Die msg:msgs))
+  modifyState (\(InstallProgress x y msgs) -> InstallProgress x y (Die msg:msgs))
   liftIO (die msg)
+
+-- | a package has finished installing (succeed or fail)
+packageFinished :: PackageId -> InstallPlan -> Shell ()
+packageFinished pid newPlan = modifyState f
+  where
+    f (InstallProgress ip0 _ msgs) = (InstallProgress ip1 newPlan msgs)
+      where
+        ip1 = filter ((/= pid) . fst) ip0
+
+-- | a package has changed status
+updatePackageProgress :: PackageId -> PackageInstallStatus -> Shell ()
+updatePackageProgress pid status = modifyState f
+  where
+    f (InstallProgress ip0 p0 msgs) = InstallProgress ip1 p0 msgs
+      where
+        updateOneStatus s0@(pid',_)
+          | pid == pid' = (pid', status)
+          | otherwise = s0
+        ip1
+          | pid `elem` (map fst ip0) = map updateOneStatus ip0
+          | otherwise = ip0 ++ [(pid,status)]
 
 catchIO' :: Shell a -> (Exception.IOException -> Shell a) -> Shell a
 catchIO' = MC.catch
