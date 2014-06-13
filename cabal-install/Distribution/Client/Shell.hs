@@ -40,7 +40,7 @@ import qualified Control.Monad.Catch as MC
 
 -- | status of one package which is currently being installed
 data PackageInstallStatus = PISConfiguring
-                          | PISBuilding
+                          | PISBuilding (Maybe (Int,Int,Bool))
                           | PISTesting
                           | PISHaddocking
                           | PISInstalling

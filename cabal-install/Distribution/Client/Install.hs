@@ -28,11 +28,13 @@ module Distribution.Client.Install (
     pruneInstallPlan
   ) where
 
+import Data.Char ( isDigit )
 import Data.List
          ( unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
+import qualified Control.Concurrent as CC
 import Control.Exception as Exception
          ( Exception(toException)
          , handleJust, IOException, SomeException )
@@ -44,15 +46,15 @@ import qualified Control.Monad.Catch as MC
 import System.Exit
          ( ExitCode(..) )
 import Control.Monad
-         ( when, unless )
+         ( when, unless, void )
 import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
            createDirectoryIfMissing, removeFile, renameDirectory )
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
-         ( openFile, IOMode(AppendMode)
-         , hClose )
+         ( openFile, IOMode(AppendMode), BufferMode(..)
+         , Handle, hClose, hGetLine, hPutStrLn, hIsEOF, hSetBuffering )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -97,6 +99,9 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
 import Distribution.Client.Shell
+
+import Distribution.Compat.CreatePipe ( createPipe )
+import qualified Distribution.Compat.ReadP as ReadP
 
 import Distribution.Simple.Command ( CommandUI )
 import Distribution.Simple.Compiler
@@ -1254,19 +1259,19 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
     when (numJobs > 1) $ notice' $
       "Configuring " ++ display pkgid ++ "..."
     updatePackageProgress pkgid PISConfiguring
-    setup configureCommand configureFlags mLogPath
+    setup configureCommand configureFlags mLogPath False
 
   -- Build phase
     onFailure BuildFailed $ do
       when (numJobs > 1) $ notice' $
         "Building " ++ display pkgid ++ "..."
-      updatePackageProgress pkgid PISBuilding
-      setup buildCommand' buildFlags mLogPath
+      updatePackageProgress pkgid (PISBuilding Nothing)
+      setup buildCommand' buildFlags mLogPath True
 
   -- Doc generation phase
       docsResult <- if shouldHaddock
         then (do updatePackageProgress pkgid PISHaddocking
-                 setup haddockCommand haddockFlags' mLogPath
+                 setup haddockCommand haddockFlags' mLogPath False
                  return DocsOk)
                `catchIO'` (\_ -> return DocsFailed)
                `catchExit'` (\_ -> return DocsFailed)
@@ -1275,7 +1280,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
   -- Tests phase
       onFailure TestsFailed $ do
         when (testsEnabled && PackageDescription.hasTests pkg) $ do
-            setup Cabal.testCommand testFlags mLogPath
+            setup Cabal.testCommand testFlags mLogPath False
             updatePackageProgress pkgid PISTesting
 
         let testsResult | testsEnabled = TestsOk
@@ -1292,9 +1297,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
             case rootCmd miscOptions of
               (Just cmd) -> liftIO (reexec cmd)
               Nothing    -> do
-                setup Cabal.copyCommand copyFlags mLogPath
+                setup Cabal.copyCommand copyFlags mLogPath False
                 when shouldRegister $ do
-                  setup Cabal.registerCommand registerFlags mLogPath
+                  setup Cabal.registerCommand registerFlags mLogPath False
           return (Right (BuildOk docsResult testsResult maybePkgConf))
 
   where
@@ -1352,7 +1357,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
           let registerFlags' version = (registerFlags version) {
                 Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
               }
-          setup Cabal.registerCommand registerFlags' mLogPath
+          setup Cabal.registerCommand registerFlags' mLogPath False
           withFileContents pkgConfFile $ \pkgConfText ->
             case Installed.parseInstalledPackageInfo pkgConfText of
               Installed.ParseFailed perror    -> pkgConfParseFailed perror
@@ -1379,19 +1384,33 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
            when logFileExists $ liftIO (removeFile logFileName)
            return (Just logFileName)
 
-    setup :: CommandUI flags0 -> (Version -> flags0) -> Maybe FilePath -> Shell ()
-    setup cmd flags mLogPath =
+    setup :: CommandUI flags0 -> (Version -> flags0) -> Maybe FilePath -> Bool -> Shell ()
+    setup cmd flags mLogPath redirectStuff =
       MC.bracket
       (maybe (return Nothing)
              (\path -> Just `fmap` liftIO (openFile path AppendMode)) mLogPath)
       (maybe (return ()) (liftIO . hClose))
-      (\logFileHandle ->
+      (\logFileHandle0 -> do
+        -- let's redirect output so we can parse it
+        (logFileHandle', blockUntilFinished) <- case (redirectStuff, logFileHandle0) of
+          -- redirect the log file handle
+          (True, Just lfh) -> do
+            (mlh', buf) <- intercept lfh $ \line -> do
+              case parseBuildLine line of
+                Nothing -> return ()
+                x -> updatePackageProgress pkgid (PISBuilding x)
+            return (Just mlh', buf)
+          -- don't redirect anything
+          _ -> return (logFileHandle0, return ())
+
         -- TODO: put setupWrapper in shell, there is some use of "die" in there
-        liftIO $ setupWrapper verbosity
-          scriptOptions { useLoggingHandle = logFileHandle
+        ret <- liftIO $ setupWrapper verbosity
+          scriptOptions { useLoggingHandle = logFileHandle'
                         , useWorkingDir    = workingDir }
           (Just pkg)
-          cmd flags [])
+          cmd flags []
+        blockUntilFinished
+        return ret)
 
     reexec :: FilePath -> IO ()
     reexec cmd = do
@@ -1463,3 +1482,84 @@ withWin32SelfUpgrade verbosity configFlags compid platform pkg action = do
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
           where env = InstallDirs.initialPathTemplateEnv pkgid compid platform
+
+
+-- -----------------------------------------------------------
+-- * Things for tracking module-level progress
+-- -----------------------------------------------------------
+
+-- | This is a tee which takes an original handle and an action.
+-- A new handle and a blocking action is returned.
+-- If you write to the new handle, each line will be written to the old handle
+-- and also have the action called on it.
+-- A blocking Shell () action is also returned which must be called
+-- before the old handle is closed.
+intercept :: Handle
+          -> (String -> Shell ())
+          -> Shell (Handle, Shell ())
+intercept h0 f = do
+  (readIntercept, writeIntercept) <- liftIO createPipe
+  liftIO $ hSetBuffering h0 LineBuffering
+  blockMVar <- liftIO CC.newEmptyMVar
+  let -- allow the install to block until the pipe is closed
+      blockUntilFinished = void (liftIO (CC.takeMVar blockMVar))
+      finish = liftIO $ do
+        hClose writeIntercept
+        CC.putMVar blockMVar ()
+
+      parsePipe :: Shell ()
+      parsePipe = liftIO (hIsEOF readIntercept) >>= \eof ->
+        if eof
+          then finish
+          else do
+            line <- liftIO (hGetLine readIntercept)
+            f line
+            liftIO (hPutStrLn h0 line)
+            parsePipe
+  void (forkIO' parsePipe)
+  return (writeIntercept, blockUntilFinished)
+
+-- | parse a line of the GHC build output, for example:
+-- .
+--   [32 of 60] Compiling Blah ( Blah.hs, dist/build/blah/blah-tmp/Blah.o )
+-- .
+-- would return Just (32,60,False).
+-- The Bool is if it's profiling or not.
+-- .
+-- If a line cannot be parsed, this function returns Nothing and
+-- the InstallProgress is left wherever it is. This handles both
+-- warnings, and non-GHC compatability: for non-GHC the progress
+-- will be left at (PISBuilding Nothing) until it finishes, for
+-- warnings it will be left at the last successfully build module
+-- e.g. (PISBuilding (Just (32.60.False))).
+parseBuildLine :: String -> Maybe (Int,Int,Bool)
+parseBuildLine line = do
+  (x0,x1) <- tryRun line parseNums
+  prof <- tryRun (reverse line) parseProfiling
+  return (x0,x1,prof)
+  where
+    parseNums :: ReadP.ReadS (Int, Int)
+    parseNums = ReadP.readP_to_S $ do
+      _ <- ReadP.string "["
+      ReadP.skipMany (ReadP.char ' ')
+      x0 <- fmap read (ReadP.munch1 isDigit)
+      _ <- ReadP.string " of "
+      x1 <- fmap read (ReadP.munch1 isDigit)
+      _ <- ReadP.string "]"
+      return (x0 :: Int, x1 :: Int)
+
+    parseProfiling :: ReadP.ReadS Bool
+    parseProfiling = ReadP.readP_to_S $ do
+      _ <- ReadP.string ") o"
+      next <- ReadP.get
+      case next of
+        '_' -> do
+          _ <- ReadP.string "p."
+          return True
+        '.' -> return False
+        _ -> ReadP.pfail
+
+    tryRun :: String -> ReadS a -> Maybe a
+    tryRun xs readS = case readS xs of
+      [] -> Nothing
+      ((x,_):_) -> Just x
