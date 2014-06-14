@@ -151,6 +151,9 @@ data GhcOptions = GhcOptions {
   -- | Run N jobs simultaneously (if possible).
   ghcOptNumJobs       :: Flag Int,
 
+  -- | Enable coverage analysis; the @ghc -fhpc -hpcdir@ flags.
+  ghcOptHPCDir        :: Flag FilePath,
+
   ----------------
   -- GHCi
 
@@ -263,6 +266,9 @@ renderGhcOptions comp opts
 
   , [ "-split-objs" | flagBool ghcOptSplitObjs ]
 
+  , case flagToMaybe (ghcOptHPCDir opts) of
+      Nothing -> []
+      Just hpcdir -> ["-fhpc", "-hpcdir " ++ hpcdir]
 
   , if parmakeSupported comp
     then
@@ -439,6 +445,7 @@ instance Monoid GhcOptions where
     ghcOptProfilingMode      = mempty,
     ghcOptSplitObjs          = mempty,
     ghcOptNumJobs            = mempty,
+    ghcOptHPCDir             = mempty,
     ghcOptGHCiScripts        = mempty,
     ghcOptHiSuffix           = mempty,
     ghcOptObjSuffix          = mempty,
@@ -488,6 +495,7 @@ instance Monoid GhcOptions where
     ghcOptProfilingMode      = combine ghcOptProfilingMode,
     ghcOptSplitObjs          = combine ghcOptSplitObjs,
     ghcOptNumJobs            = combine ghcOptNumJobs,
+    ghcOptHPCDir             = combine ghcOptHPCDir,
     ghcOptGHCiScripts        = combine ghcOptGHCiScripts,
     ghcOptHiSuffix           = combine ghcOptHiSuffix,
     ghcOptObjSuffix          = combine ghcOptObjSuffix,

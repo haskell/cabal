@@ -22,6 +22,7 @@ import Distribution.Verbosity ( normal )
 
 import Control.Concurrent (forkIO)
 import Control.Monad ( unless, void, when )
+import Data.Maybe (isJust)
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive )
@@ -72,9 +73,8 @@ runTest pkg_descr lbi flags suite = do
                    (testOptions flags)
         dataDirPath = pwd </> PD.dataDir pkg_descr
         tixFile = pwd </> (tixFilePath distPref $ PD.testName suite)
-        shellEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                   : ("HPCTIXFILE", tixFile)
-                   : existingEnv
+        pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath) : existingEnv
+        shellEnv = (if isJust $ LBI.withCoverage lbi then [("HPCTIXFILE", tixFile)] else []) ++ pkgPathEnv
     exit <- rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
                                -- these handles are automatically closed
                                Nothing (Just wOut) (Just wOut)

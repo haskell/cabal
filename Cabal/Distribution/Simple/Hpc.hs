@@ -12,7 +12,7 @@
 -- build test suites with HPC enabled.
 
 module Distribution.Simple.Hpc
-    ( enableCoverage
+    ( mixDir
     , htmlDir
     , tixDir
     , tixFilePath
@@ -21,13 +21,9 @@ module Distribution.Simple.Hpc
     ) where
 
 import Control.Monad ( when )
-import Distribution.Compiler ( CompilerFlavor(..) )
 import Distribution.ModuleName ( main )
 import Distribution.PackageDescription
-    ( BuildInfo(..)
-    , Library(..)
-    , PackageDescription(..)
-    , TestSuite(..)
+    ( TestSuite(..)
     , testModules
     )
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
@@ -38,45 +34,12 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Hpc ( markup, union )
 import Distribution.Simple.Utils ( notice )
 import Distribution.Version ( anyVersion )
-import Distribution.Text
 import Distribution.Verbosity ( Verbosity() )
 import System.Directory ( createDirectoryIfMissing, doesFileExist )
 import System.FilePath
 
 -- -------------------------------------------------------------------------
 -- Haskell Program Coverage
-
--- | Conditionally enable Haskell Program Coverage by adding the necessary
--- GHC options to a PackageDescription.
---
--- TODO: do this differently in the build stage by constructing local build
--- info, not by modifying the original PackageDescription.
---
-enableCoverage :: Bool                  -- ^ Enable coverage?
-               -> String                -- ^ \"dist/\" prefix
-               -> PackageDescription
-               -> PackageDescription
-enableCoverage False _ x = x
-enableCoverage True distPref p =
-    p { library = fmap enableLibCoverage (library p)
-      , testSuites = map enableTestCoverage (testSuites p)
-      }
-  where
-    enableBICoverage name oldBI =
-        let oldOptions = options oldBI
-            oldGHCOpts = lookup GHC oldOptions
-            newGHCOpts = case oldGHCOpts of
-                             Just xs -> (GHC, hpcOpts ++ xs)
-                             _ -> (GHC, hpcOpts)
-            newOptions = (:) newGHCOpts $ filter ((== GHC) . fst) oldOptions
-            hpcOpts = ["-fhpc", "-hpcdir", mixDir distPref name]
-        in oldBI { options = newOptions }
-    enableLibCoverage l =
-        l { libBuildInfo = enableBICoverage (display $ package p)
-                                            (libBuildInfo l)
-          }
-    enableTestCoverage t =
-        t { testBuildInfo = enableBICoverage (testName t) (testBuildInfo t) }
 
 hpcDir :: FilePath  -- ^ \"dist/\" prefix
        -> FilePath  -- ^ Directory containing component's HPC .mix files
