@@ -268,7 +268,7 @@ renderGhcOptions comp opts
 
   , case flagToMaybe (ghcOptHPCDir opts) of
       Nothing -> []
-      Just hpcdir -> ["-fhpc", "-hpcdir " ++ hpcdir]
+      Just hpcdir -> ["-fhpc", "-hpcdir", hpcdir]
 
   , if parmakeSupported comp
     then

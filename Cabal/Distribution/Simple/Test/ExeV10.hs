@@ -107,8 +107,9 @@ runTest pkg_descr lbi flags suite = do
     -- Write summary notice to terminal indicating end of test suite
     notice verbosity $ summarizeSuiteFinish suiteLog
 
-    markupTest verbosity lbi distPref
-        (display $ PD.package pkg_descr) suite
+    when (isJust $ LBI.withCoverage lbi) $
+        markupTest verbosity lbi distPref
+            (display $ PD.package pkg_descr) suite
 
     return suiteLog
   where

@@ -12,10 +12,10 @@ import Distribution.Simple.Program.Builtin ( hpcProgram )
 import Distribution.Simple.Program.Db      ( emptyProgramDb, configureProgram,
                                              requireProgramVersion )
 import PackageTests.PackageTester
-import Control.Exception                   ( bracket, finally )
+import Control.Exception                   ( bracket )
 import qualified Control.Exception as E    ( IOException, catch )
 import Control.Monad                       ( when )
-import System.Directory                    ( doesFileExist, removeFile )
+import System.Directory                    ( doesFileExist, canonicalizePath )
 import System.Environment                  ( lookupEnv, setEnv, unsetEnv )
 import System.FilePath
 import Test.HUnit
@@ -69,7 +69,8 @@ checkTestWithoutHpcNoMarkup ghcPath = TestCase $ do
           markupDir = htmlDir (dir </> "dist") $ testName dummy
           markupFile = markupDir </> "hpc_index" <.> "html"
           markupFileMessage = "HPC markup file should NOT exist"
-      withEnv [("HPCTIXFILE", tixFile)] $ buildAndTest ghcPath [] `finally` removeFile tixFile
+      hpcTixFile <- canonicalizePath tixFile
+      withEnv [("HPCTIXFILE", hpcTixFile)] $ buildAndTest ghcPath ["--ghc-option=-fhpc"]
       markupFileExists <- doesFileExist markupFile
       assertEqual markupFileMessage False markupFileExists
 

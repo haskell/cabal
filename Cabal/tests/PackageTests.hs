@@ -35,7 +35,6 @@ import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
 import PackageTests.OrderFlags.Check
 
-import Distribution.Compat.Exception (catchIO)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath)
 import Distribution.Simple.Program.Builtin (ghcProgram, ghcPkgProgram,
@@ -46,10 +45,8 @@ import Distribution.Text (display)
 import Distribution.Verbosity (normal)
 import Distribution.Version (Version(Version))
 
-import Data.Maybe (isJust)
 import System.Directory (doesFileExist, getCurrentDirectory,
                          setCurrentDirectory)
-import System.Environment (getEnv)
 import System.FilePath ((</>))
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 import Test.Framework (Test, TestName, defaultMain, testGroup)
