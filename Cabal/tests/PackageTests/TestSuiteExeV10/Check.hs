@@ -92,7 +92,7 @@ withEnv env = bracket applyAndBackup (mapM_ $ uncurry restoreEnv) . const
     applyAndBackup = do
         currentSettings <- mapM (lookupEnv . fst) env
         mapM_ (uncurry setEnv) env
-        return $ zipWith (,) (map fst env) currentSettings
+        return $ zip (map fst env) currentSettings
     restoreEnv name Nothing = unsetEnv name
     restoreEnv name (Just value) = setEnv name value
 

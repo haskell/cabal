@@ -78,9 +78,9 @@ runTest pkg_descr lbi flags suite = do
         -- Run test executable
         _ <- do let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
                     dataDirPath = pwd </> PD.dataDir pkg_descr
-                    tixFile = pwd </> (tixFilePath distPref $ PD.testName suite)
+                    tixFile = pwd </> tixFilePath distPref (PD.testName suite)
                     pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath) : existingEnv
-                    shellEnv = (if isJust $ LBI.withCoverage lbi then [("HPCTIXFILE", tixFile)] else []) ++ pkgPathEnv
+                    shellEnv = [("HPCTIXFILE", tixFile) | isJust $ LBI.withCoverage lbi] ++ pkgPathEnv
                 rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
                                    -- these handles are closed automatically
                                    (Just rIn) (Just wOut) (Just wOut)
