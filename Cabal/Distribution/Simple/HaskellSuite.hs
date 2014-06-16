@@ -172,6 +172,7 @@ buildLib verbosity pkg_descr lbi lib clbi = do
            | (ipkgid, _) <- componentPackageDeps clbi ] ++
     ["-G", display language] ++
     concat [ ["-X", display ex] | ex <- usedExtensions bi ] ++
+    cppOptions (libBuildInfo lib) ++
     [ display modu | modu <- libModules lib ]
 
 
