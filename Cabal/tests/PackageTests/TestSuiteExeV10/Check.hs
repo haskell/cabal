@@ -15,8 +15,10 @@ import PackageTests.PackageTester
 import Control.Exception                   ( bracket )
 import qualified Control.Exception as E    ( IOException, catch )
 import Control.Monad                       ( when )
-import System.Directory                    ( doesFileExist, canonicalizePath )
-import System.Environment                  ( lookupEnv, setEnv, unsetEnv )
+import System.Directory                    ( doesFileExist )
+import System.Environment                  ( getEnvironment )
+-- Once we can depend on base >= 4.7.0.0 these can be imported from System.Environment
+import System.SetEnv                       ( setEnv, unsetEnv )
 import System.FilePath
 import Test.HUnit
 
@@ -65,12 +67,11 @@ checkTestWithoutHpcNoMarkup ghcPath = TestCase $ do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
       let dummy = emptyTestSuite { testName = "test-Foo" }
-          tixFile = tixFilePath (dir </> "dist") $ testName dummy
+          tixFile = tixFilePath "dist" $ testName dummy
           markupDir = htmlDir (dir </> "dist") $ testName dummy
           markupFile = markupDir </> "hpc_index" <.> "html"
           markupFileMessage = "HPC markup file should NOT exist"
-      hpcTixFile <- canonicalizePath tixFile
-      withEnv [("HPCTIXFILE", hpcTixFile)] $ buildAndTest ghcPath ["--ghc-option=-fhpc"]
+      withEnv [("HPCTIXFILE", tixFile)] $ buildAndTest ghcPath ["--ghc-option=-fhpc"]
       markupFileExists <- doesFileExist markupFile
       assertEqual markupFileMessage False markupFileExists
 
@@ -90,7 +91,8 @@ withEnv :: [(String, String)] -> IO a -> IO a
 withEnv env = bracket applyAndBackup (mapM_ $ uncurry restoreEnv) . const
   where
     applyAndBackup = do
-        currentSettings <- mapM (lookupEnv . fst) env
+        environment <- getEnvironment
+        let currentSettings = map (flip lookup environment . fst) env
         mapM_ (uncurry setEnv) env
         return $ zip (map fst env) currentSettings
     restoreEnv name Nothing = unsetEnv name

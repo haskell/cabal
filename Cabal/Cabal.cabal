@@ -281,7 +281,7 @@ test-suite package-tests
     PackageTests.TestSuiteExeV10.Check
   hs-source-dirs: tests
   build-depends:
-    base >= 4.7.0.0,
+    base,
     test-framework,
     test-framework-quickcheck2 >= 0.2.12,
     test-framework-hunit,
@@ -293,7 +293,9 @@ test-suite package-tests
     filepath,
     extensible-exceptions,
     bytestring,
-    regex-posix
+    regex-posix,
+    -- Remove once we're able to depend on base >= 4.7.0.0
+    setenv
   if !os(windows)
     build-depends: unix
   ghc-options: -Wall
