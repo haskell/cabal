@@ -49,7 +49,7 @@ tests cabalPath ghcPkgPath =
 
           _ <- assertCleanSucceeded   <$> cabal_clean dir [] cabalPath
           _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["delete"] cabalPath
-          assertMyExecutableDoesNotExist cabalPath
+          assertMyExecutableNotFound cabalPath
           _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["init"] cabalPath
           _ <- assertInstallSucceeded <$> cabal_install dir [] cabalPath
 
@@ -64,7 +64,7 @@ tests cabalPath ghcPkgPath =
     , testCase "adds the sandbox bin directory to the PATH" $ do
           _ <- assertCleanSucceeded   <$> cabal_clean dir [] cabalPath
           _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["delete"] cabalPath
-          assertMyExecutableDoesNotExist cabalPath
+          assertMyExecutableNotFound cabalPath
           _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["init"] cabalPath
           _ <- assertInstallSucceeded <$> cabal_install dir [] cabalPath
 
@@ -100,12 +100,13 @@ tests cabalPath ghcPkgPath =
 
 
 
-assertMyExecutableDoesNotExist :: FilePath -> IO ()
-assertMyExecutableDoesNotExist cabalPath = do
+assertMyExecutableNotFound :: FilePath -> IO ()
+assertMyExecutableNotFound cabalPath = do
     result <- cabal_exec dir ["my-executable"] cabalPath
     assertExecFailed result
     let output = outputText result
-        expected = "cabal: my-executable: does not exist"
+        expected = "cabal: The program 'my-executable' is required but it " ++
+                   "could not be found"
         errMsg = "should not have found a my-executable\n" ++ output
     assertBool errMsg $
         expected `isInfixOf` (intercalate " " . lines $ output)
