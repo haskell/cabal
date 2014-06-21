@@ -34,6 +34,7 @@ module Distribution.Simple.Program.Db (
     knownPrograms,
     getProgramSearchPath,
     setProgramSearchPath,
+    modifyProgramSearchPath,
     userSpecifyPath,
     userSpecifyPaths,
     userMaybeSpecifyPath,
@@ -184,6 +185,16 @@ getProgramSearchPath = progSearchPath
 --
 setProgramSearchPath :: ProgramSearchPath -> ProgramDb -> ProgramDb
 setProgramSearchPath searchpath db = db { progSearchPath = searchpath }
+
+-- | Modify the current 'ProgramSearchPath' used by the 'ProgramDb'.
+-- This will affect programs that are configured from here on, so you
+-- should usually modify it before configuring any programs.
+--
+modifyProgramSearchPath :: (ProgramSearchPath -> ProgramSearchPath)
+                        -> ProgramDb
+                        -> ProgramDb
+modifyProgramSearchPath f db =
+  setProgramSearchPath (f $ getProgramSearchPath db) db
 
 -- |User-specify this path.  Basically override any path information
 -- for this program in the configuration. If it's not a known
