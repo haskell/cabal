@@ -212,6 +212,7 @@ test-suite package-tests
   hs-source-dirs: tests
   main-is: PackageTests.hs
   other-modules:
+    PackageTests.Exec.Check
     PackageTests.Freeze.Check
     PackageTests.PackageTester
   build-depends:

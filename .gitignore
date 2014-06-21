@@ -5,6 +5,7 @@ cabal-dev/
 Cabal/dist/
 Cabal/tests/Setup
 cabal-install/dist/
+cabal-install/tests/PackageTests/*/dist/
 .hpc/
 *.hi
 *.o
