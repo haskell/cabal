@@ -20,14 +20,24 @@ module PackageTests.PackageTester
     ( Result(..)
 
     -- * Running cabal commands
+    , cabal_clean
+    , cabal_exec
     , cabal_freeze
+    , cabal_install
+    , cabal_sandbox
+    , run
 
     -- * Test helpers
+    , assertCleanSucceeded
+    , assertExecFailed
+    , assertExecSucceeded
     , assertFreezeSucceeded
+    , assertInstallSucceeded
+    , assertSandboxSucceeded
     ) where
 
 import qualified Control.Exception.Extensible as E
-import Control.Monad (unless)
+import Control.Monad (when, unless)
 import Data.Maybe (fromMaybe)
 import System.Directory (canonicalizePath, doesFileExist)
 import System.Environment (getEnv)
@@ -47,10 +57,13 @@ import Distribution.Verbosity (Verbosity, flagToVerbosity, normal)
 data Success = Failure
              -- | ConfigureSuccess
              -- | BuildSuccess
-             -- | InstallSuccess
              -- | TestSuccess
              -- | BenchSuccess
+             | CleanSuccess
+             | ExecSuccess
              | FreezeSuccess
+             | InstallSuccess
+             | SandboxSuccess
              deriving (Eq, Show)
 
 data Result = Result
@@ -75,11 +88,35 @@ recordRun (cmd, exitCode, exeOutput) thisSucc res =
             cmd ++ "\n" ++ exeOutput
         }
 
+-- | Run the clean command and return its result.
+cabal_clean :: FilePath -> [String] -> FilePath -> IO Result
+cabal_clean dir args cabalPath = do
+    res <- cabal dir (["clean"] ++ args) cabalPath
+    return $ recordRun res CleanSuccess nullResult
+
+-- | Run the exec command and return its result.
+cabal_exec :: FilePath -> [String] -> FilePath -> IO Result
+cabal_exec dir args cabalPath = do
+    res <- cabal dir (["exec"] ++ args) cabalPath
+    return $ recordRun res ExecSuccess nullResult
+
 -- | Run the freeze command and return its result.
 cabal_freeze :: FilePath -> [String] -> FilePath -> IO Result
 cabal_freeze dir args cabalPath = do
     res <- cabal dir (["freeze"] ++ args) cabalPath
     return $ recordRun res FreezeSuccess nullResult
+
+-- | Run the install command and return its result.
+cabal_install :: FilePath -> [String] -> FilePath -> IO Result
+cabal_install dir args cabalPath = do
+    res <- cabal dir (["install"] ++ args) cabalPath
+    return $ recordRun res InstallSuccess nullResult
+
+-- | Run the sandbox command and return its result.
+cabal_sandbox :: FilePath -> [String] -> FilePath -> IO Result
+cabal_sandbox dir args cabalPath = do
+    res <- cabal dir (["sandbox"] ++ args) cabalPath
+    return $ recordRun res SandboxSuccess nullResult
 
 -- | Returns the command that was issued, the return code, and the output text.
 cabal :: FilePath -> [String] -> FilePath -> IO (String, ExitCode, String)
@@ -118,10 +155,40 @@ run cwd path args = do
 ------------------------------------------------------------------------
 -- * Test helpers
 
+assertCleanSucceeded :: Result -> Assertion
+assertCleanSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'cabal clean\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertExecSucceeded :: Result -> Assertion
+assertExecSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'cabal exec\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertExecFailed :: Result -> Assertion
+assertExecFailed result = when (successful result) $
+    assertFailure $
+    "expected: \'cabal exec\' should fail\n" ++
+    "  output: " ++ outputText result
+
 assertFreezeSucceeded :: Result -> Assertion
 assertFreezeSucceeded result = unless (successful result) $
     assertFailure $
     "expected: \'cabal freeze\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertInstallSucceeded :: Result -> Assertion
+assertInstallSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'cabal install\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertSandboxSucceeded :: Result -> Assertion
+assertSandboxSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'cabal sandbox\' should succeed\n" ++
     "  output: " ++ outputText result
 
 ------------------------------------------------------------------------
