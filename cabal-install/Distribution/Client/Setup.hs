@@ -1650,8 +1650,27 @@ defaultExecFlags = ExecFlags {
 execCommand :: CommandUI ExecFlags
 execCommand = CommandUI {
   commandName         = "exec",
-  commandSynopsis     = "Run a command with the cabal environment",
-  commandDescription  = Nothing,
+  commandSynopsis     = "Execute a command in the context of the package",
+  commandDescription  = Just $ \pname ->
+       "Execute the given command making the package's installed dependencies\n"
+    ++ "available to GHC. When a sandbox is being used, this causes GHC to\n"
+    ++ "use the sandbox package database as if it had been invoked directly\n"
+    ++ "by cabal. If a sandbox is not being used, GHC is not affected.\n\n"
+    ++ "Any cabal executable packages installed into either the user package\n"
+    ++ "database or into the current package's sandbox (if there is a current\n"
+    ++ "package and sandbox) are available on PATH.\n\n"
+    ++ "Examples:\n"
+    ++ "  Install the executable package pandoc into a sandbox and run it:\n"
+    ++ "    " ++ pname ++ " sandbox init\n"
+    ++ "    " ++ pname ++ " install pandoc\n"
+    ++ "    " ++ pname ++ " exec pandoc foo.md\n\n"
+    ++ "  Install the executable package hlint into the user package database\n"
+    ++ "  and run it:\n"
+    ++ "    " ++ pname ++ " install --user hlint\n"
+    ++ "    " ++ pname ++ " exec hlint Foo.hs\n\n"
+    ++ "  Execute runghc on Foo.hs with runghc configured to use the\n"
+    ++ "  sandbox package database (if a sandbox is being used):\n"
+    ++ "    " ++ pname ++ " exec runghc Foo.hs\n",
   commandUsage        = \pname ->
        "Usage: " ++ pname ++ " exec [FLAGS] COMMAND [-- [ARGS...]]\n\n"
     ++ "Flags for exec:",
