@@ -22,6 +22,16 @@ import Distribution.Client.Dependency.Modular.Version
 data Var qpn = P qpn | F (FN qpn) | S (SN qpn)
   deriving (Eq, Ord, Show, Functor)
 
+-- | For computing conflict sets, we map flag choice vars to a
+-- single flag choice. This means that all flag choices are treated
+-- as interdependent. So if one flag of a package ends up in a
+-- conflict set, then all flags are being treated as being part of
+-- the conflict set.
+simplifyVar :: Var qpn -> Var qpn
+simplifyVar (P qpn)       = P qpn
+simplifyVar (F (FN pi _)) = F (FN pi (mkFlag "flag"))
+simplifyVar (S qsn)       = S qsn
+
 showVar :: Var QPN -> String
 showVar (P qpn) = showQPN qpn
 showVar (F qfn) = showQFN qfn
@@ -149,7 +159,7 @@ type QGoalReasonChain = GoalReasonChain QPN
 goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = S.empty
 goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
-goalReasonToVars (FDependency qfn _)      = S.singleton (F qfn)
+goalReasonToVars (FDependency qfn _)      = S.singleton (simplifyVar (F qfn))
 goalReasonToVars (SDependency qsn)        = S.singleton (S qsn)
 
 goalReasonChainToVars :: Ord qpn => GoalReasonChain qpn -> ConflictSet qpn
@@ -168,4 +178,4 @@ close (OpenGoal (Stanza  qsn _)      gr) = Goal (S qsn) gr
 -- | Compute a conflic set from a goal. The conflict set contains the
 -- closure of goal reasons as well as the variable of the goal itself.
 toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
-toConflictSet (Goal g grs) = S.insert g (goalReasonChainToVars grs)
+toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
