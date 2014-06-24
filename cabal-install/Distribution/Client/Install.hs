@@ -29,7 +29,7 @@ module Distribution.Client.Install (
   ) where
 
 import Data.List
-         ( unfoldr, nub, sort, (\\) )
+         ( isPrefixOf, unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
@@ -1193,10 +1193,13 @@ installLocalTarballPackage verbosity jobLimit pkgid
       distDirExists <- doesDirectoryExist distDirPath
       when (distDirExists && distDirPath /= distDirPathNew) $ do
         -- NB: we need to handle the case when 'distDirPathNew' is a
-        -- subdirectory of 'distDirPath' (e.g. 'dist/dist-sandbox-3688fbc2').
+        -- subdirectory of 'distDirPath' (e.g. the former is
+        -- 'dist/dist-sandbox-3688fbc2' and the latter is 'dist').
         debug verbosity $ "Renaming '" ++ distDirPath ++ "' to '"
           ++ distDirPathTmp ++ "'."
         renameDirectory distDirPath distDirPathTmp
+        when (distDirPath `isPrefixOf` distDirPathNew) $
+          createDirectoryIfMissingVerbose verbosity False distDirPath
         debug verbosity $ "Renaming '" ++ distDirPathTmp ++ "' to '"
           ++ distDirPathNew ++ "'."
         renameDirectory distDirPathTmp distDirPathNew
