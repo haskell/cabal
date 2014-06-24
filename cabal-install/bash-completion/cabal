@@ -4,13 +4,14 @@
 #
 
 # List cabal targets by type, pass:
-# 	- Test-Suite for test suites
-#   - Benchmark for benchmarks
-#   - Test-Suite|Benchmark for both
+#   - test-suite for test suites
+#   - benchmark for benchmarks
+#   - executable for executables
+#   - executable|test-suite|benchmark for the three
 _cabal_list()
 {
 	cat *.cabal |
-	grep -E "$1" |
+	grep -Ei "^[[:space:]]*($1)[[:space:]]" |
 	sed -e "s/.* \([^ ]*\).*/\1/"
 }
 
@@ -24,10 +25,11 @@ _cabal_targets()
 	[ -f *.cabal ] || return 0
 	local comp
 	for comp in $*; do
-		[ $comp == build ] && _cabal_list "Test-Suite|Benchmark" && break
-		[ $comp == repl  ] && _cabal_list "Test-Suite|Benchmark" && break
-		[ $comp == test  ] && _cabal_list "Test-Suite"           && break
-		[ $comp == bench ] && _cabal_list            "Benchmark" && break
+		[ $comp == build ] && _cabal_list "executable|test-suite|benchmark" && break
+		[ $comp == repl  ] && _cabal_list "executable|test-suite|benchmark" && break
+		[ $comp == run   ] && _cabal_list "executable"                      && break
+		[ $comp == test  ] && _cabal_list            "test-suite"           && break
+		[ $comp == bench ] && _cabal_list                       "benchmark" && break
 	done
 }
 
