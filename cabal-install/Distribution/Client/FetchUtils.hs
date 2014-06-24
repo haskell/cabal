@@ -28,6 +28,7 @@ module Distribution.Client.FetchUtils (
 import Distribution.Client.Types
 import Distribution.Client.HttpUtils
          ( downloadURI, isOldHackageURI, DownloadResult(..) )
+import Distribution.Client.Shell ( Shell, liftIO )
 
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
@@ -49,7 +50,6 @@ import qualified System.FilePath.Posix as FilePath.Posix
          ( combine, joinPath )
 import Network.URI
          ( URI(uriPath) )
-
 -- ------------------------------------------------------------
 -- * Actually fetch things
 -- ------------------------------------------------------------
@@ -66,7 +66,7 @@ isFetched loc = case loc of
 
 
 checkFetched :: PackageLocation (Maybe FilePath)
-             -> IO (Maybe (PackageLocation FilePath))
+             -> Shell (Maybe (PackageLocation FilePath))
 checkFetched loc = case loc of
     LocalUnpackedPackage dir  ->
       return (Just $ LocalUnpackedPackage dir)
@@ -80,7 +80,7 @@ checkFetched loc = case loc of
     RemoteTarballPackage _uri Nothing -> return Nothing
     RepoTarballPackage repo pkgid Nothing -> do
       let file = packageFile repo pkgid
-      exists <- doesFileExist file
+      exists <- liftIO (doesFileExist file)
       if exists
         then return (Just $ RepoTarballPackage repo pkgid file)
         else return Nothing

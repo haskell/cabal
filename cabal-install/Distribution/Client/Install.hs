@@ -28,31 +28,33 @@ module Distribution.Client.Install (
     pruneInstallPlan
   ) where
 
+import Data.Char ( isDigit )
 import Data.List
          ( unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
+import qualified Control.Concurrent as CC
 import Control.Exception as Exception
-         ( Exception(toException), bracket, catches
-         , Handler(Handler), handleJust, IOException, SomeException )
+         ( Exception(toException)
+         , handleJust, IOException, SomeException )
 #ifndef mingw32_HOST_OS
 import Control.Exception as Exception
          ( Exception(fromException) )
 #endif
+import qualified Control.Monad.Catch as MC
 import System.Exit
          ( ExitCode(..) )
-import Distribution.Compat.Exception
-         ( catchIO, catchExit )
 import Control.Monad
-         ( when, unless )
+         ( when, unless, void )
 import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
            createDirectoryIfMissing, removeFile, renameDirectory )
 import System.FilePath
          ( (</>), (<.>), takeDirectory )
 import System.IO
-         ( openFile, IOMode(AppendMode), hClose )
+         ( openFile, IOMode(AppendMode), BufferMode(..)
+         , Handle, hClose, hGetLine, hPutStrLn, hIsEOF, hSetBuffering )
 import System.IO.Error
          ( isDoesNotExistError, ioeGetFileName )
 
@@ -96,7 +98,12 @@ import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
+import Distribution.Client.Shell
 
+import Distribution.Compat.CreatePipe ( createPipe )
+import qualified Distribution.Compat.ReadP as ReadP
+
+import Distribution.Simple.Command ( CommandUI )
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , PackageDB(..), PackageDBStack )
@@ -135,7 +142,7 @@ import Distribution.ParseUtils
 import Distribution.Version
          ( Version )
 import Distribution.Simple.Utils as Utils
-         ( notice, info, warn, debug, debugNoWrap, die
+         ( notice, warn, debugNoWrap, die
          , intercalate, withTempDirectory )
 import Distribution.Client.Utils
          ( determineNumJobs, inDir, mergeBy, MergeResult(..)
@@ -187,7 +194,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
   userTargets0 = do
 
     installContext <- makeInstallContext verbosity args (Just userTargets0)
-    installPlan    <- foldProgress logMsg die' return =<<
+    installPlan    <- foldProgress logMsg die'' return =<<
                       makeInstallPlan verbosity args installContext
 
     processInstallPlan verbosity args installContext installPlan
@@ -197,8 +204,8 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
             globalFlags, configFlags, configExFlags, installFlags,
             haddockFlags)
 
-    die' message = die (message ++ if isUseSandbox useSandbox
-                                   then installFailedInSandbox else [])
+    die'' message = die (message ++ if isUseSandbox useSandbox
+                                    then installFailedInSandbox else [])
     -- TODO: use a better error message, remove duplication.
     installFailedInSandbox =
       "\nNote: when using a sandbox, all packages are required to have "
@@ -903,7 +910,7 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  executeInstallPlan verbosity jobControl useLogFile installPlan $ \rpkg ->
+  runShell installPlan verbosity $ executeInstallPlan verbosity jobControl useLogFile installPlan $ \rpkg ->
     installReadyPackage platform compid configFlags
                         rpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
@@ -1006,11 +1013,11 @@ performInstallations verbosity
 
 
 executeInstallPlan :: Verbosity
-                   -> JobControl IO (PackageId, BuildResult)
+                   -> JobControl Shell (PackageId, BuildResult)
                    -> UseLogFile
                    -> InstallPlan
-                   -> (ReadyPackage -> IO BuildResult)
-                   -> IO InstallPlan
+                   -> (ReadyPackage -> Shell BuildResult)
+                   -> Shell InstallPlan
 executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
     tryNewTasks 0 plan0
   where
@@ -1020,7 +1027,7 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
            | otherwise      -> waitForTasks taskCount plan
         pkgs                -> do
           sequence_
-            [ do info verbosity $ "Ready to install " ++ display pkgid
+            [ do info' $ "Ready to install " ++ display pkgid
                  spawnJob jobCtl $ do
                    buildResult <- installPkg pkg
                    return (packageId pkg, buildResult)
@@ -1032,11 +1039,12 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
           waitForTasks taskCount' plan'
 
     waitForTasks taskCount plan = do
-      info verbosity $ "Waiting for install task to finish..."
+      info' "Waiting for install task to finish..."
       (pkgid, buildResult) <- collectJob jobCtl
       printBuildResult pkgid buildResult
       let taskCount' = taskCount-1
           plan'      = updatePlan pkgid buildResult plan
+      packageFinished pkgid plan'
       tryNewTasks taskCount' plan'
 
     updatePlan :: PackageIdentifier -> BuildResult -> InstallPlan -> InstallPlan
@@ -1054,21 +1062,21 @@ executeInstallPlan verbosity jobCtl useLogFile plan0 installPkg =
 
     -- Print build log if something went wrong, and 'Installed $PKGID'
     -- otherwise.
-    printBuildResult :: PackageId -> BuildResult -> IO ()
+    printBuildResult :: PackageId -> BuildResult -> Shell ()
     printBuildResult pkgid buildResult = case buildResult of
-        (Right _) -> notice verbosity $ "Installed " ++ display pkgid
+        (Right _) -> notice' $ "Installed " ++ display pkgid
         (Left _)  -> do
-          notice verbosity $ "Failed to install " ++ display pkgid
+          notice' $ "Failed to install " ++ display pkgid
           when (verbosity >= normal) $
             case useLogFile of
               Nothing                 -> return ()
               Just (mkLogFileName, _) -> do
                 let logName = mkLogFileName pkgid
-                putStr $ "Build log ( " ++ logName ++ " ):\n"
-                printFile logName
+                notice' $ "Build log ( " ++ logName ++ " ):\n"
+                printFile logName >>= notice'
 
-    printFile :: FilePath -> IO ()
-    printFile path = readFile path >>= putStr
+    printFile :: FilePath -> Shell String
+    printFile path = liftIO (readFile path)
 
 -- | Call an installer for an 'SourcePackage' but override the configure
 -- flags with the ones given by the 'ReadyPackage'. In particular the
@@ -1114,15 +1122,15 @@ fetchSourcePackage
   :: Verbosity
   -> JobLimit
   -> PackageLocation (Maybe FilePath)
-  -> (PackageLocation FilePath -> IO BuildResult)
-  -> IO BuildResult
+  -> (PackageLocation FilePath -> Shell BuildResult)
+  -> Shell BuildResult
 fetchSourcePackage verbosity fetchLimit src installPkg = do
   fetched <- checkFetched src
   case fetched of
     Just src' -> installPkg src'
     Nothing   -> onFailure DownloadFailed $ do
                    loc <- withJobLimit fetchLimit $
-                            fetchPackage verbosity src
+                            liftIO (fetchPackage verbosity src)
                    installPkg loc
 
 
@@ -1130,8 +1138,8 @@ installLocalPackage
   :: Verbosity
   -> JobLimit
   -> PackageIdentifier -> PackageLocation FilePath -> FilePath
-  -> (Maybe FilePath -> IO BuildResult)
-  -> IO BuildResult
+  -> (Maybe FilePath -> Shell BuildResult)
+  -> Shell BuildResult
 installLocalPackage verbosity jobLimit pkgid location distPref installPkg =
 
   case location of
@@ -1156,11 +1164,11 @@ installLocalTarballPackage
   :: Verbosity
   -> JobLimit
   -> PackageIdentifier -> FilePath -> FilePath
-  -> (Maybe FilePath -> IO BuildResult)
-  -> IO BuildResult
+  -> (Maybe FilePath -> Shell BuildResult)
+  -> Shell BuildResult
 installLocalTarballPackage verbosity jobLimit pkgid
                            tarballPath distPref installPkg = do
-  tmp <- getTemporaryDirectory
+  tmp <- liftIO getTemporaryDirectory
   withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
     onFailure UnpackFailed $ do
       let relUnpackedPath = display pkgid
@@ -1168,12 +1176,12 @@ installLocalTarballPackage verbosity jobLimit pkgid
           descFilePath = absUnpackedPath
                      </> display (packageName pkgid) <.> "cabal"
       withJobLimit jobLimit $ do
-        info verbosity $ "Extracting " ++ tarballPath
-                      ++ " to " ++ tmpDirPath ++ "..."
-        extractTarGzFile tmpDirPath relUnpackedPath tarballPath
-        exists <- doesFileExist descFilePath
+        info' $ "Extracting " ++ tarballPath
+                ++ " to " ++ tmpDirPath ++ "..."
+        liftIO (extractTarGzFile tmpDirPath relUnpackedPath tarballPath)
+        exists <- liftIO (doesFileExist descFilePath)
         when (not exists) $
-          die $ "Package .cabal file not found: " ++ show descFilePath
+          die' $ "Package .cabal file not found: " ++ show descFilePath
         maybeRenameDistDir absUnpackedPath
 
       installPkg (Just absUnpackedPath)
@@ -1185,22 +1193,22 @@ installLocalTarballPackage verbosity jobLimit pkgid
     --
     -- TODO: 'cabal get happy && cd sandbox && cabal install ../happy' still
     -- fails even with this workaround. We probably can live with that.
-    maybeRenameDistDir :: FilePath -> IO ()
+    maybeRenameDistDir :: FilePath -> Shell ()
     maybeRenameDistDir absUnpackedPath = do
       let distDirPath    = absUnpackedPath </> defaultDistPref
           distDirPathTmp = absUnpackedPath </> (defaultDistPref ++ "-tmp")
           distDirPathNew = absUnpackedPath </> distPref
-      distDirExists <- doesDirectoryExist distDirPath
+      distDirExists <- liftIO (doesDirectoryExist distDirPath)
       when distDirExists $ do
         -- NB: we need to handle the case when 'distDirPathNew' is a
         -- subdirectory of 'distDirPath' (e.g. 'dist/dist-sandbox-3688fbc2').
-        debug verbosity $ "Renaming '" ++ distDirPath ++ "' to '"
+        debug' $ "Renaming '" ++ distDirPath ++ "' to '"
           ++ distDirPathTmp ++ "'."
-        renameDirectory distDirPath distDirPathTmp
-        createDirectoryIfMissingVerbose verbosity False distDirPath
-        debug verbosity $ "Renaming '" ++ distDirPathTmp ++ "' to '"
+        liftIO $ renameDirectory distDirPath distDirPathTmp
+        liftIO $ createDirectoryIfMissingVerbose verbosity False distDirPath
+        debug' $ "Renaming '" ++ distDirPathTmp ++ "' to '"
           ++ distDirPathNew ++ "'."
-        renameDirectory distDirPathTmp distDirPathNew
+        liftIO $ renameDirectory distDirPathTmp distDirPathNew
 
 installUnpackedPackage
   :: Verbosity
@@ -1218,22 +1226,21 @@ installUnpackedPackage
   -> PackageDescriptionOverride
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
   -> UseLogFile -- ^ File to log output to (if any)
-  -> IO BuildResult
+  -> Shell BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs
                        scriptOptions miscOptions
                        configFlags installFlags haddockFlags
                        compid platform pkg pkgoverride workingDir useLogFile = do
-
   -- Override the .cabal file if necessary
   case pkgoverride of
     Nothing     -> return ()
     Just pkgtxt -> do
       let descFilePath = fromMaybe "." workingDir
                      </> display (packageName pkgid) <.> "cabal"
-      info verbosity $
+      info' $
         "Updating " ++ display (packageName pkgid) <.> "cabal"
                     ++ " with the latest revision from the index."
-      writeFileAtomic descFilePath pkgtxt
+      liftIO (writeFileAtomic descFilePath pkgtxt)
 
   -- Make sure that we pass --libsubdir etc to 'setup configure' (necessary if
   -- the setup script was compiled against an old version of the Cabal lib).
@@ -1249,45 +1256,50 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
   -- Configure phase
   onFailure ConfigureFailed $ withJobLimit buildLimit $ do
-    when (numJobs > 1) $ notice verbosity $
+    when (numJobs > 1) $ notice' $
       "Configuring " ++ display pkgid ++ "..."
-    setup configureCommand configureFlags mLogPath
+    updatePackageProgress pkgid PISConfiguring
+    setup configureCommand configureFlags mLogPath False
 
   -- Build phase
     onFailure BuildFailed $ do
-      when (numJobs > 1) $ notice verbosity $
+      when (numJobs > 1) $ notice' $
         "Building " ++ display pkgid ++ "..."
-      setup buildCommand' buildFlags mLogPath
+      updatePackageProgress pkgid (PISBuilding Nothing)
+      setup buildCommand' buildFlags mLogPath True
 
   -- Doc generation phase
       docsResult <- if shouldHaddock
-        then (do setup haddockCommand haddockFlags' mLogPath
+        then (do updatePackageProgress pkgid PISHaddocking
+                 setup haddockCommand haddockFlags' mLogPath False
                  return DocsOk)
-               `catchIO`   (\_ -> return DocsFailed)
-               `catchExit` (\_ -> return DocsFailed)
+               `catchIO'` (\_ -> return DocsFailed)
+               `catchExit'` (\_ -> return DocsFailed)
         else return DocsNotTried
 
   -- Tests phase
       onFailure TestsFailed $ do
-        when (testsEnabled && PackageDescription.hasTests pkg) $
-            setup Cabal.testCommand testFlags mLogPath
+        when (testsEnabled && PackageDescription.hasTests pkg) $ do
+            setup Cabal.testCommand testFlags mLogPath False
+            updatePackageProgress pkgid PISTesting
 
         let testsResult | testsEnabled = TestsOk
                         | otherwise = TestsNotTried
 
       -- Install phase
         onFailure InstallFailed $ criticalSection installLock $ do
+          updatePackageProgress pkgid PISInstalling
           -- Capture installed package configuration file
           maybePkgConf <- maybeGenPkgConf mLogPath
 
           -- Actual installation
           withWin32SelfUpgrade verbosity configFlags compid platform pkg $ do
             case rootCmd miscOptions of
-              (Just cmd) -> reexec cmd
+              (Just cmd) -> liftIO (reexec cmd)
               Nothing    -> do
-                setup Cabal.copyCommand copyFlags mLogPath
+                setup Cabal.copyCommand copyFlags mLogPath False
                 when shouldRegister $ do
-                  setup Cabal.registerCommand registerFlags mLogPath
+                  setup Cabal.registerCommand registerFlags mLogPath False
           return (Right (BuildOk docsResult testsResult maybePkgConf))
 
   where
@@ -1320,9 +1332,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
     verbosity' = maybe verbosity snd useLogFile
     tempTemplate name = name ++ "-" ++ display pkgid
 
-    addDefaultInstallDirs :: ConfigFlags -> IO ConfigFlags
+    addDefaultInstallDirs :: ConfigFlags -> Shell ConfigFlags
     addDefaultInstallDirs configFlags' = do
-      defInstallDirs <- InstallDirs.defaultInstallDirs flavor userInstall False
+      defInstallDirs <- liftIO (InstallDirs.defaultInstallDirs flavor userInstall False)
       return $ configFlags' {
           configInstallDirs = fmap Cabal.Flag .
                               InstallDirs.substituteInstallDirTemplates env $
@@ -1336,54 +1348,71 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                         (configUserInstall configFlags')
 
     maybeGenPkgConf :: Maybe FilePath
-                    -> IO (Maybe Installed.InstalledPackageInfo)
+                    -> Shell (Maybe Installed.InstalledPackageInfo)
     maybeGenPkgConf mLogPath =
       if shouldRegister then do
-        tmp <- getTemporaryDirectory
+        tmp <- liftIO getTemporaryDirectory
         withTempFile tmp (tempTemplate "pkgConf") $ \pkgConfFile handle -> do
-          hClose handle
+          liftIO (hClose handle)
           let registerFlags' version = (registerFlags version) {
                 Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
               }
-          setup Cabal.registerCommand registerFlags' mLogPath
+          setup Cabal.registerCommand registerFlags' mLogPath False
           withFileContents pkgConfFile $ \pkgConfText ->
             case Installed.parseInstalledPackageInfo pkgConfText of
               Installed.ParseFailed perror    -> pkgConfParseFailed perror
               Installed.ParseOk warns pkgConf -> do
                 unless (null warns) $
-                  warn verbosity $ unlines (map (showPWarning pkgConfFile) warns)
+                  warn' $ unlines (map (showPWarning pkgConfFile) warns)
                 return (Just pkgConf)
       else return Nothing
 
-    pkgConfParseFailed :: Installed.PError -> IO a
+    pkgConfParseFailed :: Installed.PError -> Shell a
     pkgConfParseFailed perror =
-      die $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
-            ++ show perror
+      die' $ "Couldn't parse the output of 'setup register --gen-pkg-config':"
+             ++ show perror
 
-    maybeLogPath :: IO (Maybe FilePath)
+    maybeLogPath :: Shell (Maybe FilePath)
     maybeLogPath =
       case useLogFile of
          Nothing                 -> return Nothing
          Just (mkLogFileName, _) -> do
            let logFileName = mkLogFileName (packageId pkg)
                logDir      = takeDirectory logFileName
-           unless (null logDir) $ createDirectoryIfMissing True logDir
-           logFileExists <- doesFileExist logFileName
-           when logFileExists $ removeFile logFileName
+           unless (null logDir) $ liftIO (createDirectoryIfMissing True logDir)
+           logFileExists <- liftIO (doesFileExist logFileName)
+           when logFileExists $ liftIO (removeFile logFileName)
            return (Just logFileName)
 
-    setup cmd flags mLogPath =
-      Exception.bracket
+    setup :: CommandUI flags0 -> (Version -> flags0) -> Maybe FilePath -> Bool -> Shell ()
+    setup cmd flags mLogPath redirectStuff =
+      MC.bracket
       (maybe (return Nothing)
-             (\path -> Just `fmap` openFile path AppendMode) mLogPath)
-      (maybe (return ()) hClose)
-      (\logFileHandle ->
-        setupWrapper verbosity
-          scriptOptions { useLoggingHandle = logFileHandle
+             (\path -> Just `fmap` liftIO (openFile path AppendMode)) mLogPath)
+      (maybe (return ()) (liftIO . hClose))
+      (\logFileHandle0 -> do
+        -- let's redirect output so we can parse it
+        (logFileHandle', blockUntilFinished) <- case (redirectStuff, logFileHandle0) of
+          -- redirect the log file handle
+          (True, Just lfh) -> do
+            (mlh', buf) <- intercept lfh $ \line -> do
+              case parseBuildLine line of
+                Nothing -> return ()
+                x -> updatePackageProgress pkgid (PISBuilding x)
+            return (Just mlh', buf)
+          -- don't redirect anything
+          _ -> return (logFileHandle0, return ())
+
+        -- TODO: put setupWrapper in shell, there is some use of "die" in there
+        ret <- liftIO $ setupWrapper verbosity
+          scriptOptions { useLoggingHandle = logFileHandle'
                         , useWorkingDir    = workingDir }
           (Just pkg)
-          cmd flags [])
+          cmd flags []
+        blockUntilFinished
+        return ret)
 
+    reexec :: FilePath -> IO ()
     reexec cmd = do
       -- look for our own executable file and re-exec ourselves using a helper
       -- program like sudo to elevate privileges:
@@ -1398,14 +1427,14 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
 
 
 -- helper
-onFailure :: (SomeException -> BuildFailure) -> IO BuildResult -> IO BuildResult
+onFailure :: (SomeException -> BuildFailure) -> Shell BuildResult -> Shell BuildResult
 onFailure result action =
-  action `catches`
-    [ Handler $ \ioe  -> handler (ioe  :: IOException)
-    , Handler $ \exit -> handler (exit :: ExitCode)
+  action `MC.catches`
+    [ MC.Handler $ \ioe  -> handler (ioe  :: IOException)
+    , MC.Handler $ \exit -> handler (exit :: ExitCode)
     ]
   where
-    handler :: Exception e => e -> IO BuildResult
+    handler :: Exception e => e -> Shell BuildResult
     handler = return . Left . result . toException
 
 
@@ -1418,11 +1447,11 @@ withWin32SelfUpgrade :: Verbosity
                      -> CompilerId
                      -> Platform
                      -> PackageDescription
-                     -> IO a -> IO a
+                     -> Shell a -> Shell a
 withWin32SelfUpgrade _ _ _ _ _ action | buildOS /= Windows = action
 withWin32SelfUpgrade verbosity configFlags compid platform pkg action = do
 
-  defaultDirs <- InstallDirs.defaultInstallDirs
+  defaultDirs <- liftIO $ InstallDirs.defaultInstallDirs
                    compFlavor
                    (fromFlag (configUserInstall configFlags))
                    (PackageDescription.hasLibs pkg)
@@ -1453,3 +1482,84 @@ withWin32SelfUpgrade verbosity configFlags compid platform pkg action = do
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
           where env = InstallDirs.initialPathTemplateEnv pkgid compid platform
+
+
+-- -----------------------------------------------------------
+-- * Things for tracking module-level progress
+-- -----------------------------------------------------------
+
+-- | This is a tee which takes an original handle and an action.
+-- A new handle and a blocking action is returned.
+-- If you write to the new handle, each line will be written to the old handle
+-- and also have the action called on it.
+-- A blocking Shell () action is also returned which must be called
+-- before the old handle is closed.
+intercept :: Handle
+          -> (String -> Shell ())
+          -> Shell (Handle, Shell ())
+intercept h0 f = do
+  (readIntercept, writeIntercept) <- liftIO createPipe
+  liftIO $ hSetBuffering h0 LineBuffering
+  blockMVar <- liftIO CC.newEmptyMVar
+  let -- allow the install to block until the pipe is closed
+      blockUntilFinished = void (liftIO (CC.takeMVar blockMVar))
+      finish = liftIO $ do
+        hClose writeIntercept
+        CC.putMVar blockMVar ()
+
+      parsePipe :: Shell ()
+      parsePipe = liftIO (hIsEOF readIntercept) >>= \eof ->
+        if eof
+          then finish
+          else do
+            line <- liftIO (hGetLine readIntercept)
+            f line
+            liftIO (hPutStrLn h0 line)
+            parsePipe
+  void (forkIO' parsePipe)
+  return (writeIntercept, blockUntilFinished)
+
+-- | parse a line of the GHC build output, for example:
+-- .
+--   [32 of 60] Compiling Blah ( Blah.hs, dist/build/blah/blah-tmp/Blah.o )
+-- .
+-- would return Just (32,60,False).
+-- The Bool is if it's profiling or not.
+-- .
+-- If a line cannot be parsed, this function returns Nothing and
+-- the InstallProgress is left wherever it is. This handles both
+-- warnings, and non-GHC compatability: for non-GHC the progress
+-- will be left at (PISBuilding Nothing) until it finishes, for
+-- warnings it will be left at the last successfully build module
+-- e.g. (PISBuilding (Just (32.60.False))).
+parseBuildLine :: String -> Maybe (Int,Int,Bool)
+parseBuildLine line = do
+  (x0,x1) <- tryRun line parseNums
+  prof <- tryRun (reverse line) parseProfiling
+  return (x0,x1,prof)
+  where
+    parseNums :: ReadP.ReadS (Int, Int)
+    parseNums = ReadP.readP_to_S $ do
+      _ <- ReadP.string "["
+      ReadP.skipMany (ReadP.char ' ')
+      x0 <- fmap read (ReadP.munch1 isDigit)
+      _ <- ReadP.string " of "
+      x1 <- fmap read (ReadP.munch1 isDigit)
+      _ <- ReadP.string "]"
+      return (x0 :: Int, x1 :: Int)
+
+    parseProfiling :: ReadP.ReadS Bool
+    parseProfiling = ReadP.readP_to_S $ do
+      _ <- ReadP.string ") o"
+      next <- ReadP.get
+      case next of
+        '_' -> do
+          _ <- ReadP.string "p."
+          return True
+        '.' -> return False
+        _ -> ReadP.pfail
+
+    tryRun :: String -> ReadS a -> Maybe a
+    tryRun xs readS = case readS xs of
+      [] -> Nothing
+      ((x,_):_) -> Just x
