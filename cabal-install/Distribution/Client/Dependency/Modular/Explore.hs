@@ -66,9 +66,9 @@ combine :: Var QPN -> [(a, (Maybe (ConflictSet QPN), b))] ->
 combine _   []                      c = (Just c, [])
 combine var ((k, (     d, v)) : xs) c = (\ ~(e, ys) -> (e, (k, v) : ys)) $
                                         case d of
-                                          Just e | not (var `S.member` e) -> (Just e, [])
-                                                 | otherwise              -> combine var xs (e `S.union` c)
-                                          Nothing                         -> (Nothing, snd $ combine var xs S.empty)
+                                          Just e | not (simplifyVar var `S.member` e) -> (Just e, [])
+                                                 | otherwise                          -> combine var xs (e `S.union` c)
+                                          Nothing                                     -> (Nothing, snd $ combine var xs S.empty)
 
 -- | Naive backtracking exploration of the search tree. This will yield correct
 -- assignments only once the tree itself is validated.

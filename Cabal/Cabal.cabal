@@ -25,6 +25,9 @@ build-type: Custom
 
 extra-source-files:
   README.md tests/README.md changelog
+  doc/developing-packages.markdown doc/index.markdown
+  doc/installing-packages.markdown
+  doc/misc.markdown
 
   -- Generated with 'misc/gen-extra-source-files.sh' & 'M-x sort-lines':
   tests/PackageTests/BenchmarkExeV10/Foo.hs

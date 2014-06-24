@@ -75,7 +75,7 @@ import Distribution.Simple.Program
     , ProgramSearchPathEntry(..), getProgramSearchPath, setProgramSearchPath
     , configureAllKnownPrograms, knownPrograms, lookupKnownProgram
     , userSpecifyArgss, userSpecifyPaths
-    , requireProgram, requireProgramVersion
+    , lookupProgram, requireProgram, requireProgramVersion
     , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
     ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
@@ -1159,11 +1159,20 @@ checkForeignDeps pkg lbi verbosity = do
                 _ <- rawSystemProgramStdoutConf verbosity
                   gccProgram (withPrograms lbi) (cName:"-o":oNname:args)
                 return True
-           --TODO: need a better error in the case of not finding gcc!
            `catchIO`   (\_ -> return False)
            `catchExit` (\_ -> return False)
 
         explainErrors Nothing [] = return () -- should be impossible!
+        explainErrors _ _
+           | isNothing . lookupProgram gccProgram . withPrograms $ lbi
+
+                              = die $ unlines $
+              [ "No working gcc",
+                  "This package depends on foreign library but we cannot "
+               ++ "find a working C compiler. If you have it in a "
+               ++ "non-standard location you can use the --with-gcc "
+               ++ "flag to specify it." ]
+
         explainErrors hdr libs = die $ unlines $
              [ if plural
                  then "Missing dependencies on foreign libraries:"
