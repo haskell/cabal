@@ -1190,7 +1190,7 @@ installLocalTarballPackage verbosity jobLimit pkgid
           distDirPathTmp = absUnpackedPath </> (defaultDistPref ++ "-tmp")
           distDirPathNew = absUnpackedPath </> distPref
       distDirExists <- doesDirectoryExist distDirPath
-      when distDirExists $ do
+      when (distDirExists && distDirPath /= distDirPathNew) $ do
         -- NB: we need to handle the case when 'distDirPathNew' is a
         -- subdirectory of 'distDirPath' (e.g. 'dist/dist-sandbox-3688fbc2').
         debug verbosity $ "Renaming '" ++ distDirPath ++ "' to '"
