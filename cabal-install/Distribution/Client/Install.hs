@@ -1196,6 +1196,7 @@ installLocalTarballPackage verbosity jobLimit pkgid
         debug verbosity $ "Renaming '" ++ distDirPath ++ "' to '"
           ++ distDirPathTmp ++ "'."
         renameDirectory distDirPath distDirPathTmp
+        createDirectoryIfMissingVerbose verbosity False distDirPath
         debug verbosity $ "Renaming '" ++ distDirPathTmp ++ "' to '"
           ++ distDirPathNew ++ "'."
         renameDirectory distDirPathTmp distDirPathNew
