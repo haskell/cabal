@@ -17,7 +17,7 @@ before_install:
 install:
  - cabal update
  - cd Cabal
- - cabal install --only-dependencies
+ - cabal install --only-dependencies --enable-tests --enable-benchmarks
  - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
  - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
 
