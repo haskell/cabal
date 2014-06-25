@@ -19,7 +19,7 @@ install:
  - cd Cabal
  - cabal install --only-dependencies
  - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
- - /opt/ghc/$GHCVER/bin/ghc-pkg recache --usre
+ - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
 script:
