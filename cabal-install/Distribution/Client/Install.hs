@@ -1179,9 +1179,10 @@ installLocalTarballPackage verbosity jobLimit pkgid
       installPkg (Just absUnpackedPath)
 
   where
-    -- 'cabal sdist' puts pre-generated files in the 'dist' directory. This
-    -- fails when we use a nonstandard build directory name (as is the case
-    -- with sandboxes), so we need to rename the 'dist' dir here.
+    -- 'cabal sdist' puts pre-generated files in the 'dist'
+    -- directory. This fails when a nonstandard build directory name
+    -- is used (as is the case with sandboxes), so we need to rename
+    -- the 'dist' dir here.
     --
     -- TODO: 'cabal get happy && cd sandbox && cabal install ../happy' still
     -- fails even with this workaround. We probably can live with that.
