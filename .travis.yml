@@ -15,11 +15,11 @@ before_install:
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.20/bin:$PATH
 
 install:
- - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
- - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
  - cabal update
  - cd Cabal
- - cabal install --only-dependencies --enable-tests --enable-benchmarks
+ - cabal install --only-dependencies
+ - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
+ - /opt/ghc/$GHCVER/bin/ghc-pkg recache --usre
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
 script:
