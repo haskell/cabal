@@ -990,8 +990,8 @@ suites, otherwise, Cabal will run all test suites in the package.
 
 `--show-details=`_filter_
 :   Determines if the results of individual test cases are shown on the
-    terminal.  May be `always` (always show), `never` (never show), or
-    `failures` (show only the test cases of failing test suites).
+    terminal.  May be `always` (always show), `never` (never show), `failures`
+    (show only failed results), or `streaming` (show all results in real time).
 
 `--test-options=`_options_
 :   Give extra options to the test executables.
