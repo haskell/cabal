@@ -293,9 +293,7 @@ test-suite package-tests
     filepath,
     extensible-exceptions,
     bytestring,
-    regex-posix,
-    -- Remove once we're able to depend on base >= 4.7.0.0
-    setenv
+    regex-posix
   if !os(windows)
     build-depends: unix
   ghc-options: -Wall

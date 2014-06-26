@@ -16,9 +16,6 @@ import Control.Exception                   ( bracket )
 import qualified Control.Exception as E    ( IOException, catch )
 import Control.Monad                       ( when )
 import System.Directory                    ( doesFileExist )
-import System.Environment                  ( getEnvironment )
--- Once we can depend on base >= 4.7.0.0 these can be imported from System.Environment
-import System.SetEnv                       ( setEnv, unsetEnv )
 import System.FilePath
 import Test.HUnit
 
@@ -28,14 +25,14 @@ dir :: FilePath
 dir = "PackageTests" </> "TestSuiteExeV10"
 
 checkTest :: FilePath -> Test
-checkTest ghcPath = TestCase $ buildAndTest ghcPath []
+checkTest ghcPath = TestCase $ buildAndTest ghcPath [] []
 
 -- | Ensure that both .tix file and markup are generated if coverage is enabled.
 checkTestWithHpc :: FilePath -> Test
 checkTestWithHpc ghcPath = TestCase $ do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
-      buildAndTest ghcPath ["--enable-library-coverage"]
+      buildAndTest ghcPath [] ["--enable-library-coverage"]
       let dummy = emptyTestSuite { testName = "test-Foo" }
           tixFile = tixFilePath (dir </> "dist") $ testName dummy
           tixFileMessage = ".tix file should exist"
@@ -53,7 +50,7 @@ checkTestWithoutHpcNoTix :: FilePath -> Test
 checkTestWithoutHpcNoTix ghcPath = TestCase $ do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
-      buildAndTest ghcPath ["--ghc-option=-fhpc"]
+      buildAndTest ghcPath [] ["--ghc-option=-fhpc"]
       let dummy = emptyTestSuite { testName = "test-Foo" }
           tixFile = tixFilePath (dir </> "dist") $ testName dummy
           tixFileMessage = ".tix file should NOT exist"
@@ -71,32 +68,20 @@ checkTestWithoutHpcNoMarkup ghcPath = TestCase $ do
           markupDir = htmlDir (dir </> "dist") $ testName dummy
           markupFile = markupDir </> "hpc_index" <.> "html"
           markupFileMessage = "HPC markup file should NOT exist"
-      withEnv [("HPCTIXFILE", tixFile)] $ buildAndTest ghcPath ["--ghc-option=-fhpc"]
+      buildAndTest ghcPath [("HPCTIXFILE", Just tixFile)] ["--ghc-option=-fhpc"]
       markupFileExists <- doesFileExist markupFile
       assertEqual markupFileMessage False markupFileExists
 
 -- | Build and test a package and ensure that both were successful.
 --
 -- The flag "--enable-tests" is provided in addition to the given flags.
-buildAndTest :: FilePath -> [String] -> IO ()
-buildAndTest ghcPath flags = do
+buildAndTest :: FilePath -> [(String, Maybe String)] -> [String] -> IO ()
+buildAndTest ghcPath envOverrides flags = do
     let spec = PackageSpec dir $ "--enable-tests" : flags
     buildResult <- cabal_build spec ghcPath
     assertBuildSucceeded buildResult
-    testResult <- cabal_test spec [] ghcPath
+    testResult <- cabal_test spec envOverrides [] ghcPath
     assertTestSucceeded testResult
-
--- | Perform an IO action with the given set of environment variable settings.
-withEnv :: [(String, String)] -> IO a -> IO a
-withEnv env = bracket applyAndBackup (mapM_ $ uncurry restoreEnv) . const
-  where
-    applyAndBackup = do
-        environment <- getEnvironment
-        let currentSettings = map (flip lookup environment . fst) env
-        mapM_ (uncurry setEnv) env
-        return $ zip (map fst env) currentSettings
-    restoreEnv name Nothing = unsetEnv name
-    restoreEnv name (Just value) = setEnv name value
 
 -- | Checks for a suitable HPC version for testing.
 correctHpcVersion :: IO Bool

@@ -18,7 +18,7 @@ suite ghcPath ghcPkgPath = TestCase $ do
     assertBuildSucceeded bResult
     unregister "InternalLibrary2" ghcPkgPath
 
-    (_, _, output) <- run (Just $ directory spec) (directory spec </> "dist" </> "build" </> "lemon" </> "lemon") []
+    (_, _, output) <- run (Just $ directory spec) (directory spec </> "dist" </> "build" </> "lemon" </> "lemon") [] []
     C.appendFile (directory spec </> "test-log.txt") (C.pack $ "\ndist/build/lemon/lemon\n"++output)
     assertEqual "executable should have linked with the internal library" "myLibFunc internal" (concat $ lines output)
 
