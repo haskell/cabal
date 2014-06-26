@@ -29,7 +29,7 @@ module Distribution.Client.Install (
   ) where
 
 import Data.List
-         ( unfoldr, nub, sort, (\\) )
+         ( isPrefixOf, unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
@@ -50,7 +50,7 @@ import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
            createDirectoryIfMissing, removeFile, renameDirectory )
 import System.FilePath
-         ( (</>), (<.>), takeDirectory )
+         ( (</>), (<.>), equalFilePath, takeDirectory )
 import System.IO
          ( openFile, IOMode(AppendMode), hClose )
 import System.IO.Error
@@ -1179,9 +1179,10 @@ installLocalTarballPackage verbosity jobLimit pkgid
       installPkg (Just absUnpackedPath)
 
   where
-    -- 'cabal sdist' puts pre-generated files in the 'dist' directory. This
-    -- fails when we use a nonstandard build directory name (as is the case
-    -- with sandboxes), so we need to rename the 'dist' dir here.
+    -- 'cabal sdist' puts pre-generated files in the 'dist'
+    -- directory. This fails when a nonstandard build directory name
+    -- is used (as is the case with sandboxes), so we need to rename
+    -- the 'dist' dir here.
     --
     -- TODO: 'cabal get happy && cd sandbox && cabal install ../happy' still
     -- fails even with this workaround. We probably can live with that.
@@ -1191,12 +1192,16 @@ installLocalTarballPackage verbosity jobLimit pkgid
           distDirPathTmp = absUnpackedPath </> (defaultDistPref ++ "-tmp")
           distDirPathNew = absUnpackedPath </> distPref
       distDirExists <- doesDirectoryExist distDirPath
-      when (distDirExists && distDirPath /= distDirPathNew) $ do
+      when (distDirExists
+            && (not $ distDirPath `equalFilePath` distDirPathNew)) $ do
         -- NB: we need to handle the case when 'distDirPathNew' is a
-        -- subdirectory of 'distDirPath' (e.g. 'dist/dist-sandbox-3688fbc2').
+        -- subdirectory of 'distDirPath' (e.g. the former is
+        -- 'dist/dist-sandbox-3688fbc2' and the latter is 'dist').
         debug verbosity $ "Renaming '" ++ distDirPath ++ "' to '"
           ++ distDirPathTmp ++ "'."
         renameDirectory distDirPath distDirPathTmp
+        when (distDirPath `isPrefixOf` distDirPathNew) $
+          createDirectoryIfMissingVerbose verbosity False distDirPath
         debug verbosity $ "Renaming '" ++ distDirPathTmp ++ "' to '"
           ++ distDirPathNew ++ "'."
         renameDirectory distDirPathTmp distDirPathNew
