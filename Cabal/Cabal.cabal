@@ -1,5 +1,9 @@
 name: Cabal
+<<<<<<< HEAD
 version: 1.21.0.0
+=======
+version: 1.20.0.1
+>>>>>>> 1.20
 copyright: 2003-2006, Isaac Jones
            2005-2011, Duncan Coutts
 license: BSD3
