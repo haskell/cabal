@@ -1,5 +1,10 @@
 -*-change-log-*-
 
+1.20.0.3 Johan Tibell <johan.tibell@gmail.com> June 2014
+	* Don't attempt to rename dist if it is already named correctly
+	* Treat all flags of a package as interdependent.
+	* Allow template-haskell to be upgradable again
+
 1.20.0.2 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Increase max-backjumps to 2000.
 	* Fix solver bug which led to missed install plans.
