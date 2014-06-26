@@ -32,6 +32,16 @@ simplifyVar (P qpn)       = P qpn
 simplifyVar (F (FN pi _)) = F (FN pi (mkFlag "flag"))
 simplifyVar (S qsn)       = S qsn
 
+-- | For computing conflict sets, we map flag choice vars to a
+-- single flag choice. This means that all flag choices are treated
+-- as interdependent. So if one flag of a package ends up in a
+-- conflict set, then all flags are being treated as being part of
+-- the conflict set.
+simplifyVar :: Var qpn -> Var qpn
+simplifyVar (P qpn)       = P qpn
+simplifyVar (F (FN pi _)) = F (FN pi (mkFlag "flag"))
+simplifyVar (S qsn)       = S qsn
+
 showVar :: Var QPN -> String
 showVar (P qpn) = showQPN qpn
 showVar (F qfn) = showQFN qfn
