@@ -1620,7 +1620,8 @@ testCommand = makeCommand name shortDesc longDesc defaultTestFlags options
       , option [] ["show-details"]
             ("'always': always show results of individual test cases. "
              ++ "'never': never show results of individual test cases. "
-             ++ "'failures': show results of failing test cases.")
+             ++ "'failures': show results of failing test cases. "
+             ++ "'streaming': show results of test cases in real time.")
             testShowDetails (\v flags -> flags { testShowDetails = v })
             (reqArg "FILTER"
                 (readP_to_E (\_ -> "--show-details flag expects one of "
