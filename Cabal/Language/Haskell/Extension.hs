@@ -655,6 +655,11 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#negative-literals>
   | NegativeLiterals
 
+  -- | Allows the use of binary integer literal syntax (e.g. @0b11001001@ to denote @201@).
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#binary-literals>
+  | BinaryLiterals
+
   -- | Allows the use of floating literal syntax for all instances of 'Num', including 'Int' and 'Integer'.
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#num-decimals>
