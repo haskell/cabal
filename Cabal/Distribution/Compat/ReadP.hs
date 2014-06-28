@@ -14,7 +14,7 @@
 -- it makes no difference which branch is \"shorter\".
 --
 -- See also Koen's paper /Parallel Parsing Processes/
--- (<http://www.cs.chalmers.se/~koen/publications.html>).
+-- (<http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.19.9217>).
 --
 -- This version of ReadP has been locally hacked to make it H98, by
 -- Martin Sj&#xF6;gren <mailto:msjogren@gmail.com>
