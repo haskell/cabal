@@ -55,7 +55,7 @@ import Distribution.License
 import Distribution.Simple.CCompiler
          ( filenameCDialect )
 import Distribution.Simple.Utils
-         ( cabalVersion, intercalate, parseFileGlob, FileGlob(..), lowercase )
+         ( cabalVersion, intercalate, parseFileGlob, isRealGlob, lowercase )
 
 import Distribution.Version
          ( Version(..)
@@ -1098,8 +1098,8 @@ checkCabalVersion pkg =
     dataFilesUsingGlobSyntax     = filter usesGlobSyntax (dataFiles pkg)
     extraSrcFilesUsingGlobSyntax = filter usesGlobSyntax (extraSrcFiles pkg)
     usesGlobSyntax str = case parseFileGlob str of
-      Just (FileGlob _ _) -> True
-      _                   -> False
+      Just g  -> isRealGlob g
+      Nothing -> False
 
     versionRangeExpressions =
         [ dep | dep@(Dependency _ vr) <- buildDepends pkg
