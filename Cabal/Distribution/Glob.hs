@@ -1,12 +1,11 @@
 module Distribution.Glob (
     parseGlob,
     --matchGlob, TODO
-    Glob(..),
+    GlobPart(..),
+    Glob
 )
     where
 
-import Control.Applicative
-    ( (<*>), (<$>) )
 import Data.List
     ( intersperse )
 import System.FilePath
@@ -15,7 +14,7 @@ import System.FilePath
     , splitExtension, splitExtensions, splitDirectories )
 import Distribution.Compat.ReadP
 
-data Glob -- ^ A glob that can match any number of files.
+data GlobPart -- ^ A part of a glob.
     = Literal FilePath  -- ^ Match a file with this exact name. eg
                         -- "dictionary.txt", matches only "dictionary.txt"
     | Choice [Glob]     -- ^ Match exactly one of the given (literal) options.
@@ -27,50 +26,72 @@ data Glob -- ^ A glob that can match any number of files.
                         -- directory, and all subdirectories. eg "**/*Test.hs"
                         -- matches "GlobTest.hs", "test/HttpTest.hs",
                         -- "test/examples/ExampleTest.hs"...
-    | Concat Glob Glob  -- ^ Matches one glob followed by another, eg "*.hs" is
-                        -- Concat MatchAny (Literal ".hs")
- 
-showGlob :: Glob -> FilePath
-showGlob glob = case glob of
-    (Literal name)    -> name
+    deriving (Show, Eq)
+
+type Glob = [GlobPart] -- ^ A glob that can match any number of files.
+
+-- Indicates whether a character needs escaping in glob patterns
+isSpecialChar :: Char -> Bool
+isSpecialChar x = x `elem` "\\{}*"
+
+showGlobPart :: GlobPart -> FilePath
+showGlobPart gp = case gp of
+    (Literal name)    ->
+        concatMap (\x -> if isSpecialChar x then ['\\', x] else [x]) name
     (Choice xs)       ->
         (\y -> "{" ++ y ++ "}" ) . concat . intersperse "," . map showGlob $ xs
     MatchAny          -> "*"
     MatchAnyRecursive -> "**"
-    (Concat a b)      -> showGlob a ++ showGlob b
 
-parseLiteral :: ReadP r Glob
+showGlob :: Glob -> FilePath
+showGlob = concatMap showGlobPart
+
+parseLiteral :: ReadP r GlobPart
 parseLiteral = fmap (Literal . concat) $ many1 literalSegment
     where
     literalSegment = unspecial +++ escapeSequence
-    unspecial      = satisfy (not . special) >>= return . (: [])
-    escapeSequence = char '\\' >> satisfy special >>= (\x -> return ['\\', x])
-    special x      = x `elem` "\\{}*"
+    unspecial      = fmap (: []) $ satisfy (not . isSpecialChar)
+    escapeSequence = fmap (: []) $ char '\\' >> satisfy isSpecialChar
 
-parseChoice :: ReadP r Glob
+parseChoice :: ReadP r GlobPart
 parseChoice = do
-    char '{'
+    _ <- char '{'
     choices <- sepBy parseGlob (char ',')
-    char '}'
+    _ <- char '}'
     return $ Choice choices
 
-parseMatchAny :: ReadP r Glob
+parseMatchAny :: ReadP r GlobPart
 parseMatchAny = char '*' >> return MatchAny
 
-parseMatchAnyRecursive :: ReadP r Glob
+parseMatchAnyRecursive :: ReadP r GlobPart
 parseMatchAnyRecursive = string "**" >> return MatchAnyRecursive
 
-parseConcat :: ReadP r Glob
-parseConcat = do
-    a <- parseGlob
-    b <- parseGlob
-    return $ Concat a b
-
-parseGlob :: ReadP r Glob
-parseGlob = choice
+parseGlobPart :: ReadP r GlobPart
+parseGlobPart = choice
     [ parseLiteral
     , parseChoice
     , parseMatchAny
     , parseMatchAnyRecursive
-    , parseConcat
     ]
+
+parseGlob :: ReadP r Glob
+parseGlob = many1 parseGlobPart
+
+canonicalise :: Glob -> Glob
+canonicalise = dedupBy joinLiterals . dedupBy joinMatchAnys
+    where
+    joinLiterals x = case x of
+        (Literal a, Literal b) -> Just (Literal $ a ++ b)
+        _ -> Nothing
+    joinMatchAnys x = case x of
+        (MatchAny, MatchAny) -> Just MatchAnyRecursive
+        (MatchAny, MatchAnyRecursive) -> Just MatchAnyRecursive
+        (MatchAnyRecursive, MatchAny) -> Just MatchAnyRecursive
+        (MatchAnyRecursive, MatchAnyRecursive) -> Just MatchAnyRecursive
+        _ -> Nothing
+
+dedupBy :: ((a, a) -> Maybe a) -> [a] -> [a]
+dedupBy f (x:y:ys) = case f (x, y) of
+    Just z -> dedupBy f $ z : ys
+    Nothing -> x : (dedupBy f $ y : ys)
+dedupBy _ xs = xs
