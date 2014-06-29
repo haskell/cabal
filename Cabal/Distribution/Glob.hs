@@ -56,7 +56,7 @@ parseLiteral = fmap (Literal . concat) $ many1 literalSegment
 parseChoice :: ReadP r GlobPart
 parseChoice = do
     _ <- char '{'
-    choices <- sepBy parseGlob (char ',')
+    choices <- sepBy parseGlob' (char ',')
     _ <- char '}'
     return $ Choice choices
 
@@ -74,11 +74,19 @@ parseGlobPart = choice
     , parseMatchAnyRecursive
     ]
 
-parseGlob :: ReadP r Glob
-parseGlob = many1 parseGlobPart
+parseGlob' :: ReadP r Glob
+parseGlob' = many1 parseGlobPart
+
+parseGlob :: FilePath -> Maybe Glob
+parseGlob fp = case take 1 completeResults of
+        (x:_) -> Just $ canonicalise x
+        []    -> Nothing
+    where
+    results = readP_to_S parseGlob' fp
+    completeResults = map fst $ filter ((== "") . snd) results
 
 canonicalise :: Glob -> Glob
-canonicalise = dedupBy joinLiterals . dedupBy joinMatchAnys
+canonicalise = canonicaliseChoices . dedupBy joinLiterals . dedupBy joinMatchAnys
     where
     joinLiterals x = case x of
         (Literal a, Literal b) -> Just (Literal $ a ++ b)
@@ -89,6 +97,10 @@ canonicalise = dedupBy joinLiterals . dedupBy joinMatchAnys
         (MatchAnyRecursive, MatchAny) -> Just MatchAnyRecursive
         (MatchAnyRecursive, MatchAnyRecursive) -> Just MatchAnyRecursive
         _ -> Nothing
+    canonicaliseChoices = fmap canonicaliseChoice
+    canonicaliseChoice x = case x of
+        Choice xs -> Choice $ fmap canonicalise xs
+        y -> y
 
 dedupBy :: ((a, a) -> Maybe a) -> [a] -> [a]
 dedupBy f (x:y:ys) = case f (x, y) of
