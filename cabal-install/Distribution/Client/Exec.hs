@@ -21,12 +21,11 @@ import Distribution.Simple.Program.Db  (ProgramDb, requireProgram, modifyProgram
 import Distribution.Simple.Program.Find (ProgramSearchPathEntry(..))
 import Distribution.Simple.Program.Run (programInvocation, runProgramInvocation)
 import Distribution.Simple.Program.Types ( simpleProgram, ConfiguredProgram(..) )
-import Distribution.Simple.Utils       (debug, die)
+import Distribution.Simple.Utils       (die)
 
 import Distribution.System    (Platform)
 import Distribution.Verbosity (Verbosity)
 
-import System.Exit (exitFailure)
 import System.FilePath (searchPathSeparator, (</>))
 import Control.Applicative ((<$>))
 import Data.Traversable as T
@@ -53,7 +52,7 @@ exec verbosity useSandbox comp platform programDb extraArgs =
                                  args
             runProgramInvocation verbosity invocation
 
-        [] -> die $ "Please specify an executable to run"
+        [] -> die "Please specify an executable to run"
   where
     environmentOverrides = 
         case useSandbox of
@@ -75,11 +74,8 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb = do
     mGlobalPackageDb <- T.sequence $ ghcGlobalPackageDB verbosity
                                   <$> lookupProgram ghcProgram programDb
     case mGlobalPackageDb of
-        Nothing  -> do
-            debug verbosity "exec only works with GHC"
-            exitFailure
-        Just gDb ->
-            return $ overrides gDb
+        Nothing  -> die "exec only works with GHC"
+        Just gDb -> return $ overrides gDb
   where
     overrides gDb = [ ("GHC_PACKAGE_PATH", ghcPackagePath gDb) ]
 
