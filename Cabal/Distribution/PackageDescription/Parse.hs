@@ -181,6 +181,9 @@ libFieldDescrs =
   [ listFieldWithSep vcat "exposed-modules" disp parseModuleNameQ
       exposedModules (\mods lib -> lib{exposedModules=mods})
 
+  , commaListFieldWithSep vcat "reexported-modules" disp parse
+      reexportedModules (\mods lib -> lib{reexportedModules=mods})
+
   , boolField "exposed"
       libExposed     (\val lib -> lib{libExposed=val})
   ] ++ map biToLib binfoFieldDescrs

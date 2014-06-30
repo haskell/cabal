@@ -109,6 +109,7 @@ import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
          , Dependency, Package(..) )
 import Distribution.ModuleName ( ModuleName )
+import Distribution.ModuleExport ( ModuleExport )
 import Distribution.Version
          ( Version(Version), VersionRange, anyVersion, orLaterVersion
          , asVersionIntervals, LowerBound(..) )
@@ -269,6 +270,7 @@ instance Text BuildType where
 
 data Library = Library {
         exposedModules    :: [ModuleName],
+        reexportedModules :: [ModuleExport ModuleName],
         libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
         libBuildInfo      :: BuildInfo
     }
@@ -277,11 +279,13 @@ data Library = Library {
 instance Monoid Library where
   mempty = Library {
     exposedModules = mempty,
+    reexportedModules = mempty,
     libExposed     = True,
     libBuildInfo   = mempty
   }
   mappend a b = Library {
     exposedModules = combine exposedModules,
+    reexportedModules = combine reexportedModules,
     libExposed     = libExposed a && libExposed b, -- so False propagates
     libBuildInfo   = combine libBuildInfo
   }
@@ -308,6 +312,8 @@ withLib pkg_descr f =
    maybe (return ()) f (maybeHasLibs pkg_descr)
 
 -- | Get all the module names from the library (exposed and internal modules)
+-- which need to be compiled.  (This does not include reexports, which
+-- do not need to be compiled.)
 libModules :: Library -> [ModuleName]
 libModules lib = exposedModules lib
               ++ otherModules (libBuildInfo lib)
