@@ -47,11 +47,11 @@ showGlob :: Glob -> FilePath
 showGlob = concatMap showGlobPart
 
 parseLiteral :: ReadP r GlobPart
-parseLiteral = fmap (Literal . concat) $ many1 literalSegment
+parseLiteral = fmap Literal $ many1 literalSegment
     where
     literalSegment = unspecial +++ escapeSequence
-    unspecial      = fmap (: []) $ satisfy (not . isSpecialChar)
-    escapeSequence = fmap (: []) $ char '\\' >> satisfy isSpecialChar
+    unspecial      = satisfy (not . isSpecialChar)
+    escapeSequence = char '\\' >> satisfy isSpecialChar
 
 parseChoice :: ReadP r GlobPart
 parseChoice = do
