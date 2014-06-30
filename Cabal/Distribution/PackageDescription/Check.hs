@@ -65,6 +65,8 @@ import Distribution.Version
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
          , Dependency(..), pkgName )
+import Distribution.ModuleExport
+         ( ModuleExport(..) )
 
 import Distribution.Text
          ( display, disp )
@@ -221,7 +223,8 @@ checkLibrary _pkg lib =
   ]
 
   where
-    moduleDuplicates = dups (libModules lib)
+    moduleDuplicates = dups (libModules lib ++
+                             map exportName (reexportedModules lib))
 
 checkExecutable :: PackageDescription -> Executable -> [PackageCheck]
 checkExecutable pkg exe =
@@ -902,6 +905,12 @@ checkCabalVersion pkg =
         ++ "Haskell2010). If a component uses different languages in "
         ++ "different modules then list the other ones in the "
         ++ "'other-languages' field."
+
+    -- check use of reexported-modules sections
+  , checkVersion [1,21] (maybe False (not.null.reexportedModules) (library pkg)) $
+      PackageDistInexcusable $
+           "To use the 'reexported-module' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 1.21'."
 
     -- check use of default-extensions field
     -- don't need to do the equivalent check for other-extensions

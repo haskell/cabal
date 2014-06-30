@@ -34,6 +34,7 @@ import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
 import PackageTests.OrderFlags.Check
+import PackageTests.ReexportedModules.Check
 
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath)
@@ -101,6 +102,8 @@ tests version inplaceSpec ghcPath ghcPkgPath =
       (PackageTests.OrderFlags.Check.suite ghcPath)
     , hunit "TemplateHaskell/dynamic"
       (PackageTests.TemplateHaskell.Check.dynamic ghcPath)
+    , hunit "ReexportedModules"
+      (PackageTests.ReexportedModules.Check.suite ghcPath)
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []
