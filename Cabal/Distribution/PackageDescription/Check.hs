@@ -210,6 +210,7 @@ checkSanity pkg =
     bmNames = map benchmarkName $ benchmarks pkg
     duplicateNames = dups $ exeNames ++ testNames ++ bmNames
 
+-- XXX todo add some checks for reexported
 checkLibrary :: PackageDescription -> Library -> [PackageCheck]
 checkLibrary _pkg lib =
   catMaybes [

@@ -146,6 +146,7 @@ library
     Distribution.License
     Distribution.Make
     Distribution.ModuleName
+    Distribution.ModuleExport
     Distribution.Package
     Distribution.PackageDescription
     Distribution.PackageDescription.Check
