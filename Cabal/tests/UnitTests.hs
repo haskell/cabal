@@ -6,11 +6,14 @@ import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 import Test.Framework
 
 import qualified UnitTests.Distribution.Compat.ReadP
+import qualified UnitTests.Distribution.Glob
 
 tests :: [Test]
-tests = [
-    testGroup "Distribution.Compat.ReadP"
+tests =
+    [ testGroup "Distribution.Compat.ReadP"
         UnitTests.Distribution.Compat.ReadP.tests
+    , testGroup "Distribution.Glob"
+        UnitTests.Distribution.Glob.tests
     ]
 
 main :: IO ()
