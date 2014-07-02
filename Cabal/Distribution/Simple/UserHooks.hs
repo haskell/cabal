@@ -144,7 +144,7 @@ data UserHooks = UserHooks {
     -- |Hook to run before test command.
     preTest :: Args -> TestFlags -> IO HookedBuildInfo,
     -- |Over-ride this hook to get different behavior during test.
-    testHook :: PackageDescription -> LocalBuildInfo -> UserHooks -> TestFlags -> IO (),
+    testHook :: Args -> PackageDescription -> LocalBuildInfo -> UserHooks -> TestFlags -> IO (),
     -- |Hook to run after test command.
     postTest :: Args -> TestFlags -> PackageDescription -> LocalBuildInfo -> IO (),
 
@@ -200,7 +200,7 @@ emptyUserHooks
       haddockHook  = ru,
       postHaddock  = ru,
       preTest  = rn',
-      testHook = ru,
+      testHook = \_ -> ru,
       postTest = ru,
       preBench = rn',
       benchHook = \_ -> ru,

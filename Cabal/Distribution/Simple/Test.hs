@@ -27,6 +27,7 @@ import Distribution.Simple.InstallDirs
 import qualified Distribution.Simple.LocalBuildInfo as LBI
     ( LocalBuildInfo(..) )
 import Distribution.Simple.Setup ( TestFlags(..), fromFlag )
+import Distribution.Simple.UserHooks ( Args )
 import qualified Distribution.Simple.Test.ExeV10 as ExeV10
 import qualified Distribution.Simple.Test.LibV09 as LibV09
 import Distribution.Simple.Test.Log
@@ -42,16 +43,17 @@ import System.Exit ( ExitCode(..), exitFailure, exitWith )
 import System.FilePath ( (</>) )
 
 -- |Perform the \"@.\/setup test@\" action.
-test :: PD.PackageDescription   -- ^information from the .cabal file
+test :: Args                    -- ^positional command-line arguments
+     -> PD.PackageDescription   -- ^information from the .cabal file
      -> LBI.LocalBuildInfo      -- ^information from the configure step
      -> TestFlags               -- ^flags sent to test
      -> IO ()
-test pkg_descr lbi flags = do
+test args pkg_descr lbi flags = do
     let verbosity = fromFlag $ testVerbosity flags
         machineTemplate = fromFlag $ testMachineLog flags
         distPref = fromFlag $ testDistPref flags
         testLogDir = distPref </> "test"
-        testNames = fromFlag $ testList flags
+        testNames = args
         pkgTests = PD.testSuites pkg_descr
         enabledTests = [ t | t <- pkgTests
                            , PD.testEnabled t

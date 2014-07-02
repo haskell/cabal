@@ -347,12 +347,9 @@ testAction hooks flags args = do
     -- default action is a no-op and if the package uses the old test interface
     -- the new handler will find no tests.
     runTests hooks args False pkg_descr localBuildInfo
-    --FIXME: this is a hack, passing the args inside the flags
-    -- it's because the args to not get passed to the main test hook
-    let flags' = flags { testList = Flag args }
-    hookedAction preTest testHook postTest
+    hookedActionWithArgs preTest testHook postTest
             (getBuildConfig hooks verbosity distPref)
-            hooks flags' args
+            hooks flags args
 
 benchAction :: UserHooks -> BenchmarkFlags -> Args -> IO ()
 benchAction hooks flags args = do
@@ -510,7 +507,7 @@ simpleUserHooks =
        buildHook = defaultBuildHook,
        replHook  = defaultReplHook,
        copyHook  = \desc lbi _ f -> install desc lbi f, -- has correct 'copy' behavior with params
-       testHook = defaultTestHook,
+       testHook  = defaultTestHook,
        benchHook = defaultBenchHook,
        instHook  = defaultInstallHook,
        sDistHook = \p l h f -> sdist p l f srcPref (allSuffixHandlers h),
@@ -653,10 +650,10 @@ getHookedBuildInfo verbosity = do
       info verbosity $ "Reading parameters from " ++ infoFile
       readHookedBuildInfo verbosity infoFile
 
-defaultTestHook :: PackageDescription -> LocalBuildInfo
+defaultTestHook :: Args -> PackageDescription -> LocalBuildInfo
                 -> UserHooks -> TestFlags -> IO ()
-defaultTestHook pkg_descr localbuildinfo _ flags =
-    test pkg_descr localbuildinfo flags
+defaultTestHook args pkg_descr localbuildinfo _ flags =
+    test args pkg_descr localbuildinfo flags
 
 defaultBenchHook :: Args -> PackageDescription -> LocalBuildInfo
                  -> UserHooks -> BenchmarkFlags -> IO ()
