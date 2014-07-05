@@ -25,7 +25,7 @@ import System.IO
   ( hSetBuffering, stdout, BufferMode(..) )
 import System.Directory
   ( getCurrentDirectory, doesDirectoryExist, doesFileExist, copyFile
-  , getDirectoryContents )
+  , getDirectoryContents, createDirectoryIfMissing )
 import System.FilePath
   ( (</>), (<.>), takeBaseName )
 import Data.Time
@@ -45,7 +45,7 @@ import Data.Traversable
 import Control.Applicative
   ( (<$>) )
 import Control.Monad
-  ( when, unless, (>=>), join )
+  ( when, unless, (>=>), join, forM_ )
 import Control.Arrow
   ( (&&&), (***) )
 
@@ -107,6 +107,7 @@ initCabal verbosity packageDBs comp conf initFlags = do
 
   writeLicense initFlags'
   writeSetupFile initFlags'
+  createSourceDirectories initFlags'
   success <- writeCabalFile initFlags'
 
   when success $ generateWarnings initFlags'
@@ -639,6 +640,12 @@ writeFileSafe :: InitFlags -> FilePath -> String -> IO ()
 writeFileSafe flags fileName content = do
   moveExistingFile flags fileName
   writeFile fileName content
+
+-- | Create source directories, if they were given.
+createSourceDirectories :: InitFlags -> IO ()
+createSourceDirectories flags = case sourceDirs flags of
+                                  Just dirs -> forM_ dirs (createDirectoryIfMissing True)
+                                  Nothing   -> return ()
 
 -- | Move an existing file, if there is one, and the overwrite flag is
 --   not set.
