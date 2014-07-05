@@ -313,24 +313,27 @@ getGenComments flags = do
   where
     promptMsg = "Include documentation on what each field means (y/n)"
 
--- | Try to guess the source root directory (don't prompt the user).
+-- | Ask for the source root directory.
 getSrcDir :: InitFlags -> IO InitFlags
 getSrcDir flags = do
-  srcDirs <-     return (sourceDirs flags)
-             ?>> Just `fmap` guessSourceDirs flags
+  srcDirs <- return (sourceDirs flags)
+             ?>> fmap (:[]) `fmap` guessSourceDir flags
+             ?>> fmap (fmap ((:[]) . either id id) . join) (maybePrompt
+                      flags
+                      (promptListOptional' "Source directory" ["src"] id))
 
   return $ flags { sourceDirs = srcDirs }
 
--- | Try to guess source directories.  Could try harder; for the
+-- | Try to guess source directory. Could try harder; for the
 --   moment just looks to see whether there is a directory called 'src'.
-guessSourceDirs :: InitFlags -> IO [String]
-guessSourceDirs flags = do
+guessSourceDir :: InitFlags -> IO (Maybe String)
+guessSourceDir flags = do
   dir      <-
     maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
   srcIsDir <- doesDirectoryExist (dir </> "src")
-  if srcIsDir
-    then return ["src"]
-    else return []
+  return $ if srcIsDir
+             then Just "src"
+             else Nothing
 
 -- | Get the list of exposed modules and extra tools needed to build them.
 getModulesBuildToolsAndDeps :: PackageIndex -> InitFlags -> IO InitFlags
@@ -498,10 +501,17 @@ promptListOptional :: (Text t, Eq t)
                    => String            -- ^ prompt
                    -> [t]               -- ^ choices
                    -> IO (Maybe (Either String t))
-promptListOptional pr choices =
+promptListOptional pr choices = promptListOptional' pr choices display
+
+promptListOptional' :: Eq t
+                   => String            -- ^ prompt
+                   -> [t]               -- ^ choices
+                   -> (t -> String)     -- ^ show an item
+                   -> IO (Maybe (Either String t))
+promptListOptional' pr choices displayItem =
     fmap rearrange
   $ promptList pr (Nothing : map Just choices) (Just Nothing)
-               (maybe "(none)" display) True
+               (maybe "(none)" displayItem) True
   where
     rearrange = either (Just . Left) (fmap Right)
 
