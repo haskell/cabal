@@ -65,12 +65,6 @@ import Distribution.Version
 -- * The freeze command
 -- ------------------------------------------------------------
 
---TODO:
--- * Don't overwrite all of `cabal.config`, just the constraints section.
--- * Should the package represented by `UserTargetLocalDir "."` be
---   constrained too? What about `base`?
-
-
 -- | Freeze all of the dependencies by writing a constraints section
 -- constraining each dependency to an exact version.
 --
@@ -113,10 +107,13 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
   where
     dryRun = fromFlag (freezeDryRun freezeFlags)
 
-    sanityCheck pkgSpecifiers =
+    sanityCheck pkgSpecifiers = do
       when (not . null $ [n | n@(NamedPackage _ _) <- pkgSpecifiers]) $
         die $ "internal error: 'resolveUserTargets' returned "
            ++ "unexpected named package specifiers!"
+      when (length pkgSpecifiers /= 1) $
+        die $ "internal error: 'resolveUserTargets' returned "
+           ++ "unexpected source package specifiers!"
 
 planPackages :: Verbosity
              -> Compiler
@@ -184,21 +181,28 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 
 -- | Remove all unneeded packages from an install plan.
 --
--- A package is unneeded if it is not a dependency (directly or
--- transitively) of any of the 'PackageSpecifier SourcePackage's.  This is
--- useful for removing previously installed packages which are no longer
--- required from the install plan.
+-- A package is unneeded if it is either
+--
+-- 1) the package that we are freezing, or
+--
+-- 2) not a dependency (directly or transitively) of the package we are
+--    freezing.  This is useful for removing previously installed packages
+--    which are no longer required from the install plan.
 pruneInstallPlan :: InstallPlan.InstallPlan
                  -> [PackageSpecifier SourcePackage]
                  -> Either [PlanPackage] [(PlanPackage, [PackageIdentifier])]
 pruneInstallPlan installPlan pkgSpecifiers =
-    mapLeft PackageIndex.allPackages $
+    mapLeft (removeSelf pkgIds . PackageIndex.allPackages) $
     PackageIndex.dependencyClosure pkgIdx pkgIds
   where
     pkgIdx = PackageIndex.fromList $ InstallPlan.toList installPlan
     pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
     mapLeft f (Left v)  = Left $ f v
     mapLeft _ (Right v) = Right v
+    removeSelf [thisPkg] = filter (\pp -> packageId pp /= thisPkg)
+    removeSelf _ =
+        error $ "internal error: 'pruneInstallPlan' given "
+           ++ "unexpected package specifiers!"
 
 
 freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()
