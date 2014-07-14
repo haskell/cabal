@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+1.18.0.5 Johan Tibell <johan.tibell@gmail.com> July 2014
+	* Make solver flag resolution more conservative.
+
 1.18.0.4 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Increase max-backjumps to 2000.
 	* Fix solver bug which led to missed install plans.
