@@ -52,6 +52,14 @@ tests cabalPath =
           assertBool ("should not have frozen exceptions\n" ++ c) $ not $
               " exceptions ==" `isInfixOf` (intercalate " " $ lines $ c)
 
+    , testCase "does not include a constraint for the package being frozen" $ do
+          removeCabalConfig
+          result <- cabal_freeze dir [] cabalPath
+          assertFreezeSucceeded result
+          c <- readCabalConfig
+          assertBool ("should not have frozen self\n" ++ c) $ not $
+              " my ==" `isInfixOf` (intercalate " " $ lines $ c)
+
     , testCase "--dry-run does not modify the cabal.config file" $ do
           removeCabalConfig
           result <- cabal_freeze dir ["--dry-run"] cabalPath
