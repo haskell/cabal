@@ -75,7 +75,7 @@ import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
-import Distribution.Simple.Hpc ( enableCoverage )
+import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
@@ -411,9 +411,7 @@ configure (pkg_descr0, pbi) cfg
 
         -- add extra include/lib dirs as specified in cfg
         -- we do it here so that those get checked too
-        let pkg_descr =
-                enableCoverage (fromFlag (configLibCoverage cfg)) distPref
-                $ addExtraIncludeLibDirs pkg_descr0'
+        let pkg_descr = addExtraIncludeLibDirs pkg_descr0'
 
         when (not (null flags)) $
           info verbosity $ "Flags chosen: "
@@ -599,7 +597,10 @@ configure (pkg_descr0, pbi) cfg
                     stripLibs           = fromFlag $ configStripLibs cfg,
                     withPackageDB       = packageDbs,
                     progPrefix          = fromFlag $ configProgPrefix cfg,
-                    progSuffix          = fromFlag $ configProgSuffix cfg
+                    progSuffix          = fromFlag $ configProgSuffix cfg,
+                    withCoverage        = if fromFlag $ configLibCoverage cfg
+                                            then Just $ Hpc.mixDir distPref (display $ package pkg_descr')
+                                            else Nothing
                   }
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest

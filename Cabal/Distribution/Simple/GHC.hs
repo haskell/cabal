@@ -1186,13 +1186,13 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
       -- Unsupported extensions have already been checked by configure
       ghcOptExtensions      = usedExtensions bi,
-      ghcOptExtensionMap    = compilerExtensions (compiler lbi)
+      ghcOptExtensionMap    = compilerExtensions (compiler lbi),
+      ghcOptHPCDir          = maybe mempty toFlag (withCoverage lbi)
     }
   where
     toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
     toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
     toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
-
 
 componentCcGhcOptions :: Verbosity -> LocalBuildInfo
                       -> BuildInfo -> ComponentLocalBuildInfo

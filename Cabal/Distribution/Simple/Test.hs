@@ -36,6 +36,7 @@ import Distribution.TestSuite ( Result(..) )
 import Distribution.Text
 
 import Control.Monad ( when, unless, filterM )
+import Data.Maybe ( isJust )
 import System.Directory
     ( createDirectoryIfMissing, doesFileExist, getDirectoryContents
     , removeFile )
@@ -117,8 +118,9 @@ test args pkg_descr lbi flags = do
     allOk <- summarizePackage verbosity packageLog
     writeFile packageLogFile $ show packageLog
 
-    markupPackage verbosity lbi distPref (display $ PD.package pkg_descr)
-        $ map fst testsToRun
+    when (isJust $ LBI.withCoverage lbi) $
+        markupPackage verbosity lbi distPref (display $ PD.package pkg_descr) $
+            map fst testsToRun
 
     unless allOk exitFailure
 

@@ -22,6 +22,7 @@ import Distribution.Verbosity ( normal )
 
 import Control.Concurrent (forkIO)
 import Control.Monad ( unless, void, when )
+import Data.Maybe (isJust)
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive )
@@ -71,10 +72,9 @@ runTest pkg_descr lbi flags suite = do
     let opts = map (testOption pkg_descr lbi suite)
                    (testOptions flags)
         dataDirPath = pwd </> PD.dataDir pkg_descr
-        tixFile = pwd </> (tixFilePath distPref $ PD.testName suite)
-        shellEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
-                   : ("HPCTIXFILE", tixFile)
-                   : existingEnv
+        tixFile = pwd </> tixFilePath distPref (PD.testName suite)
+        pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath) : existingEnv
+        shellEnv = [("HPCTIXFILE", tixFile) | isJust $ LBI.withCoverage lbi] ++ pkgPathEnv
     exit <- rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
                                -- these handles are automatically closed
                                Nothing (Just wOut) (Just wOut)
@@ -107,8 +107,9 @@ runTest pkg_descr lbi flags suite = do
     -- Write summary notice to terminal indicating end of test suite
     notice verbosity $ summarizeSuiteFinish suiteLog
 
-    markupTest verbosity lbi distPref
-        (display $ PD.package pkg_descr) suite
+    when (isJust $ LBI.withCoverage lbi) $
+        markupTest verbosity lbi distPref
+            (display $ PD.package pkg_descr) suite
 
     return suiteLog
   where
