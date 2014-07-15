@@ -80,6 +80,10 @@ tests version inplaceSpec ghcPath ghcPkgPath =
     , hunit "TestSuiteExeV10/Test" (PackageTests.TestSuiteExeV10.Check.checkTest ghcPath)
     , hunit "TestSuiteExeV10/TestWithHpc"
       (PackageTests.TestSuiteExeV10.Check.checkTestWithHpc ghcPath)
+    , hunit "TestSuiteExeV10/TestWithoutHpcNoTix"
+      (PackageTests.TestSuiteExeV10.Check.checkTestWithoutHpcNoTix ghcPath)
+    , hunit "TestSuiteExeV10/TestWithoutHpcNoMarkup"
+      (PackageTests.TestSuiteExeV10.Check.checkTestWithoutHpcNoMarkup ghcPath)
     , hunit "TestOptions" (PackageTests.TestOptions.Check.suite ghcPath)
     , hunit "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite ghcPath)
       -- ^ The benchmark stanza test will eventually be required

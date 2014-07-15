@@ -18,7 +18,7 @@ orFail err r = case find (all isSpace . snd) r of
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
     -- ToDo: Turn this into a utility function
-    (_, _, xs) <- run Nothing ghcPath ["--info"]
+    (_, _, xs) <- run Nothing ghcPath [] ["--info"]
     let compat = (>= Version [7,9] [])
                . orFail "could not parse version"
                . readP_to_S parseVersion
