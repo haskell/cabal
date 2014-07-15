@@ -205,7 +205,7 @@ unpack_pkg () {
   VER=$2
 
   rm -rf "${PKG}-${VER}.tar" "${PKG}-${VER}"
-  ${GZIP_PROGRAM} -d < "${PKG}-${VER}.tar.gz" | ${TAR} -x
+  ${GZIP_PROGRAM} -d < "${PKG}-${VER}.tar.gz" | ${TAR} -xf -
   [ -d "${PKG}-${VER}" ] || die "Failed to unpack ${PKG}-${VER}.tar.gz"
 }
 
