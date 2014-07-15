@@ -45,7 +45,7 @@ import Test.HUnit (Assertion, assertFailure)
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.Simple.BuildPaths (exeExtension)
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
-import Distribution.Simple.Utils (printRawCommandAndArgs, printRawCommandAndArgsAndEnv)
+import Distribution.Simple.Utils (printRawCommandAndArgsAndEnv)
 import Distribution.ReadE (readEOrFail)
 import Distribution.Verbosity (Verbosity, flagToVerbosity, normal)
 
@@ -200,12 +200,11 @@ run cwd path envOverrides args = do
     -- absolute, so that runProcess will find it even when changing directory.
     path' <- do pathExists <- doesFileExist path
                 canonicalizePath (if pathExists then path else path <.> exeExtension)
-    env <- getEffectiveEnvironment envOverrides
+    menv <- getEffectiveEnvironment envOverrides
 
-    maybe (printRawCommandAndArgs       verbosity path' args)
-          (printRawCommandAndArgsAndEnv verbosity path' args) env
+    printRawCommandAndArgsAndEnv verbosity path' args menv
     (readh, writeh) <- createPipe
-    pid <- runProcess path' args cwd env Nothing (Just writeh) (Just writeh)
+    pid <- runProcess path' args cwd menv Nothing (Just writeh) (Just writeh)
 
     -- fork off a thread to start consuming the output
     out <- suckH [] readh
