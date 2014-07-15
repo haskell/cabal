@@ -45,7 +45,7 @@ import Test.HUnit (Assertion, assertFailure)
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.Simple.BuildPaths (exeExtension)
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
-import Distribution.Simple.Utils (printRawCommandAndArgs)
+import Distribution.Simple.Utils (printRawCommandAndArgs, printRawCommandAndArgsAndEnv)
 import Distribution.ReadE (readEOrFail)
 import Distribution.Verbosity (Verbosity, flagToVerbosity, normal)
 
@@ -202,7 +202,8 @@ run cwd path envOverrides args = do
                 canonicalizePath (if pathExists then path else path <.> exeExtension)
     env <- getEffectiveEnvironment envOverrides
 
-    printRawCommandAndArgs verbosity path' args env
+    maybe (printRawCommandAndArgs       verbosity path' args)
+          (printRawCommandAndArgsAndEnv verbosity path' args) env
     (readh, writeh) <- createPipe
     pid <- runProcess path' args cwd env Nothing (Just writeh) (Just writeh)
 

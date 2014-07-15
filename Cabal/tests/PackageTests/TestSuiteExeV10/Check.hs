@@ -12,7 +12,6 @@ import Distribution.Simple.Program.Builtin ( hpcProgram )
 import Distribution.Simple.Program.Db      ( emptyProgramDb, configureProgram,
                                              requireProgramVersion )
 import PackageTests.PackageTester
-import Control.Exception                   ( bracket )
 import qualified Control.Exception as E    ( IOException, catch )
 import Control.Monad                       ( when )
 import System.Directory                    ( doesFileExist )

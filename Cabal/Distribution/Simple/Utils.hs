@@ -24,7 +24,7 @@ module Distribution.Simple.Utils (
         topHandler, topHandlerWith,
         warn, notice, setupMessage, info, debug,
         debugNoWrap, chattyTry,
-        printRawCommandAndArgs,
+        printRawCommandAndArgs, printRawCommandAndArgsAndEnv,
 
         -- * running programs
         rawSystemExit,
@@ -332,23 +332,28 @@ maybeExit cmd = do
   res <- cmd
   unless (res == ExitSuccess) $ exitWith res
 
-printRawCommandAndArgs :: Verbosity
-                       -> FilePath
-                       -> [String]
-                       -> Maybe [(String, String)]
-                       -> IO ()
-printRawCommandAndArgs verbosity path args env
- | verbosity >= deafening = do
-       maybe (return ()) (putStrLn . ("Environment: " ++) . show) env
-       print (path, args)
+printRawCommandAndArgs :: Verbosity -> FilePath -> [String] -> IO ()
+printRawCommandAndArgs verbosity path args
+ | verbosity >= deafening = print (path, args)
  | verbosity >= verbose   = putStrLn $ showCommandForUser path args
+ | otherwise              = return ()
+
+printRawCommandAndArgsAndEnv :: Verbosity
+                             -> FilePath
+                             -> [String]
+                             -> [(String, String)]
+                             -> IO ()
+printRawCommandAndArgsAndEnv verbosity path args env
+ | verbosity >= deafening = do putStrLn ("Environment: " ++ show env)
+                               print (path, args)
+ | verbosity >= verbose   = putStrLn $ unwords (path : args)
  | otherwise              = return ()
 
 
 -- Exit with the same exit code if the subcommand fails
 rawSystemExit :: Verbosity -> FilePath -> [String] -> IO ()
 rawSystemExit verbosity path args = do
-  printRawCommandAndArgs verbosity path args Nothing
+  printRawCommandAndArgs verbosity path args
   hFlush stdout
   exitcode <- rawSystem path args
   unless (exitcode == ExitSuccess) $ do
@@ -357,7 +362,7 @@ rawSystemExit verbosity path args = do
 
 rawSystemExitCode :: Verbosity -> FilePath -> [String] -> IO ExitCode
 rawSystemExitCode verbosity path args = do
-  printRawCommandAndArgs verbosity path args Nothing
+  printRawCommandAndArgs verbosity path args
   hFlush stdout
   exitcode <- rawSystem path args
   unless (exitcode == ExitSuccess) $ do
@@ -370,7 +375,7 @@ rawSystemExitWithEnv :: Verbosity
                      -> [(String, String)]
                      -> IO ()
 rawSystemExitWithEnv verbosity path args env = do
-    printRawCommandAndArgs verbosity path args (Just env)
+    printRawCommandAndArgsAndEnv verbosity path args env
     hFlush stdout
     (_,_,_,ph) <- createProcess $
                   (Process.proc path args) { Process.env = (Just env)
@@ -391,7 +396,8 @@ rawSystemIOWithEnv :: Verbosity
                    -> Maybe Handle  -- ^ stderr
                    -> IO ExitCode
 rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
-    printRawCommandAndArgs verbosity path args menv
+    maybe (printRawCommandAndArgs       verbosity path args)
+          (printRawCommandAndArgsAndEnv verbosity path args) menv
     hFlush stdout
     (_,_,_,ph) <- createProcess $
                   (Process.proc path args) { Process.cwd           = mcwd
@@ -434,7 +440,7 @@ rawSystemStdInOut :: Verbosity
                   -> Bool                     -- ^ output in binary mode
                   -> IO (String, String, ExitCode) -- ^ output, errors, exit
 rawSystemStdInOut verbosity path args mcwd menv input outputBinary = do
-  printRawCommandAndArgs verbosity path args Nothing
+  printRawCommandAndArgs verbosity path args
 
   Exception.bracket
      (runInteractiveProcess path args mcwd menv)
