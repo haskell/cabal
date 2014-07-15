@@ -22,7 +22,7 @@ assertFailure' msg = assertFailure msg >> return {-unpossible!-}undefined
 
 ghcPkg_field :: String -> String -> FilePath -> IO [FilePath]
 ghcPkg_field libraryName fieldName ghcPkgPath = do
-    (cmd, exitCode, raw) <- run Nothing ghcPkgPath
+    (cmd, exitCode, raw) <- run Nothing ghcPkgPath []
         ["--user", "field", libraryName, fieldName]
     let output = filter ('\r' /=) raw -- Windows
     -- copypasta of PackageTester.requireSuccess

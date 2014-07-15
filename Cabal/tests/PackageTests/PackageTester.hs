@@ -37,14 +37,15 @@ import System.Directory (canonicalizePath, doesFileExist, getCurrentDirectory)
 import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitSuccess))
 import System.FilePath
-import System.IO
+import System.IO (hIsEOF, hGetChar, hClose)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess)
 import Test.HUnit (Assertion, assertFailure)
 
-import Distribution.Simple.BuildPaths (exeExtension)
-import Distribution.Simple.Utils (printRawCommandAndArgs)
 import Distribution.Compat.CreatePipe (createPipe)
+import Distribution.Simple.BuildPaths (exeExtension)
+import Distribution.Simple.Program.Run (getEffectiveEnvironment)
+import Distribution.Simple.Utils (printRawCommandAndArgsAndEnv)
 import Distribution.ReadE (readEOrFail)
 import Distribution.Verbosity (Verbosity, flagToVerbosity, normal)
 
@@ -92,9 +93,9 @@ cabal_configure spec ghcPath = do
 
 doCabalConfigure :: PackageSpec -> FilePath -> IO Result
 doCabalConfigure spec ghcPath = do
-    cleanResult@(_, _, _) <- cabal spec ["clean"] ghcPath
+    cleanResult@(_, _, _) <- cabal spec [] ["clean"] ghcPath
     requireSuccess cleanResult
-    res <- cabal spec
+    res <- cabal spec []
            (["configure", "--user", "-w", ghcPath] ++ configOpts spec)
            ghcPath
     return $ recordRun res ConfigureSuccess nullResult
@@ -104,7 +105,7 @@ doCabalBuild spec ghcPath = do
     configResult <- doCabalConfigure spec ghcPath
     if successful configResult
         then do
-            res <- cabal spec ["build", "-v"] ghcPath
+            res <- cabal spec [] ["build", "-v"] ghcPath
             return $ recordRun res BuildSuccess configResult
         else
             return configResult
@@ -126,14 +127,14 @@ doCabalHaddock spec extraArgs ghcPath = do
     configResult <- doCabalConfigure spec ghcPath
     if successful configResult
         then do
-            res <- cabal spec ("haddock" : extraArgs) ghcPath
+            res <- cabal spec [] ("haddock" : extraArgs) ghcPath
             return $ recordRun res HaddockSuccess configResult
         else
             return configResult
 
 unregister :: String -> FilePath -> IO ()
 unregister libraryName ghcPkgPath = do
-    res@(_, _, output) <- run Nothing ghcPkgPath ["unregister", "--user", libraryName]
+    res@(_, _, output) <- run Nothing ghcPkgPath [] ["unregister", "--user", libraryName]
     if "cannot find package" `isInfixOf` output
         then return ()
         else requireSuccess res
@@ -144,23 +145,23 @@ cabal_install spec ghcPath = do
     buildResult <- doCabalBuild spec ghcPath
     res <- if successful buildResult
         then do
-            res <- cabal spec ["install"] ghcPath
+            res <- cabal spec [] ["install"] ghcPath
             return $ recordRun res InstallSuccess buildResult
         else
             return buildResult
     record spec res
     return res
 
-cabal_test :: PackageSpec -> [String] -> FilePath -> IO Result
-cabal_test spec extraArgs ghcPath = do
-    res <- cabal spec ("test" : extraArgs) ghcPath
+cabal_test :: PackageSpec -> [(String, Maybe String)] -> [String] -> FilePath -> IO Result
+cabal_test spec envOverrides extraArgs ghcPath = do
+    res <- cabal spec envOverrides ("test" : extraArgs) ghcPath
     let r = recordRun res TestSuccess nullResult
     record spec r
     return r
 
 cabal_bench :: PackageSpec -> [String] -> FilePath -> IO Result
 cabal_bench spec extraArgs ghcPath = do
-    res <- cabal spec ("bench" : extraArgs) ghcPath
+    res <- cabal spec [] ("bench" : extraArgs) ghcPath
     let r = recordRun res BenchSuccess nullResult
     record spec r
     return r
@@ -168,7 +169,7 @@ cabal_bench spec extraArgs ghcPath = do
 compileSetup :: FilePath -> FilePath -> IO ()
 compileSetup packageDir ghcPath = do
     wd <- getCurrentDirectory
-    r <- run (Just $ packageDir) ghcPath
+    r <- run (Just $ packageDir) ghcPath []
          [ "--make"
 -- HPC causes trouble -- see #1012
 --       , "-fhpc"
@@ -178,30 +179,32 @@ compileSetup packageDir ghcPath = do
     requireSuccess r
 
 -- | Returns the command that was issued, the return code, and the output text.
-cabal :: PackageSpec -> [String] -> FilePath -> IO (String, ExitCode, String)
-cabal spec cabalArgs ghcPath = do
+cabal :: PackageSpec -> [(String, Maybe String)] -> [String] -> FilePath -> IO (String, ExitCode, String)
+cabal spec envOverrides cabalArgs ghcPath = do
     customSetup <- doesFileExist (directory spec </> "Setup.hs")
     if customSetup
         then do
             compileSetup (directory spec) ghcPath
             path <- canonicalizePath $ directory spec </> "Setup"
-            run (Just $ directory spec) path cabalArgs
+            run (Just $ directory spec) path envOverrides cabalArgs
         else do
             -- Use shared Setup executable (only for Simple build types).
             path <- canonicalizePath "Setup"
-            run (Just $ directory spec) path cabalArgs
+            run (Just $ directory spec) path envOverrides cabalArgs
 
--- | Returns the command that was issued, the return code, and hte output text
-run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
-run cwd path args = do
+-- | Returns the command that was issued, the return code, and the output text
+run :: Maybe FilePath -> String -> [(String, Maybe String)] -> [String] -> IO (String, ExitCode, String)
+run cwd path envOverrides args = do
     verbosity <- getVerbosity
     -- path is relative to the current directory; canonicalizePath makes it
     -- absolute, so that runProcess will find it even when changing directory.
     path' <- do pathExists <- doesFileExist path
                 canonicalizePath (if pathExists then path else path <.> exeExtension)
-    printRawCommandAndArgs verbosity path' args
+    menv <- getEffectiveEnvironment envOverrides
+
+    printRawCommandAndArgsAndEnv verbosity path' args menv
     (readh, writeh) <- createPipe
-    pid <- runProcess path' args cwd Nothing Nothing (Just writeh) (Just writeh)
+    pid <- runProcess path' args cwd menv Nothing (Just writeh) (Just writeh)
 
     -- fork off a thread to start consuming the output
     out <- suckH [] readh
@@ -219,6 +222,7 @@ run cwd path args = do
             else do
                 c <- hGetChar h
                 suckH (c:output) h
+
 
 requireSuccess :: (String, ExitCode, String) -> IO ()
 requireSuccess (cmd, exitCode, output) =
