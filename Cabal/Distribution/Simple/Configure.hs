@@ -110,6 +110,8 @@ import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
+-- Prefer the more generic Data.Traversable.mapM to Prelude.mapM
+import Prelude hiding ( mapM )
 import Control.Monad
     ( when, unless, foldM, filterM )
 import Data.List
@@ -120,6 +122,8 @@ import Data.Monoid
     ( Monoid(..) )
 import qualified Data.Map as Map
 import Data.Map (Map)
+import Data.Traversable
+    ( mapM )
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
@@ -865,9 +869,12 @@ configurePkgconfigPackages verbosity pkg_descr conf
                        (lessVerbose verbosity) pkgConfigProgram
                        (orLaterVersion $ Version [0,9,0] []) conf
     mapM_ requirePkg allpkgs
-    lib'  <- updateLibrary (library pkg_descr)
-    exes' <- mapM updateExecutable (executables pkg_descr)
-    let pkg_descr' = pkg_descr { library = lib', executables = exes' }
+    lib' <- mapM addPkgConfigBILib (library pkg_descr)
+    exes' <- mapM addPkgConfigBIExe (executables pkg_descr)
+    tests' <- mapM addPkgConfigBITest (testSuites pkg_descr)
+    benches' <- mapM addPkgConfigBIBench (benchmarks pkg_descr)
+    let pkg_descr' = pkg_descr { library = lib', executables = exes',
+                                 testSuites = tests', benchmarks = benches' }
     return (pkg_descr', conf')
 
   where
@@ -898,14 +905,26 @@ configurePkgconfigPackages verbosity pkg_descr conf
           | isAnyVersion range = ""
           | otherwise          = " version " ++ display range
 
-    updateLibrary Nothing    = return Nothing
-    updateLibrary (Just lib) = do
-      bi <- pkgconfigBuildInfo (pkgconfigDepends (libBuildInfo lib))
-      return $ Just lib { libBuildInfo = libBuildInfo lib `mappend` bi }
+    -- Adds pkgconfig dependencies to the build info for a component
+    addPkgConfigBI compBI setCompBI comp = do
+      bi <- pkgconfigBuildInfo (pkgconfigDepends (compBI comp))
+      return $ setCompBI comp (compBI comp `mappend` bi)
 
-    updateExecutable exe = do
-      bi <- pkgconfigBuildInfo (pkgconfigDepends (buildInfo exe))
-      return exe { buildInfo = buildInfo exe `mappend` bi }
+    -- Adds pkgconfig dependencies to the build info for a library
+    addPkgConfigBILib = addPkgConfigBI libBuildInfo $
+                          \lib bi -> lib { libBuildInfo = bi }
+
+    -- Adds pkgconfig dependencies to the build info for an executable
+    addPkgConfigBIExe = addPkgConfigBI buildInfo $
+                          \exe bi -> exe { buildInfo = bi }
+
+    -- Adds pkgconfig dependencies to the build info for a test suite
+    addPkgConfigBITest = addPkgConfigBI testBuildInfo $
+                          \test bi -> test { testBuildInfo = bi }
+
+    -- Adds pkgconfig dependencies to the build info for a benchmark
+    addPkgConfigBIBench = addPkgConfigBI benchmarkBuildInfo $
+                          \bench bi -> bench { benchmarkBuildInfo = bi }
 
     pkgconfigBuildInfo :: [Dependency] -> IO BuildInfo
     pkgconfigBuildInfo []      = return mempty
