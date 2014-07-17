@@ -109,7 +109,7 @@ ppGenPackageFlags flds                   = vcat [ppFlag f | f <- flds]
 
 ppFlag :: Flag -> Doc
 ppFlag flag@(MkFlag name _ _ _)    =
-    emptyLine $ text "flag" <+> ppFlagName name $+$ fields
+    emptyLine $ text "flag" <+> ppFlagName name $+$ nest indentWith fields
   where
     fields = ppFieldsFiltered flagDefaults flagFieldDescrs flag
 
