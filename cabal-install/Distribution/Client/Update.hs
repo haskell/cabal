@@ -86,7 +86,7 @@ checkForSelfUpgrade verbosity repos = do
     [ "Note: You are not currently running the latest version of cabal-install."
     , "The currently running version is: " ++ showVersion currentVersion
     , "These available versions are newer: "
-      ++ (intercalate ", " . map showVersion) laterPreferredVersion
+      ++ (intercalate ", " . map showVersion) laterPreferredVersions
     , "If you have already installed a newer version, and intended "
       ++ "to run it, maybe check your PATH environment variable?"
     ]
