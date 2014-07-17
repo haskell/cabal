@@ -95,9 +95,9 @@ ppFlag (MkFlag name desc dflt manual)    =
     emptyLine $ text "flag" <+> ppFlagName name $+$
             (nest indentWith ((if null desc
                                 then empty
-                                else  text "Description: " <+> showFreeText desc) $+$
-                     (if dflt then empty else text "Default: False") $+$
-                     (if manual then text "Manual: True" else empty)))
+                                else  text "description: " <+> showFreeText desc) $+$
+                     (if dflt then empty else text "default: False") $+$
+                     (if manual then text "manual: True" else empty)))
 
 ppLibrary :: (Maybe (CondTree ConfVar [Dependency] Library)) -> Doc
 ppLibrary Nothing                        = empty
