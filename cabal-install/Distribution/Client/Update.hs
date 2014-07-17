@@ -83,10 +83,10 @@ checkForSelfUpgrade verbosity repos = do
         ]
 
   unless (null laterPreferredVersions) $ mapM_ (notice verbosity)
-    [ "Note: I am not the latest version of cabal-install."
-    , "These versions are available and are newer than me: "
-      ++ (intercalate ", " . map showVersion) laterPreferredVersions
-    , "My version is: " ++ showVersion currentVersion
+    [ "Note: You are not currently running the latest version of cabal-install."
+    , "The currently running version is: " ++ showVersion currentVersion
+    , "These available versions are newer: "
+      ++ (intercalate ", " . map showVersion) laterPreferredVersion
     , "If you have already installed a newer version, and intended "
-      ++ "to run it, maybe check your $PATH variable?"
+      ++ "to run it, maybe check your PATH environment variable?"
     ]
