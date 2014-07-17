@@ -284,6 +284,7 @@ ppField name fielddoc
          , "includes"
          , "install-includes"
          , "other-modules"
+         , "depends"
          ]
 
 showFields :: [FieldDescr a] -> a -> String
