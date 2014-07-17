@@ -284,6 +284,7 @@ ppField name fielddoc
          , "includes"
          , "install-includes"
          , "other-modules"
+         , "depends"
          ]
 
 showFields :: [FieldDescr a] -> a -> String
@@ -733,7 +734,6 @@ showTestedWith (compiler, version) = text (show compiler) <+> disp version
 -- and with blank lines replaced by dots for correct re-parsing.
 showFreeText :: String -> Doc
 showFreeText "" = empty
-showFreeText ('\n' :r)  = text " " $+$ text "." $+$ showFreeText r
 showFreeText s  = vcat [text (if null l then "." else l) | l <- lines_ s]
 
 -- | 'lines_' breaks a string up into a list of strings at newline
