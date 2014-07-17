@@ -39,7 +39,9 @@ import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
 import qualified Data.Map as Map
 import System.FilePath (dropExtension)
+import Data.List       (intercalate)
 import Data.Maybe      (fromMaybe)
+import Data.Version    (showVersion)
 import Control.Monad   (unless)
 
 -- | 'update' downloads the package list from all known servers
@@ -73,13 +75,18 @@ checkForSelfUpgrade verbosity repos = do
       preferredVersionRange  = fromMaybe anyVersion (Map.lookup self prefs)
       currentVersion         = Paths_cabal_install.version
       laterPreferredVersions =
-        [ packageVersion pkg
+        [ version
         | pkg <- PackageIndex.lookupPackageName sourcePkgIndex self
         , let version = packageVersion pkg
         , version > currentVersion
-        , version `withinRange` preferredVersionRange ]
+        , version `withinRange` preferredVersionRange
+        ]
 
-  unless (null laterPreferredVersions) $
-    notice verbosity $
-         "Note: there is a new version of cabal-install available.\n"
-      ++ "To upgrade, run: cabal install cabal-install"
+  unless (null laterPreferredVersions) $ mapM_ (notice verbosity)
+    [ "Note: I am not the latest version of cabal-install."
+    , "These versions are available and are newer than me: "
+      ++ (intercalate ", " . map showVersion) laterPreferredVersions
+    , "My version is: " ++ showVersion currentVersion
+    , "If you have already installed a newer version, and intended "
+      ++ "to run it, maybe check your $PATH variable?"
+    ]
