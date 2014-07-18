@@ -99,7 +99,7 @@ import Distribution.Client.JobControl
 
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
-         , PackageDB(..), PackageDBStack )
+         , PackageDB(..), PackageDBStack, packageKeySupported )
 import Distribution.Simple.Program (ProgramConfiguration,
                                     defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -122,7 +122,7 @@ import Distribution.Simple.InstallDirs as InstallDirs
          , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
          ( PackageIdentifier, PackageId, packageName, packageVersion
-         , Package(..), PackageFixedDeps(..)
+         , Package(..), PackageFixedDeps(..), mkPackageKey
          , Dependency(..), thisPackageVersion, InstalledPackageId )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
@@ -280,10 +280,10 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> InstallPlan
                    -> IO ()
 processInstallPlan verbosity
-  args@(_,_, _, _, _, _, _, _, _, _, installFlags, _)
+  args@(_,_, comp, _, _, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
    userTargets, pkgSpecifiers) installPlan = do
-    checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
+    checkPrintPlan verbosity comp installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
 
     unless (dryRun || nothingToInstall) $ do
@@ -422,13 +422,14 @@ pruneInstallPlan pkgSpecifiers =
 -- | Perform post-solver checks of the install plan and print it if
 -- either requested or needed.
 checkPrintPlan :: Verbosity
+               -> Compiler
                -> PackageIndex
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
                -> [PackageSpecifier SourcePackage]
                -> IO ()
-checkPrintPlan verbosity installed installPlan sourcePkgDb
+checkPrintPlan verbosity comp installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
 
   -- User targets that are already installed.
@@ -445,7 +446,7 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
        : map (display . packageId) preExistingTargets
       ++ ["Use --reinstall if you want to reinstall anyway."]
 
-  let lPlan = linearizeInstallPlan installed installPlan
+  let lPlan = linearizeInstallPlan comp installed installPlan
   -- Are any packages classified as reinstalls?
   let reinstalledPkgs = concatMap (extractReinstalls . snd) lPlan
   -- Packages that are already broken.
@@ -497,10 +498,11 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
     dryRun            = fromFlag (installDryRun            installFlags)
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
 
-linearizeInstallPlan :: PackageIndex
+linearizeInstallPlan :: Compiler
+                     -> PackageIndex
                      -> InstallPlan
                      -> [(ReadyPackage, PackageStatus)]
-linearizeInstallPlan installedPkgIndex plan =
+linearizeInstallPlan comp installedPkgIndex plan =
     unfoldr next plan
   where
     next plan' = case InstallPlan.ready plan' of
@@ -508,7 +510,7 @@ linearizeInstallPlan installedPkgIndex plan =
       (pkg:_) -> Just ((pkg, status), plan'')
         where
           pkgid  = packageId pkg
-          status = packageStatus installedPkgIndex pkg
+          status = packageStatus comp installedPkgIndex pkg
           plan'' = InstallPlan.completed pkgid
                      (BuildOk DocsNotTried TestsNotTried
                               (Just $ Installed.emptyInstalledPackageInfo
@@ -527,18 +529,21 @@ extractReinstalls :: PackageStatus -> [InstalledPackageId]
 extractReinstalls (Reinstall ipids _) = ipids
 extractReinstalls _                   = []
 
-packageStatus :: PackageIndex -> ReadyPackage -> PackageStatus
-packageStatus installedPkgIndex cpkg =
+packageStatus :: Compiler -> PackageIndex -> ReadyPackage -> PackageStatus
+packageStatus comp installedPkgIndex cpkg@(ReadyPackage pid flags _ deps) =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
     [] -> NewPackage
-    ps ->  case filter ((==packageId cpkg)
-                        . Installed.sourcePackageId) (concatMap snd ps) of
+    ps ->  case filter ((==pkg_key)
+                        . Installed.packageKey) (concatMap snd ps) of
       []           -> NewVersion (map fst ps)
       pkgs@(pkg:_) -> Reinstall (map Installed.installedPackageId pkgs)
                                 (changes pkg cpkg)
 
   where
+
+    pkg_key = mkPackageKey (packageKeySupported comp)
+                           (packageId pid) (map Installed.packageKey deps) flags
 
     changes :: Installed.InstalledPackageInfo
             -> ReadyPackage
