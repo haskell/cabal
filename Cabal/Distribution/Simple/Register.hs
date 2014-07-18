@@ -258,14 +258,16 @@ generalInstalledPackageInfo
                                 -- absolute paths.
   -> PackageDescription
   -> Library
+  -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> InstallDirs FilePath
   -> InstalledPackageInfo
-generalInstalledPackageInfo adjustRelIncDirs pkg lib clbi installDirs =
+generalInstalledPackageInfo adjustRelIncDirs pkg lib lbi clbi installDirs =
   InstalledPackageInfo {
     --TODO: do not open-code this conversion from PackageId to InstalledPackageId
     IPI.installedPackageId = InstalledPackageId (display (packageId pkg)),
     IPI.sourcePackageId    = packageId   pkg,
+    IPI.packageKey         = pkgKey lbi,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
     IPI.maintainer         = maintainer  pkg,
@@ -324,7 +326,7 @@ inplaceInstalledPackageInfo :: FilePath -- ^ top of the build tree
                             -> ComponentLocalBuildInfo
                             -> InstalledPackageInfo
 inplaceInstalledPackageInfo inplaceDir distPref pkg lib lbi clbi =
-    generalInstalledPackageInfo adjustRelativeIncludeDirs pkg lib clbi
+    generalInstalledPackageInfo adjustRelativeIncludeDirs pkg lib lbi clbi
     installDirs
   where
     adjustRelativeIncludeDirs = map (inplaceDir </>)
@@ -352,7 +354,7 @@ absoluteInstalledPackageInfo :: PackageDescription
                              -> ComponentLocalBuildInfo
                              -> InstalledPackageInfo
 absoluteInstalledPackageInfo pkg lib lbi clbi =
-    generalInstalledPackageInfo adjustReativeIncludeDirs pkg lib clbi installDirs
+    generalInstalledPackageInfo adjustReativeIncludeDirs pkg lib lbi clbi installDirs
   where
     -- For installed packages we install all include files into one dir,
     -- whereas in the build tree they may live in multiple local dirs.

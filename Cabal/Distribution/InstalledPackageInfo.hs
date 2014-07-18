@@ -77,7 +77,7 @@ import Distribution.License     ( License(..) )
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
          , PackageId, InstalledPackageId(..)
-         , packageName, packageVersion )
+         , packageName, packageVersion, PackageKey(..) )
 import qualified Distribution.Package as Package
          ( Package(..) )
 import Distribution.ModuleName
@@ -98,6 +98,7 @@ data InstalledPackageInfo_ m
         -- these parts are exactly the same as PackageDescription
         installedPackageId :: InstalledPackageId,
         sourcePackageId    :: PackageId,
+        packageKey         :: PackageKey,
         license           :: License,
         copyright         :: String,
         maintainer        :: String,
@@ -142,6 +143,8 @@ emptyInstalledPackageInfo
    = InstalledPackageInfo {
         installedPackageId = InstalledPackageId "",
         sourcePackageId    = PackageIdentifier (PackageName "") noVersion,
+        packageKey         = OldPackageKey (PackageIdentifier
+                                               (PackageName "") noVersion),
         license           = AllRightsReserved,
         copyright         = "",
         maintainer        = "",
@@ -213,6 +216,9 @@ basicFieldDescrs =
  , simpleField "id"
                            disp                   parse
                            installedPackageId     (\ipid pkg -> pkg{installedPackageId=ipid})
+ , simpleField "key"
+                           disp                   parse
+                           packageKey             (\ipid pkg -> pkg{packageKey=ipid})
  , simpleField "license"
                            disp                   parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
