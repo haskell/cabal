@@ -150,6 +150,7 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.ReadP
     Distribution.Compiler
+    Distribution.Glob
     Distribution.InstalledPackageInfo
     Distribution.License
     Distribution.Make
