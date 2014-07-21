@@ -379,10 +379,12 @@ rawSystemExitWithEnv verbosity path args env = do
     hFlush stdout
     (_,_,_,ph) <- createProcess $
                   (Process.proc path args) { Process.env = (Just env)
-#ifndef BOOTSTRAPPING
+#ifdef MIN_VERSION_process
+#if MIN_VERSION_process(1,2,0)
 -- delegate_ctlc has been added in process 1.2, and we still want to be able to
 -- bootstrap GHC on systems not having that version
                                            , Process.delegate_ctlc = True
+#endif
 #endif
                                            }
     exitcode <- waitForProcess ph
@@ -410,10 +412,12 @@ rawSystemIOWithEnv verbosity path args mcwd menv inp out err = do
                                            , Process.std_in        = mbToStd inp
                                            , Process.std_out       = mbToStd out
                                            , Process.std_err       = mbToStd err
-#ifndef BOOTSTRAPPING
+#ifdef MIN_VERSION_process
+#if MIN_VERSION_process(1,2,0)
 -- delegate_ctlc has been added in process 1.2, and we still want to be able to
 -- bootstrap GHC on systems not having that version
                                            , Process.delegate_ctlc = True
+#endif
 #endif
                                            }
     exitcode <- waitForProcess ph
