@@ -116,7 +116,7 @@ import qualified Distribution.Simple.Setup as Cabal
          , testCommand, TestFlags(..), emptyTestFlags )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rawSystemExit, comparing
-         , writeFileAtomic, withTempFile , withFileContents )
+         , writeFileAtomic, withTempFile , withUTF8FileContents )
 import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
@@ -1350,7 +1350,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                 Cabal.regGenPkgConf = toFlag (Just pkgConfFile)
               }
           setup Cabal.registerCommand registerFlags' mLogPath
-          withFileContents pkgConfFile $ \pkgConfText ->
+          withUTF8FileContents pkgConfFile $ \pkgConfText ->
             case Installed.parseInstalledPackageInfo pkgConfText of
               Installed.ParseFailed perror    -> pkgConfParseFailed perror
               Installed.ParseOk warns pkgConf -> do
