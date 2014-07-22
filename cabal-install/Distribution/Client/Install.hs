@@ -32,7 +32,7 @@ import Data.List
          ( isPrefixOf, unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
 import Data.Maybe
-         ( isJust, fromMaybe, maybeToList )
+         ( isJust, fromMaybe, mapMaybe, maybeToList )
 import Control.Exception as Exception
          ( Exception(toException), bracket, catches
          , Handler(Handler), handleJust, IOException, SomeException )
@@ -44,6 +44,8 @@ import System.Exit
          ( ExitCode(..) )
 import Distribution.Compat.Exception
          ( catchIO, catchExit )
+import Control.Applicative
+         ( (<$>) )
 import Control.Monad
          ( when, unless )
 import System.Directory
@@ -87,7 +89,7 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
-         ( storeAnonymous, storeLocal, fromInstallPlan )
+         ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
 import qualified Distribution.Client.PackageIndex as SourcePackageIndex
@@ -121,7 +123,7 @@ import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
-         ( PackageIdentifier, PackageId, packageName, packageVersion
+         ( PackageIdentifier(..), PackageId, packageName, packageVersion
          , Package(..), PackageFixedDeps(..)
          , Dependency(..), thisPackageVersion, InstalledPackageId )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -133,7 +135,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
-         ( Version )
+         ( Version, VersionRange, foldVersionRange )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
          , intercalate, withTempDirectory )
@@ -187,10 +189,15 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
   userTargets0 = do
 
     installContext <- makeInstallContext verbosity args (Just userTargets0)
-    installPlan    <- foldProgress logMsg die' return =<<
+    planResult     <- foldProgress logMsg (return . Left) (return . Right) =<<
                       makeInstallPlan verbosity args installContext
 
-    processInstallPlan verbosity args installContext installPlan
+    case planResult of
+        Left message -> do
+            reportPlanningFailure verbosity args installContext
+            die' message
+        Right installPlan ->
+            processInstallPlan verbosity args installContext installPlan
   where
     args :: InstallArgs
     args = (packageDBs, repos, comp, platform, conf, useSandbox, mSandboxPkgInfo,
@@ -641,6 +648,54 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 -- * Post installation stuff
 -- ------------------------------------------------------------
 
+-- | Report a solver failure. This works slightly differently to
+-- 'postInstallActions', as (by definition) we don't have an install plan.
+reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> IO ()
+reportPlanningFailure verbosity
+  (_, repos, comp, platform, _, _, _
+  ,_, configFlags, _, installFlags, _)
+  (_, sourcePkgDb, _, pkgSpecifiers) = do
+
+  when reportFailure $ do
+
+    -- Only create reports for explicitly named packages
+    let pkgids =
+          filter (SourcePackageIndex.elemByPackageId (packageIndex sourcePkgDb)) $
+          mapMaybe theSpecifiedPackage pkgSpecifiers
+
+        buildReports = BuildReports.fromPlanningFailure platform (compilerId comp)
+          pkgids (configConfigurationsFlags configFlags) repos
+
+    when (not (null buildReports)) $
+      notice verbosity $
+        "Notice: this solver failure will be reported for "
+        ++ intercalate "," (map display pkgids)
+
+    -- Save reports
+    BuildReports.storeLocal (installSummaryFile installFlags) buildReports platform
+
+  where
+    reportFailure = fromFlag (installReportPlanningFailure installFlags)
+
+-- | If a 'PackageSpecifier' refers to a single package, return Just that package.
+theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
+theSpecifiedPackage pkgSpec =
+  case pkgSpec of
+    NamedPackage name [PackageConstraintVersion name' version]
+      | name == name' -> PackageIdentifier name <$> trivialRange version
+    NamedPackage _ _ -> Nothing
+    SpecificSourcePackage pkg -> Just $ packageId pkg
+  where
+    -- | If a range includes only a single version, return Just that version.
+    trivialRange :: VersionRange -> Maybe Version
+    trivialRange = foldVersionRange
+        Nothing
+        Just     -- "== v"
+        (\_ -> Nothing)
+        (\_ -> Nothing)
+        (\_ _ -> Nothing)
+        (\_ _ -> Nothing)
+
 -- | Various stuff we do after successful or unsuccessfully installing a bunch
 -- of packages. This includes:
 --
@@ -835,6 +890,9 @@ printBuildFailures plan =
                         ++ showException e
       InstallFailed   e -> " failed during the final install step."
                         ++ showException e
+
+      -- This will never happen, but we include it for completeness
+      PlanningFailed -> " failed during the planning phase."
 
     showException e   =  " The exception was:\n  " ++ show e ++ maybeOOM e
 #ifdef mingw32_HOST_OS
