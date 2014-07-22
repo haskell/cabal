@@ -20,6 +20,7 @@ module Distribution.Client.BuildReports.Storage (
 
     -- * 'InstallPlan' support
     fromInstallPlan,
+    fromPlanningFailure,
   ) where
 
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
@@ -30,6 +31,10 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan
          ( InstallPlan )
 
+import Distribution.Package
+         ( PackageId )
+import Distribution.PackageDescription
+         ( FlagAssignment )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
@@ -127,3 +132,11 @@ fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
     -> Just $ (BuildReport.new os arch comp pkg (Left result), repo)
 
   _ -> Nothing
+
+fromPlanningFailure :: Platform -> CompilerId
+    -> [PackageId] -> FlagAssignment -> [Repo] -> [(BuildReport, Repo)]
+fromPlanningFailure (Platform arch os) comp pkgids flags repos =
+    [ (BuildReport.new' os arch comp pkgid flags [] (Left PlanningFailed), repo)
+    | pkgid <- pkgids
+    , repo@Repo{ repoKind = Left RemoteRepo{} } <- repos
+    ]

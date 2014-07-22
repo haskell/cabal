@@ -195,7 +195,8 @@ data Repo = Repo {
 -- ------------------------------------------------------------
 
 type BuildResult  = Either BuildFailure BuildSuccess
-data BuildFailure = DependentFailed PackageId
+data BuildFailure = PlanningFailed
+                  | DependentFailed PackageId
                   | DownloadFailed  SomeException
                   | UnpackFailed    SomeException
                   | ConfigureFailed SomeException
