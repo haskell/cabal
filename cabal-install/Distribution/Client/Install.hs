@@ -601,12 +601,11 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showLatest :: ReadyPackage -> String
     showLatest pkg = case mLatestVersion of
         Just latestVersion ->
-            if pkgVersion < latestVersion
+            if packageVersion pkg < latestVersion
             then (" (latest: " ++ display latestVersion ++ ")")
             else ""
         Nothing -> ""
       where
-        pkgVersion    = packageVersion pkg
         mLatestVersion :: Maybe Version
         mLatestVersion = case SourcePackageIndex.lookupPackageName
                                 (packageIndex sourcePkgDb)
