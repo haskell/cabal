@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
 module Distribution.Compat.CreatePipe (createPipe) where
 
-import System.IO (Handle)
+import System.IO (Handle, hSetEncoding, localeEncoding)
 
 -- The mingw32_HOST_OS CPP macro is GHC-specific
 #if mingw32_HOST_OS
@@ -31,6 +31,8 @@ createPipe = do
         return (readfd, writefd)
     (do readh <- fdToHandle readfd ReadMode
         writeh <- fdToHandle writefd WriteMode
+        hSetEncoding readh localeEncoding
+        hSetEncoding writeh localeEncoding
         return (readh, writeh)) `onException` (close readfd >> close writefd)
   where
     fdToHandle :: CInt -> IOMode -> IO Handle
@@ -51,5 +53,7 @@ createPipe = do
     (readfd, writefd) <- Posix.createPipe
     readh <- fdToHandle readfd
     writeh <- fdToHandle writefd
+    hSetEncoding readh localeEncoding
+    hSetEncoding writeh localeEncoding
     return (readh, writeh)
 #endif
