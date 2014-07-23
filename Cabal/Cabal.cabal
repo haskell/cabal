@@ -127,7 +127,7 @@ source-repository head
 
 library
   build-depends:
-    base       >= 4   && < 5,
+    base       >= 4.2 && < 5,
     deepseq    >= 1.3 && < 1.4,
     filepath   >= 1   && < 1.4,
     directory  >= 1   && < 1.3,
@@ -233,7 +233,9 @@ library
 test-suite unit-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: tests
-  other-modules: UnitTests.Distribution.Compat.ReadP
+  other-modules:
+    UnitTests.Distribution.Compat.CreatePipe
+    UnitTests.Distribution.Compat.ReadP
   main-is: UnitTests.hs
   build-depends:
     base,
