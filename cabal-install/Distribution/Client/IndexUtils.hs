@@ -242,7 +242,7 @@ whenCacheOutOfDate origFile cacheFile action = do
     else do
       origTime  <- getModTime origFile
       cacheTime <- getModTime cacheFile
-      when (origTime >= cacheTime) action
+      when (origTime > cacheTime) action
 
 ------------------------------------------------------------------------
 -- Reading the index file
