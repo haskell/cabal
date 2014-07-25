@@ -47,7 +47,7 @@ import Distribution.Compiler
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
-    , PackageDB(..), PackageDBStack )
+    , PackageDB(..), PackageDBStack, reexportedModulesSupported )
 import Distribution.Simple.PreProcess ( platformDefines )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(..), PackageId
@@ -388,6 +388,11 @@ configure (pkg_descr0, pbi) cfg
           info verbosity $ "Flags chosen: "
                         ++ intercalate ", " [ name ++ "=" ++ display value
                                             | (FlagName name, value) <- flags ]
+
+        when (maybe False (not.null.PD.reexportedModules) (PD.library pkg_descr)
+              && not (reexportedModulesSupported comp)) $ do
+            die $ "Your compiler does not support module reexports.  To use"
+               ++ "this feature you probably must use GHC 7.9 or later."
 
         checkPackageProblems verbosity pkg_descr0
           (updatePackageDescription pbi pkg_descr)
