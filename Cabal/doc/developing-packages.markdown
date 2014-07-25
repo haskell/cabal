@@ -945,6 +945,21 @@ The library section should contain the following fields:
     use a flat module namespace or where it is known that the exposed
     modules would clash with other common modules.
 
+`reexported-modules:` _exportlist _
+:   Supported only in GHC 7.10 and later.  A list of modules to _reexport_ from
+    this package.  The syntax of this field is `orig-pkg:Name as NewName` to
+    reexport module `Name` from `orig-pkg` with the new name `NewName`.  We also
+    support abbreviated versions of the syntax: if you omit `as NewName`,
+    we'll reexport without renaming; if you omit `orig-pkg`, then we will
+    automatically figure out which package to reexport from, if it's
+    unambiguous.
+
+    Reexported modules are useful for compatibility shims when a package has
+    been split into multiple packages, and they have the useful property that
+    if a package provides a module, and another package reexports it under
+    the same name, these are not considered a conflict (as would be the case
+    with a stub module.)  They can also be used to resolve name conflicts.
+
 The library section may also contain build information fields (see the
 section on [build information](#build-information)).
 
