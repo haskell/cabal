@@ -38,8 +38,8 @@ questions starting with the package name and version.
 
 ~~~~~~~~~~
 $ cabal init
-Package name [default "proglet"]? 
-Package version [default "0.1"]? 
+Package name [default "proglet"]?
+Package version [default "0.1"]?
 ...
 ~~~~~~~~~~
 
@@ -262,7 +262,7 @@ has some tips on package versioning.
 
 The combination of package name and version is called the _package ID_
 and is written with a hyphen to separate the name and version, e.g.
-"HUnit-1.1". 
+"HUnit-1.1".
 
 For Cabal packages, the combination of the package name and version
 _uniquely_ identifies each package. Or to put it another way: two
@@ -283,7 +283,7 @@ are not very complicated.
 Cabal packages
 :   Cabal packages are really source packages. That is they contain
     Haskell (and sometimes C) source code.
-    
+
     Cabal packages can be compiled to produce GHC packages. They can
     also be translated into operating system packages.
 
@@ -292,14 +292,14 @@ GHC packages
     packages, not executables. Library packages have to be registered
     with GHC for them to be available in GHCi or to be used when
     compiling other programs or packages.
-    
+
     The low-level tool `ghc-pkg` is used to register GHC packages and to
     get information on what packages are currently registered.
-    
+
     You never need to make GHC packages manually. When you build and
     install a Cabal package containing a library then it gets registered
     with GHC automatically.
-    
+
     Haskell implementations other than GHC have essentially the same
     concept of registered packages. For the most part, Cabal hides the
     slight differences.
@@ -308,12 +308,12 @@ Operating system packages
 :   On operating systems like Linux and Mac OS X, the system has a
     specific notion of a package and there are tools for installing and
     managing packages.
-    
+
     The Cabal package format is designed to allow Cabal packages to be
     translated, mostly-automatically, into operating system packages.
     They are usually translated 1:1, that is a single Cabal package
     becomes a single system package.
-    
+
     It is also possible to make Windows installers from Cabal packages,
     though this is typically done for a program together with all of its
     library dependencies, rather than packaging each library separately.
