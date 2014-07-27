@@ -21,10 +21,8 @@ import Network.Browser
          , setOutHandler, setErrHandler, setProxy, setAuthorityGen, request)
 import Network.Stream
          ( Result, ConnError(..) )
-import Control.Exception
-         ( handleJust )
 import Control.Monad
-         ( liftM, guard )
+         ( liftM )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy (ByteString)
 
@@ -44,8 +42,6 @@ import System.FilePath
          ( (<.>) )
 import System.Directory
          ( doesFileExist )
-import System.IO.Error
-         ( isDoesNotExistError )
 
 data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
@@ -92,16 +88,13 @@ cabalBrowse :: Verbosity
             -> IO a
 cabalBrowse verbosity auth act = do
     p   <- proxy verbosity
-    handleJust
-        (guard . isDoesNotExistError)
-        (const $ die "Cannot connect to uri. Is http_proxy set?") $
-        browse $ do
-            setProxy p
-            setErrHandler (warn verbosity . ("http error: "++))
-            setOutHandler (debug verbosity)
-            auth
-            setAuthorityGen (\_ _ -> return Nothing)
-            act
+    browse $ do
+        setProxy p
+        setErrHandler (warn verbosity . ("http error: "++))
+        setOutHandler (debug verbosity)
+        auth
+        setAuthorityGen (\_ _ -> return Nothing)
+        act
 
 downloadURI :: Verbosity
             -> URI      -- ^ What to download
