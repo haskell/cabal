@@ -6,9 +6,13 @@
 # HTTP packages. It then installs cabal-install itself.
 # It expects to be run inside the cabal-install directory.
 
-# install settings, you can override these by setting environment vars
+# Install settings, you can override these by setting environment vars. E.g. if
+# you don't want profiling and dynamic versions of libraries to be installed in
+# addition to vanilla, run 'EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh'
+
 #VERBOSE
-#EXTRA_CONFIGURE_OPTS
+DEFAULT_CONFIGURE_OPTS="--enable-library-profiling --enable-shared"
+EXTRA_CONFIGURE_OPTS=${EXTRA_CONFIGURE_OPTS-$DEFAULT_CONFIGURE_OPTS}
 #EXTRA_BUILD_OPTS
 #EXTRA_INSTALL_OPTS
 
