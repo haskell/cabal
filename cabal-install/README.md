@@ -91,7 +91,7 @@ This will also create a default configuration file (if it does not
 already exist) at
 `C:\Documents and Settings\%USERNAME%\Application Data\cabal\config`.
 
-[cabal.exe]: http://www.haskell.org/cabal/release/cabal-install-latest/cabal.exe
+[cabal.exe]: http://www.haskell.org/cabal/release/cabal-install-latest/
 
 Using `cabal`
 =============
