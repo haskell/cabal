@@ -674,7 +674,7 @@ postInstallActions verbosity
   when (reportingLevel == DetailedReports) $
     storeDetailedBuildReports verbosity logsDir buildReports
 
-  regenerateHaddockIndex verbosity packageDBs comp platform conf
+  regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
                          configFlags installFlags installPlan
 
   symlinkBinaries verbosity configFlags installFlags installPlan
@@ -728,11 +728,12 @@ regenerateHaddockIndex :: Verbosity
                        -> Compiler
                        -> Platform
                        -> ProgramConfiguration
+                       -> UseSandbox
                        -> ConfigFlags
                        -> InstallFlags
                        -> InstallPlan
                        -> IO ()
-regenerateHaddockIndex verbosity packageDBs comp platform conf
+regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
                        configFlags installFlags installPlan
   | haddockIndexFileIsRequested && shouldRegenerateHaddockIndex = do
 
@@ -758,8 +759,9 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf
 
     -- We want to regenerate the index if some new documentation was actually
     -- installed. Since the index is per-user, we don't do it for global
-    -- installs or special cases where we're installing into a specific db.
-    shouldRegenerateHaddockIndex = normalUserInstall
+    -- installs or special cases where we're installing into a specific db
+    -- (except when we're in a sandbox; see #1337).
+    shouldRegenerateHaddockIndex = (normalUserInstall || isUseSandbox useSandbox)
                                 && someDocsWereInstalled installPlan
       where
         someDocsWereInstalled = any installedDocs . InstallPlan.toList
