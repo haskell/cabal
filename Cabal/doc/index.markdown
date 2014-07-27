@@ -163,7 +163,7 @@ Cabal is often compared with autoconf and automake and there is some
 overlap in functionality. The most obvious similarity is that the
 command line interface for actually configuring and building packages
 follows the same steps and has many of the same configuration
-paramaters.
+parameters.
 
 ~~~~~~~~~~
 ./configure --prefix=...
@@ -182,7 +182,7 @@ cabal install
 Cabal's build system for simple packages is considerably less flexible
 than make/automake, but has builtin knowledge of how to build Haskell
 code and requires very little manual configuration. Cabal's simple build
-system is also portable to Windows, without needing a unix-like
+system is also portable to Windows, without needing a Unix-like
 environment such as cygwin/mingwin.
 
 Compared to autoconf, Cabal takes a somewhat different approach to
