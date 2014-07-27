@@ -16,7 +16,7 @@ module Distribution.Client.Setup
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
-    , testCommand, benchmarkCommand
+    , replCommand, testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
@@ -60,7 +60,8 @@ import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Setup
-         ( ConfigFlags(..), BuildFlags(..), TestFlags(..), BenchmarkFlags(..)
+         ( ConfigFlags(..), BuildFlags(..), ReplFlags
+         , TestFlags(..), BenchmarkFlags(..)
          , SDistFlags(..), HaddockFlags(..)
          , readPackageDbList, showPackageDbList
          , Flag(..), toFlag, fromFlag, flagToMaybe, flagToList
@@ -420,6 +421,25 @@ instance Monoid BuildExFlags where
     buildOnly    = combine buildOnly
   }
     where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * Repl command
+-- ------------------------------------------------------------
+
+replCommand :: CommandUI (ReplFlags, BuildExFlags)
+replCommand = parent {
+    commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandOptions      =
+      \showOrParseArgs -> liftOptions fst setFst
+                          (commandOptions parent showOrParseArgs)
+                          ++
+                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
+  }
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+    parent = Cabal.replCommand defaultProgramConfiguration
 
 -- ------------------------------------------------------------
 -- * Test command
