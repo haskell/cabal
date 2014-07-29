@@ -117,7 +117,7 @@ import Prelude hiding ( mapM )
 import Control.Monad
     ( when, unless, foldM, filterM )
 import Data.List
-    ( (\\), nub, partition, isPrefixOf, inits, find )
+    ( (\\), nub, partition, isPrefixOf, inits )
 import Data.Maybe
     ( isNothing, catMaybes, fromMaybe )
 import Data.Monoid
