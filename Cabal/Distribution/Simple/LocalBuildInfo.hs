@@ -391,6 +391,7 @@ absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
 absoluteInstallDirs pkg lbi copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
+    (pkgKey lbi)
     (compilerId (compiler lbi))
     copydest
     (hostPlatform lbi)
@@ -402,6 +403,7 @@ prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
 prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
+    (pkgKey lbi)
     (compilerId (compiler lbi))
     (hostPlatform lbi)
     (installDirTemplates lbi)
@@ -412,5 +414,6 @@ substPathTemplate pkgid lbi = fromPathTemplate
                                 . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv
                    pkgid
+                   (pkgKey lbi)
                    (compilerId (compiler lbi))
                    (hostPlatform lbi)
