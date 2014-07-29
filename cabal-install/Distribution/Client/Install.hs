@@ -47,7 +47,7 @@ import Distribution.Compat.Exception
 import Control.Applicative
          ( (<$>) )
 import Control.Monad
-         ( when, unless )
+         ( forM_, when, unless )
 import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
            createDirectoryIfMissing, removeFile, renameDirectory )
@@ -194,7 +194,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 
     case planResult of
         Left message -> do
-            reportPlanningFailure verbosity args installContext
+            reportPlanningFailure verbosity args installContext message
             die' message
         Right installPlan ->
             processInstallPlan verbosity args installContext installPlan
@@ -649,11 +649,12 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 
 -- | Report a solver failure. This works slightly differently to
 -- 'postInstallActions', as (by definition) we don't have an install plan.
-reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> IO ()
+reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String -> IO ()
 reportPlanningFailure verbosity
   (_, repos, comp, platform, _, _, _
   ,_, configFlags, _, installFlags, _)
-  (_, sourcePkgDb, _, pkgSpecifiers) = do
+  (_, sourcePkgDb, _, pkgSpecifiers)
+  message = do
 
   when reportFailure $ do
 
@@ -673,8 +674,17 @@ reportPlanningFailure verbosity
     -- Save reports
     BuildReports.storeLocal (installSummaryFile installFlags) buildReports platform
 
+    -- Save solver log
+    case logFile of
+      Nothing -> return ()
+      Just template -> forM_ pkgids $ \pkgid ->
+        let env = initialPathTemplateEnv pkgid (compilerId comp) platform
+            path = fromPathTemplate $ substPathTemplate env template
+        in  writeFile path message
+
   where
     reportFailure = fromFlag (installReportPlanningFailure installFlags)
+    logFile = flagToMaybe (installLogFile installFlags)
 
 -- | If a 'PackageSpecifier' refers to a single package, return Just that package.
 theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
