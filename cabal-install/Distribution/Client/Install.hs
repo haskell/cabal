@@ -530,19 +530,17 @@ extractReinstalls (Reinstall ipids _) = ipids
 extractReinstalls _                   = []
 
 packageStatus :: Compiler -> PackageIndex -> ReadyPackage -> PackageStatus
-packageStatus comp installedPkgIndex cpkg =
+packageStatus _comp installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
     [] -> NewPackage
-    ps ->  case filter ((==pkg_key)
-                        . Installed.packageKey) (concatMap snd ps) of
+    ps ->  case filter ((== packageId cpkg)
+                        . Installed.sourcePackageId) (concatMap snd ps) of
       []           -> NewVersion (map fst ps)
       pkgs@(pkg:_) -> Reinstall (map Installed.installedPackageId pkgs)
                                 (changes pkg cpkg)
 
   where
-
-    pkg_key = readyPackageKey comp cpkg
 
     changes :: Installed.InstalledPackageInfo
             -> ReadyPackage
