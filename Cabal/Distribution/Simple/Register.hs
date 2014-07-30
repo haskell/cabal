@@ -85,6 +85,7 @@ import System.FilePath ((</>), (<.>), isAbsolute)
 import System.Directory
          ( getCurrentDirectory, removeDirectoryRecursive )
 
+import Control.Monad (when)
 import Data.Maybe
          ( isJust, fromMaybe, maybeToList )
 import Data.List
@@ -102,6 +103,9 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
     let clbi = getComponentLocalBuildInfo lbi CLibName
     installedPkgInfo <- generateRegistrationInfo
                            verbosity pkg lib lbi clbi inplace distPref
+
+    when (fromFlag (regPrintId regFlags)) $ do
+      putStrLn (display (IPI.installedPackageId installedPkgInfo))
 
      -- Three different modes:
     case () of
