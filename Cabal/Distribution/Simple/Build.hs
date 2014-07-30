@@ -123,7 +123,8 @@ build pkg_descr lbi flags suffixes = do
                    withPrograms  = progs',
                    withPackageDB = withPackageDB lbi ++ [internalPackageDB]
                  }
-    in buildComponent verbosity (buildNumJobs flags) pkg_descr
+    in buildComponent verbosity (buildNumJobs flags) (buildOnlyPreprocess flags)
+                      pkg_descr
                       lbi' suffixes comp clbi distPref
 
 
@@ -163,7 +164,7 @@ repl pkg_descr lbi flags suffixes args = do
   sequence_
     [ let comp = getComponent pkg_descr cname
           lbi' = lbiForComponent comp lbi
-       in buildComponent verbosity NoFlag
+       in buildComponent verbosity NoFlag NoFlag
                          pkg_descr lbi' suffixes comp clbi distPref
     | (cname, clbi) <- init componentsToBuild ]
 
@@ -183,6 +184,7 @@ startInterpreter verbosity programDb comp packageDBs =
 
 buildComponent :: Verbosity
                -> Flag (Maybe Int)
+               -> Flag Bool
                -> PackageDescription
                -> LocalBuildInfo
                -> [PPSuffixHandler]
@@ -190,9 +192,10 @@ buildComponent :: Verbosity
                -> ComponentLocalBuildInfo
                -> FilePath
                -> IO ()
-buildComponent verbosity numJobs pkg_descr lbi suffixes
+buildComponent verbosity numJobs onlyPreprocess pkg_descr lbi suffixes
                comp@(CLib lib) clbi distPref = do
-    preprocessComponent pkg_descr comp lbi False verbosity suffixes
+  preprocessComponent pkg_descr comp lbi False verbosity suffixes
+  unless (onlyPreprocess == Flag True) $ do
     info verbosity "Building library..."
     buildLib verbosity numJobs pkg_descr lbi lib clbi
 
@@ -210,14 +213,14 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
       (withPackageDB lbi)
 
 
-buildComponent verbosity numJobs pkg_descr lbi suffixes
+buildComponent verbosity numJobs _onlyPreprocess pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
     preprocessComponent pkg_descr comp lbi False verbosity suffixes
     info verbosity $ "Building executable " ++ exeName exe ++ "..."
     buildExe verbosity numJobs pkg_descr lbi exe clbi
 
 
-buildComponent verbosity numJobs pkg_descr lbi suffixes
+buildComponent verbosity numJobs _onlyPreprocess pkg_descr lbi suffixes
                comp@(CTest test@TestSuite { testInterface = TestSuiteExeV10{} })
                clbi _distPref = do
     let exe = testSuiteExeV10AsExe test
@@ -226,7 +229,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     buildExe verbosity numJobs pkg_descr lbi exe clbi
 
 
-buildComponent verbosity numJobs pkg_descr lbi suffixes
+buildComponent verbosity numJobs _onlyPreprocess pkg_descr lbi suffixes
                comp@(CTest
                  test@TestSuite { testInterface = TestSuiteLibV09{} })
                clbi -- This ComponentLocalBuildInfo corresponds to a detailed
@@ -245,13 +248,13 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     buildExe verbosity numJobs pkg_descr lbi exe exeClbi
 
 
-buildComponent _ _ _ _ _
+buildComponent _ _ _ _ _ _
                (CTest TestSuite { testInterface = TestSuiteUnsupported tt })
                _ _ =
     die $ "No support for building test suite type " ++ display tt
 
 
-buildComponent verbosity numJobs pkg_descr lbi suffixes
+buildComponent verbosity numJobs _onlyPreprocess pkg_descr lbi suffixes
                comp@(CBench bm@Benchmark { benchmarkInterface = BenchmarkExeV10 {} })
                clbi _ = do
     let (exe, exeClbi) = benchmarkExeV10asExe bm clbi
@@ -260,7 +263,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     buildExe verbosity numJobs pkg_descr lbi exe exeClbi
 
 
-buildComponent _ _ _ _ _
+buildComponent _ _ _ _ _ _
                (CBench Benchmark { benchmarkInterface = BenchmarkUnsupported tt })
                _ _ =
     die $ "No support for building benchmark type " ++ display tt
@@ -522,6 +525,11 @@ writeAutogenFiles verbosity pkg lbi = do
 
   let cppHeaderPath = autogenModulesDir lbi </> cppHeaderName
   rewriteFile cppHeaderPath (Build.Macros.generate pkg lbi)
+
+  let dotGhciPath = autogenModulesDir lbi </> "ghci"
+  rewriteFile dotGhciPath (unlines
+    ["-- override :reload",
+     ":def! r (\\_ -> return \":!cabal build --only-preprocess\\n::reload\")"])
 
 -- | Check that the given build targets are valid in the current context.
 --
