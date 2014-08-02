@@ -54,7 +54,7 @@ import System.FilePath
 import System.Directory
          ( createDirectoryIfMissing )
 
-storeAnonymous :: [(BuildReport, Repo)] -> IO ()
+storeAnonymous :: [(BuildReport, Maybe Repo)] -> IO ()
 storeAnonymous reports = sequence_
   [ appendFile file (concatMap format reports')
   | (repo, reports') <- separate reports
@@ -64,7 +64,7 @@ storeAnonymous reports = sequence_
 
   where
     format r = '\n' : BuildReport.show r ++ "\n"
-    separate :: [(BuildReport, Repo)]
+    separate :: [(BuildReport, Maybe Repo)]
              -> [(Repo, [BuildReport])]
     separate = map (\rs@((_,repo,_):_) -> (repo, [ r | (r,_,_) <- rs ]))
              . map concat
@@ -74,12 +74,12 @@ storeAnonymous reports = sequence_
              . onlyRemote
     repoName (_,_,rrepo) = remoteRepoName rrepo
 
-    onlyRemote :: [(BuildReport, Repo)] -> [(BuildReport, Repo, RemoteRepo)]
+    onlyRemote :: [(BuildReport, Maybe Repo)] -> [(BuildReport, Repo, RemoteRepo)]
     onlyRemote rs =
       [ (report, repo, remoteRepo)
-      | (report, repo@Repo { repoKind = Left remoteRepo }) <- rs ]
+      | (report, Just repo@Repo { repoKind = Left remoteRepo }) <- rs ]
 
-storeLocal :: [PathTemplate] -> [(BuildReport, Repo)] -> Platform -> IO ()
+storeLocal :: [PathTemplate] -> [(BuildReport, Maybe Repo)] -> Platform -> IO ()
 storeLocal templates reports platform = sequence_
   [ do createDirectoryIfMissing True (takeDirectory file)
        appendFile file output
@@ -109,7 +109,7 @@ storeLocal templates reports platform = sequence_
 -- * InstallPlan support
 -- ------------------------------------------------------------
 
-fromInstallPlan :: InstallPlan -> [(BuildReport, Repo)]
+fromInstallPlan :: InstallPlan -> [(BuildReport, Maybe Repo)]
 fromInstallPlan plan = catMaybes
                      . map (fromPlanPackage platform comp)
                      . InstallPlan.toList
@@ -119,24 +119,24 @@ fromInstallPlan plan = catMaybes
 
 fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage
-                -> Maybe (BuildReport, Repo)
+                -> Maybe (BuildReport, Maybe Repo)
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
 
-  InstallPlan.Installed pkg@(ReadyPackage (SourcePackage {
-                          packageSource = RepoTarballPackage repo _ _ }) _ _ _) result
+  InstallPlan.Installed pkg@(ReadyPackage srcPkg _ _ _) result
     -> Just $ (BuildReport.new os arch comp
-               (readyPackageToConfiguredPackage pkg) (Right result), repo)
+               (readyPackageToConfiguredPackage pkg) (Right result), extractRepo srcPkg)
 
-  InstallPlan.Failed pkg@(ConfiguredPackage (SourcePackage {
-                       packageSource = RepoTarballPackage repo _ _ }) _ _ _) result
-    -> Just $ (BuildReport.new os arch comp pkg (Left result), repo)
+  InstallPlan.Failed pkg@(ConfiguredPackage srcPkg _ _ _) result
+    -> Just $ (BuildReport.new os arch comp pkg (Left result), extractRepo srcPkg)
 
   _ -> Nothing
 
+  where
+    extractRepo (SourcePackage { packageSource = RepoTarballPackage repo _ _ }) = Just repo
+    extractRepo _ = Nothing
+
 fromPlanningFailure :: Platform -> CompilerId
-    -> [PackageId] -> FlagAssignment -> [Repo] -> [(BuildReport, Repo)]
-fromPlanningFailure (Platform arch os) comp pkgids flags repos =
-    [ (BuildReport.new' os arch comp pkgid flags [] (Left PlanningFailed), repo)
-    | pkgid <- pkgids
-    , repo@Repo{ repoKind = Left RemoteRepo{} } <- repos
-    ]
+    -> [PackageId] -> FlagAssignment -> [(BuildReport, Maybe Repo)]
+fromPlanningFailure (Platform arch os) comp pkgids flags =
+  [ (BuildReport.new' os arch comp pkgid flags [] (Left PlanningFailed), Nothing)
+  | pkgid <- pkgids ]
