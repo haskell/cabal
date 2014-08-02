@@ -664,7 +664,7 @@ reportPlanningFailure verbosity
           mapMaybe theSpecifiedPackage pkgSpecifiers
 
         buildReports = BuildReports.fromPlanningFailure platform (compilerId comp)
-          pkgids (configConfigurationsFlags configFlags) repos
+          pkgids (configConfigurationsFlags configFlags)
 
     when (not (null buildReports)) $
       notice verbosity $
@@ -755,7 +755,7 @@ postInstallActions verbosity
     worldFile      = fromFlag $ globalWorldFile globalFlags
 
 storeDetailedBuildReports :: Verbosity -> FilePath
-                          -> [(BuildReports.BuildReport, Repo)] -> IO ()
+                          -> [(BuildReports.BuildReport, Maybe Repo)] -> IO ()
 storeDetailedBuildReports verbosity logsDir reports = sequence_
   [ do dotCabal <- defaultCabalDir
        let logFileName = display (BuildReports.package report) <.> "log"
@@ -768,7 +768,7 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
          createDirectoryIfMissing True reportsDir -- FIXME
          writeFile reportFile (show (BuildReports.show report, buildLog))
 
-  | (report, Repo { repoKind = Left remoteRepo }) <- reports
+  | (report, Just Repo { repoKind = Left remoteRepo }) <- reports
   , isLikelyToHaveLogFile (BuildReports.installOutcome report) ]
 
   where
