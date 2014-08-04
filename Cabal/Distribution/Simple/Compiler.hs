@@ -42,7 +42,8 @@ module Distribution.Simple.Compiler (
         extensionsToFlags,
         unsupportedExtensions,
         parmakeSupported,
-        reexportedModulesSupported
+        reexportedModulesSupported,
+        packageKeySupported
   ) where
 
 import Distribution.Compiler
@@ -195,6 +196,10 @@ parmakeSupported = ghcSupported "Support parallel --make"
 -- | Does this compiler support reexported-modules?
 reexportedModulesSupported :: Compiler -> Bool
 reexportedModulesSupported = ghcSupported "Support reexported-modules"
+
+-- | Does this compiler support package keys?
+packageKeySupported :: Compiler -> Bool
+packageKeySupported = ghcSupported "Uses package keys"
 
 -- | Utility function for GHC only features
 ghcSupported :: String -> Compiler -> Bool

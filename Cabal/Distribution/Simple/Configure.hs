@@ -45,15 +45,17 @@ module Distribution.Simple.Configure (configure,
 import Distribution.Compiler
     ( CompilerId(..) )
 import Distribution.Simple.Compiler
-    ( CompilerFlavor(..), Compiler(compilerId), compilerFlavor, compilerVersion
+    ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
-    , PackageDB(..), PackageDBStack, reexportedModulesSupported )
+    , PackageDB(..), PackageDBStack, reexportedModulesSupported
+    , packageKeySupported )
 import Distribution.Simple.PreProcess ( platformDefines )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(..), PackageId
     , packageName, packageVersion, Package(..)
     , Dependency(Dependency), simplifyDependency
-    , InstalledPackageId(..), thisPackageVersion )
+    , InstalledPackageId(..), thisPackageVersion
+    , mkPackageKey, PackageKey(..) )
 import Distribution.InstalledPackageInfo as Installed
     ( InstalledPackageInfo, InstalledPackageInfo_(..)
     , emptyInstalledPackageInfo )
@@ -457,10 +459,17 @@ configure (pkg_descr0, pbi) cfg
                          | (name, uses) <- inconsistencies
                          , (pkg, ver) <- uses ]
 
+        -- Calculate the package key.  We're going to store it in LocalBuildInfo
+        -- canonically, but ComponentsLocalBuildInfo also needs to know about it
+        -- XXX Do we need the internal deps?
+        let pkg_key = mkPackageKey (packageKeySupported comp)
+                                   (package pkg_descr)
+                                   (map packageKey externalPkgDeps)
+
         -- internal component graph
         buildComponents <-
           case mkComponentsLocalBuildInfo pkg_descr
-                 internalPkgDeps externalPkgDeps of
+                 internalPkgDeps externalPkgDeps pkg_key of
             Left  componentCycle -> reportComponentCycle componentCycle
             Right components     -> return components
 
@@ -542,6 +551,7 @@ configure (pkg_descr0, pbi) cfg
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
+                    pkgKey              = pkg_key,
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
                     withProfLib         = fromFlag $ configProfLib cfg,
@@ -1017,10 +1027,11 @@ configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 
 mkComponentsLocalBuildInfo :: PackageDescription
                            -> [PackageId] -> [InstalledPackageInfo]
+                           -> PackageKey
                            -> Either [ComponentName]
                                      [(ComponentName,
                                        ComponentLocalBuildInfo, [ComponentName])]
-mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps =
+mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps pkg_key =
     let graph = [ (c, componentName c, componentDeps c)
                 | c <- pkgEnabledComponents pkg_descr ]
      in case checkComponentsCyclic graph of
@@ -1052,7 +1063,7 @@ mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps =
         LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
           componentLibraries = [LibraryName
-                                ("HS" ++ display (package pkg_descr))]
+                                ("HS" ++ display pkg_key)]
         }
       CExe _ ->
         ExeComponentLocalBuildInfo {
