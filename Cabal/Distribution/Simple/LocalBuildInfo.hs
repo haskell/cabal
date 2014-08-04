@@ -65,7 +65,7 @@ import Distribution.PackageDescription
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
          , BuildInfo(buildable), Benchmark(..) )
 import Distribution.Package
-         ( PackageId, Package(..), InstalledPackageId(..) )
+         ( PackageId, Package(..), InstalledPackageId(..), PackageKey )
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
@@ -115,6 +115,9 @@ data LocalBuildInfo = LocalBuildInfo {
         localPkgDescr :: PackageDescription,
                 -- ^ The resolved package description, that does not contain
                 -- any conditionals.
+        pkgKey        :: PackageKey,
+                -- ^ The package key for the current build, calculated from
+                -- the package ID and the dependency graph.
         withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
         withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
@@ -388,6 +391,7 @@ absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
 absoluteInstallDirs pkg lbi copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
+    (pkgKey lbi)
     (compilerId (compiler lbi))
     copydest
     (hostPlatform lbi)
@@ -399,6 +403,7 @@ prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
 prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
+    (pkgKey lbi)
     (compilerId (compiler lbi))
     (hostPlatform lbi)
     (installDirTemplates lbi)
@@ -409,5 +414,6 @@ substPathTemplate pkgid lbi = fromPathTemplate
                                 . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv
                    pkgid
+                   (pkgKey lbi)
                    (compilerId (compiler lbi))
                    (hostPlatform lbi)

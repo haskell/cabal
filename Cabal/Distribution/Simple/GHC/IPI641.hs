@@ -66,9 +66,11 @@ mkInstalledPackageId = Current.InstalledPackageId . display
 
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
-  Current.InstalledPackageInfo {
+  let pid = convertPackageId (package ipi)
+  in Current.InstalledPackageInfo {
     Current.installedPackageId = mkInstalledPackageId (convertPackageId (package ipi)),
-    Current.sourcePackageId    = convertPackageId (package ipi),
+    Current.sourcePackageId    = pid,
+    Current.packageKey         = Current.OldPackageKey pid,
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
     Current.maintainer         = maintainer ipi,

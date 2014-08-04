@@ -66,7 +66,7 @@ import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( Package(..), PackageName(..) )
+         ( PackageName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -679,7 +679,6 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
 
   let libTargetDir = buildDir lbi
       numJobs = fromMaybe 1 $ fromFlagOrDefault Nothing numJobsFlag
-      pkgid = packageId pkg_descr
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
       whenProfLib = when (withProfLib lbi)
@@ -712,7 +711,7 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = toFlag numJobs,
-                      ghcOptPackageName  = toFlag pkgid,
+                      ghcOptPackageKey   = toFlag (pkgKey lbi),
                       ghcOptInputModules = libModules lib
                     }
 
@@ -874,7 +873,7 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
                                                && ghcVersion < Version [7,8] [])
                                             then toFlag sharedLibInstallPath
                                             else mempty,
-                ghcOptPackageName        = toFlag pkgid,
+                ghcOptPackageKey         = toFlag (pkgKey lbi),
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
                 ghcOptPackages           = componentPackageDeps clbi,
@@ -1124,7 +1123,7 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
 --
 libAbiHash :: Verbosity -> PackageDescription -> LocalBuildInfo
            -> Library -> ComponentLocalBuildInfo -> IO String
-libAbiHash verbosity pkg_descr lbi lib clbi = do
+libAbiHash verbosity _pkg_descr lbi lib clbi = do
   libBi <- hackThreadedFlag verbosity
              (compiler lbi) (withProfLib lbi) (libBuildInfo lib)
   let
@@ -1133,7 +1132,7 @@ libAbiHash verbosity pkg_descr lbi lib clbi = do
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
-          ghcOptPackageName  = toFlag (packageId pkg_descr),
+          ghcOptPackageKey   = toFlag (pkgKey lbi),
           ghcOptInputModules = exposedModules lib
         }
       sharedArgs = vanillaArgs `mappend` mempty {
