@@ -52,9 +52,12 @@ As a convenience for users on Unix-like systems, there is a
 
     $ ./bootstrap.sh
 
-It will download and install the dependencies. The script will install
-the library packages into `$HOME/.cabal/` and the `cabal` program into
-`$HOME/.cabal/bin/`.
+It will download and install the dependencies. The script will install the
+library packages (vanilla, profiling and shared) into `$HOME/.cabal/` and the
+`cabal` program into `$HOME/.cabal/bin/`. If you don't want to install profiling
+and shared versions of the libraries, use
+
+    $ EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh
 
 You then have the choice either to place `$HOME/.cabal/bin` on your
 `$PATH` or move the `cabal` program to somewhere on your `$PATH`. Next,
@@ -88,7 +91,7 @@ This will also create a default configuration file (if it does not
 already exist) at
 `C:\Documents and Settings\%USERNAME%\Application Data\cabal\config`.
 
-[cabal.exe]: http://www.haskell.org/cabal/release/cabal-install-latest/cabal.exe
+[cabal.exe]: http://www.haskell.org/cabal/release/cabal-install-latest/
 
 Using `cabal`
 =============

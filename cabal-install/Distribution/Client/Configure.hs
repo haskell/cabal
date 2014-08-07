@@ -64,6 +64,8 @@ chooseCabalVersion :: ConfigExFlags -> Maybe Version -> VersionRange
 chooseCabalVersion configExFlags maybeVersion =
   maybe defaultVersionRange thisVersion maybeVersion
   where
+    -- Cabal < 1.19.2 doesn't support '--exact-configuration' which is needed
+    -- for '--allow-newer' to work.
     allowNewer = fromFlagOrDefault False $
                  fmap isAllowNewer (configAllowNewer configExFlags)
 

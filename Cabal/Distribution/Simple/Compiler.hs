@@ -41,7 +41,9 @@ module Distribution.Simple.Compiler (
         unsupportedLanguages,
         extensionsToFlags,
         unsupportedExtensions,
-        parmakeSupported
+        parmakeSupported,
+        reexportedModulesSupported,
+        packageKeySupported
   ) where
 
 import Distribution.Compiler
@@ -189,9 +191,21 @@ extensionToFlag comp ext = lookup ext (compilerExtensions comp)
 
 -- | Does this compiler support parallel --make mode?
 parmakeSupported :: Compiler -> Bool
-parmakeSupported comp =
+parmakeSupported = ghcSupported "Support parallel --make"
+
+-- | Does this compiler support reexported-modules?
+reexportedModulesSupported :: Compiler -> Bool
+reexportedModulesSupported = ghcSupported "Support reexported-modules"
+
+-- | Does this compiler support package keys?
+packageKeySupported :: Compiler -> Bool
+packageKeySupported = ghcSupported "Uses package keys"
+
+-- | Utility function for GHC only features
+ghcSupported :: String -> Compiler -> Bool
+ghcSupported key comp =
   case compilerFlavor comp of
-    GHC -> case M.lookup "Support parallel --make" (compilerProperties comp) of
+    GHC -> case M.lookup key (compilerProperties comp) of
       Just "YES" -> True
       _          -> False
     _   -> False

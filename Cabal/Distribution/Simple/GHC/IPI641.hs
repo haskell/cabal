@@ -65,9 +65,12 @@ mkInstalledPackageId :: Current.PackageIdentifier -> Current.InstalledPackageId
 mkInstalledPackageId = Current.InstalledPackageId . display
 
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
-toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
+toCurrent ipi@InstalledPackageInfo{} =
+  let pid = convertPackageId (package ipi)
+  in Current.InstalledPackageInfo {
     Current.installedPackageId = mkInstalledPackageId (convertPackageId (package ipi)),
-    Current.sourcePackageId    = convertPackageId (package ipi),
+    Current.sourcePackageId    = pid,
+    Current.packageKey         = Current.OldPackageKey pid,
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
     Current.maintainer         = maintainer ipi,
@@ -80,6 +83,7 @@ toCurrent ipi@InstalledPackageInfo{} = Current.InstalledPackageInfo {
     Current.category           = category ipi,
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map convertModuleName (exposedModules ipi),
+    Current.reexportedModules  = [],
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
     Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
     Current.importDirs         = importDirs ipi,

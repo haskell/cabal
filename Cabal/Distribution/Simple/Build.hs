@@ -36,10 +36,10 @@ import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 
 import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
-         , Dependency(..), thisPackageVersion )
+         , Dependency(..), thisPackageVersion, mkPackageKey )
 import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor(..), compilerFlavor
-         , PackageDB(..), PackageDBStack )
+         , PackageDB(..), PackageDBStack, packageKeySupported )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
@@ -55,7 +55,7 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.PreProcess
          ( preprocessComponent, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms)
+         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms, pkgKey)
          , Component(..), componentName, getComponent, componentBuildInfo
          , ComponentLocalBuildInfo(..), pkgEnabledComponents
          , withComponentsInBuildOrder, componentsInBuildOrder
@@ -226,7 +226,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     buildExe verbosity numJobs pkg_descr lbi exe clbi
 
 
-buildComponent verbosity numJobs pkg_descr lbi suffixes
+buildComponent verbosity numJobs pkg_descr lbi0 suffixes
                comp@(CTest
                  test@TestSuite { testInterface = TestSuiteLibV09{} })
                clbi -- This ComponentLocalBuildInfo corresponds to a detailed
@@ -236,8 +236,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
                     -- built.
                distPref = do
     pwd <- getCurrentDirectory
-    let (pkg, lib, libClbi, ipi, exe, exeClbi) =
-          testSuiteLibV09AsLibAndExe pkg_descr lbi test clbi distPref pwd
+    let (pkg, lib, libClbi, lbi, ipi, exe, exeClbi) =
+          testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 distPref pwd
     preprocessComponent pkg_descr comp lbi False verbosity suffixes
     info verbosity $ "Building test suite " ++ testName test ++ "..."
     buildLib verbosity numJobs pkg lbi lib libClbi
@@ -293,13 +293,13 @@ replComponent verbosity pkg_descr lbi suffixes
     replExe verbosity pkg_descr lbi exe clbi
 
 
-replComponent verbosity pkg_descr lbi suffixes
+replComponent verbosity pkg_descr lbi0 suffixes
                comp@(CTest
                  test@TestSuite { testInterface = TestSuiteLibV09{} })
                clbi distPref = do
     pwd <- getCurrentDirectory
-    let (pkg, lib, libClbi, _, _, _) =
-          testSuiteLibV09AsLibAndExe pkg_descr lbi test clbi distPref pwd
+    let (pkg, lib, libClbi, lbi, _, _, _) =
+          testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 distPref pwd
     preprocessComponent pkg_descr comp lbi False verbosity suffixes
     replLib verbosity pkg lbi lib libClbi
 
@@ -339,23 +339,25 @@ testSuiteExeV10AsExe TestSuite{} = error "testSuiteExeV10AsExe: wrong kind"
 
 -- | Translate a lib-style 'TestSuite' component into a lib + exe for building
 testSuiteLibV09AsLibAndExe :: PackageDescription
-                           -> LocalBuildInfo
                            -> TestSuite
                            -> ComponentLocalBuildInfo
+                           -> LocalBuildInfo
                            -> FilePath
                            -> FilePath
                            -> (PackageDescription,
                                Library, ComponentLocalBuildInfo,
+                               LocalBuildInfo,
                                IPI.InstalledPackageInfo_ ModuleName,
                                Executable, ComponentLocalBuildInfo)
-testSuiteLibV09AsLibAndExe pkg_descr lbi
+testSuiteLibV09AsLibAndExe pkg_descr
                      test@TestSuite { testInterface = TestSuiteLibV09 _ m }
-                     clbi distPref pwd =
-    (pkg, lib, libClbi, ipi, exe, exeClbi)
+                     clbi lbi distPref pwd =
+    (pkg, lib, libClbi, lbi', ipi, exe, exeClbi)
   where
     bi  = testBuildInfo test
     lib = Library {
             exposedModules = [ m ],
+            reexportedModules = [],
             libExposed     = True,
             libBuildInfo   = bi
           }
@@ -372,6 +374,14 @@ testSuiteLibV09AsLibAndExe pkg_descr lbi
           , testSuites   = []
           , library      = Just lib
           }
+    -- Hack to make the library compile with the right package key.
+    -- Probably the "right" way to do this is move this information to
+    -- the ComponentLocalBuildInfo, but it seems odd that a single package
+    -- can define multiple actual packages.
+    lbi' = lbi {
+        pkgKey = mkPackageKey (packageKeySupported (compiler lbi))
+                              (package pkg) []
+    }
     ipi = (inplaceInstalledPackageInfo pwd distPref pkg lib lbi libClbi) {
             IPI.installedPackageId = inplacePackageId $ packageId ipi
           }
@@ -396,7 +406,7 @@ testSuiteLibV09AsLibAndExe pkg_descr lbi
                                         in name == "Cabal" || name == "base")
                             (componentPackageDeps clbi))
               }
-testSuiteLibV09AsLibAndExe _ _ TestSuite{} _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"
+testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"
 
 
 -- | Translate a exe-style 'Benchmark' component into an exe for building
