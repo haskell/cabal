@@ -20,7 +20,7 @@ import Distribution.Client.Setup
          , ConfigFlags(..)
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
-         , buildCommand, testCommand, benchmarkCommand
+         , buildCommand, replCommand, testCommand, benchmarkCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
@@ -44,7 +44,7 @@ import Distribution.Client.Setup
 import Distribution.Simple.Setup
          ( HaddockFlags(..), haddockCommand, defaultHaddockFlags
          , HscolourFlags(..), hscolourCommand
-         , ReplFlags(..), replCommand
+         , ReplFlags(..)
          , CopyFlags(..), copyCommand
          , RegisterFlags(..), registerCommand
          , CleanFlags(..), cleanCommand
@@ -229,8 +229,7 @@ mainWorker args = topHandler $
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
       ,buildCommand           `commandAddAction` buildAction
-      ,replCommand defaultProgramConfiguration
-                              `commandAddAction` replAction
+      ,replCommand            `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
       ,haddockCommand         `commandAddAction` haddockAction
       ,execCommand            `commandAddAction` execAction
@@ -360,8 +359,8 @@ filterBuildFlags version config buildFlags
     numJobsCmdLineFlag = buildNumJobs buildFlags
 
 
-replAction :: ReplFlags -> [String] -> GlobalFlags -> IO ()
-replAction replFlags extraArgs globalFlags = do
+replAction :: (ReplFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+replAction (replFlags, buildExFlags) extraArgs globalFlags = do
   cwd     <- getCurrentDirectory
   pkgDesc <- findPackageDesc cwd
   either (const onNoPkgDesc) (const onPkgDesc) pkgDesc
@@ -374,8 +373,9 @@ replAction replFlags extraArgs globalFlags = do
       let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                         (replDistPref replFlags)
           noAddSource = case replReload replFlags of
-                          Flag True -> SkipAddSourceDepsCheck
-                          _         -> DontSkipAddSourceDepsCheck
+            Flag True -> SkipAddSourceDepsCheck
+            _         -> fromFlagOrDefault DontSkipAddSourceDepsCheck
+                         (buildOnly buildExFlags)
           progConf     = defaultProgramConfiguration
           setupOptions = defaultSetupScriptOptions
             { useCabalVersion = orLaterVersion $ Version [1,18,0] []

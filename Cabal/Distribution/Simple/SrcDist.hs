@@ -417,7 +417,7 @@ createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
    -- sequences to set up the paths correctly, which is problematic in a Windows
    -- setting.]
   rawSystemProgram verbosity tarProg
-           ["-C", tmpDir, "-czf", tarBallFilePath, tarBallName pkg_descr]
+           ["-czf", tarBallFilePath, "-C", tmpDir, tarBallName pkg_descr]
   return tarBallFilePath
 
 -- | Given a buildinfo, return the names of all source files.

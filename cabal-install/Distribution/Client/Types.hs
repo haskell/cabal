@@ -15,9 +15,10 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..), PackageFixedDeps(..) )
+         ( PackageName, PackageId, Package(..), PackageFixedDeps(..)
+         , mkPackageKey, PackageKey )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+         ( InstalledPackageInfo, packageKey )
 import Distribution.PackageDescription
          ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
          , TestSuite(..) )
@@ -27,6 +28,8 @@ import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Version
          ( VersionRange )
+import Distribution.Simple.Compiler
+         ( Compiler, packageKeySupported )
 
 import Data.Map (Map)
 import Network.URI (URI)
@@ -106,6 +109,14 @@ instance Package ReadyPackage where
 
 instance PackageFixedDeps ReadyPackage where
   depends (ReadyPackage _ _ _ deps) = map packageId deps
+
+-- | Extracts a package key from ReadyPackage, a common operation needed
+-- to calculate build paths.
+readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
+readyPackageKey comp (ReadyPackage pkg _ _ deps) =
+    mkPackageKey (packageKeySupported comp) (packageId pkg)
+                 (map packageKey deps)
+
 
 -- | Sometimes we need to convert a 'ReadyPackage' back to a
 -- 'ConfiguredPackage'. For example, a failed 'PlanPackage' can be *either*

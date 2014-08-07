@@ -216,7 +216,7 @@ $ cabal --ignore-sandbox install text
 
 ## Creating a binary package ##
 
-When creating binary packages (e.g. for RedHat or Debian) one needs to
+When creating binary packages (e.g. for Red Hat or Debian) one needs to
 create a tarball that can be sent to another system for unpacking in the
 root directory:
 
@@ -316,7 +316,7 @@ files of a package:
 :   Specify additional options to the program _prog_. Any program known
     to Cabal can be used in place of _prog_. For example:
     `--alex-options="--template=mytemplatedir/"`. The _options_ is split
-    into program options based on spaces. Any options containing embeded
+    into program options based on spaces. Any options containing embedded
     spaced need to be quoted, for example
     `--foo-options='--bar="C:\Program File\Bar"'`. As an alternative
     that takes only one option at a time but avoids the need to quote,
@@ -324,8 +324,8 @@ files of a package:
 
 `--`_`prog`_`-option=`_option_
 :   Specify a single additional option to the program _prog_. For
-    passing an option that contain embeded spaces, such as a file name
-    with embeded spaces, using this rather than `--`_`prog`_`-options`
+    passing an option that contain embedded spaces, such as a file name
+    with embedded spaces, using this rather than `--`_`prog`_`-options`
     means you do not need an additional level of quoting. Of course if
     you are using a command shell you may still need to quote, for
     example `--foo-options="--bar=C:\Program File\Bar"`.
@@ -445,7 +445,7 @@ independence](#prefix-independence)).
 
 `$prefix`
 :   The path variable that stands for the root of the installation. For
-    an installation to be relocatable, all other instllation paths must
+    an installation to be relocatable, all other installation paths must
     be relative to the `$prefix` variable.
 
 `$bindir`
@@ -468,23 +468,23 @@ independence](#prefix-independence)).
 :   As above but for `--docdir`
 
 `$pkgid`
-:   The name and version of the package, eg `mypkg-0.2`
+:   The name and version of the package, e.g. `mypkg-0.2`
 
 `$pkg`
-:   The name of the package, eg `mypkg`
+:   The name of the package, e.g. `mypkg`
 
 `$version`
-:   The version of the package, eg `0.2`
+:   The version of the package, e.g. `0.2`
 
 `$compiler`
-:   The compiler being used to build the package, eg `ghc-6.6.1`
+:   The compiler being used to build the package, e.g. `ghc-6.6.1`
 
 `$os`
 :   The operating system of the computer being used to build the
-    package, eg `linux`, `windows`, `osx`, `freebsd` or `solaris`
+    package, e.g. `linux`, `windows`, `osx`, `freebsd` or `solaris`
 
 `$arch`
-:   The architecture of the computer being used to build the package, eg
+:   The architecture of the computer being used to build the package, e.g.
     `i386`, `x86_64`, `ppc` or `sparc`
 
 #### Paths in the simple build system ####
@@ -584,7 +584,7 @@ be controlled with the following command line options.
 :   (default) Does a global installation. In this case package
     dependencies must be satisfied by the global package database. All
     packages in the user's package database will be ignored. Typically
-    the final instllation step will require administrative privileges.
+    the final installation step will require administrative privileges.
 
 `--package-db=`_db_
 :   Allows package dependencies to be satisfied from this additional
@@ -675,7 +675,7 @@ be controlled with the following command line options.
     example if you want to debug the C parts of a program containing
     both Haskell and C code. Another reason is if your are building a
     package for a system which has a policy of managing the stripping
-    itself (such as some linux distributions).
+    itself (such as some Linux distributions).
 
 `--enable-shared`
 :   Build shared library. This implies a separate compiler run to

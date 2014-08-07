@@ -67,8 +67,8 @@ data GhcOptions = GhcOptions {
   -------------
   -- Packages
 
-  -- | The package name the modules will belong to; the @ghc -package-name@ flag
-  ghcOptPackageName   :: Flag PackageId,
+  -- | The package key the modules will belong to; the @ghc -this-package-key@ flag
+  ghcOptPackageKey   :: Flag PackageKey,
 
   -- | GHC package databases to use, the @ghc -package-conf@ flag
   ghcOptPackageDBs    :: PackageDBStack,
@@ -322,7 +322,10 @@ renderGhcOptions comp opts
   -------------
   -- Packages
 
-  , concat [ ["-package-name", display pkgid] | pkgid <- flag ghcOptPackageName ]
+  , concat [ [if packageKeySupported comp
+                then "-this-package-key"
+                else "-package-name", display pkgid]
+             | pkgid <- flag ghcOptPackageKey ]
 
   , [ "-hide-all-packages"     | flagBool ghcOptHideAllPackages ]
   , [ "-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages ]
@@ -416,7 +419,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDynFile      = mempty,
     ghcOptSourcePathClear    = mempty,
     ghcOptSourcePath         = mempty,
-    ghcOptPackageName        = mempty,
+    ghcOptPackageKey         = mempty,
     ghcOptPackageDBs         = mempty,
     ghcOptPackages           = mempty,
     ghcOptHideAllPackages    = mempty,
@@ -465,7 +468,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDynFile      = combine ghcOptOutputDynFile,
     ghcOptSourcePathClear    = combine ghcOptSourcePathClear,
     ghcOptSourcePath         = combine ghcOptSourcePath,
-    ghcOptPackageName        = combine ghcOptPackageName,
+    ghcOptPackageKey         = combine ghcOptPackageKey,
     ghcOptPackageDBs         = combine ghcOptPackageDBs,
     ghcOptPackages           = combine ghcOptPackages,
     ghcOptHideAllPackages    = combine ghcOptHideAllPackages,

@@ -77,11 +77,13 @@ import Distribution.License     ( License(..) )
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
          , PackageId, InstalledPackageId(..)
-         , packageName, packageVersion )
+         , packageName, packageVersion, PackageKey(..) )
 import qualified Distribution.Package as Package
          ( Package(..) )
 import Distribution.ModuleName
          ( ModuleName )
+import Distribution.ModuleExport
+         ( ModuleExport(..) )
 import Distribution.Version
          ( Version(..) )
 import Distribution.Text
@@ -90,11 +92,13 @@ import Distribution.Text
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
 
+
 data InstalledPackageInfo_ m
    = InstalledPackageInfo {
         -- these parts are exactly the same as PackageDescription
         installedPackageId :: InstalledPackageId,
         sourcePackageId    :: PackageId,
+        packageKey         :: PackageKey,
         license           :: License,
         copyright         :: String,
         maintainer        :: String,
@@ -108,6 +112,7 @@ data InstalledPackageInfo_ m
         -- these parts are required by an installed package only:
         exposed           :: Bool,
         exposedModules    :: [m],
+        reexportedModules :: [ModuleExport m],
         hiddenModules     :: [m],
         trusted           :: Bool,
         importDirs        :: [FilePath],  -- contain sources in case of Hugs
@@ -138,6 +143,8 @@ emptyInstalledPackageInfo
    = InstalledPackageInfo {
         installedPackageId = InstalledPackageId "",
         sourcePackageId    = PackageIdentifier (PackageName "") noVersion,
+        packageKey         = OldPackageKey (PackageIdentifier
+                                               (PackageName "") noVersion),
         license           = AllRightsReserved,
         copyright         = "",
         maintainer        = "",
@@ -150,6 +157,7 @@ emptyInstalledPackageInfo
         category          = "",
         exposed           = False,
         exposedModules    = [],
+        reexportedModules = [],
         hiddenModules     = [],
         trusted           = False,
         importDirs        = [],
@@ -208,6 +216,9 @@ basicFieldDescrs =
  , simpleField "id"
                            disp                   parse
                            installedPackageId     (\ipid pkg -> pkg{installedPackageId=ipid})
+ , simpleField "key"
+                           disp                   parse
+                           packageKey             (\ipid pkg -> pkg{packageKey=ipid})
  , simpleField "license"
                            disp                   parseLicenseQ
                            license                (\l pkg -> pkg{license=l})
@@ -247,6 +258,9 @@ installedFieldDescrs = [
  , listField   "exposed-modules"
         disp               parseModuleNameQ
         exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
+ , listField   "reexported-modules"
+        disp               parse
+        reexportedModules  (\xs    pkg -> pkg{reexportedModules=xs})
  , listField   "hidden-modules"
         disp               parseModuleNameQ
         hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})

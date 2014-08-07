@@ -66,7 +66,8 @@ import Distribution.Text
 import Distribution.ParseUtils
 import Distribution.ReadE
 import Distribution.Simple.Utils (die, intercalate)
-import Text.PrettyPrint    ( punctuate, cat, comma, text, empty)
+import Text.PrettyPrint ( punctuate, cat, comma, text )
+import Text.PrettyPrint as PP ( empty )
 
 data CommandUI flags = CommandUI {
     -- | The name of the command as it would be entered on the command line.
@@ -258,15 +259,15 @@ viewAsFieldDescr (OptionField n dd) = FieldDescr n get set
           (cat . punctuate comma . map text . ppr) t
 
         OptArg _ _ _ _ _ ppr ->
-          case ppr t of []        -> empty
+          case ppr t of []        -> PP.empty
                         (Nothing : _) -> text "True"
                         (Just a  : _) -> text a
 
         ChoiceOpt alts ->
-          fromMaybe empty $ listToMaybe
+          fromMaybe PP.empty $ listToMaybe
           [ text lf | (_,(_,lf:_), _,enabled) <- alts, enabled t]
 
-        BoolOpt _ _ _ _ enabled -> (maybe empty disp . enabled) t
+        BoolOpt _ _ _ _ enabled -> (maybe PP.empty disp . enabled) t
 
 --    set :: LineNo -> String -> a -> ParseResult a
       set line val a =

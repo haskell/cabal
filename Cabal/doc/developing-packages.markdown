@@ -38,8 +38,8 @@ questions starting with the package name and version.
 
 ~~~~~~~~~~
 $ cabal init
-Package name [default "proglet"]? 
-Package version [default "0.1"]? 
+Package name [default "proglet"]?
+Package version [default "0.1"]?
 ...
 ~~~~~~~~~~
 
@@ -262,7 +262,7 @@ has some tips on package versioning.
 
 The combination of package name and version is called the _package ID_
 and is written with a hyphen to separate the name and version, e.g.
-"HUnit-1.1". 
+"HUnit-1.1".
 
 For Cabal packages, the combination of the package name and version
 _uniquely_ identifies each package. Or to put it another way: two
@@ -283,7 +283,7 @@ are not very complicated.
 Cabal packages
 :   Cabal packages are really source packages. That is they contain
     Haskell (and sometimes C) source code.
-    
+
     Cabal packages can be compiled to produce GHC packages. They can
     also be translated into operating system packages.
 
@@ -292,14 +292,14 @@ GHC packages
     packages, not executables. Library packages have to be registered
     with GHC for them to be available in GHCi or to be used when
     compiling other programs or packages.
-    
+
     The low-level tool `ghc-pkg` is used to register GHC packages and to
     get information on what packages are currently registered.
-    
+
     You never need to make GHC packages manually. When you build and
     install a Cabal package containing a library then it gets registered
     with GHC automatically.
-    
+
     Haskell implementations other than GHC have essentially the same
     concept of registered packages. For the most part, Cabal hides the
     slight differences.
@@ -308,12 +308,12 @@ Operating system packages
 :   On operating systems like Linux and Mac OS X, the system has a
     specific notion of a package and there are tools for installing and
     managing packages.
-    
+
     The Cabal package format is designed to allow Cabal packages to be
     translated, mostly-automatically, into operating system packages.
     They are usually translated 1:1, that is a single Cabal package
     becomes a single system package.
-    
+
     It is also possible to make Windows installers from Cabal packages,
     though this is typically done for a program together with all of its
     library dependencies, rather than packaging each library separately.
@@ -349,7 +349,7 @@ automatic package management. This means tools like `cabal` can resolve
 dependencies and install a package plus all of its dependencies
 automatically. Alternatively, it is possible to mechanically (or mostly
 mechanically) translate Cabal packages into system packages and let the
-system package managager install dependencies automatically.
+system package manager install dependencies automatically.
 
 It is important to track dependencies accurately so that packages can
 reliably be moved from one system to another system and still be able to
@@ -362,15 +362,15 @@ could cause the code to fail to build on some other system.
 
 The explicit dependency approach is in contrast to the traditional
 "./configure" approach where instead of specifying dependencies
-declarativly, the `./configure` script checks if the dependencies are
+declaratively, the `./configure` script checks if the dependencies are
 present on the system. Some manual work is required to transform a
 `./configure` based package into a Linux distribution package (or
 similar). This conversion work is usually done by people other than the
 package author(s). The practical effect of this is that only the most
-popular packages will benefit from automatic package managment. Instead,
+popular packages will benefit from automatic package management. Instead,
 Cabal forces the original author to specify the dependencies but the
 advantage is that every package can benefit from automatic package
-managment.
+management.
 
 The "./configure" approach tends to encourage packages that adapt
 themselves to the environment in which they are built, for example by
@@ -378,7 +378,7 @@ disabling optional features so that they can continue to work when a
 particular dependency is not available. This approach makes sense in a
 world where installing additional dependencies is a tiresome manual
 process and so minimising dependencies is important. The automatic
-package managment view is that packages should just declare what they
+package management view is that packages should just declare what they
 need and the package manager will take responsibility for ensuring that
 all the dependencies are installed.
 
@@ -417,7 +417,7 @@ that are needed and the build system will take care of using the right
 flags for the compiler. Additionally this makes it easier for tools to
 discover what system C libraries a package needs, which is useful for
 tracking dependencies on system libraries (e.g. when translating into
-linux distro packages).
+Linux distribution packages).
 
 In fact both of these examples fall into the category of explicitly
 specifying dependencies. Not all dependencies are other Cabal packages.
@@ -447,7 +447,7 @@ very well; if the executables depend on the library, they must
 explicitly list all the modules they directly or indirectly import from
 that library.  Fortunately, starting with Cabal 1.8.0.4, executables can
 also declare the package that they are in as a dependency, and Cabal
-will treat them as if they were in another package that dependended on
+will treat them as if they were in another package that depended on
 the library.
 
 Internally, the package may consist of much more than a bunch of Haskell
@@ -730,7 +730,7 @@ describe the package as a whole:
 
 `cabal-version:`  _>= x.y_
 :   The version of the Cabal specification that this package description uses.
-    The Cabal specification does slowly evolve, intoducing new features and
+    The Cabal specification does slowly evolve, introducing new features and
     occasionally changing the meaning of existing features. By specifying
     which version of the spec you are using it enables programs which process
     the package description to know what syntax to expect and what each part
@@ -741,8 +741,8 @@ describe the package as a whole:
     bounds do not make sense. In future this field will specify just a version
     number, rather than a version range.
 
-    The version number you specify will affect both compatability and
-    behaviour. Most tools (including the Cabal libray and cabal program)
+    The version number you specify will affect both compatibility and
+    behaviour. Most tools (including the Cabal library and cabal program)
     understand a range of versions of the Cabal specification. Older tools
     will of course only work with older versions of the Cabal specification.
     Most of the time, tools that are too old will recognise this fact and
@@ -757,7 +757,7 @@ describe the package as a whole:
     In particular, the syntax of package descriptions changed significantly
     with Cabal version 1.2 and the `cabal-version` field is now required.
     Files written in the old syntax are still recognized, so if you require
-    compatability with very old Cabal versions then you may write your package
+    compatibility with very old Cabal versions then you may write your package
     description file using the old syntax.  Please consult the user's guide of
     an older Cabal version for a description of that syntax.
 
@@ -837,7 +837,7 @@ describe the package as a whole:
 `bug-reports:` _URL_
 :   The URL where users should direct bug reports. This would normally be either:
 
-    * A `mailto:` URL, eg for a person or a mailing list.
+    * A `mailto:` URL, e.g. for a person or a mailing list.
 
     * An `http:` (or `https:`) URL for an online bug tracking system.
 
@@ -944,6 +944,21 @@ The library section should contain the following fields:
     may be necessary to set `exposed: False` for some old libraries that
     use a flat module namespace or where it is known that the exposed
     modules would clash with other common modules.
+
+`reexported-modules:` _exportlist _
+:   Supported only in GHC 7.10 and later.  A list of modules to _reexport_ from
+    this package.  The syntax of this field is `orig-pkg:Name as NewName` to
+    reexport module `Name` from `orig-pkg` with the new name `NewName`.  We also
+    support abbreviated versions of the syntax: if you omit `as NewName`,
+    we'll reexport without renaming; if you omit `orig-pkg`, then we will
+    automatically figure out which package to reexport from, if it's
+    unambiguous.
+
+    Reexported modules are useful for compatibility shims when a package has
+    been split into multiple packages, and they have the useful property that
+    if a package provides a module, and another package reexports it under
+    the same name, these are not considered a conflict (as would be the case
+    with a stub module.)  They can also be used to resolve name conflicts.
 
 The library section may also contain build information fields (see the
 section on [build information](#build-information)).
@@ -1728,7 +1743,7 @@ are currently two kinds defined:
 
 You can specify one kind or the other or both. As an example here are
 the repositories for the Cabal library. Note that the `this` kind of
-repo specifies a tag.
+repository specifies a tag.
 
 ~~~~~~~~~~~~~~~~
 source-repository head
@@ -1772,8 +1787,8 @@ The exact fields are as follows:
 :   CVS requires a named module, as each CVS server can host multiple
     named repositories.
 
-    This field is required for the CVS repo type and should not be used
-    otherwise.
+    This field is required for the CVS repository type and should not
+    be used otherwise.
 
 `branch:` _token_
 :   Many source control systems support the notion of a branch, as a
@@ -1786,17 +1801,17 @@ The exact fields are as follows:
 
 `tag:` _token_
 :   A tag identifies a particular state of a source repository. The tag
-    can be used with a `this` repo kind to identify the state of a repo
-    corresponding to a particular package version or release. The exact
-    form of the tag depends on the repository type.
+    can be used with a `this` repository kind to identify the state of
+    a repository corresponding to a particular package version or
+    release. The exact form of the tag depends on the repository type.
 
-    This field is required for the `this` repo kind.
+    This field is required for the `this` repository kind.
 
 `subdir:` _directory_
 :   Some projects put the sources for multiple packages under a single
     source repository. This field lets you specify the relative path
     from the root of the repository to the top directory for the
-    package, ie the directory containing the package's `.cabal` file.
+    package, i.e. the directory containing the package's `.cabal` file.
 
     This field is optional. It default to empty which corresponds to the
     root directory of the repository.
@@ -1819,7 +1834,7 @@ The `get` command supports the following options:
 
 `-s --source-repository` _[head|this|...]_
 :   Fork the package's source repository using the appropriate version control
-    system. The optional argument allows to choose a specific repo kind.
+    system. The optional argument allows to choose a specific repository kind.
 
 
 ## Accessing data files from package code ##
