@@ -1414,6 +1414,11 @@ values for these fields.
     setup described in the section on [system-dependent
     parameters](#system-dependent-parameters).
 
+`cpp-options:` _token list_
+:   Command-line arguments for pre-processing Haskell code. Applies to
+    haskell source and other pre-processed Haskell source like .hsc .chs.
+    Does not apply to C code, that's what cc-options is for.
+
 `ld-options:` _token list_
 :   Command-line arguments to be passed to the linker. Since the
     arguments are compiler-dependent, this field is more useful with the
