@@ -2,6 +2,7 @@ module PackageTests.TestStanza.Check where
 
 import Test.HUnit
 import System.FilePath
+import qualified  Data.Map as Map
 import PackageTests.PackageTester
 import Distribution.Version
 import Distribution.PackageDescription.Parse (readPackageDescription)
@@ -10,7 +11,8 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Package (PackageName(..), Dependency(..))
 import Distribution.PackageDescription
     ( PackageDescription(..), BuildInfo(..), TestSuite(..)
-    , TestSuiteInterface(..), emptyBuildInfo, emptyTestSuite)
+    , TestSuiteInterface(..), emptyBuildInfo, emptyTestSuite
+    , defaultRenaming)
 import Distribution.Verbosity (silent)
 import Distribution.System (buildPlatform)
 import Distribution.Compiler (CompilerId(..), CompilerFlavor(..))
@@ -31,6 +33,8 @@ suite ghcPath = TestCase $ do
             , testBuildInfo = emptyBuildInfo
                     { targetBuildDepends =
                             [ Dependency (PackageName "base") anyVersion ]
+                    , targetBuildRenaming =
+                            Map.singleton (PackageName "base") defaultRenaming
                     , hsSourceDirs = ["."]
                     }
             , testEnabled = False

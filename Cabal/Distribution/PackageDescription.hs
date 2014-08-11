@@ -33,6 +33,11 @@ module Distribution.PackageDescription (
         BuildType(..),
         knownBuildTypes,
 
+        -- ** Renaming
+        ModuleRenaming(..),
+        defaultRenaming,
+        lookupRenaming,
+
         -- ** Libraries
         Library(..),
         ModuleReexport(..),
@@ -108,11 +113,14 @@ import Control.Monad (MonadPlus(mplus))
 import GHC.Generics (Generic)
 import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
+import Distribution.Compat.ReadP ((<++))
 import qualified Data.Char as Char (isAlphaNum, isDigit, toLower)
+import qualified Data.Map as Map
+import Data.Map (Map)
 
 import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
-         , Dependency, Package(..) )
+         , Dependency, Package(..), PackageName, packageName )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
          ( Version(Version), VersionRange, anyVersion, orLaterVersion
@@ -283,6 +291,68 @@ instance Text BuildType where
       "Custom"    -> Custom
       "Make"      -> Make
       _           -> UnknownBuildType name
+
+-- ---------------------------------------------------------------------------
+-- Module renaming
+
+-- | Renaming applied to the modules provided by a package.
+-- The boolean indicates whether or not to also include all of the
+-- original names of modules.  Thus, @ModuleRenaming False []@ is
+-- "don't expose any modules, and @ModuleRenaming True [("Data.Bool", "Bool")]@
+-- is, "expose all modules, but also expose @Data.Bool@ as @Bool@".
+--
+data ModuleRenaming = ModuleRenaming Bool [(ModuleName, ModuleName)]
+    deriving (Show, Read, Eq, Typeable, Data, Generic)
+
+defaultRenaming :: ModuleRenaming
+defaultRenaming = ModuleRenaming True []
+
+lookupRenaming :: Package pkg => pkg -> Map PackageName ModuleRenaming -> ModuleRenaming
+lookupRenaming pkg rns =
+    Map.findWithDefault
+        (error ("lookupRenaming: missing renaming for " ++ display (packageName pkg)))
+        (packageName pkg) rns
+
+instance Binary ModuleRenaming where
+
+instance Monoid ModuleRenaming where
+    ModuleRenaming b rns `mappend` ModuleRenaming b' rns'
+        = ModuleRenaming (b || b') (rns ++ rns') -- ToDo: dedupe?
+    mempty = ModuleRenaming False []
+
+-- NB: parentheses are mandatory, because later we may extend this syntax
+-- to allow "hiding (A, B)" or other modifier words.
+instance Text ModuleRenaming where
+  disp (ModuleRenaming True []) = Disp.empty
+  disp (ModuleRenaming b vs) = (if b then text "with" else Disp.empty) <+> dispRns
+    where dispRns = Disp.parens
+                         (Disp.hsep
+                            (Disp.punctuate Disp.comma (map dispEntry vs)))
+          dispEntry (orig, new)
+            | orig == new = disp orig
+            | otherwise = disp orig <+> text "as" <+> disp new
+
+  parse = do Parse.string "with" >> Parse.skipSpaces
+             fmap (ModuleRenaming True) parseRns
+         <++ fmap (ModuleRenaming False) parseRns
+         <++ return (ModuleRenaming True [])
+    where parseRns = do
+             rns <- Parse.between (Parse.char '(') (Parse.char ')') parseList
+             Parse.skipSpaces
+             return rns
+          parseList =
+            Parse.sepBy parseEntry (Parse.char ',' >> Parse.skipSpaces)
+          parseEntry :: Parse.ReadP r (ModuleName, ModuleName)
+          parseEntry = do
+            orig <- parse
+            Parse.skipSpaces
+            (do _ <- Parse.string "as"
+                Parse.skipSpaces
+                new <- parse
+                Parse.skipSpaces
+                return (orig, new)
+             <++
+                return (orig, orig))
 
 -- ---------------------------------------------------------------------------
 -- The Library type
@@ -707,7 +777,8 @@ data BuildInfo = BuildInfo {
         customFieldsBI    :: [(String,String)], -- ^Custom fields starting
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
-        targetBuildDepends :: [Dependency] -- ^ Dependencies specific to a library or executable target
+        targetBuildDepends :: [Dependency], -- ^ Dependencies specific to a library or executable target
+        targetBuildRenaming :: Map PackageName ModuleRenaming
     }
     deriving (Generic, Show, Read, Eq, Typeable, Data)
 
@@ -739,7 +810,8 @@ instance Monoid BuildInfo where
     ghcProfOptions    = [],
     ghcSharedOptions  = [],
     customFieldsBI    = [],
-    targetBuildDepends = []
+    targetBuildDepends = [],
+    targetBuildRenaming = Map.empty
   }
   mappend a b = BuildInfo {
     buildable         = buildable a && buildable b,
@@ -766,12 +838,14 @@ instance Monoid BuildInfo where
     ghcProfOptions    = combine    ghcProfOptions,
     ghcSharedOptions  = combine    ghcSharedOptions,
     customFieldsBI    = combine    customFieldsBI,
-    targetBuildDepends = combineNub targetBuildDepends
+    targetBuildDepends = combineNub targetBuildDepends,
+    targetBuildRenaming = combineMap targetBuildRenaming
   }
     where
       combine    field = field a `mappend` field b
       combineNub field = nub (combine field)
       combineMby field = field b `mplus` field a
+      combineMap field = Map.unionWith mappend (field a) (field b)
 
 emptyBuildInfo :: BuildInfo
 emptyBuildInfo = mempty

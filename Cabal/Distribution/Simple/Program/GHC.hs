@@ -12,6 +12,7 @@ module Distribution.Simple.Program.GHC (
   ) where
 
 import Distribution.Package
+import Distribution.PackageDescription hiding (Flag)
 import Distribution.ModuleName
 import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.Setup    ( Flag(..), flagToMaybe, fromFlagOrDefault,
@@ -76,7 +77,7 @@ data GhcOptions = GhcOptions {
   -- | The GHC packages to use. For compatability with old and new ghc, this
   -- requires both the short and long form of the package id;
   -- the @ghc -package@ or @ghc -package-id@ flags.
-  ghcOptPackages      :: [(InstalledPackageId, PackageId)],
+  ghcOptPackages      :: [(InstalledPackageId, PackageId, ModuleRenaming)],
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
@@ -339,8 +340,10 @@ renderGhcOptions comp opts
   , packageDbArgs version (flags ghcOptPackageDBs)
 
   , concat $ if ver >= [6,11]
-      then [ ["-package-id", display ipkgid] | (ipkgid,_) <- flags ghcOptPackages ]
-      else [ ["-package",    display  pkgid] | (_,pkgid)  <- flags ghcOptPackages ]
+      then let space "" = ""
+               space xs = ' ' : xs
+           in [ ["-package-id", display ipkgid ++ space (display rns)] | (ipkgid,_,rns) <- flags ghcOptPackages ]
+      else [ ["-package",    display  pkgid] | (_,pkgid,_)  <- flags ghcOptPackages ]
 
   ----------------------------
   -- Language and extensions

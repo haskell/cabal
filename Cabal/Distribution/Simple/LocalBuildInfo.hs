@@ -65,11 +65,12 @@ import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
-         , BuildInfo(buildable), Benchmark(..) )
+         , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
     ( ModuleReexport(..) )
 import Distribution.Package
-         ( PackageId, Package(..), InstalledPackageId(..), PackageKey )
+         ( PackageId, Package(..), InstalledPackageId(..), PackageKey
+         , PackageName )
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
@@ -88,6 +89,7 @@ import Data.List (nub, find)
 import Data.Maybe
 import Data.Tree  (flatten)
 import GHC.Generics (Generic)
+import Data.Map (Map)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -193,17 +195,21 @@ data ComponentLocalBuildInfo
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
-    componentLibraries   :: [LibraryName],
-    componentModuleReexports :: [Installed.ModuleReexport]
+    componentModuleReexports :: [Installed.ModuleReexport],
+    componentPackageRenaming :: Map PackageName ModuleRenaming,
+    componentLibraries :: [LibraryName]
   }
   | ExeComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)]
+    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | TestComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)]
+    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | BenchComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)]
+    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   deriving (Generic, Read, Show)
 
