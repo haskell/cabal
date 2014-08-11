@@ -48,7 +48,7 @@ import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack, reexportedModulesSupported
-    , packageKeySupported )
+    , packageKeySupported, renamingPackageFlagsSupported )
 import Distribution.Simple.PreProcess ( platformDefines )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(..), PackageId
@@ -68,7 +68,7 @@ import Distribution.PackageDescription as PD
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..)
-    , ModuleReexport(..) )
+    , ModuleReexport(..) , defaultRenaming )
 import Distribution.ModuleName
     ( ModuleName )
 import Distribution.PackageDescription.Configuration
@@ -419,6 +419,14 @@ configure (pkg_descr0, pbi) cfg
         -- we do it here so that those get checked too
         let pkg_descr = addExtraIncludeLibDirs pkg_descr0'
 
+        unless (renamingPackageFlagsSupported comp ||
+                    and [ rn == defaultRenaming
+                        | bi <- allBuildInfo pkg_descr
+                        , rn <- Map.elems (targetBuildRenaming bi)]) $
+            die $ "Your compiler does not support thinning and renaming on "
+               ++ "package flags.  To use this feature you probably must use "
+               ++ "GHC 7.9 or later."
+
         when (not (null flags)) $
           info verbosity $ "Flags chosen: "
                         ++ intercalate ", " [ name ++ "=" ++ display value
@@ -679,7 +687,7 @@ hackageUrl = "http://hackage.haskell.org/package/"
 
 data ResolvedDependency = ExternalDependency Dependency InstalledPackageInfo
                         | InternalDependency Dependency PackageId -- should be a
-                                                                  -- lib name
+                                                                      -- lib name
 
 data FailedDependency = DependencyNotExists PackageName
                       | DependencyNoVersion Dependency
@@ -1121,19 +1129,23 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
           componentLibraries   = [LibraryName ("HS" ++ display pkg_key)],
+          componentPackageRenaming = cprns,
           componentModuleReexports = reexports
         }
       CExe _ ->
         return ExeComponentLocalBuildInfo {
-          componentPackageDeps = cpds
+          componentPackageDeps = cpds,
+          componentPackageRenaming = cprns
         }
       CTest _ ->
         return TestComponentLocalBuildInfo {
-          componentPackageDeps = cpds
+          componentPackageDeps = cpds,
+          componentPackageRenaming = cprns
         }
       CBench _ ->
         return BenchComponentLocalBuildInfo {
-          componentPackageDeps = cpds
+          componentPackageDeps = cpds,
+          componentPackageRenaming = cprns
         }
       where
         bi = componentBuildInfo component
@@ -1144,12 +1156,21 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
                     | pkgid <- selectSubset bi internalPkgDeps ]
                else [ (installedPackageId pkg, packageId pkg)
                     | pkg <- externalPkgDeps ]
+        cprns = if newPackageDepsBehaviour pkg_descr
+                then targetBuildRenaming bi
+                -- Hack: if we have old package-deps behavior, it's impossible
+                -- for non-default renamings to be used, because the Cabal
+                -- version is too early.  This is a good, because while all the
+                -- deps were bundled up in buildDepends, we didn't do this for
+                -- renamings, so it's not even clear how to get the merged
+                -- version.  So just assume that all of them are the default..
+                else Map.fromList (map (\(_,pid) -> (packageName pid, defaultRenaming)) cpds)
 
     selectSubset :: Package pkg => BuildInfo -> [pkg] -> [pkg]
     selectSubset bi pkgs =
-        [ pkg | pkg <- pkgs, packageName pkg `elem` names ]
-      where
-        names = [ name | Dependency name _ <- targetBuildDepends bi ]
+        [ pkg | pkg <- pkgs, packageName pkg `elem` names bi ]
+
+    names bi = [ name | Dependency name _ <- targetBuildDepends bi ]
 
 -- | Given the author-specified re-export declarations from the .cabal file,
 -- resolve them to the form that we need for the package database.

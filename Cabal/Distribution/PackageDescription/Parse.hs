@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.Parse
@@ -48,11 +49,15 @@ import Control.Applicative (Applicative(..))
 import Control.Arrow (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import Data.Typeable
+import Data.Data
+import qualified Data.Map as Map
 
 import Distribution.Text
          ( Text(disp, parse), display, simpleParse )
 import Distribution.Compat.ReadP
          ((+++), option)
+import qualified Distribution.Compat.ReadP as Parse
 import Text.PrettyPrint
 
 import Distribution.ParseUtils hiding (parseFields)
@@ -388,6 +393,10 @@ binfoFieldDescrs =
  , commaListField  "build-tools"
            disp               parseBuildTool
            buildTools         (\xs  binfo -> binfo{buildTools=xs})
+ , commaListFieldWithSep vcat "build-depends"
+           disp                   parse
+           buildDependsWithRenaming
+           setBuildDependsWithRenaming
  , spaceListField "cpp-options"
            showToken          parseTokenQ'
            cppOptions          (\val binfo -> binfo{cppOptions=val})
@@ -568,7 +577,7 @@ constraintFieldNames = ["build-depends"]
 -- they add and define an accessor that specifies what the dependencies
 -- are.  This way we would completely reuse the parsing knowledge from the
 -- field descriptor.
-parseConstraint :: Field -> ParseResult [Dependency]
+parseConstraint :: Field -> ParseResult [DependencyWithRenaming]
 parseConstraint (F l n v)
     | n == "build-depends" = runP l n (parseCommaList parse) v
 parseConstraint f = userBug $ "Constraint was expected (got: " ++ show f ++ ")"
@@ -1005,15 +1014,17 @@ parsePackageDescription file = do
             condFlds = [ f | f@IfBlock{} <- allflds ]
             sections = [ s | s@Section{} <- allflds ]
 
-        let (depFlds, dataFlds) = partition isConstraint simplFlds
+        -- Put these through the normal parsing pass too, so that we
+        -- collect the ModRenamings
+        let depFlds = filter isConstraint simplFlds
         
         mapM_
             (\(Section l n _ _) -> lift . warning $
                 "Unexpected section '" ++ n ++ "' on line " ++ show l)
             sections
 
-        a <- parser dataFlds
-        deps <- liftM concat . mapM (lift . parseConstraint) $ depFlds
+        a <- parser simplFlds
+        deps <- liftM concat . mapM (lift . fmap (map dependency) .  parseConstraint) $ depFlds
 
         ifs <- mapM processIfs condFlds
 
@@ -1217,3 +1228,32 @@ findIndentTabs = concatMap checkLine
 
 --test_findIndentTabs = findIndentTabs $ unlines $
 --    [ "foo", "  bar", " \t baz", "\t  biz\t", "\t\t \t mib" ]
+
+-- | Dependencies plus module renamings.  This is what users specify; however,
+-- renaming information is not used for dependency resolution.
+data DependencyWithRenaming = DependencyWithRenaming Dependency ModuleRenaming
+  deriving (Read, Show, Eq, Typeable, Data)
+
+dependency :: DependencyWithRenaming -> Dependency
+dependency (DependencyWithRenaming dep _) = dep
+
+instance Text DependencyWithRenaming where
+  disp (DependencyWithRenaming d rns) = disp d <+> disp rns
+  parse = do d <- parse
+             Parse.skipSpaces
+             rns <- parse
+             Parse.skipSpaces
+             return (DependencyWithRenaming d rns)
+
+buildDependsWithRenaming :: BuildInfo -> [DependencyWithRenaming]
+buildDependsWithRenaming pkg =
+    map (\dep@(Dependency n _) ->
+            DependencyWithRenaming dep
+                (Map.findWithDefault defaultRenaming n (targetBuildRenaming pkg)))
+        (targetBuildDepends pkg)
+
+setBuildDependsWithRenaming :: [DependencyWithRenaming] -> BuildInfo -> BuildInfo
+setBuildDependsWithRenaming deps pkg = pkg {
+    targetBuildDepends = map dependency deps,
+    targetBuildRenaming = Map.fromList (map (\(DependencyWithRenaming (Dependency n _) rns) -> (n, rns)) deps)
+  }

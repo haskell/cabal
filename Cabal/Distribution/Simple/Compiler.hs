@@ -45,6 +45,7 @@ module Distribution.Simple.Compiler (
         unsupportedExtensions,
         parmakeSupported,
         reexportedModulesSupported,
+        renamingPackageFlagsSupported,
         packageKeySupported
   ) where
 
@@ -206,6 +207,10 @@ parmakeSupported = ghcSupported "Support parallel --make"
 -- | Does this compiler support reexported-modules?
 reexportedModulesSupported :: Compiler -> Bool
 reexportedModulesSupported = ghcSupported "Support reexported-modules"
+
+-- | Does this compiler support thinning/renaming on package flags?
+renamingPackageFlagsSupported :: Compiler -> Bool
+renamingPackageFlagsSupported = ghcSupported "Support thinning and renaming package flags"
 
 -- | Does this compiler support package keys?
 packageKeySupported :: Compiler -> Bool

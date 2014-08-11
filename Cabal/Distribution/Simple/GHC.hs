@@ -52,7 +52,7 @@ import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
          , Library(..), libModules, exeModules, hcOptions
-         , usedExtensions, allExtensions )
+         , usedExtensions, allExtensions, ModuleRenaming, lookupRenaming )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -67,7 +67,7 @@ import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageName(..) )
+         ( PackageName(..), InstalledPackageId, PackageId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -658,6 +658,11 @@ substTopDir topDir ipo
     where f ('$':'t':'o':'p':'d':'i':'r':rest) = topDir ++ rest
           f x = x
 
+mkGhcOptPackages :: ComponentLocalBuildInfo -> [(InstalledPackageId, PackageId, ModuleRenaming)]
+mkGhcOptPackages clbi =
+  map (\(i,p) -> (i,p,lookupRenaming p (componentPackageRenaming clbi)))
+      (componentPackageDeps clbi)
+
 -- -----------------------------------------------------------------------------
 -- Building
 
@@ -888,7 +893,7 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
                 ghcOptPackageKey         = toFlag (pkgKey lbi),
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
-                ghcOptPackages           = componentPackageDeps clbi,
+                ghcOptPackages           = mkGhcOptPackages clbi ,
                 ghcOptLinkLibs           = extraLibs libBi,
                 ghcOptLinkLibPath        = extraLibDirs libBi
               }
@@ -1187,7 +1192,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
       ghcOptPackageDBs      = withPackageDB lbi,
-      ghcOptPackages        = componentPackageDeps clbi,
+      ghcOptPackages        = mkGhcOptPackages clbi,
       ghcOptSplitObjs       = toFlag (splitObjs lbi),
       ghcOptSourcePathClear = toFlag True,
       ghcOptSourcePath      = [odir] ++ nub (hsSourceDirs bi)
@@ -1226,7 +1231,7 @@ componentCcGhcOptions verbosity lbi bi clbi pref filename =
       ghcOptCppIncludePath = [autogenModulesDir lbi, odir]
                                    ++ PD.includeDirs bi,
       ghcOptPackageDBs     = withPackageDB lbi,
-      ghcOptPackages       = componentPackageDeps clbi,
+      ghcOptPackages       = mkGhcOptPackages clbi,
       ghcOptCcOptions      = (case withOptimization lbi of
                                   NoOptimisation -> []
                                   _              -> ["-O2"]) ++

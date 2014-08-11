@@ -290,6 +290,7 @@ test-suite package-tests
   build-depends:
     base,
     binary     >= 0.7 && < 0.8,
+    containers,
     test-framework,
     test-framework-quickcheck2 >= 0.2.12,
     test-framework-hunit,
