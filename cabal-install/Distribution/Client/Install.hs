@@ -669,8 +669,8 @@ reportPlanningFailure verbosity
           pkgids (configConfigurationsFlags configFlags)
 
     when (not (null buildReports)) $
-      notice verbosity $
-        "Notice: this solver failure will be reported for "
+      info verbosity $
+        "Solver failure will be reported for "
         ++ intercalate "," (map display pkgids)
 
     -- Save reports
