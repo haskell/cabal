@@ -32,7 +32,7 @@ import Data.List
          ( isPrefixOf, unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
 import Data.Maybe
-         ( isJust, fromMaybe, maybeToList )
+         ( isJust, fromMaybe, mapMaybe, maybeToList )
 import Control.Exception as Exception
          ( Exception(toException), bracket, catches
          , Handler(Handler), handleJust, IOException, SomeException )
@@ -44,8 +44,10 @@ import System.Exit
          ( ExitCode(..) )
 import Distribution.Compat.Exception
          ( catchIO, catchExit )
+import Control.Applicative
+         ( (<$>) )
 import Control.Monad
-         ( when, unless )
+         ( forM_, when, unless )
 import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
            createDirectoryIfMissing, removeFile, renameDirectory )
@@ -87,7 +89,7 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
-         ( storeAnonymous, storeLocal, fromInstallPlan )
+         ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
 import qualified Distribution.Client.InstallSymlink as InstallSymlink
          ( symlinkBinaries )
 import qualified Distribution.Client.PackageIndex as SourcePackageIndex
@@ -99,7 +101,7 @@ import Distribution.Client.JobControl
 
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
-         , PackageDB(..), PackageDBStack )
+         , packageKeySupported , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration,
                                     defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -121,8 +123,8 @@ import Distribution.Simple.InstallDirs as InstallDirs
          ( PathTemplate, fromPathTemplate, toPathTemplate, substPathTemplate
          , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
-         ( PackageIdentifier, PackageId, packageName, packageVersion
-         , Package(..), PackageFixedDeps(..), PackageKey
+         ( PackageIdentifier(..), PackageId, packageName, packageVersion
+         , Package(..), PackageFixedDeps(..), PackageKey, mkPackageKey
          , Dependency(..), thisPackageVersion, InstalledPackageId )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
@@ -133,7 +135,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
-         ( Version )
+         ( Version, VersionRange, foldVersionRange )
 import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
          , intercalate, withTempDirectory )
@@ -187,10 +189,15 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
   userTargets0 = do
 
     installContext <- makeInstallContext verbosity args (Just userTargets0)
-    installPlan    <- foldProgress logMsg die' return =<<
+    planResult     <- foldProgress logMsg (return . Left) (return . Right) =<<
                       makeInstallPlan verbosity args installContext
 
-    processInstallPlan verbosity args installContext installPlan
+    case planResult of
+        Left message -> do
+            reportPlanningFailure verbosity args installContext message
+            die' message
+        Right installPlan ->
+            processInstallPlan verbosity args installContext installPlan
   where
     args :: InstallArgs
     args = (packageDBs, repos, comp, platform, conf, useSandbox, mSandboxPkgInfo,
@@ -596,12 +603,11 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showLatest :: ReadyPackage -> String
     showLatest pkg = case mLatestVersion of
         Just latestVersion ->
-            if pkgVersion < latestVersion
+            if packageVersion pkg < latestVersion
             then (" (latest: " ++ display latestVersion ++ ")")
             else ""
         Nothing -> ""
       where
-        pkgVersion    = packageVersion pkg
         mLatestVersion :: Maybe Version
         mLatestVersion = case SourcePackageIndex.lookupPackageName
                                 (packageIndex sourcePkgDb)
@@ -642,6 +648,70 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 -- ------------------------------------------------------------
 -- * Post installation stuff
 -- ------------------------------------------------------------
+
+-- | Report a solver failure. This works slightly differently to
+-- 'postInstallActions', as (by definition) we don't have an install plan.
+reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String -> IO ()
+reportPlanningFailure verbosity
+  (_, _, comp, platform, _, _, _
+  ,_, configFlags, _, installFlags, _)
+  (_, sourcePkgDb, _, pkgSpecifiers)
+  message = do
+
+  when reportFailure $ do
+
+    -- Only create reports for explicitly named packages
+    let pkgids =
+          filter (SourcePackageIndex.elemByPackageId (packageIndex sourcePkgDb)) $
+          mapMaybe theSpecifiedPackage pkgSpecifiers
+
+        buildReports = BuildReports.fromPlanningFailure platform (compilerId comp)
+          pkgids (configConfigurationsFlags configFlags)
+
+    when (not (null buildReports)) $
+      notice verbosity $
+        "Notice: this solver failure will be reported for "
+        ++ intercalate "," (map display pkgids)
+
+    -- Save reports
+    BuildReports.storeLocal (installSummaryFile installFlags) buildReports platform
+
+    -- Save solver log
+    case logFile of
+      Nothing -> return ()
+      Just template -> forM_ pkgids $ \pkgid ->
+        let env = initialPathTemplateEnv pkgid dummyPackageKey
+                    (compilerId comp) platform
+            path = fromPathTemplate $ substPathTemplate env template
+        in  writeFile path message
+
+  where
+    reportFailure = fromFlag (installReportPlanningFailure installFlags)
+    logFile = flagToMaybe (installLogFile installFlags)
+
+    -- A PackageKey is calculated from the transitive closure of
+    -- dependencies, but when the solver fails we don't have that.
+    -- So we fail.
+    dummyPackageKey = error "reportPlanningFailure: package key not available"
+
+-- | If a 'PackageSpecifier' refers to a single package, return Just that package.
+theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
+theSpecifiedPackage pkgSpec =
+  case pkgSpec of
+    NamedPackage name [PackageConstraintVersion name' version]
+      | name == name' -> PackageIdentifier name <$> trivialRange version
+    NamedPackage _ _ -> Nothing
+    SpecificSourcePackage pkg -> Just $ packageId pkg
+  where
+    -- | If a range includes only a single version, return Just that version.
+    trivialRange :: VersionRange -> Maybe Version
+    trivialRange = foldVersionRange
+        Nothing
+        Just     -- "== v"
+        (\_ -> Nothing)
+        (\_ -> Nothing)
+        (\_ _ -> Nothing)
+        (\_ _ -> Nothing)
 
 -- | Various stuff we do after successful or unsuccessfully installing a bunch
 -- of packages. This includes:
@@ -693,7 +763,7 @@ postInstallActions verbosity
     worldFile      = fromFlag $ globalWorldFile globalFlags
 
 storeDetailedBuildReports :: Verbosity -> FilePath
-                          -> [(BuildReports.BuildReport, Repo)] -> IO ()
+                          -> [(BuildReports.BuildReport, Maybe Repo)] -> IO ()
 storeDetailedBuildReports verbosity logsDir reports = sequence_
   [ do dotCabal <- defaultCabalDir
        let logFileName = display (BuildReports.package report) <.> "log"
@@ -706,7 +776,7 @@ storeDetailedBuildReports verbosity logsDir reports = sequence_
          createDirectoryIfMissing True reportsDir -- FIXME
          writeFile reportFile (show (BuildReports.show report, buildLog))
 
-  | (report, Repo { repoKind = Left remoteRepo }) <- reports
+  | (report, Just Repo { repoKind = Left remoteRepo }) <- reports
   , isLikelyToHaveLogFile (BuildReports.installOutcome report) ]
 
   where
@@ -840,6 +910,9 @@ printBuildFailures plan =
                         ++ showException e
       InstallFailed   e -> " failed during the final install step."
                         ++ showException e
+
+      -- This will never happen, but we include it for completeness
+      PlanningFailed -> " failed during the planning phase."
 
     showException e   =  " The exception was:\n  " ++ show e ++ maybeOOM e
 #ifdef mingw32_HOST_OS
