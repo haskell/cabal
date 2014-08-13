@@ -18,7 +18,6 @@ module Distribution.Client.BuildReports.Anonymous (
 
     -- * Constructing and writing reports
     new,
-    new',
 
     -- * parsing and pretty printing
     parse,
@@ -27,8 +26,6 @@ module Distribution.Client.BuildReports.Anonymous (
 --    showList,
   ) where
 
-import Distribution.Client.Types
-         ( ConfiguredPackage(..) )
 import qualified Distribution.Client.Types as BR
          ( BuildResult, BuildFailure(..), BuildSuccess(..)
          , DocsResult(..), TestsResult(..) )
@@ -37,7 +34,7 @@ import Distribution.Client.Utils
 import qualified Paths_cabal_install (version)
 
 import Distribution.Package
-         ( PackageIdentifier(..), PackageName(..), Package(packageId) )
+         ( PackageIdentifier(..), PackageName(..) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 --import Distribution.Version
@@ -122,15 +119,9 @@ data InstallOutcome
 data Outcome = NotTried | Failed | Ok
   deriving Eq
 
-new :: OS -> Arch -> CompilerId -- -> Version
-    -> ConfiguredPackage -> BR.BuildResult
-    -> BuildReport
-new os' arch' comp (ConfiguredPackage pkg flags _ deps) result =
-    new' os' arch' comp (packageId pkg) flags deps result
-
-new' :: OS -> Arch -> CompilerId -> PackageIdentifier -> FlagAssignment
+new :: OS -> Arch -> CompilerId -> PackageIdentifier -> FlagAssignment
     -> [PackageIdentifier] -> BR.BuildResult -> BuildReport
-new' os' arch' comp pkgid flags deps result =
+new os' arch' comp pkgid flags deps result =
   BuildReport {
     package               = pkgid,
     os                    = os',

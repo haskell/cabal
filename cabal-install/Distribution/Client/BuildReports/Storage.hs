@@ -32,7 +32,7 @@ import Distribution.Client.InstallPlan
          ( InstallPlan )
 
 import Distribution.Package
-         ( PackageId )
+         ( PackageId, packageId )
 import Distribution.PackageDescription
          ( FlagAssignment )
 import Distribution.Simple.InstallDirs
@@ -126,13 +126,17 @@ fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage
                 -> Maybe (BuildReport, Maybe Repo)
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
+  InstallPlan.Installed (ReadyPackage srcPkg flags _ deps) result
+    -> Just $ ( BuildReport.new os arch comp
+                                (packageId srcPkg) flags (map packageId deps)
+                                (Right result)
+              , extractRepo srcPkg)
 
-  InstallPlan.Installed pkg@(ReadyPackage srcPkg _ _ _) result
-    -> Just $ (BuildReport.new os arch comp
-               (readyPackageToConfiguredPackage pkg) (Right result), extractRepo srcPkg)
-
-  InstallPlan.Failed pkg@(ConfiguredPackage srcPkg _ _ _) result
-    -> Just $ (BuildReport.new os arch comp pkg (Left result), extractRepo srcPkg)
+  InstallPlan.Failed (ConfiguredPackage srcPkg flags _ deps) result
+    -> Just $ ( BuildReport.new os arch comp
+                                (packageId srcPkg) flags deps
+                                (Left result)
+              , extractRepo srcPkg )
 
   _ -> Nothing
 
@@ -143,5 +147,5 @@ fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
 fromPlanningFailure :: Platform -> CompilerId
     -> [PackageId] -> FlagAssignment -> [(BuildReport, Maybe Repo)]
 fromPlanningFailure (Platform arch os) comp pkgids flags =
-  [ (BuildReport.new' os arch comp pkgid flags [] (Left PlanningFailed), Nothing)
+  [ (BuildReport.new os arch comp pkgid flags [] (Left PlanningFailed), Nothing)
   | pkgid <- pkgids ]
