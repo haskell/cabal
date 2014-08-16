@@ -43,7 +43,7 @@ import Distribution.Compiler (CompilerFlavor, parseCompilerFlavorCompat)
 import Distribution.License
 import Distribution.Version
          ( Version(..), VersionRange, anyVersion )
-import Distribution.Package     ( PackageName(..), Dependency(..) )
+import Distribution.Package     ( PackageName(..), Dependency(..), InstalledPackageId )
 import Distribution.ModuleName (ModuleName)
 import Distribution.Compat.ReadP as ReadP hiding (get)
 import Distribution.ReadE

@@ -84,6 +84,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.category           = category ipi,
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
+    Current.instantiatedWith   = [],
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
     Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
     Current.importDirs         = importDirs ipi,

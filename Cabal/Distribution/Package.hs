@@ -40,6 +40,7 @@ module Distribution.Package (
         PackageInstalled(..),
   ) where
 
+import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
          ( Version(..), VersionRange, anyVersion, thisVersion
          , notThisVersion, simplifyVersionRange )
@@ -161,14 +162,16 @@ fingerprintPackageKey s (Fingerprint a b) = PackageKey s a b
 -- immediate dependencies.
 mkPackageKey :: Bool -- are modern style package keys supported?
              -> PackageId
-             -> [PackageKey] -- dependencies
+             -> [PackageKey]     -- dependencies
+             -> [(ModuleName, (PackageKey, ModuleName))] -- hole instantiations
              -> PackageKey
-mkPackageKey True pid deps = fingerprintPackageKey stubName
-                           . fingerprintString
-                           . ((show pid ++ "\n") ++)
-                           $ show (sort deps)
+mkPackageKey True pid deps holes = fingerprintPackageKey stubName
+                                 . fingerprintString
+                                 . ((show pid ++ "\n") ++)
+                                 . ((show (sort holes) ++ "\n") ++)
+                                 $ show (sort deps)
   where stubName = take 5 (filter (/= '-') (unPackageName (pkgName pid)))
-mkPackageKey False pid _ = OldPackageKey pid
+mkPackageKey False pid _ _ = OldPackageKey pid
 
 -- The base-62 code is based off of 'locators'
 -- ((c) Operational Dynamics Consulting, BSD3 licensed)

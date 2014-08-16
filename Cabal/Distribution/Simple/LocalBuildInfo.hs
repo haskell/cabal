@@ -62,6 +62,7 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                substPathTemplate, )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
@@ -74,6 +75,7 @@ import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex )
+import Distribution.ModuleName ( ModuleName )
 import Distribution.Simple.Setup
          ( ConfigFlags )
 import Distribution.Text
@@ -123,6 +125,7 @@ data LocalBuildInfo = LocalBuildInfo {
         pkgKey        :: PackageKey,
                 -- ^ The package key for the current build, calculated from
                 -- the package ID and the dependency graph.
+        instantiatedWith :: [(ModuleName, (InstalledPackageInfo, ModuleName))],
         withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
         withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
