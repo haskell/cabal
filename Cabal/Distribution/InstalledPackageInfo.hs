@@ -87,6 +87,7 @@ data InstalledPackageInfo_ m
         -- these parts are required by an installed package only:
         exposed           :: Bool,
         exposedModules    :: [ExposedModule],
+        instantiatedWith  :: [(m, OriginalModule)],
         hiddenModules     :: [m],
         trusted           :: Bool,
         importDirs        :: [FilePath],
@@ -138,6 +139,7 @@ emptyInstalledPackageInfo
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
+        instantiatedWith  = [],
         trusted           = False,
         importDirs        = [],
         libraryDirs       = [],
@@ -238,6 +240,14 @@ parseInstalledPackageInfo =
     parseFieldsFlat (fieldsInstalledPackageInfo ++ deprecatedFieldDescrs)
     emptyInstalledPackageInfo
 
+parseInstantiatedWith :: Parse.ReadP r (ModuleName, OriginalModule)
+parseInstantiatedWith = do k <- parse
+                           _ <- Parse.char '='
+                           n <- parse
+                           _ <- Parse.char '@'
+                           p <- parse
+                           return (k, OriginalModule p n)
+
 -- -----------------------------------------------------------------------------
 -- Pretty-printing
 
@@ -249,6 +259,9 @@ showInstalledPackageInfoField = showSingleNamedField fieldsInstalledPackageInfo
 
 showSimpleInstalledPackageInfoField :: String -> Maybe (InstalledPackageInfo -> String)
 showSimpleInstalledPackageInfoField = showSimpleSingleNamedField fieldsInstalledPackageInfo
+
+showInstantiatedWith :: (ModuleName, OriginalModule) -> Doc
+showInstantiatedWith (k, OriginalModule p m) = disp k <> text "=" <> disp m <> text "@" <> disp p
 
 -- -----------------------------------------------------------------------------
 -- Description of the fields, for parsing/printing
@@ -312,6 +325,9 @@ installedFieldDescrs = [
  , listField   "hidden-modules"
         disp               parseModuleNameQ
         hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
+ , listField   "instantiated-with"
+        showInstantiatedWith parseInstantiatedWith
+        instantiatedWith   (\xs    pkg -> pkg{instantiatedWith=xs})
  , boolField   "trusted"
         trusted            (\val pkg -> pkg{trusted=val})
  , listField   "import-dirs"

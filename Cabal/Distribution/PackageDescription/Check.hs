@@ -215,16 +215,32 @@ checkSanity pkg =
     duplicateNames = dups $ exeNames ++ testNames ++ bmNames
 
 checkLibrary :: PackageDescription -> Library -> [PackageCheck]
-checkLibrary _pkg lib =
+checkLibrary pkg lib =
   catMaybes [
 
     check (not (null moduleDuplicates)) $
        PackageBuildImpossible $
             "Duplicate modules in library: "
          ++ commaSep (map display moduleDuplicates)
+
+    -- check use of required-signatures/exposed-signatures sections
+  , checkVersion [1,21] (not (null (requiredSignatures lib))) $
+      PackageDistInexcusable $
+           "To use the 'required-signatures' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 1.21'."
+
+  , checkVersion [1,21] (not (null (exposedSignatures lib))) $
+      PackageDistInexcusable $
+           "To use the 'exposed-signatures' field the package needs to specify "
+        ++ "at least 'cabal-version: >= 1.21'."
   ]
 
   where
+    checkVersion :: [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
+    checkVersion ver cond pc
+      | specVersion pkg >= Version ver []      = Nothing
+      | otherwise                              = check cond pc
+
     moduleDuplicates = dups (libModules lib ++
                              map moduleReexportName (reexportedModules lib))
 
