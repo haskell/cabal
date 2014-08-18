@@ -303,11 +303,9 @@ loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
       return conf
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
-      warn verbosity $
+      error $
           "Error parsing config file " ++ configFile
         ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
-      warn verbosity "Using default configuration."
-      initialSavedConfig
 
   where
     addBaseConf body = do
