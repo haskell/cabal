@@ -352,14 +352,14 @@ configureExOptions _showOrParseArgs =
   , optionSolver configSolver (\v flags -> flags { configSolver = v })
 
   , option [] ["allow-newer"]
-    ("Ignore upper bounds on all packages or " ++ allowNewerArgument)
+    ("Ignore upper bounds in all dependencies or " ++ allowNewerArgument)
     configAllowNewer (\v flags -> flags { configAllowNewer = v})
     (optArg allowNewerArgument
      (fmap Flag allowNewerParser) (Flag AllowNewerAll)
      allowNewerPrinter)
 
   ]
-  where allowNewerArgument = "PKGS"
+  where allowNewerArgument = "DEPS"
 
 instance Monoid ConfigExFlags where
   mempty = ConfigExFlags {
