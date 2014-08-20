@@ -113,7 +113,7 @@ bench args pkg_descr lbi flags = do
 
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result
--- isn't neccesarily a path.
+-- isn't necesarily a path.
 benchOption :: PD.PackageDescription
             -> LBI.LocalBuildInfo
             -> PD.Benchmark

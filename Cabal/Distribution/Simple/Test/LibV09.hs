@@ -138,7 +138,7 @@ runTest pkg_descr lbi flags suite = do
     verbosity = fromFlag $ testVerbosity flags
 
 -- TODO: This is abusing the notion of a 'PathTemplate'.  The result
--- isn't neccesarily a path.
+-- isn't necesarily a path.
 testOption :: PD.PackageDescription
            -> LBI.LocalBuildInfo
            -> PD.TestSuite

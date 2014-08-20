@@ -1018,7 +1018,7 @@ withFileContents name action =
 
 -- | Writes a file atomically.
 --
--- The file is either written sucessfully or an IO exception is raised and
+-- The file is either written successfully or an IO exception is raised and
 -- the original file is left unchanged.
 --
 -- On windows it is not possible to delete a file that is open by a process.
