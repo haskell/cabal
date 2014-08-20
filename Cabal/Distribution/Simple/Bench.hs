@@ -112,8 +112,8 @@ bench args pkg_descr lbi flags = do
                                         ExitFailure _ -> "ERROR")
 
 
--- TODO: This is abusing the notion of a 'PathTemplate'.  The result
--- isn't neccesarily a path.
+-- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
+-- necessarily a path.
 benchOption :: PD.PackageDescription
             -> LBI.LocalBuildInfo
             -> PD.Benchmark
