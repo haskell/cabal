@@ -295,7 +295,7 @@ configuredPrograms = Map.elems . configuredProgs
 --
 -- The reason for it not being a failure at this stage is that we don't know up
 -- front all the programs we will need, so we try to configure them all.
--- To verify that a program was actually sucessfully configured use
+-- To verify that a program was actually successfully configured use
 -- 'requireProgram'.
 --
 configureProgram :: Verbosity

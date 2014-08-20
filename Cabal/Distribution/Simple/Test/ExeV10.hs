@@ -136,8 +136,8 @@ runTest pkg_descr lbi flags suite = do
                                          pkg_descr lbi n l
                 }
 
--- TODO: This is abusing the notion of a 'PathTemplate'.  The result
--- isn't neccesarily a path.
+-- TODO: This is abusing the notion of a 'PathTemplate'.  The result isn't
+-- necessarily a path.
 testOption :: PD.PackageDescription
            -> LBI.LocalBuildInfo
            -> PD.TestSuite
