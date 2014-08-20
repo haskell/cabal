@@ -97,12 +97,12 @@ import System.FilePath (splitExtension, dropExtensions, (</>), (<.>),
 --
 -- The reason for splitting it up this way is that some pre-processors don't
 -- simply generate one output .hs file from one input file but have
--- dependencies on other genereated files (notably c2hs, where building one
+-- dependencies on other generated files (notably c2hs, where building one
 -- .hs file may require reading other .chi files, and then compiling the .hs
 -- file may require reading a generated .h file). In these cases the generated
 -- files need to embed relative path names to each other (eg the generated .hs
 -- file mentions the .h file in the FFI imports). This path must be relative to
--- the base directory where the genereated files are located, it cannot be
+-- the base directory where the generated files are located, it cannot be
 -- relative to the top level of the build tree because the compilers do not
 -- look for .h files relative to there, ie we do not use \"-I .\", instead we
 -- use \"-I dist\/build\" (or whatever dist dir has been set by the user)

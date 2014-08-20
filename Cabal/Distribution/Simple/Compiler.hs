@@ -136,7 +136,7 @@ absolutePackageDBPath (SpecificPackageDB db) =
 -- ------------------------------------------------------------
 
 -- | Some compilers support optimising. Some have different levels.
--- For compliers that do not the level is just capped to the level
+-- For compilers that do not the level is just capped to the level
 -- they do support.
 --
 data OptimisationLevel = NoOptimisation
