@@ -119,7 +119,7 @@ symlinkBinaries comp configFlags installFlags plan =
                then return Nothing
                else return (Just (pkgid, publicExeName,
                                   privateBinDir </> privateExeName))
-        | (ReadyPackage _ flags _ deps, pkg, exe) <- exes
+        | (ReadyPackage _ _flags _ deps, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               pkg_key = mkPackageKey (packageKeySupported comp) pkgid
                                      (map Installed.packageKey deps)
