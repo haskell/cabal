@@ -101,7 +101,7 @@ import Distribution.Client.JobControl
 
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
-         , packageKeySupported , PackageDB(..), PackageDBStack )
+         , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration,
                                     defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -124,7 +124,7 @@ import Distribution.Simple.InstallDirs as InstallDirs
          , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
-         , Package(..), PackageFixedDeps(..), PackageKey, mkPackageKey
+         , Package(..), PackageFixedDeps(..), PackageKey
          , Dependency(..), thisPackageVersion, InstalledPackageId )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
