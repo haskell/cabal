@@ -211,15 +211,21 @@ data GhcDynLinkMode = GhcStaticOnly       -- ^ @-static@
  deriving (Show, Eq)
 
 
-runGHC :: Verbosity -> ConfiguredProgram -> Compiler -> GhcOptions -> IO ()
-runGHC verbosity ghcProg comp opts = do
-  runProgramInvocation verbosity (ghcInvocation ghcProg comp opts)
+runGHC :: Verbosity -> ConfiguredProgram -> ConfiguredProgram -> Compiler -> GhcOptions -> IO ()
+runGHC verbosity ghcProg ccProg comp opts = do
+  runProgramInvocation verbosity (ghcInvocation ghcProg ccProg comp opts)
 
 
-ghcInvocation :: ConfiguredProgram -> Compiler -> GhcOptions -> ProgramInvocation
-ghcInvocation prog comp opts =
-    programInvocation prog (renderGhcOptions comp opts)
+ghcInvocation :: ConfiguredProgram -> ConfiguredProgram -> Compiler -> GhcOptions -> ProgramInvocation
+ghcInvocation prog cc comp opts =
+    programInvocation prog (renderGhcOptions comp opts ++ renderGhcCcOptions cc)
 
+
+renderGhcCcOptions :: ConfiguredProgram -> [String]
+renderGhcCcOptions comp =
+     ("-pgmc=" ++ (programPath comp)) :
+     map ("-optc=" ++) (programDefaultArgs comp)
+  ++ map ("-optc=" ++) (programOverrideArgs comp)
 
 renderGhcOptions :: Compiler -> GhcOptions -> [String]
 renderGhcOptions comp opts
