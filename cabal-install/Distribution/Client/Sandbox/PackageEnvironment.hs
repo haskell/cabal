@@ -470,10 +470,7 @@ parsePackageEnvironment initial str = do
           configProgramPaths  = paths,
           configProgramArgs   = args
           },
-       savedHaddockFlags      = haddockFlags {
-         haddockProgramPaths  = paths,
-         haddockProgramArgs   = args
-         },
+       savedHaddockFlags      = haddockFlags,
        savedUserInstallDirs   = installDirs,
        savedGlobalInstallDirs = installDirs
        }

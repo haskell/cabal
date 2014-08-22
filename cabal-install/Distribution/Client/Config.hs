@@ -524,10 +524,7 @@ parseConfig initial = \str -> do
        configProgramPaths  = paths,
        configProgramArgs   = args
        },
-    savedHaddockFlags      = haddockFlags {
-       haddockProgramPaths = paths,
-       haddockProgramArgs  = args
-       },
+    savedHaddockFlags      = haddockFlags,
     savedUserInstallDirs   = user,
     savedGlobalInstallDirs = global
   }
