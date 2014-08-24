@@ -42,7 +42,7 @@ import Distribution.Simple.Compiler
          , Flag, languageToFlags, extensionsToFlags
          , PackageDB(..), PackageDBStack )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Language.Haskell.Extension
          ( Language(Haskell98), Extension(..), KnownExtension(..) )
 import Distribution.Simple.Program
@@ -140,7 +140,7 @@ nhcLanguageExtensions =
     ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
-                     -> IO PackageIndex
+                     -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs conf = do
   homedir      <- getHomeDirectory
   (nhcProg, _) <- requireProgram verbosity nhcProgram conf
@@ -151,7 +151,7 @@ getInstalledPackages verbosity packagedbs conf = do
   return $! mconcat indexes
 
   where
-    getIndividualDBPackages :: FilePath -> IO PackageIndex
+    getIndividualDBPackages :: FilePath -> IO InstalledPackageIndex
     getIndividualDBPackages dbdir = do
       pkgdirs <- getPackageDbDirs dbdir
       pkgs    <- sequence [ getInstalledPackage pkgname pkgdir

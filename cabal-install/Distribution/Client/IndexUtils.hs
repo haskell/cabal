@@ -33,6 +33,7 @@ import Distribution.Package
          , Dependency(Dependency), InstalledPackageId(..) )
 import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex      as PackageIndex
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex      as InstalledPackageIndex
 import qualified Distribution.InstalledPackageInfo     as InstalledPackageInfo
 import qualified Distribution.PackageDescription.Parse as PackageDesc.Parse
@@ -84,14 +85,14 @@ import System.IO.Error (isDoesNotExistError)
 
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
-                     -> IO InstalledPackageIndex.PackageIndex
+                     -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDbs conf =
     Configure.getInstalledPackages verbosity' comp packageDbs conf
   where
     --FIXME: make getInstalledPackages use sensible verbosity in the first place
     verbosity'  = lessVerbose verbosity
 
-convert :: InstalledPackageIndex.PackageIndex -> PackageIndex InstalledPackage
+convert :: InstalledPackageIndex -> PackageIndex InstalledPackage
 convert index' = PackageIndex.fromList
     -- There can be multiple installed instances of each package version,
     -- like when the same package is installed in the global & user DBs.

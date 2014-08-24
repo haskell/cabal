@@ -27,14 +27,14 @@ import Distribution.Simple.Program (haddockProgram, ProgramConfiguration
 import Distribution.Version (Version(Version), orLaterVersion)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.PackageIndex
-         ( PackageIndex, allPackagesByName )
+         ( InstalledPackageIndex, allPackagesByName )
 import Distribution.Simple.Utils
          ( comparing, debug, installDirectoryContents, withTempDirectory )
 import Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo_(exposed) )
 
 regenerateHaddockIndex :: Verbosity
-                       -> PackageIndex -> ProgramConfiguration -> FilePath
+                       -> InstalledPackageIndex -> ProgramConfiguration -> FilePath
                        -> IO ()
 regenerateHaddockIndex verbosity pkgs conf index = do
       (paths, warns) <- haddockPackagePaths pkgs' Nothing

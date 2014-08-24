@@ -69,7 +69,7 @@ import Distribution.Package
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
-         ( PackageIndex )
+         ( InstalledPackageIndex )
 import Distribution.Simple.Setup
          ( ConfigFlags )
 import Distribution.Text
@@ -107,7 +107,7 @@ data LocalBuildInfo = LocalBuildInfo {
         componentsConfigs   :: [(ComponentName, ComponentLocalBuildInfo, [ComponentName])],
                 -- ^ All the components to build, ordered by topological sort, and with their dependencies
                 -- over the intrapackage dependency graph
-        installedPkgs :: PackageIndex,
+        installedPkgs :: InstalledPackageIndex,
                 -- ^ All the info about the installed packages that the
                 -- current package depends on (directly or indirectly).
         pkgDescrFile  :: Maybe FilePath,

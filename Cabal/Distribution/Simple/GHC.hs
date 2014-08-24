@@ -57,7 +57,7 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(..) )
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
@@ -497,14 +497,14 @@ oldLanguageExtensions =
     ]
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents :: Verbosity -> PackageDB -> ProgramConfiguration
-                        -> IO PackageIndex
+                        -> IO InstalledPackageIndex
 getPackageDBContents verbosity packagedb conf = do
   pkgss <- getInstalledPackages' verbosity [packagedb] conf
   toPackageIndex verbosity pkgss conf
 
 -- | Given a package DB stack, return all installed packages.
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
-                     -> IO PackageIndex
+                     -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs conf = do
   checkPackageDbEnvVar
   checkPackageDbStack packagedbs
@@ -526,7 +526,7 @@ getInstalledPackages verbosity packagedbs conf = do
 toPackageIndex :: Verbosity
                -> [(PackageDB, [InstalledPackageInfo])]
                -> ProgramConfiguration
-               -> IO PackageIndex
+               -> IO InstalledPackageIndex
 toPackageIndex verbosity pkgss conf = do
   -- On Windows, various fields have $topdir/foo rather than full
   -- paths. We need to substitute the right value in so that when

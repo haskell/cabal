@@ -51,7 +51,7 @@ data SandboxPackageInfo = SandboxPackageInfo {
   -- ^ Remaining add-source deps. Some of these may be not installed in the
   -- sandbox.
 
-  otherInstalledSandboxPackages :: !InstalledPackageIndex.PackageIndex,
+  otherInstalledSandboxPackages :: !InstalledPackageIndex.InstalledPackageIndex,
   -- ^ All packages installed in the sandbox. Intersection with
   -- 'modifiedAddSourceDependencies' and/or 'otherAddSourceDependencies' can be
   -- non-empty.

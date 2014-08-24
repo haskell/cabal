@@ -22,7 +22,7 @@ import Distribution.PackageDescription as PD
 import Distribution.InstalledPackageInfo
          ( emptyInstalledPackageInfo, )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
@@ -100,7 +100,7 @@ jhcLanguageExtensions =
     ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
-                    -> IO PackageIndex
+                    -> IO InstalledPackageIndex
 getInstalledPackages verbosity _packageDBs conf = do
    -- jhc --list-libraries lists all available libraries.
    -- How shall I find out, whether they are global or local

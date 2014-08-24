@@ -35,6 +35,7 @@ module Distribution.Package (
         -- * Package classes
         Package(..), packageName, packageVersion,
         PackageFixedDeps(..),
+        PackageInstalled(..),
   ) where
 
 import Distribution.Version
@@ -288,3 +289,13 @@ instance Package PackageIdentifier where
 --
 class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> [PackageIdentifier]
+
+-- | Class of installed packages.
+--
+-- The primary data type which is an instance of this package is
+-- 'InstalledPackageInfo', but when we are doing install plans in Cabal install
+-- we may have other, installed package-like things which contain more metadata.
+-- Installed packages have exact dependencies 'installedDepends'.
+class Package pkg => PackageInstalled pkg where
+  installedPackageId :: pkg -> InstalledPackageId
+  installedDepends :: pkg -> [InstalledPackageId]

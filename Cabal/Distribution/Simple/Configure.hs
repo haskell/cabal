@@ -60,7 +60,7 @@ import Distribution.InstalledPackageInfo as Installed
     ( InstalledPackageInfo, InstalledPackageInfo_(..)
     , emptyInstalledPackageInfo )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
@@ -648,8 +648,8 @@ data FailedDependency = DependencyNotExists PackageName
                       | DependencyNoVersion Dependency
 
 -- | Test for a package dependency and record the version we have installed.
-selectDependency :: PackageIndex  -- ^ Internally defined packages
-                 -> PackageIndex  -- ^ Installed packages
+selectDependency :: InstalledPackageIndex  -- ^ Internally defined packages
+                 -> InstalledPackageIndex  -- ^ Installed packages
                  -> Map PackageName InstalledPackageInfo
                     -- ^ Packages for which we have been given specific deps to use
                  -> Dependency
@@ -711,7 +711,7 @@ reportFailedDependencies failed =
 
 getInstalledPackages :: Verbosity -> Compiler
                      -> PackageDBStack -> ProgramConfiguration
-                     -> IO PackageIndex
+                     -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDBs progconf = do
   when (null packageDBs) $
     die $ "No package databases have been specified. If you use "
@@ -734,7 +734,7 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 -- | Like 'getInstalledPackages', but for a single package DB.
 getPackageDBContents :: Verbosity -> Compiler
                      -> PackageDB -> ProgramConfiguration
-                     -> IO PackageIndex
+                     -> IO InstalledPackageIndex
 getPackageDBContents verbosity comp packageDB progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
@@ -785,7 +785,7 @@ newPackageDepsBehaviour pkg =
 -- pick.
 combinedConstraints :: [Dependency] ->
                        [(PackageName, InstalledPackageId)] ->
-                       PackageIndex ->
+                       InstalledPackageIndex ->
                        Either String ([Dependency],
                                       Map PackageName InstalledPackageInfo)
 combinedConstraints constraints dependencies installedPackages = do

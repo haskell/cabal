@@ -50,8 +50,7 @@ import Distribution.PackageDescription
          ( FlagAssignment, FlagName(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
-import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
-         ( PackageIndex )
+import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
          ( Dependency, PackageName, InstalledPackageId )
 import Distribution.Version
@@ -109,7 +108,7 @@ instance Text PreSolver where
 --
 type DependencyResolver = Platform
                        -> CompilerId
-                       -> InstalledPackageIndex.PackageIndex
+                       -> InstalledPackageIndex
                        ->          PackageIndex.PackageIndex SourcePackage
                        -> (PackageName -> PackagePreferences)
                        -> [PackageConstraint]
