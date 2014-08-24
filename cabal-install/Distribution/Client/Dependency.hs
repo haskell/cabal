@@ -554,7 +554,7 @@ mkInstallPlan :: Platform
               -> CompilerId
               -> [InstallPlan.PlanPackage] -> InstallPlan
 mkInstallPlan platform comp pkgIndex =
-  case InstallPlan.new platform comp (PackageIndex.fromList pkgIndex) of
+  case InstallPlan.new platform comp (InstalledPackageIndex.fromList pkgIndex) of
     Right plan     -> plan
     Left  problems -> error $ unlines $
         "internal error: could not construct a valid install plan."
