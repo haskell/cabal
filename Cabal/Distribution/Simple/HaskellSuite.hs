@@ -117,7 +117,7 @@ getLanguages verbosity prog = do
 -- Other compilers do some kind of a packagedb stack check here. Not sure
 -- if we need something like that as well.
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
-                     -> IO PackageIndex
+                     -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs conf =
   liftM (PackageIndex.fromList . concat) $ forM packagedbs $ \packagedb ->
     do str <-

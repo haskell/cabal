@@ -106,7 +106,7 @@ import Distribution.Simple.Program (ProgramConfiguration,
                                     defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
@@ -216,7 +216,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 
 -- TODO: Make InstallContext a proper data type with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
-type InstallContext = ( PackageIndex, SourcePackageDb
+type InstallContext = ( InstalledPackageIndex, SourcePackageDb
                       , [UserTarget], [PackageSpecifier SourcePackage] )
 
 -- TODO: Make InstallArgs a proper data type with documented fields or just get
@@ -312,7 +312,7 @@ planPackages :: Compiler
              -> ConfigFlags
              -> ConfigExFlags
              -> InstallFlags
-             -> PackageIndex
+             -> InstalledPackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
@@ -430,7 +430,7 @@ pruneInstallPlan pkgSpecifiers =
 -- either requested or needed.
 checkPrintPlan :: Verbosity
                -> Compiler
-               -> PackageIndex
+               -> InstalledPackageIndex
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
@@ -506,7 +506,7 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
 
 linearizeInstallPlan :: Compiler
-                     -> PackageIndex
+                     -> InstalledPackageIndex
                      -> InstallPlan
                      -> [(ReadyPackage, PackageStatus)]
 linearizeInstallPlan comp installedPkgIndex plan =
@@ -536,7 +536,7 @@ extractReinstalls :: PackageStatus -> [InstalledPackageId]
 extractReinstalls (Reinstall ipids _) = ipids
 extractReinstalls _                   = []
 
-packageStatus :: Compiler -> PackageIndex -> ReadyPackage -> PackageStatus
+packageStatus :: Compiler -> InstalledPackageIndex -> ReadyPackage -> PackageStatus
 packageStatus _comp installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
@@ -960,7 +960,7 @@ type UseLogFile = Maybe (PackageIdentifier -> PackageKey -> FilePath, Verbosity)
 
 performInstallations :: Verbosity
                      -> InstallArgs
-                     -> PackageIndex
+                     -> InstalledPackageIndex
                      -> InstallPlan
                      -> IO InstallPlan
 performInstallations verbosity

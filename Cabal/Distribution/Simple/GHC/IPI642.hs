@@ -19,7 +19,7 @@ module Distribution.Simple.GHC.IPI642 (
   ) where
 
 import qualified Distribution.InstalledPackageInfo as Current
-import qualified Distribution.Package as Current hiding (depends)
+import qualified Distribution.Package as Current hiding (depends, installedPackageId)
 import qualified Distribution.License as Current
 
 import Distribution.Version (Version)

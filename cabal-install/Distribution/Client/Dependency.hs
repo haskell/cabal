@@ -64,6 +64,7 @@ import Distribution.Client.Dependency.TopDown
 import Distribution.Client.Dependency.Modular
          ( modularResolver, SolverConfig(..) )
 import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
@@ -121,7 +122,7 @@ data DepResolverParams = DepResolverParams {
        depResolverConstraints       :: [PackageConstraint],
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
-       depResolverInstalledPkgIndex :: InstalledPackageIndex.PackageIndex,
+       depResolverInstalledPkgIndex :: InstalledPackageIndex,
        depResolverSourcePkgIndex    :: PackageIndex.PackageIndex SourcePackage,
        depResolverReorderGoals      :: Bool,
        depResolverIndependentGoals  :: Bool,
@@ -163,7 +164,7 @@ debugPackagePreference (PackageVersionPreference   pn vr) =
 debugPackagePreference (PackageInstalledPreference pn ip) =
   display pn ++ " " ++ show ip
 
-basicDepResolverParams :: InstalledPackageIndex.PackageIndex
+basicDepResolverParams :: InstalledPackageIndex
                        -> PackageIndex.PackageIndex SourcePackage
                        -> DepResolverParams
 basicDepResolverParams installedPkgIndex sourcePkgIndex =
@@ -412,7 +413,7 @@ reinstallTargets params =
     hideInstalledPackagesAllVersions (depResolverTargets params) params
 
 
-standardInstallPolicy :: InstalledPackageIndex.PackageIndex
+standardInstallPolicy :: InstalledPackageIndex
                       -> SourcePackageDb
                       -> [PackageSpecifier SourcePackage]
                       -> DepResolverParams

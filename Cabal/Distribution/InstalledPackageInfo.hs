@@ -79,7 +79,6 @@ import Distribution.Package
          , PackageId, InstalledPackageId(..)
          , packageName, packageVersion, PackageKey(..) )
 import qualified Distribution.Package as Package
-         ( Package(..) )
 import Distribution.ModuleName
          ( ModuleName )
 import Distribution.ModuleExport
@@ -135,6 +134,10 @@ data InstalledPackageInfo_ m
 
 instance Package.Package          (InstalledPackageInfo_ str) where
    packageId = sourcePackageId
+
+instance Package.PackageInstalled (InstalledPackageInfo_ str) where
+   installedPackageId = installedPackageId
+   installedDepends = depends
 
 type InstalledPackageInfo = InstalledPackageInfo_ ModuleName
 
