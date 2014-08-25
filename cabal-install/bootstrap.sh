@@ -130,8 +130,8 @@ TEXT_VER="1.1.0.1";    TEXT_VER_REGEXP="((1\.[01]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.2
 NETWORK_VER="2.5.0.0"; NETWORK_VER_REGEXP="2\.[0-5]\."
                        # >= 2.0 && < 2.6
-CABAL_VER="1.21.0.0";  CABAL_VER_REGEXP="1\.21\."
-                       # >= 1.21 && < 1.22
+CABAL_VER="1.21.1.0";  CABAL_VER_REGEXP="1\.21\.1"
+                       # >= 1.21.1 && < 1.22
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."
                        # >= 0.2.* && < 0.4.*
 MTL_VER="2.1.3.1";     MTL_VER_REGEXP="[2]\."
