@@ -9,7 +9,6 @@ import Test.Framework                 as TF (Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit                     (assertBool)
 
-import Control.Applicative ((<$>))
 import Data.List (intercalate, isInfixOf)
 import System.FilePath ((</>))
 
@@ -47,11 +46,11 @@ tests cabalPath ghcPkgPath =
           -- executable cannot be found. Creating a new sandbox. Installing
           -- the executable and checking it can be run.
 
-          _ <- assertCleanSucceeded   <$> cabal_clean dir [] cabalPath
-          _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["delete"] cabalPath
+          assertCleanSucceeded   =<< cabal_clean dir [] cabalPath
+          assertSandboxSucceeded =<< cabal_sandbox dir ["delete"] cabalPath
           assertMyExecutableNotFound cabalPath
-          _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["init"] cabalPath
-          _ <- assertInstallSucceeded <$> cabal_install dir [] cabalPath
+          assertSandboxSucceeded =<< cabal_sandbox dir ["init"] cabalPath
+          assertInstallSucceeded =<< cabal_install dir [] cabalPath
 
           result <- cabal_exec dir ["my-executable"] cabalPath
           assertExecSucceeded result
@@ -62,11 +61,11 @@ tests cabalPath ghcPkgPath =
               expected `isInfixOf` (intercalate " " . lines $ output)
 
     , testCase "adds the sandbox bin directory to the PATH" $ do
-          _ <- assertCleanSucceeded   <$> cabal_clean dir [] cabalPath
-          _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["delete"] cabalPath
+          assertCleanSucceeded   =<< cabal_clean dir [] cabalPath
+          assertSandboxSucceeded =<< cabal_sandbox dir ["delete"] cabalPath
           assertMyExecutableNotFound cabalPath
-          _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["init"] cabalPath
-          _ <- assertInstallSucceeded <$> cabal_install dir [] cabalPath
+          assertSandboxSucceeded =<< cabal_sandbox dir ["init"] cabalPath
+          assertInstallSucceeded =<< cabal_install dir [] cabalPath
 
           result <- cabal_exec dir ["bash", "--", "-c", "my-executable"] cabalPath
           assertExecSucceeded result
@@ -79,10 +78,10 @@ tests cabalPath ghcPkgPath =
     , testCase "configures GHC to use the sandbox" $ do
           let libNameAndVersion = "my-0.1"
 
-          _ <- assertCleanSucceeded   <$> cabal_clean dir [] cabalPath
-          _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["delete"] cabalPath
-          _ <- assertSandboxSucceeded <$> cabal_sandbox dir ["init"] cabalPath
-          _ <- assertInstallSucceeded <$> cabal_install dir [] cabalPath
+          assertCleanSucceeded   =<< cabal_clean dir [] cabalPath
+          assertSandboxSucceeded =<< cabal_sandbox dir ["delete"] cabalPath
+          assertSandboxSucceeded =<< cabal_sandbox dir ["init"] cabalPath
+          assertInstallSucceeded =<< cabal_install dir [] cabalPath
 
           assertMyLibIsNotAvailableOutsideofSandbox ghcPkgPath libNameAndVersion
 
