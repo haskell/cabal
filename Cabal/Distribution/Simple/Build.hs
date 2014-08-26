@@ -48,6 +48,7 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
 
+import Distribution.Simple.Program (ghcPkgProgram)
 import Distribution.Simple.Setup
          ( Flag(..), BuildFlags(..), ReplFlags(..), fromFlag )
 import Distribution.Simple.BuildTarget
@@ -64,6 +65,7 @@ import Distribution.Simple.LocalBuildInfo
          , inplacePackageId, LibraryName(..) )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
+import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName, exeExtension )
 import Distribution.Simple.Register
@@ -89,7 +91,7 @@ import Control.Monad
 import System.FilePath
          ( (</>), (<.>) )
 import System.Directory
-         ( getCurrentDirectory )
+         ( getCurrentDirectory, removeDirectoryRecursive, doesDirectoryExist )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -114,7 +116,8 @@ build pkg_descr lbi flags suffixes = do
     -- Only bother with this message if we're building the whole package
     setupMessage verbosity "Building" (packageId pkg_descr)
 
-  internalPackageDB <- createInternalPackageDB distPref
+  let Just ghcPkgProg = lookupProgram ghcPkgProgram (withPrograms lbi)
+  internalPackageDB <- createInternalPackageDB verbosity ghcPkgProg distPref
 
   withComponentsInBuildOrder pkg_descr lbi componentsToBuild $ \comp clbi ->
     let bi     = componentBuildInfo comp
@@ -151,7 +154,8 @@ repl pkg_descr lbi flags suffixes args = do
 
   initialBuildSteps distPref pkg_descr lbi verbosity
 
-  internalPackageDB <- createInternalPackageDB distPref
+  let Just ghcPkgProg = lookupProgram ghcPkgProgram (withPrograms lbi)
+  internalPackageDB <- createInternalPackageDB verbosity ghcPkgProg distPref
   let lbiForComponent comp lbi' =
         lbi' {
           withPackageDB = withPackageDB lbi ++ [internalPackageDB],
@@ -428,11 +432,13 @@ benchmarkExeV10asExe Benchmark{} _ = error "benchmarkExeV10asExe: wrong kind"
 
 -- | Initialize a new package db file for libraries defined
 -- internally to the package.
-createInternalPackageDB :: FilePath -> IO PackageDB
-createInternalPackageDB distPref = do
-    let dbFile = distPref </> "package.conf.inplace"
-        packageDB = SpecificPackageDB dbFile
-    writeFile dbFile "[]"
+createInternalPackageDB :: Verbosity -> ConfiguredProgram -> FilePath -> IO PackageDB
+createInternalPackageDB verbosity ghcPkgProg distPref = do
+    let dbDir = distPref </> "package.conf.inplace"
+        packageDB = SpecificPackageDB dbDir
+    exists <- doesDirectoryExist dbDir
+    when exists $ removeDirectoryRecursive dbDir
+    HcPkg.init verbosity ghcPkgProg dbDir
     return packageDB
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
