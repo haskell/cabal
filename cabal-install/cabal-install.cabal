@@ -166,7 +166,6 @@ executable cabal
 
     c-sources: cbits/getnumcores.c
 
-
 -- Small, fast running tests.
 Test-Suite unit-tests
   type: exitcode-stdio-1.0
@@ -184,7 +183,6 @@ Test-Suite unit-tests
         Cabal,
         containers,
         mtl,
-        network,
         pretty,
         process,
         directory,
@@ -200,6 +198,11 @@ Test-Suite unit-tests
         test-framework-quickcheck2 >= 0.3,
         HUnit,
         QuickCheck >= 2.5
+
+  if flag(network-uri)
+    build-depends: network-uri >= 2.6
+  else
+    build-depends: network < 2.6
 
   if flag(old-directory)
     build-depends: old-time
