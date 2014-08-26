@@ -12,6 +12,9 @@ cabal-install/tests/PackageTests/*/dist/
 *.p_hi
 *.prof
 *.tix
+cabal.config
+dist-sandbox
+dist
 
 # editor temp files
 
