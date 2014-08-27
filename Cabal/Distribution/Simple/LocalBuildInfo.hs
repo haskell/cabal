@@ -131,7 +131,8 @@ data LocalBuildInfo = LocalBuildInfo {
         stripExes     :: Bool,  -- ^Whether to strip executables during install
         stripLibs     :: Bool,  -- ^Whether to strip libraries during install
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
-        progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
+        progSuffix    :: PathTemplate, -- ^Suffix to be appended to installed executables
+        withCoverage  :: Maybe String  -- ^Whether to build with library coverage and if so where to put the output.
   } deriving (Read, Show)
 
 -- | External package dependencies for the package as a whole. This is the
