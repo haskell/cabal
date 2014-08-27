@@ -199,12 +199,11 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     -- Register the library in-place, so exes can depend
     -- on internally defined libraries.
     pwd <- getCurrentDirectory
-    let installedPkgInfo =
-          (inplaceInstalledPackageInfo pwd distPref pkg_descr lib lbi clbi) {
-            -- The in place registration uses the "-inplace" suffix,
-            -- not an ABI hash.
-            IPI.installedPackageId = inplacePackageId (packageId installedPkgInfo)
-          }
+    let -- The in place registration uses the "-inplace" suffix, not an ABI hash
+        ipkgid           = inplacePackageId (packageId installedPkgInfo)
+        installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
+                                                       ipkgid lib lbi clbi
+
     registerPackage verbosity
       installedPkgInfo pkg_descr lbi True -- True meaning in place
       (withPackageDB lbi)
@@ -364,6 +363,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentLibraries = [LibraryName (testName test)]
+                , componentModuleReexports = []
                 }
     pkg = pkg_descr {
             package      = (package pkg_descr) {
@@ -382,9 +382,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
         pkgKey = mkPackageKey (packageKeySupported (compiler lbi))
                               (package pkg) []
     }
-    ipi = (inplaceInstalledPackageInfo pwd distPref pkg lib lbi libClbi) {
-            IPI.installedPackageId = inplacePackageId $ packageId ipi
-          }
+    ipkgid = inplacePackageId (packageId pkg)
+    ipi    = inplaceInstalledPackageInfo pwd distPref pkg ipkgid lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg
