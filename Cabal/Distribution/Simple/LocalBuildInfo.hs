@@ -64,6 +64,8 @@ import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
          , BuildInfo(buildable), Benchmark(..) )
+import qualified Distribution.InstalledPackageInfo as Installed
+    ( ModuleReexport(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..), PackageKey )
 import Distribution.Simple.Compiler
@@ -182,7 +184,8 @@ data ComponentLocalBuildInfo
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
-    componentLibraries :: [LibraryName]
+    componentLibraries   :: [LibraryName],
+    componentModuleReexports :: [Installed.ModuleReexport]
   }
   | ExeComponentLocalBuildInfo {
     componentPackageDeps :: [(InstalledPackageId, PackageId)]

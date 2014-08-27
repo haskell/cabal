@@ -56,6 +56,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. -}
 
 module Distribution.InstalledPackageInfo (
         InstalledPackageInfo_(..), InstalledPackageInfo,
+        ModuleReexport(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
         parseInstalledPackageInfo,
@@ -81,12 +82,12 @@ import Distribution.Package
 import qualified Distribution.Package as Package
 import Distribution.ModuleName
          ( ModuleName )
-import Distribution.ModuleExport
-         ( ModuleExport(..) )
 import Distribution.Version
          ( Version(..) )
 import Distribution.Text
          ( Text(disp, parse) )
+import Text.PrettyPrint as Disp
+import qualified Distribution.Compat.ReadP as Parse
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
@@ -111,7 +112,7 @@ data InstalledPackageInfo_ m
         -- these parts are required by an installed package only:
         exposed           :: Bool,
         exposedModules    :: [m],
-        reexportedModules :: [ModuleExport m],
+        reexportedModules :: [ModuleReexport],
         hiddenModules     :: [m],
         trusted           :: Bool,
         importDirs        :: [FilePath],  -- contain sources in case of Hugs
@@ -182,6 +183,31 @@ emptyInstalledPackageInfo
 
 noVersion :: Version
 noVersion = Version{ versionBranch=[], versionTags=[] }
+
+-- -----------------------------------------------------------------------------
+-- Module re-exports
+
+data ModuleReexport = ModuleReexport {
+       moduleReexportDefiningPackage :: InstalledPackageId,
+       moduleReexportDefiningName    :: ModuleName,
+       moduleReexportName            :: ModuleName
+    }
+    deriving (Read, Show)
+
+instance Text ModuleReexport where
+    disp (ModuleReexport pkgid origname newname) =
+          disp pkgid <> Disp.char ':' <> disp origname
+      <+> Disp.text "as" <+> disp newname
+
+    parse = do
+      pkgid    <- parse
+      _ <- Parse.char ':'
+      origname <- parse
+      Parse.skipSpaces
+      _ <- Parse.string "as"
+      Parse.skipSpaces
+      newname  <- parse
+      return (ModuleReexport pkgid origname newname)
 
 -- -----------------------------------------------------------------------------
 -- Parsing

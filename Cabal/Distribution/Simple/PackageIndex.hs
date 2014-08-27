@@ -86,8 +86,6 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.Simple.Utils (lowercase, comparing, equating)
-import Distribution.ModuleExport
-         ( ModuleExport(..) )
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
@@ -588,9 +586,10 @@ moduleNameIndex :: InstalledPackageIndex -> Map ModuleName [InstalledPackageInfo
 moduleNameIndex index =
   Map.fromListWith (++) . concat $
     [ [(m,  [pkg]) | m <- IPI.exposedModules pkg ] ++
-      [(m', [pkg]) | ModuleExport{ exportOrigName = m
-                                 , exportName = m'
-                                 } <- IPI.reexportedModules pkg
+      [(m', [pkg]) | IPI.ModuleReexport {
+                       IPI.moduleReexportDefiningName = m,
+                       IPI.moduleReexportName         = m'
+                     } <- IPI.reexportedModules pkg
                    , m /= m' ]
         -- The heuristic is this: we want to prefer the original package
         -- which originally exported a module.  However, if a reexport
