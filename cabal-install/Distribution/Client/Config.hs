@@ -77,7 +77,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Utils
-         ( notice, warn, lowercase )
+         ( die, notice, warn, lowercase )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
@@ -303,11 +303,9 @@ loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
       return conf
     Just (ParseFailed err) -> do
       let (line, msg) = locatedErrorMsg err
-      warn verbosity $
+      die $
           "Error parsing config file " ++ configFile
         ++ maybe "" (\n -> ':' : show n) line ++ ":\n" ++ msg
-      warn verbosity "Using default configuration."
-      initialSavedConfig
 
   where
     addBaseConf body = do
