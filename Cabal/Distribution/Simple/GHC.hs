@@ -1210,13 +1210,22 @@ componentCcGhcOptions verbosity lbi bi clbi pref filename =
       ghcOptCcOptions      = (case withOptimization lbi of
                                   NoOptimisation -> []
                                   _              -> ["-O2"]) ++
-                                  PD.ccOptions bi,
+                                  allCcOptions,
       ghcOptObjDir         = toFlag odir
     }
   where
     odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
          | otherwise = pref </> takeDirectory filename
          -- ghc 6.4.0 had a bug in -odir handling for C compilations.
+
+    -- Pass in flags _explicitly_ specified as C compiler options, as well as
+    -- any ghc flags that specify compilers for the C compiler
+    allCcOptions = PD.ccOptions bi
+                ++ [ drop 5 opt
+                   | (GHC, opts) <- PD.options bi
+                   , opt <- opts
+                   , "-optc" `isPrefixOf` opt
+                   ]
 
 mkGHCiLibName :: LibraryName -> String
 mkGHCiLibName (LibraryName lib) = lib <.> "o"
