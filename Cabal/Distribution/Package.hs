@@ -113,7 +113,7 @@ instance Text InstalledPackageId where
   disp (InstalledPackageId str) = text str
 
   parse = InstalledPackageId `fmap` Parse.munch1 abi_char
-   where abi_char c = Char.isAlphaNum c || c `elem` ":-_."
+   where abi_char c = Char.isAlphaNum c || c `elem` "-_."
 
 -- ------------------------------------------------------------
 -- * Package Keys

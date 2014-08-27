@@ -33,6 +33,7 @@ module Distribution.PackageDescription (
 
         -- ** Libraries
         Library(..),
+        ModuleReexport(..),
         emptyLibrary,
         withLib,
         hasLibs,
@@ -109,7 +110,6 @@ import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
          , Dependency, Package(..) )
 import Distribution.ModuleName ( ModuleName )
-import Distribution.ModuleExport ( ModuleExport )
 import Distribution.Version
          ( Version(Version), VersionRange, anyVersion, orLaterVersion
          , asVersionIntervals, LowerBound(..) )
@@ -270,7 +270,7 @@ instance Text BuildType where
 
 data Library = Library {
         exposedModules    :: [ModuleName],
-        reexportedModules :: [ModuleExport ModuleName],
+        reexportedModules :: [ModuleReexport],
         libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
         libBuildInfo      :: BuildInfo
     }
@@ -317,6 +317,37 @@ withLib pkg_descr f =
 libModules :: Library -> [ModuleName]
 libModules lib = exposedModules lib
               ++ otherModules (libBuildInfo lib)
+
+-- -----------------------------------------------------------------------------
+-- Module re-exports
+
+data ModuleReexport = ModuleReexport {
+       moduleReexportOriginalPackage :: Maybe PackageName,
+       moduleReexportOriginalName    :: ModuleName,
+       moduleReexportName            :: ModuleName
+    }
+    deriving (Eq, Read, Show, Typeable, Data)
+
+instance Text ModuleReexport where
+    disp (ModuleReexport mpkgname origname newname) =
+          maybe Disp.empty (\pkgname -> disp pkgname <> Disp.char ':') mpkgname
+       <> disp origname
+      <+> if newname == origname
+            then Disp.empty
+            else Disp.text "as" <+> disp newname
+
+    parse = do
+      mpkgname <- Parse.option Nothing $ do
+                    pkgname <- parse 
+                    _       <- Parse.char ':'
+                    return (Just pkgname)
+      origname <- parse
+      newname  <- Parse.option origname $ do
+                    Parse.skipSpaces
+                    _ <- Parse.string "as"
+                    Parse.skipSpaces
+                    parse
+      return (ModuleReexport mpkgname origname newname)
 
 -- ---------------------------------------------------------------------------
 -- The Executable type
