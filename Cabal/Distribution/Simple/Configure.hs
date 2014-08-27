@@ -59,13 +59,18 @@ import Distribution.Package
 import Distribution.InstalledPackageInfo as Installed
     ( InstalledPackageInfo, InstalledPackageInfo_(..)
     , emptyInstalledPackageInfo )
+import qualified Distribution.InstalledPackageInfo as Installed
+    ( ModuleReexport(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (PackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
-    , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..) )
+    , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..)
+    , ModuleReexport(..) )
+import Distribution.ModuleName
+    ( ModuleName )
 import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
@@ -120,10 +125,13 @@ import Data.List
     ( (\\), nub, partition, isPrefixOf, inits )
 import Data.Maybe
     ( isNothing, catMaybes, fromMaybe )
+import Data.Either
+    ( partitionEithers )
 import Data.Monoid
     ( Monoid(..) )
 import qualified Data.Map as Map
 import Data.Map (Map)
+import qualified Data.Set as Set
 import Data.Traversable
     ( mapM )
 import System.Directory
@@ -393,7 +401,7 @@ configure (pkg_descr0, pbi) cfg
 
         when (maybe False (not.null.PD.reexportedModules) (PD.library pkg_descr)
               && not (reexportedModulesSupported comp)) $ do
-            die $ "Your compiler does not support module reexports.  To use"
+            die $ "Your compiler does not support module re-exports. To use "
                ++ "this feature you probably must use GHC 7.9 or later."
 
         checkPackageProblems verbosity pkg_descr0
@@ -468,10 +476,14 @@ configure (pkg_descr0, pbi) cfg
 
         -- internal component graph
         buildComponents <-
-          case mkComponentsLocalBuildInfo pkg_descr
-                 internalPkgDeps externalPkgDeps pkg_key of
+          case mkComponentsGraph pkg_descr internalPkgDeps of
             Left  componentCycle -> reportComponentCycle componentCycle
-            Right components     -> return components
+            Right components     ->
+              case mkComponentsLocalBuildInfo packageDependsIndex pkg_descr
+                                              internalPkgDeps externalPkgDeps
+                                              pkg_key components of
+                Left  problems    -> reportModuleReexportProblems problems
+                Right components' -> return components'
 
         -- installation directories
         defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
@@ -1025,20 +1037,16 @@ configCompilerAux = fmap (\(a,_,b) -> (a,b)) . configCompilerAuxEx
 -- Making the internal component graph
 
 
-mkComponentsLocalBuildInfo :: PackageDescription
-                           -> [PackageId] -> [InstalledPackageInfo]
-                           -> PackageKey
-                           -> Either [ComponentName]
-                                     [(ComponentName,
-                                       ComponentLocalBuildInfo, [ComponentName])]
-mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps pkg_key =
+mkComponentsGraph :: PackageDescription
+                  -> [PackageId]
+                  -> Either [ComponentName]
+                            [(Component, [ComponentName])]
+mkComponentsGraph pkg_descr internalPkgDeps =
     let graph = [ (c, componentName c, componentDeps c)
                 | c <- pkgEnabledComponents pkg_descr ]
      in case checkComponentsCyclic graph of
           Just ccycle -> Left  [ cname | (_,cname,_) <- ccycle ]
-          Nothing     -> Right [ (cname, clbi, cdeps)
-                               | (c, cname, cdeps) <- graph
-                               , let clbi = componentLocalBuildInfo c ]
+          Nothing     -> Right [ (c, cdeps) | (c, _, cdeps) <- graph ]
   where
     -- The dependencies for the given component
     componentDeps component =
@@ -1052,6 +1060,28 @@ mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps pkg_key =
       where
         bi = componentBuildInfo component
 
+reportComponentCycle :: [ComponentName] -> IO a
+reportComponentCycle cnames =
+    die $ "Components in the package depend on each other in a cyclic way:\n  "
+       ++ intercalate " depends on "
+            [ "'" ++ showComponentName cname ++ "'"
+            | cname <- cnames ++ [head cnames] ]
+
+mkComponentsLocalBuildInfo :: PackageIndex
+                           -> PackageDescription
+                           -> [PackageId] -> [InstalledPackageInfo]
+                           -> PackageKey
+                           -> [(Component, [ComponentName])]
+                           -> Either [(ModuleReexport, String)] -- errors
+                                     [(ComponentName, ComponentLocalBuildInfo,
+                                                      [ComponentName])] -- ok
+mkComponentsLocalBuildInfo installedPackages pkg_descr
+                           internalPkgDeps externalPkgDeps pkg_key graph =
+    sequence
+      [ do clbi <- componentLocalBuildInfo c
+           return (componentName c, clbi, cdeps)
+      | (c, cdeps) <- graph ]
+  where
     -- The allPkgDeps contains all the package deps for the whole package
     -- but we need to select the subset for this specific component.
     -- we just take the subset for the package names this component
@@ -1059,22 +1089,25 @@ mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps pkg_key =
     -- versions of the same package.
     componentLocalBuildInfo component =
       case component of
-      CLib _ ->
-        LibComponentLocalBuildInfo {
+      CLib lib -> do
+        reexports <- resolveModuleReexports installedPackages
+                                            (packageId pkg_descr)
+                                            externalPkgDeps lib
+        return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
-          componentLibraries = [LibraryName
-                                ("HS" ++ display pkg_key)]
+          componentLibraries   = [LibraryName ("HS" ++ display pkg_key)],
+          componentModuleReexports = reexports
         }
       CExe _ ->
-        ExeComponentLocalBuildInfo {
+        return ExeComponentLocalBuildInfo {
           componentPackageDeps = cpds
         }
       CTest _ ->
-        TestComponentLocalBuildInfo {
+        return TestComponentLocalBuildInfo {
           componentPackageDeps = cpds
         }
       CBench _ ->
-        BenchComponentLocalBuildInfo {
+        return BenchComponentLocalBuildInfo {
           componentPackageDeps = cpds
         }
       where
@@ -1093,13 +1126,134 @@ mkComponentsLocalBuildInfo pkg_descr internalPkgDeps externalPkgDeps pkg_key =
       where
         names = [ name | Dependency name _ <- targetBuildDepends bi ]
 
-reportComponentCycle :: [ComponentName] -> IO a
-reportComponentCycle cnames =
-    die $ "Components in the package depend on each other in a cyclic way:\n  "
-       ++ intercalate " depends on "
-            [ "'" ++ showComponentName cname ++ "'"
-            | cname <- cnames ++ [head cnames] ]
+-- | Given the author-specified re-export declarations from the .cabal file,
+-- resolve them to the form that we need for the package database.
+--
+-- An invariant of the package database is that we always link the re-export
+-- directly to its original defining location (rather than indirectly via a
+-- chain of re-exporting packages).
+--
+resolveModuleReexports :: PackageIndex
+                       -> PackageId
+                       -> [InstalledPackageInfo]
+                       -> Library
+                       -> Either [(ModuleReexport, String)] -- errors
+                                 [Installed.ModuleReexport] -- ok
+resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
+    case partitionEithers (map resolveModuleReexport (PD.reexportedModules lib)) of
+      ([],  ok) -> Right ok
+      (errs, _) -> Left  errs
+  where
+    -- A mapping from visible module names to their original defining
+    -- module name and package.
+    visibleModules :: Map ModuleName [(PackageName, ModuleName, InstalledPackageId)]
+    visibleModules =
+      Map.fromListWith (++) $
+        [ (visibleModuleName, [(exportingPackageName,
+                                definingModuleName,
+                                definingPackageId)])
+          -- The package index here contains all the indirect deps of the
+          -- package we're configuring, but we want just the direct deps
+        | let directDeps = Set.fromList (map installedPackageId externalPkgDeps)
+        , pkg <- PackageIndex.allPackages installedPackages
+        , installedPackageId pkg `Set.member` directDeps
+        , let exportingPackageName = packageName pkg
+        , (visibleModuleName, definingModuleName, definingPackageId)
+             <- visibleModuleDetails pkg
+        ]
+     ++ [ (visibleModuleName, [(exportingPackageName,
+                                definingModuleName,
+                                definingPackageId)])
+        | visibleModuleName <- PD.exposedModules lib
+                            ++ otherModules (libBuildInfo lib)
+        , let exportingPackageName = packageName srcpkgid
+              definingModuleName   = visibleModuleName
+              -- we don't know the InstalledPackageId of this package yet
+              -- we will fill it in later, before registration.
+              definingPackageId    = InstalledPackageId ""
+        ]
 
+    -- All the modules exported from this package and their defining name and
+    -- package (either defined here in this package or re-exported from some
+    -- other package)
+    visibleModuleDetails :: InstalledPackageInfo
+                         -> [(ModuleName, ModuleName, InstalledPackageId)]
+    visibleModuleDetails pkg =
+        -- The first case is the modules actually defined in this package.
+        -- In this case the visible and original names are the same, and the
+        -- defining package is this one.
+        [ (visibleModuleName, definingModuleName, definingPackageId)
+        | visibleModuleName <- Installed.exposedModules pkg
+        , let definingModuleName = visibleModuleName
+              definingPackageId  = installedPackageId pkg
+        ]
+        -- On the other hand, a visible module might actually be itself
+        -- a re-export! In this case, the re-export info for the package
+        -- doing the re-export will point us to the original defining
+        -- module name and package.
+     ++ [ (visibleModuleName, definingModuleName, definingPackageId)
+        | Installed.ModuleReexport {
+            Installed.moduleReexportName            = visibleModuleName,
+            Installed.moduleReexportDefiningName    = definingModuleName,
+            Installed.moduleReexportDefiningPackage = definingPackageId
+          } <- Installed.reexportedModules pkg
+        ]
+
+    resolveModuleReexport reexport@ModuleReexport {
+         moduleReexportOriginalPackage = moriginalPackageName,
+         moduleReexportOriginalName    = originalName,
+         moduleReexportName            = newName
+      } =
+
+      let filterForSpecificPackage =
+            case moriginalPackageName of
+              Nothing                  -> id
+              Just originalPackageName -> 
+                filter (\(pkgname, _, _) -> pkgname == originalPackageName)
+
+          matches = filterForSpecificPackage
+                      (Map.findWithDefault [] originalName visibleModules)
+      in
+      case (matches, moriginalPackageName) of
+        ([(_, definingModuleName, definingPackageId)], _)
+           -> Right Installed.ModuleReexport {
+                 Installed.moduleReexportDefiningName    = definingModuleName,
+                 Installed.moduleReexportDefiningPackage = definingPackageId,
+                 Installed.moduleReexportName            = newName
+              }
+
+        ([], Just originalPackageName)
+           -> Left $ (,) reexport
+                   $ "The package " ++ display originalPackageName
+                  ++ " does not export a module " ++ display originalName
+
+        ([], Nothing)
+           -> Left $ (,) reexport
+                   $ "The module " ++ display originalName
+                  ++ " is not exported by any suitable package (this package "
+                  ++ "itself nor any of its 'build-depends' dependencies)."
+
+        (ms, _)
+           -> Left $ (,) reexport
+                   $ "The module " ++ display originalName ++ " is exported "
+                  ++ "by more than one package ("
+                  ++ intercalate ", " [ display pkgname | (pkgname,_,_) <- ms ]
+                  ++ ") and so the re-export is ambiguous. The ambiguity can "
+                  ++ "be resolved by qualifying by the package name. The "
+                  ++ "syntax is 'packagename:moduleName [as newname]'."
+
+        -- Note: if in future Cabal allows directly depending on multiple
+        -- instances of the same package (e.g. backpack) then an additional
+        -- ambiguity case is possible here: (_, Just originalPackageName)
+        -- with the module being ambigious despite being qualified by a
+        -- package name. Presumably by that time we'll have a mechanism to
+        -- qualify the instance we're referring to.
+
+reportModuleReexportProblems :: [(ModuleReexport, String)] -> IO a
+reportModuleReexportProblems reexportProblems =
+  die $ unlines
+    [ "Problem with the module re-export '" ++ display reexport ++ "': " ++ msg
+    | (reexport, msg) <- reexportProblems ]
 
 -- -----------------------------------------------------------------------------
 -- Testing C lib and header dependencies
