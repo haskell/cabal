@@ -487,7 +487,7 @@ _package_`.cabal`
 
 :   a single-module Haskell program to perform various setup tasks (with
     the interface described in the section on [building and installing
-    packages](#building-and-installing-a-package)). This module should
+    packages](installing-packages.html). This module should
     import only modules that will be present in all Haskell
     implementations, including modules of the Cabal library. The
     content of this file is determined by the `build-type` setting in
@@ -496,7 +496,7 @@ _package_`.cabal`
 
 Once you have these, you can create a source bundle of this directory
 for distribution. Building of the package is discussed in the section on
-[building and installing packages](#building-and-installing-a-package).
+[building and installing packages](installing-packages.html).
 
 One of the purposes of Cabal is to make it easier to build a package
 with different Haskell implementations. So it provides abstractions of
@@ -625,7 +625,7 @@ The simple build infrastructure can also handle packages where building
 is governed by system-dependent parameters, if you specify a little more
 (see the section on [system-dependent
 parameters](#system-dependent-parameters)). A few packages require [more
-elaborate solutions](#complex-packages).
+elaborate solutions](#more-complex-packages).
 
 ## Package descriptions ##
 
@@ -1637,9 +1637,9 @@ The following tests are currently supported.
 
 #### Resolution of Conditions and Flags ####
 
-If a package descriptions specifies configuration flags the package user
-can [control these in several ways](#controlling-flag-assignments). If
-the user does not fix the value of a flag, Cabal will try to find a flag
+If a package descriptions specifies configuration flags the package user can
+[control these in several ways](installing-packages.html#controlling-flag-assignments).
+If the user does not fix the value of a flag, Cabal will try to find a flag
 assignment in the following way.
 
   * For each flag specified, it will assign its default value, evaluate
