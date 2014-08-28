@@ -1067,7 +1067,7 @@ reportComponentCycle cnames =
             [ "'" ++ showComponentName cname ++ "'"
             | cname <- cnames ++ [head cnames] ]
 
-mkComponentsLocalBuildInfo :: PackageIndex
+mkComponentsLocalBuildInfo :: InstalledPackageIndex
                            -> PackageDescription
                            -> [PackageId] -> [InstalledPackageInfo]
                            -> PackageKey
@@ -1133,7 +1133,7 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
 -- directly to its original defining location (rather than indirectly via a
 -- chain of re-exporting packages).
 --
-resolveModuleReexports :: PackageIndex
+resolveModuleReexports :: InstalledPackageIndex
                        -> PackageId
                        -> [InstalledPackageInfo]
                        -> Library
