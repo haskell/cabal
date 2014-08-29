@@ -1215,7 +1215,8 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
                       (Map.findWithDefault [] originalName visibleModules)
       in
       case (matches, moriginalPackageName) of
-        ([(_, definingModuleName, definingPackageId)], _)
+        ((_, definingModuleName, definingPackageId):rest, _)
+          | all (\(_, n, p) -> n == definingModuleName && p == definingPackageId) rest
            -> Right Installed.ModuleReexport {
                  Installed.moduleReexportDefiningName    = definingModuleName,
                  Installed.moduleReexportDefiningPackage = definingPackageId,
