@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compiler
@@ -35,10 +37,12 @@ module Distribution.Compiler (
   CompilerId(..),
   ) where
 
+import Data.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import Data.Maybe (fromMaybe)
 import Distribution.Version (Version(..))
+import GHC.Generics (Generic)
 
 import qualified System.Info (compilerName, compilerVersion)
 import Distribution.Text (Text(..), display)
@@ -52,7 +56,9 @@ import Control.Monad (when)
 data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
                     | HaskellSuite String -- string is the id of the actual compiler
                     | OtherCompiler String
-  deriving (Show, Read, Eq, Ord, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
+
+instance Binary CompilerFlavor
 
 knownCompilerFlavors :: [CompilerFlavor]
 knownCompilerFlavors = [GHC, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
@@ -125,7 +131,9 @@ defaultCompilerFlavor = case buildCompilerFlavor of
 -- ------------------------------------------------------------
 
 data CompilerId = CompilerId CompilerFlavor Version
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Generic, Ord, Read, Show)
+
+instance Binary CompilerId
 
 instance Text CompilerId where
   disp (CompilerId f (Version [] _)) = disp f

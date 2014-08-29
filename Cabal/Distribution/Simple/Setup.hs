@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Setup
@@ -95,9 +97,11 @@ import Distribution.Simple.InstallDirs
 import Distribution.Verbosity
 
 import Control.Monad (liftM)
+import Data.Binary (Binary)
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
 import Data.Monoid ( Monoid(..) )
+import GHC.Generics (Generic)
 
 -- FIXME Not sure where this should live
 defaultDistPref :: FilePath
@@ -124,7 +128,9 @@ defaultDistPref = "dist"
 -- Its monoid instance gives us the behaviour where it starts out as
 -- 'NoFlag' and later flags override earlier ones.
 --
-data Flag a = Flag a | NoFlag deriving (Show, Read, Eq)
+data Flag a = Flag a | NoFlag deriving (Eq, Generic, Show, Read)
+
+instance Binary a => Binary (Flag a)
 
 instance Functor Flag where
   fmap f (Flag x) = Flag (f x)
@@ -296,7 +302,9 @@ data ConfigFlags = ConfigFlags {
       -- ^All direct dependencies and flags are provided on the command line by
       -- the user via the '--dependency' and '--flags' options.
   }
-  deriving (Read,Show)
+  deriving (Generic, Read, Show)
+
+instance Binary ConfigFlags
 
 configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
 configAbsolutePaths f =
