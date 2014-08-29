@@ -36,16 +36,19 @@ import PackageTests.TestSuiteExeV10.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
 
+import Distribution.Package (PackageIdentifier)
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath)
 import Distribution.Simple.Program.Builtin (ghcProgram, ghcPkgProgram,
                                             haddockProgram)
 import Distribution.Simple.Program.Db (requireProgram)
-import Distribution.Simple.Utils (cabalVersion, die, withFileContents)
+import Distribution.Simple.Utils (cabalVersion, die)
 import Distribution.Text (display)
 import Distribution.Verbosity (normal)
 import Distribution.Version (Version(Version))
 
+import Data.Binary (Binary, decodeOrFail)
+import qualified Data.ByteString.Lazy as BS
 import System.Directory (doesFileExist, getCurrentDirectory,
                          setCurrentDirectory)
 import System.FilePath ((</>))
@@ -164,14 +167,28 @@ getPersistBuildConfig_ :: FilePath -> IO LocalBuildInfo
 getPersistBuildConfig_ filename = do
   exists <- doesFileExist filename
   if not exists
-    then die missing
-    else withFileContents filename $ \str ->
-      case lines str of
-        [_header, rest] -> case reads rest of
-          [(bi,_)] -> return bi
-          _        -> die cantParse
-        _            -> die cantParse
+    then die "Run the 'configure' command first."
+    else decodeBinHeader >>= decodeBody
+
   where
-    missing   = "Run the 'configure' command first."
-    cantParse = "Saved package config file seems to be corrupt. "
-             ++ "Try re-running the 'configure' command."
+    decodeB :: Binary a => BS.ByteString -> Either String (BS.ByteString, a)
+    decodeB str = either (const cantParse) return $ do
+        (next, _, x) <- decodeOrFail str
+        return (next, x)
+
+    decodeBody :: Either String BS.ByteString -> IO LocalBuildInfo
+    decodeBody (Left msg) = die msg
+    decodeBody (Right body) = either die (return . snd) $ decodeB body
+
+    decodeBinHeader :: IO (Either String BS.ByteString)
+    decodeBinHeader = do
+        pbc <- BS.readFile filename
+        return $ do
+            (body, _) <- decodeB pbc :: Either String ( BS.ByteString
+                                                      , ( PackageIdentifier
+                                                      , PackageIdentifier )
+                                                      )
+            return body
+
+    cantParse = Left $  "Saved package config file seems to be corrupt. "
+                     ++ "Try re-running the 'configure' command."
