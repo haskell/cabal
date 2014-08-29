@@ -1,4 +1,4 @@
-module Distribution.Client.Dependency.Modular.Validate where
+module Distribution.Client.Dependency.Modular.Validate (validateTree) where
 
 -- Validation of the tree.
 --
@@ -80,13 +80,13 @@ data ValidateState = VS {
 
 type Validate = Reader ValidateState
 
-validate :: Tree (QGoalReasonChain, Scope) -> Validate (Tree QGoalReasonChain)
+validate :: Tree QGoalReasonChain -> Validate (Tree QGoalReasonChain)
 validate = cata go
   where
-    go :: TreeF (QGoalReasonChain, Scope) (Validate (Tree QGoalReasonChain)) -> Validate (Tree QGoalReasonChain)
+    go :: TreeF QGoalReasonChain (Validate (Tree QGoalReasonChain)) -> Validate (Tree QGoalReasonChain)
 
-    go (PChoiceF qpn (gr,  sc)     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
-    go (FChoiceF qfn (gr, _sc) b m ts) =
+    go (PChoiceF qpn gr     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr) ts)
+    go (FChoiceF qfn gr b m ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
         -- in various places). However, subsequent choices must be consistent. We thereby
@@ -99,7 +99,7 @@ validate = cata go
                        Nothing -> return $ Fail (toConflictSet (Goal (F qfn) gr)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
                      FChoice qfn gr b m <$> sequence (P.mapWithKey (goF qfn gr) ts)
-    go (SChoiceF qsn (gr, _sc) b   ts) =
+    go (SChoiceF qsn gr b   ts) =
       do
         -- Optional stanza choices are very similar to flag choices.
         PA _ _ psa <- asks pa -- obtain current stanza-preassignment
@@ -117,13 +117,13 @@ validate = cata go
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> QGoalReasonChain -> Scope -> I -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
-    goP qpn@(Q _pp pn) gr sc i r = do
+    goP :: QPN -> QGoalReasonChain -> I -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goP qpn@(Q pp pn) gr i r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies
-      let (PInfo deps _ _ mfr) = idx ! pn ! i -- obtain dependencies and index-dictated exclusions introduced by the choice
-      let qdeps = L.map (fmap (qualify sc)) deps -- qualify the deps in the current scope
+      let (PInfo deps _ mfr) = idx ! pn ! i -- obtain dependencies and index-dictated exclusions introduced by the choice
+      let qdeps = L.map (fmap (Q pp)) deps -- qualify the deps in the current scope
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
       let goal = Goal (P qpn) gr
@@ -228,5 +228,5 @@ extractNewDeps v gr b fa sa = go
                                   Just False -> []
 
 -- | Interface.
-validateTree :: Index -> Tree (QGoalReasonChain, Scope) -> Tree QGoalReasonChain
+validateTree :: Index -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 validateTree idx t = runReader (validate t) (VS idx M.empty (PA M.empty M.empty M.empty))
