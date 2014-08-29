@@ -90,6 +90,7 @@ import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Client.Compat.Environment ( lookupEnv, setEnv )
 import Distribution.Client.Compat.FilePerms   ( setFileHidden )
 import qualified Distribution.Client.Sandbox.Index as Index
+import Distribution.Simple.PackageIndex       ( InstalledPackageIndex )
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import qualified Distribution.Simple.Register      as Register
 import qualified Data.Map                          as M
@@ -228,7 +229,7 @@ getSandboxPackageDB configFlags = do
 -- | Which packages are installed in the sandbox package DB?
 getInstalledPackagesInSandbox :: Verbosity -> ConfigFlags
                                  -> Compiler -> ProgramConfiguration
-                                 -> IO InstalledPackageIndex.PackageIndex
+                                 -> IO InstalledPackageIndex
 getInstalledPackagesInSandbox verbosity configFlags comp conf = do
     sandboxDB <- getSandboxPackageDB configFlags
     getPackageDBContents verbosity comp sandboxDB conf

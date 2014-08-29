@@ -59,7 +59,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program.GHC
          ( GhcMode(..), GhcOptions(..), renderGhcOptions )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Client.Config
          ( defaultCabalDir )
 import Distribution.Client.IndexUtils
@@ -100,7 +100,7 @@ data SetupScriptOptions = SetupScriptOptions {
     useCompiler              :: Maybe Compiler,
     usePlatform              :: Maybe Platform,
     usePackageDB             :: PackageDBStack,
-    usePackageIndex          :: Maybe PackageIndex,
+    usePackageIndex          :: Maybe InstalledPackageIndex,
     useProgramConfig         :: ProgramConfiguration,
     useDistPref              :: FilePath,
     useLoggingHandle         :: Maybe Handle,
@@ -236,7 +236,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   useCachedSetupExecutable = (bt == Simple || bt == Configure || bt == Make)
 
   maybeGetInstalledPackages :: SetupScriptOptions -> Compiler
-                               -> ProgramConfiguration -> IO PackageIndex
+                               -> ProgramConfiguration -> IO InstalledPackageIndex
   maybeGetInstalledPackages options' comp conf =
     case usePackageIndex options' of
       Just index -> return index

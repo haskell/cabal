@@ -33,13 +33,13 @@ import Distribution.Client.Dependency.Modular.Version
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
 convPIs :: OS -> Arch -> CompilerId -> Bool -> Bool ->
-           SI.PackageIndex -> CI.PackageIndex SourcePackage -> Index
+           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage -> Index
 convPIs os arch cid sip strfl iidx sidx =
   mkIndex (convIPI' sip iidx ++ convSPI' os arch cid strfl sidx)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
-convIPI' :: Bool -> SI.PackageIndex -> [(PN, I, PInfo)]
+convIPI' :: Bool -> SI.InstalledPackageIndex -> [(PN, I, PInfo)]
 convIPI' sip idx =
     -- apply shadowing whenever there are multiple installed packages with
     -- the same version
@@ -52,13 +52,13 @@ convIPI' sip idx =
     shadow (pn, i, PInfo fdeps fds encs _) | sip = (pn, i, PInfo fdeps fds encs (Just Shadowed))
     shadow x                                     = x
 
-convIPI :: Bool -> SI.PackageIndex -> Index
+convIPI :: Bool -> SI.InstalledPackageIndex -> Index
 convIPI sip = mkIndex . convIPI' sip
 
 -- | Convert a single installed package into the solver-specific format.
-convIP :: SI.PackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
+convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  let ipid = installedPackageId ipi
+  let ipid = IPI.installedPackageId ipi
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
   in  case mapM (convIPId pn idx) (IPI.depends ipi) of
@@ -72,7 +72,7 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: PN -> SI.PackageIndex -> InstalledPackageId -> Maybe (FlaggedDep PN)
+convIPId :: PN -> SI.InstalledPackageIndex -> InstalledPackageId -> Maybe (FlaggedDep PN)
 convIPId pn' idx ipid =
   case SI.lookupInstalledPackageId idx ipid of
     Nothing  -> Nothing

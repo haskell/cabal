@@ -38,7 +38,7 @@ import Distribution.Simple.Compiler
          , Compiler(..), Flag, languageToFlags, extensionsToFlags
          , PackageDB(..), PackageDBStack )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
          ( Program(programFindVersion)
          , ProgramConfiguration, userMaybeSpecifyPath
@@ -180,7 +180,7 @@ hugsLanguageExtensions =
     ]
 
 getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
-                     -> IO PackageIndex
+                     -> IO InstalledPackageIndex
 getInstalledPackages verbosity packagedbs conf = do
   homedir       <- getHomeDirectory
   (hugsProg, _) <- requireProgram verbosity hugsProgram conf
@@ -191,7 +191,7 @@ getInstalledPackages verbosity packagedbs conf = do
   return $! mconcat indexes
 
   where
-    getIndividualDBPackages :: FilePath -> IO PackageIndex
+    getIndividualDBPackages :: FilePath -> IO InstalledPackageIndex
     getIndividualDBPackages dbdir = do
       pkgdirs <- getPackageDbDirs dbdir
       pkgs    <- sequence [ getInstalledPackage pkgname pkgdir

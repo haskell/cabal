@@ -24,7 +24,7 @@ import Data.List
 import qualified Data.Map as M ( empty )
 import Distribution.Compat.ReadP
 import Distribution.InstalledPackageInfo
-import Distribution.Package
+import Distribution.Package hiding (installedPackageId)
 import Distribution.PackageDescription
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler as C
@@ -86,7 +86,7 @@ uhcLanguageExtensions =
      (FlexibleInstances,            alwaysOn)]
 
 getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
-                     -> IO PackageIndex
+                     -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packagedbs conf = do
   let compilerid = compilerId comp
   systemPkgDir <- rawSystemProgramStdoutConf verbosity uhcProgram conf ["--meta-pkgdir-system"]

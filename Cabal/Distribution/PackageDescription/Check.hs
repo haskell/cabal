@@ -65,8 +65,6 @@ import Distribution.Version
 import Distribution.Package
          ( PackageName(PackageName), packageName, packageVersion
          , Dependency(..), pkgName )
-import Distribution.ModuleExport
-         ( ModuleExport(..) )
 
 import Distribution.Text
          ( display, disp )
@@ -224,7 +222,7 @@ checkLibrary _pkg lib =
 
   where
     moduleDuplicates = dups (libModules lib ++
-                             map exportName (reexportedModules lib))
+                             map moduleReexportName (reexportedModules lib))
 
 checkExecutable :: PackageDescription -> Executable -> [PackageCheck]
 checkExecutable pkg exe =
