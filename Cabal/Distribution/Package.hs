@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Package
@@ -46,19 +48,24 @@ import Distribution.Text (Text(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((<++))
 import qualified Text.PrettyPrint as Disp
-import Text.PrettyPrint ((<>), (<+>), text)
+
 import Control.DeepSeq (NFData(..))
+import Data.Binary (Binary)
 import qualified Data.Char as Char
     ( isDigit, isAlphaNum, isUpper, isLower, ord, chr )
-import Data.List ( intercalate, sort, foldl' )
 import Data.Data ( Data )
+import Data.List ( intercalate, sort, foldl' )
 import Data.Typeable ( Typeable )
-import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
 import Data.Word ( Word64 )
+import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
+import GHC.Generics (Generic)
 import Numeric ( showIntAtBase )
+import Text.PrettyPrint ((<>), (<+>), text)
 
 newtype PackageName = PackageName { unPackageName :: String }
-    deriving (Read, Show, Eq, Ord, Typeable, Data)
+    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+instance Binary PackageName
 
 instance Text PackageName where
   disp (PackageName n) = Disp.text n
@@ -84,7 +91,9 @@ data PackageIdentifier
         pkgName    :: PackageName, -- ^The name of this package, eg. foo
         pkgVersion :: Version -- ^the version of this package, eg 1.2
      }
-     deriving (Read, Show, Eq, Ord, Typeable, Data)
+     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+instance Binary PackageIdentifier
 
 instance Text PackageIdentifier where
   disp (PackageIdentifier n v) = case v of
@@ -108,7 +117,9 @@ instance NFData PackageIdentifier where
 -- in a package database, or overlay of databases.
 --
 newtype InstalledPackageId = InstalledPackageId String
- deriving (Read,Show,Eq,Ord,Typeable,Data)
+ deriving (Generic, Read,Show,Eq,Ord,Typeable,Data)
+
+instance Binary InstalledPackageId
 
 instance Text InstalledPackageId where
   disp (InstalledPackageId str) = text str
@@ -137,7 +148,9 @@ data PackageKey
     -- old versions of GHC assume that the 'sourcePackageId' recorded for an
     -- installed package coincides with the package key it was compiled with.
     | OldPackageKey !PackageId
-    deriving (Read, Show, Eq, Ord, Typeable, Data)
+    deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
+
+instance Binary PackageKey
 
 -- | Convenience function which converts a fingerprint into a new-style package
 -- key.
@@ -231,7 +244,9 @@ instance NFData PackageKey where
 -- | Describes a dependency on a source package (API)
 --
 data Dependency = Dependency PackageName VersionRange
-                  deriving (Read, Show, Eq, Typeable, Data)
+                  deriving (Generic, Read, Show, Eq, Typeable, Data)
+
+instance Binary Dependency
 
 instance Text Dependency where
   disp (Dependency name ver) =

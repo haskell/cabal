@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Compiler
@@ -52,9 +54,11 @@ import Distribution.Text (display)
 import Language.Haskell.Extension (Language(Haskell98), Extension)
 
 import Control.Monad (liftM)
+import Data.Binary (Binary)
 import Data.List (nub)
 import qualified Data.Map as M (Map, lookup)
 import Data.Maybe (catMaybes, isNothing)
+import GHC.Generics (Generic)
 import System.Directory (canonicalizePath)
 
 data Compiler = Compiler {
@@ -67,7 +71,9 @@ data Compiler = Compiler {
         compilerProperties      :: M.Map String String
         -- ^ A key-value map for properties not covered by the above fields.
     }
-    deriving (Show, Read)
+    deriving (Generic, Show, Read)
+
+instance Binary Compiler
 
 showCompilerId :: Compiler -> String
 showCompilerId = display . compilerId
@@ -92,7 +98,9 @@ compilerVersion = (\(CompilerId _ v) -> v) . compilerId
 data PackageDB = GlobalPackageDB
                | UserPackageDB
                | SpecificPackageDB FilePath
-    deriving (Eq, Ord, Show, Read)
+    deriving (Eq, Generic, Ord, Show, Read)
+
+instance Binary PackageDB
 
 -- | We typically get packages from several databases, and stack them
 -- together. This type lets us be explicit about that stacking. For example
@@ -142,7 +150,9 @@ absolutePackageDBPath (SpecificPackageDB db) =
 data OptimisationLevel = NoOptimisation
                        | NormalOptimisation
                        | MaximumOptimisation
-    deriving (Eq, Show, Read, Enum, Bounded)
+    deriving (Bounded, Enum, Eq, Generic, Read, Show)
+
+instance Binary OptimisationLevel
 
 flagToOptimisationLevel :: Maybe String -> OptimisationLevel
 flagToOptimisationLevel Nothing  = NormalOptimisation

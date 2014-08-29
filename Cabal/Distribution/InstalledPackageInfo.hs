@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.InstalledPackageInfo
@@ -89,6 +91,9 @@ import Distribution.Text
 import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
 
+import Data.Binary (Binary)
+import GHC.Generics (Generic)
+
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
 
@@ -131,7 +136,9 @@ data InstalledPackageInfo_ m
         haddockInterfaces :: [FilePath],
         haddockHTMLs      :: [FilePath]
     }
-    deriving (Read, Show)
+    deriving (Generic, Read, Show)
+
+instance Binary m => Binary (InstalledPackageInfo_ m)
 
 instance Package.Package          (InstalledPackageInfo_ str) where
    packageId = sourcePackageId
@@ -192,7 +199,9 @@ data ModuleReexport = ModuleReexport {
        moduleReexportDefiningName    :: ModuleName,
        moduleReexportName            :: ModuleName
     }
-    deriving (Read, Show)
+    deriving (Generic, Read, Show)
+
+instance Binary ModuleReexport
 
 instance Text ModuleReexport where
     disp (ModuleReexport pkgid origname newname) =
