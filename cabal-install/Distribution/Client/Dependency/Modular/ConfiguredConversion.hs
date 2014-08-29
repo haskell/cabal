@@ -14,12 +14,12 @@ import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Package
 
 mkPlan :: Platform -> CompilerId ->
-          SI.PackageIndex -> CI.PackageIndex SourcePackage ->
+          SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           [CP QPN] -> Either [PlanProblem] InstallPlan
 mkPlan plat comp iidx sidx cps =
   new plat comp (CI.fromList (map (convCP iidx sidx) cps))
 
-convCP :: SI.PackageIndex -> CI.PackageIndex SourcePackage ->
+convCP :: SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           CP QPN -> PlanPackage
 convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of

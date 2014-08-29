@@ -64,12 +64,14 @@ import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
          , BuildInfo(buildable), Benchmark(..) )
+import qualified Distribution.InstalledPackageInfo as Installed
+    ( ModuleReexport(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..), PackageKey )
 import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
-         ( PackageIndex )
+         ( InstalledPackageIndex )
 import Distribution.Simple.Setup
          ( ConfigFlags )
 import Distribution.Text
@@ -107,7 +109,7 @@ data LocalBuildInfo = LocalBuildInfo {
         componentsConfigs   :: [(ComponentName, ComponentLocalBuildInfo, [ComponentName])],
                 -- ^ All the components to build, ordered by topological sort, and with their dependencies
                 -- over the intrapackage dependency graph
-        installedPkgs :: PackageIndex,
+        installedPkgs :: InstalledPackageIndex,
                 -- ^ All the info about the installed packages that the
                 -- current package depends on (directly or indirectly).
         pkgDescrFile  :: Maybe FilePath,
@@ -182,7 +184,8 @@ data ComponentLocalBuildInfo
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
-    componentLibraries :: [LibraryName]
+    componentLibraries   :: [LibraryName],
+    componentModuleReexports :: [Installed.ModuleReexport]
   }
   | ExeComponentLocalBuildInfo {
     componentPackageDeps :: [(InstalledPackageId, PackageId)]

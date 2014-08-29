@@ -35,7 +35,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), fromFlag, toFlag, flagToMaybe, fromFlagOrDefault )
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -149,7 +149,7 @@ configure verbosity packageDBs repos comp platform conf
 planLocalPackage :: Verbosity -> Compiler
                  -> Platform
                  -> ConfigFlags -> ConfigExFlags
-                 -> PackageIndex
+                 -> InstalledPackageIndex
                  -> SourcePackageDb
                  -> IO (Progress String String InstallPlan)
 planLocalPackage verbosity comp platform configFlags configExFlags installedPkgIndex

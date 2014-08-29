@@ -29,7 +29,7 @@ import Distribution.Package
          ( packageId )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
@@ -114,7 +114,7 @@ planPackages :: Verbosity
              -> Compiler
              -> Platform
              -> FetchFlags
-             -> PackageIndex
+             -> InstalledPackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> IO [SourcePackage]

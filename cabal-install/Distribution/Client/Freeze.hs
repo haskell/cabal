@@ -36,7 +36,7 @@ import Distribution.Package
          ( Package, PackageIdentifier, packageId, packageName, packageVersion )
 import Distribution.Simple.Compiler
          ( Compiler(compilerId), PackageDBStack )
-import Distribution.Simple.PackageIndex (PackageIndex)
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.Program
          ( ProgramConfiguration )
@@ -120,7 +120,7 @@ planPackages :: Verbosity
              -> Platform
              -> Maybe SandboxPackageInfo
              -> FreezeFlags
-             -> PackageIndex
+             -> InstalledPackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> IO [PlanPackage]

@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, StandaloneDeriving #-}
+#if __GLASGOW_HASKELL__ < 707
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+#endif
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Version
