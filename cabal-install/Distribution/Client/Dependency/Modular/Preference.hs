@@ -166,12 +166,12 @@ preferLatest :: Tree a -> Tree a
 preferLatest = preferLatestFor (const True)
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree (QGoalReasonChain, a) -> Tree (QGoalReasonChain, a)
+requireInstalled :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 requireInstalled p = trav go
   where
-    go (PChoiceF v@(Q _ pn) i@(gr, _) cs)
-      | p pn      = PChoiceF v i (P.mapWithKey installed cs)
-      | otherwise = PChoiceF v i                         cs
+    go (PChoiceF v@(Q _ pn) gr cs)
+      | p pn      = PChoiceF v gr (P.mapWithKey installed cs)
+      | otherwise = PChoiceF v gr                         cs
       where
         installed (I _ (Inst _)) x = x
         installed _              _ = Fail (toConflictSet (Goal (P v) gr)) CannotInstall
@@ -190,12 +190,12 @@ requireInstalled p = trav go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree (QGoalReasonChain, a) -> Tree (QGoalReasonChain, a)
+avoidReinstalls :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 avoidReinstalls p = trav go
   where
-    go (PChoiceF qpn@(Q _ pn) i@(gr, _) cs)
-      | p pn      = PChoiceF qpn i disableReinstalls
-      | otherwise = PChoiceF qpn i cs
+    go (PChoiceF qpn@(Q _ pn) gr cs)
+      | p pn      = PChoiceF qpn gr disableReinstalls
+      | otherwise = PChoiceF qpn gr cs
       where
         disableReinstalls =
           let installed = [ v | (I v (Inst _), _) <- toList cs ]

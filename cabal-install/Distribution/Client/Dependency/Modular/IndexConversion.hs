@@ -49,8 +49,8 @@ convIPI' sip idx =
   where
 
     -- shadowing is recorded in the package info
-    shadow (pn, i, PInfo fdeps fds encs _) | sip = (pn, i, PInfo fdeps fds encs (Just Shadowed))
-    shadow x                                     = x
+    shadow (pn, i, PInfo fdeps fds _) | sip = (pn, i, PInfo fdeps fds (Just Shadowed))
+    shadow x                                = x
 
 convIPI :: Bool -> SI.InstalledPackageIndex -> Index
 convIPI sip = mkIndex . convIPI' sip
@@ -62,8 +62,8 @@ convIP idx ipi =
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
   in  case mapM (convIPId pn idx) (IPI.depends ipi) of
-        Nothing  -> (pn, i, PInfo [] M.empty [] (Just Broken))
-        Just fds -> (pn, i, PInfo fds M.empty [] Nothing)
+        Nothing  -> (pn, i, PInfo []  M.empty (Just Broken))
+        Just fds -> (pn, i, PInfo fds M.empty Nothing)
 -- TODO: Installed packages should also store their encapsulations!
 
 -- | Convert dependencies specified by an installed package id into
@@ -119,7 +119,6 @@ convGPD os arch comp strfl pi
       prefix (Stanza (SN pi BenchStanzas))
         (L.map     (convCondTree os arch comp pi fds (const True)     . snd) benchs))
       fds
-      [] -- TODO: add encaps
       Nothing
 
 prefix :: (FlaggedDeps qpn -> FlaggedDep qpn) -> [FlaggedDeps qpn] -> FlaggedDeps qpn

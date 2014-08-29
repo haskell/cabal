@@ -4,7 +4,6 @@ module Distribution.Client.Dependency.Modular.Package
    module Distribution.Package) where
 
 import Data.List as L
-import Data.Map as M
 
 import Distribution.Package -- from Cabal
 import Distribution.Text    -- from Cabal
@@ -91,21 +90,12 @@ type QPN = Q PN
 showQPN :: QPN -> String
 showQPN = showQ display
 
--- | The scope associates every package with a path. The convention is that packages
--- not in the data structure have an empty path associated with them.
-type Scope = Map PN PP
-
--- | An empty scope structure, for initialization.
-emptyScope :: Scope
-emptyScope = M.empty
-
 -- | Create artificial parents for each of the package names, making
 -- them all independent.
-makeIndependent :: [PN] -> Scope
-makeIndependent ps = L.foldl (\ sc (n, p) -> M.insert p [PackageName (show n)] sc) emptyScope (zip ([0..] :: [Int]) ps)
+makeIndependent :: [PN] -> [QPN]
+makeIndependent ps = [ Q pp pn | (pn, i) <- zip ps [0::Int ..]
+                               , let pp = [PackageName (show i)] ]
 
-qualify :: Scope -> PN -> QPN
-qualify sc pn = Q (findWithDefault [] pn sc) pn
 
 unQualify :: Q a -> a
 unQualify (Q _ x) = x

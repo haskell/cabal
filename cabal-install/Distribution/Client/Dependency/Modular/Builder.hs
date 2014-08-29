@@ -1,4 +1,4 @@
-module Distribution.Client.Dependency.Modular.Builder where
+module Distribution.Client.Dependency.Modular.Builder (buildTree) where
 
 -- Building the search tree.
 --
@@ -30,7 +30,6 @@ import Distribution.Client.Dependency.Modular.Tree
 -- | The state needed during the build phase of the search tree.
 data BuildState = BS {
   index :: Index,           -- ^ information about packages and their dependencies
-  scope :: Scope,           -- ^ information about encapsulations
   rdeps :: RevDepMap,       -- ^ set of all package goals, completed and open, with reverse dependencies
   open  :: PSQ OpenGoal (), -- ^ set of still open goals (flag and package goals)
   next  :: BuildType        -- ^ kind of node to generate next
@@ -57,23 +56,14 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
       | otherwise                                         = go (M.insert qpn [qpn']  g) (cons ng () o) ngs
                                        -- code above is correct; insert/adjust have different arg order
 
--- | Update the current scope by taking into account the encapsulations that
--- are defined for the current package.
-establishScope :: QPN -> Encaps -> BuildState -> BuildState
-establishScope (Q pp pn) ecs s =
-    s { scope = L.foldl (\ m e -> M.insert e pp' m) (scope s) ecs }
-  where
-    pp' = pn : pp -- new path
-
 -- | Given the current scope, qualify all the package names in the given set of
 -- dependencies and then extend the set of open goals accordingly.
 scopedExtendOpen :: QPN -> I -> QGoalReasonChain -> FlaggedDeps PN -> FlagInfo ->
                     BuildState -> BuildState
-scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
+scopedExtendOpen qpn@(Q pp _pn) i gr fdeps fdefs s = extendOpen qpn gs s
   where
-    sc     = scope s
     -- Qualify all package names
-    qfdeps = L.map (fmap (qualify sc)) fdeps -- qualify all the package names
+    qfdeps = L.map (fmap (Q pp)) fdeps -- qualify all the package names
     -- Introduce all package flags
     qfdefs = L.map (\ (fn, b) -> Flagged (FN (PI qpn i) fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals
@@ -101,10 +91,10 @@ data BuildType =
   | Instance QPN I PInfo QGoalReasonChain  -- ^ build a tree for a concrete instance
   deriving Show
 
-build :: BuildState -> Tree (QGoalReasonChain, Scope)
+build :: BuildState -> Tree QGoalReasonChain
 build = ana go
   where
-    go :: BuildState -> TreeF (QGoalReasonChain, Scope) BuildState
+    go :: BuildState -> TreeF QGoalReasonChain BuildState
 
     -- If we have a choice between many goals, we just record the choice in
     -- the tree. We select each open goal in turn, and before we descend, remove
@@ -119,10 +109,10 @@ build = ana go
     --
     -- For a package, we look up the instances available in the global info,
     -- and then handle each instance in turn.
-    go bs@(BS { index = idx, scope = sc, next = OneGoal (OpenGoal (Simple (Dep qpn@(Q _ pn) _)) gr) }) =
+    go bs@(BS { index = idx, next = OneGoal (OpenGoal (Simple (Dep qpn@(Q _ pn) _)) gr) }) =
       case M.lookup pn idx of
         Nothing  -> FailF (toConflictSet (Goal (P qpn) gr)) (BuildFailureNotInIndex pn)
-        Just pis -> PChoiceF qpn (gr, sc) (P.fromList (L.map (\ (i, info) ->
+        Just pis -> PChoiceF qpn gr (P.fromList (L.map (\ (i, info) ->
                                                            (i, bs { next = Instance qpn i info gr }))
                                                          (M.toList pis)))
           -- TODO: data structure conversion is rather ugly here
@@ -131,8 +121,8 @@ build = ana go
     -- that is indicated by the flag default.
     --
     -- TODO: Should we include the flag default in the tree?
-    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
-      FChoiceF qfn (gr, sc) (w || trivial) m (P.fromList (reorder b
+    go bs@(BS { next = OneGoal (OpenGoal (Flagged qfn@(FN (PI qpn _) _) (FInfo b m w) t f) gr) }) =
+      FChoiceF qfn gr (w || trivial) m (P.fromList (reorder b
         [(True,  (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn True  : gr)) t) bs) { next = Goals }),
          (False, (extendOpen qpn (L.map (flip OpenGoal (FDependency qfn False : gr)) f) bs) { next = Goals })]))
       where
@@ -140,8 +130,8 @@ build = ana go
         reorder False = reverse
         trivial = L.null t && L.null f
 
-    go bs@(BS { scope = sc, next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
-      SChoiceF qsn (gr, sc) trivial (P.fromList
+    go bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
+      SChoiceF qsn gr trivial (P.fromList
         [(False,                                                                        bs  { next = Goals }),
          (True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn : gr)) t) bs) { next = Goals })])
       where
@@ -151,20 +141,17 @@ build = ana go
     -- and furthermore we update the set of goals.
     --
     -- TODO: We could inline this above.
-    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs ecs _) gr }) =
-      go ((establishScope qpn ecs
-             (scopedExtendOpen qpn i (PDependency (PI qpn i) : gr) fdeps fdefs bs))
+    go bs@(BS { next = Instance qpn i (PInfo fdeps fdefs _) gr }) =
+      go ((scopedExtendOpen qpn i (PDependency (PI qpn i) : gr) fdeps fdefs bs)
              { next = Goals })
 
 -- | Interface to the tree builder. Just takes an index and a list of package names,
 -- and computes the initial state and then the tree from there.
-buildTree :: Index -> Bool -> [PN] -> Tree (QGoalReasonChain, Scope)
+buildTree :: Index -> Bool -> [PN] -> Tree QGoalReasonChain
 buildTree idx ind igs =
-    build (BS idx sc
-                  (M.fromList (L.map (\ qpn -> (qpn, []))                                                     qpns))
+    build (BS idx (M.fromList (L.map (\ qpn -> (qpn, []))                                                     qpns))
                   (P.fromList (L.map (\ qpn -> (OpenGoal (Simple (Dep qpn (Constrained []))) [UserGoal], ())) qpns))
                   Goals)
   where
-    sc | ind       = makeIndependent igs
-       | otherwise = emptyScope
-    qpns           = L.map (qualify sc) igs
+    qpns | ind       = makeIndependent igs
+         | otherwise = L.map (Q []) igs

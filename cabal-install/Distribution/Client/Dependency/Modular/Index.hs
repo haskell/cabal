@@ -15,16 +15,13 @@ import Distribution.Client.Dependency.Modular.Tree
 type Index = Map PN (Map I PInfo)
 
 -- | Info associated with a package instance.
--- Currently, dependencies, flags, encapsulations and failure reasons.
+-- Currently, dependencies, flags and failure reasons.
 -- Packages that have a failure reason recorded for them are disabled
 -- globally, for reasons external to the solver. We currently use this
 -- for shadowing which essentially is a GHC limitation, and for
 -- installed packages that are broken.
-data PInfo = PInfo (FlaggedDeps PN) FlagInfo Encaps (Maybe FailReason)
+data PInfo = PInfo (FlaggedDeps PN) FlagInfo (Maybe FailReason)
   deriving (Show)
-
--- | Encapsulations. A list of package names.
-type Encaps = [PN]
 
 mkIndex :: [(PN, I, PInfo)] -> Index
 mkIndex xs = M.map M.fromList (groupMap (L.map (\ (pn, i, pi) -> (pn, (i, pi))) xs))
