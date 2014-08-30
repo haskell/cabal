@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.ModuleName
@@ -22,21 +24,25 @@ module Distribution.ModuleName (
 import Distribution.Text
          ( Text(..) )
 
+import Data.Binary (Binary)
+import qualified Data.Char as Char
+         ( isAlphaNum, isUpper )
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
-import qualified Data.Char as Char
-         ( isAlphaNum, isUpper )
-import System.FilePath
-         ( pathSeparator )
 import Data.List
          ( intercalate, intersperse )
+import GHC.Generics (Generic)
+import System.FilePath
+         ( pathSeparator )
 
 -- | A valid Haskell module name.
 --
 newtype ModuleName = ModuleName [String]
-  deriving (Eq, Ord, Read, Show, Typeable, Data)
+  deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
+
+instance Binary ModuleName
 
 instance Text ModuleName where
   disp (ModuleName ms) =

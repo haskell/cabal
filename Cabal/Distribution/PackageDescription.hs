@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription
@@ -96,12 +98,14 @@ module Distribution.PackageDescription (
         knownRepoTypes,
   ) where
 
+import Data.Binary (Binary)
 import Data.Data   (Data)
 import Data.List   (nub, intercalate)
 import Data.Maybe  (fromMaybe, maybeToList)
 import Data.Monoid (Monoid(mempty, mappend))
 import Data.Typeable ( Typeable )
 import Control.Monad (MonadPlus(mplus))
+import GHC.Generics (Generic)
 import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Data.Char as Char (isAlphaNum, isDigit, toLower)
@@ -180,7 +184,9 @@ data PackageDescription
         extraTmpFiles  :: [FilePath],
         extraDocFiles  :: [FilePath]
     }
-    deriving (Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary PackageDescription
 
 instance Package PackageDescription where
   packageId = package
@@ -258,7 +264,9 @@ data BuildType
                 --   be built. Doing it this way rather than just giving a
                 --   parse error means we get better error messages and allows
                 --   you to inspect the rest of the package description.
-                deriving (Show, Read, Eq, Typeable, Data)
+                deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary BuildType
 
 knownBuildTypes :: [BuildType]
 knownBuildTypes = [Simple, Configure, Make, Custom]
@@ -285,7 +293,9 @@ data Library = Library {
         libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
         libBuildInfo      :: BuildInfo
     }
-    deriving (Show, Eq, Read, Typeable, Data)
+    deriving (Generic, Show, Eq, Read, Typeable, Data)
+
+instance Binary Library
 
 instance Monoid Library where
   mempty = Library {
@@ -337,7 +347,9 @@ data ModuleReexport = ModuleReexport {
        moduleReexportOriginalName    :: ModuleName,
        moduleReexportName            :: ModuleName
     }
-    deriving (Eq, Read, Show, Typeable, Data)
+    deriving (Eq, Generic, Read, Show, Typeable, Data)
+
+instance Binary ModuleReexport
 
 instance Text ModuleReexport where
     disp (ModuleReexport mpkgname origname newname) =
@@ -368,7 +380,9 @@ data Executable = Executable {
         modulePath :: FilePath,
         buildInfo  :: BuildInfo
     }
-    deriving (Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary Executable
 
 instance Monoid Executable where
   mempty = Executable {
@@ -422,7 +436,9 @@ data TestSuite = TestSuite {
         -- a better solution is waiting on the next overhaul to the
         -- GenericPackageDescription -> PackageDescription resolution process.
     }
-    deriving (Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary TestSuite
 
 -- | The test suite interfaces that are currently defined. Each test suite must
 -- specify which interface it supports.
@@ -448,7 +464,9 @@ data TestSuiteInterface =
      -- the given reason (e.g. unknown test type).
      --
    | TestSuiteUnsupported TestType
-   deriving (Eq, Read, Show, Typeable, Data)
+   deriving (Eq, Generic, Read, Show, Typeable, Data)
+
+instance Binary TestSuiteInterface
 
 instance Monoid TestSuite where
     mempty = TestSuite {
@@ -504,7 +522,9 @@ testModules test = (case testInterface test of
 data TestType = TestTypeExe Version     -- ^ \"type: exitcode-stdio-x.y\"
               | TestTypeLib Version     -- ^ \"type: detailed-x.y\"
               | TestTypeUnknown String Version -- ^ Some unknown test type e.g. \"type: foo\"
-    deriving (Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary TestType
 
 knownTestTypes :: [TestType]
 knownTestTypes = [ TestTypeExe (Version [1,0] [])
@@ -553,7 +573,9 @@ data Benchmark = Benchmark {
         benchmarkEnabled   :: Bool
         -- TODO: See TODO for 'testEnabled'.
     }
-    deriving (Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary Benchmark
 
 -- | The benchmark interfaces that are currently defined. Each
 -- benchmark must specify which interface it supports.
@@ -575,7 +597,9 @@ data BenchmarkInterface =
      -- interfaces for the given reason (e.g. unknown benchmark type).
      --
    | BenchmarkUnsupported BenchmarkType
-   deriving (Eq, Read, Show, Typeable, Data)
+   deriving (Eq, Generic, Read, Show, Typeable, Data)
+
+instance Binary BenchmarkInterface
 
 instance Monoid Benchmark where
     mempty = Benchmark {
@@ -629,7 +653,9 @@ data BenchmarkType = BenchmarkTypeExe Version
                      -- ^ \"type: exitcode-stdio-x.y\"
                    | BenchmarkTypeUnknown String Version
                      -- ^ Some unknown benchmark type e.g. \"type: foo\"
-    deriving (Show, Read, Eq, Typeable, Data)
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary BenchmarkType
 
 knownBenchmarkTypes :: [BenchmarkType]
 knownBenchmarkTypes = [ BenchmarkTypeExe (Version [1,0] []) ]
@@ -683,7 +709,9 @@ data BuildInfo = BuildInfo {
                                                 -- simple assoc-list.
         targetBuildDepends :: [Dependency] -- ^ Dependencies specific to a library or executable target
     }
-    deriving (Show,Read,Eq,Typeable,Data)
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary BuildInfo
 
 instance Monoid BuildInfo where
   mempty = BuildInfo {
@@ -857,7 +885,9 @@ data SourceRepo = SourceRepo {
   -- given the default is \".\" ie no subdirectory.
   repoSubdir   :: Maybe FilePath
 }
-  deriving (Eq, Read, Show, Typeable, Data)
+  deriving (Eq, Generic, Read, Show, Typeable, Data)
+
+instance Binary SourceRepo
 
 -- | What this repo info is for, what it represents.
 --
@@ -873,7 +903,9 @@ data RepoKind =
   | RepoThis
 
   | RepoKindUnknown String
-  deriving (Eq, Ord, Read, Show, Typeable, Data)
+  deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
+
+instance Binary RepoKind
 
 -- | An enumeration of common source control systems. The fields used in the
 -- 'SourceRepo' depend on the type of repo. The tools and methods used to
@@ -882,7 +914,9 @@ data RepoKind =
 data RepoType = Darcs | Git | SVN | CVS
               | Mercurial | GnuArch | Bazaar | Monotone
               | OtherRepoType String
-  deriving (Eq, Ord, Read, Show, Typeable, Data)
+  deriving (Eq, Generic, Ord, Read, Show, Typeable, Data)
+
+instance Binary RepoType
 
 knownRepoTypes :: [RepoType]
 knownRepoTypes = [Darcs, Git, SVN, CVS
@@ -984,7 +1018,9 @@ data Flag = MkFlag
 
 -- | A 'FlagName' is the name of a user-defined configuration flag
 newtype FlagName = FlagName String
-    deriving (Eq, Ord, Show, Read, Typeable, Data)
+    deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
+
+instance Binary FlagName
 
 -- | A 'FlagAssignment' is a total or partial mapping of 'FlagName's to
 -- 'Bool' flag values. It represents the flags chosen by the user or

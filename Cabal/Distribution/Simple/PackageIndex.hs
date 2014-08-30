@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.PackageIndex
@@ -59,19 +61,21 @@ module Distribution.Simple.PackageIndex (
   moduleNameIndex,
   ) where
 
-import Prelude hiding (lookup)
 import Control.Exception (assert)
-import qualified Data.Map as Map
-import Data.Map (Map)
-import qualified Data.Tree  as Tree
-import qualified Data.Graph as Graph
-import qualified Data.Array as Array
 import Data.Array ((!))
+import qualified Data.Array as Array
+import Data.Binary (Binary)
+import qualified Data.Graph as Graph
 import Data.List as List
          ( null, foldl', sort
          , groupBy, sortBy, find, isInfixOf, nubBy, deleteBy, deleteFirstsBy )
 import Data.Monoid (Monoid(..))
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Maybe (isNothing, fromMaybe)
+import qualified Data.Tree  as Tree
+import GHC.Generics (Generic)
+import Prelude hiding (lookup)
 
 import Distribution.Package
          ( PackageName(..), PackageId
@@ -112,7 +116,9 @@ data PackageIndex a = PackageIndex
   -- preserved. See #1463 for discussion.
   !(Map PackageName (Map Version [a]))
 
-  deriving (Show, Read)
+  deriving (Generic, Show, Read)
+
+instance Binary a => Binary (PackageIndex a)
 
 -- | The default package index which contains 'InstalledPackageInfo'.  Normally
 -- use this.

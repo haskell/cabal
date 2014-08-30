@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Verbosity
@@ -22,11 +24,15 @@ module Distribution.Verbosity (
   showForCabal, showForGHC
  ) where
 
+import Data.Binary
 import Data.List (elemIndex)
 import Distribution.ReadE
+import GHC.Generics
 
 data Verbosity = Silent | Normal | Verbose | Deafening
-    deriving (Show, Read, Eq, Ord, Enum, Bounded)
+    deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded)
+
+instance Binary Verbosity
 
 -- We shouldn't print /anything/ unless an error occurs in silent mode
 silent :: Verbosity
