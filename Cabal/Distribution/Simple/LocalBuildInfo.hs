@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.LocalBuildInfo
@@ -78,11 +80,14 @@ import Distribution.Text
          ( display )
 import Distribution.System
           ( Platform )
-import Data.List (nub, find)
-import Data.Graph
-import Data.Tree  (flatten)
+
 import Data.Array ((!))
+import Data.Binary (Binary)
+import Data.Graph
+import Data.List (nub, find)
 import Data.Maybe
+import Data.Tree  (flatten)
+import GHC.Generics (Generic)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -134,7 +139,9 @@ data LocalBuildInfo = LocalBuildInfo {
         stripLibs     :: Bool,  -- ^Whether to strip libraries during install
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
         progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
-  } deriving (Read, Show)
+  } deriving (Generic, Read, Show)
+
+instance Binary LocalBuildInfo
 
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
@@ -169,7 +176,9 @@ data ComponentName = CLibName   -- currently only a single lib
                    | CExeName   String
                    | CTestName  String
                    | CBenchName String
-                   deriving (Show, Eq, Ord, Read)
+                   deriving (Eq, Generic, Ord, Read, Show)
+
+instance Binary ComponentName
 
 showComponentName :: ComponentName -> String
 showComponentName CLibName          = "library"
@@ -196,7 +205,9 @@ data ComponentLocalBuildInfo
   | BenchComponentLocalBuildInfo {
     componentPackageDeps :: [(InstalledPackageId, PackageId)]
   }
-  deriving (Read, Show)
+  deriving (Generic, Read, Show)
+
+instance Binary ComponentLocalBuildInfo
 
 foldComponent :: (Library -> a)
               -> (Executable -> a)
@@ -210,7 +221,9 @@ foldComponent _ _ f _ (CTest  tst) = f tst
 foldComponent _ _ _ f (CBench bch) = f bch
 
 data LibraryName = LibraryName String
-    deriving (Read, Show)
+    deriving (Generic, Read, Show)
+
+instance Binary LibraryName
 
 componentBuildInfo :: Component -> BuildInfo
 componentBuildInfo =

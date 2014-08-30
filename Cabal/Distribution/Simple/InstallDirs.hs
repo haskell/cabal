@@ -1,4 +1,6 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.InstallDirs
@@ -41,9 +43,11 @@ module Distribution.Simple.InstallDirs (
   ) where
 
 
+import Data.Binary (Binary)
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
+import GHC.Generics (Generic)
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
@@ -89,7 +93,9 @@ data InstallDirs dir = InstallDirs {
         htmldir      :: dir,
         haddockdir   :: dir,
         sysconfdir   :: dir
-    } deriving (Read, Show)
+    } deriving (Generic, Read, Show)
+
+instance Binary dir => Binary (InstallDirs dir)
 
 instance Functor InstallDirs where
   fmap f dirs = InstallDirs {
@@ -346,12 +352,16 @@ prefixRelativeInstallDirs pkgId pkg_key compilerId platform dirs =
 -- | An abstract path, possibly containing variables that need to be
 -- substituted for to get a real 'FilePath'.
 --
-newtype PathTemplate = PathTemplate [PathComponent]
+newtype PathTemplate = PathTemplate [PathComponent] deriving (Generic)
+
+instance Binary PathTemplate
 
 data PathComponent =
        Ordinary FilePath
      | Variable PathTemplateVariable
-     deriving Eq
+     deriving (Eq, Generic)
+
+instance Binary PathComponent
 
 data PathTemplateVariable =
        PrefixVar     -- ^ The @$prefix@ path variable
@@ -374,7 +384,9 @@ data PathTemplateVariable =
      | TestSuiteResultVar -- ^ The result of the test suite being run, eg
                           -- @pass@, @fail@, or @error@.
      | BenchmarkNameVar   -- ^ The name of the benchmark being run
-  deriving Eq
+  deriving (Eq, Generic)
+
+instance Binary PathTemplateVariable
 
 type PathTemplateEnv = [(PathTemplateVariable, PathTemplate)]
 

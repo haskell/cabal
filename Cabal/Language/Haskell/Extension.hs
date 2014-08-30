@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Language.Haskell.Extension
@@ -25,8 +27,10 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Char as Char (isAlphaNum)
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
+import Data.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
+import GHC.Generics (Generic)
 
 -- ------------------------------------------------------------
 -- * Language
@@ -49,7 +53,9 @@ data Language =
 
   -- | An unknown language, identified by its name.
   | UnknownLanguage String
-  deriving (Show, Read, Eq, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary Language
 
 knownLanguages :: [Language]
 knownLanguages = [Haskell98, Haskell2010]
@@ -97,7 +103,9 @@ data Extension =
   -- pragma.
   | UnknownExtension String
 
-  deriving (Show, Read, Eq, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Binary Extension
 
 data KnownExtension =
 
@@ -680,7 +688,9 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#ambiguity>
   | AllowAmbiguousTypes
 
-  deriving (Show, Read, Eq, Enum, Bounded, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Enum, Bounded, Typeable, Data)
+
+instance Binary KnownExtension
 
 {-# DEPRECATED knownExtensions
    "KnownExtension is an instance of Enum and Bounded, use those instead." #-}

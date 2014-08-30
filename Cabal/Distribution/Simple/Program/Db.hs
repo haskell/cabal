@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Program.Db
@@ -70,6 +72,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
+import Data.Binary (Binary(..))
 import Data.List
          ( foldl' )
 import Data.Maybe
@@ -131,6 +134,12 @@ instance Read ProgramDb where
   readsPrec p s =
     [ (emptyProgramDb { configuredProgs = Map.fromList s' }, r)
     | (s', r) <- readsPrec p s ]
+
+instance Binary ProgramDb where
+  put = put . configuredProgs
+  get = do
+      progs <- get
+      return $! emptyProgramDb { configuredProgs = progs }
 
 
 -- | The Read\/Show instance does not preserve all the unconfigured 'Programs'
