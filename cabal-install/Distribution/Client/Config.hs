@@ -46,6 +46,7 @@ import Distribution.Client.Setup
          , InstallFlags(..), installOptions, defaultInstallFlags
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
+         , defaultHaddockFlags
          , showRepo, parseRepo )
 import Distribution.Utils.NubList
          ( fromNubList, toNubList)
@@ -54,7 +55,7 @@ import Distribution.Simple.Compiler
          ( OptimisationLevel(..) )
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
-         , HaddockFlags(..), haddockOptions, defaultHaddockFlags
+         , HaddockFlags(..), haddockOptions
          , installDirsOptions
          , programConfigurationPaths', programConfigurationOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )

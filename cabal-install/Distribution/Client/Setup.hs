@@ -17,6 +17,7 @@ module Distribution.Client.Setup
                         , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , replCommand, testCommand, benchmarkCommand
+    , defaultHaddockFlags
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
@@ -493,6 +494,15 @@ benchmarkCommand = parent {
 
     parent   = Cabal.benchmarkCommand
     progConf = defaultProgramConfiguration
+
+-- ------------------------------------------------------------
+-- * Default Haddock flags for 'cabal-install'.
+-- ------------------------------------------------------------
+
+defaultHaddockFlags :: HaddockFlags
+defaultHaddockFlags = Cabal.defaultHaddockFlags {
+  haddockHscolour = Flag True
+  }
 
 -- ------------------------------------------------------------
 -- * Fetch command
@@ -985,7 +995,7 @@ data InstallFlags = InstallFlags {
 
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags = InstallFlags {
-    installDocumentation   = Flag False,
+    installDocumentation   = Flag True,
     installHaddockIndex    = Flag docIndexFile,
     installDryRun          = Flag False,
     installMaxBackjumps    = Flag defaultMaxBackjumps,
