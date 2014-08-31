@@ -37,7 +37,7 @@ import Distribution.Simple.GHC ( componentGhcOptions, ghcLibDir )
 import Distribution.Simple.Program.GHC
          ( GhcOptions(..), GhcDynLinkMode(..), renderGhcOptions )
 import Distribution.Simple.Program
-         ( ConfiguredProgram(..), requireProgramVersion
+         ( ConfiguredProgram(..), lookupProgramVersion, requireProgramVersion
          , rawSystemProgram, rawSystemProgramStdout
          , hscolourProgram, haddockProgram )
 import Distribution.Simple.PreProcess
@@ -186,8 +186,9 @@ haddock pkg_descr lbi suffixes flags = do
 
     initialBuildSteps (flag haddockDistPref) pkg_descr lbi verbosity
 
-    when (flag haddockHscolour) $ hscolour' pkg_descr lbi suffixes $
-         defaultHscolourFlags `mappend` haddockToHscolour flags
+    when (flag haddockHscolour) $
+      hscolour' (warn verbosity) pkg_descr lbi suffixes
+      (defaultHscolourFlags `mappend` haddockToHscolour flags)
 
     libdirArgs <- getGhcLibDir  verbosity lbi
     let commonArgs = mconcat
@@ -601,49 +602,53 @@ hscolour pkg_descr lbi suffixes flags = do
   -- we preprocess even if hscolour won't be found on the machine
   -- will this upset someone?
   initialBuildSteps distPref pkg_descr lbi verbosity
-  hscolour' pkg_descr lbi suffixes flags
+  hscolour' die pkg_descr lbi suffixes flags
  where
    verbosity  = fromFlag (hscolourVerbosity flags)
    distPref = fromFlag $ hscolourDistPref flags
 
-hscolour' :: PackageDescription
+hscolour' :: (String -> IO ()) -- ^ Called when the 'hscolour' exe is not found.
+          -> PackageDescription
           -> LocalBuildInfo
           -> [PPSuffixHandler]
           -> HscolourFlags
           -> IO ()
-hscolour' pkg_descr lbi suffixes flags = do
-    let distPref = fromFlag $ hscolourDistPref flags
-    (hscolourProg, _, _) <-
-      requireProgramVersion
-        verbosity hscolourProgram
-        (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
-
-    setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
-    createDirectoryIfMissingVerbose verbosity True $ hscolourPref distPref pkg_descr
-
-    let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
-    withAllComponentsInBuildOrder pkg_descr lbi $ \comp _ -> do
-      pre comp
-      let
-        doExe com = case (compToExe com) of
-          Just exe -> do
-            let outputDir = hscolourPref distPref pkg_descr </> exeName exe </> "src"
-            runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe
-          Nothing -> do
-           warn (fromFlag $ hscolourVerbosity flags)
-             "Unsupported component, skipping..."
-           return ()
-      case comp of
-        CLib lib -> do
-          let outputDir = hscolourPref distPref pkg_descr </> "src"
-          runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib
-        CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
-        CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp
-        CBench _ -> when (fromFlag (hscolourBenchmarks  flags)) $ doExe comp
+hscolour' onNoHsColour pkg_descr lbi suffixes flags =
+    either onNoHsColour (\(hscolourProg, _, _) -> go hscolourProg) =<<
+      lookupProgramVersion verbosity hscolourProgram
+      (orLaterVersion (Version [1,8] [])) (withPrograms lbi)
   where
+    go :: ConfiguredProgram -> IO ()
+    go hscolourProg = do
+      setupMessage verbosity "Running hscolour for" (packageId pkg_descr)
+      createDirectoryIfMissingVerbose verbosity True $
+        hscolourPref distPref pkg_descr
+
+      let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
+      withAllComponentsInBuildOrder pkg_descr lbi $ \comp _ -> do
+        pre comp
+        let
+          doExe com = case (compToExe com) of
+            Just exe -> do
+              let outputDir = hscolourPref distPref pkg_descr
+                              </> exeName exe </> "src"
+              runHsColour hscolourProg outputDir =<< getExeSourceFiles lbi exe
+            Nothing -> do
+              warn (fromFlag $ hscolourVerbosity flags)
+                "Unsupported component, skipping..."
+              return ()
+        case comp of
+          CLib lib -> do
+            let outputDir = hscolourPref distPref pkg_descr </> "src"
+            runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib
+          CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
+          CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp
+          CBench _ -> when (fromFlag (hscolourBenchmarks  flags)) $ doExe comp
+
     stylesheet = flagToMaybe (hscolourCSS flags)
 
     verbosity  = fromFlag (hscolourVerbosity flags)
+    distPref   = fromFlag (hscolourDistPref flags)
 
     runHsColour prog outputDir moduleFiles = do
          createDirectoryIfMissingVerbose verbosity True outputDir
