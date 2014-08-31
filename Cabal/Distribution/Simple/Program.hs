@@ -79,6 +79,7 @@ module Distribution.Simple.Program (
     , userSpecifyArgss
     , userSpecifiedArgs
     , lookupProgram
+    , lookupProgramVersion
     , updateProgram
     , configureProgram
     , configureAllKnownPrograms
