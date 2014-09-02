@@ -46,9 +46,10 @@ script:
  - cd ../cabal-install
  - cabal sandbox init
  - cabal sandbox add-source ../Cabal
- - cabal install --dependencies-only
- - cabal configure
+ - cabal install --dependencies-only --enable-tests
+ - cabal configure --enable-tests
  - cabal build
+ - cabal test
  - cabal check
  - cabal sdist
  - install_from_tarball
