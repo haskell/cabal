@@ -8,7 +8,10 @@ module Main
 
 -- Modules from Cabal.
 import Distribution.Simple.Program.Builtin (ghcPkgProgram)
-import Distribution.Simple.Program.Db (defaultProgramDb, requireProgram)
+import Distribution.Simple.Program.Db
+        (defaultProgramDb, requireProgram, setProgramSearchPath)
+import Distribution.Simple.Program.Find
+        (ProgramSearchPathEntry(ProgramSearchPathDir), defaultProgramSearchPath)
 import Distribution.Simple.Program.Types
         ( Program(..), simpleProgram, programPath)
 import Distribution.Simple.Utils ( findProgramVersion )
@@ -16,7 +19,8 @@ import Distribution.Verbosity (normal)
 
 -- Third party modules.
 import qualified Control.Exception.Extensible as E
-import System.Directory (getCurrentDirectory, setCurrentDirectory)
+import System.Directory
+        (canonicalizePath, getCurrentDirectory, setCurrentDirectory)
 import Test.Framework (Test, defaultMain, testGroup)
 
 -- Modules containing the tests.
@@ -38,10 +42,14 @@ cabalProgram = (simpleProgram "cabal") {
 
 main :: IO ()
 main = do
-    (cabal, _) <- requireProgram normal cabalProgram defaultProgramDb
-    (ghcPkg, _) <- requireProgram normal ghcPkgProgram defaultProgramDb
+    buildDir <- canonicalizePath "dist/build/cabal"
+    let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
+    (cabal, _) <- requireProgram normal cabalProgram
+                      (setProgramSearchPath programSearchPath defaultProgramDb)
     let cabalPath = programPath cabal
-        ghcPkgPath = programPath ghcPkg
+
+    (ghcPkg, _) <- requireProgram normal ghcPkgProgram defaultProgramDb
+    let ghcPkgPath = programPath ghcPkg
     putStrLn $ "Using cabal: " ++ cabalPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     cwd <- getCurrentDirectory
