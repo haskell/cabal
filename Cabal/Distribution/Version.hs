@@ -722,9 +722,11 @@ instance Text VersionRange where
                      return f)
         factor = Parse.choice $ parens expr
                               : parseAnyVersion
+                              : parseNoVersion
                               : parseWildcardRange
                               : map parseRangeOp rangeOps
         parseAnyVersion    = Parse.string "-any" >> return AnyVersion
+        parseNoVersion     = Parse.string "-none" >> return noVersion
 
         parseWildcardRange = do
           _ <- Parse.string "=="
