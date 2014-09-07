@@ -755,6 +755,16 @@ be controlled with the following command line options.
     It's also possible to enable `--allow-newer` permanently by setting
     `allow-newer: True` in the `~/.cabal/config` file.
 
+`--constraint=`_constraint_
+:   Restrict solutions involving a package to a given version range.
+    For example, `cabal install --constraint="bar==2.1"` will only consider
+    install plans that do not use `bar` at all, or `bar` of version 2.1.
+
+    As a special case, `cabal install --constraint="bar -none"` prevents
+    `bar` from being used at all. (`-none` abbreviates `> 1 && < 1`)
+    `cabal install --constraint="bar installed"` prevents reinstallation
+    of the `bar` package.
+
 ## setup build ##
 
 Perform any preprocessing or compilation needed to make this package ready for installation.
