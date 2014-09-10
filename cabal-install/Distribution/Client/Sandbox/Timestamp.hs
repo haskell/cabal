@@ -16,6 +16,7 @@ module Distribution.Client.Sandbox.Timestamp (
   listModifiedDeps,
   ) where
 
+import Control.Exception                             (IOException)
 import Control.Monad                                 (filterM, forM, when)
 import Data.Char                                     (isSpace)
 import Data.List                                     (partition)
@@ -45,9 +46,8 @@ import Distribution.Client.Sandbox.Index
 import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
                                                       defaultSetupScriptOptions,
                                                       setupWrapper)
-import Distribution.Client.Utils                     (inDir, removeExistingFile,
-                                                      tryCanonicalizePath,
-                                                      tryFindAddSourcePackageDesc)
+import Distribution.Client.Utils
+  (inDir, removeExistingFile, tryCanonicalizePath, tryFindAddSourcePackageDesc)
 
 import Distribution.Compat.Exception                 (catchIO)
 import Distribution.Client.Compat.Time               (EpochTime, getCurTime,
@@ -234,13 +234,16 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
         srcs <- fmap lines . readFile $ file
         mapM tryCanonicalizePath srcs
 
-      onFailedListSources :: IO ()
-      onFailedListSources = warn verbosity $
+      onFailedListSources :: IOException -> IO ()
+      onFailedListSources e = do
+        warn verbosity $
           "Could not list sources of the add-source dependency '"
           ++ display (packageName pkg) ++ "'. Skipping the timestamp check."
+        debug verbosity $
+          "Exception was: " ++ show e
 
   -- Run setup sdist --list-sources=TMPFILE
-  ret <- doListSources `catchIO` (\_ -> onFailedListSources >> return [])
+  ret <- doListSources `catchIO` (\e -> onFailedListSources e >> return [])
   removeExistingFile file
   return ret
 
