@@ -62,6 +62,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
          , LibraryName(..), absoluteInstallDirs )
+import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
@@ -85,7 +86,7 @@ import qualified Distribution.Simple.Program.Ld    as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
-         ( toFlag, fromFlag, fromFlagOrDefault )
+         ( toFlag, fromFlag, fromFlagOrDefault, configCoverage, configDistPref )
 import qualified Distribution.Simple.Setup as Cabal
         ( Flag )
 import Distribution.Simple.Compiler
@@ -703,11 +704,22 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
       forceSharedLib  = doingTH &&     isGhcDynamic
       -- TH always needs default libs, even when building for profiling
 
+  -- Determine if program coverage should be enabled and if so, what
+  -- '-hpcdir' should be.
+  let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+      -- Component name. Not 'libName' because that has the "HS" prefix
+      -- that GHC gives Haskell libraries.
+      cname = display $ PD.package $ localPkgDescr lbi
+      distPref = fromFlag $ configDistPref $ configFlags lbi
+      hpcdir | isCoverageEnabled = toFlag $ Hpc.mixDir distPref cname
+             | otherwise = mempty
+
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
   let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
+                    `mappend` mempty { ghcOptHPCDir = hpcdir }
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = toFlag numJobs,
@@ -943,6 +955,13 @@ buildOrReplExe forRepl verbosity numJobsFlag _pkg_descr lbi
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?  FIX: what about exeName.hi-boot?
 
+  -- Determine if program coverage should be enabled and if so, what
+  -- '-hpcdir' should be.
+  let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
+      distPref = fromFlag $ configDistPref $ configFlags lbi
+      hpcdir | isCoverageEnabled = toFlag $ Hpc.mixDir distPref exeName'
+             | otherwise = mempty
+
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
@@ -957,7 +976,8 @@ buildOrReplExe forRepl verbosity numJobsFlag _pkg_descr lbi
                       ghcOptInputFiles   =
                         [ srcMainFile | isHaskellMain],
                       ghcOptInputModules =
-                        [ m | not isHaskellMain, m <- exeModules exe]
+                        [ m | not isHaskellMain, m <- exeModules exe],
+                      ghcOptHPCDir = hpcdir
                     }
       staticOpts = baseOpts `mappend` mempty {
                       ghcOptDynLinkMode    = toFlag GhcStaticOnly
@@ -1192,7 +1212,6 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
     toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
     toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
-
 
 componentCcGhcOptions :: Verbosity -> LocalBuildInfo
                       -> BuildInfo -> ComponentLocalBuildInfo

@@ -75,7 +75,6 @@ import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
-import Distribution.Simple.Hpc ( enableCoverage )
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
@@ -85,7 +84,8 @@ import Distribution.Simple.Program
     , lookupProgram, requireProgram, requireProgramVersion
     , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
-    ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
+    ( ConfigFlags(..), CopyDest(..), Flag(..), fromFlag, fromFlagOrDefault
+    , flagToMaybe )
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
@@ -294,7 +294,13 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
-  = do  let distPref = fromFlag (configDistPref cfg)
+  = do  unless (configLibCoverage cfg == NoFlag) $ do
+            let enable | fromFlag (configLibCoverage cfg) = "enable"
+                       | otherwise = "disable"
+            die $ "Option --" ++ enable ++ "-library-coverage is obsolete! "
+                  ++ "Please use --" ++ enable ++ "-coverage instead."
+
+        let distPref = fromFlag (configDistPref cfg)
             buildDir' = distPref </> "build"
             verbosity = fromFlag (configVerbosity cfg)
 
@@ -411,9 +417,7 @@ configure (pkg_descr0, pbi) cfg
 
         -- add extra include/lib dirs as specified in cfg
         -- we do it here so that those get checked too
-        let pkg_descr =
-                enableCoverage (fromFlag (configLibCoverage cfg)) distPref
-                $ addExtraIncludeLibDirs pkg_descr0'
+        let pkg_descr = addExtraIncludeLibDirs pkg_descr0'
 
         when (not (null flags)) $
           info verbosity $ "Flags chosen: "
