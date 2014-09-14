@@ -49,7 +49,9 @@ checkTestWithoutHpcNoTix :: FilePath -> Test
 checkTestWithoutHpcNoTix ghcPath = TestCase $ do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
-      buildAndTest ghcPath [] ["--ghc-option=-fhpc"]
+      buildAndTest ghcPath [] [ "--ghc-option=-fhpc"
+                              , "--ghc-option=-hpcdir"
+                              , "--ghc-option=dist/hpc" ]
       let dummy = emptyTestSuite { testName = "test-Foo" }
           tixFile = tixFilePath (dir </> "dist") $ testName dummy
           tixFileMessage = ".tix file should NOT exist"
@@ -67,7 +69,10 @@ checkTestWithoutHpcNoMarkup ghcPath = TestCase $ do
           markupDir = htmlDir (dir </> "dist") $ testName dummy
           markupFile = markupDir </> "hpc_index" <.> "html"
           markupFileMessage = "HPC markup file should NOT exist"
-      buildAndTest ghcPath [("HPCTIXFILE", Just tixFile)] ["--ghc-option=-fhpc"]
+      buildAndTest ghcPath [("HPCTIXFILE", Just tixFile)]
+                           [ "--ghc-option=-fhpc"
+                           , "--ghc-option=-hpcdir"
+                           , "--ghc-option=dist/hpc" ]
       markupFileExists <- doesFileExist markupFile
       assertEqual markupFileMessage False markupFileExists
 
