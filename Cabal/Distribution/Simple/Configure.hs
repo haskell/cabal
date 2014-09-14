@@ -75,7 +75,6 @@ import Distribution.PackageDescription.Configuration
     ( finalizePackageDescription, mapTreeData )
 import Distribution.PackageDescription.Check
     ( PackageCheck(..), checkPackage, checkPackageFiles )
-import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.Program
     ( Program(..), ProgramLocation(..), ConfiguredProgram(..)
     , ProgramConfiguration, defaultProgramConfiguration
@@ -597,10 +596,7 @@ configure (pkg_descr0, pbi) cfg
                     stripLibs           = fromFlag $ configStripLibs cfg,
                     withPackageDB       = packageDbs,
                     progPrefix          = fromFlag $ configProgPrefix cfg,
-                    progSuffix          = fromFlag $ configProgSuffix cfg,
-                    withCoverage        = if fromFlag $ configLibCoverage cfg
-                                            then Just $ Hpc.mixDir distPref (display $ package pkg_descr')
-                                            else Nothing
+                    progSuffix          = fromFlag $ configProgSuffix cfg
                   }
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest

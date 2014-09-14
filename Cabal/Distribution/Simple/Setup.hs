@@ -296,8 +296,7 @@ data ConfigFlags = ConfigFlags {
     configConfigurationsFlags :: FlagAssignment,
     configTests               :: Flag Bool, -- ^Enable test suite compilation
     configBenchmarks          :: Flag Bool, -- ^Enable benchmark compilation
-    configLibCoverage         :: Flag Bool,
-      -- ^Enable test suite program coverage.
+    configCoverage :: Flag Bool, -- ^Enable program coverage
     configExactConfiguration  :: Flag Bool
       -- ^All direct dependencies and flags are provided on the command line by
       -- the user via the '--dependency' and '--flags' options.
@@ -338,7 +337,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configStripLibs    = Flag True,
     configTests        = Flag False,
     configBenchmarks   = Flag False,
-    configLibCoverage  = Flag False,
+    configCoverage     = Flag False,
     configExactConfiguration = Flag False
   }
 
@@ -523,9 +522,9 @@ configureOptions showOrParseArgs =
          configTests (\v flags -> flags { configTests = v })
          (boolOpt [] [])
 
-      ,option "" ["library-coverage"]
-         "build library and test suites with Haskell Program Coverage enabled. (GHC only)"
-         configLibCoverage (\v flags -> flags { configLibCoverage = v })
+      ,option "" ["coverage"]
+         "build package with Haskell Program Coverage enabled. (GHC only)"
+         configCoverage (\v flags -> flags { configCoverage = v })
          (boolOpt [] [])
 
       ,option "" ["exact-configuration"]
@@ -677,7 +676,7 @@ instance Monoid ConfigFlags where
     configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty,
     configTests               = mempty,
-    configLibCoverage         = mempty,
+    configCoverage         = mempty,
     configExactConfiguration  = mempty,
     configBenchmarks          = mempty
   }
@@ -714,7 +713,7 @@ instance Monoid ConfigFlags where
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests               = combine configTests,
-    configLibCoverage         = combine configLibCoverage,
+    configCoverage         = combine configCoverage,
     configExactConfiguration  = combine configExactConfiguration,
     configBenchmarks          = combine configBenchmarks
   }

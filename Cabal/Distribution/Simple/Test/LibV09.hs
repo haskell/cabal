@@ -19,7 +19,8 @@ import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Setup ( TestFlags(..), TestShowDetails(..), fromFlag )
+import Distribution.Simple.Setup
+    ( TestFlags(..), TestShowDetails(..), fromFlag, configCoverage )
 import Distribution.Simple.Test.Log
 import Distribution.Simple.Utils ( die, notice, rawSystemIOWithEnv )
 import Distribution.TestSuite
@@ -28,7 +29,7 @@ import Distribution.Verbosity ( normal )
 
 import Control.Exception ( bracket )
 import Control.Monad ( when, unless )
-import Data.Maybe ( isJust, mapMaybe )
+import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive, removeFile
@@ -43,6 +44,8 @@ runTest :: PD.PackageDescription
         -> PD.TestSuite
         -> IO TestSuiteLog
 runTest pkg_descr lbi flags suite = do
+    let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
+
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
 
@@ -79,8 +82,10 @@ runTest pkg_descr lbi flags suite = do
         _ <- do let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
                     dataDirPath = pwd </> PD.dataDir pkg_descr
                     tixFile = pwd </> tixFilePath distPref (PD.testName suite)
-                    pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath) : existingEnv
-                    shellEnv = [("HPCTIXFILE", tixFile) | isJust $ LBI.withCoverage lbi] ++ pkgPathEnv
+                    pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
+                               : existingEnv
+                    shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled]
+                             ++ pkgPathEnv
                 rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
                                    -- these handles are closed automatically
                                    (Just rIn) (Just wOut) (Just wOut)
@@ -119,9 +124,8 @@ runTest pkg_descr lbi flags suite = do
     -- Write summary notice to terminal indicating end of test suite
     notice verbosity $ summarizeSuiteFinish suiteLog
 
-    when (isJust $ LBI.withCoverage lbi) $
-        markupTest verbosity lbi distPref
-            (display $ PD.package pkg_descr) suite
+    when isCoverageEnabled $
+        markupTest verbosity lbi distPref (display $ PD.package pkg_descr) suite
 
     return suiteLog
   where

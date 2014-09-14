@@ -31,7 +31,7 @@ checkTestWithHpc :: FilePath -> Test
 checkTestWithHpc ghcPath = TestCase $ do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
-      buildAndTest ghcPath [] ["--enable-library-coverage"]
+      buildAndTest ghcPath [] ["--enable-coverage"]
       let dummy = emptyTestSuite { testName = "test-Foo" }
           tixFile = tixFilePath (dir </> "dist") $ testName dummy
           tixFileMessage = ".tix file should exist"
