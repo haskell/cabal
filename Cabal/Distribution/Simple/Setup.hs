@@ -297,9 +297,12 @@ data ConfigFlags = ConfigFlags {
     configTests               :: Flag Bool, -- ^Enable test suite compilation
     configBenchmarks          :: Flag Bool, -- ^Enable benchmark compilation
     configCoverage :: Flag Bool, -- ^Enable program coverage
-    configExactConfiguration  :: Flag Bool
+    configLibCoverage :: Flag Bool, -- ^OBSOLETE. Just used to signal error.
+    configExactConfiguration  :: Flag Bool,
       -- ^All direct dependencies and flags are provided on the command line by
       -- the user via the '--dependency' and '--flags' options.
+    configFlagError :: Flag String
+      -- ^Halt and show an error message indicating an error in flag assignment
   }
   deriving (Generic, Read, Show)
 
@@ -338,7 +341,9 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configTests        = Flag False,
     configBenchmarks   = Flag False,
     configCoverage     = Flag False,
-    configExactConfiguration = Flag False
+    configLibCoverage  = NoFlag,
+    configExactConfiguration = Flag False,
+    configFlagError    = NoFlag
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -522,6 +527,11 @@ configureOptions showOrParseArgs =
          configTests (\v flags -> flags { configTests = v })
          (boolOpt [] [])
 
+      ,option "" ["library-coverage"]
+         "OBSOLETE. Please use --enable-coverage instead."
+         configLibCoverage (\v flags -> flags { configLibCoverage = v })
+         (boolOpt [] [])
+
       ,option "" ["coverage"]
          "build package with Haskell Program Coverage enabled. (GHC only)"
          configCoverage (\v flags -> flags { configCoverage = v })
@@ -677,8 +687,10 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = mempty,
     configTests               = mempty,
     configCoverage         = mempty,
+    configLibCoverage   = mempty,
     configExactConfiguration  = mempty,
-    configBenchmarks          = mempty
+    configBenchmarks          = mempty,
+    configFlagError     = mempty
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -714,8 +726,10 @@ instance Monoid ConfigFlags where
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests               = combine configTests,
     configCoverage         = combine configCoverage,
+    configLibCoverage         = combine configLibCoverage,
     configExactConfiguration  = combine configExactConfiguration,
-    configBenchmarks          = combine configBenchmarks
+    configBenchmarks          = combine configBenchmarks,
+    configFlagError     = combine configFlagError
   }
     where combine field = field a `mappend` field b
 

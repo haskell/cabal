@@ -84,7 +84,8 @@ import Distribution.Simple.Program
     , lookupProgram, requireProgram, requireProgramVersion
     , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
 import Distribution.Simple.Setup
-    ( ConfigFlags(..), CopyDest(..), fromFlag, fromFlagOrDefault, flagToMaybe )
+    ( ConfigFlags(..), CopyDest(..), Flag(..), fromFlag, fromFlagOrDefault
+    , flagToMaybe )
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
@@ -293,7 +294,13 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
-  = do  let distPref = fromFlag (configDistPref cfg)
+  = do  unless (configLibCoverage cfg == NoFlag) $ do
+            let enable | fromFlag (configLibCoverage cfg) = "enable"
+                       | otherwise = "disable"
+            die $ "Option --" ++ enable ++ "-library-coverage is obsolete! "
+                  ++ "Please use --" ++ enable ++ "-coverage instead."
+
+        let distPref = fromFlag (configDistPref cfg)
             buildDir' = distPref </> "build"
             verbosity = fromFlag (configVerbosity cfg)
 
