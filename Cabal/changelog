@@ -1,5 +1,9 @@
 -*-change-log-*-
 
+1.21.x (current development version)
+	* Replace --enable-library-coverage with --enable-coverage, which
+	enables program coverage for all components.
+
 1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Fix streaming test output.
 
@@ -28,10 +32,6 @@
 	* Improve pretty-printing of Cabal files
 	* Add test flag --show-details=streaming for real-time test output
 	* Add exec command
-
-1.11.x (current development version)
-
-1.10.0.x (next stable release version)
 
 1.10.2.0 Duncan Coutts <duncan@community.haskell.org> June 2011
 	* Include test suites in cabal sdist
