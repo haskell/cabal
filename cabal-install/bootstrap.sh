@@ -122,27 +122,29 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 
 # Versions of the packages to install.
 # The version regex says what existing installed versions are ok.
-PARSEC_VER="3.1.5";    PARSEC_VER_REGEXP="[23]\."
+PARSEC_VER="3.1.6";    PARSEC_VER_REGEXP="[23]\."
                        # == 2.* || == 3.*
 DEEPSEQ_VER="1.3.0.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-TEXT_VER="1.1.0.1";    TEXT_VER_REGEXP="((1\.[01]\.)|(0\.([2-9]|(1[0-1]))\.))"
-                       # >= 0.2 && < 1.2
-NETWORK_VER="2.5.0.0"; NETWORK_VER_REGEXP="2\.[0-5]\."
-                       # >= 2.0 && < 2.6
+TEXT_VER="1.2.0.0";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
+                       # >= 0.2 && < 1.3
+NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\.[0-6]\."
+                       # >= 2.0 && < 2.7
+NETWORK_URI_VER="2.6.0.1"; NETWORKURI_VER_REGEXP="2\.[0-6]\."
+                       # >= 2.0 && < 2.7
 CABAL_VER="1.21.1.0";  CABAL_VER_REGEXP="1\.21\.1"
                        # >= 1.21.1 && < 1.22
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."
                        # >= 0.2.* && < 0.4.*
 MTL_VER="2.1.3.1";     MTL_VER_REGEXP="[2]\."
                        #  == 2.*
-HTTP_VER="4000.2.13";  HTTP_VER_REGEXP="4000\.2\.([5-9]|1[0-9]|2[0-9])"
+HTTP_VER="4000.2.18";  HTTP_VER_REGEXP="4000\.2\.([5-9]|1[0-9]|2[0-9])"
                        # >= 4000.2.5 < 4000.3
 ZLIB_VER="0.5.4.1";    ZLIB_VER_REGEXP="0\.[45]\."
                        # == 0.4.* || == 0.5.*
 TIME_VER="1.4.2"       TIME_VER_REGEXP="1\.[1234]\.?"
                        # >= 1.1 && < 1.5
-RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\."
+RANDOM_VER="1.0.1.3"   RANDOM_VER_REGEXP="1\.0\."
                        # >= 1 && < 1.1
 STM_VER="2.4.3";       STM_VER_REGEXP="2\."
                        # == 2.*
@@ -270,6 +272,7 @@ info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
+info_pkg "network-uri"  ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
 info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
@@ -283,6 +286,7 @@ do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 do_pkg   "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 do_pkg   "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
+do_pkg   "network-uri"  ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
 do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
