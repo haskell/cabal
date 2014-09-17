@@ -302,7 +302,7 @@ instance Text BuildType where
 -- is, "expose all modules, but also expose @Data.Bool@ as @Bool@".
 --
 data ModuleRenaming = ModuleRenaming Bool [(ModuleName, ModuleName)]
-    deriving (Show, Read, Eq, Typeable, Data, Generic)
+    deriving (Show, Read, Eq, Ord, Typeable, Data, Generic)
 
 defaultRenaming :: ModuleRenaming
 defaultRenaming = ModuleRenaming True []

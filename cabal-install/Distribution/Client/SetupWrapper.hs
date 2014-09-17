@@ -78,6 +78,8 @@ import Distribution.Client.Utils
 import Distribution.System ( Platform(..), buildPlatform )
 import Distribution.Text
          ( display )
+import Distribution.Utils.NubList
+         ( toNubListR )
 import Distribution.Verbosity
          ( Verbosity )
 import Distribution.Compat.Exception
@@ -453,17 +455,17 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       let ghcOptions = mempty {
               ghcOptVerbosity       = Flag verbosity
             , ghcOptMode            = Flag GhcModeMake
-            , ghcOptInputFiles      = [setupHs]
+            , ghcOptInputFiles      = toNubListR [setupHs]
             , ghcOptOutputFile      = Flag setupProgFile
             , ghcOptObjDir          = Flag setupDir
             , ghcOptHiDir           = Flag setupDir
             , ghcOptSourcePathClear = Flag True
-            , ghcOptSourcePath      = [workingDir]
+            , ghcOptSourcePath      = toNubListR [workingDir]
             , ghcOptPackageDBs      = usePackageDB options''
-            , ghcOptPackages        = maybe []
-                                      (\ipkgid -> [(ipkgid, cabalPkgid, defaultRenaming)])
-                                      maybeCabalLibInstalledPkgId
-            , ghcOptExtra           = ["-threaded"]
+            , ghcOptPackages        = toNubListR $
+                maybe [] (\ipkgid -> [(ipkgid, cabalPkgid, defaultRenaming)])
+                maybeCabalLibInstalledPkgId
+            , ghcOptExtra           = toNubListR ["-threaded"]
             }
       let ghcCmdLine = renderGhcOptions compiler ghcOptions
       case useLoggingHandle options of
