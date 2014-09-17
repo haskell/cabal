@@ -2,10 +2,12 @@ module Distribution.Utils.NubList
     ( NubList    -- opaque
     , toNubList  -- smart construtor
     , fromNubList
+    , overNubList
 
     , NubListR
     , toNubListR
     , fromNubListR
+    , overNubListR
     ) where
 
 import Data.Binary
@@ -25,8 +27,13 @@ newtype NubList a =
 -- does not specifically state that ordering is maintained so we will add a test
 -- for that to the test suite.
 
+-- | Smart constructor for the NubList type.
 toNubList :: Ord a => [a] -> NubList a
 toNubList list = NubList $ ordNub list
+
+-- | Lift a function over lists to a function over NubLists.
+overNubList :: Ord a => ([a] -> [a]) -> NubList a -> NubList a
+overNubList f (NubList list) = toNubList . f $ list
 
 -- | Monoid operations on NubLists.
 -- For a valid Monoid instance we need to satistfy the required monoid laws;
@@ -52,12 +59,13 @@ instance Show a => Show (NubList a) where
 instance (Ord a, Read a) => Read (NubList a) where
     readPrec = readNubList toNubList
 
+-- | Helper used by NubList/NubListR's Read instances.
 readNubList :: (Ord a, Read a) => ([a] -> l a) -> R.ReadPrec (l a)
 readNubList toList = R.parens . R.prec 10 $ fmap toList R.readPrec
 
--- Binary instance of NubList is the same as for List. For put, we just pull off
--- constructor and put the list. For get, we get the list and make a NubList
--- out of it using toNubList.
+-- | Binary instance for 'NubList a' is the same as for '[a]'. For 'put', we
+-- just pull off constructor and put the list. For 'get', we get the list and
+-- make a 'NubList' out of it using 'toNubList'.
 instance (Ord a, Binary a) => Binary (NubList a) where
     put (NubList l) = put l
     get = fmap toNubList get
@@ -70,8 +78,13 @@ newtype NubListR a =
     NubListR { fromNubListR :: [a] }
     deriving Eq
 
+-- | Smart constructor for the NubListR type.
 toNubListR :: Ord a => [a] -> NubListR a
 toNubListR list = NubListR $ ordNubRight list
+
+-- | Lift a function over lists to a function over NubListRs.
+overNubListR :: Ord a => ([a] -> [a]) -> NubListR a -> NubListR a
+overNubListR f (NubListR list) = toNubListR . f $ list
 
 instance Ord a => Monoid (NubListR a) where
   mempty = NubListR []

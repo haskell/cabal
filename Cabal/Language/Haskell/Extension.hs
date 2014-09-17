@@ -103,7 +103,7 @@ data Extension =
   -- pragma.
   | UnknownExtension String
 
-  deriving (Generic, Show, Read, Eq, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
 
 instance Binary Extension
 
@@ -688,7 +688,7 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#ambiguity>
   | AllowAmbiguousTypes
 
-  deriving (Generic, Show, Read, Eq, Enum, Bounded, Typeable, Data)
+  deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
 instance Binary KnownExtension
 
