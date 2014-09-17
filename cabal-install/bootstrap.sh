@@ -144,8 +144,8 @@ ZLIB_VER="0.5.4.1";    ZLIB_VER_REGEXP="0\.[45]\."
                        # == 0.4.* || == 0.5.*
 TIME_VER="1.4.2"       TIME_VER_REGEXP="1\.[1234]\.?"
                        # >= 1.1 && < 1.5
-RANDOM_VER="1.0.1.3"   RANDOM_VER_REGEXP="1\.0\."
-                       # >= 1 && < 1.1
+RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
+                       # >= 1 && < 1.2
 STM_VER="2.4.3";       STM_VER_REGEXP="2\."
                        # == 2.*
 
