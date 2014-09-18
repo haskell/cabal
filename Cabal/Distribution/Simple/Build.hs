@@ -36,14 +36,14 @@ import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 
 import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
-         , Dependency(..), thisPackageVersion, mkPackageKey )
+         , Dependency(..), thisPackageVersion, mkPackageKey, packageName )
 import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor(..), compilerFlavor
          , PackageDB(..), PackageDBStack, packageKeySupported )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
-         , BenchmarkInterface(..) )
+         , BenchmarkInterface(..), defaultRenaming )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
@@ -80,6 +80,7 @@ import Distribution.Verbosity
 import Distribution.Text
          ( display )
 
+import qualified Data.Map as Map
 import Data.Maybe
          ( maybeToList )
 import Data.Either
@@ -366,6 +367,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           }
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
+                , componentPackageRenaming = componentPackageRenaming clbi
                 , componentLibraries = [LibraryName (testName test)]
                 , componentModuleReexports = []
                 }
@@ -397,7 +399,10 @@ testSuiteLibV09AsLibAndExe pkg_descr
             buildInfo  = (testBuildInfo test) {
                            hsSourceDirs       = [ testDir ],
                            targetBuildDepends = testLibDep
-                             : (targetBuildDepends $ testBuildInfo test)
+                             : (targetBuildDepends $ testBuildInfo test),
+                           targetBuildRenaming =
+                            Map.insert (packageName pkg) defaultRenaming
+                                (targetBuildRenaming $ testBuildInfo test)
                          }
           }
     -- | The stub executable needs a new 'ComponentLocalBuildInfo'
@@ -407,7 +412,10 @@ testSuiteLibV09AsLibAndExe pkg_descr
                     (IPI.installedPackageId ipi, packageId ipi)
                   : (filter (\(_, x) -> let PackageName name = pkgName x
                                         in name == "Cabal" || name == "base")
-                            (componentPackageDeps clbi))
+                            (componentPackageDeps clbi)),
+                componentPackageRenaming =
+                    Map.insert (packageName ipi) defaultRenaming
+                               (componentPackageRenaming clbi)
               }
 testSuiteLibV09AsLibAndExe _ TestSuite{} _ _ _ _ = error "testSuiteLibV09AsLibAndExe: wrong kind"
 
@@ -425,7 +433,8 @@ benchmarkExeV10asExe bm@Benchmark { benchmarkInterface = BenchmarkExeV10 _ f }
             buildInfo  = benchmarkBuildInfo bm
           }
     exeClbi = ExeComponentLocalBuildInfo {
-                componentPackageDeps = componentPackageDeps clbi
+                componentPackageDeps = componentPackageDeps clbi,
+                componentPackageRenaming = componentPackageRenaming clbi
               }
 benchmarkExeV10asExe Benchmark{} _ = error "benchmarkExeV10asExe: wrong kind"
 

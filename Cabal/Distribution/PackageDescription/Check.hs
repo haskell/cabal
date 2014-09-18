@@ -40,6 +40,7 @@ import Control.Monad
          ( filterM, liftM )
 import qualified System.Directory as System
          ( doesFileExist, doesDirectoryExist )
+import qualified Data.Map as Map
 
 import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
@@ -910,6 +911,14 @@ checkCabalVersion pkg =
            "To use the 'reexported-module' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.21'."
 
+    -- check use of thinning and renaming
+  , checkVersion [1,21] (not (null depsUsingThinningRenamingSyntax)) $
+      PackageDistInexcusable $
+           "The package uses thinning and renaming in the 'build-depends' field: "
+        ++ commaSep (map display depsUsingThinningRenamingSyntax)
+        ++ ". To use this new syntax, the package needs to specify at least"
+        ++ "'cabal-version: >= 1.21'."
+
     -- check use of default-extensions field
     -- don't need to do the equivalent check for other-extensions
   , checkVersion [1,10] (any (not . null) (buildInfoField defaultExtensions)) $
@@ -1079,6 +1088,14 @@ checkCabalVersion pkg =
 
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]
+
+    -- XXX: If the user writes build-depends: foo with (), this is
+    -- indistinguishable from build-depends: foo, so there won't be an
+    -- error even though there should be
+    depsUsingThinningRenamingSyntax = [ name
+                                      | bi <- allBuildInfo pkg
+                                      , (name, rns) <- Map.toList (targetBuildRenaming bi)
+                                      , rns /= ModuleRenaming True [] ]
 
     testedWithUsingWildcardSyntax = [ Dependency (PackageName (display compiler)) vr
                                     | (compiler, vr) <- testedWith pkg
