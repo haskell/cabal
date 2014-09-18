@@ -34,7 +34,7 @@ import Distribution.Package
 import Distribution.PackageDescription
          ( GenericPackageDescription(packageDescription)
          , PackageDescription(..), specVersion
-         , BuildType(..), knownBuildTypes )
+         , BuildType(..), knownBuildTypes, defaultRenaming )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Configure
@@ -461,7 +461,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptSourcePath      = [workingDir]
             , ghcOptPackageDBs      = usePackageDB options''
             , ghcOptPackages        = maybe []
-                                      (\ipkgid -> [(ipkgid, cabalPkgid)])
+                                      (\ipkgid -> [(ipkgid, cabalPkgid, defaultRenaming)])
                                       maybeCabalLibInstalledPkgId
             , ghcOptExtra           = ["-threaded"]
             }
