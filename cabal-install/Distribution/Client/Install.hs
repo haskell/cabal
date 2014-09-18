@@ -841,7 +841,7 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
                              && all (not . isSpecificPackageDB) packageDBs
 
         installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _ _)) = True
-        installedDocs _                                            = False
+        installedDocs _                                              = False
         isSpecificPackageDB (SpecificPackageDB _) = True
         isSpecificPackageDB _                     = False
 
