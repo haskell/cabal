@@ -130,7 +130,7 @@ TEXT_VER="1.2.0.0";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
 NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
-NETWORK_URI_VER="2.6.0.1"; NETWORKURI_VER_REGEXP="2\.[0-6]\."
+NETWORK_URI_VER="2.6.0.1"; NETWORK_URI_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
 CABAL_VER="1.21.1.0";  CABAL_VER_REGEXP="1\.21\.1"
                        # >= 1.21.1 && < 1.22
