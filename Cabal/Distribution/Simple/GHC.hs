@@ -117,7 +117,22 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
+-- dropWhileEnd is now in Data.List, but old versions did not have it.
+#if !MIN_VERSION_base(4,5,0)
+dropWhileEnd :: (a -> Bool) -> [a] -> [a]
+dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
+#endif
 
+-- This version assumes the predicate is cheap enough to apply
+-- to the whole list in order to be able to discard non-suffix
+-- elements as they come. To get a version that assumes otherwise,
+-- just reverse the order of the arguments to &&.
+takeWhileEnd p :: (a -> Bool) -> [a] -> [a]
+takeWhileEnd p = fst . foldr go ([], False)
+  where
+    go x (rest, done)
+      | p x && not done = (x:rest, False)
+      | otherwise       = (rest, True)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -207,8 +222,8 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
                       return (Just fp)
 
   where takeVersionSuffix :: FilePath -> String
-        takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") .
-                            reverse
+        takeVersionSuffix = takeWhileEnd (\c -> ('0' <= c && c <= '9') || c == '.' || c == '-')
+                        
 
         dropExeExtension :: FilePath -> FilePath
         dropExeExtension filepath =
@@ -542,20 +557,20 @@ toPackageIndex verbosity pkgss conf = do
 
 ghcLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 ghcLibDir verbosity lbi =
-    (reverse . dropWhile isSpace . reverse) `fmap`
+    dropWhileEnd isSpace `fmap`
      rawSystemProgramStdoutConf verbosity ghcProgram
      (withPrograms lbi) ["--print-libdir"]
 
 ghcLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 ghcLibDir' verbosity ghcProg =
-    (reverse . dropWhile isSpace . reverse) `fmap`
+    dropWhileEnd isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
 
 
 -- | Return the 'FilePath' to the global GHC package database.
 ghcGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 ghcGlobalPackageDB verbosity ghcProg =
-    (reverse . dropWhile isSpace . reverse) `fmap`
+    dropWhileEnd isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
 
 -- Cabal does not use the environment variable GHC_PACKAGE_PATH; let users
