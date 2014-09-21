@@ -127,8 +127,8 @@ dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
 -- to the whole list in order to be able to discard non-suffix
 -- elements as they come. To get a version that assumes otherwise,
 -- just reverse the order of the arguments to &&.
-takeWhileEnd p :: (a -> Bool) -> [a] -> [a]
-takeWhileEnd p = fst . foldr go ([], False)
+takeWhileEnd' p :: (a -> Bool) -> [a] -> [a]
+takeWhileEnd' p = fst . foldr go ([], False)
   where
     go x (rest, done)
       | p x && not done = (x:rest, False)
@@ -222,7 +222,7 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
                       return (Just fp)
 
   where takeVersionSuffix :: FilePath -> String
-        takeVersionSuffix = takeWhileEnd (\c -> ('0' <= c && c <= '9') || c == '.' || c == '-')
+        takeVersionSuffix = takeWhileEnd' (\c -> ('0' <= c && c <= '9') || c == '.' || c == '-')
                         
 
         dropExeExtension :: FilePath -> FilePath
