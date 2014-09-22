@@ -247,7 +247,7 @@ fromList pkgs = mkPackageIndex pids pnames
 --
 merge :: PackageInstalled a => PackageIndex a -> PackageIndex a -> PackageIndex a
 merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
-  mkPackageIndex (Map.union pids1 pids2)
+  mkPackageIndex (Map.unionWith (\_ y -> y) pids1 pids2)
                  (Map.unionWith (Map.unionWith mergeBuckets) pnames1 pnames2)
   where
     -- Packages in the second list mask those in the first, however preferred
@@ -655,7 +655,7 @@ dependencyInconsistencies' fakeMap index =
           [ (packageName dep,
              Map.fromList [(ipid,(dep,[packageId pkg]))])
           | pkg <- allPackages index
-          , ipid <- installedDepends pkg
+          , ipid <- fakeInstalledDepends fakeMap pkg
           , Just dep <- [fakeLookupInstalledPackageId fakeMap index ipid]
           ]
 
@@ -663,8 +663,10 @@ dependencyInconsistencies' fakeMap index =
         reallyIsInconsistent []       = False
         reallyIsInconsistent [_p]     = False
         reallyIsInconsistent [p1, p2] =
-             installedPackageId p1 `notElem` fakeInstalledDepends fakeMap p2
-          && installedPackageId p2 `notElem` fakeInstalledDepends fakeMap p1
+          let pid1 = installedPackageId p1
+              pid2 = installedPackageId p2
+          in Map.findWithDefault pid1 pid1 fakeMap `notElem` fakeInstalledDepends fakeMap p2
+          && Map.findWithDefault pid2 pid2 fakeMap `notElem` fakeInstalledDepends fakeMap p1
         reallyIsInconsistent _ = True
 
 -- | Variant of 'installedDepends' which accepts a 'FakeMap'.  See Note [FakeMap].
