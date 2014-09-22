@@ -49,7 +49,7 @@ import Distribution.Client.Types
          ( SourcePackage(packageDescription), ConfiguredPackage(..)
          , ReadyPackage(..), readyPackageToConfiguredPackage
          , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas
-         , InstalledPackage(..) )
+         , InstalledPackage(..), fakeInstalledPackageId )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , PackageFixedDeps(..), Dependency(..), InstalledPackageId
@@ -194,10 +194,18 @@ internalError msg = error $ "InstallPlan: internal error: " ++ msg
 new :: Platform -> CompilerId -> PlanIndex
     -> Either [PlanProblem] InstallPlan
 new platform compiler index =
-  case problems platform compiler Map.empty index of
+  -- NB: Need to pre-initialize the fake-map with pre-existing
+  -- packages
+  let isPreExisting (PreExisting _) = True
+      isPreExisting _ = False
+      fakeMap = Map.fromList
+              . map (\p -> (fakeInstalledPackageId (packageId p), installedPackageId p))
+              . filter isPreExisting
+              $ PackageIndex.allPackages index in
+  case problems platform compiler fakeMap index of
     [] -> Right InstallPlan {
             planIndex    = index,
-            planFakeMap  = Map.empty,
+            planFakeMap  = fakeMap,
             planGraph    = graph,
             planGraphRev = Graph.transposeG graph,
             planPkgOf    = vertexToPkgId,
