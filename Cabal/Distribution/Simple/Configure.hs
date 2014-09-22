@@ -572,6 +572,20 @@ configure (pkg_descr0, pbi) cfg
                                           "--enable-split-objs; ignoring")
                                     return False
 
+        let ghciLibByDefault =
+              case compilerId comp of
+                CompilerId GHC _ ->
+                  -- If ghc is non-dynamic, then ghci needs object files,
+                  -- so we build one by default.
+                  -- 
+                  -- Technically, archive files should be sufficient for ghci,
+                  -- but because of GHC bug #8942, it has never been safe to
+                  -- rely on them. By the time that bug was fixed, ghci had
+                  -- been changed to read shared libraries instead of archive
+                  -- files (see next code block).
+                  not (GHC.ghcDynamic comp)
+                _ -> False
+
         let sharedLibsByDefault =
               case compilerId comp of
                 CompilerId GHC _ ->
@@ -605,7 +619,8 @@ configure (pkg_descr0, pbi) cfg
                     withDynExe          = fromFlag $ configDynExe cfg,
                     withProfExe         = fromFlag $ configProfExe cfg,
                     withOptimization    = fromFlag $ configOptimization cfg,
-                    withGHCiLib         = fromFlag $ configGHCiLib cfg,
+                    withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
+                                          configGHCiLib cfg,
                     splitObjs           = split_objs,
                     stripExes           = fromFlag $ configStripExes cfg,
                     stripLibs           = fromFlag $ configStripLibs cfg,
