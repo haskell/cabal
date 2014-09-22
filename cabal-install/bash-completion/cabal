@@ -33,6 +33,32 @@ _cabal_targets()
 	done
 }
 
+# List possible subcommands of a cabal subcommand.
+#
+# In example "sandbox" is a cabal subcommand that itself has subcommands. Since
+# "cabal --list-options" doesn't work in such cases we have to get the list
+# using other means.
+_cabal_subcommands()
+{
+    local word
+    for word in "$@"; do
+        case "$word" in
+          sandbox)
+            # Get list of "cabal sandbox" subcommands from its help message.
+            #
+            # Following command short-circuits if it reaches flags section.
+            # This is to prevent any problems that might arise from unfortunate
+            # word combinations in flag descriptions. Usage section is parsed
+            # using simple regexp and "sandbox" subcommand is printed for each
+            # successful substitution.
+            "$1" help sandbox |
+            sed -rn '/Flags/q;s/^.* sandbox  *([^ ]*).*/\1/;t p;b;: p;p'
+            break  # Terminate for loop.
+            ;;
+        esac
+    done
+}
+
 _cabal()
 {
     # get the word currently being completed
@@ -48,7 +74,7 @@ _cabal()
     cmd[${COMP_CWORD}]="--list-options"
 
     # the resulting completions should be put into this array
-    COMPREPLY=( $( compgen -W "$( ${cmd[@]} ) $( _cabal_targets ${cmd[@]} )" -- $cur ) )
+    COMPREPLY=( $( compgen -W "$( ${cmd[@]} ) $( _cabal_targets ${cmd[@]} ) $( _cabal_subcommands ${COMP_WORDS[@]} )" -- $cur ) )
 }
 
 complete -F _cabal -o default cabal
