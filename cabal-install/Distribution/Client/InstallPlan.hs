@@ -49,11 +49,10 @@ import Distribution.Client.Types
          ( SourcePackage(packageDescription), ConfiguredPackage(..)
          , ReadyPackage(..), readyPackageToConfiguredPackage
          , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas
-         , InstalledPackage(..), fakeInstalledPackageId )
+         , InstalledPackage (..) )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
-         , PackageFixedDeps(..), Dependency(..), InstalledPackageId
-         , PackageInstalled(..) )
+         , PackageFixedDeps(..), Dependency(..) )
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.PackageDescription
@@ -63,9 +62,9 @@ import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
-import Distribution.Simple.PackageIndex
-         ( PackageIndex, FakeMap )
-import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Client.PackageIndex
+         ( PackageIndex )
+import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Text
          ( display )
 import Distribution.System
@@ -86,10 +85,6 @@ import qualified Data.Graph as Graph
 import Data.Graph (Graph)
 import Control.Exception
          ( assert )
-import Data.Maybe (catMaybes)
-import qualified Data.Map as Map
-
-type PlanIndex = PackageIndex PlanPackage
 
 -- When cabal tries to install a number of packages, including all their
 -- dependencies it has a non-trivial problem to solve.
@@ -155,57 +150,31 @@ instance PackageFixedDeps PlanPackage where
   depends (Installed pkg _) = depends pkg
   depends (Failed    pkg _) = depends pkg
 
-instance PackageInstalled PlanPackage where
-  installedPackageId (PreExisting pkg)   = installedPackageId pkg
-  installedPackageId (Configured  pkg)   = installedPackageId pkg
-  installedPackageId (Processing  pkg)   = installedPackageId pkg
-  -- NB: defer to the actual installed package info in this case
-  installedPackageId (Installed _ (BuildOk _ _ (Just ipkg))) = installedPackageId ipkg
-  installedPackageId (Installed   pkg _) = installedPackageId pkg
-  installedPackageId (Failed      pkg _) = installedPackageId pkg
-
-  installedDepends (PreExisting pkg) = installedDepends pkg
-  installedDepends (Configured  pkg) = installedDepends pkg
-  installedDepends (Processing pkg)  = installedDepends pkg
-  installedDepends (Installed _ (BuildOk _ _ (Just ipkg))) = installedDepends ipkg
-  installedDepends (Installed pkg _) = installedDepends pkg
-  installedDepends (Failed    pkg _) = installedDepends pkg
-
 data InstallPlan = InstallPlan {
-    planIndex    :: PlanIndex,
-    planFakeMap  :: FakeMap,
+    planIndex    :: PackageIndex PlanPackage,
     planGraph    :: Graph,
     planGraphRev :: Graph,
     planPkgOf    :: Graph.Vertex -> PlanPackage,
-    planVertexOf :: InstalledPackageId -> Graph.Vertex,
+    planVertexOf :: PackageIdentifier -> Graph.Vertex,
     planPlatform :: Platform,
     planCompiler :: CompilerId
   }
 
 invariant :: InstallPlan -> Bool
 invariant plan =
-  valid (planPlatform plan) (planCompiler plan) (planFakeMap plan) (planIndex plan)
+  valid (planPlatform plan) (planCompiler plan) (planIndex plan)
 
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
-new :: Platform -> CompilerId -> PlanIndex
+new :: Platform -> CompilerId -> PackageIndex PlanPackage
     -> Either [PlanProblem] InstallPlan
 new platform compiler index =
-  -- NB: Need to pre-initialize the fake-map with pre-existing
-  -- packages
-  let isPreExisting (PreExisting _) = True
-      isPreExisting _ = False
-      fakeMap = Map.fromList
-              . map (\p -> (fakeInstalledPackageId (packageId p), installedPackageId p))
-              . filter isPreExisting
-              $ PackageIndex.allPackages index in
-  case problems platform compiler fakeMap index of
+  case problems platform compiler index of
     [] -> Right InstallPlan {
             planIndex    = index,
-            planFakeMap  = fakeMap,
             planGraph    = graph,
             planGraphRev = Graph.transposeG graph,
             planPkgOf    = vertexToPkgId,
@@ -215,8 +184,6 @@ new platform compiler index =
           }
       where (graph, vertexToPkgId, pkgIdToVertex) =
               PackageIndex.dependencyGraph index
-              -- NB: doesn't need to know planFakeMap because the
-              -- fakemap is empty at this point.
             noSuchPkgId = internalError "package is not in the graph"
     probs -> Left probs
 
@@ -260,13 +227,11 @@ ready plan = assert check readyPackages
       ]
 
     hasAllInstalledDeps :: ConfiguredPackage -> Maybe [Installed.InstalledPackageInfo]
-    hasAllInstalledDeps = mapM isInstalledDep . installedDepends
+    hasAllInstalledDeps = mapM isInstalledDep . depends
 
-    isInstalledDep :: InstalledPackageId -> Maybe Installed.InstalledPackageInfo
+    isInstalledDep :: PackageIdentifier -> Maybe Installed.InstalledPackageInfo
     isInstalledDep pkgid =
-      -- NB: Need to check if the ID has been updated in planFakeMap, in which case we
-      -- might be dealing with an old pointer
-      case PackageIndex.fakeLookupInstalledPackageId (planFakeMap plan) (planIndex plan) pkgid of
+      case PackageIndex.lookupPackageId (planIndex plan) pkgid of
         Just (Configured  _)                            -> Nothing
         Just (Processing  _)                            -> Nothing
         Just (Failed    _ _)                            -> internalError depOnFailed
@@ -296,25 +261,15 @@ processing pkgs plan = assert (invariant plan') plan'
 -- * The package must exist in the graph and be in the processing state.
 -- * The package must have had no uninstalled dependent packages.
 --
-completed :: InstalledPackageId
+completed :: PackageIdentifier
           -> BuildSuccess
           -> InstallPlan -> InstallPlan
 completed pkgid buildResult plan = assert (invariant plan') plan'
   where
     plan'     = plan {
-                  -- NB: installation can change the IPID, so better
-                  -- record it in the fake mapping...
-                  planFakeMap = insert_fake_mapping buildResult
-                              $ planFakeMap plan,
-                  planIndex = PackageIndex.insert installed
-                            . PackageIndex.deleteInstalledPackageId pkgid
-                            $ planIndex plan
+                  planIndex = PackageIndex.insert installed (planIndex plan)
                 }
-    -- ...but be sure to use the *old* IPID for the lookup for the
-    -- preexisting record
     installed = Installed (lookupProcessingPackage plan pkgid) buildResult
-    insert_fake_mapping (BuildOk _ _ (Just ipi)) = Map.insert pkgid (installedPackageId ipi)
-    insert_fake_mapping _ = id
 
 -- | Marks a package in the graph as having failed. It also marks all the
 -- packages that depended on it as having failed.
@@ -322,14 +277,13 @@ completed pkgid buildResult plan = assert (invariant plan') plan'
 -- * The package must exist in the graph and be in the processing
 -- state.
 --
-failed :: InstalledPackageId -- ^ The id of the package that failed to install
+failed :: PackageIdentifier -- ^ The id of the package that failed to install
        -> BuildFailure      -- ^ The build result to use for the failed package
        -> BuildFailure      -- ^ The build result to use for its dependencies
        -> InstallPlan
        -> InstallPlan
 failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
   where
-    -- NB: failures don't update IPIDs
     plan'    = plan {
                  planIndex = PackageIndex.merge (planIndex plan) failures
                }
@@ -343,7 +297,7 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
 -- | Lookup the reachable packages in the reverse dependency graph.
 --
 packagesThatDependOn :: InstallPlan
-                     -> InstalledPackageId -> [PlanPackage]
+                     -> PackageIdentifier -> [PlanPackage]
 packagesThatDependOn plan = map (planPkgOf plan)
                           . tail
                           . Graph.reachable (planGraphRev plan)
@@ -352,11 +306,9 @@ packagesThatDependOn plan = map (planPkgOf plan)
 -- | Lookup a package that we expect to be in the processing state.
 --
 lookupProcessingPackage :: InstallPlan
-                        -> InstalledPackageId -> ReadyPackage
+                        -> PackageIdentifier -> ReadyPackage
 lookupProcessingPackage plan pkgid =
-  -- NB: processing packages are guaranteed to not indirect through
-  -- planFakeMap
-  case PackageIndex.lookupInstalledPackageId (planIndex plan) pkgid of
+  case PackageIndex.lookupPackageId (planIndex plan) pkgid of
     Just (Processing pkg) -> pkg
     _  -> internalError $ "not in processing state or no such pkg " ++ display pkgid
 
@@ -378,8 +330,8 @@ checkConfiguredPackage pkg                =
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
 --
-valid :: Platform -> CompilerId -> FakeMap -> PlanIndex -> Bool
-valid platform comp fakeMap index = null (problems platform comp fakeMap index)
+valid :: Platform -> CompilerId -> PackageIndex PlanPackage -> Bool
+valid platform comp index = null (problems platform comp index)
 
 data PlanProblem =
      PackageInvalid       ConfiguredPackage [PackageProblem]
@@ -429,26 +381,26 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
 --
-problems :: Platform -> CompilerId -> FakeMap
-         -> PlanIndex -> [PlanProblem]
-problems platform comp fakeMap index =
+problems :: Platform -> CompilerId
+         -> PackageIndex PlanPackage -> [PlanProblem]
+problems platform comp index =
      [ PackageInvalid pkg packageProblems
      | Configured pkg <- PackageIndex.allPackages index
      , let packageProblems = configuredPackageProblems platform comp pkg
      , not (null packageProblems) ]
 
-  ++ [ PackageMissingDeps pkg (catMaybes (map (fmap packageId . PackageIndex.fakeLookupInstalledPackageId fakeMap index) missingDeps))
-     | (pkg, missingDeps) <- PackageIndex.brokenPackages' fakeMap index ]
+  ++ [ PackageMissingDeps pkg missingDeps
+     | (pkg, missingDeps) <- PackageIndex.brokenPackages index ]
 
   ++ [ PackageCycle cycleGroup
-     | cycleGroup <- PackageIndex.dependencyCycles' fakeMap index ]
+     | cycleGroup <- PackageIndex.dependencyCycles index ]
 
   ++ [ PackageInconsistency name inconsistencies
-     | (name, inconsistencies) <- PackageIndex.dependencyInconsistencies' fakeMap index ]
+     | (name, inconsistencies) <- PackageIndex.dependencyInconsistencies index ]
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
-     , Just pkg' <- map (PackageIndex.fakeLookupInstalledPackageId fakeMap index) (installedDepends pkg)
+     , Just pkg' <- map (PackageIndex.lookupPackageId index) (depends pkg)
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
@@ -456,7 +408,7 @@ problems platform comp fakeMap index =
 -- * if the result is @False@ use 'PackageIndex.dependencyCycles' to find out
 --   which packages are involved in dependency cycles.
 --
-acyclic :: PlanIndex -> Bool
+acyclic :: PackageIndex PlanPackage -> Bool
 acyclic = null . PackageIndex.dependencyCycles
 
 -- | An installation plan is closed if for every package in the set, all of
@@ -466,7 +418,7 @@ acyclic = null . PackageIndex.dependencyCycles
 -- * if the result is @False@ use 'PackageIndex.brokenPackages' to find out
 --   which packages depend on packages not in the index.
 --
-closed :: PlanIndex -> Bool
+closed :: PackageIndex PlanPackage -> Bool
 closed = null . PackageIndex.brokenPackages
 
 -- | An installation plan is consistent if all dependencies that target a
@@ -485,7 +437,7 @@ closed = null . PackageIndex.brokenPackages
 -- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
 --   find out which packages are.
 --
-consistent :: PlanIndex -> Bool
+consistent :: PackageIndex PlanPackage -> Bool
 consistent = null . PackageIndex.dependencyInconsistencies
 
 -- | The states of packages have that depend on each other must respect
