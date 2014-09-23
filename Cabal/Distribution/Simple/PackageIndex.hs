@@ -16,7 +16,6 @@ module Distribution.Simple.PackageIndex (
   -- * Package index data type
   InstalledPackageIndex,
   PackageIndex,
-  FakeMap,
 
   -- * Creating an index
   fromList,
@@ -60,15 +59,6 @@ module Distribution.Simple.PackageIndex (
   dependencyCycles,
   dependencyGraph,
   moduleNameIndex,
-
-  -- ** Variants of special queries supporting fake map
-  fakeLookupInstalledPackageId,
-  brokenPackages',
-  dependencyClosure',
-  reverseDependencyClosure',
-  dependencyInconsistencies',
-  dependencyCycles',
-  dependencyGraph',
   ) where
 
 import Control.Exception (assert)
@@ -100,40 +90,6 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.Simple.Utils (lowercase, comparing, equating)
-
--- Note [FakeMap]
------------------
--- We'd like to use the PackageIndex defined in this module for
--- cabal-install's InstallPlan.  However, at the moment, this
--- data structure is indexed by InstalledPackageId, which we don't
--- know until after we've compiled a package (whereas InstallPlan
--- needs to store not-compiled packages in the index.) Eventually,
--- an InstalledPackageId will be calculatable prior to actually
--- building the package (making it something of a misnomer), but
--- at the moment, the "fake installed package ID map" is a workaround
--- to solve this problem while reusing PackageIndex.  The basic idea
--- is that, since we don't know what an InstalledPackageId is
--- beforehand, we just fake up one based on the package ID (it only
--- needs to be unique for the particular install plan), and fill
--- it out with the actual generated InstalledPackageId after the
--- package is successfully compiled.
---
--- However, there is a problem: in the index there may be
--- references using the old package ID, which are now dangling if
--- we update the InstalledPackageId.  We could map over the entire
--- index to update these pointers as well (a costly operation), but
--- instead, we've chosen to parametrize a variety of important functions
--- by a FakeMap, which records what a fake installed package ID was
--- actually resolved to post-compilation.  If we do a lookup, we first
--- check and see if it's a fake ID in the FakeMap.
---
--- It's a bit grungy, but we expect this to only be temporary anyway.
--- (Another possible workaround would have been to *not* update
--- the installed package ID, but I decided this would be hard to
--- understand.)
-
--- | Map from fake installed package IDs to real ones.  See Note [FakeMap]
-type FakeMap = Map InstalledPackageId InstalledPackageId
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
@@ -247,7 +203,7 @@ fromList pkgs = mkPackageIndex pids pnames
 --
 merge :: PackageInstalled a => PackageIndex a -> PackageIndex a -> PackageIndex a
 merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
-  mkPackageIndex (Map.unionWith (\_ y -> y) pids1 pids2)
+  mkPackageIndex (Map.union pids1 pids2)
                  (Map.unionWith (Map.unionWith mergeBuckets) pnames1 pnames2)
   where
     -- Packages in the second list mask those in the first, however preferred
@@ -488,14 +444,10 @@ searchByNameSubstring (PackageIndex _ pnames) searchterm =
 -- other, directly or indirectly.
 --
 dependencyCycles :: PackageInstalled a => PackageIndex a -> [[a]]
-dependencyCycles = dependencyCycles' Map.empty
-
--- | Variant of 'dependencyCycles' which accepts a 'FakeMap'.  See Note [FakeMap].
-dependencyCycles' :: PackageInstalled a => FakeMap -> PackageIndex a -> [[a]]
-dependencyCycles' fakeMap index =
+dependencyCycles index =
   [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
   where
-    adjacencyList = [ (pkg, installedPackageId pkg, fakeInstalledDepends fakeMap pkg)
+    adjacencyList = [ (pkg, installedPackageId pkg, installedDepends pkg)
                     | pkg <- allPackages index ]
 
 
@@ -504,20 +456,13 @@ dependencyCycles' fakeMap index =
 -- Returns such packages along with the dependencies that they're missing.
 --
 brokenPackages :: PackageInstalled a => PackageIndex a -> [(a, [InstalledPackageId])]
-brokenPackages = brokenPackages' Map.empty
-
--- | Variant of 'brokenPackages' which accepts a 'FakeMap'.  See Note [FakeMap].
-brokenPackages' :: PackageInstalled a => FakeMap -> PackageIndex a -> [(a, [InstalledPackageId])]
-brokenPackages' fakeMap index =
+brokenPackages index =
   [ (pkg, missing)
   | pkg  <- allPackages index
   , let missing = [ pkg' | pkg' <- installedDepends pkg
-                         , isNothing (fakeLookupInstalledPackageId fakeMap index pkg') ]
+                         , isNothing (lookupInstalledPackageId index pkg') ]
   , not (null missing) ]
 
--- | Variant of 'lookupInstalledPackageId' which accepts a 'FakeMap'.  See Note [FakeMap].
-fakeLookupInstalledPackageId :: PackageInstalled a => FakeMap -> PackageIndex a -> InstalledPackageId -> Maybe a
-fakeLookupInstalledPackageId fakeMap index pkg = lookupInstalledPackageId index (Map.findWithDefault pkg pkg fakeMap)
 
 -- | Tries to take the transitive closure of the package dependencies.
 --
@@ -531,22 +476,14 @@ dependencyClosure :: PackageInstalled a => PackageIndex a
                   -> [InstalledPackageId]
                   -> Either (PackageIndex a)
                             [(a, [InstalledPackageId])]
-dependencyClosure = dependencyClosure' Map.empty
-
--- | Variant of 'dependencyClosure' which accepts a 'FakeMap'.  See Note [FakeMap].
-dependencyClosure' :: PackageInstalled a => FakeMap
-                  -> PackageIndex a
-                  -> [InstalledPackageId]
-                  -> Either (PackageIndex a)
-                            [(a, [InstalledPackageId])]
-dependencyClosure' fakeMap index pkgids0 = case closure mempty [] pkgids0 of
+dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
   (completed, []) -> Left completed
   (completed, _)  -> Right (brokenPackages completed)
  where
     closure completed failed []             = (completed, failed)
-    closure completed failed (pkgid:pkgids) = case fakeLookupInstalledPackageId fakeMap index pkgid of
+    closure completed failed (pkgid:pkgids) = case lookupInstalledPackageId index pkgid of
       Nothing   -> closure completed (pkgid:failed) pkgids
-      Just pkg  -> case fakeLookupInstalledPackageId fakeMap completed (installedPackageId pkg) of
+      Just pkg  -> case lookupInstalledPackageId completed (installedPackageId pkg) of
         Just _  -> closure completed  failed pkgids
         Nothing -> closure completed' failed pkgids'
           where completed' = insert pkg completed
@@ -559,21 +496,14 @@ dependencyClosure' fakeMap index pkgids0 = case closure mempty [] pkgids0 of
 reverseDependencyClosure :: PackageInstalled a => PackageIndex a
                          -> [InstalledPackageId]
                          -> [a]
-reverseDependencyClosure = reverseDependencyClosure' Map.empty
-
--- | Variant of 'reverseDependencyClosure' which accepts a 'FakeMap'.  See Note [FakeMap].
-reverseDependencyClosure' :: PackageInstalled a => FakeMap
-                         -> PackageIndex a
-                         -> [InstalledPackageId]
-                         -> [a]
-reverseDependencyClosure' fakeMap index =
+reverseDependencyClosure index =
     map vertexToPkg
   . concatMap Tree.flatten
   . Graph.dfs reverseDepGraph
   . map (fromMaybe noSuchPkgId . pkgIdToVertex)
 
   where
-    (depGraph, vertexToPkg, pkgIdToVertex) = dependencyGraph' fakeMap index
+    (depGraph, vertexToPkg, pkgIdToVertex) = dependencyGraph index
     reverseDepGraph = Graph.transposeG depGraph
     noSuchPkgId = error "reverseDependencyClosure: package is not in the graph"
 
@@ -599,15 +529,7 @@ dependencyGraph :: PackageInstalled a => PackageIndex a
                 -> (Graph.Graph,
                     Graph.Vertex -> a,
                     InstalledPackageId -> Maybe Graph.Vertex)
-dependencyGraph = dependencyGraph' Map.empty
-
--- | Variant of 'dependencyGraph' which accepts a 'FakeMap'.  See Note [FakeMap].
-dependencyGraph' :: PackageInstalled a => FakeMap
-                -> PackageIndex a
-                -> (Graph.Graph,
-                    Graph.Vertex -> a,
-                    InstalledPackageId -> Maybe Graph.Vertex)
-dependencyGraph' fakeMap index = (graph, vertex_to_pkg, id_to_vertex)
+dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
   where
     graph = Array.listArray bounds
               [ [ v | Just v <- map id_to_vertex (installedDepends pkg) ]
@@ -616,7 +538,7 @@ dependencyGraph' fakeMap index = (graph, vertex_to_pkg, id_to_vertex)
     pkgs             = sortBy (comparing packageId) (allPackages index)
     vertices         = zip (map installedPackageId pkgs) [0..]
     vertex_map       = Map.fromList vertices
-    id_to_vertex pid = Map.lookup (Map.findWithDefault pid pid fakeMap) vertex_map
+    id_to_vertex pid = Map.lookup pid vertex_map
 
     vertex_to_pkg vertex = pkgTable ! vertex
 
@@ -636,12 +558,7 @@ dependencyGraph' fakeMap index = (graph, vertex_to_pkg, id_to_vertex)
 --
 dependencyInconsistencies :: PackageInstalled a => PackageIndex a
                           -> [(PackageName, [(PackageId, Version)])]
-dependencyInconsistencies = dependencyInconsistencies' Map.empty
-
--- | Variant of 'dependencyInconsistencies' which accepts a 'FakeMap'.  See Note [FakeMap].
-dependencyInconsistencies' :: PackageInstalled a => FakeMap -> PackageIndex a
-                          -> [(PackageName, [(PackageId, Version)])]
-dependencyInconsistencies' fakeMap index =
+dependencyInconsistencies index =
   [ (name, [ (pid,packageVersion dep) | (dep,pids) <- uses, pid <- pids])
   | (name, ipid_map) <- Map.toList inverseIndex
   , let uses = Map.elems ipid_map
@@ -655,23 +572,18 @@ dependencyInconsistencies' fakeMap index =
           [ (packageName dep,
              Map.fromList [(ipid,(dep,[packageId pkg]))])
           | pkg <- allPackages index
-          , ipid <- fakeInstalledDepends fakeMap pkg
-          , Just dep <- [fakeLookupInstalledPackageId fakeMap index ipid]
+          , ipid <- installedDepends pkg
+          , Just dep <- [lookupInstalledPackageId index ipid]
           ]
 
         reallyIsInconsistent :: PackageInstalled a => [a] -> Bool
         reallyIsInconsistent []       = False
         reallyIsInconsistent [_p]     = False
         reallyIsInconsistent [p1, p2] =
-          let pid1 = installedPackageId p1
-              pid2 = installedPackageId p2
-          in Map.findWithDefault pid1 pid1 fakeMap `notElem` fakeInstalledDepends fakeMap p2
-          && Map.findWithDefault pid2 pid2 fakeMap `notElem` fakeInstalledDepends fakeMap p1
+             installedPackageId p1 `notElem` installedDepends p2
+          && installedPackageId p2 `notElem` installedDepends p1
         reallyIsInconsistent _ = True
 
--- | Variant of 'installedDepends' which accepts a 'FakeMap'.  See Note [FakeMap].
-fakeInstalledDepends :: PackageInstalled a => FakeMap -> a -> [InstalledPackageId]
-fakeInstalledDepends fakeMap = map (\pid -> Map.findWithDefault pid pid fakeMap) . installedDepends
 
 -- | A rough approximation of GHC's module finder, takes a 'InstalledPackageIndex' and
 -- turns it into a map from module names to their source packages.  It's used to
