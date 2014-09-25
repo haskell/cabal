@@ -333,7 +333,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     -- See #1589.
     configGHCiLib      = Flag True,
 #else
-    configGHCiLib      = Flag False,
+    configGHCiLib      = NoFlag,
 #endif
     configSplitObjs    = Flag False, -- takes longer, so turn off by default
     configStripExes    = Flag True,
