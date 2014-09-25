@@ -69,10 +69,11 @@ data GhcOptions = GhcOptions {
   -------------
   -- Packages
 
-  -- | The package key the modules will belong to; the @ghc -this-package-key@ flag
+  -- | The package key the modules will belong to; the @ghc -this-package-key@
+  -- flag.
   ghcOptPackageKey   :: Flag PackageKey,
 
-  -- | GHC package databases to use, the @ghc -package-conf@ flag
+  -- | GHC package databases to use, the @ghc -package-conf@ flag.
   ghcOptPackageDBs    :: PackageDBStack,
 
   -- | The GHC packages to use. For compatability with old and new ghc, this
@@ -84,7 +85,8 @@ data GhcOptions = GhcOptions {
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
 
-  -- | Don't automatically link in Haskell98 etc; the @ghc -no-auto-link-packages@ flag.
+  -- | Don't automatically link in Haskell98 etc; the @ghc
+  -- -no-auto-link-packages@ flag.
   ghcOptNoAutoLinkPackages :: Flag Bool,
 
   -----------------
@@ -105,7 +107,8 @@ data GhcOptions = GhcOptions {
   -- | Don't do the link step, useful in make mode; the @ghc -no-link@ flag.
   ghcOptNoLink :: Flag Bool,
 
-  -- | Don't link in the normal RTS @main@ entry point; the @ghc -no-hs-main@ flag.
+  -- | Don't link in the normal RTS @main@ entry point; the @ghc -no-hs-main@
+  -- flag.
   ghcOptLinkNoHsMain :: Flag Bool,
 
   --------------------
@@ -315,8 +318,10 @@ renderGhcOptions comp opts
 
   , [ "-I"    ++ dir | dir <- flags ghcOptCppIncludePath ]
   , [ "-optP" ++ opt | opt <- flags ghcOptCppOptions ]
-  , concat [ [ "-optP-include", "-optP" ++ inc] | inc <- flags ghcOptCppIncludes ]
-  , [ "-#include \"" ++ inc ++ "\"" | inc <- flags ghcOptFfiIncludes, ver < [6,11] ]
+  , concat [ [ "-optP-include", "-optP" ++ inc]
+           | inc <- flags ghcOptCppIncludes ]
+  , [ "-#include \"" ++ inc ++ "\""
+    | inc <- flags ghcOptFfiIncludes, ver < [6,11] ]
   , [ "-optc" ++ opt | opt <- flags ghcOptCcOptions ]
 
   -----------------
@@ -344,8 +349,10 @@ renderGhcOptions comp opts
   , concat $ if ver >= [6,11]
       then let space "" = ""
                space xs = ' ' : xs
-           in [ ["-package-id", display ipkgid ++ space (display rns)] | (ipkgid,_,rns) <- flags ghcOptPackages ]
-      else [ ["-package",    display  pkgid] | (_,pkgid,_)  <- flags ghcOptPackages ]
+           in [ ["-package-id", display ipkgid ++ space (display rns)]
+              | (ipkgid,_,rns) <- flags ghcOptPackages ]
+      else [ ["-package",    display  pkgid]
+           | (_,pkgid,_)  <- flags ghcOptPackages ]
 
   ----------------------------
   -- Language and extensions
