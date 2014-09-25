@@ -337,6 +337,7 @@ configureProgram verbosity prog conf = do
             programDefaultArgs  = [],
             programOverrideArgs = userSpecifiedArgs prog conf,
             programOverrideEnv  = [("PATH", Just newPath)],
+            programProperties   = Map.empty,
             programLocation     = location
           }
       configuredProg' <- programPostConf prog verbosity configuredProg
