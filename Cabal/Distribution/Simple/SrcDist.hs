@@ -412,11 +412,11 @@ createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
 
   (tarProg, _) <- requireProgram verbosity tarProgram
                     (maybe defaultProgramConfiguration withPrograms mb_lbi)
-  let tarProgSupportsFormatOpt = maybe False (== "YES") $
-                                 Map.lookup "Supports --format"
-                                 (programProperties tarProg)
+  let formatOptSupported = maybe False (== "YES") $
+                           Map.lookup "Supports --format"
+                           (programProperties tarProg)
   runProgram verbosity tarProg
-    . (if tarProgSupportsFormatOpt then (++) ["--format", "ustar"] else id)
+    . (if formatOptSupported then (flip (++)) ["--format", "ustar"] else id)
     -- Hmm: I could well be skating on thinner ice here by using the -C option
     -- (=> seems to be supported at least by GNU and *BSD tar) [The
     -- prev. solution used pipes and sub-command sequences to set up the paths
