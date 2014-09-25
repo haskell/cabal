@@ -16,7 +16,7 @@ import System.Time (ClockTime(..), getClockTime
 
 #if defined mingw32_HOST_OS
 
-import Data.Bits          ((.|.), bitSize, unsafeShiftL)
+import Data.Bits          ((.|.), finiteBitSize, unsafeShiftL)
 import Data.Int           (Int32)
 import Data.Word          (Word64)
 import Foreign            (allocaBytes, peekByteOff)
@@ -87,7 +87,7 @@ getModTime path = allocaBytes size_WIN32_FILE_ATTRIBUTE_DATA $ \info -> do
           windowsTimeToPOSIXSeconds dwLow dwHigh =
             let wINDOWS_TICK      = 10000000
                 sEC_TO_UNIX_EPOCH = 11644473600
-                qwTime = (fromIntegral dwHigh `unsafeShiftL` bitSize dwHigh)
+                qwTime = (fromIntegral dwHigh `unsafeShiftL` finiteBitSize dwHigh)
                          .|. (fromIntegral dwLow)
                 res    = ((qwTime :: Word64) `div` wINDOWS_TICK)
                          - sEC_TO_UNIX_EPOCH
