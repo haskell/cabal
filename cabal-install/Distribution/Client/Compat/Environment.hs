@@ -20,7 +20,6 @@ module Distribution.Client.Compat.Environment (
 
 #ifdef mingw32_HOST_OS
 import GHC.Windows
-import Foreign.Safe
 import Foreign.C
 import Control.Monad
 #else
