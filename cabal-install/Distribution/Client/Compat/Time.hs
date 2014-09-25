@@ -48,8 +48,6 @@ index_WIN32_FILE_ATTRIBUTE_DATA_ftLastWriteTime_dwHighDateTime = 24
 
 #if MIN_VERSION_base(4,5,0)
 import Foreign.C.Types    (CTime(..))
-#else
-import Foreign.C.Types    (CTime)
 #endif
 import System.Posix.Files (getFileStatus, modificationTime)
 
