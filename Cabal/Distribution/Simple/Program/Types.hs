@@ -41,6 +41,7 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import Data.Binary (Binary)
+import qualified Data.Map as Map
 import GHC.Generics (Generic)
 
 -- | Represents a program which can be configured.
@@ -101,6 +102,11 @@ data ConfiguredProgram = ConfiguredProgram {
        -- the current to form the environment for the new process.
        programOverrideEnv :: [(String, Maybe String)],
 
+       -- | A key-value map listing various properties of the program, useful
+       -- for feature detection. Populated during the configuration step, key
+       -- names depend on the specific program.
+       programProperties :: Map.Map String String,
+
        -- | Location of the program. eg. @\/usr\/bin\/ghc-6.4@
        programLocation :: ProgramLocation
      } deriving (Eq, Generic, Read, Show)
@@ -153,5 +159,6 @@ simpleConfiguredProgram name loc = ConfiguredProgram {
      programDefaultArgs  = [],
      programOverrideArgs = [],
      programOverrideEnv  = [],
+     programProperties   = Map.empty,
      programLocation     = loc
   }
