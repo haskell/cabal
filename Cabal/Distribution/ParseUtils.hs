@@ -63,16 +63,9 @@ import Control.Monad (foldM, ap)
 import Control.Applicative (Applicative(..))
 import System.FilePath (normalise)
 import Data.List (sortBy)
-#if MIN_VERSION_base(4,5,0)
-import Data.List(dropWhileEnd)
-#endif
+import Distribution.Compat.List (dropWhileEndLE)
 
 -- -----------------------------------------------------------------------------
-
-#if !MIN_VERSION_base(4,5,0)
-dropWhileEnd :: (a -> Bool) -> [a] -> [a]
-dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
-#endif
 
 type LineNo    = Int
 type Separator = ([Doc] -> Doc)
@@ -485,7 +478,7 @@ tokeniseLineFlat (n0, i, t, l)
 
 trimLeading, trimTrailing :: String -> String
 trimLeading  = dropWhile isSpace
-trimTrailing = dropWhileEnd isSpace
+trimTrailing = dropWhileEndLE isSpace
 
 
 type SyntaxTree = Tree (LineNo, HasTabs, String)

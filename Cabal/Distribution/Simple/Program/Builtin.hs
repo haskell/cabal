@@ -52,6 +52,8 @@ import Distribution.Simple.Program.Find
          ( findProgramOnSearchPath )
 import Distribution.Simple.Utils
          ( findProgramVersion )
+import Data.Char
+         ( isDigit )
 
 -- ------------------------------------------------------------
 -- * Known programs
@@ -226,7 +228,7 @@ alexProgram = (simpleProgram "alex") {
       -- Invoking "alex --version" gives a string like
       -- "Alex version 2.1.0, (c) 2003 Chris Dornan and Simon Marlow"
       case words str of
-        (_:_:ver:_) -> takeWhile (`elem` ('.':['0'..'9'])) ver
+        (_:_:ver:_) -> takeWhile (\x -> isDigit x || x == '.') ver
         _           -> ""
   }
 
