@@ -225,6 +225,7 @@ library
 
   other-modules:
     Distribution.Compat.CopyFile
+    Distribution.Compat.List
     Distribution.Compat.TempFile
     Distribution.GetOpt
     Distribution.Simple.GHC.IPI641
