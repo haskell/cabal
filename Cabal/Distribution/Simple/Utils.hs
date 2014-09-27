@@ -1245,7 +1245,7 @@ normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 -- *** Exception: Prelude.undefined
 -- > tail $ dropWhileEndLE (<3) [undefined, 5, 4, 3, 2, 1]
 -- [5,4,3]
--- > take 3 $ dropWhileEnd (<3) [5, 4, 3, 2, 1, undefined]
+-- > take 3 $ Data.List.dropWhileEnd (<3) [5, 4, 3, 2, 1, undefined]
 -- [5,4,3]
 -- > take 3 $ dropWhileEndLE (<3) [5, 4, 3, 2, 1, undefined]
 -- *** Exception: Prelude.undefined
