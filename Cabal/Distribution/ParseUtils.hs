@@ -50,7 +50,8 @@ import Distribution.ReadE
 import Distribution.Text
          ( Text(..) )
 import Distribution.Simple.Utils
-         ( comparing, intercalate, lowercase, normaliseLineEndings )
+         ( comparing, dropWhileEndLE, intercalate, lowercase
+         , normaliseLineEndings )
 import Language.Haskell.Extension
          ( Language, Extension )
 
@@ -63,7 +64,6 @@ import Control.Monad (foldM, ap)
 import Control.Applicative (Applicative(..))
 import System.FilePath (normalise)
 import Data.List (sortBy)
-import qualified Distribution.Compat.List as L 
 
 -- -----------------------------------------------------------------------------
 
@@ -478,7 +478,7 @@ tokeniseLineFlat (n0, i, t, l)
 
 trimLeading, trimTrailing :: String -> String
 trimLeading  = dropWhile isSpace
-trimTrailing = L.dropWhileEnd isSpace
+trimTrailing = dropWhileEndLE isSpace
 
 
 type SyntaxTree = Tree (LineNo, HasTabs, String)

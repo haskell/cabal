@@ -111,6 +111,8 @@ module Distribution.Simple.Utils (
         normaliseLineEndings,
 
         -- * generic utils
+        dropWhileEndLE,
+        takeWhileEndLE,
         equating,
         comparing,
         isInfixOf,
@@ -1229,6 +1231,36 @@ normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 -- ------------------------------------------------------------
 -- * Common utils
 -- ------------------------------------------------------------
+
+-- | @dropWhileEndLE p@ is semantically the same as @reverse . dropWhile p
+-- . reverse@, but quite a bit faster. The difference between
+-- "Data.List.dropWhileEnd" and this version is that the one in "Data.List" is
+-- strict in elements, but spine-lazy, while this one is spine-strict but lazy
+-- in elements. That's what @LE@ stands for - "lazy in elements".
+--
+-- Example:
+--
+-- @
+-- > tail $ Data.List.dropWhileEnd (<3) [undefined, 5, 4, 3, 2, 1]
+-- *** Exception: Prelude.undefined
+-- > tail $ dropWhileEndLE (<3) [undefined, 5, 4, 3, 2, 1]
+-- [5,4,3]
+-- > take 3 $ dropWhileEnd (<3) [5, 4, 3, 2, 1, undefined]
+-- [5,4,3]
+-- > take 3 $ dropWhileEndLE (<3) [5, 4, 3, 2, 1, undefined]
+-- *** Exception: Prelude.undefined
+-- @
+dropWhileEndLE :: (a -> Bool) -> [a] -> [a]
+dropWhileEndLE p = foldr (\x r -> if null r && p x then [] else x:r) []
+
+-- @takeWhileEndLE p@ is semantically the same as @reverse . takeWhile p
+-- . reverse@, but is usually faster (as well as being easier to read).
+takeWhileEndLE :: (a -> Bool) -> [a] -> [a]
+takeWhileEndLE p = fst . foldr go ([], False)
+  where
+    go x (rest, done)
+      | not done && p x = (x:rest, False)
+      | otherwise = (rest, True)
 
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y
