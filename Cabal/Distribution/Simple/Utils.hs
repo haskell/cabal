@@ -1232,11 +1232,11 @@ normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 -- * Common utils
 -- ------------------------------------------------------------
 
--- | @dropWhileEndLE p@ is semantically the same as @reverse . dropWhile p
--- . reverse@, but quite a bit faster. The difference between
--- "Data.List.dropWhileEnd" and this version is that the one in "Data.List" is
--- strict in elements, but spine-lazy, while this one is spine-strict but lazy
--- in elements. That's what @LE@ stands for - "lazy in elements".
+-- | @dropWhileEndLE p@ is equivalent to @reverse . dropWhile p . reverse@, but
+-- quite a bit faster. The difference between "Data.List.dropWhileEnd" and this
+-- version is that the one in "Data.List" is strict in elements, but spine-lazy,
+-- while this one is spine-strict but lazy in elements. That's what @LE@ stands
+-- for - "lazy in elements".
 --
 -- Example:
 --
@@ -1253,8 +1253,8 @@ normaliseLineEndings (  c :s)      =   c  : normaliseLineEndings s
 dropWhileEndLE :: (a -> Bool) -> [a] -> [a]
 dropWhileEndLE p = foldr (\x r -> if null r && p x then [] else x:r) []
 
--- @takeWhileEndLE p@ is semantically the same as @reverse . takeWhile p
--- . reverse@, but is usually faster (as well as being easier to read).
+-- | @takeWhileEndLE p@ is equivalent to @reverse . takeWhile p . reverse@, but
+-- is usually faster (as well as being easier to read).
 takeWhileEndLE :: (a -> Bool) -> [a] -> [a]
 takeWhileEndLE p = fst . foldr go ([], False)
   where
