@@ -376,7 +376,7 @@ configFieldDescriptions =
 
   ++ toSavedConfig liftConfigFlag
        (configureOptions ParseArgs)
-       (["builddir", "configure-option", "constraint", "dependency"]
+       (["builddir", "constraint", "dependency"]
         ++ map fieldName installDirsFields)
 
         --FIXME: this is only here because viewAsFieldDescr gives us a parser
