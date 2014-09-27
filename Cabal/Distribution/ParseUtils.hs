@@ -63,6 +63,7 @@ import Control.Monad (foldM, ap)
 import Control.Applicative (Applicative(..))
 import System.FilePath (normalise)
 import Data.List (sortBy)
+import qualified Distribution.Compat.List as L 
 
 -- -----------------------------------------------------------------------------
 
@@ -477,7 +478,7 @@ tokeniseLineFlat (n0, i, t, l)
 
 trimLeading, trimTrailing :: String -> String
 trimLeading  = dropWhile isSpace
-trimTrailing = reverse . dropWhile isSpace . reverse
+trimTrailing = L.dropWhileEnd isSpace
 
 
 type SyntaxTree = Tree (LineNo, HasTabs, String)

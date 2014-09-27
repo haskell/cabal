@@ -104,7 +104,7 @@ import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
 import Control.Monad            ( unless, when )
-import Data.Char                ( isSpace )
+import Data.Char                ( isDigit, isSpace )
 import Data.List
 import qualified Data.Map as M  ( Map, fromList, lookup )
 import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
@@ -117,7 +117,7 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
-
+import qualified Distribution.Compat.List as L
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -207,8 +207,10 @@ guessToolFromGhcPath tool ghcProg verbosity searchpath
                       return (Just fp)
 
   where takeVersionSuffix :: FilePath -> String
-        takeVersionSuffix = reverse . takeWhile (`elem ` "0123456789.-") .
-                            reverse
+        takeVersionSuffix = L.takeWhileEnd isSuffixChar
+
+        isSuffixChar :: Char -> Bool
+        isSuffixChar c = isDigit c || c == '.' || c == '-'
 
         dropExeExtension :: FilePath -> FilePath
         dropExeExtension filepath =
@@ -542,20 +544,20 @@ toPackageIndex verbosity pkgss conf = do
 
 ghcLibDir :: Verbosity -> LocalBuildInfo -> IO FilePath
 ghcLibDir verbosity lbi =
-    (reverse . dropWhile isSpace . reverse) `fmap`
+    L.dropWhileEnd isSpace `fmap`
      rawSystemProgramStdoutConf verbosity ghcProgram
      (withPrograms lbi) ["--print-libdir"]
 
 ghcLibDir' :: Verbosity -> ConfiguredProgram -> IO FilePath
 ghcLibDir' verbosity ghcProg =
-    (reverse . dropWhile isSpace . reverse) `fmap`
+    L.dropWhileEnd isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-libdir"]
 
 
 -- | Return the 'FilePath' to the global GHC package database.
 ghcGlobalPackageDB :: Verbosity -> ConfiguredProgram -> IO FilePath
 ghcGlobalPackageDB verbosity ghcProg =
-    (reverse . dropWhile isSpace . reverse) `fmap`
+    L.dropWhileEnd isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
 
 -- Cabal does not use the environment variable GHC_PACKAGE_PATH; let users
