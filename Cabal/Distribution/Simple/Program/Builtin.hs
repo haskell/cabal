@@ -54,6 +54,8 @@ import Distribution.Simple.Program.Types
          ( Program(..), ConfiguredProgram(..), simpleProgram )
 import Distribution.Simple.Utils
          ( findProgramVersion )
+import Distribution.Compat.Exception
+         ( catchIO )
 import Data.Char
          ( isDigit )
 
@@ -306,6 +308,8 @@ tarProgram = (simpleProgram "tar") {
   programPostConf = \verbosity tarProg -> do
      tarHelpOutput <- getProgramInvocationOutput
                       verbosity (programInvocation tarProg ["--help"])
+                      -- Some versions of tar don't support '--help'.
+                      `catchIO` (\_ -> return "")
      let k = "Supports --format"
          v = if ("--format" `isInfixOf` tarHelpOutput) then "YES" else "NO"
          m = Map.insert k v (programProperties tarProg)
