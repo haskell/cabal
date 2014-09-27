@@ -127,7 +127,7 @@ import Control.Concurrent.MVar
 import Data.List
   ( nub, unfoldr, isPrefixOf, tails, intercalate )
 import Data.Char as Char
-    ( toLower, chr, ord )
+    ( isDigit, toLower, chr, ord )
 import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
 import qualified Data.ByteString.Lazy as BS
@@ -228,8 +228,8 @@ topHandlerWith cont prog = catchIO prog handle
                          Nothing   -> ""
                          Just path -> path ++ location ++ ": "
         location     = case ioeGetLocation ioe of
-                         l@(n:_) | n >= '0' && n <= '9' -> ':' : l
-                         _                              -> ""
+                         l@(n:_) | Char.isDigit n -> ':' : l
+                         _                        -> ""
         detail       = ioeGetErrorString ioe
 
 topHandler :: IO a -> IO a
