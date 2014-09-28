@@ -28,7 +28,21 @@ CURL="${CURL:-curl}"
 FETCH="${FETCH:-fetch}"
 TAR="${TAR:-tar}"
 GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
-SCOPE_OF_INSTALLATION="--user"
+
+# SCOPE_OF_INSTALLATION can be set on the command line to use/install
+# the libaries needed to build cabal-install to a custom package
+# database instead of the user or global package database
+# e.g.
+# ghc-pkg init /my/package/database
+# SCOPE_OF_INSTALLATION='--package-db=/my/package/database' ./bootstrap.sh
+#
+# you can use this with PREFIX also, e.g.
+# ghc-pkg init /my/prefix/packages.conf.d
+# PREFIX=/my/prefix SCOPE_OF_INSTALLATION='--package-db=/my/prefix/packages.conf.d' ./bootstrap.sh
+#
+# if you use the --global or --user arguments, this will override the
+# SCOPE_OF_INSTALLATION and not use a custom package database
+SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
 # Try to respect $TMPDIR but override if needed - see #1710.
@@ -176,7 +190,12 @@ info_pkg () {
 
   if need_pkg ${PKG} ${VER_MATCH}
   then
-    echo "${PKG}-${VER} will be downloaded and installed."
+    if [ -f "${PKG}-${VER}.tar.gz" ]
+    then
+        echo "${PKG}-${VER} will be installed from local tarball."
+    else
+        echo "${PKG}-${VER} will be downloaded and installed."
+    fi
   else
     echo "${PKG} is already installed and the version is ok."
   fi
@@ -241,7 +260,7 @@ install_pkg () {
       die "Documenting the ${PKG} package failed."
   fi
 
-  ./Setup install ${SCOPE_OF_INSTALLATION} ${EXTRA_INSTALL_OPTS} ${VERBOSE} ||
+  ./Setup install ${EXTRA_INSTALL_OPTS} ${VERBOSE} ||
      die "Installing the ${PKG} package failed."
 }
 
@@ -253,8 +272,13 @@ do_pkg () {
   if need_pkg ${PKG} ${VER_MATCH}
   then
     echo
-    echo "Downloading ${PKG}-${VER}..."
-    fetch_pkg ${PKG} ${VER}
+    if [ -f "${PKG}-${VER}.tar.gz" ]
+    then
+        echo "Using local tarball for ${PKG}-${VER}"
+    else
+        echo "Downloading ${PKG}-${VER}..."
+        fetch_pkg ${PKG} ${VER}
+    fi
     unpack_pkg ${PKG} ${VER}
     cd "${PKG}-${VER}"
     install_pkg ${PKG} ${VER}
