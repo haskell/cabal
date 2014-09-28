@@ -34,11 +34,11 @@ GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 # database instead of the user or global package database
 # e.g.
 # ghc-pkg init /my/package/database
-# SCOPE_OF_INSTALLATION=/my/package/database ./bootstrap.sh
+# SCOPE_OF_INSTALLATION='--package-db=/my/package/database' ./bootstrap.sh
 #
 # you can use this with PREFIX also, e.g.
 # ghc-pkg init /my/prefix/packages.conf.d
-# PREFIX=/my/prefix SCOPE_OF_INSTALLATION=/my/prefix/packages.conf.d ./bootstrap.sh
+# PREFIX=/my/prefix SCOPE_OF_INSTALLATION='--package-db=/my/prefix/packages.conf.d' ./bootstrap.sh
 #
 # if you use the --global or --user arguments, this will override the
 # SCOPE_OF_INSTALLATION and not use a custom package database
