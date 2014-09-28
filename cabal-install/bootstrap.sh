@@ -176,7 +176,12 @@ info_pkg () {
 
   if need_pkg ${PKG} ${VER_MATCH}
   then
-    echo "${PKG}-${VER} will be downloaded and installed."
+    if [ -f "${PKG}-${VER}.tar.gz" ]
+    then
+        echo "${PKG}-${VER} will be installed from local tarball."
+    else
+        echo "${PKG}-${VER} will be downloaded and installed."
+    fi
   else
     echo "${PKG} is already installed and the version is ok."
   fi
@@ -253,8 +258,13 @@ do_pkg () {
   if need_pkg ${PKG} ${VER_MATCH}
   then
     echo
-    echo "Downloading ${PKG}-${VER}..."
-    fetch_pkg ${PKG} ${VER}
+    if [ -f "${PKG}-${VER}.tar.gz" ]
+    then
+        echo "Using local tarball for ${PKG}-${VER}"
+    else
+        echo "Downloading ${PKG}-${VER}..."
+        fetch_pkg ${PKG} ${VER}
+    fi
     unpack_pkg ${PKG} ${VER}
     cd "${PKG}-${VER}"
     install_pkg ${PKG} ${VER}
