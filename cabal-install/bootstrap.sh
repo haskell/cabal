@@ -29,19 +29,24 @@ FETCH="${FETCH:-fetch}"
 TAR="${TAR:-tar}"
 GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 
-# SCOPE_OF_INSTALLATION can be set on the command line to use/install
-# the libaries needed to build cabal-install to a custom package
-# database instead of the user or global package database
-# e.g.
-# ghc-pkg init /my/package/database
-# SCOPE_OF_INSTALLATION='--package-db=/my/package/database' ./bootstrap.sh
+# The variable SCOPE_OF_INSTALLATION can be set on the command line to
+# use/install the libaries needed to build cabal-install to a custom package
+# database instead of the user or global package database.
 #
-# you can use this with PREFIX also, e.g.
-# ghc-pkg init /my/prefix/packages.conf.d
-# PREFIX=/my/prefix SCOPE_OF_INSTALLATION='--package-db=/my/prefix/packages.conf.d' ./bootstrap.sh
+# Example:
 #
-# if you use the --global or --user arguments, this will override the
-# SCOPE_OF_INSTALLATION and not use a custom package database
+# $ ghc-pkg init /my/package/database
+# $ SCOPE_OF_INSTALLATION='--package-db=/my/package/database' ./bootstrap.sh
+#
+# You can also combine SCOPE_OF_INSTALLATION with PREFIX:
+#
+# $ ghc-pkg init /my/prefix/packages.conf.d
+# $ SCOPE_OF_INSTALLATION='--package-db=/my/prefix/packages.conf.d' \
+#   PREFIX=/my/prefix ./bootstrap.sh
+#
+# If you use the --global or --user arguments, this will override the
+# SCOPE_OF_INSTALLATION setting and not use a custom package database.
+#
 SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
