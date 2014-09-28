@@ -28,7 +28,7 @@ CURL="${CURL:-curl}"
 FETCH="${FETCH:-fetch}"
 TAR="${TAR:-tar}"
 GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
-SCOPE_OF_INSTALLATION="--user"
+SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
 # Try to respect $TMPDIR but override if needed - see #1710.
@@ -246,7 +246,7 @@ install_pkg () {
       die "Documenting the ${PKG} package failed."
   fi
 
-  ./Setup install ${SCOPE_OF_INSTALLATION} ${EXTRA_INSTALL_OPTS} ${VERBOSE} ||
+  ./Setup install ${EXTRA_INSTALL_OPTS} ${VERBOSE} ||
      die "Installing the ${PKG} package failed."
 }
 
