@@ -1010,7 +1010,8 @@ defaultInstallFlags = InstallFlags {
     installRunTests        = mempty
   }
   where
-    docIndexFile = toPathTemplate ("$datadir" </> "doc" </> "index.html")
+    docIndexFile = toPathTemplate ("$datadir" </> "doc"
+                                   </> "$arch-$os-$compiler" </> "index.html")
 
 allowNewerParser :: ReadE AllowNewer
 allowNewerParser = ReadE $ \s ->
