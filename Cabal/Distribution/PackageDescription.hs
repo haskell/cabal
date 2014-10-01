@@ -767,6 +767,7 @@ data BuildInfo = BuildInfo {
         oldExtensions     :: [Extension],   -- ^ the old extensions field, treated same as 'defaultExtensions'
 
         extraLibs         :: [String], -- ^ what libraries to link with when compiling a program that uses your package
+        extraGHCiLibs     :: [String], -- ^ if present, overrides extraLibs when package is loaded with GHCi.
         extraLibDirs      :: [String],
         includeDirs       :: [FilePath], -- ^directories to find .h files
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
@@ -802,6 +803,7 @@ instance Monoid BuildInfo where
     otherExtensions   = [],
     oldExtensions     = [],
     extraLibs         = [],
+    extraGHCiLibs     = [],
     extraLibDirs      = [],
     includeDirs       = [],
     includes          = [],
@@ -830,6 +832,7 @@ instance Monoid BuildInfo where
     otherExtensions   = combineNub otherExtensions,
     oldExtensions     = combineNub oldExtensions,
     extraLibs         = combine    extraLibs,
+    extraGHCiLibs     = combine    extraGHCiLibs,
     extraLibDirs      = combineNub extraLibDirs,
     includeDirs       = combineNub includeDirs,
     includes          = combineNub includes,
