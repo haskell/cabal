@@ -1,17 +1,18 @@
 # Building Cabal from git cloned sources and running the tests
 
-Building Cabal from from source required the following:
+Building Cabal from from source requires the following:
 
 * Glorious/Glasgow Haskell Compiler (ghc).
-* An existing (relatively recent) cabal binary (eg obtained as port of the
-haskell-platform, bootstrapped from the source tarball on Hackage or installed
-from your Linux vendor).
+* An existing (relatively recent) `cabal` binary (e.g. obtained as part of the
+Haskell Platform, bootstrapped from the
+[source tarball on Hackage](http://hackage.haskell.org/package/cabal-install) or
+installed from your Linux vendor).
 
 Once you have these, the steps are:
 
 1. Change into the directory where you want to stash the cabal sources, eg:
     ```
-    cd $HOME/Git
+    cd ~/MyHaskellCode
     ```
 
 2. Clone the repo and change into the `cabal-install` directory:
@@ -35,6 +36,9 @@ use a cabal sandbox:
     cabal sandbox add-source ../Cabal
     cabal --enable-tests install --dependencies-only
     ```
+    Since you used `add-source`, any changes to `Cabal/` will automatically be
+    picked up when building inside `cabal-install/` from now on.
+
 
 5. Build cabal-install and run the tests:
 
