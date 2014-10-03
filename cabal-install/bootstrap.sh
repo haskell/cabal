@@ -44,9 +44,10 @@ GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 # $ SCOPE_OF_INSTALLATION='--package-db=/my/prefix/packages.conf.d' \
 #   PREFIX=/my/prefix ./bootstrap.sh
 #
-# If you use the --global or --user arguments, this will override the
-# SCOPE_OF_INSTALLATION setting and not use a custom package database.
-#
+# If you use the --global,--user or --sandbox arguments, this will
+# override the SCOPE_OF_INSTALLATION setting and not use the package
+# database you pass in the SCOPE_OF_INSTALLATION variable.
+
 SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
@@ -106,21 +107,30 @@ GHC_PKG_VER="$(${GHC_PKG} --version | cut -d' ' -f 5)"
   die "Version mismatch between ${GHC} and ${GHC_PKG}.
        If you set the GHC variable then set GHC_PKG too."
 
-for arg in "$@"
-do
-  case "${arg}" in
+while [ "$#" -gt 0 ]; do
+  case "${1}" in
     "--user")
-      SCOPE_OF_INSTALLATION=${arg}
+      SCOPE_OF_INSTALLATION="${1}"
       shift;;
     "--global")
-      SCOPE_OF_INSTALLATION=${arg}
+      SCOPE_OF_INSTALLATION="${1}"
       DEFAULT_PREFIX="/usr/local"
       shift;;
+    "--sandbox")
+      shift
+      # check if there is another argument which doesn't start with --
+      if [ "$#" -le 0 ] || [ ! -z $(echo "${1}" | grep "^--") ]
+      then
+          SANDBOX=".cabal-sandbox"
+      else
+          SANDBOX="${1}"
+          shift
+      fi;;
     "--no-doc")
       NO_DOCUMENTATION=1
       shift;;
     *)
-      echo "Unknown argument or option, quitting: ${arg}"
+      echo "Unknown argument or option, quitting: ${1}"
       echo "usage: bootstrap.sh [OPTION]"
       echo
       echo "options:"
@@ -130,6 +140,29 @@ do
       exit;;
   esac
 done
+
+abspath () { case "$1" in /*)printf "%s\n" "$1";; *)printf "%s\n" "$PWD/$1";;
+             esac; }
+
+if [ ! -z "$SANDBOX" ]
+then # set up variables for sandbox bootstrap
+  # Make the sandbox path absolute since it will be used from
+  # different working directories when the dependency packages are
+  # installed.
+  SANDBOX=$(abspath "$SANDBOX")
+  # Get the name of the package database which cabal sandbox would use.
+  GHC_ARCH=$(ghc --info |
+    sed -n 's/.*"Target platform".*"\([^-]\+\)-[^-]\+-\([^"]\+\)".*/\1-\2/p')
+  PACKAGEDB="$SANDBOX/${GHC_ARCH}-ghc-${GHC_VER}-packages.conf.d"
+  # Assume that if the directory is already there, it is already a
+  # package database. We will get an error immediately below if it
+  # isn't. Uses -r to try to be compatible with Solaris, and allow
+  # symlinks as well as a normal dir/file.
+  [ ! -r "$PACKAGEDB" ] && ghc-pkg init "$PACKAGEDB"
+  PREFIX="$SANDBOX"
+  SCOPE_OF_INSTALLATION="--package-db=$PACKAGEDB"
+  echo Bootstrapping in sandbox at \'$SANDBOX\'.
+fi
 
 # Check for haddock unless no documentation should be generated.
 if [ ! ${NO_DOCUMENTATION} ]
@@ -195,7 +228,7 @@ info_pkg () {
 
   if need_pkg ${PKG} ${VER_MATCH}
   then
-    if [ -f "${PKG}-${VER}.tar.gz" ]
+    if [ -r "${PKG}-${VER}.tar.gz" ]
     then
         echo "${PKG}-${VER} will be installed from local tarball."
     else
@@ -277,9 +310,9 @@ do_pkg () {
   if need_pkg ${PKG} ${VER_MATCH}
   then
     echo
-    if [ -f "${PKG}-${VER}.tar.gz" ]
+    if [ -r "${PKG}-${VER}.tar.gz" ]
     then
-        echo "Using local tarball for ${PKG}-${VER}"
+        echo "Using local tarball for ${PKG}-${VER}."
     else
         echo "Downloading ${PKG}-${VER}..."
         fetch_pkg ${PKG} ${VER}
@@ -322,6 +355,12 @@ do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 
 install_pkg "cabal-install"
+
+# Use the newly built cabal to turn the prefix/package database into a
+# legit cabal sandbox. This works because 'cabal sandbox init' will
+# reuse the already existing package database and other files if they
+# are in the expected locations.
+[ ! -z "$SANDBOX" ] && $SANDBOX/bin/cabal sandbox init --sandbox $SANDBOX
 
 echo
 echo "==========================================="

@@ -218,7 +218,9 @@ sandboxPackageDBPath sandboxDir compiler platform =
          </> (Text.display platform ++ "-"
              ++ showCompilerId compiler
              ++ "-packages.conf.d")
-
+-- The path in sandboxPackageDBPath should be kept in sync with the
+-- path in the bootstrap.sh which is used to bootstrap cabal-install
+-- into a sandbox.
 
 -- | Use the package DB location specific for this compiler.
 setPackageDB :: FilePath -> Compiler -> Platform -> ConfigFlags -> ConfigFlags
