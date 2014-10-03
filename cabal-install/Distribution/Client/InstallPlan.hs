@@ -24,6 +24,8 @@ module Distribution.Client.InstallPlan (
   completed,
   failed,
   remove,
+  showPlanIndex,
+  showInstallPlan,
 
   -- ** Query functions
   planPlatform,
@@ -188,6 +190,27 @@ invariant plan =
 
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
+
+showPlanIndex :: PlanIndex -> String
+showPlanIndex index =
+    intercalate "\n" (map showPlanPackage (PackageIndex.allPackages index))
+  where showPlanPackage p =
+            showPlanPackageTag p ++ " "
+                ++ display (packageId p) ++ " ("
+                ++ display (installedPackageId p) ++ ")"
+
+showInstallPlan :: InstallPlan -> String
+showInstallPlan plan =
+    showPlanIndex (planIndex plan) ++ "\n" ++
+    "fake map:\n  " ++ intercalate "\n  " (map showKV (Map.toList (planFakeMap plan)))
+  where showKV (k,v) = display k ++ " -> " ++ display v
+
+showPlanPackageTag :: PlanPackage -> String
+showPlanPackageTag (PreExisting _) = "PreExisting"
+showPlanPackageTag (Configured _)  = "Configured"
+showPlanPackageTag (Processing _)  = "Processing"
+showPlanPackageTag (Installed _ _) = "Installed"
+showPlanPackageTag (Failed _ _)    = "Failed"
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
