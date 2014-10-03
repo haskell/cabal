@@ -367,10 +367,11 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
 --
 packagesThatDependOn :: InstallPlan
                      -> InstalledPackageId -> [PlanPackage]
-packagesThatDependOn plan = map (planPkgOf plan)
+packagesThatDependOn plan pkgid = map (planPkgOf plan)
                           . tail
                           . Graph.reachable (planGraphRev plan)
                           . planVertexOf plan
+                          $ Map.findWithDefault pkgid pkgid (planFakeMap plan)
 
 -- | Lookup a package that we expect to be in the processing state.
 --
