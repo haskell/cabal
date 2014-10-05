@@ -475,10 +475,13 @@ checkLicense :: PackageDescription -> [PackageCheck]
 checkLicense pkg =
   catMaybes [
 
-    check (license pkg == AllRightsReserved) $
+    check (license pkg == UnspecifiedLicense) $
       PackageDistInexcusable
-        "The 'license' field is missing or specified as AllRightsReserved."
+        "The 'license' field is missing."
 
+  , check (license pkg == AllRightsReserved) $
+      PackageDistSuspicious
+        "The 'license' is AllRightsReserved. Is that really what you want?"
   , case license pkg of
       UnknownLicense l -> Just $
         PackageBuildWarning $
@@ -503,8 +506,9 @@ checkLicense pkg =
           ++ "version then please file a ticket."
       _ -> Nothing
 
-  , check (license pkg `notElem` [AllRightsReserved, PublicDomain]
-           -- AllRightsReserved and PublicDomain are not strictly
+  , check (license pkg `notElem` [ AllRightsReserved
+                                 , UnspecifiedLicense, PublicDomain]
+           -- *AllRightsReserved and PublicDomain are not strictly
            -- licenses so don't need license files.
         && null (licenseFiles pkg)) $
       PackageDistSuspicious "A 'license-file' is not specified."
@@ -1119,7 +1123,8 @@ checkCabalVersion pkg =
         intersectVersionRanges unionVersionRanges id
 
     compatLicenses = [ GPL Nothing, LGPL Nothing, AGPL Nothing, BSD3, BSD4
-                     , PublicDomain, AllRightsReserved, OtherLicense ]
+                     , PublicDomain, AllRightsReserved
+                     , UnspecifiedLicense, OtherLicense ]
 
     mentionedExtensions = [ ext | bi <- allBuildInfo pkg
                                 , ext <- allExtensions bi ]
