@@ -156,7 +156,7 @@ emptyInstalledPackageInfo
         sourcePackageId    = PackageIdentifier (PackageName "") noVersion,
         packageKey         = OldPackageKey (PackageIdentifier
                                                (PackageName "") noVersion),
-        license           = AllRightsReserved,
+        license           = UnspecifiedLicense,
         copyright         = "",
         maintainer        = "",
         author            = "",
