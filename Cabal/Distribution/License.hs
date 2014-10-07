@@ -105,9 +105,15 @@ data License =
     -- jurisdiction necessarily in the public domain elsewhere.
   | PublicDomain
 
-    -- | No license. The package may not be legally modified or redistributed by
-    -- anyone but the rightsholder.
+    -- | Explicitly 'All Rights Reserved', eg for proprietary software. The
+    -- package may not be legally modified or redistributed by anyone but the
+    -- rightsholder.
   | AllRightsReserved
+
+    -- | No license specified which legally defaults to 'All Rights Reserved'.
+    -- The package may not be legally modified or redistributed by anyone but
+    -- the rightsholder.
+  | UnspecifiedLicense
 
     -- | Any other software license.
   | OtherLicense

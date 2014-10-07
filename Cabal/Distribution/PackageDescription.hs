@@ -125,7 +125,7 @@ import Distribution.ModuleName ( ModuleName )
 import Distribution.Version
          ( Version(Version), VersionRange, anyVersion, orLaterVersion
          , asVersionIntervals, LowerBound(..) )
-import Distribution.License  (License(AllRightsReserved))
+import Distribution.License  (License(UnspecifiedLicense))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
 import Distribution.Text
@@ -230,7 +230,7 @@ emptyPackageDescription
     =  PackageDescription {
                       package      = PackageIdentifier (PackageName "")
                                                        (Version [] []),
-                      license      = AllRightsReserved,
+                      license      = UnspecifiedLicense,
                       licenseFiles = [],
                       specVersionRaw = Right anyVersion,
                       buildType    = Nothing,
