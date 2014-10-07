@@ -74,7 +74,8 @@ import Text.PrettyPrint ((<>), (<+>))
 
 import qualified Language.Haskell.Extension as Extension (deprecatedExtensions)
 import Language.Haskell.Extension
-         ( Language(UnknownLanguage), knownLanguages, Extension(..), KnownExtension(..) )
+         ( Language(UnknownLanguage), knownLanguages
+         , Extension(..), KnownExtension(..) )
 import System.FilePath
          ( (</>), takeExtension, isRelative, isAbsolute
          , splitDirectories,  splitPath )
@@ -120,7 +121,8 @@ check :: Bool -> PackageCheck -> Maybe PackageCheck
 check False _  = Nothing
 check True  pc = Just pc
 
-checkSpecVersion :: PackageDescription -> [Int] -> Bool -> PackageCheck -> Maybe PackageCheck
+checkSpecVersion :: PackageDescription -> [Int] -> Bool -> PackageCheck
+                 -> Maybe PackageCheck
 checkSpecVersion pkg specver cond pc
   | specVersion pkg >= Version specver [] = Nothing
   | otherwise                             = check cond pc
@@ -190,7 +192,8 @@ checkSanity pkg =
         ++ ". The name of every executable, test suite, and benchmark section in"
         ++ " the package must be unique."
   ]
-  --TODO: check for name clashes case insensitively: windows file systems cannot cope.
+  --TODO: check for name clashes case insensitively: windows file systems cannot
+  --cope.
 
   ++ maybe []  (checkLibrary    pkg) (library pkg)
   ++ concatMap (checkExecutable pkg) (executables pkg)
@@ -598,9 +601,11 @@ checkGhcOptions pkg =
         "'ghc-options: -fhpc' is not appropriate for a distributed package."
 
     -- -dynamic is not a debug flag
-  , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic") all_ghc_options) $
+  , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic")
+           all_ghc_options) $
       PackageDistInexcusable $
-        "'ghc-options: -d*' debug flags are not appropriate for a distributed package."
+        "'ghc-options: -d*' debug flags are not appropriate "
+        ++ "for a distributed package."
 
   , checkFlags ["-prof"] $
       PackageBuildWarning $
@@ -610,37 +615,43 @@ checkGhcOptions pkg =
 
   , checkFlags ["-o"] $
       PackageBuildWarning $
-        "'ghc-options: -o' is not needed. The output files are named automatically."
+           "'ghc-options: -o' is not needed. "
+        ++ "The output files are named automatically."
 
   , checkFlags ["-hide-package"] $
       PackageBuildWarning $
-           "'ghc-options: -hide-package' is never needed. Cabal hides all packages."
+      "'ghc-options: -hide-package' is never needed. "
+      ++ "Cabal hides all packages."
 
   , checkFlags ["--make"] $
       PackageBuildWarning $
-        "'ghc-options: --make' is never needed. Cabal uses this automatically."
+      "'ghc-options: --make' is never needed. Cabal uses this automatically."
 
   , checkFlags ["-main-is"] $
       PackageDistSuspicious $
-           "'ghc-options: -main-is' is not portable."
+      "'ghc-options: -main-is' is not portable."
 
   , checkFlags ["-O0", "-Onot"] $
       PackageDistSuspicious $
-        "'ghc-options: -O0' is not needed. Use the --disable-optimization configure flag."
+      "'ghc-options: -O0' is not needed. "
+      ++ "Use the --disable-optimization configure flag."
 
   , checkFlags [ "-O", "-O1"] $
       PackageDistInexcusable $
-           "'ghc-options: -O' is not needed. Cabal automatically adds the '-O' flag. "
-        ++ "Setting it yourself interferes with the --disable-optimization flag."
+      "'ghc-options: -O' is not needed. "
+      ++ "Cabal automatically adds the '-O' flag. "
+      ++ "Setting it yourself interferes with the --disable-optimization flag."
 
   , checkFlags ["-O2"] $
       PackageDistSuspicious $
-           "'ghc-options: -O2' is rarely needed. Check that it is giving a real benefit "
-        ++ "and not just imposing longer compile times on your users."
+      "'ghc-options: -O2' is rarely needed. "
+      ++ "Check that it is giving a real benefit "
+      ++ "and not just imposing longer compile times on your users."
 
   , checkFlags ["-split-objs"] $
       PackageBuildWarning $
-        "'ghc-options: -split-objs' is not needed. Use the --enable-split-objs configure flag."
+        "'ghc-options: -split-objs' is not needed. "
+        ++ "Use the --enable-split-objs configure flag."
 
   , checkFlags ["-optl-Wl,-s", "-optl-s"] $
       PackageDistInexcusable $
@@ -652,7 +663,8 @@ checkGhcOptions pkg =
 
   , checkFlags ["-fglasgow-exts"] $
       PackageDistSuspicious $
-        "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use the 'extensions' field."
+        "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use "
+        ++ "the 'extensions' field."
 
   , check ("-threaded" `elem` lib_ghc_options) $
       PackageDistSuspicious $
@@ -695,39 +707,42 @@ checkGhcOptions pkg =
     checkFlags flags = check (any (`elem` flags) all_ghc_options)
 
     ghcExtension ('-':'f':name) = case name of
-      "allow-overlapping-instances"    -> Just (EnableExtension  OverlappingInstances)
-      "no-allow-overlapping-instances" -> Just (DisableExtension OverlappingInstances)
-      "th"                             -> Just (EnableExtension  TemplateHaskell)
-      "no-th"                          -> Just (DisableExtension TemplateHaskell)
-      "ffi"                            -> Just (EnableExtension  ForeignFunctionInterface)
-      "no-ffi"                         -> Just (DisableExtension ForeignFunctionInterface)
-      "fi"                             -> Just (EnableExtension  ForeignFunctionInterface)
-      "no-fi"                          -> Just (DisableExtension ForeignFunctionInterface)
-      "monomorphism-restriction"       -> Just (EnableExtension  MonomorphismRestriction)
-      "no-monomorphism-restriction"    -> Just (DisableExtension MonomorphismRestriction)
-      "mono-pat-binds"                 -> Just (EnableExtension  MonoPatBinds)
-      "no-mono-pat-binds"              -> Just (DisableExtension MonoPatBinds)
-      "allow-undecidable-instances"    -> Just (EnableExtension  UndecidableInstances)
-      "no-allow-undecidable-instances" -> Just (DisableExtension UndecidableInstances)
-      "allow-incoherent-instances"     -> Just (EnableExtension  IncoherentInstances)
-      "no-allow-incoherent-instances"  -> Just (DisableExtension IncoherentInstances)
-      "arrows"                         -> Just (EnableExtension  Arrows)
-      "no-arrows"                      -> Just (DisableExtension Arrows)
-      "generics"                       -> Just (EnableExtension  Generics)
-      "no-generics"                    -> Just (DisableExtension Generics)
-      "implicit-prelude"               -> Just (EnableExtension  ImplicitPrelude)
-      "no-implicit-prelude"            -> Just (DisableExtension ImplicitPrelude)
-      "implicit-params"                -> Just (EnableExtension  ImplicitParams)
-      "no-implicit-params"             -> Just (DisableExtension ImplicitParams)
-      "bang-patterns"                  -> Just (EnableExtension  BangPatterns)
-      "no-bang-patterns"               -> Just (DisableExtension BangPatterns)
-      "scoped-type-variables"          -> Just (EnableExtension  ScopedTypeVariables)
-      "no-scoped-type-variables"       -> Just (DisableExtension ScopedTypeVariables)
-      "extended-default-rules"         -> Just (EnableExtension  ExtendedDefaultRules)
-      "no-extended-default-rules"      -> Just (DisableExtension ExtendedDefaultRules)
+      "allow-overlapping-instances"    -> enable  OverlappingInstances
+      "no-allow-overlapping-instances" -> disable OverlappingInstances
+      "th"                             -> enable  TemplateHaskell
+      "no-th"                          -> disable TemplateHaskell
+      "ffi"                            -> enable  ForeignFunctionInterface
+      "no-ffi"                         -> disable ForeignFunctionInterface
+      "fi"                             -> enable  ForeignFunctionInterface
+      "no-fi"                          -> disable ForeignFunctionInterface
+      "monomorphism-restriction"       -> enable  MonomorphismRestriction
+      "no-monomorphism-restriction"    -> disable MonomorphismRestriction
+      "mono-pat-binds"                 -> enable  MonoPatBinds
+      "no-mono-pat-binds"              -> disable MonoPatBinds
+      "allow-undecidable-instances"    -> enable  UndecidableInstances
+      "no-allow-undecidable-instances" -> disable UndecidableInstances
+      "allow-incoherent-instances"     -> enable  IncoherentInstances
+      "no-allow-incoherent-instances"  -> disable IncoherentInstances
+      "arrows"                         -> enable  Arrows
+      "no-arrows"                      -> disable Arrows
+      "generics"                       -> enable  Generics
+      "no-generics"                    -> disable Generics
+      "implicit-prelude"               -> enable  ImplicitPrelude
+      "no-implicit-prelude"            -> disable ImplicitPrelude
+      "implicit-params"                -> enable  ImplicitParams
+      "no-implicit-params"             -> disable ImplicitParams
+      "bang-patterns"                  -> enable  BangPatterns
+      "no-bang-patterns"               -> disable BangPatterns
+      "scoped-type-variables"          -> enable  ScopedTypeVariables
+      "no-scoped-type-variables"       -> disable ScopedTypeVariables
+      "extended-default-rules"         -> enable  ExtendedDefaultRules
+      "no-extended-default-rules"      -> disable ExtendedDefaultRules
       _                                -> Nothing
-    ghcExtension "-cpp"             = Just (EnableExtension CPP)
+    ghcExtension "-cpp"             = enable CPP
     ghcExtension _                  = Nothing
+
+    enable  e = Just (EnableExtension e)
+    disable e = Just (DisableExtension e)
 
 checkCCOptions :: PackageDescription -> [PackageCheck]
 checkCCOptions pkg =
@@ -906,7 +921,8 @@ checkCabalVersion pkg =
         ++ "'other-languages' field."
 
     -- check use of reexported-modules sections
-  , checkVersion [1,21] (maybe False (not.null.reexportedModules) (library pkg)) $
+  , checkVersion [1,21]
+    (maybe False (not.null.reexportedModules) (library pkg)) $
       PackageDistInexcusable $
            "To use the 'reexported-module' field the package needs to specify "
         ++ "at least 'cabal-version: >= 1.21'."
@@ -914,7 +930,8 @@ checkCabalVersion pkg =
     -- check use of thinning and renaming
   , checkVersion [1,21] (not (null depsUsingThinningRenamingSyntax)) $
       PackageDistInexcusable $
-           "The package uses thinning and renaming in the 'build-depends' field: "
+           "The package uses "
+        ++ "thinning and renaming in the 'build-depends' field: "
         ++ commaSep (map display depsUsingThinningRenamingSyntax)
         ++ ". To use this new syntax, the package needs to specify at least"
         ++ "'cabal-version: >= 1.21'."
@@ -1092,14 +1109,16 @@ checkCabalVersion pkg =
     -- XXX: If the user writes build-depends: foo with (), this is
     -- indistinguishable from build-depends: foo, so there won't be an
     -- error even though there should be
-    depsUsingThinningRenamingSyntax = [ name
-                                      | bi <- allBuildInfo pkg
-                                      , (name, rns) <- Map.toList (targetBuildRenaming bi)
-                                      , rns /= ModuleRenaming True [] ]
+    depsUsingThinningRenamingSyntax =
+      [ name
+      | bi <- allBuildInfo pkg
+      , (name, rns) <- Map.toList (targetBuildRenaming bi)
+      , rns /= ModuleRenaming True [] ]
 
-    testedWithUsingWildcardSyntax = [ Dependency (PackageName (display compiler)) vr
-                                    | (compiler, vr) <- testedWith pkg
-                                    , usesWildcardSyntax vr ]
+    testedWithUsingWildcardSyntax =
+      [ Dependency (PackageName (display compiler)) vr
+      | (compiler, vr) <- testedWith pkg
+      , usesWildcardSyntax vr ]
 
     usesWildcardSyntax :: VersionRange -> Bool
     usesWildcardSyntax =
@@ -1179,8 +1198,10 @@ displayRawVersionRange =
      (\v   -> (Disp.text ">=" <> disp v                   , 0))
      (\v   -> (Disp.text "<=" <> disp v                   , 0))
      (\v _ -> (Disp.text "==" <> dispWild v               , 0))
-     (\(r1, p1) (r2, p2) -> (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
-     (\(r1, p1) (r2, p2) -> (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
+     (\(r1, p1) (r2, p2) ->
+       (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
+     (\(r1, p1) (r2, p2) ->
+       (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
      (\(r,  _ )          -> (Disp.parens r, 0)) -- parens
 
   where
