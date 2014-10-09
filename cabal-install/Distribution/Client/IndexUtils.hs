@@ -82,6 +82,7 @@ import System.FilePath.Posix as FilePath.Posix
 import System.IO
 import System.IO.Unsafe (unsafeInterleaveIO)
 import System.IO.Error (isDoesNotExistError)
+import Numeric (showFFloat)
 
 
 getInstalledPackages :: Verbosity -> Compiler
@@ -219,7 +220,7 @@ readRepoIndex verbosity repo mode =
       when (dt >= isOldThreshold) $ case repoKind repo of
         Left  remoteRepo -> warn verbosity $
              "The package list for '" ++ remoteRepoName remoteRepo
-          ++ "' is " ++ show dt ++ " days old.\nRun "
+          ++ "' is " ++ showFFloat (Just 1) dt " days old.\nRun "
           ++ "'cabal update' to get the latest list of available packages."
         Right _localRepo -> return ()
 
