@@ -11,6 +11,7 @@
 -- Extra utils related to the package indexes.
 -----------------------------------------------------------------------------
 module Distribution.Client.IndexUtils (
+  getIndexFileAge,
   getInstalledPackages,
   getSourcePackages,
   getSourcePackagesStrict,
@@ -180,7 +181,7 @@ readRepoIndex verbosity repo mode =
   let indexFile = repoLocalDir repo </> "00-index.tar"
       cacheFile = repoLocalDir repo </> "00-index.cache"
   in handleNotFound $ do
-    warnIfIndexIsOld indexFile
+    warnIfIndexIsOld =<< getIndexFileAge repo
     whenCacheOutOfDate indexFile cacheFile $ do
       info verbosity "Updating the index cache file..."
       updatePackageIndexCacheFile indexFile cacheFile
@@ -214,14 +215,19 @@ readRepoIndex verbosity repo mode =
       else ioError e
 
     isOldThreshold = 15 --days
-    warnIfIndexIsOld indexFile = do
-      dt <- getFileAge indexFile
+    warnIfIndexIsOld dt = do
       when (dt >= isOldThreshold) $ case repoKind repo of
         Left  remoteRepo -> warn verbosity $
              "The package list for '" ++ remoteRepoName remoteRepo
           ++ "' is " ++ show dt ++ " days old.\nRun "
           ++ "'cabal update' to get the latest list of available packages."
         Right _localRepo -> return ()
+
+
+-- | Return the age of the index file in days (as a Double).
+getIndexFileAge :: Repo -> IO Double
+getIndexFileAge repo = getFileAge $ repoLocalDir repo </> "00-index.tar"
+
 
 -- | It is not necessary to call this, as the cache will be updated when the
 -- index is read normally. However you can do the work earlier if you like.
