@@ -11,7 +11,7 @@ import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds, posixDayLength)
 import Data.Time (getCurrentTime, diffUTCTime)
 #else
 import System.Time (ClockTime(..), getClockTime
-                   ,diffClockTimes, normalizeTimeDiff, tdDay)
+                   ,diffClockTimes, normalizeTimeDiff, tdDay, tdHour)
 #endif
 
 #if defined mingw32_HOST_OS
@@ -115,17 +115,17 @@ getModTime path = do
 #endif
 
 -- | Return age of given file in days.
-getFileAge :: FilePath -> IO Int
+getFileAge :: FilePath -> IO Double
 getFileAge file = do
   t0 <- getModificationTime file
 #if MIN_VERSION_directory(1,2,0)
   t1 <- getCurrentTime
-  let days = truncate $ (t1 `diffUTCTime` t0) / posixDayLength
+  return $ realToFrac (t1 `diffUTCTime` t0) / realToFrac posixDayLength
 #else
   t1 <- getClockTime
-  let days = (tdDay . normalizeTimeDiff) (t1 `diffClockTimes` t0)
+  let dt = normalizeTimeDiff (t1 `diffClockTimes` t0)
+  return $ fromIntegral ((24 * tdDay dt) + tdHour dt) / 24.0
 #endif
-  return days
 
 getCurTime :: IO EpochTime
 getCurTime =  do
