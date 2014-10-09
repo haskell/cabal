@@ -77,7 +77,7 @@ import Distribution.Simple.Command
 import Distribution.Simple.Program
          ( defaultProgramConfiguration )
 import Distribution.Simple.Utils
-         ( die, notice, warn, lowercase )
+         ( die, notice, warn, lowercase, cabalVersion )
 import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
@@ -109,6 +109,10 @@ import Distribution.Compat.Environment
          ( getEnvironment )
 import Distribution.Compat.Exception
          ( catchIO )
+import qualified Paths_cabal_install
+         ( version )
+import Data.Version
+         ( showVersion )
 
 --
 -- * Configuration saved in the config file
@@ -339,6 +343,9 @@ writeConfigFile file comments vals = do
       ,"-- Lines (like this one) beginning with '--' are comments."
       ,"-- Be careful with spaces and indentation because they are"
       ,"-- used to indicate layout for nested sections."
+      ,""
+      ,"-- Cabal library version: " ++ showVersion cabalVersion
+      ,"-- cabal-install version: " ++ showVersion Paths_cabal_install.version
       ,"",""
       ]
 
