@@ -87,15 +87,29 @@ getPkgList verbosity packageDBs repos comp conf listFlags pats = do
         prefs name = fromMaybe anyVersion
                        (Map.lookup name (packagePreferences sourcePkgDb))
 
-        pkgsInfo :: [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage])]
+        pkgsInfo ::
+          [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage])]
         pkgsInfo
             -- gather info for all packages
-          | null pats = mergePackages (InstalledPackageIndex.allPackages installedPkgIndex)
-                                      (         PackageIndex.allPackages sourcePkgIndex)
+          | null pats = mergePackages
+                        (InstalledPackageIndex.allPackages installedPkgIndex)
+                        (         PackageIndex.allPackages sourcePkgIndex)
 
             -- gather info for packages matching search term
-          | otherwise = mergePackages (matchingPackages InstalledPackageIndex.searchByNameSubstring installedPkgIndex)
-                                      (matchingPackages (\ idx n -> concatMap snd (PackageIndex.searchByNameSubstring idx n)) sourcePkgIndex)
+          | otherwise = pkgsInfoMatching
+
+        pkgsInfoMatching ::
+          [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage])]
+        pkgsInfoMatching =
+          let matchingInstalled = matchingPackages
+                                  InstalledPackageIndex.searchByNameSubstring
+                                  installedPkgIndex
+              matchingSource   = matchingPackages
+                                 (\ idx n ->
+                                   concatMap snd
+                                   (PackageIndex.searchByNameSubstring idx n))
+                                 sourcePkgIndex
+          in mergePackages matchingInstalled matchingSource
 
         matches :: [PackageDisplayInfo]
         matches = [ mergePackageInfo pref
@@ -169,8 +183,10 @@ info verbosity packageDBs repos comp conf
         -- just available source packages, so we must resolve targets using
         -- the combination of installed and source packages.
     let sourcePkgs' = PackageIndex.fromList
-                    $ map packageId (InstalledPackageIndex.allPackages installedPkgIndex)
-                   ++ map packageId (         PackageIndex.allPackages sourcePkgIndex)
+                    $ map packageId
+                      (InstalledPackageIndex.allPackages installedPkgIndex)
+                   ++ map packageId
+                      (PackageIndex.allPackages sourcePkgIndex)
     pkgSpecifiers <- resolveUserTargets verbosity
                        (fromFlag $ globalWorldFile globalFlags)
                        sourcePkgs' userTargets
@@ -191,7 +207,8 @@ info verbosity packageDBs repos comp conf
                      PackageIndex.PackageIndex SourcePackage ->
                      PackageSpecifier SourcePackage ->
                      Either String PackageDisplayInfo
-    gatherPkgInfo prefs installedPkgIndex sourcePkgIndex (NamedPackage name constraints)
+    gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
+      (NamedPackage name constraints)
       | null (selectedInstalledPkgs) && null (selectedSourcePkgs)
       = Left $ "There is no available version of " ++ display name
             ++ " that satisfies "
@@ -205,10 +222,11 @@ info verbosity packageDBs repos comp conf
         (pref, installedPkgs, sourcePkgs) =
           sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex
 
-        selectedInstalledPkgs = InstalledPackageIndex.lookupDependency installedPkgIndex
-                                    (Dependency name verConstraint)
-        selectedSourcePkgs    =          PackageIndex.lookupDependency sourcePkgIndex
-                                    (Dependency name verConstraint)
+        selectedInstalledPkgs = InstalledPackageIndex.lookupDependency
+                                installedPkgIndex
+                                (Dependency name verConstraint)
+        selectedSourcePkgs    = PackageIndex.lookupDependency sourcePkgIndex
+                                (Dependency name verConstraint)
         selectedSourcePkg'    = latestWithPref pref selectedSourcePkgs
 
                          -- display a specific package version if the user
@@ -217,7 +235,8 @@ info verbosity packageDBs repos comp conf
         verConstraint  = foldr intersectVersionRanges anyVersion verConstraints
         verConstraints = [ vr | PackageConstraintVersion _ vr <- constraints ]
 
-    gatherPkgInfo prefs installedPkgIndex sourcePkgIndex (SpecificSourcePackage pkg) =
+    gatherPkgInfo prefs installedPkgIndex sourcePkgIndex
+      (SpecificSourcePackage pkg) =
         Right $ mergePackageInfo pref installedPkgs sourcePkgs
                                  selectedPkg True
       where
@@ -236,8 +255,9 @@ sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
   (pref, installedPkgs, sourcePkgs)
   where
     pref          = prefs name
-    installedPkgs = concatMap snd (InstalledPackageIndex.lookupPackageName installedPkgIndex name)
-    sourcePkgs    =                         PackageIndex.lookupPackageName sourcePkgIndex name
+    installedPkgs = concatMap snd (InstalledPackageIndex.lookupPackageName
+                                   installedPkgIndex name)
+    sourcePkgs    = PackageIndex.lookupPackageName sourcePkgIndex name
 
 
 -- | The info that we can display for each package. It is information per
@@ -433,8 +453,10 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     modules      = combine Installed.exposedModules installed
                            (maybe [] Source.exposedModules
                                    . Source.library) source,
-    dependencies = combine (map (SourceDependency . simplifyDependency) . Source.buildDepends) source
-                           (map InstalledDependency . Installed.depends) installed,
+    dependencies =
+      combine (map (SourceDependency . simplifyDependency)
+               . Source.buildDepends) source
+      (map InstalledDependency . Installed.depends) installed,
     haddockHtml  = fromMaybe "" . join
                  . fmap (listToMaybe . Installed.haddockHTMLs)
                  $ installed,
