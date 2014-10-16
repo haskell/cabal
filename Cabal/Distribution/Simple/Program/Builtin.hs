@@ -56,6 +56,8 @@ import Distribution.Simple.Utils
          ( findProgramVersion )
 import Distribution.Compat.Exception
          ( catchIO )
+import Distribution.Version
+         ( Version(..), withinRange, withinVersion )
 import Data.Char
          ( isDigit )
 
@@ -107,7 +109,20 @@ builtinPrograms =
 
 ghcProgram :: Program
 ghcProgram = (simpleProgram "ghc") {
-    programFindVersion = findProgramVersion "--numeric-version" id
+    programFindVersion = findProgramVersion "--numeric-version" id,
+
+    -- Workaround for https://ghc.haskell.org/trac/ghc/ticket/8825
+    -- (spurious warning on non-english locales)
+    -- Only GHC 7.8.* seems to be affected.
+    programPostConf    = \_verbosity ghcProg ->
+    do let ghcProg' = ghcProg {
+             programOverrideEnv = ("LANGUAGE", Just "en")
+                                  : programOverrideEnv ghcProg
+             }
+       return $ maybe ghcProg
+         (\v -> if withinRange v (withinVersion $ Version [7,8] [])
+                then ghcProg' else ghcProg)
+         (programVersion ghcProg)
   }
 
 ghcPkgProgram :: Program
