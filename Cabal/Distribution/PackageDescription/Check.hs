@@ -670,6 +670,11 @@ checkGhcOptions pkg =
         "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use "
         ++ "the 'extensions' field."
 
+  , checkProfFlags ["-auto-all"] $
+      PackageDistSuspicious $
+        "'ghc-prof-options: -auto-all' is fine during development, but "
+        ++ "not recommended in a distributed package. "
+
   , check ("-threaded" `elem` lib_ghc_options) $
       PackageDistSuspicious $
            "'ghc-options: -threaded' has no effect for libraries. It should "
@@ -702,13 +707,18 @@ checkGhcOptions pkg =
                            && ("-Wall"   `elem` opts || "-W" `elem` opts)
     has_Werror     = any (\opts -> "-Werror" `elem` opts) ghc_options
 
-    ghc_options = [ strs | bi <- allBuildInfo pkg
-                         , (GHC, strs) <- options bi ]
-    all_ghc_options = concat ghc_options
+    (ghc_options, ghc_prof_options) =
+      unzip . map (\bi -> (hcOptions GHC bi, ghcProfOptions bi))
+      $ (allBuildInfo pkg)
+    all_ghc_options      = concat ghc_options
+    all_ghc_prof_options = concat ghc_prof_options
     lib_ghc_options = maybe [] (hcOptions GHC . libBuildInfo) (library pkg)
 
-    checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
-    checkFlags flags = check (any (`elem` flags) all_ghc_options)
+    checkFlags,checkProfFlags :: [String] -> PackageCheck -> Maybe PackageCheck
+    checkFlags     flags = doCheckFlags flags all_ghc_options
+    checkProfFlags flags = doCheckFlags flags all_ghc_prof_options
+
+    doCheckFlags   flags opts = check (any (`elem` flags) opts)
 
     ghcExtension ('-':'f':name) = case name of
       "allow-overlapping-instances"    -> enable  OverlappingInstances
