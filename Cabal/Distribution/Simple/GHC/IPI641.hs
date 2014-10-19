@@ -9,7 +9,7 @@
 --
 
 module Distribution.Simple.GHC.IPI641 (
-    InstalledPackageInfo,
+    InstalledPackageInfo(..),
     toCurrent,
   ) where
 
@@ -94,7 +94,6 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
     Current.depends            = map (mkInstalledPackageId.convertPackageId) (depends ipi),
-    Current.hugsOptions        = hugsOptions ipi,
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
     Current.frameworkDirs      = frameworkDirs ipi,

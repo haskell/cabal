@@ -192,11 +192,9 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
       BenchmarkUnsupported tt -> die $ "No support for preprocessing benchmark "
                                  ++ "type " ++ display tt
   where
-    builtinHaskellSuffixes
-      | NHC == compilerFlavor (compiler lbi) = ["hs", "lhs", "gc"]
-      | otherwise                            = ["hs", "lhs"]
-    builtinCSuffixes = cSourceExtensions
-    builtinSuffixes = builtinHaskellSuffixes ++ builtinCSuffixes
+    builtinHaskellSuffixes = ["hs", "lhs"]
+    builtinCSuffixes       = cSourceExtensions
+    builtinSuffixes        = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]
     pre dirs dir lhndlrs fp =
       preprocessFile dirs dir isSrcDist fp verbosity builtinSuffixes lhndlrs
@@ -507,8 +505,6 @@ platformDefines lbi =
       map (\os'   -> "-D" ++ os'   ++ "_HOST_OS=1")   osStr ++
       map (\arch' -> "-D" ++ arch' ++ "_HOST_ARCH=1") archStr
     JHC  -> ["-D__JHC__=" ++ versionInt version]
-    NHC  -> ["-D__NHC__=" ++ versionInt version]
-    Hugs -> ["-D__HUGS__"]
     HaskellSuite {} ->
       ["-D__HASKELL_SUITE__"] ++
         map (\os'   -> "-D" ++ os'   ++ "_HOST_OS=1")   osStr ++

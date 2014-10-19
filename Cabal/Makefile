@@ -29,9 +29,6 @@ setup: $(SOURCES) Setup.hs
 	-mkdir -p dist/setup
 	$(HC) $(GHCFLAGS) --make -i. -odir dist/setup -hidir dist/setup Setup.hs -o setup
 
-Setup-nhc:
-	hmake -nhc98 -package base -prelude Setup
-
 $(CONFIG_STAMP): setup Cabal.cabal
 	./setup configure --with-compiler=$(HC) --prefix=$(PREFIX)
 
@@ -41,19 +38,6 @@ $(BUILD_STAMP): $(CONFIG_STAMP) $(SOURCES)
 
 install: $(BUILD_STAMP)
 	./setup install
-
-hugsbootstrap:
-	rm -rf dist/tmp dist/hugs
-	mkdir -p dist/tmp
-	mkdir dist/hugs
-	cp -r Distribution dist/tmp
-	hugs-package dist/tmp dist/hugs
-	cp Setup.lhs Cabal.cabal dist/hugs
-
-hugsinstall: hugsbootstrap
-	cd dist/hugs && ./Setup.lhs configure --hugs
-	cd dist/hugs && ./Setup.lhs build
-	cd dist/hugs && ./Setup.lhs install
 
 # documentation...
 

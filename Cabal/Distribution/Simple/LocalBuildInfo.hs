@@ -110,9 +110,6 @@ data LocalBuildInfo = LocalBuildInfo {
                 -- ^ The platform we're building for
         buildDir      :: FilePath,
                 -- ^ Where to build the package.
-        --TODO: eliminate hugs's scratchDir, use builddir
-        scratchDir    :: FilePath,
-                -- ^ Where to put the result of the Hugs build.
         componentsConfigs   :: [(ComponentName, ComponentLocalBuildInfo, [ComponentName])],
                 -- ^ All the components to build, ordered by topological sort, and with their dependencies
                 -- over the intrapackage dependency graph
