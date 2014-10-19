@@ -20,11 +20,8 @@ module Distribution.Simple.Program.Builtin (
     ghcPkgProgram,
     lhcProgram,
     lhcPkgProgram,
-    nhcProgram,
     hmakeProgram,
     jhcProgram,
-    hugsProgram,
-    ffihugsProgram,
     haskellSuiteProgram,
     haskellSuitePkgProgram,
     uhcProgram,
@@ -77,11 +74,8 @@ builtinPrograms =
     -- compilers and related progs
       ghcProgram
     , ghcPkgProgram
-    , hugsProgram
-    , ffihugsProgram
     , haskellSuiteProgram
     , haskellSuitePkgProgram
-    , nhcProgram
     , hmakeProgram
     , jhcProgram
     , lhcProgram
@@ -150,16 +144,6 @@ lhcPkgProgram = (simpleProgram "lhc-pkg") {
         _               -> ""
   }
 
-nhcProgram :: Program
-nhcProgram = (simpleProgram "nhc98") {
-    programFindVersion = findProgramVersion "--version" $ \str ->
-      -- Invoking "nhc98 --version" gives a string like
-      -- "/usr/local/bin/nhc98: v1.20 (2007-11-22)"
-      case words str of
-        (_:('v':ver):_) -> ver
-        _               -> ""
-  }
-
 hmakeProgram :: Program
 hmakeProgram = (simpleProgram "hmake") {
     programFindVersion = findProgramVersion "--version" $ \str ->
@@ -194,13 +178,6 @@ hpcProgram = (simpleProgram "hpc")
                 (_ : _ : _ : ver : _) -> ver
                 _ -> ""
     }
-
--- AArgh! Finding the version of hugs or ffihugs is almost impossible.
-hugsProgram :: Program
-hugsProgram = simpleProgram "hugs"
-
-ffihugsProgram :: Program
-ffihugsProgram = simpleProgram "ffihugs"
 
 -- This represents a haskell-suite compiler. Of course, the compiler
 -- itself probably is not called "haskell-suite", so this is not a real

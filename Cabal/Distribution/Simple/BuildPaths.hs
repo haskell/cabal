@@ -107,9 +107,8 @@ exeExtension = case buildOS of
                    Windows -> "exe"
                    _       -> ""
 
--- ToDo: This should be determined via autoconf (AC_OBJEXT)
--- | Extension for object files. For GHC and NHC the extension is @\"o\"@.
--- Hugs uses either @\"o\"@ or @\"obj\"@ depending on the used C compiler.
+-- TODO: This should be determined via autoconf (AC_OBJEXT)
+-- | Extension for object files. For GHC the extension is @\"o\"@.
 objExtension :: String
 objExtension = "o"
 

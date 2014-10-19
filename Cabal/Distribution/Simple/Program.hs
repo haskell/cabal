@@ -93,11 +93,8 @@ module Distribution.Simple.Program (
     , ghcPkgProgram
     , lhcProgram
     , lhcPkgProgram
-    , nhcProgram
     , hmakeProgram
     , jhcProgram
-    , hugsProgram
-    , ffihugsProgram
     , uhcProgram
     , gccProgram
     , arProgram
