@@ -52,6 +52,8 @@ import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
+import Distribution.Utils.NubList
+         ( NubList, toNubList, fromNubList)
 
 import Distribution.Simple.Compiler (PackageDB)
 import Distribution.Simple.Program
@@ -111,9 +113,9 @@ data GlobalFlags = GlobalFlags {
     globalNumericVersion    :: Flag Bool,
     globalConfigFile        :: Flag FilePath,
     globalSandboxConfigFile :: Flag FilePath,
-    globalRemoteRepos       :: [RemoteRepo],     -- ^ Available Hackage servers.
+    globalRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
     globalCacheDir          :: Flag FilePath,
-    globalLocalRepos        :: [FilePath],
+    globalLocalRepos        :: NubList FilePath,
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
     globalRequireSandbox    :: Flag Bool,
@@ -187,7 +189,7 @@ globalCommand = CommandUI {
       ,option [] ["remote-repo"]
          "The name and url for a remote repository"
          globalRemoteRepos (\v flags -> flags { globalRemoteRepos = v })
-         (reqArg' "NAME:URL" (maybeToList . readRepo) (map showRepo))
+         (reqArg' "NAME:URL" (toNubList . maybeToList . readRepo) (map showRepo . fromNubList))
 
       ,option [] ["remote-repo-cache"]
          "The location where downloads from all remote repos are cached"
@@ -197,7 +199,7 @@ globalCommand = CommandUI {
       ,option [] ["local-repo"]
          "The location of a local repository"
          globalLocalRepos (\v flags -> flags { globalLocalRepos = v })
-         (reqArg' "DIR" (\x -> [x]) id)
+         (reqArg' "DIR" (\x -> toNubList [x]) fromNubList)
 
       ,option [] ["logs-dir"]
          "The location to put log files"
@@ -245,12 +247,12 @@ globalRepos globalFlags = remoteRepos ++ localRepos
   where
     remoteRepos =
       [ Repo (Left remote) cacheDir
-      | remote <- globalRemoteRepos globalFlags
+      | remote <- fromNubList $ globalRemoteRepos globalFlags
       , let cacheDir = fromFlag (globalCacheDir globalFlags)
                    </> remoteRepoName remote ]
     localRepos =
       [ Repo (Right LocalRepo) local
-      | local <- globalLocalRepos globalFlags ]
+      | local <- fromNubList $ globalLocalRepos globalFlags ]
 
 -- ------------------------------------------------------------
 -- * Config flags
@@ -284,7 +286,7 @@ filterConfigureFlags flags cabalLibVersion
     flags_1_19_0 = flags_1_19_1 { configDependencies = []
                                 , configConstraints  = configConstraints flags }
     -- Cabal < 1.18.0 doesn't know about --extra-prog-path and --sysconfdir.
-    flags_1_18_0 = flags_1_19_0 { configProgramPathExtra = []
+    flags_1_18_0 = flags_1_19_0 { configProgramPathExtra = toNubList []
                                 , configInstallDirs = configInstallDirs_1_18_0}
     configInstallDirs_1_18_0 = (configInstallDirs flags) { sysconfdir = NoFlag }
     -- Cabal < 1.14.0 doesn't know about '--disable-benchmarks'.
@@ -971,7 +973,7 @@ data InstallFlags = InstallFlags {
     installOnly             :: Flag Bool,
     installOnlyDeps         :: Flag Bool,
     installRootCmd          :: Flag String,
-    installSummaryFile      :: [PathTemplate],
+    installSummaryFile      :: NubList PathTemplate,
     installLogFile          :: Flag PathTemplate,
     installBuildReports     :: Flag ReportLevel,
     installReportPlanningFailure :: Flag Bool,
@@ -1164,7 +1166,7 @@ installOptions showOrParseArgs =
       , option [] ["build-summary"]
           "Save build summaries to file (name template can use $pkgid, $compiler, $os, $arch)"
           installSummaryFile (\v flags -> flags { installSummaryFile = v })
-          (reqArg' "TEMPLATE" (\x -> [toPathTemplate x]) (map fromPathTemplate))
+          (reqArg' "TEMPLATE" (\x -> toNubList [toPathTemplate x]) (map fromPathTemplate . fromNubList))
 
       , option [] ["build-log"]
           "Log all builds to file (name template can use $pkgid, $compiler, $os, $arch)"

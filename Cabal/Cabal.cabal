@@ -219,6 +219,7 @@ library
     Distribution.System
     Distribution.TestSuite
     Distribution.Text
+    Distribution.Utils.NubList
     Distribution.Verbosity
     Distribution.Version
     Language.Haskell.Extension
@@ -241,6 +242,7 @@ test-suite unit-tests
   other-modules:
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.ReadP
+    UnitTests.Distribution.Utils.NubList
   main-is: UnitTests.hs
   build-depends:
     base,
