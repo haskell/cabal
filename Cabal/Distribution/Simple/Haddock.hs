@@ -71,6 +71,8 @@ import Distribution.Simple.Utils
          , findFileWithExtension, findFile )
 import Distribution.Text
          ( display, simpleParse )
+import Distribution.Utils.NubList
+         ( toNubListR )
 
 import Distribution.Verbosity
 import Language.Haskell.Extension
@@ -270,7 +272,7 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
                          ghcOptFPic        = toFlag True,
                          ghcOptHiSuffix    = toFlag "dyn_hi",
                          ghcOptObjSuffix   = toFlag "dyn_o",
-                         ghcOptExtra       = ghcSharedOptions bi
+                         ghcOptExtra       = toNubListR $ ghcSharedOptions bi
                      }
     opts <- if withVanillaLib lbi
             then return vanillaOpts
@@ -309,7 +311,7 @@ fromExecutable verbosity tmp lbi exe clbi htmlTemplate haddockVersion = do
                          ghcOptFPic        = toFlag True,
                          ghcOptHiSuffix    = toFlag "dyn_hi",
                          ghcOptObjSuffix   = toFlag "dyn_o",
-                         ghcOptExtra       = ghcSharedOptions bi
+                         ghcOptExtra       = toNubListR $ ghcSharedOptions bi
                      }
     opts <- if withVanillaLib lbi
             then return vanillaOpts
@@ -361,8 +363,8 @@ getGhcCppOpts :: Version
               -> GhcOptions
 getGhcCppOpts haddockVersion bi =
     mempty {
-        ghcOptExtensions   = [EnableExtension CPP | needsCpp],
-        ghcOptCppOptions   = defines
+        ghcOptExtensions   = toNubListR [EnableExtension CPP | needsCpp],
+        ghcOptCppOptions   = toNubListR defines
     }
   where
     needsCpp             = EnableExtension CPP `elem` usedExtensions bi
