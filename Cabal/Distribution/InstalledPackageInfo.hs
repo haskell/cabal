@@ -120,7 +120,7 @@ data InstalledPackageInfo_ m
         reexportedModules :: [ModuleReexport],
         hiddenModules     :: [m],
         trusted           :: Bool,
-        importDirs        :: [FilePath],  -- contain sources in case of Hugs
+        importDirs        :: [FilePath],
         libraryDirs       :: [FilePath],
         hsLibraries       :: [String],
         extraLibraries    :: [String],
@@ -128,7 +128,6 @@ data InstalledPackageInfo_ m
         includeDirs       :: [FilePath],
         includes          :: [String],
         depends           :: [InstalledPackageId],
-        hugsOptions       :: [String],
         ccOptions         :: [String],
         ldOptions         :: [String],
         frameworkDirs     :: [FilePath],
@@ -179,7 +178,6 @@ emptyInstalledPackageInfo
         includeDirs       = [],
         includes          = [],
         depends           = [],
-        hugsOptions       = [],
         ccOptions         = [],
         ldOptions         = [],
         frameworkDirs     = [],
@@ -328,9 +326,6 @@ installedFieldDescrs = [
  , listField   "depends"
         disp               parse
         depends            (\xs pkg -> pkg{depends=xs})
- , listField   "hugs-options"
-        showToken          parseTokenQ
-        hugsOptions        (\path  pkg -> pkg{hugsOptions=path})
  , listField   "cc-options"
         showToken          parseTokenQ
         ccOptions          (\path  pkg -> pkg{ccOptions=path})

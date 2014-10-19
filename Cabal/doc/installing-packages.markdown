@@ -280,7 +280,7 @@ and all options specified with `--configure-option=` are passed on.
 The following options govern the programs used to process the source
 files of a package:
 
-`--ghc` or `-g`, `--nhc`, `--jhc`, `--hugs`
+`--ghc` or `-g`, `--jhc`, `--lhc`, `--uhc`
 :   Specify which Haskell implementation to use to build the package.
     At most one of these flags may be given. If none is given, the
     implementation under which the setup script was compiled or
@@ -497,7 +497,6 @@ Option                     Windows Default                                      
 `--prefix` (per-user)      `C:\Documents And Settings\user\Application Data\cabal`   `$HOME/.cabal`
 `--bindir`                 `$prefix\bin`                                             `$prefix/bin`
 `--libdir`                 `$prefix`                                                 `$prefix/lib`
-`--libsubdir` (Hugs)       `hugs\packages\$pkg`                                      `hugs/packages/$pkg`
 `--libsubdir` (others)     `$pkgid\$compiler`                                        `$pkgid/$compiler`
 `--libexecdir`             `$prefix\$pkgid`                                          `$prefix/libexec`
 `--datadir` (executable)   `$prefix`                                                 `$prefix/share`
@@ -512,15 +511,14 @@ Option                     Windows Default                                      
 
 #### Prefix-independence ####
 
-On Windows, and when using Hugs on any system, it is possible to obtain
-the pathname of the running program. This means that we can construct an
-installable executable package that is independent of its absolute
-install location. The executable can find its auxiliary files by finding
-its own path and knowing the location of the other files relative to
-`$bindir`.  Prefix-independence is particularly
-useful: it means the user can choose the install location (i.e. the
-value of `$prefix`) at install-time, rather than
-having to bake the path into the binary when it is built.
+On Windows it is possible to obtain the pathname of the running program. This
+means that we can construct an installable executable package that is
+independent of its absolute install location. The executable can find its
+auxiliary files by finding its own path and knowing the location of the other
+files relative to `$bindir`.  Prefix-independence is particularly useful: it
+means the user can choose the install location (i.e. the value of `$prefix`) at
+install-time, rather than having to bake the path into the binary when it is
+built.
 
 In order to achieve this, we require that for an executable on Windows,
 all of `$bindir`, `$libdir`, `$datadir` and `$libexecdir` begin with
@@ -756,13 +754,6 @@ be controlled with the following command line options.
 
     It's also possible to enable `--allow-newer` permanently by setting
     `allow-newer: True` in the `~/.cabal/config` file.
-
-
-In the simple build infrastructure, an additional option is recognized:
-
-`--scratchdir=`_dir_
-:   Specify the directory into which the Hugs output will be placed
-    (default: `dist/scratch`).
 
 ## setup build ##
 

@@ -84,7 +84,6 @@ data InstallDirs dir = InstallDirs {
         libsubdir    :: dir,
         dynlibdir    :: dir,
         libexecdir   :: dir,
-        progdir      :: dir,
         includedir   :: dir,
         datadir      :: dir,
         datasubdir   :: dir,
@@ -105,7 +104,6 @@ instance Functor InstallDirs where
     libsubdir    = f (libsubdir dirs),
     dynlibdir    = f (dynlibdir dirs),
     libexecdir   = f (libexecdir dirs),
-    progdir      = f (progdir dirs),
     includedir   = f (includedir dirs),
     datadir      = f (datadir dirs),
     datasubdir   = f (datasubdir dirs),
@@ -124,7 +122,6 @@ instance Monoid dir => Monoid (InstallDirs dir) where
       libsubdir    = mempty,
       dynlibdir    = mempty,
       libexecdir   = mempty,
-      progdir      = mempty,
       includedir   = mempty,
       datadir      = mempty,
       datasubdir   = mempty,
@@ -147,7 +144,6 @@ combineInstallDirs combine a b = InstallDirs {
     libsubdir    = libsubdir a  `combine` libsubdir b,
     dynlibdir    = dynlibdir a  `combine` dynlibdir b,
     libexecdir   = libexecdir a `combine` libexecdir b,
-    progdir      = progdir a    `combine` progdir b,
     includedir   = includedir a `combine` includedir b,
     datadir      = datadir a    `combine` datadir b,
     datasubdir   = datasubdir a `combine` datasubdir b,
@@ -213,7 +209,6 @@ defaultInstallDirs comp userInstall _hasLibs = do
       bindir       = "$prefix" </> "bin",
       libdir       = installLibDir,
       libsubdir    = case comp of
-           Hugs   -> "hugs" </> "packages" </> "$pkg"
            JHC    -> "$compiler"
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
@@ -222,7 +217,6 @@ defaultInstallDirs comp userInstall _hasLibs = do
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$pkgkey"
         _other    -> "$prefix" </> "libexec",
-      progdir      = "$libdir" </> "hugs" </> "programs",
       includedir   = "$libdir" </> "$libsubdir" </> "include",
       datadir      = case buildOS of
         Windows   -> "$prefix"
@@ -262,7 +256,6 @@ substituteInstallDirTemplates env dirs = dirs'
       libsubdir  = subst libsubdir  [],
       dynlibdir  = subst dynlibdir  [prefixVar, bindirVar, libdirVar],
       libexecdir = subst libexecdir prefixBinLibVars,
-      progdir    = subst progdir    prefixBinLibVars,
       includedir = subst includedir prefixBinLibVars,
       datadir    = subst datadir    prefixBinLibVars,
       datasubdir = subst datasubdir [],

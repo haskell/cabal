@@ -34,7 +34,7 @@ deprecated without breaking older packages.
 * `./setup configure`
   * `--prefix`
   * `--user`
-  * `--ghc`, `--hugs`
+  * `--ghc`, `--uhc`
   * `--verbose`
   * `--prefix`
 

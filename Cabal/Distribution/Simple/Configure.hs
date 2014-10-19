@@ -113,8 +113,6 @@ import Distribution.Verbosity
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.LHC  as LHC
-import qualified Distribution.Simple.NHC  as NHC
-import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
@@ -604,9 +602,6 @@ configure (pkg_descr0, pbi) cfg
                     compiler            = comp,
                     hostPlatform        = compPlatform,
                     buildDir            = buildDir',
-                    scratchDir          = fromFlagOrDefault
-                                            (distPref </> "scratch")
-                                            (configScratchDir cfg),
                     componentsConfigs   = buildComponents,
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
@@ -782,10 +777,8 @@ getInstalledPackages verbosity comp packageDBs progconf = do
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
     GHC -> GHC.getInstalledPackages verbosity packageDBs progconf
-    Hugs->Hugs.getInstalledPackages verbosity packageDBs progconf
     JHC -> JHC.getInstalledPackages verbosity packageDBs progconf
     LHC -> LHC.getInstalledPackages verbosity packageDBs progconf
-    NHC -> NHC.getInstalledPackages verbosity packageDBs progconf
     UHC -> UHC.getInstalledPackages verbosity comp packageDBs progconf
     HaskellSuite {} ->
       HaskellSuite.getInstalledPackages verbosity packageDBs progconf
@@ -1056,8 +1049,6 @@ configCompilerEx (Just hcFlavor) hcPath hcPkg conf verbosity = do
     JHC  -> JHC.configure  verbosity hcPath hcPkg conf
     LHC  -> do (_, _, ghcConf) <- GHC.configure  verbosity Nothing hcPkg conf
                LHC.configure  verbosity hcPath Nothing ghcConf
-    Hugs -> Hugs.configure verbosity hcPath hcPkg conf
-    NHC  -> NHC.configure  verbosity hcPath hcPkg conf
     UHC  -> UHC.configure  verbosity hcPath hcPkg conf
     HaskellSuite {} -> HaskellSuite.configure verbosity hcPath hcPkg conf
     _    -> die "Unknown compiler"

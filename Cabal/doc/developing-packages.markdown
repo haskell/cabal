@@ -525,7 +525,6 @@ library
   exposed-modules: Foo
   extensions:      ForeignFunctionInterface
   ghc-options:     -Wall
-  nhc98-options:   -K4m
   if os(windows)
     build-depends: Win32
 ~~~~~~~~~~~~~~~~
@@ -619,7 +618,7 @@ infrastructure_ provided by the Cabal library (see
 [Distribution.Simple][dist-simple]). The simplicity lies in its
 interface rather that its implementation. It automatically handles
 preprocessing with standard preprocessors, and builds packages for all
-the Haskell implementations (except nhc98, for now).
+the Haskell implementations.
 
 The simple build infrastructure can also handle packages where building
 is governed by system-dependent parameters, if you specify a little more
@@ -689,9 +688,8 @@ _identifier_
 :   A letter followed by zero or more alphanumerics or underscores.
 
 _compiler_
-:   A compiler flavor (one of: `GHC`, `NHC`, `YHC`, `Hugs`, `HBC`,
-    `Helium`, `JHC`, or `LHC`) followed by a version range.  For
-    example, `GHC ==6.10.3`, or `LHC >=0.6 && <0.8`.
+:   A compiler flavor (one of: `GHC`, `JHC`, `UHC` or `LHC`) followed by a
+    version range.  For example, `GHC ==6.10.3`, or `LHC >=0.6 && <0.8`.
 
 ### Modules and preprocessors ###
 
@@ -1372,20 +1370,6 @@ values for these fields.
 `ghc-shared-options:` _token list_
 :   Additional options for GHC when the package is built as shared library.
 
-`hugs-options:` _token list_
-:   Additional options for Hugs. You can often achieve the same effect
-    using the `extensions` field, which is preferred.
-
-    Options required only by one module may be specified by placing an
-    `OPTIONS_HUGS` pragma in the source file affected.
-
-`nhc98-options:` _token list_
-:   Additional options for nhc98. You can often achieve the same effect
-    using the `extensions` field, which is preferred.
-
-    Options required only by one module may be specified by placing an
-    `OPTIONS_NHC98` pragma in the source file affected.
-
 `includes:` _filename list_
 :   A list of header files to be included in any compilations via C.
     This field applies to both header files that are already installed
@@ -1408,16 +1392,11 @@ values for these fields.
 
 `include-dirs:` _directory list_
 :   A list of directories to search for header files, when preprocessing
-    with `c2hs`, `hsc2hs`, `ffihugs`, `cpphs` or the C preprocessor, and
+    with `c2hs`, `hsc2hs`, `cpphs` or the C preprocessor, and
     also when compiling via C.
 
 `c-sources:` _filename list_
 :   A list of C source files to be compiled and linked with the Haskell files.
-
-    If you use this field, you should also name the C files in `CFILES`
-    pragmas in the Haskell source files that use them, e.g.: `{-# CFILES
-    dir/file1.c dir/file2.c #-}` These are ignored by the compilers, but
-    needed by Hugs.
 
 `extra-libraries:` _token list_
 :   A list of extra libraries to link with.
@@ -1705,11 +1684,11 @@ and outside then they are combined using the following rules.
 
     ~~~~~~~~~~~~~~~~
     Extensions: CPP
-    if impl(ghc) || impl(hugs)
+    if impl(ghc)
       Extensions: MultiParamTypeClasses
     ~~~~~~~~~~~~~~~~
 
-    when compiled using Hugs or GHC will be combined to
+    when compiled using GHC will be combined to
 
     ~~~~~~~~~~~~~~~~
     Extensions: CPP, MultiParamTypeClasses
