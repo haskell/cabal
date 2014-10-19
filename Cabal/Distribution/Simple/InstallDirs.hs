@@ -352,14 +352,14 @@ prefixRelativeInstallDirs pkgId pkg_key compilerId platform dirs =
 -- | An abstract path, possibly containing variables that need to be
 -- substituted for to get a real 'FilePath'.
 --
-newtype PathTemplate = PathTemplate [PathComponent] deriving (Generic)
+newtype PathTemplate = PathTemplate [PathComponent] deriving (Eq, Generic, Ord)
 
 instance Binary PathTemplate
 
 data PathComponent =
        Ordinary FilePath
      | Variable PathTemplateVariable
-     deriving (Eq, Generic)
+     deriving (Eq, Ord, Generic)
 
 instance Binary PathComponent
 
@@ -384,7 +384,7 @@ data PathTemplateVariable =
      | TestSuiteResultVar -- ^ The result of the test suite being run, eg
                           -- @pass@, @fail@, or @error@.
      | BenchmarkNameVar   -- ^ The name of the benchmark being run
-  deriving (Eq, Generic)
+  deriving (Eq, Ord, Generic)
 
 instance Binary PathTemplateVariable
 

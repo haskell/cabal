@@ -47,6 +47,8 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , showRepo, parseRepo )
+import Distribution.Utils.NubList
+         ( fromNubList, toNubList)
 
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..) )
@@ -217,14 +219,14 @@ initialSavedConfig = do
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalRemoteRepos  = [defaultRemoteRepo],
+      globalRemoteRepos  = toNubList [defaultRemoteRepo],
       globalWorldFile    = toFlag worldFile
     },
     savedConfigureFlags  = mempty {
-      configProgramPathExtra = extraPath
+      configProgramPathExtra = toNubList extraPath
     },
     savedInstallFlags    = mempty {
-      installSummaryFile = [toPathTemplate (logsDir </> "build.log")],
+      installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],
       installBuildReports= toFlag AnonymousReports,
       installNumJobs     = toFlag Nothing
     }
@@ -456,7 +458,8 @@ deprecatedFieldDescriptions =
   [ liftGlobalFlag $
     listField "repos"
       (Disp.text . showRepo) parseRepo
-      globalRemoteRepos (\rs cfg -> cfg { globalRemoteRepos = rs })
+      (fromNubList . globalRemoteRepos)
+      (\rs cfg -> cfg { globalRemoteRepos = toNubList rs })
   , liftGlobalFlag $
     simpleField "cachedir"
       (Disp.text . fromFlagOrDefault "") (optional parseFilePathQ)
