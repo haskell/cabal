@@ -54,6 +54,8 @@ import Distribution.Client.Install            ( InstallArgs,
                                                 makeInstallContext,
                                                 makeInstallPlan,
                                                 processInstallPlan )
+import Distribution.Utils.NubList            ( fromNubList )
+
 import Distribution.Client.Sandbox.PackageEnvironment
   ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
   , createPackageEnvironmentFile, classifyPackageEnvironment
@@ -197,7 +199,7 @@ tryGetIndexFilePath config = tryGetIndexFilePath' (savedGlobalFlags config)
 -- 'SavedConfig'.
 tryGetIndexFilePath' :: GlobalFlags -> IO FilePath
 tryGetIndexFilePath' globalFlags = do
-  let paths = globalLocalRepos globalFlags
+  let paths = fromNubList $ globalLocalRepos globalFlags
   case paths of
     []  -> die $ "Distribution.Client.Sandbox.tryGetIndexFilePath: " ++
            "no local repos found. " ++ checkConfiguration

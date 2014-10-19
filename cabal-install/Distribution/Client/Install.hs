@@ -99,6 +99,7 @@ import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
 
+import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
          , PackageDB(..), PackageDBStack )
@@ -674,7 +675,7 @@ reportPlanningFailure verbosity
         ++ intercalate "," (map display pkgids)
 
     -- Save reports
-    BuildReports.storeLocal (installSummaryFile installFlags) buildReports platform
+    BuildReports.storeLocal (fromNubList $ installSummaryFile installFlags) buildReports platform
 
     -- Save solver log
     case logFile of
@@ -739,7 +740,7 @@ postInstallActions verbosity
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan installPlan
-  BuildReports.storeLocal (installSummaryFile installFlags) buildReports
+  BuildReports.storeLocal (fromNubList $ installSummaryFile installFlags) buildReports
     (InstallPlan.planPlatform installPlan)
   when (reportingLevel >= AnonymousReports) $
     BuildReports.storeAnonymous buildReports

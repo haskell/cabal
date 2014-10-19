@@ -44,6 +44,7 @@ module Distribution.Simple.Configure (configure,
 
 import Distribution.Compiler
     ( CompilerId(..) )
+import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
@@ -577,7 +578,7 @@ configure (pkg_descr0, pbi) cfg
                 CompilerId GHC _ ->
                   -- If ghc is non-dynamic, then ghci needs object files,
                   -- so we build one by default.
-                  -- 
+                  --
                   -- Technically, archive files should be sufficient for ghci,
                   -- but because of GHC bug #8942, it has never been safe to
                   -- rely on them. By the time that bug was fixed, ghci had
@@ -680,7 +681,7 @@ mkProgramsConfig cfg initialProgramsConfig = programsConfig
                    . setProgramSearchPath searchpath
                    $ initialProgramsConfig
     searchpath     = getProgramSearchPath (initialProgramsConfig)
-                  ++ map ProgramSearchPathDir (configProgramPathExtra cfg)
+                  ++ map ProgramSearchPathDir (fromNubList $ configProgramPathExtra cfg)
 
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies
@@ -1269,7 +1270,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
       let filterForSpecificPackage =
             case moriginalPackageName of
               Nothing                  -> id
-              Just originalPackageName -> 
+              Just originalPackageName ->
                 filter (\(pkgname, _, _) -> pkgname == originalPackageName)
 
           matches = filterForSpecificPackage
