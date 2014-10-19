@@ -15,21 +15,14 @@ module Distribution.Client.Update
     ) where
 
 import Distribution.Client.Types
-         ( Repo(..), RemoteRepo(..), LocalRepo(..), SourcePackageDb(..) )
+         ( Repo(..), RemoteRepo(..), LocalRepo(..) )
 import Distribution.Client.HttpUtils
          ( DownloadResult(..) )
 import Distribution.Client.FetchUtils
          ( downloadIndex )
-import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.IndexUtils
-         ( getSourcePackages, updateRepoIndexCache )
-import qualified Paths_cabal_install
-         ( version )
+         ( updateRepoIndexCache )
 
-import Distribution.Package
-         ( PackageName(..), packageVersion )
-import Distribution.Version
-         ( anyVersion, withinRange )
 import Distribution.Simple.Utils
          ( writeFileAtomic, warn, notice )
 import Distribution.Verbosity
@@ -37,12 +30,7 @@ import Distribution.Verbosity
 
 import qualified Data.ByteString.Lazy       as BS
 import Distribution.Client.GZipUtils (maybeDecompress)
-import qualified Data.Map as Map
 import System.FilePath (dropExtension)
-import Data.List       (intercalate)
-import Data.Maybe      (fromMaybe)
-import Data.Version    (showVersion)
-import Control.Monad   (unless)
 
 -- | 'update' downloads the package list from all known servers
 update :: Verbosity -> [Repo] -> IO ()
@@ -51,7 +39,6 @@ update verbosity [] =
                 ++ "you would have one specified in the config file."
 update verbosity repos = do
   mapM_ (updateRepo verbosity) repos
-  checkForSelfUpgrade verbosity repos
 
 updateRepo :: Verbosity -> Repo -> IO ()
 updateRepo verbosity repo = case repoKind repo of
@@ -66,27 +53,3 @@ updateRepo verbosity repo = case repoKind repo of
         writeFileAtomic (dropExtension indexPath) . maybeDecompress
                                                 =<< BS.readFile indexPath
         updateRepoIndexCache verbosity repo
-
-checkForSelfUpgrade :: Verbosity -> [Repo] -> IO ()
-checkForSelfUpgrade verbosity repos = do
-  SourcePackageDb sourcePkgIndex prefs <- getSourcePackages verbosity repos
-
-  let self = PackageName "cabal-install"
-      preferredVersionRange  = fromMaybe anyVersion (Map.lookup self prefs)
-      currentVersion         = Paths_cabal_install.version
-      laterPreferredVersions =
-        [ version
-        | pkg <- PackageIndex.lookupPackageName sourcePkgIndex self
-        , let version = packageVersion pkg
-        , version > currentVersion
-        , version `withinRange` preferredVersionRange
-        ]
-
-  unless (null laterPreferredVersions) $ mapM_ (notice verbosity)
-    [ "Note: You are not currently running the latest version of cabal-install."
-    , "The currently running version is: " ++ showVersion currentVersion
-    , "These available versions are newer: "
-      ++ (intercalate ", " . map showVersion) laterPreferredVersions
-    , "If you have already installed a newer version, and intended "
-      ++ "to run it, maybe check your PATH environment variable?"
-    ]
