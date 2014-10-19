@@ -118,6 +118,10 @@ module Distribution.Simple.Utils (
         isInfixOf,
         intercalate,
         lowercase,
+        listUnion,
+        listUnionRight,
+        ordNub,
+        ordNubRight,
         wrapText,
         wrapLine,
   ) where
@@ -134,6 +138,7 @@ import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
+import qualified Data.Set as Set
 
 import System.Directory
     ( Permissions(executable), getDirectoryContents, getPermissions
@@ -1261,6 +1266,54 @@ takeWhileEndLE p = fst . foldr go ([], False)
     go x (rest, done)
       | not done && p x = (x:rest, False)
       | otherwise = (rest, True)
+
+-- | Like "Data.List.nub", but has @O(n log n)@ complexity instead of
+-- @O(n^2)@. Code for 'ordNub' and 'listUnion' taken from Niklas Hambüchen's
+-- <http://github.com/nh2/haskell-ordnub ordnub> package.
+ordNub :: (Ord a) => [a] -> [a]
+ordNub l = go Set.empty l
+  where
+    go _ [] = []
+    go s (x:xs) = if x `Set.member` s then go s xs
+                                      else x : go (Set.insert x s) xs
+
+-- | Like "Data.List.union", but has @O(n log n)@ complexity instead of
+-- @O(n^2)@.
+listUnion :: (Ord a) => [a] -> [a] -> [a]
+listUnion a b = a ++ ordNub (filter (`Set.notMember` aSet) b)
+  where
+    aSet = Set.fromList a
+
+-- | A right-biased version of 'ordNub'.
+--
+-- Example:
+--
+-- @
+-- > ordNub [1,2,1]
+-- [1,2]
+-- > ordNubRight [1,2,1]
+-- [2,1]
+-- @
+ordNubRight :: (Ord a) => [a] -> [a]
+ordNubRight = fst . foldr go ([], Set.empty)
+  where
+    go x p@(l, s) = if x `Set.member` s then p
+                                        else (x:l, Set.insert x s)
+
+-- | A right-biased version of 'listUnion'.
+--
+-- Example:
+--
+-- @
+-- > listUnion [1,2,3,4,3] [2,1,1]
+-- [1,2,3,4,3]
+-- > listUnionRight [1,2,3,4,3] [2,1,1]
+-- [4,3,2,1,1]
+-- @
+listUnionRight :: (Ord a) => [a] -> [a] -> [a]
+listUnionRight a b = ordNubRight (filter (`Set.notMember` bSet) a) ++ b
+  where
+    bSet = Set.fromList b
 
 equating :: Eq a => (b -> a) -> b -> b -> Bool
 equating p x y = p x == p y

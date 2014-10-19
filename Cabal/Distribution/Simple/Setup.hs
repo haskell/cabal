@@ -95,6 +95,7 @@ import Distribution.Simple.InstallDirs
          ( InstallDirs(..), CopyDest(..),
            PathTemplate, toPathTemplate, fromPathTemplate )
 import Distribution.Verbosity
+import Distribution.Utils.NubList
 
 import Control.Monad (liftM)
 import Data.Binary (Binary)
@@ -258,7 +259,7 @@ data ConfigFlags = ConfigFlags {
 
     configProgramPaths  :: [(String, FilePath)], -- ^user specified programs paths
     configProgramArgs   :: [(String, [String])], -- ^user specified programs args
-    configProgramPathExtra :: [FilePath],        -- ^Extend the $PATH
+    configProgramPathExtra :: NubList FilePath,  -- ^Extend the $PATH
     configHcFlavor      :: Flag CompilerFlavor, -- ^The \"flavor\" of the
                                                 -- compiler, such as GHC or
                                                 -- Hugs.
@@ -506,7 +507,7 @@ configureOptions showOrParseArgs =
       ,option "" ["extra-prog-path"]
          "A list of directories to search for required programs (in addition to the normal search locations)"
          configProgramPathExtra (\v flags -> flags {configProgramPathExtra = v})
-         (reqArg' "PATH" (\x -> [x]) id)
+         (reqArg' "PATH" (\x -> toNubList [x]) fromNubList)
 
       ,option "" ["constraint"]
          "A list of additional constraints on the dependencies."

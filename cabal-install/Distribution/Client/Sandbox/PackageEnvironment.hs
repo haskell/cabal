@@ -39,6 +39,7 @@ import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
                                        , defaultSandboxLocation )
+import Distribution.Utils.NubList            ( toNubList )
 import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
                                        , compilerFlavor, showCompilerId )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
@@ -200,12 +201,12 @@ initialPackageEnvironment sandboxDir compiler platform = do
        savedUserInstallDirs   = installDirs,
        savedGlobalInstallDirs = installDirs,
        savedGlobalFlags = (savedGlobalFlags initialConfig) {
-          globalLocalRepos = [sandboxDir </> "packages"]
+          globalLocalRepos = toNubList [sandboxDir </> "packages"]
           },
        savedConfigureFlags = setPackageDB sandboxDir compiler platform
                              (savedConfigureFlags initialConfig),
        savedInstallFlags = (savedInstallFlags initialConfig) {
-         installSummaryFile = [toPathTemplate (sandboxDir </>
+         installSummaryFile = toNubList [toPathTemplate (sandboxDir </>
                                                "logs" </> "build.log")]
          }
        }

@@ -193,7 +193,7 @@ data RemoteRepo = RemoteRepo {
     remoteRepoName :: String,
     remoteRepoURI  :: URI
   }
-  deriving (Show,Eq)
+  deriving (Show,Eq,Ord)
 
 data Repo = Repo {
     repoKind     :: Either RemoteRepo LocalRepo,

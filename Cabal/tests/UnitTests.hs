@@ -7,6 +7,7 @@ import Test.Framework
 
 import qualified UnitTests.Distribution.Compat.CreatePipe
 import qualified UnitTests.Distribution.Compat.ReadP
+import qualified UnitTests.Distribution.Utils.NubList
 
 tests :: [Test]
 tests =
@@ -14,6 +15,8 @@ tests =
         UnitTests.Distribution.Compat.ReadP.tests
     , testGroup "Distribution.Compat.CreatePipe"
         UnitTests.Distribution.Compat.CreatePipe.tests
+    , testGroup "Distribution.Utils.NubList"
+        UnitTests.Distribution.Utils.NubList.tests
     ]
 
 main :: IO ()
