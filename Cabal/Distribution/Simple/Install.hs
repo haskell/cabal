@@ -30,13 +30,11 @@ import Distribution.Simple.Utils
          , die, info, notice, warn, matchDirFileGlob )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), compilerFlavor )
-import Distribution.Simple.Setup (CopyFlags(..), CopyDest(..), fromFlag)
+import Distribution.Simple.Setup (CopyFlags(..), fromFlag)
 
 import qualified Distribution.Simple.GHC  as GHC
-import qualified Distribution.Simple.NHC  as NHC
 import qualified Distribution.Simple.JHC  as JHC
 import qualified Distribution.Simple.LHC  as LHC
-import qualified Distribution.Simple.Hugs as Hugs
 import qualified Distribution.Simple.UHC  as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
@@ -51,8 +49,7 @@ import Distribution.Text
          ( display )
 
 -- |Perform the \"@.\/setup install@\" and \"@.\/setup copy@\"
--- actions.  Move files into place based on the prefix argument.  FIX:
--- nhc isn't implemented yet.
+-- actions.  Move files into place based on the prefix argument.
 
 install :: PackageDescription -- ^information from the .cabal file
         -> LocalBuildInfo -- ^information from the configure step
@@ -67,7 +64,6 @@ install pkg_descr lbi flags = do
          libdir     = libPref,
 --         dynlibdir  = dynlibPref, --see TODO below
          datadir    = dataPref,
-         progdir    = progPref,
          docdir     = docPref,
          htmldir    = htmlPref,
          haddockdir = interfacePref,
@@ -142,12 +138,6 @@ install pkg_descr lbi flags = do
                   JHC.installLib verbosity libPref buildPref pkg_descr
                 withExe pkg_descr $
                   JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
-     Hugs -> do
-       let targetProgPref = progdir (absoluteInstallDirs pkg_descr lbi NoCopyDest)
-       let scratchPref = scratchDir lbi
-       Hugs.install verbosity lbi libPref progPref binPref targetProgPref scratchPref (progPrefixPref, progSuffixPref) pkg_descr
-     NHC  -> do withLibLBI pkg_descr lbi $ NHC.installLib verbosity libPref buildPref (packageId pkg_descr)
-                withExe pkg_descr $ NHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref)
      UHC  -> do withLib pkg_descr $ UHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
      HaskellSuite {} ->
        withLib pkg_descr $

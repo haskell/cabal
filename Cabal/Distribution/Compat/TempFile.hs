@@ -38,6 +38,7 @@ import qualified System.Posix
 -- This is here for Haskell implementations that do not come with
 -- System.IO.openTempFile. This includes nhc-1.20, hugs-2006.9.
 -- TODO: Not sure about JHC
+-- TODO: This file should probably be removed.
 
 -- This is a copy/paste of the openBinaryTempFile definition, but
 -- if uses 666 rather than 600 for the permissions. The base library

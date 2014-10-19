@@ -464,12 +464,15 @@ binfoFieldDescrs =
            ghcSharedOptions      (\val binfo -> binfo{ghcSharedOptions=val})
  , optsField   "ghc-options"  GHC
            options            (\path  binfo -> binfo{options=path})
- , optsField   "hugs-options" Hugs
-           options            (\path  binfo -> binfo{options=path})
- , optsField   "nhc98-options"  NHC
-           options            (\path  binfo -> binfo{options=path})
  , optsField   "jhc-options"  JHC
            options            (\path  binfo -> binfo{options=path})
+
+ -- NOTE: Hugs and NHC are not supported anymore, but these fields are kept
+ -- around for backwards compatibility.
+ , optsField   "hugs-options" Hugs
+           options            (const id)
+ , optsField   "nhc98-options" NHC
+           options            (const id)
  ]
 
 storeXFieldsBI :: UnrecFieldParser BuildInfo

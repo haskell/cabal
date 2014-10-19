@@ -262,7 +262,7 @@ data ConfigFlags = ConfigFlags {
     configProgramPathExtra :: NubList FilePath,  -- ^Extend the $PATH
     configHcFlavor      :: Flag CompilerFlavor, -- ^The \"flavor\" of the
                                                 -- compiler, such as GHC or
-                                                -- Hugs.
+                                                -- JHC.
     configHcPath        :: Flag FilePath, -- ^given compiler location
     configHcPkg         :: Flag FilePath, -- ^given hc-pkg location
     configVanillaLib    :: Flag Bool,     -- ^Enable vanilla library
@@ -375,10 +375,8 @@ configureOptions showOrParseArgs =
       ,option [] ["compiler"] "compiler"
          configHcFlavor (\v flags -> flags { configHcFlavor = v })
          (choiceOpt [ (Flag GHC, ("g", ["ghc"]), "compile with GHC")
-                    , (Flag NHC, ([] , ["nhc98"]), "compile with NHC")
                     , (Flag JHC, ([] , ["jhc"]), "compile with JHC")
                     , (Flag LHC, ([] , ["lhc"]), "compile with LHC")
-                    , (Flag Hugs,([] , ["hugs"]), "compile with Hugs")
                     , (Flag UHC, ([] , ["uhc"]), "compile with UHC")
 
                     -- "haskell-suite" compiler id string will be replaced
@@ -397,13 +395,7 @@ configureOptions showOrParseArgs =
          (reqArgFlag "PATH")
       ]
    ++ map liftInstallDirs installDirsOptions
-   ++ [option "b" ["scratchdir"]
-         "directory to receive the built package (hugs-only)"
-         configScratchDir (\v flags -> flags { configScratchDir = v })
-         (reqArgFlag "DIR")
-      --TODO: eliminate scratchdir flag
-
-      ,option "" ["program-prefix"]
+   ++ [option "" ["program-prefix"]
           "prefix to be applied to installed executables"
           configProgPrefix
           (\v flags -> flags { configProgPrefix = v })
