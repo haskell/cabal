@@ -199,7 +199,7 @@ commaListFieldWithSep separator name showF readF get set =
    where
      set' xs b = set (get b ++ xs) b
      showF'    = separator . punctuate comma . map showF
- 
+
 commaListField :: String -> (a -> Doc) -> ReadP [a] a
                  -> (b -> [a]) -> ([a] -> b -> b) -> FieldDescr b
 commaListField = commaListFieldWithSep fsep
