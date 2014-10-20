@@ -39,6 +39,7 @@ import Distribution.Client.Setup
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
          , SandboxFlags(..), sandboxCommand
          , ExecFlags(..), execCommand
+         , UserConfigFlags(..), userConfigCommand
          , reportCommand
          )
 import Distribution.Simple.Setup
@@ -56,7 +57,8 @@ import Distribution.Simple.Setup
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
-         ( SavedConfig(..), loadConfig, defaultConfigFile )
+         ( SavedConfig(..), loadConfig, defaultConfigFile, userConfigDiff
+         , userConfigUpdate )
 import Distribution.Client.Targets
          ( readUserTargets )
 import qualified Distribution.Client.List as List
@@ -233,6 +235,7 @@ mainWorker args = topHandler $
       ,sandboxCommand         `commandAddAction` sandboxAction
       ,haddockCommand         `commandAddAction` haddockAction
       ,execCommand            `commandAddAction` execAction
+      ,userConfigCommand      `commandAddAction` userConfigAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
       ,wrapperAction cleanCommand
@@ -1061,6 +1064,17 @@ execAction execFlags extraArgs globalFlags = do
   let configFlags = savedConfigureFlags config
   (comp, platform, conf) <- configCompilerAux' configFlags
   exec verbosity useSandbox comp platform conf extraArgs
+
+userConfigAction :: UserConfigFlags -> [String] -> GlobalFlags -> IO ()
+userConfigAction ucflags extraArgs globalFlags = do
+  let verbosity = fromFlag (userConfigVerbosity ucflags)
+  case extraArgs of
+    ("diff":_) -> mapM_ putStrLn =<< userConfigDiff globalFlags
+    ("update":_) -> userConfigUpdate verbosity globalFlags
+    -- Error handling.
+    [] -> die $ "Please specify a subcommand (see 'help user-config')"
+    _  -> die $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
+
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --
