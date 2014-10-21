@@ -1,6 +1,7 @@
 -*-change-log-*-
 
 1.21.x (current development version)
+	* New command: user-config (#2159).
 	* Implement 'cabal repl --only' (#2016).
 	* Fix an issue when 'cabal repl' was doing unnecessary compilation
 	(#1715).
