@@ -760,10 +760,11 @@ be controlled with the following command line options.
     For example, `cabal install --constraint="bar==2.1"` will only consider
     install plans that do not use `bar` at all, or `bar` of version 2.1.
 
-    As a special case, `cabal install --constraint="bar -none"` prevents
-    `bar` from being used at all. (`-none` abbreviates `> 1 && < 1`)
-    `cabal install --constraint="bar installed"` prevents reinstallation
-    of the `bar` package.
+    As a special case, `cabal install --constraint="bar -none"` prevents `bar`
+    from being used at all (`-none` abbreviates `> 1 && < 1`); `cabal install
+    --constraint="bar installed"` prevents reinstallation of the `bar` package;
+    `cabal install --constraint="bar +foo -baz"` specifies that the flag `foo`
+    should be turned on and the `baz` flag should be turned off.
 
 ## setup build ##
 
