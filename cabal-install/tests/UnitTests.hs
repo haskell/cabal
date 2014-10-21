@@ -4,12 +4,15 @@ module Main
 import Test.Framework
 
 import qualified UnitTests.Distribution.Client.Sandbox
+import qualified UnitTests.Distribution.Client.UserConfig
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
 
 tests :: [Test]
 tests = [
-   testGroup "Distribution.Client.Sandbox"
+   testGroup "UnitTests.Distribution.Client.UserConfig"
+       UnitTests.Distribution.Client.UserConfig.tests
+  ,testGroup "Distribution.Client.Sandbox"
        UnitTests.Distribution.Client.Sandbox.tests
   ,testGroup "Distribution.Client.Targets"
        UnitTests.Distribution.Client.Targets.tests

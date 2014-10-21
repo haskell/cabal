@@ -35,6 +35,7 @@ module Distribution.Client.Setup
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
     , execCommand, ExecFlags(..)
+    , userConfigCommand, UserConfigFlags(..)
 
     , parsePackageArgs
     --TODO: stop exporting these:
@@ -1722,6 +1723,43 @@ instance Monoid ExecFlags where
     execVerbosity = combine execVerbosity
     }
     where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * UserConfig flags
+-- ------------------------------------------------------------
+
+data UserConfigFlags = UserConfigFlags {
+  userConfigVerbosity :: Flag Verbosity
+}
+
+instance Monoid UserConfigFlags where
+  mempty = UserConfigFlags {
+    userConfigVerbosity = toFlag normal
+    }
+  mappend a b = UserConfigFlags {
+    userConfigVerbosity = combine userConfigVerbosity
+    }
+    where combine field = field a `mappend` field b
+
+userConfigCommand :: CommandUI UserConfigFlags
+userConfigCommand = CommandUI {
+  commandName         = "user-config",
+  commandSynopsis     = "Manipulate the user's ~/.cabal/config file.",
+  commandDescription  = Just $ \_ ->
+       "Allows pseudo-diff-ing and updating of the user's ~/.cabal/config "
+    ++ "file. The\ndiff is against what cabal would generate if the user "
+    ++ "config file did not\nexist. The update command overlays the user's "
+    ++ "existing settings over the\ncurrent version of the default settings "
+    ++ "and writes it back to ~/.cabal/config.\n",
+
+  commandUsage        = \ pname ->
+      "Usage: " ++ pname ++ " user-config diff\n"
+   ++ "       " ++ pname ++ " user-config update\n",
+  commandDefaultFlags = mempty,
+  commandOptions      = \ _ -> [
+   optionVerbosity userConfigVerbosity (\v flags -> flags { userConfigVerbosity = v })
+   ]
+  }
 
 -- ------------------------------------------------------------
 -- * GetOpt Utils
