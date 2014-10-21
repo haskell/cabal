@@ -1,10 +1,15 @@
 -*-change-log-*-
 
 1.21.x (current development version)
+	* Add '-none' constraint syntax for version ranges (#2093).
+	* Make the default doc index file path compiler/arch/os-dependent
+	(#2136).
+	* Warn instead of dying when generating documentation and hscolour
+	isn't installed (455f51622fa38347db62197a04bb0fa5b928ff17).
 	* Support the new BinaryLiterals extension
 	(1f25ab3c5eff311ada73c6c987061b80e9bbebd9).
 	* Warn about 'ghc-prof-options: -auto-all' in 'cabal check' (#2162).
-	* Preliminary support for multiple instances of the same package
+	* Add preliminary support for multiple instances of the same package
 	version installed side-by-side (#2002).
 	* New binary build config format - faster build times (#2076).
 	* Support module thinning and renaming (#2038).
