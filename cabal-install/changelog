@@ -1,5 +1,18 @@
 -*-change-log-*-
 
+1.21.x (current development version)
+	* Implement 'cabal repl --only' (#2016).
+	* Fix an issue when 'cabal repl' was doing unnecessary compilation
+	(#1715).
+	* Prompt the user to specify source directory in 'cabal init'
+	(#1989).
+	* Remove the self-upgrade check (#2090).
+	* Don't redownload already downloaded packages when bootstrapping
+	(#2133).
+	* Support sandboxes in 'bootstrap.sh' (#2137).
+	* Install profiling and shared libs by default in 'bootstrap.sh'
+	(#2009).
+
 1.20.0.3 Johan Tibell <johan.tibell@gmail.com> June 2014
 	* Don't attempt to rename dist if it is already named correctly
 	* Treat all flags of a package as interdependent.

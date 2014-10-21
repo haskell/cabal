@@ -1,8 +1,23 @@
 -*-change-log-*-
 
 1.21.x (current development version)
+	* Support the new BinaryLiterals extension
+	(1f25ab3c5eff311ada73c6c987061b80e9bbebd9).
+	* Warn about 'ghc-prof-options: -auto-all' in 'cabal check' (#2162).
+	* Preliminary support for multiple instances of the same package
+	version installed side-by-side (#2002).
+	* New binary build config format - faster build times (#2076).
+	* Support module thinning and renaming (#2038).
+	* Add a new license type: UnspecifiedLicense (#2141).
+	* Remove support for Hugs and nhc98 (#2168).
+	* Invoke 'tar' with '--formar ustar' if possible in 'sdist' (#1903).
 	* Replace --enable-library-coverage with --enable-coverage, which
-	enables program coverage for all components.
+	enables program coverage for all components (#1945).
+	* Suggest that `ExitFailure 9` is probably due to memory
+	exhaustion (#1522).
+	* Drop support for Haddock < 2.0 (#1808, #1718).
+	* Make 'cabal test'/'cabal bench' build only what's needed for
+	running tests/benchmarks (#1821).
 
 1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Fix streaming test output.
