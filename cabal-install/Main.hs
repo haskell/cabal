@@ -21,6 +21,7 @@ import Distribution.Client.Setup
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
          , buildCommand, replCommand, testCommand, benchmarkCommand
+         , defaultHaddockFlags
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand
          , FetchFlags(..), fetchCommand
@@ -43,7 +44,7 @@ import Distribution.Client.Setup
          , reportCommand
          )
 import Distribution.Simple.Setup
-         ( HaddockFlags(..), haddockCommand, defaultHaddockFlags
+         ( HaddockFlags(..), haddockCommand
          , HscolourFlags(..), hscolourCommand
          , ReplFlags(..)
          , CopyFlags(..), copyCommand
