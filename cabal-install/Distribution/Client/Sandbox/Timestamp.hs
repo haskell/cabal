@@ -141,15 +141,16 @@ maybeAddCompilerTimestampRecord :: Verbosity -> FilePath -> FilePath
                                    -> IO ()
 maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
                                 compId platform = do
-  buildTreeRefs <- listBuildTreeRefs verbosity DontListIgnored OnlyLinks
-                                     indexFile
   withTimestampFile sandboxDir $ \timestampRecords -> do
     let key = timestampRecordKey compId platform
     case lookup key timestampRecords of
       Just _  -> return timestampRecords
-      Nothing -> do now <- getCurTime
-                    let timestamps = map (\p -> (p, now)) buildTreeRefs
-                    return $ (key, timestamps):timestampRecords
+      Nothing -> do
+        buildTreeRefs <- listBuildTreeRefs verbosity DontListIgnored OnlyLinks
+                         indexFile
+        now <- getCurTime
+        let timestamps = map (\p -> (p, now)) buildTreeRefs
+        return $ (key, timestamps):timestampRecords
 
 -- | Given an IO action that returns a list of build tree refs, add those
 -- build tree refs to the timestamps file (for all compilers).
