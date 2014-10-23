@@ -56,8 +56,8 @@ main = do
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     cwd <- getCurrentDirectory
     let runTests = do
-        setCurrentDirectory "tests"
-        defaultMain $ tests cabalPath ghcPkgPath
+          setCurrentDirectory "tests"
+          defaultMain $ tests cabalPath ghcPkgPath
     -- Change back to the old working directory so that the tests can be
     -- repeatedly run in `cabal repl` via `:main`.
     runTests `E.finally` setCurrentDirectory cwd
