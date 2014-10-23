@@ -41,7 +41,7 @@ import Distribution.Version                          (Version (..),
                                                       orLaterVersion)
 
 import Distribution.Client.Sandbox.Index
-  (ListIgnoredBuildTreeRefs (DontListIgnored), RefTypesToList(OnlyLinks)
+  (ListIgnoredBuildTreeRefs (ListIgnored), RefTypesToList(OnlyLinks)
   ,listBuildTreeRefs)
 import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
                                                       defaultSetupScriptOptions,
@@ -141,12 +141,12 @@ maybeAddCompilerTimestampRecord :: Verbosity -> FilePath -> FilePath
                                    -> IO ()
 maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
                                 compId platform = do
+  let key = timestampRecordKey compId platform
   withTimestampFile sandboxDir $ \timestampRecords -> do
-    let key = timestampRecordKey compId platform
     case lookup key timestampRecords of
       Just _  -> return timestampRecords
       Nothing -> do
-        buildTreeRefs <- listBuildTreeRefs verbosity DontListIgnored OnlyLinks
+        buildTreeRefs <- listBuildTreeRefs verbosity ListIgnored OnlyLinks
                          indexFile
         now <- getCurTime
         let timestamps = map (\p -> (p, now)) buildTreeRefs
