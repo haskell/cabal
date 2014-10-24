@@ -184,8 +184,7 @@ readRepoIndex verbosity repo mode =
   in handleNotFound $ do
     warnIfIndexIsOld =<< getIndexFileAge repo
     whenCacheOutOfDate indexFile cacheFile $ do
-      info verbosity "Updating the index cache file..."
-      updatePackageIndexCacheFile indexFile cacheFile
+      updatePackageIndexCacheFile verbosity indexFile cacheFile
     readPackageIndexCacheFile mkAvailablePackage indexFile cacheFile mode
 
   where
@@ -236,8 +235,7 @@ getIndexFileAge repo = getFileAge $ repoLocalDir repo </> "00-index.tar"
 updateRepoIndexCache :: Verbosity -> Repo -> IO ()
 updateRepoIndexCache verbosity repo =
     whenCacheOutOfDate indexFile cacheFile $ do
-      info verbosity "Updating the index cache file..."
-      updatePackageIndexCacheFile indexFile cacheFile
+      updatePackageIndexCacheFile verbosity indexFile cacheFile
   where
     indexFile = repoLocalDir repo </> "00-index.tar"
     cacheFile = repoLocalDir repo </> "00-index.cache"
@@ -388,8 +386,9 @@ parsePreferredVersions = mapMaybe simpleParse
 -- Reading and updating the index cache
 --
 
-updatePackageIndexCacheFile :: FilePath -> FilePath -> IO ()
-updatePackageIndexCacheFile indexFile cacheFile = do
+updatePackageIndexCacheFile :: Verbosity -> FilePath -> FilePath -> IO ()
+updatePackageIndexCacheFile verbosity indexFile cacheFile = do
+    info verbosity "Updating the index cache file..."
     (mkPkgs, prefs) <- either fail return
                        . parsePackageIndex
                        . maybeDecompress
