@@ -21,6 +21,7 @@ module Distribution.Client.IndexUtils (
   parsePackageIndex,
   readRepoIndex,
   updateRepoIndexCache,
+  updatePackageIndexCacheFile,
 
   BuildTreeRefType(..), refTypeFromTypeCode, typeCodeFromRefType
   ) where
