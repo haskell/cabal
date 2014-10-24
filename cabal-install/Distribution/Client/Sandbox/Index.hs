@@ -22,6 +22,7 @@ import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.IndexUtils ( BuildTreeRefType(..)
                                       , refTypeFromTypeCode
                                       , typeCodeFromRefType
+                                      , updatePackageIndexCacheFile
                                       , getSourcePackagesStrict )
 import Distribution.Client.PackageIndex ( allPackages )
 import Distribution.Client.Types ( Repo(..), LocalRepo(..)
@@ -43,7 +44,8 @@ import Data.Maybe                ( catMaybes )
 import System.Directory          ( createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
                                    renameFile )
-import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension )
+import System.FilePath           ( (</>), (<.>), takeDirectory, takeExtension
+                                 , replaceExtension )
 import System.IO                 ( IOMode(..), SeekMode(..)
                                  , hSeek, withBinaryFile )
 
@@ -150,6 +152,8 @@ addBuildTreeRefs verbosity path l' refType = do
       hSeek h AbsoluteSeek (fromIntegral offset)
       BS.hPut h (Tar.write entries)
       debug verbosity $ "Successfully appended to '" ++ path ++ "'"
+    updatePackageIndexCacheFile verbosity path
+      (path `replaceExtension` "cache")
 
 -- | Remove given local build tree references from the index.
 removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO [FilePath]
@@ -164,10 +168,10 @@ removeBuildTreeRefs verbosity path l' = do
   -- much smaller.
   BS.writeFile tmpFile . Tar.writeEntries . Tar.filterEntries (p l) . Tar.read
     =<< BS.readFile path
-  -- This invalidates the cache, so we don't have to update it explicitly.
   renameFile tmpFile path
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ path ++ "'"
+  updatePackageIndexCacheFile verbosity path (path `replaceExtension` "cache")
   -- FIXME: return only the refs that vere actually removed.
   return l
     where
