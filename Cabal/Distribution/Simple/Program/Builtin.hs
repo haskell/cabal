@@ -54,7 +54,8 @@ import Distribution.Simple.Utils
 import Distribution.Compat.Exception
          ( catchIO )
 import Distribution.Version
-         ( Version(..), withinRange, withinVersion )
+         ( Version(..), withinRange, earlierVersion, laterVersion
+         , intersectVersionRanges )
 import Data.Char
          ( isDigit )
 
@@ -107,14 +108,17 @@ ghcProgram = (simpleProgram "ghc") {
 
     -- Workaround for https://ghc.haskell.org/trac/ghc/ticket/8825
     -- (spurious warning on non-english locales)
-    -- Only GHC 7.8.* seems to be affected.
     programPostConf    = \_verbosity ghcProg ->
     do let ghcProg' = ghcProg {
              programOverrideEnv = ("LANGUAGE", Just "en")
                                   : programOverrideEnv ghcProg
              }
+           -- Only the 7.8 branch seems to be affected. Fixed in 7.8.4.
+           affectedVersionRange = intersectVersionRanges
+                                  (laterVersion   $ Version [7,8,0] [])
+                                  (earlierVersion $ Version [7,8,4] [])
        return $ maybe ghcProg
-         (\v -> if withinRange v (withinVersion $ Version [7,8] [])
+         (\v -> if withinRange v affectedVersionRange
                 then ghcProg' else ghcProg)
          (programVersion ghcProg)
   }
