@@ -20,10 +20,14 @@ import Distribution.Verbosity (normal)
 -- Third party modules.
 import qualified Control.Exception.Extensible as E
 import System.Directory
-        (canonicalizePath, getCurrentDirectory, setCurrentDirectory)
+        ( canonicalizePath, getCurrentDirectory, setCurrentDirectory
+        , removeFile, doesFileExist )
+import System.FilePath ((</>))
 import Test.Framework (Test, defaultMain, testGroup)
+import Control.Monad ( when )
 
 -- Modules containing the tests.
+import qualified PackageTests.PackageTester (checkBasePath)
 import qualified PackageTests.Exec.Check
 import qualified PackageTests.Freeze.Check
 import qualified PackageTests.MultipleSource.Check
@@ -55,9 +59,20 @@ main = do
     putStrLn $ "Using cabal: " ++ cabalPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     cwd <- getCurrentDirectory
+    let confFile = PackageTests.PackageTester.checkBasePath </> "cabal-config"
+        removeConf = do
+          b <- doesFileExist confFile
+          putStrLn confFile
+          when b $ removeFile confFile
     let runTests = do
           setCurrentDirectory "tests"
+          removeConf -- assert that there is no existing config file
+                     -- (we want deterministic testing with the default
+                     --  config values)
           defaultMain $ tests cabalPath ghcPkgPath
-    -- Change back to the old working directory so that the tests can be
-    -- repeatedly run in `cabal repl` via `:main`.
-    runTests `E.finally` setCurrentDirectory cwd
+    runTests `E.finally` do
+        -- remove the default config file that got created by the tests
+        removeConf
+        -- Change back to the old working directory so that the tests can be
+        -- repeatedly run in `cabal repl` via `:main`.
+        setCurrentDirectory cwd

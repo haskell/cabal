@@ -16,16 +16,19 @@ import System.FilePath ((</>))
 import System.Directory (getDirectoryContents)
 
 dir :: FilePath
-dir = "PackageTests" </> "Exec"
+dir = checkBasePath </> "Exec"
+
+configPath :: FilePath
+configPath = checkDefaultConfigRelativePath
 
 tests :: FilePath -> FilePath -> [TF.Test]
 tests cabalPath ghcPkgPath =
     [ testCase "exits with failure if given no argument" $ do
-          result <- cabal_exec dir [] cabalPath
+          result <- cabal_exec dir [] cabalPath configPath
           assertExecFailed result
 
     , testCase "prints error message if given no argument" $ do
-          result <- cabal_exec dir [] cabalPath
+          result <- cabal_exec dir [] cabalPath configPath
           assertExecFailed result
           let output = outputText result
               expected = "specify an executable to run"
@@ -35,7 +38,7 @@ tests cabalPath ghcPkgPath =
               expected `isInfixOf` (intercalate " " . lines $ output)
 
     , testCase "runs the given command" $ do
-          result <- cabal_exec dir ["echo", "this", "string"] cabalPath
+          result <- cabal_exec dir ["echo", "this", "string"] cabalPath configPath
           assertExecSucceeded result
           let output = outputText result
               expected = "this string"
@@ -53,7 +56,7 @@ tests cabalPath ghcPkgPath =
           assertMyExecutableNotFound cabalPath
           assertPackageInstall cabalPath
 
-          result <- cabal_exec dir ["my-executable"] cabalPath
+          result <- cabal_exec dir ["my-executable"] cabalPath configPath
           assertExecSucceeded result
           let output = outputText result
               expected = "This is my-executable"
@@ -66,7 +69,7 @@ tests cabalPath ghcPkgPath =
           assertMyExecutableNotFound cabalPath
           assertPackageInstall cabalPath
 
-          result <- cabal_exec dir ["bash", "--", "-c", "my-executable"] cabalPath
+          result <- cabal_exec dir ["bash", "--", "-c", "my-executable"] cabalPath configPath
           assertExecSucceeded result
           let output = outputText result
               expected = "This is my-executable"
@@ -82,7 +85,7 @@ tests cabalPath ghcPkgPath =
 
           assertMyLibIsNotAvailableOutsideofSandbox ghcPkgPath libNameAndVersion
 
-          result <- cabal_exec dir ["ghc-pkg", "list"] cabalPath
+          result <- cabal_exec dir ["ghc-pkg", "list"] cabalPath configPath
           assertExecSucceeded result
           let output = outputText result
               errMsg = "my library should have been found"
@@ -94,25 +97,24 @@ tests cabalPath ghcPkgPath =
     -- , testCase "configures cabal to use the sandbox" $ do
     ]
 
-
 cleanPreviousBuilds :: FilePath -> IO ()
 cleanPreviousBuilds cabalPath = do
     sandboxExists <- not . null . filter (== "cabal.sandbox.config") <$>
                          getDirectoryContents dir
-    assertCleanSucceeded   =<< cabal_clean dir [] cabalPath
+    assertCleanSucceeded   =<< cabal_clean dir [] cabalPath configPath
     when sandboxExists $ do
-        assertSandboxSucceeded =<< cabal_sandbox dir ["delete"] cabalPath
+        assertSandboxSucceeded =<< cabal_sandbox dir ["delete"] cabalPath configPath
 
 
 assertPackageInstall :: FilePath -> IO ()
 assertPackageInstall cabalPath = do
-    assertSandboxSucceeded =<< cabal_sandbox dir ["init"] cabalPath
-    assertInstallSucceeded =<< cabal_install dir [] cabalPath
+    assertSandboxSucceeded =<< cabal_sandbox dir ["init"] cabalPath configPath
+    assertInstallSucceeded =<< cabal_install dir [] cabalPath configPath
 
 
 assertMyExecutableNotFound :: FilePath -> IO ()
 assertMyExecutableNotFound cabalPath = do
-    result <- cabal_exec dir ["my-executable"] cabalPath
+    result <- cabal_exec dir ["my-executable"] cabalPath configPath
     assertExecFailed result
     let output = outputText result
         expected = "cabal: The program 'my-executable' is required but it " ++
