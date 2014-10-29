@@ -19,6 +19,10 @@
 module PackageTests.PackageTester
     ( Result(..)
 
+    , checkBasePath
+    , checkDefaultConfigFile
+    , checkDefaultConfigRelativePath
+
     -- * Running cabal commands
     , cabal_clean
     , cabal_exec
@@ -42,7 +46,7 @@ import Data.Maybe (fromMaybe)
 import System.Directory (canonicalizePath, doesFileExist)
 import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitSuccess))
-import System.FilePath ((<.>))
+import System.FilePath ( (<.>), (</>) )
 import System.IO (hClose, hGetChar, hIsEOF)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess)
@@ -76,6 +80,18 @@ nullResult :: Result
 nullResult = Result True Failure ""
 
 ------------------------------------------------------------------------
+-- * Config
+
+checkBasePath :: FilePath
+checkBasePath = "PackageTests"
+
+checkDefaultConfigFile :: FilePath
+checkDefaultConfigFile = "cabal-config"
+
+checkDefaultConfigRelativePath :: FilePath
+checkDefaultConfigRelativePath = ".." </> checkDefaultConfigFile
+
+------------------------------------------------------------------------
 -- * Running cabal commands
 
 recordRun :: (String, ExitCode, String) -> Success -> Result -> Result
@@ -89,39 +105,46 @@ recordRun (cmd, exitCode, exeOutput) thisSucc res =
         }
 
 -- | Run the clean command and return its result.
-cabal_clean :: FilePath -> [String] -> FilePath -> IO Result
-cabal_clean dir args cabalPath = do
-    res <- cabal dir (["clean"] ++ args) cabalPath
+cabal_clean :: FilePath -> [String] -> FilePath -> FilePath -> IO Result
+cabal_clean dir args cabalPath configPath = do
+    res <- cabal dir (["clean"] ++ args) cabalPath configPath
     return $ recordRun res CleanSuccess nullResult
 
 -- | Run the exec command and return its result.
-cabal_exec :: FilePath -> [String] -> FilePath -> IO Result
-cabal_exec dir args cabalPath = do
-    res <- cabal dir (["exec"] ++ args) cabalPath
+cabal_exec :: FilePath -> [String] -> FilePath -> FilePath -> IO Result
+cabal_exec dir args cabalPath configPath = do
+    res <- cabal dir (["exec"] ++ args) cabalPath configPath
     return $ recordRun res ExecSuccess nullResult
 
 -- | Run the freeze command and return its result.
-cabal_freeze :: FilePath -> [String] -> FilePath -> IO Result
-cabal_freeze dir args cabalPath = do
-    res <- cabal dir (["freeze"] ++ args) cabalPath
+cabal_freeze :: FilePath -> [String] -> FilePath -> FilePath -> IO Result
+cabal_freeze dir args cabalPath configPath = do
+    res <- cabal dir (["freeze"] ++ args) cabalPath configPath
     return $ recordRun res FreezeSuccess nullResult
 
 -- | Run the install command and return its result.
-cabal_install :: FilePath -> [String] -> FilePath -> IO Result
-cabal_install dir args cabalPath = do
-    res <- cabal dir (["install"] ++ args) cabalPath
+cabal_install :: FilePath -> [String] -> FilePath -> FilePath -> IO Result
+cabal_install dir args cabalPath configPath = do
+    res <- cabal dir (["install"] ++ args) cabalPath configPath
     return $ recordRun res InstallSuccess nullResult
 
 -- | Run the sandbox command and return its result.
-cabal_sandbox :: FilePath -> [String] -> FilePath -> IO Result
-cabal_sandbox dir args cabalPath = do
-    res <- cabal dir (["sandbox"] ++ args) cabalPath
+cabal_sandbox :: FilePath -> [String] -> FilePath -> FilePath -> IO Result
+cabal_sandbox dir args cabalPath configPath = do
+    res <- cabal dir (["sandbox"] ++ args) cabalPath configPath
     return $ recordRun res SandboxSuccess nullResult
 
 -- | Returns the command that was issued, the return code, and the output text.
-cabal :: FilePath -> [String] -> FilePath -> IO (String, ExitCode, String)
-cabal dir cabalArgs cabalPath = do
-    run (Just dir) cabalPath cabalArgs
+cabal :: FilePath
+      -> [String]
+      -> FilePath
+      -> FilePath
+      -> IO (String, ExitCode, String)
+cabal dir cabalArgs cabalPath configPath = do
+    run (Just dir) cabalPath args
+  where
+    args = configFileArg : cabalArgs
+    configFileArg = "--config-file=" ++ configPath
 
 -- | Returns the command that was issued, the return code, and the output text
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)
