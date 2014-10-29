@@ -657,7 +657,7 @@ parseOptVersion :: ReadP r Version
 parseOptVersion = parseQuoted ver <++ ver
   where ver :: ReadP r Version
         ver = parse <++ return noVersion
-        noVersion = Version{ versionBranch=[], versionTags=[] }
+        noVersion = Version [] []
 
 parseTestedWithQ :: ReadP r (CompilerFlavor,VersionRange)
 parseTestedWithQ = parseQuoted tw <++ tw
