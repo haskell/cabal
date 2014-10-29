@@ -80,6 +80,8 @@ data CommandUI flags = CommandUI {
     commandUsage    :: String -> String,
     -- | Additional explanation of the command to use in help texts.
     commandDescription :: Maybe (String -> String),
+    -- | Post-Usage notes and examples in help texts
+    commandNotes :: Maybe (String -> String),
     -- | Initial \/ empty flags
     commandDefaultFlags :: flags,
     -- | All the Option fields for this command
@@ -372,32 +374,43 @@ commandListOptions command =
 -- | The help text for this command with descriptions of all the options.
 commandHelp :: CommandUI flags -> String -> String
 commandHelp command pname =
-    commandUsage command pname
- ++ (GetOpt.usageInfo ""
-  . addCommonFlags ShowArgs
-  $ commandGetOpts ShowArgs command)
- ++ case commandDescription command of
-      Nothing   -> ""
-      Just desc -> '\n': desc pname
+    commandSynopsis command
+ ++ "\n\n"
+ ++ commandUsage command pname
+ ++ ( case commandDescription command of
+        Nothing   -> ""
+        Just desc -> '\n': desc pname)
+ ++ "\n"
+ ++ ( if cname == ""
+        then "Global flags:"
+        else "Flags for " ++ cname ++ ":" )
+ ++ ( GetOpt.usageInfo ""
+    . addCommonFlags ShowArgs
+    $ commandGetOpts ShowArgs command )
+ ++ ( case commandNotes command of
+        Nothing   -> ""
+        Just notes -> '\n': notes pname)
+  where cname = commandName command
 
 -- | Make a Command from standard 'GetOpt' options.
 makeCommand :: String                         -- ^ name
             -> String                         -- ^ short description
             -> Maybe (String -> String)       -- ^ long description
+            -> Maybe (String -> String)       -- ^ description notes
             -> flags                          -- ^ initial\/empty flags
             -> (ShowOrParseArgs -> [OptionField flags]) -- ^ options
             -> CommandUI flags
-makeCommand name shortDesc longDesc defaultFlags options =
+makeCommand name shortDesc longDesc notesDesc defaultFlags options =
   CommandUI {
     commandName         = name,
     commandSynopsis     = shortDesc,
     commandDescription  = longDesc,
+    commandNotes        = notesDesc,
     commandUsage        = usage,
     commandDefaultFlags = defaultFlags,
     commandOptions      = options
   }
-  where usage pname = "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n\n"
-                   ++ "Flags for " ++ name ++ ":"
+  where usage pname = "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n"
 
 -- | Common flags that apply to every command
 data CommonFlag = HelpFlag | ListOptionsFlag
@@ -529,8 +542,7 @@ commandsRun globalCommand commands args =
              ""       -> ""
              original -> original ++ "\n")
         ++ "Usage: " ++ pname ++ " COMMAND [FLAGS]\n"
-        ++ "   or: " ++ pname ++ " [GLOBAL FLAGS]\n\n"
-        ++ "Global flags:",
+        ++ "   or: " ++ pname ++ " [GLOBAL FLAGS]\n",
       commandDescription = Just $ \pname ->
            "Commands:\n"
         ++ unlines [ "  " ++ align name ++ "    " ++ description
@@ -562,11 +574,10 @@ commandsRun globalCommand commands args =
 
      where globalHelp = commandHelp globalCommand'
     helpCommandUI =
-      (makeCommand "help" "Help about commands." Nothing () (const [])) {
+      (makeCommand "help" "Help about commands." Nothing Nothing () (const [])) {
         commandUsage = \pname ->
              "Usage: " ++ pname ++ " help [FLAGS]\n"
-          ++ "   or: " ++ pname ++ " help COMMAND [FLAGS]\n\n"
-          ++ "Flags for help:"
+          ++ "   or: " ++ pname ++ " help COMMAND [FLAGS]\n"
       }
 
 -- | Utility function, many commands do not accept additional flags. This
