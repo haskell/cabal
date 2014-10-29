@@ -815,8 +815,7 @@ interpretPackageDbFlags userInstall specificDBs =
     extra dbs' (Just db:dbs) = extra (dbs' ++ [db]) dbs
 
 newPackageDepsBehaviourMinVersion :: Version
-newPackageDepsBehaviourMinVersion = Version { versionBranch = [1,7,1],
-                                              versionTags = [] }
+newPackageDepsBehaviourMinVersion = Version [1,7,1] []
 
 -- In older cabal versions, there was only one set of package dependencies for
 -- the whole package. In this version, we can have separate dependencies per
