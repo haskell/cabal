@@ -165,7 +165,7 @@ getPackageName flags = do
 --  if possible.
 getVersion :: InitFlags -> IO InitFlags
 getVersion flags = do
-  let v = Just $ Version { versionBranch = [0,1,0,0], versionTags = [] }
+  let v = Just $ Version [0,1,0,0] []
   v' <-     return (flagToMaybe $ version flags)
         ?>> maybePrompt flags (prompt "Package version" v)
         ?>> return v

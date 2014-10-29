@@ -118,7 +118,7 @@ instance Binary Version where
         br <- get
         tags <- get
         return $ Version br tags
-    put v = put (versionBranch v) >> put (versionTags v)
+    put (Version br tags) = put br >> put tags
 
 {-# DEPRECATED AnyVersion "Use 'anyVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}
 {-# DEPRECATED ThisVersion "use 'thisVersion', 'foldVersionRange' or 'asVersionIntervals'" #-}

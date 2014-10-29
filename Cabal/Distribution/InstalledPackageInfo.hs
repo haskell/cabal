@@ -157,7 +157,7 @@ emptyInstalledPackageInfo
     }
 
 noVersion :: Version
-noVersion = Version{ versionBranch=[], versionTags=[] }
+noVersion = Version [] []
 
 -- -----------------------------------------------------------------------------
 -- Module re-exports
