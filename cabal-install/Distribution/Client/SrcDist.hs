@@ -29,7 +29,7 @@ import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Program (requireProgram, simpleProgram, programPath)
 import Distribution.Simple.Program.Db (emptyProgramDb)
 import Distribution.Text ( display )
-import Distribution.Verbosity (Verbosity, lessVerbose, normal)
+import Distribution.Verbosity (Verbosity)
 import Distribution.Version   (Version(..), orLaterVersion)
 
 import System.FilePath ((</>), (<.>))
@@ -53,9 +53,6 @@ sdist flags exflags = do
     let outDir = if isOutDirectory then tmpDir else tmpDir </> tarBallName pkg
         flags' = (if not needMakeArchive then flags
                   else flags { sDistDirectory = Flag outDir })
-                 { sDistVerbosity = Flag $ if   verbosity == normal
-                                           then lessVerbose verbosity
-                                           else verbosity }
     unless isListSources $
       createDirectoryIfMissingVerbose verbosity True outDir
 
