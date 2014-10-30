@@ -236,10 +236,9 @@ mainWorker args = topHandler $
       ,haddockCommand         `commandAddAction` haddockAction
       ,execCommand            `commandAddAction` execAction
       ,userConfigCommand      `commandAddAction` userConfigAction
+      ,cleanCommand           `commandAddAction` cleanAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
-      ,wrapperAction cleanCommand
-                     cleanVerbosity    cleanDistPref
       ,wrapperAction hscolourCommand
                      hscolourVerbosity hscolourDistPref
       ,wrapperAction registerCommand
@@ -803,6 +802,19 @@ haddockAction haddockFlags extraArgs globalFlags = do
         }
   setupWrapper verbosity setupScriptOptions Nothing
     haddockCommand (const haddockFlags') extraArgs
+
+cleanAction :: CleanFlags -> [String] -> GlobalFlags -> IO ()
+cleanAction cleanFlags extraArgs _globalFlags =
+  setupWrapper verbosity setupScriptOptions Nothing
+               cleanCommand (const cleanFlags) extraArgs
+  where
+    verbosity = fromFlagOrDefault normal (cleanVerbosity cleanFlags)
+    setupScriptOptions = defaultSetupScriptOptions {
+      useDistPref = fromFlagOrDefault
+                    (useDistPref defaultSetupScriptOptions)
+                    (cleanDistPref cleanFlags),
+      useWin32CleanHack = True
+      }
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
