@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.SetupWrapper
@@ -97,6 +98,16 @@ import Data.Maybe          ( fromMaybe, isJust )
 import Data.Monoid         ( mempty )
 import Data.Char           ( isSpace )
 
+#ifdef mingw32_HOST_OS
+import Distribution.Simple.Utils
+         ( withTempDirectory )
+
+import Control.Exception   ( bracket )
+import System.FilePath     ( equalFilePath, takeDirectory )
+import System.Directory    ( doesDirectoryExist )
+import qualified System.Win32 as Win32
+#endif
+
 data SetupScriptOptions = SetupScriptOptions {
     useCabalVersion          :: VersionRange,
     useCompiler              :: Maybe Compiler,
@@ -108,6 +119,12 @@ data SetupScriptOptions = SetupScriptOptions {
     useLoggingHandle         :: Maybe Handle,
     useWorkingDir            :: Maybe FilePath,
     forceExternalSetupMethod :: Bool,
+
+    -- On Windows, running './dist/setup/setup clean' doesn't work because the
+    -- setup script will try to delete itself. So we have to move the setup exe
+    -- out of the way first and then delete it manually. This applies only to
+    -- the external setup method.
+    useWin32CleanHack        :: Bool,
 
     -- Used only when calling setupWrapper from parallel code to serialise
     -- access to the setup cache; should be Nothing otherwise.
@@ -135,6 +152,7 @@ defaultSetupScriptOptions = SetupScriptOptions {
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
     useWorkingDir            = Nothing,
+    useWin32CleanHack        = False,
     forceExternalSetupMethod = False,
     setupCacheLock           = Nothing
   }
@@ -491,12 +509,46 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     -- working directory.
     path' <- tryCanonicalizePath path
 
-    searchpath <- programSearchPathAsPATHVar
-                    (getProgramSearchPath (useProgramConfig options'))
-    env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+#if mingw32_HOST_OS
+    setupProgFile' <- tryCanonicalizePath setupProgFile
+    let win32CleanHackNeeded = (useWin32CleanHack options')
+                               -- Skip when a cached setup script is used.
+                               && setupProgFile' `equalFilePath` path'
+    if win32CleanHackNeeded then doWin32CleanHack path' else doInvoke path'
+#else
+    doInvoke path'
+#endif
 
-    process <- runProcess path' args
-                 (useWorkingDir options') env
-                 Nothing (useLoggingHandle options') (useLoggingHandle options')
-    exitCode <- waitForProcess process
-    unless (exitCode == ExitSuccess) $ exitWith exitCode
+    where
+      doInvoke path' = do
+        searchpath <- programSearchPathAsPATHVar
+                      (getProgramSearchPath (useProgramConfig options'))
+        env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+
+        process <- runProcess path' args
+                   (useWorkingDir options') env Nothing
+                   (useLoggingHandle options') (useLoggingHandle options')
+        exitCode <- waitForProcess process
+        unless (exitCode == ExitSuccess) $ exitWith exitCode
+
+#if mingw32_HOST_OS
+      doWin32CleanHack path' = do
+        info verbosity $ "Using the Win32 clean hack."
+        -- Recursively removes the temp dir on exit.
+        withTempDirectory verbosity workingDir "cabal-tmp" $ \tmpDir ->
+            bracket (moveOutOfTheWay tmpDir path')
+                    (maybeRestore path')
+                    doInvoke
+
+      moveOutOfTheWay tmpDir path' = do
+        let newPath = tmpDir </> "setup" <.> exeExtension
+        Win32.moveFile path' newPath
+        return newPath
+
+      maybeRestore oldPath path' = do
+        let oldPathDir = takeDirectory oldPath
+        oldPathDirExists <- doesDirectoryExist oldPathDir
+        -- 'setup clean' didn't complete, 'dist/setup' still exists.
+        when oldPathDirExists $
+          Win32.moveFile path' oldPath
+#endif

@@ -127,6 +127,7 @@ configure verbosity packageDBs repos comp platform conf
                            (configDistPref configFlags),
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing,
+      useWin32CleanHack        = False,
       forceExternalSetupMethod = False,
       setupCacheLock   = Nothing
     }

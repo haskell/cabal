@@ -1028,6 +1028,7 @@ performInstallations verbosity
       useLoggingHandle = Nothing,
       useWorkingDir    = Nothing,
       forceExternalSetupMethod = parallelInstall,
+      useWin32CleanHack        = False,
       setupCacheLock   = Just lock
     }
     reportingLevel = fromFlag (installBuildReports installFlags)
