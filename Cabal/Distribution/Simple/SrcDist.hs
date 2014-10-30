@@ -57,7 +57,7 @@ import Distribution.Simple.Utils
          , installOrdinaryFiles, installMaybeExecutableFiles
          , findFile, findFileWithExtension, matchFileGlob
          , withTempDirectory, defaultPackageDesc
-         , die, warn, notice, setupMessage )
+         , die, warn, notice, info, setupMessage )
 import Distribution.Simple.Setup ( Flag(..), SDistFlags(..)
                                  , fromFlag, flagToMaybe)
 import Distribution.Simple.PreProcess ( PPSuffixHandler, ppSuffixes
@@ -113,7 +113,7 @@ sdist pkg mb_lbi flags mkTmpDir pps =
       case flagToMaybe (sDistDirectory flags) of
         Just targetDir -> do
           generateSourceDir targetDir pkg'
-          notice verbosity $ "Source directory created: " ++ targetDir
+          info verbosity $ "Source directory created: " ++ targetDir
 
         Nothing -> do
           createDirectoryIfMissingVerbose verbosity True tmpTargetDir
