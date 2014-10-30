@@ -568,7 +568,13 @@ csidl_PROGRAM_FILES = 0x0026
 -- csidl_PROGRAM_FILES_COMMON :: CInt
 -- csidl_PROGRAM_FILES_COMMON = 0x002b
 
-foreign import stdcall unsafe "shlobj.h SHGetFolderPathW"
+#ifdef x86_64_HOST_ARCH
+#define CALLCONV ccall
+#else
+#define CALLCONV stdcall
+#endif
+
+foreign import CALLCONV unsafe "shlobj.h SHGetFolderPathW"
             c_SHGetFolderPath :: Ptr ()
                               -> CInt
                               -> Ptr ()

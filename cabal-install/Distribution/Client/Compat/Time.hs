@@ -27,8 +27,13 @@ import Foreign            (allocaBytes, peekByteOff)
 import System.IO.Error    (mkIOError, doesNotExistErrorType)
 import System.Win32.Types (BOOL, DWORD, LPCTSTR, LPVOID, withTString)
 
+#ifdef x86_64_HOST_ARCH
+#define CALLCONV ccall
+#else
+#define CALLCONV stdcall
+#endif
 
-foreign import stdcall "windows.h GetFileAttributesExW"
+foreign import CALLCONV "windows.h GetFileAttributesExW"
   c_getFileAttributesEx :: LPCTSTR -> Int32 -> LPVOID -> IO BOOL
 
 getFileAttributesEx :: String -> LPVOID -> IO BOOL

@@ -160,10 +160,16 @@ deleteOldExeFile verbosity oldPID tmpPath = do
 
 -- A bunch of functions sadly not provided by the Win32 package.
 
-foreign import stdcall unsafe "windows.h GetCurrentProcessId"
+#ifdef x86_64_HOST_ARCH
+#define CALLCONV ccall
+#else
+#define CALLCONV stdcall
+#endif
+
+foreign import CALLCONV unsafe "windows.h GetCurrentProcessId"
   getCurrentProcessId :: IO DWORD
 
-foreign import stdcall unsafe "windows.h WaitForSingleObject"
+foreign import CALLCONV unsafe "windows.h WaitForSingleObject"
   waitForSingleObject_ :: HANDLE -> DWORD -> IO DWORD
 
 waitForSingleObject :: HANDLE -> DWORD -> IO ()
@@ -174,7 +180,7 @@ waitForSingleObject handle timeout =
     bad result   = not (result == 0 || result == wAIT_TIMEOUT)
     wAIT_TIMEOUT = 0x00000102
 
-foreign import stdcall unsafe "windows.h CreateEventW"
+foreign import CALLCONV unsafe "windows.h CreateEventW"
   createEvent_ :: Ptr () -> BOOL -> BOOL -> LPCTSTR -> IO HANDLE
 
 createEvent :: String -> IO HANDLE
@@ -183,7 +189,7 @@ createEvent name = do
     Win32.withTString name $
       createEvent_ nullPtr False False
 
-foreign import stdcall unsafe "windows.h OpenEventW"
+foreign import CALLCONV unsafe "windows.h OpenEventW"
   openEvent_ :: DWORD -> BOOL -> LPCTSTR -> IO HANDLE
 
 openEvent :: String -> IO HANDLE
@@ -195,7 +201,7 @@ openEvent name = do
     eVENT_MODIFY_STATE :: DWORD
     eVENT_MODIFY_STATE = 0x0002
 
-foreign import stdcall unsafe "windows.h SetEvent"
+foreign import CALLCONV unsafe "windows.h SetEvent"
   setEvent_ :: HANDLE -> IO BOOL
 
 setEvent :: HANDLE -> IO ()
