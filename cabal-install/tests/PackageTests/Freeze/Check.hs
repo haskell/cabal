@@ -17,10 +17,10 @@ import System.FilePath ((</>))
 import System.IO.Error (isDoesNotExistError)
 
 dir :: FilePath
-dir = checkBasePath </> "Freeze"
+dir = packageTestsDirectory </> "Freeze"
 
 configPath :: FilePath
-configPath = checkDefaultConfigRelativePath
+configPath = ".." </> packageTestsConfigFile
 
 tests :: FilePath -> [TF.Test]
 tests cabalPath =

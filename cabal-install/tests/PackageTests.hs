@@ -27,7 +27,7 @@ import Test.Framework (Test, defaultMain, testGroup)
 import Control.Monad ( when )
 
 -- Modules containing the tests.
-import qualified PackageTests.PackageTester (checkBasePath)
+import qualified PackageTests.PackageTester ( packageTestsDirectory )
 import qualified PackageTests.Exec.Check
 import qualified PackageTests.Freeze.Check
 import qualified PackageTests.MultipleSource.Check
@@ -59,10 +59,9 @@ main = do
     putStrLn $ "Using cabal: " ++ cabalPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     cwd <- getCurrentDirectory
-    let confFile = PackageTests.PackageTester.checkBasePath </> "cabal-config"
+    let confFile = PackageTests.PackageTester.packageTestsDirectory </> "cabal-config"
         removeConf = do
           b <- doesFileExist confFile
-          putStrLn confFile
           when b $ removeFile confFile
     let runTests = do
           setCurrentDirectory "tests"
