@@ -15,18 +15,14 @@ import System.FilePath  ((</>))
 dir :: FilePath
 dir = packageTestsDirectory </> "MultipleSource"
 
-tests :: FilePath -> [TF.Test]
-tests cabalPath =
+tests :: TestsPaths -> [TF.Test]
+tests paths =
     [ testCase "finds second source of multiple source" $ do
           sandboxExists <- doesDirectoryExist $ dir </> ".cabal-sandbox"
-          let execute cmd params = cmd dir
-                                       params
-                                       cabalPath
-                                       (".." </> packageTestsConfigFile)
           when sandboxExists $
-            void $ execute cabal_sandbox ["delete"]
-          assertSandboxSucceeded =<< execute cabal_sandbox ["init"]
-          assertSandboxSucceeded =<< execute cabal_sandbox ["add-source", "p"]
-          assertSandboxSucceeded =<< execute cabal_sandbox ["add-source", "q"]
-          assertInstallSucceeded =<< execute cabal_install ["q"]
+            void $ cabal_sandbox paths dir ["delete"]
+          assertSandboxSucceeded =<< cabal_sandbox paths dir ["init"]
+          assertSandboxSucceeded =<< cabal_sandbox paths dir ["add-source", "p"]
+          assertSandboxSucceeded =<< cabal_sandbox paths dir ["add-source", "q"]
+          assertInstallSucceeded =<< cabal_install paths dir ["q"]
     ]

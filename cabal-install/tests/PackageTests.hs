@@ -26,19 +26,24 @@ import System.FilePath ((</>))
 import Test.Framework (Test, defaultMain, testGroup)
 import Control.Monad ( when )
 
+-- Module containing common test code.
+
+import PackageTests.PackageTester ( TestsPaths(..)
+                                  , packageTestsDirectory
+                                  , packageTestsConfigFile )
+
 -- Modules containing the tests.
-import qualified PackageTests.PackageTester ( packageTestsDirectory )
 import qualified PackageTests.Exec.Check
 import qualified PackageTests.Freeze.Check
 import qualified PackageTests.MultipleSource.Check
 
 -- List of tests to run. Each test will be called with the path to the
 -- cabal binary to use.
-tests :: FilePath -> FilePath -> [Test]
-tests cabalPath ghcPkgPath =
-    [ testGroup "Freeze" $ PackageTests.Freeze.Check.tests cabalPath
-    , testGroup "Exec"   $ PackageTests.Exec.Check.tests cabalPath ghcPkgPath
-    , testGroup "MultipleSource" $ PackageTests.MultipleSource.Check.tests cabalPath
+tests :: PackageTests.PackageTester.TestsPaths -> [Test]
+tests paths =
+    [ testGroup "Freeze"         $ PackageTests.Freeze.Check.tests         paths
+    , testGroup "Exec"           $ PackageTests.Exec.Check.tests           paths
+    , testGroup "MultipleSource" $ PackageTests.MultipleSource.Check.tests paths
     ]
 
 cabalProgram :: Program
@@ -52,14 +57,20 @@ main = do
     let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
     (cabal, _) <- requireProgram normal cabalProgram
                       (setProgramSearchPath programSearchPath defaultProgramDb)
-    let cabalPath = programPath cabal
-
     (ghcPkg, _) <- requireProgram normal ghcPkgProgram defaultProgramDb
-    let ghcPkgPath = programPath ghcPkg
-    putStrLn $ "Using cabal: " ++ cabalPath
-    putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
+    canonicalConfigPath <- canonicalizePath $ "tests" </> packageTestsDirectory
+
+    let testsPaths = TestsPaths {
+          cabalPath = programPath cabal,
+          ghcPkgPath = programPath ghcPkg,
+          configPath = canonicalConfigPath </> packageTestsConfigFile
+        }
+
+    putStrLn $ "Using cabal: "   ++ cabalPath  testsPaths
+    putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath testsPaths
+
     cwd <- getCurrentDirectory
-    let confFile = PackageTests.PackageTester.packageTestsDirectory </> "cabal-config"
+    let confFile = packageTestsDirectory </> "cabal-config"
         removeConf = do
           b <- doesFileExist confFile
           when b $ removeFile confFile
@@ -68,7 +79,7 @@ main = do
           removeConf -- assert that there is no existing config file
                      -- (we want deterministic testing with the default
                      --  config values)
-          defaultMain $ tests cabalPath ghcPkgPath
+          defaultMain $ tests testsPaths
     runTests `E.finally` do
         -- remove the default config file that got created by the tests
         removeConf

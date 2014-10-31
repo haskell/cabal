@@ -19,19 +19,16 @@ import System.IO.Error (isDoesNotExistError)
 dir :: FilePath
 dir = packageTestsDirectory </> "Freeze"
 
-configPath :: FilePath
-configPath = ".." </> packageTestsConfigFile
-
-tests :: FilePath -> [TF.Test]
-tests cabalPath =
+tests :: TestsPaths -> [TF.Test]
+tests paths =
     [ testCase "runs without error" $ do
           removeCabalConfig
-          result <- cabal_freeze dir [] cabalPath configPath
+          result <- cabal_freeze paths dir []
           assertFreezeSucceeded result
 
     , testCase "freezes direct dependencies" $ do
           removeCabalConfig
-          result <- cabal_freeze dir [] cabalPath configPath
+          result <- cabal_freeze paths dir []
           assertFreezeSucceeded result
           c <- readCabalConfig
           assertBool ("should have frozen base\n" ++ c) $
@@ -39,7 +36,7 @@ tests cabalPath =
 
     , testCase "freezes transitory dependencies" $ do
           removeCabalConfig
-          result <- cabal_freeze dir [] cabalPath configPath
+          result <- cabal_freeze paths dir []
           assertFreezeSucceeded result
           c <- readCabalConfig
           assertBool ("should have frozen ghc-prim\n" ++ c) $
@@ -49,7 +46,7 @@ tests cabalPath =
           -- XXX Test this against a package installed in the sandbox but
           -- not depended upon.
           removeCabalConfig
-          result <- cabal_freeze dir [] cabalPath configPath
+          result <- cabal_freeze paths dir []
           assertFreezeSucceeded result
           c <- readCabalConfig
           assertBool ("should not have frozen exceptions\n" ++ c) $ not $
@@ -57,7 +54,7 @@ tests cabalPath =
 
     , testCase "does not include a constraint for the package being frozen" $ do
           removeCabalConfig
-          result <- cabal_freeze dir [] cabalPath configPath
+          result <- cabal_freeze paths dir []
           assertFreezeSucceeded result
           c <- readCabalConfig
           assertBool ("should not have frozen self\n" ++ c) $ not $
@@ -65,14 +62,14 @@ tests cabalPath =
 
     , testCase "--dry-run does not modify the cabal.config file" $ do
           removeCabalConfig
-          result <- cabal_freeze dir ["--dry-run"] cabalPath configPath
+          result <- cabal_freeze paths dir ["--dry-run"]
           assertFreezeSucceeded result
           c <- doesFileExist $ dir </> "cabal.config"
           assertBool "cabal.config file should not have been created" (not c)
 
     , testCase "--enable-tests freezes test dependencies" $ do
           removeCabalConfig
-          result <- cabal_freeze dir ["--enable-tests"] cabalPath configPath
+          result <- cabal_freeze paths dir ["--enable-tests"]
           assertFreezeSucceeded result
           c <- readCabalConfig
           assertBool ("should have frozen test-framework\n" ++ c) $
@@ -80,7 +77,7 @@ tests cabalPath =
 
     , testCase "--disable-tests does not freeze test dependencies" $ do
           removeCabalConfig
-          result <- cabal_freeze dir ["--disable-tests"] cabalPath configPath
+          result <- cabal_freeze paths dir ["--disable-tests"]
           assertFreezeSucceeded result
           c <- readCabalConfig
           assertBool ("should not have frozen test-framework\n" ++ c) $ not $
@@ -88,7 +85,7 @@ tests cabalPath =
 
     , testCase "--enable-benchmarks freezes benchmark dependencies" $ do
           removeCabalConfig
-          result <- cabal_freeze dir ["--disable-benchmarks"] cabalPath configPath
+          result <- cabal_freeze paths dir ["--disable-benchmarks"]
           assertFreezeSucceeded result
           c <- readCabalConfig
           assertBool ("should not have frozen criterion\n" ++ c) $ not $
@@ -96,7 +93,7 @@ tests cabalPath =
 
     , testCase "--disable-benchmarks does not freeze benchmark dependencies" $ do
           removeCabalConfig
-          result <- cabal_freeze dir ["--disable-benchmarks"] cabalPath configPath
+          result <- cabal_freeze paths dir ["--disable-benchmarks"]
           assertFreezeSucceeded result
           c <- readCabalConfig
           assertBool ("should not have frozen criterion\n" ++ c) $ not $
