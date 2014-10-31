@@ -155,7 +155,7 @@ import System.FilePath
 import System.Directory
     ( createDirectory, renameFile, removeDirectoryRecursive )
 import System.IO
-    ( Handle, openFile, openBinaryFile, openBinaryTempFile
+    ( Handle, openFile, openBinaryFile, openBinaryTempFileWithDefaultPermissions
     , IOMode(ReadMode), hSetBinaryMode
     , hGetContents, stderr, stdout, hPutStr, hFlush, hClose )
 import System.IO.Error as IO.Error
@@ -1033,7 +1033,7 @@ writeFileAtomic :: FilePath -> BS.ByteString -> IO ()
 writeFileAtomic targetPath content = do
   let (targetDir, targetFile) = splitFileName targetPath
   Exception.bracketOnError
-    (openBinaryTempFile targetDir $ targetFile <.> "tmp")
+    (openBinaryTempFileWithDefaultPermissions targetDir $ targetFile <.> "tmp")
     (\(tmpPath, handle) -> hClose handle >> removeFile tmpPath)
     (\(tmpPath, handle) -> do
         BS.hPut handle content
