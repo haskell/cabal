@@ -13,7 +13,7 @@ import System.Directory (doesDirectoryExist)
 import System.FilePath  ((</>))
 
 dir :: FilePath
-dir = checkBasePath </> "MultipleSource"
+dir = packageTestsDirectory </> "MultipleSource"
 
 tests :: FilePath -> [TF.Test]
 tests cabalPath =
@@ -22,7 +22,7 @@ tests cabalPath =
           let execute cmd params = cmd dir
                                        params
                                        cabalPath
-                                       checkDefaultConfigRelativePath
+                                       (".." </> packageTestsConfigFile)
           when sandboxExists $
             void $ execute cabal_sandbox ["delete"]
           assertSandboxSucceeded =<< execute cabal_sandbox ["init"]

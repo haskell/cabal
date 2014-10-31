@@ -19,9 +19,8 @@
 module PackageTests.PackageTester
     ( Result(..)
 
-    , checkBasePath
-    , checkDefaultConfigFile
-    , checkDefaultConfigRelativePath
+    , packageTestsDirectory
+    , packageTestsConfigFile
 
     -- * Running cabal commands
     , cabal_clean
@@ -46,7 +45,7 @@ import Data.Maybe (fromMaybe)
 import System.Directory (canonicalizePath, doesFileExist)
 import System.Environment (getEnv)
 import System.Exit (ExitCode(ExitSuccess))
-import System.FilePath ( (<.>), (</>) )
+import System.FilePath ( (<.>)  )
 import System.IO (hClose, hGetChar, hIsEOF)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess)
@@ -82,14 +81,11 @@ nullResult = Result True Failure ""
 ------------------------------------------------------------------------
 -- * Config
 
-checkBasePath :: FilePath
-checkBasePath = "PackageTests"
+packageTestsDirectory :: FilePath
+packageTestsDirectory = "PackageTests"
 
-checkDefaultConfigFile :: FilePath
-checkDefaultConfigFile = "cabal-config"
-
-checkDefaultConfigRelativePath :: FilePath
-checkDefaultConfigRelativePath = ".." </> checkDefaultConfigFile
+packageTestsConfigFile :: FilePath
+packageTestsConfigFile = "cabal-config"
 
 ------------------------------------------------------------------------
 -- * Running cabal commands

@@ -16,10 +16,10 @@ import System.FilePath ((</>))
 import System.Directory (getDirectoryContents)
 
 dir :: FilePath
-dir = checkBasePath </> "Exec"
+dir = packageTestsDirectory </> "Exec"
 
 configPath :: FilePath
-configPath = checkDefaultConfigRelativePath
+configPath = ".." </> packageTestsConfigFile
 
 tests :: FilePath -> FilePath -> [TF.Test]
 tests cabalPath ghcPkgPath =
