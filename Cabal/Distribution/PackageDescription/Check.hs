@@ -1402,7 +1402,8 @@ checkConfigureExists ops PackageDescription { buildType = Just Configure } = do
   exists <- doesFileExist ops "configure"
   return $ check (not exists) $
     PackageBuildWarning $
-      "The 'build-type' is 'Configure' but there is no 'configure' script."
+      "The 'build-type' is 'Configure' but there is no 'configure' script. "
+      ++ "You probably need to run 'autoreconf -i' to generate it."
 checkConfigureExists _ _ = return Nothing
 
 checkLocalPathsExist :: Monad m => CheckPackageContentOps m
