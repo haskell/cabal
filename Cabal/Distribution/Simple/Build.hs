@@ -367,7 +367,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
                 , componentLibraries = [LibraryName (testName test)]
-                , componentModuleReexports = []
+                , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
                 }
     pkg = pkg_descr {
             package      = (package pkg_descr) {

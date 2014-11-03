@@ -28,7 +28,7 @@
 
 module Distribution.InstalledPackageInfo (
         InstalledPackageInfo_(..), InstalledPackageInfo,
-        ModuleReexport(..),
+        OriginalModule(..), ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
         parseInstalledPackageInfo,
@@ -45,7 +45,7 @@ import Distribution.ParseUtils
          , parseFieldsFlat
          , parseFilePathQ, parseTokenQ, parseModuleNameQ, parsePackageNameQ
          , showFilePath, showToken, boolField, parseOptVersion
-         , parseFreeText, showFreeText )
+         , parseFreeText, showFreeText, parseOptCommaList )
 import Distribution.License     ( License(..) )
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
@@ -86,8 +86,7 @@ data InstalledPackageInfo_ m
         category          :: String,
         -- these parts are required by an installed package only:
         exposed           :: Bool,
-        exposedModules    :: [m],
-        reexportedModules :: [ModuleReexport],
+        exposedModules    :: [ExposedModule],
         hiddenModules     :: [m],
         trusted           :: Bool,
         importDirs        :: [FilePath],
@@ -137,7 +136,6 @@ emptyInstalledPackageInfo
         category          = "",
         exposed           = False,
         exposedModules    = [],
-        reexportedModules = [],
         hiddenModules     = [],
         trusted           = False,
         importDirs        = [],
@@ -160,31 +158,75 @@ noVersion :: Version
 noVersion = Version [] []
 
 -- -----------------------------------------------------------------------------
--- Module re-exports
+-- Exposed modules
 
-data ModuleReexport = ModuleReexport {
-       moduleReexportDefiningPackage :: InstalledPackageId,
-       moduleReexportDefiningName    :: ModuleName,
-       moduleReexportName            :: ModuleName
-    }
-    deriving (Generic, Read, Show)
+data OriginalModule
+   = OriginalModule {
+       originalPackageId :: InstalledPackageId,
+       originalModuleName :: ModuleName
+     }
+  deriving (Generic, Eq, Read, Show)
 
-instance Binary ModuleReexport
+data ExposedModule
+   = ExposedModule {
+       exposedName      :: ModuleName,
+       exposedReexport  :: Maybe OriginalModule,
+       exposedSignature :: Maybe OriginalModule
+     }
+  deriving (Generic, Read, Show)
 
-instance Text ModuleReexport where
-    disp (ModuleReexport pkgid origname newname) =
-          disp pkgid <> Disp.char ':' <> disp origname
-      <+> Disp.text "as" <+> disp newname
-
+instance Text OriginalModule where
+    disp (OriginalModule ipi m) =
+        disp ipi <> Disp.char ':' <> disp m
     parse = do
-      pkgid    <- parse
-      _ <- Parse.char ':'
-      origname <- parse
-      Parse.skipSpaces
-      _ <- Parse.string "as"
-      Parse.skipSpaces
-      newname  <- parse
-      return (ModuleReexport pkgid origname newname)
+        ipi <- parse
+        _ <- Parse.char ':'
+        m <- parse
+        return (OriginalModule ipi m)
+
+instance Text ExposedModule where
+    disp (ExposedModule m reexport signature) =
+        Disp.sep [ disp m
+                 , case reexport of
+                    Just m' -> Disp.sep [Disp.text "from", disp m']
+                    Nothing -> Disp.empty
+                 , case signature of
+                    Just m' -> Disp.sep [Disp.text "is", disp m']
+                    Nothing -> Disp.empty
+                 ]
+    parse = do
+        m <- parseModuleNameQ
+        Parse.skipSpaces
+        reexport <- Parse.option Nothing $ do
+            _ <- Parse.string "from"
+            Parse.skipSpaces
+            fmap Just parse
+        Parse.skipSpaces
+        signature <- Parse.option Nothing $ do
+            _ <- Parse.string "is"
+            Parse.skipSpaces
+            fmap Just parse
+        return (ExposedModule m reexport signature)
+
+
+instance Binary OriginalModule
+
+instance Binary ExposedModule
+
+-- To maintain backwards-compatibility, we accept both comma/non-comma
+-- separated variants of this field.  You SHOULD use the comma syntax if you
+-- use any new functions, although actually it's unambiguous due to a quirk
+-- of the fact that modules must start with capital letters.
+
+showExposedModules :: [ExposedModule] -> Disp.Doc
+showExposedModules xs
+    | all isExposedModule xs = fsep (map disp xs)
+    | otherwise = fsep (Disp.punctuate comma (map disp xs))
+    where isExposedModule (ExposedModule _ Nothing Nothing) = True
+          isExposedModule _ = False
+
+parseExposedModules :: Parse.ReadP r [ExposedModule]
+parseExposedModules = parseOptCommaList parse
 
 -- -----------------------------------------------------------------------------
 -- Parsing
@@ -262,12 +304,9 @@ installedFieldDescrs :: [FieldDescr InstalledPackageInfo]
 installedFieldDescrs = [
    boolField "exposed"
         exposed            (\val pkg -> pkg{exposed=val})
- , listField   "exposed-modules"
-        disp               parseModuleNameQ
+ , simpleField "exposed-modules"
+        showExposedModules parseExposedModules
         exposedModules     (\xs    pkg -> pkg{exposedModules=xs})
- , listField   "reexported-modules"
-        disp               parse
-        reexportedModules  (\xs    pkg -> pkg{reexportedModules=xs})
  , listField   "hidden-modules"
         disp               parseModuleNameQ
         hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})

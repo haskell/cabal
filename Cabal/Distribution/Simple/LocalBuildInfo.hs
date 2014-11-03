@@ -67,7 +67,6 @@ import Distribution.PackageDescription
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
          , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
-    ( ModuleReexport(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..), PackageKey
          , PackageName )
@@ -192,7 +191,7 @@ data ComponentLocalBuildInfo
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
-    componentModuleReexports :: [Installed.ModuleReexport],
+    componentExposedModules :: [Installed.ExposedModule],
     componentPackageRenaming :: Map PackageName ModuleRenaming,
     componentLibraries :: [LibraryName]
   }
