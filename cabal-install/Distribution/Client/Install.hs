@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Install
@@ -126,7 +127,7 @@ import Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
          , Package(..), PackageFixedDeps(..), PackageKey
-         , Dependency(..), thisPackageVersion, InstalledPackageId )
+         , Dependency(..), thisPackageVersion, InstalledPackageId, installedPackageId )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
@@ -517,15 +518,18 @@ linearizeInstallPlan comp installedPkgIndex plan =
       []      -> Nothing
       (pkg:_) -> Just ((pkg, status), plan'')
         where
-          pkgid  = packageId pkg
+          pkgid  = installedPackageId pkg
           status = packageStatus comp installedPkgIndex pkg
           plan'' = InstallPlan.completed pkgid
                      (BuildOk DocsNotTried TestsNotTried
                               (Just $ Installed.emptyInstalledPackageInfo
-                              { Installed.sourcePackageId = pkgid }))
+                              { Installed.sourcePackageId = packageId pkg
+                              , Installed.installedPackageId = pkgid }))
                      (InstallPlan.processing [pkg] plan')
           --FIXME: This is a bit of a hack,
           -- pretending that each package is installed
+          -- It's doubly a hack because the installed package ID
+          -- didn't get updated...
 
 data PackageStatus = NewPackage
                    | NewVersion [Version]
@@ -1126,10 +1130,10 @@ executeInstallPlan verbosity comp jobCtl useLogFile plan0 installPkg =
 
     updatePlan :: PackageIdentifier -> BuildResult -> InstallPlan -> InstallPlan
     updatePlan pkgid (Right buildSuccess) =
-      InstallPlan.completed pkgid buildSuccess
+      InstallPlan.completed (Source.fakeInstalledPackageId pkgid) buildSuccess
 
     updatePlan pkgid (Left buildFailure) =
-      InstallPlan.failed    pkgid buildFailure depsFailure
+      InstallPlan.failed    (Source.fakeInstalledPackageId pkgid) buildFailure depsFailure
       where
         depsFailure = DependentFailed pkgid
         -- So this first pkgid failed for whatever reason (buildFailure).

@@ -16,7 +16,8 @@ module Distribution.Client.Types where
 
 import Distribution.Package
          ( PackageName, PackageId, Package(..), PackageFixedDeps(..)
-         , mkPackageKey, PackageKey )
+         , mkPackageKey, PackageKey, InstalledPackageId(..)
+         , PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, packageKey )
 import Distribution.PackageDescription
@@ -30,6 +31,7 @@ import Distribution.Version
          ( VersionRange )
 import Distribution.Simple.Compiler
          ( Compiler, packageKeySupported )
+import Distribution.Text (display)
 
 import Data.Map (Map)
 import Network.URI (URI)
@@ -73,6 +75,22 @@ instance Package InstalledPackage where
   packageId (InstalledPackage pkg _) = packageId pkg
 instance PackageFixedDeps InstalledPackage where
   depends (InstalledPackage _ deps) = deps
+instance PackageInstalled InstalledPackage where
+  installedPackageId (InstalledPackage pkg _) = installedPackageId pkg
+  installedDepends (InstalledPackage pkg _) = installedDepends pkg
+
+
+-- | In order to reuse the implementation of PackageIndex which relies on
+-- 'InstalledPackageId', we need to be able to synthesize these IDs prior
+-- to installation.  Eventually, we'll move to a representation of
+-- 'InstalledPackageId' which can be properly computed before compilation
+-- (of course, it's a bit of a misnomer since the packages are not actually
+-- installed yet.)  In any case, we'll synthesize temporary installed package
+-- IDs to use as keys during install planning.  These should never be written
+-- out!  Additionally, they need to be guaranteed unique within the install
+-- plan.
+fakeInstalledPackageId :: PackageId -> InstalledPackageId
+fakeInstalledPackageId = InstalledPackageId . (".fake."++) . display
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -95,6 +113,10 @@ instance Package ConfiguredPackage where
 instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ _ deps) = deps
 
+instance PackageInstalled ConfiguredPackage where
+  installedPackageId = fakeInstalledPackageId . packageId
+  installedDepends = map fakeInstalledPackageId . depends
+
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
 data ReadyPackage = ReadyPackage
@@ -109,6 +131,10 @@ instance Package ReadyPackage where
 
 instance PackageFixedDeps ReadyPackage where
   depends (ReadyPackage _ _ _ deps) = map packageId deps
+
+instance PackageInstalled ReadyPackage where
+  installedPackageId = fakeInstalledPackageId . packageId
+  installedDepends (ReadyPackage _ _ _ ipis) = map installedPackageId ipis
 
 -- | Extracts a package key from ReadyPackage, a common operation needed
 -- to calculate build paths.
