@@ -511,7 +511,7 @@ checkLicense pkg =
 
   , check (license pkg `notElem` [ AllRightsReserved
                                  , UnspecifiedLicense, PublicDomain]
-           -- *AllRightsReserved and PublicDomain are not strictly
+           -- AllRightsReserved and PublicDomain are not strictly
            -- licenses so don't need license files.
         && null (licenseFiles pkg)) $
       PackageDistSuspicious "A 'license-file' is not specified."
