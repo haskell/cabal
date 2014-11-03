@@ -25,7 +25,9 @@ module Distribution.Simple.Command (
 
   -- ** Constructing commands
   ShowOrParseArgs(..),
-  makeCommand,
+  usageDefault,
+  usageAlternatives,
+  mkCommandUI,
   hiddenCommand,
 
   -- ** Associating actions with commands
@@ -392,25 +394,37 @@ commandHelp command pname =
         Just notes -> '\n': notes pname)
   where cname = commandName command
 
+-- | Default "usage" documentation text for commands.
+usageDefault :: String -> String -> String
+usageDefault name pname =
+     "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n\n"
+  ++ "Flags for " ++ name ++ ":"
+
+-- | Create "usage" documentation from a list of parameter
+--   configurations.
+usageAlternatives :: String -> [String] -> String -> String
+usageAlternatives name strs pname = unlines
+  [ start ++ pname ++ " " ++ name ++ " " ++ s
+  | let starts = "Usage: " : repeat "   or: "
+  , (start, s) <- zip starts strs
+  ]
+
 -- | Make a Command from standard 'GetOpt' options.
-makeCommand :: String                         -- ^ name
-            -> String                         -- ^ short description
-            -> Maybe (String -> String)       -- ^ long description
-            -> Maybe (String -> String)       -- ^ description notes
-            -> flags                          -- ^ initial\/empty flags
+mkCommandUI :: String          -- ^ name
+            -> String          -- ^ synopsis
+            -> [String]        -- ^ usage alternatives
+            -> flags           -- ^ initial\/empty flags
             -> (ShowOrParseArgs -> [OptionField flags]) -- ^ options
             -> CommandUI flags
-makeCommand name shortDesc longDesc notesDesc defaultFlags options =
-  CommandUI {
-    commandName         = name,
-    commandSynopsis     = shortDesc,
-    commandDescription  = longDesc,
-    commandNotes        = notesDesc,
-    commandUsage        = usage,
-    commandDefaultFlags = defaultFlags,
-    commandOptions      = options
+mkCommandUI name synopsis usages flags options = CommandUI
+  { commandName         = name
+  , commandSynopsis     = synopsis
+  , commandDescription  = Nothing
+  , commandNotes        = Nothing
+  , commandUsage        = usageAlternatives name usages
+  , commandDefaultFlags = flags
+  , commandOptions      = options
   }
-  where usage pname = "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n"
 
 -- | Common flags that apply to every command
 data CommonFlag = HelpFlag | ListOptionsFlag
@@ -573,12 +587,12 @@ commandsRun globalCommand commands args =
             _                    -> badCommand name
 
      where globalHelp = commandHelp globalCommand'
-    helpCommandUI =
-      (makeCommand "help" "Help about commands." Nothing Nothing () (const [])) {
-        commandUsage = \pname ->
-             "Usage: " ++ pname ++ " help [FLAGS]\n"
-          ++ "   or: " ++ pname ++ " help COMMAND [FLAGS]\n"
-      }
+    helpCommandUI = mkCommandUI
+      "help"
+      "Help about commands."
+      ["[FLAGS]", "COMMAND [FLAGS]"]
+      ()
+      (const [])
 
 -- | Utility function, many commands do not accept additional flags. This
 -- action fails with a helpful error message if the user supplies any extra.
