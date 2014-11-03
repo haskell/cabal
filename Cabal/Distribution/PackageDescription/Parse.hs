@@ -123,9 +123,6 @@ pkgDescrFieldDescrs =
  , simpleField "maintainer"
            showFreeText           parseFreeText
            maintainer             (\val pkg -> pkg{maintainer=val})
- , commaListFieldWithSep vcat "build-depends"
-           disp                   parse
-           buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
            showFreeText           parseFreeText
            stability              (\val pkg -> pkg{stability=val})
