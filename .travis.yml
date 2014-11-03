@@ -31,6 +31,7 @@ script:
  - /opt/ghc/$GHCVER/bin/ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -threaded  # the command cabal-install would use to build setup
  - ./dist/setup/setup configure --user --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
  - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
+ - ./dist/setup/setup haddock # see #2198
  - ./dist/setup/setup test --show-details=streaming
  - cabal check
  - cabal sdist   # tests that a source-distribution can be generated
