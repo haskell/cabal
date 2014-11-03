@@ -84,7 +84,7 @@ import Distribution.Simple.Compiler
          , OptimisationLevel(..), flagToOptimisationLevel
          , absolutePackageDBPath )
 import Distribution.Simple.Utils
-         ( wrapLine, lowercase, intercalate )
+         ( wrapText, wrapLine, lowercase, intercalate )
 import Distribution.Simple.Program (Program(..), ProgramConfiguration,
                              requireProgram,
                              programInvocation, progInvokePath, progInvokeArgs,
@@ -205,21 +205,21 @@ defaultGlobalFlags  = GlobalFlags {
   }
 
 globalCommand :: CommandUI GlobalFlags
-globalCommand = CommandUI {
-    commandName         = "",
-    commandSynopsis     = "",
-    commandUsage        = \_ ->
+globalCommand = CommandUI
+  { commandName         = ""
+  , commandSynopsis     = ""
+  , commandUsage        = \_ ->
          "This Setup program uses the Haskell Cabal Infrastructure.\n"
-      ++ "See http://www.haskell.org/cabal/ for more information.\n",
-    commandDescription  = Just $ \pname ->
+      ++ "See http://www.haskell.org/cabal/ for more information.\n"
+  , commandDescription  = Just $ \pname ->
          "For more information about a command use\n"
       ++ "  " ++ pname ++ " COMMAND --help\n\n"
       ++ "Typical steps for installing Cabal packages:\n"
       ++ concat [ "  " ++ pname ++ " " ++ x ++ "\n"
-                | x <- ["configure", "build", "install"]],
-    commandNotes        = Nothing,
-    commandDefaultFlags = defaultGlobalFlags,
-    commandOptions      = \_ ->
+                | x <- ["configure", "build", "install"]]
+  , commandNotes        = Nothing
+  , commandDefaultFlags = defaultGlobalFlags
+  , commandOptions      = \_ ->
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -349,15 +349,15 @@ defaultConfigFlags progConf = emptyConfigFlags {
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
-configureCommand progConf = makeCommand name shortDesc
-                            longDesc noteDesc defaultFlags options
-  where
-    name       = "configure"
-    shortDesc  = "Prepare to build the package."
-    longDesc   = Nothing
-    noteDesc   = Just (\_ -> programFlagsDescription progConf)
-    defaultFlags = defaultConfigFlags progConf
-    options showOrParseArgs =
+configureCommand progConf = CommandUI
+  { commandName         = "configure"
+  , commandSynopsis     = "Prepare to build the package."
+  , commandDescription  = Nothing
+  , commandNotes        = Just (\_ -> programFlagsDescription progConf)
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " configure [FLAGS]\n"
+  , commandDefaultFlags = defaultConfigFlags progConf
+  , commandOptions      = \showOrParseArgs ->
          configureOptions showOrParseArgs
       ++ programConfigurationPaths   progConf showOrParseArgs
            configProgramPaths (\v fs -> fs { configProgramPaths = v })
@@ -365,6 +365,7 @@ configureCommand progConf = makeCommand name shortDesc
            configProgramArgs (\v fs -> fs { configProgramArgs = v })
       ++ programConfigurationOptions progConf showOrParseArgs
            configProgramArgs (\v fs -> fs { configProgramArgs = v })
+  }
 
 configureOptions :: ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions showOrParseArgs =
@@ -748,16 +749,17 @@ defaultCopyFlags  = CopyFlags {
   }
 
 copyCommand :: CommandUI CopyFlags
-copyCommand = makeCommand name shortDesc longDesc noteDesc
-              defaultCopyFlags options
-  where
-    name       = "copy"
-    shortDesc  = "Copy the files into the install locations."
-    longDesc   = Just $ \_ ->
-          "Does not call register, and allows a prefix at install time\n"
+copyCommand = CommandUI
+  { commandName         = "copy"
+  , commandSynopsis     = "Copy the files into the install locations."
+  , commandDescription  = Just $ \_ -> wrapText $
+          "Does not call register, and allows a prefix at install time. "
        ++ "Without the --destdir flag, configure determines location.\n"
-    noteDesc   = Nothing
-    options showOrParseArgs =
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " copy [FLAGS]\n"
+  , commandDefaultFlags = defaultCopyFlags
+  , commandOptions      = \showOrParseArgs ->
       [optionVerbosity copyVerbosity (\v flags -> flags { copyVerbosity = v })
 
       ,optionDistPref
@@ -770,6 +772,7 @@ copyCommand = makeCommand name shortDesc longDesc noteDesc
          (reqArg "DIR" (succeedReadE (Flag . CopyTo))
                        (\f -> case f of Flag (CopyTo p) -> [p]; _ -> []))
       ]
+  }
 
 emptyCopyFlags :: CopyFlags
 emptyCopyFlags = mempty
@@ -811,17 +814,19 @@ defaultInstallFlags  = InstallFlags {
   }
 
 installCommand :: CommandUI InstallFlags
-installCommand = makeCommand name shortDesc longDesc noteDesc
-                 defaultInstallFlags options
-  where
-    name       = "install"
-    shortDesc  = "Copy the files into the install locations. Run register."
-    longDesc   = Just $ \_ ->
-         "Unlike the copy command, install calls the register command.\n"
-      ++ "If you want to install into a location that is not what was\n"
+installCommand = CommandUI
+  { commandName         = "install"
+  , commandSynopsis     =
+      "Copy the files into the install locations. Run register."
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Unlike the copy command, install calls the register command."
+      ++ "If you want to install into a location that is not what was"
       ++ "specified in the configure step, use the copy command.\n"
-    noteDesc   = Nothing
-    options showOrParseArgs =
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " install [FLAGS]\n"
+  , commandDefaultFlags = defaultInstallFlags
+  , commandOptions      = \showOrParseArgs ->
       [optionVerbosity installVerbosity (\v flags -> flags { installVerbosity = v })
       ,optionDistPref
          installDistPref (\d flags -> flags { installDistPref = d })
@@ -844,6 +849,7 @@ installCommand = makeCommand name shortDesc longDesc noteDesc
                     , (Flag GlobalPackageDB, ([],["global"]),
                       "(default) upon configuration register this package in the system-wide package database")])
       ]
+  }
 
 emptyInstallFlags :: InstallFlags
 emptyInstallFlags = mempty
@@ -889,20 +895,22 @@ defaultSDistFlags = SDistFlags {
   }
 
 sdistCommand :: CommandUI SDistFlags
-sdistCommand = makeCommand name shortDesc longDesc noteDesc
-               defaultSDistFlags options
-  where
-    name       = "sdist"
-    shortDesc  = "Generate a source distribution file (.tar.gz)."
-    longDesc   = Nothing
-    noteDesc   = Nothing
-    options showOrParseArgs =
+sdistCommand = CommandUI
+  { commandName         = "sdist"
+  , commandSynopsis     =
+      "Generate a source distribution file (.tar.gz)."
+  , commandDescription  = Nothing
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " sdist [FLAGS]\n"
+  , commandDefaultFlags = defaultSDistFlags
+  , commandOptions      = \showOrParseArgs ->
       [optionVerbosity sDistVerbosity (\v flags -> flags { sDistVerbosity = v })
       ,optionDistPref
          sDistDistPref (\d flags -> flags { sDistDistPref = d })
          showOrParseArgs
 
-     ,option "" ["list-sources"]
+      ,option "" ["list-sources"]
          "Just write a list of the package's sources to a file"
          sDistListSources (\v flags -> flags { sDistListSources = v })
          (reqArgFlag "FILE")
@@ -918,6 +926,7 @@ sdistCommand = makeCommand name shortDesc longDesc noteDesc
          sDistDirectory (\v flags -> flags { sDistDirectory = v })
          (reqArgFlag "DIR")
       ]
+  }
 
 emptySDistFlags :: SDistFlags
 emptySDistFlags = mempty
@@ -968,14 +977,16 @@ defaultRegisterFlags = RegisterFlags {
   }
 
 registerCommand :: CommandUI RegisterFlags
-registerCommand = makeCommand name shortDesc longDesc noteDesc
-                  defaultRegisterFlags options
-  where
-    name       = "register"
-    shortDesc  = "Register this package with the compiler."
-    longDesc   = Nothing
-    noteDesc   = Nothing
-    options showOrParseArgs =
+registerCommand = CommandUI
+  { commandName         = "register"
+  , commandSynopsis     =
+      "Register this package with the compiler."
+  , commandDescription  = Nothing
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " register [FLAGS]\n"
+  , commandDefaultFlags = defaultRegisterFlags
+  , commandOptions      = \showOrParseArgs ->
       [optionVerbosity regVerbosity (\v flags -> flags { regVerbosity = v })
       ,optionDistPref
          regDistPref (\d flags -> flags { regDistPref = d })
@@ -1008,16 +1019,19 @@ registerCommand = makeCommand name shortDesc longDesc noteDesc
          regPrintId (\v flags -> flags { regPrintId = v })
          trueArg
       ]
+  }
 
 unregisterCommand :: CommandUI RegisterFlags
-unregisterCommand = makeCommand name shortDesc
-                    longDesc noteDesc defaultRegisterFlags options
-  where
-    name       = "unregister"
-    shortDesc  = "Unregister this package with the compiler."
-    longDesc   = Nothing
-    noteDesc   = Nothing
-    options showOrParseArgs =
+unregisterCommand = CommandUI
+  { commandName         = "unregister"
+  , commandSynopsis     =
+      "Unregister this package with the compiler."
+  , commandDescription  = Nothing
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " unregister [FLAGS]\n"
+  , commandDefaultFlags = defaultRegisterFlags
+  , commandOptions      = \showOrParseArgs ->
       [optionVerbosity regVerbosity (\v flags -> flags { regVerbosity = v })
       ,optionDistPref
          regDistPref (\d flags -> flags { regDistPref = d })
@@ -1035,6 +1049,7 @@ unregisterCommand = makeCommand name shortDesc
          regGenScript (\v flags -> flags { regGenScript = v })
          trueArg
       ]
+  }
 
 emptyRegisterFlags :: RegisterFlags
 emptyRegisterFlags = mempty
@@ -1107,14 +1122,16 @@ instance Monoid HscolourFlags where
     where combine field = field a `mappend` field b
 
 hscolourCommand :: CommandUI HscolourFlags
-hscolourCommand = makeCommand name shortDesc longDesc noteDesc
-                  defaultHscolourFlags options
-  where
-    name       = "hscolour"
-    shortDesc  = "Generate HsColour colourised code, in HTML format."
-    longDesc   = Just (\_ -> "Requires hscolour.\n")
-    noteDesc   = Nothing
-    options showOrParseArgs =
+hscolourCommand = CommandUI
+  { commandName         = "hscolour"
+  , commandSynopsis     =
+      "Generate HsColour colourised code, in HTML format."
+  , commandDescription  = Just (\_ -> "Requires hscolour.\n")
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " hscolour [FLAGS]\n"
+  , commandDefaultFlags = defaultHscolourFlags
+  , commandOptions      = \showOrParseArgs ->
       [optionVerbosity hscolourVerbosity
        (\v flags -> flags { hscolourVerbosity = v })
       ,optionDistPref
@@ -1151,6 +1168,7 @@ hscolourCommand = makeCommand name shortDesc longDesc noteDesc
          hscolourCSS (\v flags -> flags { hscolourCSS = v })
          (reqArgFlag "PATH")
       ]
+  }
 
 -- ------------------------------------------------------------
 -- * Haddock flags
@@ -1197,19 +1215,25 @@ defaultHaddockFlags  = HaddockFlags {
   }
 
 haddockCommand :: CommandUI HaddockFlags
-haddockCommand = makeCommand name shortDesc longDesc noteDesc defaultHaddockFlags options
-  where
-    name       = "haddock"
-    shortDesc  = "Generate Haddock HTML documentation."
-    longDesc   = Just $ \_ -> "Requires the program haddock, version 2.x.\n"
-    noteDesc   = Nothing
-    options showOrParseArgs = haddockOptions showOrParseArgs
+haddockCommand = CommandUI
+  { commandName         = "haddock"
+  , commandSynopsis     = "Generate Haddock HTML documentation."
+  , commandDescription  = Just $ \_ ->
+      "Requires the program haddock, version 2.x.\n"
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " haddock [FLAGS]\n"
+  , commandDefaultFlags = defaultHaddockFlags
+  , commandOptions      = \showOrParseArgs ->
+         haddockOptions showOrParseArgs
       ++ programConfigurationPaths   progConf ParseArgs
              haddockProgramPaths (\v flags -> flags { haddockProgramPaths = v})
       ++ programConfigurationOption  progConf showOrParseArgs
              haddockProgramArgs (\v fs -> fs { haddockProgramArgs = v })
       ++ programConfigurationOptions progConf ParseArgs
              haddockProgramArgs  (\v flags -> flags { haddockProgramArgs = v})
+  }
+  where
     progConf = addKnownProgram haddockProgram
              $ addKnownProgram ghcProgram
              $ emptyProgramConfiguration
@@ -1356,14 +1380,16 @@ defaultCleanFlags  = CleanFlags {
   }
 
 cleanCommand :: CommandUI CleanFlags
-cleanCommand = makeCommand name shortDesc longDesc noteDesc
-               defaultCleanFlags options
-  where
-    name       = "clean"
-    shortDesc  = "Clean up after a build."
-    longDesc   = Just (\_ -> "Removes .hi, .o, preprocessed sources, etc.\n")
-    noteDesc   = Nothing
-    options showOrParseArgs =
+cleanCommand = CommandUI
+  { commandName         = "clean"
+  , commandSynopsis     = "Clean up after a build."
+  , commandDescription  = Just $ \_ ->
+      "Removes .hi, .o, preprocessed sources, etc.\n"
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " clean [FLAGS]\n"
+  , commandDefaultFlags = defaultCleanFlags
+  , commandOptions      = \showOrParseArgs ->
       [optionVerbosity cleanVerbosity (\v flags -> flags { cleanVerbosity = v })
       ,optionDistPref
          cleanDistPref (\d flags -> flags { cleanDistPref = d })
@@ -1374,6 +1400,7 @@ cleanCommand = makeCommand name shortDesc longDesc noteDesc
          cleanSaveConf (\v flags -> flags { cleanSaveConf = v })
          trueArg
       ]
+  }
 
 emptyCleanFlags :: CleanFlags
 emptyCleanFlags = mempty
@@ -1422,22 +1449,11 @@ defaultBuildFlags  = BuildFlags {
   }
 
 buildCommand :: ProgramConfiguration -> CommandUI BuildFlags
-buildCommand progConf =
-  makeCommand name shortDesc longDesc noteDesc
-  defaultBuildFlags
-  (\showOrParseArgs ->
-    [ optionVerbosity
-      buildVerbosity (\v flags -> flags { buildVerbosity = v })
-
-    , optionDistPref
-      buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
-    ]
-    ++ buildOptions progConf showOrParseArgs)
-  where
-    name       = "build"
-    shortDesc  = "Compile all targets or specific targets."
-    longDesc   = Nothing
-    noteDesc   = Just $ \pname ->
+buildCommand progConf = CommandUI
+  { commandName         = "build"
+  , commandSynopsis     = "Compile all targets or specific targets."
+  , commandDescription  = Nothing
+  , commandNotes        = Just $ \pname ->
        "Examples:\n"
         ++ "  " ++ pname ++ " build           "
         ++ "    All the components in the package\n"
@@ -1453,6 +1469,18 @@ buildCommand progConf =
 --        ++ "name, e.g.\n"
 --        ++ "  " ++ pname ++ " build foo:Foo.Bar\n"
 --        ++ "  " ++ pname ++ " build testsuite1:Foo/Bar.hs\n"
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " build [FLAGS]\n"
+  , commandDefaultFlags = defaultBuildFlags
+  , commandOptions      = \showOrParseArgs ->
+      [ optionVerbosity
+        buildVerbosity (\v flags -> flags { buildVerbosity = v })
+
+      , optionDistPref
+        buildDistPref (\d flags -> flags { buildDistPref = d }) showOrParseArgs
+      ]
+      ++ buildOptions progConf showOrParseArgs
+  }
 
 buildOptions :: ProgramConfiguration -> ShowOrParseArgs
                 -> [OptionField BuildFlags]
@@ -1532,16 +1560,16 @@ instance Monoid ReplFlags where
     where combine field = field a `mappend` field b
 
 replCommand :: ProgramConfiguration -> CommandUI ReplFlags
-replCommand progConf = CommandUI {
-    commandName         = "repl",
-    commandSynopsis     = "Open an interpreter session for the given target.",
-    commandDescription  = Nothing,
-    commandNotes        = Just $ \pname ->
+replCommand progConf = CommandUI
+  { commandName         = "repl"
+  , commandSynopsis     = "Open an interpreter session for the given target."
+  , commandDescription  = Nothing
+  , commandNotes        = Just $ \pname ->
        "Examples:\n"
         ++ "  " ++ pname ++ " repl           "
         ++ "    The first component in the package\n"
         ++ "  " ++ pname ++ " repl foo       "
-        ++ "    A named component (i.e. lib, exe, test suite)\n",
+        ++ "    A named component (i.e. lib, exe, test suite)\n"
 --TODO: re-enable once we have support for module/file targets
 --        ++ "  " ++ pname ++ " repl Foo.Bar   "
 --        ++ "    A module\n"
@@ -1551,10 +1579,9 @@ replCommand progConf = CommandUI {
 --        ++ "name, e.g.\n"
 --        ++ "  " ++ pname ++ " repl foo:Foo.Bar\n"
 --        ++ "  " ++ pname ++ " repl testsuite1:Foo/Bar.hs\n"
-
-    commandUsage =  \pname -> "Usage: " ++ pname ++ " repl [FILENAME] [FLAGS]\n",
-    commandDefaultFlags = defaultReplFlags,
-    commandOptions = \showOrParseArgs ->
+  , commandUsage =  \pname -> "Usage: " ++ pname ++ " repl [FILENAME] [FLAGS]\n"
+  , commandDefaultFlags = defaultReplFlags
+  , commandOptions = \showOrParseArgs ->
       optionVerbosity replVerbosity (\v flags -> flags { replVerbosity = v })
       : optionDistPref
           replDistPref (\d flags -> flags { replDistPref = d })
@@ -1577,7 +1604,7 @@ replCommand progConf = CommandUI {
               trueArg
             ]
           _ -> []
-    }
+  }
 
 -- ------------------------------------------------------------
 -- * Test flags
@@ -1628,13 +1655,16 @@ defaultTestFlags  = TestFlags {
   }
 
 testCommand :: CommandUI TestFlags
-testCommand = makeCommand name shortDesc longDesc noteDesc defaultTestFlags options
-  where
-    name       = "test"
-    shortDesc  = "Run the test suite, if any (configure with UserHooks)."
-    longDesc   = Nothing
-    noteDesc   = Nothing
-    options showOrParseArgs =
+testCommand = CommandUI
+  { commandName         = "test"
+  , commandSynopsis     =
+      "Run the test suite, if any (configure with UserHooks)."
+  , commandDescription  = Nothing
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " test [FLAGS]\n"
+  , commandDefaultFlags = defaultTestFlags
+  , commandOptions = \showOrParseArgs ->
       [ optionVerbosity testVerbosity (\v flags -> flags { testVerbosity = v })
       , optionDistPref
             testDistPref (\d flags -> flags { testDistPref = d })
@@ -1685,6 +1715,7 @@ testCommand = makeCommand name shortDesc longDesc noteDesc defaultTestFlags opti
             (reqArg' "TEMPLATE" (\x -> [toPathTemplate x])
                 (map fromPathTemplate))
       ]
+  }
 
 emptyTestFlags :: TestFlags
 emptyTestFlags  = mempty
@@ -1728,14 +1759,16 @@ defaultBenchmarkFlags  = BenchmarkFlags {
   }
 
 benchmarkCommand :: CommandUI BenchmarkFlags
-benchmarkCommand = makeCommand name shortDesc
-                   longDesc noteDesc defaultBenchmarkFlags options
-  where
-    name       = "bench"
-    shortDesc  = "Run the benchmark, if any (configure with UserHooks)."
-    longDesc   = Nothing
-    noteDesc   = Nothing
-    options showOrParseArgs =
+benchmarkCommand = CommandUI
+  { commandName         = "bench"
+  , commandSynopsis     =
+      "Run the benchmark, if any (configure with UserHooks)."
+  , commandDescription  = Nothing
+  , commandNotes        = Nothing
+  , commandUsage        = \pname ->
+      "Usage: " ++ pname ++ " bench [FLAGS]\n"
+  , commandDefaultFlags = defaultBenchmarkFlags
+  , commandOptions = \showOrParseArgs ->
       [ optionVerbosity benchmarkVerbosity
         (\v flags -> flags { benchmarkVerbosity = v })
       , optionDistPref
@@ -1757,6 +1790,7 @@ benchmarkCommand = makeCommand name shortDesc
             (reqArg' "TEMPLATE" (\x -> [toPathTemplate x])
                 (map fromPathTemplate))
       ]
+  }
 
 emptyBenchmarkFlags :: BenchmarkFlags
 emptyBenchmarkFlags = mempty
