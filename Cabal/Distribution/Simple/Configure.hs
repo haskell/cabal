@@ -61,7 +61,6 @@ import Distribution.InstalledPackageInfo as Installed
     ( InstalledPackageInfo, InstalledPackageInfo_(..)
     , emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as Installed
-    ( ModuleReexport(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription as PD
@@ -1129,6 +1128,7 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
     componentLocalBuildInfo component =
       case component of
       CLib lib -> do
+        let exports = map (\n -> Installed.ExposedModule n Nothing Nothing) (PD.exposedModules lib)
         reexports <- resolveModuleReexports installedPackages
                                             (packageId pkg_descr)
                                             externalPkgDeps lib
@@ -1136,7 +1136,7 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
           componentPackageDeps = cpds,
           componentLibraries   = [LibraryName ("HS" ++ display pkg_key)],
           componentPackageRenaming = cprns,
-          componentModuleReexports = reexports
+          componentExposedModules = exports ++ reexports
         }
       CExe _ ->
         return ExeComponentLocalBuildInfo {
@@ -1190,32 +1190,30 @@ resolveModuleReexports :: InstalledPackageIndex
                        -> [InstalledPackageInfo]
                        -> Library
                        -> Either [(ModuleReexport, String)] -- errors
-                                 [Installed.ModuleReexport] -- ok
+                                 [Installed.ExposedModule] -- ok
 resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
     case partitionEithers (map resolveModuleReexport (PD.reexportedModules lib)) of
       ([],  ok) -> Right ok
       (errs, _) -> Left  errs
   where
     -- A mapping from visible module names to their original defining
-    -- module name and package.
-    visibleModules :: Map ModuleName [(PackageName, ModuleName, InstalledPackageId)]
+    -- module name.  We also record the package name of the package which
+    -- *immediately* provided the module (not the original) to handle if the
+    -- user explicitly says which build-depends they want to reexport from.
+    visibleModules :: Map ModuleName [(PackageName, Installed.ExposedModule)]
     visibleModules =
       Map.fromListWith (++) $
-        [ (visibleModuleName, [(exportingPackageName,
-                                definingModuleName,
-                                definingPackageId)])
+        [ (Installed.exposedName exposedModule, [(exportingPackageName,
+                                                  exposedModule)])
           -- The package index here contains all the indirect deps of the
           -- package we're configuring, but we want just the direct deps
         | let directDeps = Set.fromList (map installedPackageId externalPkgDeps)
         , pkg <- PackageIndex.allPackages installedPackages
         , installedPackageId pkg `Set.member` directDeps
         , let exportingPackageName = packageName pkg
-        , (visibleModuleName, definingModuleName, definingPackageId)
-             <- visibleModuleDetails pkg
+        , exposedModule <- visibleModuleDetails pkg
         ]
-     ++ [ (visibleModuleName, [(exportingPackageName,
-                                definingModuleName,
-                                definingPackageId)])
+     ++ [ (visibleModuleName, [(exportingPackageName, exposedModule)])
         | visibleModuleName <- PD.exposedModules lib
                             ++ otherModules (libBuildInfo lib)
         , let exportingPackageName = packageName srcpkgid
@@ -1223,33 +1221,31 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
               -- we don't know the InstalledPackageId of this package yet
               -- we will fill it in later, before registration.
               definingPackageId    = InstalledPackageId ""
+              originalModule = Installed.OriginalModule definingPackageId
+                                                        definingModuleName
+              exposedModule  = Installed.ExposedModule visibleModuleName
+                                                       (Just originalModule)
+                                                             Nothing
         ]
 
     -- All the modules exported from this package and their defining name and
     -- package (either defined here in this package or re-exported from some
-    -- other package)
-    visibleModuleDetails :: InstalledPackageInfo
-                         -> [(ModuleName, ModuleName, InstalledPackageId)]
-    visibleModuleDetails pkg =
+    -- other package).  Return an ExposedModule because we want to hold onto
+    -- signature information.
+    visibleModuleDetails :: InstalledPackageInfo -> [Installed.ExposedModule]
+    visibleModuleDetails pkg = do
+        exposedModule <- Installed.exposedModules pkg
+        case Installed.exposedReexport exposedModule of
         -- The first case is the modules actually defined in this package.
-        -- In this case the visible and original names are the same, and the
-        -- defining package is this one.
-        [ (visibleModuleName, definingModuleName, definingPackageId)
-        | visibleModuleName <- Installed.exposedModules pkg
-        , let definingModuleName = visibleModuleName
-              definingPackageId  = installedPackageId pkg
-        ]
+        -- In this case the reexport will point to this package.
+            Nothing -> return exposedModule { Installed.exposedReexport =
+                            Just (Installed.OriginalModule (installedPackageId pkg)
+                                                 (Installed.exposedName exposedModule)) }
         -- On the other hand, a visible module might actually be itself
         -- a re-export! In this case, the re-export info for the package
         -- doing the re-export will point us to the original defining
-        -- module name and package.
-     ++ [ (visibleModuleName, definingModuleName, definingPackageId)
-        | Installed.ModuleReexport {
-            Installed.moduleReexportName            = visibleModuleName,
-            Installed.moduleReexportDefiningName    = definingModuleName,
-            Installed.moduleReexportDefiningPackage = definingPackageId
-          } <- Installed.reexportedModules pkg
-        ]
+        -- module name and package, so we can reuse the entry.
+            Just _ -> return exposedModule
 
     resolveModuleReexport reexport@ModuleReexport {
          moduleReexportOriginalPackage = moriginalPackageName,
@@ -1261,19 +1257,17 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
             case moriginalPackageName of
               Nothing                  -> id
               Just originalPackageName ->
-                filter (\(pkgname, _, _) -> pkgname == originalPackageName)
+                filter (\(pkgname, _) -> pkgname == originalPackageName)
 
           matches = filterForSpecificPackage
                       (Map.findWithDefault [] originalName visibleModules)
       in
       case (matches, moriginalPackageName) of
-        ((_, definingModuleName, definingPackageId):rest, _)
-          | all (\(_, n, p) -> n == definingModuleName && p == definingPackageId) rest
-           -> Right Installed.ModuleReexport {
-                 Installed.moduleReexportDefiningName    = definingModuleName,
-                 Installed.moduleReexportDefiningPackage = definingPackageId,
-                 Installed.moduleReexportName            = newName
-              }
+        ((_, exposedModule):rest, _)
+          -- TODO: Refine this check for signatures
+          | all (\(_, exposedModule') -> Installed.exposedReexport exposedModule
+                                      == Installed.exposedReexport exposedModule') rest
+           -> Right exposedModule { Installed.exposedName = newName }
 
         ([], Just originalPackageName)
            -> Left $ (,) reexport
@@ -1290,7 +1284,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
            -> Left $ (,) reexport
                    $ "The module " ++ display originalName ++ " is exported "
                   ++ "by more than one package ("
-                  ++ intercalate ", " [ display pkgname | (pkgname,_,_) <- ms ]
+                  ++ intercalate ", " [ display pkgname | (pkgname,_) <- ms ]
                   ++ ") and so the re-export is ambiguous. The ambiguity can "
                   ++ "be resolved by qualifying by the package name. The "
                   ++ "syntax is 'packagename:moduleName [as newname]'."

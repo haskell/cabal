@@ -678,16 +678,15 @@ fakeInstalledDepends fakeMap = map (\pid -> Map.findWithDefault pid pid fakeMap)
 -- initialize the @build-deps@ field in @cabal init@.
 moduleNameIndex :: InstalledPackageIndex -> Map ModuleName [InstalledPackageInfo]
 moduleNameIndex index =
-  Map.fromListWith (++) . concat $
-    [ [(m,  [pkg]) | m <- IPI.exposedModules pkg ] ++
-      [(m', [pkg]) | IPI.ModuleReexport {
-                       IPI.moduleReexportDefiningName = m,
-                       IPI.moduleReexportName         = m'
-                     } <- IPI.reexportedModules pkg
-                   , m /= m' ]
+  Map.fromListWith (++) $ do
+    pkg <- allPackages index
+    IPI.ExposedModule m reexport _ <- IPI.exposedModules pkg
+    case reexport of
+        Nothing -> return (m, [pkg])
+        Just (IPI.OriginalModule _ m') | m == m'   -> []
+                                       | otherwise -> return (m', [pkg])
         -- The heuristic is this: we want to prefer the original package
         -- which originally exported a module.  However, if a reexport
         -- also *renamed* the module (m /= m'), then we have to use the
         -- downstream package, since the upstream package has the wrong
         -- module name!
-    | pkg        <- allPackages index ]
