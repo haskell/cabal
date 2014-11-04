@@ -171,7 +171,7 @@ data ExposedModule
    = ExposedModule {
        exposedName      :: ModuleName,
        exposedReexport  :: Maybe OriginalModule,
-       exposedSignature :: Maybe OriginalModule
+       exposedSignature :: Maybe OriginalModule -- This field is unused for now.
      }
   deriving (Generic, Read, Show)
 
