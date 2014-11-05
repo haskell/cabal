@@ -328,7 +328,7 @@ sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
 sandboxDelete verbosity _sandboxFlags globalFlags = do
   (useSandbox, _) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   case useSandbox of
-    NoSandbox -> die "Not in a sandbox."
+    NoSandbox -> warn verbosity "Not in a sandbox."
     UseSandbox sandboxDir -> do
       curDir     <- getCurrentDirectory
       pkgEnvFile <- getSandboxConfigFilePath globalFlags
