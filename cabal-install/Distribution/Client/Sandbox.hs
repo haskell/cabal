@@ -326,7 +326,10 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 -- | Entry point for the 'cabal sandbox delete' command.
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
 sandboxDelete verbosity _sandboxFlags globalFlags = do
-  (useSandbox, _) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  (useSandbox, _) <- loadConfigOrSandboxConfig
+                       verbosity
+                       globalFlags { globalRequireSandbox = Flag False }
+                       mempty
   case useSandbox of
     NoSandbox -> warn verbosity "Not in a sandbox."
     UseSandbox sandboxDir -> do
