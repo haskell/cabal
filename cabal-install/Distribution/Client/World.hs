@@ -49,8 +49,6 @@ import Data.Char as Char
 
 import Data.List
          ( unionBy, deleteFirstsBy, nubBy )
-import Data.Maybe
-         ( isJust, fromJust )
 import System.IO.Error
          ( isDoesNotExistError )
 import qualified Data.ByteString.Lazy.Char8 as B
@@ -113,9 +111,9 @@ getContents :: FilePath -> IO [WorldPkgInfo]
 getContents world = do
   content <- safelyReadFile world
   let result = map simpleParse (lines $ B.unpack content)
-  if all isJust result
-    then return $ map fromJust result
-    else die "Could not parse world file."
+  case sequence result of
+    Nothing -> die "Could not parse world file."
+    Just xs -> return xs
   where
   safelyReadFile :: FilePath -> IO B.ByteString
   safelyReadFile file = B.readFile file `catchIO` handler
