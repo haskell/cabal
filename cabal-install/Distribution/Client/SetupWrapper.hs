@@ -120,10 +120,15 @@ data SetupScriptOptions = SetupScriptOptions {
     useWorkingDir            :: Maybe FilePath,
     forceExternalSetupMethod :: Bool,
 
+    -- Used only by 'cabal clean' on Windows.
+    --
+    -- Note: win32 clean hack
+    -------------------------
     -- On Windows, running './dist/setup/setup clean' doesn't work because the
-    -- setup script will try to delete itself. So we have to move the setup exe
-    -- out of the way first and then delete it manually. This applies only to
-    -- the external setup method.
+    -- setup script will try to delete itself (which causes it to fail horribly,
+    -- unlike on Linux). So we have to move the setup exe out of the way first
+    -- and then delete it manually. This applies only to the external setup
+    -- method.
     useWin32CleanHack        :: Bool,
 
     -- Used only when calling setupWrapper from parallel code to serialise
@@ -396,7 +401,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                         (useProgramConfig options') verbosity
                       return (comp, conf)
     -- Whenever we need to call configureCompiler, we also need to access the
-    -- package index, so let's cache it here.
+    -- package index, so let's cache it in SetupScriptOptions.
     index <- maybeGetInstalledPackages options' comp conf
     return (comp, conf, options' { useCompiler      = Just comp,
                                    usePackageIndex  = Just index,
@@ -509,6 +514,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     -- working directory.
     path' <- tryCanonicalizePath path
 
+    -- See 'Note: win32 clean hack' above.
 #if mingw32_HOST_OS
     setupProgFile' <- tryCanonicalizePath setupProgFile
     let win32CleanHackNeeded = (useWin32CleanHack options')
