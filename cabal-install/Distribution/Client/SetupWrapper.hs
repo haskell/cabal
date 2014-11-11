@@ -53,6 +53,7 @@ import Distribution.Simple.Program.Find
          ( programSearchPathAsPATHVar )
 import Distribution.Simple.Program.Run
          ( getEffectiveEnvironment )
+import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.BuildPaths
          ( defaultDistPref, exeExtension )
 import Distribution.Simple.Command
@@ -257,6 +258,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   setupVersionFile = setupDir   </> "setup" <.> "version"
   setupHs          = setupDir   </> "setup" <.> "hs"
   setupProgFile    = setupDir   </> "setup" <.> exeExtension
+  platform         = fromMaybe buildPlatform (usePlatform options)
 
   useCachedSetupExecutable = (bt == Simple || bt == Configure || bt == Make)
 
@@ -427,8 +429,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
         compilerVersionString = display $
                                 fromMaybe buildCompilerId
                                 (fmap compilerId . useCompiler $ options')
-        platformString        = display $
-                                fromMaybe buildPlatform (usePlatform options')
+        platformString        = display platform
 
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
@@ -455,6 +456,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                  cabalLibVersion maybeCabalLibInstalledPkgId True
           createDirectoryIfMissingVerbose verbosity True setupCacheDir
           installExecutableFile verbosity src cachedSetupProgFile
+          Strip.stripExe verbosity platform (useProgramConfig options')
+            cachedSetupProgFile
     return cachedSetupProgFile
       where
         criticalSection'      = fromMaybe id
