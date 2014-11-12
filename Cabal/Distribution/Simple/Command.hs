@@ -555,8 +555,7 @@ commandsRun globalCommand commands args =
            (case commandUsage globalCommand pname of
              ""       -> ""
              original -> original ++ "\n")
-        ++ "Usage: " ++ pname ++ " COMMAND [FLAGS]\n"
-        ++ "   or: " ++ pname ++ " [GLOBAL FLAGS]\n",
+        ++ "Usage: " ++ pname ++ " [GLOBAL FLAGS] [COMMAND [FLAGS]]\n",
       commandDescription = Just $ \pname ->
            "Commands:\n"
         ++ unlines [ "  " ++ align name ++ "    " ++ description

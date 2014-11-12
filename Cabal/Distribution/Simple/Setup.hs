@@ -352,7 +352,12 @@ configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
 configureCommand progConf = CommandUI
   { commandName         = "configure"
   , commandSynopsis     = "Prepare to build the package."
-  , commandDescription  = Nothing
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Configure how the package is built by setting "
+      ++ "package (and other) flags.\n"
+      ++ "\n"
+      ++ "The configuration affects several other commands, "
+      ++ "including build, test, bench, run, repl.\n"
   , commandNotes        = Just (\_ -> programFlagsDescription progConf)
   , commandUsage        = \pname ->
       "Usage: " ++ pname ++ " configure [FLAGS]\n"
@@ -1126,7 +1131,7 @@ hscolourCommand = CommandUI
   { commandName         = "hscolour"
   , commandSynopsis     =
       "Generate HsColour colourised code, in HTML format."
-  , commandDescription  = Just (\_ -> "Requires hscolour.\n")
+  , commandDescription  = Just (\_ -> "Requires the hscolour program.\n")
   , commandNotes        = Nothing
   , commandUsage        = \pname ->
       "Usage: " ++ pname ++ " hscolour [FLAGS]\n"
@@ -1451,8 +1456,11 @@ defaultBuildFlags  = BuildFlags {
 buildCommand :: ProgramConfiguration -> CommandUI BuildFlags
 buildCommand progConf = CommandUI
   { commandName         = "build"
-  , commandSynopsis     = "Compile all targets or specific targets."
-  , commandDescription  = Nothing
+  , commandSynopsis     = "Compile all/specific components."
+  , commandDescription  = Just $ \_ -> wrapText $
+         "Components encompass executables, tests, and benchmarks.\n"
+      ++ "\n"
+      ++ "Affected by configuration options, see `configure`.\n"
   , commandNotes        = Just $ \pname ->
        "Examples:\n"
         ++ "  " ++ pname ++ " build           "
@@ -1469,8 +1477,10 @@ buildCommand progConf = CommandUI
 --        ++ "name, e.g.\n"
 --        ++ "  " ++ pname ++ " build foo:Foo.Bar\n"
 --        ++ "  " ++ pname ++ " build testsuite1:Foo/Bar.hs\n"
-  , commandUsage        = \pname ->
-      "Usage: " ++ pname ++ " build [FLAGS]\n"
+  , commandUsage        = usageAlternatives "build" $
+      [ "[FLAGS]"
+      , "COMPONENTS [FLAGS]"
+      ]
   , commandDefaultFlags = defaultBuildFlags
   , commandOptions      = \showOrParseArgs ->
       [ optionVerbosity
@@ -1562,14 +1572,35 @@ instance Monoid ReplFlags where
 replCommand :: ProgramConfiguration -> CommandUI ReplFlags
 replCommand progConf = CommandUI
   { commandName         = "repl"
-  , commandSynopsis     = "Open an interpreter session for the given target."
-  , commandDescription  = Nothing
+  , commandSynopsis     = 
+      "Open an interpreter session for the given component."
+  , commandDescription  = Just $ \pname -> wrapText $
+         "If the current directory contains no package, ignores COMPONENT "
+      ++ "parameters and opens an interactive interpreter session; if a "
+      ++ "sandbox is present, its package database will be used.\n"
+      ++ "\n"
+      ++ "Otherwise, (re)configures with the given or default flags, and "
+      ++ "loads the interpreter with the relevant modules. For executables, "
+      ++ "tests and benchmarks, loads the main module (and its "
+      ++ "dependencies); for libraries all exposed/other modules.\n"
+      ++ "\n"
+      ++ "The default component is the library itself, or the executable "
+      ++ "if that is the only component.\n"
+      ++ "\n"
+      ++ "Support for loading specific modules is planned but not "
+      ++ "implemented yet. For certain scenarios, `" ++ pname
+      ++ " exec -- ghci :l Foo` may be used instead. Note that `exec` will "
+      ++ "not (re)configure and you will have to specify the location of "
+      ++ "other modules, if required.\n"
+
   , commandNotes        = Just $ \pname ->
-       "Examples:\n"
-        ++ "  " ++ pname ++ " repl           "
-        ++ "    The first component in the package\n"
-        ++ "  " ++ pname ++ " repl foo       "
-        ++ "    A named component (i.e. lib, exe, test suite)\n"
+         "Examples:\n"
+      ++ "  " ++ pname ++ " repl           "
+      ++ "    The first component in the package\n"
+      ++ "  " ++ pname ++ " repl foo       "
+      ++ "    A named component (i.e. lib, exe, test suite)\n"
+      ++ "  " ++ pname ++ " repl --ghc-options=\"-lstdc++\""
+      ++ "  Specifying flags for interpreter\n"
 --TODO: re-enable once we have support for module/file targets
 --        ++ "  " ++ pname ++ " repl Foo.Bar   "
 --        ++ "    A module\n"
@@ -1579,7 +1610,7 @@ replCommand progConf = CommandUI
 --        ++ "name, e.g.\n"
 --        ++ "  " ++ pname ++ " repl foo:Foo.Bar\n"
 --        ++ "  " ++ pname ++ " repl testsuite1:Foo/Bar.hs\n"
-  , commandUsage =  \pname -> "Usage: " ++ pname ++ " repl [FILENAME] [FLAGS]\n"
+  , commandUsage =  \pname -> "Usage: " ++ pname ++ " repl [COMPONENT] [FLAGS]\n"
   , commandDefaultFlags = defaultReplFlags
   , commandOptions = \showOrParseArgs ->
       optionVerbosity replVerbosity (\v flags -> flags { replVerbosity = v })
@@ -1658,11 +1689,22 @@ testCommand :: CommandUI TestFlags
 testCommand = CommandUI
   { commandName         = "test"
   , commandSynopsis     =
-      "Run the test suite, if any (configure with UserHooks)."
-  , commandDescription  = Nothing
+      "Run all/specific tests in the test suite."
+  , commandDescription  = Just $ \pname -> wrapText $
+         "If necessary (re)configures with `--enable-tests` flag and builds"
+      ++ " the test suite.\n"
+      ++ "\n"
+      ++ "Remember that the tests' dependencies must be installed if there"
+      ++ " are additional ones; e.g. with `" ++ pname
+      ++ " install --only-dependencies --enable-tests`.\n"
+      ++ "\n"
+      ++ "The package can, using the UserHooks functionality, define actions"
+      ++ " to be executed before and after running the tests.\n"
   , commandNotes        = Nothing
-  , commandUsage        = \pname ->
-      "Usage: " ++ pname ++ " test [FLAGS]\n"
+  , commandUsage        = usageAlternatives "test"
+      [ "[FLAGS]"
+      , "TESTCOMPONENTS [FLAGS]"
+      ]
   , commandDefaultFlags = defaultTestFlags
   , commandOptions = \showOrParseArgs ->
       [ optionVerbosity testVerbosity (\v flags -> flags { testVerbosity = v })
@@ -1762,11 +1804,22 @@ benchmarkCommand :: CommandUI BenchmarkFlags
 benchmarkCommand = CommandUI
   { commandName         = "bench"
   , commandSynopsis     =
-      "Run the benchmark, if any (configure with UserHooks)."
-  , commandDescription  = Nothing
+      "Run all/specific benchmarks."
+  , commandDescription  = Just $ \pname -> wrapText $
+         "If necessary (re)configures with `--enable-benchmarks` flag and"
+      ++ " builds the benchmarks.\n"
+      ++ "\n"
+      ++ "Remember that the benchmarks' dependencies must be installed if"
+      ++ " there are additional ones; e.g. with `" ++ pname
+      ++ " install --only-dependencies --enable-benchmarks`.\n"
+      ++ "\n"
+      ++ "The package can, using the UserHooks functionality, define actions"
+      ++ " to be executed before and after running the benchmarks.\n"
   , commandNotes        = Nothing
-  , commandUsage        = \pname ->
-      "Usage: " ++ pname ++ " bench [FLAGS]\n"
+  , commandUsage        = usageAlternatives "bench"
+      [ "[FLAGS]"
+      , "BENCHCOMPONENTS [FLAGS]"
+      ]
   , commandDefaultFlags = defaultBenchmarkFlags
   , commandOptions = \showOrParseArgs ->
       [ optionVerbosity benchmarkVerbosity
