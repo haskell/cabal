@@ -87,7 +87,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
-         ( wrapText )
+         ( wrapText, wrapLine )
 
 import Data.Char
          ( isSpace, isAlphaNum )
@@ -141,16 +141,19 @@ defaultGlobalFlags  = GlobalFlags {
 globalCommand :: CommandUI GlobalFlags
 globalCommand = CommandUI {
     commandName         = "",
-    commandSynopsis     = "",
+    commandSynopsis     =
+         "Command line interface to the Haskell Cabal infrastructure.",
     commandUsage        = \_ ->
-         "This program is the command line interface "
-           ++ "to the Haskell Cabal infrastructure.\n"
-      ++ "See http://www.haskell.org/cabal/ for more information.\n",
+         "See http://www.haskell.org/cabal/ for more information.\n",
     commandDescription  = Just $ \pname ->
          "For more information about a command use:\n"
-      ++ "  " ++ pname ++ " COMMAND --help\n\n"
+      ++ "  " ++ pname ++ " COMMAND --help\n"
+      ++ "or\n"
+      ++ "  " ++ pname ++ " help COMMAND\n"
+      ++ "\n"
       ++ "To install Cabal packages from hackage use:\n"
-      ++ "  " ++ pname ++ " install foo [--dry-run]\n\n"
+      ++ "  " ++ pname ++ " install foo [--dry-run]\n"
+      ++ "\n"
       ++ "Occasionally you need to update the list of available packages:\n"
       ++ "  " ++ pname ++ " update\n",
     commandNotes = Nothing,
@@ -531,9 +534,12 @@ fetchCommand :: CommandUI FetchFlags
 fetchCommand = CommandUI {
     commandName         = "fetch",
     commandSynopsis     = "Downloads packages for later installation.",
-    commandDescription  = Nothing,
+    commandUsage        = usageAlternatives "fetch" [ "[FLAGS] PACKAGES"
+                                                    ],
+    commandDescription  = Just $ \_ ->
+          "Note that it currently is not possible to fetch the dependencies for a\n"
+       ++ "package in the current directory.\n",
     commandNotes        = Nothing,
-    commandUsage        = usagePackages "fetch",
     commandDefaultFlags = defaultFetchFlags,
     commandOptions      = \ showOrParseArgs -> [
          optionVerbosity fetchVerbosity (\v flags -> flags { fetchVerbosity = v })
@@ -605,9 +611,18 @@ freezeCommand :: CommandUI FreezeFlags
 freezeCommand = CommandUI {
     commandName         = "freeze",
     commandSynopsis     = "Freeze dependencies.",
-    commandDescription  = Nothing,
+    commandDescription  = Just $ \_ -> wrapText $
+         "Calculates a valid set of dependencies and their exact versions. "
+      ++ "If successful, saves the result to the file `cabal.config`.\n"
+      ++ "\n"
+      ++ "The package versions specified in `cabal.config` will be used for "
+      ++ "any future installs.\n"
+      ++ "\n"
+      ++ "An existing `cabal.config` is ignored and overwritten.\n",
     commandNotes        = Nothing,
-    commandUsage        = usagePackages "freeze",
+    commandUsage        = usageAlternatives "freeze" [""
+                                                     ,"PACKAGES"
+                                                     ],
     commandDefaultFlags = defaultFreezeFlags,
     commandOptions      = \ showOrParseArgs -> [
          optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
@@ -647,8 +662,11 @@ updateCommand  :: CommandUI (Flag Verbosity)
 updateCommand = CommandUI {
     commandName         = "update",
     commandSynopsis     = "Updates list of known packages.",
-    commandDescription  = Nothing,
-    commandNotes        = Nothing,
+    commandDescription  = Just $ \_ ->
+      "For all known remote repositories, download the package list.\n",
+    commandNotes        = Just $ \_ ->
+         "relevant configuration values:\n"
+      ++ "  remote-repo\n",
     commandUsage        = usageFlags "update",
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> [optionVerbosity id const]
@@ -679,7 +697,12 @@ checkCommand  :: CommandUI (Flag Verbosity)
 checkCommand = CommandUI {
     commandName         = "check",
     commandSynopsis     = "Check the package for common mistakes.",
-    commandDescription  = Nothing,
+    commandDescription  = Just $ \_ -> wrapText $
+         "Expects a .cabal package file in the current directory.\n"
+      ++ "\n"
+      ++ "The checks correspond to the requirements to packages on Hackage. "
+      ++ "If no errors and warnings are reported, Hackage will accept this "
+      ++ "package.\n",
     commandNotes        = Nothing,
     commandUsage        = \pname -> "Usage: " ++ pname ++ " check\n",
     commandDefaultFlags = toFlag normal,
@@ -692,7 +715,7 @@ formatCommand = CommandUI {
     commandSynopsis     = "Reformat the .cabal file using the standard style.",
     commandDescription  = Nothing,
     commandNotes        = Nothing,
-    commandUsage        = \pname -> "Usage: " ++ pname ++ " format [FILE]\n",
+    commandUsage        = usageAlternatives "format" ["[FILE]"],
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> []
   }
@@ -700,12 +723,14 @@ formatCommand = CommandUI {
 runCommand :: CommandUI (BuildFlags, BuildExFlags)
 runCommand = CommandUI {
     commandName         = "run",
-    commandSynopsis     = "Runs the compiled executable.",
-    commandDescription  = Nothing,
+    commandSynopsis     = "Builds and runs an executable.",
+    commandDescription  = Just $ \_ -> wrapText $
+         "Builds and then runs the specified executable. If no executable is "
+      ++ "specified, but the package contains just one executable, that one "
+      ++ "is built and executed.\n",
     commandNotes        = Nothing,
-    commandUsage        =
-      \pname -> "Usage: " ++ pname
-                ++ " run [FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]\n",
+    commandUsage        = usageAlternatives "run"
+        ["[FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]"],
     commandDefaultFlags = mempty,
     commandOptions      =
       \showOrParseArgs -> liftOptions fst setFst
@@ -744,7 +769,7 @@ reportCommand = CommandUI {
     commandDescription  = Nothing,
     commandNotes        = Just $ \_ ->
          "You can store your Hackage login in the ~/.cabal/config file\n",
-    commandUsage        = \pname -> "Usage: " ++ pname ++ " report [FLAGS]\n",
+    commandUsage        = usageAlternatives "report" ["[FLAGS]"],
     commandDefaultFlags = defaultReportFlags,
     commandOptions      = \_ ->
       [optionVerbosity reportVerbosity (\v flags -> flags { reportVerbosity = v })
@@ -798,8 +823,8 @@ defaultGetFlags = GetFlags {
 getCommand :: CommandUI GetFlags
 getCommand = CommandUI {
     commandName         = "get",
-    commandSynopsis     = "Gets a package's source code.",
-    commandDescription  = Just $ \_ ->
+    commandSynopsis     = "Download/Extract a package's source code (repository).",
+    commandDescription  = Just $ \_ -> wrapText $
           "Creates a local copy of a package's source code. By default it gets "
        ++ "the source\ntarball and unpacks it in a local subdirectory. "
        ++ "Alternatively, with -s it will\nget the code from the source "
@@ -876,9 +901,17 @@ listCommand  :: CommandUI ListFlags
 listCommand = CommandUI {
     commandName         = "list",
     commandSynopsis     = "List packages matching a search string.",
-    commandDescription  = Nothing,
+    commandDescription  = Just $ \_ -> wrapText $
+         "List all packages, or all packages matching one of the search"
+      ++ " strings.\n"
+      ++ "\n"
+      ++ "If there is a sandbox in the current directory and "
+      ++ "config:ignore-sandbox is False, use the sandbox package database. "
+      ++ "Otherwise, use the package database specified with --package-db. "
+      ++ "If not specified, use the user package database.\n",
     commandNotes        = Nothing,
-    commandUsage        = usageFlagsOrPackages "list",
+    commandUsage        = usageAlternatives "list" [ "[FLAGS]"
+                                                   , "[FLAGS] STRINGS"],
     commandDefaultFlags = defaultListFlags,
     commandOptions      = \_ -> [
         optionVerbosity listVerbosity (\v flags -> flags { listVerbosity = v })
@@ -935,9 +968,13 @@ infoCommand  :: CommandUI InfoFlags
 infoCommand = CommandUI {
     commandName         = "info",
     commandSynopsis     = "Display detailed information about a particular package.",
-    commandDescription  = Nothing,
+    commandDescription  = Just $ \_ -> wrapText $
+         "If there is a sandbox in the current directory and "
+      ++ "config:ignore-sandbox is False, use the sandbox package database. "
+      ++ "Otherwise, use the package database specified with --package-db. "
+      ++ "If not specified, use the user package database.\n",
     commandNotes        = Nothing,
-    commandUsage        = usagePackages "info",
+    commandUsage        = usageAlternatives "info" ["[FLAGS] PACKAGES"],
     commandDefaultFlags = defaultInfoFlags,
     commandOptions      = \_ -> [
         optionVerbosity infoVerbosity (\v flags -> flags { infoVerbosity = v })
@@ -1056,9 +1093,19 @@ allSolvers = intercalate ", " (map display ([minBound .. maxBound] :: [PreSolver
 installCommand :: CommandUI (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
 installCommand = CommandUI {
   commandName         = "install",
-  commandSynopsis     = "Installs a list of packages.",
-  commandUsage        = usageFlagsOrPackages "install",
-  commandDescription  = Nothing,
+  commandSynopsis     = "Install packages.",
+  commandUsage        = usageAlternatives "install" [ "[FLAGS]"
+                                                    , "[FLAGS] PACKAGES"
+                                                    ],
+  commandDescription  = Just $ \_ -> wrapText $
+        "Installs one or more packages. By default, the installed package"
+     ++ " will be registered in the user's package database or, if a sandbox"
+     ++ " is present in the current directory, inside the sandbox.\n"
+     ++ "\n"
+     ++ "If PACKAGES are specified, downloads and installs those packages."
+     ++ " Otherwise, install the package in the current directory (and/or its"
+     ++ " dependencies) (there must be exactly one .cabal file in the current"
+     ++ " directory).\n",
   commandNotes        = Just $ \pname ->
         ( case commandNotes configureCommand of
             Just desc -> desc pname ++ "\n"
@@ -1301,7 +1348,7 @@ uploadCommand = CommandUI {
     commandNotes        = Just $ \_ ->
          "You can store your Hackage login in the ~/.cabal/config file\n",
     commandUsage        = \pname ->
-         "Usage: " ++ pname ++ " upload [FLAGS] [TARFILES]\n",
+         "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n",
     commandDefaultFlags = defaultUploadFlags,
     commandOptions      = \_ ->
       [optionVerbosity uploadVerbosity (\v flags -> flags { uploadVerbosity = v })
@@ -1353,10 +1400,11 @@ defaultInitFlags  = emptyInitFlags { IT.initVerbosity = toFlag normal }
 initCommand :: CommandUI IT.InitFlags
 initCommand = CommandUI {
     commandName = "init",
-    commandSynopsis = "Interactively create a .cabal file.",
+    commandSynopsis = "Create a new .cabal package file (interactively).",
     commandDescription = Just $ \_ -> wrapText $
          "Cabalise a project by creating a .cabal, Setup.hs, and "
-      ++ "optionally a LICENSE file.\n\n"
+      ++ "optionally a LICENSE file.\n"
+      ++ "\n"
       ++ "Calling init with no arguments (recommended) uses an "
       ++ "interactive mode, which will try to guess as much as "
       ++ "possible and prompt you for the rest.  Command-line "
@@ -1634,18 +1682,85 @@ defaultSandboxFlags = SandboxFlags {
   sandboxLocation  = toFlag defaultSandboxLocation
   }
 
+headLine :: String -> String
+headLine = unlines
+         . map unwords
+         . wrapLine 79
+         . words
+
+paragraph :: String -> String
+paragraph = (++"\n")
+          . unlines
+          . map unwords
+          . wrapLine 79
+          . words
+
+indentParagraph :: String -> String
+indentParagraph = unlines
+                . map (("  "++).unwords)
+                . wrapLine 77
+                . words
+
 sandboxCommand :: CommandUI SandboxFlags
 sandboxCommand = CommandUI {
   commandName         = "sandbox",
   commandSynopsis     = "Create/modify/delete a sandbox.",
-  commandDescription  = Nothing,
+  commandDescription  = Just $ \pname -> concat
+    [ paragraph $ "Sandboxes are isolated package databases that can be used"
+      ++ " to prevent dependency conflicts that arise when many different"
+      ++ " packages are installed in the same database (i.e. the user's"
+      ++ " database in the home directory)."
+    , paragraph $ "A sandbox in the current directory (created by"
+      ++ " `sandbox init`) will be used instead of the user's database for"
+      ++ " commands such as `install` and `build`. Note that (a directly"
+      ++ " invoked) GHC will not automatically be aware of sandboxes;"
+      ++ " only if called via appropriate " ++ pname
+      ++ " commands, e.g. `repl`, `build`, `exec`."
+    , paragraph $ "Currently, " ++ pname ++ " will not search for a sandbox"
+      ++ " in folders above the current one, so cabal will not see the sandbox"
+      ++ " if you are in a subfolder of a sandboxes."
+    , paragraph "Subcommands:"
+    , headLine "init:"
+    , indentParagraph $ "Initialize a sandbox in the current directory."
+      ++ " An existing package database will not be modified, but settings"
+      ++ " (such as the location of the database) can be modified this way." 
+    , headLine "delete:"
+    , indentParagraph $ "Remove the sandbox; deleting all the packages"
+      ++ " installed inside."
+    , headLine "add-source:"
+    , indentParagraph $ "Make one or more local package available in the"
+      ++ " sandbox. PATHS may be relative or absolute."
+      ++ " Typical usecase is when you need"
+      ++ " to make a (temporary) modification to a dependency: You download"
+      ++ " the package into a different directory, make the modification,"
+      ++ " and add that directory to the sandbox with `add-source`."
+    , indentParagraph $ "Unless given `--snapshot`, any add-source'd"
+      ++ " dependency that was modified since the last build will be"
+      ++ " re-installed automatically."
+    , headLine "delete-source:"
+    , indentParagraph $ "Remove an add-source dependency; however, this will"
+      ++ " not delete the package(s) that have been installed in the sandbox"
+      ++ " from this dependency. You can either unregister the package(s) via"
+      ++ " `" ++ pname ++ " sandbox hc-pkg unregister` or re-create the"
+      ++ " sandbox (`sandbox delete; sandbox init`)."
+    , headLine "list-sources:"
+    , indentParagraph $ "List the directories of local packages made"
+      ++ " available via `" ++ pname ++ " add-source`."
+    , headLine "hc-pkg:"
+    , indentParagraph $ "A shortcut for `" ++ pname ++ " exec -- ghc-pkg`:"
+      ++ " Execute ghc-pkg for the sandbox package database. Can"
+      ++ " be used to list specific/all packages that are installed in the"
+      ++ " sandbox. For subcommands, see the help for ghc-pkg."
+    ],
   commandNotes        = Nothing,
-  commandUsage        = \pname ->
-       "Usage: " ++ pname ++ " sandbox init\n"
-    ++ "   or: " ++ pname ++ " sandbox delete\n"
-    ++ "   or: " ++ pname ++ " sandbox add-source  [PATHS]\n\n"
-    ++ "   or: " ++ pname ++ " sandbox hc-pkg      -- [ARGS]\n"
-    ++ "   or: " ++ pname ++ " sandbox list-sources\n",
+  commandUsage        = usageAlternatives "sandbox"
+    [ "init          [FLAGS]"
+    , "delete        [FLAGS]"
+    , "add-source    [FLAGS] PATHS"
+    , "delete-source [FLAGS] PATHS"
+    , "list-sources  [FLAGS]"
+    , "hc-pkg        [FLAGS] [--] COMMAND [--] [ARGS]"
+    ],
 
   commandDefaultFlags = defaultSandboxFlags,
   commandOptions      = \_ ->
@@ -1693,15 +1808,24 @@ defaultExecFlags = ExecFlags {
 execCommand :: CommandUI ExecFlags
 execCommand = CommandUI {
   commandName         = "exec",
-  commandSynopsis     = "Execute a command in the context of the package",
-  commandDescription  = Just $ \_ ->
-       "Execute the given command making the package's installed dependencies\n"
-    ++ "available to GHC. When a sandbox is being used, this causes GHC to\n"
-    ++ "use the sandbox package database as if it had been invoked directly\n"
-    ++ "by cabal. If a sandbox is not being used, GHC is not affected.\n\n"
-    ++ "Any cabal executable packages installed into either the user package\n"
-    ++ "database or into the current package's sandbox (if there is a current\n"
-    ++ "package and sandbox) are available on PATH.\n",
+  commandSynopsis     = "Give a command access to the sandbox package repository",
+  commandDescription  = Just $ \pname -> wrapText $
+       -- TODO: this is too GHC-focused for my liking..
+       "A directly invoked GHC will not automatically be aware of any"
+    ++ " sandboxes: the GHC_PACKAGE_PATH environment variable controls what"
+    ++ " GHC uses. `" ++ pname ++ " exec` can be used to modify this variable:"
+    ++ " COMMAND will be executed in a modified environment and thereby uses"
+    ++ " the sandbox package database.\n"
+    ++ "\n"
+    ++ "If there is no sandbox, behaves as identity (executing COMMAND).\n"
+    ++ "\n"
+    ++ "Note that other " ++ pname ++ " commands change the environment"
+    ++ " variable appropriately already, so there is no need to wrap those"
+    ++ " in `" ++ pname ++ " exec`. But with `" ++ pname ++ " exec`, the user"
+    ++ " has more control and can, for example, execute custom scripts which"
+    ++ " indirectly execute GHC.\n"
+    ++ "\n"
+    ++ "See `" ++ pname ++ " sandbox`.",
   commandNotes        = Just $ \pname ->
        "Examples:\n"
     ++ "  Install the executable package pandoc into a sandbox and run it:\n"
@@ -1716,7 +1840,7 @@ execCommand = CommandUI {
     ++ "  sandbox package database (if a sandbox is being used):\n"
     ++ "    " ++ pname ++ " exec runghc Foo.hs\n",
   commandUsage        = \pname ->
-       "Usage: " ++ pname ++ " exec [FLAGS] COMMAND [-- [ARGS...]]\n",
+       "Usage: " ++ pname ++ " exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
 
   commandDefaultFlags = defaultExecFlags,
   commandOptions      = \_ ->
@@ -1833,7 +1957,6 @@ optionSolverFlags showOrParseArgs getmbj setmbj getrg setrg _getig _setig getsip
       getstrfl setstrfl
       (yesNoOpt showOrParseArgs)
   ]
-
 
 usageFlagsOrPackages :: String -> String -> String
 usageFlagsOrPackages name pname =
