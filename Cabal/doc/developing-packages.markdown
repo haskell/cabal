@@ -1045,33 +1045,33 @@ information](#build-information)).
 
 `type:` _interface_ (required)
 :   The interface type and version of the test suite.  Cabal supports two test
-    suite interfaces, called `exitcode-stdio-1.0` and `detailed-1.0`.  Each of
+    suite interfaces, called `exitcode-stdio-1.0` and `detailed-0.9`.  Each of
     these types may require or disallow other fields as described below.
 
 Test suites using the `exitcode-stdio-1.0` interface are executables
 that indicate test failure with a non-zero exit code when run; they may provide
 human-readable log information through the standard output and error channels.
 This interface is provided primarily for compatibility with existing test
-suites; it is preferred that new test suites be written for the `detailed-1.0`
+suites; it is preferred that new test suites be written for the `detailed-0.9`
 interface.  The `exitcode-stdio-1.0` type requires the `main-is` field.
 
-`main-is:` _filename_ (required: `exitcode-stdio-1.0`, disallowed: `detailed-1.0`)
+`main-is:` _filename_ (required: `exitcode-stdio-1.0`, disallowed: `detailed-0.9`)
 :   The name of the `.hs` or `.lhs` file containing the `Main` module. Note that it is the
     `.hs` filename that must be listed, even if that file is generated
     using a preprocessor. The source file must be relative to one of the
     directories listed in `hs-source-dirs`.  This field is analogous to the
     `main-is` field of an executable section.
 
-Test suites using the `detailed-1.0` interface are modules exporting the symbol
+Test suites using the `detailed-0.9` interface are modules exporting the symbol
 `tests :: IO [Test]`.  The `Test` type is exported by the module
 `Distribution.TestSuite` provided by Cabal.  For more details, see the example below.
 
-The `detailed-1.0` interface allows Cabal and other test agents to inspect a
+The `detailed-0.9` interface allows Cabal and other test agents to inspect a
 test suite's results case by case, producing detailed human- and
-machine-readable log files.  The `detailed-1.0` interface requires the
+machine-readable log files.  The `detailed-0.9` interface requires the
 `test-module` field.
 
-`test-module:` _identifier_ (required: `detailed-1.0`, disallowed: `exitcode-stdio-1.0`)
+`test-module:` _identifier_ (required: `detailed-0.9`, disallowed: `exitcode-stdio-1.0`)
 :   The module exporting the `tests` symbol.
 
 #### Example: Package using `exitcode-stdio-1.0` interface ####
@@ -1108,10 +1108,10 @@ main = do
     exitFailure
 ~~~~~~~~~~~~~~~~
 
-#### Example: Package using `detailed-1.0` interface ####
+#### Example: Package using `detailed-0.9` interface ####
 
 The example package description and test module source file below demonstrate
-the use of the `detailed-1.0` interface.  For brevity, the example package does
+the use of the `detailed-0.9` interface.  For brevity, the example package does
 note include a library or any normal executables, but a real package would be
 required to have at least one library or executable.  The test module below
 also develops a simple implementation of the interface set by
@@ -1128,7 +1128,7 @@ Cabal-Version:  >= 1.9.2
 Build-Type:     Simple
 
 Test-Suite test-bar
-    type:       detailed-1.0
+    type:       detailed-0.9
     test-module: Bar
     build-depends: base, Cabal >= 1.9.2
 ~~~~~~~~~~~~~~~~
