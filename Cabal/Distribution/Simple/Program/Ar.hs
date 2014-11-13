@@ -124,6 +124,7 @@ wipeMetadata path = do
         , "0     " -- GID, 6 bytes
         , "0644    " -- mode, 8 bytes
         ]
+    headerSize :: Int
     headerSize = 60
 
     -- http://en.wikipedia.org/wiki/Ar_(Unix)#File_format_details
