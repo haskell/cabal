@@ -411,6 +411,12 @@ checkFields pkg =
           ++ commaSep (map display knownBuildTypes)
       _ -> Nothing
 
+  , check (isJust (setupBuildInfo pkg) && buildType pkg /= Just Custom) $
+      PackageBuildWarning $
+           "Ignoring the 'custom-setup' section because the 'build-type' is "
+        ++ "not 'Custom'. Use 'build-type: Custom' if you need to use a "
+        ++ "custom Setup.hs script."
+
   , check (not (null unknownCompilers)) $
       PackageBuildWarning $
         "Unknown compiler " ++ commaSep (map quote unknownCompilers)
@@ -1083,6 +1089,16 @@ checkCabalVersion pkg =
         ++ "specify 'cabal-version: >= 1.4'. Alternatively if you require "
         ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
+
+  , check (specVersion pkg >= Version [1,21] []
+           && isNothing (setupBuildInfo pkg)
+           && buildType pkg == Just Custom) $
+      PackageBuildWarning $
+           "Packages using 'cabal-version: >= 1.22' with 'build-type: Custom' "
+        ++ "must use a 'custom-setup' section with a 'setup-depends' field "
+        ++ "that specifies the dependencies of the Setup.hs script itself. "
+        ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
+        ++ "so a simple example would be 'setup-depends: base, Cabal'."
   ]
   where
     -- Perform a check on packages that use a version of the spec less than
