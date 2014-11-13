@@ -528,6 +528,15 @@ sourceRepoFieldDescrs =
         repoSubdir                 (\val repo -> repo { repoSubdir = val })
     ]
 
+------------------------------------------------------------------------------
+
+setupBInfoFieldDescrs :: [FieldDescr SetupBuildInfo]
+setupBInfoFieldDescrs =
+    [ commaListFieldWithSep vcat "setup-depends"
+        disp         parse
+        setupDepends (\xs binfo -> binfo{setupDepends=xs})
+    ]
+
 -- ---------------------------------------------------------------
 -- Parsing
 
@@ -739,13 +748,13 @@ parsePackageDescription file = do
 
           -- 'getBody' assumes that the remaining fields only consist of
           -- flags, lib and exe sections.
-        (repos, flags, mlib, exes, tests, bms) <- getBody
+        (repos, flags, mcsetup, mlib, exes, tests, bms) <- getBody
         warnIfRest  -- warn if getBody did not parse up to the last field.
           -- warn about using old/new syntax with wrong cabal-version:
         maybeWarnCabalVersion (not $ oldSyntax fields0) pkg
         checkForUndefinedFlags flags mlib exes tests
         return $ GenericPackageDescription
-                   pkg { sourceRepos = repos }
+                   pkg { sourceRepos = repos, setupBuildInfo = mcsetup }
                    flags mlib exes tests bms
 
   where
@@ -851,6 +860,7 @@ parsePackageDescription file = do
     -- The body consists of an optional sequence of declarations of flags and
     -- an arbitrary number of executables and at most one library.
     getBody :: PM ([SourceRepo], [Flag]
+                  ,Maybe SetupBuildInfo
                   ,Maybe (CondTree ConfVar [Dependency] Library)
                   ,[(String, CondTree ConfVar [Dependency] Executable)]
                   ,[(String, CondTree ConfVar [Dependency] TestSuite)]
@@ -863,8 +873,8 @@ parsePackageDescription file = do
             exename <- lift $ runP line_no "executable" parseTokenQ sec_label
             flds <- collectFields parseExeFields sec_fields
             skipField
-            (repos, flags, lib, exes, tests, bms) <- getBody
-            return (repos, flags, lib, (exename, flds): exes, tests, bms)
+            (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+            return (repos, flags, csetup, lib, (exename, flds): exes, tests, bms)
 
         | sec_type == "test-suite" -> do
             when (null sec_label) $ lift $ syntaxError line_no
@@ -905,8 +915,9 @@ parsePackageDescription file = do
             if checkTestType emptyTestSuite flds
                 then do
                     skipField
-                    (repos, flags, lib, exes, tests, bms) <- getBody
-                    return (repos, flags, lib, exes, (testname, flds) : tests, bms)
+                    (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+                    return (repos, flags, csetup, lib, exes,
+                            (testname, flds) : tests, bms)
                 else lift $ syntaxError line_no $
                          "Test suite \"" ++ testname
                       ++ "\" is missing required field \"type\" or the field "
@@ -953,8 +964,9 @@ parsePackageDescription file = do
             if checkBenchmarkType emptyBenchmark flds
                 then do
                     skipField
-                    (repos, flags, lib, exes, tests, bms) <- getBody
-                    return (repos, flags, lib, exes, tests, (benchname, flds) : bms)
+                    (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+                    return (repos, flags, csetup, lib, exes,
+                            tests, (benchname, flds) : bms)
                 else lift $ syntaxError line_no $
                          "Benchmark \"" ++ benchname
                       ++ "\" is missing required field \"type\" or the field "
@@ -967,10 +979,10 @@ parsePackageDescription file = do
               syntaxError line_no "'library' expects no argument"
             flds <- collectFields parseLibFields sec_fields
             skipField
-            (repos, flags, lib, exes, tests, bms) <- getBody
+            (repos, flags, csetup, lib, exes, tests, bms) <- getBody
             when (isJust lib) $ lift $ syntaxError line_no
               "There can only be one library section in a package description."
-            return (repos, flags, Just flds, exes, tests, bms)
+            return (repos, flags, csetup, Just flds, exes, tests, bms)
 
         | sec_type == "flag" -> do
             when (null sec_label) $ lift $
@@ -981,8 +993,8 @@ parsePackageDescription file = do
                     (MkFlag (FlagName (lowercase sec_label)) "" True False)
                     sec_fields
             skipField
-            (repos, flags, lib, exes, tests, bms) <- getBody
-            return (repos, flag:flags, lib, exes, tests, bms)
+            (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+            return (repos, flag:flags, csetup, lib, exes, tests, bms)
 
         | sec_type == "source-repository" -> do
             when (null sec_label) $ lift $ syntaxError line_no $
@@ -1006,8 +1018,22 @@ parsePackageDescription file = do
                     }
                     sec_fields
             skipField
-            (repos, flags, lib, exes, tests, bms) <- getBody
-            return (repo:repos, flags, lib, exes, tests, bms)
+            (repos, flags, csetup, lib, exes, tests, bms) <- getBody
+            return (repo:repos, flags, csetup, lib, exes, tests, bms)
+
+        | sec_type == "custom-setup" -> do
+            unless (null sec_label) $ lift $
+              syntaxError line_no "'setup' expects no argument"
+            flds <- lift $ parseFields
+                             setupBInfoFieldDescrs
+                             warnUnrec
+                             mempty
+                             sec_fields
+            skipField
+            (repos, flags, csetup0, lib, exes, tests, bms) <- getBody
+            when (isJust csetup0) $ lift $ syntaxError line_no
+              "There can only be one 'custom-setup' section in a package description."
+            return (repos, flags, Just flds, lib, exes, tests, bms)
 
         | otherwise -> do
             lift $ warning $ "Ignoring unknown section type: " ++ sec_type
@@ -1023,7 +1049,7 @@ parsePackageDescription file = do
               "If-blocks are not allowed in between stanzas: " ++ show f
             skipField
             getBody
-      Nothing -> return ([], [], Nothing, [], [], [])
+      Nothing -> return ([], [], Nothing, Nothing, [], [], [])
 
     -- Extracts all fields in a block and returns a 'CondTree'.
     --
