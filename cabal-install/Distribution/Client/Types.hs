@@ -217,7 +217,9 @@ data LocalRepo = LocalRepo
 
 data RemoteRepo = RemoteRepo {
     remoteRepoName :: String,
-    remoteRepoURI  :: URI
+    remoteRepoURI  :: URI,
+    remoteRepoOverride :: Bool
+    -- ^ Should this entry drop all previous repos?
   }
   deriving (Show,Eq,Ord)
 
