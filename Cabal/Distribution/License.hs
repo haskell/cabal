@@ -92,6 +92,9 @@ data License =
     -- | <http://www.opensource.org/licenses/MIT MIT license>.
   | MIT
 
+    -- | <http://www.isc.org/downloads/software-support-policy/isc-license/ ISC license>
+  | ISC
+
     -- | <https://www.mozilla.org/MPL/ Mozilla Public License, version 2.0>.
   | MPL Version
 
@@ -129,7 +132,7 @@ knownLicenses :: [License]
 knownLicenses = [ GPL  unversioned, GPL  (version [2]),    GPL  (version [3])
                 , LGPL unversioned, LGPL (version [2, 1]), LGPL (version [3])
                 , AGPL unversioned,                        AGPL (version [3])
-                , BSD2, BSD3, MIT
+                , BSD2, BSD3, MIT, ISC
                 , MPL (Version [2, 0] [])
                 , Apache unversioned, Apache (version [2, 0])
                 , PublicDomain, AllRightsReserved, OtherLicense]
@@ -156,6 +159,7 @@ instance Text License where
       ("BSD2",              Nothing) -> BSD2
       ("BSD3",              Nothing) -> BSD3
       ("BSD4",              Nothing) -> BSD4
+      ("ISC",               Nothing) -> ISC
       ("MIT",               Nothing) -> MIT
       ("MPL",         Just version') -> MPL version'
       ("Apache",            _      ) -> Apache version
