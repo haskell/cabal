@@ -155,7 +155,7 @@ data GhcOptions = GhcOptions {
   ghcOptSplitObjs     :: Flag Bool,
 
   -- | Run N jobs simultaneously (if possible).
-  ghcOptNumJobs       :: Flag Int,
+  ghcOptNumJobs       :: Flag (Maybe Int),
 
   -- | Enable coverage analysis; the @ghc -fhpc -hpcdir@ flags.
   ghcOptHPCDir        :: Flag FilePath,
@@ -277,9 +277,9 @@ renderGhcOptions comp opts
       Just hpcdir -> ["-fhpc", "-hpcdir", hpcdir]
 
   , if parmakeSupported comp
-    then
-      let numJobs = fromFlagOrDefault 1 (ghcOptNumJobs opts)
-      in if numJobs > 1 then ["-j" ++ show numJobs] else []
+    then case ghcOptNumJobs opts of
+      NoFlag  -> []
+      Flag n  -> ["-j" ++ maybe "" show n]
     else []
 
   --------------------
