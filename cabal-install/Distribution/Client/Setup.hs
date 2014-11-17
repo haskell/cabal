@@ -83,7 +83,8 @@ import Distribution.Text
 import Distribution.ReadE
          ( ReadE(..), readP_to_E, succeedReadE )
 import qualified Distribution.Compat.ReadP as Parse
-         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, sepBy1, (+++) )
+         ( ReadP, readP_to_S, readS_to_P, char, munch1, pfail, sepBy1, (+++),
+           option)
 import Distribution.Verbosity
          ( Verbosity, normal )
 import Distribution.Simple.Utils
@@ -233,7 +234,7 @@ instance Monoid GlobalFlags where
     globalNumericVersion    = combine globalNumericVersion,
     globalConfigFile        = combine globalConfigFile,
     globalSandboxConfigFile = combine globalConfigFile,
-    globalRemoteRepos       = combine globalRemoteRepos,
+    globalRemoteRepos       = applyOverride $ combine globalRemoteRepos,
     globalCacheDir          = combine globalCacheDir,
     globalLocalRepos        = combine globalLocalRepos,
     globalLogsDir           = combine globalLogsDir,
@@ -242,6 +243,17 @@ instance Monoid GlobalFlags where
     globalIgnoreSandbox     = combine globalIgnoreSandbox
   }
     where combine field = field a `mappend` field b
+
+-- | Check for any repos that are marked as override and, if present, drop all
+-- repos earlier in the list.
+applyOverride :: NubList RemoteRepo -> NubList RemoteRepo
+applyOverride =
+    toNubList . go id . fromNubList
+  where
+    go front [] = front []
+    go front (x:xs)
+        | remoteRepoOverride x = go (x:) xs
+        | otherwise            = go (front . (x:)) xs
 
 globalRepos :: GlobalFlags -> [Repo]
 globalRepos globalFlags = remoteRepos ++ localRepos
@@ -1866,7 +1878,8 @@ parseDependencyOrPackageId = parse Parse.+++ liftM pkgidToDependency parse
       version      -> Dependency (packageName p) (thisVersion version)
 
 showRepo :: RemoteRepo -> String
-showRepo repo = remoteRepoName repo ++ ":"
+showRepo repo = (if remoteRepoOverride repo then "!" else "")
+             ++ remoteRepoName repo ++ ":"
              ++ uriToString id (remoteRepoURI repo) []
 
 readRepo :: String -> Maybe RemoteRepo
@@ -1874,11 +1887,13 @@ readRepo = readPToMaybe parseRepo
 
 parseRepo :: Parse.ReadP r RemoteRepo
 parseRepo = do
+  override <- Parse.option False (Parse.char '!' >> return True)
   name <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
   _ <- Parse.char ':'
   uriStr <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
   uri <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
   return $ RemoteRepo {
     remoteRepoName = name,
-    remoteRepoURI  = uri
+    remoteRepoURI  = uri,
+    remoteRepoOverride = override
   }
