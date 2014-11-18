@@ -88,6 +88,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
     Current.importDirs         = importDirs ipi,
     Current.libraryDirs        = libraryDirs ipi,
+    Current.dataDir            = "",
     Current.hsLibraries        = hsLibraries ipi,
     Current.extraLibraries     = extraLibraries ipi,
     Current.extraGHCiLibraries = [],
