@@ -67,7 +67,7 @@ import Language.Haskell.Extension ( Language(..) )
 import Distribution.Client.Init.Types
   ( InitFlags(..), PackageType(..), Category(..) )
 import Distribution.Client.Init.Licenses
-  ( bsd2, bsd3, gplv2, gplv3, lgpl21, lgpl3, agplv3, apache20, mit, mpl20 )
+  ( bsd2, bsd3, gplv2, gplv3, lgpl21, lgpl3, agplv3, apache20, mit, mpl20, isc )
 import Distribution.Client.Init.Heuristics
   ( guessPackageName, guessAuthorNameMail, guessMainFileCandidates,
     SourceFileEntry(..),
@@ -599,6 +599,9 @@ writeLicense flags = do
 
           Flag (MPL (Version {versionBranch = [2, 0]}))
             -> Just mpl20
+
+          Flag ISC
+            -> Just $ isc authors year
 
           _ -> Nothing
 
