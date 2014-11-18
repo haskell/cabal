@@ -91,6 +91,7 @@ data InstalledPackageInfo_ m
         trusted           :: Bool,
         importDirs        :: [FilePath],
         libraryDirs       :: [FilePath],
+        dataDir           :: FilePath,
         hsLibraries       :: [String],
         extraLibraries    :: [String],
         extraGHCiLibraries:: [String],    -- overrides extraLibraries for GHCi
@@ -140,6 +141,7 @@ emptyInstalledPackageInfo
         trusted           = False,
         importDirs        = [],
         libraryDirs       = [],
+        dataDir           = "",
         hsLibraries       = [],
         extraLibraries    = [],
         extraGHCiLibraries= [],
@@ -318,6 +320,9 @@ installedFieldDescrs = [
  , listField   "library-dirs"
         showFilePath       parseFilePathQ
         libraryDirs        (\xs pkg -> pkg{libraryDirs=xs})
+ , simpleField "data-dir"
+        showFilePath       (parseFilePathQ Parse.<++ return "")
+        dataDir            (\val pkg -> pkg{dataDir=val})
  , listField   "hs-libraries"
         showFilePath       parseTokenQ
         hsLibraries        (\xs pkg -> pkg{hsLibraries=xs})

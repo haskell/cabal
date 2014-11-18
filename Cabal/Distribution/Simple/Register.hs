@@ -276,9 +276,12 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
     IPI.hiddenModules      = otherModules bi,
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],
+    -- Note. the libsubdir and datasubdir templates have already been expanded
+    -- into libdir and datadir.
     IPI.libraryDirs        = if hasLibrary
                                then libdir installDirs : extraLibDirs bi
                                else                      extraLibDirs bi,
+    IPI.dataDir            = datadir installDirs,
     IPI.hsLibraries        = [ libname
                              | LibraryName libname <- componentLibraries clbi
                              , hasLibrary ],
@@ -335,8 +338,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg ipid lib lbi clbi =
     installDirs =
       (absoluteInstallDirs pkg lbi NoCopyDest) {
         libdir     = inplaceDir </> buildDir lbi,
-        datadir    = inplaceDir,
-        datasubdir = distPref,
+        datadir    = inplaceDir </> dataDir pkg,
         docdir     = inplaceDocdir,
         htmldir    = inplaceHtmldir,
         haddockdir = inplaceHtmldir
