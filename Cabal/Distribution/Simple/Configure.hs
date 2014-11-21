@@ -601,6 +601,16 @@ configure (pkg_descr0, pbi) cfg
                   GHC.ghcDynamic comp
                 _ -> False
 
+        reloc <-
+           if not (fromFlag $ configRelocatable cfg)
+                then return False
+                else case flavor of
+                            GHC | version >= Version [7,8] [] -> return True
+                            _ -> do warn verbosity
+                                         ("this compiler does not support " ++
+                                          "--enable-relocatable; ignoring")
+                                    return False
+
         let lbi = LocalBuildInfo {
                     configFlags         = cfg,
                     extraConfigArgs     = [],  -- Currently configure does not
@@ -631,7 +641,8 @@ configure (pkg_descr0, pbi) cfg
                     stripLibs           = fromFlag $ configStripLibs cfg,
                     withPackageDB       = packageDbs,
                     progPrefix          = fromFlag $ configProgPrefix cfg,
-                    progSuffix          = fromFlag $ configProgSuffix cfg
+                    progSuffix          = fromFlag $ configProgSuffix cfg,
+                    relocatable         = reloc
                   }
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest

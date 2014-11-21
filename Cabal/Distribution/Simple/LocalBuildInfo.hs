@@ -139,7 +139,8 @@ data LocalBuildInfo = LocalBuildInfo {
         stripExes     :: Bool,  -- ^Whether to strip executables during install
         stripLibs     :: Bool,  -- ^Whether to strip libraries during install
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
-        progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
+        progSuffix    :: PathTemplate, -- ^Suffix to be appended to installed executables
+        relocatable   :: Bool --  ^Whether to build a relocatable package
   } deriving (Generic, Read, Show)
 
 instance Binary LocalBuildInfo
