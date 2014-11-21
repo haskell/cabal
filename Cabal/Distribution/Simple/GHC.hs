@@ -102,7 +102,7 @@ import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Utils.NubList
-         ( overNubListR, toNubListR )
+         ( NubListR, overNubListR, toNubListR )
 import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
@@ -906,10 +906,17 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptPackageKey         = toFlag (pkgKey lbi),
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
-                ghcOptPackages           = toNubListR $ mkGhcOptPackages clbi ,
+                ghcOptPackages           = toNubListR $ mkGhcOptPackages clbi,
+                ghcOptLinkOptions        = if (hostOS == OSX
+                                               && relocatable lbi)
+                                            then toRPaths lbi clbi
+                                            else mempty,
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
-                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
+                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
+                ghcOptNoRPath            = toFlag (relocatable lbi)
               }
+
+      info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
 
       whenVanillaLib False $ do
         Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
@@ -924,6 +931,11 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
       whenSharedLib False $
         runGhcProg ghcSharedLinkArgs
+
+toRPaths :: LocalBuildInfo
+         -> ComponentLocalBuildInfo
+         -> NubListR String
+toRPaths = undefined
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
@@ -1022,7 +1034,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
                       ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
                       ghcOptInputFiles     = toNubListR
-                                             [exeDir </> x | x <- cObjs]
+                                             [exeDir </> x | x <- cObjs],
+                      ghcOptNoRPath        = toFlag (relocatable lbi)
                    }
       replOpts   = baseOpts {
                       ghcOptExtra          = overNubListR filterGhciFlags

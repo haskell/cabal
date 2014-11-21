@@ -304,8 +304,9 @@ data ConfigFlags = ConfigFlags {
     configExactConfiguration  :: Flag Bool,
       -- ^All direct dependencies and flags are provided on the command line by
       -- the user via the '--dependency' and '--flags' options.
-    configFlagError :: Flag String
+    configFlagError :: Flag String,
       -- ^Halt and show an error message indicating an error in flag assignment
+    configRelocatable :: Flag Bool -- ^ Enable relocatable package built
   }
   deriving (Generic, Read, Show)
 
@@ -346,7 +347,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configCoverage     = Flag False,
     configLibCoverage  = NoFlag,
     configExactConfiguration = Flag False,
-    configFlagError    = NoFlag
+    configFlagError    = NoFlag,
+    configRelocatable  = Flag False
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -549,6 +551,11 @@ configureOptions showOrParseArgs =
          "dependency checking and compilation for benchmarks listed in the package description file."
          configBenchmarks (\v flags -> flags { configBenchmarks = v })
          (boolOpt [] [])
+
+      ,option "" ["relocatable"]
+         "building a package that is relocatable. (GHC only)"
+         configRelocatable (\v flags -> flags { configRelocatable = v})
+         (boolOpt [] [])
       ]
   where
     readFlagList :: String -> FlagAssignment
@@ -702,7 +709,8 @@ instance Monoid ConfigFlags where
     configLibCoverage   = mempty,
     configExactConfiguration  = mempty,
     configBenchmarks          = mempty,
-    configFlagError     = mempty
+    configFlagError     = mempty,
+    configRelocatable   = mempty
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -742,7 +750,8 @@ instance Monoid ConfigFlags where
     configLibCoverage         = combine configLibCoverage,
     configExactConfiguration  = combine configExactConfiguration,
     configBenchmarks          = combine configBenchmarks,
-    configFlagError     = combine configFlagError
+    configFlagError     = combine configFlagError,
+    configRelocatable   = combine configRelocatable
   }
     where combine field = field a `mappend` field b
 
