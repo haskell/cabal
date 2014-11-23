@@ -53,7 +53,7 @@ import Text.PrettyPrint ((<>))
 import qualified Data.Char as Char (toLower, isDigit, isAlphaNum)
 import Control.Monad (when)
 
-data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
+data CompilerFlavor = GHC | GHCJS | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
                     | HaskellSuite String -- string is the id of the actual compiler
                     | OtherCompiler String
   deriving (Generic, Show, Read, Eq, Ord, Typeable, Data)
@@ -61,7 +61,7 @@ data CompilerFlavor = GHC | NHC | YHC | Hugs | HBC | Helium | JHC | LHC | UHC
 instance Binary CompilerFlavor
 
 knownCompilerFlavors :: [CompilerFlavor]
-knownCompilerFlavors = [GHC, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
+knownCompilerFlavors = [GHC, GHCJS, NHC, YHC, Hugs, HBC, Helium, JHC, LHC, UHC]
 
 instance Text CompilerFlavor where
   disp (OtherCompiler name) = Disp.text name
