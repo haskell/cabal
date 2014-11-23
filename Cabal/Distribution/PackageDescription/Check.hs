@@ -724,7 +724,7 @@ checkGhcOptions pkg =
     has_Werror     = any (\opts -> "-Werror" `elem` opts) ghc_options
 
     (ghc_options, ghc_prof_options) =
-      unzip . map (\bi -> (hcOptions GHC bi, ghcProfOptions bi))
+      unzip . map (\bi -> (hcOptions GHC bi, hcProfOptions GHC bi))
       $ (allBuildInfo pkg)
     all_ghc_options      = concat ghc_options
     all_ghc_prof_options = concat ghc_prof_options
@@ -878,6 +878,7 @@ checkPaths pkg =
       ++ [ (path, "data-dir")        | path <- [dataDir      pkg]]
       ++ concat
          [    [ (path, "c-sources")        | path <- cSources        bi ]
+           ++ [ (path, "js-sources")       | path <- jsSources       bi ]
            ++ [ (path, "install-includes") | path <- installIncludes bi ]
            ++ [ (path, "hs-source-dirs")   | path <- hsSourceDirs    bi ]
          | bi <- allBuildInfo pkg ]

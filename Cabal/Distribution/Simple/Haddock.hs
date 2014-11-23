@@ -28,11 +28,12 @@ import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), usedExtensions
+         , hcSharedOptions
          , Library(..), hasLibs, Executable(..)
          , TestSuite(..), TestSuiteInterface(..)
          , Benchmark(..), BenchmarkInterface(..) )
 import Distribution.Simple.Compiler
-         ( Compiler(..), compilerVersion )
+         ( Compiler(..), CompilerFlavor(..), compilerVersion )
 import Distribution.Simple.GHC ( componentGhcOptions, ghcLibDir )
 import Distribution.Simple.Program.GHC
          ( GhcOptions(..), GhcDynLinkMode(..), renderGhcOptions )
@@ -301,7 +302,7 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
                          ghcOptFPic        = toFlag True,
                          ghcOptHiSuffix    = toFlag "dyn_hi",
                          ghcOptObjSuffix   = toFlag "dyn_o",
-                         ghcOptExtra       = toNubListR $ ghcSharedOptions bi
+                         ghcOptExtra       = toNubListR $ hcSharedOptions GHC bi
                      }
     opts <- if withVanillaLib lbi
             then return vanillaOpts
@@ -341,7 +342,7 @@ fromExecutable verbosity tmp lbi exe clbi htmlTemplate haddockVersion = do
                          ghcOptFPic        = toFlag True,
                          ghcOptHiSuffix    = toFlag "dyn_hi",
                          ghcOptObjSuffix   = toFlag "dyn_o",
-                         ghcOptExtra       = toNubListR $ ghcSharedOptions bi
+                         ghcOptExtra       = toNubListR $ hcSharedOptions GHC bi
                      }
     opts <- if withVanillaLib lbi
             then return vanillaOpts
