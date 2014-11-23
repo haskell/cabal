@@ -418,7 +418,9 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "c-sources"
            showFilePath       parseFilePathQ
            cSources           (\paths binfo -> binfo{cSources=paths})
-
+ , listFieldWithSep vcat "js-sources"
+           showFilePath       parseFilePathQ
+           jsSources          (\paths binfo -> binfo{jsSources=paths})
  , simpleField "default-language"
            (maybe empty disp) (option Nothing (fmap Just parseLanguageQ))
            defaultLanguage    (\lang  binfo -> binfo{defaultLanguage=lang})
@@ -459,13 +461,17 @@ binfoFieldDescrs =
  , listFieldWithSep vcat "other-modules"
            disp               parseModuleNameQ
            otherModules       (\val binfo -> binfo{otherModules=val})
- , listField   "ghc-prof-options"
-           text               parseTokenQ
-           ghcProfOptions        (\val binfo -> binfo{ghcProfOptions=val})
- , listField   "ghc-shared-options"
-           text               parseTokenQ
-           ghcSharedOptions      (\val binfo -> binfo{ghcSharedOptions=val})
+ , optsField   "ghc-prof-options" GHC
+           profOptions        (\val binfo -> binfo{profOptions=val})
+ , optsField   "ghcjs-prof-options" GHCJS
+           profOptions        (\val binfo -> binfo{profOptions=val})
+ , optsField   "ghc-shared-options" GHC
+           sharedOptions      (\val binfo -> binfo{sharedOptions=val})
+ , optsField   "ghcjs-shared-options" GHCJS
+           sharedOptions      (\val binfo -> binfo{sharedOptions=val})
  , optsField   "ghc-options"  GHC
+           options            (\path  binfo -> binfo{options=path})
+ , optsField   "ghcjs-options" GHCJS
            options            (\path  binfo -> binfo{options=path})
  , optsField   "jhc-options"  JHC
            options            (\path  binfo -> binfo{options=path})

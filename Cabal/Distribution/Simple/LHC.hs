@@ -41,7 +41,8 @@ module Distribution.Simple.LHC (
 
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, hcOptions, usedExtensions, allExtensions )
+         , Library(..), libModules, hcOptions, usedExtensions, allExtensions
+         , hcSharedOptions, hcProfOptions )
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo
                                 , parseInstalledPackageInfo )
@@ -344,13 +345,13 @@ buildLib verbosity pkg_descr lbi lib clbi = do
               "-hisuf", "p_hi",
               "-osuf", "p_o"
              ]
-          ++ ghcProfOptions libBi
+          ++ hcProfOptions GHC libBi
       ghcArgsShared = ghcArgs
           ++ ["-dynamic",
               "-hisuf", "dyn_hi",
               "-osuf", "dyn_o", "-fPIC"
              ]
-          ++ ghcSharedOptions libBi
+          ++ hcSharedOptions GHC libBi
   unless (null (libModules lib)) $
     do ifVanillaLib forceVanillaLib (runGhcProg $ lhcWrap ghcArgs)
        ifProfLib (runGhcProg $ lhcWrap ghcArgsProf)
@@ -529,7 +530,7 @@ buildExe verbosity _pkg_descr lbi
                 then ["-prof",
                       "-hisuf", "p_hi",
                       "-osuf", "p_o"
-                     ] ++ ghcProfOptions exeBi
+                     ] ++ hcProfOptions GHC exeBi
                 else []
 
   -- For building exe's for profiling that use TH we actually

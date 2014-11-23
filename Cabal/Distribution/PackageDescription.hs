@@ -85,6 +85,8 @@ module Distribution.PackageDescription (
         allExtensions,
         usedExtensions,
         hcOptions,
+        hcProfOptions,
+        hcSharedOptions,
 
         -- ** Supplementary build information
         HookedBuildInfo,
@@ -765,6 +767,7 @@ data BuildInfo = BuildInfo {
         pkgconfigDepends  :: [Dependency], -- ^ pkg-config packages that are used
         frameworks        :: [String], -- ^support frameworks for Mac OS X
         cSources          :: [FilePath],
+        jsSources         :: [FilePath],
         hsSourceDirs      :: [FilePath], -- ^ where to look for the Haskell module hierarchy
         otherModules      :: [ModuleName], -- ^ non-exposed or non-main modules
 
@@ -781,8 +784,8 @@ data BuildInfo = BuildInfo {
         includes          :: [FilePath], -- ^ The .h files to be found in includeDirs
         installIncludes   :: [FilePath], -- ^ .h files to install with the package
         options           :: [(CompilerFlavor,[String])],
-        ghcProfOptions    :: [String],
-        ghcSharedOptions  :: [String],
+        profOptions       :: [(CompilerFlavor,[String])],
+        sharedOptions     :: [(CompilerFlavor,[String])],
         customFieldsBI    :: [(String,String)], -- ^Custom fields starting
                                                 -- with x-, stored in a
                                                 -- simple assoc-list.
@@ -803,6 +806,7 @@ instance Monoid BuildInfo where
     pkgconfigDepends  = [],
     frameworks        = [],
     cSources          = [],
+    jsSources         = [],
     hsSourceDirs      = [],
     otherModules      = [],
     defaultLanguage   = Nothing,
@@ -817,8 +821,8 @@ instance Monoid BuildInfo where
     includes          = [],
     installIncludes   = [],
     options           = [],
-    ghcProfOptions    = [],
-    ghcSharedOptions  = [],
+    profOptions       = [],
+    sharedOptions     = [],
     customFieldsBI    = [],
     targetBuildDepends = [],
     targetBuildRenaming = Map.empty
@@ -832,6 +836,7 @@ instance Monoid BuildInfo where
     pkgconfigDepends  = combine    pkgconfigDepends,
     frameworks        = combineNub frameworks,
     cSources          = combineNub cSources,
+    jsSources         = combineNub jsSources,
     hsSourceDirs      = combineNub hsSourceDirs,
     otherModules      = combineNub otherModules,
     defaultLanguage   = combineMby defaultLanguage,
@@ -846,8 +851,8 @@ instance Monoid BuildInfo where
     includes          = combineNub includes,
     installIncludes   = combineNub installIncludes,
     options           = combine    options,
-    ghcProfOptions    = combine    ghcProfOptions,
-    ghcSharedOptions  = combine    ghcSharedOptions,
+    profOptions       = combine    profOptions,
+    sharedOptions     = combine    sharedOptions,
     customFieldsBI    = combine    customFieldsBI,
     targetBuildDepends = combineNub targetBuildDepends,
     targetBuildRenaming = combineMap targetBuildRenaming
@@ -907,9 +912,19 @@ emptyHookedBuildInfo = (Nothing, [])
 
 -- |Select options for a particular Haskell compiler.
 hcOptions :: CompilerFlavor -> BuildInfo -> [String]
-hcOptions hc bi = [ opt | (hc',opts) <- options bi
-                        , hc' == hc
-                        , opt <- opts ]
+hcOptions = lookupHcOptions options
+
+hcProfOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcProfOptions = lookupHcOptions profOptions
+
+hcSharedOptions :: CompilerFlavor -> BuildInfo -> [String]
+hcSharedOptions = lookupHcOptions sharedOptions
+
+lookupHcOptions :: (BuildInfo -> [(CompilerFlavor,[String])])
+                -> CompilerFlavor -> BuildInfo -> [String]
+lookupHcOptions f hc bi = [ opt | (hc',opts) <- f bi
+                          , hc' == hc
+                          , opt <- opts ]
 
 -- ------------------------------------------------------------
 -- * Source repos
