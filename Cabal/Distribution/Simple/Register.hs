@@ -397,9 +397,9 @@ relocatableInstalledPackageInfo pkg ipid lib lbi clbi =
     installDirs =
       (absoluteInstallDirs pkg lbi NoCopyDest) {
         libdir  = "${pkgroot}" </> display (pkgKey lbi),
-        haddockdir = "${pkgroot}" </> "share" </> "doc" </> "ghc" </> "html" </>
-                     "libraries" </> display (package pkg),
-        htmldir = "${pkgrooturl}/../share/doc/ghc/html/libraries/" ++
+        haddockdir = "${pkgroot}" </> ".." </> ".." </> "share" </> "doc" </>
+                     "ghc" </> "html" </> "libraries" </> display (package pkg),
+        htmldir = "${pkgrooturl}/../../share/doc/ghc/html/libraries/" ++
                   display (package pkg)
       }
 
