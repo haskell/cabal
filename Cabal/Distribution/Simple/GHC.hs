@@ -93,7 +93,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack, AbiTag(..)
-         , Flag )
+         , Flag, packageKeySupported )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
@@ -907,13 +907,12 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
                 ghcOptPackages           = toNubListR $ mkGhcOptPackages clbi,
-                ghcOptLinkOptions        = if (hostOS == OSX
-                                               && relocatable lbi)
-                                            then toRPaths lbi clbi
-                                            else mempty,
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
-                ghcOptNoRPath            = toFlag (relocatable lbi)
+                ghcOptRPaths             = if (hostOS == OSX
+                                               && relocatable lbi)
+                                            then toRPaths False lbi clbi
+                                            else mempty
               }
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
@@ -932,10 +931,25 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       whenSharedLib False $
         runGhcProg ghcSharedLinkArgs
 
-toRPaths :: LocalBuildInfo
+-- | Derive relative RPATHs
+toRPaths :: Bool -- ^ Building exe?
+         -> LocalBuildInfo
          -> ComponentLocalBuildInfo
-         -> NubListR String
-toRPaths = undefined
+         -> NubListR FilePath
+toRPaths buildE lbi clbi = toNubListR $ map (libPref </>) depsK
+  where
+    (Platform _hostArch hostOS) = hostPlatform lbi
+    ipkgs    = installedPkgs lbi
+    deps     = map fst (componentPackageDeps clbi)
+    depsP    = catMaybes (map (PackageIndex.lookupInstalledPackageId ipkgs) deps)
+    depsK    = if packageKeySupported (compiler lbi)
+                  then map (display . InstalledPackageInfo.packageKey) depsP
+                  else map (display . snd) (componentPackageDeps clbi)
+
+    hostPref = case hostOS of
+                 OSX -> "@origin"
+                 _   -> "$ORIGIN"
+    libPref  = hostPref </> (if buildE then ".." </> "lib" else "..")
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
@@ -966,6 +980,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let comp       = compiler lbi
       runGhcProg = runGHC verbosity ghcProg comp
+      (Platform _hostArch hostOS) = hostPlatform lbi
 
   exeBi <- hackThreadedFlag verbosity
              comp (withProfExe lbi) (buildInfo exe)
@@ -1035,7 +1050,10 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
                       ghcOptInputFiles     = toNubListR
                                              [exeDir </> x | x <- cObjs],
-                      ghcOptNoRPath        = toFlag (relocatable lbi)
+                      ghcOptRPaths         = if (hostOS == OSX
+                                                 && relocatable lbi)
+                                              then toRPaths True lbi clbi
+                                              else mempty
                    }
       replOpts   = baseOpts {
                       ghcOptExtra          = overNubListR filterGhciFlags

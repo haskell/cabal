@@ -189,7 +189,7 @@ data GhcOptions = GhcOptions {
   ghcOptShared        :: Flag Bool,
   ghcOptFPic          :: Flag Bool,
   ghcOptDylibName     :: Flag String,
-  ghcOptNoRPath       :: Flag Bool, -- ^ Don't embed any runtime paths.
+  ghcOptRPaths        :: NubListR FilePath,
 
   ---------------
   -- Misc flags
@@ -337,7 +337,9 @@ renderGhcOptions comp opts
   , ["-L" ++ dir     | dir <- flags ghcOptLinkLibPath ]
   , concat [ ["-framework", fmwk] | fmwk <- flags ghcOptLinkFrameworks ]
   , [ "-no-hs-main"  | flagBool ghcOptLinkNoHsMain ]
-  , [ "-dynload deploy" | flagBool ghcOptNoRPath ]
+  , [ "-dynload deploy" | not (null (flags ghcOptRPaths)) ]
+  , concat [ [ "-optl-Wl,-rpath," ++ dir]
+           | dir <- flags ghcOptRPaths ]
 
   -------------
   -- Packages
@@ -490,7 +492,7 @@ instance Monoid GhcOptions where
     ghcOptShared             = mempty,
     ghcOptFPic               = mempty,
     ghcOptDylibName          = mempty,
-    ghcOptNoRPath            = mempty,
+    ghcOptRPaths             = mempty,
     ghcOptVerbosity          = mempty,
     ghcOptCabal              = mempty
   }
@@ -542,7 +544,7 @@ instance Monoid GhcOptions where
     ghcOptShared             = combine ghcOptShared,
     ghcOptFPic               = combine ghcOptFPic,
     ghcOptDylibName          = combine ghcOptDylibName,
-    ghcOptNoRPath            = combine ghcOptNoRPath,
+    ghcOptRPaths             = combine ghcOptRPaths,
     ghcOptVerbosity          = combine ghcOptVerbosity,
     ghcOptCabal              = combine ghcOptCabal
   }
