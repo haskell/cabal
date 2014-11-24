@@ -98,8 +98,9 @@ register :: PackageDescription -> LocalBuildInfo
 register pkg@PackageDescription { library       = Just lib  } lbi regFlags
   = do
     let clbi = getComponentLocalBuildInfo lbi CLibName
+
     installedPkgInfo <- generateRegistrationInfo
-                           verbosity pkg lib lbi clbi inplace distPref
+                           verbosity pkg lib lbi clbi inplace reloc distPref
 
     when (fromFlag (regPrintId regFlags)) $ do
       putStrLn (display (IPI.installedPackageId installedPkgInfo))
@@ -119,6 +120,7 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
     modeGenerateRegScript = fromFlag (regGenScript regFlags)
 
     inplace   = fromFlag (regInPlace regFlags)
+    reloc     = relocatable lbi
     -- FIXME: there's really no guarantee this will work.
     -- registering into a totally different db stack can
     -- fail if dependencies cannot be satisfied.
@@ -152,9 +154,10 @@ generateRegistrationInfo :: Verbosity
                          -> LocalBuildInfo
                          -> ComponentLocalBuildInfo
                          -> Bool
+                         -> Bool
                          -> FilePath
                          -> IO InstalledPackageInfo
-generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
+generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref = do
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
@@ -171,6 +174,8 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
 
   let installedPkgInfo
         | inplace   = inplaceInstalledPackageInfo pwd distPref
+                        pkg ipid lib lbi clbi
+        | reloc     = relocatableInstalledPackageInfo
                         pkg ipid lib lbi clbi
         | otherwise = absoluteInstalledPackageInfo
                         pkg ipid lib lbi clbi
@@ -371,6 +376,32 @@ absoluteInstalledPackageInfo pkg ipid lib lbi clbi =
       | otherwise                 = [includedir installDirs]
     bi = libBuildInfo lib
     installDirs = absoluteInstallDirs pkg lbi NoCopyDest
+
+
+relocatableInstalledPackageInfo :: PackageDescription
+                                -> InstalledPackageId
+                                -> Library
+                                -> LocalBuildInfo
+                                -> ComponentLocalBuildInfo
+                                -> InstalledPackageInfo
+relocatableInstalledPackageInfo pkg ipid lib lbi clbi =
+    generalInstalledPackageInfo adjustReativeIncludeDirs
+                                pkg ipid lib lbi clbi installDirs
+  where
+    -- For installed packages we install all include files into one dir,
+    -- whereas in the build tree they may live in multiple local dirs.
+    adjustReativeIncludeDirs _
+      | null (installIncludes bi) = []
+      | otherwise                 = [includedir installDirs]
+    bi = libBuildInfo lib
+    installDirs =
+      (absoluteInstallDirs pkg lbi NoCopyDest) {
+        libdir  = "${pkgroot}" </> display (pkgKey lbi),
+        haddockdir = "${pkgroot}" </> "share" </> "doc" </> "ghc" </> "html" </>
+                     "libraries" </> display (package pkg),
+        htmldir = "${pkgrooturl}/../share/doc/ghc/html/libraries/" ++
+                  display (package pkg)
+      }
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
