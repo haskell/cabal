@@ -28,6 +28,7 @@ module Distribution.Simple.InstallDirs (
         CopyDest(..),
         prefixRelativeInstallDirs,
         substituteInstallDirTemplates,
+        substituteInstallDirTemplatesNP,
 
         PathTemplate,
         PathTemplateVariable(..),
@@ -278,6 +279,42 @@ substituteInstallDirTemplates env dirs = dirs'
     docdirVar        = (DocdirVar,     docdir     dirs')
     htmldirVar       = (HtmldirVar,    htmldir    dirs')
     prefixBinLibVars = [prefixVar, bindirVar, libdirVar, libsubdirVar]
+    prefixBinLibDataVars = prefixBinLibVars ++ [datadirVar, datasubdirVar]
+
+-- | Like 'substituteInstallDirTemplates', but does not allow substitution of
+-- the 'prefix' variable
+substituteInstallDirTemplatesNP :: PathTemplateEnv
+                                -> InstallDirTemplates -> InstallDirTemplates
+substituteInstallDirTemplatesNP env dirs = dirs'
+  where
+    dirs' = InstallDirs {
+      -- So this specifies exactly which vars are allowed in each template
+      prefix     = subst prefix     [],
+      bindir     = subst bindir     [],
+      libdir     = subst libdir     [bindirVar],
+      libsubdir  = subst libsubdir  [],
+      dynlibdir  = subst dynlibdir  [bindirVar, libdirVar],
+      libexecdir = subst libexecdir prefixBinLibVars,
+      includedir = subst includedir prefixBinLibVars,
+      datadir    = subst datadir    prefixBinLibVars,
+      datasubdir = subst datasubdir [],
+      docdir     = subst docdir     prefixBinLibDataVars,
+      mandir     = subst mandir     (prefixBinLibDataVars ++ [docdirVar]),
+      htmldir    = subst htmldir    (prefixBinLibDataVars ++ [docdirVar]),
+      haddockdir = subst haddockdir (prefixBinLibDataVars ++
+                                      [docdirVar, htmldirVar]),
+      sysconfdir = subst sysconfdir prefixBinLibVars
+    }
+    subst dir env' = substPathTemplate (env'++env) (dir dirs)
+
+    bindirVar        = (BindirVar,     bindir     dirs')
+    libdirVar        = (LibdirVar,     libdir     dirs')
+    libsubdirVar     = (LibsubdirVar,  libsubdir  dirs')
+    datadirVar       = (DatadirVar,    datadir    dirs')
+    datasubdirVar    = (DatasubdirVar, datasubdir dirs')
+    docdirVar        = (DocdirVar,     docdir     dirs')
+    htmldirVar       = (HtmldirVar,    htmldir    dirs')
+    prefixBinLibVars = [bindirVar, libdirVar, libsubdirVar]
     prefixBinLibDataVars = prefixBinLibVars ++ [datadirVar, datasubdirVar]
 
 -- | Convert from abstract install directories to actual absolute ones by
