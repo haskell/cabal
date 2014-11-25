@@ -40,7 +40,7 @@ import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
          , ComponentName(..), getComponentLocalBuildInfo
          , LibraryName(..)
-         , InstallDirs(..), absoluteInstallDirs )
+         , InstallDirs(..), absoluteInstallDirs, prefixRelativeInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.LHC  as LHC
@@ -84,7 +84,7 @@ import System.Directory
 
 import Control.Monad (when)
 import Data.Maybe
-         ( isJust, fromMaybe, maybeToList )
+         ( isJust, fromJust, fromMaybe, maybeToList )
 import Data.List
          ( partition, nub )
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -394,14 +394,8 @@ relocatableInstalledPackageInfo pkg ipid lib lbi clbi =
       | null (installIncludes bi) = []
       | otherwise                 = [includedir installDirs]
     bi = libBuildInfo lib
-    installDirs =
-      (absoluteInstallDirs pkg lbi NoCopyDest) {
-        libdir  = "${pkgroot}" </> display (pkgKey lbi),
-        haddockdir = "${pkgroot}" </> ".." </> ".." </> "share" </> "doc" </>
-                     "ghc" </> "html" </> "libraries" </> display (package pkg),
-        htmldir = "${pkgrooturl}/../../share/doc/ghc/html/libraries/" ++
-                  display (package pkg)
-      }
+    installDirs = fmap (((("${pkgroot}" </> "..") </> "..") </>) . fromJust)
+                $ prefixRelativeInstallDirs (packageId pkg) lbi
 
 -- -----------------------------------------------------------------------------
 -- Unregistration
