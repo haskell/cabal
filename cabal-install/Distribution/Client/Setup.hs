@@ -276,13 +276,16 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion <  Version [1,18,0] [] = flags_1_18_0
   | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_0
   | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_1
+  | cabalLibVersion <  Version [1,21,1] [] = flags_1_21_1
   | otherwise = flags_latest
   where
     -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
     flags_latest = flags        { configConstraints = [] }
 
+    -- Cabal < 1.21.1 doesn't know about 'disable-relocatable'
+    flags_1_21_1 = flags_latest { configRelocatable = NoFlag }
     -- Cabal < 1.19.2 doesn't know about '--exact-configuration'.
-    flags_1_19_1 = flags_latest { configExactConfiguration = NoFlag }
+    flags_1_19_1 = flags_1_21_1 { configExactConfiguration = NoFlag }
     -- Cabal < 1.19.1 uses '--constraint' instead of '--dependency'.
     flags_1_19_0 = flags_1_19_1 { configDependencies = []
                                 , configConstraints  = configConstraints flags }
