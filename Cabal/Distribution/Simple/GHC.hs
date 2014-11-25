@@ -62,13 +62,14 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , LibraryName(..), absoluteInstallDirs )
+         , LibraryName(..), absoluteInstallDirs, prefixRelativeInstallDirs )
 import qualified Distribution.Simple.Hpc as Hpc
-import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
+import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs,
+                                                prefixRelativeInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageName(..), InstalledPackageId, PackageId )
+         ( PackageName(..), Package(..), InstalledPackageId, PackageId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -110,13 +111,13 @@ import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
 import Data.List
 import qualified Data.Map as M  ( Map, fromList, lookup )
-import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
+import Data.Maybe               ( catMaybes, fromJust, fromMaybe, maybeToList )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
          ( getDirectoryContents, doesFileExist, getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
-                                  splitExtension )
+                                  splitExtension, splitDirectories, joinPath )
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
@@ -911,7 +912,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
                 ghcOptRPaths             = if (hostOS == OSX
                                                && relocatable lbi)
-                                            then toRPaths False lbi clbi
+                                            then toRPaths False pkg_descr lbi clbi
                                             else mempty
               }
 
@@ -933,10 +934,11 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
 -- | Derive relative RPATHs
 toRPaths :: Bool -- ^ Building exe?
+         -> PackageDescription
          -> LocalBuildInfo
          -> ComponentLocalBuildInfo
          -> NubListR FilePath
-toRPaths buildE lbi clbi = toNubListR $ map (libPref </>) depsK
+toRPaths buildE _pkg_descr lbi clbi = toNubListR $ map (libPref </>) depsK
   where
     (Platform _hostArch hostOS) = hostPlatform lbi
     ipkgs    = installedPkgs lbi
@@ -946,10 +948,29 @@ toRPaths buildE lbi clbi = toNubListR $ map (libPref </>) depsK
                   then map (display . InstalledPackageInfo.packageKey) depsP
                   else map (display . snd) (componentPackageDeps clbi)
 
-    hostPref = case hostOS of
-                 OSX -> "@origin"
-                 _   -> "$ORIGIN"
-    libPref  = hostPref </> (if buildE then ".." </> "lib" else "..")
+
+    installDirs = fmap fromJust (prefixRelativeInstallDirs (packageId _pkg_descr) lbi)
+
+    relPref  = shortRelativePath (bindir installDirs)
+                                 (takeDirectory (libdir installDirs))
+
+    libPref  = case hostOS of
+                 OSX -> if buildE
+                           then "@loader_path" </> relPref
+                           else "@origin" </> ".."
+                 _   -> if buildE
+                           then "$ORIGIN" </> relPref
+                           else "$ORIGIN" </> ".."
+
+    dropCommonPrefix :: Eq a => [a] -> [a] -> ([a],[a])
+    dropCommonPrefix (x:xs) (y:ys)
+        | x == y    = dropCommonPrefix xs ys
+    dropCommonPrefix xs ys = (xs,ys)
+
+    shortRelativePath :: FilePath -> FilePath -> FilePath
+    shortRelativePath from to =
+        case dropCommonPrefix (splitDirectories from) (splitDirectories to) of
+            (stuff, path) -> joinPath (map (const "..") stuff ++ path)
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
@@ -1052,7 +1073,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                                              [exeDir </> x | x <- cObjs],
                       ghcOptRPaths         = if (hostOS == OSX
                                                  && relocatable lbi)
-                                              then toRPaths True lbi clbi
+                                              then toRPaths True _pkg_descr lbi clbi
                                               else mempty
                    }
       replOpts   = baseOpts {
