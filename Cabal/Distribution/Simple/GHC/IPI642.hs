@@ -120,6 +120,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
+    Current.instantiatedWith   = [],
     Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
     Current.importDirs         = importDirs ipi,
     Current.libraryDirs        = libraryDirs ipi,
