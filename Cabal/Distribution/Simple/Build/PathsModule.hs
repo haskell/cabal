@@ -234,8 +234,7 @@ get_prefix_reloc_stuff =
   "getPrefixDirReloc dirRel = do\n"++
   "  exePath <- getExecutablePath\n"++
   "  let (bindir,_) = splitFileName exePath\n"++
-  "  return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"++
-  "\n"
+  "  return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"
 
 get_prefix_win32 :: Arch -> String
 get_prefix_win32 arch =
