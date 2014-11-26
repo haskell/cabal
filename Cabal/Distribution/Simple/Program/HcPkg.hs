@@ -19,6 +19,7 @@ module Distribution.Simple.Program.HcPkg (
     hide,
     dump,
     list,
+    pkgRoot,
 
     -- * Program invocations
     initInvocation,
@@ -271,6 +272,48 @@ list verbosity hcPkg packagedb = do
   where
     parsePackageIds = sequence . map simpleParse . words
 
+-- | Call @hc-pkg@ to get the location of PackageDB.
+pkgRoot :: Verbosity -> ConfiguredProgram -> PackageDB -> IO (Maybe FilePath)
+pkgRoot _         _     (SpecificPackageDB fp) = return (Just fp)
+pkgRoot verbosity hcPkg packagedb = do
+
+  output <- getProgramInvocationOutput verbosity
+              (dumpInvocation hcPkg verbosity packagedb)
+    `catchExit` \_ -> die $ programId hcPkg ++ " pkgRoot failed"
+
+  case parsePkgRoot output of
+    Left ok -> return ok
+    _       -> die $ "failed to parse output of '"
+                ++ programId hcPkg ++ " pkgRoot'"
+
+  where
+    parsePkgRoot str = case splitPkgs str of
+      []      -> Left Nothing
+      (pkg:_) -> case parsePkgRoot' pkg of
+                  ParseOk _ pkgroot -> Left  pkgroot
+                  ParseFailed msg   -> Right msg
+
+    parsePkgRoot' = parseFieldsFlat [pkgrootField] Nothing
+      where
+        pkgrootField =
+          simpleField "pkgroot"
+            showFilePath    parseFilePathQ
+            (fromMaybe "")  (\x _ -> Just x)
+
+    --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
+    -- and converting back and forth with lines/unlines.
+    splitPkgs :: String -> [String]
+    splitPkgs = checkEmpty . map unlines . splitWith ("---" ==) . lines
+      where
+        -- Handle the case of there being no packages at all.
+        checkEmpty [s] | all isSpace s = []
+        checkEmpty ss                  = ss
+
+        splitWith :: (a -> Bool) -> [a] -> [[a]]
+        splitWith p xs = ys : case zs of
+                           []   -> []
+                           _:ws -> splitWith p ws
+          where (ys,zs) = break p xs
 
 --------------------------
 -- The program invocations

@@ -62,6 +62,7 @@ module Distribution.Simple.Utils (
 
         -- * file names
         currentDir,
+        shortRelativePath,
 
         -- * finding files
         findFile,
@@ -150,7 +151,7 @@ import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
     ( normalise, (</>), (<.>)
-    , getSearchPath, takeDirectory, splitFileName
+    , getSearchPath, joinPath, takeDirectory, splitFileName
     , splitExtension, splitExtensions, splitDirectories )
 import System.Directory
     ( createDirectory, renameFile, removeDirectoryRecursive )
@@ -1062,6 +1063,16 @@ rewriteFile path newContent =
 -- (E.g. AmigaOS uses the empty string @\"\"@ for the current directory.)
 currentDir :: FilePath
 currentDir = "."
+
+shortRelativePath :: FilePath -> FilePath -> FilePath
+shortRelativePath from to =
+    case dropCommonPrefix (splitDirectories from) (splitDirectories to) of
+        (stuff, path) -> joinPath (map (const "..") stuff ++ path)
+  where
+    dropCommonPrefix :: Eq a => [a] -> [a] -> ([a],[a])
+    dropCommonPrefix (x:xs) (y:ys)
+        | x == y    = dropCommonPrefix xs ys
+    dropCommonPrefix xs ys = (xs,ys)
 
 -- ------------------------------------------------------------
 -- * Finding the description file

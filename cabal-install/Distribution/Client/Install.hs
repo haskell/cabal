@@ -1421,7 +1421,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
       defInstallDirs <- InstallDirs.defaultInstallDirs flavor userInstall False
       return $ configFlags' {
           configInstallDirs = fmap Cabal.Flag .
-                              InstallDirs.substituteInstallDirTemplatesNP env $
+                              InstallDirs.substituteInstallDirTemplates env $
                               InstallDirs.combineInstallDirs fromFlagOrDefault
                               defInstallDirs (configInstallDirs configFlags)
           }
