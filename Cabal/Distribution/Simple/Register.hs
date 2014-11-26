@@ -40,7 +40,7 @@ import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
          , ComponentName(..), getComponentLocalBuildInfo
          , LibraryName(..)
-         , InstallDirs(..), absoluteInstallDirs, prefixRelativeInstallDirs )
+         , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
 import qualified Distribution.Simple.GHC  as GHC
 import qualified Distribution.Simple.LHC  as LHC
@@ -48,7 +48,8 @@ import qualified Distribution.Simple.UHC  as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 import Distribution.Simple.Compiler
          ( compilerVersion, Compiler, CompilerFlavor(..), compilerFlavor
-         , PackageDBStack, registrationPackageDB )
+         , PackageDB, PackageDBStack, absolutePackageDBPaths
+         , registrationPackageDB )
 import Distribution.Simple.Program
          ( ProgramConfiguration, ConfiguredProgram
          , runProgramInvocation, requireProgram, lookupProgram
@@ -69,7 +70,7 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
          ( writeUTF8File, writeFileAtomic, setFileExecutable
-         , die, notice, setupMessage )
+         , die, notice, setupMessage, shortRelativePath )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Text
@@ -84,7 +85,7 @@ import System.Directory
 
 import Control.Monad (when)
 import Data.Maybe
-         ( isJust, fromJust, fromMaybe, maybeToList )
+         ( isJust, fromMaybe, maybeToList )
 import Data.List
          ( partition, nub )
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -99,8 +100,10 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
   = do
     let clbi = getComponentLocalBuildInfo lbi CLibName
 
+    absPackageDBs    <- absolutePackageDBPaths packageDbs
     installedPkgInfo <- generateRegistrationInfo
                            verbosity pkg lib lbi clbi inplace reloc distPref
+                           (registrationPackageDB absPackageDBs)
 
     when (fromFlag (regPrintId regFlags)) $ do
       putStrLn (display (IPI.installedPackageId installedPkgInfo))
@@ -156,8 +159,9 @@ generateRegistrationInfo :: Verbosity
                          -> Bool
                          -> Bool
                          -> FilePath
+                         -> PackageDB
                          -> IO InstalledPackageInfo
-generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref = do
+generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packageDb = do
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
@@ -172,16 +176,45 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref = do
      _other -> do
             return (InstalledPackageId (display (packageId pkg)))
 
-  let installedPkgInfo
-        | inplace   = inplaceInstalledPackageInfo pwd distPref
-                        pkg ipid lib lbi clbi
-        | reloc     = relocatableInstalledPackageInfo
-                        pkg ipid lib lbi clbi
-        | otherwise = absoluteInstalledPackageInfo
-                        pkg ipid lib lbi clbi
+  -- let installedPkgInfo
+  --       | inplace   = inplaceInstalledPackageInfo pwd distPref
+  --                       pkg ipid lib lbi clbi
+  --       | reloc     = relocatableInstalledPackageInfo
+  --                       pkg ipid lib lbi clbi undefined
+  --       | otherwise = absoluteInstalledPackageInfo
+  --                       pkg ipid lib lbi clbi
+
+  installedPkgInfo <- if inplace then
+                         return (inplaceInstalledPackageInfo pwd distPref
+                                  pkg ipid lib lbi clbi)
+                      else if reloc then
+                         relocRegistrationInfo verbosity pkg lib lbi clbi ipid
+                           packageDb
+                      else
+                         return (absoluteInstalledPackageInfo
+                                   pkg ipid lib lbi clbi)
+
 
   return installedPkgInfo{ IPI.installedPackageId = ipid }
 
+relocRegistrationInfo :: Verbosity
+                      -> PackageDescription
+                      -> Library
+                      -> LocalBuildInfo
+                      -> ComponentLocalBuildInfo
+                      -> InstalledPackageId
+                      -> PackageDB
+                      -> IO InstalledPackageInfo
+relocRegistrationInfo verbosity pkg lib lbi clbi ipid packageDb =
+  case (compilerFlavor (compiler lbi)) of
+    GHC -> do let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
+              fsM <- HcPkg.pkgRoot verbosity ghcPkg packageDb
+              case fsM of
+                Just fs -> return (relocatableInstalledPackageInfo
+                                    pkg ipid lib lbi clbi fs)
+                Nothing -> die "Cannot register relocatable package with empty ${pkgroot}"
+    _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
+               \not implemented for this compiler"
 
 -- | Create an empty package DB at the specified location.
 initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath
@@ -383,8 +416,9 @@ relocatableInstalledPackageInfo :: PackageDescription
                                 -> Library
                                 -> LocalBuildInfo
                                 -> ComponentLocalBuildInfo
+                                -> FilePath
                                 -> InstalledPackageInfo
-relocatableInstalledPackageInfo pkg ipid lib lbi clbi =
+relocatableInstalledPackageInfo pkg ipid lib lbi clbi pkgroot =
     generalInstalledPackageInfo adjustReativeIncludeDirs
                                 pkg ipid lib lbi clbi installDirs
   where
@@ -394,8 +428,9 @@ relocatableInstalledPackageInfo pkg ipid lib lbi clbi =
       | null (installIncludes bi) = []
       | otherwise                 = [includedir installDirs]
     bi = libBuildInfo lib
-    installDirs = fmap (((("${pkgroot}" </> "..") </> "..") </>) . fromJust)
-                $ prefixRelativeInstallDirs (packageId pkg) lbi
+
+    installDirs = fmap (("${pkgroot}" </>) . shortRelativePath pkgroot)
+                $ absoluteInstallDirs pkg lbi NoCopyDest
 
 -- -----------------------------------------------------------------------------
 -- Unregistration

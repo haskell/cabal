@@ -62,14 +62,13 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , LibraryName(..), absoluteInstallDirs, prefixRelativeInstallDirs )
+         , LibraryName(..), absoluteInstallDirs )
 import qualified Distribution.Simple.Hpc as Hpc
-import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs,
-                                                prefixRelativeInstallDirs )
+import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageName(..), Package(..), InstalledPackageId, PackageId )
+         ( PackageName(..), InstalledPackageId, PackageId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -94,7 +93,7 @@ import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , OptimisationLevel(..), PackageDB(..), PackageDBStack, AbiTag(..)
-         , Flag, packageKeySupported )
+         , Flag )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
 import Distribution.System
@@ -111,13 +110,13 @@ import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
 import Data.List
 import qualified Data.Map as M  ( Map, fromList, lookup )
-import Data.Maybe               ( catMaybes, fromJust, fromMaybe, maybeToList )
+import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
          ( getDirectoryContents, doesFileExist, getTemporaryDirectory )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
-                                  splitExtension, splitDirectories, joinPath )
+                                  splitExtension )
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
@@ -912,7 +911,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
                 ghcOptRPaths             = if (hostOS == OSX
                                                && relocatable lbi)
-                                            then toRPaths False pkg_descr lbi clbi
+                                            then toRPaths False pkg_descr lbi
                                             else mempty
               }
 
@@ -936,41 +935,21 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 toRPaths :: Bool -- ^ Building exe?
          -> PackageDescription
          -> LocalBuildInfo
-         -> ComponentLocalBuildInfo
          -> NubListR FilePath
-toRPaths buildE _pkg_descr lbi clbi = toNubListR $ map (libPref </>) depsK
+toRPaths buildE _pkg_descr lbi = toNubListR (map (hostPref </>) refDirs)
   where
-    (Platform _hostArch hostOS) = hostPlatform lbi
-    ipkgs    = installedPkgs lbi
-    deps     = map fst (componentPackageDeps clbi)
-    depsP    = catMaybes (map (PackageIndex.lookupInstalledPackageId ipkgs) deps)
-    depsK    = if packageKeySupported (compiler lbi)
-                  then map (display . InstalledPackageInfo.packageKey) depsP
-                  else map (display . snd) (componentPackageDeps clbi)
+    installDirs = absoluteInstallDirs _pkg_descr lbi NoCopyDest
+    relDir | buildE    = bindir installDirs
+           | otherwise = libdir installDirs
 
+    ipkgs         = PackageIndex.allPackages (installedPkgs lbi)
+    allDepLibDirs = concatMap InstalledPackageInfo.libraryDirs ipkgs
+    refDirs       = map (shortRelativePath relDir) allDepLibDirs
 
-    installDirs = fmap fromJust (prefixRelativeInstallDirs (packageId _pkg_descr) lbi)
-
-    relPref  = shortRelativePath (bindir installDirs)
-                                 (takeDirectory (libdir installDirs))
-
-    libPref  = case hostOS of
-                 OSX -> if buildE
-                           then "@loader_path" </> relPref
-                           else "@origin" </> ".."
-                 _   -> if buildE
-                           then "$ORIGIN" </> relPref
-                           else "$ORIGIN" </> ".."
-
-    dropCommonPrefix :: Eq a => [a] -> [a] -> ([a],[a])
-    dropCommonPrefix (x:xs) (y:ys)
-        | x == y    = dropCommonPrefix xs ys
-    dropCommonPrefix xs ys = (xs,ys)
-
-    shortRelativePath :: FilePath -> FilePath -> FilePath
-    shortRelativePath from to =
-        case dropCommonPrefix (splitDirectories from) (splitDirectories to) of
-            (stuff, path) -> joinPath (map (const "..") stuff ++ path)
+    (Platform _ hostOS) = hostPlatform lbi
+    hostPref = case hostOS of
+                 OSX -> "@loader_path"
+                 _   -> "$ORIGIN"
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
@@ -1073,7 +1052,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                                              [exeDir </> x | x <- cObjs],
                       ghcOptRPaths         = if (hostOS == OSX
                                                  && relocatable lbi)
-                                              then toRPaths True _pkg_descr lbi clbi
+                                              then toRPaths True _pkg_descr lbi
                                               else mempty
                    }
       replOpts   = baseOpts {
