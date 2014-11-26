@@ -953,7 +953,6 @@ toRPaths buildE _pkg_descr lbi = do
                    OSX -> "@loader_path"
                    _   -> "$ORIGIN"
 
-
   return (toNubListR (map (hostPref </>) refDirs))
 
 -- | Start a REPL without loading any source files.
