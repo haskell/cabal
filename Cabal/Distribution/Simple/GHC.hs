@@ -51,7 +51,7 @@ import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, exeModules, hcOptions
+         , Library(..), libModules, objectModules, exeModules, hcOptions
          , usedExtensions, allExtensions, ModuleRenaming, lookupRenaming )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -697,6 +697,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       comp = compiler lbi
       ghcVersion = compilerVersion comp
       (Platform _hostArch hostOS) = hostPlatform lbi
+      hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.packageKey p,n))) (instantiatedWith lbi)
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg comp
@@ -731,6 +732,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = numJobs,
                       ghcOptPackageKey   = toFlag (pkgKey lbi),
+                      ghcOptSigOf        = hole_insts,
                       ghcOptInputModules = toNubListR $ libModules lib
                     }
 
@@ -1134,7 +1136,7 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
                           then "_split"
                           else "_" ++ wanted_obj_ext ++ "_split"
             dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
-                   | x <- libModules lib ]
+                   | x <- objectModules lib ]
         objss <- mapM getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
@@ -1143,7 +1145,7 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
         return objs
   | otherwise  =
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
-               | x <- libModules lib ]
+               | x <- objectModules lib ]
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.

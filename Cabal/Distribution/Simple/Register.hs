@@ -274,6 +274,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
     IPI.exposed            = libExposed  lib,
     IPI.exposedModules     = map fixupSelf (componentExposedModules clbi),
     IPI.hiddenModules      = otherModules bi,
+    IPI.instantiatedWith   = map (\(k,(p,n)) ->
+                                   (k,IPI.OriginalModule (IPI.installedPackageId p) n))
+                                 (instantiatedWith lbi),
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],
     -- Note. the libsubdir and datasubdir templates have already been expanded

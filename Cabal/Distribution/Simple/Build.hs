@@ -360,6 +360,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
     lib = Library {
             exposedModules = [ m ],
             reexportedModules = [],
+            requiredSignatures = [],
+            exposedSignatures = [],
             libExposed     = True,
             libBuildInfo   = bi
           }
@@ -384,7 +386,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- can define multiple actual packages.
     lbi' = lbi {
         pkgKey = mkPackageKey (packageKeySupported (compiler lbi))
-                              (package pkg) []
+                              (package pkg) [] []
     }
     ipkgid = inplacePackageId (packageId pkg)
     ipi    = inplaceInstalledPackageInfo pwd distPref pkg ipkgid lib lbi libClbi

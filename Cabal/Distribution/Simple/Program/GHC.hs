@@ -27,6 +27,7 @@ import Language.Haskell.Extension   ( Language(..), Extension(..) )
 
 import qualified Data.Map as M
 import Data.Monoid
+import Data.List ( intercalate )
 
 -- | A structured set of GHC options/flags
 --
@@ -88,6 +89,9 @@ data GhcOptions = GhcOptions {
   -- | Don't automatically link in Haskell98 etc; the @ghc
   -- -no-auto-link-packages@ flag.
   ghcOptNoAutoLinkPackages :: Flag Bool,
+
+  -- | What packages are implementing the signatures
+  ghcOptSigOf :: [(ModuleName, (PackageKey, ModuleName))],
 
   -----------------
   -- Linker stuff
@@ -346,6 +350,15 @@ renderGhcOptions comp opts
 
   , packageDbArgs version (ghcOptPackageDBs opts)
 
+  , if null (ghcOptSigOf opts)
+        then []
+        else "-sig-of"
+             : intercalate "," (map (\(n,(p,m)) -> display n ++ " is "
+                                                ++ display p ++ ":"
+                                                ++ display m)
+                                    (ghcOptSigOf opts))
+             : []
+
   , concat $ if ver >= [6,11]
       then let space "" = ""
                space xs = ' ' : xs
@@ -442,6 +455,7 @@ instance Monoid GhcOptions where
     ghcOptPackages           = mempty,
     ghcOptHideAllPackages    = mempty,
     ghcOptNoAutoLinkPackages = mempty,
+    ghcOptSigOf              = mempty,
     ghcOptLinkLibs           = mempty,
     ghcOptLinkLibPath        = mempty,
     ghcOptLinkOptions        = mempty,
@@ -492,6 +506,7 @@ instance Monoid GhcOptions where
     ghcOptPackages           = combine ghcOptPackages,
     ghcOptHideAllPackages    = combine ghcOptHideAllPackages,
     ghcOptNoAutoLinkPackages = combine ghcOptNoAutoLinkPackages,
+    ghcOptSigOf              = combine ghcOptSigOf,
     ghcOptLinkLibs           = combine ghcOptLinkLibs,
     ghcOptLinkLibPath        = combine ghcOptLinkLibPath,
     ghcOptLinkOptions        = combine ghcOptLinkOptions,

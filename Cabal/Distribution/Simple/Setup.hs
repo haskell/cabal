@@ -72,6 +72,7 @@ import Distribution.Text
          ( Text(..), display )
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
+import Distribution.ModuleName
 import Distribution.Package ( Dependency(..)
                             , PackageName
                             , InstalledPackageId )
@@ -293,6 +294,7 @@ data ConfigFlags = ConfigFlags {
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
     configDependencies :: [(PackageName, InstalledPackageId)],
+    configInstantiateWith :: [(ModuleName, (InstalledPackageId, ModuleName))],
       -- ^The packages depended on.
     configConfigurationsFlags :: FlagAssignment,
     configTests               :: Flag Bool, -- ^Enable test suite compilation
@@ -515,6 +517,13 @@ configureOptions showOrParseArgs =
                  (readP_to_E (const "dependency expected") ((\x -> [x]) `fmap` parseDependency))
                  (map (\x -> display (fst x) ++ "=" ++ display (snd x))))
 
+      ,option "" ["instantiate-with"]
+         "A mapping of signature names to concrete module instantiations. E.g., --instantiate-with=\"Map=Data.Map.Strict@containers-0.5.5.1-inplace\""
+         configInstantiateWith (\v flags -> flags { configInstantiateWith = v })
+         (reqArg "NAME=PKG:MOD"
+                 (readP_to_E (const "signature mapping expected") ((\x -> [x]) `fmap` parseHoleMapEntry))
+                 (map (\(n,(p,m)) -> display n ++ "=" ++ display m ++ "@" ++ display p)))
+
       ,option "" ["tests"]
          "dependency checking and compilation for test suites listed in the package description file."
          configTests (\v flags -> flags { configTests = v })
@@ -579,6 +588,15 @@ parseDependency = do
   _ <- Parse.char '='
   y <- parse
   return (x, y)
+
+parseHoleMapEntry :: Parse.ReadP r (ModuleName, (InstalledPackageId, ModuleName))
+parseHoleMapEntry = do
+  x <- parse
+  _ <- Parse.char '='
+  y <- parse
+  _ <- Parse.char '@'
+  z <- parse
+  return (x, (z, y))
 
 installDirsOptions :: [OptionField (InstallDirs (Flag PathTemplate))]
 installDirsOptions =
@@ -676,6 +694,7 @@ instance Monoid ConfigFlags where
     configExtraLibDirs  = mempty,
     configConstraints   = mempty,
     configDependencies  = mempty,
+    configInstantiateWith     = mempty,
     configExtraIncludeDirs    = mempty,
     configConfigurationsFlags = mempty,
     configTests               = mempty,
@@ -715,6 +734,7 @@ instance Monoid ConfigFlags where
     configExtraLibDirs  = combine configExtraLibDirs,
     configConstraints   = combine configConstraints,
     configDependencies  = combine configDependencies,
+    configInstantiateWith     = combine configInstantiateWith,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests               = combine configTests,

@@ -57,10 +57,8 @@ import Distribution.Package
     , Dependency(Dependency), simplifyDependency
     , InstalledPackageId(..), thisPackageVersion
     , mkPackageKey, PackageKey(..) )
-import Distribution.InstalledPackageInfo as Installed
-    ( InstalledPackageInfo, InstalledPackageInfo_(..)
-    , emptyInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as Installed
+import Distribution.InstalledPackageInfo (InstalledPackageInfo, emptyInstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription as PD
@@ -127,11 +125,11 @@ import Data.Maybe
     ( isNothing, catMaybes, fromMaybe )
 import Data.Either
     ( partitionEithers )
+import qualified Data.Set as Set
 import Data.Monoid
     ( Monoid(..) )
 import qualified Data.Map as Map
 import Data.Map (Map)
-import qualified Data.Set as Set
 import Data.Traversable
     ( mapM )
 import System.Directory
@@ -438,6 +436,9 @@ configure (pkg_descr0, pbi) cfg
         checkPackageProblems verbosity pkg_descr0
           (updatePackageDescription pbi pkg_descr)
 
+        -- Handle hole instantiation
+        (holeDeps, hole_insts) <- configureInstantiateWith pkg_descr cfg installedPackageSet
+
         let selectDependencies :: [Dependency] ->
                                   ([FailedDependency], [ResolvedDependency])
             selectDependencies =
@@ -464,9 +465,14 @@ configure (pkg_descr0, pbi) cfg
         reportFailedDependencies failedDeps
         reportSelectedDependencies verbosity allPkgDeps
 
+        let installDeps = Map.elems
+                        . Map.fromList
+                        . map (\v -> (Installed.installedPackageId v, v))
+                        $ externalPkgDeps ++ holeDeps
+
         packageDependsIndex <-
           case PackageIndex.dependencyClosure installedPackageSet
-                  (map Installed.installedPackageId externalPkgDeps) of
+                  (map Installed.installedPackageId installDeps) of
             Left packageDependsIndex -> return packageDependsIndex
             Right broken ->
               die $ "The following installed packages are broken because other"
@@ -483,7 +489,7 @@ configure (pkg_descr0, pbi) cfg
                    InstalledPackageId (display (packageId pkg_descr)),
                 Installed.sourcePackageId = packageId pkg_descr,
                 Installed.depends =
-                  map Installed.installedPackageId externalPkgDeps
+                  map Installed.installedPackageId installDeps
               }
         case PackageIndex.dependencyInconsistencies
            . PackageIndex.insert pseudoTopPkg
@@ -501,9 +507,11 @@ configure (pkg_descr0, pbi) cfg
         -- Calculate the package key.  We're going to store it in LocalBuildInfo
         -- canonically, but ComponentsLocalBuildInfo also needs to know about it
         -- XXX Do we need the internal deps?
+        -- NB: does *not* include holeDeps!
         let pkg_key = mkPackageKey (packageKeySupported comp)
                                    (package pkg_descr)
-                                   (map packageKey externalPkgDeps)
+                                   (map Installed.packageKey externalPkgDeps)
+                                   (map (\(k,(p,m)) -> (k,(Installed.packageKey p,m))) hole_insts)
 
         -- internal component graph
         buildComponents <-
@@ -511,7 +519,8 @@ configure (pkg_descr0, pbi) cfg
             Left  componentCycle -> reportComponentCycle componentCycle
             Right components     ->
               case mkComponentsLocalBuildInfo packageDependsIndex pkg_descr
-                                              internalPkgDeps externalPkgDeps
+                                              internalPkgDeps externalPkgDeps holeDeps
+                                              (Map.fromList hole_insts)
                                               pkg_key components of
                 Left  problems    -> reportModuleReexportProblems problems
                 Right components' -> return components'
@@ -606,6 +615,7 @@ configure (pkg_descr0, pbi) cfg
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
                     pkgKey              = pkg_key,
+                    instantiatedWith    = hole_insts,
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
                     withProfLib         = fromFlag $ configProfLib cfg,
@@ -899,6 +909,58 @@ combinedConstraints constraints dependencies installedPackages = do
            | (pkgname, ipkgid) <- deps ]
 
 -- -----------------------------------------------------------------------------
+-- Configuring hole instantiation
+
+configureInstantiateWith :: PackageDescription
+                         -> ConfigFlags
+                         -> InstalledPackageIndex -- ^ installed packages
+                         -> IO ([InstalledPackageInfo],
+                                [(ModuleName, (InstalledPackageInfo, ModuleName))])
+configureInstantiateWith pkg_descr cfg installedPackageSet = do
+        -- Holes: First, check and make sure the provided instantiation covers
+        -- all the holes we know about.  Indefinite package installation is
+        -- not handled at all at this point.
+        -- NB: We union together /all/ of the requirements when calculating
+        -- the package key.
+        -- NB: For now, we assume that dependencies don't contribute signatures.
+        -- This will be handled by cabal-install; as far as ./Setup is
+        -- concerned, the most important thing is to be provided correctly
+        -- built dependencies.
+        let signatures =
+              maybe [] (\lib -> requiredSignatures lib ++ exposedSignatures lib)
+                (PD.library pkg_descr)
+            signatureSet = Set.fromList signatures
+            instantiateMap = Map.fromList (configInstantiateWith cfg)
+            missing_impls = filter (not . flip Map.member instantiateMap) signatures
+            hole_insts0 = filter (\(k,_) -> Set.member k signatureSet) (configInstantiateWith cfg)
+
+        when (not (null missing_impls)) $
+          die $ "Missing signature implementations for these modules: "
+            ++ intercalate ", " (map display missing_impls)
+
+        -- Holes: Next, we need to make sure we have packages to actually
+        -- provide the implementations we're talking about.  This is on top
+        -- of the normal dependency resolution process.
+        -- TODO: internal dependencies (e.g. the test package depending on the
+        -- main library) is not currently supported
+        let selectHoleDependency (k,(i,m)) =
+              case PackageIndex.lookupInstalledPackageId installedPackageSet i of
+                Just pkginst -> Right (k,(pkginst, m))
+                Nothing -> Left i
+            (failed_hmap, hole_insts) = partitionEithers (map selectHoleDependency hole_insts0)
+            holeDeps = map (fst.snd) hole_insts -- could have dups
+
+        -- Holes: Finally, any dependencies selected this way have to be
+        -- included in the allPkgs index, as well as the buildComponents.
+        -- But don't report these as potential inconsistencies!
+
+        when (not (null failed_hmap)) $
+          die $ "Could not resolve these package IDs (from signature implementations): "
+            ++ intercalate ", " (map display failed_hmap)
+
+        return (holeDeps, hole_insts)
+
+-- -----------------------------------------------------------------------------
 -- Configuring program dependencies
 
 configureRequiredPrograms :: Verbosity -> [Dependency] -> ProgramConfiguration
@@ -1107,14 +1169,18 @@ reportComponentCycle cnames =
 
 mkComponentsLocalBuildInfo :: InstalledPackageIndex
                            -> PackageDescription
-                           -> [PackageId] -> [InstalledPackageInfo]
+                           -> [PackageId] -- internal package deps
+                           -> [InstalledPackageInfo] -- external package deps
+                           -> [InstalledPackageInfo] -- hole package deps
+                           -> Map ModuleName (InstalledPackageInfo, ModuleName)
                            -> PackageKey
                            -> [(Component, [ComponentName])]
                            -> Either [(ModuleReexport, String)] -- errors
                                      [(ComponentName, ComponentLocalBuildInfo,
                                                       [ComponentName])] -- ok
 mkComponentsLocalBuildInfo installedPackages pkg_descr
-                           internalPkgDeps externalPkgDeps pkg_key graph =
+                           internalPkgDeps externalPkgDeps holePkgDeps hole_insts
+                           pkg_key graph =
     sequence
       [ do clbi <- componentLocalBuildInfo c
            return (componentName c, clbi, cdeps)
@@ -1128,7 +1194,13 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
     componentLocalBuildInfo component =
       case component of
       CLib lib -> do
-        let exports = map (\n -> Installed.ExposedModule n Nothing Nothing) (PD.exposedModules lib)
+        let exports = map (\n -> Installed.ExposedModule n Nothing Nothing)
+                          (PD.exposedModules lib)
+            esigs = map (\n -> Installed.ExposedModule n Nothing
+                                (fmap (\(pkg,m) -> Installed.OriginalModule
+                                                      (Installed.installedPackageId pkg) m)
+                                      (Map.lookup n hole_insts)))
+                        (PD.exposedSignatures lib)
         reexports <- resolveModuleReexports installedPackages
                                             (packageId pkg_descr)
                                             externalPkgDeps lib
@@ -1136,7 +1208,7 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
           componentPackageDeps = cpds,
           componentLibraries   = [LibraryName ("HS" ++ display pkg_key)],
           componentPackageRenaming = cprns,
-          componentExposedModules = exports ++ reexports
+          componentExposedModules = exports ++ reexports ++ esigs
         }
       CExe _ ->
         return ExeComponentLocalBuildInfo {
@@ -1155,15 +1227,25 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
         }
       where
         bi = componentBuildInfo component
+        dedup = Map.toList . Map.fromList
         cpds = if newPackageDepsBehaviour pkg_descr
-               then [ (installedPackageId pkg, packageId pkg)
+               then dedup $
+                    [ (Installed.installedPackageId pkg, packageId pkg)
                     | pkg <- selectSubset bi externalPkgDeps ]
                  ++ [ (inplacePackageId pkgid, pkgid)
                     | pkgid <- selectSubset bi internalPkgDeps ]
-               else [ (installedPackageId pkg, packageId pkg)
+                 ++ [ (Installed.installedPackageId pkg, packageId pkg)
+                    | pkg <- holePkgDeps ]
+               else [ (Installed.installedPackageId pkg, packageId pkg)
                     | pkg <- externalPkgDeps ]
         cprns = if newPackageDepsBehaviour pkg_descr
-                then targetBuildRenaming bi
+                then Map.unionWith mappend
+                        -- We need hole dependencies passed to GHC, so add them here
+                        -- (but note that they're fully thinned out.  If they
+                        -- appeared legitimately the monoid instance will
+                        -- fill them out.
+                        (Map.fromList [(packageName pkg, mempty) | pkg <- holePkgDeps])
+                        (targetBuildRenaming bi)
                 -- Hack: if we have old package-deps behavior, it's impossible
                 -- for non-default renamings to be used, because the Cabal
                 -- version is too early.  This is a good, because while all the
@@ -1207,9 +1289,9 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
                                                   exposedModule)])
           -- The package index here contains all the indirect deps of the
           -- package we're configuring, but we want just the direct deps
-        | let directDeps = Set.fromList (map installedPackageId externalPkgDeps)
+        | let directDeps = Set.fromList (map Installed.installedPackageId externalPkgDeps)
         , pkg <- PackageIndex.allPackages installedPackages
-        , installedPackageId pkg `Set.member` directDeps
+        , Installed.installedPackageId pkg `Set.member` directDeps
         , let exportingPackageName = packageName pkg
         , exposedModule <- visibleModuleDetails pkg
         ]
@@ -1239,7 +1321,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
         -- The first case is the modules actually defined in this package.
         -- In this case the reexport will point to this package.
             Nothing -> return exposedModule { Installed.exposedReexport =
-                            Just (Installed.OriginalModule (installedPackageId pkg)
+                            Just (Installed.OriginalModule (Installed.installedPackageId pkg)
                                                  (Installed.exposedName exposedModule)) }
         -- On the other hand, a visible module might actually be itself
         -- a re-export! In this case, the re-export info for the package
