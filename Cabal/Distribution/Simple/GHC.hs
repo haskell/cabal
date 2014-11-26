@@ -113,7 +113,8 @@ import qualified Data.Map as M  ( Map, fromList, lookup )
 import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory
-         ( getDirectoryContents, doesFileExist, getTemporaryDirectory )
+         ( getDirectoryContents, doesFileExist, getTemporaryDirectory,
+           canonicalizePath )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
@@ -870,6 +871,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
               else return []
 
     unless (null hObjs && null cObjs && null stubObjs) $ do
+      rpaths <- toRPaths False pkg_descr lbi
 
       let staticObjectFiles =
                  hObjs
@@ -911,7 +913,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
                 ghcOptRPaths             = if (hostOS == OSX
                                                && relocatable lbi)
-                                            then toRPaths False pkg_descr lbi
+                                            then rpaths
                                             else mempty
               }
 
@@ -935,21 +937,24 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 toRPaths :: Bool -- ^ Building exe?
          -> PackageDescription
          -> LocalBuildInfo
-         -> NubListR FilePath
-toRPaths buildE _pkg_descr lbi = toNubListR (map (hostPref </>) refDirs)
-  where
-    installDirs = absoluteInstallDirs _pkg_descr lbi NoCopyDest
-    relDir | buildE    = bindir installDirs
-           | otherwise = libdir installDirs
+         -> IO (NubListR FilePath)
+toRPaths buildE _pkg_descr lbi = do
+  let installDirs = absoluteInstallDirs _pkg_descr lbi NoCopyDest
+      relDir | buildE    = bindir installDirs
+             | otherwise = libdir installDirs
 
-    ipkgs         = PackageIndex.allPackages (installedPkgs lbi)
-    allDepLibDirs = concatMap InstalledPackageInfo.libraryDirs ipkgs
-    refDirs       = map (shortRelativePath relDir) allDepLibDirs
+  let ipkgs          = PackageIndex.allPackages (installedPkgs lbi)
+      allDepLibDirs  = concatMap InstalledPackageInfo.libraryDirs ipkgs
+  allDepLibDirsC <- mapM canonicalizePath allDepLibDirs
+  let refDirs       = map (shortRelativePath relDir) allDepLibDirsC
 
-    (Platform _ hostOS) = hostPlatform lbi
-    hostPref = case hostOS of
-                 OSX -> "@loader_path"
-                 _   -> "$ORIGIN"
+  let (Platform _ hostOS) = hostPlatform lbi
+      hostPref = case hostOS of
+                   OSX -> "@loader_path"
+                   _   -> "$ORIGIN"
+
+
+  return (toNubListR (map (hostPref </>) refDirs))
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
@@ -1008,6 +1013,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
+  rpaths              <- toRPaths True _pkg_descr lbi
+
   let isGhcDynamic        = ghcDynamic comp
       dynamicTooSupported = ghcSupportsDynamicToo comp
       isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
@@ -1052,7 +1059,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                                              [exeDir </> x | x <- cObjs],
                       ghcOptRPaths         = if (hostOS == OSX
                                                  && relocatable lbi)
-                                              then toRPaths True _pkg_descr lbi
+                                              then rpaths
                                               else mempty
                    }
       replOpts   = baseOpts {
