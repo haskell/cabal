@@ -32,6 +32,8 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Setup ( CopyDest(NoCopyDest) )
 import Distribution.Simple.BuildPaths
          ( autogenModuleName )
+import Distribution.Simple.Utils
+         ( shortRelativePath )
 import Distribution.Text
          ( display )
 import Distribution.Version
@@ -62,6 +64,11 @@ generate pkg_descr lbi =
           "import Foreign\n"++
           "import Foreign.C\n"
 
+       reloc_imports
+        | reloc =
+          "import System.Environment (getExecutablePath)\n"
+        | otherwise = ""
+
        header =
         pragmas++
         "module " ++ display paths_modulename ++ " (\n"++
@@ -74,16 +81,36 @@ generate pkg_descr lbi =
         "import qualified Control.Exception as Exception\n"++
         "import Data.Version (Version(..))\n"++
         "import System.Environment (getEnv)\n"++
+        reloc_imports ++
         "import Prelude\n"++
         "\n"++
         "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
         "catchIO = Exception.catch\n" ++
         "\n"++
-        "\nversion :: Version"++
+        "version :: Version"++
         "\nversion = Version " ++ show branch ++ " " ++ show tags
           where Version branch tags = packageVersion pkg_descr
 
        body
+        | reloc =
+          "\n\nbindirrel :: FilePath\n" ++
+          "bindirrel = " ++ show flat_bindirreloc ++
+          "\n"++
+          "\ngetBinDir, getLibDir, getDataDir, getLibexecDir, getSysconfDir :: IO FilePath\n"++
+          "getBinDir = "++mkGetEnvOrReloc "bindir" flat_bindirreloc++"\n"++
+          "getLibDir = "++mkGetEnvOrReloc "libdir" flat_libdirreloc++"\n"++
+          "getDataDir = "++mkGetEnvOrReloc "datadir" flat_datadirreloc++"\n"++
+          "getLibexecDir = "++mkGetEnvOrReloc "libexecdir" flat_libexecdirreloc++"\n"++
+          "getSysconfDir = "++mkGetEnvOrReloc "sysconfdir" flat_sysconfdirreloc++"\n"++
+          "\n"++
+          "getDataFileName :: FilePath -> IO FilePath\n"++
+          "getDataFileName name = do\n"++
+          "  dir <- getDataDir\n"++
+          "  return (dir `joinFileName` name)\n"++
+          "\n"++
+          get_prefix_reloc_stuff++
+          "\n"++
+          filename_stuff
         | absolute =
           "\nbindir, libdir, datadir, libexecdir, sysconfdir :: FilePath\n"++
           "\nbindir     = " ++ show flat_bindir ++
@@ -146,8 +173,19 @@ generate pkg_descr lbi =
           sysconfdir = flat_sysconfdirrel
         } = prefixRelativeInstallDirs (packageId pkg_descr) lbi
 
+        flat_bindirreloc = shortRelativePath flat_prefix flat_bindir
+        flat_libdirreloc = shortRelativePath flat_prefix flat_libdir
+        flat_datadirreloc = shortRelativePath flat_prefix flat_datadir
+        flat_libexecdirreloc = shortRelativePath flat_prefix flat_libexecdir
+        flat_sysconfdirreloc = shortRelativePath flat_prefix flat_sysconfdir
+
         mkGetDir _   (Just dirrel) = "getPrefixDirRel " ++ show dirrel
         mkGetDir dir Nothing       = "return " ++ show dir
+
+        mkGetEnvOrReloc var dirrel = "catchIO (getEnv \""++var'++"\")" ++
+                                     " (\\_ -> getPrefixDirReloc \"" ++ dirrel ++
+                                     "\")"
+          where var' = pkgPathEnvVar pkg_descr var
 
         mkGetEnvOr var expr = "catchIO (getEnv \""++var'++"\")"++
                               " (\\_ -> "++expr++")"
@@ -158,6 +196,8 @@ generate pkg_descr lbi =
              hasLibs pkg_descr        -- we can only make progs relocatable
           || isNothing flat_bindirrel -- if the bin dir is an absolute path
           || not (supportsRelocatableProgs (compilerFlavor (compiler lbi)))
+
+        reloc = relocatable lbi
 
         supportsRelocatableProgs GHC  = case buildOS of
                            Windows   -> True
@@ -187,6 +227,15 @@ pkgPathEnvVar pkg_descr var =
         showPkgName = map fixchar . display
         fixchar '-' = '_'
         fixchar c   = c
+
+get_prefix_reloc_stuff :: String
+get_prefix_reloc_stuff =
+  "getPrefixDirReloc :: FilePath -> IO FilePath\n"++
+  "getPrefixDirReloc dirRel = do\n"++
+  "  exePath <- getExecutablePath\n"++
+  "  let (bindir,_) = splitFileName exePath\n"++
+  "  return ((bindir `minusFileName` bindirrel) `joinFileName` dirRel)\n"++
+  "\n"
 
 get_prefix_win32 :: Arch -> String
 get_prefix_win32 arch =
