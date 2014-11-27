@@ -68,7 +68,7 @@ import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageName(..), InstalledPackageId, PackageId )
+         ( PackageName(..), InstalledPackageId, PackageId, packageId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -871,7 +871,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
               else return []
 
     unless (null hObjs && null cObjs && null stubObjs) $ do
-      rpaths <- toRPaths False pkg_descr lbi
+      rpaths <- toRPaths False pkg_descr lbi clbi
 
       let staticObjectFiles =
                  hObjs
@@ -937,23 +937,35 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 toRPaths :: Bool -- ^ Building exe?
          -> PackageDescription
          -> LocalBuildInfo
+         -> ComponentLocalBuildInfo
          -> IO (NubListR FilePath)
-toRPaths buildE _pkg_descr lbi = do
-  let installDirs = absoluteInstallDirs _pkg_descr lbi NoCopyDest
-      relDir | buildE    = bindir installDirs
-             | otherwise = libdir installDirs
+toRPaths buildE _pkg_descr lbi clbi = do
+    let installDirs = absoluteInstallDirs _pkg_descr lbi NoCopyDest
+        relDir | buildE    = bindir installDirs
+               | otherwise = libdir installDirs
 
-  let ipkgs          = PackageIndex.allPackages (installedPkgs lbi)
-      allDepLibDirs  = concatMap InstalledPackageInfo.libraryDirs ipkgs
-  allDepLibDirsC <- mapM canonicalizePath allDepLibDirs
-  let refDirs       = map (shortRelativePath relDir) allDepLibDirsC
+    let hasInternalDeps = not $ null
+                        $ [ pkgid
+                          | (_,pkgid) <- componentPackageDeps clbi
+                          , internal pkgid
+                          ]
 
-  let (Platform _ hostOS) = hostPlatform lbi
-      hostPref = case hostOS of
-                   OSX -> "@loader_path"
-                   _   -> "$ORIGIN"
+    let ipkgs          = PackageIndex.allPackages (installedPkgs lbi)
+        allDepLibDirs  = concatMap InstalledPackageInfo.libraryDirs ipkgs
+        allDepLibDirs' = if hasInternalDeps
+                            then (libdir installDirs) : allDepLibDirs
+                            else allDepLibDirs
+    allDepLibDirsC <- mapM canonicalizePath allDepLibDirs'
+    let refDirs       = map (shortRelativePath relDir) allDepLibDirsC
 
-  return (toNubListR (map (hostPref </>) refDirs))
+    let (Platform _ hostOS) = hostPlatform lbi
+        hostPref = case hostOS of
+                     OSX -> "@loader_path"
+                     _   -> "$ORIGIN"
+
+    return (toNubListR (map (hostPref </>) refDirs))
+  where
+    internal pkgid = pkgid == packageId (localPkgDescr lbi)
 
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
@@ -1012,7 +1024,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
-  rpaths              <- toRPaths True _pkg_descr lbi
+  rpaths              <- toRPaths True _pkg_descr lbi clbi
 
   let isGhcDynamic        = ghcDynamic comp
       dynamicTooSupported = ghcSupportsDynamicToo comp
