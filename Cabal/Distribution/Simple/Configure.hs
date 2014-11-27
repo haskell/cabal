@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -104,7 +105,7 @@ import Distribution.Simple.Utils
     , writeFileAtomic
     , withTempFile )
 import Distribution.System
-    ( OS(..), buildOS, Platform, buildPlatform )
+    ( OS(..), buildOS, Platform (..), buildPlatform )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
@@ -126,9 +127,9 @@ import Data.Binary ( decodeOrFail, encode )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.List
-    ( (\\), nub, partition, isPrefixOf, inits )
+    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
 import Data.Maybe
-    ( isNothing, catMaybes, fromMaybe )
+    ( isNothing, catMaybes, fromMaybe, isJust )
 import Data.Either
     ( partitionEithers )
 import qualified Data.Set as Set
@@ -604,12 +605,7 @@ configure (pkg_descr0, pbi) cfg
         reloc <-
            if not (fromFlag $ configRelocatable cfg)
                 then return False
-                else case flavor of
-                            GHC | version >= Version [7,8] [] -> return True
-                            _ -> do warn verbosity
-                                         ("this compiler does not support " ++
-                                          "--enable-relocatable; ignoring")
-                                    return False
+                else return True
 
         let lbi = LocalBuildInfo {
                     configFlags         = cfg,
@@ -644,6 +640,8 @@ configure (pkg_descr0, pbi) cfg
                     progSuffix          = fromFlag $ configProgSuffix cfg,
                     relocatable         = reloc
                   }
+
+        when reloc (checkRelocatable pkg_descr lbi)
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
             relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi
@@ -1565,3 +1563,58 @@ checkPackageProblems verbosity gpkg pkg = do
   if null errors
     then mapM_ (warn verbosity) warnings
     else die (intercalate "\n\n" errors)
+
+-- | Preform checks if a relocatable build is allowed
+checkRelocatable :: PackageDescription
+                 -> LocalBuildInfo
+                 -> IO ()
+checkRelocatable pkg lbi = sequence_ [ checkOS
+                                     , checkCompiler
+                                     , packagePrefixRelative
+                                     , depsPrefixRelative
+                                     ]
+  where
+    -- Check if the OS support relocatable builds
+    checkOS
+        = unless (os `elem` [ OSX ])
+        $ die $ "Operating system: " ++ display os ++
+                ", does not support relocatable builds"
+      where
+        (Platform _ os) = hostPlatform lbi
+
+    -- Check if the Compiler support relocatable builds
+    checkCompiler
+        = unless (compilerFlavor comp `elem` [ GHC ])
+        $ die $ "Compiler: " ++ show comp ++
+                ", does not support relocatable builds"
+      where
+        comp = compiler lbi
+
+    -- Check if all the install dirs are relative to same prefix
+    packagePrefixRelative
+        = unless (relativeInstallDirs installDirs)
+        $ die $ "Installation directories are not prefix_relative:\n" ++
+                show installDirs
+      where
+        installDirs = absoluteInstallDirs pkg lbi NoCopyDest
+        p           = prefix installDirs
+        relativeInstallDirs (InstallDirs {..}) =
+          all isJust
+              (fmap (stripPrefix p)
+                    [ bindir, libdir, dynlibdir, libexecdir, includedir, datadir
+                    , docdir, mandir, htmldir, haddockdir, sysconfdir] )
+
+    -- Check if the library dirs of the dependencies are relative to the
+    -- prefix of the package
+    depsPrefixRelative
+        = mapM_ (\l -> when (isNothing $ stripPrefix p l) (die (msg l)))
+                allDepLibDirs
+      where
+        installDirs    = absoluteInstallDirs pkg lbi NoCopyDest
+        p              = prefix installDirs
+        ipkgs          = PackageIndex.allPackages (installedPkgs lbi)
+        allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
+        msg l          = "Library directory of a dependency: " ++ show l ++
+                         "\nis not relative to the installation prefix:\n" ++
+                         show p
+

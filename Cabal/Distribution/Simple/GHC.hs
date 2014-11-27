@@ -914,8 +914,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptPackages           = toNubListR $ mkGhcOptPackages clbi,
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
-                ghcOptRPaths             = if (hostOS == OSX
-                                               && relocatable lbi)
+                ghcOptRPaths             = if relocatable lbi
                                             then rpaths
                                             else mempty
               }
@@ -999,7 +998,6 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let comp       = compiler lbi
       runGhcProg = runGHC verbosity ghcProg comp
-      (Platform _hostArch hostOS) = hostPlatform lbi
 
   exeBi <- hackThreadedFlag verbosity
              comp (withProfExe lbi) (buildInfo exe)
@@ -1071,8 +1069,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
                       ghcOptInputFiles     = toNubListR
                                              [exeDir </> x | x <- cObjs],
-                      ghcOptRPaths         = if (hostOS == OSX
-                                                 && relocatable lbi)
+                      ghcOptRPaths         = if relocatable lbi
                                               then rpaths
                                               else mempty
                    }
