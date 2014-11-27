@@ -176,23 +176,15 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
      _other -> do
             return (InstalledPackageId (display (packageId pkg)))
 
-  -- let installedPkgInfo
-  --       | inplace   = inplaceInstalledPackageInfo pwd distPref
-  --                       pkg ipid lib lbi clbi
-  --       | reloc     = relocatableInstalledPackageInfo
-  --                       pkg ipid lib lbi clbi undefined
-  --       | otherwise = absoluteInstalledPackageInfo
-  --                       pkg ipid lib lbi clbi
-
-  installedPkgInfo <- if inplace then
-                         return (inplaceInstalledPackageInfo pwd distPref
-                                  pkg ipid lib lbi clbi)
-                      else if reloc then
-                         relocRegistrationInfo verbosity pkg lib lbi clbi ipid
-                           packageDb
-                      else
-                         return (absoluteInstalledPackageInfo
-                                   pkg ipid lib lbi clbi)
+  installedPkgInfo <-
+    if inplace
+      then return (inplaceInstalledPackageInfo pwd distPref
+                     pkg ipid lib lbi clbi)
+    else if reloc
+      then relocRegistrationInfo verbosity
+                     pkg lib lbi clbi ipid packageDb
+      else return (absoluteInstalledPackageInfo
+                     pkg ipid lib lbi clbi)
 
 
   return installedPkgInfo{ IPI.installedPackageId = ipid }
