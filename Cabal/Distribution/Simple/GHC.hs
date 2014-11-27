@@ -45,6 +45,7 @@ module Distribution.Simple.GHC (
         ghcLibDir,
         ghcDynamic,
         ghcGlobalPackageDB,
+        pkgRoot
  ) where
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
@@ -112,12 +113,14 @@ import Data.List
 import qualified Data.Map as M  ( Map, fromList, lookup )
 import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
 import Data.Monoid              ( Monoid(..) )
+import Data.Version             ( showVersion )
 import System.Directory
          ( getDirectoryContents, doesFileExist, getTemporaryDirectory,
-           canonicalizePath )
+           canonicalizePath, getAppUserDataDirectory, createDirectoryIfMissing )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
+import qualified System.Info
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchExit, catchIO)
@@ -1421,6 +1424,25 @@ registerPackage
 registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
   let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
   HcPkg.reregister verbosity ghcPkg packageDbs (Right installedPkgInfo)
+
+pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath
+pkgRoot verbosity lbi = pkgRoot'
+   where
+    pkgRoot' GlobalPackageDB =
+      let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
+      in  fmap takeDirectory (ghcGlobalPackageDB verbosity ghcProg)
+    pkgRoot' UserPackageDB = do
+      appDir <- getAppUserDataDirectory "ghc"
+      let ver      = compilerVersion (compiler lbi)
+          subdir   = System.Info.arch ++ '-':System.Info.os ++ '-':showVersion ver
+          rootDir  = appDir </> subdir
+      -- We must create the root directory for the user package database if it
+      -- does not yet exists. Otherwise '${pkgroot}' will resolve to a
+      -- directory at the time of 'ghc-pkg register', and registration will
+      -- fail.
+      createDirectoryIfMissing True rootDir
+      return rootDir
+    pkgRoot' (SpecificPackageDB fp) = return (takeDirectory fp)
 
 -- -----------------------------------------------------------------------------
 -- Utils

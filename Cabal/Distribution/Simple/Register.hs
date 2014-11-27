@@ -207,12 +207,9 @@ relocRegistrationInfo :: Verbosity
                       -> IO InstalledPackageInfo
 relocRegistrationInfo verbosity pkg lib lbi clbi ipid packageDb =
   case (compilerFlavor (compiler lbi)) of
-    GHC -> do let Just ghcPkg = lookupProgram ghcPkgProgram (withPrograms lbi)
-              fsM <- HcPkg.pkgRoot verbosity ghcPkg packageDb
-              case fsM of
-                Just fs -> return (relocatableInstalledPackageInfo
-                                    pkg ipid lib lbi clbi fs)
-                Nothing -> die "Cannot register relocatable package with empty ${pkgroot}"
+    GHC -> do fs <- GHC.pkgRoot verbosity lbi packageDb
+              return (relocatableInstalledPackageInfo
+                        pkg ipid lib lbi clbi fs)
     _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
                \not implemented for this compiler"
 
