@@ -641,7 +641,7 @@ configure (pkg_descr0, pbi) cfg
                     relocatable         = reloc
                   }
 
-        when reloc (checkRelocatable pkg_descr lbi)
+        when reloc (checkRelocatable verbosity pkg_descr lbi)
 
         let dirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
             relative = prefixRelativeInstallDirs (packageId pkg_descr) lbi
@@ -1565,14 +1565,16 @@ checkPackageProblems verbosity gpkg pkg = do
     else die (intercalate "\n\n" errors)
 
 -- | Preform checks if a relocatable build is allowed
-checkRelocatable :: PackageDescription
+checkRelocatable :: Verbosity
+                 -> PackageDescription
                  -> LocalBuildInfo
                  -> IO ()
-checkRelocatable pkg lbi = sequence_ [ checkOS
-                                     , checkCompiler
-                                     , packagePrefixRelative
-                                     , depsPrefixRelative
-                                     ]
+checkRelocatable verbosity pkg lbi
+    = sequence_ [ checkOS
+                , checkCompiler
+                , packagePrefixRelative
+                , depsPrefixRelative
+                ]
   where
     -- Check if the OS support relocatable builds
     checkOS
@@ -1604,17 +1606,22 @@ checkRelocatable pkg lbi = sequence_ [ checkOS
                     [ bindir, libdir, dynlibdir, libexecdir, includedir, datadir
                     , docdir, mandir, htmldir, haddockdir, sysconfdir] )
 
-    -- Check if the library dirs of the dependencies are relative to the
+    -- Check if the library dirs of the dependencies that are in the package
+    -- database to which the package is installed are relative to the
     -- prefix of the package
-    depsPrefixRelative
-        = mapM_ (\l -> when (isNothing $ stripPrefix p l) (die (msg l)))
-                allDepLibDirs
+    depsPrefixRelative = do
+        pkgr <- GHC.pkgRoot verbosity lbi (last (withPackageDB lbi))
+        mapM_ (doCheck pkgr) ipkgs
       where
-        installDirs    = absoluteInstallDirs pkg lbi NoCopyDest
-        p              = prefix installDirs
-        ipkgs          = PackageIndex.allPackages (installedPkgs lbi)
-        allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
-        msg l          = "Library directory of a dependency: " ++ show l ++
-                         "\nis not relative to the installation prefix:\n" ++
-                         show p
-
+        doCheck pkgr ipkg
+          | maybe False (== pkgr) (Installed.pkgRoot ipkg)
+          = mapM_ (\l -> when (isNothing $ stripPrefix p l) (die (msg l)))
+                  (Installed.libraryDirs ipkg)
+          | otherwise
+          = return ()
+        installDirs   = absoluteInstallDirs pkg lbi NoCopyDest
+        p             = prefix installDirs
+        ipkgs         = PackageIndex.allPackages (installedPkgs lbi)
+        msg l         = "Library directory of a dependency: " ++ show l ++
+                        "\nis not relative to the installation prefix:\n" ++
+                        show p

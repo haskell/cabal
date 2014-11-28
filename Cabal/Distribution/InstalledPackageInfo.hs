@@ -61,7 +61,8 @@ import Distribution.Text
 import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
 
-import Data.Binary (Binary)
+import Data.Binary  (Binary)
+import Data.Maybe   (fromMaybe)
 import GHC.Generics (Generic)
 
 -- -----------------------------------------------------------------------------
@@ -104,7 +105,8 @@ data InstalledPackageInfo_ m
         frameworkDirs     :: [FilePath],
         frameworks        :: [String],
         haddockInterfaces :: [FilePath],
-        haddockHTMLs      :: [FilePath]
+        haddockHTMLs      :: [FilePath],
+        pkgRoot           :: Maybe FilePath
     }
     deriving (Generic, Read, Show)
 
@@ -155,7 +157,8 @@ emptyInstalledPackageInfo
         frameworkDirs     = [],
         frameworks        = [],
         haddockInterfaces = [],
-        haddockHTMLs      = []
+        haddockHTMLs      = [],
+        pkgRoot           = Nothing
     }
 
 noVersion :: Version
@@ -375,6 +378,9 @@ installedFieldDescrs = [
  , listField   "haddock-html"
         showFilePath       parseFilePathQ
         haddockHTMLs       (\xs pkg -> pkg{haddockHTMLs=xs})
+ , simpleField "pkgroot"
+        (const Disp.empty)        parseFilePathQ
+        (fromMaybe "" . pkgRoot)  (\xs pkg -> pkg{pkgRoot=Just xs})
  ]
 
 deprecatedFieldDescrs :: [FieldDescr InstalledPackageInfo]
