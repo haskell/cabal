@@ -111,7 +111,7 @@ import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
 import Data.List
 import qualified Data.Map as M  ( Map, fromList, lookup )
-import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
+import Data.Maybe               ( catMaybes, fromMaybe, maybeToList, isJust )
 import Data.Monoid              ( Monoid(..) )
 import Data.Version             ( showVersion )
 import System.Directory
@@ -935,7 +935,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       whenSharedLib False $
         runGhcProg ghcSharedLinkArgs
 
--- | Derive relative RPATHs
+-- | Derive RPATHs
 toRPaths :: Bool -- ^ Building exe?
          -> PackageDescription
          -> LocalBuildInfo
@@ -958,14 +958,24 @@ toRPaths buildE _pkg_descr lbi clbi = do
                             then (libdir installDirs) : allDepLibDirs
                             else allDepLibDirs
     allDepLibDirsC <- mapM canonicalizePath allDepLibDirs'
-    let refDirs       = map (shortRelativePath relDir) allDepLibDirsC
 
     let (Platform _ hostOS) = hostPlatform lbi
         hostPref = case hostOS of
                      OSX -> "@loader_path"
                      _   -> "$ORIGIN"
 
-    return (toNubListR (map (hostPref </>) refDirs))
+    let p                = prefix installDirs
+        prefixRelative l = isJust (stripPrefix p l)
+        rpaths
+          | prefixRelative relDir = map (\l ->
+                                          if prefixRelative l
+                                             then hostPref </>
+                                                  shortRelativePath relDir l
+                                             else l
+                                        ) allDepLibDirsC
+          | otherwise             = allDepLibDirsC
+
+    return (toNubListR rpaths)
   where
     internal pkgid = pkgid == packageId (localPkgDescr lbi)
 
