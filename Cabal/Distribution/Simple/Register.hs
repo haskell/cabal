@@ -327,7 +327,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
     IPI.frameworkDirs      = [],
     IPI.frameworks         = frameworks bi,
     IPI.haddockInterfaces  = [haddockdir installDirs </> haddockName pkg],
-    IPI.haddockHTMLs       = [htmldir installDirs]
+    IPI.haddockHTMLs       = [htmldir installDirs],
+    IPI.pkgRoot            = Nothing
   }
   where
     bi = libBuildInfo lib
