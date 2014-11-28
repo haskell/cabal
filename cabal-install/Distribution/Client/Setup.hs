@@ -1105,7 +1105,14 @@ installCommand = CommandUI {
      ++ "If PACKAGES are specified, downloads and installs those packages."
      ++ " Otherwise, install the package in the current directory (and/or its"
      ++ " dependencies) (there must be exactly one .cabal file in the current"
-     ++ " directory).\n",
+     ++ " directory).\n"
+     ++ "\n"
+     ++ "When using a sandbox, the flags for `install` only affect the"
+     ++ " current command and have no effect on future commands. (To achieve"
+     ++ " that, `configure` must be used.)\n"
+     ++ " In contrast, without a sandbox, the flags to `install` are saved and"
+     ++ " affect future commands such as `build` and `repl`. See the help for"
+     ++ " `configure` for a list of commands being affected.\n",
   commandNotes        = Just $ \pname ->
         ( case commandNotes configureCommand of
             Just desc -> desc pname ++ "\n"
@@ -1682,6 +1689,9 @@ defaultSandboxFlags = SandboxFlags {
   sandboxLocation  = toFlag defaultSandboxLocation
   }
 
+-- TODO: these next three functions are rather general, and might
+--       be useful elsewhere
+
 headLine :: String -> String
 headLine = unlines
          . map unwords
@@ -1747,10 +1757,10 @@ sandboxCommand = CommandUI {
     , indentParagraph $ "List the directories of local packages made"
       ++ " available via `" ++ pname ++ " add-source`."
     , headLine "hc-pkg:"
-    , indentParagraph $ "A shortcut for `" ++ pname ++ " exec -- ghc-pkg`:"
-      ++ " Execute ghc-pkg for the sandbox package database. Can"
-      ++ " be used to list specific/all packages that are installed in the"
-      ++ " sandbox. For subcommands, see the help for ghc-pkg."
+    , indentParagraph $ "Similar to `ghc-pkg`, but for the sandbox package"
+      ++ " database. Can be used to list specific/all packages that are"
+      ++ " installed in the sandbox. For subcommands, see the help for"
+      ++ " ghc-pkg. Affected by the compiler version specified by `configure`."
     ],
   commandNotes        = Nothing,
   commandUsage        = usageAlternatives "sandbox"
