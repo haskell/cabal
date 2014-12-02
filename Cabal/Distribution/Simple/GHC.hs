@@ -45,7 +45,8 @@ module Distribution.Simple.GHC (
         ghcLibDir,
         ghcDynamic,
         ghcGlobalPackageDB,
-        pkgRoot
+        pkgRoot,
+        toRPaths
  ) where
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
@@ -874,7 +875,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
               else return []
 
     unless (null hObjs && null cObjs && null stubObjs) $ do
-      rpaths <- toRPaths False pkg_descr lbi clbi
+      rpaths <- toRPaths False True lbi clbi
 
       let staticObjectFiles =
                  hObjs
@@ -937,12 +938,13 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
 -- | Derive RPATHs
 toRPaths :: Bool -- ^ Building exe?
-         -> PackageDescription
+         -> Bool -- ^ Generate prefix-relative rpaths
          -> LocalBuildInfo
          -> ComponentLocalBuildInfo
          -> IO (NubListR FilePath)
-toRPaths buildE _pkg_descr lbi clbi = do
-    let installDirs = absoluteInstallDirs _pkg_descr lbi NoCopyDest
+toRPaths buildE mkRelative lbi clbi = do
+    let pkgDescr    = localPkgDescr lbi
+        installDirs = absoluteInstallDirs pkgDescr lbi NoCopyDest
         relDir | buildE    = bindir installDirs
                | otherwise = libdir installDirs
 
@@ -967,7 +969,8 @@ toRPaths buildE _pkg_descr lbi clbi = do
     let p                = prefix installDirs
         prefixRelative l = isJust (stripPrefix p l)
         rpaths
-          | prefixRelative relDir = map (\l ->
+          | mkRelative &&
+            prefixRelative relDir = map (\l ->
                                           if prefixRelative l
                                              then hostPref </>
                                                   shortRelativePath relDir l
@@ -1035,7 +1038,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
-  rpaths              <- toRPaths True _pkg_descr lbi clbi
+  rpaths              <- toRPaths True True lbi clbi
 
   let isGhcDynamic        = ghcDynamic comp
       dynamicTooSupported = ghcSupportsDynamicToo comp
@@ -1079,7 +1082,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
                       ghcOptInputFiles     = toNubListR
                                              [exeDir </> x | x <- cObjs],
-                      ghcOptRPaths         = if relocatable lbi
+                      ghcOptRPaths         = if relocatable lbi &&
+                                                withDynExe  lbi
                                               then rpaths
                                               else mempty
                    }
