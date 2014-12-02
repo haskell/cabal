@@ -13,7 +13,7 @@ import Distribution.System
 import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Package
 
-mkPlan :: Platform -> CompilerId ->
+mkPlan :: Platform -> CompilerInfo ->
           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           [CP QPN] -> Either [PlanProblem] InstallPlan
 mkPlan plat comp iidx sidx cps =

@@ -73,7 +73,7 @@ import Distribution.Text
 import Distribution.System
          ( Platform )
 import Distribution.Compiler
-         ( CompilerId(..) )
+         ( CompilerInfo(..) )
 import Distribution.Client.Utils
          ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
@@ -181,7 +181,7 @@ data InstallPlan = InstallPlan {
     planPkgOf    :: Graph.Vertex -> PlanPackage,
     planVertexOf :: InstalledPackageId -> Graph.Vertex,
     planPlatform :: Platform,
-    planCompiler :: CompilerId
+    planCompiler :: CompilerInfo
   }
 
 invariant :: InstallPlan -> Bool
@@ -214,9 +214,9 @@ showPlanPackageTag (Failed _ _)    = "Failed"
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
-new :: Platform -> CompilerId -> PlanIndex
+new :: Platform -> CompilerInfo -> PlanIndex
     -> Either [PlanProblem] InstallPlan
-new platform compiler index =
+new platform cinfo index =
   -- NB: Need to pre-initialize the fake-map with pre-existing
   -- packages
   let isPreExisting (PreExisting _) = True
@@ -225,7 +225,7 @@ new platform compiler index =
               . map (\p -> (fakeInstalledPackageId (packageId p), installedPackageId p))
               . filter isPreExisting
               $ PackageIndex.allPackages index in
-  case problems platform compiler fakeMap index of
+  case problems platform cinfo fakeMap index of
     [] -> Right InstallPlan {
             planIndex    = index,
             planFakeMap  = fakeMap,
@@ -234,7 +234,7 @@ new platform compiler index =
             planPkgOf    = vertexToPkgId,
             planVertexOf = fromMaybe noSuchPkgId . pkgIdToVertex,
             planPlatform = platform,
-            planCompiler = compiler
+            planCompiler = cinfo
           }
       where (graph, vertexToPkgId, pkgIdToVertex) =
               PackageIndex.dependencyGraph index
@@ -402,8 +402,8 @@ checkConfiguredPackage pkg                =
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
 --
-valid :: Platform -> CompilerId -> FakeMap -> PlanIndex -> Bool
-valid platform comp fakeMap index = null (problems platform comp fakeMap index)
+valid :: Platform -> CompilerInfo -> FakeMap -> PlanIndex -> Bool
+valid platform cinfo fakeMap index = null (problems platform cinfo fakeMap index)
 
 data PlanProblem =
      PackageInvalid       ConfiguredPackage [PackageProblem]
@@ -453,12 +453,12 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
 --
-problems :: Platform -> CompilerId -> FakeMap
+problems :: Platform -> CompilerInfo -> FakeMap
          -> PlanIndex -> [PlanProblem]
-problems platform comp fakeMap index =
+problems platform cinfo fakeMap index =
      [ PackageInvalid pkg packageProblems
      | Configured pkg <- PackageIndex.allPackages index
-     , let packageProblems = configuredPackageProblems platform comp pkg
+     , let packageProblems = configuredPackageProblems platform cinfo pkg
      , not (null packageProblems) ]
 
   ++ [ PackageMissingDeps pkg (catMaybes (map (fmap packageId . PackageIndex.fakeLookupInstalledPackageId fakeMap index) missingDeps))
@@ -545,9 +545,9 @@ stateDependencyRelation _               _               = False
 -- in the configuration given by the flag assignment, all the package
 -- dependencies are satisfied by the specified packages.
 --
-configuredPackageValid :: Platform -> CompilerId -> ConfiguredPackage -> Bool
-configuredPackageValid platform comp pkg =
-  null (configuredPackageProblems platform comp pkg)
+configuredPackageValid :: Platform -> CompilerInfo -> ConfiguredPackage -> Bool
+configuredPackageValid platform cinfo pkg =
+  null (configuredPackageProblems platform cinfo pkg)
 
 data PackageProblem = DuplicateFlag FlagName
                     | MissingFlag   FlagName
@@ -585,9 +585,9 @@ showPackageProblem (InvalidDep dep pkgid) =
   ++ " but the configuration specifies " ++ display pkgid
   ++ " which does not satisfy the dependency."
 
-configuredPackageProblems :: Platform -> CompilerId
+configuredPackageProblems :: Platform -> CompilerInfo
                           -> ConfiguredPackage -> [PackageProblem]
-configuredPackageProblems platform comp
+configuredPackageProblems platform cinfo
   (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps) =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
@@ -620,7 +620,7 @@ configuredPackageProblems platform comp
       --TODO: use something lower level than finalizePackageDescription
       case finalizePackageDescription specifiedFlags
          (const True)
-         platform comp
+         platform cinfo
          []
          (enableStanzas stanzas $ packageDescription pkg) of
         Right (resolvedPkg, _) -> externalBuildDepends resolvedPkg

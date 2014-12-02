@@ -7,7 +7,7 @@ import Distribution.Compat.Environment ( getEnvironment )
 import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
-import Distribution.Simple.Compiler ( Compiler(..) )
+import Distribution.Simple.Compiler ( compilerInfo )
 import Distribution.Simple.Hpc ( markupTest, tixDir, tixFilePath )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
@@ -151,5 +151,5 @@ testOption pkg_descr lbi suite template =
   where
     env = initialPathTemplateEnv
           (PD.package pkg_descr) (LBI.pkgKey lbi)
-          (compilerId $ LBI.compiler lbi) (LBI.hostPlatform lbi) ++
+          (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi) ++
           [(TestSuiteNameVar, toPathTemplate $ PD.testName suite)]

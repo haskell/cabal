@@ -39,6 +39,7 @@ module Distribution.Simple.InstallDirs (
         platformTemplateEnv,
         compilerTemplateEnv,
         packageTemplateEnv,
+        abiTemplateEnv,
         installDirsTemplateEnv,
   ) where
 
@@ -57,7 +58,7 @@ import Distribution.Package
 import Distribution.System
          ( OS(..), buildOS, Platform(..) )
 import Distribution.Compiler
-         ( CompilerId, CompilerFlavor(..) )
+         ( AbiTag(..), abiTagString, CompilerInfo(..), CompilerFlavor(..) )
 import Distribution.Text
          ( display )
 
@@ -212,7 +213,7 @@ defaultInstallDirs comp userInstall _hasLibs = do
            JHC    -> "$compiler"
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
-           _other -> "$arch-$os-$compiler" </> "$pkgkey",
+           _other -> "$abi" </> "$pkgkey",
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$pkgkey"
@@ -221,8 +222,8 @@ defaultInstallDirs comp userInstall _hasLibs = do
       datadir      = case buildOS of
         Windows   -> "$prefix"
         _other    -> "$prefix" </> "share",
-      datasubdir   = "$arch-$os-$compiler" </> "$pkgid",
-      docdir       = "$datadir" </> "doc" </> "$arch-$os-$compiler" </> "$pkgid",
+      datasubdir   = "$abi" </> "$pkgid",
+      docdir       = "$datadir" </> "doc" </> "$abi" </> "$pkgid",
       mandir       = "$datadir" </> "man",
       htmldir      = "$docdir"  </> "html",
       haddockdir   = "$htmldir",
@@ -284,7 +285,7 @@ substituteInstallDirTemplates env dirs = dirs'
 -- absolute path.
 absoluteInstallDirs :: PackageIdentifier
                     -> PackageKey
-                    -> CompilerId
+                    -> CompilerInfo
                     -> CopyDest
                     -> Platform
                     -> InstallDirs PathTemplate
@@ -314,7 +315,7 @@ data CopyDest
 --
 prefixRelativeInstallDirs :: PackageIdentifier
                           -> PackageKey
-                          -> CompilerId
+                          -> CompilerInfo
                           -> Platform
                           -> InstallDirTemplates
                           -> InstallDirs (Maybe FilePath)
@@ -372,6 +373,8 @@ data PathTemplateVariable =
      | CompilerVar   -- ^ The compiler name and version, eg @ghc-6.6.1@
      | OSVar         -- ^ The operating system name, eg @windows@ or @linux@
      | ArchVar       -- ^ The CPU architecture name, eg @i386@ or @x86_64@
+     | AbiVar        -- ^ The Compiler's ABI identifier, $arch-$os-$compiler-$abitag
+     | AbiTagVar     -- ^ The optional ABI tag for the compiler
      | ExecutableNameVar -- ^ The executable name; used in shell wrappers
      | TestSuiteNameVar   -- ^ The name of the test suite being run
      | TestSuiteResultVar -- ^ The result of the test suite being run, eg
@@ -410,13 +413,14 @@ substPathTemplate environment (PathTemplate template) =
 -- | The initial environment has all the static stuff but no paths
 initialPathTemplateEnv :: PackageIdentifier
                        -> PackageKey
-                       -> CompilerId
+                       -> CompilerInfo
                        -> Platform
                        -> PathTemplateEnv
-initialPathTemplateEnv pkgId pkg_key compilerId platform =
+initialPathTemplateEnv pkgId pkg_key compiler platform =
      packageTemplateEnv  pkgId pkg_key
-  ++ compilerTemplateEnv compilerId
+  ++ compilerTemplateEnv compiler
   ++ platformTemplateEnv platform
+  ++ abiTemplateEnv compiler platform
 
 packageTemplateEnv :: PackageIdentifier -> PackageKey -> PathTemplateEnv
 packageTemplateEnv pkgId pkg_key =
@@ -426,15 +430,25 @@ packageTemplateEnv pkgId pkg_key =
   ,(PkgIdVar,    PathTemplate [Ordinary $ display pkgId])
   ]
 
-compilerTemplateEnv :: CompilerId -> PathTemplateEnv
-compilerTemplateEnv compilerId =
-  [(CompilerVar, PathTemplate [Ordinary $ display compilerId])
+compilerTemplateEnv :: CompilerInfo -> PathTemplateEnv
+compilerTemplateEnv compiler =
+  [(CompilerVar, PathTemplate [Ordinary $ display (compilerInfoId compiler)])
   ]
 
 platformTemplateEnv :: Platform -> PathTemplateEnv
 platformTemplateEnv (Platform arch os) =
   [(OSVar,       PathTemplate [Ordinary $ display os])
   ,(ArchVar,     PathTemplate [Ordinary $ display arch])
+  ]
+
+abiTemplateEnv :: CompilerInfo -> Platform -> PathTemplateEnv
+abiTemplateEnv compiler (Platform arch os) =
+  [(AbiVar,      PathTemplate [Ordinary $ display arch ++ '-':display os ++
+                                          '-':display (compilerInfoId compiler) ++
+                                          case compilerInfoAbiTag compiler of
+                                            NoAbiTag   -> ""
+                                            AbiTag tag -> '-':tag])
+  ,(AbiTagVar,   PathTemplate [Ordinary $ abiTagString (compilerInfoAbiTag compiler)])
   ]
 
 installDirsTemplateEnv :: InstallDirs PathTemplate -> PathTemplateEnv
@@ -475,6 +489,8 @@ instance Show PathTemplateVariable where
   show CompilerVar   = "compiler"
   show OSVar         = "os"
   show ArchVar       = "arch"
+  show AbiTagVar     = "abitag"
+  show AbiVar        = "abi"
   show ExecutableNameVar = "executablename"
   show TestSuiteNameVar   = "test-suite"
   show TestSuiteResultVar = "result"
@@ -502,6 +518,8 @@ instance Read PathTemplateVariable where
                  ,("compiler",   CompilerVar)
                  ,("os",         OSVar)
                  ,("arch",       ArchVar)
+                 ,("abitag",     AbiTagVar)
+                 ,("abi",        AbiVar)
                  ,("executablename", ExecutableNameVar)
                  ,("test-suite", TestSuiteNameVar)
                  ,("result", TestSuiteResultVar)

@@ -49,6 +49,7 @@ import Distribution.Compiler
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion
+    , compilerInfo
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack, reexportedModulesSupported
     , packageKeySupported, renamingPackageFlagsSupported )
@@ -389,7 +390,7 @@ configure (pkg_descr0, pbi) cfg
                        (configConfigurationsFlags cfg)
                        dependencySatisfiable
                        compPlatform
-                       (compilerId comp)
+                       (compilerInfo comp)
                        allConstraints
                        pkg_descr0''
                 of Right r -> return r

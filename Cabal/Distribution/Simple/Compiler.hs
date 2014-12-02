@@ -25,6 +25,7 @@ module Distribution.Simple.Compiler (
         module Distribution.Compiler,
         Compiler(..),
         showCompilerId, compilerFlavor, compilerVersion,
+        compilerInfo,
 
         -- * Support for package databases
         PackageDB(..),
@@ -65,6 +66,10 @@ import System.Directory (canonicalizePath)
 data Compiler = Compiler {
         compilerId              :: CompilerId,
         -- ^ Compiler flavour and version.
+        compilerAbiTag          :: AbiTag,
+        -- ^ Tag for distinguishing incompatible ABI's on the same architecture/os.
+        compilerCompat          :: [CompilerId],
+        -- ^ Other implementations that this compiler claims to be compatible with.
         compilerLanguages       :: [(Language, Flag)],
         -- ^ Supported language standards.
         compilerExtensions      :: [(Extension, Flag)],
@@ -84,6 +89,13 @@ compilerFlavor = (\(CompilerId f _) -> f) . compilerId
 
 compilerVersion :: Compiler -> Version
 compilerVersion = (\(CompilerId _ v) -> v) . compilerId
+
+compilerInfo :: Compiler -> CompilerInfo
+compilerInfo c = CompilerInfo (compilerId c)
+                              (compilerAbiTag c)
+                              (Just . compilerCompat $ c)
+                              (Just . map fst . compilerLanguages $ c)
+                              (Just . map fst . compilerExtensions $ c)
 
 -- ------------------------------------------------------------
 -- * Package databases

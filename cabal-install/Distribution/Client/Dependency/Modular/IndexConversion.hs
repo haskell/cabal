@@ -32,10 +32,10 @@ import Distribution.Client.Dependency.Modular.Version
 -- resolving these situations. However, the right thing to do is to
 -- fix the problem there, so for now, shadowing is only activated if
 -- explicitly requested.
-convPIs :: OS -> Arch -> CompilerId -> Bool -> Bool ->
+convPIs :: OS -> Arch -> CompilerInfo -> Bool -> Bool ->
            SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage -> Index
-convPIs os arch cid sip strfl iidx sidx =
-  mkIndex (convIPI' sip iidx ++ convSPI' os arch cid strfl sidx)
+convPIs os arch comp sip strfl iidx sidx =
+  mkIndex (convIPI' sip iidx ++ convSPI' os arch comp strfl sidx)
 
 -- | Convert a Cabal installed package index to the simpler,
 -- more uniform index format of the solver.
@@ -82,19 +82,19 @@ convIPId pn' idx ipid =
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
-convSPI' :: OS -> Arch -> CompilerId -> Bool ->
+convSPI' :: OS -> Arch -> CompilerInfo -> Bool ->
             CI.PackageIndex SourcePackage -> [(PN, I, PInfo)]
-convSPI' os arch cid strfl = L.map (convSP os arch cid strfl) . CI.allPackages
+convSPI' os arch cinfo strfl = L.map (convSP os arch cinfo strfl) . CI.allPackages
 
-convSPI :: OS -> Arch -> CompilerId -> Bool ->
+convSPI :: OS -> Arch -> CompilerInfo -> Bool ->
            CI.PackageIndex SourcePackage -> Index
-convSPI os arch cid strfl = mkIndex . convSPI' os arch cid strfl
+convSPI os arch cinfo strfl = mkIndex . convSPI' os arch cinfo strfl
 
 -- | Convert a single source package into the solver-specific format.
-convSP :: OS -> Arch -> CompilerId -> Bool -> SourcePackage -> (PN, I, PInfo)
-convSP os arch cid strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
+convSP :: OS -> Arch -> CompilerInfo -> Bool -> SourcePackage -> (PN, I, PInfo)
+convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
   let i = I pv InRepo
-  in  (pn, i, convGPD os arch cid strfl (PI pn i) gpd)
+  in  (pn, i, convGPD os arch cinfo strfl (PI pn i) gpd)
 
 -- We do not use 'flattenPackageDescription' or 'finalizePackageDescription'
 -- from 'Distribution.PackageDescription.Configuration' here, because we
@@ -104,20 +104,20 @@ convSP os arch cid strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 --
 -- TODO: We currently just take all dependencies from all specified library,
 -- executable and test components. This does not quite seem fair.
-convGPD :: OS -> Arch -> CompilerId -> Bool ->
+convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
-convGPD os arch cid strfl pi
+convGPD os arch comp strfl pi
         (GenericPackageDescription _ flags libs exes tests benchs) =
   let
     fds = flagInfo strfl flags
   in
     PInfo
-      (maybe []    (convCondTree os arch cid pi fds (const True)          ) libs    ++
-       concatMap   (convCondTree os arch cid pi fds (const True)     . snd) exes    ++
+      (maybe []    (convCondTree os arch comp pi fds (const True)          ) libs    ++
+       concatMap   (convCondTree os arch comp pi fds (const True)     . snd) exes    ++
       prefix (Stanza (SN pi TestStanzas))
-        (L.map     (convCondTree os arch cid pi fds (const True)     . snd) tests)  ++
+        (L.map     (convCondTree os arch comp pi fds (const True)     . snd) tests)  ++
       prefix (Stanza (SN pi BenchStanzas))
-        (L.map     (convCondTree os arch cid pi fds (const True)     . snd) benchs))
+        (L.map     (convCondTree os arch comp pi fds (const True)     . snd) benchs))
       fds
       [] -- TODO: add encaps
       Nothing
@@ -132,12 +132,12 @@ flagInfo :: Bool -> [PD.Flag] -> FlagInfo
 flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not (strfl || m))))
 
 -- | Convert condition trees to flagged dependencies.
-convCondTree :: OS -> Arch -> CompilerId -> PI PN -> FlagInfo ->
+convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 (a -> Bool) -> -- how to detect if a branch is active
                 CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-convCondTree os arch cid pi@(PI pn _) fds p (CondNode info ds branches)
+convCondTree os arch comp pi@(PI pn _) fds p (CondNode info ds branches)
   | p info    = L.map (D.Simple . convDep pn) ds  -- unconditional dependencies
-              ++ concatMap (convBranch os arch cid pi fds p) branches
+              ++ concatMap (convBranch os arch comp pi fds p) branches
   | otherwise = []
 
 -- | Branch interpreter.
@@ -148,15 +148,15 @@ convCondTree os arch cid pi@(PI pn _) fds p (CondNode info ds branches)
 -- flags (such as architecture, or compiler flavour). We try to evaluate the
 -- special flags and subsequently simplify to a tree that only depends on
 -- simple flag choices.
-convBranch :: OS -> Arch -> CompilerId ->
+convBranch :: OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
               (a -> Bool) -> -- how to detect if a branch is active
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
                Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps PN
-convBranch os arch cid@(CompilerId cf cv) pi fds p (c', t', mf') =
-  go c' (          convCondTree os arch cid pi fds p   t')
-        (maybe [] (convCondTree os arch cid pi fds p) mf')
+convBranch os arch cinfo pi fds p (c', t', mf') =
+  go c' (          convCondTree os arch cinfo pi fds p   t')
+        (maybe [] (convCondTree os arch cinfo pi fds p) mf')
   where
     go :: Condition ConfVar ->
           FlaggedDeps PN -> FlaggedDeps PN -> FlaggedDeps PN
@@ -172,9 +172,16 @@ convBranch os arch cid@(CompilerId cf cv) pi fds p (c', t', mf') =
     go (Var (Arch arch')) t f
       | arch == arch'  = t
       | otherwise      = f
-    go (Var (Impl cf' cvr')) t f
-      | cf == cf' && checkVR cvr' cv = t
+    go (Var (Impl cf cvr)) t f
+      | matchImpl (compilerInfoId cinfo) ||
+            -- fixme: Nothing should be treated as unknown, rather than empty
+            --        list. This code should eventually be changed to either
+            --        support partial resolution of compiler flags or to
+            --        complain about incompletely configured compilers.
+        any matchImpl (fromMaybe [] $ compilerInfoCompat cinfo) = t
       | otherwise      = f
+      where
+        matchImpl (CompilerId cf' cv) = cf == cf' && checkVR cvr cv
 
     -- If both branches contain the same package as a simple dep, we lift it to
     -- the next higher-level, but without constraints. This heuristic together

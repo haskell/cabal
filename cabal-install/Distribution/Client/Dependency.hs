@@ -93,7 +93,7 @@ import Distribution.Version
          ( Version(..), VersionRange, anyVersion, thisVersion, withinRange
          , removeUpperBound, simplifyVersionRange )
 import Distribution.Compiler
-         ( CompilerId(..), CompilerFlavor(..) )
+         ( CompilerId(..), CompilerInfo(..), CompilerFlavor(..) )
 import Distribution.System
          ( Platform )
 import Distribution.Simple.Utils
@@ -482,11 +482,12 @@ applySandboxInstallPolicy
 -- * Interface to the standard resolver
 -- ------------------------------------------------------------
 
-chooseSolver :: Verbosity -> PreSolver -> CompilerId -> IO Solver
+chooseSolver :: Verbosity -> PreSolver -> CompilerInfo -> IO Solver
 chooseSolver _         AlwaysTopDown _                = return TopDown
 chooseSolver _         AlwaysModular _                = return Modular
-chooseSolver verbosity Choose        (CompilerId f v) = do
-  let chosenSolver | f == GHC && v <= Version [7] [] = TopDown
+chooseSolver verbosity Choose        cinfo            = do
+  let (CompilerId f v) = compilerInfoId cinfo
+      chosenSolver | f == GHC && v <= Version [7] [] = TopDown
                    | otherwise                       = Modular
       msg TopDown = warn verbosity "Falling back to topdown solver for GHC < 7."
       msg Modular = info verbosity "Choosing modular solver."
@@ -504,7 +505,7 @@ runSolver Modular = modularResolver
 -- logging messages and the final result or an error.
 --
 resolveDependencies :: Platform
-                    -> CompilerId
+                    -> CompilerInfo
                     -> Solver
                     -> DepResolverParams
                     -> Progress String String InstallPlan
@@ -551,7 +552,7 @@ resolveDependencies platform comp  solver params =
 -- It checks that the plan is valid, or it's an error in the dep resolver.
 --
 mkInstallPlan :: Platform
-              -> CompilerId
+              -> CompilerInfo
               -> [InstallPlan.PlanPackage] -> InstallPlan
 mkInstallPlan platform comp pkgIndex =
   let index = InstalledPackageIndex.fromList pkgIndex in

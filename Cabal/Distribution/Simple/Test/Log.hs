@@ -13,7 +13,7 @@ module Distribution.Simple.Test.Log
 
 import Distribution.Package ( PackageId )
 import qualified Distribution.PackageDescription as PD
-import Distribution.Simple.Compiler ( Compiler(..), CompilerId )
+import Distribution.Simple.Compiler ( Compiler(..), compilerInfo, CompilerId )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, PathTemplate )
@@ -114,7 +114,7 @@ testSuiteLogPath template pkg_descr lbi name result =
     where
         env = initialPathTemplateEnv
                 (PD.package pkg_descr) (LBI.pkgKey lbi)
-                (compilerId $ LBI.compiler lbi) (LBI.hostPlatform lbi)
+                (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi)
                 ++  [ (TestSuiteNameVar, toPathTemplate name)
                     , (TestSuiteResultVar, toPathTemplate $ resultString result)
                     ]

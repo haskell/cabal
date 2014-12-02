@@ -47,7 +47,7 @@ import Distribution.Version
          ( VersionRange, withinRange, simplifyVersionRange
          , UpperBound(..), asVersionIntervals )
 import Distribution.Compiler
-         ( CompilerId )
+         ( CompilerInfo )
 import Distribution.System
          ( Platform )
 import Distribution.Simple.Utils
@@ -242,9 +242,9 @@ search configure pref constraints =
 -- the standard 'DependencyResolver' interface.
 --
 topDownResolver :: DependencyResolver
-topDownResolver platform comp installedPkgIndex sourcePkgIndex
+topDownResolver platform cinfo installedPkgIndex sourcePkgIndex
                 preferences constraints targets =
-    mapMessages (topDownResolver' platform comp
+    mapMessages (topDownResolver' platform cinfo
                                   (convert installedPkgIndex) sourcePkgIndex
                                   preferences constraints targets)
   where
@@ -253,23 +253,23 @@ topDownResolver platform comp installedPkgIndex sourcePkgIndex
 
 -- | The native resolver with detailed structured logging and failure types.
 --
-topDownResolver' :: Platform -> CompilerId
+topDownResolver' :: Platform -> CompilerInfo
                  -> PackageIndex InstalledPackage
                  -> PackageIndex SourcePackage
                  -> (PackageName -> PackagePreferences)
                  -> [PackageConstraint]
                  -> [PackageName]
                  -> Progress Log Failure [PlanPackage]
-topDownResolver' platform comp installedPkgIndex sourcePkgIndex
+topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
                  preferences constraints targets =
       fmap (uncurry finalise)
     . (\cs -> search configure preferences cs initialPkgNames)
-  =<< pruneBottomUp platform comp
+  =<< pruneBottomUp platform cinfo
   =<< addTopLevelConstraints constraints
   =<< addTopLevelTargets targets emptyConstraintSet
 
   where
-    configure   = configurePackage platform comp
+    configure   = configurePackage platform cinfo
     emptyConstraintSet :: Constraints
     emptyConstraintSet = Constraints.empty
       (annotateInstalledPackages          topSortNumber installedPkgIndex')
@@ -345,7 +345,7 @@ addTopLevelConstraints (PackageConstraintStanzas _ _ : deps) cs =
 
 -- | Add exclusion on available packages that cannot be configured.
 --
-pruneBottomUp :: Platform -> CompilerId
+pruneBottomUp :: Platform -> CompilerInfo
               -> Constraints -> Progress Log Failure Constraints
 pruneBottomUp platform comp constraints =
     foldr prune Done (initialPackages constraints) constraints
@@ -390,8 +390,8 @@ pruneBottomUp platform comp constraints =
     getSourcePkg (InstalledAndSource _ spkg) = Just spkg
 
 
-configurePackage :: Platform -> CompilerId -> ConfigurePackage
-configurePackage platform comp available spkg = case spkg of
+configurePackage :: Platform -> CompilerInfo -> ConfigurePackage
+configurePackage platform cinfo available spkg = case spkg of
   InstalledOnly      ipkg      -> Right (InstalledOnly ipkg)
   SourceOnly              apkg -> fmap SourceOnly (configure apkg)
   InstalledAndSource ipkg apkg -> fmap (InstalledAndSource ipkg)
@@ -399,7 +399,8 @@ configurePackage platform comp available spkg = case spkg of
   where
   configure (UnconfiguredPackage apkg@(SourcePackage _ p _ _) _ flags stanzas) =
     case finalizePackageDescription flags dependencySatisfiable
-                                    platform comp [] (enableStanzas stanzas p) of
+                                    platform cinfo []
+                                    (enableStanzas stanzas p) of
       Left missing        -> Left missing
       Right (pkg, flags') -> Right $
         SemiConfiguredPackage apkg flags' stanzas (externalBuildDepends pkg)

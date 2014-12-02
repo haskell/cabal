@@ -103,7 +103,7 @@ import Distribution.Client.JobControl
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
          ( CompilerId(..), Compiler(compilerId), compilerFlavor
-         , PackageDB(..), PackageDBStack )
+         , CompilerInfo(..), compilerInfo, PackageDB(..), PackageDBStack )
 import Distribution.Simple.Program (ProgramConfiguration,
                                     defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
@@ -278,7 +278,7 @@ makeInstallPlan verbosity
    _, pkgSpecifiers) = do
 
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
-              (compilerId comp)
+              (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
     return $ planPackages comp platform mSandboxPkgInfo solver
       configFlags configExFlags installFlags
@@ -323,7 +323,7 @@ planPackages comp platform mSandboxPkgInfo solver
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
         resolveDependencies
-          platform (compilerId comp)
+          platform (compilerInfo comp)
           solver
           resolverParams
 
@@ -679,14 +679,15 @@ reportPlanningFailure verbosity
         ++ intercalate "," (map display pkgids)
 
     -- Save reports
-    BuildReports.storeLocal (fromNubList $ installSummaryFile installFlags) buildReports platform
+    BuildReports.storeLocal (compilerInfo comp)
+                            (fromNubList $ installSummaryFile installFlags) buildReports platform
 
     -- Save solver log
     case logFile of
       Nothing -> return ()
       Just template -> forM_ pkgids $ \pkgid ->
         let env = initialPathTemplateEnv pkgid dummyPackageKey
-                    (compilerId comp) platform
+                    (compilerInfo comp) platform
             path = fromPathTemplate $ substPathTemplate env template
         in  writeFile path message
 
@@ -744,7 +745,7 @@ postInstallActions verbosity
       | UserTargetNamed dep <- targets ]
 
   let buildReports = BuildReports.fromInstallPlan installPlan
-  BuildReports.storeLocal (fromNubList $ installSummaryFile installFlags) buildReports
+  BuildReports.storeLocal (compilerInfo comp) (fromNubList $ installSummaryFile installFlags) buildReports
     (InstallPlan.planPlatform installPlan)
   when (reportingLevel >= AnonymousReports) $
     BuildReports.storeAnonymous buildReports
@@ -854,8 +855,9 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
                                           . substPathTemplate env
       where
         env  = env0 ++ installDirsTemplateEnv absoluteDirs
-        env0 = InstallDirs.compilerTemplateEnv (compilerId comp)
+        env0 = InstallDirs.compilerTemplateEnv (compilerInfo comp)
             ++ InstallDirs.platformTemplateEnv platform
+            ++ InstallDirs.abiTemplateEnv (compilerInfo comp) platform
         absoluteDirs = InstallDirs.substituteInstallDirTemplates
                          env0 templateDirs
         templateDirs = InstallDirs.combineInstallDirs fromFlagOrDefault
@@ -990,7 +992,7 @@ performInstallations verbosity
   executeInstallPlan verbosity comp jobControl useLogFile installPlan $ \rpkg ->
     -- Calculate the package key (ToDo: Is this right for source install)
     let pkg_key = readyPackageKey comp rpkg in
-    installReadyPackage platform compid configFlags
+    installReadyPackage platform cinfo configFlags
                         rpkg $ \configFlags' src pkg pkgoverride ->
       fetchSourcePackage verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit
@@ -998,11 +1000,11 @@ performInstallations verbosity
           installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
                                  (setupScriptOptions installedPkgIndex cacheLock)
                                  miscOptions configFlags' installFlags haddockFlags
-                                 compid platform pkg pkgoverride mpath useLogFile
+                                 cinfo platform pkg pkgoverride mpath useLogFile
 
   where
     platform = InstallPlan.planPlatform installPlan
-    compid   = InstallPlan.planCompiler installPlan
+    cinfo    = InstallPlan.planCompiler installPlan
 
     numJobs         = determineNumJobs (installNumJobs installFlags)
     numFetchJobs    = 2
@@ -1080,7 +1082,7 @@ performInstallations verbosity
                                           . substPathTemplate env
                                           $ template
       where env = initialPathTemplateEnv (packageId pkg) pkg_key
-                  (compilerId comp) platform
+                  (compilerInfo comp) platform
 
     miscOptions  = InstallMisc {
       rootCmd    = if fromFlag (configUserInstall configFlags)
@@ -1167,14 +1169,14 @@ executeInstallPlan verbosity comp jobCtl useLogFile plan0 installPkg =
 --
 -- NB: when updating this function, don't forget to also update
 -- 'configurePackage' in D.C.Configure.
-installReadyPackage :: Platform -> CompilerId
+installReadyPackage :: Platform -> CompilerInfo
                        -> ConfigFlags
                        -> ReadyPackage
                        -> (ConfigFlags -> PackageLocation (Maybe FilePath)
                                        -> PackageDescription
                                        -> PackageDescriptionOverride -> a)
                        -> a
-installReadyPackage platform comp configFlags
+installReadyPackage platform cinfo configFlags
   (ReadyPackage (SourcePackage _ gpkg source pkgoverride)
    flags stanzas deps)
   installPkg = installPkg configFlags {
@@ -1195,7 +1197,7 @@ installReadyPackage platform comp configFlags
   where
     pkg = case finalizePackageDescription flags
            (const True)
-           platform comp [] (enableStanzas stanzas gpkg) of
+           platform cinfo [] (enableStanzas stanzas gpkg) of
       Left _ -> error "finalizePackageDescription ReadyPackage failed"
       Right (desc, _) -> desc
 
@@ -1306,7 +1308,7 @@ installUnpackedPackage
   -> ConfigFlags
   -> InstallFlags
   -> HaddockFlags
-  -> CompilerId
+  -> CompilerInfo
   -> Platform
   -> PackageDescription
   -> PackageDescriptionOverride
@@ -1316,7 +1318,7 @@ installUnpackedPackage
 installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
                        scriptOptions miscOptions
                        configFlags installFlags haddockFlags
-                       compid platform pkg pkgoverride workingDir useLogFile = do
+                       cinfo platform pkg pkgoverride workingDir useLogFile = do
 
   -- Override the .cabal file if necessary
   case pkgoverride of
@@ -1375,7 +1377,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
           maybePkgConf <- maybeGenPkgConf mLogPath
 
           -- Actual installation
-          withWin32SelfUpgrade verbosity pkg_key configFlags compid platform pkg $ do
+          withWin32SelfUpgrade verbosity pkg_key configFlags cinfo platform pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
               Nothing    -> do
@@ -1424,8 +1426,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
                               defInstallDirs (configInstallDirs configFlags)
           }
         where
-          CompilerId flavor _ = compid
-          env         = initialPathTemplateEnv pkgid pkg_key compid platform
+          CompilerId flavor _ = compilerInfoId cinfo
+          env         = initialPathTemplateEnv pkgid pkg_key cinfo platform
           userInstall = fromFlagOrDefault defaultUserInstall
                         (configUserInstall configFlags')
 
@@ -1510,12 +1512,12 @@ onFailure result action =
 withWin32SelfUpgrade :: Verbosity
                      -> PackageKey
                      -> ConfigFlags
-                     -> CompilerId
+                     -> CompilerInfo
                      -> Platform
                      -> PackageDescription
                      -> IO a -> IO a
 withWin32SelfUpgrade _ _ _ _ _ _ action | buildOS /= Windows = action
-withWin32SelfUpgrade verbosity pkg_key configFlags compid platform pkg action = do
+withWin32SelfUpgrade verbosity pkg_key configFlags cinfo platform pkg action = do
 
   defaultDirs <- InstallDirs.defaultInstallDirs
                    compFlavor
@@ -1527,7 +1529,7 @@ withWin32SelfUpgrade verbosity pkg_key configFlags compid platform pkg action = 
 
   where
     pkgid = packageId pkg
-    (CompilerId compFlavor _) = compid
+    (CompilerId compFlavor _) = compilerInfoId cinfo
 
     exeInstallPaths defaultDirs =
       [ InstallDirs.bindir absoluteDirs </> exeName <.> exeExtension
@@ -1544,8 +1546,8 @@ withWin32SelfUpgrade verbosity pkg_key configFlags compid platform pkg action = 
                            defaultDirs (configInstallDirs configFlags)
         absoluteDirs   = InstallDirs.absoluteInstallDirs
                            pkgid pkg_key
-                           compid InstallDirs.NoCopyDest
+                           cinfo InstallDirs.NoCopyDest
                            platform templateDirs
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
-          where env = InstallDirs.initialPathTemplateEnv pkgid pkg_key compid platform
+          where env = InstallDirs.initialPathTemplateEnv pkgid pkg_key cinfo platform
