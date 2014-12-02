@@ -72,7 +72,7 @@ import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..), PackageKey
          , PackageName )
 import Distribution.Simple.Compiler
-         ( Compiler(..), PackageDBStack, OptimisationLevel )
+         ( Compiler, compilerInfo, PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex )
 import Distribution.ModuleName ( ModuleName )
@@ -413,7 +413,7 @@ absoluteInstallDirs pkg lbi copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
     (pkgKey lbi)
-    (compilerId (compiler lbi))
+    (compilerInfo (compiler lbi))
     copydest
     (hostPlatform lbi)
     (installDirTemplates lbi)
@@ -425,7 +425,7 @@ prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
     (pkgKey lbi)
-    (compilerId (compiler lbi))
+    (compilerInfo (compiler lbi))
     (hostPlatform lbi)
     (installDirTemplates lbi)
 
@@ -436,5 +436,5 @@ substPathTemplate pkgid lbi = fromPathTemplate
     where env = initialPathTemplateEnv
                    pkgid
                    (pkgKey lbi)
-                   (compilerId (compiler lbi))
+                   (compilerInfo (compiler lbi))
                    (hostPlatform lbi)

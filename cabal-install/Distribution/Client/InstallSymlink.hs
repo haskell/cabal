@@ -57,7 +57,7 @@ import Distribution.Simple.Setup
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Simple.Compiler
-         ( Compiler, packageKeySupported )
+         ( Compiler, CompilerInfo(..), packageKeySupported )
 
 import System.Posix.Files
          ( getSymbolicLinkStatus, isSymbolicLink, createSymbolicLink
@@ -139,7 +139,7 @@ symlinkBinaries comp configFlags installFlags plan =
     pkgDescription (ReadyPackage (SourcePackage _ pkg _ _) flags stanzas _) =
       case finalizePackageDescription flags
              (const True)
-             platform compilerId [] (enableStanzas stanzas pkg) of
+             platform cinfo [] (enableStanzas stanzas pkg) of
         Left _ -> error "finalizePackageDescription ReadyPackage failed"
         Right (desc, _) -> desc
 
@@ -155,20 +155,21 @@ symlinkBinaries comp configFlags installFlags plan =
                            defaultDirs (configInstallDirs configFlags)
           absoluteDirs = InstallDirs.absoluteInstallDirs
                            (packageId pkg) pkg_key
-                           compilerId InstallDirs.NoCopyDest
+                           cinfo InstallDirs.NoCopyDest
                            platform templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
 
     substTemplate pkgid pkg_key = InstallDirs.fromPathTemplate
                                 . InstallDirs.substPathTemplate env
       where env = InstallDirs.initialPathTemplateEnv pkgid pkg_key
-                                                     compilerId platform
+                                                     cinfo platform
 
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
     prefixTemplate   = fromFlagTemplate (configProgPrefix configFlags)
     suffixTemplate   = fromFlagTemplate (configProgSuffix configFlags)
     platform         = InstallPlan.planPlatform plan
-    compilerId@(CompilerId compilerFlavor _) = InstallPlan.planCompiler plan
+    cinfo            = InstallPlan.planCompiler plan
+    (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
 symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir
                           --   eg @/home/user/bin@

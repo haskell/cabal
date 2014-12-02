@@ -19,7 +19,7 @@ import qualified Distribution.PackageDescription as PD
     ( PackageDescription(..), BuildInfo(buildable)
     , Benchmark(..), BenchmarkInterface(..), benchmarkType, hasBenchmarks )
 import Distribution.Simple.BuildPaths ( exeExtension )
-import Distribution.Simple.Compiler ( Compiler(..) )
+import Distribution.Simple.Compiler ( compilerInfo )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, PathTemplate )
@@ -124,5 +124,5 @@ benchOption pkg_descr lbi bm template =
   where
     env = initialPathTemplateEnv
           (PD.package pkg_descr) (LBI.pkgKey lbi)
-          (compilerId $ LBI.compiler lbi) (LBI.hostPlatform lbi) ++
+          (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi) ++
           [(BenchmarkNameVar, toPathTemplate $ PD.benchmarkName bm)]

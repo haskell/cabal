@@ -33,7 +33,7 @@ import Distribution.PackageDescription as PD
          , TestSuite(..), TestSuiteInterface(..)
          , Benchmark(..), BenchmarkInterface(..) )
 import Distribution.Simple.Compiler
-         ( Compiler(..), CompilerFlavor(..), compilerVersion )
+         ( Compiler, compilerInfo, CompilerFlavor(..), compilerVersion )
 import Distribution.Simple.GHC ( componentGhcOptions, ghcLibDir )
 import Distribution.Simple.Program.GHC
          ( GhcOptions(..), GhcDynLinkMode(..), renderGhcOptions )
@@ -588,7 +588,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id =
   (PrefixVar, prefix (installDirTemplates lbi))
-  : initialPathTemplateEnv pkg_id (pkgKey lbi) (compilerId (compiler lbi))
+  : initialPathTemplateEnv pkg_id (pkgKey lbi) (compilerInfo (compiler lbi))
   (hostPlatform lbi)
 
 -- ------------------------------------------------------------------------------

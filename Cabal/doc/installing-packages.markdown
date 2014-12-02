@@ -347,21 +347,21 @@ package:
 
     In the simple build system, _dir_ may contain the following path
     variables: `$pkgid`, `$pkg`, `$version`, `$compiler`, `$os`,
-    `$arch`
+    `$arch`, `$abi`, `$abitag`
 
 `--bindir=`_dir_
 :   Executables that the user might invoke are installed here.
 
     In the simple build system, _dir_ may contain the following path
     variables: `$prefix`, `$pkgid`, `$pkg`, `$version`, `$compiler`,
-    `$os`, `$arch`
+    `$os`, `$arch`, `$abi`, `$abitag
 
 `--libdir=`_dir_
 :   Object-code libraries are installed here.
 
     In the simple build system, _dir_ may contain the following path
     variables: `$prefix`, `$bindir`, `$pkgid`, `$pkg`, `$version`,
-    `$compiler`, `$os`, `$arch`
+    `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--libexecdir=`_dir_
 :   Executables that are not expected to be invoked directly by the user
@@ -369,21 +369,21 @@ package:
 
     In the simple build system, _dir_ may contain the following path
     variables: `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`,
-    `$pkg`, `$version`, `$compiler`, `$os`, `$arch`
+    `$pkg`, `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--datadir`=_dir_
 :   Architecture-independent data files are installed here.
 
     In the simple build system, _dir_ may contain the following path
     variables: `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`, `$pkg`,
-    `$version`, `$compiler`, `$os`, `$arch`
+    `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--sysconfdir=`_dir_
 :   Installation directory for the configuration files.
 
     In the simple build system, _dir_ may contain the following path variables:
     `$prefix`, `$bindir`, `$libdir`, `$libsubdir`, `$pkgid`, `$pkg`, `$version`,
-    `$compiler`, `$os`, `$arch`
+    `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 In addition the simple build system supports the following installation path options:
 
@@ -395,34 +395,34 @@ In addition the simple build system supports the following installation path opt
     libraries would be installed in `/usr/local/lib/mypkg-0.2/ghc-6.4`.
 
     _dir_ may contain the following path variables: `$pkgid`, `$pkg`,
-    `$version`, `$compiler`, `$os`, `$arch`
+    `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--datasubdir=`_dir_
 :   A subdirectory of _datadir_ in which data files are actually
     installed.
 
     _dir_ may contain the following path variables: `$pkgid`, `$pkg`,
-    `$version`, `$compiler`, `$os`, `$arch`
+    `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--docdir=`_dir_
 :   Documentation files are installed relative to this directory.
 
     _dir_ may contain the following path variables: `$prefix`, `$bindir`,
     `$libdir`, `$libsubdir`, `$datadir`, `$datasubdir`, `$pkgid`, `$pkg`,
-    `$version`, `$compiler`, `$os`, `$arch`
+    `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--htmldir=`_dir_
 :   HTML documentation files are installed relative to this directory.
 
     _dir_ may contain the following path variables: `$prefix`, `$bindir`,
     `$libdir`, `$libsubdir`, `$datadir`, `$datasubdir`, `$docdir`, `$pkgid`,
-    `$pkg`, `$version`, `$compiler`, `$os`, `$arch`
+    `$pkg`, `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--program-prefix=`_prefix_
 :   Prepend _prefix_ to installed program names.
 
     _prefix_ may contain the following path variables: `$pkgid`, `$pkg`,
-    `$version`, `$compiler`, `$os`, `$arch`
+    `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 `--program-suffix=`_suffix_
 :   Append _suffix_ to installed program names. The most obvious use for
@@ -431,7 +431,7 @@ In addition the simple build system supports the following installation path opt
     `--program-suffix='$version'`.
 
     _suffix_ may contain the following path variables: `$pkgid`, `$pkg`,
-    `$version`, `$compiler`, `$os`, `$arch`
+    `$version`, `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`
 
 #### Path variables in the simple build system ####
 
@@ -486,6 +486,15 @@ independence](#prefix-independence)).
 `$arch`
 :   The architecture of the computer being used to build the package, e.g.
     `i386`, `x86_64`, `ppc` or `sparc`
+
+`$abitag`
+:   An optional tag that a compiler can use for telling incompatible ABI's
+    on the same architecture apart.
+
+`$abi`
+:   A shortcut for getting a path that completely identifies the platform in terms
+    of binary compatibility. Expands to the same value as `$arch-$os-compiler-$abitag`
+    if the compiler uses an abi tag, `$arch-$os-$compiler` if it doesn't.
 
 #### Paths in the simple build system ####
 
@@ -983,12 +992,12 @@ suites, otherwise, Cabal will run all test suites in the package.
     to `dist/test`.  By default, logs are named according to the template
     `$pkgid-$test-suite.log`, so that each test suite will be logged to its own
     human-readable log file.  Template variables allowed are: `$pkgid`,
-    `$compiler`, `$os`, `$arch`, `$test-suite`, and `$result`.
+    `$compiler`, `$os`, `$arch`, `$abi`, `$abitag`, `$test-suite`, and `$result`.
 
 `--machine-log=`_path_
 :   The path to the machine-readable log, relative to `dist/test`.  The default
     template is `$pkgid.log`.  Template variables allowed are: `$pkgid`,
-    `$compiler`, `$os`, `$arch`, and `$result`.
+    `$compiler`, `$os`, `$arch`, `$abi`, `$abitag` and `$result`.
 
 `--show-details=`_filter_
 :   Determines if the results of individual test cases are shown on the

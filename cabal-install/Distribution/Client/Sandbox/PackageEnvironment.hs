@@ -328,7 +328,8 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   pkgEnv <- handleParseResult verbosity pkgEnvFile minp
 
   -- Get the saved sandbox directory.
-  -- TODO: Use substPathTemplate with compilerTemplateEnv ++ platformTemplateEnv.
+  -- TODO: Use substPathTemplate with
+  -- compilerTemplateEnv ++ platformTemplateEnv ++ abiTemplateEnv.
   let sandboxDir = fromFlagOrDefault defaultSandboxLocation
                    . fmap fromPathTemplate . prefix . savedUserInstallDirs
                    . pkgEnvSavedConfig $ pkgEnv

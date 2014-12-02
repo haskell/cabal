@@ -73,7 +73,7 @@ import Distribution.Simple.Program
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
-         , OptimisationLevel(..), PackageDB(..), PackageDBStack
+         , OptimisationLevel(..), PackageDB(..), PackageDBStack, AbiTag(..)
          , Flag, languageToFlags, extensionsToFlags )
 import Distribution.Version
          ( Version(..), orLaterVersion )
@@ -126,6 +126,8 @@ configure verbosity hcPath hcPkgPath conf = do
 
   let comp = Compiler {
         compilerId             = CompilerId LHC lhcVersion,
+        compilerAbiTag         = NoAbiTag,
+        compilerCompat         = [],
         compilerLanguages      = languages,
         compilerExtensions     = extensions,
         compilerProperties     = M.empty

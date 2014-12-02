@@ -35,6 +35,11 @@ module Distribution.Compiler (
 
   -- * Compiler id
   CompilerId(..),
+
+  -- * Compiler info
+  CompilerInfo(..),
+  unknownCompilerInfo,
+  AbiTag(..), abiTagString
   ) where
 
 import Data.Binary (Binary)
@@ -43,6 +48,8 @@ import Data.Typeable (Typeable)
 import Data.Maybe (fromMaybe)
 import Distribution.Version (Version(..))
 import GHC.Generics (Generic)
+
+import Language.Haskell.Extension (Language, Extension)
 
 import qualified System.Info (compilerName, compilerVersion)
 import Distribution.Text (Text(..), display)
@@ -146,3 +153,52 @@ instance Text CompilerId where
 
 lowercase :: String -> String
 lowercase = map Char.toLower
+
+-- ------------------------------------------------------------
+-- * Compiler Info
+-- ------------------------------------------------------------
+
+-- | Compiler information used for resolving configurations. Some fields can be
+--   set to Nothing to indicate that the information is unknown.
+
+data CompilerInfo = CompilerInfo {
+         compilerInfoId         :: CompilerId,
+         -- ^ Compiler flavour and version.
+         compilerInfoAbiTag     :: AbiTag,
+         -- ^ Tag for distinguishing incompatible ABI's on the same architecture/os.
+         compilerInfoCompat     :: Maybe [CompilerId],
+         -- ^ Other implementations that this compiler claims to be compatible with, if known.
+         compilerInfoLanguages  :: Maybe [Language],
+         -- ^ Supported language standards, if known.
+         compilerInfoExtensions :: Maybe [Extension]
+         -- ^ Supported extensions, if known.
+     }
+     deriving (Generic, Show, Read)
+
+instance Binary CompilerInfo
+
+data AbiTag
+  = NoAbiTag
+  | AbiTag String
+  deriving (Generic, Show, Read)
+
+instance Binary AbiTag
+
+instance Text AbiTag where
+  disp NoAbiTag     = Disp.empty
+  disp (AbiTag tag) = Disp.text tag
+
+  parse = do
+    tag <- Parse.munch (\c -> Char.isAlphaNum c || c == '_')
+    if null tag then return NoAbiTag else return (AbiTag tag)
+
+abiTagString :: AbiTag -> String
+abiTagString NoAbiTag     = ""
+abiTagString (AbiTag tag) = tag
+
+-- | Make a CompilerInfo of which only the known information is its CompilerId,
+--   its AbiTag and that it does not claim to be compatible with other
+--   compiler id's.
+unknownCompilerInfo :: CompilerId -> AbiTag -> CompilerInfo
+unknownCompilerInfo compilerId abiTag =
+  CompilerInfo compilerId abiTag (Just []) Nothing Nothing

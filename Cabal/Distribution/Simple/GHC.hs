@@ -92,7 +92,7 @@ import qualified Distribution.Simple.Setup as Cabal
         ( Flag )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
-         , OptimisationLevel(..), PackageDB(..), PackageDBStack
+         , OptimisationLevel(..), PackageDB(..), PackageDBStack, AbiTag(..)
          , Flag )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
@@ -162,6 +162,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   let comp = Compiler {
         compilerId         = CompilerId GHC ghcVersion,
+        compilerAbiTag     = NoAbiTag,
+        compilerCompat     = [],
         compilerLanguages  = languages,
         compilerExtensions = extensions,
         compilerProperties = ghcInfoMap

@@ -28,7 +28,7 @@ import Distribution.Client.Setup
 import Distribution.Package
          ( packageId )
 import Distribution.Simple.Compiler
-         ( Compiler(compilerId), PackageDBStack )
+         ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Program
          ( ProgramConfiguration )
@@ -123,11 +123,11 @@ planPackages verbosity comp platform fetchFlags
 
   | includeDependencies = do
       solver <- chooseSolver verbosity
-                (fromFlag (fetchSolver fetchFlags)) (compilerId comp)
+                (fromFlag (fetchSolver fetchFlags)) (compilerInfo comp)
       notice verbosity "Resolving dependencies..."
       installPlan <- foldProgress logMsg die return $
                        resolveDependencies
-                         platform (compilerId comp)
+                         platform (compilerInfo comp)
                          solver
                          resolverParams
 
