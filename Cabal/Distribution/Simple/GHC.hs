@@ -51,7 +51,7 @@ import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, objectModules, exeModules, hcOptions
+         , Library(..), libModules, exeModules, hcOptions
          , usedExtensions, allExtensions, ModuleRenaming, lookupRenaming )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -1136,7 +1136,7 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
                           then "_split"
                           else "_" ++ wanted_obj_ext ++ "_split"
             dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
-                   | x <- objectModules lib ]
+                   | x <- libModules lib ]
         objss <- mapM getDirectoryContents dirs
         let objs = [ dir </> obj
                    | (objs',dir) <- zip objss dirs, obj <- objs',
@@ -1145,7 +1145,7 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
         return objs
   | otherwise  =
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
-               | x <- objectModules lib ]
+               | x <- libModules lib ]
 
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.

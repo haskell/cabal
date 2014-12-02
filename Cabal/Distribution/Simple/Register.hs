@@ -60,7 +60,7 @@ import Distribution.Simple.Setup
          ( RegisterFlags(..), CopyDest(..)
          , fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.PackageDescription
-         ( PackageDescription(..), Library(..), BuildInfo(..) )
+         ( PackageDescription(..), Library(..), BuildInfo(..), libModules )
 import Distribution.Package
          ( Package(..), packageName, InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
@@ -305,8 +305,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
   where
     bi = libBuildInfo lib
     (absinc, relinc) = partition isAbsolute (includeDirs bi)
-    hasModules = not $ null (exposedModules lib)
-                    && null (otherModules bi)
+    hasModules = not $ null (libModules lib)
     hasLibrary = hasModules || not (null (cSources bi))
     -- Since we currently don't decide the InstalledPackageId of our package
     -- until just before we register, we didn't have one for the re-exports

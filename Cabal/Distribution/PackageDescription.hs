@@ -45,7 +45,6 @@ module Distribution.PackageDescription (
         withLib,
         hasLibs,
         libModules,
-        objectModules,
 
         -- ** Executables
         Executable(..),
@@ -417,12 +416,6 @@ libModules lib = exposedModules lib
               ++ otherModules (libBuildInfo lib)
               ++ exposedSignatures lib
               ++ requiredSignatures lib
-
--- | Get all the module names from the library which have OBJECT code.
--- This excludes signatures, which have interface files but no object code.
-objectModules :: Library -> [ModuleName]
-objectModules lib = exposedModules lib
-              ++ otherModules (libBuildInfo lib)
 
 -- -----------------------------------------------------------------------------
 -- Module re-exports
