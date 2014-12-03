@@ -134,16 +134,179 @@ instance Monoid SavedConfig where
     savedReportFlags       = mempty
   }
   mappend a b = SavedConfig {
-    savedGlobalFlags       = combine savedGlobalFlags,
-    savedInstallFlags      = combine savedInstallFlags,
-    savedConfigureFlags    = combine savedConfigureFlags,
-    savedConfigureExFlags  = combine savedConfigureExFlags,
-    savedUserInstallDirs   = combine savedUserInstallDirs,
-    savedGlobalInstallDirs = combine savedGlobalInstallDirs,
-    savedUploadFlags       = combine savedUploadFlags,
-    savedReportFlags       = combine savedReportFlags
+    savedGlobalFlags       = combinedSavedGlobalFlags,
+    savedInstallFlags      = combinedSavedInstallFlags,
+    savedConfigureFlags    = combinedSavedConfigureFlags,
+    savedConfigureExFlags  = combinedSavedConfigureExFlags,
+    savedUserInstallDirs   = combinedSavedUserInstallDirs,
+    savedGlobalInstallDirs = combinedSavedGlobalInstallDirs,
+    savedUploadFlags       = combinedSavedUploadFlags,
+    savedReportFlags       = combinedSavedReportFlags
   }
-    where combine field = field a `mappend` field b
+    where
+      -- This is ugly, but necessary. If we're mappending two config files, we
+      -- want the values of the *non-empty* list fields from the second one to
+      -- *override* the corresponding values from the first one. Default
+      -- behaviour (concatenation) is confusing and makes some use cases (see
+      -- #1884) impossible.
+      --
+      -- However, we also want to allow specifying multiple values for a list
+      -- field in a *single* config file. For example, we want the following to
+      -- continue to work:
+      --
+      -- remote-repo: hackage.haskell.org:http://hackage.haskell.org/
+      -- remote-repo: private-collection:http://hackage.local/
+      --
+      -- So we can't just wrap the list fields inside Flags; we have to do some
+      -- special-casing just for SavedConfig.
+
+      -- NB: the signature prevents us from using 'combine' on lists.
+      combine' :: (SavedConfig -> flags) -> (flags -> Flag a) -> Flag a
+      combine'        field subfield =
+        (subfield . field $ a) `mappend` (subfield . field $ b)
+
+      lastNonEmpty' :: (SavedConfig -> flags) -> (flags -> [a]) -> [a]
+      lastNonEmpty'   field subfield =
+        let a' = subfield . field $ a
+            b' = subfield . field $ b
+        in case b' of [] -> a'
+                      _  -> b'
+
+      lastNonEmptyNL' :: (SavedConfig -> flags) -> (flags -> [a])
+                      -> [a]
+      lastNonEmptyNL' field subfield =
+        let a' = subfield . field $ a
+            b' = subfield . field $ b
+        in case b' of [] -> a'
+                      _  -> b'
+
+      combinedSavedGlobalFlags = GlobalFlags {
+        globalVersion           = combine globalVersion,
+        globalNumericVersion    = combine globalNumericVersion,
+        globalConfigFile        = combine globalConfigFile,
+        globalSandboxConfigFile = combine globalSandboxConfigFile,
+        globalRemoteRepos       = lastNonEmptyNL globalRemoteRepos,
+        globalCacheDir          = combine globalCacheDir,
+        globalLocalRepos        = lastNonEmptyNL globalLocalRepos,
+        globalLogsDir           = combine globalLogsDir,
+        globalWorldFile         = combine globalWorldFile
+        }
+        where
+          combine        = combine'        savedGlobalFlags
+          lastNonEmptyNL = lastNonEmptyNL' savedGlobalFlags
+
+      combinedSavedInstallFlags = InstallFlags {
+        installDocumentation         = combine installDocumentation,
+        installHaddockIndex          = combine installHaddockIndex,
+        installDryRun                = combine installDryRun,
+        installMaxBackjumps          = combine installMaxBackjumps,
+        installReorderGoals          = combine installReorderGoals,
+        installIndependentGoals      = combine installIndependentGoals,
+        installShadowPkgs            = combine installShadowPkgs,
+        installStrongFlags           = combine installStrongFlags,
+        installReinstall             = combine installReinstall,
+        installAvoidReinstalls       = combine installAvoidReinstalls,
+        installOverrideReinstall     = combine installOverrideReinstall,
+        installUpgradeDeps           = combine installUpgradeDeps,
+        installOnly                  = combine installOnly,
+        installOnlyDeps              = combine installOnlyDeps,
+        installRootCmd               = combine installRootCmd,
+        installSummaryFile           = lastNonEmptyNL installSummaryFile,
+        installLogFile               = combine installLogFile,
+        installBuildReports          = combine installBuildReports,
+        installSymlinkBinDir         = combine installSymlinkBinDir,
+        installOneShot               = combine installOneShot,
+        installNumJobs               = combine installNumJobs
+        }
+        where
+          combine        = combine'        savedInstallFlags
+          lastNonEmptyNL = lastNonEmptyNL' savedInstallFlags
+
+      combinedSavedConfigureFlags = ConfigFlags {
+        configPrograms            = configPrograms . savedConfigureFlags $ b,
+        -- TODO: NubListify
+        configProgramPaths        = lastNonEmpty configProgramPaths,
+        -- TODO: NubListify
+        configProgramArgs         = lastNonEmpty configProgramArgs,
+        configProgramPathExtra    = lastNonEmptyNL configProgramPathExtra,
+        configHcFlavor            = combine configHcFlavor,
+        configHcPath              = combine configHcPath,
+        configHcPkg               = combine configHcPkg,
+        configVanillaLib          = combine configVanillaLib,
+        configProfLib             = combine configProfLib,
+        configSharedLib           = combine configSharedLib,
+        configDynExe              = combine configDynExe,
+        configProfExe             = combine configProfExe,
+        -- TODO: NubListify
+        configConfigureArgs       = lastNonEmpty configConfigureArgs,
+        configOptimization        = combine configOptimization,
+        configProgPrefix          = combine configProgPrefix,
+        configProgSuffix          = combine configProgSuffix,
+        -- Parametrised by (Flag PathTemplate), so safe to use 'mappend'.
+        configInstallDirs         =
+          (configInstallDirs . savedConfigureFlags $ a)
+          `mappend` (configInstallDirs . savedConfigureFlags $ b),
+        configScratchDir          = combine configScratchDir,
+        -- TODO: NubListify
+        configExtraLibDirs        = lastNonEmpty configExtraLibDirs,
+        -- TODO: NubListify
+        configExtraIncludeDirs    = lastNonEmpty configExtraIncludeDirs,
+        configDistPref            = combine configDistPref,
+        configVerbosity           = combine configVerbosity,
+        configUserInstall         = combine configUserInstall,
+        -- TODO: NubListify
+        configPackageDBs          = lastNonEmpty configPackageDBs,
+        configGHCiLib             = combine configGHCiLib,
+        configSplitObjs           = combine configSplitObjs,
+        configStripExes           = combine configStripExes,
+        configConstraints         = lastNonEmpty configConstraints,
+        configConfigurationsFlags = lastNonEmpty configConfigurationsFlags,
+        configTests               = combine configTests,
+        configBenchmarks          = combine configBenchmarks,
+        configLibCoverage         = combine configLibCoverage
+        }
+        where
+          combine        = combine'        savedConfigureFlags
+          lastNonEmpty   = lastNonEmpty'   savedConfigureFlags
+          lastNonEmptyNL = lastNonEmptyNL' savedConfigureFlags
+
+      combinedSavedConfigureExFlags = ConfigExFlags {
+        configCabalVersion  = combine configCabalVersion,
+        -- TODO: NubListify
+        configExConstraints = lastNonEmpty configExConstraints,
+        -- TODO: NubListify
+        configPreferences   = lastNonEmpty configPreferences,
+        configSolver        = combine configSolver
+        }
+        where
+          combine      = combine' savedConfigureExFlags
+          lastNonEmpty = lastNonEmpty' savedConfigureExFlags
+
+      -- Parametrised by (Flag PathTemplate), so safe to use 'mappend'.
+      combinedSavedUserInstallDirs = savedUserInstallDirs a
+                                     `mappend` savedUserInstallDirs b
+
+      -- Parametrised by (Flag PathTemplate), so safe to use 'mappend'.
+      combinedSavedGlobalInstallDirs = savedGlobalInstallDirs a
+                                       `mappend` savedGlobalInstallDirs b
+
+      combinedSavedUploadFlags = UploadFlags {
+        uploadCheck     = combine uploadCheck,
+        uploadUsername  = combine uploadUsername,
+        uploadPassword  = combine uploadPassword,
+        uploadVerbosity = combine uploadVerbosity
+        }
+        where
+          combine = combine' savedUploadFlags
+
+      combinedSavedReportFlags = ReportFlags {
+        reportUsername  = combine reportUsername,
+        reportPassword  = combine reportPassword,
+        reportVerbosity = combine reportVerbosity
+        }
+        where
+          combine = combine' savedReportFlags
+
 
 updateInstallDirs :: Flag Bool -> SavedConfig -> SavedConfig
 updateInstallDirs userInstallFlag
