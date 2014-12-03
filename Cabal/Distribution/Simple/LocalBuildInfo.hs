@@ -434,8 +434,11 @@ depLibraryPaths inplace relative lbi clbi = do
 
     let ipkgs          = allPackages (installedPkgs lbi)
         allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
+        internalLib
+          | inplace    = buildDir lbi
+          | otherwise  = libdir installDirs
         allDepLibDirs' = if hasInternalDeps
-                            then (libdir installDirs) : allDepLibDirs
+                            then internalLib : allDepLibDirs
                             else allDepLibDirs
     allDepLibDirsC <- mapM canonicalizePathNoFail allDepLibDirs'
 
