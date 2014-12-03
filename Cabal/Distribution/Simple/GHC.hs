@@ -45,8 +45,7 @@ module Distribution.Simple.GHC (
         ghcLibDir,
         ghcDynamic,
         ghcGlobalPackageDB,
-        pkgRoot,
-        toRPaths
+        pkgRoot
  ) where
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
@@ -64,13 +63,13 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , LibraryName(..), absoluteInstallDirs )
+         , LibraryName(..), absoluteInstallDirs, depLibraryPaths )
 import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( PackageName(..), InstalledPackageId, PackageId, packageId )
+         ( PackageName(..), InstalledPackageId, PackageId )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -104,7 +103,7 @@ import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Utils.NubList
-         ( NubListR, overNubListR, toNubListR )
+         ( overNubListR, toNubListR )
 import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
@@ -112,12 +111,12 @@ import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
 import Data.List
 import qualified Data.Map as M  ( Map, fromList, lookup )
-import Data.Maybe               ( catMaybes, fromMaybe, maybeToList, isJust )
+import Data.Maybe               ( catMaybes, fromMaybe, maybeToList )
 import Data.Monoid              ( Monoid(..) )
 import Data.Version             ( showVersion )
 import System.Directory
          ( getDirectoryContents, doesFileExist, getTemporaryDirectory,
-           canonicalizePath, getAppUserDataDirectory, createDirectoryIfMissing )
+           getAppUserDataDirectory, createDirectoryIfMissing )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
@@ -875,7 +874,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
               else return []
 
     unless (null hObjs && null cObjs && null stubObjs) $ do
-      rpaths <- toRPaths False True lbi clbi
+      rpaths <- depLibraryPaths False True lbi clbi
 
       let staticObjectFiles =
                  hObjs
@@ -936,52 +935,6 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       whenSharedLib False $
         runGhcProg ghcSharedLinkArgs
 
--- | Derive RPATHs
-toRPaths :: Bool -- ^ Building exe?
-         -> Bool -- ^ Generate prefix-relative rpaths
-         -> LocalBuildInfo
-         -> ComponentLocalBuildInfo
-         -> IO (NubListR FilePath)
-toRPaths buildE mkRelative lbi clbi = do
-    let pkgDescr    = localPkgDescr lbi
-        installDirs = absoluteInstallDirs pkgDescr lbi NoCopyDest
-        relDir | buildE    = bindir installDirs
-               | otherwise = libdir installDirs
-
-    let hasInternalDeps = not $ null
-                        $ [ pkgid
-                          | (_,pkgid) <- componentPackageDeps clbi
-                          , internal pkgid
-                          ]
-
-    let ipkgs          = PackageIndex.allPackages (installedPkgs lbi)
-        allDepLibDirs  = concatMap InstalledPackageInfo.libraryDirs ipkgs
-        allDepLibDirs' = if hasInternalDeps
-                            then (libdir installDirs) : allDepLibDirs
-                            else allDepLibDirs
-    allDepLibDirsC <- mapM canonicalizePath allDepLibDirs'
-
-    let (Platform _ hostOS) = hostPlatform lbi
-        hostPref = case hostOS of
-                     OSX -> "@loader_path"
-                     _   -> "$ORIGIN"
-
-    let p                = prefix installDirs
-        prefixRelative l = isJust (stripPrefix p l)
-        rpaths
-          | mkRelative &&
-            prefixRelative relDir = map (\l ->
-                                          if prefixRelative l
-                                             then hostPref </>
-                                                  shortRelativePath relDir l
-                                             else l
-                                        ) allDepLibDirsC
-          | otherwise             = allDepLibDirsC
-
-    return (toNubListR rpaths)
-  where
-    internal pkgid = pkgid == packageId (localPkgDescr lbi)
-
 -- | Start a REPL without loading any source files.
 startInterpreter :: Verbosity -> ProgramConfiguration -> Compiler
                  -> PackageDBStack -> IO ()
@@ -1038,7 +991,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
-  rpaths              <- toRPaths True True lbi clbi
+  rpaths              <- depLibraryPaths False True lbi clbi
 
   let isGhcDynamic        = ghcDynamic comp
       dynamicTooSupported = ghcSupportsDynamicToo comp

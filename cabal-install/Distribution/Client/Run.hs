@@ -18,19 +18,19 @@ import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Distribution.Simple.BuildPaths        (exeExtension)
 import Distribution.Simple.LocalBuildInfo    (ComponentName (..),
                                               LocalBuildInfo (..),
-                                              getComponentLocalBuildInfo)
-import Distribution.Simple.GHC               (toRPaths)
-import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv)
-import Distribution.System                   (Platform (..), OS (..))
+                                              getComponentLocalBuildInfo,
+                                              depLibraryPaths)
+import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv,
+                                              addLibraryPath)
+import Distribution.System                   (Platform (..))
 import Distribution.Utils.NubList            (fromNubListR)
 import Distribution.Verbosity                (Verbosity)
 
 import Data.Functor                          ((<$>))
-import Data.List                             (find, intercalate)
+import Data.List                             (find)
 import System.Directory                      (getCurrentDirectory)
 import Distribution.Compat.Environment       (getEnvironment)
-import Distribution.Client.Compat.Environment (lookupEnv)
-import System.FilePath                       ((<.>), (</>), searchPathSeparator)
+import System.FilePath                       ((<.>), (</>))
 
 
 -- | Return the executable to run and any extra arguments that should be
@@ -67,25 +67,14 @@ run verbosity lbi exe exeArgs = do
   path <- tryCanonicalizePath $
           buildPref </> exeName exe </> (exeName exe <.> exeExtension)
   env  <- (dataDirEnvVar:) <$> getEnvironment
-  env' <- addLibraryPath lbi exe env
+  -- Add (DY)LD_LIBRARY_PATH if needed
+  env' <- if relocatable lbi && withDynExe lbi
+             then do let (Platform _ os) = hostPlatform lbi
+                         clbi = getComponentLocalBuildInfo lbi
+                                  (CExeName (exeName exe))
+                     paths <- fromNubListR <$> depLibraryPaths True False
+                                                               lbi  clbi
+                     addLibraryPath os paths env
+             else return env
   notice verbosity $ "Running " ++ exeName exe ++ "..."
   rawSystemExitWithEnv verbosity path exeArgs env'
-
-addLibraryPath :: LocalBuildInfo -> Executable -> [(String,String)]
-               -> IO [(String,String)]
-addLibraryPath lbi exe env | relocatable lbi && withDynExe lbi = do
-  let clbi = getComponentLocalBuildInfo lbi (CExeName (exeName exe))
-  rpaths <- fromNubListR <$> toRPaths True False lbi clbi
-  let libPaths = intercalate [searchPathSeparator] rpaths
-
-  let (Platform _ os) = hostPlatform lbi
-      ldPath = case os of
-                 OSX -> "DYLD_LIBRARY_PATH"
-                 _   -> "LD_LIBRARY_PATH"
-  ldEnv <- maybe libPaths (++ (searchPathSeparator:libPaths)) <$>
-           lookupEnv ldPath
-
-
-  return (env ++ [(ldPath,ldEnv)])
-
-addLibraryPath _ _ env = return env
