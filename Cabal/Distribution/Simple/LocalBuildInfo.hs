@@ -97,7 +97,7 @@ import Data.Tree  (flatten)
 import GHC.Generics (Generic)
 import Data.Map (Map)
 
-import System.Directory (canonicalizePath)
+import System.Directory (doesDirectoryExist, canonicalizePath)
 import System.FilePath  ((</>))
 
 -- | Data cached after configuration step.  See also
@@ -437,7 +437,7 @@ depLibraryPaths inplace relative lbi clbi = do
         allDepLibDirs' = if hasInternalDeps
                             then (libdir installDirs) : allDepLibDirs
                             else allDepLibDirs
-    allDepLibDirsC <- mapM canonicalizePath allDepLibDirs'
+    allDepLibDirsC <- mapM canonicalizePathNoFail allDepLibDirs'
 
     let (Platform _ hostOS) = hostPlatform lbi
         hostPref = case hostOS of
@@ -459,6 +459,11 @@ depLibraryPaths inplace relative lbi clbi = do
     return (toNubListR rpaths)
   where
     internal pkgid = pkgid == packageId (localPkgDescr lbi)
+    canonicalizePathNoFail p = do
+      exists <- doesDirectoryExist p
+      if exists
+         then canonicalizePath p
+         else return p
 
 
 -- -----------------------------------------------------------------------------
