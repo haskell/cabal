@@ -42,6 +42,7 @@ module Distribution.Simple.LocalBuildInfo (
         allComponentsInBuildOrder,
         componentsInBuildOrder,
         checkComponentsCyclic,
+        depLibraryPaths,
 
         withAllComponentsInBuildOrder,
         withComponentsInBuildOrder,
@@ -74,23 +75,30 @@ import Distribution.Package
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
-         ( InstalledPackageIndex )
+         ( InstalledPackageIndex, allPackages )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Simple.Setup
          ( ConfigFlags )
+import Distribution.Simple.Utils
+         ( shortRelativePath )
 import Distribution.Text
          ( display )
 import Distribution.System
-          ( Platform )
+         ( Platform (..), OS (..) )
+import Distribution.Utils.NubList
+         ( NubListR, toNubListR )
 
 import Data.Array ((!))
 import Data.Binary (Binary)
 import Data.Graph
-import Data.List (nub, find)
+import Data.List (nub, find, stripPrefix)
 import Data.Maybe
 import Data.Tree  (flatten)
 import GHC.Generics (Generic)
 import Data.Map (Map)
+
+import System.Directory (canonicalizePath)
+import System.FilePath  ((</>))
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -402,6 +410,55 @@ checkComponentsCyclic es =
      in case cycles of
          []    -> Nothing
          (c:_) -> Just (map vertexToNode c)
+
+
+depLibraryPaths :: Bool -- ^ Building for inplace?
+                -> Bool -- ^ Generate prefix-relative rpaths
+                -> LocalBuildInfo
+                -> ComponentLocalBuildInfo
+                -> IO (NubListR FilePath)
+depLibraryPaths inplace relative lbi clbi = do
+    let pkgDescr    = localPkgDescr lbi
+        installDirs = absoluteInstallDirs pkgDescr lbi NoCopyDest
+        executable  = case clbi of
+                        ExeComponentLocalBuildInfo {} -> True
+                        _                             -> False
+        relDir | executable = bindir installDirs
+               | otherwise  = libdir installDirs
+
+    let hasInternalDeps = not $ null
+                        $ [ pkgid
+                          | (_,pkgid) <- componentPackageDeps clbi
+                          , internal pkgid
+                          ]
+
+    let ipkgs          = allPackages (installedPkgs lbi)
+        allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
+        allDepLibDirs' = if hasInternalDeps
+                            then (libdir installDirs) : allDepLibDirs
+                            else allDepLibDirs
+    allDepLibDirsC <- mapM canonicalizePath allDepLibDirs'
+
+    let (Platform _ hostOS) = hostPlatform lbi
+        hostPref = case hostOS of
+                     OSX -> "@loader_path"
+                     _   -> "$ORIGIN"
+
+    let p                = prefix installDirs
+        prefixRelative l = isJust (stripPrefix p l)
+        rpaths
+          | relative &&
+            prefixRelative relDir = map (\l ->
+                                          if prefixRelative l
+                                             then hostPref </>
+                                                  shortRelativePath relDir l
+                                             else l
+                                        ) allDepLibDirsC
+          | otherwise             = allDepLibDirsC
+
+    return (toNubListR rpaths)
+  where
+    internal pkgid = pkgid == packageId (localPkgDescr lbi)
 
 
 -- -----------------------------------------------------------------------------

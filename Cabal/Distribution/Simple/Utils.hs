@@ -75,6 +75,7 @@ module Distribution.Simple.Utils (
 
         -- * environment variables
         isInSearchPath,
+        addLibraryPath,
 
         -- * simple file globbing
         matchFileGlob,
@@ -127,6 +128,8 @@ module Distribution.Simple.Utils (
         wrapLine,
   ) where
 
+import Data.Functor
+    ( (<$>) )
 import Control.Monad
     ( join, when, unless, filterM )
 import Control.Concurrent.MVar
@@ -146,13 +149,14 @@ import System.Directory
     , doesDirectoryExist, doesFileExist, removeFile, findExecutable
     , getModificationTime )
 import System.Environment
-    ( getProgName )
+    ( getProgName, lookupEnv )
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
     ( normalise, (</>), (<.>)
     , getSearchPath, joinPath, takeDirectory, splitFileName
-    , splitExtension, splitExtensions, splitDirectories )
+    , splitExtension, splitExtensions, splitDirectories
+    , searchPathSeparator )
 import System.Directory
     ( createDirectory, renameFile, removeDirectoryRecursive )
 import System.IO
@@ -174,6 +178,8 @@ import Distribution.Package
     ( PackageIdentifier )
 import Distribution.ModuleName (ModuleName)
 import qualified Distribution.ModuleName as ModuleName
+import Distribution.System
+    ( OS (..) )
 import Distribution.Version
     (Version(..))
 
@@ -693,6 +699,20 @@ getDirectoryContentsRecursive topdir = recurseDirectories [""]
 -- | Is this directory in the system search path?
 isInSearchPath :: FilePath -> IO Bool
 isInSearchPath path = fmap (elem path) getSearchPath
+
+addLibraryPath :: OS
+               -> [FilePath]
+               -> [(String,String)]
+               -> IO [(String,String)]
+addLibraryPath os paths env = do
+  let libPaths = intercalate [searchPathSeparator] paths
+      ldPath = case os of
+                 OSX -> "DYLD_LIBRARY_PATH"
+                 _   -> "LD_LIBRARY_PATH"
+  ldEnv <- maybe libPaths (++ (searchPathSeparator:libPaths)) <$>
+           lookupEnv ldPath
+
+  return ((ldPath,ldEnv):env)
 
 ----------------
 -- File globbing
