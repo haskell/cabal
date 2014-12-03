@@ -456,6 +456,8 @@ depLibraryPaths inplace relative lbi clbi = do
     return libPaths
   where
     internal pkgid = pkgid == packageId (localPkgDescr lbi)
+    -- 'canonicalizePath' fails on UNIX when the directory does not exists.
+    -- So just don't canonicalize when it doesn't exist.
     canonicalizePathNoFail p = do
       exists <- doesDirectoryExist p
       if exists
