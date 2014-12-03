@@ -27,12 +27,10 @@ import Distribution.Simple.Utils
 import Distribution.System ( Platform (..) )
 import Distribution.TestSuite
 import Distribution.Text
-import Distribution.Utils.NubList ( fromNubListR )
 import Distribution.Verbosity ( normal )
 
 import Control.Exception ( bracket )
 import Control.Monad ( when, unless )
-import Data.Functor ( (<$>) )
 import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
@@ -98,9 +96,8 @@ runTest pkg_descr lbi flags suite = do
                                                    lbi
                                                    (LBI.CTestName
                                                       (PD.testName suite))
-                                  paths <- fromNubListR <$>
-                                              LBI.depLibraryPaths
-                                              True False lbi clbi
+                                  paths <- LBI.depLibraryPaths
+                                             True False lbi clbi
                                   addLibraryPath os paths shellEnv
                                 else return shellEnv
                 rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')

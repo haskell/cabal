@@ -84,9 +84,7 @@ import Distribution.Simple.Utils
 import Distribution.Text
          ( display )
 import Distribution.System
-         ( Platform (..), OS (..) )
-import Distribution.Utils.NubList
-         ( NubListR, toNubListR )
+         ( Platform (..) )
 
 import Data.Array ((!))
 import Data.Binary (Binary)
@@ -98,7 +96,6 @@ import GHC.Generics (Generic)
 import Data.Map (Map)
 
 import System.Directory (doesDirectoryExist, canonicalizePath)
-import System.FilePath  ((</>))
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -411,12 +408,15 @@ checkComponentsCyclic es =
          []    -> Nothing
          (c:_) -> Just (map vertexToNode c)
 
-
+-- | Determine the directories containing the dynamic libraries of the
+-- transitive dependencies of the component we are building.
+--
+-- When wanted, and possible, returns paths relative to the installDirs 'prefix'
 depLibraryPaths :: Bool -- ^ Building for inplace?
-                -> Bool -- ^ Generate prefix-relative rpaths
+                -> Bool -- ^ Generate prefix-relative library paths
                 -> LocalBuildInfo
-                -> ComponentLocalBuildInfo
-                -> IO (NubListR FilePath)
+                -> ComponentLocalBuildInfo -- ^ Component that is being built
+                -> IO [FilePath]
 depLibraryPaths inplace relative lbi clbi = do
     let pkgDescr    = localPkgDescr lbi
         installDirs = absoluteInstallDirs pkgDescr lbi NoCopyDest
@@ -442,24 +442,18 @@ depLibraryPaths inplace relative lbi clbi = do
                             else allDepLibDirs
     allDepLibDirsC <- mapM canonicalizePathNoFail allDepLibDirs'
 
-    let (Platform _ hostOS) = hostPlatform lbi
-        hostPref = case hostOS of
-                     OSX -> "@loader_path"
-                     _   -> "$ORIGIN"
-
     let p                = prefix installDirs
         prefixRelative l = isJust (stripPrefix p l)
-        rpaths
+        libPaths
           | relative &&
             prefixRelative relDir = map (\l ->
                                           if prefixRelative l
-                                             then hostPref </>
-                                                  shortRelativePath relDir l
+                                             then shortRelativePath relDir l
                                              else l
                                         ) allDepLibDirsC
           | otherwise             = allDepLibDirsC
 
-    return (toNubListR rpaths)
+    return libPaths
   where
     internal pkgid = pkgid == packageId (localPkgDescr lbi)
     canonicalizePathNoFail p = do
