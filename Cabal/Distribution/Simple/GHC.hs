@@ -807,7 +807,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
            createDirectoryIfMissingVerbose verbosity True odir
            runGhcProg (if isGhcDynamic
                        -- Dynamic GHC requires C sources to be built with
-                       -- -fPIC for repl to work. See #2207.
+                       -- -fPIC for REPL to work. See #2207.
                        then vanillaCcOpts { ghcOptFPic = toFlag True }
                        else vanillaCcOpts)
            unless forRepl $
