@@ -103,7 +103,7 @@ import Distribution.Verbosity
 import Distribution.Text
          ( display, simpleParse )
 import Distribution.Utils.NubList
-         ( overNubListR, toNubListR )
+         ( NubListR, overNubListR, toNubListR )
 import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
@@ -119,7 +119,7 @@ import System.Directory
            getAppUserDataDirectory, createDirectoryIfMissing )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
-                                  splitExtension )
+                                  splitExtension, isRelative )
 import qualified System.Info
 import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
@@ -874,7 +874,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
               else return []
 
     unless (null hObjs && null cObjs && null stubObjs) $ do
-      rpaths <- depLibraryPaths False True lbi clbi
+      rpaths <- getRPaths lbi clbi
 
       let staticObjectFiles =
                  hObjs
@@ -914,9 +914,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptPackages           = toNubListR $ mkGhcOptPackages clbi,
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
-                ghcOptRPaths             = if relocatable lbi
-                                            then rpaths
-                                            else mempty
+                ghcOptRPaths             = rpaths
               }
 
       info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
@@ -991,7 +989,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
-  rpaths              <- depLibraryPaths False True lbi clbi
+  rpaths              <- getRPaths lbi clbi
 
   let isGhcDynamic        = ghcDynamic comp
       dynamicTooSupported = ghcSupportsDynamicToo comp
@@ -1035,10 +1033,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
                       ghcOptInputFiles     = toNubListR
                                              [exeDir </> x | x <- cObjs],
-                      ghcOptRPaths         = if relocatable lbi &&
-                                                withDynExe  lbi
-                                              then rpaths
-                                              else mempty
+                      ghcOptRPaths         = rpaths
                    }
       replOpts   = baseOpts {
                       ghcOptExtra          = overNubListR filterGhciFlags
@@ -1121,6 +1116,41 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
     info verbosity "Linking..."
     runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 
+-- | Calculate the RPATHs for the component we are building.
+--
+-- Calculates relative RPATHs when 'relocatable' is set.
+getRPaths :: LocalBuildInfo
+          -> ComponentLocalBuildInfo -- ^ Component we are building
+          -> IO (NubListR FilePath)
+getRPaths lbi clbi | relocatable lbi && supportRPaths hostOS = do
+    libraryPaths <- depLibraryPaths False True lbi clbi
+    let hostPref = case hostOS of
+                     OSX -> "@loader_path"
+                     _   -> "$ORIGIN"
+        relPath p = if isRelative p then hostPref </> p else p
+        rpaths    = toNubListR (map relPath libraryPaths)
+    return rpaths
+  where
+    (Platform _ hostOS) = hostPlatform lbi
+
+    supportRPaths Linux       = True
+    supportRPaths Windows     = False
+    supportRPaths OSX         = True
+    supportRPaths FreeBSD     = True
+    supportRPaths OpenBSD     = True
+    supportRPaths NetBSD      = True
+    supportRPaths DragonFly   = True
+    supportRPaths Solaris     = True
+    supportRPaths AIX         = False
+    supportRPaths HPUX        = False
+    supportRPaths IRIX        = False
+    supportRPaths HaLVM       = False
+    supportRPaths IOS         = False
+    supportRPaths (OtherOS _) = False
+    -- Do _not_ add a default case so that we get a warning here when a new OS
+    -- is added.
+
+getRPaths _ _ = return mempty
 
 -- | Filter the "-threaded" flag when profiling as it does not
 --   work with ghc-6.8 and older.

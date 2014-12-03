@@ -23,7 +23,6 @@ import Distribution.Simple.LocalBuildInfo    (ComponentName (..),
 import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv,
                                               addLibraryPath)
 import Distribution.System                   (Platform (..))
-import Distribution.Utils.NubList            (fromNubListR)
 import Distribution.Verbosity                (Verbosity)
 
 import Data.Functor                          ((<$>))
@@ -72,8 +71,7 @@ run verbosity lbi exe exeArgs = do
              then do let (Platform _ os) = hostPlatform lbi
                          clbi = getComponentLocalBuildInfo lbi
                                   (CExeName (exeName exe))
-                     paths <- fromNubListR <$> depLibraryPaths True False
-                                                               lbi  clbi
+                     paths <- depLibraryPaths True False lbi clbi
                      addLibraryPath os paths env
              else return env
   notice verbosity $ "Running " ++ exeName exe ++ "..."

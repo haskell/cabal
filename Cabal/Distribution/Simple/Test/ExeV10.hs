@@ -21,12 +21,10 @@ import Distribution.Simple.Utils
 import Distribution.System ( Platform (..) )
 import Distribution.TestSuite
 import Distribution.Text
-import Distribution.Utils.NubList ( fromNubListR )
 import Distribution.Verbosity ( normal )
 
 import Control.Concurrent (forkIO)
 import Control.Monad ( unless, void, when )
-import Data.Functor ( (<$>) )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
     , getCurrentDirectory, removeDirectoryRecursive )
@@ -88,8 +86,7 @@ runTest pkg_descr lbi flags suite = do
                     then do let (Platform _ os) = LBI.hostPlatform lbi
                                 clbi = LBI.getComponentLocalBuildInfo lbi
                                          (LBI.CTestName (PD.testName suite))
-                            paths <- fromNubListR <$> LBI.depLibraryPaths
-                                                        True False lbi clbi
+                            paths <- LBI.depLibraryPaths True False lbi clbi
                             addLibraryPath os paths shellEnv
                     else return shellEnv
 
