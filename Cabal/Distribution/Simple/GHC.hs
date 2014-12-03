@@ -805,7 +805,11 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                }
                odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
            createDirectoryIfMissingVerbose verbosity True odir
-           runGhcProg vanillaCcOpts
+           runGhcProg (if isGhcDynamic
+                       -- Dynamic GHC requires C sources to be built with
+                       -- -fPIC for repl to work. See #2207.
+                       then vanillaCcOpts { ghcOptFPic = toFlag True }
+                       else vanillaCcOpts)
            unless forRepl $
              whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
            unless forRepl $ whenProfLib (runGhcProg profCcOpts)
