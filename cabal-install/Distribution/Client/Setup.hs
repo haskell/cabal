@@ -665,8 +665,9 @@ updateCommand = CommandUI {
     commandDescription  = Just $ \_ ->
       "For all known remote repositories, download the package list.\n",
     commandNotes        = Just $ \_ ->
-         "relevant configuration values:\n"
-      ++ "  remote-repo\n",
+      relevantConfigValuesText ["remote-repo"
+                               ,"remote-repo-cache"
+                               ,"local-repo"],
     commandUsage        = usageFlags "update",
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> [optionVerbosity id const]
@@ -1353,7 +1354,8 @@ uploadCommand = CommandUI {
     commandSynopsis     = "Uploads source packages to Hackage.",
     commandDescription  = Nothing,
     commandNotes        = Just $ \_ ->
-         "You can store your Hackage login in the ~/.cabal/config file\n",
+         "You can store your Hackage login in the ~/.cabal/config file\n"
+      ++ relevantConfigValuesText ["username", "password"],
     commandUsage        = \pname ->
          "Usage: " ++ pname ++ " upload [FLAGS] TARFILES\n",
     commandDefaultFlags = defaultUploadFlags,
@@ -1689,28 +1691,6 @@ defaultSandboxFlags = SandboxFlags {
   sandboxLocation  = toFlag defaultSandboxLocation
   }
 
--- TODO: these next three functions are rather general, and might
---       be useful elsewhere
-
-headLine :: String -> String
-headLine = unlines
-         . map unwords
-         . wrapLine 79
-         . words
-
-paragraph :: String -> String
-paragraph = (++"\n")
-          . unlines
-          . map unwords
-          . wrapLine 79
-          . words
-
-indentParagraph :: String -> String
-indentParagraph = unlines
-                . map (("  "++).unwords)
-                . wrapLine 77
-                . words
-
 sandboxCommand :: CommandUI SandboxFlags
 sandboxCommand = CommandUI {
   commandName         = "sandbox",
@@ -1762,7 +1742,9 @@ sandboxCommand = CommandUI {
       ++ " installed in the sandbox. For subcommands, see the help for"
       ++ " ghc-pkg. Affected by the compiler version specified by `configure`."
     ],
-  commandNotes        = Nothing,
+  commandNotes        = Just $ \_ ->
+       relevantConfigValuesText ["require-sandbox"
+                                ,"ignore-sandbox"],
   commandUsage        = usageAlternatives "sandbox"
     [ "init          [FLAGS]"
     , "delete        [FLAGS]"
@@ -2022,3 +2004,31 @@ parseRepo = do
     remoteRepoName = name,
     remoteRepoURI  = uri
   }
+
+-- ------------------------------------------------------------
+-- * Helpers for Documentation
+-- ------------------------------------------------------------
+
+headLine :: String -> String
+headLine = unlines
+         . map unwords
+         . wrapLine 79
+         . words
+
+paragraph :: String -> String
+paragraph = (++"\n")
+          . unlines
+          . map unwords
+          . wrapLine 79
+          . words
+
+indentParagraph :: String -> String
+indentParagraph = unlines
+                . map (("  "++).unwords)
+                . wrapLine 77
+                . words
+
+relevantConfigValuesText :: [String] -> String
+relevantConfigValuesText vs =
+     "Relevant global configuration keys:\n"
+  ++ concat ["  " ++ v ++ "\n" |v <- vs]
