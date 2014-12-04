@@ -1122,8 +1122,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
 getRPaths :: LocalBuildInfo
           -> ComponentLocalBuildInfo -- ^ Component we are building
           -> IO (NubListR FilePath)
-getRPaths lbi clbi | relocatable lbi && supportRPaths hostOS = do
-    libraryPaths <- depLibraryPaths False True lbi clbi
+getRPaths lbi clbi | supportRPaths hostOS = do
+    libraryPaths <- depLibraryPaths False (relocatable lbi) lbi clbi
     let hostPref = case hostOS of
                      OSX -> "@loader_path"
                      _   -> "$ORIGIN"
