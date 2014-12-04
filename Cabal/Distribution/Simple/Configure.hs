@@ -1576,7 +1576,11 @@ checkRelocatable verbosity pkg lbi
                 , depsPrefixRelative
                 ]
   where
-    -- Check if the OS support relocatable builds
+    -- Check if the OS support relocatable builds.
+    --
+    -- If you add new OS' to this list, and your OS supports dynamic libraries
+    -- and RPATH, make sure you add your OS to RPATH-support list of:
+    -- Cabal.Simple.GHC.getRPaths
     checkOS
         = unless (os `elem` [ OSX, Linux ])
         $ die $ "Operating system: " ++ display os ++
