@@ -1044,6 +1044,12 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
         when (noExtraArgs extra) $
           die "The 'sandbox add-source' command expects at least one argument"
         sandboxAddSource verbosity extra sandboxFlags globalFlags
+    ("delete-source":extra) -> do
+        when (noExtraArgs extra) $
+          die "The 'sandbox delete-source' command expects \
+              \at least one argument"
+        sandboxDeleteSource verbosity extra sandboxFlags globalFlags
+    ["list-sources"] -> sandboxListSources verbosity sandboxFlags globalFlags
 
     -- More advanced commands.
     ("hc-pkg":extra) -> do
@@ -1053,12 +1059,6 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
     ["buildopts"] -> die "Not implemented!"
 
     -- Hidden commands.
-    ("delete-source":extra) -> do
-        when (noExtraArgs extra) $
-          die "The 'sandbox delete-source' command expects \
-              \at least one argument"
-        sandboxDeleteSource verbosity extra sandboxFlags globalFlags
-    ["list-sources"] -> sandboxListSources verbosity sandboxFlags globalFlags
     ["dump-pkgenv"]  -> dumpPackageEnvironment verbosity sandboxFlags globalFlags
 
     -- Error handling.
