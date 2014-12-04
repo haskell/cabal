@@ -87,7 +87,7 @@ runTest pkg_descr lbi flags suite = do
                                 clbi = LBI.getComponentLocalBuildInfo lbi
                                          (LBI.CTestName (PD.testName suite))
                             paths <- LBI.depLibraryPaths True False lbi clbi
-                            addLibraryPath os paths shellEnv
+                            return (addLibraryPath os paths shellEnv)
                     else return shellEnv
 
     exit <- rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')
