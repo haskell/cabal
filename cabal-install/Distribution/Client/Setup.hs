@@ -1633,7 +1633,8 @@ sandboxCommand = CommandUI {
   commandUsage        = \pname ->
        "Usage: " ++ pname ++ " sandbox init\n"
     ++ "   or: " ++ pname ++ " sandbox delete\n"
-    ++ "   or: " ++ pname ++ " sandbox add-source  [PATHS]\n\n"
+    ++ "   or: " ++ pname ++ " sandbox add-source  [PATHS]\n"
+    ++ "   or: " ++ pname ++ " sandbox delete-source  [PATHS]\n\n"
     ++ "   or: " ++ pname ++ " sandbox hc-pkg      -- [ARGS]\n"
     ++ "   or: " ++ pname ++ " sandbox list-sources\n\n"
     ++ "Flags for sandbox:",
