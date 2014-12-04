@@ -1133,14 +1133,21 @@ getRPaths lbi clbi | supportRPaths hostOS = do
   where
     (Platform _ hostOS) = hostPlatform lbi
 
+    -- The list of RPath-supported operating systems below reflects the
+    -- platforms on which Cabal's RPATH handling is tested. It does _NOT_
+    -- reflect whether the OS supports RPATH.
+
+    -- E.g. when this comment was written, the *BSD operating systems were
+    -- untested with regards to Cabal RPATH handling, and were hence set to
+    -- 'False', while those operating systems themselves do support RPATH.
     supportRPaths Linux       = True
     supportRPaths Windows     = False
     supportRPaths OSX         = True
-    supportRPaths FreeBSD     = True
-    supportRPaths OpenBSD     = True
-    supportRPaths NetBSD      = True
-    supportRPaths DragonFly   = True
-    supportRPaths Solaris     = True
+    supportRPaths FreeBSD     = False
+    supportRPaths OpenBSD     = False
+    supportRPaths NetBSD      = False
+    supportRPaths DragonFly   = False
+    supportRPaths Solaris     = False
     supportRPaths AIX         = False
     supportRPaths HPUX        = False
     supportRPaths IRIX        = False
