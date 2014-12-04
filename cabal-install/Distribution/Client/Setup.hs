@@ -92,7 +92,7 @@ import Distribution.Simple.Utils
 import Data.Char
          ( isSpace, isAlphaNum )
 import Data.List
-         ( intercalate )
+         ( intercalate, deleteFirstsBy )
 import Data.Maybe
          ( listToMaybe, maybeToList, fromMaybe )
 import Data.Monoid
@@ -151,17 +151,99 @@ globalCommand commands = CommandUI {
       let
         commands' = commands ++ [commandAddAction helpCommandUI undefined]
         cmdDescs = getNormalCommandDescriptions commands'
+        -- if new commands are added, we want them to appear even if they
+        -- are not included in the custom listing below. Thus, we calculate
+        -- the `otherCmds` list and append it under the `other` category.
+        -- Alternatively, a new testcase could be added that ensures that
+        -- the set of commands listed here is equal to the set of commands
+        -- that are actually available.
+        otherCmds = deleteFirstsBy (==) (map fst cmdDescs)
+          [ "help"
+          , "update"
+          , "install"
+          , "fetch"
+          , "list"
+          , "info"
+          , "user-config"
+          , "get"
+          , "init"
+          , "configure"
+          , "build"
+          , "clean"
+          , "run"
+          , "repl"
+          , "test"
+          , "bench"
+          , "check"
+          , "sdist"
+          , "upload"
+          , "report"
+          , "freeze"
+          , "haddock"
+          , "hscolour"
+          , "copy"
+          , "register"
+          , "sandbox"
+          , "exec"
+          ]
         maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
         align str = str ++ replicate (maxlen - length str) ' '
+        startGroup n = " ["++n++"]"
+        par          = ""
+        addCmd n     = case lookup n cmdDescs of
+                         Nothing -> ""
+                         Just d -> "  " ++ align n ++ "    " ++ d
+        addCmdCustom n d = case lookup n cmdDescs of -- make sure that the
+                                                  -- command still exists.
+                         Nothing -> ""
+                         Just _ -> "  " ++ align n ++ "    " ++ d
       in
          "Commands:\n"
-      ++ unlines [ "  " ++ align name ++ "    " ++ description
-                 | (name, description) <- cmdDescs ]
+      ++ unlines (
+        [ startGroup "global"
+        , addCmd "update"
+        , addCmd "install"
+        , par
+        , addCmd "help"
+        , addCmd "info"
+        , addCmd "list"
+        , addCmd "fetch"
+        , addCmd "user-config"
+        , par
+        , startGroup "package"
+        , addCmd "get"
+        , addCmd "init"
+        , par
+        , addCmd "configure"
+        , addCmd "build"
+        , addCmd "clean"
+        , par
+        , addCmd "run"
+        , addCmd "repl"
+        , addCmd "test"
+        , addCmd "bench"
+        , par
+        , addCmd "check"
+        , addCmd "sdist"
+        , addCmd "upload"
+        , addCmd "report"
+        , par
+        , addCmd "freeze"
+        , addCmd "haddock"
+        , addCmd "hscolour"
+        , addCmd "copy"
+        , addCmd "register"
+        , par
+        , startGroup "sandbox"
+        , addCmd "exec"
+        , addCmdCustom "repl" "Open interpreter with access to sandbox packages."
+        ] ++ if null otherCmds then [] else par
+                                           :startGroup "other"
+                                           :[addCmd n | n <- otherCmds])
       ++ "\n"
       ++ "For more information about a command use:\n"
-      ++ "  " ++ pname ++ " COMMAND --help\n"
-      ++ "or\n"
-      ++ "  " ++ pname ++ " help COMMAND\n"
+      ++ "   " ++ pname ++ " COMMAND --help\n"
+      ++ "or " ++ pname ++ " help COMMAND\n"
       ++ "\n"
       ++ "To install Cabal packages from hackage use:\n"
       ++ "  " ++ pname ++ " install foo [--dry-run]\n"
