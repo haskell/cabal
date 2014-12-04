@@ -22,6 +22,8 @@ module Distribution.Simple.Command (
   commandShowOptions,
   CommandParse(..),
   commandParseArgs,
+  getNormalCommandDescriptions,
+  helpCommandUI,
 
   -- ** Constructing commands
   ShowOrParseArgs(..),
@@ -529,7 +531,7 @@ commandsRun :: CommandUI a
             -> [String]
             -> CommandParse (a, CommandParse action)
 commandsRun globalCommand commands args =
-  case commandParseArgs globalCommand' True args of
+  case commandParseArgs globalCommand True args of
     CommandHelp      help          -> CommandHelp help
     CommandList      opts          -> CommandList (opts ++ commandNames)
     CommandErrors    errs          -> CommandErrors errs
@@ -550,23 +552,6 @@ commandsRun globalCommand commands args =
                                    ++ " (try --help)\n"]
     commands'      = commands ++ [commandAddAction helpCommandUI undefined]
     commandNames   = [ name | (Command name _ _ NormalCommand) <- commands' ]
-    globalCommand' = globalCommand {
-      commandUsage = \pname ->
-           (case commandUsage globalCommand pname of
-             ""       -> ""
-             original -> original ++ "\n")
-        ++ "Usage: " ++ pname ++ " [GLOBAL FLAGS] [COMMAND [FLAGS]]\n",
-      commandDescription = Just $ \pname ->
-           "Commands:\n"
-        ++ unlines [ "  " ++ align name ++ "    " ++ description
-                   | Command name description _ NormalCommand <- commands' ]
-        ++ case commandDescription globalCommand of
-             Nothing   -> ""
-             Just desc -> '\n': desc pname
-    }
-      where maxlen = maximum
-                    [ length name | Command name _ _ NormalCommand <- commands' ]
-            align str = str ++ replicate (maxlen - length str) ' '
 
     -- A bit of a hack: support "prog help" as a synonym of "prog --help"
     -- furthermore, support "prog help command" as "prog command --help"
@@ -585,13 +570,7 @@ commandsRun globalCommand commands args =
                 _                -> CommandHelp globalHelp
             _                    -> badCommand name
 
-     where globalHelp = commandHelp globalCommand'
-    helpCommandUI = mkCommandUI
-      "help"
-      "Help about commands."
-      ["[FLAGS]", "COMMAND [FLAGS]"]
-      ()
-      (const [])
+     where globalHelp = commandHelp globalCommand
 
 -- | Utility function, many commands do not accept additional flags. This
 -- action fails with a helpful error message if the user supplies any extra.
@@ -602,3 +581,17 @@ noExtraFlags extraFlags =
   die $ "Unrecognised flags: " ++ intercalate ", " extraFlags
 --TODO: eliminate this function and turn it into a variant on commandAddAction
 --      instead like commandAddActionNoArgs that doesn't supply the [String]
+
+-- | Helper function for creating globalCommand description
+getNormalCommandDescriptions :: [Command action] -> [(String, String)]
+getNormalCommandDescriptions cmds = 
+  [ (name, description)
+  | Command name description _ NormalCommand <- cmds ]
+
+helpCommandUI :: CommandUI ()
+helpCommandUI = mkCommandUI
+  "help"
+  "Help about commands."
+  ["[FLAGS]", "COMMAND [FLAGS]"]
+  ()
+  (const [])

@@ -205,15 +205,27 @@ defaultGlobalFlags  = GlobalFlags {
     globalNumericVersion = Flag False
   }
 
-globalCommand :: CommandUI GlobalFlags
-globalCommand = CommandUI
+globalCommand :: [Command action] -> CommandUI GlobalFlags
+globalCommand commands = CommandUI
   { commandName         = ""
   , commandSynopsis     = ""
-  , commandUsage        = \_ ->
+  , commandUsage        = \pname ->
          "This Setup program uses the Haskell Cabal Infrastructure.\n"
       ++ "See http://www.haskell.org/cabal/ for more information.\n"
-  , commandDescription  = Just $ \pname ->
-         "For more information about a command use\n"
+      ++ "\n"
+      ++ "Usage: " ++ pname ++ " [GLOBAL FLAGS] [COMMAND [FLAGS]]\n"
+  , commandDescription = Just $ \pname ->
+      let
+        commands' = commands ++ [commandAddAction helpCommandUI undefined]
+        cmdDescs = getNormalCommandDescriptions commands'
+        maxlen    = maximum $ [length name | (name, _) <- cmdDescs]
+        align str = str ++ replicate (maxlen - length str) ' '
+      in
+         "Commands:\n"
+      ++ unlines [ "  " ++ align name ++ "    " ++ description
+                 | (name, description) <- cmdDescs ]
+      ++ "\n"
+      ++ "For more information about a command use\n"
       ++ "  " ++ pname ++ " COMMAND --help\n\n"
       ++ "Typical steps for installing Cabal packages:\n"
       ++ concat [ "  " ++ pname ++ " " ++ x ++ "\n"

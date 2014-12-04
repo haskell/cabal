@@ -173,7 +173,7 @@ main = do
 
 mainWorker :: [String] -> IO ()
 mainWorker args = topHandler $
-  case commandsRun globalCommand commands args of
+  case commandsRun (globalCommand commands) commands args of
     CommandHelp   help                 -> printGlobalHelp help
     CommandList   opts                 -> printOptionsList opts
     CommandErrors errs                 -> printErrors errs

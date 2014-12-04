@@ -143,7 +143,7 @@ defaultMainNoRead pkg_descr =
 
 defaultMainHelper :: UserHooks -> Args -> IO ()
 defaultMainHelper hooks args = topHandler $
-  case commandsRun globalCommand commands args of
+  case commandsRun (globalCommand commands) commands args of
     CommandHelp   help                 -> printHelp help
     CommandList   opts                 -> printOptionsList opts
     CommandErrors errs                 -> printErrors errs
