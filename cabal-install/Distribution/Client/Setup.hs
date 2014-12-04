@@ -1800,7 +1800,7 @@ defaultExecFlags = ExecFlags {
 execCommand :: CommandUI ExecFlags
 execCommand = CommandUI {
   commandName         = "exec",
-  commandSynopsis     = "Give a command access to the sandbox package repository",
+  commandSynopsis     = "Give a command access to the sandbox package repository.",
   commandDescription  = Just $ \pname -> wrapText $
        -- TODO: this is too GHC-focused for my liking..
        "A directly invoked GHC will not automatically be aware of any"
@@ -1870,18 +1870,22 @@ instance Monoid UserConfigFlags where
 userConfigCommand :: CommandUI UserConfigFlags
 userConfigCommand = CommandUI {
   commandName         = "user-config",
-  commandSynopsis     = "Manipulate the user's ~/.cabal/config file.",
-  commandDescription  = Just $ \_ ->
-       "Allows pseudo-diff-ing and updating of the user's ~/.cabal/config "
-    ++ "file. The\ndiff is against what cabal would generate if the user "
-    ++ "config file did not\nexist. The update command overlays the user's "
-    ++ "existing settings over the\ncurrent version of the default settings "
-    ++ "and writes it back to ~/.cabal/config.\n",
+  commandSynopsis     = "Display and update the user's global cabal configuration.",
+  commandDescription  = Just $ \_ -> wrapText $
+       "When upgrading cabal, the set of configuration keys and their default"
+    ++ " values may change. This command provides means to merge the existing"
+    ++ " config in ~/.cabal/config"
+    ++ " (i.e. all bindings that are actually defined and not commented out)"
+    ++ " and the default config of the new version.\n"
+    ++ "\n"
+    ++ "diff: Shows a pseudo-diff of the user's ~/.cabal/config file and"
+    ++ " the default configuration that would be created by cabal if the"
+    ++ " config file did not exist.\n"
+    ++ "update: Applies the pseudo-diff to the configuration that would be"
+    ++ " created by default, and write the result back to ~/.cabal/config.",
 
   commandNotes        = Nothing,
-  commandUsage        = \ pname ->
-      "Usage: " ++ pname ++ " user-config diff\n"
-   ++ "       " ++ pname ++ " user-config update\n",
+  commandUsage        = usageAlternatives "user-config" ["diff", "update"],
   commandDefaultFlags = mempty,
   commandOptions      = \ _ -> [
    optionVerbosity userConfigVerbosity (\v flags -> flags { userConfigVerbosity = v })
