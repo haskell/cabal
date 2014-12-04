@@ -1578,7 +1578,7 @@ checkRelocatable verbosity pkg lbi
   where
     -- Check if the OS support relocatable builds
     checkOS
-        = unless (os `elem` [ OSX ])
+        = unless (os `elem` [ OSX, Linux ])
         $ die $ "Operating system: " ++ display os ++
                 ", does not support relocatable builds"
       where
