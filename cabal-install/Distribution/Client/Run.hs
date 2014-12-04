@@ -72,7 +72,7 @@ run verbosity lbi exe exeArgs = do
                          clbi = getComponentLocalBuildInfo lbi
                                   (CExeName (exeName exe))
                      paths <- depLibraryPaths True False lbi clbi
-                     addLibraryPath os paths env
+                     return (addLibraryPath os paths env)
              else return env
   notice verbosity $ "Running " ++ exeName exe ++ "..."
   rawSystemExitWithEnv verbosity path exeArgs env'

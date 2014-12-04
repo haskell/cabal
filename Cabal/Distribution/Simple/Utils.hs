@@ -128,8 +128,6 @@ module Distribution.Simple.Utils (
         wrapLine,
   ) where
 
-import Data.Functor
-    ( (<$>) )
 import Control.Monad
     ( join, when, unless, filterM )
 import Control.Concurrent.MVar
@@ -149,7 +147,7 @@ import System.Directory
     , doesDirectoryExist, doesFileExist, removeFile, findExecutable
     , getModificationTime )
 import System.Environment
-    ( getProgName, lookupEnv )
+    ( getProgName )
 import System.Exit
     ( exitWith, ExitCode(..) )
 import System.FilePath
@@ -703,16 +701,21 @@ isInSearchPath path = fmap (elem path) getSearchPath
 addLibraryPath :: OS
                -> [FilePath]
                -> [(String,String)]
-               -> IO [(String,String)]
-addLibraryPath os paths env = do
-  let libPaths = intercalate [searchPathSeparator] paths
-      ldPath = case os of
-                 OSX -> "DYLD_LIBRARY_PATH"
-                 _   -> "LD_LIBRARY_PATH"
-  ldEnv <- maybe libPaths (++ (searchPathSeparator:libPaths)) <$>
-           lookupEnv ldPath
+               -> [(String,String)]
+addLibraryPath os paths = addEnv
+  where
+    pathsString = intercalate [searchPathSeparator] paths
+    ldPath = case os of
+               OSX -> "DYLD_LIBRARY_PATH"
+               _   -> "LD_LIBRARY_PATH"
 
-  return (env ++ [(ldPath,ldEnv)])
+    addEnv [] = [(ldPath,pathsString)]
+    addEnv ((key,value):xs)
+      | key == ldPath =
+          if null value
+             then (key,pathsString):xs
+             else (key,value ++ (searchPathSeparator:pathsString)):xs
+      | otherwise     = (key,value):addEnv xs
 
 ----------------
 -- File globbing

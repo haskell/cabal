@@ -98,7 +98,7 @@ runTest pkg_descr lbi flags suite = do
                                                       (PD.testName suite))
                                   paths <- LBI.depLibraryPaths
                                              True False lbi clbi
-                                  addLibraryPath os paths shellEnv
+                                  return (addLibraryPath os paths shellEnv)
                                 else return shellEnv
                 rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')
                                    -- these handles are closed automatically
