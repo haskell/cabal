@@ -712,7 +712,7 @@ addLibraryPath os paths env = do
   ldEnv <- maybe libPaths (++ (searchPathSeparator:libPaths)) <$>
            lookupEnv ldPath
 
-  return (env ++ (ldPath,ldEnv))
+  return (env ++ [(ldPath,ldEnv)])
 
 ----------------
 -- File globbing
