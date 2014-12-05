@@ -1698,8 +1698,8 @@ testCommand = CommandUI
       ++ " are additional ones; e.g. with `" ++ pname
       ++ " install --only-dependencies --enable-tests`.\n"
       ++ "\n"
-      ++ "The package can, using the UserHooks functionality, define actions"
-      ++ " to be executed before and after running the tests.\n"
+      ++ "By defining UserHooks in a custom Setup.hs, the package can"
+      ++ " define actions to be executed before and after running tests.\n"
   , commandNotes        = Nothing
   , commandUsage        = usageAlternatives "test"
       [ "[FLAGS]"
@@ -1813,8 +1813,9 @@ benchmarkCommand = CommandUI
       ++ " there are additional ones; e.g. with `" ++ pname
       ++ " install --only-dependencies --enable-benchmarks`.\n"
       ++ "\n"
-      ++ "The package can, using the UserHooks functionality, define actions"
-      ++ " to be executed before and after running the benchmarks.\n"
+      ++ "By defining UserHooks in a custom Setup.hs, the package can"
+      ++ " define actions to be executed before and after running"
+      ++ " benchmarks.\n"
   , commandNotes        = Nothing
   , commandUsage        = usageAlternatives "bench"
       [ "[FLAGS]"
