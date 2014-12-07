@@ -17,7 +17,7 @@ mkPlan :: Platform -> CompilerId ->
           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           [CP QPN] -> Either [PlanProblem] InstallPlan
 mkPlan plat comp iidx sidx cps =
-  new plat comp (CI.fromList (map (convCP iidx sidx) cps))
+  new plat comp (SI.fromList (map (convCP iidx sidx) cps))
 
 convCP :: SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           CP QPN -> PlanPackage

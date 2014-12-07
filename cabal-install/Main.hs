@@ -861,7 +861,7 @@ updateAction verbosityFlag extraArgs globalFlags = do
   unless (null extraArgs) $
     die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag verbosityFlag
-  config <- loadConfig verbosity (globalConfigFile globalFlags) mempty
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags NoFlag
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   update verbosity (globalRepos globalFlags')
 
