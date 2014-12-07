@@ -450,9 +450,10 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     hasExe       = fromMaybe False
                    (fmap (not . null . Source.condExecutables) sourceGeneric),
     executables  = map fst (maybe [] Source.condExecutables sourceGeneric),
-    modules      = combine Installed.exposedModules installed
-                           (maybe [] Source.exposedModules
-                                   . Source.library) source,
+    modules      = combine (map Installed.exposedName . Installed.exposedModules)
+                           installed
+                           (maybe [] getListOfExposedModules . Source.library)
+                           source,
     dependencies =
       combine (map (SourceDependency . simplifyDependency)
                . Source.buildDepends) source
@@ -466,6 +467,10 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
     combine f x g y  = fromJust (fmap f x `mplus` fmap g y)
     installed :: Maybe Installed.InstalledPackageInfo
     installed = latestWithPref versionPref installedPkgs
+
+    getListOfExposedModules lib = Source.exposedModules lib
+                               ++ map Source.moduleReexportName
+                                      (Source.reexportedModules lib)
 
     sourceSelected
       | isJust selectedPkg = selectedPkg

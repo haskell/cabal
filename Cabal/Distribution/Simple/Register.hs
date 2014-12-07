@@ -60,12 +60,12 @@ import Distribution.Simple.Setup
          ( RegisterFlags(..), CopyDest(..)
          , fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.PackageDescription
-         ( PackageDescription(..), Library(..), BuildInfo(..) )
+         ( PackageDescription(..), Library(..), BuildInfo(..), libModules )
 import Distribution.Package
          ( Package(..), packageName, InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, InstalledPackageInfo_(InstalledPackageInfo)
-         , showInstalledPackageInfo, ModuleReexport(..) )
+         , showInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
          ( writeUTF8File, writeFileAtomic, setFileExecutable
@@ -272,14 +272,19 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
     IPI.description        = description pkg,
     IPI.category           = category    pkg,
     IPI.exposed            = libExposed  lib,
-    IPI.exposedModules     = exposedModules lib,
-    IPI.reexportedModules  = map fixupSelfReexport (componentModuleReexports clbi),
+    IPI.exposedModules     = map fixupSelf (componentExposedModules clbi),
     IPI.hiddenModules      = otherModules bi,
+    IPI.instantiatedWith   = map (\(k,(p,n)) ->
+                                   (k,IPI.OriginalModule (IPI.installedPackageId p) n))
+                                 (instantiatedWith lbi),
     IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],
+    -- Note. the libsubdir and datasubdir templates have already been expanded
+    -- into libdir and datadir.
     IPI.libraryDirs        = if hasLibrary
                                then libdir installDirs : extraLibDirs bi
                                else                      extraLibDirs bi,
+    IPI.dataDir            = datadir installDirs,
     IPI.hsLibraries        = [ libname
                              | LibraryName libname <- componentLibraries clbi
                              , hasLibrary ],
@@ -300,21 +305,19 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
   where
     bi = libBuildInfo lib
     (absinc, relinc) = partition isAbsolute (includeDirs bi)
-    hasModules = not $ null (exposedModules lib)
-                    && null (otherModules bi)
+    hasModules = not $ null (libModules lib)
     hasLibrary = hasModules || not (null (cSources bi))
     -- Since we currently don't decide the InstalledPackageId of our package
     -- until just before we register, we didn't have one for the re-exports
-    -- of modules definied within this package, so we used an empty one that
+    -- of modules defined within this package, so we used an empty one that
     -- we fill in here now that we know what it is. It's a bit of a hack,
     -- we ought really to decide the InstalledPackageId ahead of time.
-    fixupSelfReexport mre@ModuleReexport {
-                        moduleReexportDefiningPackage = InstalledPackageId []
-                      }
-                    = mre {
-                        moduleReexportDefiningPackage = ipid
-                      }
-    fixupSelfReexport mre = mre
+    fixupSelf (IPI.ExposedModule n o o') =
+        IPI.ExposedModule n (fmap fixupOriginalModule o)
+                            (fmap fixupOriginalModule o')
+    fixupOriginalModule (IPI.OriginalModule i m) = IPI.OriginalModule (fixupIpid i) m
+    fixupIpid (InstalledPackageId []) = ipid
+    fixupIpid x = x
 
 -- | Construct 'InstalledPackageInfo' for a library that is in place in the
 -- build tree.
@@ -337,8 +340,7 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg ipid lib lbi clbi =
     installDirs =
       (absoluteInstallDirs pkg lbi NoCopyDest) {
         libdir     = inplaceDir </> buildDir lbi,
-        datadir    = inplaceDir,
-        datasubdir = distPref,
+        datadir    = inplaceDir </> dataDir pkg,
         docdir     = inplaceDocdir,
         htmldir    = inplaceHtmldir,
         haddockdir = inplaceHtmldir

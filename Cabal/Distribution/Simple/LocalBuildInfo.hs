@@ -62,12 +62,12 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                substPathTemplate, )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program (ProgramConfiguration)
+import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
          , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
-    ( ModuleReexport(..) )
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..), PackageKey
          , PackageName )
@@ -75,6 +75,7 @@ import Distribution.Simple.Compiler
          ( Compiler(..), PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex )
+import Distribution.ModuleName ( ModuleName )
 import Distribution.Simple.Setup
          ( ConfigFlags )
 import Distribution.Text
@@ -124,6 +125,7 @@ data LocalBuildInfo = LocalBuildInfo {
         pkgKey        :: PackageKey,
                 -- ^ The package key for the current build, calculated from
                 -- the package ID and the dependency graph.
+        instantiatedWith :: [(ModuleName, (InstalledPackageInfo, ModuleName))],
         withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
         withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
@@ -192,7 +194,7 @@ data ComponentLocalBuildInfo
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
-    componentModuleReexports :: [Installed.ModuleReexport],
+    componentExposedModules :: [Installed.ExposedModule],
     componentPackageRenaming :: Map PackageName ModuleRenaming,
     componentLibraries :: [LibraryName]
   }

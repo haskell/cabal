@@ -360,6 +360,8 @@ instance Text ModuleRenaming where
 data Library = Library {
         exposedModules    :: [ModuleName],
         reexportedModules :: [ModuleReexport],
+        requiredSignatures:: [ModuleName], -- ^ What sigs need implementations?
+        exposedSignatures:: [ModuleName], -- ^ What sigs are visible to users?
         libExposed        :: Bool, -- ^ Is the lib to be exposed by default?
         libBuildInfo      :: BuildInfo
     }
@@ -371,12 +373,16 @@ instance Monoid Library where
   mempty = Library {
     exposedModules = mempty,
     reexportedModules = mempty,
+    requiredSignatures = mempty,
+    exposedSignatures = mempty,
     libExposed     = True,
     libBuildInfo   = mempty
   }
   mappend a b = Library {
     exposedModules = combine exposedModules,
     reexportedModules = combine reexportedModules,
+    requiredSignatures = combine requiredSignatures,
+    exposedSignatures = combine exposedSignatures,
     libExposed     = libExposed a && libExposed b, -- so False propagates
     libBuildInfo   = combine libBuildInfo
   }
@@ -408,6 +414,8 @@ withLib pkg_descr f =
 libModules :: Library -> [ModuleName]
 libModules lib = exposedModules lib
               ++ otherModules (libBuildInfo lib)
+              ++ exposedSignatures lib
+              ++ requiredSignatures lib
 
 -- -----------------------------------------------------------------------------
 -- Module re-exports

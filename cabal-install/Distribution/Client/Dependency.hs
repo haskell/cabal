@@ -554,12 +554,15 @@ mkInstallPlan :: Platform
               -> CompilerId
               -> [InstallPlan.PlanPackage] -> InstallPlan
 mkInstallPlan platform comp pkgIndex =
-  case InstallPlan.new platform comp (PackageIndex.fromList pkgIndex) of
+  let index = InstalledPackageIndex.fromList pkgIndex in
+  case InstallPlan.new platform comp index of
     Right plan     -> plan
     Left  problems -> error $ unlines $
         "internal error: could not construct a valid install plan."
       : "The proposed (invalid) plan contained the following problems:"
       : map InstallPlan.showPlanProblem problems
+      ++ "Proposed plan:"
+      : [InstallPlan.showPlanIndex index]
 
 
 -- | Give an interpretation to the global 'PackagesPreference' as

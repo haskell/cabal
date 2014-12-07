@@ -192,7 +192,7 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
       BenchmarkUnsupported tt -> die $ "No support for preprocessing benchmark "
                                  ++ "type " ++ display tt
   where
-    builtinHaskellSuffixes = ["hs", "lhs"]
+    builtinHaskellSuffixes = ["hs", "lhs", "hsig", "lhsig"]
     builtinCSuffixes       = cSourceExtensions
     builtinSuffixes        = builtinHaskellSuffixes ++ builtinCSuffixes
     localHandlers bi = [(ext, h bi lbi) | (ext, h) <- handlers]

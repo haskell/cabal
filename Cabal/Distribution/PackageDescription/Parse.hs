@@ -123,9 +123,6 @@ pkgDescrFieldDescrs =
  , simpleField "maintainer"
            showFreeText           parseFreeText
            maintainer             (\val pkg -> pkg{maintainer=val})
- , commaListFieldWithSep vcat "build-depends"
-           disp                   parse
-           buildDepends           (\xs    pkg -> pkg{buildDepends=xs})
  , simpleField "stability"
            showFreeText           parseFreeText
            stability              (\val pkg -> pkg{stability=val})
@@ -188,6 +185,12 @@ libFieldDescrs =
 
   , commaListFieldWithSep vcat "reexported-modules" disp parse
       reexportedModules (\mods lib -> lib{reexportedModules=mods})
+
+  , listFieldWithSep vcat "required-signatures" disp parseModuleNameQ
+      requiredSignatures (\mods lib -> lib{requiredSignatures=mods})
+
+  , listFieldWithSep vcat "exposed-signatures" disp parseModuleNameQ
+      exposedSignatures (\mods lib -> lib{exposedSignatures=mods})
 
   , boolField "exposed"
       libExposed     (\val lib -> lib{libExposed=val})

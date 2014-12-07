@@ -269,11 +269,7 @@ list verbosity hcPkg packagedb = do
                   ++ programId hcPkg ++ " list'"
 
   where
-    parsePackageIds str =
-      let parsed = map simpleParse (words str)
-       in case [ () | Nothing <- parsed ] of
-            [] -> Just [ pkgid | Just pkgid <- parsed ]
-            _  -> Nothing
+    parsePackageIds = sequence . map simpleParse . words
 
 
 --------------------------

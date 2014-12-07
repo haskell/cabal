@@ -102,6 +102,7 @@ convertLicense OtherLicense = Current.OtherLicense
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
   let pid = convertPackageId (package ipi)
+      mkExposedModule m = Current.ExposedModule m Nothing Nothing
   in Current.InstalledPackageInfo {
     Current.installedPackageId = mkInstalledPackageId (convertPackageId (package ipi)),
     Current.sourcePackageId    = pid,
@@ -117,12 +118,13 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.description        = description ipi,
     Current.category           = category ipi,
     Current.exposed            = exposed ipi,
-    Current.exposedModules     = map convertModuleName (exposedModules ipi),
-    Current.reexportedModules  = [],
+    Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
+    Current.instantiatedWith   = [],
     Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
     Current.importDirs         = importDirs ipi,
     Current.libraryDirs        = libraryDirs ipi,
+    Current.dataDir            = "",
     Current.hsLibraries        = hsLibraries ipi,
     Current.extraLibraries     = extraLibraries ipi,
     Current.extraGHCiLibraries = extraGHCiLibraries ipi,
