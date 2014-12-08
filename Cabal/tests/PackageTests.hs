@@ -36,21 +36,21 @@ import PackageTests.TestSuiteExeV10.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
 
-import Distribution.Package (PackageIdentifier)
+import Distribution.Simple.Configure
+    ( ConfigStateFileError(..), getConfigStateFile )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath)
-import Distribution.Simple.Program.Builtin (ghcProgram, ghcPkgProgram,
-                                            haddockProgram)
+import Distribution.Simple.Program.Builtin
+    ( ghcProgram, ghcPkgProgram, haddockProgram )
 import Distribution.Simple.Program.Db (requireProgram)
-import Distribution.Simple.Utils (cabalVersion, die)
+import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
 import Distribution.Verbosity (normal)
 import Distribution.Version (Version(Version))
 
-import Data.Binary (Binary, decodeOrFail)
-import qualified Data.ByteString.Lazy as BS
-import System.Directory (doesFileExist, getCurrentDirectory,
-                         setCurrentDirectory)
+import Control.Exception (try, throw)
+import System.Directory
+    ( getCurrentDirectory, setCurrentDirectory )
 import System.FilePath ((</>))
 import System.IO (BufferMode(NoBuffering), hSetBuffering, stdout)
 import Test.Framework (Test, TestName, defaultMain, testGroup)
@@ -169,30 +169,9 @@ main = do
 -- we run Cabal's own test suite, due to bootstrapping issues.
 getPersistBuildConfig_ :: FilePath -> IO LocalBuildInfo
 getPersistBuildConfig_ filename = do
-  exists <- doesFileExist filename
-  if not exists
-    then die "Run the 'configure' command first."
-    else decodeBinHeader >>= decodeBody
-
-  where
-    decodeB :: Binary a => BS.ByteString -> Either String (BS.ByteString, a)
-    decodeB str = either (const cantParse) return $ do
-        (next, _, x) <- decodeOrFail str
-        return (next, x)
-
-    decodeBody :: Either String BS.ByteString -> IO LocalBuildInfo
-    decodeBody (Left msg) = die msg
-    decodeBody (Right body) = either die (return . snd) $ decodeB body
-
-    decodeBinHeader :: IO (Either String BS.ByteString)
-    decodeBinHeader = do
-        pbc <- BS.readFile filename
-        return $ do
-            (body, _) <- decodeB pbc :: Either String ( BS.ByteString
-                                                      , ( PackageIdentifier
-                                                      , PackageIdentifier )
-                                                      )
-            return body
-
-    cantParse = Left $  "Saved package config file seems to be corrupt. "
-                     ++ "Try re-running the 'configure' command."
+    eLBI <- try $ getConfigStateFile filename
+    case eLBI of
+      Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return lbi
+      Left (ConfigStateFileBadVersion _ _ (Left err)) -> throw err
+      Left err -> throw err
+      Right lbi -> return lbi
