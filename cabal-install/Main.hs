@@ -125,7 +125,7 @@ import Distribution.Simple.Compiler
          ( Compiler(..) )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAuxEx
-         , ConfigStateFileErrorType(..), localBuildInfoFile
+         , ConfigStateFileError(..), localBuildInfoFile
          , getPersistBuildConfig, tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration)
@@ -468,8 +468,8 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
             skipAddSourceDepsCheck numJobsFlag    checkFlags = do
   eLbi <- tryGetPersistBuildConfig distPref
   case eLbi of
-    Left (err, errCode) -> onNoBuildConfig err errCode
-    Right lbi           -> onBuildConfig lbi
+    Left err  -> onNoBuildConfig err
+    Right lbi -> onBuildConfig lbi
 
   where
 
@@ -477,17 +477,16 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
     --
     -- If we're in a sandbox: add-source deps don't have to be reinstalled
     -- (since we don't know the compiler & platform).
-    onNoBuildConfig :: String -> ConfigStateFileErrorType
-                       -> IO (UseSandbox, SavedConfig)
-    onNoBuildConfig err errCode = do
-      let msg = case errCode of
-            ConfigStateFileMissing    -> "Package has never been configured."
-            ConfigStateFileCantParse  -> "Saved package config file seems "
-                                         ++ "to be corrupt."
-            ConfigStateFileBadVersion -> err
-      case errCode of
-        ConfigStateFileBadVersion -> info verbosity msg
-        _                         -> do
+    onNoBuildConfig :: ConfigStateFileError -> IO (UseSandbox, SavedConfig)
+    onNoBuildConfig err = do
+      let msg = case err of
+            ConfigStateFileMissing -> "Package has never been configured."
+            ConfigStateFileNoParse -> "Saved package config file seems "
+                                      ++ "to be corrupt."
+            _ -> show err
+      case err of
+        ConfigStateFileBadVersion _ _ _ -> info verbosity msg
+        _                               -> do
           notice verbosity
             $ msg ++ " Configuring with default flags." ++ configureManually
           configureAction (defaultFlags, defaultConfigExFlags)
