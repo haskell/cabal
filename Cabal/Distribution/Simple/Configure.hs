@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Configure
@@ -23,6 +26,7 @@
 
 module Distribution.Simple.Configure (configure,
                                       writePersistBuildConfig,
+                                      getConfigStateFile,
                                       getPersistBuildConfig,
                                       checkPersistBuildConfigOutdated,
                                       tryGetPersistBuildConfig,
@@ -34,9 +38,7 @@ module Distribution.Simple.Configure (configure,
                                       ccLdOptionsBuildInfo,
                                       checkForeignDeps,
                                       interpretPackageDbFlags,
-
-                                      ConfigStateFileErrorType(..),
-                                      ConfigStateFileError,
+                                      ConfigStateFileError(..),
                                       tryGetConfigStateFile,
                                       platformDefines,
                                      )
@@ -115,10 +117,13 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 -- Prefer the more generic Data.Traversable.mapM to Prelude.mapM
 import Prelude hiding ( mapM )
+import Control.Exception
+    ( ErrorCall(..), Exception, evaluate, throw, throwIO, try )
 import Control.Monad
     ( liftM, when, unless, foldM, filterM )
-import Data.Binary ( Binary, decodeOrFail, encode )
-import qualified Data.ByteString.Lazy as BS
+import Data.Binary ( decodeOrFail, encode )
+import Data.ByteString.Lazy (ByteString)
+import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.List
     ( (\\), nub, partition, isPrefixOf, inits )
 import Data.Maybe
@@ -132,6 +137,7 @@ import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Traversable
     ( mapM )
+import Data.Typeable
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
@@ -147,109 +153,95 @@ import Text.PrettyPrint
     , quotes, punctuate, nest, sep, hsep )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
-data ConfigStateFileErrorType = ConfigStateFileCantParse
-                              | ConfigStateFileMissing
-                              | ConfigStateFileBadVersion
-                              deriving Eq
-type ConfigStateFileError = (String, ConfigStateFileErrorType)
+data ConfigStateFileError
+    = ConfigStateFileNoHeader
+    | ConfigStateFileBadHeader
+    | ConfigStateFileNoParse
+    | ConfigStateFileMissing
+    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo)
+  deriving (Typeable)
 
-tryGetConfigStateFile :: (Binary a) => FilePath
-                      -> IO (Either ConfigStateFileError a)
-tryGetConfigStateFile filename = do
-  exists <- doesFileExist filename
-  if not exists
-    then return missing
-    else do
-      bin <- decodeBinHeader
-      liftM decodeBody $ case bin of
+instance Show ConfigStateFileError where
+    show ConfigStateFileNoHeader =
+        "Saved package config file header is missing. "
+        ++ "Try re-running the 'configure' command."
+    show ConfigStateFileBadHeader =
+        "Saved package config file header is corrupt. "
+        ++ "Try re-running the 'configure' command."
+    show ConfigStateFileNoParse =
+        "Saved package config file body is corrupt. "
+        ++ "Try re-running the 'configure' command."
+    show ConfigStateFileMissing = "Run the 'configure' command first."
+    show (ConfigStateFileBadVersion oldCabal oldCompiler _) =
+        "You need to re-run the 'configure' command. "
+        ++ "The version of Cabal being used has changed (was "
+        ++ display oldCabal ++ ", now "
+        ++ display currentCabalId ++ ")."
+        ++ badCompiler
+      where
+        badCompiler
+          | oldCompiler == currentCompilerId = ""
+          | otherwise =
+              " Additionally the compiler is different (was "
+              ++ display oldCompiler ++ ", now "
+              ++ display currentCompilerId
+              ++ ") which is probably the cause of the problem."
 
-        -- Parsing the binary header may fail because the state file is in
-        -- the text format used by older versions of Cabal. When parsing the
-        -- header fails, try to parse the old text header so we can give the
-        -- user a meaningful message about their Cabal version having
-        -- changed.
-        Left (_, ConfigStateFileCantParse) -> do
-          txt <- decodeTextHeader
-          return $ case txt of
-            Left (_, ConfigStateFileBadVersion) -> txt
-            _ -> bin
+instance Exception ConfigStateFileError
 
-        _ -> return bin
+getConfigStateFile :: FilePath -> IO LocalBuildInfo
+getConfigStateFile filename = do
+    exists <- doesFileExist filename
+    unless exists $ throwIO ConfigStateFileMissing
 
-  where
-    decodeB :: Binary a => BS.ByteString
-            -> Either ConfigStateFileError (BS.ByteString, a)
-    decodeB str = either (const cantParse) return $ do
-        (next, _, x) <- decodeOrFail str
-        return (next, x)
+    (header, body) <- liftM (BS.span $ (/=) '\n') $ BS.readFile filename
 
-    decodeBody :: Binary a => Either ConfigStateFileError BS.ByteString
-               -> Either ConfigStateFileError a
-    decodeBody (Left err) = Left err
-    decodeBody (Right body) = fmap snd $ decodeB body
+    headerParseResult <- try $ evaluate $ parseHeader header
+    let (cabalId, compId) =
+            case headerParseResult of
+              Left (ErrorCall _) -> throw ConfigStateFileBadHeader
+              Right x -> x
 
-    decodeBinHeader :: IO (Either ConfigStateFileError BS.ByteString)
-    decodeBinHeader = do
-        pbc <- BS.readFile filename
-        return $ do
-            (body, (cabalId, compId)) <- decodeB pbc
-            when (cabalId /= currentCabalId) $ badVersion cabalId compId
-            return body
+    let getStoredValue = evaluate $
+            case decodeOrFail (BS.tail body) of
+              Left _ -> throw ConfigStateFileNoParse
+              Right (_, _, x) -> x
+        deferErrorIfBadVersion act
+          | cabalId /= currentCabalId || compId /= currentCompilerId = do
+              eResult <- try act
+              throw $ ConfigStateFileBadVersion cabalId compId eResult
+          | otherwise = act
+    deferErrorIfBadVersion getStoredValue
 
-    decodeTextHeader :: IO (Either ConfigStateFileError BS.ByteString)
-    decodeTextHeader = do
-        header <- liftM (takeWhile $ (/=) '\n') $ readFile filename
-        return $ case parseHeader header of
-            Nothing -> cantParse
-            Just (cabalId, compId) -> badVersion cabalId compId
-
-    missing   = Left ( "Run the 'configure' command first."
-                     , ConfigStateFileMissing )
-    cantParse = Left (  "Saved package config file seems to be corrupt. "
-                     ++ "Try re-running the 'configure' command."
-                     , ConfigStateFileCantParse )
-    badVersion cabalId compId
-              = Left (  "You need to re-run the 'configure' command. "
-                     ++ "The version of Cabal being used has changed (was "
-                     ++ display cabalId ++ ", now "
-                     ++ display currentCabalId ++ ")."
-                     ++ badcompiler compId
-                     , ConfigStateFileBadVersion )
-    badcompiler compId | compId == currentCompilerId = ""
-                       | otherwise
-              = " Additionally the compiler is different (was "
-             ++ display compId ++ ", now "
-             ++ display currentCompilerId
-             ++ ") which is probably the cause of the problem."
+tryGetConfigStateFile :: FilePath
+                      -> IO (Either ConfigStateFileError LocalBuildInfo)
+tryGetConfigStateFile = try . getConfigStateFile
 
 -- |Try to read the 'localBuildInfoFile'.
 tryGetPersistBuildConfig :: FilePath
-                            -> IO (Either ConfigStateFileError LocalBuildInfo)
-tryGetPersistBuildConfig distPref
-    = tryGetConfigStateFile (localBuildInfoFile distPref)
+                         -> IO (Either ConfigStateFileError LocalBuildInfo)
+tryGetPersistBuildConfig = try . getPersistBuildConfig
 
--- |Read the 'localBuildInfoFile'.  Error if it doesn't exist.  Also
--- fail if the file containing LocalBuildInfo is older than the .cabal
--- file, indicating that a re-configure is required.
+-- | Read the 'localBuildInfoFile'. Throw an exception if the file is
+-- missing, if the file cannot be read, or if the file was created by an older
+-- version of Cabal.
 getPersistBuildConfig :: FilePath -> IO LocalBuildInfo
-getPersistBuildConfig distPref = do
-  lbi <- tryGetPersistBuildConfig distPref
-  either (die . fst) return lbi
+getPersistBuildConfig = getConfigStateFile . localBuildInfoFile
 
 -- |Try to read the 'localBuildInfoFile'.
 maybeGetPersistBuildConfig :: FilePath -> IO (Maybe LocalBuildInfo)
-maybeGetPersistBuildConfig distPref = do
-  lbi <- tryGetPersistBuildConfig distPref
-  return $ either (const Nothing) Just lbi
+maybeGetPersistBuildConfig =
+    liftM (either (const Nothing) Just) . tryGetPersistBuildConfig
 
 -- |After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
 writePersistBuildConfig :: FilePath -> LocalBuildInfo -> IO ()
 writePersistBuildConfig distPref lbi = do
-  createDirectoryIfMissing False distPref
-  let header = (currentCabalId, currentCompilerId)
-  writeFileAtomic (localBuildInfoFile distPref)
-      $ BS.append (encode header) (encode lbi)
+    createDirectoryIfMissing False distPref
+    writeFileAtomic (localBuildInfoFile distPref) $
+      BS.unlines [showHeader pkgId, encode lbi]
+  where
+    pkgId = packageId $ localPkgDescr lbi
 
 currentCabalId :: PackageIdentifier
 currentCabalId = PackageIdentifier (PackageName "Cabal") cabalVersion
@@ -258,18 +250,25 @@ currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
-parseHeader :: String -> Maybe (PackageIdentifier, PackageIdentifier)
-parseHeader header = case words header of
-  ["Saved", "package", "config", "for", pkgid,
-   "written", "by", cabalid, "using", compilerid]
-    -> case (simpleParse pkgid :: Maybe PackageIdentifier,
-             simpleParse cabalid,
-             simpleParse compilerid) of
-        (Just _,
-         Just cabalid',
-         Just compilerid') -> Just (cabalid', compilerid')
-        _                  -> Nothing
-  _                        -> Nothing
+parseHeader :: ByteString -> (PackageIdentifier, PackageIdentifier)
+parseHeader header = case BS.words header of
+  ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId, "using", compId] ->
+      fromMaybe (throw ConfigStateFileBadHeader) $ do
+          _ <- simpleParse (BS.unpack pkgId) :: Maybe PackageIdentifier
+          cabalId' <- simpleParse (BS.unpack cabalId)
+          compId' <- simpleParse (BS.unpack compId)
+          return (cabalId', compId')
+  _ -> throw ConfigStateFileNoHeader
+
+showHeader :: PackageIdentifier -> ByteString
+showHeader pkgId = BS.unwords
+    [ "Saved", "package", "config", "for"
+    , BS.pack $ display pkgId
+    , "written", "by"
+    , BS.pack $ display currentCabalId
+    , "using"
+    , BS.pack $ display currentCompilerId
+    ]
 
 -- |Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
