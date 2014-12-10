@@ -415,13 +415,14 @@ createArchive verbosity pkg_descr mb_lbi tmpDir targetPref = do
   let formatOptSupported = maybe False (== "YES") $
                            Map.lookup "Supports --format"
                            (programProperties tarProg)
-  runProgram verbosity tarProg
-    . (if formatOptSupported then (flip (++)) ["--format", "ustar"] else id)
+  runProgram verbosity tarProg $
     -- Hmm: I could well be skating on thinner ice here by using the -C option
     -- (=> seems to be supported at least by GNU and *BSD tar) [The
     -- prev. solution used pipes and sub-command sequences to set up the paths
     -- correctly, which is problematic in a Windows setting.]
-    $ ["-czf", tarBallFilePath, "-C", tmpDir, tarBallName pkg_descr]
+    ["-czf", tarBallFilePath, "-C", tmpDir]
+    ++ (if formatOptSupported then ["--format", "ustar"] else [])
+    ++ [tarBallName pkg_descr]
   return tarBallFilePath
 
 -- | Given a buildinfo, return the names of all source files.
