@@ -76,7 +76,6 @@ import System.Directory         ( doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
-import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchIO)
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
@@ -243,13 +242,8 @@ toPackageIndex verbosity pkgss conf = do
     Just ghcjsProg = lookupProgram ghcjsProgram conf
 
 checkPackageDbEnvVar :: IO ()
-checkPackageDbEnvVar = do
-    hasGPP <- (getEnv "GHCJS_PACKAGE_PATH" >> return True)
-              `catchIO` (\_ -> return False)
-    when hasGPP $
-      die $ "Use of GHCJS' environment variable GHCJS_PACKAGE_PATH is "
-         ++ "incompatible with Cabal. Use the flag --package-db to specify a "
-         ++ "package database (it can be used multiple times)."
+checkPackageDbEnvVar =
+    Internal.checkPackageDbEnvVar "GHCJS" "GHCJS_PACKAGE_PATH"
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)

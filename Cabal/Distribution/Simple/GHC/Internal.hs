@@ -22,7 +22,8 @@ module Distribution.Simple.GHC.Internal (
         ghcLookupProperty,
         getHaskellObjects,
         mkGhcOptPackages,
-        substTopDir
+        substTopDir,
+        checkPackageDbEnvVar
  ) where
 
 import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
@@ -63,9 +64,11 @@ import Language.Haskell.Extension
 
 import qualified Data.Map as M
 import Data.Char                ( isSpace )
-import Data.Maybe               ( fromMaybe, maybeToList )
+import Data.Maybe               ( fromMaybe, maybeToList, isJust )
+import Control.Monad            ( unless, when )
 import Data.Monoid              ( Monoid(..) )
 import System.Directory         ( getDirectoryContents, getTemporaryDirectory )
+import System.Environment       ( getEnv )
 import System.FilePath          ( (</>), (<.>), takeExtension, takeDirectory )
 import System.IO                ( hClose, hPutStrLn )
 
@@ -448,3 +451,27 @@ substTopDir topDir ipo
     where f ('$':'t':'o':'p':'d':'i':'r':rest) = topDir ++ rest
           f x = x
 
+-- Cabal does not use the environment variable GHC{,JS}_PACKAGE_PATH; let
+-- users know that this is the case. See ticket #335. Simply ignoring it is
+-- not a good idea, since then ghc and cabal are looking at different sets
+-- of package DBs and chaos is likely to ensue.
+--
+-- An exception to this is when running cabal from within a `cabal exec`
+-- environment. In this case, `cabal exec` will set the
+-- CABAL_SANDBOX_PACKAGE_PATH to the same value that it set
+-- GHC{,JS}_PACKAGE_PATH to. If that is the case it is OK to allow
+-- GHC{,JS}_PACKAGE_PATH.
+checkPackageDbEnvVar :: String -> String -> IO ()
+checkPackageDbEnvVar compilerName packagePathEnvVar = do
+    mPP <- lookupEnv packagePathEnvVar
+    when (isJust mPP) $ do
+        mcsPP <- lookupEnv "CABAL_SANDBOX_PACKAGE_PATH"
+        unless (mPP == mcsPP) abort
+    where
+        lookupEnv :: String -> IO (Maybe String)
+        lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
+        abort =
+            die $ "Use of " ++ compilerName ++ "'s environment variable "
+               ++ packagePathEnvVar ++ " is incompatible with Cabal. Use the "
+               ++ "flag --package-db to specify a package database (it can be "
+               ++ "used multiple times)."

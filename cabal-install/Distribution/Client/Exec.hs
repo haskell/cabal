@@ -14,6 +14,7 @@ module Distribution.Client.Exec ( exec
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
+import Distribution.Client.Sandbox (getSandboxConfigFilePath)
 import Distribution.Client.Sandbox.PackageEnvironment (sandboxPackageDBPath)
 import Distribution.Client.Sandbox.Types              (UseSandbox (..))
 
@@ -30,6 +31,7 @@ import Distribution.Verbosity (Verbosity)
 
 import System.FilePath (searchPathSeparator, (</>))
 import Control.Applicative ((<$>))
+import Data.Monoid (mempty)
 import Data.Traversable as T
 
 
@@ -78,10 +80,15 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
       GHCJS -> env GHCJS.getGlobalPackageDB ghcjsProgram "GHCJS_PACKAGE_PATH"
       _     -> die "exec only works with GHC and GHCJS"
   where
-    env getGlobalPackageDB hcProgram overrideEnvVar = do
+    env getGlobalPackageDB hcProgram packagePathEnvVar = do
         let Just program = lookupProgram hcProgram programDb
         gDb <- getGlobalPackageDB verbosity program
-        return [(overrideEnvVar, hcPackagePath gDb)]
+        sandboxConfigFilePath <- getSandboxConfigFilePath mempty
+        let compilerPackagePath = hcPackagePath gDb
+        return [ (packagePathEnvVar, compilerPackagePath)
+               , ("CABAL_SANDBOX_PACKAGE_PATH", compilerPackagePath)
+               , ("CABAL_SANDBOX_CONFIG", Just sandboxConfigFilePath)
+               ]
 
     hcPackagePath gDb =
         let s = sandboxPackageDBPath sandboxDir comp platform
