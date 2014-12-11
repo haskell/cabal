@@ -56,7 +56,7 @@ import Distribution.Package
 import Distribution.Version
          ( VersionRange, simplifyVersionRange )
 import Distribution.Compiler
-         ( CompilerId )
+         ( CompilerInfo )
 import Distribution.System
          ( Platform )
 import Distribution.Text
@@ -107,7 +107,7 @@ instance Text PreSolver where
 -- in alternatives.
 --
 type DependencyResolver = Platform
-                       -> CompilerId
+                       -> CompilerInfo
                        -> InstalledPackageIndex
                        ->          PackageIndex.PackageIndex SourcePackage
                        -> (PackageName -> PackagePreferences)

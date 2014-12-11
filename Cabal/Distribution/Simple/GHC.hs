@@ -51,7 +51,8 @@ import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, exeModules, hcOptions
+         , Library(..), libModules, exeModules
+         , hcOptions, hcProfOptions, hcSharedOptions
          , usedExtensions, allExtensions, ModuleRenaming, lookupRenaming )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
@@ -91,7 +92,7 @@ import qualified Distribution.Simple.Setup as Cabal
         ( Flag )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
-         , OptimisationLevel(..), PackageDB(..), PackageDBStack
+         , OptimisationLevel(..), PackageDB(..), PackageDBStack, AbiTag(..)
          , Flag )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion )
@@ -161,6 +162,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
 
   let comp = Compiler {
         compilerId         = CompilerId GHC ghcVersion,
+        compilerAbiTag     = NoAbiTag,
+        compilerCompat     = [],
         compilerLanguages  = languages,
         compilerExtensions = extensions,
         compilerProperties = ghcInfoMap
@@ -740,7 +743,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptProfilingMode = toFlag True,
                       ghcOptHiSuffix      = toFlag "p_hi",
                       ghcOptObjSuffix     = toFlag "p_o",
-                      ghcOptExtra         = toNubListR $ ghcProfOptions libBi
+                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
                     }
 
       sharedOpts  = vanillaOpts `mappend` mempty {
@@ -748,7 +751,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptFPic        = toFlag True,
                       ghcOptHiSuffix    = toFlag "dyn_hi",
                       ghcOptObjSuffix   = toFlag "dyn_o",
-                      ghcOptExtra       = toNubListR $ ghcSharedOptions libBi
+                      ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi
                     }
       linkerOpts = mempty {
                       ghcOptLinkOptions    = toNubListR $ PD.ldOptions libBi,
@@ -781,7 +784,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
            useDynToo = dynamicTooSupported &&
                        (forceVanillaLib || withVanillaLib lbi) &&
                        (forceSharedLib  || withSharedLib  lbi) &&
-                       null (ghcSharedOptions libBi)
+                       null (hcSharedOptions GHC libBi)
        if useDynToo
            then runGhcProg vanillaSharedOpts
            else if isGhcDynamic then do shared;  vanilla
@@ -998,13 +1001,14 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptProfilingMode  = toFlag True,
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR $ ghcProfOptions exeBi
+                      ghcOptExtra          = toNubListR $ hcProfOptions GHC exeBi
                     }
       dynOpts    = baseOpts `mappend` mempty {
                       ghcOptDynLinkMode    = toFlag GhcDynamicOnly,
                       ghcOptHiSuffix       = toFlag "dyn_hi",
                       ghcOptObjSuffix      = toFlag "dyn_o",
-                      ghcOptExtra          = toNubListR $ ghcSharedOptions exeBi
+                      ghcOptExtra          = toNubListR $
+                                             hcSharedOptions GHC exeBi
                     }
       dynTooOpts = staticOpts `mappend` mempty {
                       ghcOptDynLinkMode    = toFlag GhcStaticAndDynamic,
@@ -1050,7 +1054,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
       doingTH = EnableExtension TemplateHaskell `elem` allExtensions exeBi
       -- Should we use -dynamic-too instead of compiling twice?
       useDynToo = dynamicTooSupported && isGhcDynamic
-                  && doingTH && withStaticExe && null (ghcSharedOptions exeBi)
+                  && doingTH && withStaticExe
+                  && null (hcSharedOptions GHC exeBi)
       compileTHOpts | isGhcDynamic = dynOpts
                     | otherwise    = staticOpts
       compileForTH
@@ -1173,13 +1178,13 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                        ghcOptFPic        = toFlag True,
                        ghcOptHiSuffix    = toFlag "dyn_hi",
                        ghcOptObjSuffix   = toFlag "dyn_o",
-                       ghcOptExtra       = toNubListR $ ghcSharedOptions libBi
+                       ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi
                    }
       profArgs = vanillaArgs `mappend` mempty {
                      ghcOptProfilingMode = toFlag True,
                      ghcOptHiSuffix      = toFlag "p_hi",
                      ghcOptObjSuffix     = toFlag "p_o",
-                     ghcOptExtra         = toNubListR $ ghcProfOptions libBi
+                     ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
                  }
       ghcArgs = if withVanillaLib lbi then vanillaArgs
            else if withSharedLib  lbi then sharedArgs

@@ -426,7 +426,8 @@ data ComponentInfo = ComponentInfo {
        cinfoSrcDirs :: [FilePath],
        cinfoModules :: [ModuleName],
        cinfoHsFiles :: [FilePath],   -- other hs files (like main.hs)
-       cinfoCFiles  :: [FilePath]
+       cinfoCFiles  :: [FilePath],
+       cinfoJsFiles :: [FilePath]
      }
 
 type ComponentStringName = String
@@ -439,7 +440,8 @@ pkgComponentInfo pkg =
         cinfoSrcDirs = hsSourceDirs bi,
         cinfoModules = componentModules c,
         cinfoHsFiles = componentHsFiles c,
-        cinfoCFiles  = cSources bi
+        cinfoCFiles  = cSources bi,
+        cinfoJsFiles = jsSources bi
       }
     | c <- pkgComponents pkg
     , let bi = componentBuildInfo c ]
@@ -658,12 +660,14 @@ matchComponentFile c str fexists =
                 , matchOtherFileRooted    dirs hsFiles str ])
           (msum [ matchModuleFileUnrooted      ms      str
                 , matchOtherFileUnrooted       hsFiles str
-                , matchOtherFileUnrooted       cFiles  str ]))
+                , matchOtherFileUnrooted       cFiles  str
+                , matchOtherFileUnrooted       jsFiles str ]))
   where
     dirs = cinfoSrcDirs c
     ms   = cinfoModules c
     hsFiles = cinfoHsFiles c
     cFiles  = cinfoCFiles c
+    jsFiles = cinfoJsFiles c
 
 
 -- utils

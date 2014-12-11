@@ -29,7 +29,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
                                 ( autogenModulesDir, exeExtension )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), CompilerId(..), Compiler(..)
+         ( CompilerFlavor(..), CompilerId(..), Compiler(..), AbiTag(..)
          , PackageDBStack, Flag, languageToFlags, extensionsToFlags )
 import Language.Haskell.Extension
          ( Language(Haskell98), Extension(..), KnownExtension(..))
@@ -76,6 +76,8 @@ configure verbosity hcPath _hcPkgPath conf = do
   let Just version = programVersion jhcProg
       comp = Compiler {
         compilerId             = CompilerId JHC version,
+        compilerAbiTag         = NoAbiTag,
+        compilerCompat         = [],
         compilerLanguages      = jhcLanguages,
         compilerExtensions     = jhcLanguageExtensions,
         compilerProperties     = M.empty

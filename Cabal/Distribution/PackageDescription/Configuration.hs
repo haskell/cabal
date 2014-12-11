@@ -46,6 +46,8 @@ import Distribution.System
          ( Platform(..), OS, Arch )
 import Distribution.Simple.Utils
          ( currentDir, lowercase )
+import Distribution.Simple.Compiler
+         ( CompilerInfo(..) )
 
 import Distribution.Text
          ( Text(parse) )
@@ -97,16 +99,23 @@ simplifyCondition cond i = fv . walk $ cond
 
 -- | Simplify a configuration condition using the OS and arch names.  Returns
 --   the names of all the flags occurring in the condition.
-simplifyWithSysParams :: OS -> Arch -> CompilerId -> Condition ConfVar
+simplifyWithSysParams :: OS -> Arch -> CompilerInfo -> Condition ConfVar
                       -> (Condition FlagName, [FlagName])
-simplifyWithSysParams os arch (CompilerId comp compVer) cond = (cond', flags)
+simplifyWithSysParams os arch cinfo cond = (cond', flags)
   where
     (cond', flags) = simplifyCondition cond interp
     interp (OS os')    = Right $ os' == os
     interp (Arch arch') = Right $ arch' == arch
-    interp (Impl comp' vr) = Right $ comp' == comp
-                                  && compVer `withinRange` vr
-    interp (Flag  f)   = Left f
+    interp (Impl comp vr)
+      | matchImpl (compilerInfoId cinfo) = Right True
+      | otherwise = case compilerInfoCompat cinfo of
+          -- fixme: treat Nothing as unknown, rather than empty list once we
+          --        support partial resolution of system parameters
+          Nothing     -> Right False
+          Just compat -> Right (any matchImpl compat)
+          where
+            matchImpl (CompilerId c v) = comp == c && v `withinRange` vr
+    interp (Flag f) = Left f
 
 -- TODO: Add instances and check
 --
@@ -208,7 +217,7 @@ resolveWithFlags ::
         -- ^ Domain for each flag name, will be tested in order.
   -> OS      -- ^ OS as returned by Distribution.System.buildOS
   -> Arch    -- ^ Arch as returned by Distribution.System.buildArch
-  -> CompilerId -- ^ Compiler flavour + version
+  -> CompilerInfo  -- ^ Compiler information
   -> [Dependency]  -- ^ Additional constraints
   -> [CondTree ConfVar [Dependency] PDTagged]
   -> ([Dependency] -> DepTestRslt [Dependency])  -- ^ Dependency test function.
@@ -463,7 +472,7 @@ finalizePackageDescription ::
                           -- available packages?  If this is unknown then use
                           -- True.
   -> Platform      -- ^ The 'Arch' and 'OS'
-  -> CompilerId    -- ^ Compiler + Version
+  -> CompilerInfo  -- ^ Compiler information
   -> [Dependency]  -- ^ Additional constraints
   -> GenericPackageDescription
   -> Either [Dependency]
