@@ -35,7 +35,7 @@ import Distribution.Client.Sandbox.Types
 import Distribution.Package
          ( Package, PackageIdentifier, packageId, packageName, packageVersion )
 import Distribution.Simple.Compiler
-         ( Compiler(compilerId), PackageDBStack )
+         ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Simple.Program
@@ -128,12 +128,12 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers = do
 
   solver <- chooseSolver verbosity
-            (fromFlag (freezeSolver freezeFlags)) (compilerId comp)
+            (fromFlag (freezeSolver freezeFlags)) (compilerInfo comp)
   notice verbosity "Resolving dependencies..."
 
   installPlan <- foldProgress logMsg die return $
                    resolveDependencies
-                     platform (compilerId comp)
+                     platform (compilerInfo comp)
                      solver
                      resolverParams
 

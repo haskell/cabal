@@ -268,7 +268,7 @@ ppFields fields x =
    vcat [ ppField name (getter x) | FieldDescr name getter _ <- fields ]
 
 ppField :: String -> Doc -> Doc
-ppField name fielddoc 
+ppField name fielddoc
    | isEmpty fielddoc         = empty
    | name `elem` nestedFields = text name <> colon $+$ nest indentWith fielddoc
    | otherwise                = text name <> colon <+> fielddoc
@@ -281,6 +281,7 @@ ppField name fielddoc
          , "extra-tmp-files"
          , "exposed-modules"
          , "c-sources"
+         , "js-sources"
          , "extra-libraries"
          , "includes"
          , "install-includes"

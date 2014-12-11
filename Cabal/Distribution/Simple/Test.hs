@@ -19,7 +19,7 @@ import qualified Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(buildable)
          , TestSuite(..)
          , TestSuiteInterface(..), testType, hasTests )
-import Distribution.Simple.Compiler ( Compiler(..) )
+import Distribution.Simple.Compiler ( compilerInfo )
 import Distribution.Simple.Hpc ( markupPackage )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, substPathTemplate
@@ -133,4 +133,4 @@ packageLogPath template pkg_descr lbi =
     where
         env = initialPathTemplateEnv
                 (PD.package pkg_descr) (LBI.pkgKey lbi)
-                (compilerId $ LBI.compiler lbi) (LBI.hostPlatform lbi)
+                (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi)

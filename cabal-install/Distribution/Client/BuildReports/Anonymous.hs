@@ -42,7 +42,7 @@ import Distribution.PackageDescription
 import Distribution.System
          ( OS, Arch )
 import Distribution.Compiler
-         ( CompilerId )
+         ( CompilerId(..) )
 import qualified Distribution.Text as Text
          ( Text(disp, parse) )
 import Distribution.ParseUtils

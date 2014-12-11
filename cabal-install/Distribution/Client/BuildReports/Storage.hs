@@ -41,7 +41,7 @@ import Distribution.Simple.InstallDirs
 import Distribution.System
          ( Platform(Platform) )
 import Distribution.Compiler
-         ( CompilerId )
+         ( CompilerId(..), CompilerInfo(..)  )
 import Distribution.Simple.Utils
          ( comparing, equating )
 
@@ -79,8 +79,9 @@ storeAnonymous reports = sequence_
       [ (report, repo, remoteRepo)
       | (report, Just repo@Repo { repoKind = Left remoteRepo }) <- rs ]
 
-storeLocal :: [PathTemplate] -> [(BuildReport, Maybe Repo)] -> Platform -> IO ()
-storeLocal templates reports platform = sequence_
+storeLocal :: CompilerInfo -> [PathTemplate] -> [(BuildReport, Maybe Repo)]
+           -> Platform -> IO ()
+storeLocal cinfo templates reports platform = sequence_
   [ do createDirectoryIfMissing True (takeDirectory file)
        appendFile file output
        --TODO: make this concurrency safe, either lock the report file or make
@@ -103,7 +104,7 @@ storeLocal templates reports platform = sequence_
                     -- to the build report, and either use that or make up
                     -- a fake identifier if it's not available.
                     (error "storeLocal: package key not available")
-                    (BuildReport.compiler report)
+                    cinfo
                     platform
 
     groupByFileName = map (\grp@((filename,_):_) -> (filename, map snd grp))
@@ -120,7 +121,7 @@ fromInstallPlan plan = catMaybes
                      . InstallPlan.toList
                      $ plan
   where platform = InstallPlan.planPlatform plan
-        comp     = InstallPlan.planCompiler plan
+        comp     = compilerInfoId (InstallPlan.planCompiler plan)
 
 fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage

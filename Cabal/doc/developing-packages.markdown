@@ -1398,6 +1398,10 @@ values for these fields.
 `c-sources:` _filename list_
 :   A list of C source files to be compiled and linked with the Haskell files.
 
+`js-sources:` _filename list_
+:   A list of JavaScript source files to be linked with the Haskell files
+    (only for JavaScript targets).
+
 `extra-libraries:` _token list_
 :   A list of extra libraries to link with.
 
