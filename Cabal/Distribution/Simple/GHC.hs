@@ -771,8 +771,13 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
   unless (null (cSources libBi)) $ do
      info verbosity "Building C Sources..."
      sequence_
-       [ do let vanillaCcOpts = (componentCcGhcOptions verbosity lbi
-                                    libBi clbi libTargetDir filename)
+       [ do let baseCcOpts    = componentCcGhcOptions verbosity lbi
+                                libBi clbi libTargetDir filename
+               vanillaCcOpts = if isGhcDynamic
+                               -- Dynamic GHC requires C sources to be built
+                               -- with -fPIC for REPL to work. See #2207.
+                               then baseCcOpts { ghcOptFPic = toFlag True }
+                               else baseCcOpts
                 profCcOpts    = vanillaCcOpts `mappend` mempty {
                                   ghcOptProfilingMode = toFlag True,
                                   ghcOptObjSuffix     = toFlag "p_o"
@@ -784,11 +789,7 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
                                 }
                 odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
             createDirectoryIfMissingVerbose verbosity True odir
-            runGhcProg (if isGhcDynamic
-                        -- Dynamic GHC requires C sources to be built with
-                        -- -fPIC for REPL to work. See #2207.
-                        then vanillaCcOpts { ghcOptFPic = toFlag True }
-                        else vanillaCcOpts)
+            runGhcProg vanillaCcOpts
             whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
             whenProfLib (runGhcProg profCcOpts)
        | filename <- cSources libBi]
