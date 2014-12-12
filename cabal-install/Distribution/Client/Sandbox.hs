@@ -71,8 +71,8 @@ import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
 import Distribution.PackageDescription.Configuration
                                               ( flattenPackageDescription )
 import Distribution.PackageDescription.Parse  ( readPackageDescription )
-import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
-                                              , PackageDBStack )
+import Distribution.Simple.Compiler           ( Compiler(..), CompilerFlavor(..)
+                                              , PackageDB(..), PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAuxEx
                                               , interpretPackageDbFlags
                                               , getPackageDBContents )
@@ -280,8 +280,9 @@ dumpPackageEnvironment verbosity _sandboxFlags globalFlags = do
   putStrLn . showPackageEnvironmentWithComments (Just commentPkgEnv) $ pkgEnv
 
 -- | Entry point for the 'cabal sandbox init' command.
-sandboxInit :: Verbosity -> SandboxFlags  -> GlobalFlags -> IO ()
-sandboxInit verbosity sandboxFlags globalFlags = do
+sandboxInit :: Verbosity -> Maybe CompilerFlavor -> SandboxFlags
+            -> GlobalFlags -> IO ()
+sandboxInit verbosity overrideFlavor sandboxFlags globalFlags = do
   -- Warn if there's a 'cabal-dev' sandbox.
   isCabalDevSandbox <- liftM2 (&&) (doesDirectoryExist "cabal-dev")
                        (doesFileExist $ "cabal-dev" </> "cabal.config")
@@ -300,7 +301,14 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
   -- Determine which compiler to use (using the value from ~/.cabal/config).
   userConfig <- loadConfig verbosity (globalConfigFile globalFlags) NoFlag
-  (comp, platform, conf) <- configCompilerAuxEx (savedConfigureFlags userConfig)
+  let flags  = savedConfigureFlags userConfig
+      flags' = case overrideFlavor of
+        Nothing -> flags
+        Just fl -> flags { configHcPath   = NoFlag
+                         , configHcPkg    = NoFlag
+                         , configHcFlavor = Flag fl
+                         }
+  (comp, platform, conf) <- configCompilerAuxEx flags'
 
   -- Create the package environment file.
   pkgEnvFile <- getSandboxConfigFilePath globalFlags

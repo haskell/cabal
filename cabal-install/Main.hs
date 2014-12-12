@@ -122,7 +122,7 @@ import Distribution.Simple.Command
          ( CommandParse(..), CommandUI(..), Command
          , commandsRun, commandAddAction, hiddenCommand )
 import Distribution.Simple.Compiler
-         ( Compiler(..) )
+         ( Compiler(..), CompilerFlavor(..) )
 import Distribution.Simple.Configure
          ( checkPersistBuildConfigOutdated, configCompilerAuxEx
          , ConfigStateFileError(..), localBuildInfoFile
@@ -134,7 +134,7 @@ import Distribution.Simple.Utils
          ( cabalVersion, die, notice, info, topHandler
          , findPackageDesc, tryFindPackageDesc )
 import Distribution.Text
-         ( display )
+         ( display, simpleParse )
 import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
 import Distribution.Version
@@ -1037,7 +1037,17 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
   let verbosity = fromFlag (sandboxVerbosity sandboxFlags)
   case extraArgs of
     -- Basic sandbox commands.
-    ["init"] -> sandboxInit verbosity sandboxFlags globalFlags
+    ("init":extra) -> case extra of
+      []   -> sandboxInit verbosity Nothing sandboxFlags globalFlags
+      [xs] ->
+        let unknownFlavor =
+              die ("'" ++ xs ++ "' is not a known compiler flavor")
+        in case simpleParse xs of
+             Just (OtherCompiler{}) -> unknownFlavor
+             Just fl                ->
+               sandboxInit verbosity (Just fl) sandboxFlags globalFlags
+             _                      -> unknownFlavor
+      _ -> die "The 'sandbox init' command expects at most one argument"
     ["delete"] -> sandboxDelete verbosity sandboxFlags globalFlags
     ("add-source":extra) -> do
         when (noExtraArgs extra) $
