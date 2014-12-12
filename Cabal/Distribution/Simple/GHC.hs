@@ -773,7 +773,7 @@ buildOrReplLib forRepl verbosity numJobsFlag pkg_descr lbi lib clbi = do
      sequence_
        [ do let baseCcOpts    = componentCcGhcOptions verbosity lbi
                                 libBi clbi libTargetDir filename
-               vanillaCcOpts  = if isGhcDynamic
+                vanillaCcOpts = if isGhcDynamic
                                 -- Dynamic GHC requires C sources to be built
                                 -- with -fPIC for REPL to work. See #2207.
                                 then baseCcOpts { ghcOptFPic = toFlag True }
