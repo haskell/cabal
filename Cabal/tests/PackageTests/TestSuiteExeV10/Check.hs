@@ -1,24 +1,47 @@
-module PackageTests.TestSuiteExeV10.Check
-       ( checkTest
-       , checkTestWithHpc
-       , checkTestWithoutHpcNoTix
-       , checkTestWithoutHpcNoMarkup
-       ) where
+module PackageTests.TestSuiteExeV10.Check (checks) where
 
-import Distribution.PackageDescription     ( TestSuite(..), emptyTestSuite )
-import Distribution.Version                ( Version(..), orLaterVersion )
-import Distribution.Simple.Hpc
-import Distribution.Simple.Program.Builtin ( hpcProgram )
-import Distribution.Simple.Program.Db      ( emptyProgramDb, configureProgram,
-                                             requireProgramVersion )
-import PackageTests.PackageTester
-import qualified Control.Exception as E    ( IOException, catch )
-import Control.Monad                       ( when )
-import System.Directory                    ( doesFileExist )
+import System.Directory ( doesFileExist )
 import System.FilePath
-import Test.HUnit
+import qualified Test.Framework as TF
+import Test.Framework (testGroup)
+import Test.Framework.Providers.HUnit (hUnitTestToTests)
+import Test.HUnit hiding ( path )
 
-import qualified Distribution.Verbosity as Verbosity
+import Distribution.Simple.Hpc
+
+import PackageTests.PackageTester
+
+checks :: FilePath -> [TF.Test]
+checks ghcPath =
+    [ hunit "Test" $ checkTest ghcPath ]
+    ++ hpcTestMatrix ghcPath ++
+    [ hunit "TestWithoutHpc/NoTix" $ checkTestWithoutHpcNoTix ghcPath
+    , hunit "TestWithoutHpc/NoMarkup" $ checkTestWithoutHpcNoMarkup ghcPath
+    ]
+
+hpcTestMatrix :: FilePath -> [TF.Test]
+hpcTestMatrix ghcPath = do
+    libProf <- [True, False]
+    exeProf <- [True, False]
+    exeDyn <- [True, False]
+    shared <- [True, False]
+    let name = concat
+            [ "WithHpc/"
+            , if libProf then "LibProf" else ""
+            , if exeProf then "ExeProf" else ""
+            , if exeDyn then "ExeDyn" else ""
+            , if shared then "Shared" else ""
+            ]
+        enable cond flag
+          | cond = "--enable-" ++ flag
+          | otherwise = "--disable-" ++ flag
+        opts =
+            [ enable libProf "library-profiling"
+            , enable exeProf "executable-profiling"
+            , enable exeDyn "executable-dynamic"
+            , enable shared "shared"
+            ]
+    return $ hunit name $ checkTestWithHpc ghcPath opts
 
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteExeV10"
@@ -26,55 +49,40 @@ dir = "PackageTests" </> "TestSuiteExeV10"
 checkTest :: FilePath -> Test
 checkTest ghcPath = TestCase $ buildAndTest ghcPath [] []
 
+shouldExist :: FilePath -> Assertion
+shouldExist path = doesFileExist path >>= assertBool (path ++ " should exist")
+
+shouldNotExist :: FilePath -> Assertion
+shouldNotExist path =
+    doesFileExist path >>= assertBool (path ++ " should exist") . not
+
 -- | Ensure that both .tix file and markup are generated if coverage is enabled.
-checkTestWithHpc :: FilePath -> Test
-checkTestWithHpc ghcPath = TestCase $ do
-    isCorrectVersion <- correctHpcVersion
-    when isCorrectVersion $ do
-      buildAndTest ghcPath [] ["--enable-coverage"]
-      let dummy = emptyTestSuite { testName = "test-Foo" }
-          tixFile = tixFilePath (dir </> "dist") $ testName dummy
-          tixFileMessage = ".tix file should exist"
-          markupDir = htmlDir (dir </> "dist") $ testName dummy
-          markupFile = markupDir </> "hpc_index" <.> "html"
-          markupFileMessage = "HPC markup file should exist"
-      tixFileExists <- doesFileExist tixFile
-      assertEqual tixFileMessage True tixFileExists
-      markupFileExists <- doesFileExist markupFile
-      assertEqual markupFileMessage True markupFileExists
-  where
+checkTestWithHpc :: FilePath -> [String] -> Test
+checkTestWithHpc ghcPath extraOpts = TestCase $ do
+    buildAndTest ghcPath [] ("--enable-coverage" : extraOpts)
+    shouldExist $ mixDir (dir </> "dist") "my-0.1" </> "my-0.1" </> "Foo.mix"
+    shouldExist $ mixDir (dir </> "dist") "test-Foo" </> "Main.mix"
+    shouldExist $ tixFilePath (dir </> "dist") "test-Foo"
+    shouldExist $ htmlDir (dir </> "dist") "test-Foo" </> "hpc_index.html"
 
 -- | Ensures that even if -fhpc is manually provided no .tix file is output.
 checkTestWithoutHpcNoTix :: FilePath -> Test
 checkTestWithoutHpcNoTix ghcPath = TestCase $ do
-    isCorrectVersion <- correctHpcVersion
-    when isCorrectVersion $ do
-      buildAndTest ghcPath [] [ "--ghc-option=-fhpc"
-                              , "--ghc-option=-hpcdir"
-                              , "--ghc-option=dist/hpc" ]
-      let dummy = emptyTestSuite { testName = "test-Foo" }
-          tixFile = tixFilePath (dir </> "dist") $ testName dummy
-          tixFileMessage = ".tix file should NOT exist"
-      tixFileExists <- doesFileExist tixFile
-      assertEqual tixFileMessage False tixFileExists
+    buildAndTest ghcPath [] [ "--ghc-option=-fhpc"
+                            , "--ghc-option=-hpcdir"
+                            , "--ghc-option=dist/hpc" ]
+    shouldNotExist $ tixFilePath (dir </> "dist") "test-Foo"
 
 -- | Ensures that even if a .tix file happens to be left around
 -- markup isn't generated.
 checkTestWithoutHpcNoMarkup :: FilePath -> Test
 checkTestWithoutHpcNoMarkup ghcPath = TestCase $ do
-    isCorrectVersion <- correctHpcVersion
-    when isCorrectVersion $ do
-      let dummy = emptyTestSuite { testName = "test-Foo" }
-          tixFile = tixFilePath "dist" $ testName dummy
-          markupDir = htmlDir (dir </> "dist") $ testName dummy
-          markupFile = markupDir </> "hpc_index" <.> "html"
-          markupFileMessage = "HPC markup file should NOT exist"
-      buildAndTest ghcPath [("HPCTIXFILE", Just tixFile)]
-                           [ "--ghc-option=-fhpc"
-                           , "--ghc-option=-hpcdir"
-                           , "--ghc-option=dist/hpc" ]
-      markupFileExists <- doesFileExist markupFile
-      assertEqual markupFileMessage False markupFileExists
+    let tixFile = tixFilePath "dist" "test-Foo"
+    buildAndTest ghcPath [("HPCTIXFILE", Just tixFile)]
+                         [ "--ghc-option=-fhpc"
+                         , "--ghc-option=-hpcdir"
+                         , "--ghc-option=dist/hpc" ]
+    shouldNotExist $ htmlDir (dir </> "dist") "test-Foo" </> "hpc_index.html"
 
 -- | Build and test a package and ensure that both were successful.
 --
@@ -87,17 +95,5 @@ buildAndTest ghcPath envOverrides flags = do
     testResult <- cabal_test spec envOverrides [] ghcPath
     assertTestSucceeded testResult
 
--- | Checks for a suitable HPC version for testing.
-correctHpcVersion :: IO Bool
-correctHpcVersion = do
-    let programDb' = emptyProgramDb
-    let verbosity = Verbosity.normal
-    let verRange  = orLaterVersion (Version [0,7] [])
-    programDb <- configureProgram verbosity hpcProgram programDb'
-    (requireProgramVersion verbosity hpcProgram verRange programDb
-     >> return True) `catchIO` (\_ -> return False)
-  where
-    -- Distribution.Compat.Exception is hidden.
-    catchIO :: IO a -> (E.IOException -> IO a) -> IO a
-    catchIO = E.catch
-
+hunit :: TF.TestName -> Test -> TF.Test
+hunit name = testGroup name . hUnitTestToTests
