@@ -1631,7 +1631,7 @@ sandboxCommand = CommandUI {
   commandSynopsis     = "Create/modify/delete a sandbox.",
   commandDescription  = Nothing,
   commandUsage        = \pname ->
-       "Usage: " ++ pname ++ " sandbox init\n"
+       "Usage: " ++ pname ++ " sandbox init [COMPILERFLAVOR]\n"
     ++ "   or: " ++ pname ++ " sandbox delete\n"
     ++ "   or: " ++ pname ++ " sandbox add-source  [PATHS]\n"
     ++ "   or: " ++ pname ++ " sandbox delete-source  [PATHS]\n\n"
