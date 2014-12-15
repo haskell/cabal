@@ -235,6 +235,7 @@ globalCommand commands = CommandUI {
         , addCmd "register"
         , par
         , startGroup "sandbox"
+        , addCmd "sandbox"
         , addCmd "exec"
         , addCmdCustom "repl" "Open interpreter with access to sandbox packages."
         ] ++ if null otherCmds then [] else par
