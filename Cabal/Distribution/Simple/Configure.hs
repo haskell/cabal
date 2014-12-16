@@ -208,7 +208,7 @@ getConfigStateFile filename = do
               Left _ -> throw ConfigStateFileNoParse
               Right (_, _, x) -> x
         deferErrorIfBadVersion act
-          | cabalId /= currentCabalId || compId /= currentCompilerId = do
+          | cabalId /= currentCabalId = do
               eResult <- try act
               throw $ ConfigStateFileBadVersion cabalId compId eResult
           | otherwise = act
