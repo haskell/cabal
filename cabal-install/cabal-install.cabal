@@ -187,6 +187,7 @@ Test-Suite unit-tests
         stm,
         time,
         network,
+        network-uri,
         HTTP,
         zlib,
 
