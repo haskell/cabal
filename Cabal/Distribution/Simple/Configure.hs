@@ -621,11 +621,17 @@ configure (pkg_descr0, pbi) cfg
                 -- --disable-shared.
                 fromFlagOrDefault sharedLibsByDefault $ configSharedLib cfg
             withDynExe_ = fromFlag $ configDynExe cfg
-        when (withDynExe_ && not withSharedLib_) $
-            warn verbosity $
-                 "Executables will use dynamic linking, but a shared library "
-              ++ "is not being built. Linking will fail if any executables "
-              ++ "depend on the library."
+        when (withDynExe_ && not withSharedLib_) $ warn verbosity $
+               "Executables will use dynamic linking, but a shared library "
+            ++ "is not being built. Linking will fail if any executables "
+            ++ "depend on the library."
+
+        let withProfExe_ = fromFlagOrDefault False $ configProfExe cfg
+            withProfLib_ = fromFlagOrDefault withProfExe_ $ configProfLib cfg
+        when (withProfExe_ && not withProfLib_) $ warn verbosity $
+               "Executables will be built with profiling, but library "
+            ++ "profiling is disabled. Linking will fail if any executables "
+            ++ "depend on the library."
 
         reloc <-
            if not (fromFlag $ configRelocatable cfg)
@@ -649,10 +655,10 @@ configure (pkg_descr0, pbi) cfg
                     instantiatedWith    = hole_insts,
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
-                    withProfLib         = fromFlag $ configProfLib cfg,
+                    withProfLib         = withProfLib_,
                     withSharedLib       = withSharedLib_,
                     withDynExe          = withDynExe_,
-                    withProfExe         = fromFlag $ configProfExe cfg,
+                    withProfExe         = withProfExe_,
                     withOptimization    = fromFlag $ configOptimization cfg,
                     withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
                                           configGHCiLib cfg,

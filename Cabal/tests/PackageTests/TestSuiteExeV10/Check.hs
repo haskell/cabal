@@ -38,7 +38,7 @@ hpcTestMatrix ghcPath = do
           | otherwise = Nothing
         opts = catMaybes
             [ enable libProf "library-profiling"
-            , enable exeProf "executable-profiling"
+            , enable exeProf "profiling"
             , enable exeDyn "executable-dynamic"
             , enable shared "shared"
             ]

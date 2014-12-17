@@ -15,7 +15,7 @@ profiling :: FilePath -> Test
 profiling ghcPath = TestCase $ do
    let flags = ["--enable-library-profiling"
 --                ,"--disable-library-vanilla"
-               ,"--enable-executable-profiling"]
+               ,"--enable-profiling"]
        spec = PackageSpec ("PackageTests" </>
                            "TemplateHaskell" </> "profiling") flags
    result <- cabal_build spec ghcPath

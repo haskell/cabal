@@ -336,10 +336,10 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configPrograms     = progConf,
     configHcFlavor     = maybe NoFlag Flag defaultCompilerFlavor,
     configVanillaLib   = Flag True,
-    configProfLib      = Flag False,
+    configProfLib      = NoFlag,
     configSharedLib    = NoFlag,
     configDynExe       = Flag False,
-    configProfExe      = Flag False,
+    configProfExe      = NoFlag,
     configOptimization = Flag NormalOptimisation,
     configProgPrefix   = Flag (toPathTemplate ""),
     configProgSuffix   = Flag (toPathTemplate ""),
@@ -450,8 +450,8 @@ configureOptions showOrParseArgs =
          configDynExe (\v flags -> flags { configDynExe = v })
          (boolOpt [] [])
 
-      ,option "" ["executable-profiling"]
-         "Executable profiling"
+      ,option "" ["profiling", "executable-profiling"]
+         "Executable profiling (requires library profiling)"
          configProfExe (\v flags -> flags { configProfExe = v })
          (boolOpt [] [])
 
