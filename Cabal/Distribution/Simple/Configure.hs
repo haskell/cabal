@@ -124,7 +124,8 @@ import Control.Monad
     ( liftM, when, unless, foldM, filterM )
 import Data.Binary ( decodeOrFail, encode )
 import Data.ByteString.Lazy (ByteString)
-import qualified Data.ByteString.Lazy.Char8 as BS
+import qualified Data.ByteString            as BS
+import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
     ( (\\), nub, partition, isPrefixOf, inits )
 import Data.Maybe
@@ -194,8 +195,10 @@ getConfigStateFile :: FilePath -> IO LocalBuildInfo
 getConfigStateFile filename = do
     exists <- doesFileExist filename
     unless exists $ throwIO ConfigStateFileMissing
-
-    (header, body) <- liftM (BS.span $ (/=) '\n') $ BS.readFile filename
+    -- Read the config file into a strict ByteString to avoid problems with
+    -- lazy I/O, then convert to lazy because the binary package needs that.
+    contents <- BS.readFile filename
+    let (header, body) = BLC8.span (/='\n') (BLC8.fromChunks [contents])
 
     headerParseResult <- try $ evaluate $ parseHeader header
     let (cabalId, compId) =
@@ -204,7 +207,7 @@ getConfigStateFile filename = do
               Right x -> x
 
     let getStoredValue = evaluate $
-            case decodeOrFail (BS.tail body) of
+            case decodeOrFail (BLC8.tail body) of
               Left _ -> throw ConfigStateFileNoParse
               Right (_, _, x) -> x
         deferErrorIfBadVersion act
@@ -240,7 +243,7 @@ writePersistBuildConfig :: FilePath -> LocalBuildInfo -> IO ()
 writePersistBuildConfig distPref lbi = do
     createDirectoryIfMissing False distPref
     writeFileAtomic (localBuildInfoFile distPref) $
-      BS.unlines [showHeader pkgId, encode lbi]
+      BLC8.unlines [showHeader pkgId, encode lbi]
   where
     pkgId = packageId $ localPkgDescr lbi
 
@@ -252,23 +255,23 @@ currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
 parseHeader :: ByteString -> (PackageIdentifier, PackageIdentifier)
-parseHeader header = case BS.words header of
+parseHeader header = case BLC8.words header of
   ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId, "using", compId] ->
       fromMaybe (throw ConfigStateFileBadHeader) $ do
-          _ <- simpleParse (BS.unpack pkgId) :: Maybe PackageIdentifier
-          cabalId' <- simpleParse (BS.unpack cabalId)
-          compId' <- simpleParse (BS.unpack compId)
+          _ <- simpleParse (BLC8.unpack pkgId) :: Maybe PackageIdentifier
+          cabalId' <- simpleParse (BLC8.unpack cabalId)
+          compId' <- simpleParse (BLC8.unpack compId)
           return (cabalId', compId')
   _ -> throw ConfigStateFileNoHeader
 
 showHeader :: PackageIdentifier -> ByteString
-showHeader pkgId = BS.unwords
+showHeader pkgId = BLC8.unwords
     [ "Saved", "package", "config", "for"
-    , BS.pack $ display pkgId
+    , BLC8.pack $ display pkgId
     , "written", "by"
-    , BS.pack $ display currentCabalId
+    , BLC8.pack $ display currentCabalId
     , "using"
-    , BS.pack $ display currentCompilerId
+    , BLC8.pack $ display currentCompilerId
     ]
 
 -- |Check that localBuildInfoFile is up-to-date with respect to the
