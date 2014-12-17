@@ -692,6 +692,14 @@ be controlled with the following command line options.
 `--disable-shared`
 :   (default) Do not build shared library.
 
+`--enable-executable-dynamic`
+:   Link executables dynamically. The executable's library dependencies should
+    be built as shared objects. This implies `--enable-shared` unless
+    `--disable-shared` is explicitly specified.
+
+`--disable-executable-dynamic`
+:   (default) Link executables statically.
+
 `--configure-option=`_str_
 :   An extra option to an external `configure` script, if one is used
     (see the section on [system-dependent

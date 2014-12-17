@@ -1,5 +1,6 @@
 module PackageTests.TestSuiteExeV10.Check (checks) where
 
+import Data.Maybe (catMaybes)
 import System.Directory ( doesFileExist )
 import System.FilePath
 import qualified Test.Framework as TF
@@ -33,9 +34,9 @@ hpcTestMatrix ghcPath = do
             , if shared then "Shared" else ""
             ]
         enable cond flag
-          | cond = "--enable-" ++ flag
-          | otherwise = "--disable-" ++ flag
-        opts =
+          | cond = Just $ "--enable-" ++ flag
+          | otherwise = Nothing
+        opts = catMaybes
             [ enable libProf "library-profiling"
             , enable exeProf "executable-profiling"
             , enable exeDyn "executable-dynamic"
