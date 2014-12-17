@@ -627,13 +627,14 @@ be controlled with the following command line options.
 :   (default) Do not generate an additional profiling version of the
     library.
 
-`--enable-executable-profiling`
+`--enable-profiling`
 :   Any executables generated should have profiling enabled (only for
     implementations that support profiling). For this to work, all
     libraries used by these executables must also have been built with
-    profiling support.
+    profiling support. The library will be built with profiling enabled (if
+    supported) unless `--disable-library-profiling` is specified.
 
-`--disable-executable-profiling`
+`--disable-profiling`
 :   (default) Do not enable profiling in generated executables.
 
 `--enable-library-vanilla`
