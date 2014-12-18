@@ -8,7 +8,7 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.Simple.Build.PathsModule ( pkgPathEnvVar )
 import Distribution.Simple.BuildPaths ( exeExtension )
 import Distribution.Simple.Compiler ( compilerInfo )
-import Distribution.Simple.Hpc ( markupTest, tixDir, tixFilePath )
+import Distribution.Simple.Hpc ( guessWay, markupTest, tixDir, tixFilePath )
 import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, PathTemplateVariable(..)
     , substPathTemplate , toPathTemplate, PathTemplate )
@@ -39,6 +39,8 @@ runTest :: PD.PackageDescription
         -> IO TestSuiteLog
 runTest pkg_descr lbi flags suite = do
     let isCoverageEnabled = fromFlag $ configCoverage $ LBI.configFlags lbi
+        way = guessWay lbi
+        tixDir_ = tixDir distPref way $ PD.testName suite
 
     pwd <- getCurrentDirectory
     existingEnv <- getEnvironment
@@ -52,12 +54,11 @@ runTest pkg_descr lbi flags suite = do
 
     -- Remove old .tix files if appropriate.
     unless (fromFlag $ testKeepTix flags) $ do
-        let tDir = tixDir distPref $ PD.testName suite
-        exists' <- doesDirectoryExist tDir
-        when exists' $ removeDirectoryRecursive tDir
+        exists' <- doesDirectoryExist tixDir_
+        when exists' $ removeDirectoryRecursive tixDir_
 
     -- Create directory for HPC files.
-    createDirectoryIfMissing True $ tixDir distPref $ PD.testName suite
+    createDirectoryIfMissing True tixDir_
 
     -- Write summary notices indicating start of test suite
     notice verbosity $ summarizeSuiteStart $ PD.testName suite
@@ -76,7 +77,7 @@ runTest pkg_descr lbi flags suite = do
     let opts = map (testOption pkg_descr lbi suite)
                    (testOptions flags)
         dataDirPath = pwd </> PD.dataDir pkg_descr
-        tixFile = pwd </> tixFilePath distPref (PD.testName suite)
+        tixFile = pwd </> tixFilePath distPref way (PD.testName suite)
         pkgPathEnv = (pkgPathEnvVar pkg_descr "datadir", dataDirPath)
                    : existingEnv
         shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ pkgPathEnv

@@ -86,7 +86,7 @@ import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
          ( toFlag, fromFlag, configCoverage, configDistPref )
 import qualified Distribution.Simple.Setup as Cabal
-        ( Flag )
+        ( Flag(..) )
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
          , PackageDB(..), PackageDBStack, AbiTag(..) )
@@ -445,28 +445,30 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       -- that GHC gives Haskell libraries.
       cname = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
-      hpcdir | isCoverageEnabled = toFlag $ Hpc.mixDir distPref cname
-             | otherwise = mempty
+      hpcdir way
+        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
+        | otherwise = mempty
 
   createDirectoryIfMissingVerbose verbosity True libTargetDir
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
   let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
-                    `mappend` mempty { ghcOptHPCDir = hpcdir }
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = numJobs,
                       ghcOptPackageKey   = toFlag (pkgKey lbi),
                       ghcOptSigOf        = hole_insts,
-                      ghcOptInputModules = toNubListR $ libModules lib
+                      ghcOptInputModules = toNubListR $ libModules lib,
+                      ghcOptHPCDir       = hpcdir Hpc.Vanilla
                     }
 
       profOpts    = vanillaOpts `mappend` mempty {
                       ghcOptProfilingMode = toFlag True,
                       ghcOptHiSuffix      = toFlag "p_hi",
                       ghcOptObjSuffix     = toFlag "p_o",
-                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
+                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi,
+                      ghcOptHPCDir        = hpcdir Hpc.Prof
                     }
 
       sharedOpts  = vanillaOpts `mappend` mempty {
@@ -474,7 +476,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptFPic        = toFlag True,
                       ghcOptHiSuffix    = toFlag "dyn_hi",
                       ghcOptObjSuffix   = toFlag "dyn_o",
-                      ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi
+                      ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi,
+                      ghcOptHPCDir      = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
                       ghcOptLinkOptions    = toNubListR $ PD.ldOptions libBi,
@@ -499,7 +502,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       vanillaSharedOpts = vanillaOpts `mappend` mempty {
                       ghcOptDynLinkMode  = toFlag GhcStaticAndDynamic,
                       ghcOptDynHiSuffix  = toFlag "dyn_hi",
-                      ghcOptDynObjSuffix = toFlag "dyn_o"
+                      ghcOptDynObjSuffix = toFlag "dyn_o",
+                      ghcOptHPCDir       = hpcdir Hpc.Dyn
                     }
 
   unless (forRepl || null (libModules lib)) $
@@ -510,9 +514,21 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                        (forceSharedLib  || withSharedLib  lbi) &&
                        null (hcSharedOptions GHC libBi)
        if useDynToo
-           then runGhcProg vanillaSharedOpts
-           else if isGhcDynamic then do shared;  vanilla
-                                else do vanilla; shared
+          then do
+              runGhcProg vanillaSharedOpts
+              case (hpcdir Hpc.Dyn, hpcdir Hpc.Vanilla) of
+                (Cabal.Flag dynDir, Cabal.Flag vanillaDir) -> do
+                    -- When the vanilla and shared library builds are done
+                    -- in one pass, only one set of HPC module interfaces
+                    -- are generated. This set should suffice for both
+                    -- static and dynamically linked executables. We copy
+                    -- the modules interfaces so they are available under
+                    -- both ways.
+                    copyDirectoryRecursive verbosity dynDir vanillaDir
+                _ -> return ()
+          else if isGhcDynamic
+            then do shared;  vanilla
+            else do vanilla; shared
        whenProfLib (runGhcProg profOpts)
 
   -- build any C sources
@@ -705,8 +721,9 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- '-hpcdir' should be.
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
-      hpcdir | isCoverageEnabled = toFlag $ Hpc.mixDir distPref exeName'
-             | otherwise = mempty
+      hpcdir way
+        | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'
+        | otherwise = mempty
 
   -- build executables
 
@@ -724,29 +741,32 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptInputFiles   = toNubListR
                         [ srcMainFile | isHaskellMain],
                       ghcOptInputModules = toNubListR
-                        [ m | not isHaskellMain, m <- exeModules exe],
-                      ghcOptHPCDir = hpcdir
+                        [ m | not isHaskellMain, m <- exeModules exe]
                     }
       staticOpts = baseOpts `mappend` mempty {
-                      ghcOptDynLinkMode    = toFlag GhcStaticOnly
+                      ghcOptDynLinkMode    = toFlag GhcStaticOnly,
+                      ghcOptHPCDir         = hpcdir Hpc.Vanilla
                    }
       profOpts   = baseOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR $ hcProfOptions GHC exeBi
+                      ghcOptExtra          = toNubListR $ hcProfOptions GHC exeBi,
+                      ghcOptHPCDir         = hpcdir Hpc.Prof
                     }
       dynOpts    = baseOpts `mappend` mempty {
                       ghcOptDynLinkMode    = toFlag GhcDynamicOnly,
                       ghcOptHiSuffix       = toFlag "dyn_hi",
                       ghcOptObjSuffix      = toFlag "dyn_o",
                       ghcOptExtra          = toNubListR $
-                                             hcSharedOptions GHC exeBi
+                                             hcSharedOptions GHC exeBi,
+                      ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       dynTooOpts = staticOpts `mappend` mempty {
                       ghcOptDynLinkMode    = toFlag GhcStaticAndDynamic,
                       ghcOptDynHiSuffix    = toFlag "dyn_hi",
-                      ghcOptDynObjSuffix   = toFlag "dyn_o"
+                      ghcOptDynObjSuffix   = toFlag "dyn_o",
+                      ghcOptHPCDir         = hpcdir Hpc.Dyn
                     }
       linkerOpts = mempty {
                       ghcOptLinkOptions    = toNubListR $ PD.ldOptions exeBi,
