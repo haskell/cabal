@@ -34,7 +34,6 @@ import Distribution.Simple.Compiler
 import Distribution.Text (display)
 
 import Data.Map (Map)
-import qualified Data.Map as Map
 import Network.URI (URI)
 import Data.ByteString.Lazy (ByteString)
 import Control.Exception

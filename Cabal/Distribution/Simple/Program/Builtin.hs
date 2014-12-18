@@ -18,6 +18,8 @@ module Distribution.Simple.Program.Builtin (
     -- * Programs that Cabal knows about
     ghcProgram,
     ghcPkgProgram,
+    ghcjsProgram,
+    ghcjsPkgProgram,
     lhcProgram,
     lhcPkgProgram,
     hmakeProgram,
@@ -75,6 +77,8 @@ builtinPrograms =
     -- compilers and related progs
       ghcProgram
     , ghcPkgProgram
+    , ghcjsProgram
+    , ghcjsPkgProgram
     , haskellSuiteProgram
     , haskellSuitePkgProgram
     , hmakeProgram
@@ -128,6 +132,21 @@ ghcPkgProgram = (simpleProgram "ghc-pkg") {
     programFindVersion = findProgramVersion "--version" $ \str ->
       -- Invoking "ghc-pkg --version" gives a string like
       -- "GHC package manager version 6.4.1"
+      case words str of
+        (_:_:_:_:ver:_) -> ver
+        _               -> ""
+  }
+
+ghcjsProgram :: Program
+ghcjsProgram = (simpleProgram "ghcjs") {
+    programFindVersion = findProgramVersion "--numeric-ghcjs-version" id
+  }
+
+ghcjsPkgProgram :: Program
+ghcjsPkgProgram = (simpleProgram "ghcjs-pkg") {
+    programFindVersion = findProgramVersion "--ghcjs-version" $ \str ->
+      -- Invoking "ghcjs-pkg --version" gives a string like
+      -- "GHCJS package manager version 6.4.1"
       case words str of
         (_:_:_:_:ver:_) -> ver
         _               -> ""

@@ -24,7 +24,9 @@ module Distribution.Simple.Compiler (
         -- * Haskell implementations
         module Distribution.Compiler,
         Compiler(..),
-        showCompilerId, compilerFlavor, compilerVersion,
+        showCompilerId, showCompilerIdWithAbi,
+        compilerFlavor, compilerVersion,
+        compilerCompatVersion,
         compilerInfo,
 
         -- * Support for package databases
@@ -59,7 +61,7 @@ import Control.Monad (liftM)
 import Data.Binary (Binary)
 import Data.List (nub)
 import qualified Data.Map as M (Map, lookup)
-import Data.Maybe (catMaybes, isNothing)
+import Data.Maybe (catMaybes, isNothing, listToMaybe)
 import GHC.Generics (Generic)
 import System.Directory (canonicalizePath)
 
@@ -84,11 +86,24 @@ instance Binary Compiler
 showCompilerId :: Compiler -> String
 showCompilerId = display . compilerId
 
+showCompilerIdWithAbi :: Compiler -> String
+showCompilerIdWithAbi comp =
+  display (compilerId comp) ++
+  case compilerAbiTag comp of
+    NoAbiTag  -> []
+    AbiTag xs -> '-':xs
+
 compilerFlavor ::  Compiler -> CompilerFlavor
 compilerFlavor = (\(CompilerId f _) -> f) . compilerId
 
 compilerVersion :: Compiler -> Version
 compilerVersion = (\(CompilerId _ v) -> v) . compilerId
+
+compilerCompatVersion :: CompilerFlavor -> Compiler -> Maybe Version
+compilerCompatVersion flavor comp
+  | compilerFlavor comp == flavor = Just (compilerVersion comp)
+  | otherwise    =
+      listToMaybe [ v | CompilerId fl v <- compilerCompat comp, fl == flavor ]
 
 compilerInfo :: Compiler -> CompilerInfo
 compilerInfo c = CompilerInfo (compilerId c)
@@ -232,7 +247,10 @@ packageKeySupported = ghcSupported "Uses package keys"
 ghcSupported :: String -> Compiler -> Bool
 ghcSupported key comp =
   case compilerFlavor comp of
-    GHC -> case M.lookup key (compilerProperties comp) of
-      Just "YES" -> True
-      _          -> False
-    _   -> False
+    GHC   -> checkProp
+    GHCJS -> checkProp
+    _     -> False
+  where checkProp =
+          case M.lookup key (compilerProperties comp) of
+            Just "YES" -> True
+            _          -> False

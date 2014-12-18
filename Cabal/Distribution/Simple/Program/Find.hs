@@ -89,6 +89,7 @@ findProgramOnSearchPath verbosity searchpath prog = do
         -- .bat; .cmd".
         extensions = case buildOS of
                        Windows -> ["", "exe"]
+                       Ghcjs   -> ["", "exe"]
                        _       -> [""]
 
     tryPathElem ProgramSearchPathDefault = do

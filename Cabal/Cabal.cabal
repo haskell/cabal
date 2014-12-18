@@ -180,6 +180,7 @@ library
     Distribution.Simple.Compiler
     Distribution.Simple.Configure
     Distribution.Simple.GHC
+    Distribution.Simple.GHCJS
     Distribution.Simple.Haddock
     Distribution.Simple.HaskellSuite
     Distribution.Simple.Hpc
@@ -229,6 +230,7 @@ library
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.IPI641
     Distribution.Simple.GHC.IPI642
+    Distribution.Simple.GHC.ImplInfo
     Paths_Cabal
 
   default-language: Haskell98
