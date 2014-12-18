@@ -11,12 +11,14 @@
 module Distribution.Client.Exec ( exec
                                 ) where
 
+import qualified Distribution.Simple.GHC   as GHC
+import qualified Distribution.Simple.GHCJS as GHCJS
+
 import Distribution.Client.Sandbox.PackageEnvironment (sandboxPackageDBPath)
 import Distribution.Client.Sandbox.Types              (UseSandbox (..))
 
-import Distribution.Simple.Compiler    (Compiler)
-import Distribution.Simple.GHC         (ghcGlobalPackageDB)
-import Distribution.Simple.Program     (ghcProgram, lookupProgram)
+import Distribution.Simple.Compiler    (Compiler, CompilerFlavor(..), compilerFlavor)
+import Distribution.Simple.Program     (ghcProgram, ghcjsProgram, lookupProgram)
 import Distribution.Simple.Program.Db  (ProgramDb, requireProgram, modifyProgramSearchPath)
 import Distribution.Simple.Program.Find (ProgramSearchPathEntry(..))
 import Distribution.Simple.Program.Run (programInvocation, runProgramInvocation)
@@ -70,16 +72,18 @@ sandboxEnvironment :: Verbosity
                    -> Platform
                    -> ProgramDb
                    -> IO [(String, Maybe String)]
-sandboxEnvironment verbosity sandboxDir comp platform programDb = do
-    mGlobalPackageDb <- T.sequence $ ghcGlobalPackageDB verbosity
-                                  <$> lookupProgram ghcProgram programDb
-    case mGlobalPackageDb of
-        Nothing  -> die "exec only works with GHC"
-        Just gDb -> return $ overrides gDb
+sandboxEnvironment verbosity sandboxDir comp platform programDb =
+    case compilerFlavor comp of
+      GHC   -> env GHC.getGlobalPackageDB   ghcProgram   "GHC_PACKAGE_PATH"
+      GHCJS -> env GHCJS.getGlobalPackageDB ghcjsProgram "GHCJS_PACKAGE_PATH"
+      _     -> die "exec only works with GHC and GHCJS"
   where
-    overrides gDb = [ ("GHC_PACKAGE_PATH", ghcPackagePath gDb) ]
+    env getGlobalPackageDB hcProgram overrideEnvVar = do
+        let Just program = lookupProgram hcProgram programDb
+        gDb <- getGlobalPackageDB verbosity program
+        return [(overrideEnvVar, hcPackagePath gDb)]
 
-    ghcPackagePath gDb =
+    hcPackagePath gDb =
         let s = sandboxPackageDBPath sandboxDir comp platform
             in Just $ prependToSearchPath gDb s
 

@@ -73,6 +73,7 @@ data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
         | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
         | HaLVM                        -- bare metal / VMs / hypervisors
         | IOS                          -- iOS
+        | Ghcjs
         | OtherOS String
   deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
@@ -88,7 +89,8 @@ knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD, DragonFly
            ,Solaris, AIX, HPUX, IRIX
            ,HaLVM
-           ,IOS]
+           ,IOS
+           ,Ghcjs]
 
 osAliases :: ClassificationStrictness -> OS -> [String]
 osAliases Permissive Windows = ["mingw32", "win32", "cygwin32"]
@@ -126,6 +128,7 @@ data Arch = I386  | X86_64 | PPC | PPC64 | Sparc
           | IA64  | S390
           | Alpha | Hppa   | Rs6000
           | M68k  | Vax
+          | JavaScript
           | OtherArch String
   deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
@@ -136,7 +139,8 @@ knownArches = [I386, X86_64, PPC, PPC64, Sparc
               ,Arm, Mips, SH
               ,IA64, S390
               ,Alpha, Hppa, Rs6000
-              ,M68k, Vax]
+              ,M68k, Vax
+              ,JavaScript]
 
 archAliases :: ClassificationStrictness -> Arch -> [String]
 archAliases Strict _     = []

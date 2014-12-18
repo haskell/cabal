@@ -25,6 +25,7 @@ module Distribution.Simple.GHC.Internal (
         substTopDir
  ) where
 
+import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
 import Distribution.Package
          ( InstalledPackageId, PackageId )
 import Distribution.InstalledPackageInfo
@@ -40,12 +41,6 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
          ( toFlag )
-import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), CompilerId(..), Compiler(..), compilerVersion
-         , OptimisationLevel(..), PackageDB(..), PackageDBStack, AbiTag(..)
-         , Flag )
-import Distribution.Version
-         ( Version(..), anyVersion, orLaterVersion )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -79,10 +74,12 @@ targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Adjust the way we find and configure gcc and ld
 --
-configureToolchain :: ConfiguredProgram -> M.Map String String
-                                        -> ProgramConfiguration
-                                        -> ProgramConfiguration
-configureToolchain ghcProg ghcInfo =
+configureToolchain :: GhcImplInfo
+                   -> ConfiguredProgram
+                   -> M.Map String String
+                   -> ProgramConfiguration
+                   -> ProgramConfiguration
+configureToolchain implInfo ghcProg ghcInfo =
     addKnownProgram gccProgram {
       programFindLocation = findProg gccProgram extraGccPath,
       programPostConf     = configureGcc
@@ -98,7 +95,6 @@ configureToolchain ghcProg ghcInfo =
       programFindLocation = findProg stripProgram extraStripPath
     }
   where
-    Just ghcVersion = programVersion ghcProg
     compilerDir = takeDirectory (programPath ghcProg)
     baseDir     = takeDirectory compilerDir
     mingwBinDir = baseDir </> "mingw" </> "bin"
@@ -119,18 +115,12 @@ configureToolchain ghcProg ghcInfo =
     extraStripPath = mkExtraPath mbStripLocation windowsExtraStripDir
 
     -- on Windows finding and configuring ghc's gcc & binutils is a bit special
-    windowsExtraGccDir
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
-      | otherwise                       = baseDir
-    windowsExtraLdDir
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
-      | otherwise                       = libDir
-    windowsExtraArDir
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
-      | otherwise                       = libDir
-    windowsExtraStripDir
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
-      | otherwise                       = libDir
+    (windowsExtraGccDir, windowsExtraLdDir,
+     windowsExtraArDir, windowsExtraStripDir)
+      | separateGccMingw implInfo = (baseDir, libDir, libDir, libDir)
+      | otherwise                 = -- GHC >= 6.12
+          let b = mingwBinDir </> binPrefix
+          in  (b, b, b, b)
 
     findProg :: Program -> [FilePath]
              -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
@@ -174,7 +164,7 @@ configureToolchain ghcProg ghcInfo =
           -- ghc's gcc where it lives and thus where gcc can find its
           -- various files:
           FoundOnSystem {}
-           | ghcVersion < Version [6,11] [] ->
+           | separateGccMingw implInfo ->
                return gccProg { programDefaultArgs = ["-B" ++ libDir,
                                                       "-I" ++ includeDir] }
           _ -> return gccProg
@@ -209,38 +199,36 @@ configureToolchain ghcProg ghcInfo =
         then return ldProg { programDefaultArgs = ["-x"] }
         else return ldProg
 
-getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Flag)]
-getLanguages _ ghcProg
+getLanguages :: Verbosity -> GhcImplInfo -> ConfiguredProgram
+             -> IO [(Language, String)]
+getLanguages _ implInfo _
   -- TODO: should be using --supported-languages rather than hard coding
-  | ghcVersion >= Version [7] [] = return [(Haskell98,   "-XHaskell98")
+  | supportsHaskell2010 implInfo = return [(Haskell98,   "-XHaskell98")
                                           ,(Haskell2010, "-XHaskell2010")]
   | otherwise                    = return [(Haskell98,   "")]
-  where
-    Just ghcVersion = programVersion ghcProg
 
-getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
-getGhcInfo verbosity ghcProg =
-    case programVersion ghcProg of
-    Just ghcVersion
-     | ghcVersion >= Version [6,7] [] ->
-        do xs <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
+getGhcInfo :: Verbosity -> GhcImplInfo -> ConfiguredProgram
+           -> IO [(String, String)]
+getGhcInfo verbosity implInfo ghcProg
+  | flagInfoLanguages implInfo = do
+      xs <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
                  ["--info"]
-           case reads xs of
-               [(i, ss)]
-                | all isSpace ss ->
-                   return i
-               _ ->
-                   die "Can't parse --info output of GHC"
-    _ ->
-        return []
+      case reads xs of
+        [(i, ss)]
+          | all isSpace ss ->
+              return i
+        _ ->
+          die "Can't parse --info output of GHC"
+  | otherwise =
+      return []
 
-getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
-getExtensions verbosity ghcProg
-  | ghcVersion >= Version [6,7] [] = do
-
+getExtensions :: Verbosity -> GhcImplInfo -> ConfiguredProgram
+              -> IO [(Extension, String)]
+getExtensions verbosity implInfo ghcProg
+  | flagInfoLanguages implInfo = do
     str <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
               ["--supported-languages"]
-    let extStrs = if ghcVersion >= Version [7] []
+    let extStrs = if reportsNoExt implInfo
                   then lines str
                   else -- Older GHCs only gave us either Foo or NoFoo,
                        -- so we have to work out the other one ourselves
@@ -253,8 +241,7 @@ getExtensions verbosity ghcProg
                        ]
     let extensions0 = [ (ext, "-X" ++ display ext)
                       | Just ext <- map simpleParse extStrs ]
-        extensions1 = if ghcVersion >= Version [6,8]  [] &&
-                         ghcVersion <  Version [6,10] []
+        extensions1 = if fakeRecordPuns implInfo
                       then -- ghc-6.8 introduced RecordPuns however it
                            -- should have been NamedFieldPuns. We now
                            -- encourage packages to use NamedFieldPuns
@@ -265,7 +252,7 @@ getExtensions verbosity ghcProg
                            (DisableExtension NamedFieldPuns, "-XNoRecordPuns") :
                            extensions0
                       else extensions0
-        extensions2 = if ghcVersion <  Version [7,1] []
+        extensions2 = if alwaysNondecIndent implInfo
                       then -- ghc-7.2 split NondecreasingIndentation off
                            -- into a proper extension. Before that it
                            -- was always on.
@@ -277,11 +264,8 @@ getExtensions verbosity ghcProg
 
   | otherwise = return oldLanguageExtensions
 
-  where
-    Just ghcVersion = programVersion ghcProg
-
 -- | For GHC 6.6.x and earlier, the mapping from supported extensions to flags
-oldLanguageExtensions :: [(Extension, Flag)]
+oldLanguageExtensions :: [(Extension, String)]
 oldLanguageExtensions =
     let doFlag (f, (enable, disable)) = [(EnableExtension  f, enable),
                                          (DisableExtension f, disable)]
@@ -334,11 +318,11 @@ oldLanguageExtensions =
     ,(ConstrainedClassMethods    , fglasgowExts)
     ]
 
-componentCcGhcOptions :: Verbosity -> LocalBuildInfo
+componentCcGhcOptions :: Verbosity -> GhcImplInfo -> LocalBuildInfo
                       -> BuildInfo -> ComponentLocalBuildInfo
                       -> FilePath -> FilePath
                       -> GhcOptions
-componentCcGhcOptions verbosity lbi bi clbi pref filename =
+componentCcGhcOptions verbosity implInfo lbi bi clbi pref filename =
     mempty {
       ghcOptVerbosity      = toFlag verbosity,
       ghcOptMode           = toFlag GhcModeCompile,
@@ -350,14 +334,14 @@ componentCcGhcOptions verbosity lbi bi clbi pref filename =
       ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
       ghcOptCcOptions      = toNubListR $
                              (case withOptimization lbi of
-                                 NoOptimisation -> []
-                                 _              -> ["-O2"]) ++
-                             PD.ccOptions bi,
+                                  NoOptimisation -> []
+                                  _              -> ["-O2"]) ++
+                                  PD.ccOptions bi,
       ghcOptObjDir         = toFlag odir
     }
   where
-    odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
-         | otherwise = pref </> takeDirectory filename
+    odir | hasCcOdirBug implInfo = pref </> takeDirectory filename
+         | otherwise             = pref
          -- ghc 6.4.0 had a bug in -odir handling for C compilations.
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
@@ -420,12 +404,11 @@ ghcLookupProperty prop comp =
 
 -- when using -split-objs, we need to search for object files in the
 -- Module_split directory for each module.
-getHaskellObjects :: Library -> LocalBuildInfo
+getHaskellObjects :: GhcImplInfo -> Library -> LocalBuildInfo
                   -> FilePath -> String -> Bool -> IO [FilePath]
-getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
+getHaskellObjects implInfo lib lbi pref wanted_obj_ext allow_split_objs
   | splitObjs lbi && allow_split_objs = do
-        let splitSuffix = if compilerVersion (compiler lbi) <
-                             Version [6, 11] []
+        let splitSuffix = if   noExtInSplitSuffix implInfo
                           then "_split"
                           else "_" ++ wanted_obj_ext ++ "_split"
             dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
@@ -440,7 +423,8 @@ getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
         return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
                | x <- libModules lib ]
 
-mkGhcOptPackages :: ComponentLocalBuildInfo -> [(InstalledPackageId, PackageId, ModuleRenaming)]
+mkGhcOptPackages :: ComponentLocalBuildInfo
+                 -> [(InstalledPackageId, PackageId, ModuleRenaming)]
 mkGhcOptPackages clbi =
   map (\(i,p) -> (i,p,lookupRenaming p (componentPackageRenaming clbi)))
       (componentPackageDeps clbi)
@@ -463,3 +447,4 @@ substTopDir topDir ipo
    }
     where f ('$':'t':'o':'p':'d':'i':'r':rest) = topDir ++ rest
           f x = x
+
