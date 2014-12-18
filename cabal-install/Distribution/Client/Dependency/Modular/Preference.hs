@@ -131,18 +131,19 @@ enforcePackageConstraints pcs = trav go
 -- | Transformation that tries to enforce manual flags. Manual flags
 -- can only be re-set explicitly by the user. This transformation should
 -- be run after user preferences have been enforced. For manual flags,
--- it disables all but the first non-disabled choice.
+-- it checks if a user choice has been made. If not, it disables all but
+-- the first choice.
 enforceManualFlags :: Tree QGoalReasonChain -> Tree QGoalReasonChain
 enforceManualFlags = trav go
   where
     go (FChoiceF qfn gr tr True ts) = FChoiceF qfn gr tr True $
       let c = toConflictSet (Goal (F qfn) gr)
       in  case span isDisabled (P.toList ts) of
-            (xs, [])     -> P.fromList xs -- everything's already disabled, leave everything as is
-            (xs, y : ys) -> P.fromList (xs ++ y : L.map (\ (b, _) -> (b, Fail c ManualFlag)) ys)
+            ([], y : ys) -> P.fromList (y : L.map (\ (b, _) -> (b, Fail c ManualFlag)) ys)
+            _            -> ts -- something has been manually selected, leave things alone
       where
-        isDisabled (_, Fail _ _) = True
-        isDisabled _             = False
+        isDisabled (_, Fail _ GlobalConstraintFlag) = True
+        isDisabled _                                = False
     go x                                                   = x
 
 -- | Prefer installed packages over non-installed packages, generally.
