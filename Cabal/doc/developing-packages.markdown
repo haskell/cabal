@@ -1845,6 +1845,10 @@ The `get` command supports the following options:
 :   Fork the package's source repository using the appropriate version control
     system. The optional argument allows to choose a specific repository kind.
 
+`--only-package-description`
+:   Unpack only the package description file. Uses only information already
+    available locally in one of the repository indices. Ignores `-s`.
+
 
 ## Accessing data files from package code ##
 

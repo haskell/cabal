@@ -776,6 +776,7 @@ instance Monoid ReportFlags where
 
 data GetFlags = GetFlags {
     getDestDir          :: Flag FilePath,
+    getOnlyPkgDescr     :: Flag Bool,
     getPristine         :: Flag Bool,
     getSourceRepository :: Flag (Maybe RepoKind),
     getVerbosity        :: Flag Verbosity
@@ -784,6 +785,7 @@ data GetFlags = GetFlags {
 defaultGetFlags :: GetFlags
 defaultGetFlags = GetFlags {
     getDestDir          = mempty,
+    getOnlyPkgDescr     = mempty,
     getPristine         = mempty,
     getSourceRepository = mempty,
     getVerbosity        = toFlag normal
@@ -797,7 +799,9 @@ getCommand = CommandUI {
           "Creates a local copy of a package's source code. By default it gets "
        ++ "the source\ntarball and unpacks it in a local subdirectory. "
        ++ "Alternatively, with -s it will\nget the code from the source "
-       ++ "repository specified by the package.\n",
+       ++ "repository specified by the package.\n"
+       ++ "With --only-package-description, it will ignore -s and unpack only "
+       ++ "the package\ndescription.\n",
     commandUsage        = usagePackages "get",
     commandDefaultFlags = defaultGetFlags,
     commandOptions      = \_ -> [
@@ -815,6 +819,16 @@ getCommand = CommandUI {
                                               (fmap (toFlag . Just) parse))
                                   (Flag Nothing)
                                   (map (fmap show) . flagToList))
+
+       , option [] ["only-package-description"]
+           "Unpack only the package description file."
+           getOnlyPkgDescr (\v flags -> flags { getOnlyPkgDescr = v })
+           trueArg
+
+       , option [] ["package-description-only"]
+           "A synonym for --only-package-description."
+           getOnlyPkgDescr (\v flags -> flags { getOnlyPkgDescr = v })
+           trueArg
 
        , option [] ["pristine"]
            ("Unpack the original pristine tarball, rather than updating the "
@@ -834,12 +848,14 @@ unpackCommand = getCommand {
 instance Monoid GetFlags where
   mempty = GetFlags {
     getDestDir          = mempty,
+    getOnlyPkgDescr     = mempty,
     getPristine         = mempty,
     getSourceRepository = mempty,
     getVerbosity        = mempty
     }
   mappend a b = GetFlags {
     getDestDir          = combine getDestDir,
+    getOnlyPkgDescr     = combine getOnlyPkgDescr,
     getPristine         = combine getPristine,
     getSourceRepository = combine getSourceRepository,
     getVerbosity        = combine getVerbosity
