@@ -182,6 +182,8 @@ PARSEC_VER="3.1.7";    PARSEC_VER_REGEXP="[3]\.[01]\."
                        # >= 3.0 && < 3.2
 DEEPSEQ_VER="1.4.0.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
+BINARY_VER="0.7.2.3";  BINARY_VER_REGEXP="[0]\.[7]\."
+                       # == 0.7.*
 TEXT_VER="1.2.0.3";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
 NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\.[0-6]\."
@@ -331,6 +333,7 @@ do_pkg () {
 # Actually do something!
 
 info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
+info_pkg "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
 info_pkg "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
 info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 info_pkg "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
@@ -345,6 +348,7 @@ info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 
 do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
+do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
 do_pkg   "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
 do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
 do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
