@@ -23,10 +23,11 @@ module Distribution.Simple.Build (
     writeAutogenFiles,
   ) where
 
-import qualified Distribution.Simple.GHC  as GHC
-import qualified Distribution.Simple.JHC  as JHC
-import qualified Distribution.Simple.LHC  as LHC
-import qualified Distribution.Simple.UHC  as UHC
+import qualified Distribution.Simple.GHC   as GHC
+import qualified Distribution.Simple.GHCJS as GHCJS
+import qualified Distribution.Simple.JHC   as JHC
+import qualified Distribution.Simple.LHC   as LHC
+import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import qualified Distribution.Simple.Build.Macros      as Build.Macros
@@ -46,7 +47,6 @@ import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
 
-import Distribution.Simple.Program (ghcPkgProgram)
 import Distribution.Simple.Setup
          ( Flag(..), BuildFlags(..), ReplFlags(..), fromFlag )
 import Distribution.Simple.BuildTarget
@@ -115,8 +115,7 @@ build pkg_descr lbi flags suffixes = do
     -- Only bother with this message if we're building the whole package
     setupMessage verbosity "Building" (packageId pkg_descr)
 
-  let Just ghcPkgProg = lookupProgram ghcPkgProgram (withPrograms lbi)
-  internalPackageDB <- createInternalPackageDB verbosity ghcPkgProg distPref
+  internalPackageDB <- createInternalPackageDB verbosity lbi distPref
 
   withComponentsInBuildOrder pkg_descr lbi componentsToBuild $ \comp clbi ->
     let bi     = componentBuildInfo comp
@@ -153,8 +152,8 @@ repl pkg_descr lbi flags suffixes args = do
 
   initialBuildSteps distPref pkg_descr lbi verbosity
 
-  let Just ghcPkgProg = lookupProgram ghcPkgProgram (withPrograms lbi)
-  internalPackageDB <- createInternalPackageDB verbosity ghcPkgProg distPref
+  internalPackageDB <- createInternalPackageDB verbosity lbi distPref
+
   let lbiForComponent comp lbi' =
         lbi' {
           withPackageDB = withPackageDB lbi ++ [internalPackageDB],
@@ -181,8 +180,9 @@ repl pkg_descr lbi flags suffixes args = do
 startInterpreter :: Verbosity -> ProgramDb -> Compiler -> PackageDBStack -> IO ()
 startInterpreter verbosity programDb comp packageDBs =
   case compilerFlavor comp of
-    GHC -> GHC.startInterpreter verbosity programDb comp packageDBs
-    _   -> die "A REPL is not supported with this compiler."
+    GHC   -> GHC.startInterpreter   verbosity programDb comp packageDBs
+    GHCJS -> GHCJS.startInterpreter verbosity programDb comp packageDBs
+    _     -> die "A REPL is not supported with this compiler."
 
 buildComponent :: Verbosity
                -> Flag (Maybe Int)
@@ -440,14 +440,22 @@ benchmarkExeV10asExe Benchmark{} _ = error "benchmarkExeV10asExe: wrong kind"
 
 -- | Initialize a new package db file for libraries defined
 -- internally to the package.
-createInternalPackageDB :: Verbosity -> ConfiguredProgram -> FilePath -> IO PackageDB
-createInternalPackageDB verbosity ghcPkgProg distPref = do
-    let dbDir = distPref </> "package.conf.inplace"
-        packageDB = SpecificPackageDB dbDir
-    exists <- doesDirectoryExist dbDir
-    when exists $ removeDirectoryRecursive dbDir
-    HcPkg.init verbosity ghcPkgProg dbDir
-    return packageDB
+createInternalPackageDB :: Verbosity -> LocalBuildInfo -> FilePath
+                        -> IO PackageDB
+createInternalPackageDB verbosity lbi distPref = do
+    case compilerFlavor (compiler lbi) of
+      GHC   -> createWith $ GHC.hcPkgInfo   (withPrograms lbi)
+      GHCJS -> createWith $ GHCJS.hcPkgInfo (withPrograms lbi)
+      LHC   -> createWith $ LHC.hcPkgInfo   (withPrograms lbi)
+      _     -> return packageDB
+    where
+      dbDir = distPref </> "package.conf.inplace"
+      packageDB = SpecificPackageDB dbDir
+      createWith hpi = do
+        exists <- doesDirectoryExist dbDir
+        when exists $ removeDirectoryRecursive dbDir
+        HcPkg.init hpi verbosity dbDir
+        return packageDB
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
                       -> ProgramDb -> ProgramDb
@@ -472,10 +480,11 @@ buildLib :: Verbosity -> Flag (Maybe Int)
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity numJobs pkg_descr lbi lib clbi =
   case compilerFlavor (compiler lbi) of
-    GHC  -> GHC.buildLib  verbosity numJobs pkg_descr lbi lib clbi
-    JHC  -> JHC.buildLib  verbosity         pkg_descr lbi lib clbi
-    LHC  -> LHC.buildLib  verbosity         pkg_descr lbi lib clbi
-    UHC  -> UHC.buildLib  verbosity         pkg_descr lbi lib clbi
+    GHC   -> GHC.buildLib   verbosity numJobs pkg_descr lbi lib clbi
+    GHCJS -> GHCJS.buildLib verbosity numJobs pkg_descr lbi lib clbi
+    JHC   -> JHC.buildLib   verbosity         pkg_descr lbi lib clbi
+    LHC   -> LHC.buildLib   verbosity         pkg_descr lbi lib clbi
+    UHC   -> UHC.buildLib   verbosity         pkg_descr lbi lib clbi
     HaskellSuite {} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
     _    -> die "Building is not supported with this compiler."
 
@@ -484,12 +493,12 @@ buildExe :: Verbosity -> Flag (Maybe Int)
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
 buildExe verbosity numJobs pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
-    GHC  -> GHC.buildExe  verbosity numJobs pkg_descr lbi exe clbi
-    JHC  -> JHC.buildExe  verbosity         pkg_descr lbi exe clbi
-    LHC  -> LHC.buildExe  verbosity         pkg_descr lbi exe clbi
-    UHC  -> UHC.buildExe  verbosity         pkg_descr lbi exe clbi
-    _    -> die "Building is not supported with this compiler."
-
+    GHC   -> GHC.buildExe   verbosity numJobs pkg_descr lbi exe clbi
+    GHCJS -> GHCJS.buildExe verbosity numJobs pkg_descr lbi exe clbi
+    JHC   -> JHC.buildExe   verbosity         pkg_descr lbi exe clbi
+    LHC   -> LHC.buildExe   verbosity         pkg_descr lbi exe clbi
+    UHC   -> UHC.buildExe   verbosity         pkg_descr lbi exe clbi
+    _     -> die "Building is not supported with this compiler."
 
 replLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                      -> Library            -> ComponentLocalBuildInfo -> IO ()
@@ -497,15 +506,17 @@ replLib verbosity pkg_descr lbi lib clbi =
   case compilerFlavor (compiler lbi) of
     -- 'cabal repl' doesn't need to support 'ghc --make -j', so we just pass
     -- NoFlag as the numJobs parameter.
-    GHC  -> GHC.replLib verbosity NoFlag pkg_descr lbi lib clbi
-    _    -> die "A REPL is not supported for this compiler."
+    GHC   -> GHC.replLib   verbosity NoFlag pkg_descr lbi lib clbi
+    GHCJS -> GHCJS.replLib verbosity NoFlag pkg_descr lbi lib clbi
+    _     -> die "A REPL is not supported for this compiler."
 
 replExe :: Verbosity -> PackageDescription -> LocalBuildInfo
                      -> Executable         -> ComponentLocalBuildInfo -> IO ()
 replExe verbosity pkg_descr lbi exe clbi =
   case compilerFlavor (compiler lbi) of
-    GHC  -> GHC.replExe verbosity NoFlag pkg_descr lbi exe clbi
-    _    -> die "A REPL is not supported for this compiler."
+    GHC   -> GHC.replExe   verbosity NoFlag pkg_descr lbi exe clbi
+    GHCJS -> GHCJS.replExe verbosity NoFlag pkg_descr lbi exe clbi
+    _     -> die "A REPL is not supported for this compiler."
 
 
 initialBuildSteps :: FilePath -- ^"dist" prefix

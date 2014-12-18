@@ -162,6 +162,9 @@ generate pkg_descr lbi =
         supportsRelocatableProgs GHC  = case buildOS of
                            Windows   -> True
                            _         -> False
+        supportsRelocatableProgs GHCJS = case buildOS of
+                           Windows   -> True
+                           _         -> False
         supportsRelocatableProgs _    = False
 
         paths_modulename = autogenModuleName pkg_descr
@@ -171,9 +174,10 @@ generate pkg_descr lbi =
         path_sep = show [pathSeparator]
 
         supports_language_pragma =
-          compilerFlavor (compiler lbi) == GHC &&
+          (compilerFlavor (compiler lbi) == GHC &&
             (compilerVersion (compiler lbi)
-              `withinRange` orLaterVersion (Version [6,6,1] []))
+              `withinRange` orLaterVersion (Version [6,6,1] []))) ||
+           compilerFlavor (compiler lbi) == GHCJS
 
 -- | Generates the name of the environment variable controlling the path
 -- component of interest.

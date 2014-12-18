@@ -15,6 +15,7 @@ import GHC.IO.FD (mkFD)
 import GHC.IO.Device (IODeviceType(Stream))
 import GHC.IO.Handle.FD (mkHandleFromFD)
 import System.IO (IOMode(ReadMode, WriteMode))
+#elif ghcjs_HOST_OS
 #else
 import System.Posix.IO (fdToHandle)
 import qualified System.Posix.IO as Posix
@@ -48,6 +49,8 @@ foreign import ccall "io.h _pipe" c__pipe ::
 
 foreign import ccall "io.h _close" c__close ::
     CInt -> IO CInt
+#elif ghcjs_HOST_OS
+createPipe = error "createPipe"
 #else
 createPipe = do
     (readfd, writefd) <- Posix.createPipe

@@ -92,6 +92,8 @@ module Distribution.Simple.Program (
     -- * Programs that Cabal knows about
     , ghcProgram
     , ghcPkgProgram
+    , ghcjsProgram
+    , ghcjsPkgProgram
     , lhcProgram
     , lhcPkgProgram
     , hmakeProgram

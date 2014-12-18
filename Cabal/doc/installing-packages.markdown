@@ -489,7 +489,8 @@ independence](#prefix-independence)).
 
 `$abitag`
 :   An optional tag that a compiler can use for telling incompatible ABI's
-    on the same architecture apart.
+    on the same architecture apart. GHCJS encodes the underlying GHC version
+    in the ABI tag.
 
 `$abi`
 :   A shortcut for getting a path that completely identifies the platform in terms
