@@ -129,7 +129,7 @@ executable cabal
         array      >= 0.1      && < 0.6,
         base       >= 4.3      && < 5,
         bytestring >= 0.9      && < 1,
-        Cabal      == 1.21.1.0,
+        Cabal      >= 1.22     && < 1.23,
         containers >= 0.1      && < 0.6,
         filepath   >= 1.0      && < 1.4,
         HTTP       >= 4000.2.5 && < 4000.3,
