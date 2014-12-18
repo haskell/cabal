@@ -14,11 +14,14 @@ import Distribution.Client.Utils             (tryCanonicalizePath)
 
 import Distribution.PackageDescription       (Executable (..),
                                               PackageDescription (..))
+import Distribution.Simple.Compiler          (compilerFlavor, CompilerFlavor(..))
 import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Distribution.Simple.BuildPaths        (exeExtension)
 import Distribution.Simple.LocalBuildInfo    (LocalBuildInfo (..))
 import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv)
 import Distribution.Verbosity                (Verbosity)
+
+import qualified Distribution.Simple.GHCJS as GHCJS
 
 import Data.Functor                          ((<$>))
 import Data.List                             (find)
@@ -58,8 +61,19 @@ run verbosity lbi exe exeArgs = do
       dataDirEnvVar = (pkgPathEnvVar pkg_descr "datadir",
                        curDir </> dataDir pkg_descr)
 
-  path <- tryCanonicalizePath $
-          buildPref </> exeName exe </> (exeName exe <.> exeExtension)
+  (path, runArgs) <-
+    case compilerFlavor (compiler lbi) of
+      GHCJS -> do
+        let (script, cmd, cmdArgs) =
+              GHCJS.runCmd (withPrograms lbi)
+                           (buildPref </> exeName exe </> exeName exe)
+        script' <- tryCanonicalizePath script
+        return (cmd, cmdArgs ++ [script'])
+      _     -> do
+         p <- tryCanonicalizePath $
+            buildPref </> exeName exe </> (exeName exe <.> exeExtension)
+         return (p, [])
+
   env  <- (dataDirEnvVar:) <$> getEnvironment
   notice verbosity $ "Running " ++ exeName exe ++ "..."
-  rawSystemExitWithEnv verbosity path exeArgs env
+  rawSystemExitWithEnv verbosity path (runArgs++exeArgs) env

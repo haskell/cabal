@@ -40,15 +40,16 @@ import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.Simple.Configure
          ( configCompilerEx )
-import Distribution.Compiler ( buildCompilerId )
+import Distribution.Compiler
+         ( buildCompilerId, CompilerFlavor(GHC, GHCJS) )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(GHC), Compiler(compilerId)
-         , PackageDB(..), PackageDBStack )
+         ( Compiler(compilerId), compilerFlavor, PackageDB(..), PackageDBStack )
 import Distribution.Simple.PreProcess
          ( runSimplePreProcessor, ppUnlit )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
-         , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram )
+         , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
+         , ghcjsProgram )
 import Distribution.Simple.Program.Find
          ( programSearchPathAsPATHVar )
 import Distribution.Simple.Program.Run
@@ -456,15 +457,17 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                  cabalLibVersion maybeCabalLibInstalledPkgId True
           createDirectoryIfMissingVerbose verbosity True setupCacheDir
           installExecutableFile verbosity src cachedSetupProgFile
-          Strip.stripExe verbosity platform (useProgramConfig options')
-            cachedSetupProgFile
+          -- Do not strip if we're using GHCJS, since the result may be a script
+          when (maybe True ((/=GHCJS).compilerFlavor) $ useCompiler options') $
+            Strip.stripExe verbosity platform (useProgramConfig options')
+              cachedSetupProgFile
     return cachedSetupProgFile
       where
         criticalSection'      = fromMaybe id
                                 (fmap criticalSection $ setupCacheLock options')
 
   -- | If the Setup.hs is out of date wrt the executable then recompile it.
-  -- Currently this is GHC only. It should really be generalised.
+  -- Currently this is GHC/GHCJS only. It should really be generalised.
   --
   compileSetupExecutable :: SetupScriptOptions
                          -> Version -> Maybe InstalledPackageId -> Bool
@@ -478,7 +481,11 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       debug verbosity "Setup executable needs to be updated, compiling..."
       (compiler, conf, options'') <- configureCompiler options'
       let cabalPkgid = PackageIdentifier (PackageName "Cabal") cabalLibVersion
-      let ghcOptions = mempty {
+          (program, extraOpts)
+            = case compilerFlavor compiler of
+                      GHCJS -> (ghcjsProgram, ["-build-runner"])
+                      _     -> (ghcProgram,   ["-threaded"])
+          ghcOptions = mempty {
               ghcOptVerbosity       = Flag verbosity
             , ghcOptMode            = Flag GhcModeMake
             , ghcOptInputFiles      = toNubListR [setupHs]
@@ -491,14 +498,14 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptPackages        = toNubListR $
                 maybe [] (\ipkgid -> [(ipkgid, cabalPkgid, defaultRenaming)])
                 maybeCabalLibInstalledPkgId
-            , ghcOptExtra           = toNubListR ["-threaded"]
+            , ghcOptExtra           = toNubListR extraOpts
             }
       let ghcCmdLine = renderGhcOptions compiler ghcOptions
       case useLoggingHandle options of
-        Nothing          -> runDbProgram verbosity ghcProgram conf ghcCmdLine
+        Nothing          -> runDbProgram verbosity program conf ghcCmdLine
 
         -- If build logging is enabled, redirect compiler output to the log file.
-        (Just logHandle) -> do output <- getDbProgramOutput verbosity ghcProgram
+        (Just logHandle) -> do output <- getDbProgramOutput verbosity program
                                          conf ghcCmdLine
                                hPutStr logHandle output
     return setupProgFile

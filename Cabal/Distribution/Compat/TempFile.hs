@@ -25,7 +25,7 @@ import Foreign.C              (getErrno, errnoToIOError)
 
 import System.Posix.Internals (c_getpid)
 
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
 import System.Directory       ( createDirectory )
 #else
 import qualified System.Posix
@@ -121,7 +121,7 @@ createTempDirectory dir template = do
                 | otherwise              -> ioError e
 
 mkPrivateDir :: String -> IO ()
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS) || defined(ghcjs_HOST_OS)
 mkPrivateDir s = createDirectory s
 #else
 mkPrivateDir s = System.Posix.createDirectory s 0o700

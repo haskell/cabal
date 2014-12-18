@@ -35,14 +35,15 @@ module Distribution.Simple.LHC (
         buildLib, buildExe,
         installLib, installExe,
         registerPackage,
+        hcPkgInfo,
         ghcOptions,
         ghcVerbosityOptions
  ) where
 
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
-         , Library(..), libModules, hcOptions, usedExtensions, allExtensions
-         , hcSharedOptions, hcProfOptions )
+         , Library(..), libModules, hcOptions, hcProfOptions, hcSharedOptions
+         , usedExtensions, allExtensions )
 import Distribution.InstalledPackageInfo
                                 ( InstalledPackageInfo
                                 , parseInstalledPackageInfo )
@@ -784,6 +785,15 @@ registerPackage
   -> Bool
   -> PackageDBStack
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
-  let Just lhcPkg = lookupProgram lhcPkgProgram (withPrograms lbi)
-  HcPkg.reregister verbosity lhcPkg packageDbs (Right installedPkgInfo)
+registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
+  HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity packageDbs
+    (Right installedPkgInfo)
+
+hcPkgInfo :: ProgramConfiguration -> HcPkg.HcPkgInfo
+hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
+                                 , HcPkg.noPkgDbStack    = False
+                                 , HcPkg.noVerboseFlag   = False
+                                 , HcPkg.flagPackageConf = False
+                                 }
+  where
+    Just lhcPkgProg = lookupProgram lhcPkgProgram conf

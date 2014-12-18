@@ -41,7 +41,7 @@ import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , defaultSandboxLocation )
 import Distribution.Utils.NubList            ( toNubList )
 import Distribution.Simple.Compiler    ( Compiler, PackageDB(..)
-                                       , compilerFlavor, showCompilerId )
+                                       , compilerFlavor, showCompilerIdWithAbi )
 import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
                                        , defaultInstallDirs, combineInstallDirs
                                        , fromPathTemplate, toPathTemplate )
@@ -217,7 +217,7 @@ sandboxPackageDBPath :: FilePath -> Compiler -> Platform -> String
 sandboxPackageDBPath sandboxDir compiler platform =
     sandboxDir
          </> (Text.display platform ++ "-"
-             ++ showCompilerId compiler
+             ++ showCompilerIdWithAbi compiler
              ++ "-packages.conf.d")
 -- The path in sandboxPackageDBPath should be kept in sync with the
 -- path in the bootstrap.sh which is used to bootstrap cabal-install
