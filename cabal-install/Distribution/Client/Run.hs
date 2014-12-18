@@ -17,8 +17,13 @@ import Distribution.PackageDescription       (Executable (..),
 import Distribution.Simple.Compiler          (compilerFlavor, CompilerFlavor(..))
 import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Distribution.Simple.BuildPaths        (exeExtension)
-import Distribution.Simple.LocalBuildInfo    (LocalBuildInfo (..))
-import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv)
+import Distribution.Simple.LocalBuildInfo    (ComponentName (..),
+                                              LocalBuildInfo (..),
+                                              getComponentLocalBuildInfo,
+                                              depLibraryPaths)
+import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv,
+                                              addLibraryPath)
+import Distribution.System                   (Platform (..))
 import Distribution.Verbosity                (Verbosity)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -75,5 +80,13 @@ run verbosity lbi exe exeArgs = do
          return (p, [])
 
   env  <- (dataDirEnvVar:) <$> getEnvironment
+  -- Add (DY)LD_LIBRARY_PATH if needed
+  env' <- if relocatable lbi && withDynExe lbi
+             then do let (Platform _ os) = hostPlatform lbi
+                         clbi = getComponentLocalBuildInfo lbi
+                                  (CExeName (exeName exe))
+                     paths <- depLibraryPaths True False lbi clbi
+                     return (addLibraryPath os paths env)
+             else return env
   notice verbosity $ "Running " ++ exeName exe ++ "..."
-  rawSystemExitWithEnv verbosity path (runArgs++exeArgs) env
+  rawSystemExitWithEnv verbosity path (runArgs++exeArgs) env'

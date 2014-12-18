@@ -22,7 +22,9 @@ import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Setup
     ( TestFlags(..), TestShowDetails(..), fromFlag, configCoverage )
 import Distribution.Simple.Test.Log
-import Distribution.Simple.Utils ( die, notice, rawSystemIOWithEnv )
+import Distribution.Simple.Utils
+    ( die, notice, rawSystemIOWithEnv, addLibraryPath )
+import Distribution.System ( Platform (..) )
 import Distribution.TestSuite
 import Distribution.Text
 import Distribution.Verbosity ( normal )
@@ -86,7 +88,19 @@ runTest pkg_descr lbi flags suite = do
                                : existingEnv
                     shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled]
                              ++ pkgPathEnv
-                rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv)
+                -- Add (DY)LD_LIBRARY_PATH if needed
+                shellEnv' <- if LBI.relocatable lbi && LBI.withDynExe lbi
+                                then do
+                                  let (Platform _ os) = LBI.hostPlatform lbi
+                                      clbi = LBI.getComponentLocalBuildInfo
+                                                   lbi
+                                                   (LBI.CTestName
+                                                      (PD.testName suite))
+                                  paths <- LBI.depLibraryPaths
+                                             True False lbi clbi
+                                  return (addLibraryPath os paths shellEnv)
+                                else return shellEnv
+                rawSystemIOWithEnv verbosity cmd opts Nothing (Just shellEnv')
                                    -- these handles are closed automatically
                                    (Just rIn) (Just wOut) (Just wOut)
 
