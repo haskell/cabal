@@ -140,6 +140,7 @@ main = do
             , configOpts = [ "--package-db=" ++ dbFile
                            , "--constraint=Cabal == " ++ display cabalVersion
                            ]
+            , distPref = Nothing
             }
     putStrLn $ "Cabal test suite - testing cabal version " ++
         display cabalVersion

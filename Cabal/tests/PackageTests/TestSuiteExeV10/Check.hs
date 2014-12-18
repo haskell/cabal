@@ -8,6 +8,7 @@ import Test.Framework (testGroup)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
 import Test.HUnit hiding ( path )
 
+import Distribution.Simple.Configure (getPersistBuildConfig)
 import Distribution.Simple.Hpc
 
 import PackageTests.PackageTester
@@ -16,8 +17,8 @@ checks :: FilePath -> [TF.Test]
 checks ghcPath =
     [ hunit "Test" $ checkTest ghcPath ]
     ++ hpcTestMatrix ghcPath ++
-    [ hunit "TestWithoutHpc/NoTix" $ checkTestWithoutHpcNoTix ghcPath
-    , hunit "TestWithoutHpc/NoMarkup" $ checkTestWithoutHpcNoMarkup ghcPath
+    [ hunit "TestNoHpc/NoTix" $ checkTestNoHpcNoTix ghcPath
+    , hunit "TestNoHpc/NoMarkup" $ checkTestNoHpcNoMarkup ghcPath
     ]
 
 hpcTestMatrix :: FilePath -> [TF.Test]
@@ -27,7 +28,7 @@ hpcTestMatrix ghcPath = do
     exeDyn <- [True, False]
     shared <- [True, False]
     let name = concat
-            [ "WithHpc/"
+            [ "WithHpc-"
             , if libProf then "LibProf" else ""
             , if exeProf then "ExeProf" else ""
             , if exeDyn then "ExeDyn" else ""
@@ -42,13 +43,13 @@ hpcTestMatrix ghcPath = do
             , enable exeDyn "executable-dynamic"
             , enable shared "shared"
             ]
-    return $ hunit name $ checkTestWithHpc ghcPath opts
+    return $ hunit name $ checkTestWithHpc ghcPath name opts
 
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteExeV10"
 
 checkTest :: FilePath -> Test
-checkTest ghcPath = TestCase $ buildAndTest ghcPath [] []
+checkTest ghcPath = TestCase $ buildAndTest ghcPath "Default" [] []
 
 shouldExist :: FilePath -> Assertion
 shouldExist path = doesFileExist path >>= assertBool (path ++ " should exist")
@@ -58,39 +59,49 @@ shouldNotExist path =
     doesFileExist path >>= assertBool (path ++ " should exist") . not
 
 -- | Ensure that both .tix file and markup are generated if coverage is enabled.
-checkTestWithHpc :: FilePath -> [String] -> Test
-checkTestWithHpc ghcPath extraOpts = TestCase $ do
-    buildAndTest ghcPath [] ("--enable-coverage" : extraOpts)
-    shouldExist $ mixDir (dir </> "dist") "my-0.1" </> "my-0.1" </> "Foo.mix"
-    shouldExist $ mixDir (dir </> "dist") "test-Foo" </> "Main.mix"
-    shouldExist $ tixFilePath (dir </> "dist") "test-Foo"
-    shouldExist $ htmlDir (dir </> "dist") "test-Foo" </> "hpc_index.html"
+checkTestWithHpc :: FilePath -> String -> [String] -> Test
+checkTestWithHpc ghcPath name extraOpts = TestCase $ do
+    buildAndTest ghcPath name [] ("--enable-coverage" : extraOpts)
+    lbi <- getPersistBuildConfig (dir </> "dist-" ++ name)
+    let way = guessWay lbi
+    shouldExist $ mixDir (dir </> "dist-" ++ name) way "my-0.1" </> "my-0.1" </> "Foo.mix"
+    shouldExist $ mixDir (dir </> "dist-" ++ name) way "test-Foo" </> "Main.mix"
+    shouldExist $ tixFilePath (dir </> "dist-" ++ name) way "test-Foo"
+    shouldExist $ htmlDir (dir </> "dist-" ++ name) way "test-Foo" </> "hpc_index.html"
 
 -- | Ensures that even if -fhpc is manually provided no .tix file is output.
-checkTestWithoutHpcNoTix :: FilePath -> Test
-checkTestWithoutHpcNoTix ghcPath = TestCase $ do
-    buildAndTest ghcPath [] [ "--ghc-option=-fhpc"
-                            , "--ghc-option=-hpcdir"
-                            , "--ghc-option=dist/hpc" ]
-    shouldNotExist $ tixFilePath (dir </> "dist") "test-Foo"
+checkTestNoHpcNoTix :: FilePath -> Test
+checkTestNoHpcNoTix ghcPath = TestCase $ do
+    buildAndTest ghcPath "NoHpcNoTix" []
+      [ "--ghc-option=-fhpc"
+      , "--ghc-option=-hpcdir"
+      , "--ghc-option=dist-NoHpcNoTix/hpc/vanilla" ]
+    lbi <- getPersistBuildConfig (dir </> "dist-NoHpcNoTix")
+    let way = guessWay lbi
+    shouldNotExist $ tixFilePath (dir </> "dist-NoHpcNoTix") way "test-Foo"
 
 -- | Ensures that even if a .tix file happens to be left around
 -- markup isn't generated.
-checkTestWithoutHpcNoMarkup :: FilePath -> Test
-checkTestWithoutHpcNoMarkup ghcPath = TestCase $ do
-    let tixFile = tixFilePath "dist" "test-Foo"
-    buildAndTest ghcPath [("HPCTIXFILE", Just tixFile)]
-                         [ "--ghc-option=-fhpc"
-                         , "--ghc-option=-hpcdir"
-                         , "--ghc-option=dist/hpc" ]
-    shouldNotExist $ htmlDir (dir </> "dist") "test-Foo" </> "hpc_index.html"
+checkTestNoHpcNoMarkup :: FilePath -> Test
+checkTestNoHpcNoMarkup ghcPath = TestCase $ do
+    let tixFile = tixFilePath "dist-NoHpcNoMarkup" Vanilla "test-Foo"
+    buildAndTest ghcPath "NoHpcNoMarkup"
+      [("HPCTIXFILE", Just tixFile)]
+      [ "--ghc-option=-fhpc"
+      , "--ghc-option=-hpcdir"
+      , "--ghc-option=dist-NoHpcNoMarkup/hpc/vanilla" ]
+    shouldNotExist $ htmlDir (dir </> "dist-NoHpcNoMarkup") Vanilla "test-Foo" </> "hpc_index.html"
 
 -- | Build and test a package and ensure that both were successful.
 --
 -- The flag "--enable-tests" is provided in addition to the given flags.
-buildAndTest :: FilePath -> [(String, Maybe String)] -> [String] -> IO ()
-buildAndTest ghcPath envOverrides flags = do
-    let spec = PackageSpec dir $ "--enable-tests" : flags
+buildAndTest :: FilePath -> String -> [(String, Maybe String)] -> [String] -> IO ()
+buildAndTest ghcPath name envOverrides flags = do
+    let spec = PackageSpec
+            { directory = dir
+            , distPref = Just $ "dist-" ++ name
+            , configOpts = "--enable-tests" : flags
+            }
     buildResult <- cabal_build spec ghcPath
     assertBuildSucceeded buildResult
     testResult <- cabal_test spec envOverrides [] ghcPath
