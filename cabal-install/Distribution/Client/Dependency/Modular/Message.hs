@@ -39,20 +39,23 @@ showMessages p sl = go [] 0
     go _ _ []                            = []
     -- complex patterns
     go v l (TryP (PI qpn i) : Enter : Failure c fr : Leave : ms) = goPReject v l qpn [i] c fr ms
-    go v l (TryF qfn b : Enter : Failure c fr : Leave : ms) = (atLevel (F qfn : v) l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go v l ms)
-    go v l (TryS qsn b : Enter : Failure c fr : Leave : ms) = (atLevel (S qsn : v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
-    go v l (Next (Goal (P qpn) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel (P qpn : v) l $ "trying: " ++ showPI pi ++ showGRs gr) (go (P qpn : v) l ms)
+    go v l (TryF qfn b : Enter : Failure c fr : Leave : ms) = (atLevel (add (F qfn) v) l $ "rejecting: " ++ showQFNBool qfn b ++ showFR c fr) (go v l ms)
+    go v l (TryS qsn b : Enter : Failure c fr : Leave : ms) = (atLevel (add (S qsn) v) l $ "rejecting: " ++ showQSNBool qsn b ++ showFR c fr) (go v l ms)
+    go v l (Next (Goal (P qpn) gr) : TryP pi : ms@(Enter : Next _ : _)) = (atLevel (add (P qpn) v) l $ "trying: " ++ showPI pi ++ showGRs gr) (go (add (P qpn) v) l ms)
     go v l (Failure c Backjump : ms@(Leave : Failure c' Backjump : _)) | c == c' = go v l ms
     -- standard display
     go v l (Enter                  : ms) = go v          (l+1) ms
     go v l (Leave                  : ms) = go (drop 1 v) (l-1) ms
-    go v l (TryP pi@(PI qpn _)     : ms) = (atLevel (P qpn : v) l $ "trying: " ++ showPI pi) (go (P qpn : v) l ms)
-    go v l (TryF qfn b             : ms) = (atLevel (F qfn : v) l $ "trying: " ++ showQFNBool qfn b) (go (F qfn : v) l ms)
-    go v l (TryS qsn b             : ms) = (atLevel (S qsn : v) l $ "trying: " ++ showQSNBool qsn b) (go (S qsn : v) l ms)
-    go v l (Next (Goal (P qpn) gr) : ms) = (atLevel (P qpn : v) l $ "next goal: " ++ showQPN qpn ++ showGRs gr) (go v l ms)
+    go v l (TryP pi@(PI qpn _)     : ms) = (atLevel (add (P qpn) v) l $ "trying: " ++ showPI pi) (go (add (P qpn) v) l ms)
+    go v l (TryF qfn b             : ms) = (atLevel (add (F qfn) v) l $ "trying: " ++ showQFNBool qfn b) (go (add (F qfn) v) l ms)
+    go v l (TryS qsn b             : ms) = (atLevel (add (S qsn) v) l $ "trying: " ++ showQSNBool qsn b) (go (add (S qsn) v) l ms)
+    go v l (Next (Goal (P qpn) gr) : ms) = (atLevel (add (P qpn) v) l $ "next goal: " ++ showQPN qpn ++ showGRs gr) (go v l ms)
     go v l (Next _                 : ms) = go v l ms -- ignore flag goals in the log
     go v l (Success                : ms) = (atLevel v l $ "done") (go v l ms)
     go v l (Failure c fr           : ms) = (atLevel v l $ "fail" ++ showFR c fr) (go v l ms)
+
+    add :: Var QPN -> [Var QPN] -> [Var QPN]
+    add v vs = simplifyVar v : vs
 
     -- special handler for many subsequent package rejections
     goPReject :: [Var QPN] -> Int -> QPN -> [I] -> ConflictSet QPN -> FailReason -> [Message] -> [String]
