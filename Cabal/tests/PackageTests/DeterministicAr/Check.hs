@@ -51,7 +51,11 @@ this = "DeterministicAr"
 suite :: FilePath -> FilePath -> Test
 suite ghcPath ghcPkgPath = TestCase $ do
     let dir = "PackageTests" </> this
-    let spec = PackageSpec dir []
+    let spec = PackageSpec
+            { directory = dir
+            , configOpts = []
+            , distPref = Nothing
+            }
 
     unregister this ghcPkgPath
     iResult <- cabal_install spec ghcPath

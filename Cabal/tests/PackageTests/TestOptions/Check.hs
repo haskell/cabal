@@ -6,8 +6,11 @@ import Test.HUnit
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "TestOptions")
-               ["--enable-tests"]
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "TestOptions"
+            , configOpts = ["--enable-tests"]
+            , distPref = Nothing
+            }
     _ <- cabal_build spec ghcPath
     result <- cabal_test spec [] ["--test-options=1 2 3"] ghcPath
     let message = "\"cabal test\" did not pass the correct options to the "

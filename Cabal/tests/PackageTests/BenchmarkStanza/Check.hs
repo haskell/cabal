@@ -26,7 +26,7 @@ suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
     let dir = "PackageTests" </> "BenchmarkStanza"
         pdFile = dir </> "my" <.> "cabal"
-        spec = PackageSpec dir []
+        spec = PackageSpec { directory = dir, configOpts = [], distPref = Nothing }
     result <- cabal_configure spec ghcPath
     assertOutputDoesNotContain "unknown section type" result
     genPD <- readPackageDescription silent pdFile

@@ -8,7 +8,11 @@ import qualified Control.Exception as E
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "TargetSpecificDeps2") []
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "BuildDeps" </> "TargetSpecificDeps2"
+            , configOpts = []
+            , distPref = Nothing
+            }
     result <- cabal_build spec ghcPath
     do
         assertEqual "cabal build should succeed - see test-log.txt" True (successful result)
