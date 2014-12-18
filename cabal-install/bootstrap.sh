@@ -180,9 +180,9 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 # The version regex says what existing installed versions are ok.
 PARSEC_VER="3.1.7";    PARSEC_VER_REGEXP="[3]\.[01]\."
                        # >= 3.0 && < 3.2
-DEEPSEQ_VER="1.3.0.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
+DEEPSEQ_VER="1.4.0.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
                        # >= 1.1 && < 2
-TEXT_VER="1.2.0.0";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
+TEXT_VER="1.2.0.3";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
                        # >= 0.2 && < 1.3
 NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
@@ -202,7 +202,7 @@ TIME_VER="1.5"         TIME_VER_REGEXP="1\.[12345]\.?"
                        # >= 1.1 && < 1.6
 RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
                        # >= 1 && < 1.2
-STM_VER="2.4.3";       STM_VER_REGEXP="2\."
+STM_VER="2.4.4";       STM_VER_REGEXP="2\."
                        # == 2.*
 
 HACKAGE_URL="https://hackage.haskell.org/package"
