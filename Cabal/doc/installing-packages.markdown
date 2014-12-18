@@ -577,6 +577,14 @@ be controlled with the following command line options.
     Do not check for dependencies required only by the test suites. It will not
     be possible to invoke the `test` command without reconfiguring the package.
 
+`--enable-coverage`
+:   Build libraries and executables (including test suites) with Haskell
+    Program Coverage enabled. Running the test suites will automatically
+    generate coverage reports with HPC.
+
+`--disable-coverage`
+:   (default) Do not enable Haskell Program Coverage.
+
 ### Miscellaneous options ##
 
 `--user`
