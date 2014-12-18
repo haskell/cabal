@@ -173,7 +173,7 @@ main = do
 
 mainWorker :: [String] -> IO ()
 mainWorker args = topHandler $
-  case commandsRun globalCommand commands args of
+  case commandsRun (globalCommand commands) commands args of
     CommandHelp   help                 -> printGlobalHelp help
     CommandList   opts                 -> printOptionsList opts
     CommandErrors errs                 -> printErrors errs
@@ -1043,6 +1043,12 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
         when (noExtraArgs extra) $
           die "The 'sandbox add-source' command expects at least one argument"
         sandboxAddSource verbosity extra sandboxFlags globalFlags
+    ("delete-source":extra) -> do
+        when (noExtraArgs extra) $
+          die "The 'sandbox delete-source' command expects \
+              \at least one argument"
+        sandboxDeleteSource verbosity extra sandboxFlags globalFlags
+    ["list-sources"] -> sandboxListSources verbosity sandboxFlags globalFlags
 
     -- More advanced commands.
     ("hc-pkg":extra) -> do
@@ -1050,13 +1056,6 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
             die $ "The 'sandbox hc-pkg' command expects at least one argument"
         sandboxHcPkg verbosity sandboxFlags globalFlags extra
     ["buildopts"] -> die "Not implemented!"
-
-    ("delete-source":extra) -> do
-        when (noExtraArgs extra) $
-          die "The 'sandbox delete-source' command expects \
-              \at least one argument"
-        sandboxDeleteSource verbosity extra sandboxFlags globalFlags
-    ["list-sources"] -> sandboxListSources verbosity sandboxFlags globalFlags
 
     -- Hidden commands.
     ["dump-pkgenv"]  -> dumpPackageEnvironment verbosity sandboxFlags globalFlags
