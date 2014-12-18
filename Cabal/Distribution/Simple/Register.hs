@@ -51,7 +51,8 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Distribution.Simple.Compiler
          ( compilerVersion, Compiler, CompilerFlavor(..), compilerFlavor
-         , PackageDBStack, registrationPackageDB )
+         , PackageDB, PackageDBStack, absolutePackageDBPaths
+         , registrationPackageDB )
 import Distribution.Simple.Program
          ( ProgramConfiguration, runProgramInvocation )
 import Distribution.Simple.Program.Script
@@ -71,7 +72,7 @@ import Distribution.InstalledPackageInfo
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
          ( writeUTF8File, writeFileAtomic, setFileExecutable
-         , die, notice, setupMessage )
+         , die, notice, setupMessage, shortRelativePath )
 import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Text
@@ -100,8 +101,11 @@ register :: PackageDescription -> LocalBuildInfo
 register pkg@PackageDescription { library       = Just lib  } lbi regFlags
   = do
     let clbi = getComponentLocalBuildInfo lbi CLibName
+
+    absPackageDBs    <- absolutePackageDBPaths packageDbs
     installedPkgInfo <- generateRegistrationInfo
-                           verbosity pkg lib lbi clbi inplace distPref
+                           verbosity pkg lib lbi clbi inplace reloc distPref
+                           (registrationPackageDB absPackageDBs)
 
     when (fromFlag (regPrintId regFlags)) $ do
       putStrLn (display (IPI.installedPackageId installedPkgInfo))
@@ -121,6 +125,7 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
     modeGenerateRegScript = fromFlag (regGenScript regFlags)
 
     inplace   = fromFlag (regInPlace regFlags)
+    reloc     = relocatable lbi
     -- FIXME: there's really no guarantee this will work.
     -- registering into a totally different db stack can
     -- fail if dependencies cannot be satisfied.
@@ -153,9 +158,11 @@ generateRegistrationInfo :: Verbosity
                          -> LocalBuildInfo
                          -> ComponentLocalBuildInfo
                          -> Bool
+                         -> Bool
                          -> FilePath
+                         -> PackageDB
                          -> IO InstalledPackageInfo
-generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
+generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packageDb = do
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
 
@@ -173,14 +180,34 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace distPref = do
      _other -> do
             return (InstalledPackageId (display (packageId pkg)))
 
-  let installedPkgInfo
-        | inplace   = inplaceInstalledPackageInfo pwd distPref
-                        pkg ipid lib lbi clbi
-        | otherwise = absoluteInstalledPackageInfo
-                        pkg ipid lib lbi clbi
+  installedPkgInfo <-
+    if inplace
+      then return (inplaceInstalledPackageInfo pwd distPref
+                     pkg ipid lib lbi clbi)
+    else if reloc
+      then relocRegistrationInfo verbosity
+                     pkg lib lbi clbi ipid packageDb
+      else return (absoluteInstalledPackageInfo
+                     pkg ipid lib lbi clbi)
+
 
   return installedPkgInfo{ IPI.installedPackageId = ipid }
 
+relocRegistrationInfo :: Verbosity
+                      -> PackageDescription
+                      -> Library
+                      -> LocalBuildInfo
+                      -> ComponentLocalBuildInfo
+                      -> InstalledPackageId
+                      -> PackageDB
+                      -> IO InstalledPackageInfo
+relocRegistrationInfo verbosity pkg lib lbi clbi ipid packageDb =
+  case (compilerFlavor (compiler lbi)) of
+    GHC -> do fs <- GHC.pkgRoot verbosity lbi packageDb
+              return (relocatableInstalledPackageInfo
+                        pkg ipid lib lbi clbi fs)
+    _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
+               \not implemented for this compiler"
 
 -- | Create an empty package DB at the specified location.
 initPackageDB :: Verbosity -> Compiler -> ProgramConfiguration -> FilePath
@@ -312,7 +339,8 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
     IPI.frameworkDirs      = [],
     IPI.frameworks         = frameworks bi,
     IPI.haddockInterfaces  = [haddockdir installDirs </> haddockName pkg],
-    IPI.haddockHTMLs       = [htmldir installDirs]
+    IPI.haddockHTMLs       = [htmldir installDirs],
+    IPI.pkgRoot            = Nothing
   }
   where
     bi = libBuildInfo lib
@@ -386,6 +414,28 @@ absoluteInstalledPackageInfo pkg ipid lib lbi clbi =
       | otherwise                 = [includedir installDirs]
     bi = libBuildInfo lib
     installDirs = absoluteInstallDirs pkg lbi NoCopyDest
+
+
+relocatableInstalledPackageInfo :: PackageDescription
+                                -> InstalledPackageId
+                                -> Library
+                                -> LocalBuildInfo
+                                -> ComponentLocalBuildInfo
+                                -> FilePath
+                                -> InstalledPackageInfo
+relocatableInstalledPackageInfo pkg ipid lib lbi clbi pkgroot =
+    generalInstalledPackageInfo adjustReativeIncludeDirs
+                                pkg ipid lib lbi clbi installDirs
+  where
+    -- For installed packages we install all include files into one dir,
+    -- whereas in the build tree they may live in multiple local dirs.
+    adjustReativeIncludeDirs _
+      | null (installIncludes bi) = []
+      | otherwise                 = [includedir installDirs]
+    bi = libBuildInfo lib
+
+    installDirs = fmap (("${pkgroot}" </>) . shortRelativePath pkgroot)
+                $ absoluteInstallDirs pkg lbi NoCopyDest
 
 -- -----------------------------------------------------------------------------
 -- Unregistration

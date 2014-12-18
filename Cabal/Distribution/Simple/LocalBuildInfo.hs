@@ -42,6 +42,7 @@ module Distribution.Simple.LocalBuildInfo (
         allComponentsInBuildOrder,
         componentsInBuildOrder,
         checkComponentsCyclic,
+        depLibraryPaths,
 
         withAllComponentsInBuildOrder,
         withComponentsInBuildOrder,
@@ -74,23 +75,27 @@ import Distribution.Package
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack, OptimisationLevel )
 import Distribution.Simple.PackageIndex
-         ( InstalledPackageIndex )
+         ( InstalledPackageIndex, allPackages )
 import Distribution.ModuleName ( ModuleName )
 import Distribution.Simple.Setup
          ( ConfigFlags )
+import Distribution.Simple.Utils
+         ( shortRelativePath )
 import Distribution.Text
          ( display )
 import Distribution.System
-          ( Platform )
+         ( Platform (..) )
 
 import Data.Array ((!))
 import Data.Binary (Binary)
 import Data.Graph
-import Data.List (nub, find)
+import Data.List (nub, find, stripPrefix)
 import Data.Maybe
 import Data.Tree  (flatten)
 import GHC.Generics (Generic)
 import Data.Map (Map)
+
+import System.Directory (doesDirectoryExist, canonicalizePath)
 
 -- | Data cached after configuration step.  See also
 -- 'Distribution.Simple.Setup.ConfigFlags'.
@@ -139,7 +144,8 @@ data LocalBuildInfo = LocalBuildInfo {
         stripExes     :: Bool,  -- ^Whether to strip executables during install
         stripLibs     :: Bool,  -- ^Whether to strip libraries during install
         progPrefix    :: PathTemplate, -- ^Prefix to be prepended to installed executables
-        progSuffix    :: PathTemplate -- ^Suffix to be appended to installed executables
+        progSuffix    :: PathTemplate, -- ^Suffix to be appended to installed executables
+        relocatable   :: Bool --  ^Whether to build a relocatable package
   } deriving (Generic, Read, Show)
 
 instance Binary LocalBuildInfo
@@ -401,6 +407,62 @@ checkComponentsCyclic es =
      in case cycles of
          []    -> Nothing
          (c:_) -> Just (map vertexToNode c)
+
+-- | Determine the directories containing the dynamic libraries of the
+-- transitive dependencies of the component we are building.
+--
+-- When wanted, and possible, returns paths relative to the installDirs 'prefix'
+depLibraryPaths :: Bool -- ^ Building for inplace?
+                -> Bool -- ^ Generate prefix-relative library paths
+                -> LocalBuildInfo
+                -> ComponentLocalBuildInfo -- ^ Component that is being built
+                -> IO [FilePath]
+depLibraryPaths inplace relative lbi clbi = do
+    let pkgDescr    = localPkgDescr lbi
+        installDirs = absoluteInstallDirs pkgDescr lbi NoCopyDest
+        executable  = case clbi of
+                        ExeComponentLocalBuildInfo {} -> True
+                        _                             -> False
+        relDir | executable = bindir installDirs
+               | otherwise  = libdir installDirs
+
+    let hasInternalDeps = not $ null
+                        $ [ pkgid
+                          | (_,pkgid) <- componentPackageDeps clbi
+                          , internal pkgid
+                          ]
+
+    let ipkgs          = allPackages (installedPkgs lbi)
+        allDepLibDirs  = concatMap Installed.libraryDirs ipkgs
+        internalLib
+          | inplace    = buildDir lbi
+          | otherwise  = libdir installDirs
+        allDepLibDirs' = if hasInternalDeps
+                            then internalLib : allDepLibDirs
+                            else allDepLibDirs
+    allDepLibDirsC <- mapM canonicalizePathNoFail allDepLibDirs'
+
+    let p                = prefix installDirs
+        prefixRelative l = isJust (stripPrefix p l)
+        libPaths
+          | relative &&
+            prefixRelative relDir = map (\l ->
+                                          if prefixRelative l
+                                             then shortRelativePath relDir l
+                                             else l
+                                        ) allDepLibDirsC
+          | otherwise             = allDepLibDirsC
+
+    return libPaths
+  where
+    internal pkgid = pkgid == packageId (localPkgDescr lbi)
+    -- 'canonicalizePath' fails on UNIX when the directory does not exists.
+    -- So just don't canonicalize when it doesn't exist.
+    canonicalizePathNoFail p = do
+      exists <- doesDirectoryExist p
+      if exists
+         then canonicalizePath p
+         else return p
 
 
 -- -----------------------------------------------------------------------------

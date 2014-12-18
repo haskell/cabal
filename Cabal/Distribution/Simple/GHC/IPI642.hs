@@ -136,5 +136,6 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.frameworkDirs      = frameworkDirs ipi,
     Current.frameworks         = frameworks ipi,
     Current.haddockInterfaces  = haddockInterfaces ipi,
-    Current.haddockHTMLs       = haddockHTMLs ipi
+    Current.haddockHTMLs       = haddockHTMLs ipi,
+    Current.pkgRoot            = Nothing
   }

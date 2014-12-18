@@ -59,8 +59,6 @@ import Distribution.Compat.Exception
 
 import Data.Char
          ( isSpace )
-import Data.Maybe
-         ( fromMaybe )
 import Data.List
          ( stripPrefix )
 import System.FilePath as FilePath
@@ -170,24 +168,13 @@ dump hpi verbosity packagedb = do
       let parsed = map parseInstalledPackageInfo' (splitPkgs str)
        in case [ msg | ParseFailed msg <- parsed ] of
             []   -> Left [   setInstalledPackageId
-                           . maybe id mungePackagePaths pkgroot
+                           . maybe id mungePackagePaths (pkgRoot pkg)
                            $ pkg
-                         | ParseOk _ (pkgroot, pkg) <- parsed ]
+                         | ParseOk _ pkg <- parsed ]
             msgs -> Right msgs
 
     parseInstalledPackageInfo' =
-        parseFieldsFlat fields (Nothing, emptyInstalledPackageInfo)
-      where
-        fields =     liftFieldFst pkgrootField
-               : map liftFieldSnd fieldsInstalledPackageInfo
-
-        pkgrootField =
-          simpleField "pkgroot"
-            showFilePath    parseFilePathQ
-            (fromMaybe "")  (\x _ -> Just x)
-
-        liftFieldFst = liftField fst (\x (_x,y) -> (x,y))
-        liftFieldSnd = liftField snd (\y (x,_y) -> (x,y))
+      parseFieldsFlat fieldsInstalledPackageInfo emptyInstalledPackageInfo
 
     --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
     -- and converting back and forth with lines/unlines.
@@ -279,7 +266,6 @@ list hpi verbosity packagedb = do
 
   where
     parsePackageIds = sequence . map simpleParse . words
-
 
 --------------------------
 -- The program invocations

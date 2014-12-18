@@ -44,6 +44,7 @@ module Distribution.Simple.GHC (
         getLibDir,
         isDynamic,
         getGlobalPackageDB,
+        pkgRoot
  ) where
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
@@ -62,7 +63,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , absoluteInstallDirs )
+         , LibraryName(..), absoluteInstallDirs, depLibraryPaths )
 import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
@@ -97,8 +98,8 @@ import Distribution.Verbosity
 import Distribution.Text
          ( display )
 import Distribution.Utils.NubList
-         ( overNubListR, toNubListR )
-import Language.Haskell.Extension (Extension(..)
+         ( NubListR, overNubListR, toNubListR )
+import Language.Haskell.Extension (Language(..), Extension(..)
                                   ,KnownExtension(..))
 
 import Control.Monad            ( unless, when )
@@ -107,10 +108,15 @@ import Data.List
 import qualified Data.Map as M  ( fromList )
 import Data.Maybe               ( catMaybes )
 import Data.Monoid              ( Monoid(..) )
-import System.Directory         ( doesFileExist )
+import Data.Version             ( showVersion )
+import System.Directory
+         ( getDirectoryContents, doesFileExist, getTemporaryDirectory,
+           getAppUserDataDirectory, createDirectoryIfMissing )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
-                                  splitExtension )
+                                  splitExtension, isRelative )
+import qualified System.Info
+import System.IO (hClose, hPutStrLn)
 import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchIO)
 
@@ -588,6 +594,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
               else return []
 
     unless (null hObjs && null cObjs && null stubObjs) $ do
+      rpaths <- getRPaths lbi clbi
 
       let staticObjectFiles =
                  hObjs
@@ -627,8 +634,11 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptPackages           = toNubListR $
                                            Internal.mkGhcOptPackages clbi ,
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
-                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
+                ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
+                ghcOptRPaths             = rpaths
               }
+
+      info verbosity (show (ghcOptPackages ghcSharedLinkArgs))
 
       whenVanillaLib False $ do
         Ar.createArLibArchive verbosity lbi vanillaLibFilePath staticObjectFiles
@@ -701,6 +711,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   -- build executables
 
   srcMainFile         <- findFile (exeDir : hsSourceDirs exeBi) modPath
+  rpaths              <- getRPaths lbi clbi
+
   let isGhcDynamic        = isDynamic comp
       dynamicTooSupported = supportsDynamicToo comp
       isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
@@ -742,7 +754,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
                       ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
                       ghcOptInputFiles     = toNubListR
-                                             [exeDir </> x | x <- cObjs]
+                                             [exeDir </> x | x <- cObjs],
+                      ghcOptRPaths         = rpaths
                    }
       replOpts   = baseOpts {
                       ghcOptExtra          = overNubListR
@@ -826,6 +839,48 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
     info verbosity "Linking..."
     runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
 
+-- | Calculate the RPATHs for the component we are building.
+--
+-- Calculates relative RPATHs when 'relocatable' is set.
+getRPaths :: LocalBuildInfo
+          -> ComponentLocalBuildInfo -- ^ Component we are building
+          -> IO (NubListR FilePath)
+getRPaths lbi clbi | supportRPaths hostOS = do
+    libraryPaths <- depLibraryPaths False (relocatable lbi) lbi clbi
+    let hostPref = case hostOS of
+                     OSX -> "@loader_path"
+                     _   -> "$ORIGIN"
+        relPath p = if isRelative p then hostPref </> p else p
+        rpaths    = toNubListR (map relPath libraryPaths)
+    return rpaths
+  where
+    (Platform _ hostOS) = hostPlatform lbi
+
+    -- The list of RPath-supported operating systems below reflects the
+    -- platforms on which Cabal's RPATH handling is tested. It does _NOT_
+    -- reflect whether the OS supports RPATH.
+
+    -- E.g. when this comment was written, the *BSD operating systems were
+    -- untested with regards to Cabal RPATH handling, and were hence set to
+    -- 'False', while those operating systems themselves do support RPATH.
+    supportRPaths Linux       = True
+    supportRPaths Windows     = False
+    supportRPaths OSX         = True
+    supportRPaths FreeBSD     = False
+    supportRPaths OpenBSD     = False
+    supportRPaths NetBSD      = False
+    supportRPaths DragonFly   = False
+    supportRPaths Solaris     = False
+    supportRPaths AIX         = False
+    supportRPaths HPUX        = False
+    supportRPaths IRIX        = False
+    supportRPaths HaLVM       = False
+    supportRPaths IOS         = False
+    supportRPaths (OtherOS _) = False
+    -- Do _not_ add a default case so that we get a warning here when a new OS
+    -- is added.
+
+getRPaths _ _ = return mempty
 
 -- | Filter the "-threaded" flag when profiling as it does not
 --   work with ghc-6.8 and older.
@@ -994,6 +1049,25 @@ registerPackage
 registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
   HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity
     packageDbs (Right installedPkgInfo)
+
+pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath
+pkgRoot verbosity lbi = pkgRoot'
+   where
+    pkgRoot' GlobalPackageDB =
+      let Just ghcProg = lookupProgram ghcProgram (withPrograms lbi)
+      in  fmap takeDirectory (getGlobalPackageDB verbosity ghcProg)
+    pkgRoot' UserPackageDB = do
+      appDir <- getAppUserDataDirectory "ghc"
+      let ver      = compilerVersion (compiler lbi)
+          subdir   = System.Info.arch ++ '-':System.Info.os ++ '-':showVersion ver
+          rootDir  = appDir </> subdir
+      -- We must create the root directory for the user package database if it
+      -- does not yet exists. Otherwise '${pkgroot}' will resolve to a
+      -- directory at the time of 'ghc-pkg register', and registration will
+      -- fail.
+      createDirectoryIfMissing True rootDir
+      return rootDir
+    pkgRoot' (SpecificPackageDB fp) = return (takeDirectory fp)
 
 -- -----------------------------------------------------------------------------
 -- Utils
