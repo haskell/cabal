@@ -65,7 +65,7 @@ generate pkg_descr lbi =
        header =
         pragmas++
         "module " ++ display paths_modulename ++ " (\n"++
-        "    version,\n"++
+        "    version, packageKey,\n"++
         "    getBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
         "    getDataFileName, getSysconfDir\n"++
         "  ) where\n"++
@@ -78,6 +78,9 @@ generate pkg_descr lbi =
         "\n"++
         "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
         "catchIO = Exception.catch\n" ++
+        "\n"++
+        "\npackageKey :: String"++
+        "\npackageKey = " ++ show (display (pkgKey lbi)) ++
         "\n"++
         "\nversion :: Version"++
         "\nversion = Version " ++ show branch ++ " " ++ show tags
