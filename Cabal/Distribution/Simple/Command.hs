@@ -22,10 +22,14 @@ module Distribution.Simple.Command (
   commandShowOptions,
   CommandParse(..),
   commandParseArgs,
+  getNormalCommandDescriptions,
+  helpCommandUI,
 
   -- ** Constructing commands
   ShowOrParseArgs(..),
-  makeCommand,
+  usageDefault,
+  usageAlternatives,
+  mkCommandUI,
   hiddenCommand,
 
   -- ** Associating actions with commands
@@ -80,6 +84,8 @@ data CommandUI flags = CommandUI {
     commandUsage    :: String -> String,
     -- | Additional explanation of the command to use in help texts.
     commandDescription :: Maybe (String -> String),
+    -- | Post-Usage notes and examples in help texts
+    commandNotes :: Maybe (String -> String),
     -- | Initial \/ empty flags
     commandDefaultFlags :: flags,
     -- | All the Option fields for this command
@@ -372,32 +378,55 @@ commandListOptions command =
 -- | The help text for this command with descriptions of all the options.
 commandHelp :: CommandUI flags -> String -> String
 commandHelp command pname =
-    commandUsage command pname
- ++ (GetOpt.usageInfo ""
-  . addCommonFlags ShowArgs
-  $ commandGetOpts ShowArgs command)
- ++ case commandDescription command of
-      Nothing   -> ""
-      Just desc -> '\n': desc pname
+    commandSynopsis command
+ ++ "\n\n"
+ ++ commandUsage command pname
+ ++ ( case commandDescription command of
+        Nothing   -> ""
+        Just desc -> '\n': desc pname)
+ ++ "\n"
+ ++ ( if cname == ""
+        then "Global flags:"
+        else "Flags for " ++ cname ++ ":" )
+ ++ ( GetOpt.usageInfo ""
+    . addCommonFlags ShowArgs
+    $ commandGetOpts ShowArgs command )
+ ++ ( case commandNotes command of
+        Nothing   -> ""
+        Just notes -> '\n': notes pname)
+  where cname = commandName command
+
+-- | Default "usage" documentation text for commands.
+usageDefault :: String -> String -> String
+usageDefault name pname =
+     "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n\n"
+  ++ "Flags for " ++ name ++ ":"
+
+-- | Create "usage" documentation from a list of parameter
+--   configurations.
+usageAlternatives :: String -> [String] -> String -> String
+usageAlternatives name strs pname = unlines
+  [ start ++ pname ++ " " ++ name ++ " " ++ s
+  | let starts = "Usage: " : repeat "   or: "
+  , (start, s) <- zip starts strs
+  ]
 
 -- | Make a Command from standard 'GetOpt' options.
-makeCommand :: String                         -- ^ name
-            -> String                         -- ^ short description
-            -> Maybe (String -> String)       -- ^ long description
-            -> flags                          -- ^ initial\/empty flags
+mkCommandUI :: String          -- ^ name
+            -> String          -- ^ synopsis
+            -> [String]        -- ^ usage alternatives
+            -> flags           -- ^ initial\/empty flags
             -> (ShowOrParseArgs -> [OptionField flags]) -- ^ options
             -> CommandUI flags
-makeCommand name shortDesc longDesc defaultFlags options =
-  CommandUI {
-    commandName         = name,
-    commandSynopsis     = shortDesc,
-    commandDescription  = longDesc,
-    commandUsage        = usage,
-    commandDefaultFlags = defaultFlags,
-    commandOptions      = options
+mkCommandUI name synopsis usages flags options = CommandUI
+  { commandName         = name
+  , commandSynopsis     = synopsis
+  , commandDescription  = Nothing
+  , commandNotes        = Nothing
+  , commandUsage        = usageAlternatives name usages
+  , commandDefaultFlags = flags
+  , commandOptions      = options
   }
-  where usage pname = "Usage: " ++ pname ++ " " ++ name ++ " [FLAGS]\n\n"
-                   ++ "Flags for " ++ name ++ ":"
 
 -- | Common flags that apply to every command
 data CommonFlag = HelpFlag | ListOptionsFlag
@@ -502,7 +531,7 @@ commandsRun :: CommandUI a
             -> [String]
             -> CommandParse (a, CommandParse action)
 commandsRun globalCommand commands args =
-  case commandParseArgs globalCommand' True args of
+  case commandParseArgs globalCommand True args of
     CommandHelp      help          -> CommandHelp help
     CommandList      opts          -> CommandList (opts ++ commandNames)
     CommandErrors    errs          -> CommandErrors errs
@@ -523,25 +552,6 @@ commandsRun globalCommand commands args =
                                    ++ " (try --help)\n"]
     commands'      = commands ++ [commandAddAction helpCommandUI undefined]
     commandNames   = [ name | (Command name _ _ NormalCommand) <- commands' ]
-    globalCommand' = globalCommand {
-      commandUsage = \pname ->
-           (case commandUsage globalCommand pname of
-             ""       -> ""
-             original -> original ++ "\n")
-        ++ "Usage: " ++ pname ++ " COMMAND [FLAGS]\n"
-        ++ "   or: " ++ pname ++ " [GLOBAL FLAGS]\n\n"
-        ++ "Global flags:",
-      commandDescription = Just $ \pname ->
-           "Commands:\n"
-        ++ unlines [ "  " ++ align name ++ "    " ++ description
-                   | Command name description _ NormalCommand <- commands' ]
-        ++ case commandDescription globalCommand of
-             Nothing   -> ""
-             Just desc -> '\n': desc pname
-    }
-      where maxlen = maximum
-                    [ length name | Command name _ _ NormalCommand <- commands' ]
-            align str = str ++ replicate (maxlen - length str) ' '
 
     -- A bit of a hack: support "prog help" as a synonym of "prog --help"
     -- furthermore, support "prog help command" as "prog command --help"
@@ -560,14 +570,7 @@ commandsRun globalCommand commands args =
                 _                -> CommandHelp globalHelp
             _                    -> badCommand name
 
-     where globalHelp = commandHelp globalCommand'
-    helpCommandUI =
-      (makeCommand "help" "Help about commands." Nothing () (const [])) {
-        commandUsage = \pname ->
-             "Usage: " ++ pname ++ " help [FLAGS]\n"
-          ++ "   or: " ++ pname ++ " help COMMAND [FLAGS]\n\n"
-          ++ "Flags for help:"
-      }
+     where globalHelp = commandHelp globalCommand
 
 -- | Utility function, many commands do not accept additional flags. This
 -- action fails with a helpful error message if the user supplies any extra.
@@ -578,3 +581,17 @@ noExtraFlags extraFlags =
   die $ "Unrecognised flags: " ++ intercalate ", " extraFlags
 --TODO: eliminate this function and turn it into a variant on commandAddAction
 --      instead like commandAddActionNoArgs that doesn't supply the [String]
+
+-- | Helper function for creating globalCommand description
+getNormalCommandDescriptions :: [Command action] -> [(String, String)]
+getNormalCommandDescriptions cmds = 
+  [ (name, description)
+  | Command name description _ NormalCommand <- cmds ]
+
+helpCommandUI :: CommandUI ()
+helpCommandUI = mkCommandUI
+  "help"
+  "Help about commands."
+  ["[FLAGS]", "COMMAND [FLAGS]"]
+  ()
+  (const [])
