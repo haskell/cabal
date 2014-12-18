@@ -49,6 +49,7 @@ module Distribution.Simple.GHC (
 
 import qualified Distribution.Simple.GHC.IPI641 as IPI641
 import qualified Distribution.Simple.GHC.IPI642 as IPI642
+import qualified Distribution.Simple.GHC.Internal as Internal
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..)
          , Library(..), libModules, exeModules
@@ -154,10 +155,10 @@ configure verbosity hcPath hcPkgPath conf0 = do
                        }
       conf3 = addKnownProgram hsc2hsProgram' conf2
 
-  languages  <- getLanguages verbosity ghcProg
-  extensions <- getExtensions verbosity ghcProg
+  languages  <- Internal.getLanguages verbosity ghcProg
+  extensions <- Internal.getExtensions verbosity ghcProg
 
-  ghcInfo <- getGhcInfo verbosity ghcProg
+  ghcInfo <- Internal.getGhcInfo verbosity ghcProg
   let ghcInfoMap = M.fromList ghcInfo
 
   let comp = Compiler {
@@ -168,12 +169,9 @@ configure verbosity hcPath hcPkgPath conf0 = do
         compilerExtensions = extensions,
         compilerProperties = ghcInfoMap
       }
-      compPlatform = targetPlatform ghcInfo
-      conf4 = configureToolchain ghcProg ghcInfoMap conf3 -- configure gcc and ld
+      compPlatform = Internal.targetPlatform ghcInfo
+      conf4 = Internal.configureToolchain ghcProg ghcInfoMap conf3 -- configure gcc and ld
   return (comp, compPlatform, conf4)
-
-targetPlatform :: [(String, String)] -> Maybe Platform
-targetPlatform ghcInfo = platformFromTriple =<< lookup "Target platform" ghcInfo
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
 -- the corresponding tool; e.g. if the tool is ghc-pkg, we try looking
@@ -246,262 +244,9 @@ guessHsc2hsFromGhcPath :: ConfiguredProgram
                        -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
 guessHsc2hsFromGhcPath = guessToolFromGhcPath hsc2hsProgram
 
--- | Adjust the way we find and configure gcc and ld
---
-configureToolchain :: ConfiguredProgram -> M.Map String String
-                                        -> ProgramConfiguration
-                                        -> ProgramConfiguration
-configureToolchain ghcProg ghcInfo =
-    addKnownProgram gccProgram {
-      programFindLocation = findProg gccProgram extraGccPath,
-      programPostConf     = configureGcc
-    }
-  . addKnownProgram ldProgram {
-      programFindLocation = findProg ldProgram extraLdPath,
-      programPostConf     = configureLd
-    }
-  . addKnownProgram arProgram {
-      programFindLocation = findProg arProgram extraArPath
-    }
-  . addKnownProgram stripProgram {
-      programFindLocation = findProg stripProgram extraStripPath
-    }
-  where
-    Just ghcVersion = programVersion ghcProg
-    compilerDir = takeDirectory (programPath ghcProg)
-    baseDir     = takeDirectory compilerDir
-    mingwBinDir = baseDir </> "mingw" </> "bin"
-    libDir      = baseDir </> "gcc-lib"
-    includeDir  = baseDir </> "include" </> "mingw"
-    isWindows   = case buildOS of Windows -> True; _ -> False
-    binPrefix   = ""
-
-    mkExtraPath :: Maybe FilePath -> FilePath -> [FilePath]
-    mkExtraPath mbPath mingwPath | isWindows = mbDir ++ [mingwPath]
-                                 | otherwise = mbDir
-      where
-        mbDir = maybeToList . fmap takeDirectory $ mbPath
-
-    extraGccPath   = mkExtraPath mbGccLocation   windowsExtraGccDir
-    extraLdPath    = mkExtraPath mbLdLocation    windowsExtraLdDir
-    extraArPath    = mkExtraPath mbArLocation    windowsExtraArDir
-    extraStripPath = mkExtraPath mbStripLocation windowsExtraStripDir
-
-    -- on Windows finding and configuring ghc's gcc & binutils is a bit special
-    windowsExtraGccDir
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
-      | otherwise                       = baseDir
-    windowsExtraLdDir
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
-      | otherwise                       = libDir
-    windowsExtraArDir
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
-      | otherwise                       = libDir
-    windowsExtraStripDir
-      | ghcVersion >= Version [6,12] [] = mingwBinDir </> binPrefix
-      | otherwise                       = libDir
-
-    findProg :: Program -> [FilePath]
-             -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
-    findProg prog extraPath v searchpath =
-        programFindLocation prog v searchpath'
-      where
-        searchpath' = (map ProgramSearchPathDir extraPath) ++ searchpath
-
-    -- Read tool locations from the 'ghc --info' output. Useful when
-    -- cross-compiling.
-    mbGccLocation   = M.lookup "C compiler command" ghcInfo
-    mbLdLocation    = M.lookup "ld command" ghcInfo
-    mbArLocation    = M.lookup "ar command" ghcInfo
-    mbStripLocation = M.lookup "strip command" ghcInfo
-
-    ccFlags        = getFlags "C compiler flags"
-    gccLinkerFlags = getFlags "Gcc Linker flags"
-    ldLinkerFlags  = getFlags "Ld Linker flags"
-
-    getFlags key = case M.lookup key ghcInfo of
-                   Nothing -> []
-                   Just flags ->
-                       case reads flags of
-                       [(args, "")] -> args
-                       _ -> [] -- XXX Should should be an error really
-
-    configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
-    configureGcc v gccProg = do
-      gccProg' <- configureGcc' v gccProg
-      return gccProg' {
-        programDefaultArgs = programDefaultArgs gccProg'
-                             ++ ccFlags ++ gccLinkerFlags
-      }
-
-    configureGcc' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
-    configureGcc'
-      | isWindows = \_ gccProg -> case programLocation gccProg of
-          -- if it's found on system then it means we're using the result
-          -- of programFindLocation above rather than a user-supplied path
-          -- Pre GHC 6.12, that meant we should add these flags to tell
-          -- ghc's gcc where it lives and thus where gcc can find its
-          -- various files:
-          FoundOnSystem {}
-           | ghcVersion < Version [6,11] [] ->
-               return gccProg { programDefaultArgs = ["-B" ++ libDir,
-                                                      "-I" ++ includeDir] }
-          _ -> return gccProg
-      | otherwise = \_ gccProg -> return gccProg
-
-    configureLd :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
-    configureLd v ldProg = do
-      ldProg' <- configureLd' v ldProg
-      return ldProg' {
-        programDefaultArgs = programDefaultArgs ldProg' ++ ldLinkerFlags
-      }
-
-    -- we need to find out if ld supports the -x flag
-    configureLd' :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
-    configureLd' verbosity ldProg = do
-      tempDir <- getTemporaryDirectory
-      ldx <- withTempFile tempDir ".c" $ \testcfile testchnd ->
-             withTempFile tempDir ".o" $ \testofile testohnd -> do
-               hPutStrLn testchnd "int foo() { return 0; }"
-               hClose testchnd; hClose testohnd
-               rawSystemProgram verbosity ghcProg ["-c", testcfile,
-                                                   "-o", testofile]
-               withTempFile tempDir ".o" $ \testofile' testohnd' ->
-                 do
-                   hClose testohnd'
-                   _ <- rawSystemProgramStdout verbosity ldProg
-                     ["-x", "-r", testofile, "-o", testofile']
-                   return True
-                 `catchIO`   (\_ -> return False)
-                 `catchExit` (\_ -> return False)
-      if ldx
-        then return ldProg { programDefaultArgs = ["-x"] }
-        else return ldProg
-
-getLanguages :: Verbosity -> ConfiguredProgram -> IO [(Language, Flag)]
-getLanguages _ ghcProg
-  -- TODO: should be using --supported-languages rather than hard coding
-  | ghcVersion >= Version [7] [] = return [(Haskell98,   "-XHaskell98")
-                                          ,(Haskell2010, "-XHaskell2010")]
-  | otherwise                    = return [(Haskell98,   "")]
-  where
-    Just ghcVersion = programVersion ghcProg
-
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
-getGhcInfo verbosity ghcProg =
-    case programVersion ghcProg of
-    Just ghcVersion
-     | ghcVersion >= Version [6,7] [] ->
-        do xs <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
-                 ["--info"]
-           case reads xs of
-               [(i, ss)]
-                | all isSpace ss ->
-                   return i
-               _ ->
-                   die "Can't parse --info output of GHC"
-    _ ->
-        return []
+getGhcInfo = Internal.getGhcInfo
 
-getExtensions :: Verbosity -> ConfiguredProgram -> IO [(Extension, Flag)]
-getExtensions verbosity ghcProg
-  | ghcVersion >= Version [6,7] [] = do
-
-    str <- getProgramOutput verbosity (suppressOverrideArgs ghcProg)
-              ["--supported-languages"]
-    let extStrs = if ghcVersion >= Version [7] []
-                  then lines str
-                  else -- Older GHCs only gave us either Foo or NoFoo,
-                       -- so we have to work out the other one ourselves
-                       [ extStr''
-                       | extStr <- lines str
-                       , let extStr' = case extStr of
-                                       'N' : 'o' : xs -> xs
-                                       _              -> "No" ++ extStr
-                       , extStr'' <- [extStr, extStr']
-                       ]
-    let extensions0 = [ (ext, "-X" ++ display ext)
-                      | Just ext <- map simpleParse extStrs ]
-        extensions1 = if ghcVersion >= Version [6,8]  [] &&
-                         ghcVersion <  Version [6,10] []
-                      then -- ghc-6.8 introduced RecordPuns however it
-                           -- should have been NamedFieldPuns. We now
-                           -- encourage packages to use NamedFieldPuns
-                           -- so for compatibility we fake support for
-                           -- it in ghc-6.8 by making it an alias for
-                           -- the old RecordPuns extension.
-                           (EnableExtension  NamedFieldPuns, "-XRecordPuns") :
-                           (DisableExtension NamedFieldPuns, "-XNoRecordPuns") :
-                           extensions0
-                      else extensions0
-        extensions2 = if ghcVersion <  Version [7,1] []
-                      then -- ghc-7.2 split NondecreasingIndentation off
-                           -- into a proper extension. Before that it
-                           -- was always on.
-                           (EnableExtension  NondecreasingIndentation, "") :
-                           (DisableExtension NondecreasingIndentation, "") :
-                           extensions1
-                      else extensions1
-    return extensions2
-
-  | otherwise = return oldLanguageExtensions
-
-  where
-    Just ghcVersion = programVersion ghcProg
-
--- | For GHC 6.6.x and earlier, the mapping from supported extensions to flags
-oldLanguageExtensions :: [(Extension, Flag)]
-oldLanguageExtensions =
-    let doFlag (f, (enable, disable)) = [(EnableExtension  f, enable),
-                                         (DisableExtension f, disable)]
-        fglasgowExts = ("-fglasgow-exts",
-                        "") -- This is wrong, but we don't want to turn
-                            -- all the extensions off when asked to just
-                            -- turn one off
-        fFlag flag = ("-f" ++ flag, "-fno-" ++ flag)
-    in concatMap doFlag
-    [(OverlappingInstances       , fFlag "allow-overlapping-instances")
-    ,(TypeSynonymInstances       , fglasgowExts)
-    ,(TemplateHaskell            , fFlag "th")
-    ,(ForeignFunctionInterface   , fFlag "ffi")
-    ,(MonomorphismRestriction    , fFlag "monomorphism-restriction")
-    ,(MonoPatBinds               , fFlag "mono-pat-binds")
-    ,(UndecidableInstances       , fFlag "allow-undecidable-instances")
-    ,(IncoherentInstances        , fFlag "allow-incoherent-instances")
-    ,(Arrows                     , fFlag "arrows")
-    ,(Generics                   , fFlag "generics")
-    ,(ImplicitPrelude            , fFlag "implicit-prelude")
-    ,(ImplicitParams             , fFlag "implicit-params")
-    ,(CPP                        , ("-cpp", ""{- Wrong -}))
-    ,(BangPatterns               , fFlag "bang-patterns")
-    ,(KindSignatures             , fglasgowExts)
-    ,(RecursiveDo                , fglasgowExts)
-    ,(ParallelListComp           , fglasgowExts)
-    ,(MultiParamTypeClasses      , fglasgowExts)
-    ,(FunctionalDependencies     , fglasgowExts)
-    ,(Rank2Types                 , fglasgowExts)
-    ,(RankNTypes                 , fglasgowExts)
-    ,(PolymorphicComponents      , fglasgowExts)
-    ,(ExistentialQuantification  , fglasgowExts)
-    ,(ScopedTypeVariables        , fFlag "scoped-type-variables")
-    ,(FlexibleContexts           , fglasgowExts)
-    ,(FlexibleInstances          , fglasgowExts)
-    ,(EmptyDataDecls             , fglasgowExts)
-    ,(PatternGuards              , fglasgowExts)
-    ,(GeneralizedNewtypeDeriving , fglasgowExts)
-    ,(MagicHash                  , fglasgowExts)
-    ,(UnicodeSyntax              , fglasgowExts)
-    ,(PatternSignatures          , fglasgowExts)
-    ,(UnliftedFFITypes           , fglasgowExts)
-    ,(LiberalTypeSynonyms        , fglasgowExts)
-    ,(TypeOperators              , fglasgowExts)
-    ,(GADTs                      , fglasgowExts)
-    ,(RelaxedPolyRec             , fglasgowExts)
-    ,(ExtendedDefaultRules       , fFlag "extended-default-rules")
-    ,(UnboxedTuples              , fglasgowExts)
-    ,(DeriveDataTypeable         , fglasgowExts)
-    ,(ConstrainedClassMethods    , fglasgowExts)
-    ]
 -- | Given a single package DB, return all installed packages.
 getPackageDBContents :: Verbosity -> PackageDB -> ProgramConfiguration
                         -> IO InstalledPackageIndex
@@ -539,7 +284,7 @@ toPackageIndex verbosity pkgss conf = do
   -- paths. We need to substitute the right value in so that when
   -- we, for example, call gcc, we have proper paths to give it.
   topDir <- ghcLibDir' verbosity ghcProg
-  let indices = [ PackageIndex.fromList (map (substTopDir topDir) pkgs)
+  let indices = [ PackageIndex.fromList (map (Internal.substTopDir topDir) pkgs)
                 | (_, pkgs) <- pkgss ]
   return $! (mconcat indices)
 
@@ -645,30 +390,6 @@ getInstalledPackages' verbosity packagedbs conf = do
     Just ghcVersion = programVersion ghcProg
     failToRead file = die $ "cannot read ghc package database " ++ file
 
-substTopDir :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
-substTopDir topDir ipo
- = ipo {
-       InstalledPackageInfo.importDirs
-           = map f (InstalledPackageInfo.importDirs ipo),
-       InstalledPackageInfo.libraryDirs
-           = map f (InstalledPackageInfo.libraryDirs ipo),
-       InstalledPackageInfo.includeDirs
-           = map f (InstalledPackageInfo.includeDirs ipo),
-       InstalledPackageInfo.frameworkDirs
-           = map f (InstalledPackageInfo.frameworkDirs ipo),
-       InstalledPackageInfo.haddockInterfaces
-           = map f (InstalledPackageInfo.haddockInterfaces ipo),
-       InstalledPackageInfo.haddockHTMLs
-           = map f (InstalledPackageInfo.haddockHTMLs ipo)
-   }
-    where f ('$':'t':'o':'p':'d':'i':'r':rest) = topDir ++ rest
-          f x = x
-
-mkGhcOptPackages :: ComponentLocalBuildInfo -> [(InstalledPackageId, PackageId, ModuleRenaming)]
-mkGhcOptPackages clbi =
-  map (\(i,p) -> (i,p,lookupRenaming p (componentPackageRenaming clbi)))
-      (componentPackageDeps clbi)
-
 -- -----------------------------------------------------------------------------
 -- Building
 
@@ -729,7 +450,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   -- TODO: do we need to put hs-boot files into place for mutually recursive
   -- modules?
   let cObjs       = map (`replaceExtension` objExtension) (cSources libBi)
-      baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
+      baseOpts    = Internal.componentGhcOptions verbosity lbi libBi clbi libTargetDir
                     `mappend` mempty { ghcOptHPCDir = hpcdir }
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
@@ -762,7 +483,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                              [libTargetDir </> x | x <- cObjs]
                    }
       replOpts    = vanillaOpts {
-                      ghcOptExtra        = overNubListR filterGhciFlags $
+                      ghcOptExtra        = overNubListR
+                                           Internal.filterGhciFlags $
                                            (ghcOptExtra vanillaOpts),
                       ghcOptNumJobs      = mempty
                     }
@@ -795,7 +517,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
   unless (null (cSources libBi)) $ do
     info verbosity "Building C Sources..."
     sequence_
-      [ do let baseCcOpts    = componentCcGhcOptions verbosity lbi
+      [ do let baseCcOpts    = Internal.componentCcGhcOptions verbosity lbi
                                libBi clbi libTargetDir filename
                vanillaCcOpts = if isGhcDynamic
                                -- Dynamic GHC requires C sources to be built
@@ -836,7 +558,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
         vanillaLibFilePath = libTargetDir </> mkLibName           libName
         profileLibFilePath = libTargetDir </> mkProfLibName       libName
         sharedLibFilePath  = libTargetDir </> mkSharedLibName cid libName
-        ghciLibFilePath    = libTargetDir </> mkGHCiLibName       libName
+        ghciLibFilePath    = libTargetDir </> Internal.mkGHCiLibName libName
         libInstallPath = libdir $ absoluteInstallDirs pkg_descr lbi NoCopyDest
         sharedLibInstallPath = libInstallPath </> mkSharedLibName cid libName
 
@@ -856,16 +578,16 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       | ghcVersion < Version [7,2] [] -- ghc-7.2+ does not make _stub.o files
       , x <- libModules lib ]
 
-    hObjs     <- getHaskellObjects lib lbi
+    hObjs     <- Internal.getHaskellObjects lib lbi
                       libTargetDir objExtension True
     hProfObjs <-
       if (withProfLib lbi)
-              then getHaskellObjects lib lbi
+              then Internal.getHaskellObjects lib lbi
                       libTargetDir ("p_" ++ objExtension) True
               else return []
     hSharedObjs <-
       if (withSharedLib lbi)
-              then getHaskellObjects lib lbi
+              then Internal.getHaskellObjects lib lbi
                       libTargetDir ("dyn_" ++ objExtension) False
               else return []
 
@@ -906,7 +628,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                 ghcOptPackageKey         = toFlag (pkgKey lbi),
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
-                ghcOptPackages           = toNubListR $ mkGhcOptPackages clbi ,
+                ghcOptPackages           = toNubListR $
+                                           Internal.mkGhcOptPackages clbi ,
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi
               }
@@ -986,7 +709,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
       isHaskellMain = elem (takeExtension srcMainFile) [".hs", ".lhs"]
       cSrcs         = cSources exeBi ++ [srcMainFile | not isHaskellMain]
       cObjs         = map (`replaceExtension` objExtension) cSrcs
-      baseOpts   = (componentGhcOptions verbosity lbi exeBi clbi exeDir)
+      baseOpts   = (Internal.componentGhcOptions verbosity lbi exeBi clbi exeDir)
                     `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptInputFiles   = toNubListR
@@ -1025,7 +748,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                                              [exeDir </> x | x <- cObjs]
                    }
       replOpts   = baseOpts {
-                      ghcOptExtra          = overNubListR filterGhciFlags
+                      ghcOptExtra          = overNubListR
+                                             Internal.filterGhciFlags
                                              (ghcOptExtra baseOpts)
                    }
                    -- For a normal compile we do separate invocations of ghc for
@@ -1083,7 +807,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   unless (null cSrcs) $ do
    info verbosity "Building C Sources..."
    sequence_
-     [ do let opts = (componentCcGhcOptions verbosity lbi exeBi clbi
+     [ do let opts = (Internal.componentCcGhcOptions verbosity lbi exeBi clbi
                          exeDir filename) `mappend` mempty {
                        ghcOptDynLinkMode   = toFlag (if withDynExe lbi
                                                        then GhcDynamicOnly
@@ -1122,41 +846,6 @@ hackThreadedFlag verbosity comp prof bi
       [ (hc, if hc == GHC then filter p opts else opts)
       | (hc, opts) <- hcoptss ]
 
--- | Strip out flags that are not supported in ghci
-filterGhciFlags :: [String] -> [String]
-filterGhciFlags = filter supported
-  where
-    supported ('-':'O':_) = False
-    supported "-debug"    = False
-    supported "-threaded" = False
-    supported "-ticky"    = False
-    supported "-eventlog" = False
-    supported "-prof"     = False
-    supported "-unreg"    = False
-    supported _           = True
-
--- when using -split-objs, we need to search for object files in the
--- Module_split directory for each module.
-getHaskellObjects :: Library -> LocalBuildInfo
-                  -> FilePath -> String -> Bool -> IO [FilePath]
-getHaskellObjects lib lbi pref wanted_obj_ext allow_split_objs
-  | splitObjs lbi && allow_split_objs = do
-        let splitSuffix = if compilerVersion (compiler lbi) <
-                             Version [6, 11] []
-                          then "_split"
-                          else "_" ++ wanted_obj_ext ++ "_split"
-            dirs = [ pref </> (ModuleName.toFilePath x ++ splitSuffix)
-                   | x <- libModules lib ]
-        objss <- mapM getDirectoryContents dirs
-        let objs = [ dir </> obj
-                   | (objs',dir) <- zip objss dirs, obj <- objs',
-                     let obj_ext = takeExtension obj,
-                     '.':wanted_obj_ext == obj_ext ]
-        return objs
-  | otherwise  =
-        return [ pref </> ModuleName.toFilePath x <.> wanted_obj_ext
-               | x <- libModules lib ]
-
 -- | Extracts a String representing a hash of the ABI of a built
 -- library.  It can fail if the library has not yet been built.
 --
@@ -1168,7 +857,7 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   let
       comp        = compiler lbi
       vanillaArgs =
-        (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
+        (Internal.componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
           ghcOptPackageKey   = toFlag (pkgKey lbi),
@@ -1196,71 +885,16 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
   hash <- getProgramInvocationOutput verbosity (ghcInvocation ghcProg comp ghcArgs)
   return (takeWhile (not . isSpace) hash)
 
-
 componentGhcOptions :: Verbosity -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
                     -> GhcOptions
-componentGhcOptions verbosity lbi bi clbi odir =
-    mempty {
-      ghcOptVerbosity       = toFlag verbosity,
-      ghcOptHideAllPackages = toFlag True,
-      ghcOptCabal           = toFlag True,
-      ghcOptPackageDBs      = withPackageDB lbi,
-      ghcOptPackages        = toNubListR $ mkGhcOptPackages clbi,
-      ghcOptSplitObjs       = toFlag (splitObjs lbi),
-      ghcOptSourcePathClear = toFlag True,
-      ghcOptSourcePath      = toNubListR $ [odir] ++ (hsSourceDirs bi)
-                                           ++ [autogenModulesDir lbi],
-      ghcOptCppIncludePath  = toNubListR $ [autogenModulesDir lbi, odir]
-                                           ++ PD.includeDirs bi,
-      ghcOptCppOptions      = toNubListR $ cppOptions bi,
-      ghcOptCppIncludes     = toNubListR $
-                              [autogenModulesDir lbi </> cppHeaderName],
-      ghcOptFfiIncludes     = toNubListR $ PD.includes bi,
-      ghcOptObjDir          = toFlag odir,
-      ghcOptHiDir           = toFlag odir,
-      ghcOptStubDir         = toFlag odir,
-      ghcOptOutputDir       = toFlag odir,
-      ghcOptOptimisation    = toGhcOptimisation (withOptimization lbi),
-      ghcOptExtra           = toNubListR $ hcOptions GHC bi,
-      ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
-      -- Unsupported extensions have already been checked by configure
-      ghcOptExtensions      = toNubListR $ usedExtensions bi,
-      ghcOptExtensionMap    = M.fromList . compilerExtensions $ (compiler lbi)
-    }
-  where
-    toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
-    toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
-    toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
+componentGhcOptions = Internal.componentGhcOptions
 
 componentCcGhcOptions :: Verbosity -> LocalBuildInfo
                       -> BuildInfo -> ComponentLocalBuildInfo
                       -> FilePath -> FilePath
                       -> GhcOptions
-componentCcGhcOptions verbosity lbi bi clbi pref filename =
-    mempty {
-      ghcOptVerbosity      = toFlag verbosity,
-      ghcOptMode           = toFlag GhcModeCompile,
-      ghcOptInputFiles     = toNubListR [filename],
-
-      ghcOptCppIncludePath = toNubListR $ [autogenModulesDir lbi, odir]
-                                          ++ PD.includeDirs bi,
-      ghcOptPackageDBs     = withPackageDB lbi,
-      ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
-      ghcOptCcOptions      = toNubListR $
-                             (case withOptimization lbi of
-                                 NoOptimisation -> []
-                                 _              -> ["-O2"]) ++
-                             PD.ccOptions bi,
-      ghcOptObjDir         = toFlag odir
-    }
-  where
-    odir | compilerVersion (compiler lbi) >= Version [6,4,1] []  = pref
-         | otherwise = pref </> takeDirectory filename
-         -- ghc 6.4.0 had a bug in -odir handling for C compilations.
-
-mkGHCiLibName :: LibraryName -> String
-mkGHCiLibName (LibraryName lib) = lib <.> "o"
+componentCcGhcOptions = Internal.componentCcGhcOptions
 
 -- -----------------------------------------------------------------------------
 -- Installing
@@ -1333,7 +967,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     libNames = componentLibraries clbi
     vanillaLibNames = map mkLibName             libNames
     profileLibNames = map mkProfLibName         libNames
-    ghciLibNames    = map mkGHCiLibName         libNames
+    ghciLibNames    = map Internal.mkGHCiLibName libNames
     sharedLibNames  = map (mkSharedLibName cid) libNames
 
     hasLib    = not $ null (libModules lib)
@@ -1376,14 +1010,8 @@ registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
 -- -----------------------------------------------------------------------------
 -- Utils
 
-ghcLookupProperty :: String -> Compiler -> Bool
-ghcLookupProperty prop comp =
-  case M.lookup prop (compilerProperties comp) of
-    Just "YES" -> True
-    _          -> False
-
 ghcDynamic :: Compiler -> Bool
-ghcDynamic = ghcLookupProperty "GHC Dynamic"
+ghcDynamic = Internal.ghcLookupProperty "GHC Dynamic"
 
 ghcSupportsDynamicToo :: Compiler -> Bool
-ghcSupportsDynamicToo = ghcLookupProperty "Support dynamic-too"
+ghcSupportsDynamicToo = Internal.ghcLookupProperty "Support dynamic-too"
