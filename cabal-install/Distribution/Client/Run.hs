@@ -81,7 +81,7 @@ run verbosity lbi exe exeArgs = do
 
   env  <- (dataDirEnvVar:) <$> getEnvironment
   -- Add (DY)LD_LIBRARY_PATH if needed
-  env' <- if relocatable lbi && withDynExe lbi
+  env' <- if withDynExe lbi
              then do let (Platform _ os) = hostPlatform lbi
                          clbi = getComponentLocalBuildInfo lbi
                                   (CExeName (exeName exe))
