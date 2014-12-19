@@ -142,7 +142,7 @@ RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\."
                        # >= 1 && < 1.1
 STM_VER="2.4.3";       STM_VER_REGEXP="2\."
                        # == 2.*
-NETWORK_URI_VER="2.6.0.1" NETWORK_URI_REGEXP="2\.[6-9]\."
+NETWORK_URI_VER="2.6.0.1" NETWORK_URI_VER_REGEXP="2\.[6-9]\."
                        # >= 2.6
 
 HACKAGE_URL="https://hackage.haskell.org/package"
@@ -258,15 +258,22 @@ do_pkg () {
   fi
 }
 
-# Check which version of a package was actually installed.
-installed_pkg_ver () {
-  PKG=$1
-  PKG_VER=`${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} --simple-output ${PKG} | egrep -o "([0-9.]+)"`
-  if [ ! -z "$PKG_VER" ]
+# Replicate the flag selection logic for network-uri in the .cabal file.
+do_network_uri_pkg () {
+  # Refresh installed package list.
+  ${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} > ghc-pkg-stage2.list \
+    || die "running '${GHC_PKG} list' failed"
+
+  NETWORK_URI_DUMMY_VER="2.5.0.0"; NETWORK_URI_DUMMY_VER_REGEXP="2\.5\." # < 2.6
+  if egrep " network-2\.[6-9]\." ghc-pkg-stage2.list > /dev/null 2>&1
   then
-    echo "$PKG_VER"
+    # Use network >= 2.6 && network-uri >= 2.6
+    info_pkg "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
+    do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
   else
-    die "Couldn't find installed version of ${PKG}"
+    # Use network < 2.6 && network-uri < 2.6
+    info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
+    do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
   fi
 }
 
@@ -299,21 +306,7 @@ do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 
 # We conditionally install network-uri, depending on the network version.
-INST_NETWORK_VER=`installed_pkg_ver "network"`
-NETWORK_WITH_URI_VER_REGEXP="2\.[6-9]\."
-NETWORK_URI_DUMMY_VER="2.5.0.0"
-NETWORK_URI_DUMMY_VER_REGEXP="2\.5\."
-if echo $INST_NETWORK_VER | egrep " ${NETWORK_WITH_URI_VER_REGEXP}" > /dev/null 2>&1
-then
-  echo "network-${INST_NETWORK_VER} doesn't provide Network.URI."
-  info_pkg "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
-  do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
-else
-  echo "network-${INST_NETWORK_VER} provides Network.URI."
-  info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
-  do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
-fi
-
+do_network_uri_pkg
 
 install_pkg "cabal-install"
 
