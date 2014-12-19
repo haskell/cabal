@@ -7,7 +7,10 @@ import Test.HUnit
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "PathsModule" </> "Executable")
-               []
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "PathsModule" </> "Executable"
+            , distPref = Nothing
+            , configOpts = []
+            }
     result <- cabal_build spec ghcPath
     assertBuildSucceeded result

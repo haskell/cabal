@@ -6,8 +6,11 @@ import Test.HUnit
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "BenchmarkOptions")
-               ["--enable-benchmarks"]
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "BenchmarkOptions"
+            , configOpts = ["--enable-benchmarks"]
+            , distPref = Nothing
+            }
     _ <- cabal_build spec ghcPath
     result <- cabal_bench spec ["--benchmark-options=1 2 3"] ghcPath
     let message = "\"cabal bench\" did not pass the correct options to the "

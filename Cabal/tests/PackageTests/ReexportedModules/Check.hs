@@ -29,6 +29,10 @@ suite ghcPath = TestCase $ do
                . reads
                $ xs
     when compat $ do
-        let spec = PackageSpec ("PackageTests" </> "ReexportedModules") []
+        let spec = PackageSpec
+                { directory = "PackageTests" </> "ReexportedModules"
+                , configOpts = []
+                , distPref = Nothing
+                }
         result <- cabal_build spec ghcPath
         assertBuildSucceeded result

@@ -54,6 +54,7 @@ module Distribution.Simple.Utils (
         installExecutableFiles,
         installMaybeExecutableFiles,
         installDirectoryContents,
+        copyDirectoryRecursive,
 
         -- * File permissions
         doesExecutableExist,
@@ -943,6 +944,13 @@ installDirectoryContents verbosity srcDir destDir = do
   info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
   srcFiles <- getDirectoryContentsRecursive srcDir
   installOrdinaryFiles verbosity destDir [ (srcDir, f) | f <- srcFiles ]
+
+-- | Recursively copy the contents of one directory to another path.
+copyDirectoryRecursive :: Verbosity -> FilePath -> FilePath -> IO ()
+copyDirectoryRecursive verbosity srcDir destDir = do
+  info verbosity ("copy directory '" ++ srcDir ++ "' to '" ++ destDir ++ "'.")
+  srcFiles <- getDirectoryContentsRecursive srcDir
+  copyFilesWith (const copyFile) verbosity destDir [ (srcDir, f) | f <- srcFiles ]
 
 -------------------
 -- File permissions
