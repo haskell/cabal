@@ -83,7 +83,7 @@ runTest pkg_descr lbi flags suite = do
         shellEnv = [("HPCTIXFILE", tixFile) | isCoverageEnabled] ++ pkgPathEnv
 
     -- Add (DY)LD_LIBRARY_PATH if needed
-    shellEnv' <- if LBI.relocatable lbi && LBI.withDynExe lbi
+    shellEnv' <- if LBI.withDynExe lbi
                     then do let (Platform _ os) = LBI.hostPlatform lbi
                                 clbi = LBI.getComponentLocalBuildInfo lbi
                                          (LBI.CTestName (PD.testName suite))
