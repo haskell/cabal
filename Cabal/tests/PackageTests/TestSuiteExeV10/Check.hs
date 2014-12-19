@@ -1,5 +1,7 @@
 module PackageTests.TestSuiteExeV10.Check (checks) where
 
+import qualified Control.Exception as E (IOException, catch)
+import Control.Monad (when)
 import Data.Maybe (catMaybes)
 import System.Directory ( doesFileExist )
 import System.FilePath
@@ -10,6 +12,11 @@ import Test.HUnit hiding ( path )
 
 import Distribution.Simple.Configure (getPersistBuildConfig)
 import Distribution.Simple.Hpc
+import Distribution.Simple.Program.Builtin (hpcProgram)
+import Distribution.Simple.Program.Db
+    ( emptyProgramDb, configureProgram, requireProgramVersion )
+import qualified Distribution.Verbosity as Verbosity
+import Distribution.Version (Version(..), orLaterVersion)
 
 import PackageTests.PackageTester
 
@@ -61,13 +68,19 @@ shouldNotExist path =
 -- | Ensure that both .tix file and markup are generated if coverage is enabled.
 checkTestWithHpc :: FilePath -> String -> [String] -> Test
 checkTestWithHpc ghcPath name extraOpts = TestCase $ do
-    buildAndTest ghcPath name [] ("--enable-coverage" : extraOpts)
-    lbi <- getPersistBuildConfig (dir </> "dist-" ++ name)
-    let way = guessWay lbi
-    shouldExist $ mixDir (dir </> "dist-" ++ name) way "my-0.1" </> "my-0.1" </> "Foo.mix"
-    shouldExist $ mixDir (dir </> "dist-" ++ name) way "test-Foo" </> "Main.mix"
-    shouldExist $ tixFilePath (dir </> "dist-" ++ name) way "test-Foo"
-    shouldExist $ htmlDir (dir </> "dist-" ++ name) way "test-Foo" </> "hpc_index.html"
+    isCorrectVersion <- correctHpcVersion
+    when isCorrectVersion $ do
+        buildAndTest ghcPath name [] ("--enable-coverage" : extraOpts)
+        lbi <- getPersistBuildConfig (dir </> "dist-" ++ name)
+        let way = guessWay lbi
+        mapM_ shouldExist
+            [ mixDir (dir </> "dist-" ++ name) way "my-0.1"
+                </> "my-0.1" </> "Foo.mix"
+            , mixDir (dir </> "dist-" ++ name) way "test-Foo" </> "Main.mix"
+            , tixFilePath (dir </> "dist-" ++ name) way "test-Foo"
+            , htmlDir (dir </> "dist-" ++ name) way "test-Foo"
+                </> "hpc_index.html"
+            ]
 
 -- | Ensures that even if -fhpc is manually provided no .tix file is output.
 checkTestNoHpcNoTix :: FilePath -> Test
@@ -109,3 +122,17 @@ buildAndTest ghcPath name envOverrides flags = do
 
 hunit :: TF.TestName -> Test -> TF.Test
 hunit name = testGroup name . hUnitTestToTests
+
+-- | Checks for a suitable HPC version for testing.
+correctHpcVersion :: IO Bool
+correctHpcVersion = do
+    let programDb' = emptyProgramDb
+    let verbosity = Verbosity.normal
+    let verRange  = orLaterVersion (Version [0,7] [])
+    programDb <- configureProgram verbosity hpcProgram programDb'
+    (requireProgramVersion verbosity hpcProgram verRange programDb
+     >> return True) `catchIO` (\_ -> return False)
+  where
+    -- Distribution.Compat.Exception is hidden.
+    catchIO :: IO a -> (E.IOException -> IO a) -> IO a
+    catchIO = E.catch
