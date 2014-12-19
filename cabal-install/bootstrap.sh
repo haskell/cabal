@@ -61,6 +61,7 @@ ZLIB_VER="0.5.4.1";    ZLIB_VER_REGEXP="0\.[45]\."             # == 0.4.* || == 
 TIME_VER="1.4.1"       TIME_VER_REGEXP="1\.[1234]\.?"          # >= 1.1 && < 1.5
 RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\."              # >= 1 && < 1.1
 STM_VER="2.4.2";       STM_VER_REGEXP="2\."                    # == 2.*
+NETWORK_URI_VER="2.6.0.1" NETWORK_URI_REGEXP="2\.[6-9]\."      # >= 2.6
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
 
@@ -188,6 +189,18 @@ do_pkg () {
   fi
 }
 
+# Check which version of a package was actually installed.
+installed_pkg_ver () {
+  PKG=$1
+  PKG_VER=`${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} --simple-output ${PKG} | egrep -o "([0-9.]+)"`
+  if [ ! -z $PKG_VER ]
+  then
+    echo "$PKG_VER"
+  else
+    die "Couldn't find installed version of ${PKG}"
+  fi
+}
+
 # Actually do something!
 
 info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
@@ -215,6 +228,23 @@ do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+
+# We conditionally install network-uri, depending on the network version.
+INST_NETWORK_VER=`installed_pkg_ver "network"`
+NETWORK_WITH_URI_VER_REGEXP=2\.[6-9]\.
+NETWORK_URI_DUMMY_VER="2.5.0.0"
+NETWORK_URI_DUMMY_VER_REGEXP="2\.5\."
+if echo $INST_NETWORK_VER | egrep " ${NETWORK_WITH_URI_VER_REGEXP}" > /dev/null 2>&1
+then
+  echo "network-${INST_NETWORK_VER} doesn't provide Network.URI"
+  info_pkg "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
+  do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
+else
+  echo "network-${INST_NETWORK_VER} provides Network.URI"
+  info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
+  do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
+fi
+
 
 install_pkg "cabal-install"
 
