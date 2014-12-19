@@ -7,6 +7,10 @@ import Test.HUnit
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "InternalLibrary1") []
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "BuildDeps" </> "InternalLibrary1"
+            , configOpts = []
+            , distPref = Nothing
+            }
     result <- cabal_build spec ghcPath
     assertBuildSucceeded result

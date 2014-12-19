@@ -9,7 +9,11 @@ import Test.HUnit
 
 suite :: Version -> FilePath -> Test
 suite cabalVersion ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "InternalLibrary0") []
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "BuildDeps" </> "InternalLibrary0"
+            , configOpts = []
+            , distPref = Nothing
+            }
     result <- cabal_build spec ghcPath
     assertBuildFailed result
     when (cabalVersion >= Version [1, 7] []) $ do

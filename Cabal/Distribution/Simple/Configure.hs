@@ -601,8 +601,12 @@ configure (pkg_descr0, pbi) cfg
                   not (GHCJS.isDynamic comp)
                 _ -> False
 
-        let sharedLibsByDefault =
-              case compilerId comp of
+        let sharedLibsByDefault
+              | fromFlag (configDynExe cfg) =
+                  -- build a shared library if dynamically-linked
+                  -- executables are requested
+                  True
+              | otherwise = case compilerId comp of
                 CompilerId GHC _ ->
                   -- if ghc is dynamic, then ghci needs a shared
                   -- library, so we build one by default.
@@ -610,6 +614,24 @@ configure (pkg_descr0, pbi) cfg
                 CompilerId GHCJS _ ->
                   GHCJS.isDynamic comp
                 _ -> False
+            withSharedLib_ =
+                -- build shared libraries if required by GHC or by the
+                -- executable linking mode, but allow the user to force
+                -- building only static library archives with
+                -- --disable-shared.
+                fromFlagOrDefault sharedLibsByDefault $ configSharedLib cfg
+            withDynExe_ = fromFlag $ configDynExe cfg
+        when (withDynExe_ && not withSharedLib_) $ warn verbosity $
+               "Executables will use dynamic linking, but a shared library "
+            ++ "is not being built. Linking will fail if any executables "
+            ++ "depend on the library."
+
+        let withProfExe_ = fromFlagOrDefault False $ configProfExe cfg
+            withProfLib_ = fromFlagOrDefault withProfExe_ $ configProfLib cfg
+        when (withProfExe_ && not withProfLib_) $ warn verbosity $
+               "Executables will be built with profiling, but library "
+            ++ "profiling is disabled. Linking will fail if any executables "
+            ++ "depend on the library."
 
         reloc <-
            if not (fromFlag $ configRelocatable cfg)
@@ -633,11 +655,10 @@ configure (pkg_descr0, pbi) cfg
                     instantiatedWith    = hole_insts,
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
-                    withProfLib         = fromFlag $ configProfLib cfg,
-                    withSharedLib       = fromFlagOrDefault sharedLibsByDefault $
-                                          configSharedLib cfg,
-                    withDynExe          = fromFlag $ configDynExe cfg,
-                    withProfExe         = fromFlag $ configProfExe cfg,
+                    withProfLib         = withProfLib_,
+                    withSharedLib       = withSharedLib_,
+                    withDynExe          = withDynExe_,
+                    withProfExe         = withProfExe_,
                     withOptimization    = fromFlag $ configOptimization cfg,
                     withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
                                           configGHCiLib cfg,

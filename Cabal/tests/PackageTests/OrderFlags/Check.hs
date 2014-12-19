@@ -11,7 +11,11 @@ import Prelude hiding (catch)
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "OrderFlags") []
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "OrderFlags"
+            , configOpts = []
+            , distPref = Nothing
+            }
     result <- cabal_build spec ghcPath
     do
         assertEqual "cabal build should succeed - see test-log.txt" True (successful result)

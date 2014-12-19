@@ -8,8 +8,16 @@ import Test.HUnit
 
 suite :: FilePath -> FilePath -> Test
 suite ghcPath ghcPkgPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "InternalLibrary3") []
-    let specTI = PackageSpec (directory spec </> "to-install") []
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "BuildDeps" </> "InternalLibrary3"
+            , configOpts = []
+            , distPref = Nothing
+            }
+    let specTI = PackageSpec
+            { directory = directory spec </> "to-install"
+            , configOpts = []
+            , distPref = Nothing
+            }
 
     unregister "InternalLibrary3" ghcPkgPath
     iResult <- cabal_install specTI ghcPath

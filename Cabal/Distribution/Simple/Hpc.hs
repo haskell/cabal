@@ -12,8 +12,9 @@
 -- build test suites with HPC enabled.
 
 module Distribution.Simple.Hpc
-    ( mixDir
+    ( Way(..), guessWay
     , htmlDir
+    , mixDir
     , tixDir
     , tixFilePath
     , markupPackage
@@ -41,30 +42,51 @@ import System.FilePath
 -- -------------------------------------------------------------------------
 -- Haskell Program Coverage
 
+data Way = Vanilla | Prof | Dyn
+  deriving (Bounded, Enum, Eq, Read, Show)
+
 hpcDir :: FilePath  -- ^ \"dist/\" prefix
+       -> Way
        -> FilePath  -- ^ Directory containing component's HPC .mix files
-hpcDir distPref = distPref </> "hpc"
+hpcDir distPref way = distPref </> "hpc" </> wayDir
+  where
+    wayDir = case way of
+      Vanilla -> "vanilla"
+      Prof -> "prof"
+      Dyn -> "dyn"
 
 mixDir :: FilePath  -- ^ \"dist/\" prefix
+       -> Way
        -> FilePath  -- ^ Component name
        -> FilePath  -- ^ Directory containing test suite's .mix files
-mixDir distPref name = hpcDir distPref </> "mix" </> name
+mixDir distPref way name = hpcDir distPref way </> "mix" </> name
 
 tixDir :: FilePath  -- ^ \"dist/\" prefix
+       -> Way
        -> FilePath  -- ^ Component name
        -> FilePath  -- ^ Directory containing test suite's .tix files
-tixDir distPref name = hpcDir distPref </> "tix" </> name
+tixDir distPref way name = hpcDir distPref way </> "tix" </> name
 
 -- | Path to the .tix file containing a test suite's sum statistics.
 tixFilePath :: FilePath     -- ^ \"dist/\" prefix
+            -> Way
             -> FilePath     -- ^ Component name
             -> FilePath     -- ^ Path to test suite's .tix file
-tixFilePath distPref name = tixDir distPref name </> name <.> "tix"
+tixFilePath distPref way name = tixDir distPref way name </> name <.> "tix"
 
 htmlDir :: FilePath     -- ^ \"dist/\" prefix
+        -> Way
         -> FilePath     -- ^ Component name
         -> FilePath     -- ^ Path to test suite's HTML markup directory
-htmlDir distPref name = hpcDir distPref </> "html" </> name
+htmlDir distPref way name = hpcDir distPref way </> "html" </> name
+
+-- | Attempt to guess the way the test suites in this package were compiled
+-- and linked with the library so the correct module interfaces are found.
+guessWay :: LocalBuildInfo -> Way
+guessWay lbi
+  | withProfExe lbi = Prof
+  | withDynExe lbi = Dyn
+  | otherwise = Vanilla
 
 -- | Generate the HTML markup for a test suite.
 markupTest :: Verbosity
@@ -74,21 +96,22 @@ markupTest :: Verbosity
            -> TestSuite
            -> IO ()
 markupTest verbosity lbi distPref libName suite = do
-    tixFileExists <- doesFileExist $ tixFilePath distPref $ testName suite
+    tixFileExists <- doesFileExist $ tixFilePath distPref way $ testName suite
     when tixFileExists $ do
         -- behaviour of 'markup' depends on version, so we need *a* version
         -- but no particular one
         (hpc, hpcVer, _) <- requireProgramVersion verbosity
             hpcProgram anyVersion (withPrograms lbi)
+        let htmlDir_ = htmlDir distPref way $ testName suite
         markup hpc hpcVer verbosity
-            (tixFilePath distPref $ testName suite) mixDirs
-            (htmlDir distPref $ testName suite)
+            (tixFilePath distPref way $ testName suite) mixDirs
+            htmlDir_
             (testModules suite ++ [ main ])
         notice verbosity $ "Test coverage report written to "
-                            ++ htmlDir distPref (testName suite)
-                            </> "hpc_index" <.> "html"
+                            ++ htmlDir_ </> "hpc_index" <.> "html"
   where
-    mixDirs = map (mixDir distPref) [ testName suite, libName ]
+    way = guessWay lbi
+    mixDirs = map (mixDir distPref way) [ testName suite, libName ]
 
 -- | Generate the HTML markup for all of a package's test suites.
 markupPackage :: Verbosity
@@ -98,15 +121,15 @@ markupPackage :: Verbosity
               -> [TestSuite]
               -> IO ()
 markupPackage verbosity lbi distPref libName suites = do
-    let tixFiles = map (tixFilePath distPref . testName) suites
+    let tixFiles = map (tixFilePath distPref way . testName) suites
     tixFilesExist <- mapM doesFileExist tixFiles
     when (and tixFilesExist) $ do
         -- behaviour of 'markup' depends on version, so we need *a* version
         -- but no particular one
         (hpc, hpcVer, _) <- requireProgramVersion verbosity
             hpcProgram anyVersion (withPrograms lbi)
-        let outFile = tixFilePath distPref libName
-            htmlDir' = htmlDir distPref libName
+        let outFile = tixFilePath distPref way libName
+            htmlDir' = htmlDir distPref way libName
             excluded = concatMap testModules suites ++ [ main ]
         createDirectoryIfMissing True $ takeDirectory outFile
         union hpc verbosity tixFiles outFile excluded
@@ -114,4 +137,5 @@ markupPackage verbosity lbi distPref libName suites = do
         notice verbosity $ "Package coverage report written to "
                            ++ htmlDir' </> "hpc_index.html"
   where
-    mixDirs = map (mixDir distPref) $ libName : map testName suites
+    way = guessWay lbi
+    mixDirs = map (mixDir distPref way) $ libName : map testName suites
