@@ -10,7 +10,11 @@ import Text.Regex.Posix
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "TargetSpecificDeps3") []
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "BuildDeps" </> "TargetSpecificDeps3"
+            , configOpts = []
+            , distPref = Nothing
+            }
     result <- cabal_build spec ghcPath
     do
         assertEqual "cabal build should fail - see test-log.txt" False (successful result)

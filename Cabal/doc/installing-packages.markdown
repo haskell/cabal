@@ -577,6 +577,14 @@ be controlled with the following command line options.
     Do not check for dependencies required only by the test suites. It will not
     be possible to invoke the `test` command without reconfiguring the package.
 
+`--enable-coverage`
+:   Build libraries and executables (including test suites) with Haskell
+    Program Coverage enabled. Running the test suites will automatically
+    generate coverage reports with HPC.
+
+`--disable-coverage`
+:   (default) Do not enable Haskell Program Coverage.
+
 ### Miscellaneous options ##
 
 `--user`
@@ -627,13 +635,14 @@ be controlled with the following command line options.
 :   (default) Do not generate an additional profiling version of the
     library.
 
-`--enable-executable-profiling`
+`--enable-profiling`
 :   Any executables generated should have profiling enabled (only for
     implementations that support profiling). For this to work, all
     libraries used by these executables must also have been built with
-    profiling support.
+    profiling support. The library will be built with profiling enabled (if
+    supported) unless `--disable-library-profiling` is specified.
 
-`--disable-executable-profiling`
+`--disable-profiling`
 :   (default) Do not enable profiling in generated executables.
 
 `--enable-library-vanilla`
@@ -691,6 +700,14 @@ be controlled with the following command line options.
 
 `--disable-shared`
 :   (default) Do not build shared library.
+
+`--enable-executable-dynamic`
+:   Link executables dynamically. The executable's library dependencies should
+    be built as shared objects. This implies `--enable-shared` unless
+    `--disable-shared` is explicitly specified.
+
+`--disable-executable-dynamic`
+:   (default) Link executables statically.
 
 `--configure-option=`_str_
 :   An extra option to an external `configure` script, if one is used

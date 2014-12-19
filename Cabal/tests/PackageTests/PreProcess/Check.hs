@@ -7,7 +7,10 @@ import Test.HUnit
 
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
-    let spec = PackageSpec ("PackageTests" </> "PreProcess")
-               ["--enable-tests", "--enable-benchmarks"]
+    let spec = PackageSpec
+            { directory = "PackageTests" </> "PreProcess"
+            , distPref = Nothing
+            , configOpts = ["--enable-tests", "--enable-benchmarks"]
+            }
     result <- cabal_build spec ghcPath
     assertBuildSucceeded result

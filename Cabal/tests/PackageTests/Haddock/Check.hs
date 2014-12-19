@@ -18,7 +18,11 @@ suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
     let dir = "PackageTests" </> this
         haddocksDir = dir </> "dist" </> "doc" </> "html" </> "Haddock"
-        spec = PackageSpec dir []
+        spec = PackageSpec
+            { directory = dir
+            , configOpts = []
+            , distPref = Nothing
+            }
 
     haddocksDirExists <- doesDirectoryExist haddocksDir
     when haddocksDirExists (removeDirectoryRecursive haddocksDir)

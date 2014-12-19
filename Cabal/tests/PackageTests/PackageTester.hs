@@ -51,6 +51,7 @@ import Distribution.Verbosity (Verbosity, flagToVerbosity, normal)
 
 data PackageSpec = PackageSpec
     { directory  :: FilePath
+    , distPref :: Maybe FilePath
     , configOpts :: [String]
     }
 
@@ -180,7 +181,10 @@ compileSetup packageDir ghcPath = do
 
 -- | Returns the command that was issued, the return code, and the output text.
 cabal :: PackageSpec -> [(String, Maybe String)] -> [String] -> FilePath -> IO (String, ExitCode, String)
-cabal spec envOverrides cabalArgs ghcPath = do
+cabal spec envOverrides cabalArgs_ ghcPath = do
+    let cabalArgs = case distPref spec of
+                       Nothing -> cabalArgs_
+                       Just dist -> ("--builddir=" ++ dist) : cabalArgs_
     customSetup <- doesFileExist (directory spec </> "Setup.hs")
     if customSetup
         then do
