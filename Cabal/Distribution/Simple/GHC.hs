@@ -63,7 +63,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , LibraryName(..), absoluteInstallDirs, depLibraryPaths )
+         , absoluteInstallDirs, depLibraryPaths )
 import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
@@ -99,8 +99,7 @@ import Distribution.Text
          ( display )
 import Distribution.Utils.NubList
          ( NubListR, overNubListR, toNubListR )
-import Language.Haskell.Extension (Language(..), Extension(..)
-                                  ,KnownExtension(..))
+import Language.Haskell.Extension (Extension(..), KnownExtension(..))
 
 import Control.Monad            ( unless, when )
 import Data.Char                ( isDigit, isSpace )
@@ -110,14 +109,11 @@ import Data.Maybe               ( catMaybes )
 import Data.Monoid              ( Monoid(..) )
 import Data.Version             ( showVersion )
 import System.Directory
-         ( getDirectoryContents, doesFileExist, getTemporaryDirectory,
-           getAppUserDataDirectory, createDirectoryIfMissing )
+         ( doesFileExist, getAppUserDataDirectory, createDirectoryIfMissing )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension, isRelative )
 import qualified System.Info
-import System.IO (hClose, hPutStrLn)
-import Distribution.Compat.Exception (catchIO)
 
 -- -----------------------------------------------------------------------------
 -- Configuring
@@ -886,6 +882,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     supportRPaths IRIX        = False
     supportRPaths HaLVM       = False
     supportRPaths IOS         = False
+    supportRPaths Ghcjs       = False
     supportRPaths (OtherOS _) = False
     -- Do _not_ add a default case so that we get a warning here when a new OS
     -- is added.
