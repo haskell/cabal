@@ -91,7 +91,21 @@ tests paths =
           
 
     -- , testCase "can find executables built from the package" $ do
-    -- , testCase "configures cabal to use the sandbox" $ do
+
+    , testCase "configures cabal to use the sandbox" $ do
+          let libNameAndVersion = "my-0.1"
+
+          cleanPreviousBuilds paths
+          assertPackageInstall paths
+
+          assertMyLibIsNotAvailableOutsideofSandbox paths libNameAndVersion
+
+          result <- cabal_exec paths dir ["bash", "--", "-c", "cd subdir ; cabal sandbox hc-pkg list"]
+          assertExecSucceeded result
+          let output = outputText result
+              errMsg = "my library should have been found"
+          assertBool errMsg $
+              libNameAndVersion `isInfixOf` (intercalate " " . lines $ output)
     ]
 
 cleanPreviousBuilds :: TestsPaths -> IO ()

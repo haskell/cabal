@@ -117,7 +117,6 @@ import System.FilePath          ( (</>), (<.>), takeExtension,
                                   splitExtension, isRelative )
 import qualified System.Info
 import System.IO (hClose, hPutStrLn)
-import System.Environment (getEnv)
 import Distribution.Compat.Exception (catchIO)
 
 -- -----------------------------------------------------------------------------
@@ -311,18 +310,9 @@ getGlobalPackageDB verbosity ghcProg =
     dropWhileEndLE isSpace `fmap`
      rawSystemProgramStdout verbosity ghcProg ["--print-global-package-db"]
 
--- Cabal does not use the environment variable GHC_PACKAGE_PATH; let users
--- know that this is the case. See ticket #335. Simply ignoring it is not a
--- good idea, since then ghc and cabal are looking at different sets of
--- package DBs and chaos is likely to ensue.
 checkPackageDbEnvVar :: IO ()
-checkPackageDbEnvVar = do
-    hasGPP <- (getEnv "GHC_PACKAGE_PATH" >> return True)
-              `catchIO` (\_ -> return False)
-    when hasGPP $
-      die $ "Use of GHC's environment variable GHC_PACKAGE_PATH is "
-         ++ "incompatible with Cabal. Use the flag --package-db to specify a "
-         ++ "package database (it can be used multiple times)."
+checkPackageDbEnvVar =
+    Internal.checkPackageDbEnvVar "GHC" "GHC_PACKAGE_PATH"
 
 checkPackageDbStack :: PackageDBStack -> IO ()
 checkPackageDbStack (GlobalPackageDB:rest)
