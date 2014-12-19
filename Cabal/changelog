@@ -23,6 +23,8 @@
 	* Drop support for Haddock < 2.0 (#1808, #1718).
 	* Make 'cabal test'/'cabal bench' build only what's needed for
 	running tests/benchmarks (#1821).
+	* Build shared libraries by default when linking executables dynamically.
+	* Build profiled libraries by default when profiling executables.
 
 1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Fix streaming test output.

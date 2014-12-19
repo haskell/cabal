@@ -11,6 +11,10 @@ dir = "PackageTests" </> "CMain"
 
 checkBuild :: FilePath -> Test
 checkBuild ghcPath = TestCase $ do
-    let spec = PackageSpec dir []
+    let spec = PackageSpec
+            { directory = dir
+            , distPref = Nothing
+            , configOpts = []
+            }
     buildResult <- cabal_build spec ghcPath
     assertBuildSucceeded buildResult

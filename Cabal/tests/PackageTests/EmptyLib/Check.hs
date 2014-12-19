@@ -7,7 +7,10 @@ import Test.HUnit
 -- See https://github.com/haskell/cabal/issues/1241
 emptyLib :: FilePath -> Test
 emptyLib ghcPath = TestCase $ do
-   let spec = PackageSpec ("PackageTests" </> "EmptyLib"
-                           </> "empty") []
+   let spec = PackageSpec
+          { directory = "PackageTests" </> "EmptyLib" </> "empty"
+          , configOpts = []
+          , distPref = Nothing
+          }
    result <- cabal_build spec ghcPath
    assertBuildSucceeded result
