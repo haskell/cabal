@@ -52,16 +52,16 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 PARSEC_VER="3.1.5";    PARSEC_VER_REGEXP="[23]\."              # == 2.* || == 3.*
 DEEPSEQ_VER="1.3.0.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."         # >= 1.1 && < 2
 TEXT_VER="1.1.0.0";    TEXT_VER_REGEXP="((1\.[01]\.)|(0\.([2-9]|(1[0-1]))\.))" # >= 0.2 && < 1.2
-NETWORK_VER="2.4.2.2"; NETWORK_VER_REGEXP="2\."                # == 2.*
+NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\."                # == 2.*
 CABAL_VER="1.18.1.5";  CABAL_VER_REGEXP="1\.1[89]\."           # >= 1.18 && < 1.20
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."            # >= 0.2.* && < 0.4.*
 MTL_VER="2.1.2";       MTL_VER_REGEXP="[2]\."                  #  == 2.*
 HTTP_VER="4000.2.11";  HTTP_VER_REGEXP="4000\.[012]\."         # == 4000.0.* || 4000.1.* || 4000.2.*
 ZLIB_VER="0.5.4.1";    ZLIB_VER_REGEXP="0\.[45]\."             # == 0.4.* || == 0.5.*
-TIME_VER="1.4.1"       TIME_VER_REGEXP="1\.[1234]\.?"          # >= 1.1 && < 1.5
-RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\."              # >= 1 && < 1.1
+TIME_VER="1.4.1";      TIME_VER_REGEXP="1\.[1234]\.?"          # >= 1.1 && < 1.5
+RANDOM_VER="1.0.1.1";  RANDOM_VER_REGEXP="1\.0\."              # >= 1 && < 1.1
 STM_VER="2.4.2";       STM_VER_REGEXP="2\."                    # == 2.*
-NETWORK_URI_VER="2.6.0.1" NETWORK_URI_REGEXP="2\.[6-9]\."      # >= 2.6
+NETWORK_URI_VER="2.6.0.1"; NETWORK_URI_REGEXP="2\.[6-9]\."     # >= 2.6
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
 
@@ -193,7 +193,7 @@ do_pkg () {
 installed_pkg_ver () {
   PKG=$1
   PKG_VER=`${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} --simple-output ${PKG} | egrep -o "([0-9.]+)"`
-  if [ ! -z $PKG_VER ]
+  if [ ! -z "$PKG_VER" ]
   then
     echo "$PKG_VER"
   else
@@ -231,16 +231,16 @@ do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 
 # We conditionally install network-uri, depending on the network version.
 INST_NETWORK_VER=`installed_pkg_ver "network"`
-NETWORK_WITH_URI_VER_REGEXP=2\.[6-9]\.
+NETWORK_WITH_URI_VER_REGEXP="2\.[6-9]\."
 NETWORK_URI_DUMMY_VER="2.5.0.0"
 NETWORK_URI_DUMMY_VER_REGEXP="2\.5\."
 if echo $INST_NETWORK_VER | egrep " ${NETWORK_WITH_URI_VER_REGEXP}" > /dev/null 2>&1
 then
-  echo "network-${INST_NETWORK_VER} doesn't provide Network.URI"
+  echo "network-${INST_NETWORK_VER} doesn't provide Network.URI."
   info_pkg "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
   do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
 else
-  echo "network-${INST_NETWORK_VER} provides Network.URI"
+  echo "network-${INST_NETWORK_VER} provides Network.URI."
   info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
   do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
 fi
