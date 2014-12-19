@@ -262,7 +262,7 @@ do_pkg () {
 installed_pkg_ver () {
   PKG=$1
   PKG_VER=`${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} --simple-output ${PKG} | egrep -o "([0-9.]+)"`
-  if [ ! -z $PKG_VER ]
+  if [ ! -z "$PKG_VER" ]
   then
     echo "$PKG_VER"
   else
@@ -300,16 +300,16 @@ do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
 
 # We conditionally install network-uri, depending on the network version.
 INST_NETWORK_VER=`installed_pkg_ver "network"`
-NETWORK_WITH_URI_VER_REGEXP=2\.[6-9]\.
+NETWORK_WITH_URI_VER_REGEXP="2\.[6-9]\."
 NETWORK_URI_DUMMY_VER="2.5.0.0"
 NETWORK_URI_DUMMY_VER_REGEXP="2\.5\."
 if echo $INST_NETWORK_VER | egrep " ${NETWORK_WITH_URI_VER_REGEXP}" > /dev/null 2>&1
 then
-  echo "network-${INST_NETWORK_VER} doesn't provide Network.URI"
+  echo "network-${INST_NETWORK_VER} doesn't provide Network.URI."
   info_pkg "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
   do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
 else
-  echo "network-${INST_NETWORK_VER} provides Network.URI"
+  echo "network-${INST_NETWORK_VER} provides Network.URI."
   info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
   do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
 fi
