@@ -52,15 +52,16 @@ PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
 PARSEC_VER="3.1.5";    PARSEC_VER_REGEXP="[23]\."              # == 2.* || == 3.*
 DEEPSEQ_VER="1.3.0.2"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."         # >= 1.1 && < 2
 TEXT_VER="1.1.0.0";    TEXT_VER_REGEXP="((1\.[01]\.)|(0\.([2-9]|(1[0-1]))\.))" # >= 0.2 && < 1.2
-NETWORK_VER="2.4.2.2"; NETWORK_VER_REGEXP="2\."                # == 2.*
+NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\."                # == 2.*
 CABAL_VER="1.18.1.5";  CABAL_VER_REGEXP="1\.1[89]\."           # >= 1.18 && < 1.20
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."            # >= 0.2.* && < 0.4.*
 MTL_VER="2.1.2";       MTL_VER_REGEXP="[2]\."                  #  == 2.*
 HTTP_VER="4000.2.11";  HTTP_VER_REGEXP="4000\.[012]\."         # == 4000.0.* || 4000.1.* || 4000.2.*
 ZLIB_VER="0.5.4.1";    ZLIB_VER_REGEXP="0\.[45]\."             # == 0.4.* || == 0.5.*
-TIME_VER="1.4.1"       TIME_VER_REGEXP="1\.[1234]\.?"          # >= 1.1 && < 1.5
-RANDOM_VER="1.0.1.1"   RANDOM_VER_REGEXP="1\.0\."              # >= 1 && < 1.1
+TIME_VER="1.4.1";      TIME_VER_REGEXP="1\.[1234]\.?"          # >= 1.1 && < 1.5
+RANDOM_VER="1.0.1.1";  RANDOM_VER_REGEXP="1\.0\."              # >= 1 && < 1.1
 STM_VER="2.4.2";       STM_VER_REGEXP="2\."                    # == 2.*
+NETWORK_URI_VER="2.6.0.1"; NETWORK_URI_VER_REGEXP="2\.[6-9]\." # >= 2.6
 
 HACKAGE_URL="http://hackage.haskell.org/packages/archive"
 
@@ -188,6 +189,25 @@ do_pkg () {
   fi
 }
 
+# Replicate the flag selection logic for network-uri in the .cabal file.
+do_network_uri_pkg () {
+  # Refresh installed package list.
+  ${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} > ghc-pkg-stage2.list \
+    || die "running '${GHC_PKG} list' failed"
+
+  NETWORK_URI_DUMMY_VER="2.5.0.0"; NETWORK_URI_DUMMY_VER_REGEXP="2\.5\." # < 2.6
+  if egrep " network-2\.[6-9]\." ghc-pkg-stage2.list > /dev/null 2>&1
+  then
+    # Use network >= 2.6 && network-uri >= 2.6
+    info_pkg "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
+    do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
+  else
+    # Use network < 2.6 && network-uri < 2.6
+    info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
+    do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
+  fi
+}
+
 # Actually do something!
 
 info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
@@ -215,6 +235,9 @@ do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+
+# We conditionally install network-uri, depending on the network version.
+do_network_uri_pkg
 
 install_pkg "cabal-install"
 
