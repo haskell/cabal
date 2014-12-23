@@ -32,7 +32,6 @@ import Distribution.Verbosity (Verbosity)
 import System.FilePath (searchPathSeparator, (</>))
 import Control.Applicative ((<$>))
 import Data.Monoid (mempty)
-import Data.Traversable as T
 
 
 -- | Execute the given command in the package's environment.
