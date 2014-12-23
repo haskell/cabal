@@ -77,7 +77,11 @@ import Distribution.Simple.Utils
          , copyFileVerbose, rewriteFile, intercalate )
 import Distribution.Client.Utils
          ( inDir, tryCanonicalizePath
-         , existsAndIsMoreRecentThan, moreRecentFile )
+         , existsAndIsMoreRecentThan, moreRecentFile
+#if mingw32_HOST_OS
+         , canonicalizePathNoThrow
+#endif
+         )
 import Distribution.System ( Platform(..), buildPlatform )
 import Distribution.Text
          ( display )
@@ -526,7 +530,8 @@ externalSetupMethod verbosity options pkg bt mkargs = do
 
     -- See 'Note: win32 clean hack' above.
 #if mingw32_HOST_OS
-    setupProgFile' <- tryCanonicalizePath setupProgFile
+    -- setupProgFile may not exist if we're using a cached program
+    setupProgFile' <- canonicalizePathNoThrow setupProgFile
     let win32CleanHackNeeded = (useWin32CleanHack options')
                                -- Skip when a cached setup script is used.
                                && setupProgFile' `equalFilePath` path'
