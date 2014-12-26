@@ -120,7 +120,8 @@ data GlobalFlags = GlobalFlags {
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
     globalRequireSandbox    :: Flag Bool,
-    globalIgnoreSandbox     :: Flag Bool
+    globalIgnoreSandbox     :: Flag Bool,
+    globalCabalDir          :: Flag FilePath
   }
 
 defaultGlobalFlags :: GlobalFlags
@@ -135,7 +136,8 @@ defaultGlobalFlags  = GlobalFlags {
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
     globalRequireSandbox    = Flag False,
-    globalIgnoreSandbox     = Flag False
+    globalIgnoreSandbox     = Flag False,
+    globalCabalDir          = mempty
   }
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
@@ -325,7 +327,8 @@ instance Monoid GlobalFlags where
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
     globalRequireSandbox    = mempty,
-    globalIgnoreSandbox     = mempty
+    globalIgnoreSandbox     = mempty,
+    globalCabalDir          = mempty
   }
   mappend a b = GlobalFlags {
     globalVersion           = combine globalVersion,
@@ -338,7 +341,8 @@ instance Monoid GlobalFlags where
     globalLogsDir           = combine globalLogsDir,
     globalWorldFile         = combine globalWorldFile,
     globalRequireSandbox    = combine globalRequireSandbox,
-    globalIgnoreSandbox     = combine globalIgnoreSandbox
+    globalIgnoreSandbox     = combine globalIgnoreSandbox,
+    globalCabalDir          = combine globalCabalDir
   }
     where combine field = field a `mappend` field b
 
