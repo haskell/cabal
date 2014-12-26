@@ -22,7 +22,7 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.Setup
-         ( ConfigExFlags(..), configureCommand, filterConfigureFlags )
+         ( ConfigExFlags(..), GlobalFlags(..), configureCommand, filterConfigureFlags )
 import Distribution.Client.Types as Source
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
@@ -82,9 +82,10 @@ configure :: Verbosity
           -> ConfigFlags
           -> ConfigExFlags
           -> [String]
+          -> GlobalFlags
           -> IO ()
 configure verbosity packageDBs repos comp platform conf
-  configFlags configExFlags extraArgs = do
+  configFlags configExFlags extraArgs globalFlags = do
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
   sourcePkgDb       <- getSourcePackages    verbosity repos
@@ -99,7 +100,7 @@ configure verbosity packageDBs repos comp platform conf
     Left message -> do
       info verbosity message
       setupWrapper verbosity (setupScriptOptions installedPkgIndex) Nothing
-        configureCommand (const configFlags) extraArgs
+        configureCommand (const configFlags) extraArgs globalFlags
 
     Right installPlan -> case InstallPlan.ready installPlan of
       [pkg@(ReadyPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] ->
@@ -107,7 +108,7 @@ configure verbosity packageDBs repos comp platform conf
           (InstallPlan.planPlatform installPlan)
           (InstallPlan.planCompiler installPlan)
           (setupScriptOptions installedPkgIndex)
-          configFlags pkg extraArgs
+          configFlags pkg extraArgs globalFlags
 
       _ -> die $ "internal error: configure install plan should have exactly "
               ++ "one local ready package."
@@ -219,12 +220,13 @@ configurePackage :: Verbosity
                  -> ConfigFlags
                  -> ReadyPackage
                  -> [String]
+                 -> GlobalFlags
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-  (ReadyPackage (SourcePackage _ gpkg _ _) flags stanzas deps) extraArgs =
+  (ReadyPackage (SourcePackage _ gpkg _ _) flags stanzas deps) extraArgs globalFlags =
 
   setupWrapper verbosity
-    scriptOptions (Just pkg) configureCommand configureFlags extraArgs
+    scriptOptions (Just pkg) configureCommand configureFlags extraArgs globalFlags
 
   where
     configureFlags   = filterConfigureFlags configFlags {

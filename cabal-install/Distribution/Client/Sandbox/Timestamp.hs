@@ -46,6 +46,7 @@ import Distribution.Client.Sandbox.Index
 import Distribution.Client.SetupWrapper              (SetupScriptOptions (..),
                                                       defaultSetupScriptOptions,
                                                       setupWrapper)
+import Distribution.Client.Setup                     (GlobalFlags(..))
 import Distribution.Client.Utils
   (inDir, removeExistingFile, tryCanonicalizePath, tryFindAddSourcePackageDesc)
 
@@ -212,8 +213,8 @@ withActionOnCompilerTimestamps f sandboxDir compId platform act = do
 -- | List all source files of a given add-source dependency. Exits with error if
 -- something is wrong (e.g. there is no .cabal file in the given directory).
 -- FIXME: This function is not thread-safe because of 'inDir'.
-allPackageSourceFiles :: Verbosity -> FilePath -> IO [FilePath]
-allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
+allPackageSourceFiles :: Verbosity -> FilePath -> GlobalFlags -> IO [FilePath]
+allPackageSourceFiles verbosity packageDir globalFlags = inDir (Just packageDir) $ do
   pkg <- do
     let err = "Error reading source files of add-source dependency."
     desc <- tryFindAddSourcePackageDesc packageDir err
@@ -231,7 +232,7 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
 
       doListSources :: IO [FilePath]
       doListSources = do
-        setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) []
+        setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags) [] globalFlags
         srcs <- fmap lines . readFile $ file
         mapM tryCanonicalizePath srcs
 
@@ -249,10 +250,10 @@ allPackageSourceFiles verbosity packageDir = inDir (Just packageDir) $ do
   return ret
 
 -- | Has this dependency been modified since we have last looked at it?
-isDepModified :: Verbosity -> EpochTime -> AddSourceTimestamp -> IO Bool
-isDepModified verbosity now (packageDir, timestamp) = do
+isDepModified :: Verbosity -> GlobalFlags -> EpochTime -> AddSourceTimestamp -> IO Bool
+isDepModified verbosity globalFlags now (packageDir, timestamp) = do
   debug verbosity ("Checking whether the dependency is modified: " ++ packageDir)
-  depSources <- allPackageSourceFiles verbosity packageDir
+  depSources <- allPackageSourceFiles verbosity packageDir globalFlags
   go depSources
 
   where
@@ -274,14 +275,15 @@ isDepModified verbosity now (packageDir, timestamp) = do
 listModifiedDeps :: Verbosity -> FilePath -> CompilerId -> Platform
                     -> M.Map FilePath a
                        -- ^ The set of all installed add-source deps.
+                    -> GlobalFlags
                     -> IO [FilePath]
-listModifiedDeps verbosity sandboxDir compId platform installedDepsMap = do
+listModifiedDeps verbosity sandboxDir compId platform installedDepsMap globalFlags = do
   timestampRecords <- readTimestampFile (sandboxDir </> timestampFileName)
   let needle        = timestampRecordKey compId platform
   timestamps       <- maybe noTimestampRecord return
                       (lookup needle timestampRecords)
   now <- getCurTime
-  fmap (map fst) . filterM (isDepModified verbosity now)
+  fmap (map fst) . filterM (isDepModified verbosity globalFlags now)
     . filter (\ts -> fst ts `M.member` installedDepsMap)
     $ timestamps
 

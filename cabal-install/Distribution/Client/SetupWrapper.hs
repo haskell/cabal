@@ -23,6 +23,7 @@ module Distribution.Client.SetupWrapper (
 
 import qualified Distribution.Make as Make
 import qualified Distribution.Simple as Simple
+import Distribution.Client.Setup ( GlobalFlags(..) )
 import Distribution.Version
          ( Version(..), VersionRange, anyVersion
          , intersectVersionRanges, orLaterVersion
@@ -174,8 +175,9 @@ setupWrapper :: Verbosity
              -> CommandUI flags
              -> (Version -> flags)
              -> [String]
+             -> GlobalFlags
              -> IO ()
-setupWrapper verbosity options mpkg cmd flags extraArgs = do
+setupWrapper verbosity options mpkg cmd flags extraArgs globalFlags = do
   pkg <- maybe getPkg return mpkg
   let setupMethod = determineSetupMethod options' buildType'
       options'    = options {
@@ -188,7 +190,7 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
                              : commandShowOptions cmd (flags cabalLibVersion)
                             ++ extraArgs
   checkBuildType buildType'
-  setupMethod verbosity options' (packageId pkg) buildType' mkArgs
+  setupMethod verbosity options' (packageId pkg) buildType' mkArgs globalFlags
   where
     getPkg = tryFindPackageDesc (fromMaybe "." (useWorkingDir options))
          >>= readPackageDescription verbosity
@@ -216,14 +218,14 @@ type SetupMethod = Verbosity
                 -> SetupScriptOptions
                 -> PackageIdentifier
                 -> BuildType
-                -> (Version -> [String]) -> IO ()
+                -> (Version -> [String]) -> GlobalFlags -> IO ()
 
 -- ------------------------------------------------------------
 -- * Internal SetupMethod
 -- ------------------------------------------------------------
 
 internalSetupMethod :: SetupMethod
-internalSetupMethod verbosity options _ bt mkargs = do
+internalSetupMethod verbosity options _ bt mkargs _ = do
   let args = mkargs cabalVersion
   debug verbosity $ "Using internal setup method with build-type " ++ show bt
                  ++ " and args:\n  " ++ show args
@@ -243,7 +245,7 @@ buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
 -- ------------------------------------------------------------
 
 externalSetupMethod :: SetupMethod
-externalSetupMethod verbosity options pkg bt mkargs = do
+externalSetupMethod verbosity options pkg bt mkargs globalFlags = do
   debug verbosity $ "Using external setup method with build-type " ++ show bt
   createDirectoryIfMissingVerbose verbosity True setupDir
   (cabalLibVersion, mCabalLibInstalledPkgId, options') <- cabalLibVersionToUse
@@ -419,7 +421,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   cachedSetupDirAndProg :: SetupScriptOptions -> Version
                         -> IO (FilePath, FilePath)
   cachedSetupDirAndProg options' cabalLibVersion = do
-    cabalDir <- defaultCabalDir
+    cabalDir <- case globalCabalDir globalFlags of
+      Flag dir -> return dir
+      NoFlag -> defaultCabalDir
     let setupCacheDir       = cabalDir </> "setup-exe-cache"
         cachedSetupProgFile = setupCacheDir
                               </> ("setup-" ++ buildTypeString ++ "-"

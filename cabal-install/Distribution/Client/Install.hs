@@ -999,7 +999,7 @@ performInstallations verbosity
                             (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
                                  (setupScriptOptions installedPkgIndex cacheLock)
-                                 miscOptions configFlags' installFlags haddockFlags
+                                 miscOptions configFlags' installFlags haddockFlags globalFlags
                                  cinfo platform pkg pkgoverride mpath useLogFile
 
   where
@@ -1308,6 +1308,7 @@ installUnpackedPackage
   -> ConfigFlags
   -> InstallFlags
   -> HaddockFlags
+  -> GlobalFlags
   -> CompilerInfo
   -> Platform
   -> PackageDescription
@@ -1317,7 +1318,7 @@ installUnpackedPackage
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
                        scriptOptions miscOptions
-                       configFlags installFlags haddockFlags
+                       configFlags installFlags haddockFlags globalFlags
                        cinfo platform pkg pkgoverride workingDir useLogFile = do
 
   -- Override the .cabal file if necessary
@@ -1478,7 +1479,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
           scriptOptions { useLoggingHandle = logFileHandle
                         , useWorkingDir    = workingDir }
           (Just pkg)
-          cmd flags [])
+          cmd flags [] globalFlags)
 
     reexec cmd = do
       -- look for our own executable file and re-exec ourselves using a helper

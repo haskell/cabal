@@ -208,7 +208,8 @@ instance Monoid SavedConfig where
         globalLogsDir           = combine globalLogsDir,
         globalWorldFile         = combine globalWorldFile,
         globalRequireSandbox    = combine globalRequireSandbox,
-        globalIgnoreSandbox     = combine globalIgnoreSandbox
+        globalIgnoreSandbox     = combine globalIgnoreSandbox,
+        globalCabalDir          = combine globalCabalDir
         }
         where
           combine        = combine'        savedGlobalFlags

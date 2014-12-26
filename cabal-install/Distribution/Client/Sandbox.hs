@@ -637,7 +637,7 @@ withSandboxPackageInfo verbosity configFlags globalFlags
 
   -- Get the package ids of modified (and installed) add-source deps.
   modifiedAddSourceDeps <- listModifiedDeps verbosity sandboxDir
-                           (compilerId comp) platform installedDepsMap
+                           (compilerId comp) platform installedDepsMap globalFlags
   -- 'fromJust' here is safe because 'modifiedAddSourceDeps' are guaranteed to
   -- be a subset of the keys of 'depsMap'.
   let modifiedDeps    = [ (modDepPath, fromJust $ M.lookup modDepPath depsMap)

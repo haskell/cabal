@@ -22,7 +22,7 @@ import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, defaultPackageDesc
          , die, notice, withTempDirectory )
 import Distribution.Client.Setup
-         ( SDistFlags(..), SDistExFlags(..), ArchiveFormat(..) )
+         ( GlobalFlags(..), SDistFlags(..), SDistExFlags(..), ArchiveFormat(..) )
 import Distribution.Simple.Setup
          ( Flag(..), sdistCommand, flagToList, fromFlag, fromFlagOrDefault )
 import Distribution.Simple.BuildPaths ( srcPref)
@@ -39,8 +39,8 @@ import System.Process (runProcess, waitForProcess)
 import System.Exit    (ExitCode(..))
 
 -- |Create a source distribution.
-sdist :: SDistFlags -> SDistExFlags -> IO ()
-sdist flags exflags = do
+sdist :: SDistFlags -> SDistExFlags -> GlobalFlags -> IO ()
+sdist flags exflags globalFlags = do
   pkg <- return . flattenPackageDescription
          =<< readPackageDescription verbosity
          =<< defaultPackageDesc verbosity
@@ -59,7 +59,7 @@ sdist flags exflags = do
     -- Run 'setup sdist --output-directory=tmpDir' (or
     -- '--list-source'/'--output-directory=someOtherDir') in case we were passed
     -- those options.
-    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags') []
+    setupWrapper verbosity setupOpts (Just pkg) sdistCommand (const flags') [] globalFlags
 
     -- Unless we were given --list-sources or --output-directory ourselves,
     -- create an archive.

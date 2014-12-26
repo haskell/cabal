@@ -312,6 +312,11 @@ globalCommand commands = CommandUI {
          "The location of the world file"
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
+
+      ,option [] ["cabal-default-dir"]
+         "The location of the cabal directory"
+         globalCabalDir (\v flags -> flags { globalCabalDir = v })
+         (reqArgFlag "DIR")
       ]
   }
 
