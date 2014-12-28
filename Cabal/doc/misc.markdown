@@ -15,7 +15,7 @@ For general discussion or queries email the libraries mailing list
 The Cabal library and related infrastructure is still under active
 development. New features are being added and limitations and bugs are
 being fixed. This requires internal changes and often user visible
-changes as well. We therefor cannot promise complete future-proof
+changes as well. We therefore cannot promise complete future-proof
 stability, at least not without halting all development work.
 
 This section documents the aspects of the Cabal interface that we can
