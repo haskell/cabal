@@ -209,6 +209,9 @@ STM_VER="2.4.4";       STM_VER_REGEXP="2\."
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
+# Haddock fails for network-2.5.0.0.
+NO_DOCS_PACKAGES_VER_REGEXP="network-uri-2\.5\.[0-9]+\.[0-9]+"
+
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
 ${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} > ghc-pkg.list ||
@@ -280,6 +283,7 @@ unpack_pkg () {
 
 install_pkg () {
   PKG=$1
+  VER=$2
 
   [ -x Setup ] && ./Setup clean
   [ -f Setup ] && rm Setup
@@ -300,8 +304,13 @@ install_pkg () {
 
   if [ ! ${NO_DOCUMENTATION} ]
   then
-    ./Setup haddock --with-ghc=${GHC} --with-haddock=${HADDOCK} ${VERBOSE} ||
-      die "Documenting the ${PKG} package failed."
+    if echo "${PKG}-${VER}" | egrep ${NO_DOCS_PACKAGES_VER_REGEXP} > /dev/null 2>&1
+    then
+      echo "Skipping documentation for the ${PKG} package."
+    else
+      ./Setup haddock --with-ghc=${GHC} --with-haddock=${HADDOCK} ${VERBOSE} ||
+        die "Documenting the ${PKG} package failed."
+    fi
   fi
 
   ./Setup install ${EXTRA_INSTALL_OPTS} ${VERBOSE} ||
