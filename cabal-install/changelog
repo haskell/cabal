@@ -1,5 +1,10 @@
 -*-change-log-*-
 
+1.18.0.7 Johan Tibell <johan.tibell@gmail.com> December 2014
+	* Support random 1.1.
+	* Fix bootstrap script after network package split.
+	* Support network-2.6 in test suite.
+
 1.18.0.5 Johan Tibell <johan.tibell@gmail.com> July 2014
 	* Make solver flag resolution more conservative.
 
