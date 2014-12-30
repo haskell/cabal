@@ -128,7 +128,8 @@ import Distribution.Simple.Configure
          , ConfigStateFileError(..), localBuildInfoFile
          , getPersistBuildConfig, tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-import Distribution.Simple.Program (defaultProgramConfiguration)
+import Distribution.Simple.Program (defaultProgramConfiguration
+                                   ,configureAllKnownPrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, info, topHandler
@@ -660,6 +661,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                         savedHaddockFlags     config `mappend` haddockFlags
       globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
+  -- TODO: Redesign ProgramDB API to prevent such problems as #2241 in the future.
+  conf' <- configureAllKnownPrograms verbosity conf
 
   -- If we're working inside a sandbox and the user has set the -w option, we
   -- may need to create a sandbox-local package DB for this compiler and add a
@@ -672,7 +675,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
             }
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
-    initPackageDBIfNeeded verbosity configFlags'' comp conf
+    initPackageDBIfNeeded verbosity configFlags'' comp conf'
 
     indexFile     <- tryGetIndexFilePath config
     maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
@@ -689,7 +692,7 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
       install verbosity
               (configPackageDB' configFlags'')
               (globalRepos globalFlags')
-              comp platform conf
+              comp platform conf'
               useSandbox mSandboxPkgInfo
               globalFlags' configFlags'' configExFlags'
               installFlags' haddockFlags'
