@@ -382,14 +382,15 @@ do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
 do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 do_pkg   "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 do_pkg   "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
+
+# We conditionally install network-uri, depending on the network version.
+do_network_uri_pkg
+
 do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
 do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
-
-# We conditionally install network-uri, depending on the network version.
-do_network_uri_pkg
 
 install_pkg "cabal-install"
 
