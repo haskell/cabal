@@ -2,22 +2,23 @@
 
 # A script to bootstrap cabal-install.
 
-# It works by downloading and installing the Cabal, zlib and
-# HTTP packages. It then installs cabal-install itself.
+# It works by downloading and installing any needed dependencies for
+# cabal-install to a local sandbox. It then installs cabal-install
+# itself into this sandbox.
 # It expects to be run inside the cabal-install directory.
 
-# Install settings, you can override these by setting environment vars. E.g. if
-# you don't want profiling and dynamic versions of libraries to be installed in
-# addition to vanilla, run 'EXTRA_CONFIGURE_OPTS="" ./bootstrap.sh'
+# Known portability: tested on debian unstable in early 2014
+# tested with ghc 7.6.[23], 7.8.x.
+# fails with ghc 7.6.1 on a hang compiling stm
+# fails with ghc-7.4.x due do changes in the ghc-pkg arguments (this
+# shouldn't be too difficult to fix if you need it
 
-#VERBOSE
-DEFAULT_CONFIGURE_OPTS="--enable-library-profiling --enable-shared"
-EXTRA_CONFIGURE_OPTS=${EXTRA_CONFIGURE_OPTS-$DEFAULT_CONFIGURE_OPTS}
-#EXTRA_BUILD_OPTS
-#EXTRA_INSTALL_OPTS
+# It should work on other posix systems ...
 
 die () { printf "\nError during cabal-install bootstrap:\n$1\n" >&2 && exit 2 ;}
 
+# you can override this variable for debugging
+#VERBOSE
 # programs, you can override these by setting environment vars
 GHC="${GHC:-ghc}"
 GHC_PKG="${GHC_PKG:-ghc-pkg}"
@@ -29,27 +30,8 @@ FETCH="${FETCH:-fetch}"
 TAR="${TAR:-tar}"
 GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 
-# The variable SCOPE_OF_INSTALLATION can be set on the command line to
-# use/install the libaries needed to build cabal-install to a custom package
-# database instead of the user or global package database.
-#
-# Example:
-#
-# $ ghc-pkg init /my/package/database
-# $ SCOPE_OF_INSTALLATION='--package-db=/my/package/database' ./bootstrap.sh
-#
-# You can also combine SCOPE_OF_INSTALLATION with PREFIX:
-#
-# $ ghc-pkg init /my/prefix/packages.conf.d
-# $ SCOPE_OF_INSTALLATION='--package-db=/my/prefix/packages.conf.d' \
-#   PREFIX=/my/prefix ./bootstrap.sh
-#
-# If you use the --global,--user or --sandbox arguments, this will
-# override the SCOPE_OF_INSTALLATION setting and not use the package
-# database you pass in the SCOPE_OF_INSTALLATION variable.
-
-SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
-DEFAULT_PREFIX="${HOME}/.cabal"
+###############################
+# preparation
 
 # Try to respect $TMPDIR but override if needed - see #1710.
 [ -"$TMPDIR"- = -""- ] || echo "$TMPDIR" | grep -q ld &&
@@ -103,125 +85,48 @@ ${GHC_PKG} --version     > /dev/null 2>&1  || die "${GHC_PKG} not found."
 GHC_VER="$(${GHC} --numeric-version)"
 GHC_PKG_VER="$(${GHC_PKG} --version | cut -d' ' -f 5)"
 
+# use -j to compile Setup.hs files directly with ghc if ghc version is
+# 7.8 or greater. This is purely an optimisation for the build time
+
+GHC_JOBS=""
+
+[ -n "$(echo ${GHC_VER} | egrep '^(7\.8)|^(7\.1[0-9]|^8)')" ] && GHC_JOBS=-j
+
 [ ${GHC_VER} = ${GHC_PKG_VER} ] ||
   die "Version mismatch between ${GHC} and ${GHC_PKG}.
        If you set the GHC variable then set GHC_PKG too."
 
-while [ "$#" -gt 0 ]; do
-  case "${1}" in
-    "--user")
-      SCOPE_OF_INSTALLATION="${1}"
-      shift;;
-    "--global")
-      SCOPE_OF_INSTALLATION="${1}"
-      DEFAULT_PREFIX="/usr/local"
-      shift;;
-    "--sandbox")
-      shift
-      # check if there is another argument which doesn't start with --
-      if [ "$#" -le 0 ] || [ ! -z $(echo "${1}" | grep "^--") ]
-      then
-          SANDBOX=".cabal-sandbox"
-      else
-          SANDBOX="${1}"
-          shift
-      fi;;
-    "--no-doc")
-      NO_DOCUMENTATION=1
-      shift;;
-    *)
-      echo "Unknown argument or option, quitting: ${1}"
-      echo "usage: bootstrap.sh [OPTION]"
-      echo
-      echo "options:"
-      echo "   --user          Install for the local user (default)"
-      echo "   --global        Install systemwide (must be run as root)"
-      echo "   --no-doc        Do not generate documentation for installed "\
-           "packages"
-      echo "   --sandbox       Install to a sandbox in the default location"\
-           "(.cabal-sandbox)"
-      echo "   --sandbox path  Install to a sandbox located at path"
-      exit;;
-  esac
-done
+# create the 'sandbox'
 
 abspath () { case "$1" in /*)printf "%s\n" "$1";; *)printf "%s\n" "$PWD/$1";;
              esac; }
 
-if [ ! -z "$SANDBOX" ]
-then # set up variables for sandbox bootstrap
-  # Make the sandbox path absolute since it will be used from
-  # different working directories when the dependency packages are
-  # installed.
-  SANDBOX=$(abspath "$SANDBOX")
-  # Get the name of the package database which cabal sandbox would use.
-  GHC_ARCH=$(ghc --info |
+SANDBOX=$(abspath ".cabal-sandbox")
+# Get the name of the package database which cabal sandbox would use.
+GHC_ARCH=$(ghc --info |
     sed -n 's/.*"Target platform".*"\([^-]\+\)-[^-]\+-\([^"]\+\)".*/\1-\2/p')
-  PACKAGEDB="$SANDBOX/${GHC_ARCH}-ghc-${GHC_VER}-packages.conf.d"
-  # Assume that if the directory is already there, it is already a
-  # package database. We will get an error immediately below if it
-  # isn't. Uses -r to try to be compatible with Solaris, and allow
-  # symlinks as well as a normal dir/file.
-  [ ! -r "$PACKAGEDB" ] && ghc-pkg init "$PACKAGEDB"
-  PREFIX="$SANDBOX"
-  SCOPE_OF_INSTALLATION="--package-db=$PACKAGEDB"
-  echo Bootstrapping in sandbox at \'$SANDBOX\'.
-fi
+PACKAGEDB="$SANDBOX/${GHC_ARCH}-ghc-${GHC_VER}-packages.conf.d"
+# Assume that if the directory is already there, it is already a
+# package database. We will get an error immediately below if it
+# isn't. Uses -r to try to be compatible with Solaris, and allow
+# symlinks as well as a normal dir/file.
+[ ! -r "$PACKAGEDB" ] && ${GHC_PKG} init "$PACKAGEDB"
 
-# Check for haddock unless no documentation should be generated.
-if [ ! ${NO_DOCUMENTATION} ]
-then
-  ${HADDOCK} --version     > /dev/null 2>&1  || die "${HADDOCK} not found."
-fi
-
-PREFIX=${PREFIX:-${DEFAULT_PREFIX}}
-
-# Versions of the packages to install.
-# The version regex says what existing installed versions are ok.
-PARSEC_VER="3.1.7";    PARSEC_VER_REGEXP="[3]\.[01]\."
-                       # >= 3.0 && < 3.2
-DEEPSEQ_VER="1.4.0.0"; DEEPSEQ_VER_REGEXP="1\.[1-9]\."
-                       # >= 1.1 && < 2
-BINARY_VER="0.7.2.3";  BINARY_VER_REGEXP="[0]\.[7]\."
-                       # == 0.7.*
-TEXT_VER="1.2.0.3";    TEXT_VER_REGEXP="((1\.[012]\.)|(0\.([2-9]|(1[0-1]))\.))"
-                       # >= 0.2 && < 1.3
-NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\.[0-6]\."
-                       # >= 2.0 && < 2.7
-NETWORK_URI_VER="2.6.0.1"; NETWORK_URI_VER_REGEXP="2\.6\."
-                       # >= 2.6 && < 2.7
-CABAL_VER="1.22.0.0";  CABAL_VER_REGEXP="1\.22"
-                       # >= 1.22 && < 1.23
-TRANS_VER="0.4.2.0";   TRANS_VER_REGEXP="0\.[4]\."
-                       # >= 0.2.* && < 0.5
-MTL_VER="2.2.1";       MTL_VER_REGEXP="[2]\."
-                       #  >= 2.0 && < 3
-HTTP_VER="4000.2.18";  HTTP_VER_REGEXP="4000\.2\.([5-9]|1[0-9]|2[0-9])"
-                       # >= 4000.2.5 < 4000.3
-ZLIB_VER="0.5.4.2";    ZLIB_VER_REGEXP="0\.[45]\."
-                       # == 0.4.* || == 0.5.*
-TIME_VER="1.5"         TIME_VER_REGEXP="1\.[12345]\.?"
-                       # >= 1.1 && < 1.6
-RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
-                       # >= 1 && < 1.2
-STM_VER="2.4.4";       STM_VER_REGEXP="2\."
-                       # == 2.*
+GHC_PACKAGE_ARGS="-package-db $PACKAGEDB"
+CABAL_PACKAGE_ARGS="--user --package-db=$PACKAGEDB"
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
-# Haddock fails for network-2.5.0.0.
-NO_DOCS_PACKAGES_VER_REGEXP="network-uri-2\.5\.[0-9]+\.[0-9]+"
-
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
-${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} > ghc-pkg.list ||
+${GHC_PKG} list --global $CABAL_PACKAGE_ARGS > ghc-pkg.list ||
   die "running '${GHC_PKG} list' failed"
 
-# Will we need to install this package, or is a suitable version installed?
+# Will we need to install this package, or is it already installed?
 need_pkg () {
   PKG=$1
-  VER_MATCH=$2
-  if egrep " ${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null 2>&1
+  VER_MATCH=$(echo $2 | sed "s/\./\\\./g")
+  if egrep "${PKG}-${VER_MATCH}" ghc-pkg.list > /dev/null 2>&1
   then
     return 1;
   else
@@ -233,9 +138,8 @@ need_pkg () {
 info_pkg () {
   PKG=$1
   VER=$2
-  VER_MATCH=$3
 
-  if need_pkg ${PKG} ${VER_MATCH}
+  if need_pkg ${PKG} ${VER}
   then
     if [ -r "${PKG}-${VER}.tar.gz" ]
     then
@@ -281,6 +185,24 @@ unpack_pkg () {
   [ -d "${PKG}-${VER}" ] || die "Failed to unpack ${PKG}-${VER}.tar.gz"
 }
 
+
+# the constraints variable is used to try to limit calling the Setup
+# configure with just the correct versions of the dependency
+# packages. This is to avoid situations where Cabal doesn't pick the
+# version of a dependency we want which can happen since we install
+# the packages one by one. This is only relevant when you run
+# bootstrap on a installation of ghc with extra packages in the global
+# and/or packages in the user package database. I'm not 100% sure this
+# is still needed since we compile any needed packages in a separate
+# package database.
+
+CONSTRAINTS=""
+
+# use -j when running Setup.hs files when we have a new enough Cabal
+CABAL_JOBS=""
+
+[ -n "$(${GHC_PKG} list --global $CABAL_PACKAGE_ARGS | egrep 'Cabal-1\.18|Cabal-1\.[2-9]|Cabal-[2-9]')" ] && CABAL_JOBS="-j"
+
 install_pkg () {
   PKG=$1
   VER=$2
@@ -288,43 +210,38 @@ install_pkg () {
   [ -x Setup ] && ./Setup clean
   [ -f Setup ] && rm Setup
 
-  ${GHC} --make Setup -o Setup ||
+  [ -n "$VERBOSE" ] && echo ${GHC} --make Setup -o Setup ${GHC_PACKAGE_ARGS} $GHC_JOBS
+  ${GHC} --make Setup -o Setup ${GHC_PACKAGE_ARGS} $GHC_JOBS ||
     die "Compiling the Setup script failed."
 
   [ -x Setup ] || die "The Setup script does not exist or cannot be run"
 
-  args="${SCOPE_OF_INSTALLATION} --prefix=${PREFIX} --with-compiler=${GHC}"
+  args="${CABAL_PACKAGE_ARGS} --prefix=${SANDBOX} --with-compiler=${GHC}"
   args="$args --with-hc-pkg=${GHC_PKG} --with-gcc=${CC} --with-ld=${LD}"
-  args="$args ${EXTRA_CONFIGURE_OPTS} ${VERBOSE}"
+  args="$args --disable-library-profiling --disable-shared"
+  args="$args --disable-split-objs"
+  args="$args --enable-executable-stripping"
+  args="$args --disable-tests --disable-optimization ${VERBOSE}"
+  args="$args $CONSTRAINTS"
 
+  [ -n "$VERBOSE" ] && echo ${GHC} ./Setup configure $args
   ./Setup configure $args || die "Configuring the ${PKG} package failed."
 
-  ./Setup build ${EXTRA_BUILD_OPTS} ${VERBOSE} ||
+  [ -n "$VERBOSE" ] && echo ./Setup build $CABAL_JOBS ${VERBOSE}
+  ./Setup build $CABAL_JOBS ${VERBOSE} ||
      die "Building the ${PKG} package failed."
 
-  if [ ! ${NO_DOCUMENTATION} ]
-  then
-    if echo "${PKG}-${VER}" | egrep ${NO_DOCS_PACKAGES_VER_REGEXP} > /dev/null 2>&1
-    then
-      echo "Skipping documentation for the ${PKG} package."
-    else
-      ./Setup haddock --with-ghc=${GHC} --with-haddock=${HADDOCK} ${VERBOSE} ||
-        die "Documenting the ${PKG} package failed."
-    fi
-  fi
-
-  ./Setup install ${EXTRA_INSTALL_OPTS} ${VERBOSE} ||
+  [ -n "$VERBOSE" ] && echo ./Setup install ${VERBOSE}
+  ./Setup install ${VERBOSE} ||
      die "Installing the ${PKG} package failed."
 }
 
 do_pkg () {
   PKG=$1
   VER=$2
-  VER_MATCH=$3
 
-  if need_pkg ${PKG} ${VER_MATCH}
+  if need_pkg ${PKG} ${VER}
   then
-    echo
     if [ -r "${PKG}-${VER}.tar.gz" ]
     then
         echo "Using local tarball for ${PKG}-${VER}."
@@ -339,70 +256,49 @@ do_pkg () {
   fi
 }
 
-# Replicate the flag selection logic for network-uri in the .cabal file.
-do_network_uri_pkg () {
-  # Refresh installed package list.
-  ${GHC_PKG} list --global ${SCOPE_OF_INSTALLATION} > ghc-pkg-stage2.list \
-    || die "running '${GHC_PKG} list' failed"
-
-  NETWORK_URI_DUMMY_VER="2.5.0.0"; NETWORK_URI_DUMMY_VER_REGEXP="2\.5\." # < 2.6
-  if egrep " network-2\.[6-9]\." ghc-pkg-stage2.list > /dev/null 2>&1
-  then
-    # Use network >= 2.6 && network-uri >= 2.6
-    info_pkg "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
-    do_pkg   "network-uri" ${NETWORK_URI_VER} ${NETWORK_URI_VER_REGEXP}
-  else
-    # Use network < 2.6 && network-uri < 2.6
-    info_pkg "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
-    do_pkg   "network-uri" ${NETWORK_URI_DUMMY_VER} ${NETWORK_URI_DUMMY_VER_REGEXP}
-  fi
-}
-
 # Actually do something!
 
-info_pkg "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
-info_pkg "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
-info_pkg "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
-info_pkg "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
-info_pkg "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
-info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
-info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
-info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
-info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
-info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
-info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
-info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
-info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+if [ -n "$(echo ${GHC_VER} | egrep '^7\.10')" ]
+then
+    DEPENDENCY_FILE=bootstrap-ghc-7.10.1-deps
+elif [ -n "$(echo ${GHC_VER} | egrep '^7\.8')" ]
+then
+    DEPENDENCY_FILE=bootstrap-ghc-7.8.1-deps
+elif [ -n "$(echo ${GHC_VER} | egrep '^7\.6')" ]
+then
+    DEPENDENCY_FILE=bootstrap-ghc-7.6.1-deps
+else
+    echo "Warning: unsupported version of GHC $GHC_VER, using latest GHC deps"
+    DEPENDENCY_FILE=bootstrap-ghc-7.8.1-deps
+fi
 
-do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
-do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
-do_pkg   "time"         ${TIME_VER}    ${TIME_VER_REGEXP}
-do_pkg   "Cabal"        ${CABAL_VER}   ${CABAL_VER_REGEXP}
-do_pkg   "transformers" ${TRANS_VER}   ${TRANS_VER_REGEXP}
-do_pkg   "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
-do_pkg   "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
-do_pkg   "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
+echo Using dependencies from file $DEPENDENCY_FILE
 
-# We conditionally install network-uri, depending on the network version.
-do_network_uri_pkg
+while read dep; do
+    package_name=${dep%%" "*}
+    package_version=${dep#*" "}
+    info_pkg $package_name $package_version
+done <$DEPENDENCY_FILE
 
-do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
-do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
-do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
-do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
-do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+while read dep; do
+    package_name=${dep%%" "*}
+    package_version=${dep#*" "}
+    do_pkg $package_name $package_version
+    CONSTRAINTS="$CONSTRAINTS --constraint=$package_name==$package_version"
+done <$DEPENDENCY_FILE
 
 install_pkg "cabal-install"
 
 # Use the newly built cabal to turn the prefix/package database into a
 # legit cabal sandbox. This works because 'cabal sandbox init' will
 # reuse the already existing package database and other files if they
-# are in the expected locations.
-[ ! -z "$SANDBOX" ] && $SANDBOX/bin/cabal sandbox init --sandbox $SANDBOX
+# are in the expected locations. This isn't really useful for
+# bootstrapping except for debugging
+$SANDBOX/bin/cabal sandbox init --sandbox $SANDBOX
 
 echo
 echo "==========================================="
-CABAL_BIN="$PREFIX/bin"
+CABAL_BIN="$SANDBOX/bin"
 if [ -x "$CABAL_BIN/cabal" ]
 then
     echo "The 'cabal' program has been installed in $CABAL_BIN/"
