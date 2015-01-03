@@ -389,10 +389,11 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
     toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
 
+    -- GHC doesn't support debug info levels yet.
     toGhcDebugInfo NoDebugInfo      = mempty
-    toGhcDebugInfo MinimalDebugInfo = toFlag GhcMinimalDebugInfo
-    toGhcDebugInfo NormalDebugInfo  = toFlag GhcNormalDebugInfo
-    toGhcDebugInfo MaximalDebugInfo = toFlag GhcMaximalDebugInfo
+    toGhcDebugInfo MinimalDebugInfo = toFlag True
+    toGhcDebugInfo NormalDebugInfo  = toFlag True
+    toGhcDebugInfo MaximalDebugInfo = toFlag True
 
 -- | Strip out flags that are not supported in ghci
 filterGhciFlags :: [String] -> [String]

@@ -2,7 +2,6 @@ module Distribution.Simple.Program.GHC (
     GhcOptions(..),
     GhcMode(..),
     GhcOptimisation(..),
-    GhcDebugInfo(..),
     GhcDynLinkMode(..),
 
     ghcInvocation,
@@ -153,8 +152,8 @@ data GhcOptions = GhcOptions {
   -- | What optimisation level to use; the @ghc -O@ flag.
   ghcOptOptimisation  :: Flag GhcOptimisation,
 
-    -- | What debug info level to use; the @ghc -g@ flag.
-  ghcOptDebugInfo  :: Flag GhcDebugInfo,
+    -- | Emit debug info; the @ghc -g@ flag.
+  ghcOptDebugInfo  :: Flag Bool,
 
   -- | Compile in profiling mode; the @ghc -prof@ flag.
   ghcOptProfilingMode :: Flag Bool,
@@ -223,12 +222,6 @@ data GhcOptimisation = GhcNoOptimisation             -- ^ @-O0@
                      | GhcSpecialOptimisation String -- ^ e.g. @-Odph@
  deriving (Show, Eq)
 
-data GhcDebugInfo = GhcNoDebugInfo       -- ^ @-g0@
-                  | GhcMinimalDebugInfo  -- ^ @-g1@
-                  | GhcNormalDebugInfo   -- ^ @-g@
-                  | GhcMaximalDebugInfo  -- ^ @-g3@
- deriving (Show, Eq)
-
 data GhcDynLinkMode = GhcStaticOnly       -- ^ @-static@
                     | GhcDynamicOnly      -- ^ @-dynamic@
                     | GhcStaticAndDynamic -- ^ @-static -dynamic-too@
@@ -283,12 +276,7 @@ renderGhcOptions comp opts
       Just GhcMaximumOptimisation     -> ["-O2"]
       Just (GhcSpecialOptimisation s) -> ["-O" ++ s] -- eg -Odph
 
-  , concat [ case flagToMaybe (ghcOptDebugInfo opts) of
-        Nothing                      -> []
-        Just GhcNoDebugInfo          -> ["-g0"]
-        Just GhcMinimalDebugInfo     -> ["-g1"]
-        Just GhcNormalDebugInfo      -> ["-g"]
-        Just GhcMaximalDebugInfo     -> ["-g3"] | flagDebugInfo implInfo ]
+  , [ "-g" | flagDebugInfo implInfo && flagBool ghcOptDebugInfo ]
 
   , [ "-prof" | flagBool ghcOptProfilingMode ]
 
