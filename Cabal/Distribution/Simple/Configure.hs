@@ -660,6 +660,7 @@ configure (pkg_descr0, pbi) cfg
                     withDynExe          = withDynExe_,
                     withProfExe         = withProfExe_,
                     withOptimization    = fromFlag $ configOptimization cfg,
+                    withDebugInfo       = fromFlag $ configDebugInfo cfg,
                     withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
                                           configGHCiLib cfg,
                     splitObjs           = split_objs,
