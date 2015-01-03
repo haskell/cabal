@@ -131,11 +131,11 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#instance-overlap>
   | IncoherentInstances
 
-  -- | /(deprecated)/ Allows recursive bindings in @do@ blocks, using the @rec@
+  -- | /(deprecated)/ Allow recursive bindings in @do@ blocks, using the @rec@
   -- keyword. See also 'RecursiveDo'.
   | DoRec
 
-  -- | Allows recursive bindings using @mdo@, a variant of @do@.
+  -- | Allow recursive bindings using @mdo@, a variant of @do@.
   -- @DoRec@ provides a different, preferred syntax.
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#recursive-do-notation>
@@ -512,13 +512,13 @@ data KnownExtension =
   -- and Josef Svenningsson, from ICFP '04.
   | RegularPatterns
 
-  -- | Enables the use of tuple sections, e.g. @(, True)@ desugars into
+  -- | Enable the use of tuple sections, e.g. @(, True)@ desugars into
   -- @\x -> (x, True)@.
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#tuple-sections>
   | TupleSections
 
-  -- | Allows GHC primops, written in C--, to be imported into a Haskell
+  -- | Allow GHC primops, written in C--, to be imported into a Haskell
   -- file.
   | GHCForeignImportPrim
 
@@ -636,7 +636,7 @@ data KnownExtension =
   -- * <http://www.haskell.org/haskellwiki/GHC/Data_Parallel_Haskell>
   | ParallelArrays
 
-  -- | Enable explicit role annotations, like in (@data T a\@R@).
+  -- | Enable explicit role annotations, like in (@type role Foo representational representational@).
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/roles.html>
   | RoleAnnotations
@@ -647,7 +647,7 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#overloaded-lists>
   | OverloadedLists
 
-  -- | Enables case expressions that have no alternatives. Also applies to lambda-case expressions if they are enabled.
+  -- | Enable case expressions that have no alternatives. Also applies to lambda-case expressions if they are enabled.
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#empty-case>
   | EmptyCase
@@ -663,17 +663,17 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#negative-literals>
   | NegativeLiterals
 
-  -- | Allows the use of binary integer literal syntax (e.g. @0b11001001@ to denote @201@).
+  -- | Allow the use of binary integer literal syntax (e.g. @0b11001001@ to denote @201@).
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#binary-literals>
   | BinaryLiterals
 
-  -- | Allows the use of floating literal syntax for all instances of 'Num', including 'Int' and 'Integer'.
+  -- | Allow the use of floating literal syntax for all instances of 'Num', including 'Int' and 'Integer'.
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/syntax-extns.html#num-decimals>
   | NumDecimals
 
-  -- | Enables support for type classes with no type parameter.
+  -- | Enable support for type classes with no type parameter.
   --
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/type-class-extensions.html#nullary-type-classes>
   | NullaryTypeClasses
@@ -688,8 +688,31 @@ data KnownExtension =
   -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#ambiguity>
   | AllowAmbiguousTypes
 
-  -- | Enable @foreign import javascript@
+  -- | Enable @foreign import javascript@.
   | JavaScriptFFI
+
+  -- | Allow giving names to and abstracting over patterns.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#pattern-synonyms>
+  | PatternSynonyms
+
+  -- | Allow anonymous placeholders (underscore) inside type signatures.  The
+  -- type inference engine will generate a message describing the type inferred
+  -- at the hole's location.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#partial-type-signatures>
+  | PartialTypeSignatures
+
+  -- | Allow named placeholders written with a leading underscore inside type
+  -- signatures.  Wildcards with the same name unify to the same type.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#named-wildcards>
+  | NamedWildCards
+
+  -- | Enable @deriving@ for any class.
+  --
+  -- * <http://www.haskell.org/ghc/docs/latest/html/users_guide/other-type-extensions.html#derive-any-class>
+  | DeriveAnyClass
 
   deriving (Generic, Show, Read, Eq, Ord, Enum, Bounded, Typeable, Data)
 
