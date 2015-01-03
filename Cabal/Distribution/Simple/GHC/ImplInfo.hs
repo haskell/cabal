@@ -48,6 +48,7 @@ data GhcImplInfo = GhcImplInfo
   , alwaysNondecIndent   :: Bool -- ^ NondecreasingIndentation is always on
   , flagGhciScript       :: Bool -- ^ -ghci-script flag supported
   , flagPackageConf      :: Bool -- ^ use package-conf instead of package-db
+  , flagDebugInfo        :: Bool -- ^ -g flag supported
   }
 
 getImplInfo :: Compiler -> GhcImplInfo
@@ -80,6 +81,7 @@ ghcVersionImplInfo (Version v _) = GhcImplInfo
   , alwaysNondecIndent   = v <  [7,1]
   , flagGhciScript       = v >= [7,2]
   , flagPackageConf      = v <  [7,5]
+  , flagDebugInfo        = v >= [7,10]
   }
 
 ghcjsVersionImplInfo :: Version -> Version -> GhcImplInfo
@@ -99,6 +101,7 @@ ghcjsVersionImplInfo _ghcjsVer _ghcVer = GhcImplInfo
   , alwaysNondecIndent   = False
   , flagGhciScript       = True
   , flagPackageConf      = False
+  , flagDebugInfo        = False
   }
 
 lhcVersionImplInfo :: Version -> GhcImplInfo

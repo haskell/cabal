@@ -73,7 +73,8 @@ import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..), PackageKey
          , PackageName )
 import Distribution.Simple.Compiler
-         ( Compiler, compilerInfo, PackageDBStack, OptimisationLevel )
+         ( Compiler, compilerInfo, PackageDBStack, DebugInfoLevel
+         , OptimisationLevel )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, allPackages )
 import Distribution.ModuleName ( ModuleName )
@@ -139,6 +140,7 @@ data LocalBuildInfo = LocalBuildInfo {
         withDynExe    :: Bool,  -- ^Whether to link executables dynamically
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
         withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
+        withDebugInfo :: DebugInfoLevel, -- ^Whether to emit debug info (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
         splitObjs     :: Bool,  -- ^Use -split-objs with GHC, if available
         stripExes     :: Bool,  -- ^Whether to strip executables during install

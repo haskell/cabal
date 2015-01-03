@@ -38,7 +38,7 @@ import Distribution.PackageDescription as PD
          , hcOptions, usedExtensions, ModuleRenaming, lookupRenaming )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), Compiler(..), OptimisationLevel(..) )
+         ( CompilerFlavor(..), Compiler(..), DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
          ( toFlag )
@@ -339,6 +339,11 @@ componentCcGhcOptions verbosity implInfo lbi bi clbi pref filename =
                              (case withOptimization lbi of
                                   NoOptimisation -> []
                                   _              -> ["-O2"]) ++
+                             (case withDebugInfo lbi of
+                                  NoDebugInfo   -> []
+                                  MinimalDebugInfo -> ["-g1"]
+                                  NormalDebugInfo  -> ["-g"]
+                                  MaximalDebugInfo -> ["-g3"]) ++
                                   PD.ccOptions bi,
       ghcOptObjDir         = toFlag odir
     }
@@ -372,6 +377,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptStubDir         = toFlag odir,
       ghcOptOutputDir       = toFlag odir,
       ghcOptOptimisation    = toGhcOptimisation (withOptimization lbi),
+      ghcOptDebugInfo       = toGhcDebugInfo (withDebugInfo lbi),
       ghcOptExtra           = toNubListR $ hcOptions GHC bi,
       ghcOptLanguage        = toFlag (fromMaybe Haskell98 (defaultLanguage bi)),
       -- Unsupported extensions have already been checked by configure
@@ -382,6 +388,11 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
     toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
     toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
+
+    toGhcDebugInfo NoDebugInfo      = mempty
+    toGhcDebugInfo MinimalDebugInfo = toFlag GhcMinimalDebugInfo
+    toGhcDebugInfo NormalDebugInfo  = toFlag GhcNormalDebugInfo
+    toGhcDebugInfo MaximalDebugInfo = toFlag GhcMaximalDebugInfo
 
 -- | Strip out flags that are not supported in ghci
 filterGhciFlags :: [String] -> [String]

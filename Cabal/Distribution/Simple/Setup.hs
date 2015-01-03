@@ -82,6 +82,7 @@ import Distribution.Simple.Command hiding (boolOpt, boolOpt')
 import qualified Distribution.Simple.Command as Command
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
+         , DebugInfoLevel(..), flagToDebugInfoLevel
          , OptimisationLevel(..), flagToOptimisationLevel
          , absolutePackageDBPath )
 import Distribution.Simple.Utils
@@ -319,7 +320,8 @@ data ConfigFlags = ConfigFlags {
       -- the user via the '--dependency' and '--flags' options.
     configFlagError :: Flag String,
       -- ^Halt and show an error message indicating an error in flag assignment
-    configRelocatable :: Flag Bool -- ^ Enable relocatable package built
+    configRelocatable :: Flag Bool, -- ^ Enable relocatable package built
+    configDebugInfo :: Flag DebugInfoLevel  -- ^ Emit debug info.
   }
   deriving (Generic, Read, Show)
 
@@ -361,7 +363,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configLibCoverage  = NoFlag,
     configExactConfiguration = Flag False,
     configFlagError    = NoFlag,
-    configRelocatable  = Flag False
+    configRelocatable  = Flag False,
+    configDebugInfo    = Flag NoDebugInfo
   }
 
 configureCommand :: ProgramConfiguration -> CommandUI ConfigFlags
@@ -468,6 +471,22 @@ configureOptions showOrParseArgs =
           noArg (Flag NoOptimisation) []
                 ["disable-optimization","disable-optimisation"]
                 "Build without optimization"
+         ]
+
+      ,multiOption "debug-info"
+         configDebugInfo (\v flags -> flags { configDebugInfo = v })
+         [optArg' "n" (Flag . flagToDebugInfoLevel)
+                     (\f -> case f of
+                              Flag NoDebugInfo      -> []
+                              Flag MinimalDebugInfo -> [Just "1"]
+                              Flag NormalDebugInfo  -> [Nothing]
+                              Flag MaximalDebugInfo -> [Just "3"]
+                              _                     -> [])
+                 "" ["enable-debug-info"]
+                 "Emit debug info (n is 0--3, default is 0)",
+          noArg (Flag NoDebugInfo) []
+                ["disable-debug-info"]
+                "Don't emit debug info"
          ]
 
       ,option "" ["library-for-ghci"]
@@ -730,7 +749,8 @@ instance Monoid ConfigFlags where
     configExactConfiguration  = mempty,
     configBenchmarks          = mempty,
     configFlagError     = mempty,
-    configRelocatable   = mempty
+    configRelocatable   = mempty,
+    configDebugInfo     = mempty
   }
   mappend a b =  ConfigFlags {
     configPrograms      = configPrograms b,
@@ -771,7 +791,8 @@ instance Monoid ConfigFlags where
     configExactConfiguration  = combine configExactConfiguration,
     configBenchmarks          = combine configBenchmarks,
     configFlagError     = combine configFlagError,
-    configRelocatable   = combine configRelocatable
+    configRelocatable   = combine configRelocatable,
+    configDebugInfo     = combine configDebugInfo
   }
     where combine field = field a `mappend` field b
 
