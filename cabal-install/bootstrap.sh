@@ -7,11 +7,9 @@
 # itself into this sandbox.
 # It expects to be run inside the cabal-install directory.
 
-# Known portability: tested on debian unstable in early 2014
-# tested with ghc 7.6.[23], 7.8.x.
+# Known portability: tested on debian unstable in early 2015
+# tested with ghc 7.2.2, 7.4.x, 7.6.[23], 7.8.x, 7.10.0-20141222
 # fails with ghc 7.6.1 on a hang compiling stm
-# fails with ghc-7.4.x due do changes in the ghc-pkg arguments (this
-# shouldn't be too difficult to fix if you need it
 
 # It should work on other posix systems ...
 
@@ -96,6 +94,7 @@ GHC_JOBS=""
   die "Version mismatch between ${GHC} and ${GHC_PKG}.
        If you set the GHC variable then set GHC_PKG too."
 
+####################################
 # create the 'sandbox'
 
 abspath () { case "$1" in /*)printf "%s\n" "$1";; *)printf "%s\n" "$PWD/$1";;
@@ -114,13 +113,24 @@ PACKAGEDB="$SANDBOX/${GHC_ARCH}-ghc-${GHC_VER}-packages.conf.d"
 
 GHC_PACKAGE_ARGS="-package-db $PACKAGEDB"
 CABAL_PACKAGE_ARGS="--user --package-db=$PACKAGEDB"
+GHC_PKG_PACKAGE_ARGS=$CABAL_PACKAGE_ARGS
+# support the old argument names in ghc and ghc-pkg in ghc-7.4 and
+# earlier
+if [ -n "$(echo ${GHC_VER} | egrep '^7\.[24]\.')" ]
+then
+    GHC_PKG_PACKAGE_ARGS="--package-conf=$PACKAGEDB"
+    GHC_PACKAGE_ARGS="-package-conf=$PACKAGEDB"
+fi
+
+####################################
+# main functions
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
 # Cache the list of packages:
 echo "Checking installed packages for ghc-${GHC_VER}..."
-${GHC_PKG} list --global $CABAL_PACKAGE_ARGS > ghc-pkg.list ||
-  die "running '${GHC_PKG} list' failed"
+${GHC_PKG} list --global $GHC_PKG_PACKAGE_ARGS > ghc-pkg.list ||
+  die "running '${GHC_PKG} list --global $GHC_PKG_PACKAGE_ARGS' failed"
 
 # Will we need to install this package, or is it already installed?
 need_pkg () {
@@ -201,7 +211,7 @@ CONSTRAINTS=""
 # use -j when running Setup.hs files when we have a new enough Cabal
 CABAL_JOBS=""
 
-[ -n "$(${GHC_PKG} list --global $CABAL_PACKAGE_ARGS | egrep 'Cabal-1\.18|Cabal-1\.[2-9]|Cabal-[2-9]')" ] && CABAL_JOBS="-j"
+[ -n "$(${GHC_PKG} list --global $GHC_PKG_PACKAGE_ARGS | egrep 'Cabal-1\.18|Cabal-1\.[2-9]|Cabal-[2-9]')" ] && CABAL_JOBS="-j"
 
 install_pkg () {
   PKG=$1
@@ -219,10 +229,8 @@ install_pkg () {
   args="${CABAL_PACKAGE_ARGS} --prefix=${SANDBOX} --with-compiler=${GHC}"
   args="$args --with-hc-pkg=${GHC_PKG} --with-gcc=${CC} --with-ld=${LD}"
   args="$args --disable-library-profiling --disable-shared"
-  args="$args --disable-split-objs"
-  args="$args --enable-executable-stripping"
-  args="$args --disable-tests --disable-optimization ${VERBOSE}"
-  args="$args $CONSTRAINTS"
+  args="$args --disable-split-objs --enable-executable-stripping"
+  args="$args --disable-tests ${VERBOSE} $CONSTRAINTS"
 
   [ -n "$VERBOSE" ] && echo ${GHC} ./Setup configure $args
   ./Setup configure $args || die "Configuring the ${PKG} package failed."
@@ -256,17 +264,24 @@ do_pkg () {
   fi
 }
 
+############################
 # Actually do something!
 
-if [ -n "$(echo ${GHC_VER} | egrep '^7\.10')" ]
+if [ -n "$(echo ${GHC_VER} | egrep '^7\.10\.')" ]
 then
     DEPENDENCY_FILE=bootstrap-ghc-7.10.1-deps
-elif [ -n "$(echo ${GHC_VER} | egrep '^7\.8')" ]
+elif [ -n "$(echo ${GHC_VER} | egrep '^7\.8\.')" ]
 then
     DEPENDENCY_FILE=bootstrap-ghc-7.8.1-deps
-elif [ -n "$(echo ${GHC_VER} | egrep '^7\.6')" ]
+elif [ -n "$(echo ${GHC_VER} | egrep '^7\.6\.')" ]
 then
     DEPENDENCY_FILE=bootstrap-ghc-7.6.1-deps
+elif [ -n "$(echo ${GHC_VER} | egrep '^7\.4\.')" ]
+then
+    DEPENDENCY_FILE=bootstrap-ghc-7.4.1-deps
+elif [ -n "$(echo ${GHC_VER} | egrep '^7\.2\.')" ]
+then
+    DEPENDENCY_FILE=bootstrap-ghc-7.2.1-deps
 else
     echo "Warning: unsupported version of GHC $GHC_VER, using latest GHC deps"
     DEPENDENCY_FILE=bootstrap-ghc-7.8.1-deps
