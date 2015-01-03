@@ -40,6 +40,10 @@ module Distribution.Simple.Compiler (
         OptimisationLevel(..),
         flagToOptimisationLevel,
 
+        -- * Support for debug info levels
+        DebugInfoLevel(..),
+        flagToDebugInfoLevel,
+
         -- * Support for language extensions
         Flag,
         languageToFlags,
@@ -192,6 +196,33 @@ flagToOptimisationLevel (Just s) = case reads s of
     | otherwise -> error $ "Bad optimisation level: " ++ show i
                         ++ ". Valid values are 0..2"
   _             -> error $ "Can't parse optimisation level " ++ s
+
+-- ------------------------------------------------------------
+-- * Debug info levels
+-- ------------------------------------------------------------
+
+-- | Some compilers support emitting debug info. Some have different
+-- levels.  For compilers that do not the level is just capped to the
+-- level they do support.
+--
+data DebugInfoLevel = NoDebugInfo
+                    | MinimalDebugInfo
+                    | NormalDebugInfo
+                    | MaximalDebugInfo
+    deriving (Bounded, Enum, Eq, Generic, Read, Show)
+
+instance Binary DebugInfoLevel
+
+flagToDebugInfoLevel :: Maybe String -> DebugInfoLevel
+flagToDebugInfoLevel Nothing  = NormalDebugInfo
+flagToDebugInfoLevel (Just s) = case reads s of
+  [(i, "")]
+    | i >= fromEnum (minBound :: DebugInfoLevel)
+   && i <= fromEnum (maxBound :: DebugInfoLevel)
+                -> toEnum i
+    | otherwise -> error $ "Bad debug info level: " ++ show i
+                        ++ ". Valid values are 0..3"
+  _             -> error $ "Can't parse debug info level " ++ s
 
 -- ------------------------------------------------------------
 -- * Languages and Extensions

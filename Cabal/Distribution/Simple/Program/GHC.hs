@@ -152,6 +152,9 @@ data GhcOptions = GhcOptions {
   -- | What optimisation level to use; the @ghc -O@ flag.
   ghcOptOptimisation  :: Flag GhcOptimisation,
 
+    -- | Emit debug info; the @ghc -g@ flag.
+  ghcOptDebugInfo  :: Flag Bool,
+
   -- | Compile in profiling mode; the @ghc -prof@ flag.
   ghcOptProfilingMode :: Flag Bool,
 
@@ -272,6 +275,8 @@ renderGhcOptions comp opts
       Just GhcNormalOptimisation      -> ["-O"]
       Just GhcMaximumOptimisation     -> ["-O2"]
       Just (GhcSpecialOptimisation s) -> ["-O" ++ s] -- eg -Odph
+
+  , [ "-g" | flagDebugInfo implInfo && flagBool ghcOptDebugInfo ]
 
   , [ "-prof" | flagBool ghcOptProfilingMode ]
 
@@ -475,6 +480,7 @@ instance Monoid GhcOptions where
     ghcOptExtensions         = mempty,
     ghcOptExtensionMap       = mempty,
     ghcOptOptimisation       = mempty,
+    ghcOptDebugInfo          = mempty,
     ghcOptProfilingMode      = mempty,
     ghcOptSplitObjs          = mempty,
     ghcOptNumJobs            = mempty,
@@ -527,6 +533,7 @@ instance Monoid GhcOptions where
     ghcOptExtensions         = combine ghcOptExtensions,
     ghcOptExtensionMap       = combine ghcOptExtensionMap,
     ghcOptOptimisation       = combine ghcOptOptimisation,
+    ghcOptDebugInfo          = combine ghcOptDebugInfo,
     ghcOptProfilingMode      = combine ghcOptProfilingMode,
     ghcOptSplitObjs          = combine ghcOptSplitObjs,
     ghcOptNumJobs            = combine ghcOptNumJobs,
