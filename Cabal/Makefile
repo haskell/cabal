@@ -1,9 +1,9 @@
 
-VERSION=1.18.1.5
+VERSION=1.18.1.6
 
 #KIND=devel
-KIND=rc
-#KIND=cabal-latest
+#KIND=rc
+KIND=cabal-latest
 
 PREFIX=/usr/local
 HC=ghc
