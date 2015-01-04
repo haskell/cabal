@@ -206,6 +206,10 @@ RANDOM_VER="1.1"       RANDOM_VER_REGEXP="1\.[01]\.?"
                        # >= 1 && < 1.2
 STM_VER="2.4.4";       STM_VER_REGEXP="2\."
                        # == 2.*
+OLD_TIME_VER="1.1.0.3"; OLD_TIME_VER_REGEXP="1\.[01]\.?"
+                       # >=1.0.0.0 && <1.2
+OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
+                       # >=1.0.0.0 && <1.1
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -369,6 +373,8 @@ info_pkg "mtl"          ${MTL_VER}     ${MTL_VER_REGEXP}
 info_pkg "text"         ${TEXT_VER}    ${TEXT_VER_REGEXP}
 info_pkg "parsec"       ${PARSEC_VER}  ${PARSEC_VER_REGEXP}
 info_pkg "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
+info_pkg "old-locale"   ${OLD_LOCALE_VER} ${OLD_LOCALE_VER_REGEXP}
+info_pkg "old-time"     ${OLD_TIME_VER} ${OLD_TIME_VER_REGEXP}
 info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
@@ -387,6 +393,8 @@ do_pkg   "network"      ${NETWORK_VER} ${NETWORK_VER_REGEXP}
 # We conditionally install network-uri, depending on the network version.
 do_network_uri_pkg
 
+do_pkg   "old-locale"   ${OLD_LOCALE_VER} ${OLD_LOCALE_VER_REGEXP}
+do_pkg   "old-time"     ${OLD_TIME_VER} ${OLD_TIME_VER_REGEXP}
 do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
