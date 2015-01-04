@@ -15,6 +15,9 @@ orFail err r = case find (all isSpace . snd) r of
     Nothing -> error err
     Just (i, _) -> i
 
+find' :: (a -> Bool) -> [a] -> Maybe a
+find' = find
+
 suite :: FilePath -> Test
 suite ghcPath = TestCase $ do
     -- ToDo: Turn this into a utility function
@@ -24,7 +27,7 @@ suite ghcPath = TestCase $ do
                . readP_to_S parseVersion
                . snd
                . fromJust
-               . find ((=="Project version").fst)
+               . find' ((=="Project version").fst)
                . orFail "could not parse ghc --info output"
                . reads
                $ xs
