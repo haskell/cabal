@@ -85,9 +85,9 @@ extra-source-files:
   tests/PackageTests/EmptyLib/empty/empty.cabal
   tests/PackageTests/Haddock/CPP.hs
   tests/PackageTests/Haddock/Literate.lhs
-  tests/PackageTests/Haddock/my.cabal
   tests/PackageTests/Haddock/NoCPP.hs
   tests/PackageTests/Haddock/Simple.hs
+  tests/PackageTests/Haddock/my.cabal
   tests/PackageTests/OrderFlags/Foo.hs
   tests/PackageTests/OrderFlags/my.cabal
   tests/PackageTests/PathsModule/Executable/Main.hs
@@ -96,6 +96,7 @@ extra-source-files:
   tests/PackageTests/PreProcess/Foo.hsc
   tests/PackageTests/PreProcess/Main.hs
   tests/PackageTests/PreProcess/my.cabal
+  tests/PackageTests/ReexportedModules/ReexportedModules.cabal
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
   tests/PackageTests/TemplateHaskell/dynamic/Lib.hs
   tests/PackageTests/TemplateHaskell/dynamic/TH.hs
@@ -285,6 +286,7 @@ test-suite package-tests
     PackageTests.PathsModule.Executable.Check
     PackageTests.PathsModule.Library.Check
     PackageTests.PreProcess.Check
+    PackageTests.ReexportedModules.Check
     PackageTests.TemplateHaskell.Check
     PackageTests.TestOptions.Check
     PackageTests.TestStanza.Check
