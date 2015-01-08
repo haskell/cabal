@@ -40,7 +40,7 @@ import Distribution.Version
 import Distribution.Verbosity
          ( Verbosity )
 
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import qualified Data.Map as Map
 import GHC.Generics (Generic)
 

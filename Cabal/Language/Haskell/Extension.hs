@@ -27,7 +27,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import qualified Data.Char as Char (isAlphaNum)
 import Data.Array (Array, accumArray, bounds, Ix(inRange), (!))
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)

@@ -61,7 +61,7 @@ import Distribution.Text
 import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
 
-import Data.Binary  (Binary)
+import Distribution.Compat.Binary  (Binary)
 import Data.Maybe   (fromMaybe)
 import GHC.Generics (Generic)
 

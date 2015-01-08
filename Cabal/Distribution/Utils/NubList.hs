@@ -10,7 +10,7 @@ module Distribution.Utils.NubList
     , overNubListR
     ) where
 
-import Data.Binary
+import Distribution.Compat.Binary
 import Data.Monoid
 
 import Distribution.Simple.Utils (ordNub, listUnion, ordNubRight, listUnionRight)
