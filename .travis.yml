@@ -17,18 +17,24 @@ before_install:
 
 install:
  - cabal update
- - cd Cabal
- - cabal install --only-dependencies --enable-tests --enable-benchmarks
- - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
- - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
+# We intentionally do not install anything before trying to build Cabal because
+# it should build with each supported GHC version out-of-the-box.
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
 # Using ./dist/setup/setup here instead of cabal-install to avoid breakage
 # when the build config format changed
 script:
+ - cd Cabal
  - mkdir -p ./dist/setup
  - cp Setup.hs ./dist/setup/setup.hs
+# Should be able to build setup without extra dependencies
  - /opt/ghc/$GHCVER/bin/ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -threaded  # the command cabal-install would use to build setup
+
+# Need extra dependencies for test suite
+ - cabal install --only-dependencies --enable-tests
+ - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
+ - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
+
  - ./dist/setup/setup configure --user --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
  - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
  - ./dist/setup/setup haddock # see #2198
