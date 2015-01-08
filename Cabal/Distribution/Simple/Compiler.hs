@@ -62,7 +62,7 @@ import Distribution.Text (display)
 import Language.Haskell.Extension (Language(Haskell98), Extension)
 
 import Control.Monad (liftM)
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.List (nub)
 import qualified Data.Map as M (Map, lookup)
 import Data.Maybe (catMaybes, isNothing, listToMaybe)

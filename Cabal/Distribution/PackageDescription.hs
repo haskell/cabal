@@ -105,7 +105,7 @@ module Distribution.PackageDescription (
         knownRepoTypes,
   ) where
 
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.Data   (Data)
 import Data.List   (nub, intercalate)
 import Data.Maybe  (fromMaybe, maybeToList)

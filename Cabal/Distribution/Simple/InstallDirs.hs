@@ -44,7 +44,7 @@ module Distribution.Simple.InstallDirs (
   ) where
 
 
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))

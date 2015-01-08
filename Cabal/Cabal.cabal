@@ -126,10 +126,12 @@ source-repository head
   location: https://github.com/haskell/cabal/
   subdir:   Cabal
 
+flag bundled-binary-generic
+  default: False
+
 library
   build-depends:
     base       >= 4.4 && < 5,
-    binary     >= 0.7 && < 0.8,
     deepseq    >= 1.3 && < 1.5,
     filepath   >= 1   && < 1.4,
     directory  >= 1   && < 1.3,
@@ -139,6 +141,11 @@ library
     array      >= 0.1 && < 0.6,
     pretty     >= 1   && < 1.2,
     bytestring >= 0.9
+
+  if flag(bundled-binary-generic)
+    build-depends: binary >= 0.5 && < 0.7
+  else
+    build-depends: binary >= 0.7 && < 0.8
 
   -- Needed for GHC.Generics before GHC 7.6
   if impl(ghc < 7.6)
@@ -225,6 +232,7 @@ library
     Language.Haskell.Extension
 
   other-modules:
+    Distribution.Compat.Binary
     Distribution.Compat.CopyFile
     Distribution.Compat.TempFile
     Distribution.GetOpt
@@ -233,6 +241,11 @@ library
     Distribution.Simple.GHC.IPI642
     Distribution.Simple.GHC.ImplInfo
     Paths_Cabal
+
+  if flag(bundled-binary-generic)
+    other-modules:
+      Distribution.Compat.Binary.Class
+      Distribution.Compat.Binary.Generic
 
   default-language: Haskell98
   default-extensions: CPP
@@ -294,7 +307,6 @@ test-suite package-tests
   hs-source-dirs: tests
   build-depends:
     base,
-    binary     >= 0.7 && < 0.8,
     containers,
     test-framework,
     test-framework-quickcheck2 >= 0.2.12,

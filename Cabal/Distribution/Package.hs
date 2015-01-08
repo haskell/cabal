@@ -51,7 +51,7 @@ import Distribution.Compat.ReadP ((<++))
 import qualified Text.PrettyPrint as Disp
 
 import Control.DeepSeq (NFData(..))
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import qualified Data.Char as Char
     ( isDigit, isAlphaNum, isUpper, isLower, ord, chr )
 import Data.Data ( Data )

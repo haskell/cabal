@@ -73,7 +73,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity )
 
-import Data.Binary (Binary(..))
+import Distribution.Compat.Binary (Binary(..))
 import Data.Functor ((<$>))
 import Data.List
          ( foldl' )

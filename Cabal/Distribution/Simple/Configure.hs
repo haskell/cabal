@@ -124,7 +124,7 @@ import Control.Exception
     ( ErrorCall(..), Exception, evaluate, throw, throwIO, try )
 import Control.Monad
     ( liftM, when, unless, foldM, filterM )
-import Data.Binary ( decodeOrFail, encode )
+import Distribution.Compat.Binary ( decodeOrFailIO, encode )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
@@ -208,10 +208,11 @@ getConfigStateFile filename = do
               Left (ErrorCall _) -> throw ConfigStateFileBadHeader
               Right x -> x
 
-    let getStoredValue = evaluate $
-            case decodeOrFail (BLC8.tail body) of
-              Left _ -> throw ConfigStateFileNoParse
-              Right (_, _, x) -> x
+    let getStoredValue = do
+          result <- decodeOrFailIO (BLC8.tail body)
+          case result of
+            Left _ -> throw ConfigStateFileNoParse
+            Right x -> return x
         deferErrorIfBadVersion act
           | cabalId /= currentCabalId = do
               eResult <- try act
