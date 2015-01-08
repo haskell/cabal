@@ -42,7 +42,7 @@ module Distribution.Compiler (
   AbiTag(..), abiTagString
   ) where
 
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import Data.Maybe (fromMaybe)

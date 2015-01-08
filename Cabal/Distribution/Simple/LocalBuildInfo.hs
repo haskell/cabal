@@ -88,7 +88,7 @@ import Distribution.System
          ( Platform (..) )
 
 import Data.Array ((!))
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.Graph
 import Data.List (nub, find, stripPrefix)
 import Data.Maybe
