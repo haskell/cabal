@@ -175,9 +175,9 @@ getVersion flags = do
 getLicense :: InitFlags -> IO InitFlags
 getLicense flags = do
   lic <-     return (flagToMaybe $ license flags)
-         ?>> fmap (fmap (either UnknownLicense id) . join)
+         ?>> fmap (fmap (either UnknownLicense id))
                   (maybePrompt flags
-                    (promptListOptional "Please choose a license" listedLicenses))
+                    (promptList "Please choose a license" listedLicenses (Just BSD3) display True))
   return $ flags { license = maybeToFlag lic }
   where
     listedLicenses =
