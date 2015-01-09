@@ -153,7 +153,7 @@ executable cabal
     if flag(network-uri)
       build-depends: network-uri >= 2.6, network >= 2.6
     else
-      build-depends: network     >= 2.0 && < 2.6
+      build-depends: network     >= 2.4 && < 2.6
 
     if os(windows)
       build-depends: Win32 >= 2 && < 3
