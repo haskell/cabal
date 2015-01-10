@@ -45,17 +45,18 @@ import Distribution.Version
          ( Version(..), VersionRange, anyVersion, thisVersion
          , notThisVersion, simplifyVersionRange )
 
-import Distribution.Text (Text(..))
+import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP ((<++))
 import qualified Text.PrettyPrint as Disp
 
 import Control.DeepSeq (NFData(..))
+import Data.Ord ( comparing )
 import Data.Binary (Binary)
 import qualified Data.Char as Char
     ( isDigit, isAlphaNum, isUpper, isLower, ord, chr )
 import Data.Data ( Data )
-import Data.List ( intercalate, sort, foldl' )
+import Data.List ( intercalate, foldl', sortBy )
 import Data.Typeable ( Typeable )
 import Data.Word ( Word64 )
 import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
@@ -140,6 +141,52 @@ instance Text InstalledPackageId where
 -- affects the ABI because it is used for linker symbols; however, an
 -- 'InstalledPackageId' can be used to distinguish two ABI-compatible versions
 -- of a library.
+--
+-- The key is defined to be a 128-bit MD5 hash, separated into two 64-bit
+-- components (the most significant component coming first) which are
+-- individually base-62 encoded (A-Z, a-z, 0-9).
+--
+-- @
+--      key         ::= hash64 hash64
+--      hash64      ::= [A-Za-z0-9]{11}
+-- @
+--
+-- The string that is hashed is specified as raw_key:
+--
+-- @
+--      raw_key     ::= package_id "\n"
+--                      holes_nl
+--                      depends_nl
+--      package_id  ::= package_name "-" package_version
+--      holes_nl    ::= ""
+--                    | hole_inst "\n" holes_nl
+--      hole_inst   ::= modulename " " key ":" modulename
+--      depends_nl  ::= ""
+--                    | depend "\n" depends_nl
+--      depend      ::= key
+-- @
+--
+-- The holes list MUST be sorted by the first modulename; the depends list
+-- MUST be sorted by the key.  holes describes the backing implementations of
+-- all holes in the package; depends describes all of the build-depends of
+-- a package.  A package key MAY be used in holes even if it is not
+-- mentioned in depends: depends contains STRICTLY packages which are
+-- textually mentioned in the package description.
+--
+-- The trailing newline is MANDATORY.
+--
+-- There is also a variant of package key which is prefixed by a informational
+-- string.  This key MUST NOT be used in the computation of the hash proper,
+-- but it is useful for human-readable consumption.
+--
+-- @
+--      infokey     ::= infostring "_" key
+--      infostring  ::= [A-Za-z0-9-]+
+-- @
+--
+-- For example, Cabal provides a key with the first five characters of the
+-- package name for linker symbols.
+--
 data PackageKey
     -- | Modern package key which is a hash of the PackageId and the transitive
     -- dependency key.  Manually inline it here so we can get the instances
@@ -165,11 +212,14 @@ mkPackageKey :: Bool -- are modern style package keys supported?
              -> [PackageKey]     -- dependencies
              -> [(ModuleName, (PackageKey, ModuleName))] -- hole instantiations
              -> PackageKey
-mkPackageKey True pid deps holes = fingerprintPackageKey stubName
-                                 . fingerprintString
-                                 . ((show pid ++ "\n") ++)
-                                 . ((show (sort holes) ++ "\n") ++)
-                                 $ show (sort deps)
+mkPackageKey True pid deps holes =
+    fingerprintPackageKey stubName . fingerprintString $
+        display pid ++ "\n" ++
+        -- NB: packageKeyHash, NOT display
+        concat [ display m ++ " " ++ packageKeyHash p' ++ ":" ++ display m' ++ "\n"
+               | (m, (p', m')) <- sortBy (comparing fst) holes] ++
+        concat [ packageKeyHash d ++ "\n"
+               | d <- sortBy (comparing packageKeyHash) deps]
   where stubName = take 5 (filter (/= '-') (unPackageName (pkgName pid)))
 mkPackageKey False pid _ _ = OldPackageKey pid
 
@@ -220,6 +270,10 @@ readBase62Fingerprint s = Fingerprint w1 w2
  where (s1,s2) = splitAt word64Base62Len s
        w1 = fromBase62 s1
        w2 = fromBase62 (take word64Base62Len s2)
+
+packageKeyHash :: PackageKey -> String
+packageKeyHash (PackageKey _ w1 w2) = toBase62 w1 ++ toBase62 w2
+packageKeyHash (OldPackageKey pid) = display pid
 
 instance Text PackageKey where
   disp (PackageKey prefix w1 w2) = Disp.text prefix <> Disp.char '_'
