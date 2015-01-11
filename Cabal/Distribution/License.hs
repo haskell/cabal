@@ -53,7 +53,7 @@ import Distribution.Text (Text(..), display)
 import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint as Disp
 import Text.PrettyPrint ((<>))
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import qualified Data.Char as Char (isAlphaNum)
 import Data.Data (Data)
 import Data.Typeable (Typeable)

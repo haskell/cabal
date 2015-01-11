@@ -100,7 +100,7 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 
 import Control.Monad (liftM)
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
 import Data.Monoid ( Monoid(..) )

@@ -34,7 +34,7 @@ module Distribution.System (
 import qualified System.Info (os, arch)
 import qualified Data.Char as Char (toLower, isAlphaNum)
 
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import Data.Maybe (fromMaybe, listToMaybe)
