@@ -453,8 +453,13 @@ configureOptions showOrParseArgs =
          configDynExe (\v flags -> flags { configDynExe = v })
          (boolOpt [] [])
 
-      ,option "" ["profiling", "executable-profiling"]
+      ,option "" ["profiling"]
          "Executable profiling (requires library profiling)"
+         configProfExe (\v flags -> flags { configProfExe = v })
+         (boolOpt [] [])
+
+      ,option "" ["executable-profiling"]
+         "Executable profiling (DEPRECATED)"
          configProfExe (\v flags -> flags { configProfExe = v })
          (boolOpt [] [])
 
