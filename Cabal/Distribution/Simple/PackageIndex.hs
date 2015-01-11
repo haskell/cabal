@@ -74,7 +74,7 @@ module Distribution.Simple.PackageIndex (
 import Control.Exception (assert)
 import Data.Array ((!))
 import qualified Data.Array as Array
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import qualified Data.Graph as Graph
 import Data.List as List
          ( null, foldl', sort
