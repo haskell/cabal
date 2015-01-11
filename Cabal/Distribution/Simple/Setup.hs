@@ -575,14 +575,14 @@ configureOptions showOrParseArgs =
          configTests (\v flags -> flags { configTests = v })
          (boolOpt [] [])
 
-      ,option "" ["library-coverage"]
-         "OBSOLETE. Please use --enable-coverage instead."
-         configLibCoverage (\v flags -> flags { configLibCoverage = v })
+      ,option "" ["coverage"]
+         "build package with Haskell Program Coverage. (GHC only)"
+         configCoverage (\v flags -> flags { configCoverage = v })
          (boolOpt [] [])
 
-      ,option "" ["coverage"]
-         "build package with Haskell Program Coverage enabled. (GHC only)"
-         configCoverage (\v flags -> flags { configCoverage = v })
+      ,option "" ["library-coverage"]
+         "build package with Haskell Program Coverage. (GHC only) (OBSOLETE)"
+         configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
 
       ,option "" ["exact-configuration"]
