@@ -24,6 +24,9 @@ list, which is a good place to ask questions.
 Building Cabal from git cloned sources and running the tests
 ------------------------------------------------------------
 
+_The steps below will make use of sandboxes for building. The process might be
+somewhat different when you do not want to use sandboxes._
+
 Building Cabal from from source requires the following:
 
 * Glorious/Glasgow Haskell Compiler (ghc).
@@ -31,45 +34,93 @@ Building Cabal from from source requires the following:
 Haskell Platform, bootstrapped from the
 [source tarball on Hackage](http://hackage.haskell.org/package/cabal-install) or
 installed from your Linux vendor).
+* The sources. For example, you might want to
 
-Once you have these, the steps are:
-
-1. Change into the directory where you want to stash the cabal sources, eg:
-    ```
+    ~~~~
     cd ~/MyHaskellCode
-    ```
-
-2. Clone the repo and change into the `cabal-install` directory:
-
-    ```
     git clone https://github.com/haskell/cabal.git
-    cd cabal/cabal-install/
-    ```
+    cd cabal
+    ~~~~
 
-3. If you are hacking on Cabal you probaly don't want your development version
-to interfere with the `cabal` executable you actually use, so we'll set up and
-use a cabal sandbox:
+    to download the git repository to ~/MyHaskellCode/cabal.
 
-    ```
+To build and test the `Cabal` library, do:
+
+1. Move to `Cabal` directory:
+
+    ~~~~
+    cd Cabal
+    ~~~~
+
+2. Create a sandbox, and fill it with the necessary dependencies:
+
+    ~~~~
     cabal sandbox init
-    ```
+    cabal install --only-dependencies --enable-tests
+    ~~~~
 
-4. Now add the `Cabal` library and install all the dependencies into the sandbox:
+3. Unfortunately, because of way the bootstrapping works for cabal,
+    we cannot use `cabal` for the next steps;
+    we need to use Setup instead.
+    So, compile Setup.hs:
+    
+    ~~~~
+    ghc --make -threaded Setup.hs
+    ~~~~
 
-    ```
-    cabal sandbox add-source ../Cabal
-    cabal --enable-tests install --dependencies-only
-    ```
-    Since you used `add-source`, any changes to `Cabal/` will automatically be
-    picked up when building inside `cabal-install/` from now on.
+4. However, we _do_ want to use the sandbox package database that was created
+    by cabal.
+    We need its path later, so we have to find out where it is,
+    for example with:
 
+    ~~~~
+    cabal exec -- sh -c "echo \$GHC_PACKAGE_PATH" | sed s/:.*//
+    ~~~~
 
-5. Build cabal-install and run the tests:
+    the result should be something like
 
-    ```
-    cabal build
-    cabal test
-    ```
+    ~~~~
+    ~/MyHaskellCode/cabal/Cabal/.cabal-sandbox/$SOMESTUFF-packages.conf.d
+    ~~~~
+    
+    (or, as a relative path with my setup:)
+
+    ~~~~
+    .cabal-sandbox/x86_64-linux-ghc-7.8.4-packages.conf.d
+    ~~~~
+
+    We will refer to this as `PACKAGEDB`.
+
+5. Configure and build Cabal, and run all tests:
+
+    ~~~~
+    ./Setup configure --enable-tests --package-db=$PACKAGEDB
+    ./Setup build
+    ./Setup test
+    ~~~~
+
+The steps for building and testing the `cabal-install` executable are almost
+identical; only the first two steps are different:
+
+1. Move to the `cabal-install` directory:
+
+    ~~~~
+    cd cabal-install
+    ~~~~
+
+2. Create a sandbox, and fill it with the necessary dependencies.
+    For this, we need to add the Cabal library from the repository as an
+    add-source dependency:
+
+    ~~~~
+    cabal sandbox init
+    cabal sandbox add-source ../Cabal/
+    cabal install --only-dependencies
+    ~~~~
+
+(In addition, the absolute sandbox path will be slightly different
+because we have to use the `cabal-install` sandbox, not the Cabal one. If you
+use the relative path, you are set.)
 
 Dependencies policy
 -------------------
