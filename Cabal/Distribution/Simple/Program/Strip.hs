@@ -11,10 +11,13 @@ module Distribution.Simple.Program.Strip (stripLib, stripExe)
        where
 
 import Distribution.Simple.Program (ProgramConfiguration, lookupProgram
-                                   ,rawSystemProgram, stripProgram)
+                                   , programVersion, rawSystemProgram
+                                   , stripProgram)
 import Distribution.Simple.Utils   (warn)
-import Distribution.System         (Platform(..), OS (..), buildOS)
+import Distribution.System         (Arch(..), Platform(..), OS (..), buildOS)
+import Distribution.Text           (simpleParse)
 import Distribution.Verbosity      (Verbosity)
+import Distribution.Version        (withinRange)
 
 import Control.Monad               (unless)
 import System.FilePath             (takeBaseName)
@@ -42,7 +45,7 @@ stripExe verbosity (Platform _arch os) conf path =
        _   -> []
 
 stripLib :: Verbosity -> Platform -> ProgramConfiguration -> FilePath -> IO ()
-stripLib verbosity (Platform _arch os) conf path = do
+stripLib verbosity (Platform arch os) conf path = do
   case os of
     OSX -> -- '--strip-unneeded' is not supported on OS X, iOS or
            -- Solaris. See #1630.
@@ -53,6 +56,17 @@ stripLib verbosity (Platform _arch os) conf path = do
                -- libraries with lots identically named modules. See
                -- #1784.
                return()
+    Linux | arch == I386 ->
+      -- Versions of 'strip' on 32-bit Linux older than 2.18 are
+      -- broken. See #2339.
+      let (Just okVersion) = simpleParse ">= 2.18"
+      in case programVersion =<< lookupProgram stripProgram conf of
+          Just v | withinRange v okVersion ->
+            runStrip verbosity conf path args
+          _ -> warn verbosity $ "Unable to strip library '"
+                                ++ (takeBaseName path)
+                                ++ "' (version of 'strip' too old; "
+                                ++ "requires >= 2.18 on 32-bit Linux)"
     _   -> runStrip verbosity conf path args
   where
     args = ["--strip-unneeded"]
