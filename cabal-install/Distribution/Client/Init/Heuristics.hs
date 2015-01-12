@@ -322,12 +322,19 @@ gitConfigQuery which key =
 maybeFlag :: String -> Enviro -> Flag String
 maybeFlag k = maybe mempty Flag . lookup k
 
+-- | Read the first non-comment, non-trivial line of a file, if it exists
 maybeReadFile :: String -> IO (Maybe String)
 maybeReadFile f = do
     exists <- doesFileExist f
     if exists
-        then fmap Just $ readFile f
+        then fmap getFirstLine $ readFile f
         else return Nothing
+  where
+    getFirstLine content =
+      let nontrivialLines = dropWhile (\l -> (null l) || ("#" `isPrefixOf` l)) . lines $ content
+      in case nontrivialLines of
+           [] -> Nothing
+           (l:_) -> Just l
 
 -- |Get list of categories used in Hackage. NOTE: Very slow, needs to be cached
 knownCategories :: SourcePackageDb -> [String]
