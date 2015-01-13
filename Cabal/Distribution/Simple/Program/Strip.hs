@@ -15,11 +15,11 @@ import Distribution.Simple.Program (ProgramConfiguration, lookupProgram
                                    , stripProgram)
 import Distribution.Simple.Utils   (warn)
 import Distribution.System         (Arch(..), Platform(..), OS (..), buildOS)
-import Distribution.Text           (simpleParse)
 import Distribution.Verbosity      (Verbosity)
-import Distribution.Version        (withinRange)
+import Distribution.Version        (orLaterVersion, withinRange)
 
 import Control.Monad               (unless)
+import Data.Version                (Version(..))
 import System.FilePath             (takeBaseName)
 
 runStrip :: Verbosity -> ProgramConfiguration -> FilePath -> [String] -> IO ()
@@ -59,7 +59,7 @@ stripLib verbosity (Platform arch os) conf path = do
     Linux | arch == I386 ->
       -- Versions of 'strip' on 32-bit Linux older than 2.18 are
       -- broken. See #2339.
-      let (Just okVersion) = simpleParse ">= 2.18"
+      let okVersion = orLaterVersion (Version [2,18] [])
       in case programVersion =<< lookupProgram stripProgram conf of
           Just v | withinRange v okVersion ->
             runStrip verbosity conf path args
