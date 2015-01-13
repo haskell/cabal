@@ -55,6 +55,8 @@ import Distribution.Simple.Utils
          ( findProgramVersion )
 import Distribution.Compat.Exception
          ( catchIO )
+import Distribution.Verbosity
+         ( lessVerbose )
 import Distribution.Version
          ( Version(..), withinRange, earlierVersion, laterVersion
          , intersectVersionRanges )
@@ -265,23 +267,25 @@ arProgram = simpleProgram "ar"
 
 stripProgram :: Program
 stripProgram = (simpleProgram "strip") {
-    programFindVersion =
-      findProgramVersion "--version" $ \str ->
-        -- Invoking "strip --version" gives very inconsistent
-        -- results. We look for the first word that starts with a
-        -- number, and try parsing out the first two components of
-        -- it. Non-GNU 'strip' doesn't appear to have a version flag.
-        let numeric ""    = False
-            numeric (x:_) = isDigit x
-        in case dropWhile (not . numeric) (words str) of
-          (ver:_) ->
-            -- take the first two version components
-            let isDot         = (== '.')
-                (major, rest) = break isDot ver
-                minor         = takeWhile (not . isDot) (dropWhile isDot rest)
-            in major ++ "." ++ minor
-          _ -> ""
+    programFindVersion = \verbosity ->
+      findProgramVersion "--version" selectVersion (lessVerbose verbosity)
   }
+  where
+    selectVersion str =
+      -- Invoking "strip --version" gives very inconsistent
+      -- results. We look for the first word that starts with a
+      -- number, and try parsing out the first two components of
+      -- it. Non-GNU 'strip' doesn't appear to have a version flag.
+      let numeric ""    = False
+          numeric (x:_) = isDigit x
+      in case dropWhile (not . numeric) (words str) of
+        (ver:_) ->
+          -- take the first two version components
+          let isDot         = (== '.')
+              (major, rest) = break isDot ver
+              minor         = takeWhile (not . isDot) (dropWhile isDot rest)
+          in major ++ "." ++ minor
+        _ -> ""
 
 hsc2hsProgram :: Program
 hsc2hsProgram = (simpleProgram "hsc2hs") {
