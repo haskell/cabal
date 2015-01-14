@@ -100,7 +100,7 @@ import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage
-    , createDirectoryIfMissingVerbose, moreRecentFile
+    , createDirectoryIfMissingVerbose, notLessRecentFile
     , intercalate, cabalVersion
     , writeFileAtomic
     , withTempFile )
@@ -281,7 +281,7 @@ showHeader pkgId = BLC8.unwords
 -- .cabal file.
 checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
 checkPersistBuildConfigOutdated distPref pkg_descr_file = do
-  pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
+  pkg_descr_file `notLessRecentFile` (localBuildInfoFile distPref)
 
 -- |@dist\/setup-config@
 localBuildInfoFile :: FilePath -> FilePath
