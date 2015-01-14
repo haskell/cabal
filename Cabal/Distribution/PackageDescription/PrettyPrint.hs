@@ -215,9 +215,8 @@ ppFlagName :: FlagName -> Doc
 ppFlagName (FlagName name)               = text name
 
 ppCondTree :: CondTree ConfVar [Dependency] a -> Maybe a -> (a -> Maybe a -> Doc) ->  Doc
-ppCondTree ct@(CondNode it deps ifs) mbIt ppIt =
-    let res = ppDeps deps
-                $+$ (vcat $ map ppIf ifs)
+ppCondTree ct@(CondNode it _ ifs) mbIt ppIt =
+    let res = (vcat $ map ppIf ifs)
                 $+$ ppIt it mbIt
     in if isJust mbIt && isEmpty res
         then ppCondTree ct Nothing ppIt
@@ -233,11 +232,6 @@ ppCondTree ct@(CondNode it deps ifs) mbIt ppIt =
                 else text "else"
                     $$ nest indentWith (ppCondTree (fromJust mElseTree)
                         (if simplifiedPrinting then (Just it) else Nothing) ppIt))
-
-ppDeps :: [Dependency] -> Doc
-ppDeps []                                = empty
-ppDeps deps                              =
-    text "build-depends:" $+$ nest indentWith (vcat (punctuate comma (map disp deps)))
 
 emptyLine :: Doc -> Doc
 emptyLine d                              = text "" $+$ d
