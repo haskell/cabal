@@ -56,7 +56,7 @@ NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\."                # == 2.*
 CABAL_VER="1.18.1.5";  CABAL_VER_REGEXP="1\.1[89]\."           # >= 1.18 && < 1.20
 TRANS_VER="0.3.0.0";   TRANS_VER_REGEXP="0\.[23]\."            # >= 0.2.* && < 0.4.*
 MTL_VER="2.1.2";       MTL_VER_REGEXP="[2]\."                  #  == 2.*
-HTTP_VER="4000.2.11";  HTTP_VER_REGEXP="4000\.[012]\."         # == 4000.0.* || 4000.1.* || 4000.2.*
+HTTP_VER="4000.2.16.1";  HTTP_VER_REGEXP="4000\.[012]\."         # == 4000.0.* || 4000.1.* || 4000.2.*
 ZLIB_VER="0.5.4.1";    ZLIB_VER_REGEXP="0\.[45]\."             # == 0.4.* || == 0.5.*
 TIME_VER="1.4.1";      TIME_VER_REGEXP="1\.[12345]\.?"         # >= 1.1 && < 1.6
 RANDOM_VER="1.0.1.1";  RANDOM_VER_REGEXP="1\.0\."              # >= 1 && < 1.1
