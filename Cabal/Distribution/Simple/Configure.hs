@@ -296,13 +296,7 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
-  = do  unless (configLibCoverage cfg == NoFlag) $ do
-            let enable | fromFlag (configLibCoverage cfg) = "enable"
-                       | otherwise = "disable"
-            die $ "Option --" ++ enable ++ "-library-coverage is obsolete! "
-                  ++ "Please use --" ++ enable ++ "-coverage instead."
-
-        let distPref = fromFlag (configDistPref cfg)
+  = do  let distPref = fromFlag (configDistPref cfg)
             buildDir' = distPref </> "build"
             verbosity = fromFlag (configVerbosity cfg)
 
@@ -314,6 +308,13 @@ configure (pkg_descr0, pbi) cfg
           warn verbosity
             ("The flag --" ++ enable ++ "-executable-profiling is deprecated. "
              ++ "Please use --" ++ enable ++ "-profiling instead.")
+
+        unless (configLibCoverage cfg == NoFlag) $ do
+          let enable | fromFlag (configLibCoverage cfg) = "enable"
+                     | otherwise = "disable"
+          warn verbosity
+            ("The flag --" ++ enable ++ "-library-coverage is deprecated. "
+             ++ "Please use --" ++ enable ++ "-coverage instead.")
 
         createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
@@ -653,7 +654,7 @@ configure (pkg_descr0, pbi) cfg
                 else return True
 
         let lbi = LocalBuildInfo {
-                    configFlags         = cfg,
+                    configFlags         = cfg',
                     extraConfigArgs     = [],  -- Currently configure does not
                                                -- take extra args, but if it
                                                -- did they would go here.

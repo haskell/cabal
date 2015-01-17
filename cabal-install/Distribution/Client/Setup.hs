@@ -389,6 +389,8 @@ filterConfigureFlags flags cabalLibVersion
                    , configProfExe = configProf flags
                    , configProfLib =
                      mappend (configProf flags) (configProfLib flags)
+                   , configCoverage = NoFlag
+                   , configLibCoverage = configCoverage flags
                    }
     -- Cabal < 1.19.2 doesn't know about '--exact-configuration'.
     flags_1_19_1 = flags_1_20_0 { configExactConfiguration = NoFlag }
