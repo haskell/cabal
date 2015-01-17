@@ -316,7 +316,7 @@ data ConfigFlags = ConfigFlags {
     configTests               :: Flag Bool, -- ^Enable test suite compilation
     configBenchmarks          :: Flag Bool, -- ^Enable benchmark compilation
     configCoverage :: Flag Bool, -- ^Enable program coverage
-    configLibCoverage :: Flag Bool, -- ^OBSOLETE. Just used to signal error.
+    configLibCoverage :: Flag Bool, -- ^Enable program coverage (deprecated)
     configExactConfiguration  :: Flag Bool,
       -- ^All direct dependencies and flags are provided on the command line by
       -- the user via the '--dependency' and '--flags' options.
@@ -584,7 +584,7 @@ configureOptions showOrParseArgs =
          (boolOpt [] [])
 
       ,option "" ["library-coverage"]
-         "build package with Haskell Program Coverage. (GHC only) (OBSOLETE)"
+         "build package with Haskell Program Coverage. (GHC only) (DEPRECATED)"
          configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
 
