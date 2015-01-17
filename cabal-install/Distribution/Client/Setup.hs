@@ -382,7 +382,14 @@ filterConfigureFlags flags cabalLibVersion
     flags_latest = flags        { configConstraints = [] }
 
     -- Cabal < 1.21.1 doesn't know about 'disable-relocatable'
-    flags_1_20_0 = flags_latest { configRelocatable = NoFlag }
+    -- Cabal < 1.21.1 doesn't know about 'enable-profiling'
+    flags_1_20_0 =
+      flags_latest { configRelocatable = NoFlag
+                   , configProf = NoFlag
+                   , configProfExe = configProf flags
+                   , configProfLib =
+                     mappend (configProf flags) (configProfLib flags)
+                   }
     -- Cabal < 1.19.2 doesn't know about '--exact-configuration'.
     flags_1_19_1 = flags_1_20_0 { configExactConfiguration = NoFlag }
     -- Cabal < 1.19.1 uses '--constraint' instead of '--dependency'.
