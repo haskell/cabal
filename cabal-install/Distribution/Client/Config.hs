@@ -255,6 +255,7 @@ instance Monoid SavedConfig where
         configHcPkg               = combine configHcPkg,
         configVanillaLib          = combine configVanillaLib,
         configProfLib             = combine configProfLib,
+        configProf                = combine configProf,
         configSharedLib           = combine configSharedLib,
         configDynExe              = combine configDynExe,
         configProfExe             = combine configProfExe,
