@@ -261,7 +261,7 @@ resolveBuildTarget :: PackageDescription -> UserBuildTarget -> Bool
 resolveBuildTarget pkg userTarget fexists =
     case findMatch (matchBuildTarget pkg userTarget fexists) of
       Unambiguous target  -> Right target
-      Ambiguous   targets -> Left (BuildTargetAmbigious userTarget targets')
+      Ambiguous   targets -> Left (BuildTargetAmbiguous userTarget targets')
                                where targets' = disambiguateBuildTargets
                                                     (packageId pkg) userTarget
                                                     targets
@@ -283,7 +283,7 @@ data BuildTargetProblem
      -- ^  [expected thing] (actually got)
    | BuildTargetNoSuch    UserBuildTarget [(String, String)]
      -- ^ [(no such thing,  actually got)]
-   | BuildTargetAmbigious UserBuildTarget [(UserBuildTarget, BuildTarget)]
+   | BuildTargetAmbiguous UserBuildTarget [(UserBuildTarget, BuildTarget)]
   deriving Show
 
 
@@ -362,7 +362,7 @@ reportBuildTargetProblems problems = do
           mungeThing "file" = "file target"
           mungeThing thing  = thing
 
-    case [ (t, ts) | BuildTargetAmbigious t ts <- problems ] of
+    case [ (t, ts) | BuildTargetAmbiguous t ts <- problems ] of
       []      -> return ()
       targets ->
         die $ unlines
@@ -730,10 +730,10 @@ matchDirectoryPrefix dirs filepath =
 --
 
 -- | A matcher embodies a way to match some input as being some recognised
--- value. In particular it deals with multiple and ambigious matches.
+-- value. In particular it deals with multiple and ambiguous matches.
 --
 -- There are various matcher primitives ('matchExactly', 'matchInexactly'),
--- ways to combine matchers ('ambigiousWith', 'shadows') and finally we can
+-- ways to combine matchers ('ambiguousWith', 'shadows') and finally we can
 -- run a matcher against an input using 'findMatch'.
 --
 
@@ -762,7 +762,7 @@ matchZero = NoMatch 0 []
 
 -- | Combine two matchers. Exact matches are used over inexact matches
 -- but if we have multiple exact, or inexact then the we collect all the
--- ambigious matches.
+-- ambiguous matches.
 --
 matchPlus :: Match a -> Match a -> Match a
 matchPlus   (ExactMatch   d1 xs)   (ExactMatch   d2 xs') =
@@ -780,7 +780,7 @@ matchPlus a@(NoMatch      d1 ms) b@(NoMatch      d2 ms')
                                              | d1 <  d2  = b
                                              | otherwise = NoMatch d1 (ms ++ ms')
 
--- | Combine two matchers. This is similar to 'ambigiousWith' with the
+-- | Combine two matchers. This is similar to 'ambiguousWith' with the
 -- difference that an exact match from the left matcher shadows any exact
 -- match on the right. Inexact matches are still collected however.
 --
@@ -868,18 +868,18 @@ tryEach = exactMatches
 -- possible matches. There may be 'None', a single 'Unambiguous' match or
 -- you may have an 'Ambiguous' match with several possibilities.
 --
-findMatch :: Eq b => Match b -> MaybeAmbigious b
+findMatch :: Eq b => Match b -> MaybeAmbiguous b
 findMatch match =
     case match of
       NoMatch    _ msgs -> None (nub msgs)
-      ExactMatch   _ xs -> checkAmbigious xs
-      InexactMatch _ xs -> checkAmbigious xs
+      ExactMatch   _ xs -> checkAmbiguous xs
+      InexactMatch _ xs -> checkAmbiguous xs
   where
-    checkAmbigious xs = case nub xs of
+    checkAmbiguous xs = case nub xs of
                           [x] -> Unambiguous x
                           xs' -> Ambiguous   xs'
 
-data MaybeAmbigious a = None [MatchError] | Unambiguous a | Ambiguous [a]
+data MaybeAmbiguous a = None [MatchError] | Unambiguous a | Ambiguous [a]
   deriving Show
 
 
