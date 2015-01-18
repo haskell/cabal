@@ -1431,7 +1431,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
         -- Note: if in future Cabal allows directly depending on multiple
         -- instances of the same package (e.g. backpack) then an additional
         -- ambiguity case is possible here: (_, Just originalPackageName)
-        -- with the module being ambigious despite being qualified by a
+        -- with the module being ambiguous despite being qualified by a
         -- package name. Presumably by that time we'll have a mechanism to
         -- qualify the instance we're referring to.
 
