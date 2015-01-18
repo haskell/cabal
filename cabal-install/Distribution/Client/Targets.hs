@@ -550,7 +550,7 @@ readPackageTarget verbosity target = case target of
 
 data PackageTargetProblem
    = PackageNameUnknown   PackageName               UserTarget
-   | PackageNameAmbigious PackageName [PackageName] UserTarget
+   | PackageNameAmbiguous PackageName [PackageName] UserTarget
   deriving Show
 
 
@@ -578,7 +578,7 @@ disambiguatePackageTargets availablePkgIndex availableExtra targets =
         case disambiguatePackageName packageNameEnv pkgname of
           None                 -> Left  (PackageNameUnknown
                                           pkgname userTarget)
-          Ambiguous   pkgnames -> Left  (PackageNameAmbigious
+          Ambiguous   pkgnames -> Left  (PackageNameAmbiguous
                                           pkgname pkgnames userTarget)
           Unambiguous pkgname' -> Right (NamedPackage pkgname' constraints')
             where
@@ -604,11 +604,11 @@ reportPackageTargetProblems verbosity problems = do
                   ++ "You may need to run 'cabal update' to get the latest "
                   ++ "list of available packages."
 
-    case [ (pkg, matches) | PackageNameAmbigious pkg matches _ <- problems ] of
+    case [ (pkg, matches) | PackageNameAmbiguous pkg matches _ <- problems ] of
       []          -> return ()
       ambiguities -> die $ unlines
                              [    "The package name '" ++ display name
-                               ++ "' is ambigious. It could be: "
+                               ++ "' is ambiguous. It could be: "
                                ++ intercalate ", " (map display matches)
                              | (name, matches) <- ambiguities ]
 
@@ -627,17 +627,17 @@ reportPackageTargetProblems verbosity problems = do
 -- * Disambiguating package names
 -- ------------------------------------------------------------
 
-data MaybeAmbigious a = None | Unambiguous a | Ambiguous [a]
+data MaybeAmbiguous a = None | Unambiguous a | Ambiguous [a]
 
 -- | Given a package name and a list of matching names, figure out which one it
 -- might be referring to. If there is an exact case-sensitive match then that's
 -- ok. If it matches just one package case-insensitively then that's also ok.
 -- The only problem is if it matches multiple packages case-insensitively, in
--- that case it is ambigious.
+-- that case it is ambiguous.
 --
 disambiguatePackageName :: PackageNameEnv
                         -> PackageName
-                        -> MaybeAmbigious PackageName
+                        -> MaybeAmbiguous PackageName
 disambiguatePackageName (PackageNameEnv pkgNameLookup) name =
     case nub (pkgNameLookup name) of
       []      -> None
