@@ -157,12 +157,13 @@ import Text.PrettyPrint
     , quotes, punctuate, nest, sep, hsep )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
+-- | The errors that can be thrown when reading the @setup-config@ file.
 data ConfigStateFileError
-    = ConfigStateFileNoHeader
-    | ConfigStateFileBadHeader
-    | ConfigStateFileNoParse
-    | ConfigStateFileMissing
-    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo)
+    = ConfigStateFileNoHeader -- ^ No header found.
+    | ConfigStateFileBadHeader -- ^ Incorrect header.
+    | ConfigStateFileNoParse -- ^ Cannot parse file contents.
+    | ConfigStateFileMissing -- ^ No file!
+    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo) -- ^ Mismatched version.
   deriving (Typeable)
 
 instance Show ConfigStateFileError where
@@ -193,7 +194,11 @@ instance Show ConfigStateFileError where
 
 instance Exception ConfigStateFileError
 
-getConfigStateFile :: FilePath -> IO LocalBuildInfo
+-- | Read the 'localBuildInfoFile'.  Throw an exception if the file is
+-- missing, if the file cannot be read, or if the file was created by an older
+-- version of Cabal.
+getConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
+                   -> IO LocalBuildInfo
 getConfigStateFile filename = do
     exists <- doesFileExist filename
     unless exists $ throwIO ConfigStateFileMissing
@@ -220,29 +225,34 @@ getConfigStateFile filename = do
           | otherwise = act
     deferErrorIfBadVersion getStoredValue
 
-tryGetConfigStateFile :: FilePath
+-- | Read the 'localBuildInfoFile', returning either an error or the local build info.
+tryGetConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
                       -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetConfigStateFile = try . getConfigStateFile
 
--- |Try to read the 'localBuildInfoFile'.
-tryGetPersistBuildConfig :: FilePath
+-- | Try to read the 'localBuildInfoFile'.
+tryGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
                          -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetPersistBuildConfig = try . getPersistBuildConfig
 
 -- | Read the 'localBuildInfoFile'. Throw an exception if the file is
 -- missing, if the file cannot be read, or if the file was created by an older
 -- version of Cabal.
-getPersistBuildConfig :: FilePath -> IO LocalBuildInfo
+getPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
+                      -> IO LocalBuildInfo
 getPersistBuildConfig = getConfigStateFile . localBuildInfoFile
 
--- |Try to read the 'localBuildInfoFile'.
-maybeGetPersistBuildConfig :: FilePath -> IO (Maybe LocalBuildInfo)
+-- | Try to read the 'localBuildInfoFile'.
+maybeGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
+                           -> IO (Maybe LocalBuildInfo)
 maybeGetPersistBuildConfig =
     liftM (either (const Nothing) Just) . tryGetPersistBuildConfig
 
--- |After running configure, output the 'LocalBuildInfo' to the
+-- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
-writePersistBuildConfig :: FilePath -> LocalBuildInfo -> IO ()
+writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
+                        -> LocalBuildInfo -- ^ The 'LocalBuildInfo' to write.
+                        -> IO ()
 writePersistBuildConfig distPref lbi = do
     createDirectoryIfMissing False distPref
     writeFileAtomic (localBuildInfoFile distPref) $
@@ -250,14 +260,19 @@ writePersistBuildConfig distPref lbi = do
   where
     pkgId = packageId $ localPkgDescr lbi
 
+-- | Identifier of the current Cabal package.
 currentCabalId :: PackageIdentifier
 currentCabalId = PackageIdentifier (PackageName "Cabal") cabalVersion
 
+-- | Identifier of the current compiler package.
 currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
-parseHeader :: ByteString -> (PackageIdentifier, PackageIdentifier)
+-- | Parse the @setup-config@ file header, returning the package identifiers 
+-- for Cabal and the compiler.
+parseHeader :: ByteString -- ^ The file contents.
+            -> (PackageIdentifier, PackageIdentifier)
 parseHeader header = case BLC8.words header of
   ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId, "using", compId] ->
       fromMaybe (throw ConfigStateFileBadHeader) $ do
@@ -267,7 +282,9 @@ parseHeader header = case BLC8.words header of
           return (cabalId', compId')
   _ -> throw ConfigStateFileNoHeader
 
-showHeader :: PackageIdentifier -> ByteString
+-- | Generate the @setup-config@ file header.
+showHeader :: PackageIdentifier -- ^ The processed package.
+            -> ByteString
 showHeader pkgId = BLC8.unwords
     [ "Saved", "package", "config", "for"
     , BLC8.pack $ display pkgId
@@ -277,14 +294,15 @@ showHeader pkgId = BLC8.unwords
     , BLC8.pack $ display currentCompilerId
     ]
 
--- |Check that localBuildInfoFile is up-to-date with respect to the
+-- | Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
 checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
 checkPersistBuildConfigOutdated distPref pkg_descr_file = do
   pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
 
--- |@dist\/setup-config@
-localBuildInfoFile :: FilePath -> FilePath
+-- | Get the path of @dist\/setup-config@.
+localBuildInfoFile :: FilePath -- ^ The @dist@ directory path.
+                    -> FilePath
 localBuildInfoFile distPref = distPref </> "setup-config"
 
 -- -----------------------------------------------------------------------------
@@ -829,8 +847,10 @@ reportFailedDependencies failed =
     reportFailedDependency (DependencyNoVersion dep) =
         "cannot satisfy dependency " ++ display (simplifyDependency dep) ++ "\n"
 
+-- | List all installed packages in the given package databases.
 getInstalledPackages :: Verbosity -> Compiler
-                     -> PackageDBStack -> ProgramConfiguration
+                     -> PackageDBStack -- ^ The stack of package databases.
+                     -> ProgramConfiguration
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDBs progconf = do
   when (null packageDBs) $
