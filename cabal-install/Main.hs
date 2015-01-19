@@ -111,7 +111,7 @@ import Distribution.Client.Utils              (determineNumJobs
                                               ,existsAndIsMoreRecentThan)
 
 import Distribution.PackageDescription
-         ( Executable(..), benchmarkName, testName )
+         ( Executable(..), benchmarkName, testName, testBuildInfo, buildable )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.PackageDescription.PrettyPrint
@@ -730,21 +730,29 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
   -- the package was just configured, so the LBI must be available
   lbi <- getPersistBuildConfig distPref
   let pkgDescr = LBI.localPkgDescr lbi
-      nameTestsOnly = LBI.foldComponent (const Nothing)
-                                        (const Nothing)
-                                        (Just . testName)
-                                        (const Nothing)
+      nameTestsOnly =
+        LBI.foldComponent
+          (const Nothing)
+          (const Nothing)
+          (\t ->
+            if buildable (testBuildInfo t)
+              then Just (testName t)
+            else Nothing)
+          (const Nothing)
       tests = mapMaybe nameTestsOnly $ LBI.pkgComponents pkgDescr
       extraArgs'
         | null extraArgs = tests
         | otherwise = extraArgs
 
-  maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity config distPref buildFlags' extraArgs'
+  if null tests
+    then notice verbosity "Package has no buildable test suites."
+    else do
+      maybeWithSandboxDirOnSearchPath useSandbox $
+        build verbosity config distPref buildFlags' extraArgs'
 
-  maybeWithSandboxDirOnSearchPath useSandbox $
-    setupWrapper verbosity setupOptions Nothing
-      Cabal.testCommand (const testFlags) extraArgs'
+      maybeWithSandboxDirOnSearchPath useSandbox $
+        setupWrapper verbosity setupOptions Nothing
+          Cabal.testCommand (const testFlags) extraArgs'
 
 benchmarkAction :: (BenchmarkFlags, BuildFlags, BuildExFlags)
                    -> [String] -> GlobalFlags
