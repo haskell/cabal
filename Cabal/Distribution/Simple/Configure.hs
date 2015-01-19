@@ -163,7 +163,7 @@ data ConfigStateFileError
     | ConfigStateFileBadHeader -- ^ Incorrect header.
     | ConfigStateFileNoParse -- ^ Cannot parse file contents.
     | ConfigStateFileMissing -- ^ No file!
-    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo) -- ^ Mismatched version
+    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo) -- ^ Mismatched version.
   deriving (Typeable)
 
 instance Show ConfigStateFileError where
@@ -251,7 +251,7 @@ maybeGetPersistBuildConfig =
 -- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
 writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
-                        -> LocalBuildInfo -- ^ The 'LocalBuildInfo' to write
+                        -> LocalBuildInfo -- ^ The 'LocalBuildInfo' to write.
                         -> IO ()
 writePersistBuildConfig distPref lbi = do
     createDirectoryIfMissing False distPref
@@ -271,7 +271,7 @@ currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
 
 -- | Parse the @setup-config@ file header, returning the package identifiers 
 -- for Cabal and the compiler.
-parseHeader :: ByteString -- ^ The file contents
+parseHeader :: ByteString -- ^ The file contents.
             -> (PackageIdentifier, PackageIdentifier)
 parseHeader header = case BLC8.words header of
   ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId, "using", compId] ->
