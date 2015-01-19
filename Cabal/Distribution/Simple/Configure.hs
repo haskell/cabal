@@ -194,7 +194,7 @@ instance Show ConfigStateFileError where
 
 instance Exception ConfigStateFileError
 
--- | Read the LocalBuildInfo file.  Throw an exception if the file is
+-- | Read the 'localBuildInfoFile'.  Throw an exception if the file is
 -- missing, if the file cannot be read, or if the file was created by an older
 -- version of Cabal.
 getConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
@@ -225,7 +225,7 @@ getConfigStateFile filename = do
           | otherwise = act
     deferErrorIfBadVersion getStoredValue
 
--- | Read the LocalBuildInfo file, returning either an error or the local build info.
+-- | Read the 'localBuildInfoFile', returning either an error or the local build info.
 tryGetConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
                       -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetConfigStateFile = try . getConfigStateFile
@@ -260,16 +260,17 @@ writePersistBuildConfig distPref lbi = do
   where
     pkgId = packageId $ localPkgDescr lbi
 
--- | Identifier of the current Cabal package
+-- | Identifier of the current Cabal package.
 currentCabalId :: PackageIdentifier
 currentCabalId = PackageIdentifier (PackageName "Cabal") cabalVersion
 
--- | Identifier of the current compiler package
+-- | Identifier of the current compiler package.
 currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
--- | Parse the @setup-config@ file header, returning the package identifiers for Cabal and the compiler.
+-- | Parse the @setup-config@ file header, returning the package identifiers 
+-- for Cabal and the compiler.
 parseHeader :: ByteString -- ^ The file contents
             -> (PackageIdentifier, PackageIdentifier)
 parseHeader header = case BLC8.words header of
@@ -281,7 +282,7 @@ parseHeader header = case BLC8.words header of
           return (cabalId', compId')
   _ -> throw ConfigStateFileNoHeader
 
--- | Generate the @setup-config@ file header
+-- | Generate the @setup-config@ file header.
 showHeader :: PackageIdentifier -- ^ The processed package.
             -> ByteString
 showHeader pkgId = BLC8.unwords
@@ -299,7 +300,7 @@ checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
 checkPersistBuildConfigOutdated distPref pkg_descr_file = do
   pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
 
--- | Get the path of @dist\/setup-config@
+-- | Get the path of @dist\/setup-config@.
 localBuildInfoFile :: FilePath -- ^ The @dist@ directory path.
                     -> FilePath
 localBuildInfoFile distPref = distPref </> "setup-config"
