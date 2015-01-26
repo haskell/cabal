@@ -708,8 +708,10 @@ simple build infrastructure understands the extensions:
 When building, Cabal will automatically run the appropriate preprocessor
 and compile the Haskell module it produces.
 
-Some fields take lists of values, which are optionally separated by commas,
-except for the `build-depends` field, where the commas are mandatory.
+Some fields take lists of values.  In the `build-depends` field, a comma
+must appear between each package listed.  In all other fields, comma
+separators are not allowed; values must be separated by a space or by
+a newline, with subsequent lines indented as appropriate.
 
 Some fields are marked as required.  All others are optional, and unless
 otherwise specified have empty default values.
