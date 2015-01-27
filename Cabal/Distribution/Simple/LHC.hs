@@ -794,6 +794,7 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
                                  , HcPkg.noPkgDbStack    = False
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
+                                 , HcPkg.useSingleFileDb = True
                                  }
   where
     Just lhcPkgProg = lookupProgram lhcPkgProgram conf

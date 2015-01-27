@@ -450,15 +450,17 @@ createInternalPackageDB verbosity lbi distPref = do
       LHC   -> createWith $ LHC.hcPkgInfo   (withPrograms lbi)
       _     -> return packageDB
     where
-      dbDir = distPref </> "package.conf.inplace"
-      packageDB = SpecificPackageDB dbDir
+      dbPath = distPref </> "package.conf.inplace"
+      packageDB = SpecificPackageDB dbPath
       createWith hpi = do
-        dir_exists <- doesDirectoryExist dbDir
+        dir_exists <- doesDirectoryExist dbPath
         if dir_exists
-            then removeDirectoryRecursive dbDir
-            else do file_exists <- doesFileExist dbDir
-                    when file_exists $ removeFile dbDir
-        HcPkg.init hpi verbosity dbDir
+            then removeDirectoryRecursive dbPath
+            else do file_exists <- doesFileExist dbPath
+                    when file_exists $ removeFile dbPath
+        if HcPkg.useSingleFileDb hpi
+            then writeFile dbPath "[]"
+            else HcPkg.init hpi verbosity dbPath
         return packageDB
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo
