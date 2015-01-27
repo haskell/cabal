@@ -879,9 +879,12 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                  , HcPkg.noPkgDbStack    = False
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
+                                 , HcPkg.useSingleFileDb = v < [7,9]
                                  }
   where
+    v                 = versionBranch ver
     Just ghcjsPkgProg = lookupProgram ghcjsPkgProgram conf
+    Just ver          = programVersion ghcjsPkgProg
 
 -- | Get the JavaScript file name and command and arguments to run a
 --   program compiled by GHCJS

@@ -73,6 +73,7 @@ data HcPkgInfo = HcPkgInfo
   , noPkgDbStack    :: Bool -- ^ no package DB stack supported
   , noVerboseFlag   :: Bool -- ^ hc-pkg does not support verbosity flags
   , flagPackageConf :: Bool -- ^ use package-conf option instead of package-db
+  , useSingleFileDb :: Bool -- ^ requires single file package database
   }
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.
