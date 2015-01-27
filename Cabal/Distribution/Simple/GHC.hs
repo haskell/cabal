@@ -41,6 +41,7 @@ module Distribution.Simple.GHC (
         hcPkgInfo,
         registerPackage,
         componentGhcOptions,
+        componentCcGhcOptions,
         getLibDir,
         isDynamic,
         getGlobalPackageDB,
@@ -951,6 +952,16 @@ componentGhcOptions :: Verbosity -> LocalBuildInfo
                     -> BuildInfo -> ComponentLocalBuildInfo -> FilePath
                     -> GhcOptions
 componentGhcOptions = Internal.componentGhcOptions
+
+componentCcGhcOptions :: Verbosity -> LocalBuildInfo
+                      -> BuildInfo -> ComponentLocalBuildInfo
+                      -> FilePath -> FilePath
+                      -> GhcOptions
+componentCcGhcOptions verbosity lbi =
+    Internal.componentCcGhcOptions verbosity implInfo lbi
+  where
+    comp     = compiler lbi
+    implInfo = getImplInfo comp
 
 -- -----------------------------------------------------------------------------
 -- Installing
