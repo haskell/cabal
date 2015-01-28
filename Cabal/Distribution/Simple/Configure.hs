@@ -302,13 +302,6 @@ configure (pkg_descr0, pbi) cfg
 
         setupMessage verbosity "Configuring" (packageId pkg_descr0)
 
-        unless (configProfExe cfg == NoFlag) $ do
-          let enable | fromFlag (configProfExe cfg) = "enable"
-                     | otherwise = "disable"
-          warn verbosity
-            ("The flag --" ++ enable ++ "-executable-profiling is deprecated. "
-             ++ "Please use --" ++ enable ++ "-profiling instead.")
-
         unless (configLibCoverage cfg == NoFlag) $ do
           let enable | fromFlag (configLibCoverage cfg) = "enable"
                      | otherwise = "disable"
@@ -635,8 +628,7 @@ configure (pkg_descr0, pbi) cfg
             ++ "is not being built. Linking will fail if any executables "
             ++ "depend on the library."
 
-        let withProf_ = fromFlagOrDefault False (configProf cfg)
-            withProfExe_ = fromFlagOrDefault withProf_ $ configProfExe cfg
+        let withProfExe_ = fromFlagOrDefault False $ configProfExe cfg
             withProfLib_ = fromFlagOrDefault withProfExe_ $ configProfLib cfg
         when (withProfExe_ && not withProfLib_) $ warn verbosity $
                "Executables will be built with profiling, but library "

@@ -385,10 +385,8 @@ filterConfigureFlags flags cabalLibVersion
     -- Cabal < 1.21.1 doesn't know about 'enable-profiling'
     flags_1_20_0 =
       flags_latest { configRelocatable = NoFlag
-                   , configProf = NoFlag
-                   , configProfExe = configProf flags
-                   , configProfLib =
-                     mappend (configProf flags) (configProfLib flags)
+                   , configProfExe = configProfExe flags
+                   , configProfLib = configProfLib flags
                    , configCoverage = NoFlag
                    , configLibCoverage = configCoverage flags
                    }
