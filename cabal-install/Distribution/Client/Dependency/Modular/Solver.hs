@@ -14,6 +14,7 @@ import Distribution.Client.Dependency.Modular.Message
 import Distribution.Client.Dependency.Modular.Package
 import qualified Distribution.Client.Dependency.Modular.Preference as P
 import Distribution.Client.Dependency.Modular.Validate
+import Distribution.Client.Dependency.Modular.Linking
 
 -- | Various options for the modular solver.
 data SolverConfig = SolverConfig {
@@ -59,4 +60,4 @@ solve sc idx userPrefs userConstraints userGoals =
                                                   , PackageName "integer-gmp"
                                                   , PackageName "integer-simple"
                                                   ])
-    buildPhase       = buildTree idx (independentGoals sc) userGoals
+    buildPhase       = addLinking $ buildTree idx (independentGoals sc) userGoals
