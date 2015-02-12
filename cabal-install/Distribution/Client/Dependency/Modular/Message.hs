@@ -99,6 +99,7 @@ showFR _ GlobalConstraintFlag           = " (global constraint requires opposite
 showFR _ ManualFlag                     = " (manual flag can only be changed explicitly)"
 showFR _ (BuildFailureNotInIndex pn)    = " (unknown package: " ++ display pn ++ ")"
 showFR c Backjump                       = " (backjumping, conflict set: " ++ showCS c ++ ")"
+showFR _ MultipleInstances              = " (multiple instances)"
 -- The following are internal failures. They should not occur. In the
 -- interest of not crashing unnecessarily, we still just print an error
 -- message though.

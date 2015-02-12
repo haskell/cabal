@@ -7,8 +7,14 @@ import qualified Data.List as L
 import qualified Data.Map as M
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
+import Control.Applicative
 #endif
+import qualified Data.Set as S
+import Prelude hiding (sequence)
+import Control.Monad.Reader hiding (sequence)
 import Data.Ord
+import Data.Map (Map)
+import Data.Traversable (sequence)
 
 import Distribution.Client.Dependency.Types
   ( PackageConstraint(..), PackagePreferences(..), InstalledPreference(..) )
@@ -282,3 +288,44 @@ preferEasyGoalChoices' = para (inn . go)
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.map fst (P.sortBy (comparing (choices . snd)) xs))
     go x                = fmap fst x
+
+-- | Monad used internally in enforceSingleInstanceRestriction
+type EnforceSIR = Reader (Map (PI PN) QPN)
+
+-- | Enforce ghc's single instance restriction
+--
+-- From the solver's perspective, this means that for any package instance
+-- (that is, package name + package version) there can be at most one qualified
+-- goal resolving to that instance (there may be other goals _linking_ to that
+-- instance however).
+enforceSingleInstanceRestriction :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
+  where
+    go :: TreeF QGoalReasonChain (EnforceSIR (Tree QGoalReasonChain)) -> EnforceSIR (Tree QGoalReasonChain)
+
+    -- We just verify package choices
+    go (PChoiceF qpn gr cs) =
+      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) cs)
+
+    -- For all other nodes we don't check anything
+    go (FChoiceF qfn gr t m cs)       = FChoice qfn gr t m <$> sequence cs
+    go (SChoiceF qsn gr t   cs)       = SChoice qsn gr t   <$> sequence cs
+    go (GoalChoiceF         cs)       = GoalChoice         <$> sequence cs
+    go (DoneF revDepMap)              = return $ Done revDepMap
+    go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
+
+    -- The check proper
+    goP :: QPN -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
+    goP qpn@(Q _ pn) (POption i linkedTo) r = do
+      let inst = PI pn i
+      env <- ask
+      case (linkedTo, M.lookup inst env) of
+        (Just _, _) ->
+          -- For linked nodes we don't check anything
+          r
+        (Nothing, Nothing) ->
+          -- Not linked, not already used
+          local (M.insert inst qpn) r
+        (Nothing, Just qpn') -> do
+          -- Not linked, already used. This is an error
+          return $ Fail (S.fromList [P qpn, P qpn']) MultipleInstances
