@@ -52,6 +52,7 @@ data FailReason = InconsistentInitialConstraints
                 | EmptyGoalChoice
                 | Backjump
                 | MultipleInstances
+                | DependenciesNotLinked String
   deriving (Eq, Show)
 
 -- | Functor for the tree type.
