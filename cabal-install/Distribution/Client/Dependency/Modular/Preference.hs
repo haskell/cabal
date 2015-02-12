@@ -41,6 +41,21 @@ packageOrderFor p cmp' = trav go
     cmp :: PN -> POption -> POption -> Ordering
     cmp pn (POption i _) (POption i' _) = cmp' pn i i'
 
+-- | Prefer to link packages whenever possible
+preferLinked :: Tree a -> Tree a
+preferLinked = trav go
+  where
+    go (PChoiceF qn a  cs) = PChoiceF qn a (P.sortByKeys cmp cs)
+    go x                   = x
+
+    cmp (POption _ linkedTo) (POption _ linkedTo') = cmpL linkedTo linkedTo'
+
+    cmpL Nothing  Nothing  = EQ
+    cmpL Nothing  (Just _) = GT
+    cmpL (Just _) Nothing  = LT
+    cmpL (Just _) (Just _) = EQ
+
+
 -- | Ordering that treats preferred versions as greater than non-preferred
 -- versions.
 preferredVersionsOrdering :: VR -> Ver -> Ver -> Ordering

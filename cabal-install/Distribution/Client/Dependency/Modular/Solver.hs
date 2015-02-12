@@ -43,6 +43,7 @@ solve sc idx userPrefs userConstraints userGoals =
     heuristicsPhase  = P.firstGoal . -- after doing goal-choice heuristics, commit to the first choice (saves space)
                        P.deferWeakFlagChoices .
                        P.preferBaseGoalChoice .
+                       P.preferLinked .
                        if preferEasyGoalChoices sc
                          then P.lpreferEasyGoalChoices
                          else id
