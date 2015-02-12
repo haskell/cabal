@@ -113,7 +113,7 @@ build = ana go
       case M.lookup pn idx of
         Nothing  -> FailF (toConflictSet (Goal (P qpn) gr)) (BuildFailureNotInIndex pn)
         Just pis -> PChoiceF qpn gr (P.fromList (L.map (\ (i, info) ->
-                                                           (i, bs { next = Instance qpn i info gr }))
+                                                           (POption i Nothing, bs { next = Instance qpn i info gr }))
                                                          (M.toList pis)))
           -- TODO: data structure conversion is rather ugly here
 
