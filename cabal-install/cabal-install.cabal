@@ -180,6 +180,7 @@ Test-Suite unit-tests
   other-modules:
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
+    UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.UserConfig
   build-depends:
