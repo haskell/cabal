@@ -51,6 +51,7 @@ data FailReason = InconsistentInitialConstraints
                 | MalformedStanzaChoice QSN
                 | EmptyGoalChoice
                 | Backjump
+                | MultipleInstances
   deriving (Eq, Show)
 
 -- | Functor for the tree type.

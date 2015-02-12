@@ -49,6 +49,7 @@ solve sc idx userPrefs userConstraints userGoals =
     preferencesPhase = P.preferPackagePreferences userPrefs
     validationPhase  = P.enforceManualFlags . -- can only be done after user constraints
                        P.enforcePackageConstraints userConstraints .
+                       P.enforceSingleInstanceRestriction .
                        validateTree idx
     prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
                        -- packages that can never be "upgraded":
