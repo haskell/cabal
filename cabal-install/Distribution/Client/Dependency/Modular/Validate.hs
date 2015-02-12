@@ -117,8 +117,8 @@ validate = cata go
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> QGoalReasonChain -> I -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
-    goP qpn@(Q pp pn) gr i r = do
+    goP :: QPN -> QGoalReasonChain -> POption -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goP qpn@(Q pp pn) gr (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies

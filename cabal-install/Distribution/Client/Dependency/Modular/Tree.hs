@@ -14,7 +14,7 @@ import Distribution.Client.Dependency.Modular.Version
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
-    PChoice     QPN a           (PSQ I        (Tree a))
+    PChoice     QPN a           (PSQ POption  (Tree a))
   | FChoice     QFN a Bool Bool (PSQ Bool     (Tree a)) -- Bool indicates whether it's weak/trivial, second Bool whether it's manual
   | SChoice     QSN a Bool      (PSQ Bool     (Tree a)) -- Bool indicates whether it's trivial
   | GoalChoice                  (PSQ OpenGoal (Tree a)) -- PSQ should never be empty
@@ -29,6 +29,11 @@ data Tree a =
   -- case for flags that should be implied by what's currently installed on
   -- the system, as opposed to flags that are used to explicitly enable or
   -- disable some functionality.
+
+-- | A package option is an instance, together with an optional annotation that
+-- this package is linked to the same package with another prefix
+data POption = POption I (Maybe PP)
+  deriving (Eq, Show)
 
 data FailReason = InconsistentInitialConstraints
                 | Conflicting [Dep QPN]
@@ -50,7 +55,7 @@ data FailReason = InconsistentInitialConstraints
 
 -- | Functor for the tree type.
 data TreeF a b =
-    PChoiceF    QPN a           (PSQ I        b)
+    PChoiceF    QPN a           (PSQ POption  b)
   | FChoiceF    QFN a Bool Bool (PSQ Bool     b)
   | SChoiceF    QSN a Bool      (PSQ Bool     b)
   | GoalChoiceF                 (PSQ OpenGoal b)

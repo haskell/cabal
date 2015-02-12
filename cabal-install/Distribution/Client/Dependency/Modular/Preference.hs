@@ -25,12 +25,15 @@ import Distribution.Client.Dependency.Modular.Version
 -- | Generic abstraction for strategies that just rearrange the package order.
 -- Only packages that match the given predicate are reordered.
 packageOrderFor :: (PN -> Bool) -> (PN -> I -> I -> Ordering) -> Tree a -> Tree a
-packageOrderFor p cmp = trav go
+packageOrderFor p cmp' = trav go
   where
     go (PChoiceF v@(Q _ pn) r cs)
       | p pn                        = PChoiceF v r (P.sortByKeys (flip (cmp pn)) cs)
       | otherwise                   = PChoiceF v r                               cs
     go x                            = x
+
+    cmp :: PN -> POption -> POption -> Ordering
+    cmp pn (POption i _) (POption i' _) = cmp' pn i i'
 
 -- | Ordering that treats preferred versions as greater than non-preferred
 -- versions.
@@ -114,7 +117,7 @@ enforcePackageConstraints pcs = trav go
     go (PChoiceF qpn@(Q _ pn)               gr      ts) =
       let c = toConflictSet (Goal (P qpn) gr)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ i -> foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
+          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
                            (M.findWithDefault [] pn pcs)
       in PChoiceF qpn gr      (P.mapWithKey g ts)
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =
@@ -173,8 +176,8 @@ requireInstalled p = trav go
       | p pn      = PChoiceF v gr (P.mapWithKey installed cs)
       | otherwise = PChoiceF v gr                         cs
       where
-        installed (I _ (Inst _)) x = x
-        installed _              _ = Fail (toConflictSet (Goal (P v) gr)) CannotInstall
+        installed (POption (I _ (Inst _)) _) x = x
+        installed _ _ = Fail (toConflictSet (Goal (P v) gr)) CannotInstall
     go x          = x
 
 -- | Avoid reinstalls.
@@ -198,12 +201,13 @@ avoidReinstalls p = trav go
       | otherwise = PChoiceF qpn gr cs
       where
         disableReinstalls =
-          let installed = [ v | (I v (Inst _), _) <- toList cs ]
+          let installed = [ v | (POption (I v (Inst _)) _, _) <- toList cs ]
           in  P.mapWithKey (notReinstall installed) cs
 
-        notReinstall vs (I v InRepo) _
-          | v `elem` vs                = Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
-        notReinstall _  _            x = x
+        notReinstall vs (POption (I v InRepo) _) _ | v `elem` vs =
+          Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
+        notReinstall _ _ x =
+          x
     go x          = x
 
 -- | Always choose the first goal in the list next, abandoning all
@@ -278,4 +282,3 @@ preferEasyGoalChoices' = para (inn . go)
   where
     go (GoalChoiceF xs) = GoalChoiceF (P.map fst (P.sortBy (comparing (choices . snd)) xs))
     go x                = fmap fst x
-
