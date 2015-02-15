@@ -1244,9 +1244,16 @@ installCommand = CommandUI {
      ++ " affect future commands such as `build` and `repl`. See the help for"
      ++ " `configure` for a list of commands being affected.\n"
      ++ "\n"
-     ++ "By default, installed executables will be put into `~/.cabal/bin/`."
+     ++ "Installed executables will by default (and without a sandbox)"
+     ++ " be put into `~/.cabal/bin/`."
      ++ " If you want installed executable to be available globally, make"
-     ++ " sure that the PATH environment variable contains that directory.\n",
+     ++ " sure that the PATH environment variable contains that directory.\n"
+     ++ "When using a sandbox, executables will be put into"
+     ++ " `$SANDBOX/bin/` (by default: `./.cabal-sandbox/bin/`).\n"
+     ++ "\n"
+     ++ "When specifying --bindir, consider also specifying --datadir;"
+     ++ " this way the sandbox can be deleted and the executable should"
+     ++ " continue working as long as bindir and datadir are left untouched.",
   commandNotes        = Just $ \pname ->
         ( case commandNotes configureCommand of
             Just desc -> desc pname ++ "\n"
@@ -1259,7 +1266,11 @@ installCommand = CommandUI {
      ++ "  " ++ pname ++ " install foo-1.0         "
      ++ "    Specific version of a package\n"
      ++ "  " ++ pname ++ " install 'foo < 2'       "
-     ++ "    Constrained package version\n",
+     ++ "    Constrained package version\n"
+     ++ "  " ++ pname ++ " install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
+     ++ "  " ++ (map (const ' ') pname)
+                      ++ "                         "
+     ++ "    Change installation destination",
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
@@ -1962,6 +1973,10 @@ execCommand = CommandUI {
     ++ " in `" ++ pname ++ " exec`. But with `" ++ pname ++ " exec`, the user"
     ++ " has more control and can, for example, execute custom scripts which"
     ++ " indirectly execute GHC.\n"
+    ++ "\n"
+    ++ "Note that `" ++ pname ++ " repl` is different from `" ++ pname
+    ++ " exec -- ghci` as the latter will not forward any additional flags"
+    ++ " being defined in the local package to ghci.\n"
     ++ "\n"
     ++ "See `" ++ pname ++ " sandbox`.",
   commandNotes        = Just $ \pname ->
