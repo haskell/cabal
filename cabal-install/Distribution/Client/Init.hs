@@ -312,7 +312,7 @@ getGenComments flags = do
                  ?>> return (Just False)
   return $ flags { noComments = maybeToFlag (fmap not genComments) }
   where
-    promptMsg = "Include documentation on what each field means (y/n)"
+    promptMsg = "Add informative comments to each field in the cabal file (y/n)"
 
 -- | Ask for the source root directory.
 getSrcDir :: InitFlags -> IO InitFlags
