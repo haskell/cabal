@@ -589,9 +589,16 @@ getNormalCommandDescriptions cmds =
   | Command name description _ NormalCommand <- cmds ]
 
 helpCommandUI :: CommandUI ()
-helpCommandUI = mkCommandUI
-  "help"
-  "Help about commands."
-  ["[FLAGS]", "COMMAND [FLAGS]"]
-  ()
-  (const [])
+helpCommandUI =
+  (mkCommandUI
+    "help"
+    "Help about commands."
+    ["[FLAGS]", "COMMAND [FLAGS]"]
+    ()
+    (const []))
+  {
+    commandNotes = Just $ \pname ->
+       "Examples:\n"
+    ++ "  " ++ pname ++ " help help\n"
+    ++ "    Oh, appararently you already know this.\n"
+  }

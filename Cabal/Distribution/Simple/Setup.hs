@@ -380,7 +380,7 @@ configureCommand progConf = CommandUI
       ++ "\n"
       ++ "The configuration affects several other commands, "
       ++ "including build, test, bench, run, repl.\n"
-  , commandNotes        = Just (\_ -> programFlagsDescription progConf)
+  , commandNotes        = Just $ \pname -> programFlagsDescription progConf
   , commandUsage        = \pname ->
       "Usage: " ++ pname ++ " configure [FLAGS]\n"
   , commandDefaultFlags = defaultConfigFlags progConf
