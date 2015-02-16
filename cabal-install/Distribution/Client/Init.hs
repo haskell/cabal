@@ -107,6 +107,7 @@ initCabal verbosity packageDBs comp conf initFlags = do
 
   writeLicense initFlags'
   writeSetupFile initFlags'
+  writeChangelog initFlags'
   createSourceDirectories initFlags'
   success <- writeCabalFile initFlags'
 
@@ -626,6 +627,21 @@ writeSetupFile flags = do
     [ "import Distribution.Simple"
     , "main = defaultMain"
     ]
+
+writeChangelog :: InitFlags -> IO ()
+writeChangelog flags = do
+  message flags "Generating changelog.md..."
+  writeFileSafe flags "changelog.md" changelog
+ where
+  changelog = unlines
+    [ "# Revision history for " ++ pname
+    , ""
+    , "## " ++ pver ++ "  YYYY-mm-dd"
+    , ""
+    , "* First version. Released on an unsuspecting world."
+    ]
+  pname = maybe "" display $ flagToMaybe $ packageName flags
+  pver = maybe "" display $ flagToMaybe $ version flags
 
 writeCabalFile :: InitFlags -> IO Bool
 writeCabalFile flags@(InitFlags{packageName = NoFlag}) = do
