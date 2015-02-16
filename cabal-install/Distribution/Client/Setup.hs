@@ -361,7 +361,9 @@ globalRepos globalFlags = remoteRepos ++ localRepos
 configureCommand :: CommandUI ConfigFlags
 configureCommand = c
   { commandDefaultFlags = mempty
-  , commandNotes = Just $ \pname -> (maybe "" ($pname) (commandNotes c))
+  , commandNotes = Just $ \pname -> (case commandNotes c of
+         Nothing -> ""
+         Just n  -> n pname ++ "\n")
        ++ "Examples:\n"
        ++ "  " ++ pname ++ " configure\n"
        ++ "    Configure with defaults;\n"
@@ -1255,9 +1257,11 @@ installCommand = CommandUI {
      ++ " this way the sandbox can be deleted and the executable should"
      ++ " continue working as long as bindir and datadir are left untouched.",
   commandNotes        = Just $ \pname ->
-        ( case commandNotes configureCommand of
-            Just desc -> desc pname ++ "\n"
-            Nothing   -> "" )
+        ( case commandNotes
+               $ Cabal.configureCommand defaultProgramConfiguration
+          of Just desc -> desc pname ++ "\n"
+             Nothing   -> ""
+        )
      ++ "Examples:\n"
      ++ "  " ++ pname ++ " install                 "
      ++ "    Package in the current directory\n"
@@ -1889,19 +1893,20 @@ sandboxCommand = CommandUI {
   commandNotes        = Just $ \pname ->
        relevantConfigValuesText ["require-sandbox"
                                 ,"ignore-sandbox"]
+    ++ "\n"
     ++ "Examples:\n"
-    ++ "  " ++ pname ++ " sandbox init\n"
-    ++ "  " ++ pname ++ " sandbox add-source ../foo\n"
-    ++ "  " ++ pname ++ " install --only-dependencies\n"
-    ++ "    Set up a sandbox with one local dependency,\n"
-    ++ "  " ++ pname ++ " sandbox delete"
-    ++ "  " ++ pname ++ " sandbox init"
-    ++ "  " ++ pname ++ " install --only-dependencies\n"
-    ++ "    Reset the sandbox;\n"
-    ++ "  " ++ pname ++ " sandbox hc-pkg list"
-    ++ "    List the packages in the sandbox;\n"
-    ++ "  " ++ pname ++ "  sandbox hc-pkg -- --force unregister broken\n"
-    ++ "    Unregister the `broken` package from the sandbox.",
+    ++ "  Set up a sandbox with one local dependency, located at ../foo:\n"
+    ++ "    " ++ pname ++ " sandbox init\n"
+    ++ "    " ++ pname ++ " sandbox add-source ../foo\n"
+    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "  Reset the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox delete\n"
+    ++ "    " ++ pname ++ " sandbox init\n"
+    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "  List the packages in the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox hc-pkg list\n"
+    ++ "  Unregister the `broken` package from the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox hc-pkg -- --force unregister broken\n",
   commandUsage        = usageAlternatives "sandbox"
     [ "init          [FLAGS]"
     , "delete        [FLAGS]"
@@ -1978,7 +1983,7 @@ execCommand = CommandUI {
     ++ " exec -- ghci` as the latter will not forward any additional flags"
     ++ " being defined in the local package to ghci.\n"
     ++ "\n"
-    ++ "See `" ++ pname ++ " sandbox`.",
+    ++ "See `" ++ pname ++ " sandbox`.\n",
   commandNotes        = Just $ \pname ->
        "Examples:\n"
     ++ "  " ++ pname ++ " exec -- ghci -Wall\n"
