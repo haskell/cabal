@@ -1059,7 +1059,13 @@ listCommand = CommandUI {
             trueArg
 
         , option "" ["package-db"]
-          "Use a given package database. May be a specific file, 'global', 'user' or 'clear'."
+          (   "Modify the list of package databases used. The exact behaviour"
+           ++ " (especially the initial list) is"
+           ++ " not clearly defined at this point. The parameter can be one of:"
+           ++ " a specific file, 'global', 'user' or 'clear'."
+           ++ " Everything other than 'clear' will push to the end of the list"
+           ++ " while clear clears the whole list."
+           ++ " Note that currently, the global package must be the first in the list.")
           listPackageDBs (\v flags -> flags { listPackageDBs = v })
           (reqArg' "DB" readPackageDbList showPackageDbList)
 
@@ -1112,7 +1118,13 @@ infoCommand = CommandUI {
         optionVerbosity infoVerbosity (\v flags -> flags { infoVerbosity = v })
 
         , option "" ["package-db"]
-          "Use a given package database. May be a specific file, 'global', 'user' or 'clear'."
+          (   "Modify the list of package databases used. The exact behaviour"
+           ++ " (especially the initial list) is"
+           ++ " not clearly defined at this point. The parameter can be one of:"
+           ++ " a specific file, 'global', 'user' or 'clear'."
+           ++ " Everything other than 'clear' will push to the end of the list"
+           ++ " while clear clears the whole list."
+           ++ " Note that currently, the global package must be the first in the list.")
           infoPackageDBs (\v flags -> flags { infoPackageDBs = v })
           (reqArg' "DB" readPackageDbList showPackageDbList)
 
