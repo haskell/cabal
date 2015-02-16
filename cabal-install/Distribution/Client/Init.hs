@@ -257,12 +257,13 @@ guessExtraSourceFiles flags = do
     maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
   files <- getDirectoryContents dir
   let extraFiles = filter isExtra files
-  if any (likeFileNameBase changelogLikeBases) extraFiles
+  if any isLikeChangelog extraFiles
     then return extraFiles
     else return (defaultChangelog : extraFiles)
 
   where
     isExtra = likeFileNameBase ("README" : changelogLikeBases)
+    isLikeChangelog = likeFileNameBase changelogLikeBases
     likeFileNameBase candidates = (`elem` candidates) . map toUpper . takeBaseName
     changelogLikeBases = ["CHANGES", "CHANGELOG"]
 
