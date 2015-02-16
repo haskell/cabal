@@ -264,7 +264,7 @@ guessExtraSourceFiles flags = do
   where
     isExtra = likeFileNameBase ("README" : changelogLikeBases)
     likeFileNameBase candidates = (`elem` candidates) . map toUpper . takeBaseName
-    changelogLikeBases = ["CHANGES", "CHANGLOG"]
+    changelogLikeBases = ["CHANGES", "CHANGELOG"]
 
 -- | Ask whether the project builds a library or executable.
 getLibOrExec :: InitFlags -> IO InitFlags
