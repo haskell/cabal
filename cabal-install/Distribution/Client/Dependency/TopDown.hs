@@ -33,11 +33,12 @@ import Distribution.Client.Dependency.Types
          , Progress(..), foldProgress )
 
 import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Client.PackageIndex (PackageIndex)
+import Distribution.Client.PackageIndex
+         ( PackageIndex, PackageFixedDeps(depends) )
 import Distribution.Package
          ( PackageName(..), PackageId, Package(..), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion
-         , simplifyDependency, PackageFixedDeps(depends) )
+         , simplifyDependency )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
 import Distribution.Client.PackageUtils

@@ -90,6 +90,8 @@ import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
+import Distribution.Client.PackageIndex
+         ( PackageFixedDeps(..) )
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReports
 import qualified Distribution.Client.BuildReports.Storage as BuildReports
          ( storeAnonymous, storeLocal, fromInstallPlan, fromPlanningFailure )
@@ -128,7 +130,7 @@ import Distribution.Simple.InstallDirs as InstallDirs
          , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
-         , Package(..), PackageFixedDeps(..), PackageKey
+         , Package(..), PackageKey
          , Dependency(..), thisPackageVersion, InstalledPackageId, installedPackageId )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription

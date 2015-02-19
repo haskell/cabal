@@ -54,7 +54,7 @@ import Distribution.Client.Types
          , InstalledPackage(..), fakeInstalledPackageId )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
-         , PackageFixedDeps(..), Dependency(..), InstalledPackageId
+         , Dependency(..), InstalledPackageId
          , PackageInstalled(..) )
 import Distribution.Version
          ( Version, withinRange )
@@ -63,6 +63,8 @@ import Distribution.PackageDescription
          , Flag(flagName), FlagName(..) )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
+import Distribution.Client.PackageIndex
+         ( PackageFixedDeps(..) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Simple.PackageIndex

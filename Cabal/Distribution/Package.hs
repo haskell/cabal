@@ -38,7 +38,6 @@ module Distribution.Package (
 
         -- * Package classes
         Package(..), packageName, packageVersion,
-        PackageFixedDeps(..),
         PackageInstalled(..),
   ) where
 
@@ -359,16 +358,6 @@ packageVersion  = pkgVersion . packageId
 
 instance Package PackageIdentifier where
   packageId = id
-
--- | Subclass of packages that have specific versioned dependencies.
---
--- So for example a not-yet-configured package has dependencies on version
--- ranges, not specific versions. A configured or an already installed package
--- depends on exact versions. Some operations or data structures (like
---  dependency graphs) only make sense on this subclass of package types.
---
-class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> [PackageIdentifier]
 
 -- | Class of installed packages.
 --
