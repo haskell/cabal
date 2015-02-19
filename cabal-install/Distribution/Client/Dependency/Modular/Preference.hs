@@ -259,6 +259,19 @@ preferBaseGoalChoice = trav go
     preferBase _ (OpenGoal (Simple (Dep (Q _pp pn) _) _) _) | unPN pn == "base" = GT
     preferBase _ _                                                              = EQ
 
+-- | Deal with setup dependencies after regular dependencies, so that we can
+-- will link setup depencencies against package dependencies when possible
+deferSetupChoices :: Tree a -> Tree a
+deferSetupChoices = trav go
+  where
+    go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys deferSetup xs)
+    go x                = x
+
+    deferSetup :: OpenGoal comp -> OpenGoal comp -> Ordering
+    deferSetup (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) _ = GT
+    deferSetup _ (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) = LT
+    deferSetup _ _                                                 = EQ
+
 -- | Transformation that sorts choice nodes so that
 -- child nodes with a small branching degree are preferred. As a
 -- special case, choices with 0 branches will be preferred (as they
