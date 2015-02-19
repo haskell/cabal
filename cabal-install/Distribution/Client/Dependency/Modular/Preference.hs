@@ -230,9 +230,9 @@ preferBaseGoalChoice = trav go
     go x                = x
 
     preferBase :: OpenGoal -> OpenGoal -> Ordering
-    preferBase (OpenGoal (Simple (Dep (Q [] pn) _)) _) _ | unPN pn == "base" = LT
-    preferBase _ (OpenGoal (Simple (Dep (Q [] pn) _)) _) | unPN pn == "base" = GT
-    preferBase _ _                                                           = EQ
+    preferBase (OpenGoal (Simple (Dep (Q _pp pn) _)) _) _ | unPN pn == "base" = LT
+    preferBase _ (OpenGoal (Simple (Dep (Q _pp pn) _)) _) | unPN pn == "base" = GT
+    preferBase _ _                                                            = EQ
 
 -- | Transformation that sorts choice nodes so that
 -- child nodes with a small branching degree are preferred. As a
