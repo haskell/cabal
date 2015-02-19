@@ -26,11 +26,12 @@ module Distribution.Client.Dependency.TopDown.Constraints (
 
 import Distribution.Client.Dependency.TopDown.Types
 import qualified Distribution.Client.PackageIndex as PackageIndex
-import Distribution.Client.PackageIndex (PackageIndex)
+import Distribution.Client.PackageIndex
+        ( PackageIndex, PackageFixedDeps(depends) )
 import Distribution.Package
          ( PackageName, PackageId, PackageIdentifier(..)
          , Package(packageId), packageName, packageVersion
-         , Dependency, PackageFixedDeps(depends) )
+         , Dependency )
 import Distribution.Version
          ( Version )
 import Distribution.Client.Utils

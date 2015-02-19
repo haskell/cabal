@@ -15,7 +15,7 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..), PackageFixedDeps(..)
+         ( PackageName, PackageId, Package(..)
          , mkPackageKey, PackageKey, InstalledPackageId(..)
          , PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
@@ -26,7 +26,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( mapTreeData )
 import Distribution.Client.PackageIndex
-         ( PackageIndex )
+         ( PackageIndex, PackageFixedDeps(..) )
 import Distribution.Version
          ( VersionRange )
 import Distribution.Simple.Compiler
