@@ -72,24 +72,19 @@ data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
         | DragonFly
         | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
         | HaLVM                        -- bare metal / VMs / hypervisors
-        | IOS                          -- iOS
+        | IOS  | Android               -- mobile OSs
         | Ghcjs
         | OtherOS String
   deriving (Eq, Generic, Ord, Show, Read, Typeable, Data)
 
 instance Binary OS
 
---TODO: decide how to handle Android and iOS.
--- They are like Linux and OSX but with some differences.
--- Should they be separate from Linux/OS X, or a subtype?
--- e.g. should we have os(linux) && os(android) true simultaneously?
-
 knownOSs :: [OS]
 knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD, DragonFly
            ,Solaris, AIX, HPUX, IRIX
            ,HaLVM
-           ,IOS
+           ,IOS, Android
            ,Ghcjs]
 
 osAliases :: ClassificationStrictness -> OS -> [String]
