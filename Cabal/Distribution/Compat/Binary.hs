@@ -14,26 +14,21 @@ module Distribution.Compat.Binary
 #endif
        ) where
 
+import Control.Exception (ErrorCall(..), catch, evaluate)
 import Data.ByteString.Lazy (ByteString)
+
+#if __GLASGOW_HASKELL__ < 706
+import Prelude hiding (catch)
+#endif
 
 #if __GLASGOW_HASKELL__ >= 708 || MIN_VERSION_binary(0,7,0)
 
 import Data.Binary
 
-decodeOrFailIO :: Binary a => ByteString -> IO (Either String a)
-decodeOrFailIO bs =
-  return $ case decodeOrFail bs of
-    Left (_, _, msg) -> Left msg
-    Right (_, _, a) -> Right a
-
 #else
 
-import Control.Exception (ErrorCall(..), catch, evaluate)
 import Data.Binary.Get
 import Data.Binary.Put
-#if __GLASGOW_HASKELL__ < 706
-import Prelude hiding (catch)
-#endif
 
 import Distribution.Compat.Binary.Class
 import Distribution.Compat.Binary.Generic ()
@@ -49,9 +44,9 @@ encode :: Binary a => a -> ByteString
 encode = runPut . put
 {-# INLINE encode #-}
 
+#endif
+
 decodeOrFailIO :: Binary a => ByteString -> IO (Either String a)
 decodeOrFailIO bs =
   catch (evaluate (decode bs) >>= return . Right)
   $ \(ErrorCall str) -> return $ Left str
-
-#endif
