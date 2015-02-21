@@ -91,19 +91,28 @@ import Distribution.Simple.PackageIndex
 import Distribution.Text
   ( display, Text(..) )
 
+import Distribution.Client.PackageIndex
+  ( elemByPackageName )
+import Distribution.Client.IndexUtils
+  ( getSourcePackages )
+import Distribution.Client.Types
+  ( SourcePackageDb(..), Repo )
+
 initCabal :: Verbosity
           -> PackageDBStack
+          -> [Repo]
           -> Compiler
           -> ProgramConfiguration
           -> InitFlags
           -> IO ()
-initCabal verbosity packageDBs comp conf initFlags = do
+initCabal verbosity packageDBs repos comp conf initFlags = do
 
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
+  sourcePkgDb <- getSourcePackages verbosity repos
 
   hSetBuffering stdout NoBuffering
 
-  initFlags' <- extendFlags installedPkgIndex initFlags
+  initFlags' <- extendFlags installedPkgIndex sourcePkgDb initFlags
 
   writeLicense initFlags'
   writeSetupFile initFlags'
@@ -118,9 +127,9 @@ initCabal verbosity packageDBs comp conf initFlags = do
 
 -- | Fill in more details by guessing, discovering, or prompting the
 --   user.
-extendFlags :: InstalledPackageIndex -> InitFlags -> IO InitFlags
-extendFlags pkgIx =
-      getPackageName
+extendFlags :: InstalledPackageIndex -> SourcePackageDb -> InitFlags -> IO InitFlags
+extendFlags pkgIx sourcePkgDb =
+      getPackageName sourcePkgDb
   >=> getVersion
   >=> getLicense
   >=> getAuthorInfo
@@ -149,17 +158,35 @@ maybeToFlag :: Maybe a -> Flag a
 maybeToFlag = maybe NoFlag Flag
 
 -- | Get the package name: use the package directory (supplied, or the current
---   directory by default) as a guess.
-getPackageName :: InitFlags -> IO InitFlags
-getPackageName flags = do
+--   directory by default) as a guess. It looks at the SourcePackageDb to avoid
+--   using an existing package name.
+getPackageName :: SourcePackageDb -> InitFlags -> IO InitFlags
+getPackageName sourcePkgDb flags = do
   guess    <-     traverse guessPackageName (flagToMaybe $ packageDir flags)
               ?>> Just `fmap` (getCurrentDirectory >>= guessPackageName)
 
-  pkgName' <-     return (flagToMaybe $ packageName flags)
-              ?>> maybePrompt flags (prompt "Package name" guess)
-              ?>> return guess
+  let guess' | isPkgRegistered guess = Nothing
+             | otherwise = guess
 
-  return $ flags { packageName = maybeToFlag pkgName' }
+  pkgName' <-     return (flagToMaybe $ packageName flags)
+              ?>> maybePrompt flags (prompt "Package name" guess')
+              ?>> return guess'
+
+  chooseAgain <- if isPkgRegistered pkgName'
+                    then promptYesNo promptOtherNameMsg (Just True)
+                    else return False
+
+  if chooseAgain
+    then getPackageName sourcePkgDb flags
+    else return $ flags { packageName = maybeToFlag pkgName' }
+
+  where
+    isPkgRegistered (Just pkg) = elemByPackageName (packageIndex sourcePkgDb) pkg
+    isPkgRegistered Nothing    = False
+
+    promptOtherNameMsg = "This package name is already used by another " ++
+                         "package on hackage. Do you want to choose a " ++
+                         "different name"
 
 -- | Package version: use 0.1.0.0 as a last resort, but try prompting the user
 --  if possible.
