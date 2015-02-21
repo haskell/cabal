@@ -1045,9 +1045,11 @@ initAction initFlags _extraArgs globalFlags = do
   let verbosity = fromFlag (initVerbosity initFlags)
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let configFlags  = savedConfigureFlags config
+  let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
   initCabal verbosity
             (configPackageDB' configFlags)
+            (globalRepos globalFlags')
             comp
             conf
             initFlags
