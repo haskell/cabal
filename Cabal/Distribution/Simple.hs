@@ -568,7 +568,10 @@ autoconfUserHooks
     = simpleUserHooks
       {
        postConf    = defaultPostConf,
-       preBuild    = readHook buildVerbosity,
+       preBuild    = \_ flags ->
+                       -- not using 'readHook' here because 'build' takes
+                       -- extra args
+                       getHookedBuildInfo $ fromFlag $ buildVerbosity flags,
        preClean    = readHook cleanVerbosity,
        preCopy     = readHook copyVerbosity,
        preInst     = readHook installVerbosity,
