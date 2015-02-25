@@ -493,8 +493,13 @@ renderPureArgs version comp args = concat
     [ (:[]) . (\f -> "--dump-interface="++ unDir (argOutputDir args) </> f)
       . fromFlag . argInterfaceFile $ args
 
-    , (\pname -> ["--optghc=-package-name", "--optghc=" ++ pname])
-      . display . fromFlag . argPackageName $ args
+    , if isVersion 2 16
+        then (\pkg -> [ "--package-name=" ++ display (pkgName pkg)
+                      , "--package-version="++display (pkgVersion pkg)
+                      ])
+             . fromFlag . argPackageName $ args
+        else (\pname -> ["--optghc=-package-name", "--optghc=" ++ pname])
+             . display . fromFlag . argPackageName $ args
 
     , (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b)
                      . argHideModules $ args
@@ -504,7 +509,7 @@ renderPureArgs version comp args = concat
     , maybe [] (\(m,e,l) ->
                  ["--source-module=" ++ m
                  ,"--source-entity=" ++ e]
-                 ++ if isVersion2_14 then ["--source-entity-line=" ++ l]
+                 ++ if isVersion 2 14 then ["--source-entity-line=" ++ l]
                     else []
                ) . flagToMaybe . argLinkSource $ args
 
@@ -539,11 +544,10 @@ renderPureArgs version comp args = concat
         map (\(i,mh) -> "--read-interface=" ++
           maybe "" (++",") mh ++ i)
       bool a b c = if c then a else b
-      isVersion2_5  = version >= Version [2,5]  []
-      isVersion2_14 = version >= Version [2,14] []
+      isVersion major minor  = version >= Version [major,minor]  []
       verbosityFlag
-       | isVersion2_5 = "--verbosity=1"
-       | otherwise = "--verbose"
+       | isVersion 2 5 = "--verbosity=1"
+       | otherwise     = "--verbose"
 
 ---------------------------------------------------------------------------------
 
