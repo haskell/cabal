@@ -851,8 +851,8 @@ runCommand = CommandUI {
           "Examples:\n"
        ++ "  " ++ pname ++ " run\n"
        ++ "    Run the only executable in the current package;\n"
-       ++ "  " ++ pname ++ " run foo -- --key=value\n"
-       ++ "    Run the `foo` executable with some flag.\n",
+       ++ "  " ++ pname ++ " run foo -- --fooflag\n"
+       ++ "    Works similar to `./foo --fooflag`.\n",
     commandUsage        = usageAlternatives "run"
         ["[FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]"],
     commandDefaultFlags = mempty,
@@ -957,7 +957,7 @@ getCommand = CommandUI {
           "Examples:\n"
        ++ "  " ++ pname ++ " get hlint\n"
        ++ "    Download the latest stable version of hlint;\n"
-       ++ "  " ++ pname ++ " get lens -shead\n"
+       ++ "  " ++ pname ++ " get lens --source-repository=head\n"
        ++ "    Download the source repository (i.e. git clone from github).\n",
     commandUsage        = usagePackages "get",
     commandDefaultFlags = defaultGetFlags,
