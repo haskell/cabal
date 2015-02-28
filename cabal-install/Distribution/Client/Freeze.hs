@@ -39,6 +39,7 @@ import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
@@ -196,7 +197,7 @@ pruneInstallPlan :: InstallPlan.InstallPlan
                  -> Either [PlanPackage] [(PlanPackage, [PackageIdentifier])]
 pruneInstallPlan installPlan pkgSpecifiers =
     mapLeft (removeSelf pkgIds . PackageIndex.allPackages) $
-    PackageIndex.dependencyClosure pkgIdx pkgIds
+    PlanIndex.dependencyClosure pkgIdx pkgIds
   where
     pkgIdx = PackageIndex.fromList $ InstallPlan.toList installPlan
     pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
