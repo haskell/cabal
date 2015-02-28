@@ -33,6 +33,7 @@ import Distribution.Client.Dependency.Types
          , Progress(..), foldProgress )
 
 import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Client.PackageIndex
          ( PackageIndex, PackageFixedDeps(depends) )
 import Distribution.Package
@@ -424,7 +425,7 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
     transitiveDepends :: InstalledPackage -> [PackageId]
     transitiveDepends = map (packageId . toPkg) . tail . Graph.reachable graph
                       . fromJust . toVertex . packageId
-    (graph, toPkg, toVertex) = PackageIndex.dependencyGraph installed
+    (graph, toPkg, toVertex) = PlanIndex.dependencyGraph installed
 
 
 -- | Annotate each available packages with its topological sort number and any
@@ -667,7 +668,7 @@ improvePlan installed constraints0 selected0 =
                                   . Graph.topSort
                                   . Graph.transposeG
                                   $ graph
-      where (graph, toPkg, _) = PackageIndex.dependencyGraph index
+      where (graph, toPkg, _) = PlanIndex.dependencyGraph index
 
 -- ------------------------------------------------------------
 -- * Adding and recording constraints
