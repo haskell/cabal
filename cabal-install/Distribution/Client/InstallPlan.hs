@@ -44,7 +44,10 @@ module Distribution.Client.InstallPlan (
   PackageProblem(..),
   showPackageProblem,
   problems,
-  configuredPackageProblems
+  configuredPackageProblems,
+
+  -- ** Querying the install plan
+  dependencyClosure,
   ) where
 
 import Distribution.Client.Types
@@ -628,3 +631,18 @@ configuredPackageProblems platform cinfo
          (enableStanzas stanzas $ packageDescription pkg) of
         Right (resolvedPkg, _) -> externalBuildDepends resolvedPkg
         Left  _ -> error "configuredPackageInvalidDeps internal error"
+
+-- | Compute the dependency closure of a _source_ package in a install plan
+--
+-- See `Distribution.Simple.dependencyClosure`
+dependencyClosure :: InstallPlan
+                  -> [PackageIdentifier]
+                  -> Either (PackageIndex PlanPackage) [(PlanPackage, [InstalledPackageId])]
+dependencyClosure installPlan pids =
+    PackageIndex.dependencyClosure'
+      (planFakeMap installPlan)
+      (planIndex installPlan)
+      (map (resolveFakeId . fakeInstalledPackageId) pids)
+  where
+    resolveFakeId :: InstalledPackageId -> InstalledPackageId
+    resolveFakeId ipid = Map.findWithDefault ipid ipid (planFakeMap installPlan)
