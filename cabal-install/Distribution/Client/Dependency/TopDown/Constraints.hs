@@ -27,7 +27,7 @@ module Distribution.Client.Dependency.TopDown.Constraints (
 import Distribution.Client.Dependency.TopDown.Types
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.PackageIndex
-        ( PackageIndex, PackageFixedDeps(depends) )
+        ( PackageIndex )
 import Distribution.Package
          ( PackageName, PackageId, PackageIdentifier(..)
          , Package(packageId), packageName, packageVersion
@@ -225,14 +225,12 @@ transitionsTo constraints @(Constraints _ available  excluded  _ _)
       SourceOnly           b -> SourceOnly    (g b)
       InstalledAndSource a b -> InstalledAndSource (f a) (g b)
 
-
 -- | We construct 'Constraints' with an initial 'PackageIndex' of all the
 -- packages available.
 --
-empty :: (PackageFixedDeps installed, Package source)
-      => PackageIndex installed
-      -> PackageIndex source
-      -> Constraints installed source reason
+empty :: PackageIndex InstalledPackageEx
+      -> PackageIndex UnconfiguredPackage
+      -> Constraints InstalledPackageEx UnconfiguredPackage reason
 empty installed source =
     Constraints targets pkgs excluded pairs pkgs
   where
@@ -254,8 +252,8 @@ empty installed source =
       , let name   = packageName pkg1
             pkgid1 = packageId pkg1
             pkgid2 = packageId pkg2
-      ,    any ((pkgid1==) . packageId) (depends pkg2)
-        || any ((pkgid2==) . packageId) (depends pkg1) ]
+      ,    any ((pkgid1==) . packageId) (sourceDeps pkg2)
+        || any ((pkgid2==) . packageId) (sourceDeps pkg1) ]
 
 
 -- | The package targets.
