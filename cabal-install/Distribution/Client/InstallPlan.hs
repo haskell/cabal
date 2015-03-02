@@ -55,7 +55,7 @@ import Distribution.Client.Types
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , Dependency(..), InstalledPackageId
-         , PackageInstalled(..) )
+         , HasInstalledPackageId(..), PackageInstalled(..) )
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.PackageDescription
@@ -159,7 +159,7 @@ instance PackageFixedDeps PlanPackage where
   depends (Installed pkg _) = depends pkg
   depends (Failed    pkg _) = depends pkg
 
-instance PackageInstalled PlanPackage where
+instance HasInstalledPackageId PlanPackage where
   installedPackageId (PreExisting pkg)   = installedPackageId pkg
   installedPackageId (Configured  pkg)   = installedPackageId pkg
   installedPackageId (Processing  pkg)   = installedPackageId pkg
@@ -168,6 +168,7 @@ instance PackageInstalled PlanPackage where
   installedPackageId (Installed   pkg _) = installedPackageId pkg
   installedPackageId (Failed      pkg _) = installedPackageId pkg
 
+instance PackageInstalled PlanPackage where
   installedDepends (PreExisting pkg) = installedDepends pkg
   installedDepends (Configured  pkg) = installedDepends pkg
   installedDepends (Processing pkg)  = installedDepends pkg
