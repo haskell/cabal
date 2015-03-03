@@ -54,20 +54,8 @@ data SourcePackageDb = SourcePackageDb {
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
 
--- | TODO: This is a hack to help us transition from Cabal-1.6 to 1.8.
--- What is new in 1.8 is that installed packages and dependencies between
--- installed packages are now identified by an opaque InstalledPackageId
--- rather than a source PackageId.
---
--- We should use simply an 'InstalledPackageInfo' here but to ease the
--- transition we are temporarily using this variant where we pretend that
--- installed packages still specify their deps in terms of PackageIds.
---
--- Crucially this means that 'InstalledPackage' can be an instance of
--- 'PackageFixedDeps' where as 'InstalledPackageInfo' is no longer an instance
--- of that class. This means we can make 'PackageIndex'es of InstalledPackage
--- where as the InstalledPackageInfo now has its own monomorphic index type.
---
+-- | InstalledPackage caches its dependencies as source package IDs.
+-- This is for the benefit of the top-down solver only.
 data InstalledPackage = InstalledPackage
        InstalledPackageInfo
        [PackageId]
@@ -75,7 +63,7 @@ data InstalledPackage = InstalledPackage
 instance Package InstalledPackage where
   packageId (InstalledPackage pkg _) = packageId pkg
 instance PackageFixedDeps InstalledPackage where
-  depends (InstalledPackage _ deps) = deps
+  depends (InstalledPackage pkg _) = depends pkg
 instance HasInstalledPackageId InstalledPackage where
   installedPackageId (InstalledPackage pkg _) = installedPackageId pkg
 instance PackageInstalled InstalledPackage where
@@ -133,12 +121,10 @@ instance Package ConfiguredPackage where
   packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
 
 instance PackageFixedDeps ConfiguredPackage where
-  depends (ConfiguredPackage _ _ _ deps) = map confSrcId deps
+  depends (ConfiguredPackage _ _ _ deps) = map confInstId deps
 
 instance HasInstalledPackageId ConfiguredPackage where
   installedPackageId = fakeInstalledPackageId . packageId
-instance PackageInstalled ConfiguredPackage where
-  installedDepends = map fakeInstalledPackageId . depends
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
@@ -153,12 +139,11 @@ instance Package ReadyPackage where
   packageId (ReadyPackage pkg _ _ _) = packageId pkg
 
 instance PackageFixedDeps ReadyPackage where
-  depends (ReadyPackage _ _ _ deps) = map packageId deps
+  depends (ReadyPackage _ _ _ deps) = map installedPackageId deps
 
 instance HasInstalledPackageId ReadyPackage where
   installedPackageId = fakeInstalledPackageId . packageId
-instance PackageInstalled ReadyPackage where
-  installedDepends (ReadyPackage _ _ _ ipis) = map installedPackageId ipis
+
 
 -- | Extracts a package key from ReadyPackage, a common operation needed
 -- to calculate build paths.
