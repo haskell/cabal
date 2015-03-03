@@ -27,8 +27,8 @@ import Distribution.PackageDescription
         Flag(..), PackageDescription(..),
         GenericPackageDescription(..))
 import Text.PrettyPrint
-       (hsep, comma, punctuate, parens, char, nest, empty,
-        isEmpty, ($$), (<+>), colon, (<>), text, vcat, ($+$), Doc, render)
+       (hsep, parens, char, nest, empty, isEmpty, ($$), (<+>),
+        colon, (<>), text, vcat, ($+$), Doc, render)
 import Distribution.Simple.Utils (writeUTF8File)
 import Distribution.ParseUtils (showFreeText, FieldDescr(..), indentWith, ppField, ppFields)
 import Distribution.PackageDescription.Parse (pkgDescrFieldDescrs,binfoFieldDescrs,libFieldDescrs,

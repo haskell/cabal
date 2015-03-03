@@ -76,7 +76,6 @@ import System.Directory         ( doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
-import Distribution.Compat.Exception (catchIO)
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration
