@@ -256,12 +256,16 @@ guessExtraSourceFiles flags = do
   dir <-
     maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
   files <- getDirectoryContents dir
-  return $ filter isExtra files
+  let extraFiles = filter isExtra files
+  if any isLikeChangeLog extraFiles
+    then return extraFiles
+    else return (defaultChangeLog : extraFiles)
 
   where
-    isExtra = (`elem` ["README", "CHANGES", "CHANGELOG"])
-            . map toUpper
-            . takeBaseName
+    isExtra = likeFileNameBase ("README" : changeLogLikeBases)
+    isLikeChangeLog = likeFileNameBase changeLogLikeBases
+    likeFileNameBase candidates = (`elem` candidates) . map toUpper . takeBaseName
+    changeLogLikeBases = ["CHANGES", "CHANGELOG"]
 
 -- | Ask whether the project builds a library or executable.
 getLibOrExec :: InitFlags -> IO InitFlags
@@ -632,7 +636,7 @@ writeSetupFile flags = do
     ]
 
 writeChangeLog :: InitFlags -> IO ()
-writeChangeLog flags = do
+writeChangeLog flags = when (any (== defaultChangeLog) $ maybe [] id (extraSrc flags)) $ do
   message flags ("Generating "++ defaultChangeLog ++"...")
   writeFileSafe flags defaultChangeLog changeLog
  where
