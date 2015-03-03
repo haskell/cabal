@@ -60,7 +60,7 @@ import Distribution.Client.Types
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
          , Dependency(..), PackageId, InstalledPackageId
-         , HasInstalledPackageId(..), PackageInstalled(..) )
+         , HasInstalledPackageId(..) )
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.PackageDescription
@@ -75,6 +75,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.PackageIndex
          ( PackageIndex, FakeMap )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Text
          ( display )
 import Distribution.System
@@ -173,14 +174,6 @@ instance HasInstalledPackageId PlanPackage where
   installedPackageId (Installed   pkg _) = installedPackageId pkg
   installedPackageId (Failed      pkg _) = installedPackageId pkg
 
-instance PackageInstalled PlanPackage where
-  installedDepends (PreExisting pkg) = installedDepends pkg
-  installedDepends (Configured  pkg) = installedDepends pkg
-  installedDepends (Processing pkg)  = installedDepends pkg
-  installedDepends (Installed _ (BuildOk _ _ (Just ipkg))) = installedDepends ipkg
-  installedDepends (Installed pkg _) = installedDepends pkg
-  installedDepends (Failed    pkg _) = installedDepends pkg
-
 data InstallPlan = InstallPlan {
     planIndex    :: PlanIndex,
     planFakeMap  :: FakeMap,
@@ -245,7 +238,7 @@ new platform cinfo index =
             planCompiler = cinfo
           }
       where (graph, vertexToPkgId, pkgIdToVertex) =
-              PackageIndex.dependencyGraph index
+              PlanIndex.dependencyGraph fakeMap index
               -- NB: doesn't need to know planFakeMap because the
               -- fakemap is empty at this point.
             noSuchPkgId = internalError "package is not in the graph"
@@ -291,7 +284,7 @@ ready plan = assert check readyPackages
       ]
 
     hasAllInstalledDeps :: ConfiguredPackage -> Maybe [Installed.InstalledPackageInfo]
-    hasAllInstalledDeps = mapM isInstalledDep . installedDepends
+    hasAllInstalledDeps = mapM isInstalledDep . depends
 
     isInstalledDep :: InstalledPackageId -> Maybe Installed.InstalledPackageInfo
     isInstalledDep pkgid =
@@ -470,17 +463,17 @@ problems platform cinfo fakeMap index =
      , not (null packageProblems) ]
 
   ++ [ PackageMissingDeps pkg (catMaybes (map (fmap packageId . PackageIndex.fakeLookupInstalledPackageId fakeMap index) missingDeps))
-     | (pkg, missingDeps) <- PackageIndex.brokenPackages' fakeMap index ]
+     | (pkg, missingDeps) <- PlanIndex.brokenPackages fakeMap index ]
 
   ++ [ PackageCycle cycleGroup
-     | cycleGroup <- PackageIndex.dependencyCycles' fakeMap index ]
+     | cycleGroup <- PlanIndex.dependencyCycles fakeMap index ]
 
   ++ [ PackageInconsistency name inconsistencies
-     | (name, inconsistencies) <- PackageIndex.dependencyInconsistencies' fakeMap index ]
+     | (name, inconsistencies) <- PlanIndex.dependencyInconsistencies fakeMap index ]
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
-     , Just pkg' <- map (PackageIndex.fakeLookupInstalledPackageId fakeMap index) (installedDepends pkg)
+     , Just pkg' <- map (PackageIndex.fakeLookupInstalledPackageId fakeMap index) (depends pkg)
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
@@ -488,8 +481,8 @@ problems platform cinfo fakeMap index =
 -- * if the result is @False@ use 'PackageIndex.dependencyCycles' to find out
 --   which packages are involved in dependency cycles.
 --
-acyclic :: PlanIndex -> Bool
-acyclic = null . PackageIndex.dependencyCycles
+acyclic :: FakeMap -> PlanIndex -> Bool
+acyclic fakeMap = null . PlanIndex.dependencyCycles fakeMap
 
 -- | An installation plan is closed if for every package in the set, all of
 -- its dependencies are also in the set. That is, the set is closed under the
@@ -498,8 +491,8 @@ acyclic = null . PackageIndex.dependencyCycles
 -- * if the result is @False@ use 'PackageIndex.brokenPackages' to find out
 --   which packages depend on packages not in the index.
 --
-closed :: PlanIndex -> Bool
-closed = null . PackageIndex.brokenPackages
+closed :: FakeMap -> PlanIndex -> Bool
+closed fakeMap = null . PlanIndex.brokenPackages fakeMap
 
 -- | An installation plan is consistent if all dependencies that target a
 -- single package name, target the same version.
@@ -517,8 +510,8 @@ closed = null . PackageIndex.brokenPackages
 -- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
 --   find out which packages are.
 --
-consistent :: PlanIndex -> Bool
-consistent = null . PackageIndex.dependencyInconsistencies
+consistent :: FakeMap -> PlanIndex -> Bool
+consistent fakeMap = null . PlanIndex.dependencyInconsistencies fakeMap
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on
@@ -644,7 +637,7 @@ dependencyClosure :: InstallPlan
                   -> [PackageIdentifier]
                   -> Either (PackageIndex PlanPackage) [(PlanPackage, [InstalledPackageId])]
 dependencyClosure installPlan pids =
-    PackageIndex.dependencyClosure'
+    PlanIndex.dependencyClosure
       (planFakeMap installPlan)
       (planIndex installPlan)
       (map (resolveFakeId . fakeInstalledPackageId) pids)
