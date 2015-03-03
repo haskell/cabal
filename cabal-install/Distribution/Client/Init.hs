@@ -107,6 +107,7 @@ initCabal verbosity packageDBs comp conf initFlags = do
 
   writeLicense initFlags'
   writeSetupFile initFlags'
+  writeChangeLog initFlags'
   createSourceDirectories initFlags'
   success <- writeCabalFile initFlags'
 
@@ -242,6 +243,9 @@ getExtraSourceFiles flags = do
                    ?>> Just `fmap` guessExtraSourceFiles flags
 
   return $ flags { extraSrc = extraSrcFiles }
+
+defaultChangeLog :: FilePath
+defaultChangeLog = "ChangeLog.md"
 
 -- | Try to guess things to include in the extra-source-files field.
 --   For now, we just look for things in the root directory named
@@ -626,6 +630,23 @@ writeSetupFile flags = do
     [ "import Distribution.Simple"
     , "main = defaultMain"
     ]
+
+writeChangeLog :: InitFlags -> IO ()
+writeChangeLog flags = do
+  message flags ("Generating "++ defaultChangeLog ++"...")
+  writeFileSafe flags defaultChangeLog changeLog
+ where
+  changeLog = unlines
+    [ "# Revision history for " ++ pname
+    , ""
+    , "## " ++ pver ++ "  -- YYYY-mm-dd"
+    , ""
+    , "* First version. Released on an unsuspecting world."
+    ]
+  pname = maybe "" display $ flagToMaybe $ packageName flags
+  pver = maybe "" display $ flagToMaybe $ version flags
+
+
 
 writeCabalFile :: InitFlags -> IO Bool
 writeCabalFile flags@(InitFlags{packageName = NoFlag}) = do
