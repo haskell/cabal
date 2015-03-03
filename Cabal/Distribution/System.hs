@@ -72,6 +72,7 @@ data OS = Linux | Windows | OSX        -- tier 1 desktop OSs
         | DragonFly
         | Solaris | AIX | HPUX | IRIX  -- ageing Unix OSs
         | HaLVM                        -- bare metal / VMs / hypervisors
+        | Hurd                         -- GNU's microkernel
         | IOS  | Android               -- mobile OSs
         | Ghcjs
         | OtherOS String
@@ -84,6 +85,7 @@ knownOSs = [Linux, Windows, OSX
            ,FreeBSD, OpenBSD, NetBSD, DragonFly
            ,Solaris, AIX, HPUX, IRIX
            ,HaLVM
+           ,Hurd
            ,IOS, Android
            ,Ghcjs]
 
@@ -91,6 +93,7 @@ osAliases :: ClassificationStrictness -> OS -> [String]
 osAliases Permissive Windows = ["mingw32", "win32", "cygwin32"]
 osAliases Compat     Windows = ["mingw32", "win32"]
 osAliases _          OSX     = ["darwin"]
+osAliases _          Hurd    = ["gnu"]
 osAliases Permissive FreeBSD = ["kfreebsdgnu"]
 osAliases Compat     FreeBSD = ["kfreebsdgnu"]
 osAliases Permissive Solaris = ["solaris2"]
