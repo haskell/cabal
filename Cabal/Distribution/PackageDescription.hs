@@ -310,10 +310,7 @@ defaultRenaming :: ModuleRenaming
 defaultRenaming = ModuleRenaming True []
 
 lookupRenaming :: Package pkg => pkg -> Map PackageName ModuleRenaming -> ModuleRenaming
-lookupRenaming pkg rns =
-    Map.findWithDefault
-        (error ("lookupRenaming: missing renaming for " ++ display (packageName pkg)))
-        (packageName pkg) rns
+lookupRenaming = Map.findWithDefault defaultRenaming . packageName
 
 instance Binary ModuleRenaming where
 
@@ -441,7 +438,7 @@ instance Text ModuleReexport where
 
     parse = do
       mpkgname <- Parse.option Nothing $ do
-                    pkgname <- parse 
+                    pkgname <- parse
                     _       <- Parse.char ':'
                     return (Just pkgname)
       origname <- parse
