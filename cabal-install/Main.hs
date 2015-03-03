@@ -131,6 +131,7 @@ import Distribution.Simple.Configure
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration
                                    ,configureAllKnownPrograms)
+import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
          ( cabalVersion, die, notice, info, topHandler
@@ -406,7 +407,11 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
                                mempty
       let configFlags = savedConfigureFlags config
       (comp, _platform, programDb) <- configCompilerAux' configFlags
-      startInterpreter verbosity programDb comp (configPackageDB' configFlags)
+      programDb' <- reconfigurePrograms verbosity
+                                        (replProgramPaths replFlags)
+                                        (replProgramArgs replFlags)
+                                        programDb
+      startInterpreter verbosity programDb' comp (configPackageDB' configFlags)
 
 -- | Re-configure the package in the current directory if needed. Deciding
 -- when to reconfigure and with which options is convoluted:
