@@ -76,7 +76,6 @@ import System.Directory         ( doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,
                                   splitExtension )
-import Distribution.Compat.Exception (catchIO)
 
 configure :: Verbosity -> Maybe FilePath -> Maybe FilePath
           -> ProgramConfiguration
@@ -879,9 +878,12 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                  , HcPkg.noPkgDbStack    = False
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
+                                 , HcPkg.useSingleFileDb = v < [7,9]
                                  }
   where
+    v                 = versionBranch ver
     Just ghcjsPkgProg = lookupProgram ghcjsPkgProgram conf
+    Just ver          = programVersion ghcjsPkgProg
 
 -- | Get the JavaScript file name and command and arguments to run a
 --   program compiled by GHCJS

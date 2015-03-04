@@ -24,7 +24,7 @@ module Distribution.Verbosity (
   showForCabal, showForGHC
  ) where
 
-import Data.Binary
+import Distribution.Compat.Binary (Binary)
 import Data.List (elemIndex)
 import Distribution.ReadE
 import GHC.Generics

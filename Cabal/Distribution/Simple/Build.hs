@@ -90,7 +90,8 @@ import Control.Monad
 import System.FilePath
          ( (</>), (<.>) )
 import System.Directory
-         ( getCurrentDirectory, removeDirectoryRecursive, doesDirectoryExist )
+         ( getCurrentDirectory, removeDirectoryRecursive, removeFile
+         , doesDirectoryExist, doesFileExist )
 
 -- -----------------------------------------------------------------------------
 -- |Build the libraries and executables in this package.
@@ -449,12 +450,17 @@ createInternalPackageDB verbosity lbi distPref = do
       LHC   -> createWith $ LHC.hcPkgInfo   (withPrograms lbi)
       _     -> return packageDB
     where
-      dbDir = distPref </> "package.conf.inplace"
-      packageDB = SpecificPackageDB dbDir
+      dbPath = distPref </> "package.conf.inplace"
+      packageDB = SpecificPackageDB dbPath
       createWith hpi = do
-        exists <- doesDirectoryExist dbDir
-        when exists $ removeDirectoryRecursive dbDir
-        HcPkg.init hpi verbosity dbDir
+        dir_exists <- doesDirectoryExist dbPath
+        if dir_exists
+            then removeDirectoryRecursive dbPath
+            else do file_exists <- doesFileExist dbPath
+                    when file_exists $ removeFile dbPath
+        if HcPkg.useSingleFileDb hpi
+            then writeFile dbPath "[]"
+            else HcPkg.init hpi verbosity dbPath
         return packageDB
 
 addInternalBuildTools :: PackageDescription -> LocalBuildInfo -> BuildInfo

@@ -557,7 +557,9 @@ platformDefines lbi =
       IRIX      -> ["irix"]
       HaLVM     -> []
       IOS       -> ["ios"]
+      Android   -> ["android"]
       Ghcjs     -> ["ghcjs"]
+      Hurd      -> ["hurd"]
       OtherOS _ -> []
     archStr = case hostArch of
       I386        -> ["i386"]

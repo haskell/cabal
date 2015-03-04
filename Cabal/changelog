@@ -1,6 +1,13 @@
 -*-change-log-*-
 
-1.21.x (current development version)
+1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
+	* Support GHC 7.10.
+	* Experimental support for emitting DWARF debug info.
+	* Preliminary support for relocatable packages.
+	* Allow cabal to be used inside cabal exec enviroments.
+	* hpc: support mutliple "ways" (e.g. profiling and vanilla).
+	* Support GHCJS.
+	* Improved command line documentation.
 	* Add '-none' constraint syntax for version ranges (#2093).
 	* Make the default doc index file path compiler/arch/os-dependent
 	(#2136).

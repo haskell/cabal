@@ -100,7 +100,7 @@ import Distribution.Verbosity
 import Distribution.Utils.NubList
 
 import Control.Monad (liftM)
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
 import Data.Monoid ( Monoid(..) )
@@ -287,6 +287,8 @@ data ConfigFlags = ConfigFlags {
                                           -- executables.
     configProfExe       :: Flag Bool,     -- ^Enable profiling in the
                                           -- executables.
+    configProf          :: Flag Bool,     -- ^Enable profiling in the library
+                                          -- and executables.
     configConfigureArgs :: [String],      -- ^Extra arguments to @configure@
     configOptimization  :: Flag OptimisationLevel,  -- ^Enable optimization.
     configProgPrefix    :: Flag PathTemplate, -- ^Installed executable prefix.
@@ -314,7 +316,7 @@ data ConfigFlags = ConfigFlags {
     configTests               :: Flag Bool, -- ^Enable test suite compilation
     configBenchmarks          :: Flag Bool, -- ^Enable benchmark compilation
     configCoverage :: Flag Bool, -- ^Enable program coverage
-    configLibCoverage :: Flag Bool, -- ^OBSOLETE. Just used to signal error.
+    configLibCoverage :: Flag Bool, -- ^Enable program coverage (deprecated)
     configExactConfiguration  :: Flag Bool,
       -- ^All direct dependencies and flags are provided on the command line by
       -- the user via the '--dependency' and '--flags' options.
@@ -342,6 +344,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configSharedLib    = NoFlag,
     configDynExe       = Flag False,
     configProfExe      = NoFlag,
+    configProf         = NoFlag,
     configOptimization = Flag NormalOptimisation,
     configProgPrefix   = Flag (toPathTemplate ""),
     configProgSuffix   = Flag (toPathTemplate ""),
@@ -453,8 +456,13 @@ configureOptions showOrParseArgs =
          configDynExe (\v flags -> flags { configDynExe = v })
          (boolOpt [] [])
 
-      ,option "" ["profiling", "executable-profiling"]
+      ,option "" ["profiling"]
          "Executable profiling (requires library profiling)"
+         configProf (\v flags -> flags { configProf = v })
+         (boolOpt [] [])
+
+      ,option "" ["executable-profiling"]
+         "Executable profiling (DEPRECATED)"
          configProfExe (\v flags -> flags { configProfExe = v })
          (boolOpt [] [])
 
@@ -570,14 +578,14 @@ configureOptions showOrParseArgs =
          configTests (\v flags -> flags { configTests = v })
          (boolOpt [] [])
 
-      ,option "" ["library-coverage"]
-         "OBSOLETE. Please use --enable-coverage instead."
-         configLibCoverage (\v flags -> flags { configLibCoverage = v })
+      ,option "" ["coverage"]
+         "build package with Haskell Program Coverage. (GHC only)"
+         configCoverage (\v flags -> flags { configCoverage = v })
          (boolOpt [] [])
 
-      ,option "" ["coverage"]
-         "build package with Haskell Program Coverage enabled. (GHC only)"
-         configCoverage (\v flags -> flags { configCoverage = v })
+      ,option "" ["library-coverage"]
+         "build package with Haskell Program Coverage. (GHC only) (DEPRECATED)"
+         configLibCoverage (\v flags -> flags { configLibCoverage = v })
          (boolOpt [] [])
 
       ,option "" ["exact-configuration"]
@@ -723,6 +731,7 @@ instance Monoid ConfigFlags where
     configSharedLib     = mempty,
     configDynExe        = mempty,
     configProfExe       = mempty,
+    configProf          = mempty,
     configConfigureArgs = mempty,
     configOptimization  = mempty,
     configProgPrefix    = mempty,
@@ -765,6 +774,7 @@ instance Monoid ConfigFlags where
     configSharedLib     = combine configSharedLib,
     configDynExe        = combine configDynExe,
     configProfExe       = combine configProfExe,
+    configProf          = combine configProf,
     configConfigureArgs = combine configConfigureArgs,
     configOptimization  = combine configOptimization,
     configProgPrefix    = combine configProgPrefix,

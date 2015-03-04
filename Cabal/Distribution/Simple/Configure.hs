@@ -124,7 +124,7 @@ import Control.Exception
     ( ErrorCall(..), Exception, evaluate, throw, throwIO, try )
 import Control.Monad
     ( liftM, when, unless, foldM, filterM )
-import Data.Binary ( decodeOrFail, encode )
+import Distribution.Compat.Binary ( decodeOrFailIO, encode )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
@@ -157,12 +157,13 @@ import Text.PrettyPrint
     , quotes, punctuate, nest, sep, hsep )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
+-- | The errors that can be thrown when reading the @setup-config@ file.
 data ConfigStateFileError
-    = ConfigStateFileNoHeader
-    | ConfigStateFileBadHeader
-    | ConfigStateFileNoParse
-    | ConfigStateFileMissing
-    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo)
+    = ConfigStateFileNoHeader -- ^ No header found.
+    | ConfigStateFileBadHeader -- ^ Incorrect header.
+    | ConfigStateFileNoParse -- ^ Cannot parse file contents.
+    | ConfigStateFileMissing -- ^ No file!
+    | ConfigStateFileBadVersion PackageIdentifier PackageIdentifier (Either ConfigStateFileError LocalBuildInfo) -- ^ Mismatched version.
   deriving (Typeable)
 
 instance Show ConfigStateFileError where
@@ -193,7 +194,11 @@ instance Show ConfigStateFileError where
 
 instance Exception ConfigStateFileError
 
-getConfigStateFile :: FilePath -> IO LocalBuildInfo
+-- | Read the 'localBuildInfoFile'.  Throw an exception if the file is
+-- missing, if the file cannot be read, or if the file was created by an older
+-- version of Cabal.
+getConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
+                   -> IO LocalBuildInfo
 getConfigStateFile filename = do
     exists <- doesFileExist filename
     unless exists $ throwIO ConfigStateFileMissing
@@ -208,10 +213,11 @@ getConfigStateFile filename = do
               Left (ErrorCall _) -> throw ConfigStateFileBadHeader
               Right x -> x
 
-    let getStoredValue = evaluate $
-            case decodeOrFail (BLC8.tail body) of
-              Left _ -> throw ConfigStateFileNoParse
-              Right (_, _, x) -> x
+    let getStoredValue = do
+          result <- decodeOrFailIO (BLC8.tail body)
+          case result of
+            Left _ -> throw ConfigStateFileNoParse
+            Right x -> return x
         deferErrorIfBadVersion act
           | cabalId /= currentCabalId = do
               eResult <- try act
@@ -219,29 +225,34 @@ getConfigStateFile filename = do
           | otherwise = act
     deferErrorIfBadVersion getStoredValue
 
-tryGetConfigStateFile :: FilePath
+-- | Read the 'localBuildInfoFile', returning either an error or the local build info.
+tryGetConfigStateFile :: FilePath -- ^ The file path of the @setup-config@ file.
                       -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetConfigStateFile = try . getConfigStateFile
 
--- |Try to read the 'localBuildInfoFile'.
-tryGetPersistBuildConfig :: FilePath
+-- | Try to read the 'localBuildInfoFile'.
+tryGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
                          -> IO (Either ConfigStateFileError LocalBuildInfo)
 tryGetPersistBuildConfig = try . getPersistBuildConfig
 
 -- | Read the 'localBuildInfoFile'. Throw an exception if the file is
 -- missing, if the file cannot be read, or if the file was created by an older
 -- version of Cabal.
-getPersistBuildConfig :: FilePath -> IO LocalBuildInfo
+getPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
+                      -> IO LocalBuildInfo
 getPersistBuildConfig = getConfigStateFile . localBuildInfoFile
 
--- |Try to read the 'localBuildInfoFile'.
-maybeGetPersistBuildConfig :: FilePath -> IO (Maybe LocalBuildInfo)
+-- | Try to read the 'localBuildInfoFile'.
+maybeGetPersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
+                           -> IO (Maybe LocalBuildInfo)
 maybeGetPersistBuildConfig =
     liftM (either (const Nothing) Just) . tryGetPersistBuildConfig
 
--- |After running configure, output the 'LocalBuildInfo' to the
+-- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
-writePersistBuildConfig :: FilePath -> LocalBuildInfo -> IO ()
+writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
+                        -> LocalBuildInfo -- ^ The 'LocalBuildInfo' to write.
+                        -> IO ()
 writePersistBuildConfig distPref lbi = do
     createDirectoryIfMissing False distPref
     writeFileAtomic (localBuildInfoFile distPref) $
@@ -249,14 +260,19 @@ writePersistBuildConfig distPref lbi = do
   where
     pkgId = packageId $ localPkgDescr lbi
 
+-- | Identifier of the current Cabal package.
 currentCabalId :: PackageIdentifier
 currentCabalId = PackageIdentifier (PackageName "Cabal") cabalVersion
 
+-- | Identifier of the current compiler package.
 currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
-parseHeader :: ByteString -> (PackageIdentifier, PackageIdentifier)
+-- | Parse the @setup-config@ file header, returning the package identifiers 
+-- for Cabal and the compiler.
+parseHeader :: ByteString -- ^ The file contents.
+            -> (PackageIdentifier, PackageIdentifier)
 parseHeader header = case BLC8.words header of
   ["Saved", "package", "config", "for", pkgId, "written", "by", cabalId, "using", compId] ->
       fromMaybe (throw ConfigStateFileBadHeader) $ do
@@ -266,7 +282,9 @@ parseHeader header = case BLC8.words header of
           return (cabalId', compId')
   _ -> throw ConfigStateFileNoHeader
 
-showHeader :: PackageIdentifier -> ByteString
+-- | Generate the @setup-config@ file header.
+showHeader :: PackageIdentifier -- ^ The processed package.
+            -> ByteString
 showHeader pkgId = BLC8.unwords
     [ "Saved", "package", "config", "for"
     , BLC8.pack $ display pkgId
@@ -276,14 +294,15 @@ showHeader pkgId = BLC8.unwords
     , BLC8.pack $ display currentCompilerId
     ]
 
--- |Check that localBuildInfoFile is up-to-date with respect to the
+-- | Check that localBuildInfoFile is up-to-date with respect to the
 -- .cabal file.
 checkPersistBuildConfigOutdated :: FilePath -> FilePath -> IO Bool
 checkPersistBuildConfigOutdated distPref pkg_descr_file = do
   pkg_descr_file `moreRecentFile` (localBuildInfoFile distPref)
 
--- |@dist\/setup-config@
-localBuildInfoFile :: FilePath -> FilePath
+-- | Get the path of @dist\/setup-config@.
+localBuildInfoFile :: FilePath -- ^ The @dist@ directory path.
+                    -> FilePath
 localBuildInfoFile distPref = distPref </> "setup-config"
 
 -- -----------------------------------------------------------------------------
@@ -295,17 +314,25 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 configure :: (GenericPackageDescription, HookedBuildInfo)
           -> ConfigFlags -> IO LocalBuildInfo
 configure (pkg_descr0, pbi) cfg
-  = do  unless (configLibCoverage cfg == NoFlag) $ do
-            let enable | fromFlag (configLibCoverage cfg) = "enable"
-                       | otherwise = "disable"
-            die $ "Option --" ++ enable ++ "-library-coverage is obsolete! "
-                  ++ "Please use --" ++ enable ++ "-coverage instead."
-
-        let distPref = fromFlag (configDistPref cfg)
+  = do  let distPref = fromFlag (configDistPref cfg)
             buildDir' = distPref </> "build"
             verbosity = fromFlag (configVerbosity cfg)
 
         setupMessage verbosity "Configuring" (packageId pkg_descr0)
+
+        unless (configProfExe cfg == NoFlag) $ do
+          let enable | fromFlag (configProfExe cfg) = "enable"
+                     | otherwise = "disable"
+          warn verbosity
+            ("The flag --" ++ enable ++ "-executable-profiling is deprecated. "
+             ++ "Please use --" ++ enable ++ "-profiling instead.")
+
+        unless (configLibCoverage cfg == NoFlag) $ do
+          let enable | fromFlag (configLibCoverage cfg) = "enable"
+                     | otherwise = "disable"
+          warn verbosity
+            ("The flag --" ++ enable ++ "-library-coverage is deprecated. "
+             ++ "Please use --" ++ enable ++ "-coverage instead.")
 
         createDirectoryIfMissingVerbose (lessVerbose verbosity) True distPref
 
@@ -626,12 +653,18 @@ configure (pkg_descr0, pbi) cfg
             ++ "is not being built. Linking will fail if any executables "
             ++ "depend on the library."
 
-        let withProfExe_ = fromFlagOrDefault False $ configProfExe cfg
+        let withProf_ = fromFlagOrDefault False (configProf cfg)
+            withProfExe_ = fromFlagOrDefault withProf_ $ configProfExe cfg
             withProfLib_ = fromFlagOrDefault withProfExe_ $ configProfLib cfg
         when (withProfExe_ && not withProfLib_) $ warn verbosity $
                "Executables will be built with profiling, but library "
             ++ "profiling is disabled. Linking will fail if any executables "
             ++ "depend on the library."
+
+        let configCoverage_ =
+              mappend (configCoverage cfg) (configLibCoverage cfg)
+
+            cfg' = cfg { configCoverage = configCoverage_ }
 
         reloc <-
            if not (fromFlag $ configRelocatable cfg)
@@ -639,7 +672,7 @@ configure (pkg_descr0, pbi) cfg
                 else return True
 
         let lbi = LocalBuildInfo {
-                    configFlags         = cfg,
+                    configFlags         = cfg',
                     extraConfigArgs     = [],  -- Currently configure does not
                                                -- take extra args, but if it
                                                -- did they would go here.
@@ -814,8 +847,10 @@ reportFailedDependencies failed =
     reportFailedDependency (DependencyNoVersion dep) =
         "cannot satisfy dependency " ++ display (simplifyDependency dep) ++ "\n"
 
+-- | List all installed packages in the given package databases.
 getInstalledPackages :: Verbosity -> Compiler
-                     -> PackageDBStack -> ProgramConfiguration
+                     -> PackageDBStack -- ^ The stack of package databases.
+                     -> ProgramConfiguration
                      -> IO InstalledPackageIndex
 getInstalledPackages verbosity comp packageDBs progconf = do
   when (null packageDBs) $
@@ -1416,7 +1451,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
         -- Note: if in future Cabal allows directly depending on multiple
         -- instances of the same package (e.g. backpack) then an additional
         -- ambiguity case is possible here: (_, Just originalPackageName)
-        -- with the module being ambigious despite being qualified by a
+        -- with the module being ambiguous despite being qualified by a
         -- package name. Presumably by that time we'll have a mechanism to
         -- qualify the instance we're referring to.
 

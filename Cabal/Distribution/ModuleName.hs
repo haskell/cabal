@@ -24,7 +24,7 @@ module Distribution.ModuleName (
 import Distribution.Text
          ( Text(..) )
 
-import Data.Binary (Binary)
+import Distribution.Compat.Binary (Binary)
 import qualified Data.Char as Char
          ( isAlphaNum, isUpper )
 import Data.Data (Data)

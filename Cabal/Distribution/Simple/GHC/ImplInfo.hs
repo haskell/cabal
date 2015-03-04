@@ -15,7 +15,7 @@ module Distribution.Simple.GHC.ImplInfo (
         ) where
 
 import Distribution.Simple.Compiler
-  ( Compiler(..), CompilerId(..), CompilerFlavor(..)
+  ( Compiler(..), CompilerFlavor(..)
   , compilerFlavor, compilerVersion, compilerCompatVersion )
 import Distribution.Version ( Version(..) )
 
