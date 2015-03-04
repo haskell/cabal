@@ -887,6 +887,7 @@ getRPaths lbi clbi | supportRPaths hostOS = do
     supportRPaths IOS         = False
     supportRPaths Android     = False
     supportRPaths Ghcjs       = False
+    supportRPaths Hurd        = False
     supportRPaths (OtherOS _) = False
     -- Do _not_ add a default case so that we get a warning here when a new OS
     -- is added.
