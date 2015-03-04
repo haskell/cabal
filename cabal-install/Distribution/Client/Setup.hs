@@ -1059,13 +1059,12 @@ listCommand = CommandUI {
             trueArg
 
         , option "" ["package-db"]
-          (   "Modify the list of package databases used. The exact behaviour"
-           ++ " (especially the initial list) is"
-           ++ " not clearly defined at this point. The parameter can be one of:"
-           ++ " a specific file, 'global', 'user' or 'clear'."
-           ++ " Everything other than 'clear' will push to the end of the list"
-           ++ " while clear clears the whole list."
-           ++ " Note that currently, the global package must be the first in the list.")
+          (   "Append the given package database to the list of package"
+           ++ " databases used (to satisfy dependencies and register into)."
+           ++ " May be a specific file, 'global' or 'user'. The initial list"
+           ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+           ++ " depending on context. Use 'clear' to reset the list to empty."
+           ++ " See the user guide for details.")
           listPackageDBs (\v flags -> flags { listPackageDBs = v })
           (reqArg' "DB" readPackageDbList showPackageDbList)
 
@@ -1118,13 +1117,12 @@ infoCommand = CommandUI {
         optionVerbosity infoVerbosity (\v flags -> flags { infoVerbosity = v })
 
         , option "" ["package-db"]
-          (   "Modify the list of package databases used. The exact behaviour"
-           ++ " (especially the initial list) is"
-           ++ " not clearly defined at this point. The parameter can be one of:"
-           ++ " a specific file, 'global', 'user' or 'clear'."
-           ++ " Everything other than 'clear' will push to the end of the list"
-           ++ " while clear clears the whole list."
-           ++ " Note that currently, the global package must be the first in the list.")
+          (   "Append the given package database to the list of package"
+           ++ " databases used (to satisfy dependencies and register into)."
+           ++ " May be a specific file, 'global' or 'user'. The initial list"
+           ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+           ++ " depending on context. Use 'clear' to reset the list to empty."
+           ++ " See the user guide for details.")
           infoPackageDBs (\v flags -> flags { infoPackageDBs = v })
           (reqArg' "DB" readPackageDbList showPackageDbList)
 
@@ -1286,7 +1284,7 @@ installCommand = CommandUI {
      ++ "  " ++ pname ++ " install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
      ++ "  " ++ (map (const ' ') pname)
                       ++ "                         "
-     ++ "    Change installation destination",
+     ++ "    Change installation destination\n",
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
