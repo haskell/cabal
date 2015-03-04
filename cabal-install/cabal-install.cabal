@@ -231,6 +231,7 @@ test-suite package-tests
   other-modules:
     PackageTests.Exec.Check
     PackageTests.Freeze.Check
+    PackageTests.MultipleSource.Check
     PackageTests.PackageTester
   build-depends:
     Cabal,
