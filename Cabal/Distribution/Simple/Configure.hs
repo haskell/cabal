@@ -776,7 +776,7 @@ reportProgram verbosity prog (Just configuredProg)
             Just v  -> " version " ++ display v
 
 hackageUrl :: String
-hackageUrl = "http://hackage.haskell.org/package/"
+hackageUrl = "https://hackage.haskell.org/package/"
 
 data ResolvedDependency = ExternalDependency Dependency InstalledPackageInfo
                         | InternalDependency Dependency PackageId -- should be a

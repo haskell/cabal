@@ -171,8 +171,8 @@ instance Monoid SavedConfig where
       -- field in a *single* config file. For example, we want the following to
       -- continue to work:
       --
-      -- remote-repo: hackage.haskell.org:http://hackage.haskell.org/
-      -- remote-repo: private-collection:http://hackage.local/
+      -- remote-repo: hackage.haskell.org:https://hackage.haskell.org/
+      -- remote-repo: private-collection:http[s]://hackage.local/
       --
       -- So we can't just wrap the list fields inside Flags; we have to do some
       -- special-casing just for SavedConfig.
@@ -484,7 +484,7 @@ defaultRemoteRepo :: RemoteRepo
 defaultRemoteRepo = RemoteRepo name uri
   where
     name = "hackage.haskell.org"
-    uri  = URI "http:" (Just (URIAuth "" name "")) "/packages/archive" "" ""
+    uri  = URI "https:" (Just (URIAuth "" name "")) "/packages/archive" "" ""
 
 --
 -- * Config file reading
