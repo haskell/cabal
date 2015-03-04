@@ -54,10 +54,12 @@ import Distribution.Client.Types
          ( SourcePackage(packageDescription), ConfiguredPackage(..)
          , ReadyPackage(..), readyPackageToConfiguredPackage
          , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas
-         , InstalledPackage(..), fakeInstalledPackageId )
+         , InstalledPackage(..), fakeInstalledPackageId
+         , ConfiguredId(..)
+         )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
-         , Dependency(..), InstalledPackageId
+         , Dependency(..), PackageId, InstalledPackageId
          , HasInstalledPackageId(..), PackageInstalled(..) )
 import Distribution.Version
          ( Version, withinRange )
@@ -594,7 +596,7 @@ showPackageProblem (InvalidDep dep pkgid) =
 configuredPackageProblems :: Platform -> CompilerInfo
                           -> ConfiguredPackage -> [PackageProblem]
 configuredPackageProblems platform cinfo
-  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps) =
+  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps') =
      [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
@@ -605,6 +607,9 @@ configuredPackageProblems platform cinfo
   ++ [ InvalidDep dep pkgid | InBoth      dep pkgid <- mergedDeps
                             , not (packageSatisfiesDependency pkgid dep) ]
   where
+    specifiedDeps :: [PackageId]
+    specifiedDeps = map confSrcId specifiedDeps'
+
     mergedFlags = mergeBy compare
       (sort $ map flagName (genPackageFlags (packageDescription pkg)))
       (sort $ map fst specifiedFlags)

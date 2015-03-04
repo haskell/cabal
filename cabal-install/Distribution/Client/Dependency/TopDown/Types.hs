@@ -14,7 +14,7 @@ module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
          ( SourcePackage(..), ReadyPackage(..), InstalledPackage(..)
-         , OptionalStanza )
+         , OptionalStanza, ConfiguredId(..) )
 import Distribution.Client.InstallPlan
          ( ConfiguredPackage(..), PlanPackage(..) )
 
@@ -113,7 +113,7 @@ instance PackageSourceDeps InstalledPackageEx where
   sourceDeps (InstalledPackageEx _ _ deps) = deps
 
 instance PackageSourceDeps ConfiguredPackage where
-  sourceDeps (ConfiguredPackage _ _ _ deps) = deps
+  sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId deps
 
 instance PackageSourceDeps ReadyPackage where
   sourceDeps (ReadyPackage _ _ _ deps) = map packageId deps

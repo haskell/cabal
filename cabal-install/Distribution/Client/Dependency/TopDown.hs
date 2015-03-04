@@ -26,7 +26,7 @@ import Distribution.Client.InstallPlan
          ( PlanPackage(..) )
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..), InstalledPackage(..)
-         , enableStanzas )
+         , enableStanzas, ConfiguredId(..), fakeInstalledPackageId )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
@@ -562,7 +562,38 @@ finaliseSelectedPackages pref selected constraints =
     finaliseSource mipkg (SemiConfiguredPackage pkg flags stanzas deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags stanzas deps')
       where
-        deps' = map (packageId . pickRemaining mipkg) deps
+        deps' = map (confId . pickRemaining mipkg) deps
+
+    -- InstalledOrSource indicates that we either have a source package
+    -- available, or an installed one, or both. In the case that we have both
+    -- available, we don't yet know if we can pick the installed one (the
+    -- dependencies may not match up, for instance); this is verified in
+    -- `improvePlan`.
+    --
+    -- This means that at this point we cannot construct a valid installed
+    -- package ID yet for the dependencies. We therefore have two options:
+    --
+    -- * We could leave the installed package ID undefined here, and have a
+    --   separate pass over the output of the top-down solver, fixing all
+    --   dependencies so that if we depend on an already installed package we
+    --   use the proper installed package ID.
+    --
+    -- * We can _always_ use fake installed IDs, irrespective of whether we the
+    --   dependency is on an already installed package or not. This is okay
+    --   because (i) the top-down solver does not (and never will) support
+    --   multiple package instances, and (ii) we initialize the FakeMap with
+    --   fake IDs for already installed packages.
+    --
+    -- For now we use the second option; if however we change the implementation
+    -- of these fake IDs so that we do away with the FakeMap and update a
+    -- package reverse dependencies as we execute the install plan and discover
+    -- real package IDs, then this is no longer possible and we have to
+    -- implement the first option (see also Note [FakeMap] in Cabal).
+    confId :: InstalledOrSource InstalledPackageEx UnconfiguredPackage -> ConfiguredId
+    confId pkg = ConfiguredId {
+        confSrcId  = packageId pkg
+      , confInstId = fakeInstalledPackageId (packageId pkg)
+      }
 
     pickRemaining mipkg dep@(Dependency _name versionRange) =
           case PackageIndex.lookupDependency remainingChoices dep of
