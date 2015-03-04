@@ -107,6 +107,7 @@ initCabal verbosity packageDBs comp conf initFlags = do
 
   writeLicense initFlags'
   writeSetupFile initFlags'
+  writeChangelog initFlags'
   createSourceDirectories initFlags'
   success <- writeCabalFile initFlags'
 
@@ -243,6 +244,9 @@ getExtraSourceFiles flags = do
 
   return $ flags { extraSrc = extraSrcFiles }
 
+defaultChangelog :: FilePath
+defaultChangelog = "CHANGELOG.md"
+
 -- | Try to guess things to include in the extra-source-files field.
 --   For now, we just look for things in the root directory named
 --   'readme', 'changes', or 'changelog', with any sort of
@@ -252,12 +256,16 @@ guessExtraSourceFiles flags = do
   dir <-
     maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
   files <- getDirectoryContents dir
-  return $ filter isExtra files
+  let extraFiles = filter isExtra files
+  if any isLikeChangelog extraFiles
+    then return extraFiles
+    else return (defaultChangelog : extraFiles)
 
   where
-    isExtra = (`elem` ["README", "CHANGES", "CHANGELOG"])
-            . map toUpper
-            . takeBaseName
+    isExtra = likeFileNameBase ("README" : changelogLikeBases)
+    isLikeChangelog = likeFileNameBase changelogLikeBases
+    likeFileNameBase candidates = (`elem` candidates) . map toUpper . takeBaseName
+    changelogLikeBases = ["CHANGES", "CHANGELOG"]
 
 -- | Ask whether the project builds a library or executable.
 getLibOrExec :: InitFlags -> IO InitFlags
@@ -626,6 +634,21 @@ writeSetupFile flags = do
     [ "import Distribution.Simple"
     , "main = defaultMain"
     ]
+
+writeChangelog :: InitFlags -> IO ()
+writeChangelog flags = when (any (== defaultChangelog) $ maybe [] id (extraSrc flags)) $ do
+  message flags ("Generating "++ defaultChangelog ++"...")
+  writeFileSafe flags defaultChangelog changelog
+ where
+  changelog = unlines
+    [ "# Revision history for " ++ pname
+    , ""
+    , "## " ++ pver ++ "  -- YYYY-mm-dd"
+    , ""
+    , "* First version. Released on an unsuspecting world."
+    ]
+  pname = maybe "" display $ flagToMaybe $ packageName flags
+  pver = maybe "" display $ flagToMaybe $ version flags
 
 writeCabalFile :: InitFlags -> IO Bool
 writeCabalFile flags@(InitFlags{packageName = NoFlag}) = do
