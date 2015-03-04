@@ -50,6 +50,7 @@ check verbosity = do
         buildImpossible = [ x | x@PackageBuildImpossible {} <- packageChecks ]
         buildWarning    = [ x | x@PackageBuildWarning {}    <- packageChecks ]
         distSuspicious  = [ x | x@PackageDistSuspicious {}  <- packageChecks ]
+                          ++ [ x | x@PackageDistSuspiciousWarn {}  <- packageChecks ]
         distInexusable  = [ x | x@PackageDistInexcusable {} <- packageChecks ]
 
     unless (null buildImpossible) $ do
@@ -68,8 +69,11 @@ check verbosity = do
         putStrLn "The following errors will cause portability problems on other environments:"
         printCheckMessages distInexusable
 
-    let isDistError (PackageDistSuspicious {}) = False
-        isDistError _                          = True
+    let isDistError (PackageDistSuspicious     {}) = False
+        isDistError (PackageDistSuspiciousWarn {}) = False
+        isDistError _                              = True
+        isCheckError (PackageDistSuspiciousWarn {}) = False
+        isCheckError _                              = True
         errors = filter isDistError packageChecks
 
     unless (null errors) $
@@ -78,7 +82,7 @@ check verbosity = do
     when (null packageChecks) $
         putStrLn "No errors or warnings could be found in the package."
 
-    return (null packageChecks)
+    return (null . filter isCheckError $ packageChecks)
 
   where
     printCheckMessages = mapM_ (putStrLn . format . explanation)
