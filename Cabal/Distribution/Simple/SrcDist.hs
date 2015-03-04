@@ -455,8 +455,9 @@ printPackageProblems :: Verbosity -> PackageDescription -> IO ()
 printPackageProblems verbosity pkg_descr = do
   ioChecks      <- checkPackageFiles pkg_descr "."
   let pureChecks = checkConfiguredPackage pkg_descr
-      isDistError (PackageDistSuspicious _) = False
-      isDistError _                         = True
+      isDistError (PackageDistSuspicious     _) = False
+      isDistError (PackageDistSuspiciousWarn _) = False
+      isDistError _                             = True
       (errors, warnings) = partition isDistError (pureChecks ++ ioChecks)
   unless (null errors) $
       notice verbosity $ "Distribution quality errors:\n"
