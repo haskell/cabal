@@ -19,7 +19,7 @@ import Distribution.Package
          , mkPackageKey, PackageKey, InstalledPackageId(..)
          , HasInstalledPackageId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, packageKey )
+         ( InstalledPackageInfo )
 import Distribution.PackageDescription
          ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
          , TestSuite(..) )
@@ -32,6 +32,7 @@ import Distribution.Version
 import Distribution.Simple.Compiler
          ( Compiler, packageKeySupported )
 import Distribution.Text (display)
+import qualified Distribution.InstalledPackageInfo as Info
 
 import Data.Map (Map)
 import Network.URI (URI)
@@ -102,17 +103,37 @@ data ConfiguredPackage = ConfiguredPackage
        SourcePackage       -- package info, including repo
        FlagAssignment      -- complete flag assignment for the package
        [OptionalStanza]    -- list of enabled optional stanzas for the package
-       [PackageId]         -- set of exact dependencies. These must be
-                           -- consistent with the 'buildDepends' in the
-                           -- 'PackageDescription' that you'd get by applying
-                           -- the flag assignment and optional stanzas.
+       [ConfiguredId]      -- set of exact dependencies (installed or source).
+                           -- These must be consistent with the 'buildDepends'
+                           -- in the 'PackageDescription' that you'd get by
+                           -- applying the flag assignment and optional stanzas.
   deriving Show
+
+-- | A ConfiguredId is a package ID for a configured package.
+--
+-- Once we configure a source package we know it's InstalledPackageId
+-- (at least, in principle, even if we have to fake it currently). It is still
+-- however useful in lots of places to also know the source ID for the package.
+-- We therefore bundle the two.
+--
+-- An already installed package of course is also "configured" (all it's
+-- configuration parameters and dependencies have been specified).
+--
+-- TODO: I wonder if it would make sense to promote this datatype to Cabal
+-- and use it consistently instead of InstalledPackageIds?
+data ConfiguredId = ConfiguredId {
+    confSrcId  :: PackageId
+  , confInstId :: InstalledPackageId
+  }
+
+instance Show ConfiguredId where
+  show = show . confSrcId
 
 instance Package ConfiguredPackage where
   packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
 
 instance PackageFixedDeps ConfiguredPackage where
-  depends (ConfiguredPackage _ _ _ deps) = deps
+  depends (ConfiguredPackage _ _ _ deps) = map confSrcId deps
 
 instance HasInstalledPackageId ConfiguredPackage where
   installedPackageId = fakeInstalledPackageId . packageId
@@ -144,7 +165,7 @@ instance PackageInstalled ReadyPackage where
 readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
 readyPackageKey comp (ReadyPackage pkg _ _ deps) =
     mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map packageKey deps) []
+                 (map Info.packageKey deps) []
 
 
 -- | Sometimes we need to convert a 'ReadyPackage' back to a
@@ -152,7 +173,14 @@ readyPackageKey comp (ReadyPackage pkg _ _ deps) =
 -- Ready or Configured.
 readyPackageToConfiguredPackage :: ReadyPackage -> ConfiguredPackage
 readyPackageToConfiguredPackage (ReadyPackage srcpkg flags stanzas deps) =
-  ConfiguredPackage srcpkg flags stanzas (map packageId deps)
+    ConfiguredPackage srcpkg flags stanzas (map aux deps)
+  where
+    aux :: InstalledPackageInfo -> ConfiguredId
+    aux info = ConfiguredId {
+        confSrcId  = Info.sourcePackageId info
+      , confInstId = installedPackageId info
+      }
+
 
 -- | A package description along with the location of the package sources.
 --
