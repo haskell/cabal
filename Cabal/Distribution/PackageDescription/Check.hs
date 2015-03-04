@@ -108,6 +108,10 @@ data PackageCheck =
        -- ban them entirely.
      | PackageDistSuspicious { explanation :: String }
 
+       -- | Like PackageDistSuspicious but will only display warnings
+       -- rather than causing abnormal exit.
+     | PackageDistSuspiciousWarn { explanation :: String }
+
        -- | An issue that is OK in the author's environment but is almost
        -- certain to be a portability problem for other environments. We can
        -- quite legitimately refuse to publicly distribute packages with these
@@ -664,7 +668,7 @@ checkGhcOptions pkg =
       ++ "Setting it yourself interferes with the --disable-optimization flag."
 
   , checkFlags ["-O2"] $
-      PackageDistSuspicious $
+      PackageDistSuspiciousWarn $
       "'ghc-options: -O2' is rarely needed. "
       ++ "Check that it is giving a real benefit "
       ++ "and not just imposing longer compile times on your users."
