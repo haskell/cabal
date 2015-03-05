@@ -13,11 +13,11 @@ import Distribution.System
 import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Package
 
-mkPlan :: Platform -> CompilerInfo ->
+mkPlan :: Platform -> CompilerInfo -> Bool ->
           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           [CP QPN] -> Either [PlanProblem] InstallPlan
-mkPlan plat comp iidx sidx cps =
-  new plat comp (SI.fromList (map (convCP iidx sidx) cps))
+mkPlan plat comp indepGoals iidx sidx cps =
+  new plat comp indepGoals (SI.fromList (map (convCP iidx sidx) cps))
 
 convCP :: SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           CP QPN -> PlanPackage

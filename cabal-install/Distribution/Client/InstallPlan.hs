@@ -188,19 +188,24 @@ instance HasInstalledPackageId PlanPackage where
   installedPackageId (Failed      pkg _) = installedPackageId pkg
 
 data InstallPlan = InstallPlan {
-    planIndex    :: PlanIndex,
-    planFakeMap  :: FakeMap,
-    planGraph    :: Graph,
-    planGraphRev :: Graph,
-    planPkgOf    :: Graph.Vertex -> PlanPackage,
-    planVertexOf :: InstalledPackageId -> Graph.Vertex,
-    planPlatform :: Platform,
-    planCompiler :: CompilerInfo
+    planIndex      :: PlanIndex,
+    planFakeMap    :: FakeMap,
+    planGraph      :: Graph,
+    planGraphRev   :: Graph,
+    planPkgOf      :: Graph.Vertex -> PlanPackage,
+    planVertexOf   :: InstalledPackageId -> Graph.Vertex,
+    planPlatform   :: Platform,
+    planCompiler   :: CompilerInfo,
+    planIndepGoals :: Bool
   }
 
 invariant :: InstallPlan -> Bool
 invariant plan =
-  valid (planPlatform plan) (planCompiler plan) (planFakeMap plan) (planIndex plan)
+    valid (planPlatform plan)
+          (planCompiler plan)
+          (planFakeMap plan)
+          (planIndepGoals plan)
+          (planIndex plan)
 
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
@@ -228,9 +233,9 @@ showPlanPackageTag (Failed _ _)    = "Failed"
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
-new :: Platform -> CompilerInfo -> PlanIndex
+new :: Platform -> CompilerInfo -> Bool -> PlanIndex
     -> Either [PlanProblem] InstallPlan
-new platform cinfo index =
+new platform cinfo indepGoals index =
   -- NB: Need to pre-initialize the fake-map with pre-existing
   -- packages
   let isPreExisting (PreExisting _) = True
@@ -239,16 +244,17 @@ new platform cinfo index =
               . map (\p -> (fakeInstalledPackageId (packageId p), installedPackageId p))
               . filter isPreExisting
               $ PackageIndex.allPackages index in
-  case problems platform cinfo fakeMap index of
+  case problems platform cinfo fakeMap indepGoals index of
     [] -> Right InstallPlan {
-            planIndex    = index,
-            planFakeMap  = fakeMap,
-            planGraph    = graph,
-            planGraphRev = Graph.transposeG graph,
-            planPkgOf    = vertexToPkgId,
-            planVertexOf = fromMaybe noSuchPkgId . pkgIdToVertex,
-            planPlatform = platform,
-            planCompiler = cinfo
+            planIndex      = index,
+            planFakeMap    = fakeMap,
+            planGraph      = graph,
+            planGraphRev   = Graph.transposeG graph,
+            planPkgOf      = vertexToPkgId,
+            planVertexOf   = fromMaybe noSuchPkgId . pkgIdToVertex,
+            planPlatform   = platform,
+            planCompiler   = cinfo,
+            planIndepGoals = indepGoals
           }
       where (graph, vertexToPkgId, pkgIdToVertex) =
               PlanIndex.dependencyGraph fakeMap index
@@ -268,7 +274,7 @@ remove :: (PlanPackage -> Bool)
        -> InstallPlan
        -> Either [PlanProblem] InstallPlan
 remove shouldRemove plan =
-    new (planPlatform plan) (planCompiler plan) newIndex
+    new (planPlatform plan) (planCompiler plan) (planIndepGoals plan) newIndex
   where
     newIndex = PackageIndex.fromList $
                  filter (not . shouldRemove) (toList plan)
@@ -414,8 +420,9 @@ checkConfiguredPackage pkg                =
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
 --
-valid :: Platform -> CompilerInfo -> FakeMap -> PlanIndex -> Bool
-valid platform cinfo fakeMap index = null (problems platform cinfo fakeMap index)
+valid :: Platform -> CompilerInfo -> FakeMap -> Bool -> PlanIndex -> Bool
+valid platform cinfo fakeMap indepGoals index =
+    null $ problems platform cinfo fakeMap indepGoals index
 
 data PlanProblem =
      PackageInvalid       ConfiguredPackage [PackageProblem]
@@ -465,9 +472,9 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
 --
-problems :: Platform -> CompilerInfo -> FakeMap
+problems :: Platform -> CompilerInfo -> FakeMap -> Bool
          -> PlanIndex -> [PlanProblem]
-problems platform cinfo fakeMap index =
+problems platform cinfo fakeMap indepGoals index =
      [ PackageInvalid pkg packageProblems
      | Configured pkg <- PackageIndex.allPackages index
      , let packageProblems = configuredPackageProblems platform cinfo pkg
@@ -480,7 +487,7 @@ problems platform cinfo fakeMap index =
      | cycleGroup <- PlanIndex.dependencyCycles fakeMap index ]
 
   ++ [ PackageInconsistency name inconsistencies
-     | (name, inconsistencies) <- PlanIndex.dependencyInconsistencies fakeMap index ]
+     | (name, inconsistencies) <- PlanIndex.dependencyInconsistencies fakeMap indepGoals index ]
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
@@ -522,7 +529,7 @@ closed fakeMap = null . PlanIndex.brokenPackages fakeMap
 --   find out which packages are.
 --
 consistent :: FakeMap -> PlanIndex -> Bool
-consistent fakeMap = null . PlanIndex.dependencyInconsistencies fakeMap
+consistent fakeMap = null . PlanIndex.dependencyInconsistencies fakeMap False
 
 -- | The states of packages have that depend on each other must respect
 -- this relation. That is for very case where package @a@ depends on
