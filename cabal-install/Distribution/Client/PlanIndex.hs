@@ -29,6 +29,7 @@ import Data.Array ((!))
 import Data.List (sortBy)
 import Data.Map (Map)
 import Data.Maybe (isNothing, fromMaybe)
+import Data.Either (lefts)
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
@@ -116,6 +117,47 @@ brokenPackages fakeMap index =
                  , isNothing (fakeLookupInstalledPackageId fakeMap index pkg') ]
   , not (null missing) ]
 
+
+dependencyInconsistencies :: forall pkg. (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+                          => FakeMap
+                          -> Bool
+                          -> PackageIndex pkg
+                          -> [(PackageName, [(PackageIdentifier, Version)])]
+dependencyInconsistencies fakeMap indepGoals index  =
+    concatMap (dependencyInconsistencies' fakeMap) subplans
+  where
+    subplans :: [PackageIndex pkg]
+    subplans = lefts $
+                 map (dependencyClosure fakeMap index)
+                     (rootSets fakeMap indepGoals index)
+
+-- | Compute the root sets of a plan
+--
+-- A root set is a set of packages whose dependency closure must be consistent.
+-- This is the set of all top-level library roots (taken together normally, or
+-- as singletons sets if we are considering them as independent goals), along
+-- with all setup dependencies of all packages.
+rootSets :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+         => FakeMap -> Bool -> PackageIndex pkg -> [[InstalledPackageId]]
+rootSets fakeMap indepGoals index =
+       if indepGoals then map (:[]) libRoots else [libRoots]
+  where
+    libRoots = libraryRoots fakeMap index
+
+-- | Compute the library roots of a plan
+--
+-- The library roots are the set of packages with no reverse dependencies
+-- (no reverse library dependencies but also no reverse setup dependencies).
+libraryRoots :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+             => FakeMap -> PackageIndex pkg -> [InstalledPackageId]
+libraryRoots fakeMap index =
+    map (installedPackageId . toPkgId) roots
+  where
+    (graph, toPkgId, _) = dependencyGraph fakeMap index
+    indegree = Graph.indegree graph
+    roots    = filter isRoot (Graph.vertices graph)
+    isRoot v = indegree ! v == 0
+
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out
 -- if the dependencies within it use consistent versions of each package.
@@ -126,12 +168,12 @@ brokenPackages fakeMap index =
 -- depend on it and the versions they require. These are guaranteed to be
 -- distinct.
 --
-dependencyInconsistencies :: forall pkg.
-                             (PackageFixedDeps pkg, HasInstalledPackageId pkg)
-                          => FakeMap
-                          -> PackageIndex pkg
-                          -> [(PackageName, [(PackageIdentifier, Version)])]
-dependencyInconsistencies fakeMap index =
+dependencyInconsistencies' :: forall pkg.
+                              (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+                           => FakeMap
+                           -> PackageIndex pkg
+                           -> [(PackageName, [(PackageIdentifier, Version)])]
+dependencyInconsistencies' fakeMap index =
     [ (name, [ (pid,packageVersion dep) | (dep,pids) <- uses, pid <- pids])
     | (name, ipid_map) <- Map.toList inverseIndex
     , let uses = Map.elems ipid_map
@@ -196,7 +238,6 @@ dependencyCycles fakeMap index =
 --
 -- * Note that if the result is @Right []@ it is because at least one of
 -- the original given 'PackageIdentifier's do not occur in the index.
---
 dependencyClosure :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
                   => FakeMap
                   -> PackageIndex pkg
