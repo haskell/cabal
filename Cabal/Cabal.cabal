@@ -319,7 +319,8 @@ test-suite package-tests
     filepath,
     extensible-exceptions,
     bytestring,
-    regex-posix
+    regex-posix,
+    old-time
   if !os(windows)
     build-depends: unix
   ghc-options: -Wall
