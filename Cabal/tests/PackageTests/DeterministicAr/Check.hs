@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module PackageTests.DeterministicAr.Check where
@@ -7,7 +8,9 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
 import Data.List
+#if __GLASGOW_HASKELL__ < 710
 import Data.Traversable
+#endif
 import PackageTests.PackageTester
 import System.Exit
 import System.FilePath

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 -----------------------------------------------------------------------------
 -- |
@@ -63,7 +64,9 @@ import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
 import Data.List (groupBy, sortBy, nub, isInfixOf)
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
+#endif
 import Data.Maybe (isJust, isNothing, fromMaybe, catMaybes)
 
 import Distribution.Package
@@ -123,7 +126,7 @@ internalError name = error ("PackageIndex." ++ name ++ ": internal error")
 -- | Lookup a name in the index to get all packages that match that name
 -- case-sensitively.
 --
-lookup :: Package pkg => PackageIndex pkg -> PackageName -> [pkg]
+lookup :: PackageIndex pkg -> PackageName -> [pkg]
 lookup (PackageIndex m) name = fromMaybe [] $ Map.lookup name m
 
 --
@@ -225,14 +228,14 @@ deleteDependency (Dependency name verstionRange) =
 
 -- | Get all the packages from the index.
 --
-allPackages :: Package pkg => PackageIndex pkg -> [pkg]
+allPackages :: PackageIndex pkg -> [pkg]
 allPackages (PackageIndex m) = concat (Map.elems m)
 
 -- | Get all the packages from the index.
 --
 -- They are grouped by package name, case-sensitively.
 --
-allPackagesByName :: Package pkg => PackageIndex pkg -> [[pkg]]
+allPackagesByName :: PackageIndex pkg -> [[pkg]]
 allPackagesByName (PackageIndex m) = Map.elems m
 
 --
@@ -293,7 +296,7 @@ lookupDependency index (Dependency name versionRange) =
 -- packages. The list of ambiguous results is split by exact package name. So
 -- it is a non-empty list of non-empty lists.
 --
-searchByName :: Package pkg => PackageIndex pkg
+searchByName :: PackageIndex pkg
              -> String -> [(PackageName, [pkg])]
 searchByName (PackageIndex m) name =
     [ pkgs
@@ -308,7 +311,7 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 --
 -- That is, all packages that contain the given string in their name.
 --
-searchByNameSubstring :: Package pkg => PackageIndex pkg
+searchByNameSubstring :: PackageIndex pkg
                       -> String -> [(PackageName, [pkg])]
 searchByNameSubstring (PackageIndex m) searchterm =
     [ pkgs

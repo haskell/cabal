@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.PrettyPrint
@@ -17,7 +18,9 @@ module Distribution.PackageDescription.PrettyPrint (
     showGenericPackageDescription,
 ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (Monoid(mempty))
+#endif
 import Distribution.PackageDescription
        ( Benchmark(..), BenchmarkInterface(..), benchmarkType
        , TestSuite(..), TestSuiteInterface(..), testType

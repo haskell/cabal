@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Sandbox.Types
@@ -15,7 +16,9 @@ module Distribution.Client.Sandbox.Types (
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.Types (SourcePackage)
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
+#endif
 import qualified Data.Set as S
 
 -- | Are we using a sandbox?

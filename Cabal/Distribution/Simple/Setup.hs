@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -103,7 +104,9 @@ import Control.Monad (liftM)
 import Distribution.Compat.Binary (Binary)
 import Data.List   ( sort )
 import Data.Char   ( isSpace, isAlpha )
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid ( Monoid(..) )
+#endif
 import GHC.Generics (Generic)
 
 -- FIXME Not sure where this should live

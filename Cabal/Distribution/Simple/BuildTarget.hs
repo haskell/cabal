@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.BuildTargets
@@ -55,7 +56,10 @@ import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
 import Control.Monad
-import Control.Applicative (Applicative(..), Alternative(..))
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative (Applicative(..))
+#endif
+import Control.Applicative (Alternative(..))
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.ReadP
          ( (+++), (<++) )

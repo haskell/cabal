@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
@@ -42,10 +43,12 @@ module Distribution.PackageDescription.Parse (
 
 import Data.Char  (isSpace)
 import Data.Maybe (listToMaybe, isJust)
-import Data.Monoid ( Monoid(..) )
 import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless, ap)
+#if __GLASGOW_HASKELL__ < 710
+import Data.Monoid ( Monoid(..) )
 import Control.Applicative (Applicative(..))
+#endif
 import Control.Arrow (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
@@ -622,9 +625,14 @@ newtype StT s m a = StT { runStT :: s -> m (a,s) }
 instance Functor f => Functor (StT s f) where
     fmap g (StT f) = StT $ fmap (first g)  . f
 
+#if __GLASGOW_HASKELL__ >= 710
+instance (Monad m) => Applicative (StT s m) where
+#else
 instance (Monad m, Functor m) => Applicative (StT s m) where
+#endif
     pure = return
     (<*>) = ap
+
 
 instance Monad m => Monad (StT s m) where
     return a = StT (\s -> return (a,s))

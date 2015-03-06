@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveFunctor #-}
 -----------------------------------------------------------------------------
 -- |
@@ -29,13 +30,19 @@ module Distribution.Client.Dependency.Types (
     foldProgress,
   ) where
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
-         ( Applicative(..), Alternative(..) )
+         ( Applicative(..) )
+#endif
+import Control.Applicative
+         ( Alternative(..) )
 
 import Data.Char
          ( isAlpha, toLower )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(..) )
+#endif
 
 import Distribution.Client.Types
          ( OptionalStanza(..), SourcePackage(..) )

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Distribution.Simple.GHCJS (
         configure, getInstalledPackages, getPackageDBContents,
         buildLib, buildExe,
@@ -71,7 +72,9 @@ import Language.Haskell.Extension ( Extension(..)
 import Control.Monad            ( unless, when )
 import Data.Char                ( isSpace )
 import qualified Data.Map as M  ( fromList  )
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid              ( Monoid(..) )
+#endif
 import System.Directory         ( doesFileExist )
 import System.FilePath          ( (</>), (<.>), takeExtension,
                                   takeDirectory, replaceExtension,

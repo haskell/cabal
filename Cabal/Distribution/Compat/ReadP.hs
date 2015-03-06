@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Compat.ReadP
@@ -71,7 +72,10 @@ module Distribution.Compat.ReadP
 
 import Control.Monad( MonadPlus(..), liftM, liftM2, ap )
 import Data.Char (isSpace)
-import Control.Applicative (Applicative(..), Alternative(empty, (<|>)))
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative (Applicative(..))
+#endif
+import Control.Applicative (Alternative(empty, (<|>)))
 
 infixr 5 +++, <++
 

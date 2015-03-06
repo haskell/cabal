@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.TopDown.Constraints
@@ -35,8 +36,10 @@ import Distribution.Version
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(mempty) )
+#endif
 import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map
@@ -256,21 +259,18 @@ empty installed source =
 
 -- | The package targets.
 --
-packages :: (Package installed, Package source)
-         => Constraints installed source reason
+packages :: Constraints installed source reason
          -> Set PackageName
 packages (Constraints ts _ _ _ _) = ts
 
 
 -- | The package choices that are still available.
 --
-choices :: (Package installed, Package source)
-        => Constraints installed source reason
+choices :: Constraints installed source reason
         -> PackageIndex (InstalledOrSource installed source)
 choices (Constraints _ available _ _ _) = available
 
-isPaired :: (Package installed, Package source)
-         => Constraints installed source reason
+isPaired :: Constraints installed source reason
          -> PackageId -> Maybe PackageId
 isPaired (Constraints _ _ _ pairs _) (PackageIdentifier name version) =
   case Map.lookup name pairs of
