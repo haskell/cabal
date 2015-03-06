@@ -61,7 +61,7 @@ import Distribution.Package
     , packageName, packageVersion, Package(..)
     , Dependency(Dependency), simplifyDependency
     , InstalledPackageId(..), thisPackageVersion
-    , mkPackageKey, PackageKey(..) )
+    , mkPackageKey, PackageKey(..), packageKeyLibraryName )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, emptyInstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -1286,7 +1286,7 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
                                             externalPkgDeps lib
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
-          componentLibraries   = [LibraryName ("HS" ++ display pkg_key)],
+          componentLibraries   = [ LibraryName ("HS" ++ packageKeyLibraryName (package pkg_descr) pkg_key) ],
           componentPackageRenaming = cprns,
           componentExposedModules = exports ++ reexports ++ esigs
         }
