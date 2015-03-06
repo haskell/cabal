@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.GHC.Internal
@@ -66,7 +67,9 @@ import qualified Data.Map as M
 import Data.Char                ( isSpace )
 import Data.Maybe               ( fromMaybe, maybeToList, isJust )
 import Control.Monad            ( unless, when )
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid              ( Monoid(..) )
+#endif
 import System.Directory         ( getDirectoryContents, getTemporaryDirectory )
 import System.Environment       ( getEnv )
 import System.FilePath          ( (</>), (<.>), takeExtension, takeDirectory )

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.CCompiler
@@ -46,8 +47,10 @@ module Distribution.Simple.CCompiler (
    filenameCDialect
   ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
      ( Monoid(..) )
+#endif
 import System.FilePath
      ( takeExtension )
 

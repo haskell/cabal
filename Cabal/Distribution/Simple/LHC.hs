@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.LHC
@@ -90,7 +91,9 @@ import Control.Monad            ( unless, when )
 import Data.List
 import qualified Data.Map as M  ( empty )
 import Data.Maybe               ( catMaybes )
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid              ( Monoid(..) )
+#endif
 import System.Directory         ( removeFile, renameFile,
                                   getDirectoryContents, doesFileExist,
                                   getTemporaryDirectory )

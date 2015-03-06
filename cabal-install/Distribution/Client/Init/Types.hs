@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Types
@@ -27,7 +28,9 @@ import qualified Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Text
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
+#endif
 
 -- | InitFlags is really just a simple type to represent certain
 --   portions of a .cabal file.  Rather than have a flag for EVERY

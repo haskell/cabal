@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Heuristics
@@ -35,14 +36,17 @@ import Distribution.Client.Utils
 import Language.Haskell.Extension ( Extension )
 
 import Distribution.Client.Types ( packageDescription, SourcePackageDb(..) )
-import Control.Applicative ( pure, (<$>), (<*>) )
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ( pure, (<*>) )
+import Data.Monoid         ( mempty, mappend, mconcat )
+#endif
 import Control.Arrow ( first )
 import Control.Monad ( liftM )
 import Data.Char   ( isAlphaNum, isNumber, isUpper, isLower, isSpace )
 import Data.Either ( partitionEithers )
+import Data.Functor( (<$>) )
 import Data.List   ( isInfixOf, isPrefixOf, isSuffixOf, sortBy )
 import Data.Maybe  ( mapMaybe, catMaybes, maybeToList )
-import Data.Monoid ( mempty, mappend, mconcat, )
 import Data.Ord    ( comparing )
 import qualified Data.Set as Set ( fromList, toList )
 import System.Directory ( getCurrentDirectory, getDirectoryContents,

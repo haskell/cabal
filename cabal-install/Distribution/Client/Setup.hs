@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Setup
@@ -95,8 +96,10 @@ import Data.List
          ( intercalate, deleteFirstsBy )
 import Data.Maybe
          ( listToMaybe, maybeToList, fromMaybe )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(..) )
+#endif
 import Control.Monad
          ( liftM )
 import System.FilePath
@@ -271,8 +274,7 @@ globalCommand commands = CommandUI {
          (reqArgFlag "FILE")
 
       ,option [] ["sandbox-config-file"]
-         "Set an alternate location for the sandbox config file \
-         \(default: './cabal.sandbox.config')"
+         "Set an alternate location for the sandbox config file (default: './cabal.sandbox.config')"
          globalConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
          (reqArgFlag "FILE")
 

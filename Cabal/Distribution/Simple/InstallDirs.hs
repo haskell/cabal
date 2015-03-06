@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -47,7 +48,9 @@ module Distribution.Simple.InstallDirs (
 import Distribution.Compat.Binary (Binary)
 import Data.List (isPrefixOf)
 import Data.Maybe (fromMaybe)
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (Monoid(..))
+#endif
 import GHC.Generics (Generic)
 import System.Directory (getAppUserDataDirectory)
 import System.FilePath ((</>), isPathSeparator, pathSeparator)

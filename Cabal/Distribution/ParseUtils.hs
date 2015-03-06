@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.ParseUtils
@@ -61,7 +62,9 @@ import Data.Maybe       (fromMaybe)
 import Data.Tree as Tree (Tree(..), flatten)
 import qualified Data.Map as Map
 import Control.Monad (foldM, ap)
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..))
+#endif
 import System.FilePath (normalise)
 import Data.List (sortBy)
 

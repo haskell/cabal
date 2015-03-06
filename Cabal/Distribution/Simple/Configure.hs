@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -135,8 +136,10 @@ import Data.Maybe
 import Data.Either
     ( partitionEithers )
 import qualified Data.Set as Set
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
     ( Monoid(..) )
+#endif
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Data.Traversable

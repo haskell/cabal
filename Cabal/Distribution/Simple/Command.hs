@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Command
@@ -63,7 +64,9 @@ import Control.Monad
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy)
 import Data.Maybe
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
+#endif
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.Text
          ( Text(disp, parse) )
@@ -175,7 +178,7 @@ optArg' ad mkflag showflag =
     optArg ad (succeedReadE (mkflag . Just)) def showflag
       where def = mkflag Nothing
 
-noArg :: (Eq b, Monoid b) => b -> MkOptDescr (a -> b) (b -> a -> a) a
+noArg :: (Eq b) => b -> MkOptDescr (a -> b) (b -> a -> a) a
 noArg flag sf lf d = choiceOpt [(flag, (sf,lf), d)] sf lf d
 
 boolOpt :: (b -> Maybe Bool) -> (Bool -> b) -> SFlags -> SFlags

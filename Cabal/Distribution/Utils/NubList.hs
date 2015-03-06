@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Distribution.Utils.NubList
     ( NubList    -- opaque
     , toNubList  -- smart construtor
@@ -11,7 +12,9 @@ module Distribution.Utils.NubList
     ) where
 
 import Distribution.Compat.Binary
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
+#endif
 
 import Distribution.Simple.Utils (ordNub, listUnion, ordNubRight, listUnionRight)
 
@@ -60,7 +63,7 @@ instance (Ord a, Read a) => Read (NubList a) where
     readPrec = readNubList toNubList
 
 -- | Helper used by NubList/NubListR's Read instances.
-readNubList :: (Ord a, Read a) => ([a] -> l a) -> R.ReadPrec (l a)
+readNubList :: (Read a) => ([a] -> l a) -> R.ReadPrec (l a)
 readNubList toList = R.parens . R.prec 10 $ fmap toList R.readPrec
 
 -- | Binary instance for 'NubList a' is the same as for '[a]'. For 'put', we
