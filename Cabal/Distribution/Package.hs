@@ -24,9 +24,10 @@ module Distribution.Package (
         -- * Installed package identifiers
         InstalledPackageId(..),
 
-        -- * Package keys (used for linker symbols)
+        -- * Package keys (used for linker symbols and library name)
         PackageKey(..),
         mkPackageKey,
+        packageKeyLibraryName,
 
         -- * Package source dependencies
         Dependency(..),
@@ -274,6 +275,10 @@ readBase62Fingerprint s = Fingerprint w1 w2
 packageKeyHash :: PackageKey -> String
 packageKeyHash (PackageKey _ w1 w2) = toBase62 w1 ++ toBase62 w2
 packageKeyHash (OldPackageKey pid) = display pid
+
+packageKeyLibraryName :: PackageId -> PackageKey -> String
+packageKeyLibraryName pid (PackageKey _ w1 w2) = display pid ++ "-" ++ toBase62 w1 ++ toBase62 w2
+packageKeyLibraryName _ (OldPackageKey pid) = display pid
 
 instance Text PackageKey where
   disp (PackageKey prefix w1 w2) = Disp.text prefix <> Disp.char '_'
