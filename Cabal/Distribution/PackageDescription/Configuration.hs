@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- -fno-warn-deprecations for use of Map.foldWithKey
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
 -----------------------------------------------------------------------------
@@ -59,7 +60,9 @@ import Data.Char ( isAlphaNum )
 import Data.Maybe ( catMaybes, maybeToList )
 import Data.Map ( Map, fromListWith, toList )
 import qualified Data.Map as Map
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
+#endif
 
 ------------------------------------------------------------------------------
 
