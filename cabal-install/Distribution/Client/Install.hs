@@ -63,7 +63,7 @@ import System.IO.Error
 
 import Distribution.Client.Targets
 import Distribution.Client.Configure
-         ( chooseCabalVersion )
+         ( chooseCabalVersion, configureSetupScript )
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
          ( Solver(..) )
@@ -1005,7 +1005,7 @@ performInstallations verbosity
         installLocalPackage verbosity buildLimit
                             (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
-                                 (setupScriptOptions installedPkgIndex cacheLock)
+                                 (setupScriptOptions installedPkgIndex cacheLock rpkg)
                                  miscOptions configFlags' installFlags haddockFlags
                                  cinfo platform pkg pkgoverride mpath useLogFile
 
@@ -1019,31 +1019,19 @@ performInstallations verbosity
     distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                       (configDistPref configFlags)
 
-    setupScriptOptions index lock = SetupScriptOptions {
-      useCabalVersion  = chooseCabalVersion configExFlags
-                         (libVersion miscOptions),
-      useCompiler      = Just comp,
-      usePlatform      = Just platform,
-      -- Hack: we typically want to allow the UserPackageDB for finding the
-      -- Cabal lib when compiling any Setup.hs even if we're doing a global
-      -- install. However we also allow looking in a specific package db.
-      usePackageDB     = if UserPackageDB `elem` packageDBs
-                           then packageDBs
-                           else let (db@GlobalPackageDB:dbs) = packageDBs
-                                 in db : UserPackageDB : dbs,
-                                --TODO: use Ord instance:
-                                -- insert UserPackageDB packageDBs
-      usePackageIndex  = if UserPackageDB `elem` packageDBs
-                           then Just index
-                           else Nothing,
-      useProgramConfig = conf,
-      useDistPref      = distPref,
-      useLoggingHandle = Nothing,
-      useWorkingDir    = Nothing,
-      forceExternalSetupMethod = parallelInstall,
-      useWin32CleanHack        = False,
-      setupCacheLock   = Just lock
-    }
+    setupScriptOptions index lock rpkg =
+      configureSetupScript
+        packageDBs
+        comp
+        platform
+        conf
+        distPref
+        (chooseCabalVersion configExFlags (libVersion miscOptions))
+        (Just lock)
+        parallelInstall
+        index
+        (Just rpkg)
+
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
 
