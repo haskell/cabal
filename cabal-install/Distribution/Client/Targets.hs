@@ -657,7 +657,7 @@ instance Monoid PackageNameEnv where
   mappend (PackageNameEnv lookupA) (PackageNameEnv lookupB) =
     PackageNameEnv (\name -> lookupA name ++ lookupB name)
 
-indexPackageNameEnv :: Package pkg => PackageIndex pkg -> PackageNameEnv
+indexPackageNameEnv :: PackageIndex pkg -> PackageNameEnv
 indexPackageNameEnv pkgIndex = PackageNameEnv pkgNameLookup
   where
     pkgNameLookup (PackageName name) =
