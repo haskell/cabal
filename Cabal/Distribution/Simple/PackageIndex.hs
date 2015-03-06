@@ -403,7 +403,7 @@ lookupSourcePackageId (PackageIndex _ pnames) pkgid =
 
 -- | Convenient alias of 'lookupSourcePackageId', but assuming only
 -- one package per package ID.
-lookupPackageId :: PackageInstalled a => PackageIndex a -> PackageId -> Maybe a
+lookupPackageId :: PackageIndex a -> PackageId -> Maybe a
 lookupPackageId index pkgid = case lookupSourcePackageId index pkgid  of
     []    -> Nothing
     [pkg] -> Just pkg
@@ -519,7 +519,7 @@ brokenPackages' fakeMap index =
   , not (null missing) ]
 
 -- | Variant of 'lookupInstalledPackageId' which accepts a 'FakeMap'.  See Note [FakeMap].
-fakeLookupInstalledPackageId :: PackageInstalled a => FakeMap -> PackageIndex a -> InstalledPackageId -> Maybe a
+fakeLookupInstalledPackageId :: FakeMap -> PackageIndex a -> InstalledPackageId -> Maybe a
 fakeLookupInstalledPackageId fakeMap index pkg = lookupInstalledPackageId index (Map.findWithDefault pkg pkg fakeMap)
 
 -- | Tries to take the transitive closure of the package dependencies.
