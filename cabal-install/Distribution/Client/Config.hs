@@ -487,7 +487,11 @@ defaultRemoteRepo :: RemoteRepo
 defaultRemoteRepo = RemoteRepo name uri
   where
     name = "hackage.haskell.org"
-    uri  = URI "http:" (Just (URIAuth "" name "")) "/packages/archive" "" ""
+    uri  = URI "http:" (Just (URIAuth "" name "")) "/" "" ""
+    -- Note that lots of old ~/.cabal/config files will have the old url
+    -- http://hackage.haskell.org/packages/archive
+    -- but new config files can use the new url (without the /packages/archive)
+    -- and avoid having to do a http redirect
 
 --
 -- * Config file reading
