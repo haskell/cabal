@@ -25,6 +25,7 @@ import PackageTests.PackageTester (PackageSpec(..), compileSetup)
 import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
 import PackageTests.PreProcess.Check
+import PackageTests.PreProcessExtraSources.Check
 import PackageTests.TemplateHaskell.Check
 import PackageTests.CMain.Check
 import PackageTests.DeterministicAr.Check
@@ -69,6 +70,8 @@ tests version inplaceSpec ghcPath ghcPkgPath =
     , testCase "BuildDeps/InternalLibrary0"
       (PackageTests.BuildDeps.InternalLibrary0.Check.suite version ghcPath)
     , testCase "PreProcess" (PackageTests.PreProcess.Check.suite ghcPath)
+    , testCase "PreProcessExtraSources"
+      (PackageTests.PreProcessExtraSources.Check.suite ghcPath)
     , testCase "TestStanza" (PackageTests.TestStanza.Check.suite ghcPath)
       -- ^ The Test stanza test will eventually be required
       -- only for higher versions.

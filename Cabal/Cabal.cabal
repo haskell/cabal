@@ -300,6 +300,7 @@ test-suite package-tests
     PackageTests.PathsModule.Executable.Check
     PackageTests.PathsModule.Library.Check
     PackageTests.PreProcess.Check
+    PackageTests.PreProcessExtraSources.Check
     PackageTests.ReexportedModules.Check
     PackageTests.TemplateHaskell.Check
     PackageTests.TestOptions.Check
