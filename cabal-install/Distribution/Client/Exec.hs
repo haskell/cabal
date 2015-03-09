@@ -31,8 +31,8 @@ import Distribution.System    (Platform)
 import Distribution.Verbosity (Verbosity)
 
 import System.FilePath (searchPathSeparator, (</>))
-import Control.Applicative ((<$>))
 #if !MIN_VERSION_base(4,8,0)
+import Control.Applicative ((<$>))
 import Data.Monoid (mempty)
 #endif
 
