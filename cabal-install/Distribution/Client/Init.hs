@@ -41,11 +41,11 @@ import Data.Function
   ( on )
 import qualified Data.Map as M
 #if !MIN_VERSION_base(4,8,0)
+import Control.Applicative
+  ( (<$>) )
 import Data.Traversable
   ( traverse )
 #endif
-import Control.Applicative
-  ( (<$>) )
 import Control.Monad
   ( when, unless, (>=>), join, forM_ )
 import Control.Arrow
