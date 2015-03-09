@@ -28,7 +28,7 @@ script:
  - mkdir -p ./dist/setup
  - cp Setup.hs ./dist/setup/setup.hs
 # Should be able to build setup without extra dependencies
- - /opt/ghc/$GHCVER/bin/ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Werror -threaded  # the command cabal-install would use to build setup
+ - /opt/ghc/$GHCVER/bin/ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
 # Need extra dependencies for test suite
  - travis_retry git clone -b pr-base48 https://github.com/hvr/ansi-wl-pprint
