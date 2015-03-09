@@ -31,6 +31,7 @@ script:
  - /opt/ghc/$GHCVER/bin/ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Werror -threaded  # the command cabal-install would use to build setup
 
 # Need extra dependencies for test suite
+ - cabal install http://github.com/ekmett/ansi-wl-pprint/archive/39757dc8247f972a476ec713721eb1717fec78fa.tar.gz
  - cabal install --only-dependencies --enable-tests
  - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
  - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
