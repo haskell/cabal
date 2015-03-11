@@ -131,7 +131,7 @@ executable cabal
         bytestring >= 0.9      && < 1,
         Cabal      >= 1.23     && < 1.24,
         containers >= 0.1      && < 0.6,
-        filepath   >= 1.0      && < 1.4,
+        filepath   >= 1.0      && < 1.5,
         HTTP       >= 4000.2.5 && < 4000.3,
         mtl        >= 2.0      && < 3,
         pretty     >= 1        && < 1.2,
