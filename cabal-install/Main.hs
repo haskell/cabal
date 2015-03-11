@@ -845,7 +845,9 @@ cleanAction cleanFlags extraArgs _globalFlags =
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
   let verbosity = fromFlag (listVerbosity listFlags)
-  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                           (globalFlags { globalRequireSandbox = Flag False })
+                           mempty
   let configFlags' = savedConfigureFlags config
       configFlags  = configFlags' {
         configPackageDBs = configPackageDBs configFlags'
@@ -865,7 +867,9 @@ infoAction :: InfoFlags -> [String] -> GlobalFlags -> IO ()
 infoAction infoFlags extraArgs globalFlags = do
   let verbosity = fromFlag (infoVerbosity infoFlags)
   targets <- readUserTargets verbosity extraArgs
-  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                           (globalFlags { globalRequireSandbox = Flag False })
+                           mempty
   let configFlags' = savedConfigureFlags config
       configFlags  = configFlags' {
         configPackageDBs = configPackageDBs configFlags'
@@ -887,7 +891,9 @@ updateAction verbosityFlag extraArgs globalFlags = do
   unless (null extraArgs) $
     die $ "'update' doesn't take any extra arguments: " ++ unwords extraArgs
   let verbosity = fromFlag verbosityFlag
-  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags NoFlag
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                           (globalFlags { globalRequireSandbox = Flag False })
+                           NoFlag
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   update verbosity (globalRepos globalFlags')
 
@@ -1050,7 +1056,9 @@ unpackAction getFlags extraArgs globalFlags = do
 initAction :: InitFlags -> [String] -> GlobalFlags -> IO ()
 initAction initFlags _extraArgs globalFlags = do
   let verbosity = fromFlag (initVerbosity initFlags)
-  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
+                           (globalFlags { globalRequireSandbox = Flag False })
+                           mempty
   let configFlags  = savedConfigureFlags config
   (comp, _, conf) <- configCompilerAux' configFlags
   initCabal verbosity
@@ -1098,7 +1106,7 @@ execAction :: ExecFlags -> [String] -> GlobalFlags -> IO ()
 execAction execFlags extraArgs globalFlags = do
   let verbosity = fromFlag (execVerbosity execFlags)
   (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
-                           mempty
+                          mempty
   let configFlags = savedConfigureFlags config
   (comp, platform, conf) <- configCompilerAux' configFlags
   exec verbosity useSandbox comp platform conf extraArgs
