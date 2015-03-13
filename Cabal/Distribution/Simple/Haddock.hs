@@ -162,7 +162,6 @@ haddock pkg_descr _ _ haddockFlags
         ++ " --benchmarks flags."
 
 haddock pkg_descr lbi suffixes flags = do
-
     setupMessage verbosity "Running Haddock for" (packageId pkg_descr)
     (confHaddock, version, _) <-
       requireProgramVersion verbosity haddockProgram
@@ -308,9 +307,10 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
                           -- haddock stomps on our precious .hi
                           -- and .o files. Workaround by telling
                           -- haddock to write them elsewhere.
-                          ghcOptObjDir  = toFlag tmp,
-                          ghcOptHiDir   = toFlag tmp,
-                          ghcOptStubDir = toFlag tmp
+                          ghcOptObjDir     = toFlag tmp,
+                          ghcOptHiDir      = toFlag tmp,
+                          ghcOptStubDir    = toFlag tmp,
+                          ghcOptPackageKey = toFlag $ pkgKey lbi
                       } `mappend` getGhcCppOpts haddockVersion bi
         sharedOpts = vanillaOpts {
                          ghcOptDynLinkMode = toFlag GhcDynamicOnly,
@@ -498,8 +498,7 @@ renderPureArgs version comp args = concat
                       , "--package-version="++display (pkgVersion pkg)
                       ])
              . fromFlag . argPackageName $ args
-        else (\pname -> ["--optghc=-package-name", "--optghc=" ++ pname])
-             . display . fromFlag . argPackageName $ args
+        else []
 
     , (\(All b,xs) -> bool (map (("--hide=" ++). display) xs) [] b)
                      . argHideModules $ args
