@@ -10,11 +10,16 @@ import Test.Framework (testGroup)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
 import Test.HUnit hiding ( path )
 
+import Distribution.Compiler (CompilerFlavor(..), CompilerId(..))
+import Distribution.PackageDescription (package)
+import Distribution.Simple.Compiler (compilerId)
 import Distribution.Simple.Configure (getPersistBuildConfig)
+import Distribution.Simple.LocalBuildInfo (compiler, localPkgDescr, pkgKey)
 import Distribution.Simple.Hpc
 import Distribution.Simple.Program.Builtin (hpcProgram)
 import Distribution.Simple.Program.Db
     ( emptyProgramDb, configureProgram, requireProgramVersion )
+import Distribution.Text (display)
 import qualified Distribution.Verbosity as Verbosity
 import Distribution.Version (Version(..), orLaterVersion)
 
@@ -70,16 +75,20 @@ checkTestWithHpc :: FilePath -> String -> [String] -> Test
 checkTestWithHpc ghcPath name extraOpts = TestCase $ do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
+        let distPref' = dir </> "dist-" ++ name
         buildAndTest ghcPath name [] ("--enable-coverage" : extraOpts)
-        lbi <- getPersistBuildConfig (dir </> "dist-" ++ name)
+        lbi <- getPersistBuildConfig distPref'
         let way = guessWay lbi
+            CompilerId comp version = compilerId (compiler lbi)
+            subdir
+              | comp == GHC && version >= Version [7, 10] [] =
+                  display (pkgKey lbi)
+              | otherwise = display (package $ localPkgDescr lbi)
         mapM_ shouldExist
-            [ mixDir (dir </> "dist-" ++ name) way "my-0.1"
-                </> "my-0.1" </> "Foo.mix"
-            , mixDir (dir </> "dist-" ++ name) way "test-Foo" </> "Main.mix"
-            , tixFilePath (dir </> "dist-" ++ name) way "test-Foo"
-            , htmlDir (dir </> "dist-" ++ name) way "test-Foo"
-                </> "hpc_index.html"
+            [ mixDir distPref' way "my-0.1" </> subdir </> "Foo.mix"
+            , mixDir distPref' way "test-Foo" </> "Main.mix"
+            , tixFilePath distPref' way "test-Foo"
+            , htmlDir distPref' way "test-Foo" </> "hpc_index.html"
             ]
 
 -- | Ensures that even if -fhpc is manually provided no .tix file is output.
