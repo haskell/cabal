@@ -59,10 +59,9 @@ script:
 # Also build cabal-install.
  - cd ../cabal-install
  - cabal sandbox init
- - cabal sandbox add-source ../Cabal
- - cabal sandbox add-source ../ansi-wl-pprint
+ - cabal sandbox add-source ../Cabal ../ansi-wl-pprint
  - cabal install --dependencies-only --enable-tests
- - cabal configure --enable-tests --ghc-option=-Werror
+ - cabal configure --enable-tests --ghc-option=-Werror -v3
  - cabal build
  - cabal test
  - cabal check
