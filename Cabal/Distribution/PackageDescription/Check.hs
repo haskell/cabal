@@ -1383,36 +1383,30 @@ checkPackageContent :: Monad m => CheckPackageContentOps m
                     -> PackageDescription
                     -> m [PackageCheck]
 checkPackageContent ops pkg = do
+  licenseErrors   <- checkLicensesExist   ops pkg
   setupError      <- checkSetupExists     ops pkg
   configureError  <- checkConfigureExists ops pkg
   localPathErrors <- checkLocalPathsExist ops pkg
   vcsLocation     <- checkMissingVcsInfo  ops pkg
-  fileExistsError <- checkFilesExist      ops pkg
 
-  return $ 
-        catMaybes [setupError, configureError]
+  return $ licenseErrors
+        ++ catMaybes [setupError, configureError]
         ++ localPathErrors
         ++ vcsLocation
-        ++ fileExistsError
 
-checkFilesExist :: Monad m => CheckPackageContentOps m
-                -> PackageDescription
-                -> m [PackageCheck]
-checkFilesExist ops pkg = do
-  let filess = [ (files, kind)
-               | (files, kind) <-
-                    [ (files, "license-file")       | files <- licenseFiles  pkg ]
-                 ++ [ (files, "extra-source-files") | files <- extraSrcFiles pkg ]
-                 ++ [ (files, "data-files")         | files <- dataFiles     pkg ]
-                 ++ [ (files, "extra-doc-files")    | files <- extraDocFiles pkg ]
-               ]
-
-  missing <- filterM (liftM not . doesFileExist ops . fst) filess
-  return [ PackageBuildWarning {
-             explanation = quote (kind ++ ": " ++ file)
-                        ++ " file does not exist."
-           }
-         | (file, kind) <- missing ]
+checkLicensesExist :: Monad m => CheckPackageContentOps m
+                   -> PackageDescription
+                   -> m [PackageCheck]
+checkLicensesExist ops pkg = do
+    exists <- mapM (doesFileExist ops) (licenseFiles pkg)
+    return
+      [ PackageBuildWarning $
+           "The '" ++ fieldname ++ "' field refers to the file "
+        ++ quote file ++ " which does not exist."
+      | (file, False) <- zip (licenseFiles pkg) exists ]
+  where
+    fieldname | length (licenseFiles pkg) == 1 = "license-file"
+              | otherwise                      = "license-files"
 
 checkSetupExists :: Monad m => CheckPackageContentOps m
                  -> PackageDescription
@@ -1442,12 +1436,9 @@ checkLocalPathsExist ops pkg = do
   let dirs = [ (dir, kind)
              | bi <- allBuildInfo pkg
              , (dir, kind) <-
-                  [ (dir, "extra-lib-dirs")  | dir <- extraLibDirs  bi ]
-               ++ [ (dir, "include-dirs")    | dir <- includeDirs   bi ]
-               ++ [ (dir, "hs-source-dirs")  | dir <- hsSourceDirs  bi ]
-               ++ [ (dir, "c-sources")       | dir <- cSources      bi ]
-               ++ [ (dir, "js-sources")      | dir <- jsSources     bi ]
-
+                  [ (dir, "extra-lib-dirs") | dir <- extraLibDirs bi ]
+               ++ [ (dir, "include-dirs")   | dir <- includeDirs  bi ]
+               ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs bi ]
              , isRelative dir ]
   missing <- filterM (liftM not . doesDirectoryExist ops . fst) dirs
   return [ PackageBuildWarning {
