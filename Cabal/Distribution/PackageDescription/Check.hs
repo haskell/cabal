@@ -1442,9 +1442,11 @@ checkLocalPathsExist ops pkg = do
   let dirs = [ (dir, kind)
              | bi <- allBuildInfo pkg
              , (dir, kind) <-
-                  [ (dir, "extra-lib-dirs") | dir <- extraLibDirs  bi ]
-               ++ [ (dir, "include-dirs")   | dir <- includeDirs   bi ]
-               ++ [ (dir, "hs-source-dirs") | dir <- hsSourceDirs  bi ]
+                  [ (dir, "extra-lib-dirs")  | dir <- extraLibDirs  bi ]
+               ++ [ (dir, "include-dirs")    | dir <- includeDirs   bi ]
+               ++ [ (dir, "hs-source-dirs")  | dir <- hsSourceDirs  bi ]
+               ++ [ (dir, "c-sources")       | dir <- cSources      bi ]
+               ++ [ (dir, "js-sources")      | dir <- jsSources     bi ]
 
              , isRelative dir ]
   missing <- filterM (liftM not . doesDirectoryExist ops . fst) dirs
