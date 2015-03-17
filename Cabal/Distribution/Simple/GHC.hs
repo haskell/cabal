@@ -172,7 +172,8 @@ configure verbosity hcPath hcPkgPath conf0 = do
         compilerProperties = ghcInfoMap
       }
       compPlatform = Internal.targetPlatform ghcInfo
-      conf4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap conf3 -- configure gcc and ld
+      -- configure gcc and ld
+      conf4 = Internal.configureToolchain implInfo ghcProg ghcInfoMap conf3
   return (comp, compPlatform, conf4)
 
 -- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find
@@ -429,7 +430,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       ghcVersion = compilerVersion comp
       implInfo  = getImplInfo comp
       (Platform _hostArch hostOS) = hostPlatform lbi
-      hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.packageKey p,n))) (instantiatedWith lbi)
+      hole_insts = map (\(k,(p,n)) -> (k, (InstalledPackageInfo.packageKey p,n)))
+                   (instantiatedWith lbi)
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg comp
@@ -759,7 +761,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptProfilingMode  = toFlag True,
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR $ hcProfOptions GHC exeBi,
+                      ghcOptExtra          = toNubListR $
+                                             hcProfOptions GHC exeBi,
                       ghcOptHPCDir         = hpcdir Hpc.Prof
                     }
       dynOpts    = baseOpts `mappend` mempty {
@@ -966,7 +969,8 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
            else error "libAbiHash: Can't find an enabled library way"
   --
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
-  hash <- getProgramInvocationOutput verbosity (ghcInvocation ghcProg comp ghcArgs)
+  hash <- getProgramInvocationOutput verbosity
+          (ghcInvocation ghcProg comp ghcArgs)
   return (takeWhile (not . isSpace) hash)
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo
@@ -1101,7 +1105,8 @@ pkgRoot verbosity lbi = pkgRoot'
     pkgRoot' UserPackageDB = do
       appDir <- getAppUserDataDirectory "ghc"
       let ver      = compilerVersion (compiler lbi)
-          subdir   = System.Info.arch ++ '-':System.Info.os ++ '-':showVersion ver
+          subdir   = System.Info.arch ++ '-':System.Info.os
+                     ++ '-':showVersion ver
           rootDir  = appDir </> subdir
       -- We must create the root directory for the user package database if it
       -- does not yet exists. Otherwise '${pkgroot}' will resolve to a
