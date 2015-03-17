@@ -217,7 +217,8 @@ mkPackageKey True pid deps holes =
     fingerprintPackageKey stubName . fingerprintString $
         display pid ++ "\n" ++
         -- NB: packageKeyHash, NOT display
-        concat [ display m ++ " " ++ packageKeyHash p' ++ ":" ++ display m' ++ "\n"
+        concat [ display m ++ " " ++ packageKeyHash p'
+                 ++ ":" ++ display m' ++ "\n"
                | (m, (p', m')) <- sortBy (comparing fst) holes] ++
         concat [ packageKeyHash d ++ "\n"
                | d <- sortBy (comparing packageKeyHash) deps]
@@ -277,7 +278,8 @@ packageKeyHash (PackageKey _ w1 w2) = toBase62 w1 ++ toBase62 w2
 packageKeyHash (OldPackageKey pid) = display pid
 
 packageKeyLibraryName :: PackageId -> PackageKey -> String
-packageKeyLibraryName pid (PackageKey _ w1 w2) = display pid ++ "-" ++ toBase62 w1 ++ toBase62 w2
+packageKeyLibraryName pid (PackageKey _ w1 w2) =
+  display pid ++ "-" ++ toBase62 w1 ++ toBase62 w2
 packageKeyLibraryName _ (OldPackageKey pid) = display pid
 
 instance Text PackageKey where
