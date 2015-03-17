@@ -17,6 +17,13 @@ import System.FilePath
 import System.IO
 import Test.HUnit (Assertion, Test (TestCase), assertFailure)
 
+import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
+import Distribution.Package               (packageKeyHash)
+import Distribution.Version               (Version(..))
+import Distribution.Simple.Compiler       (compilerId)
+import Distribution.Simple.Configure      (getPersistBuildConfig)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, pkgKey)
+
 -- Perhaps these should live in PackageTester.
 
 -- For a polymorphic @IO a@ rather than @Assertion = IO ()@.
@@ -66,15 +73,22 @@ suite ghcPath ghcPkgPath = TestCase $ do
 
     let distBuild = dir </> "dist" </> "build"
     libdir <- ghcPkg_field1 this "library-dirs" ghcPkgPath
-    mapM_ checkMetadata [distBuild, libdir]
+    lbi    <- getPersistBuildConfig (dir </> "dist")
+    mapM_ (checkMetadata lbi) [distBuild, libdir]
     unregister this ghcPkgPath
 
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
-checkMetadata :: FilePath -> Assertion
-checkMetadata dir = withBinaryFile path ReadMode $ \ h -> do
+checkMetadata :: LocalBuildInfo -> FilePath -> Assertion
+checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h -> do
     hFileSize h >>= checkArchive h
   where
-    path = dir </> "libHS" ++ this ++ "-0.a"
+    path = dir </> "libHS" ++ this ++ "-0"
+           ++ (if ghc_7_10 then ("-" ++ packageKeyHash (pkgKey lbi)) else "")
+           ++ ".a"
+
+    ghc_7_10 = case compilerId (compiler lbi) of
+      CompilerId GHC version | version >= Version [7, 10] [] -> True
+      _                                                      -> False
 
     checkError msg = assertFailure' $
         "PackageTests.DeterministicAr.checkMetadata: " ++ msg ++
