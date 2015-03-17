@@ -13,6 +13,6 @@ suite inplaceSpec ghcPath = TestCase $ do
             , configOpts = "--enable-tests" : configOpts inplaceSpec
             }
     confResult <- cabal_configure spec ghcPath
-    assertEqual "configure failed!" (successful confResult) True
+    assertConfigureSucceeded confResult
     buildResult <- cabal_build spec ghcPath
-    assertEqual "build failed!" (successful buildResult) True
+    assertBuildSucceeded buildResult

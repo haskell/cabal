@@ -19,6 +19,7 @@ module PackageTests.PackageTester
     , run
 
     -- * Test helpers
+    , assertConfigureSucceeded
     , assertBuildSucceeded
     , assertBuildFailed
     , assertHaddockSucceeded
@@ -240,6 +241,12 @@ record spec res = do
 
 ------------------------------------------------------------------------
 -- * Test helpers
+
+assertConfigureSucceeded :: Result -> Assertion
+assertConfigureSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'setup configure\' should succeed\n" ++
+    "  output: " ++ outputText result
 
 assertBuildSucceeded :: Result -> Assertion
 assertBuildSucceeded result = unless (successful result) $
