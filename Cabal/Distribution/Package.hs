@@ -27,6 +27,7 @@ module Distribution.Package (
         -- * Package keys (used for linker symbols and library name)
         PackageKey(..),
         mkPackageKey,
+        packageKeyHash,
         packageKeyLibraryName,
 
         -- * Package source dependencies
