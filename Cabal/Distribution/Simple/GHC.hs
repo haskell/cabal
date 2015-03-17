@@ -79,7 +79,7 @@ import Distribution.Simple.Program
          , rawSystemProgramStdout, rawSystemProgramStdoutConf
          , getProgramInvocationOutput, requireProgramVersion, requireProgram
          , userMaybeSpecifyPath, programPath, lookupProgram, addKnownProgram
-         , ghcProgram, ghcPkgProgram, hsc2hsProgram, ldProgram )
+         , ghcProgram, ghcPkgProgram, haddockProgram, hsc2hsProgram, ldProgram )
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import qualified Distribution.Simple.Program.Ar    as Ar
 import qualified Distribution.Simple.Program.Ld    as Ld
@@ -147,11 +147,15 @@ configure verbosity hcPath hcPkgPath conf0 = do
     ++ programPath ghcProg ++ " is version " ++ display ghcVersion ++ " "
     ++ programPath ghcPkgProg ++ " is version " ++ display ghcPkgVersion
 
-  -- Likewise we try to find the matching hsc2hs program.
+  -- Likewise we try to find the matching hsc2hs and haddock programs.
   let hsc2hsProgram' = hsc2hsProgram {
                            programFindLocation = guessHsc2hsFromGhcPath ghcProg
                        }
-      conf3 = addKnownProgram hsc2hsProgram' conf2
+      haddockProgram' = haddockProgram {
+                           programFindLocation = guessHaddockFromGhcPath ghcProg
+                       }
+      conf3 = addKnownProgram haddockProgram' $
+              addKnownProgram hsc2hsProgram' conf2
 
   languages  <- Internal.getLanguages verbosity implInfo ghcProg
   extensions <- Internal.getExtensions verbosity implInfo ghcProg
@@ -241,6 +245,18 @@ guessGhcPkgFromGhcPath = guessToolFromGhcPath ghcPkgProgram
 guessHsc2hsFromGhcPath :: ConfiguredProgram
                        -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
 guessHsc2hsFromGhcPath = guessToolFromGhcPath hsc2hsProgram
+
+-- | Given something like /usr/local/bin/ghc-6.6.1(.exe) we try and find a
+-- corresponding haddock, we try looking for both a versioned and unversioned
+-- haddock in the same dir, that is:
+--
+-- > /usr/local/bin/haddock-ghc-6.6.1(.exe)
+-- > /usr/local/bin/haddock-6.6.1(.exe)
+-- > /usr/local/bin/haddock(.exe)
+--
+guessHaddockFromGhcPath :: ConfiguredProgram
+                       -> Verbosity -> ProgramSearchPath -> IO (Maybe FilePath)
+guessHaddockFromGhcPath = guessToolFromGhcPath haddockProgram
 
 getGhcInfo :: Verbosity -> ConfiguredProgram -> IO [(String, String)]
 getGhcInfo verbosity ghcProg = Internal.getGhcInfo verbosity implInfo ghcProg
