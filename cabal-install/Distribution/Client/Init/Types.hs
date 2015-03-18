@@ -1,4 +1,4 @@
-{-# LANG|UAGE CPP #-}
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Init.Types
