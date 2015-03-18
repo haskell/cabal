@@ -111,6 +111,7 @@ initCabal verbosity packageDBs comp conf initFlags = do
   writeSetupFile initFlags'
   writeChangeLog initFlags'
   createSourceDirectories initFlags'
+  createMainHs initFlags'
   success <- writeCabalFile initFlags'
 
   when success $ generateWarnings initFlags'
@@ -293,7 +294,7 @@ getMainFile flags =
   return (flagToMaybe $ mainIs flags)
   ?>> do
     candidates <- guessMainFileCandidates flags
-    let showCandidate = either (++" (does not yet exist)") id
+    let showCandidate = either (++" (does not yet exist, but will be created)") id
         defaultFile = listToMaybe candidates
     maybePrompt flags (either id (either id id) `fmap`
                        promptList "What is the main module of the executable"
@@ -676,6 +677,38 @@ createSourceDirectories :: InitFlags -> IO ()
 createSourceDirectories flags = case sourceDirs flags of
                                   Just dirs -> forM_ dirs (createDirectoryIfMissing True)
                                   Nothing   -> return ()
+
+-- | Create Main.hs, but only if we are init'ing an executable and
+--   the mainIs flag has been provided.
+createMainHs :: InitFlags -> IO ()
+createMainHs flags@InitFlags{ sourceDirs = Just (srcPath:_)
+                            , packageType = Flag Executable
+                            , mainIs = Flag mainFile } =
+  writeMainHs flags (srcPath </> mainFile)
+createMainHs flags@InitFlags{ sourceDirs = _
+                            , packageType = Flag Executable
+                            , mainIs = Flag mainFile } =
+  writeMainHs flags mainFile
+createMainHs _ = return ()
+
+-- | Write a main file if it doesn't already exist.
+writeMainHs :: InitFlags -> FilePath -> IO ()
+writeMainHs flags mainPath = do
+  dir <- maybe getCurrentDirectory return (flagToMaybe $ packageDir flags)
+  let mainFullPath = dir </> mainPath
+  exists <- doesFileExist mainFullPath
+  unless exists $ do
+      message flags $ "Generating " ++ mainPath ++ "..."
+      writeFileSafe flags mainFullPath mainHs
+
+-- | Default Main.hs file.  Used when no Main.hs exists.
+mainHs :: String
+mainHs = unlines
+  [ "module Main where"
+  , ""
+  , "main :: IO ()"
+  , "main = putStrLn \"Hello, World!\""
+  ]
 
 -- | Move an existing file, if there is one, and the overwrite flag is
 --   not set.
