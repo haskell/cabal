@@ -390,7 +390,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                               (package pkg) [] []
     }
     ipkgid = inplacePackageId (packageId pkg)
-    ipi    = inplaceInstalledPackageInfo pwd distPref pkg ipkgid lib lbi libClbi
+    ipi    = inplaceInstalledPackageInfo pwd distPref pkg ipkgid lib lbi' libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg
