@@ -274,8 +274,7 @@ globalCommand commands = CommandUI {
          (reqArgFlag "FILE")
 
       ,option [] ["sandbox-config-file"]
-         "Set an alternate location for the sandbox config file \
-         \(default: './cabal.sandbox.config')"
+         "Set an alternate location for the sandbox config file (default: './cabal.sandbox.config')"
          globalConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
          (reqArgFlag "FILE")
 
