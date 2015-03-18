@@ -4,7 +4,7 @@
 env:
  - GHCVER=7.4.2
  - GHCVER=7.6.3
- - GHCVER=7.8.3
+ - GHCVER=7.8.4
  - GHCVER=7.10.1
  - GHCVER=head
 
@@ -12,8 +12,8 @@ env:
 before_install:
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
  - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install cabal-install-1.20 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
- - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.20/bin:$PATH
+ - travis_retry sudo apt-get install cabal-install-1.22 ghc-$GHCVER-prof ghc-$GHCVER-dyn happy
+ - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/1.22/bin:$PATH
 
 install:
  - cabal update
@@ -28,14 +28,16 @@ script:
  - mkdir -p ./dist/setup
  - cp Setup.hs ./dist/setup/setup.hs
 # Should be able to build setup without extra dependencies
- - /opt/ghc/$GHCVER/bin/ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -threaded  # the command cabal-install would use to build setup
+ - /opt/ghc/$GHCVER/bin/ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
 # Need extra dependencies for test suite
+ - travis_retry git clone -b pr-base48 https://github.com/hvr/ansi-wl-pprint ../ansi-wl-pprint
+ - cabal install ../ansi-wl-pprint
  - cabal install --only-dependencies --enable-tests
  - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
  - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
 
- - ./dist/setup/setup configure --user --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
+ - ./dist/setup/setup configure --user --enable-tests --enable-benchmarks --ghc-option=-Werror -v2  # -v2 provides useful information for debugging
  - ./dist/setup/setup build   # this builds all libraries and executables (including tests/benchmarks)
  - ./dist/setup/setup haddock # see #2198
  - ./dist/setup/setup test --show-details=streaming
@@ -57,9 +59,9 @@ script:
 # Also build cabal-install.
  - cd ../cabal-install
  - cabal sandbox init
- - cabal sandbox add-source ../Cabal
+ - cabal sandbox add-source ../Cabal ../ansi-wl-pprint
  - cabal install --dependencies-only --enable-tests
- - cabal configure --enable-tests
+ - cabal configure --enable-tests --ghc-option=-Werror
  - cabal build
  - cabal test
  - cabal check
@@ -68,5 +70,4 @@ script:
 
 matrix:
   allow_failures:
-   - env: GHCVER=7.10.1
    - env: GHCVER=head
