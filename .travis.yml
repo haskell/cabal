@@ -61,7 +61,7 @@ script:
  - cabal sandbox init
  - cabal sandbox add-source ../Cabal ../ansi-wl-pprint
  - cabal install --dependencies-only --enable-tests
- - cabal configure --enable-tests --ghc-option=-Werror -v3
+ - cabal configure --enable-tests --ghc-option=-Werror
  - cabal build
  - cabal test
  - cabal check
@@ -70,5 +70,4 @@ script:
 
 matrix:
   allow_failures:
-   - env: GHCVER=7.10.1
    - env: GHCVER=head
