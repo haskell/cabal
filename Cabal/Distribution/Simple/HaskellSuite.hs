@@ -1,7 +1,10 @@
+{-# LANGUAGE CPP #-}
 module Distribution.Simple.HaskellSuite where
 
 import Control.Monad
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
+#endif
 import Data.Maybe
 import Data.Version
 import qualified Data.Map as M (empty)

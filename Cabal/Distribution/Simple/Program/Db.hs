@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP           #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -----------------------------------------------------------------------------
@@ -74,7 +75,9 @@ import Distribution.Verbosity
          ( Verbosity )
 
 import Distribution.Compat.Binary (Binary(..))
+#if __GLASGOW_HASKELL__ < 710
 import Data.Functor ((<$>))
+#endif
 import Data.List
          ( foldl' )
 import Data.Maybe

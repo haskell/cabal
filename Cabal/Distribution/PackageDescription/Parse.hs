@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 -----------------------------------------------------------------------------
 -- |
@@ -42,10 +43,14 @@ module Distribution.PackageDescription.Parse (
 
 import Data.Char  (isSpace)
 import Data.Maybe (listToMaybe, isJust)
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid ( Monoid(..) )
+#endif
 import Data.List  (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless, ap)
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative (Applicative(..))
+#endif
 import Control.Arrow (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8

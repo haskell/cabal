@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -109,7 +110,9 @@ import Distribution.Compat.Binary (Binary)
 import Data.Data   (Data)
 import Data.List   (nub, intercalate)
 import Data.Maybe  (fromMaybe, maybeToList)
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (Monoid(mempty, mappend))
+#endif
 import Data.Typeable ( Typeable )
 import Control.Monad (MonadPlus(mplus))
 import GHC.Generics (Generic)

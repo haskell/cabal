@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Command
@@ -63,7 +64,9 @@ import Control.Monad
 import Data.Char (isAlpha, toLower)
 import Data.List (sortBy)
 import Data.Maybe
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
+#endif
 import qualified Distribution.GetOpt as GetOpt
 import Distribution.Text
          ( Text(disp, parse) )

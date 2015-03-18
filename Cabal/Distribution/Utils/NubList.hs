@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Distribution.Utils.NubList
     ( NubList    -- opaque
     , toNubList  -- smart construtor
@@ -11,7 +12,9 @@ module Distribution.Utils.NubList
     ) where
 
 import Distribution.Compat.Binary
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
+#endif
 
 import Distribution.Simple.Utils (ordNub, listUnion, ordNubRight, listUnionRight)
 
