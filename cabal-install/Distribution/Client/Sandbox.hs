@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Sandbox
@@ -104,7 +105,9 @@ import Data.Char                              ( ord )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
 import Data.List                              ( delete, foldl' )
 import Data.Maybe                             ( fromJust, fromMaybe )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                            ( mempty, mappend )
+#endif
 import Data.Word                              ( Word32 )
 import Numeric                                ( showHex )
 import System.Directory                       ( createDirectory

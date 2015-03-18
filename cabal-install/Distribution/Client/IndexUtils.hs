@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.IndexUtils
@@ -63,7 +64,9 @@ import Distribution.Simple.Utils
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (mapMaybe, fromMaybe)
 import Data.List   (isPrefixOf)
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
+#endif
 import qualified Data.Map as Map
 import Control.Monad (MonadPlus(mplus), when, liftM)
 import Control.Exception (evaluate)

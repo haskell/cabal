@@ -1,10 +1,13 @@
+{-# LANGUAGE CPP #-}
 module Distribution.Client.Dependency.Modular.Preference where
 
 -- Reordering or pruning the tree in order to prefer or make certain choices.
 
 import qualified Data.List as L
 import qualified Data.Map as M
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
+#endif
 import Data.Ord
 
 import Distribution.Client.Dependency.Types

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.Types
@@ -59,8 +60,10 @@ import Data.List
          ( foldl', maximumBy, minimumBy, nub, sort, sortBy, groupBy )
 import Data.Maybe
          ( fromJust, fromMaybe, catMaybes )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(mempty) )
+#endif
 import Control.Monad
          ( guard )
 import qualified Data.Set as Set

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Targets
@@ -79,8 +80,10 @@ import Data.Maybe
          ( listToMaybe )
 import Data.Either
          ( partitionEithers )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(..) )
+#endif
 import qualified Data.Map as Map
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8

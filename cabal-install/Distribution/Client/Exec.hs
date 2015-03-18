@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Exec
@@ -30,8 +31,10 @@ import Distribution.System    (Platform)
 import Distribution.Verbosity (Verbosity)
 
 import System.FilePath (searchPathSeparator, (</>))
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
 import Data.Monoid (mempty)
+#endif
 
 
 -- | Execute the given command in the package's environment.

@@ -45,8 +45,10 @@ import System.Exit
          ( ExitCode(..) )
 import Distribution.Compat.Exception
          ( catchIO, catchExit )
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
          ( (<$>) )
+#endif
 import Control.Monad
          ( forM_, when, unless )
 import System.Directory

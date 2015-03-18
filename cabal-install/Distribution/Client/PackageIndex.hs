@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP           #-}
 {-# LANGUAGE DeriveFunctor #-}
 -----------------------------------------------------------------------------
 -- |
@@ -63,7 +64,9 @@ import qualified Data.Graph as Graph
 import qualified Data.Array as Array
 import Data.Array ((!))
 import Data.List (groupBy, sortBy, nub, isInfixOf)
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
+#endif
 import Data.Maybe (isJust, isNothing, fromMaybe, catMaybes)
 
 import Distribution.Package

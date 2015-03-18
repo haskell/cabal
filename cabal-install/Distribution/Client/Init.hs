@@ -40,10 +40,12 @@ import Data.Maybe
 import Data.Function
   ( on )
 import qualified Data.Map as M
+#if !MIN_VERSION_base(4,8,0)
 import Data.Traversable
   ( traverse )
 import Control.Applicative
   ( (<$>) )
+#endif
 import Control.Monad
   ( when, unless, (>=>), join, forM_ )
 import Control.Arrow

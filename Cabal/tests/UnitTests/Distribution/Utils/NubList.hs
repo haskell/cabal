@@ -1,8 +1,11 @@
+{-# LANGUAGE CPP #-}
 module UnitTests.Distribution.Utils.NubList
     ( tests
     ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
+#endif
 import Distribution.Utils.NubList
 import Test.Framework
 import Test.Framework.Providers.HUnit (testCase)

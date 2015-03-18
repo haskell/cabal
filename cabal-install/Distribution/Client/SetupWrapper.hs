@@ -97,11 +97,15 @@ import System.FilePath     ( (</>), (<.>) )
 import System.IO           ( Handle, hPutStr )
 import System.Exit         ( ExitCode(..), exitWith )
 import System.Process      ( runProcess, waitForProcess )
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ( (<$>), (<*>) )
+#endif
 import Control.Monad       ( when, unless )
 import Data.List           ( foldl1' )
 import Data.Maybe          ( fromMaybe, isJust )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid         ( mempty )
+#endif
 import Data.Char           ( isSpace )
 
 #ifdef mingw32_HOST_OS

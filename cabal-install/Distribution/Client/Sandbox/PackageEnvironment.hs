@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Sandbox.PackageEnvironment
@@ -60,7 +61,9 @@ import Distribution.Verbosity          ( Verbosity, normal )
 import Control.Monad                   ( foldM, liftM2, when, unless )
 import Data.List                       ( partition )
 import Data.Maybe                      ( isJust )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                     ( Monoid(..) )
+#endif
 import Distribution.Compat.Exception   ( catchIO )
 import System.Directory                ( doesDirectoryExist, doesFileExist
                                        , renameFile )

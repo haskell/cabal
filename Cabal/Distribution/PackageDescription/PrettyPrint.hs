@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.PrettyPrint
@@ -17,7 +18,9 @@ module Distribution.PackageDescription.PrettyPrint (
     showGenericPackageDescription,
 ) where
 
+#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid (Monoid(mempty))
+#endif
 import Distribution.PackageDescription
        ( Benchmark(..), BenchmarkInterface(..), benchmarkType
        , TestSuite(..), TestSuiteInterface(..), testType
@@ -27,7 +30,7 @@ import Distribution.PackageDescription
         Flag(..), PackageDescription(..),
         GenericPackageDescription(..))
 import Text.PrettyPrint
-       (hsep, comma, punctuate, parens, char, nest, empty,
+       (hsep, parens, char, nest, empty,
         isEmpty, ($$), (<+>), colon, (<>), text, vcat, ($+$), Doc, render)
 import Distribution.Simple.Utils (writeUTF8File)
 import Distribution.ParseUtils (showFreeText, FieldDescr(..), indentWith, ppField, ppFields)

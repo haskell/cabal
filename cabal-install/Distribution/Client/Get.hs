@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Get
@@ -51,8 +52,10 @@ import Data.List
 import qualified Data.Map
 import Data.Maybe
          ( listToMaybe, mapMaybe )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( mempty )
+#endif
 import Data.Ord
          ( comparing )
 import System.Directory

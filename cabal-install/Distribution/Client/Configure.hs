@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Configure
@@ -55,7 +56,9 @@ import Distribution.Verbosity as Verbosity
 import Distribution.Version
          ( Version(..), VersionRange, orLaterVersion )
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
+#endif
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags.

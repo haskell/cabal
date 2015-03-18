@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Config
@@ -91,8 +92,10 @@ import Data.List
          ( partition, find, foldl' )
 import Data.Maybe
          ( fromMaybe )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(..) )
+#endif
 import Control.Monad
          ( unless, foldM, liftM, liftM2 )
 import qualified Distribution.Compat.ReadP as Parse

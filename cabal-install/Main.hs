@@ -154,7 +154,9 @@ import System.IO                ( BufferMode(LineBuffering), hSetBuffering
 import System.Directory         (doesFileExist, getCurrentDirectory)
 import Data.List                (intercalate)
 import Data.Maybe               (mapMaybe)
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid              (Monoid(..))
+#endif
 import Control.Monad            (when, unless)
 
 -- | Entry point

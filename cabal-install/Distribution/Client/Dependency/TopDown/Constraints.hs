@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.TopDown.Constraints
@@ -35,8 +36,10 @@ import Distribution.Version
 import Distribution.Client.Utils
          ( mergeBy, MergeResult(..) )
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(mempty) )
+#endif
 import Data.Either
          ( partitionEithers )
 import qualified Data.Map as Map

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Run
@@ -28,7 +29,9 @@ import Distribution.Verbosity                (Verbosity)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 
+#if !MIN_VERSION_base(4,8,0)
 import Data.Functor                          ((<$>))
+#endif
 import Data.List                             (find)
 import System.Directory                      (getCurrentDirectory)
 import Distribution.Compat.Environment       (getEnvironment)

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Setup
@@ -95,8 +96,10 @@ import Data.List
          ( intercalate, deleteFirstsBy )
 import Data.Maybe
          ( listToMaybe, maybeToList, fromMaybe )
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
          ( Monoid(..) )
+#endif
 import Control.Monad
          ( liftM )
 import System.FilePath
