@@ -1,10 +1,13 @@
+{-# LANGUAGE CPP #-}
 module UnitTests.Distribution.Client.UserConfig
     ( tests
     ) where
 
 import Control.Exception (bracket)
 import Data.List (sort, nub)
+#if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
+#endif
 import System.Directory (getCurrentDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
 

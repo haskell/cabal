@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module PackageTests.Exec.Check
        ( tests
        ) where
@@ -9,7 +10,9 @@ import Test.Framework                 as TF (Test)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.HUnit                     (assertBool)
 
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
+#endif
 import Control.Monad (when)
 import Data.List (intercalate, isInfixOf)
 import System.FilePath ((</>))
