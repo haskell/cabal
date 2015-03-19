@@ -93,7 +93,7 @@ import Distribution.Simple.Utils
 import Data.Char
          ( isSpace, isAlphaNum )
 import Data.List
-         ( intercalate, deleteFirstsBy )
+         ( intercalate, delete, deleteFirstsBy )
 import Data.Maybe
          ( listToMaybe, maybeToList, fromMaybe )
 #if !MIN_VERSION_base(4,8,0)
@@ -392,6 +392,9 @@ filterConfigureFlags flags cabalLibVersion
                    , configProfLib = configProfLib flags
                    , configCoverage = NoFlag
                    , configLibCoverage = configCoverage flags
+                   -- HACK: See #2409.
+                   , configProgramPaths =
+                     ("cabalConfProf", "/TRUE") `delete` configProgramPaths flags
                    }
     -- Cabal < 1.19.2 doesn't know about '--exact-configuration'.
     flags_1_19_1 = flags_1_20_0 { configExactConfiguration = NoFlag }

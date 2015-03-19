@@ -458,7 +458,18 @@ configureOptions showOrParseArgs =
 
       ,option "" ["profiling"]
          "Executable profiling (requires library profiling)"
-         configProfExe (\v flags -> flags { configProfLib = v, configProfExe = v })
+         -- HACK: See #2409. Thankfully, this is 1.22-specific.
+         (\flags ->
+           case (configProfLib flags, configProfExe flags) of
+             (Flag a, Flag b)
+               | (a == b)
+               && ("cabalConfProf", "/TRUE") `elem` configProgramPaths flags
+                    -> configProfExe flags
+             _      -> NoFlag)
+         (\v flags -> flags
+               { configProfLib = v, configProfExe = v
+               , configProgramPaths = ("cabalConfProf", "/TRUE")
+               : configProgramPaths flags })
          (boolOpt [] [])
 
       ,option "" ["executable-profiling"]
