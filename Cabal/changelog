@@ -1,4 +1,14 @@
 -*-change-log-*-
+1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
+	* Don't pass '--{en,dis}able-profiling' to old setup.
+	* Add -Wall police
+	* Fix dependencies on 'old-time'
+	* Fix test interface detailed-0.9 with GHC 7.10
+	* Fix HPC tests with GHC 7.10
+	* Make sure to pass the package key to ghc
+	* Use --package-{name|version} when available for Haddock when available
+	* Put full package name and version in library names
+	* Fully specify package key format, so external tools can generate it.
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
