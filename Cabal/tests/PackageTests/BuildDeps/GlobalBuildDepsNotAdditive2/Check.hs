@@ -1,6 +1,6 @@
 module PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check where
 
-import Test.HUnit
+import Test.Tasty.HUnit
 import PackageTests.PackageTester
 import System.FilePath
 import Data.List
@@ -8,8 +8,8 @@ import Control.Exception
 import Prelude hiding (catch)
 
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     let spec = PackageSpec ("PackageTests" </> "BuildDeps" </> "GlobalBuildDepsNotAdditive2") []
     result <- cabal_build spec ghcPath
     do

@@ -1,15 +1,15 @@
 module Main
        where
 
-import Test.Framework
+import Test.Tasty
 
 import qualified UnitTests.Distribution.Client.Sandbox
 import qualified UnitTests.Distribution.Client.UserConfig
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
 
-tests :: [Test]
-tests = [
+tests :: TestTree
+tests = testGroup "Unit Tests" [
    testGroup "UnitTests.Distribution.Client.UserConfig"
        UnitTests.Distribution.Client.UserConfig.tests
   ,testGroup "Distribution.Client.Sandbox"

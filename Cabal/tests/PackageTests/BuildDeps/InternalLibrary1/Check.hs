@@ -2,11 +2,11 @@ module PackageTests.BuildDeps.InternalLibrary1.Check where
 
 import PackageTests.PackageTester
 import System.FilePath
-import Test.HUnit
+import Test.Tasty.HUnit
 
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "InternalLibrary1"
             , configOpts = []

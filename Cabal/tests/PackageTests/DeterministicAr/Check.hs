@@ -15,7 +15,7 @@ import PackageTests.PackageTester
 import System.Exit
 import System.FilePath
 import System.IO
-import Test.HUnit (Assertion, Test (TestCase), assertFailure)
+import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
 import Distribution.Package               (packageKeyHash)
@@ -58,8 +58,8 @@ ghcPkg_field1 libraryName fieldName ghcPkgPath = do
 this :: String
 this = "DeterministicAr"
 
-suite :: FilePath -> FilePath -> Test
-suite ghcPath ghcPkgPath = TestCase $ do
+suite :: FilePath -> FilePath -> Assertion
+suite ghcPath ghcPkgPath = do
     let dir = "PackageTests" </> this
     let spec = PackageSpec
             { directory = dir
