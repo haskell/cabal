@@ -1060,9 +1060,11 @@ initAction initFlags _extraArgs globalFlags = do
                            (globalFlags { globalRequireSandbox = Flag False })
                            mempty
   let configFlags  = savedConfigureFlags config
+  let globalFlags' = savedGlobalFlags    config `mappend` globalFlags
   (comp, _, conf) <- configCompilerAux' configFlags
   initCabal verbosity
             (configPackageDB' configFlags)
+            (globalRepos globalFlags')
             comp
             conf
             initFlags
