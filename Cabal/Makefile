@@ -2,13 +2,13 @@
 VERSION=1.22.2.0
 
 #KIND=devel
-KIND=rc
-#KIND=cabal-latest
+#KIND=rc
+KIND=cabal-latest
 
 PREFIX=/usr/local
 HC=ghc
 GHCFLAGS=-Wall -threaded
-SSH_USER=$(USER)
+SSH_USER=cabal-site
 
 all: build
 
@@ -22,6 +22,8 @@ USERGUIDE_STAMP=dist/doc/users-guide/index.html
 SDIST_STAMP=dist/Cabal-$(VERSION).tar.gz
 DISTLOC=dist/release
 DIST_STAMP=$(DISTLOC)/Cabal-$(VERSION).tar.gz
+
+TMP := $(shell mktemp -d)
 
 COMMA=,
 
@@ -110,6 +112,14 @@ $(DIST_STAMP) : $(HADDOCK_STAMP) $(USERGUIDE_STAMP) $(SDIST_STAMP)
 release: $(DIST_STAMP)
 	scp -r $(DISTLOC) $(SSH_USER)@haskell.org:/home/web/haskell.org/cabal/release/cabal-$(VERSION)
 	ssh $(SSH_USER)@haskell.org 'cd /home/web/haskell.org/cabal/release && rm -f $(KIND) && ln -s cabal-$(VERSION) $(KIND)'
+
+release-new: $(DIST_STAMP)
+	@echo "cd cabal/release" > $(TMP)/cabal-sftp-$(VERSION)
+	@echo "mkdir cabal-$(VERSION)" >> $(TMP)/cabal-sftp-$(VERSION)
+	@echo "cd cabal-$(VERSION)" >> $(TMP)/cabal-sftp-$(VERSION)
+	@echo "lcd $(DISTLOC)" >> $(TMP)/cabal-sftp-$(VERSION)
+	@echo "put *" >> $(TMP)/cabal-sftp-$(VERSION)
+	sftp -b $(TMP)/cabal-sftp-$(VERSION) $(SSH_USER)@wiki.haskell.org
 
 # tags...
 
