@@ -6,9 +6,8 @@ module PackageTests.Exec.Check
 
 import PackageTests.PackageTester
 
-import Test.Framework                 as TF (Test)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit                     (assertBool)
+import Test.Tasty
+import Test.Tasty.HUnit
 
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
@@ -21,7 +20,7 @@ import System.Directory (getDirectoryContents)
 dir :: FilePath
 dir = packageTestsDirectory </> "Exec"
 
-tests :: TestsPaths -> [TF.Test]
+tests :: TestsPaths -> [TestTree]
 tests paths =
     [ testCase "exits with failure if given no argument" $ do
           result <- cabal_exec paths dir []

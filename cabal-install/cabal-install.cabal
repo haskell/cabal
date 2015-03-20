@@ -197,10 +197,9 @@ Test-Suite unit-tests
         HTTP,
         zlib,
 
-        test-framework,
-        test-framework-hunit,
-        test-framework-quickcheck2 >= 0.3,
-        HUnit,
+        tasty,
+        tasty-hunit,
+        tasty-quickcheck,
         QuickCheck >= 2.5
 
   if flag(old-directory)
@@ -235,8 +234,7 @@ test-suite package-tests
     PackageTests.PackageTester
   build-depends:
     Cabal,
-    HUnit,
-    QuickCheck >= 2.1.0.1 && < 2.8,
+    QuickCheck >= 2.1.0.1 && < 2.9,
     base,
     bytestring,
     directory,
@@ -244,9 +242,9 @@ test-suite package-tests
     filepath,
     process,
     regex-posix,
-    test-framework,
-    test-framework-hunit,
-    test-framework-quickcheck2 >= 0.2.12
+    tasty,
+    tasty-hunit,
+    tasty-quickcheck
 
   if os(windows)
     build-depends: Win32 >= 2 && < 3

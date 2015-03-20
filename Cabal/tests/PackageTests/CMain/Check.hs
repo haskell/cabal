@@ -2,15 +2,15 @@ module PackageTests.CMain.Check
        ( checkBuild
        ) where
 
-import Test.HUnit
+import Test.Tasty.HUnit
 import System.FilePath
 import PackageTests.PackageTester
 
 dir :: FilePath
 dir = "PackageTests" </> "CMain"
 
-checkBuild :: FilePath -> Test
-checkBuild ghcPath = TestCase $ do
+checkBuild :: FilePath -> Assertion
+checkBuild ghcPath = do
     let spec = PackageSpec
             { directory = dir
             , distPref = Nothing

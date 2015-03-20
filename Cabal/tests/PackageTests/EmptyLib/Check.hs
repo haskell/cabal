@@ -2,11 +2,11 @@ module PackageTests.EmptyLib.Check where
 
 import PackageTests.PackageTester
 import System.FilePath
-import Test.HUnit
+import Test.Tasty.HUnit
 
 -- See https://github.com/haskell/cabal/issues/1241
-emptyLib :: FilePath -> Test
-emptyLib ghcPath = TestCase $ do
+emptyLib :: FilePath -> Assertion
+emptyLib ghcPath = do
    let spec = PackageSpec
           { directory = "PackageTests" </> "EmptyLib" </> "empty"
           , configOpts = []

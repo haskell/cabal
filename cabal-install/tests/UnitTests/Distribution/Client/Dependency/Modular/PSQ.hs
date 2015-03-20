@@ -4,10 +4,10 @@ module UnitTests.Distribution.Client.Dependency.Modular.PSQ (
 
 import Distribution.Client.Dependency.Modular.PSQ
 
-import Test.Framework as TF (Test)
-import Test.Framework.Providers.QuickCheck2
+import Test.Tasty
+import Test.Tasty.QuickCheck
 
-tests :: [TF.Test]
+tests :: [TestTree]
 tests = [ testProperty "splitsAltImplementation" splitsTest
         ]
 

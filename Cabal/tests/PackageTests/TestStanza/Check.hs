@@ -1,6 +1,6 @@
 module PackageTests.TestStanza.Check where
 
-import Test.HUnit
+import Test.Tasty.HUnit
 import System.FilePath
 import qualified  Data.Map as Map
 import PackageTests.PackageTester
@@ -19,8 +19,8 @@ import Distribution.Compiler
     ( CompilerId(..), CompilerFlavor(..), unknownCompilerInfo, AbiTag(..) )
 import Distribution.Text
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     let dir = "PackageTests" </> "TestStanza"
         pdFile = dir </> "my" <.> "cabal"
         spec = PackageSpec

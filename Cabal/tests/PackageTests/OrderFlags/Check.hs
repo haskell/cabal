@@ -1,6 +1,6 @@
 module PackageTests.OrderFlags.Check where
 
-import Test.HUnit
+import Test.Tasty.HUnit
 import PackageTests.PackageTester
 import System.FilePath
 import Control.Exception
@@ -9,8 +9,8 @@ import Control.Exception
 import Prelude hiding (catch)
 #endif
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "OrderFlags"
             , configOpts = []

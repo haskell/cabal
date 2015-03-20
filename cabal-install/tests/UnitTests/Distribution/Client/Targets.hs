@@ -8,13 +8,12 @@ import Distribution.Package            (PackageName (..))
 import Distribution.ParseUtils         (parseCommaList)
 import Distribution.Text               (parse)
 
-import Test.Framework                  as TF (Test)
-import Test.Framework.Providers.HUnit  (testCase)
-import Test.HUnit                      (Assertion, assertEqual)
+import Test.Tasty
+import Test.Tasty.HUnit
 
 import Data.Char                       (isSpace)
 
-tests :: [TF.Test]
+tests :: [TestTree]
 tests = [ testCase "readUserConstraint" readUserConstraintTest
         , testCase "parseUserConstraint" parseUserConstraintTest
         , testCase "readUserConstraints" readUserConstraintsTest

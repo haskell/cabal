@@ -41,7 +41,7 @@ import System.FilePath
 import System.IO (hIsEOF, hGetChar, hClose)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess)
-import Test.HUnit (Assertion, assertFailure)
+import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.Simple.BuildPaths (exeExtension)

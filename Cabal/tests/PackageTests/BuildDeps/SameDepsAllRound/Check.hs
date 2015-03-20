@@ -1,13 +1,13 @@
 module PackageTests.BuildDeps.SameDepsAllRound.Check where
 
-import Test.HUnit
+import Test.Tasty.HUnit
 import PackageTests.PackageTester
 import System.FilePath
 import qualified Control.Exception as E
 
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "SameDepsAllRound"
             , configOpts = []

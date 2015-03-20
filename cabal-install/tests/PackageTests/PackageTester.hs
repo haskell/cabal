@@ -50,7 +50,7 @@ import System.FilePath ( (<.>)  )
 import System.IO (hClose, hGetChar, hIsEOF)
 import System.IO.Error (isDoesNotExistError)
 import System.Process (runProcess, waitForProcess)
-import Test.HUnit (Assertion, assertFailure)
+import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Simple.BuildPaths (exeExtension)
 import Distribution.Simple.Utils (printRawCommandAndArgs)

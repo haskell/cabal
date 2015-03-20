@@ -5,8 +5,8 @@ module PackageTests.MultipleSource.Check
 
 import PackageTests.PackageTester
 
-import Test.Framework                 as TF (Test)
-import Test.Framework.Providers.HUnit (testCase)
+import Test.Tasty
+import Test.Tasty.HUnit
 
 import Control.Monad    (void, when)
 import System.Directory (doesDirectoryExist)
@@ -15,7 +15,7 @@ import System.FilePath  ((</>))
 dir :: FilePath
 dir = packageTestsDirectory </> "MultipleSource"
 
-tests :: TestsPaths -> [TF.Test]
+tests :: TestsPaths -> [TestTree]
 tests paths =
     [ testCase "finds second source of multiple source" $ do
           sandboxExists <- doesDirectoryExist $ dir </> ".cabal-sandbox"

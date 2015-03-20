@@ -20,10 +20,10 @@ module UnitTests.Distribution.Compat.ReadP
 
 import Data.List
 import Distribution.Compat.ReadP
-import Test.Framework
-import Test.Framework.Providers.QuickCheck2
+import Test.Tasty
+import Test.Tasty.QuickCheck
 
-tests :: [Test]
+tests :: [TestTree]
 tests =
     [ testProperty "Get Nil" prop_Get_Nil
     , testProperty "Get Cons" prop_Get_Cons
