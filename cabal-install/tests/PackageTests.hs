@@ -23,7 +23,7 @@ import System.Directory
         ( canonicalizePath, getCurrentDirectory, setCurrentDirectory
         , removeFile, doesFileExist )
 import System.FilePath ((</>))
-import Test.Framework (Test, defaultMain, testGroup)
+import Test.Tasty (TestTree, defaultMain, testGroup)
 import Control.Monad ( when )
 
 -- Module containing common test code.
@@ -39,8 +39,8 @@ import qualified PackageTests.MultipleSource.Check
 
 -- List of tests to run. Each test will be called with the path to the
 -- cabal binary to use.
-tests :: PackageTests.PackageTester.TestsPaths -> [Test]
-tests paths =
+tests :: PackageTests.PackageTester.TestsPaths -> TestTree
+tests paths = testGroup "Package Tests" $
     [ testGroup "Freeze"         $ PackageTests.Freeze.Check.tests         paths
     , testGroup "Exec"           $ PackageTests.Exec.Check.tests           paths
     , testGroup "MultipleSource" $ PackageTests.MultipleSource.Check.tests paths

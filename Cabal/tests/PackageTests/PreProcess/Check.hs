@@ -3,10 +3,10 @@ module PackageTests.PreProcess.Check (suite) where
 import PackageTests.PackageTester
     (PackageSpec(..), assertBuildSucceeded, cabal_build)
 import System.FilePath
-import Test.HUnit
+import Test.Tasty.HUnit
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "PreProcess"
             , distPref = Nothing

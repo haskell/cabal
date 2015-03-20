@@ -4,11 +4,11 @@ import Control.Monad
 import Data.Version
 import PackageTests.PackageTester
 import System.FilePath
-import Test.HUnit
+import Test.Tasty.HUnit
 
 
-suite :: Version -> FilePath -> Test
-suite cabalVersion ghcPath = TestCase $ do
+suite :: Version -> FilePath -> Assertion
+suite cabalVersion ghcPath = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "InternalLibrary0"
             , configOpts = []

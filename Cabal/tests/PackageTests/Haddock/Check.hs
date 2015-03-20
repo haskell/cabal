@@ -5,7 +5,7 @@ import Data.List (isInfixOf)
 
 import System.FilePath ((</>))
 import System.Directory (doesDirectoryExist, removeDirectoryRecursive)
-import Test.HUnit (Assertion, Test (TestCase), assertFailure)
+import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Simple.Utils (withFileContents)
 import PackageTests.PackageTester
@@ -14,8 +14,8 @@ import PackageTests.PackageTester
 this :: String
 this = "Haddock"
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     let dir = "PackageTests" </> this
         haddocksDir = dir </> "dist" </> "doc" </> "html" </> "Haddock"
         spec = PackageSpec

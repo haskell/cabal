@@ -5,10 +5,8 @@ import Control.Monad (when)
 import Data.Maybe (catMaybes)
 import System.Directory ( doesFileExist )
 import System.FilePath
-import qualified Test.Framework as TF
-import Test.Framework (testGroup)
-import Test.Framework.Providers.HUnit (hUnitTestToTests)
-import Test.HUnit hiding ( path )
+import Test.Tasty
+import Test.Tasty.HUnit
 
 import Distribution.Compiler (CompilerFlavor(..), CompilerId(..))
 import Distribution.PackageDescription (package)
@@ -25,15 +23,15 @@ import Distribution.Version (Version(..), orLaterVersion)
 
 import PackageTests.PackageTester
 
-checks :: FilePath -> [TF.Test]
+checks :: FilePath -> [TestTree]
 checks ghcPath =
-    [ hunit "Test" $ checkTest ghcPath ]
+    [ testCase "Test" $ checkTest ghcPath ]
     ++ hpcTestMatrix ghcPath ++
-    [ hunit "TestNoHpc/NoTix" $ checkTestNoHpcNoTix ghcPath
-    , hunit "TestNoHpc/NoMarkup" $ checkTestNoHpcNoMarkup ghcPath
+    [ testCase "TestNoHpc/NoTix" $ checkTestNoHpcNoTix ghcPath
+    , testCase "TestNoHpc/NoMarkup" $ checkTestNoHpcNoMarkup ghcPath
     ]
 
-hpcTestMatrix :: FilePath -> [TF.Test]
+hpcTestMatrix :: FilePath -> [TestTree]
 hpcTestMatrix ghcPath = do
     libProf <- [True, False]
     exeProf <- [True, False]
@@ -55,13 +53,13 @@ hpcTestMatrix ghcPath = do
             , enable exeDyn "executable-dynamic"
             , enable shared "shared"
             ]
-    return $ hunit name $ checkTestWithHpc ghcPath name opts
+    return $ testCase name $ checkTestWithHpc ghcPath name opts
 
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteExeV10"
 
-checkTest :: FilePath -> Test
-checkTest ghcPath = TestCase $ buildAndTest ghcPath "Default" [] []
+checkTest :: FilePath -> Assertion
+checkTest ghcPath = buildAndTest ghcPath "Default" [] []
 
 shouldExist :: FilePath -> Assertion
 shouldExist path = doesFileExist path >>= assertBool (path ++ " should exist")
@@ -71,8 +69,8 @@ shouldNotExist path =
     doesFileExist path >>= assertBool (path ++ " should exist") . not
 
 -- | Ensure that both .tix file and markup are generated if coverage is enabled.
-checkTestWithHpc :: FilePath -> String -> [String] -> Test
-checkTestWithHpc ghcPath name extraOpts = TestCase $ do
+checkTestWithHpc :: FilePath -> String -> [String] -> Assertion
+checkTestWithHpc ghcPath name extraOpts = do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
         let distPref' = dir </> "dist-" ++ name
@@ -92,8 +90,8 @@ checkTestWithHpc ghcPath name extraOpts = TestCase $ do
             ]
 
 -- | Ensures that even if -fhpc is manually provided no .tix file is output.
-checkTestNoHpcNoTix :: FilePath -> Test
-checkTestNoHpcNoTix ghcPath = TestCase $ do
+checkTestNoHpcNoTix :: FilePath -> Assertion
+checkTestNoHpcNoTix ghcPath = do
     buildAndTest ghcPath "NoHpcNoTix" []
       [ "--ghc-option=-fhpc"
       , "--ghc-option=-hpcdir"
@@ -104,8 +102,8 @@ checkTestNoHpcNoTix ghcPath = TestCase $ do
 
 -- | Ensures that even if a .tix file happens to be left around
 -- markup isn't generated.
-checkTestNoHpcNoMarkup :: FilePath -> Test
-checkTestNoHpcNoMarkup ghcPath = TestCase $ do
+checkTestNoHpcNoMarkup :: FilePath -> Assertion
+checkTestNoHpcNoMarkup ghcPath = do
     let tixFile = tixFilePath "dist-NoHpcNoMarkup" Vanilla "test-Foo"
     buildAndTest ghcPath "NoHpcNoMarkup"
       [("HPCTIXFILE", Just tixFile)]
@@ -128,9 +126,6 @@ buildAndTest ghcPath name envOverrides flags = do
     assertBuildSucceeded buildResult
     testResult <- cabal_test spec envOverrides [] ghcPath
     assertTestSucceeded testResult
-
-hunit :: TF.TestName -> Test -> TF.Test
-hunit name = testGroup name . hUnitTestToTests
 
 -- | Checks for a suitable HPC version for testing.
 correctHpcVersion :: IO Bool

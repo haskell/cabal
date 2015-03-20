@@ -3,7 +3,7 @@ module PackageTests.ReexportedModules.Check where
 import Data.Version
 import PackageTests.PackageTester
 import System.FilePath
-import Test.HUnit
+import Test.Tasty.HUnit
 import Data.Maybe
 import Data.List
 import Control.Monad
@@ -18,8 +18,8 @@ orFail err r = case find (all isSpace . snd) r of
 find' :: (a -> Bool) -> [a] -> Maybe a
 find' = find
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     -- ToDo: Turn this into a utility function
     (_, _, xs) <- run Nothing ghcPath [] ["--info"]
     let compat = (>= Version [7,9] [])

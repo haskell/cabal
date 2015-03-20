@@ -7,12 +7,11 @@ module UnitTests.Distribution.Utils.NubList
 import Data.Monoid
 #endif
 import Distribution.Utils.NubList
-import Test.Framework
-import Test.Framework.Providers.HUnit (testCase)
-import Test.Framework.Providers.QuickCheck2
-import Test.HUnit (Assertion, assertBool)
+import Test.Tasty
+import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
 
-tests :: [Test]
+tests :: [TestTree]
 tests =
     [ testCase "Numlist retains ordering" testOrdering
     , testCase "Numlist removes duplicates" testDeDupe

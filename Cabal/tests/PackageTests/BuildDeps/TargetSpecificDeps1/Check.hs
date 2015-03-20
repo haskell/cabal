@@ -1,6 +1,6 @@
 module PackageTests.BuildDeps.TargetSpecificDeps1.Check where
 
-import Test.HUnit
+import Test.Tasty.HUnit
 import PackageTests.PackageTester
 import System.FilePath
 import Data.List
@@ -8,8 +8,8 @@ import qualified Control.Exception as E
 import Text.Regex.Posix
 
 
-suite :: FilePath -> Test
-suite ghcPath = TestCase $ do
+suite :: FilePath -> Assertion
+suite ghcPath = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "TargetSpecificDeps1"
             , configOpts = []
