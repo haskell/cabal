@@ -2,15 +2,14 @@ module UnitTests.Distribution.Client.Sandbox (
   tests
   ) where
 
-import Distribution.Client.Sandbox    (withSandboxBinDirOnSearchPath)
+import Distribution.Client.Sandbox (withSandboxBinDirOnSearchPath)
 
-import Test.Framework                 as TF (Test)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit                     (Assertion, assertBool, assertEqual)
+import Test.Tasty
+import Test.Tasty.HUnit
 
-import System.FilePath                (getSearchPath, (</>))
+import System.FilePath             (getSearchPath, (</>))
 
-tests :: [TF.Test]
+tests :: [TestTree]
 tests = [ testCase "sandboxBinDirOnSearchPath" sandboxBinDirOnSearchPathTest
         , testCase "oldSearchPathRestored" oldSearchPathRestoreTest
         ]

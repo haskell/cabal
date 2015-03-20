@@ -1,12 +1,12 @@
 module PackageTests.BuildTestSuiteDetailedV09.Check where
 
-import Test.HUnit
+import Test.Tasty.HUnit
 import System.FilePath ((</>))
 
 import PackageTests.PackageTester
 
-suite :: PackageSpec -> FilePath -> Test
-suite inplaceSpec ghcPath = TestCase $ do
+suite :: PackageSpec -> FilePath -> Assertion
+suite inplaceSpec ghcPath = do
     let dir = "PackageTests" </> "BuildTestSuiteDetailedV09"
         spec = inplaceSpec
             { directory = dir

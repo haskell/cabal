@@ -261,11 +261,10 @@ test-suite unit-tests
   main-is: UnitTests.hs
   build-depends:
     base,
-    test-framework,
-    test-framework-hunit,
-    test-framework-quickcheck2,
-    HUnit,
-    QuickCheck < 2.8,
+    tasty,
+    tasty-hunit,
+    tasty-quickcheck,
+    QuickCheck < 2.9,
     Cabal
   ghc-options: -Wall
   default-language: Haskell98
@@ -308,11 +307,10 @@ test-suite package-tests
   build-depends:
     base,
     containers,
-    test-framework,
-    test-framework-quickcheck2 >= 0.2.12,
-    test-framework-hunit,
-    HUnit,
-    QuickCheck >= 2.1.0.1 && < 2.8,
+    tasty,
+    tasty-quickcheck,
+    tasty-hunit,
+    QuickCheck >= 2.1.0.1 && < 2.9,
     Cabal,
     process,
     directory,

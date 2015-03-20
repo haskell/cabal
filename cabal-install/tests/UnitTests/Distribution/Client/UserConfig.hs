@@ -11,9 +11,8 @@ import Data.Monoid
 import System.Directory (getCurrentDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
 import System.FilePath (takeDirectory)
 
-import Test.Framework as TF (Test)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit (Assertion, assertBool)
+import Test.Tasty
+import Test.Tasty.HUnit
 
 import Distribution.Client.Compat.Environment (lookupEnv, setEnv)
 import Distribution.Client.Config
@@ -22,7 +21,7 @@ import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
 import Distribution.Simple.Setup (ConfigFlags (..), fromFlag)
 import Distribution.Verbosity (silent)
 
-tests :: [TF.Test]
+tests :: [TestTree]
 tests = [ testCase "nullDiffOnCreate" nullDiffOnCreateTest
         , testCase "canDetectDifference" canDetectDifference
         , testCase "canUpdateConfig" canUpdateConfig

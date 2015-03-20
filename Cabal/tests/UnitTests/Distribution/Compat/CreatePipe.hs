@@ -2,11 +2,10 @@ module UnitTests.Distribution.Compat.CreatePipe (tests) where
 
 import Distribution.Compat.CreatePipe
 import System.IO (hClose, hGetContents, hPutStr, hSetEncoding, localeEncoding)
-import Test.Framework
-import Test.Framework.Providers.HUnit
-import Test.HUnit hiding (Test)
+import Test.Tasty
+import Test.Tasty.HUnit
 
-tests :: [Test]
+tests :: [TestTree]
 tests = [testCase "Locale Encoding" case_Locale_Encoding]
 
 case_Locale_Encoding :: Assertion

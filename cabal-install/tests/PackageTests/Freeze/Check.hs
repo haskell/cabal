@@ -6,9 +6,8 @@ module PackageTests.Freeze.Check
 
 import PackageTests.PackageTester
 
-import Test.Framework                 as TF (Test)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.HUnit                     (assertBool)
+import Test.Tasty
+import Test.Tasty.HUnit
 
 import qualified Control.Exception.Extensible as E
 import Data.List (intercalate, isInfixOf)
@@ -19,7 +18,7 @@ import System.IO.Error (isDoesNotExistError)
 dir :: FilePath
 dir = packageTestsDirectory </> "Freeze"
 
-tests :: TestsPaths -> [TF.Test]
+tests :: TestsPaths -> [TestTree]
 tests paths =
     [ testCase "runs without error" $ do
           removeCabalConfig
