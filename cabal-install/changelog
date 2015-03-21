@@ -1,4 +1,8 @@
 -*-change-log-*-
+1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
+	* Don't pass '--{en,dis}able-profiling' to old setup exes.
+	* -Wall police
+	* Allow filepath 1.4
 
 1.21.x (current development version)
 	* New command: user-config (#2159).
