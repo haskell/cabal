@@ -134,7 +134,7 @@ import Control.Monad
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
 import Data.List
-  ( nub, unfoldr, isPrefixOf, tails, intercalate )
+  ( nub, unfoldr, isPrefixOf, isSuffixOf, tails, intercalate )
 import Data.Char as Char
     ( isDigit, toLower, chr, ord )
 import Data.Bits
@@ -750,12 +750,12 @@ matchDirFileGlob dir filepath = case parseFileGlob filepath of
                 ++ " name, not in the directory name or file extension."
                 ++ " If a wildcard is used it must be with an file extension."
   Just (NoGlob filepath') -> return [filepath']
-  Just (FileGlob dir' ext) -> do
+  Just (FileGlob dir' globExt) -> do
     files <- getDirectoryContents (dir </> dir')
     case   [ dir' </> file
            | file <- files
-           , let (name, ext') = splitExtensions file
-           , not (null name) && ext' == ext ] of
+           , let (name, fileExt) = splitExtensions file
+           , not (null name) && globExt `isSuffixOf` fileExt ] of
       []      -> die $ "filepath wildcard '" ++ filepath
                     ++ "' does not match any files."
       matches -> return matches
