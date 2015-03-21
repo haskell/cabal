@@ -2,13 +2,13 @@
 VERSION=1.22.2.0
 
 #KIND=devel
-#KIND=rc
-KIND=cabal-latest
+KIND=rc
+#KIND=cabal-latest
 
 PREFIX=/usr/local
 HC=ghc
 GHCFLAGS=-Wall -threaded
-SSH_USER=cabal-site
+SSH_USER=$(USER)
 
 all: build
 
@@ -115,11 +115,12 @@ release: $(DIST_STAMP)
 
 release-new: $(DIST_STAMP)
 	@echo "cd cabal/release" > $(TMP)/cabal-sftp-$(VERSION)
-	@echo "mkdir cabal-$(VERSION)" >> $(TMP)/cabal-sftp-$(VERSION)
+	@echo "-mkdir cabal-$(VERSION)" >> $(TMP)/cabal-sftp-$(VERSION)
 	@echo "cd cabal-$(VERSION)" >> $(TMP)/cabal-sftp-$(VERSION)
 	@echo "lcd $(DISTLOC)" >> $(TMP)/cabal-sftp-$(VERSION)
-	@echo "put *" >> $(TMP)/cabal-sftp-$(VERSION)
+	@echo "put -r . ." >> $(TMP)/cabal-sftp-$(VERSION)
 	sftp -b $(TMP)/cabal-sftp-$(VERSION) $(SSH_USER)@wiki.haskell.org
+	@echo "You still need to manually update the 'latest' links"
 
 # tags...
 
