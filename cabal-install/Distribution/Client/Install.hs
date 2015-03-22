@@ -162,6 +162,8 @@ import Distribution.Text
 import Distribution.Verbosity as Verbosity
          ( Verbosity, showForCabal, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
+import Distribution.Simple.GHC.ImplInfo ( ghcVersionImplInfo, supportsMultInst )
+import Distribution.Simple.Compiler ( compilerVersion )
 
 --TODO:
 -- * assign flags to packages individually
@@ -351,7 +353,9 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . setReorderGoals reorderGoals
 
-      . setAvoidReinstalls avoidReinstalls
+      . (if (supportsMultInst . ghcVersionImplInfo . compilerVersion $ comp)
+            then id
+            else setAvoidReinstalls avoidReinstalls)
 
       . setShadowPkgs shadowPkgs
 
@@ -499,7 +503,9 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
   -- If the install plan is dangerous, we print various warning messages. In
   -- particular, if we can see that packages are likely to be broken, we even
   -- bail out (unless installation has been forced with --force-reinstalls).
-  when containsReinstalls $ do
+  -- As with supportsMultInst packages cannot break when installing new packages
+  -- we are not printing anything or exiting the program
+  when (containsReinstalls && not (supportsMultInst . ghcVersionImplInfo . compilerVersion $ comp)) $ do
     if breaksPkgs
       then do
         (if dryRun || overrideReinstall then warn verbosity else die) $ unlines $
