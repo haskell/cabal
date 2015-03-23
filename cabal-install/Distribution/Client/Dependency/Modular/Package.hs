@@ -66,13 +66,17 @@ instI :: I -> Bool
 instI (I _ (Inst _)) = True
 instI _              = False
 
--- | Package path. (Stored in "reverse" order.)
-type PP = [PN]
+-- | Package path.
+data PP = Independent Int PP | Setup PN PP | None
+  deriving (Eq, Ord, Show)
 
 -- | String representation of a package path.
+--
+-- NOTE: This always ends in a period
 showPP :: PP -> String
-showPP = intercalate "." . L.map display . reverse
-
+showPP (Independent i pp) = show i ++ "." ++ showPP pp
+showPP (Setup pn      pp) = display pn ++ ".setup." ++ showPP pp
+showPP None               = ""
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Q a = Q PP a
@@ -80,8 +84,8 @@ data Q a = Q PP a
 
 -- | Standard string representation of a qualified entity.
 showQ :: (a -> String) -> (Q a -> String)
-showQ showa (Q [] x) = showa x
-showQ showa (Q pp x) = showPP pp ++ "." ++ showa x
+showQ showa (Q None x) = showa x
+showQ showa (Q pp   x) = showPP pp ++ showa x
 
 -- | Qualified package name.
 type QPN = Q PN
@@ -94,7 +98,8 @@ showQPN = showQ display
 -- them all independent.
 makeIndependent :: [PN] -> [QPN]
 makeIndependent ps = [ Q pp pn | (pn, i) <- zip ps [0::Int ..]
-                               , let pp = [PackageName (show i)] ]
+                               , let pp = Independent i None
+                     ]
 
 
 unQualify :: Q a -> a
