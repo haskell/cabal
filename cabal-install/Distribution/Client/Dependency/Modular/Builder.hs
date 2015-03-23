@@ -154,4 +154,4 @@ buildTree idx ind igs =
                   Goals)
   where
     qpns | ind       = makeIndependent igs
-         | otherwise = L.map (Q []) igs
+         | otherwise = L.map (Q None) igs
