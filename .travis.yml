@@ -31,8 +31,6 @@ script:
  - /opt/ghc/$GHCVER/bin/ghc --make -odir ./dist/setup -hidir ./dist/setup -i -i. ./dist/setup/setup.hs -o ./dist/setup/setup -Wall -Werror -threaded  # the command cabal-install would use to build setup
 
 # Need extra dependencies for test suite
- - travis_retry git clone -b pr-base48 https://github.com/hvr/ansi-wl-pprint ../ansi-wl-pprint
- - cabal install ../ansi-wl-pprint
  - cabal install --only-dependencies --enable-tests
  - sudo /opt/ghc/$GHCVER/bin/ghc-pkg recache
  - /opt/ghc/$GHCVER/bin/ghc-pkg recache --user
@@ -59,7 +57,6 @@ script:
 # Also build cabal-install.
  - cd ../cabal-install
  - cabal sandbox init
- - cabal sandbox add-source ../Cabal ../ansi-wl-pprint
  - cabal install --dependencies-only --enable-tests
  - cabal configure --enable-tests --ghc-option=-Werror
  - cabal build
