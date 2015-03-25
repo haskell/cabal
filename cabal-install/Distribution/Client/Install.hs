@@ -561,12 +561,12 @@ packageStatus _comp installedPkgIndex cpkg =
     changes :: Installed.InstalledPackageInfo
             -> ReadyPackage
             -> [MergeResult PackageIdentifier PackageIdentifier]
-    changes pkg pkg' =
-      filter changed
-      $ mergeBy (comparing packageName)
-          (resolveInstalledIds $ Installed.depends pkg)
-          (resolveInstalledIds $ depends $ pkg')
+    changes pkg pkg' = filter changed $
+      mergeBy (comparing packageName)
+        (resolveInstalledIds $ Installed.depends pkg) -- deps of installed pkg
+        (resolveInstalledIds $ depends $ pkg')        -- deps of configured pkg
 
+    -- convert to source pkg ids via index
     resolveInstalledIds :: [InstalledPackageId] -> [PackageIdentifier]
     resolveInstalledIds =
         nub
