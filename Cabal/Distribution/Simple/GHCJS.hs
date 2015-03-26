@@ -100,20 +100,20 @@ configure verbosity hcPath hcPkgPath conf0 = do
     }
     anyVersion (userMaybeSpecifyPath "ghcjs-pkg" hcPkgPath conf1)
 
-  Just ghcjsPkgGhcVersion <- findGhcjsPkgGhcVersion
-                               verbosity (programPath ghcjsPkgProg)
+  Just ghcjsPkgGhcjsVersion <- findGhcjsPkgGhcjsVersion
+                                  verbosity (programPath ghcjsPkgProg)
 
-  when (ghcjsVersion /= ghcjsPkgVersion) $ die $
+  when (ghcjsVersion /= ghcjsPkgGhcjsVersion) $ die $
        "Version mismatch between ghcjs and ghcjs-pkg: "
     ++ programPath ghcjsProg ++ " is version " ++ display ghcjsVersion ++ " "
-    ++ programPath ghcjsPkgProg ++ " is version " ++ display ghcjsPkgVersion
+    ++ programPath ghcjsPkgProg ++ " is version " ++ display ghcjsPkgGhcjsVersion
 
-  when (ghcjsGhcVersion /= ghcjsPkgGhcVersion) $ die $
+  when (ghcjsGhcVersion /= ghcjsPkgVersion) $ die $
        "Version mismatch between ghcjs and ghcjs-pkg: "
     ++ programPath ghcjsProg
     ++ " was built with GHC version " ++ display ghcjsGhcVersion ++ " "
     ++ programPath ghcjsPkgProg
-    ++ " was built with GHC version " ++ display ghcjsPkgGhcVersion
+    ++ " was built with GHC version " ++ display ghcjsPkgVersion
 
   -- be sure to use our versions of hsc2hs, c2hs, haddock and ghc
   let hsc2hsProgram' =
@@ -869,9 +869,9 @@ findGhcjsGhcVersion :: Verbosity -> FilePath -> IO (Maybe Version)
 findGhcjsGhcVersion verbosity pgm =
   findProgramVersion "--numeric-ghc-version" id verbosity pgm
 
-findGhcjsPkgGhcVersion :: Verbosity -> FilePath -> IO (Maybe Version)
-findGhcjsPkgGhcVersion verbosity pgm =
-  findProgramVersion "--numeric-ghc-version" id verbosity pgm
+findGhcjsPkgGhcjsVersion :: Verbosity -> FilePath -> IO (Maybe Version)
+findGhcjsPkgGhcjsVersion verbosity pgm =
+  findProgramVersion "--numeric-ghcjs-version" id verbosity pgm
 
 -- -----------------------------------------------------------------------------
 -- Registering
