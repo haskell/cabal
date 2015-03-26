@@ -54,8 +54,8 @@ import Distribution.Client.Types
          , InstalledPackage(..), fakeInstalledPackageId )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
-         , PackageFixedDeps(..), Dependency(..), InstalledPackageId
-         , PackageInstalled(..) )
+         , Dependency(..), InstalledPackageId
+         , HasInstalledPackageId(..), PackageInstalled(..) )
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.PackageDescription
@@ -63,6 +63,8 @@ import Distribution.PackageDescription
          , Flag(flagName), FlagName(..) )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
+import Distribution.Client.PackageIndex
+         ( PackageFixedDeps(..) )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Simple.PackageIndex
@@ -157,7 +159,7 @@ instance PackageFixedDeps PlanPackage where
   depends (Installed pkg _) = depends pkg
   depends (Failed    pkg _) = depends pkg
 
-instance PackageInstalled PlanPackage where
+instance HasInstalledPackageId PlanPackage where
   installedPackageId (PreExisting pkg)   = installedPackageId pkg
   installedPackageId (Configured  pkg)   = installedPackageId pkg
   installedPackageId (Processing  pkg)   = installedPackageId pkg
@@ -166,6 +168,7 @@ instance PackageInstalled PlanPackage where
   installedPackageId (Installed   pkg _) = installedPackageId pkg
   installedPackageId (Failed      pkg _) = installedPackageId pkg
 
+instance PackageInstalled PlanPackage where
   installedDepends (PreExisting pkg) = installedDepends pkg
   installedDepends (Configured  pkg) = installedDepends pkg
   installedDepends (Processing pkg)  = installedDepends pkg

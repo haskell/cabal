@@ -14,10 +14,12 @@ module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
          ( SourcePackage(..), InstalledPackage, OptionalStanza )
+import Distribution.Client.PackageIndex
+         ( PackageFixedDeps(depends) )
 
 import Distribution.Package
          ( PackageIdentifier, Dependency
-         , Package(packageId), PackageFixedDeps(depends) )
+         , Package(packageId) )
 import Distribution.PackageDescription
          ( FlagAssignment )
 

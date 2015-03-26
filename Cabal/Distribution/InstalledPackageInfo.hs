@@ -112,11 +112,13 @@ data InstalledPackageInfo_ m
 
 instance Binary m => Binary (InstalledPackageInfo_ m)
 
-instance Package.Package          (InstalledPackageInfo_ str) where
+instance Package.Package (InstalledPackageInfo_ str) where
    packageId = sourcePackageId
 
-instance Package.PackageInstalled (InstalledPackageInfo_ str) where
+instance Package.HasInstalledPackageId (InstalledPackageInfo_ str) where
    installedPackageId = installedPackageId
+
+instance Package.PackageInstalled (InstalledPackageInfo_ str) where
    installedDepends = depends
 
 type InstalledPackageInfo = InstalledPackageInfo_ ModuleName
