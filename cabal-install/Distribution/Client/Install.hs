@@ -33,7 +33,7 @@ import Data.List
          ( isPrefixOf, unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
 import Data.Maybe
-         ( isJust, fromMaybe, mapMaybe, maybeToList )
+         ( isJust, fromMaybe, mapMaybe, catMaybes )
 import Control.Exception as Exception
          ( Exception(toException), bracket, catches
          , Handler(Handler), handleJust, IOException, SomeException )
@@ -561,17 +561,19 @@ packageStatus _comp installedPkgIndex cpkg =
     changes :: Installed.InstalledPackageInfo
             -> ReadyPackage
             -> [MergeResult PackageIdentifier PackageIdentifier]
-    changes pkg pkg' =
-      filter changed
-      $ mergeBy (comparing packageName)
-        -- get dependencies of installed package (convert to source pkg ids via
-        -- index)
-        (nub . sort . concatMap
-         (maybeToList . fmap Installed.sourcePackageId .
-          PackageIndex.lookupInstalledPackageId installedPkgIndex) .
-         Installed.depends $ pkg)
-        -- get dependencies of configured package
-        (nub . sort . depends $ pkg')
+    changes pkg pkg' = filter changed $
+      mergeBy (comparing packageName)
+        (resolveInstalledIds $ Installed.depends pkg) -- deps of installed pkg
+        (resolveInstalledIds $ depends $ pkg')        -- deps of configured pkg
+
+    -- convert to source pkg ids via index
+    resolveInstalledIds :: [InstalledPackageId] -> [PackageIdentifier]
+    resolveInstalledIds =
+        nub
+      . sort
+      . map Installed.sourcePackageId
+      . catMaybes
+      . map (PackageIndex.lookupInstalledPackageId installedPkgIndex)
 
     changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
     changed _                        = True
