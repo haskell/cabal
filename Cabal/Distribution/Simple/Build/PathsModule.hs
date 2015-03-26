@@ -50,9 +50,9 @@ import Data.Maybe
 
 generate :: PackageDescription -> LocalBuildInfo -> String
 generate pkg_descr lbi =
-   let pragmas = ffi_pragmas + warning_pragmas
+   let pragmas = ffi_pragmas ++ warning_pragmas
 
-       ffi_pragmas =
+       ffi_pragmas
         | absolute = ""
         | supports_language_pragma =
           "{-# LANGUAGE ForeignFunctionInterface #-}\n"
