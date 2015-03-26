@@ -205,7 +205,8 @@ fromList pkgs = mkPackageIndex pids pnames
 -- result when we do a lookup by source 'PackageId'. This is the mechanism we
 -- use to prefer user packages over global packages.
 --
-merge :: HasInstalledPackageId a => PackageIndex a -> PackageIndex a -> PackageIndex a
+merge :: HasInstalledPackageId a => PackageIndex a -> PackageIndex a
+      -> PackageIndex a
 merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
   mkPackageIndex (Map.unionWith (\_ y -> y) pids1 pids2)
                  (Map.unionWith (Map.unionWith mergeBuckets) pnames1 pnames2)
@@ -243,7 +244,9 @@ insert pkg (PackageIndex pids pnames) =
 
 -- | Removes a single installed package from the index.
 --
-deleteInstalledPackageId :: HasInstalledPackageId a => InstalledPackageId -> PackageIndex a -> PackageIndex a
+deleteInstalledPackageId :: HasInstalledPackageId a
+                         => InstalledPackageId -> PackageIndex a
+                         -> PackageIndex a
 deleteInstalledPackageId ipkgid original@(PackageIndex pids pnames) =
   case Map.updateLookupWithKey (\_ _ -> Nothing) ipkgid pids of
     (Nothing,     _)     -> original
@@ -265,7 +268,8 @@ deleteInstalledPackageId ipkgid original@(PackageIndex pids pnames) =
 
 -- | Removes all packages with this source 'PackageId' from the index.
 --
-deleteSourcePackageId :: HasInstalledPackageId a => PackageId -> PackageIndex a -> PackageIndex a
+deleteSourcePackageId :: HasInstalledPackageId a => PackageId -> PackageIndex a
+                      -> PackageIndex a
 deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
   case Map.lookup (packageName pkgid) pnames of
     Nothing     -> original
@@ -285,7 +289,8 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
 
 -- | Removes all packages with this (case-sensitive) name from the index.
 --
-deletePackageName :: HasInstalledPackageId a => PackageName -> PackageIndex a -> PackageIndex a
+deletePackageName :: HasInstalledPackageId a => PackageName -> PackageIndex a
+                  -> PackageIndex a
 deletePackageName name original@(PackageIndex pids pnames) =
   case Map.lookup name pnames of
     Nothing     -> original
@@ -324,7 +329,8 @@ allPackagesByName (PackageIndex _ pnames) =
 --
 -- They are grouped by source package id (package name and version).
 --
-allPackagesBySourcePackageId :: HasInstalledPackageId a => PackageIndex a -> [(PackageId, [a])]
+allPackagesBySourcePackageId :: HasInstalledPackageId a => PackageIndex a
+                             -> [(PackageId, [a])]
 allPackagesBySourcePackageId (PackageIndex _ pnames) =
   [ (packageId ipkg, ipkgs)
   | pvers <- Map.elems pnames
@@ -339,7 +345,7 @@ allPackagesBySourcePackageId (PackageIndex _ pnames) =
 -- Since multiple package DBs mask each other by 'InstalledPackageId',
 -- then we get back at most one package.
 --
-lookupInstalledPackageId :: HasInstalledPackageId a => PackageIndex a -> InstalledPackageId
+lookupInstalledPackageId :: PackageIndex a -> InstalledPackageId
                          -> Maybe a
 lookupInstalledPackageId (PackageIndex pids _) pid = Map.lookup pid pids
 
@@ -350,7 +356,7 @@ lookupInstalledPackageId (PackageIndex pids _) pid = Map.lookup pid pids
 -- but different 'InstalledPackageId'. They are returned in order of
 -- preference, with the most preferred first.
 --
-lookupSourcePackageId :: HasInstalledPackageId a => PackageIndex a -> PackageId -> [a]
+lookupSourcePackageId :: PackageIndex a -> PackageId -> [a]
 lookupSourcePackageId (PackageIndex _ pnames) pkgid =
   case Map.lookup (packageName pkgid) pnames of
     Nothing     -> []
@@ -360,7 +366,7 @@ lookupSourcePackageId (PackageIndex _ pnames) pkgid =
 
 -- | Convenient alias of 'lookupSourcePackageId', but assuming only
 -- one package per package ID.
-lookupPackageId :: HasInstalledPackageId a => PackageIndex a -> PackageId -> Maybe a
+lookupPackageId :: PackageIndex a -> PackageId -> Maybe a
 lookupPackageId index pkgid = case lookupSourcePackageId index pkgid  of
     []    -> Nothing
     [pkg] -> Just pkg
@@ -368,7 +374,7 @@ lookupPackageId index pkgid = case lookupSourcePackageId index pkgid  of
 
 -- | Does a lookup by source package name.
 --
-lookupPackageName :: HasInstalledPackageId a => PackageIndex a -> PackageName
+lookupPackageName :: PackageIndex a -> PackageName
                   -> [(Version, [a])]
 lookupPackageName (PackageIndex _ pnames) name =
   case Map.lookup name pnames of
@@ -381,7 +387,7 @@ lookupPackageName (PackageIndex _ pnames) name =
 -- We get back any number of versions of the specified package name, all
 -- satisfying the version range constraint.
 --
-lookupDependency :: HasInstalledPackageId a => PackageIndex a -> Dependency
+lookupDependency :: PackageIndex a -> Dependency
                  -> [(Version, [a])]
 lookupDependency (PackageIndex _ pnames) (Dependency name versionRange) =
   case Map.lookup name pnames of
@@ -406,7 +412,7 @@ lookupDependency (PackageIndex _ pnames) (Dependency name versionRange) =
 -- packages. The list of ambiguous results is split by exact package name. So
 -- it is a non-empty list of non-empty lists.
 --
-searchByName :: HasInstalledPackageId a => PackageIndex a -> String -> SearchResult [a]
+searchByName :: PackageIndex a -> String -> SearchResult [a]
 searchByName (PackageIndex _ pnames) name =
   case [ pkgs | pkgs@(PackageName name',_) <- Map.toList pnames
               , lowercase name' == lname ] of
@@ -423,7 +429,7 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 --
 -- That is, all packages that contain the given string in their name.
 --
-searchByNameSubstring :: HasInstalledPackageId a => PackageIndex a -> String -> [a]
+searchByNameSubstring :: PackageIndex a -> String -> [a]
 searchByNameSubstring (PackageIndex _ pnames) searchterm =
   [ pkg
   | (PackageName name, pvers) <- Map.toList pnames
@@ -459,7 +465,8 @@ dependencyCycles index =
 --
 -- Returns such packages along with the dependencies that they're missing.
 --
-brokenPackages :: PackageInstalled a => PackageIndex a -> [(a, [InstalledPackageId])]
+brokenPackages :: PackageInstalled a => PackageIndex a
+               -> [(a, [InstalledPackageId])]
 brokenPackages index =
   [ (pkg, missing)
   | pkg  <- allPackages index
@@ -589,9 +596,10 @@ dependencyInconsistencies index =
           && pid2 `notElem` installedDepends p1
         reallyIsInconsistent _ = True
 
--- | A rough approximation of GHC's module finder, takes a 'InstalledPackageIndex' and
--- turns it into a map from module names to their source packages.  It's used to
--- initialize the @build-deps@ field in @cabal init@.
+-- | A rough approximation of GHC's module finder, takes a
+-- 'InstalledPackageIndex' and turns it into a map from module names to their
+-- source packages.  It's used to initialize the @build-deps@ field in @cabal
+-- init@.
 moduleNameIndex :: InstalledPackageIndex -> Map ModuleName [InstalledPackageInfo]
 moduleNameIndex index =
   Map.fromListWith (++) $ do
