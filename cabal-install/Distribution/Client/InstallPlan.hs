@@ -73,8 +73,10 @@ import Distribution.Client.PackageIndex
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Simple.PackageIndex
-         ( PackageIndex, FakeMap )
+         ( PackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import Distribution.Client.PlanIndex
+         ( FakeMap )
 import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Text
          ( display )
@@ -299,7 +301,7 @@ ready plan = assert check readyPackages
     isInstalledDep pkgid =
       -- NB: Need to check if the ID has been updated in planFakeMap, in which case we
       -- might be dealing with an old pointer
-      case PackageIndex.fakeLookupInstalledPackageId (planFakeMap plan) (planIndex plan) pkgid of
+      case PlanIndex.fakeLookupInstalledPackageId (planFakeMap plan) (planIndex plan) pkgid of
         Just (Configured  _)                            -> Nothing
         Just (Processing  _)                            -> Nothing
         Just (Failed    _ _)                            -> internalError depOnFailed
@@ -471,7 +473,7 @@ problems platform cinfo fakeMap index =
      , let packageProblems = configuredPackageProblems platform cinfo pkg
      , not (null packageProblems) ]
 
-  ++ [ PackageMissingDeps pkg (catMaybes (map (fmap packageId . PackageIndex.fakeLookupInstalledPackageId fakeMap index) missingDeps))
+  ++ [ PackageMissingDeps pkg (catMaybes (map (fmap packageId . PlanIndex.fakeLookupInstalledPackageId fakeMap index) missingDeps))
      | (pkg, missingDeps) <- PlanIndex.brokenPackages fakeMap index ]
 
   ++ [ PackageCycle cycleGroup
@@ -482,7 +484,7 @@ problems platform cinfo fakeMap index =
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
-     , Just pkg' <- map (PackageIndex.fakeLookupInstalledPackageId fakeMap index) (depends pkg)
+     , Just pkg' <- map (PlanIndex.fakeLookupInstalledPackageId fakeMap index) (depends pkg)
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.

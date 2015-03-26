@@ -18,7 +18,6 @@ module Distribution.Client.PackageIndex (
 
   -- * Fine-grained package dependencies
   PackageFixedDeps(..),
-  fakeDepends,
 
   -- * Creating an index
   fromList,
@@ -68,8 +67,8 @@ import Distribution.Version
          ( withinRange )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo_ )
-import Distribution.Simple.Utils (lowercase, comparing)
-import Distribution.Simple.PackageIndex (FakeMap)
+import Distribution.Simple.Utils
+         ( lowercase, comparing )
 
 -- | Subclass of packages that have specific versioned dependencies.
 --
@@ -80,15 +79,6 @@ import Distribution.Simple.PackageIndex (FakeMap)
 --
 class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> [InstalledPackageId]
-
--- | Variant of `depends` which accepts a `FakeMap`
---
--- Analogous to `fakeInstalledDepends`. See Note [FakeMap].
-fakeDepends :: PackageFixedDeps pkg => FakeMap -> pkg -> [InstalledPackageId]
-fakeDepends fakeMap = map resolveFakeId . depends
-  where
-    resolveFakeId :: InstalledPackageId -> InstalledPackageId
-    resolveFakeId ipid = Map.findWithDefault ipid ipid fakeMap
 
 instance PackageFixedDeps (InstalledPackageInfo_ str) where
   depends info = installedDepends info
