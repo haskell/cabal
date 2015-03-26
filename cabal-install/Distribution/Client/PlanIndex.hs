@@ -5,7 +5,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 module Distribution.Client.PlanIndex (
-    brokenPackages
+    -- * FakeMap and related operations
+    FakeMap
+  , fakeDepends
+  , fakeLookupInstalledPackageId
+    -- * Graph traversal functions
+  , brokenPackages
   , dependencyClosure
   , dependencyCycles
   , dependencyGraph
@@ -35,18 +40,62 @@ import Distribution.Package
          )
 import Distribution.Version
          ( Version )
-import Distribution.Simple.Utils (comparing)
-import Distribution.Simple.PackageIndex
-         ( FakeMap )
+import Distribution.Simple.Utils
+         ( comparing )
 
 import Distribution.Client.PackageIndex
-         ( PackageFixedDeps(..), fakeDepends )
+         ( PackageFixedDeps(..) )
 import Distribution.Simple.PackageIndex
-         ( PackageIndex, allPackages, insert
-         , fakeLookupInstalledPackageId
-         )
+         ( PackageIndex, allPackages, insert, lookupInstalledPackageId )
 import Distribution.Package
          ( HasInstalledPackageId(..), PackageId )
+
+-- Note [FakeMap]
+-----------------
+-- We'd like to use the PackageIndex defined in this module for
+-- cabal-install's InstallPlan.  However, at the moment, this
+-- data structure is indexed by InstalledPackageId, which we don't
+-- know until after we've compiled a package (whereas InstallPlan
+-- needs to store not-compiled packages in the index.) Eventually,
+-- an InstalledPackageId will be calculatable prior to actually
+-- building the package (making it something of a misnomer), but
+-- at the moment, the "fake installed package ID map" is a workaround
+-- to solve this problem while reusing PackageIndex.  The basic idea
+-- is that, since we don't know what an InstalledPackageId is
+-- beforehand, we just fake up one based on the package ID (it only
+-- needs to be unique for the particular install plan), and fill
+-- it out with the actual generated InstalledPackageId after the
+-- package is successfully compiled.
+--
+-- However, there is a problem: in the index there may be
+-- references using the old package ID, which are now dangling if
+-- we update the InstalledPackageId.  We could map over the entire
+-- index to update these pointers as well (a costly operation), but
+-- instead, we've chosen to parametrize a variety of important functions
+-- by a FakeMap, which records what a fake installed package ID was
+-- actually resolved to post-compilation.  If we do a lookup, we first
+-- check and see if it's a fake ID in the FakeMap.
+--
+-- It's a bit grungy, but we expect this to only be temporary anyway.
+-- (Another possible workaround would have been to *not* update
+-- the installed package ID, but I decided this would be hard to
+-- understand.)
+
+-- | Map from fake installed package IDs to real ones.  See Note [FakeMap]
+type FakeMap = Map InstalledPackageId InstalledPackageId
+
+-- | Variant of `depends` which accepts a `FakeMap`
+--
+-- Analogous to `fakeInstalledDepends`. See Note [FakeMap].
+fakeDepends :: PackageFixedDeps pkg => FakeMap -> pkg -> [InstalledPackageId]
+fakeDepends fakeMap = map resolveFakeId . depends
+  where
+    resolveFakeId :: InstalledPackageId -> InstalledPackageId
+    resolveFakeId ipid = Map.findWithDefault ipid ipid fakeMap
+
+--- | Variant of 'lookupInstalledPackageId' which accepts a 'FakeMap'.  See Note [FakeMap].
+fakeLookupInstalledPackageId :: HasInstalledPackageId a => FakeMap -> PackageIndex a -> InstalledPackageId -> Maybe a
+fakeLookupInstalledPackageId fakeMap index pkg = lookupInstalledPackageId index (Map.findWithDefault pkg pkg fakeMap)
 
 -- | All packages that have dependencies that are not in the index.
 --
