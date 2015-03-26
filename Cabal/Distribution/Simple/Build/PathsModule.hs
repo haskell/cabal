@@ -50,13 +50,18 @@ import Data.Maybe
 
 generate :: PackageDescription -> LocalBuildInfo -> String
 generate pkg_descr lbi =
-   let pragmas
+   let pragmas = ffi_pragmas + warning_pragmas
+
+       ffi_pragmas =
         | absolute = ""
         | supports_language_pragma =
           "{-# LANGUAGE ForeignFunctionInterface #-}\n"
         | otherwise =
           "{-# OPTIONS_GHC -fffi #-}\n"++
           "{-# OPTIONS_JHC -fffi #-}\n"
+
+       warning_pragmas =
+        "{-# OPTIONS_GHC -fno-warn-missing-import-lists #-}\n"
 
        foreign_imports
         | absolute = ""
