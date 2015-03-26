@@ -144,9 +144,10 @@ ghcjsProgram = (simpleProgram "ghcjs") {
     programFindVersion = findProgramVersion "--numeric-ghcjs-version" id
   }
 
+-- note: version is the version number of the GHC version that ghcjs-pkg was built with
 ghcjsPkgProgram :: Program
 ghcjsPkgProgram = (simpleProgram "ghcjs-pkg") {
-    programFindVersion = findProgramVersion "--ghcjs-version" $ \str ->
+    programFindVersion = findProgramVersion "--version" $ \str ->
       -- Invoking "ghcjs-pkg --version" gives a string like
       -- "GHCJS package manager version 6.4.1"
       case words str of
