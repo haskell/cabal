@@ -50,6 +50,8 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , showRepo, parseRepo )
+import Distribution.Client.Targets
+         ( UserConstraint (..) )
 import Distribution.Utils.NubList
          ( NubList, fromNubList, toNubList)
 
@@ -87,6 +89,8 @@ import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
          ( Verbosity, normal )
+import Distribution.Package
+         ( PackageName (..) )
 
 import Data.List
          ( partition, find, foldl' )
@@ -436,6 +440,9 @@ initialSavedConfig = do
     },
     savedConfigureFlags  = mempty {
       configProgramPathExtra = toNubList extraPath
+    },
+    savedConfigureExFlags  = mempty {
+      configExConstraints = [UserConstraintInstalled $ PackageName "template-haskell"]
     },
     savedInstallFlags    = mempty {
       installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],
