@@ -339,7 +339,7 @@ allPackagesBySourcePackageId (PackageIndex _ pnames) =
 -- Since multiple package DBs mask each other by 'InstalledPackageId',
 -- then we get back at most one package.
 --
-lookupInstalledPackageId :: HasInstalledPackageId a => PackageIndex a -> InstalledPackageId
+lookupInstalledPackageId :: PackageIndex a -> InstalledPackageId
                          -> Maybe a
 lookupInstalledPackageId (PackageIndex pids _) pid = Map.lookup pid pids
 
@@ -350,7 +350,7 @@ lookupInstalledPackageId (PackageIndex pids _) pid = Map.lookup pid pids
 -- but different 'InstalledPackageId'. They are returned in order of
 -- preference, with the most preferred first.
 --
-lookupSourcePackageId :: HasInstalledPackageId a => PackageIndex a -> PackageId -> [a]
+lookupSourcePackageId :: PackageIndex a -> PackageId -> [a]
 lookupSourcePackageId (PackageIndex _ pnames) pkgid =
   case Map.lookup (packageName pkgid) pnames of
     Nothing     -> []
@@ -360,7 +360,7 @@ lookupSourcePackageId (PackageIndex _ pnames) pkgid =
 
 -- | Convenient alias of 'lookupSourcePackageId', but assuming only
 -- one package per package ID.
-lookupPackageId :: HasInstalledPackageId a => PackageIndex a -> PackageId -> Maybe a
+lookupPackageId :: PackageIndex a -> PackageId -> Maybe a
 lookupPackageId index pkgid = case lookupSourcePackageId index pkgid  of
     []    -> Nothing
     [pkg] -> Just pkg
@@ -368,7 +368,7 @@ lookupPackageId index pkgid = case lookupSourcePackageId index pkgid  of
 
 -- | Does a lookup by source package name.
 --
-lookupPackageName :: HasInstalledPackageId a => PackageIndex a -> PackageName
+lookupPackageName :: PackageIndex a -> PackageName
                   -> [(Version, [a])]
 lookupPackageName (PackageIndex _ pnames) name =
   case Map.lookup name pnames of
@@ -381,7 +381,7 @@ lookupPackageName (PackageIndex _ pnames) name =
 -- We get back any number of versions of the specified package name, all
 -- satisfying the version range constraint.
 --
-lookupDependency :: HasInstalledPackageId a => PackageIndex a -> Dependency
+lookupDependency :: PackageIndex a -> Dependency
                  -> [(Version, [a])]
 lookupDependency (PackageIndex _ pnames) (Dependency name versionRange) =
   case Map.lookup name pnames of
@@ -406,7 +406,7 @@ lookupDependency (PackageIndex _ pnames) (Dependency name versionRange) =
 -- packages. The list of ambiguous results is split by exact package name. So
 -- it is a non-empty list of non-empty lists.
 --
-searchByName :: HasInstalledPackageId a => PackageIndex a -> String -> SearchResult [a]
+searchByName :: PackageIndex a -> String -> SearchResult [a]
 searchByName (PackageIndex _ pnames) name =
   case [ pkgs | pkgs@(PackageName name',_) <- Map.toList pnames
               , lowercase name' == lname ] of
@@ -423,7 +423,7 @@ data SearchResult a = None | Unambiguous a | Ambiguous [a]
 --
 -- That is, all packages that contain the given string in their name.
 --
-searchByNameSubstring :: HasInstalledPackageId a => PackageIndex a -> String -> [a]
+searchByNameSubstring :: PackageIndex a -> String -> [a]
 searchByNameSubstring (PackageIndex _ pnames) searchterm =
   [ pkg
   | (PackageName name, pvers) <- Map.toList pnames
