@@ -26,7 +26,7 @@ import Distribution.Client.InstallPlan
          ( PlanPackage(..) )
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..), InstalledPackage(..)
-         , enableStanzas )
+         , enableStanzas, ConfiguredId(..), fakeInstalledPackageId )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
@@ -34,7 +34,7 @@ import Distribution.Client.Dependency.Types
 
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import Distribution.Client.PackageIndex
-         ( PackageIndex, PackageFixedDeps(depends) )
+         ( PackageIndex )
 import Distribution.Package
          ( PackageName(..), PackageId, Package(..), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion
@@ -424,7 +424,7 @@ annotateInstalledPackages dfsNumber installed = PackageIndex.fromList
     transitiveDepends :: InstalledPackage -> [PackageId]
     transitiveDepends = map (packageId . toPkg) . tail . Graph.reachable graph
                       . fromJust . toVertex . packageId
-    (graph, toPkg, toVertex) = PackageIndex.dependencyGraph installed
+    (graph, toPkg, toVertex) = dependencyGraph installed
 
 
 -- | Annotate each available packages with its topological sort number and any
@@ -482,7 +482,7 @@ topologicalSortNumbering installedPkgIndex sourcePkgIndex =
          | pkgs@(pkg:_) <- PackageIndex.allPackagesByName installedPkgIndex
          , let deps = [ packageName dep
                       | pkg' <- pkgs
-                      , dep  <- depends pkg' ] ]
+                      , dep  <- sourceDeps pkg' ] ]
       ++ [ ((), packageName pkg, nub deps)
          | pkgs@(pkg:_) <- PackageIndex.allPackagesByName sourcePkgIndex
          , let deps = [ depName
@@ -520,7 +520,7 @@ selectNeededSubset installedPkgIndex sourcePkgIndex = select mempty mempty
                         filter notAlreadyIncluded
                       $ [ packageName dep
                         | pkg <- moreInstalled
-                        , dep <- depends pkg ]
+                        , dep <- sourceDeps pkg ]
                      ++ [ name
                         | SourcePackage _ pkg _ _ <- moreSource
                         , Dependency name _ <-
@@ -562,7 +562,38 @@ finaliseSelectedPackages pref selected constraints =
     finaliseSource mipkg (SemiConfiguredPackage pkg flags stanzas deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags stanzas deps')
       where
-        deps' = map (packageId . pickRemaining mipkg) deps
+        deps' = map (confId . pickRemaining mipkg) deps
+
+    -- InstalledOrSource indicates that we either have a source package
+    -- available, or an installed one, or both. In the case that we have both
+    -- available, we don't yet know if we can pick the installed one (the
+    -- dependencies may not match up, for instance); this is verified in
+    -- `improvePlan`.
+    --
+    -- This means that at this point we cannot construct a valid installed
+    -- package ID yet for the dependencies. We therefore have two options:
+    --
+    -- * We could leave the installed package ID undefined here, and have a
+    --   separate pass over the output of the top-down solver, fixing all
+    --   dependencies so that if we depend on an already installed package we
+    --   use the proper installed package ID.
+    --
+    -- * We can _always_ use fake installed IDs, irrespective of whether we the
+    --   dependency is on an already installed package or not. This is okay
+    --   because (i) the top-down solver does not (and never will) support
+    --   multiple package instances, and (ii) we initialize the FakeMap with
+    --   fake IDs for already installed packages.
+    --
+    -- For now we use the second option; if however we change the implementation
+    -- of these fake IDs so that we do away with the FakeMap and update a
+    -- package reverse dependencies as we execute the install plan and discover
+    -- real package IDs, then this is no longer possible and we have to
+    -- implement the first option (see also Note [FakeMap] in Cabal).
+    confId :: InstalledOrSource InstalledPackageEx UnconfiguredPackage -> ConfiguredId
+    confId pkg = ConfiguredId {
+        confSrcId  = packageId pkg
+      , confInstId = fakeInstalledPackageId (packageId pkg)
+      }
 
     pickRemaining mipkg dep@(Dependency _name versionRange) =
           case PackageIndex.lookupDependency remainingChoices dep of
@@ -580,7 +611,7 @@ finaliseSelectedPackages pref selected constraints =
         -- silly things like deciding to rebuild haskell98 against base 3.
         isCurrent = case mipkg :: Maybe InstalledPackageEx of
           Nothing   -> \_ -> False
-          Just ipkg -> \p -> packageId p `elem` depends ipkg
+          Just ipkg -> \p -> packageId p `elem` sourceDeps ipkg
         -- If there is no upper bound on the version range then we apply a
         -- preferred version according to the hackage or user's suggested
         -- version constraints. TODO: distinguish hacks from prefs
@@ -628,7 +659,7 @@ improvePlan installed constraints0 selected0 =
     improvePkg selected constraints pkgid = do
       Configured pkg  <- PackageIndex.lookupPackageId selected  pkgid
       ipkg            <- PackageIndex.lookupPackageId installed pkgid
-      guard $ all (isInstalled selected) (depends pkg)
+      guard $ all (isInstalled selected) (sourceDeps pkg)
       tryInstalled selected constraints [ipkg]
 
     isInstalled selected pkgid =
@@ -641,12 +672,12 @@ improvePlan installed constraints0 selected0 =
                  -> Maybe (PackageIndex PlanPackage, Constraints)
     tryInstalled selected constraints [] = Just (selected, constraints)
     tryInstalled selected constraints (pkg:pkgs) =
-      case constraintsOk (packageId pkg) (depends pkg) constraints of
+      case constraintsOk (packageId pkg) (sourceDeps pkg) constraints of
         Nothing           -> Nothing
         Just constraints' -> tryInstalled selected' constraints' pkgs'
           where
             selected' = PackageIndex.insert (PreExisting pkg) selected
-            pkgs'      = catMaybes (map notSelected (depends pkg)) ++ pkgs
+            pkgs'      = catMaybes (map notSelected (sourceDeps pkg)) ++ pkgs
             notSelected pkgid =
               case (PackageIndex.lookupPackageId installed pkgid
                    ,PackageIndex.lookupPackageId selected  pkgid) of
@@ -661,13 +692,12 @@ improvePlan installed constraints0 selected0 =
       where
         dep = thisPackageVersion pkgid'
 
-    reverseTopologicalOrder :: PackageFixedDeps pkg
-                            => PackageIndex pkg -> [PackageId]
+    reverseTopologicalOrder :: PackageIndex PlanPackage -> [PackageId]
     reverseTopologicalOrder index = map (packageId . toPkg)
                                   . Graph.topSort
                                   . Graph.transposeG
                                   $ graph
-      where (graph, toPkg, _) = PackageIndex.dependencyGraph index
+      where (graph, toPkg, _) = dependencyGraph index
 
 -- ------------------------------------------------------------
 -- * Adding and recording constraints
@@ -945,3 +975,49 @@ listOf disp [x0] = disp x0
 listOf disp (x0:x1:xs) = disp x0 ++ go x1 xs
   where go x []       = " and " ++ disp x
         go x (x':xs') = ", " ++ disp x ++ go x' xs'
+
+-- ------------------------------------------------------------
+-- * Construct a dependency graph
+-- ------------------------------------------------------------
+
+-- | Builds a graph of the package dependencies.
+--
+-- Dependencies on other packages that are not in the index are discarded.
+-- You can check if there are any such dependencies with 'brokenPackages'.
+--
+-- The top-down solver gets its own implementation, because both
+-- `dependencyGraph` in `Distribution.Client.PlanIndex` (in cabal-install) and
+-- `dependencyGraph` in `Distribution.Simple.PackageIndex` (in Cabal) both work
+-- with `PackageIndex` from `Cabal` (that is, a package index indexed by
+-- installed package IDs rather than package names).
+--
+-- Ideally we would switch the top-down solver over to use that too, so that
+-- this duplication could be avoided, but that's a bit of work and the top-down
+-- solver is legacy code anyway.
+--
+-- (NOTE: This is called at two types: InstalledPackage and PlanPackage.)
+dependencyGraph :: PackageSourceDeps pkg
+                => PackageIndex pkg
+                -> (Graph.Graph,
+                    Graph.Vertex -> pkg,
+                    PackageId -> Maybe Graph.Vertex)
+dependencyGraph index = (graph, vertexToPkg, pkgIdToVertex)
+  where
+    graph = Array.listArray bounds $
+            map (catMaybes . map pkgIdToVertex . sourceDeps) pkgs
+    vertexToPkg vertex = pkgTable Array.! vertex
+    pkgIdToVertex = binarySearch 0 topBound
+
+    pkgTable   = Array.listArray bounds pkgs
+    pkgIdTable = Array.listArray bounds (map packageId pkgs)
+    pkgs = sortBy (comparing packageId) (PackageIndex.allPackages index)
+    topBound = length pkgs - 1
+    bounds = (0, topBound)
+
+    binarySearch a b key
+      | a > b     = Nothing
+      | otherwise = case compare key (pkgIdTable Array.! mid) of
+          LT -> binarySearch a (mid-1) key
+          EQ -> Just mid
+          GT -> binarySearch (mid+1) b key
+      where mid = (a + b) `div` 2

@@ -13,9 +13,10 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( SourcePackage(..), InstalledPackage, OptionalStanza )
-import Distribution.Client.PackageIndex
-         ( PackageFixedDeps(depends) )
+         ( SourcePackage(..), ReadyPackage(..), InstalledPackage(..)
+         , OptionalStanza, ConfiguredId(..) )
+import Distribution.Client.InstallPlan
+         ( ConfiguredPackage(..), PlanPackage(..) )
 
 import Distribution.Package
          ( PackageIdentifier, Dependency
@@ -65,9 +66,6 @@ data SemiConfiguredPackage
 instance Package InstalledPackageEx where
   packageId (InstalledPackageEx p _ _) = packageId p
 
-instance PackageFixedDeps InstalledPackageEx where
-  depends (InstalledPackageEx _ _ deps) = deps
-
 instance Package UnconfiguredPackage where
   packageId (UnconfiguredPackage p _ _ _) = packageId p
 
@@ -91,3 +89,41 @@ instance (Package installed, Package source)
 data InstalledConstraint = InstalledConstraint
                          | SourceConstraint
   deriving (Eq, Show)
+
+-- | Package dependencies
+--
+-- The top-down solver uses its down type class for package dependencies,
+-- because it wants to know these dependencies as PackageIds, rather than as
+-- InstalledPackageIds (so it cannot use PackageFixedDeps).
+--
+-- Ideally we would switch the top-down solver over to use InstalledPackageIds
+-- throughout; that means getting rid of this type class, and changing over the
+-- package index type to use Cabal's rather than cabal-install's. That will
+-- avoid the need for the local definitions of dependencyGraph and
+-- reverseTopologicalOrder in the top-down solver.
+--
+-- Note that the top-down solver does not (and probably will never) make a
+-- distinction between the various kinds of dependencies, so we return a flat
+-- list here. If we get rid of this type class then any use of `sourceDeps`
+-- should be replaced by @fold . depends@.
+class Package a => PackageSourceDeps a where
+  sourceDeps :: a -> [PackageIdentifier]
+
+instance PackageSourceDeps InstalledPackageEx where
+  sourceDeps (InstalledPackageEx _ _ deps) = deps
+
+instance PackageSourceDeps ConfiguredPackage where
+  sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId deps
+
+instance PackageSourceDeps ReadyPackage where
+  sourceDeps (ReadyPackage _ _ _ deps) = map packageId deps
+
+instance PackageSourceDeps InstalledPackage where
+  sourceDeps (InstalledPackage _ deps) = deps
+
+instance PackageSourceDeps PlanPackage where
+  sourceDeps (PreExisting pkg) = sourceDeps pkg
+  sourceDeps (Configured  pkg) = sourceDeps pkg
+  sourceDeps (Processing pkg)  = sourceDeps pkg
+  sourceDeps (Installed pkg _) = sourceDeps pkg
+  sourceDeps (Failed    pkg _) = sourceDeps pkg

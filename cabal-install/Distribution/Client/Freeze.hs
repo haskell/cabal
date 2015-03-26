@@ -34,11 +34,11 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Package
-         ( Package, PackageIdentifier, packageId, packageName, packageVersion )
+         ( Package, packageId, packageName, packageVersion )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
@@ -140,9 +140,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
                      solver
                      resolverParams
 
-  return $ either id
-                  (error "planPackages: installPlan contains broken packages")
-                  (pruneInstallPlan installPlan pkgSpecifiers)
+  return $ pruneInstallPlan installPlan pkgSpecifiers
 
   where
     resolverParams =
@@ -193,15 +191,14 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 --    which are no longer required from the install plan.
 pruneInstallPlan :: InstallPlan.InstallPlan
                  -> [PackageSpecifier SourcePackage]
-                 -> Either [PlanPackage] [(PlanPackage, [PackageIdentifier])]
+                 -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
     mapLeft (removeSelf pkgIds . PackageIndex.allPackages) $
-    PackageIndex.dependencyClosure pkgIdx pkgIds
+    InstallPlan.dependencyClosure installPlan pkgIds
   where
-    pkgIdx = PackageIndex.fromList $ InstallPlan.toList installPlan
     pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
-    mapLeft f (Left v)  = Left $ f v
-    mapLeft _ (Right v) = Right v
+    mapLeft f (Left v)  = f v
+    mapLeft _ (Right _) = error "planPackages: installPlan contains broken packages"
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= thisPkg)
     removeSelf _ =
         error $ "internal error: 'pruneInstallPlan' given "

@@ -19,7 +19,7 @@ import Distribution.Package
          , mkPackageKey, PackageKey, InstalledPackageId(..)
          , HasInstalledPackageId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, packageKey )
+         ( InstalledPackageInfo )
 import Distribution.PackageDescription
          ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
          , TestSuite(..) )
@@ -32,6 +32,7 @@ import Distribution.Version
 import Distribution.Simple.Compiler
          ( Compiler, packageKeySupported )
 import Distribution.Text (display)
+import qualified Distribution.InstalledPackageInfo as Info
 
 import Data.Map (Map)
 import Network.URI (URI)
@@ -53,20 +54,8 @@ data SourcePackageDb = SourcePackageDb {
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
 
--- | TODO: This is a hack to help us transition from Cabal-1.6 to 1.8.
--- What is new in 1.8 is that installed packages and dependencies between
--- installed packages are now identified by an opaque InstalledPackageId
--- rather than a source PackageId.
---
--- We should use simply an 'InstalledPackageInfo' here but to ease the
--- transition we are temporarily using this variant where we pretend that
--- installed packages still specify their deps in terms of PackageIds.
---
--- Crucially this means that 'InstalledPackage' can be an instance of
--- 'PackageFixedDeps' where as 'InstalledPackageInfo' is no longer an instance
--- of that class. This means we can make 'PackageIndex'es of InstalledPackage
--- where as the InstalledPackageInfo now has its own monomorphic index type.
---
+-- | InstalledPackage caches its dependencies as source package IDs.
+-- This is for the benefit of the top-down solver only.
 data InstalledPackage = InstalledPackage
        InstalledPackageInfo
        [PackageId]
@@ -74,7 +63,7 @@ data InstalledPackage = InstalledPackage
 instance Package InstalledPackage where
   packageId (InstalledPackage pkg _) = packageId pkg
 instance PackageFixedDeps InstalledPackage where
-  depends (InstalledPackage _ deps) = deps
+  depends (InstalledPackage pkg _) = depends pkg
 instance HasInstalledPackageId InstalledPackage where
   installedPackageId (InstalledPackage pkg _) = installedPackageId pkg
 instance PackageInstalled InstalledPackage where
@@ -102,22 +91,40 @@ data ConfiguredPackage = ConfiguredPackage
        SourcePackage       -- package info, including repo
        FlagAssignment      -- complete flag assignment for the package
        [OptionalStanza]    -- list of enabled optional stanzas for the package
-       [PackageId]         -- set of exact dependencies. These must be
-                           -- consistent with the 'buildDepends' in the
-                           -- 'PackageDescription' that you'd get by applying
-                           -- the flag assignment and optional stanzas.
+       [ConfiguredId]      -- set of exact dependencies (installed or source).
+                           -- These must be consistent with the 'buildDepends'
+                           -- in the 'PackageDescription' that you'd get by
+                           -- applying the flag assignment and optional stanzas.
   deriving Show
+
+-- | A ConfiguredId is a package ID for a configured package.
+--
+-- Once we configure a source package we know it's InstalledPackageId
+-- (at least, in principle, even if we have to fake it currently). It is still
+-- however useful in lots of places to also know the source ID for the package.
+-- We therefore bundle the two.
+--
+-- An already installed package of course is also "configured" (all it's
+-- configuration parameters and dependencies have been specified).
+--
+-- TODO: I wonder if it would make sense to promote this datatype to Cabal
+-- and use it consistently instead of InstalledPackageIds?
+data ConfiguredId = ConfiguredId {
+    confSrcId  :: PackageId
+  , confInstId :: InstalledPackageId
+  }
+
+instance Show ConfiguredId where
+  show = show . confSrcId
 
 instance Package ConfiguredPackage where
   packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
 
 instance PackageFixedDeps ConfiguredPackage where
-  depends (ConfiguredPackage _ _ _ deps) = deps
+  depends (ConfiguredPackage _ _ _ deps) = map confInstId deps
 
 instance HasInstalledPackageId ConfiguredPackage where
   installedPackageId = fakeInstalledPackageId . packageId
-instance PackageInstalled ConfiguredPackage where
-  installedDepends = map fakeInstalledPackageId . depends
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
@@ -132,19 +139,18 @@ instance Package ReadyPackage where
   packageId (ReadyPackage pkg _ _ _) = packageId pkg
 
 instance PackageFixedDeps ReadyPackage where
-  depends (ReadyPackage _ _ _ deps) = map packageId deps
+  depends (ReadyPackage _ _ _ deps) = map installedPackageId deps
 
 instance HasInstalledPackageId ReadyPackage where
   installedPackageId = fakeInstalledPackageId . packageId
-instance PackageInstalled ReadyPackage where
-  installedDepends (ReadyPackage _ _ _ ipis) = map installedPackageId ipis
+
 
 -- | Extracts a package key from ReadyPackage, a common operation needed
 -- to calculate build paths.
 readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
 readyPackageKey comp (ReadyPackage pkg _ _ deps) =
     mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map packageKey deps) []
+                 (map Info.packageKey deps) []
 
 
 -- | Sometimes we need to convert a 'ReadyPackage' back to a
@@ -152,7 +158,14 @@ readyPackageKey comp (ReadyPackage pkg _ _ deps) =
 -- Ready or Configured.
 readyPackageToConfiguredPackage :: ReadyPackage -> ConfiguredPackage
 readyPackageToConfiguredPackage (ReadyPackage srcpkg flags stanzas deps) =
-  ConfiguredPackage srcpkg flags stanzas (map packageId deps)
+    ConfiguredPackage srcpkg flags stanzas (map aux deps)
+  where
+    aux :: InstalledPackageInfo -> ConfiguredId
+    aux info = ConfiguredId {
+        confSrcId  = Info.sourcePackageId info
+      , confInstId = installedPackageId info
+      }
+
 
 -- | A package description along with the location of the package sources.
 --

@@ -135,7 +135,7 @@ fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
 
   InstallPlan.Failed (ConfiguredPackage srcPkg flags _ deps) result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags deps
+                                (packageId srcPkg) flags (map confSrcId deps)
                                 (Left result)
               , extractRepo srcPkg )
 
