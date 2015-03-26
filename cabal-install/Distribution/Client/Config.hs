@@ -47,6 +47,8 @@ import Distribution.Client.Setup
          , UploadFlags(..), uploadCommand
          , ReportFlags(..), reportCommand
          , showRepo, parseRepo )
+import Distribution.Client.Targets
+         ( UserConstraint (..) )
 
 import Distribution.Simple.Compiler
          ( OptimisationLevel(..) )
@@ -82,6 +84,8 @@ import Distribution.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor )
 import Distribution.Verbosity
          ( Verbosity, normal )
+import Distribution.Package
+         ( PackageName (..) )
 
 import Data.List
          ( partition, find )
@@ -222,6 +226,9 @@ initialSavedConfig = do
     },
     savedConfigureFlags  = mempty {
       configProgramPathExtra = extraPath
+    },
+    savedConfigureExFlags = mempty {
+      configExConstraints = [UserConstraintInstalled $ PackageName "template-haskell"]
     },
     savedInstallFlags    = mempty {
       installSummaryFile = [toPathTemplate (logsDir </> "build.log")],
