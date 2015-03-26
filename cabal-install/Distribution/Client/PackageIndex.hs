@@ -15,6 +15,7 @@
 module Distribution.Client.PackageIndex (
   -- * Package index data type
   PackageIndex,
+  PackageFixedDeps(..),
 
   -- * Creating an index
   fromList,
@@ -72,10 +73,20 @@ import Data.Maybe (isJust, isNothing, fromMaybe, catMaybes)
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
          , Package(..), packageName, packageVersion
-         , Dependency(Dependency), PackageFixedDeps(..) )
+         , Dependency(Dependency) )
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.Simple.Utils (lowercase, equating, comparing)
+
+-- | Subclass of packages that have specific versioned dependencies.
+--
+-- So for example a not-yet-configured package has dependencies on version
+-- ranges, not specific versions. A configured or an already installed package
+-- depends on exact versions. Some operations or data structures (like
+--  dependency graphs) only make sense on this subclass of package types.
+--
+class Package pkg => PackageFixedDeps pkg where
+  depends :: pkg -> [PackageIdentifier]
 
 
 -- | The collection of information about packages from one or more 'PackageDB's.

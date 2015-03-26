@@ -15,9 +15,9 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..), PackageFixedDeps(..)
+         ( PackageName, PackageId, Package(..)
          , mkPackageKey, PackageKey, InstalledPackageId(..)
-         , PackageInstalled(..) )
+         , HasInstalledPackageId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, packageKey )
 import Distribution.PackageDescription
@@ -26,7 +26,7 @@ import Distribution.PackageDescription
 import Distribution.PackageDescription.Configuration
          ( mapTreeData )
 import Distribution.Client.PackageIndex
-         ( PackageIndex )
+         ( PackageIndex, PackageFixedDeps(..) )
 import Distribution.Version
          ( VersionRange )
 import Distribution.Simple.Compiler
@@ -75,8 +75,9 @@ instance Package InstalledPackage where
   packageId (InstalledPackage pkg _) = packageId pkg
 instance PackageFixedDeps InstalledPackage where
   depends (InstalledPackage _ deps) = deps
-instance PackageInstalled InstalledPackage where
+instance HasInstalledPackageId InstalledPackage where
   installedPackageId (InstalledPackage pkg _) = installedPackageId pkg
+instance PackageInstalled InstalledPackage where
   installedDepends (InstalledPackage pkg _) = installedDepends pkg
 
 
@@ -113,8 +114,9 @@ instance Package ConfiguredPackage where
 instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ _ deps) = deps
 
-instance PackageInstalled ConfiguredPackage where
+instance HasInstalledPackageId ConfiguredPackage where
   installedPackageId = fakeInstalledPackageId . packageId
+instance PackageInstalled ConfiguredPackage where
   installedDepends = map fakeInstalledPackageId . depends
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
@@ -132,8 +134,9 @@ instance Package ReadyPackage where
 instance PackageFixedDeps ReadyPackage where
   depends (ReadyPackage _ _ _ deps) = map packageId deps
 
-instance PackageInstalled ReadyPackage where
+instance HasInstalledPackageId ReadyPackage where
   installedPackageId = fakeInstalledPackageId . packageId
+instance PackageInstalled ReadyPackage where
   installedDepends (ReadyPackage _ _ _ ipis) = map installedPackageId ipis
 
 -- | Extracts a package key from ReadyPackage, a common operation needed

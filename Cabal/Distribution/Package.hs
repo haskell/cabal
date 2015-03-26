@@ -38,7 +38,7 @@ module Distribution.Package (
 
         -- * Package classes
         Package(..), packageName, packageVersion,
-        PackageFixedDeps(..),
+        HasInstalledPackageId(..),
         PackageInstalled(..),
   ) where
 
@@ -360,15 +360,9 @@ packageVersion  = pkgVersion . packageId
 instance Package PackageIdentifier where
   packageId = id
 
--- | Subclass of packages that have specific versioned dependencies.
---
--- So for example a not-yet-configured package has dependencies on version
--- ranges, not specific versions. A configured or an already installed package
--- depends on exact versions. Some operations or data structures (like
---  dependency graphs) only make sense on this subclass of package types.
---
-class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> [PackageIdentifier]
+-- | Packages that have an installed package ID
+class Package pkg => HasInstalledPackageId pkg where
+  installedPackageId :: pkg -> InstalledPackageId
 
 -- | Class of installed packages.
 --
@@ -376,6 +370,5 @@ class Package pkg => PackageFixedDeps pkg where
 -- 'InstalledPackageInfo', but when we are doing install plans in Cabal install
 -- we may have other, installed package-like things which contain more metadata.
 -- Installed packages have exact dependencies 'installedDepends'.
-class Package pkg => PackageInstalled pkg where
-  installedPackageId :: pkg -> InstalledPackageId
+class HasInstalledPackageId pkg => PackageInstalled pkg where
   installedDepends :: pkg -> [InstalledPackageId]
