@@ -18,6 +18,9 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , FalseFlaggedDeps
   , Dep(..)
   , showDep
+    -- ** Setting/forgetting components
+  , forgetCompOpenGoal
+  , setCompFlaggedDeps
     -- * Reverse dependency map
   , RevDepMap
     -- * Goals
@@ -47,6 +50,8 @@ import Data.Set as S
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Version
+
+import Distribution.Client.ComponentDeps (Component)
 
 {-------------------------------------------------------------------------------
   Variables
@@ -133,18 +138,37 @@ merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
   Flagged dependencies
 -------------------------------------------------------------------------------}
 
-type FlaggedDeps qpn = [FlaggedDep qpn]
+-- | Flagged dependencies
+--
+-- 'FlaggedDeps' is the modular solver's view of a packages dependencies:
+-- rather than having the dependencies indexed by component, each dependency
+-- defines what component it is in.
+--
+-- However, top-level goals are also modelled as dependencies, but of course
+-- these don't actually belong in any component of any package. Therefore, we
+-- parameterize 'FlaggedDeps' and derived datatypes with a type argument that
+-- specifies whether or not we have a component: we only ever instantiate this
+-- type argument with @()@ for top-level goals, or 'Component' for everything
+-- else (we could express this as a kind at the type-level, but that would
+-- require a very recent GHC).
+--
+-- Note however, crucially, that independent of the type parameters, the list
+-- of dependencies underneath a flag choice or stanza choices _always_ uses
+-- Component as the type argument. This is important: when we pick a value for
+-- a flag, we _must_ know what component the new dependencies belong to, or
+-- else we don't be able to construct fine-grained reverse dependencies.
+type FlaggedDeps comp qpn = [FlaggedDep comp qpn]
 
 -- | Flagged dependencies can either be plain dependency constraints,
 -- or flag-dependent dependency trees.
-data FlaggedDep qpn =
+data FlaggedDep comp qpn =
     Flagged (FN qpn) FInfo (TrueFlaggedDeps qpn) (FalseFlaggedDeps qpn)
   | Stanza  (SN qpn)       (TrueFlaggedDeps qpn)
-  | Simple (Dep qpn)
+  | Simple (Dep qpn) comp
   deriving (Eq, Show, Functor)
 
-type TrueFlaggedDeps  qpn = FlaggedDeps qpn
-type FalseFlaggedDeps qpn = FlaggedDeps qpn
+type TrueFlaggedDeps  qpn = FlaggedDeps Component qpn
+type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 
 -- | A dependency (constraint) associates a package name with a
 -- constrained instance.
@@ -159,6 +183,35 @@ showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
   showVar v ++ " => " ++ showQPN qpn ++ showVR vr
 showDep (Dep qpn ci                            ) =
   showQPN qpn ++ showCI ci
+
+{-------------------------------------------------------------------------------
+  Setting/forgetting the Component
+-------------------------------------------------------------------------------}
+
+forgetCompOpenGoal :: OpenGoal Component -> OpenGoal ()
+forgetCompOpenGoal = mapCompOpenGoal $ const ()
+
+setCompFlaggedDeps :: Component -> FlaggedDeps () qpn -> FlaggedDeps Component qpn
+setCompFlaggedDeps = mapCompFlaggedDeps . const
+
+{-------------------------------------------------------------------------------
+  Auxiliary: Mapping over the Component goal
+
+  We don't export these, because the only type instantiations for 'a' and 'b'
+  here should be () or Component. (We could express this at the type level
+  if we relied on newer versions of GHC.)
+-------------------------------------------------------------------------------}
+
+mapCompOpenGoal :: (a -> b) -> OpenGoal a -> OpenGoal b
+mapCompOpenGoal g (OpenGoal d gr) = OpenGoal (mapCompFlaggedDep g d) gr
+
+mapCompFlaggedDeps :: (a -> b) -> FlaggedDeps a qpn -> FlaggedDeps b qpn
+mapCompFlaggedDeps = L.map . mapCompFlaggedDep
+
+mapCompFlaggedDep :: (a -> b) -> FlaggedDep a qpn -> FlaggedDep b qpn
+mapCompFlaggedDep _ (Flagged fn nfo t f) = Flagged fn nfo   t f
+mapCompFlaggedDep _ (Stanza  sn     t  ) = Stanza  sn       t
+mapCompFlaggedDep g (Simple  pn a      ) = Simple  pn (g a)
 
 {-------------------------------------------------------------------------------
   Reverse dependency map
@@ -227,15 +280,15 @@ goalReasonChainsToVars = S.unions . L.map goalReasonChainToVars
 
 -- | For open goals as they occur during the build phase, we need to store
 -- additional information about flags.
-data OpenGoal = OpenGoal (FlaggedDep QPN) QGoalReasonChain
+data OpenGoal comp = OpenGoal (FlaggedDep comp QPN) QGoalReasonChain
   deriving (Eq, Show)
 
 -- | Closes a goal, i.e., removes all the extraneous information that we
 -- need only during the build phase.
-close :: OpenGoal -> Goal QPN
-close (OpenGoal (Simple (Dep qpn _)) gr) = Goal (P qpn) gr
-close (OpenGoal (Flagged qfn _ _ _ ) gr) = Goal (F qfn) gr
-close (OpenGoal (Stanza  qsn _)      gr) = Goal (S qsn) gr
+close :: OpenGoal comp -> Goal QPN
+close (OpenGoal (Simple (Dep qpn _) _) gr) = Goal (P qpn) gr
+close (OpenGoal (Flagged qfn _ _ _ )   gr) = Goal (F qfn) gr
+close (OpenGoal (Stanza  qsn _)        gr) = Goal (S qsn) gr
 
 {-------------------------------------------------------------------------------
   Version ranges paired with origins

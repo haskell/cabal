@@ -30,6 +30,7 @@ import Distribution.Client.Dependency.Modular.Tree
 import qualified Distribution.Client.Dependency.Modular.PSQ as P
 
 import Distribution.Client.Types (OptionalStanza(..))
+import Distribution.Client.ComponentDeps (Component)
 
 {-------------------------------------------------------------------------------
   Add linking
@@ -167,7 +168,7 @@ conflict = lift' . Left
 execUpdateState :: UpdateState () -> ValidateState -> Either Conflict ValidateState
 execUpdateState = execStateT . unUpdateState
 
-pickPOption :: QPN -> POption -> FlaggedDeps QPN -> UpdateState ()
+pickPOption :: QPN -> POption -> FlaggedDeps comp QPN -> UpdateState ()
 pickPOption qpn (POption i Nothing)    _deps = pickConcrete qpn i
 pickPOption qpn (POption i (Just pp'))  deps = pickLink     qpn i pp' deps
 
@@ -185,7 +186,7 @@ pickConcrete qpn@(Q pp _) i = do
       Just lg ->
         makeCanonical lg qpn
 
-pickLink :: QPN -> I -> PP -> FlaggedDeps QPN -> UpdateState ()
+pickLink :: QPN -> I -> PP -> FlaggedDeps comp QPN -> UpdateState ()
 pickLink qpn@(Q _ pn) i pp' deps = do
     vs <- get
     -- Find the link group for the package we are linking to, and add this package
@@ -211,11 +212,11 @@ makeCanonical lg qpn@(Q pp _) =
         let lg' = lg { lgCanon = Just pp }
         updateLinkGroup lg'
 
-linkDeps :: [Var QPN] -> PP -> FlaggedDeps QPN -> UpdateState ()
+linkDeps :: [Var QPN] -> PP -> FlaggedDeps comp QPN -> UpdateState ()
 linkDeps parents pp' = mapM_ go
   where
-    go :: FlaggedDep QPN -> UpdateState ()
-    go (Simple (Dep qpn@(Q _ pn) _)) = do
+    go :: FlaggedDep comp QPN -> UpdateState ()
+    go (Simple (Dep qpn@(Q _ pn) _) _) = do
       vs <- get
       let qpn' = Q pp' pn
           lg   = M.findWithDefault (lgSingleton qpn  Nothing) qpn  $ vsLinks vs
@@ -258,11 +259,11 @@ linkNewDeps var b = do
         linkedTo                = S.delete pp (lgMembers lg)
     forM_ (S.toList linkedTo) $ \pp' -> linkDeps (P qpn : parents) pp' newDeps
   where
-    findNewDeps :: ValidateState -> FlaggedDeps QPN -> ([Var QPN], FlaggedDeps QPN)
+    findNewDeps :: ValidateState -> FlaggedDeps comp QPN -> ([Var QPN], FlaggedDeps Component QPN)
     findNewDeps vs = concatMapUnzip (findNewDeps' vs)
 
-    findNewDeps' :: ValidateState -> FlaggedDep QPN -> ([Var QPN], FlaggedDeps QPN)
-    findNewDeps' _  (Simple _)          = ([], [])
+    findNewDeps' :: ValidateState -> FlaggedDep comp QPN -> ([Var QPN], FlaggedDeps Component QPN)
+    findNewDeps' _  (Simple _ _)        = ([], [])
     findNewDeps' vs (Flagged qfn _ t f) =
       case (F qfn == var, M.lookup qfn (vsFlags vs)) of
         (True, _)    -> ([F qfn], if b then t else f)

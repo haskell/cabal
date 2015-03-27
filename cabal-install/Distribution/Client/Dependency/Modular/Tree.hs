@@ -14,10 +14,10 @@ import Distribution.Client.Dependency.Modular.Version
 
 -- | Type of the search tree. Inlining the choice nodes for now.
 data Tree a =
-    PChoice     QPN a           (PSQ POption  (Tree a))
-  | FChoice     QFN a Bool Bool (PSQ Bool     (Tree a)) -- Bool indicates whether it's weak/trivial, second Bool whether it's manual
-  | SChoice     QSN a Bool      (PSQ Bool     (Tree a)) -- Bool indicates whether it's trivial
-  | GoalChoice                  (PSQ OpenGoal (Tree a)) -- PSQ should never be empty
+    PChoice     QPN a           (PSQ POption       (Tree a))
+  | FChoice     QFN a Bool Bool (PSQ Bool          (Tree a)) -- Bool indicates whether it's weak/trivial, second Bool whether it's manual
+  | SChoice     QSN a Bool      (PSQ Bool          (Tree a)) -- Bool indicates whether it's trivial
+  | GoalChoice                  (PSQ (OpenGoal ()) (Tree a)) -- PSQ should never be empty
   | Done        RevDepMap
   | Fail        (ConflictSet QPN) FailReason
   deriving (Eq, Show, Functor)
@@ -57,10 +57,10 @@ data FailReason = InconsistentInitialConstraints
 
 -- | Functor for the tree type.
 data TreeF a b =
-    PChoiceF    QPN a           (PSQ POption  b)
-  | FChoiceF    QFN a Bool Bool (PSQ Bool     b)
-  | SChoiceF    QSN a Bool      (PSQ Bool     b)
-  | GoalChoiceF                 (PSQ OpenGoal b)
+    PChoiceF    QPN a           (PSQ POption       b)
+  | FChoiceF    QFN a Bool Bool (PSQ Bool          b)
+  | SChoiceF    QSN a Bool      (PSQ Bool          b)
+  | GoalChoiceF                 (PSQ (OpenGoal ()) b)
   | DoneF       RevDepMap
   | FailF       (ConflictSet QPN) FailReason
   deriving (Functor, Foldable, Traversable)
