@@ -93,9 +93,12 @@ fakeDepends fakeMap = map resolveFakeId . depends
     resolveFakeId :: InstalledPackageId -> InstalledPackageId
     resolveFakeId ipid = Map.findWithDefault ipid ipid fakeMap
 
---- | Variant of 'lookupInstalledPackageId' which accepts a 'FakeMap'.  See Note [FakeMap].
-fakeLookupInstalledPackageId :: HasInstalledPackageId a => FakeMap -> PackageIndex a -> InstalledPackageId -> Maybe a
-fakeLookupInstalledPackageId fakeMap index pkg = lookupInstalledPackageId index (Map.findWithDefault pkg pkg fakeMap)
+--- | Variant of 'lookupInstalledPackageId' which accepts a 'FakeMap'.  See Note
+--- [FakeMap].
+fakeLookupInstalledPackageId :: FakeMap -> PackageIndex a -> InstalledPackageId
+                             -> Maybe a
+fakeLookupInstalledPackageId fakeMap index pkg =
+  lookupInstalledPackageId index (Map.findWithDefault pkg pkg fakeMap)
 
 -- | All packages that have dependencies that are not in the index.
 --
@@ -108,8 +111,9 @@ brokenPackages :: (HasInstalledPackageId pkg, PackageFixedDeps pkg)
 brokenPackages fakeMap index =
   [ (pkg, missing)
   | pkg  <- allPackages index
-  , let missing = [ pkg' | pkg' <- depends pkg
-                         , isNothing (fakeLookupInstalledPackageId fakeMap index pkg') ]
+  , let missing =
+          [ pkg' | pkg' <- depends pkg
+                 , isNothing (fakeLookupInstalledPackageId fakeMap index pkg') ]
   , not (null missing) ]
 
 -- | Given a package index where we assume we want to use all the packages
@@ -122,7 +126,8 @@ brokenPackages fakeMap index =
 -- depend on it and the versions they require. These are guaranteed to be
 -- distinct.
 --
-dependencyInconsistencies :: forall pkg. (PackageFixedDeps pkg, HasInstalledPackageId pkg)
+dependencyInconsistencies :: forall pkg.
+                             (PackageFixedDeps pkg, HasInstalledPackageId pkg)
                           => FakeMap
                           -> PackageIndex pkg
                           -> [(PackageName, [(PackageIdentifier, Version)])]
@@ -203,14 +208,16 @@ dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
   (completed, _)  -> Right (brokenPackages fakeMap completed)
  where
     closure completed failed []             = (completed, failed)
-    closure completed failed (pkgid:pkgids) = case fakeLookupInstalledPackageId fakeMap index pkgid of
-      Nothing   -> closure completed (pkgid:failed) pkgids
-      Just pkg  -> case fakeLookupInstalledPackageId fakeMap completed (installedPackageId pkg) of
-        Just _  -> closure completed  failed pkgids
-        Nothing -> closure completed' failed pkgids'
-          where completed' = insert pkg completed
-                pkgids'    = depends pkg ++ pkgids
-
+    closure completed failed (pkgid:pkgids) =
+      case fakeLookupInstalledPackageId fakeMap index pkgid of
+        Nothing   -> closure completed (pkgid:failed) pkgids
+        Just pkg  ->
+          case fakeLookupInstalledPackageId fakeMap completed
+               (installedPackageId pkg) of
+            Just _  -> closure completed  failed pkgids
+            Nothing -> closure completed' failed pkgids'
+              where completed' = insert pkg completed
+                    pkgids'    = depends pkg ++ pkgids
 
 
 topologicalOrder :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
