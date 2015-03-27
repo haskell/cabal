@@ -266,6 +266,7 @@ test-suite unit-tests
     tasty,
     tasty-hunit,
     tasty-quickcheck,
+    pretty,
     QuickCheck < 2.9,
     Cabal
   ghc-options: -Wall
