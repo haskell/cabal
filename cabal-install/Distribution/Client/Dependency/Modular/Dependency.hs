@@ -1,5 +1,42 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Distribution.Client.Dependency.Modular.Dependency where
+module Distribution.Client.Dependency.Modular.Dependency (
+    -- * Variables
+    Var(..)
+  , simplifyVar
+  , showVar
+    -- * Conflict sets
+  , ConflictSet
+  , showCS
+    -- * Constrained instances
+  , CI(..)
+  , showCI
+  , merge
+    -- * Flagged dependencies
+  , FlaggedDeps
+  , FlaggedDep(..)
+  , TrueFlaggedDeps
+  , FalseFlaggedDeps
+  , Dep(..)
+  , showDep
+    -- * Reverse dependency map
+  , RevDepMap
+    -- * Goals
+  , Goal(..)
+  , GoalReason(..)
+  , GoalReasonChain
+  , QGoalReasonChain
+  , ResetGoal(..)
+  , toConflictSet
+  , goalReasonToVars
+  , goalReasonChainToVars
+  , goalReasonChainsToVars
+    -- * Open goals
+  , OpenGoal(..)
+  , close
+    -- * Version ranges pairsed with origins (goals)
+  , VROrigin
+  , collapse
+  ) where
 
 import Prelude hiding (pi)
 
@@ -10,6 +47,10 @@ import Data.Set as S
 import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Version
+
+{-------------------------------------------------------------------------------
+  Variables
+-------------------------------------------------------------------------------}
 
 -- | The type of variables that play a role in the solver.
 -- Note that the tree currently does not use this type directly,
@@ -37,10 +78,18 @@ showVar (P qpn) = showQPN qpn
 showVar (F qfn) = showQFN qfn
 showVar (S qsn) = showQSN qsn
 
+{-------------------------------------------------------------------------------
+  Conflict sets
+-------------------------------------------------------------------------------}
+
 type ConflictSet qpn = Set (Var qpn)
 
 showCS :: ConflictSet QPN -> String
 showCS = intercalate ", " . L.map showVar . S.toList
+
+{-------------------------------------------------------------------------------
+  Constrained instances
+-------------------------------------------------------------------------------}
 
 -- | Constrained instance. If the choice has already been made, this is
 -- a fixed instance, and we record the package name for which the choice
@@ -48,17 +97,6 @@ showCS = intercalate ", " . L.map showVar . S.toList
 -- the goals / variables that introduced them.
 data CI qpn = Fixed I (Goal qpn) | Constrained [VROrigin qpn]
   deriving (Eq, Show, Functor)
-
-instance ResetGoal CI where
-  resetGoal g (Fixed i _)       = Fixed i g
-  resetGoal g (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetGoal g y)) vrs)
-
-type VROrigin qpn = (VR, Goal qpn)
-
--- | Helper function to collapse a list of version ranges with origins into
--- a single, simplified, version range.
-collapse :: [VROrigin qpn] -> VR
-collapse = simplifyVR . L.foldr (.&&.) anyVR . L.map fst
 
 showCI :: CI QPN -> String
 showCI (Fixed i _)      = "==" ++ showI i
@@ -91,6 +129,9 @@ merge c@(Fixed (I v _) g1)   (Constrained rs) = go rs -- I tried "reverse rs" he
 merge c@(Constrained _)    d@(Fixed _ _)      = merge d c
 merge   (Constrained rs)     (Constrained ss) = Right (Constrained (rs ++ ss))
 
+{-------------------------------------------------------------------------------
+  Flagged dependencies
+-------------------------------------------------------------------------------}
 
 type FlaggedDeps qpn = [FlaggedDep qpn]
 
@@ -119,28 +160,22 @@ showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
 showDep (Dep qpn ci                            ) =
   showQPN qpn ++ showCI ci
 
-instance ResetGoal Dep where
-  resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
+{-------------------------------------------------------------------------------
+  Reverse dependency map
+-------------------------------------------------------------------------------}
 
 -- | A map containing reverse dependencies between qualified
 -- package names.
 type RevDepMap = Map QPN [QPN]
 
+{-------------------------------------------------------------------------------
+  Goals
+-------------------------------------------------------------------------------}
+
 -- | Goals are solver variables paired with information about
 -- why they have been introduced.
 data Goal qpn = Goal (Var qpn) (GoalReasonChain qpn)
   deriving (Eq, Show, Functor)
-
-class ResetGoal f where
-  resetGoal :: Goal qpn -> f qpn -> f qpn
-
-instance ResetGoal Goal where
-  resetGoal = const
-
--- | For open goals as they occur during the build phase, we need to store
--- additional information about flags.
-data OpenGoal = OpenGoal (FlaggedDep QPN) QGoalReasonChain
-  deriving (Eq, Show)
 
 -- | Reasons why a goal can be added to a goal set.
 data GoalReason qpn =
@@ -156,6 +191,24 @@ type GoalReasonChain qpn = [GoalReason qpn]
 
 type QGoalReasonChain = GoalReasonChain QPN
 
+class ResetGoal f where
+  resetGoal :: Goal qpn -> f qpn -> f qpn
+
+instance ResetGoal CI where
+  resetGoal g (Fixed i _)       = Fixed i g
+  resetGoal g (Constrained vrs) = Constrained (L.map (\ (x, y) -> (x, resetGoal g y)) vrs)
+
+instance ResetGoal Dep where
+  resetGoal g (Dep qpn ci) = Dep qpn (resetGoal g ci)
+
+instance ResetGoal Goal where
+  resetGoal = const
+
+-- | Compute a conflic set from a goal. The conflict set contains the
+-- closure of goal reasons as well as the variable of the goal itself.
+toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
+toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
+
 goalReasonToVars :: GoalReason qpn -> ConflictSet qpn
 goalReasonToVars UserGoal                 = S.empty
 goalReasonToVars (PDependency (PI qpn _)) = S.singleton (P qpn)
@@ -168,6 +221,15 @@ goalReasonChainToVars = S.unions . L.map goalReasonToVars
 goalReasonChainsToVars :: Ord qpn => [GoalReasonChain qpn] -> ConflictSet qpn
 goalReasonChainsToVars = S.unions . L.map goalReasonChainToVars
 
+{-------------------------------------------------------------------------------
+  Open goals
+-------------------------------------------------------------------------------}
+
+-- | For open goals as they occur during the build phase, we need to store
+-- additional information about flags.
+data OpenGoal = OpenGoal (FlaggedDep QPN) QGoalReasonChain
+  deriving (Eq, Show)
+
 -- | Closes a goal, i.e., removes all the extraneous information that we
 -- need only during the build phase.
 close :: OpenGoal -> Goal QPN
@@ -175,7 +237,13 @@ close (OpenGoal (Simple (Dep qpn _)) gr) = Goal (P qpn) gr
 close (OpenGoal (Flagged qfn _ _ _ ) gr) = Goal (F qfn) gr
 close (OpenGoal (Stanza  qsn _)      gr) = Goal (S qsn) gr
 
--- | Compute a conflic set from a goal. The conflict set contains the
--- closure of goal reasons as well as the variable of the goal itself.
-toConflictSet :: Ord qpn => Goal qpn -> ConflictSet qpn
-toConflictSet (Goal g grs) = S.insert (simplifyVar g) (goalReasonChainToVars grs)
+{-------------------------------------------------------------------------------
+  Version ranges paired with origins
+-------------------------------------------------------------------------------}
+
+type VROrigin qpn = (VR, Goal qpn)
+
+-- | Helper function to collapse a list of version ranges with origins into
+-- a single, simplified, version range.
+collapse :: [VROrigin qpn] -> VR
+collapse = simplifyVR . L.foldr (.&&.) anyVR . L.map fst
