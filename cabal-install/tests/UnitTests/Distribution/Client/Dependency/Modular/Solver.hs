@@ -7,6 +7,7 @@ module UnitTests.Distribution.Client.Dependency.Modular.Solver (tests, options) 
 import Control.Monad
 import Data.Maybe (catMaybes, isNothing)
 import Data.Either (partitionEithers)
+import Data.Proxy
 import Data.Typeable
 import Data.Version
 import qualified Data.Map as Map
