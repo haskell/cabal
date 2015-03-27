@@ -32,6 +32,7 @@ module Distribution.Version (
   laterVersion, earlierVersion,
   orLaterVersion, orEarlierVersion,
   unionVersionRanges, intersectVersionRanges,
+  invertVersionRange,
   withinVersion,
   betweenVersionsInclusive,
 
@@ -68,6 +69,7 @@ module Distribution.Version (
   mkVersionIntervals,
   unionVersionIntervals,
   intersectVersionIntervals,
+  invertVersionIntervals
 
  ) where
 
@@ -204,6 +206,15 @@ unionVersionRanges = UnionVersionRanges
 --
 intersectVersionRanges :: VersionRange -> VersionRange -> VersionRange
 intersectVersionRanges = IntersectVersionRanges
+
+-- | The inverse of a version range
+--
+-- >   withinRange v' (invertVersionRange vr)
+-- > = not (withinRange v' vr)
+--
+invertVersionRange :: VersionRange -> VersionRange
+invertVersionRange =
+    fromVersionIntervals . invertVersionIntervals . VersionIntervals . asVersionIntervals
 
 -- | The version range @== v.*@.
 --
@@ -676,6 +687,47 @@ intersectInterval (lower , upper ) (lower', upper')
                 Right (Just (lowerBound, upper'))
   where
     lowerBound = max lower lower'
+
+invertVersionIntervals :: VersionIntervals
+                       -> VersionIntervals
+invertVersionIntervals (VersionIntervals xs) =
+    case xs of
+      -- Empty interval set
+      [] -> VersionIntervals [(noLowerBound, NoUpperBound)]
+      -- Interval with no lower bound
+      ((lb, ub) : more) | lb == noLowerBound -> VersionIntervals $ invertVersionIntervals' ub more
+      -- Interval with a lower bound
+      ((lb, ub) : more) ->
+          VersionIntervals $ (noLowerBound, invertLowerBound lb) : invertVersionIntervals' ub more
+    where
+      -- Invert subsequent version intervals given the upper bound of
+      -- the intervals already inverted.
+      invertVersionIntervals' :: UpperBound
+                              -> [(LowerBound, UpperBound)]
+                              -> [(LowerBound, UpperBound)]
+      invertVersionIntervals' NoUpperBound [] = []
+      invertVersionIntervals' ub0 [] = [(invertUpperBound ub0, NoUpperBound)]
+      invertVersionIntervals' ub0 [(lb, NoUpperBound)] =
+          [(invertUpperBound ub0, invertLowerBound lb)]
+      invertVersionIntervals' ub0 ((lb, ub1) : more) =
+          (invertUpperBound ub0, invertLowerBound lb)
+            : invertVersionIntervals' ub1 more
+
+      invertLowerBound :: LowerBound -> UpperBound
+      invertLowerBound (LowerBound v b) = UpperBound v (invertBound b)
+
+      invertUpperBound :: UpperBound -> LowerBound
+      invertUpperBound (UpperBound v b) = LowerBound v (invertBound b)
+      invertUpperBound NoUpperBound = error "NoUpperBound: unexpected"
+
+      invertBound :: Bound -> Bound
+      invertBound ExclusiveBound = InclusiveBound
+      invertBound InclusiveBound = ExclusiveBound
+
+      noLowerBound :: LowerBound
+      noLowerBound =
+          LowerBound (Version {versionBranch = [0], versionTags = []})
+                     InclusiveBound
 
 -------------------------------
 -- Parsing and pretty printing
