@@ -21,6 +21,8 @@ import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
 import Distribution.Client.Dependency.Modular.Version
 
+import Distribution.Client.ComponentDeps (Component(..))
+
 -- | Convert both the installed package index and the source package
 -- index into one uniform solver index.
 --
@@ -62,8 +64,11 @@ convIP idx ipi =
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
   in  case mapM (convIPId pn idx) (IPI.depends ipi) of
-        Nothing  -> (pn, i, PInfo []  M.empty (Just Broken))
-        Just fds -> (pn, i, PInfo fds M.empty Nothing)
+        Nothing  -> (pn, i, PInfo []            M.empty (Just Broken))
+        Just fds -> (pn, i, PInfo (setComp fds) M.empty Nothing)
+ where
+  -- We assume that all dependencies of installed packages are _library_ deps
+  setComp = setCompFlaggedDeps ComponentLib
 -- TODO: Installed packages should also store their encapsulations!
 
 -- | Convert dependencies specified by an installed package id into
@@ -72,13 +77,13 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: PN -> SI.InstalledPackageIndex -> InstalledPackageId -> Maybe (FlaggedDep PN)
+convIPId :: PN -> SI.InstalledPackageIndex -> InstalledPackageId -> Maybe (FlaggedDep () PN)
 convIPId pn' idx ipid =
   case SI.lookupInstalledPackageId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)
-                in  Just (D.Simple (Dep pn (Fixed i (Goal (P pn') []))))
+                in  Just (D.Simple (Dep pn (Fixed i (Goal (P pn') []))) ())
 
 -- | Convert a cabal-install source package index to the simpler,
 -- more uniform index format of the solver.
@@ -101,27 +106,25 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 -- want to keep the condition tree, but simplify much of the test.
 
 -- | Convert a generic package description to a solver-specific 'PInfo'.
---
--- TODO: We currently just take all dependencies from all specified library,
--- executable and test components. This does not quite seem fair.
 convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
 convGPD os arch comp strfl pi
         (GenericPackageDescription _ flags libs exes tests benchs) =
   let
-    fds = flagInfo strfl flags
+    fds  = flagInfo strfl flags
+    conv = convCondTree os arch comp pi fds (const True)
   in
     PInfo
-      (maybe []    (convCondTree os arch comp pi fds (const True)          ) libs    ++
-       concatMap   (convCondTree os arch comp pi fds (const True)     . snd) exes    ++
+      (maybe []    (conv ComponentLib                       ) libs    ++
+       concatMap   (\(nm, ds) -> conv (ComponentExe nm)   ds) exes    ++
       prefix (Stanza (SN pi TestStanzas))
-        (L.map     (convCondTree os arch comp pi fds (const True)     . snd) tests)  ++
+        (L.map     (\(nm, ds) -> conv (ComponentTest nm)  ds) tests)  ++
       prefix (Stanza (SN pi BenchStanzas))
-        (L.map     (convCondTree os arch comp pi fds (const True)     . snd) benchs))
+        (L.map     (\(nm, ds) -> conv (ComponentBench nm) ds) benchs))
       fds
       Nothing
 
-prefix :: (FlaggedDeps qpn -> FlaggedDep qpn) -> [FlaggedDeps qpn] -> FlaggedDeps qpn
+prefix :: (FlaggedDeps comp qpn -> FlaggedDep comp' qpn) -> [FlaggedDeps comp qpn] -> FlaggedDeps comp' qpn
 prefix _ []  = []
 prefix f fds = [f (concat fds)]
 
@@ -133,10 +136,11 @@ flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not 
 -- | Convert condition trees to flagged dependencies.
 convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 (a -> Bool) -> -- how to detect if a branch is active
-                CondTree ConfVar [Dependency] a -> FlaggedDeps PN
-convCondTree os arch comp pi@(PI pn _) fds p (CondNode info ds branches)
-  | p info    = L.map (D.Simple . convDep pn) ds  -- unconditional dependencies
-              ++ concatMap (convBranch os arch comp pi fds p) branches
+                Component ->
+                CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
+convCondTree os arch cinfo pi@(PI pn _) fds p comp (CondNode info ds branches)
+  | p info    = L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional dependencies
+              ++ concatMap (convBranch os arch cinfo pi fds p comp) branches
   | otherwise = []
 
 -- | Branch interpreter.
@@ -150,15 +154,16 @@ convCondTree os arch comp pi@(PI pn _) fds p (CondNode info ds branches)
 convBranch :: OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
               (a -> Bool) -> -- how to detect if a branch is active
+              Component ->
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
-               Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps PN
-convBranch os arch cinfo pi fds p (c', t', mf') =
-  go c' (          convCondTree os arch cinfo pi fds p   t')
-        (maybe [] (convCondTree os arch cinfo pi fds p) mf')
+               Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
+convBranch os arch cinfo pi fds p comp (c', t', mf') =
+  go c' (          convCondTree os arch cinfo pi fds p comp   t')
+        (maybe [] (convCondTree os arch cinfo pi fds p comp) mf')
   where
     go :: Condition ConfVar ->
-          FlaggedDeps PN -> FlaggedDeps PN -> FlaggedDeps PN
+          FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
     go (Lit True)  t _ = t
     go (Lit False) _ f = f
     go (CNot c)    t f = go c f t
@@ -187,8 +192,12 @@ convBranch os arch cinfo pi fds p (c', t', mf') =
     -- with deferring flag choices will then usually first resolve this package,
     -- and try an already installed version before imposing a default flag choice
     -- that might not be what we want.
-    extractCommon :: FlaggedDeps PN -> FlaggedDeps PN -> FlaggedDeps PN
-    extractCommon ps ps' = [ D.Simple (Dep pn (Constrained [])) | D.Simple (Dep pn _) <- ps, D.Simple (Dep pn' _) <- ps', pn == pn' ]
+    extractCommon :: FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
+    extractCommon ps ps' = [ D.Simple (Dep pn (Constrained [])) comp
+                           | D.Simple (Dep pn  _) _ <- ps
+                           , D.Simple (Dep pn' _) _ <- ps'
+                           , pn == pn'
+                           ]
 
 -- | Convert a Cabal dependency to a solver-specific dependency.
 convDep :: PN -> Dependency -> Dep PN
