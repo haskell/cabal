@@ -6,8 +6,8 @@ import Distribution.Text
 
 import Text.PrettyPrint as Disp (text, render, parens, hcat, punctuate, int, char, (<>), (<+>))
 
-import Test.Framework (Test, testGroup)
-import Test.Framework.Providers.QuickCheck2
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.QuickCheck
 import Test.QuickCheck
 import Test.QuickCheck.Utils
 import qualified Test.Laws as Laws
@@ -17,7 +17,7 @@ import Data.Maybe (isJust, fromJust)
 import Data.List (sort, sortBy, nub)
 import Data.Ord  (comparing)
 
-versionTests :: Test
+versionTests :: TestTree
 versionTests = testGroup "Distribution.Version" $ map (\ (n, p) -> testProperty ("Range Property " ++ show n) p) . zip [1..] $
     -- properties to validate the test framework
   [ property prop_nonNull
@@ -75,7 +75,7 @@ versionTests = testGroup "Distribution.Version" $ map (\ (n, p) -> testProperty 
   , property prop_intersect_union_distributive
   ]
 
-parseTests :: Test
+parseTests :: TestTree
 parseTests = testGroup "Distribution.Version" $ map (\ (n, p) -> testProperty ("Parse Property " ++ show n) p) . zip [1..] $
    -- parsing and pretty printing
   [ property prop_parse_disp1
