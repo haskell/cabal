@@ -208,6 +208,7 @@ library
     Distribution.Simple.Program.GHC
     Distribution.Simple.Program.HcPkg
     Distribution.Simple.Program.Hpc
+    Distribution.Simple.Program.Internal
     Distribution.Simple.Program.Ld
     Distribution.Simple.Program.Run
     Distribution.Simple.Program.Script
@@ -257,6 +258,7 @@ test-suite unit-tests
   other-modules:
     UnitTests.Distribution.Compat.CreatePipe
     UnitTests.Distribution.Compat.ReadP
+    UnitTests.Distribution.Simple.Program.Internal
     UnitTests.Distribution.Utils.NubList
   main-is: UnitTests.hs
   build-depends:
