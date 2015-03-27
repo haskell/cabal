@@ -203,6 +203,7 @@ Test-Suite unit-tests
         tasty,
         tasty-hunit,
         tasty-quickcheck,
+        tagged,
         QuickCheck >= 2.5
 
   if flag(old-directory)
