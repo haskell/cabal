@@ -37,6 +37,7 @@ versionTests = testGroup "Distribution.Version" $ map (\ (n, p) -> testProperty 
   , property prop_orEarlierVersion
   , property prop_unionVersionRanges
   , property prop_intersectVersionRanges
+  , property prop_invertVersionRange
   , property prop_withinVersion
   , property prop_foldVersionRange
   , property prop_foldVersionRange'
@@ -73,6 +74,10 @@ versionTests = testGroup "Distribution.Version" $ map (\ (n, p) -> testProperty 
   , property prop_intersectVersionIntervals_associative
   , property prop_union_intersect_distributive
   , property prop_intersect_union_distributive
+
+    -- inversion of version intervals
+  , property prop_invertVersionIntervals
+  , property prop_invertVersionIntervalsTwice
   ]
 
 parseTests :: TestTree
@@ -179,6 +184,11 @@ prop_intersectVersionRanges :: VersionRange -> VersionRange -> Version -> Bool
 prop_intersectVersionRanges vr1 vr2 v' =
      withinRange v' (intersectVersionRanges vr1 vr2)
   == (withinRange v' vr1 && withinRange v' vr2)
+
+prop_invertVersionRange :: VersionRange -> Version -> Bool
+prop_invertVersionRange vr v' =
+     withinRange v' (invertVersionRange vr)
+  == not (withinRange v' vr)
 
 prop_withinVersion :: Version -> Version -> Bool
 prop_withinVersion v v' =
@@ -513,6 +523,19 @@ prop_intersect_union_distributive :: Property
 prop_intersect_union_distributive =
       Laws.distributive_left  intersectVersionIntervals unionVersionIntervals
   .&. Laws.distributive_right intersectVersionIntervals unionVersionIntervals
+
+-- | The semantics of 'invertVersionIntervals' is 'not'.
+--
+prop_invertVersionIntervals :: VersionIntervals
+                               -> Version -> Bool
+prop_invertVersionIntervals vi v =
+     withinIntervals v (invertVersionIntervals vi)
+  == not (withinIntervals v vi)
+
+-- | Double application of 'invertVersionIntervals' is the identity function
+prop_invertVersionIntervalsTwice :: VersionIntervals -> Bool
+prop_invertVersionIntervalsTwice vi =
+    invertVersionIntervals (invertVersionIntervals vi) == vi
 
 
 
