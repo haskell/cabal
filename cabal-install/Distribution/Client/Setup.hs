@@ -843,10 +843,13 @@ runCommand :: CommandUI (BuildFlags, BuildExFlags)
 runCommand = CommandUI {
     commandName         = "run",
     commandSynopsis     = "Builds and runs an executable.",
-    commandDescription  = Just $ \_ -> wrapText $
+    commandDescription  = Just $ \pname -> wrapText $
          "Builds and then runs the specified executable. If no executable is "
       ++ "specified, but the package contains just one executable, that one "
-      ++ "is built and executed.\n",
+      ++ "is built and executed.\n"
+      ++ "\n"
+      ++ "Use `" ++ pname ++ " test --show-details=streaming` to run a "
+      ++ "test-suite and get its full output.\n",
     commandNotes        = Just $ \pname ->
           "Examples:\n"
        ++ "  " ++ pname ++ " run\n"
