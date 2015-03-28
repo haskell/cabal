@@ -23,7 +23,7 @@ import Distribution.Client.FetchUtils
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache )
 import Distribution.Client.JobControl
-         ( JobControl, newParallelJobControl, spawnJob, collectJob )
+         ( newParallelJobControl, spawnJob, collectJob )
 
 import Distribution.Simple.Utils
          ( writeFileAtomic, warn, notice )
