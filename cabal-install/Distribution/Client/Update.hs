@@ -22,6 +22,8 @@ import Distribution.Client.FetchUtils
          ( downloadIndex )
 import Distribution.Client.IndexUtils
          ( updateRepoIndexCache )
+import Distribution.Client.JobControl
+         ( JobControl, newParallelJobControl, spawnJob, collectJob )
 
 import Distribution.Simple.Utils
          ( writeFileAtomic, warn, notice )
@@ -38,7 +40,9 @@ update verbosity [] =
   warn verbosity $ "No remote package servers have been specified. Usually "
                 ++ "you would have one specified in the config file."
 update verbosity repos = do
-  mapM_ (updateRepo verbosity) repos
+  jobCtrl <- newParallelJobControl
+  mapM_ (spawnJob jobCtrl . updateRepo verbosity) repos
+  mapM_ (\_ -> collectJob jobCtrl) repos
 
 updateRepo :: Verbosity -> Repo -> IO ()
 updateRepo verbosity repo = case repoKind repo of
