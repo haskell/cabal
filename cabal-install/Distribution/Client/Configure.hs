@@ -29,6 +29,7 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Targets
          ( userToPackageConstraint )
+import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
@@ -236,10 +237,10 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- deps.  In the end only one set gets passed to Setup.hs configure,
       -- depending on the Cabal version we are talking to.
       configConstraints  = [ thisPackageVersion (packageId deppkg)
-                           | deppkg <- deps ],
+                           | deppkg <- CD.flatDeps deps ],
       configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                               Installed.installedPackageId deppkg)
-                           | deppkg <- deps ],
+                           | deppkg <- CD.flatDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,

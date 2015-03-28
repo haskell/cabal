@@ -70,6 +70,8 @@ import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Client.PackageIndex
          ( PackageFixedDeps(..) )
+import Distribution.Client.ComponentDeps (ComponentDeps)
+import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
 import Distribution.Simple.PackageIndex
@@ -100,6 +102,7 @@ import Control.Exception
          ( assert )
 import Data.Maybe (catMaybes)
 import qualified Data.Map as Map
+import qualified Data.Traversable as T
 
 type PlanIndex = PackageIndex PlanPackage
 
@@ -300,8 +303,8 @@ ready plan = assert check readyPackages
       , deps <- maybeToList (hasAllInstalledDeps pkg)
       ]
 
-    hasAllInstalledDeps :: ConfiguredPackage -> Maybe [Installed.InstalledPackageInfo]
-    hasAllInstalledDeps = mapM isInstalledDep . depends
+    hasAllInstalledDeps :: ConfiguredPackage -> Maybe (ComponentDeps [Installed.InstalledPackageInfo])
+    hasAllInstalledDeps = T.mapM (mapM isInstalledDep) . depends
 
     isInstalledDep :: InstalledPackageId -> Maybe Installed.InstalledPackageInfo
     isInstalledDep pkgid =
@@ -491,7 +494,7 @@ problems platform cinfo fakeMap indepGoals index =
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
-     , Just pkg' <- map (PlanIndex.fakeLookupInstalledPackageId fakeMap index) (depends pkg)
+     , Just pkg' <- map (PlanIndex.fakeLookupInstalledPackageId fakeMap index) (CD.flatDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
@@ -612,23 +615,18 @@ configuredPackageProblems platform cinfo
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
   ++ [ DuplicateDeps pkgs
-     | pkgs <- duplicatesBy (comparing packageName) specifiedDeps ]
+     | pkgs <- CD.flatDeps (fmap (duplicatesBy (comparing packageName)) specifiedDeps) ]
   ++ [ MissingDep dep       | OnlyInLeft  dep       <- mergedDeps ]
   ++ [ ExtraDep       pkgid | OnlyInRight     pkgid <- mergedDeps ]
   ++ [ InvalidDep dep pkgid | InBoth      dep pkgid <- mergedDeps
                             , not (packageSatisfiesDependency pkgid dep) ]
   where
-    specifiedDeps :: [PackageId]
-    specifiedDeps = map confSrcId specifiedDeps'
+    specifiedDeps :: ComponentDeps [PackageId]
+    specifiedDeps = fmap (map confSrcId) specifiedDeps'
 
     mergedFlags = mergeBy compare
       (sort $ map flagName (genPackageFlags (packageDescription pkg)))
       (sort $ map fst specifiedFlags)
-
-    mergedDeps = mergeBy
-      (\dep pkgid -> dependencyName dep `compare` packageName pkgid)
-      (sortBy (comparing dependencyName) requiredDeps)
-      (sortBy (comparing packageName)    specifiedDeps)
 
     packageSatisfiesDependency
       (PackageIdentifier name  version)
@@ -637,6 +635,20 @@ configuredPackageProblems platform cinfo
 
     dependencyName (Dependency name _) = name
 
+    mergedDeps :: [MergeResult Dependency PackageId]
+    mergedDeps = mergeDeps requiredDeps (CD.flatDeps specifiedDeps)
+
+    mergeDeps :: [Dependency] -> [PackageId] -> [MergeResult Dependency PackageId]
+    mergeDeps required specified =
+      mergeBy
+        (\dep pkgid -> dependencyName dep `compare` packageName pkgid)
+        (sortBy (comparing dependencyName) required)
+        (sortBy (comparing packageName)    specified)
+
+    -- TODO: It would be nicer to use PackageDeps here so we can be more precise
+    -- in our checks. That's a bit tricky though, as this currently relies on
+    -- the 'buildDepends' field of 'PackageDescription'. (OTOH, that field is
+    -- deprecated and should be removed anyway.)
     requiredDeps :: [Dependency]
     requiredDeps =
       --TODO: use something lower level than finalizePackageDescription

@@ -28,6 +28,7 @@ import Distribution.Client.BuildReports.Anonymous (BuildReport)
 
 import Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan as InstallPlan
+import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Client.InstallPlan
          ( InstallPlan )
 
@@ -129,13 +130,13 @@ fromPlanPackage :: Platform -> CompilerId
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
   InstallPlan.Installed (ReadyPackage srcPkg flags _ deps) result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags (map packageId deps)
+                                (packageId srcPkg) flags (map packageId (CD.flatDeps deps))
                                 (Right result)
               , extractRepo srcPkg)
 
   InstallPlan.Failed (ConfiguredPackage srcPkg flags _ deps) result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags (map confSrcId deps)
+                                (packageId srcPkg) flags (map confSrcId (CD.flatDeps deps))
                                 (Left result)
               , extractRepo srcPkg )
 
