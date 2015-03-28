@@ -391,7 +391,7 @@ parsePreferredVersions = mapMaybe simpleParse
 
 updatePackageIndexCacheFile :: Verbosity -> FilePath -> FilePath -> IO ()
 updatePackageIndexCacheFile verbosity indexFile cacheFile = do
-    info verbosity "Updating the index cache file..."
+    info verbosity ("Updating index cache file " ++ cacheFile)
     (mkPkgs, prefs) <- either fail return
                        . parsePackageIndex
                        . maybeDecompress
