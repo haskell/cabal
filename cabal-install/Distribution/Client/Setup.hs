@@ -1444,18 +1444,20 @@ instance Monoid InstallFlags where
 -- ------------------------------------------------------------
 
 data UploadFlags = UploadFlags {
-    uploadCheck     :: Flag Bool,
-    uploadUsername  :: Flag Username,
-    uploadPassword  :: Flag Password,
-    uploadVerbosity :: Flag Verbosity
+    uploadCheck       :: Flag Bool,
+    uploadUsername    :: Flag Username,
+    uploadPassword    :: Flag Password,
+    uploadPasswordCmd :: Flag [String],
+    uploadVerbosity   :: Flag Verbosity
   }
 
 defaultUploadFlags :: UploadFlags
 defaultUploadFlags = UploadFlags {
-    uploadCheck     = toFlag False,
-    uploadUsername  = mempty,
-    uploadPassword  = mempty,
-    uploadVerbosity = toFlag normal
+    uploadCheck       = toFlag False,
+    uploadUsername    = mempty,
+    uploadPassword    = mempty,
+    uploadPasswordCmd = mempty,
+    uploadVerbosity   = toFlag normal
   }
 
 uploadCommand :: CommandUI UploadFlags
@@ -1488,21 +1490,28 @@ uploadCommand = CommandUI {
         uploadPassword (\v flags -> flags { uploadPassword = v })
         (reqArg' "PASSWORD" (toFlag . Password)
                             (flagToList . fmap unPassword))
+
+      ,option ['P'] ["password-command"]
+        "Command to get Hackage password."
+        uploadPasswordCmd (\v flags -> flags { uploadPasswordCmd = v })
+        (reqArg' "PASSWORD" (Flag . words) (fromMaybe [] . flagToMaybe))
       ]
   }
 
 instance Monoid UploadFlags where
   mempty = UploadFlags {
-    uploadCheck     = mempty,
-    uploadUsername  = mempty,
-    uploadPassword  = mempty,
-    uploadVerbosity = mempty
+    uploadCheck       = mempty,
+    uploadUsername    = mempty,
+    uploadPassword    = mempty,
+    uploadPasswordCmd = mempty,
+    uploadVerbosity   = mempty
   }
   mappend a b = UploadFlags {
-    uploadCheck     = combine uploadCheck,
-    uploadUsername  = combine uploadUsername,
-    uploadPassword  = combine uploadPassword,
-    uploadVerbosity = combine uploadVerbosity
+    uploadCheck       = combine uploadCheck,
+    uploadUsername    = combine uploadUsername,
+    uploadPassword    = combine uploadPassword,
+    uploadPasswordCmd = combine uploadPasswordCmd,
+    uploadVerbosity   = combine uploadVerbosity
   }
     where combine field = field a `mappend` field b
 
