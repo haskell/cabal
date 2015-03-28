@@ -13,6 +13,8 @@ import Distribution.System
 import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Package
 
+import qualified Distribution.Client.ComponentDeps as CD
+
 mkPlan :: Platform -> CompilerInfo -> Bool ->
           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           [CP QPN] -> Either [PlanProblem] InstallPlan
@@ -33,7 +35,7 @@ convCP iidx sidx (CP qpi fa es ds) =
                   ds'
   where
     ds' :: [ConfiguredId]
-    ds' = map convConfId ds
+    ds' = CD.flatDeps $ fmap (map convConfId) ds
 
 convPI :: PI QPN -> Either InstalledPackageId PackageId
 convPI (PI _ (I _ (Inst pi))) = Left pi

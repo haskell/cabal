@@ -116,6 +116,7 @@ executable cabal
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
+        Distribution.Client.Utils.LabeledGraph
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.Environment

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Distribution.Client.Dependency.Modular.Builder (buildTree) where
 
 -- Building the search tree.
@@ -51,11 +52,11 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
       -- This is important, because in general, if a goal is inserted twice,
       -- the later addition will have better dependency information.
     go g o (ng@(OpenGoal (Stanza  _   _  )      _gr) : ngs) = go g (cons' ng () o) ngs
-    go g o (ng@(OpenGoal (Simple (Dep qpn _) _) _gr) : ngs)
-      | qpn == qpn'       = go                       g               o  ngs
+    go g o (ng@(OpenGoal (Simple (Dep qpn _) c) _gr) : ngs)
+      | qpn == qpn'       = go                            g               o  ngs
           -- we ignore self-dependencies at this point; TODO: more care may be needed
-      | qpn `M.member` g  = go (M.adjust (qpn':) qpn g)              o  ngs
-      | otherwise         = go (M.insert qpn [qpn']  g) (cons' ng () o) ngs
+      | qpn `M.member` g  = go (M.adjust ((c, qpn'):) qpn g)              o  ngs
+      | otherwise         = go (M.insert qpn [(c, qpn')]  g) (cons' ng () o) ngs
           -- code above is correct; insert/adjust have different arg order
 
     cons' = cons . forgetCompOpenGoal
@@ -67,7 +68,7 @@ scopedExtendOpen :: QPN -> I -> QGoalReasonChain -> FlaggedDeps Component PN -> 
 scopedExtendOpen qpn@(Q pp _pn) i gr fdeps fdefs s = extendOpen qpn gs s
   where
     -- Qualify all package names
-    qfdeps = L.map (fmap (Q pp)) fdeps -- qualify all the package names
+    qfdeps = L.map (fmap (Q pp)) fdeps
     -- Introduce all package flags
     qfdefs = L.map (\ (fn, b) -> Flagged (FN (PI qpn i) fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals
@@ -136,7 +137,7 @@ build = ana go
 
     go bs@(BS { next = OneGoal (OpenGoal (Stanza qsn@(SN (PI qpn _) _) t) gr) }) =
       SChoiceF qsn gr trivial (P.fromList
-        [(False,                                                                        bs  { next = Goals }),
+        [(False,                                                                  bs  { next = Goals }),
          (True,  (extendOpen qpn (L.map (flip OpenGoal (SDependency qsn : gr)) t) bs) { next = Goals })])
       where
         trivial = L.null t
