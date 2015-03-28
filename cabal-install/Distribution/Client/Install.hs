@@ -103,6 +103,7 @@ import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
+import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
@@ -563,8 +564,8 @@ packageStatus _comp installedPkgIndex cpkg =
             -> [MergeResult PackageIdentifier PackageIdentifier]
     changes pkg pkg' = filter changed $
       mergeBy (comparing packageName)
-        (resolveInstalledIds $ Installed.depends pkg) -- deps of installed pkg
-        (resolveInstalledIds $ depends $ pkg')        -- deps of configured pkg
+        (resolveInstalledIds $ Installed.depends pkg)      -- deps of installed pkg
+        (resolveInstalledIds $ CD.flatDeps (depends pkg')) -- deps of configured pkg
 
     -- convert to source pkg ids via index
     resolveInstalledIds :: [InstalledPackageId] -> [PackageIdentifier]
@@ -1191,10 +1192,10 @@ installReadyPackage platform cinfo configFlags
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
     configConstraints  = [ thisPackageVersion (packageId deppkg)
-                         | deppkg <- deps ],
+                         | deppkg <- CD.flatDeps deps ],
     configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                             Installed.installedPackageId deppkg)
-                         | deppkg <- deps ],
+                         | deppkg <- CD.flatDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
     configBenchmarks         = toFlag False,
