@@ -67,6 +67,8 @@ instI (I _ (Inst _)) = True
 instI _              = False
 
 -- | Package path.
+--
+-- Stored in reverse order
 data PP = Independent Int PP | Setup PN PP | None
   deriving (Eq, Ord, Show)
 

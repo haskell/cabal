@@ -219,7 +219,7 @@ mapCompFlaggedDep g (Simple  pn a      ) = Simple  pn (g a)
 
 -- | A map containing reverse dependencies between qualified
 -- package names.
-type RevDepMap = Map QPN [QPN]
+type RevDepMap = Map QPN [(Component, QPN)]
 
 {-------------------------------------------------------------------------------
   Goals

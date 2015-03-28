@@ -1,4 +1,10 @@
-module Distribution.Client.Dependency.Modular.IndexConversion where
+module Distribution.Client.Dependency.Modular.IndexConversion (
+    convPIs
+    -- * TODO: The following don't actually seem to be used anywhere?
+  , convIPI
+  , convSPI
+  , convPI
+  ) where
 
 import Data.List as L
 import Data.Map as M
@@ -7,6 +13,7 @@ import Prelude hiding (pi)
 
 import qualified Distribution.Client.PackageIndex as CI
 import Distribution.Client.Types
+import Distribution.Client.ComponentDeps (Component(..))
 import Distribution.Compiler
 import Distribution.InstalledPackageInfo as IPI
 import Distribution.Package                          -- from Cabal
@@ -20,8 +27,6 @@ import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
 import Distribution.Client.Dependency.Modular.Version
-
-import Distribution.Client.ComponentDeps (Component(..))
 
 -- | Convert both the installed package index and the source package
 -- index into one uniform solver index.
