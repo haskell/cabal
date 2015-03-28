@@ -24,11 +24,9 @@ import Prelude hiding (lookup)
 import qualified Data.Map as Map
 import qualified Data.Tree  as Tree
 import qualified Data.Graph as Graph
-import qualified Data.Array as Array
 import Data.Array ((!))
-import Data.List (sortBy)
 import Data.Map (Map)
-import Data.Maybe (isNothing, fromMaybe)
+import Data.Maybe (isNothing, fromMaybe, fromJust)
 import Data.Either (lefts)
 
 #if !MIN_VERSION_base(4,8,0)
@@ -41,8 +39,6 @@ import Distribution.Package
          )
 import Distribution.Version
          ( Version )
-import Distribution.Simple.Utils
-         ( comparing )
 
 import Distribution.Client.PackageIndex
          ( PackageFixedDeps(..) )
@@ -313,19 +309,16 @@ dependencyGraph :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
                     InstalledPackageId -> Maybe Graph.Vertex)
 dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
   where
-    graph = Array.listArray bounds
-              [ [ v | Just v <- map idToVertex (depends pkg) ]
-              | pkg <- pkgs ]
+    (graph, vertexToPkg', idToVertex) = Graph.graphFromEdges edges
+    vertexToPkg = fromJust
+                . (\((), key, _targets) -> lookupInstalledPackageId index key)
+                . vertexToPkg'
 
-    pkgs      = sortBy (comparing packageId) (allPackages index)
-    pkgTable  = Array.listArray bounds pkgs
-    bounds    = (0, topBound)
-    topBound  = length pkgs - 1
-    vertexToPkg vertex = pkgTable ! vertex
+    pkgs  = allPackages index
+    edges = map edgesFrom pkgs
 
-    -- Old implementation used to use an array for vertices as well, with a
-    -- binary search algorithm. Not sure why this changed, but sticking with
-    -- this linear search for now.
-    vertices  = zip (map installedPackageId pkgs) [0..]
-    vertexMap = Map.fromList vertices
-    idToVertex pid = Map.lookup (Map.findWithDefault pid pid fakeMap) vertexMap
+    resolve   pid = Map.findWithDefault pid pid fakeMap
+    edgesFrom pkg = ( ()
+                    , resolve (installedPackageId pkg)
+                    , fakeDepends fakeMap pkg
+                    )
