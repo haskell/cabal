@@ -725,9 +725,7 @@ invertVersionIntervals (VersionIntervals xs) =
       invertBound InclusiveBound = ExclusiveBound
 
       noLowerBound :: LowerBound
-      noLowerBound =
-          LowerBound (Version {versionBranch = [0], versionTags = []})
-                     InclusiveBound
+      noLowerBound = LowerBound (Version [0] []) InclusiveBound
 
 -------------------------------
 -- Parsing and pretty printing
