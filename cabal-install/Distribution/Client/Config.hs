@@ -69,7 +69,8 @@ import Distribution.ParseUtils
          , ParseResult(..), PError(..), PWarning(..)
          , locatedErrorMsg, showPWarning
          , readFields, warning, lineNo
-         , simpleField, listField, parseFilePathQ, parseTokenQ )
+         , simpleField, listField, spaceListField
+         , parseFilePathQ, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
 import qualified Distribution.ParseUtils as ParseUtils
@@ -328,10 +329,11 @@ instance Monoid SavedConfig where
                                        `mappend` savedGlobalInstallDirs b
 
       combinedSavedUploadFlags = UploadFlags {
-        uploadCheck     = combine uploadCheck,
-        uploadUsername  = combine uploadUsername,
-        uploadPassword  = combine uploadPassword,
-        uploadVerbosity = combine uploadVerbosity
+        uploadCheck       = combine uploadCheck,
+        uploadUsername    = combine uploadUsername,
+        uploadPassword    = combine uploadPassword,
+        uploadPasswordCmd = combine uploadPasswordCmd,
+        uploadVerbosity   = combine uploadVerbosity
         }
         where
           combine = combine' savedUploadFlags
@@ -714,6 +716,11 @@ deprecatedFieldDescriptions =
       (Disp.text . fromFlagOrDefault "" . fmap unPassword)
       (optional (fmap Password parseTokenQ))
       uploadPassword    (\d cfg -> cfg { uploadPassword = d })
+  , liftUploadFlag $
+    spaceListField "hackage-password-command"
+      Disp.text parseTokenQ
+      (fromFlagOrDefault [] . uploadPasswordCmd)
+                        (\d cfg -> cfg { uploadPasswordCmd = Flag d })
   ]
  ++ map (modifyFieldName ("user-"++)   . liftUserInstallDirs)   installDirsFields
  ++ map (modifyFieldName ("global-"++) . liftGlobalInstallDirs) installDirsFields
