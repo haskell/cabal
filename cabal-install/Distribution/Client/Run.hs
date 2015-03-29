@@ -45,41 +45,46 @@ import System.FilePath                       ((<.>), (</>))
 -- forwarded to it.
 splitRunArgs :: LocalBuildInfo -> [String] -> IO (Executable, [String])
 splitRunArgs lbi args =
-  -- cannot printWarning at the start, for the case where the first
-  -- parameter matches the executable that is run.
-  case enabledExes of
-    []    -> do
-               printWarning
-               die "Couldn't find any enabled executables."
-    [exe] -> case args of
-      []                        -> return (exe, [])
-      (x:xs) | x == exeName exe -> return (exe, xs)
-             | otherwise -> do
-                              case firstParamComponentWarning of
-                                Nothing -> return ()
-                                Just s ->
-                                  notice normal
-                                    (s ++ " Interpreting '" ++ x
-                                       ++ "' as a parameter to the default"
-                                       ++ " executable.")
-                              return (exe, args)
-    _     -> case args of
-      []     -> die $ "This package contains multiple executables. "
-                ++ "You must pass the executable name as the first argument "
-                ++ "to 'cabal run'."
-      (x:xs) -> case find (\exe -> exeName exe == x) enabledExes of
-        Nothing  -> do
-                      printWarning
-                      die $ "No executable named '" ++ x ++ "'."
-        Just exe -> return (exe, xs)
+  case whichExecutable of -- Either err (wasManuallyChosen, exe, restParams)
+    Left err               -> do printMaybeWarningWithAdditional ""
+                                 die err
+    Right (True, exe, xs)  -> return (exe, xs)
+    Right (False, exe, xs) -> do printMaybeWarningWithAdditional
+                                   $ " Interpreting all parameters to `run`"
+                                  ++ " as a parameter to the"
+                                  ++ " default executable."
+                                 return (exe, xs)
   where
-    pkg_descr   = localPkgDescr lbi
-    enabledExes = filter (buildable . buildInfo) (executables pkg_descr)
-    firstParamComponentWarning :: Maybe String
-    firstParamComponentWarning = case args of
-      []    -> Nothing
-      (x:_) -> lookup x components
+    pkg_descr = localPkgDescr lbi
+    whichExecutable :: Either String  -- error string
+                              ( Bool       -- if it was manually chosen
+                              , Executable -- the executable
+                              , [String]   -- the remaining parameters
+                              )
+    whichExecutable = case (enabledExes, args) of
+      ([]   , _)           -> Left "Couldn't find any enabled executables."
+      ([exe], [])          -> return (False, exe, [])
+      ([exe], (x:xs))
+        | x == exeName exe -> return (True, exe, xs)
+        | otherwise        -> return (False, exe, args)
+      (_    , [])          -> Left
+        $ "This package contains multiple executables. "
+        ++ "You must pass the executable name as the first argument "
+        ++ "to 'cabal run'."
+      (_    , (x:xs))      ->
+        case find (\exe -> exeName exe == x) enabledExes of
+          Nothing  -> Left $ "No executable named '" ++ x ++ "'."
+          Just exe -> return (True, exe, xs)
       where
+        enabledExes = filter (buildable . buildInfo) (executables pkg_descr)
+    printMaybeWarningWithAdditional :: String -> IO ()
+    printMaybeWarningWithAdditional add = case firstParamComponentWarning of
+      Nothing      -> return ()
+      Just warning -> notice normal $ warning ++ add
+      where
+        firstParamComponentWarning = case args of
+          []    -> Nothing
+          (x:_) -> lookup x components
         components :: [(String, String)] -- component name, label
         components = [ (name, "The executable '" ++ name ++ "' is disabled.")
                      | e <- executables pkg_descr
@@ -94,11 +99,6 @@ splitRunArgs lbi args =
                            ++ " executables.")
                      | b <- benchmarks pkg_descr
                      , let name = benchmarkName b]
-    printWarning :: IO ()
-    printWarning = case firstParamComponentWarning of
-      Nothing -> return ()
-      Just x  -> notice normal x
-
 
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
