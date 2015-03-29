@@ -32,6 +32,7 @@
 	running tests/benchmarks (#1821).
 	* Build shared libraries by default when linking executables dynamically.
 	* Build profiled libraries by default when profiling executables.
+	* Deal with extra C sources from preprocessors (#238).
 
 1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Fix streaming test output.
