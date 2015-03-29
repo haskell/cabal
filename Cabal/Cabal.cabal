@@ -112,8 +112,8 @@ extra-source-files:
   tests/PackageTests/TestOptions/TestOptions.cabal
   tests/PackageTests/TestOptions/test-TestOptions.hs
   tests/PackageTests/TestStanza/my.cabal
-  tests/PackageTests/TestSuiteExeV10/Foo.hs
-  tests/PackageTests/TestSuiteExeV10/my.cabal
+  tests/PackageTests/TestSuiteTests/ExeV10/Foo.hs
+  tests/PackageTests/TestSuiteTests/ExeV10/my.cabal
   tests/PackageTests/TestSuiteExeV10/tests/test-Foo.hs
   tests/Setup.hs
   tests/hackage/check.sh
@@ -307,7 +307,7 @@ test-suite package-tests
     PackageTests.TemplateHaskell.Check
     PackageTests.TestOptions.Check
     PackageTests.TestStanza.Check
-    PackageTests.TestSuiteExeV10.Check
+    PackageTests.TestSuiteTests.ExeV10.Check
     Test.Distribution.Version
     Test.Laws
     Test.QuickCheck.Utils
