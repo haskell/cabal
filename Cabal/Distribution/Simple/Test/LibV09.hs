@@ -29,8 +29,9 @@ import Distribution.TestSuite
 import Distribution.Text
 import Distribution.Verbosity ( normal )
 
+import Control.Concurrent (forkIO)
 import Control.Exception ( bracket )
-import Control.Monad ( when, unless )
+import Control.Monad ( when, unless, void )
 import Data.Maybe ( mapMaybe )
 import System.Directory
     ( createDirectoryIfMissing, doesDirectoryExist, doesFileExist
@@ -81,6 +82,12 @@ runTest pkg_descr lbi flags suite = do
         hPutStr wIn $ show (tempLog, PD.testName suite)
         hClose wIn
 
+        -- Append contents of temporary log file to the final human-
+        -- readable log file
+        logText <- hGetContents rOut
+        -- Force the IO manager to drain the test output pipe
+        void $ forkIO $ length logText `seq` return ()
+
         -- Run test executable
         _ <- do let opts = map (testOption pkg_descr lbi suite) $ testOptions flags
                     dataDirPath = pwd </> PD.dataDir pkg_descr
@@ -118,9 +125,6 @@ runTest pkg_descr lbi flags suite = do
         -- Write summary notice to log file indicating start of test suite
         appendFile (logFile suiteLog) $ summarizeSuiteStart $ PD.testName suite
 
-        -- Append contents of temporary log file to the final human-
-        -- readable log file
-        logText <- hGetContents rOut
         appendFile (logFile suiteLog) logText
 
         -- Write end-of-suite summary notice to log file

@@ -9,31 +9,33 @@ import PackageTests.PackageTester
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteTests" </> "LibV09"
 
-checks :: PackageSpec -> FilePath -> [TestTree]
-checks inplaceSpec ghcPath =
-  [ testCase "Build" $ checkBuild inplaceSpec ghcPath
-  , localOption (mkTimeout $ 10 * 10 ^ (6 :: Int))
-    $ testCase "Deadlock" $ checkDeadlock inplaceSpec ghcPath
+checks :: SuiteConfig -> [TestTree]
+checks config =
+  [ testCase "Build" (checkBuild config)
+  , localOption (mkTimeout $ 10 ^ (8 :: Int))
+    $ testCase "Deadlock" (checkDeadlock config)
   ]
 
-checkBuild :: PackageSpec -> FilePath -> Assertion
-checkBuild inplaceSpec ghcPath = do
-  let spec = inplaceSpec
+checkBuild :: SuiteConfig -> Assertion
+checkBuild config = do
+  let spec = (inplaceSpec config)
              { directory = dir
              , distPref = Just $ "dist-Build"
-             , configOpts = "--enable-tests" : configOpts inplaceSpec
+             , configOpts = "--enable-tests"
+                            : configOpts (inplaceSpec config)
              }
-  buildResult <- cabal_build spec ghcPath
+  buildResult <- cabal_build config spec
   assertBuildSucceeded buildResult
 
-checkDeadlock :: PackageSpec -> FilePath -> Assertion
-checkDeadlock inplaceSpec ghcPath = do
-  let spec = inplaceSpec
+checkDeadlock :: SuiteConfig -> Assertion
+checkDeadlock config = do
+  let spec = (inplaceSpec config)
              { directory = dir
              , distPref = Just $ "dist-Test"
-             , configOpts = "--enable-tests" : configOpts inplaceSpec
+             , configOpts = "--enable-tests"
+                            : configOpts (inplaceSpec config)
              }
-  buildResult <- cabal_build spec ghcPath
+  buildResult <- cabal_build config spec
   assertBuildSucceeded buildResult
-  testResult <- cabal_test spec [] [] ghcPath
+  testResult <- cabal_test config spec [] []
   assertTestFailed testResult

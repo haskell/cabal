@@ -5,4 +5,4 @@ import Distribution.TestSuite
 import Lib
 
 tests :: IO [Test]
-tests = return  [nullt x | x <- [1 .. 10000]]
+tests = return  [nullt x | x <- [1 .. 1000]]
