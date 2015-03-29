@@ -114,7 +114,10 @@ extra-source-files:
   tests/PackageTests/TestStanza/my.cabal
   tests/PackageTests/TestSuiteTests/ExeV10/Foo.hs
   tests/PackageTests/TestSuiteTests/ExeV10/my.cabal
-  tests/PackageTests/TestSuiteExeV10/tests/test-Foo.hs
+  tests/PackageTests/TestSuiteTests/ExeV10/tests/test-Foo.hs
+  tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
+  tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
+  tests/PackageTests/TestSuiteTests/LibV09/Deadlock.hs
   tests/Setup.hs
   tests/hackage/check.sh
   tests/hackage/download.sh
@@ -308,6 +311,7 @@ test-suite package-tests
     PackageTests.TestOptions.Check
     PackageTests.TestStanza.Check
     PackageTests.TestSuiteTests.ExeV10.Check
+    PackageTests.TestSuiteTests.LibV09.Check
     Test.Distribution.Version
     Test.Laws
     Test.QuickCheck.Utils
