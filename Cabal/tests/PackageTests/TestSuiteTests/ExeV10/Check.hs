@@ -1,7 +1,8 @@
-module PackageTests.TestSuiteExeV10.Check (checks) where
+module PackageTests.TestSuiteTests.ExeV10.Check (checks) where
 
 import qualified Control.Exception as E (IOException, catch)
 import Control.Monad (when)
+import Data.List (intercalate)
 import Data.Maybe (catMaybes)
 import System.Directory ( doesFileExist )
 import System.FilePath
@@ -23,12 +24,14 @@ import Distribution.Version (Version(..), orLaterVersion)
 
 import PackageTests.PackageTester
 
-checks :: SuiteConfig -> [TestTree]
-checks config =
-    [ testCase "Test" $ checkTest config ]
-    ++ hpcTestMatrix config ++
-    [ testCase "TestNoHpc/NoTix" $ checkTestNoHpcNoTix config
-    , testCase "TestNoHpc/NoMarkup" $ checkTestNoHpcNoMarkup config
+checks :: FilePath -> [TestTree]
+checks ghcPath =
+    [ testCase "Test" $ checkTest ghcPath
+    , testGroup "WithHpc" $ hpcTestMatrix ghcPath
+    , testGroup "WithoutHpc"
+      [ testCase "NoTix" $ checkTestNoHpcNoTix ghcPath
+      , testCase "NoMarkup" $ checkTestNoHpcNoMarkup ghcPath
+      ]
     ]
 
 hpcTestMatrix :: SuiteConfig -> [TestTree]
@@ -37,26 +40,29 @@ hpcTestMatrix config = do
     exeProf <- [True, False]
     exeDyn <- [True, False]
     shared <- [True, False]
-    let name = concat
-            [ "WithHpc-"
-            , if libProf then "LibProf" else ""
-            , if exeProf then "ExeProf" else ""
-            , if exeDyn then "ExeDyn" else ""
-            , if shared then "Shared" else ""
-            ]
-        enable cond flag
-          | cond = Just $ "--enable-" ++ flag
-          | otherwise = Nothing
+    let name | null suffixes = "Vanilla"
+             | otherwise = intercalate "-" suffixes
+          where
+            suffixes = catMaybes
+                      [ if libProf then Just "LibProf" else Nothing
+                      , if exeProf then Just "ExeProf" else Nothing
+                      , if exeDyn then Just "ExeDyn" else Nothing
+                      , if shared then Just "Shared" else Nothing
+                      ]
         opts = catMaybes
             [ enable libProf "library-profiling"
             , enable exeProf "profiling"
             , enable exeDyn "executable-dynamic"
             , enable shared "shared"
             ]
-    return $ testCase name $ checkTestWithHpc config name opts
+          where
+            enable cond flag
+              | cond = Just $ "--enable-" ++ flag
+              | otherwise = Nothing
+    return $ testCase name $ checkTestWithHpc ghcPath ("WithHpc-" ++ name) opts
 
 dir :: FilePath
-dir = "PackageTests" </> "TestSuiteExeV10"
+dir = "PackageTests" </> "TestSuiteTests" </> "ExeV10"
 
 checkTest :: SuiteConfig -> Assertion
 checkTest config = buildAndTest config "Default" [] []

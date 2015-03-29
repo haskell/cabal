@@ -33,7 +33,7 @@ import PackageTests.EmptyLib.Check
 import PackageTests.Haddock.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
-import PackageTests.TestSuiteExeV10.Check
+import PackageTests.TestSuiteTests.ExeV10.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
 
@@ -77,9 +77,12 @@ tests config version =
     , testCase "TestStanza" (PackageTests.TestStanza.Check.suite config)
       -- ^ The Test stanza test will eventually be required
       -- only for higher versions.
-    , testGroup "TestSuiteExeV10" (PackageTests.TestSuiteExeV10.Check.checks config)
-    , testCase "TestOptions" (PackageTests.TestOptions.Check.suite config)
-    , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite config)
+    , testGroup "TestSuiteTests"
+      [ testGroup "ExeV10"
+        (PackageTests.TestSuiteTests.ExeV10.Check.checks ghcPath)
+      ]
+    , testCase "TestOptions" (PackageTests.TestOptions.Check.suite ghcPath)
+    , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite ghcPath)
       -- ^ The benchmark stanza test will eventually be required
       -- only for higher versions.
     , testCase "BenchmarkExeV10/Test"
