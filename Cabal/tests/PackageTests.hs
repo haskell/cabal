@@ -20,7 +20,6 @@ import PackageTests.BuildDeps.SameDepsAllRound.Check
 import PackageTests.BuildDeps.TargetSpecificDeps1.Check
 import PackageTests.BuildDeps.TargetSpecificDeps2.Check
 import PackageTests.BuildDeps.TargetSpecificDeps3.Check
-import PackageTests.BuildTestSuiteDetailedV09.Check
 import PackageTests.PackageTester (PackageSpec(..), SuiteConfig(..), compileSetup)
 import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
@@ -102,10 +101,8 @@ tests config version =
     , testCase "DeterministicAr"
       (PackageTests.DeterministicAr.Check.suite config)
     , testCase "EmptyLib/emptyLib"
-      (PackageTests.EmptyLib.Check.emptyLib config)
-    , testCase "Haddock" (PackageTests.Haddock.Check.suite config)
-    , testCase "BuildTestSuiteDetailedV09"
-      (PackageTests.BuildTestSuiteDetailedV09.Check.suite config)
+      (PackageTests.EmptyLib.Check.emptyLib ghcPath)
+    , testCase "Haddock" (PackageTests.Haddock.Check.suite ghcPath)
     , testCase "OrderFlags"
       (PackageTests.OrderFlags.Check.suite config)
     , testCase "TemplateHaskell/dynamic"
