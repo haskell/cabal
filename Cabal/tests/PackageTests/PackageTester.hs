@@ -25,6 +25,7 @@ module PackageTests.PackageTester
     , assertBuildFailed
     , assertHaddockSucceeded
     , assertTestSucceeded
+    , assertTestFailed
     , assertInstallSucceeded
     , assertOutputContains
     , assertOutputDoesNotContain
@@ -282,6 +283,12 @@ assertTestSucceeded :: Result -> Assertion
 assertTestSucceeded result = unless (successful result) $
     assertFailure $
     "expected: \'setup test\' should succeed\n" ++
+    "  output: " ++ outputText result
+
+assertTestFailed :: Result -> Assertion
+assertTestFailed result = when (successful result) $
+    assertFailure $
+    "expected: \'setup test\' should fail\n" ++
     "  output: " ++ outputText result
 
 assertInstallSucceeded :: Result -> Assertion

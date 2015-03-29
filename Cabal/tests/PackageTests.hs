@@ -34,6 +34,7 @@ import PackageTests.Haddock.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteTests.ExeV10.Check
+import PackageTests.TestSuiteTests.LibV09.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
 
@@ -80,6 +81,8 @@ tests config version =
     , testGroup "TestSuiteTests"
       [ testGroup "ExeV10"
         (PackageTests.TestSuiteTests.ExeV10.Check.checks ghcPath)
+      , testGroup "LibV09"
+        (PackageTests.TestSuiteTests.LibV09.Check.checks inplaceSpec ghcPath)
       ]
     , testCase "TestOptions" (PackageTests.TestOptions.Check.suite ghcPath)
     , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite ghcPath)
