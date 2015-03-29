@@ -79,12 +79,12 @@ tests config version =
       -- only for higher versions.
     , testGroup "TestSuiteTests"
       [ testGroup "ExeV10"
-        (PackageTests.TestSuiteTests.ExeV10.Check.checks ghcPath)
+        (PackageTests.TestSuiteTests.ExeV10.Check.checks config)
       , testGroup "LibV09"
-        (PackageTests.TestSuiteTests.LibV09.Check.checks inplaceSpec ghcPath)
+        (PackageTests.TestSuiteTests.LibV09.Check.checks config)
       ]
-    , testCase "TestOptions" (PackageTests.TestOptions.Check.suite ghcPath)
-    , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite ghcPath)
+    , testCase "TestOptions" (PackageTests.TestOptions.Check.suite config)
+    , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite config)
       -- ^ The benchmark stanza test will eventually be required
       -- only for higher versions.
     , testCase "BenchmarkExeV10/Test"
@@ -101,8 +101,8 @@ tests config version =
     , testCase "DeterministicAr"
       (PackageTests.DeterministicAr.Check.suite config)
     , testCase "EmptyLib/emptyLib"
-      (PackageTests.EmptyLib.Check.emptyLib ghcPath)
-    , testCase "Haddock" (PackageTests.Haddock.Check.suite ghcPath)
+      (PackageTests.EmptyLib.Check.emptyLib config)
+    , testCase "Haddock" (PackageTests.Haddock.Check.suite config)
     , testCase "OrderFlags"
       (PackageTests.OrderFlags.Check.suite config)
     , testCase "TemplateHaskell/dynamic"

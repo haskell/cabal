@@ -24,13 +24,13 @@ import Distribution.Version (Version(..), orLaterVersion)
 
 import PackageTests.PackageTester
 
-checks :: FilePath -> [TestTree]
-checks ghcPath =
-    [ testCase "Test" $ checkTest ghcPath
-    , testGroup "WithHpc" $ hpcTestMatrix ghcPath
+checks :: SuiteConfig -> [TestTree]
+checks config =
+    [ testCase "Test" $ checkTest config
+    , testGroup "WithHpc" $ hpcTestMatrix config
     , testGroup "WithoutHpc"
-      [ testCase "NoTix" $ checkTestNoHpcNoTix ghcPath
-      , testCase "NoMarkup" $ checkTestNoHpcNoMarkup ghcPath
+      [ testCase "NoTix" $ checkTestNoHpcNoTix config
+      , testCase "NoMarkup" $ checkTestNoHpcNoMarkup config
       ]
     ]
 
@@ -59,7 +59,7 @@ hpcTestMatrix config = do
             enable cond flag
               | cond = Just $ "--enable-" ++ flag
               | otherwise = Nothing
-    return $ testCase name $ checkTestWithHpc ghcPath ("WithHpc-" ++ name) opts
+    return $ testCase name $ checkTestWithHpc config ("WithHpc-" ++ name) opts
 
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteTests" </> "ExeV10"
