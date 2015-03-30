@@ -28,7 +28,7 @@ convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting $ InstalledPackage
                   (fromJust $ SI.lookupInstalledPackageId iidx pi)
-                  (map confSrcId $ CD.flatDeps ds')
+                  (map confSrcId $ CD.nonSetupDeps ds')
     Right pi -> Configured $ ConfiguredPackage
                   (fromJust $ CI.lookupPackageId sidx pi)
                   fa

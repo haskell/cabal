@@ -237,10 +237,10 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- deps.  In the end only one set gets passed to Setup.hs configure,
       -- depending on the Cabal version we are talking to.
       configConstraints  = [ thisPackageVersion (packageId deppkg)
-                           | deppkg <- CD.flatDeps deps ],
+                           | deppkg <- CD.nonSetupDeps deps ],
       configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                               Installed.installedPackageId deppkg)
-                           | deppkg <- CD.flatDeps deps ],
+                           | deppkg <- CD.nonSetupDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,

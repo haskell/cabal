@@ -130,13 +130,13 @@ fromPlanPackage :: Platform -> CompilerId
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
   InstallPlan.Installed (ReadyPackage srcPkg flags _ deps) result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags (map packageId (CD.flatDeps deps))
+                                (packageId srcPkg) flags (map packageId (CD.nonSetupDeps deps))
                                 (Right result)
               , extractRepo srcPkg)
 
   InstallPlan.Failed (ConfiguredPackage srcPkg flags _ deps) result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags (map confSrcId (CD.flatDeps deps))
+                                (packageId srcPkg) flags (map confSrcId (CD.nonSetupDeps deps))
                                 (Left result)
               , extractRepo srcPkg )
 

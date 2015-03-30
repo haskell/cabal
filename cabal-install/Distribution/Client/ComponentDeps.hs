@@ -21,10 +21,15 @@ module Distribution.Client.ComponentDeps (
   , singleton
   , insert
   , fromLibraryDeps
+  , fromSetupDeps
   , fromInstalled
     -- ** Deconstructing ComponentDeps
   , toList
   , flatDeps
+  , nonSetupDeps
+  , libraryDeps
+  , setupDeps
+  , select
   ) where
 
 import Data.Map (Map)
@@ -47,6 +52,7 @@ data Component =
   | ComponentExe   String
   | ComponentTest  String
   | ComponentBench String
+  | ComponentSetup
   deriving (Show, Eq, Ord)
 
 -- | Dependency for a single component
@@ -91,6 +97,10 @@ insert comp a = ComponentDeps . Map.alter aux comp . unComponentDeps
 fromLibraryDeps :: a -> ComponentDeps a
 fromLibraryDeps = singleton ComponentLib
 
+-- | ComponentDeps containing setup dependencies only
+fromSetupDeps :: a -> ComponentDeps a
+fromSetupDeps = singleton ComponentSetup
+
 -- | ComponentDeps for installed packages
 --
 -- We assume that installed packages only record their library dependencies
@@ -111,3 +121,22 @@ toList = Map.toList . unComponentDeps
 -- @#ifdef@s for 7.10 just for the use of 'fold'.
 flatDeps :: Monoid a => ComponentDeps a -> a
 flatDeps = fold
+
+-- | All dependencies except the setup dependencies
+--
+-- Prior to the introduction of setup dependencies (TODO: Version? 1.23) this
+-- would have been _all_ dependencies
+nonSetupDeps :: Monoid a => ComponentDeps a -> a
+nonSetupDeps = select (/= ComponentSetup)
+
+-- | Library dependencies proper only
+libraryDeps :: Monoid a => ComponentDeps a -> a
+libraryDeps = select (== ComponentLib)
+
+-- | Setup dependencies
+setupDeps :: Monoid a => ComponentDeps a -> a
+setupDeps = select (== ComponentSetup)
+
+-- | Select dependencies satisfying a given predicate
+select :: Monoid a => (Component -> Bool) -> ComponentDeps a -> a
+select p = foldMap snd . filter (p . fst) . toList
