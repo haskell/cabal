@@ -119,7 +119,8 @@ validateLinking index = (`runReader` initVS) . cata go
     goP qpn@(Q pp pn) opt@(POption i _) r = do
       vs <- ask
       let PInfo deps _ _ = vsIndex vs ! pn ! i
-          qdeps          = map (fmap (Q pp)) deps
+          qdeps          = map (fmap (Q pp))            (nonSetupDeps deps)
+                        ++ map (fmap (Q (Setup pn pp))) (setupDeps    deps)
       case execUpdateState (pickPOption qpn opt qdeps) vs of
         Left  (cs, err) -> return $ Fail cs (DependenciesNotLinked err)
         Right vs'       -> local (const vs') r
@@ -253,7 +254,8 @@ linkNewDeps var b = do
     vs <- get
     let (qpn@(Q pp pn), Just i) = varPI var
         PInfo deps _ _          = vsIndex vs ! pn ! i
-        qdeps                   = map (fmap (Q pp)) deps
+        qdeps                   = map (fmap (Q pp))            (nonSetupDeps deps)
+                               ++ map (fmap (Q (Setup pn pp))) (setupDeps    deps)
         lg                      = vsLinks vs ! qpn
         (parents, newDeps)      = findNewDeps vs qdeps
         linkedTo                = S.delete pp (lgMembers lg)
