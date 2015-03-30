@@ -495,7 +495,7 @@ problems platform cinfo fakeMap indepGoals index =
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
-     , Just pkg' <- map (PlanIndex.fakeLookupInstalledPackageId fakeMap index) (CD.flatDeps (depends pkg))
+     , Just pkg' <- map (PlanIndex.fakeLookupInstalledPackageId fakeMap index) (CD.nonSetupDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
@@ -616,7 +616,7 @@ configuredPackageProblems platform cinfo
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
   ++ [ DuplicateDeps pkgs
-     | pkgs <- CD.flatDeps (fmap (duplicatesBy (comparing packageName)) specifiedDeps) ]
+     | pkgs <- CD.nonSetupDeps (fmap (duplicatesBy (comparing packageName)) specifiedDeps) ]
   ++ [ MissingDep dep       | OnlyInLeft  dep       <- mergedDeps ]
   ++ [ ExtraDep       pkgid | OnlyInRight     pkgid <- mergedDeps ]
   ++ [ InvalidDep dep pkgid | InBoth      dep pkgid <- mergedDeps
@@ -637,7 +637,7 @@ configuredPackageProblems platform cinfo
     dependencyName (Dependency name _) = name
 
     mergedDeps :: [MergeResult Dependency PackageId]
-    mergedDeps = mergeDeps requiredDeps (CD.flatDeps specifiedDeps)
+    mergedDeps = mergeDeps requiredDeps (CD.nonSetupDeps specifiedDeps)
 
     mergeDeps :: [Dependency] -> [PackageId] -> [MergeResult Dependency PackageId]
     mergeDeps required specified =

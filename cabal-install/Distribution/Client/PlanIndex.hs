@@ -111,7 +111,7 @@ brokenPackages fakeMap index =
   [ (pkg, missing)
   | pkg  <- allPackages index
   , let missing =
-          [ pkg' | pkg' <- CD.flatDeps (depends pkg)
+          [ pkg' | pkg' <- CD.nonSetupDeps (depends pkg)
                  , isNothing (fakeLookupInstalledPackageId fakeMap index pkg') ]
   , not (null missing) ]
 
@@ -188,7 +188,7 @@ dependencyInconsistencies' fakeMap index =
       | -- For each package @pkg@
         pkg <- allPackages index
         -- Find out which @ipid@ @pkg@ depends on
-      , ipid <- CD.flatDeps (fakeDepends fakeMap pkg)
+      , ipid <- CD.nonSetupDeps (fakeDepends fakeMap pkg)
         -- And look up those @ipid@ (i.e., @ipid@ is the ID of @dep@)
       , Just dep <- [fakeLookupInstalledPackageId fakeMap index ipid]
       ]
@@ -204,8 +204,8 @@ dependencyInconsistencies' fakeMap index =
     reallyIsInconsistent [p1, p2] =
       let pid1 = installedPackageId p1
           pid2 = installedPackageId p2
-      in Map.findWithDefault pid1 pid1 fakeMap `notElem` CD.flatDeps (fakeDepends fakeMap p2)
-      && Map.findWithDefault pid2 pid2 fakeMap `notElem` CD.flatDeps (fakeDepends fakeMap p1)
+      in Map.findWithDefault pid1 pid1 fakeMap `notElem` CD.nonSetupDeps (fakeDepends fakeMap p2)
+      && Map.findWithDefault pid2 pid2 fakeMap `notElem` CD.nonSetupDeps (fakeDepends fakeMap p1)
     reallyIsInconsistent _ = True
 
 
@@ -225,7 +225,7 @@ dependencyCycles :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
 dependencyCycles fakeMap index =
   [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
   where
-    adjacencyList = [ (pkg, installedPackageId pkg, CD.flatDeps (fakeDepends fakeMap pkg))
+    adjacencyList = [ (pkg, installedPackageId pkg, CD.nonSetupDeps (fakeDepends fakeMap pkg))
                     | pkg <- allPackages index ]
 
 
@@ -256,7 +256,7 @@ dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
             Just _  -> closure completed  failed pkgids
             Nothing -> closure completed' failed pkgids'
               where completed' = insert pkg completed
-                    pkgids'    = CD.flatDeps (depends pkg) ++ pkgids
+                    pkgids'    = CD.nonSetupDeps (depends pkg) ++ pkgids
 
 
 topologicalOrder :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
@@ -322,5 +322,5 @@ dependencyGraph fakeMap index = (graph, vertexToPkg, idToVertex)
     resolve   pid = Map.findWithDefault pid pid fakeMap
     edgesFrom pkg = ( ()
                     , resolve (installedPackageId pkg)
-                    , CD.flatDeps (fakeDepends fakeMap pkg)
+                    , CD.nonSetupDeps (fakeDepends fakeMap pkg)
                     )

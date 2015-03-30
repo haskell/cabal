@@ -115,10 +115,10 @@ instance PackageSourceDeps InstalledPackageEx where
   sourceDeps (InstalledPackageEx _ _ deps) = deps
 
 instance PackageSourceDeps ConfiguredPackage where
-  sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId $ CD.flatDeps deps
+  sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId $ CD.nonSetupDeps deps
 
 instance PackageSourceDeps ReadyPackage where
-  sourceDeps (ReadyPackage _ _ _ deps) = map packageId $ CD.flatDeps deps
+  sourceDeps (ReadyPackage _ _ _ deps) = map packageId $ CD.nonSetupDeps deps
 
 instance PackageSourceDeps InstalledPackage where
   sourceDeps (InstalledPackage _ deps) = deps

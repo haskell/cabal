@@ -123,7 +123,7 @@ symlinkBinaries comp configFlags installFlags plan =
         | (ReadyPackage _ _flags _ deps, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               pkg_key = mkPackageKey (packageKeySupported comp) pkgid
-                                     (map Installed.packageKey (CD.flatDeps deps)) []
+                                     (map Installed.packageKey (CD.nonSetupDeps deps)) []
               publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
               prefix = substTemplate pkgid pkg_key prefixTemplate

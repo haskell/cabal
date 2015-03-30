@@ -154,7 +154,7 @@ instance HasInstalledPackageId ReadyPackage where
 readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
 readyPackageKey comp (ReadyPackage pkg _ _ deps) =
     mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map Info.packageKey (CD.flatDeps deps)) []
+                 (map Info.packageKey (CD.nonSetupDeps deps)) []
 
 
 -- | Sometimes we need to convert a 'ReadyPackage' back to a
