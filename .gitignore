@@ -9,8 +9,8 @@ cabal-dev/
 *.prof
 *.tix
 cabal.config
-dist-sandbox
 dist
+dist-*
 
 /Cabal/dist/
 /Cabal/tests/Setup
