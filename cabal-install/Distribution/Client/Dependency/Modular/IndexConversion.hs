@@ -114,13 +114,14 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
 convGPD os arch comp strfl pi
-        (GenericPackageDescription _ flags libs exes tests benchs) =
+        (GenericPackageDescription pkg flags libs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
     conv = convCondTree os arch comp pi fds (const True)
   in
     PInfo
       (maybe []    (conv ComponentLib                       ) libs    ++
+       maybe []    (convSetupBuildInfo pi)    (setupBuildInfo pkg)    ++
        concatMap   (\(nm, ds) -> conv (ComponentExe nm)   ds) exes    ++
       prefix (Stanza (SN pi TestStanzas))
         (L.map     (\(nm, ds) -> conv (ComponentTest nm)  ds) tests)  ++
@@ -211,3 +212,8 @@ convDep pn' (Dependency pn vr) = Dep pn (Constrained [(vr, Goal (P pn') [])])
 -- | Convert a Cabal package identifier to a solver-specific dependency.
 convPI :: PN -> PackageIdentifier -> Dep PN
 convPI pn' (PackageIdentifier pn v) = Dep pn (Constrained [(eqVR v, Goal (P pn') [])])
+
+-- | Convert setup dependencies
+convSetupBuildInfo :: PI PN -> SetupBuildInfo -> FlaggedDeps Component PN
+convSetupBuildInfo (PI pn _i) nfo =
+    L.map (\d -> D.Simple (convDep pn d) ComponentSetup) (PD.setupDepends nfo)
