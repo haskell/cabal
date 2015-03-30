@@ -102,6 +102,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
                                               ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
+import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import Distribution.Client.Utils              (determineNumJobs
@@ -130,7 +131,9 @@ import Distribution.Simple.Configure
          , getPersistBuildConfig, tryGetPersistBuildConfig )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Program (defaultProgramConfiguration
-                                   ,configureAllKnownPrograms)
+                                   ,configureAllKnownPrograms
+                                   ,simpleProgramInvocation
+                                   ,getProgramInvocationOutput)
 import Distribution.Simple.Program.Db (reconfigurePrograms)
 import qualified Distribution.Simple.Setup as Cabal
 import Distribution.Simple.Utils
@@ -157,6 +160,7 @@ import Data.List                (intercalate)
 import Data.Maybe               (mapMaybe)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid              (Monoid(..))
+import Control.Applicative      (pure, (<$>))
 #endif
 import Control.Monad            (when, unless)
 
@@ -952,12 +956,18 @@ uploadAction uploadFlags extraArgs globalFlags = do
       globalFlags' = savedGlobalFlags config `mappend` globalFlags
       tarfiles     = extraArgs
   checkTarFiles extraArgs
+  maybe_password <-
+    case uploadPasswordCmd uploadFlags'
+    of Flag (xs:xss) -> Just . Password <$>
+                        getProgramInvocationOutput verbosity
+                        (simpleProgramInvocation xs xss)
+       _             -> pure $ flagToMaybe $ uploadPassword uploadFlags'
   if fromFlag (uploadCheck uploadFlags')
     then Upload.check  verbosity tarfiles
     else upload verbosity
                 (globalRepos globalFlags')
                 (flagToMaybe $ uploadUsername uploadFlags')
-                (flagToMaybe $ uploadPassword uploadFlags')
+                maybe_password
                 tarfiles
   where
     checkTarFiles tarfiles
