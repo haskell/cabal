@@ -36,6 +36,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 import Data.Functor                          ((<$>))
 #endif
 import Data.List                             (find)
+import Data.Foldable                         (traverse_)
 import System.Directory                      (getCurrentDirectory)
 import Distribution.Compat.Environment       (getEnvironment)
 import System.FilePath                       ((<.>), (</>))
@@ -45,14 +46,18 @@ import System.FilePath                       ((<.>), (</>))
 -- forwarded to it.
 splitRunArgs :: LocalBuildInfo -> [String] -> IO (Executable, [String])
 splitRunArgs lbi args =
-  case whichExecutable of -- Either err (wasManuallyChosen, exe, restParams)
-    Left err               -> do printMaybeWarningWithAdditional ""
+  case whichExecutable of -- Either err (wasManuallyChosen, exe, paramsRest)
+    Left err               -> do -- if there is a warning, print it
+                                 notice normal `traverse_` maybeWarning
                                  die err
     Right (True, exe, xs)  -> return (exe, xs)
-    Right (False, exe, xs) -> do printMaybeWarningWithAdditional
-                                   $ " Interpreting all parameters to `run`"
-                                  ++ " as a parameter to the"
-                                  ++ " default executable."
+    Right (False, exe, xs) -> do let addition = " Interpreting all parameters"
+                                             ++ " to `run` as a parameter to"
+                                             ++ " the default executable."
+                                 -- if there is a warning, print it together
+                                 -- with the addition.
+                                 notice normal `traverse_` fmap (++addition)
+                                                               maybeWarning
                                  return (exe, xs)
   where
     pkg_descr = localPkgDescr lbi
@@ -77,14 +82,11 @@ splitRunArgs lbi args =
           Just exe -> return (True, exe, xs)
       where
         enabledExes = filter (buildable . buildInfo) (executables pkg_descr)
-    printMaybeWarningWithAdditional :: String -> IO ()
-    printMaybeWarningWithAdditional add = case firstParamComponentWarning of
-      Nothing      -> return ()
-      Just warning -> notice normal $ warning ++ add
+    maybeWarning :: Maybe String
+    maybeWarning = case args of
+      []    -> Nothing
+      (x:_) -> lookup x components
       where
-        firstParamComponentWarning = case args of
-          []    -> Nothing
-          (x:_) -> lookup x components
         components :: [(String, String)] -- component name, label
         components = [ (name, "The executable '" ++ name ++ "' is disabled.")
                      | e <- executables pkg_descr
