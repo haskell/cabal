@@ -29,6 +29,8 @@ module Distribution.Client.Install (
     pruneInstallPlan
   ) where
 
+import Data.Foldable
+         ( traverse_ )
 import Data.List
          ( isPrefixOf, unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
@@ -48,6 +50,8 @@ import Distribution.Compat.Exception
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
          ( (<$>) )
+import Data.Traversable
+         ( traverse )
 #endif
 import Control.Monad
          ( forM_, when, unless )
@@ -1476,9 +1480,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
 
     setup cmd flags mLogPath =
       Exception.bracket
-      (maybe (return Nothing)
-             (\path -> Just `fmap` openFile path AppendMode) mLogPath)
-      (maybe (return ()) hClose)
+      (traverse (\path -> openFile path AppendMode) mLogPath)
+      (traverse_ hClose)
       (\logFileHandle ->
         setupWrapper verbosity
           scriptOptions { useLoggingHandle = logFileHandle

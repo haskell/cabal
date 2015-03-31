@@ -112,6 +112,7 @@ import Distribution.Compat.Environment (getEnvironment)
 import Distribution.Compat.Exception (catchIO)
 
 import Control.Monad   (when)
+import Data.Foldable   (traverse_)
 import Data.List       (intercalate, unionBy, nub, (\\))
 
 -- | A simple implementation of @main@ for a Cabal setup script.
@@ -483,7 +484,7 @@ clean pkg_descr flags = do
     mapM_ removeFileOrDirectory (extraTmpFiles pkg_descr)
 
     -- If the user wanted to save the config, write it back
-    maybe (return ()) (writePersistBuildConfig distPref) maybeConfig
+    traverse_ (writePersistBuildConfig distPref) maybeConfig
 
   where
         removeFileOrDirectory :: FilePath -> IO ()

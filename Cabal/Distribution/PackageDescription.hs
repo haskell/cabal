@@ -107,21 +107,22 @@ module Distribution.PackageDescription (
   ) where
 
 import Distribution.Compat.Binary (Binary)
-import Data.Data   (Data)
-import Data.List   (nub, intercalate)
-import Data.Maybe  (fromMaybe, maybeToList)
+import Data.Data                  (Data)
+import Data.Foldable              (traverse_)
+import Data.List                  (nub, intercalate)
+import Data.Maybe                 (fromMaybe, maybeToList)
 #if __GLASGOW_HASKELL__ < 710
-import Data.Monoid (Monoid(mempty, mappend))
+import Data.Monoid                (Monoid(mempty, mappend))
 #endif
-import Data.Typeable ( Typeable )
-import Control.Monad (MonadPlus(mplus))
-import GHC.Generics (Generic)
+import Data.Typeable               ( Typeable )
+import Control.Monad               (MonadPlus(mplus))
+import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
-import Distribution.Compat.ReadP ((<++))
+import Distribution.Compat.ReadP   ((<++))
 import qualified Data.Char as Char (isAlphaNum, isDigit, toLower)
 import qualified Data.Map as Map
-import Data.Map (Map)
+import Data.Map                    (Map)
 
 import Distribution.Package
          ( PackageName(PackageName), PackageIdentifier(PackageIdentifier)
@@ -408,7 +409,7 @@ maybeHasLibs p =
 --  function with the library build info as argument.
 withLib :: PackageDescription -> (Library -> IO ()) -> IO ()
 withLib pkg_descr f =
-   maybe (return ()) f (maybeHasLibs pkg_descr)
+   traverse_ f (maybeHasLibs pkg_descr)
 
 -- | Get all the module names from the library (exposed and internal modules)
 -- which need to be compiled.  (This does not include reexports, which
