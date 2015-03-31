@@ -139,6 +139,7 @@ rootSets :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
          => FakeMap -> Bool -> PackageIndex pkg -> [[InstalledPackageId]]
 rootSets fakeMap indepGoals index =
        if indepGoals then map (:[]) libRoots else [libRoots]
+    ++ setupRoots index
   where
     libRoots = libraryRoots fakeMap index
 
@@ -155,6 +156,12 @@ libraryRoots fakeMap index =
     indegree = Graph.indegree graph
     roots    = filter isRoot (Graph.vertices graph)
     isRoot v = indegree ! v == 0
+
+-- | The setup dependencies of each package in the plan
+setupRoots :: PackageFixedDeps pkg => PackageIndex pkg -> [[InstalledPackageId]]
+setupRoots = filter (not . null)
+           . map (CD.setupDeps . depends)
+           . allPackages
 
 -- | Given a package index where we assume we want to use all the packages
 -- (use 'dependencyClosure' if you need to get such a index subset) find out

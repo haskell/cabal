@@ -65,7 +65,9 @@ import Distribution.Version
          ( Version, withinRange )
 import Distribution.PackageDescription
          ( GenericPackageDescription(genPackageFlags)
-         , Flag(flagName), FlagName(..) )
+         , Flag(flagName), FlagName(..)
+         , SetupBuildInfo(..), setupBuildInfo
+         )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Client.PackageIndex
@@ -637,7 +639,7 @@ configuredPackageProblems platform cinfo
     dependencyName (Dependency name _) = name
 
     mergedDeps :: [MergeResult Dependency PackageId]
-    mergedDeps = mergeDeps requiredDeps (CD.nonSetupDeps specifiedDeps)
+    mergedDeps = mergeDeps requiredDeps (CD.flatDeps specifiedDeps)
 
     mergeDeps :: [Dependency] -> [PackageId] -> [MergeResult Dependency PackageId]
     mergeDeps required specified =
@@ -662,8 +664,11 @@ configuredPackageProblems platform cinfo
          platform cinfo
          []
          (enableStanzas stanzas $ packageDescription pkg) of
-        Right (resolvedPkg, _) -> externalBuildDepends resolvedPkg
-        Left  _ -> error "configuredPackageInvalidDeps internal error"
+        Right (resolvedPkg, _) ->
+             externalBuildDepends resolvedPkg
+          ++ maybe [] setupDepends (setupBuildInfo resolvedPkg)
+        Left  _ ->
+          error "configuredPackageInvalidDeps internal error"
 
 -- | Compute the dependency closure of a _source_ package in a install plan
 --
