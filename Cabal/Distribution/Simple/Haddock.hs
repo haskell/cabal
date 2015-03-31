@@ -85,6 +85,7 @@ import Language.Haskell.Extension
 
 import Control.Monad    ( when, forM_ )
 import Data.Either      ( rights )
+import Data.Foldable    ( traverse_ )
 import Data.Monoid
 import Data.Maybe       ( fromMaybe, listToMaybe )
 
@@ -409,7 +410,7 @@ getInterfaces :: Verbosity
               -> IO HaddockArgs
 getInterfaces verbosity lbi clbi htmlTemplate = do
     (packageFlags, warnings) <- haddockPackageFlags lbi clbi htmlTemplate
-    maybe (return ()) (warn verbosity) warnings
+    traverse_ (warn verbosity) warnings
     return $ mempty {
                  argInterfaces = packageFlags
                }

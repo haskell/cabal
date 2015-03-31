@@ -41,15 +41,16 @@ module Distribution.PackageDescription.Parse (
         flagFieldDescrs
   ) where
 
-import Data.Char  (isSpace)
-import Data.Maybe (listToMaybe, isJust)
-import Data.List  (nub, unfoldr, partition, (\\))
+import Data.Char     (isSpace)
+import Data.Foldable (traverse_)
+import Data.Maybe    (listToMaybe, isJust)
+import Data.List     (nub, unfoldr, partition, (\\))
 import Control.Monad (liftM, foldM, when, unless, ap)
 #if __GLASGOW_HASKELL__ < 710
-import Data.Monoid ( Monoid(..) )
+import Data.Monoid         (Monoid(..))
 import Control.Applicative (Applicative(..))
 #endif
-import Control.Arrow (first)
+import Control.Arrow    (first)
 import System.Directory (doesFileExist)
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import Data.Typeable
@@ -1094,7 +1095,7 @@ parsePackageDescription file = do
         PM ()
     checkForUndefinedFlags flags mlib exes tests = do
         let definedFlags = map flagName flags
-        maybe (return ()) (checkCondTreeFlags definedFlags) mlib
+        traverse_ (checkCondTreeFlags definedFlags) mlib
         mapM_ (checkCondTreeFlags definedFlags . snd) exes
         mapM_ (checkCondTreeFlags definedFlags . snd) tests
 

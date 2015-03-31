@@ -133,12 +133,14 @@ import Control.Monad
     ( join, when, unless, filterM )
 import Control.Concurrent.MVar
     ( newEmptyMVar, putMVar, takeMVar )
-import Data.List
-  ( nub, unfoldr, isPrefixOf, tails, intercalate )
-import Data.Char as Char
-    ( isDigit, toLower, chr, ord )
 import Data.Bits
     ( Bits((.|.), (.&.), shiftL, shiftR) )
+import Data.Char as Char
+    ( isDigit, toLower, chr, ord )
+import Data.Foldable
+    ( traverse_ )
+import Data.List
+   ( nub, unfoldr, isPrefixOf, tails, intercalate )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Set as Set
@@ -356,7 +358,7 @@ printRawCommandAndArgsAndEnv :: Verbosity
                              -> IO ()
 printRawCommandAndArgsAndEnv verbosity path args menv
  | verbosity >= deafening = do
-       maybe (return ()) (putStrLn . ("Environment: " ++) . show) menv
+       traverse_ (putStrLn . ("Environment: " ++) . show) menv
        print (path, args)
  | verbosity >= verbose   = putStrLn $ showCommandForUser path args
  | otherwise              = return ()
