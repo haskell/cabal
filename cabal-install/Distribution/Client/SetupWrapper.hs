@@ -270,7 +270,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   useCachedSetupExecutable = (bt == Simple || bt == Configure || bt == Make)
 
   maybeGetInstalledPackages :: SetupScriptOptions -> Compiler
-                               -> ProgramConfiguration -> IO InstalledPackageIndex
+                            -> ProgramConfiguration -> IO InstalledPackageIndex
   maybeGetInstalledPackages options' comp conf =
     case usePackageIndex options' of
       Just index -> return index
