@@ -5,16 +5,13 @@ module UnitTests.Distribution.Client.Dependency.Modular.Solver (tests, options) 
 
 -- base
 import Control.Monad
-import Data.Maybe (catMaybes, isNothing)
 import Data.Either (partitionEithers)
+import Data.Maybe (catMaybes, isNothing)
+import Data.Monoid
 import Data.Proxy
 import Data.Typeable
 import Data.Version
 import qualified Data.Map as Map
-
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-#endif
 
 -- test-framework
 import Test.Tasty as TF
@@ -31,11 +28,13 @@ import qualified Distribution.System               as C
 import qualified Distribution.Version              as C
 
 -- cabal-install
+import Distribution.Client.ComponentDeps (ComponentDeps)
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
 import Distribution.Client.Types
-import qualified Distribution.Client.InstallPlan  as CI.InstallPlan
-import qualified Distribution.Client.PackageIndex as CI.PackageIndex
+import qualified Distribution.Client.InstallPlan   as CI.InstallPlan
+import qualified Distribution.Client.PackageIndex  as CI.PackageIndex
+import qualified Distribution.Client.ComponentDeps as CD
 
 tests :: [TF.TestTree]
 tests = [
@@ -69,6 +68,16 @@ tests = [
         , runTest $ indep $ mkTest db5 "simpleTest7" ["E", "G"] (Just [("A", 1), ("A", 2), ("E", 1), ("G", 1)])
         , runTest $         mkTest db6 "depsWithTests1" ["C"]      (Just [("A", 1), ("B", 1), ("C", 1)])
         , runTest $ indep $ mkTest db6 "depsWithTests2" ["C", "D"] (Just [("A", 1), ("B", 1), ("C", 1), ("D", 1)])
+        ]
+    , testGroup "Setup dependencies" [
+          runTest $ mkTest db7  "setupDeps1" ["B"] (Just [("A", 2), ("B", 1)])
+        , runTest $ mkTest db7  "setupDeps2" ["C"] (Just [("A", 2), ("C", 1)])
+        , runTest $ mkTest db7  "setupDeps3" ["D"] (Just [("A", 1), ("D", 1)])
+        , runTest $ mkTest db7  "setupDeps4" ["E"] (Just [("A", 1), ("A", 2), ("E", 1)])
+        , runTest $ mkTest db7  "setupDeps5" ["F"] (Just [("A", 1), ("A", 2), ("F", 1)])
+        , runTest $ mkTest db8  "setupDeps6" ["C", "D"] (Just [("A", 1), ("B", 1), ("B", 2), ("C", 1), ("D", 1)])
+        , runTest $ mkTest db9  "setupDeps7" ["F", "G"] (Just [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
+        , runTest $ mkTest db10 "setupDeps8" ["C"] (Just [("C", 1)])
         ]
     ]
   where
@@ -114,37 +123,37 @@ runTest SolverTest{..} = askOption $ \(OptionShowSolverLog showSolverLog) ->
 
 db1 :: ExampleDb
 db1 =
-    let a = ExInst "A" 1 "A-1" []
+    let a = exInst "A" 1 "A-1" []
     in [ Left a
-       , Right $ ExAv "B" 1 [ExAny "A"]
-       , Right $ ExAv "B" 2 [ExAny "A"]
-       , Right $ ExAv "C" 1 [ExFix "B" 1]
-       , Right $ ExAv "D" 1 [ExFix "B" 2]
-       , Right $ ExAv "E" 1 [ExAny "B"]
-       , Right $ ExAv "F" 1 [ExFix "B" 1, ExAny "E"]
-       , Right $ ExAv "G" 1 [ExFix "B" 2, ExAny "E"]
-       , Right $ ExAv "Z" 1 []
+       , Right $ exAv "B" 1 [ExAny "A"]
+       , Right $ exAv "B" 2 [ExAny "A"]
+       , Right $ exAv "C" 1 [ExFix "B" 1]
+       , Right $ exAv "D" 1 [ExFix "B" 2]
+       , Right $ exAv "E" 1 [ExAny "B"]
+       , Right $ exAv "F" 1 [ExFix "B" 1, ExAny "E"]
+       , Right $ exAv "G" 1 [ExFix "B" 2, ExAny "E"]
+       , Right $ exAv "Z" 1 []
        ]
 
 -- In this example, we _can_ install C and D as independent goals, but we have
 -- to pick two diferent versions for B (arbitrarily)
 db2 :: ExampleDb
 db2 = [
-    Right $ ExAv "A" 1 []
-  , Right $ ExAv "A" 2 []
-  , Right $ ExAv "B" 1 [ExAny "A"]
-  , Right $ ExAv "B" 2 [ExAny "A"]
-  , Right $ ExAv "C" 1 [ExAny "B", ExFix "A" 1]
-  , Right $ ExAv "D" 1 [ExAny "B", ExFix "A" 2]
+    Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "B" 1 [ExAny "A"]
+  , Right $ exAv "B" 2 [ExAny "A"]
+  , Right $ exAv "C" 1 [ExAny "B", ExFix "A" 1]
+  , Right $ exAv "D" 1 [ExAny "B", ExFix "A" 2]
   ]
 
 db3 :: ExampleDb
 db3 = [
-     Right $ ExAv "A" 1 []
-   , Right $ ExAv "A" 2 []
-   , Right $ ExAv "B" 1 [ExFlag "flagB" [ExFix "A" 1] [ExFix "A" 2]]
-   , Right $ ExAv "C" 1 [ExFix "A" 1, ExAny "B"]
-   , Right $ ExAv "D" 1 [ExFix "A" 2, ExAny "B"]
+     Right $ exAv "A" 1 []
+   , Right $ exAv "A" 2 []
+   , Right $ exAv "B" 1 [ExFlag "flagB" [ExFix "A" 1] [ExFix "A" 2]]
+   , Right $ exAv "C" 1 [ExFix "A" 1, ExAny "B"]
+   , Right $ exAv "D" 1 [ExFix "A" 2, ExAny "B"]
    ]
 
 -- | Like exampleDb2, but the flag picks a different package rather than a
@@ -181,13 +190,13 @@ db3 = [
 -- we only ever assign to one of these, these constraints are never broken.
 db4 :: ExampleDb
 db4 = [
-     Right $ ExAv "Ax" 1 []
-   , Right $ ExAv "Ax" 2 []
-   , Right $ ExAv "Ay" 1 []
-   , Right $ ExAv "Ay" 2 []
-   , Right $ ExAv "B"  1 [ExFlag "flagB" [ExFix "Ax" 1] [ExFix "Ay" 1]]
-   , Right $ ExAv "C"  1 [ExFix "Ax" 2, ExAny "B"]
-   , Right $ ExAv "D"  1 [ExFix "Ay" 2, ExAny "B"]
+     Right $ exAv "Ax" 1 []
+   , Right $ exAv "Ax" 2 []
+   , Right $ exAv "Ay" 1 []
+   , Right $ exAv "Ay" 2 []
+   , Right $ exAv "B"  1 [ExFlag "flagB" [ExFix "Ax" 1] [ExFix "Ay" 1]]
+   , Right $ exAv "C"  1 [ExFix "Ax" 2, ExAny "B"]
+   , Right $ exAv "D"  1 [ExFix "Ay" 2, ExAny "B"]
    ]
 
 -- | Some tests involving testsuites
@@ -207,14 +216,14 @@ db4 = [
 --     E and G together, unless we regard them as independent goals.
 db5 :: ExampleDb
 db5 = [
-    Right $ ExAv "A" 1 []
-  , Right $ ExAv "A" 2 []
-  , Right $ ExAv "B" 1 []
-  , Right $ ExAv "C" 1 [ExTest "testC" [ExAny "A"]]
-  , Right $ ExAv "D" 1 [ExTest "testD" [ExFix "B" 2]]
-  , Right $ ExAv "E" 1 [ExFix "A" 1, ExTest "testE" [ExAny "A"]]
-  , Right $ ExAv "F" 1 [ExFix "A" 1, ExTest "testF" [ExFix "A" 2]]
-  , Right $ ExAv "G" 1 [ExFix "A" 2, ExTest "testG" [ExAny "A"]]
+    Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "B" 1 []
+  , Right $ exAv "C" 1 [ExTest "testC" [ExAny "A"]]
+  , Right $ exAv "D" 1 [ExTest "testD" [ExFix "B" 2]]
+  , Right $ exAv "E" 1 [ExFix "A" 1, ExTest "testE" [ExAny "A"]]
+  , Right $ exAv "F" 1 [ExFix "A" 1, ExTest "testF" [ExFix "A" 2]]
+  , Right $ exAv "G" 1 [ExFix "A" 2, ExTest "testG" [ExAny "A"]]
   ]
 
 -- Now the _dependencies_ have test suites
@@ -227,12 +236,83 @@ db5 = [
 --   set things up, this means that we should also link their test suites.
 db6 :: ExampleDb
 db6 = [
-    Right $ ExAv "A" 1 []
-  , Right $ ExAv "A" 2 []
-  , Right $ ExAv "B" 1 [ExTest "testA" [ExAny "A"]]
-  , Right $ ExAv "C" 1 [ExFix "A" 1, ExAny "B"]
-  , Right $ ExAv "D" 1 [ExAny "B"]
+    Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "B" 1 [ExTest "testA" [ExAny "A"]]
+  , Right $ exAv "C" 1 [ExFix "A" 1, ExAny "B"]
+  , Right $ exAv "D" 1 [ExAny "B"]
   ]
+
+-- Packages with setup dependencies
+--
+-- Install..
+-- * B: Simple example, just make sure setup deps are taken into account at all
+-- * C: Both the package and the setup script depend on any version of A.
+--      In this case we prefer to link
+-- * D: Variation on C.1 where the package requires a specific (not latest)
+--      version but the setup dependency is not fixed. Again, we prefer to
+--      link (picking the older version)
+-- * E: Variation on C.2 with the setup dependency the more inflexible.
+--      Currently, in this case we do not see the opportunity to link because
+--      we consider setup dependencies after normal dependencies; we will
+--      pick A.2 for E, then realize we cannot link E.setup.A to A.2, and pick
+--      A.1 instead. This isn't so easy to fix (if we want to fix it at all);
+--      in particular, considering setup dependencies _before_ other deps is
+--      not an improvement, because in general we would prefer to link setup
+--      setups to package deps, rather than the other way around. (For example,
+--      if we change this ordering then the test for D would start to install
+--      two versions of A).
+-- * F: The package and the setup script depend on different versions of A.
+--      This will only work if setup dependencies are considered independent.
+db7 :: ExampleDb
+db7 = [
+    Right $ exAv "A" 1 []
+  , Right $ exAv "A" 2 []
+  , Right $ exAv "B" 1 []            `withSetupDeps` [ExAny "A"]
+  , Right $ exAv "C" 1 [ExAny "A"  ] `withSetupDeps` [ExAny "A"  ]
+  , Right $ exAv "D" 1 [ExFix "A" 1] `withSetupDeps` [ExAny "A"  ]
+  , Right $ exAv "E" 1 [ExAny "A"  ] `withSetupDeps` [ExFix "A" 1]
+  , Right $ exAv "F" 1 [ExFix "A" 2] `withSetupDeps` [ExFix "A" 1]
+  ]
+
+-- If we install C and D together (not as independent goals), we need to build
+-- both B.1 and B.2, both of which depend on A.
+db8 :: ExampleDb
+db8 = [
+    Right $ exAv "A" 1 []
+  , Right $ exAv "B" 1 [ExAny "A"]
+  , Right $ exAv "B" 2 [ExAny "A"]
+  , Right $ exAv "C" 1 [] `withSetupDeps` [ExFix "B" 1]
+  , Right $ exAv "D" 1 [] `withSetupDeps` [ExFix "B" 2]
+  ]
+
+-- Extended version of `db8` so that we have nested setup dependencies
+db9 :: ExampleDb
+db9 = db8 ++ [
+    Right $ exAv "E" 1 [ExAny "C"]
+  , Right $ exAv "E" 2 [ExAny "D"]
+  , Right $ exAv "F" 1 [] `withSetupDeps` [ExFix "E" 1]
+  , Right $ exAv "G" 1 [] `withSetupDeps` [ExFix "E" 2]
+  ]
+
+-- Multiple already-installed packages with inter-dependencies, and one package
+-- (C) that depends on package A-1 for its setup script and package A-2 as a
+-- library dependency.
+db10 :: ExampleDb
+db10 =
+  let rts         = exInst "rts"         1 "rts-inst"         []
+      ghc_prim    = exInst "ghc-prim"    1 "ghc-prim-inst"    [rts]
+      base        = exInst "base"        1 "base-inst"        [rts, ghc_prim]
+      a1          = exInst "A"           1 "A1-inst"          [base]
+      a2          = exInst "A"           2 "A2-inst"          [base]
+  in [
+      Left rts
+    , Left ghc_prim
+    , Left base
+    , Left a1
+    , Left a2
+    , Right $ exAv "C" 1 [ExFix "A" 2] `withSetupDeps` [ExFix "A" 1]
+    ]
 
 {-------------------------------------------------------------------------------
   Example package database DSL
@@ -298,8 +378,16 @@ data ExampleDependency =
 data ExampleAvailable = ExAv {
     exAvName    :: ExamplePkgName
   , exAvVersion :: ExamplePkgVersion
-  , exAvDeps    :: [ExampleDependency]
+  , exAvDeps    :: ComponentDeps [ExampleDependency]
   }
+
+exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency] -> ExampleAvailable
+exAv n v ds = ExAv { exAvName = n, exAvVersion = v, exAvDeps = CD.fromLibraryDeps ds }
+
+withSetupDeps :: ExampleAvailable -> [ExampleDependency] -> ExampleAvailable
+withSetupDeps ex setupDeps = ex {
+      exAvDeps = exAvDeps ex <> CD.fromSetupDeps setupDeps
+    }
 
 data ExampleInstalled = ExInst {
     exInstName         :: ExamplePkgName
@@ -307,6 +395,9 @@ data ExampleInstalled = ExInst {
   , exInstHash         :: ExamplePkgHash
   , exInstBuildAgainst :: [ExampleInstalled]
   }
+
+exInst :: ExamplePkgName -> ExamplePkgVersion -> ExamplePkgHash -> [ExampleInstalled] -> ExampleInstalled
+exInst = ExInst
 
 type ExampleDb = [Either ExampleInstalled ExampleAvailable]
 
@@ -317,21 +408,24 @@ exDbPkgs = map (either exInstName exAvName)
 
 exAvSrcPkg :: ExampleAvailable -> SourcePackage
 exAvSrcPkg ex =
-    let (libraryDeps, testSuites) = splitTopLevel (exAvDeps ex)
+    let (libraryDeps, testSuites) = splitTopLevel (CD.libraryDeps (exAvDeps ex))
     in SourcePackage {
            packageInfoId        = exAvPkgId ex
          , packageSource        = LocalTarballPackage "<<path>>"
          , packageDescrOverride = Nothing
          , packageDescription   = C.GenericPackageDescription{
                C.packageDescription = C.emptyPackageDescription {
-                   C.package      = exAvPkgId ex
-                 , C.library      = error "not yet configured: library"
-                 , C.executables  = error "not yet configured: executables"
-                 , C.testSuites   = error "not yet configured: testSuites"
-                 , C.benchmarks   = error "not yet configured: benchmarks"
-                 , C.buildDepends = error "not yet configured: buildDepends"
+                   C.package        = exAvPkgId ex
+                 , C.library        = error "not yet configured: library"
+                 , C.executables    = error "not yet configured: executables"
+                 , C.testSuites     = error "not yet configured: testSuites"
+                 , C.benchmarks     = error "not yet configured: benchmarks"
+                 , C.buildDepends   = error "not yet configured: buildDepends"
+                 , C.setupBuildInfo = Just C.SetupBuildInfo {
+                       C.setupDepends = mkSetupDeps (CD.setupDeps (exAvDeps ex))
+                     }
                  }
-             , C.genPackageFlags = concatMap extractFlags (exAvDeps ex)
+             , C.genPackageFlags = concatMap extractFlags (CD.libraryDeps (exAvDeps ex))
              , C.condLibrary     = Just $ mkCondTree libraryDeps
              , C.condExecutables = []
              , C.condTestSuites  = map (\(t, deps) -> (t, mkCondTree deps)) testSuites
@@ -401,6 +495,11 @@ exAvSrcPkg ex =
       in (directDeps, (f, a, b):flaggedDeps)
     splitDeps (ExTest _ _:_) =
       error "Unexpected nested test"
+
+    -- Currently we only support simple setup dependencies
+    mkSetupDeps :: [ExampleDependency] -> [C.Dependency]
+    mkSetupDeps deps =
+      let (directDeps, []) = splitDeps deps in map mkDirect directDeps
 
 exAvPkgId :: ExampleAvailable -> C.PackageIdentifier
 exAvPkgId ex = C.PackageIdentifier {
