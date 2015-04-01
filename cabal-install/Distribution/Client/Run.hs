@@ -25,10 +25,11 @@ import Distribution.Simple.LocalBuildInfo    (ComponentName (..),
                                               LocalBuildInfo (..),
                                               getComponentLocalBuildInfo,
                                               depLibraryPaths)
-import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv,
+import Distribution.Simple.Utils             (die, notice, warn,
+                                              rawSystemExitWithEnv,
                                               addLibraryPath)
 import Distribution.System                   (Platform (..))
-import Distribution.Verbosity                (Verbosity, normal)
+import Distribution.Verbosity                (Verbosity)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 
@@ -43,28 +44,27 @@ import System.FilePath                       ((<.>), (</>))
 
 
 -- | Return the executable to run and any extra arguments that should be
--- forwarded to it.
-splitRunArgs :: LocalBuildInfo -> [String] -> IO (Executable, [String])
-splitRunArgs lbi args =
+-- forwarded to it. Die in case of error.
+splitRunArgs :: Verbosity -> LocalBuildInfo -> [String]
+             -> IO (Executable, [String])
+splitRunArgs verbosity lbi args =
   case whichExecutable of -- Either err (wasManuallyChosen, exe, paramsRest)
-    Left err               -> do -- if there is a warning, print it
-                                 notice normal `traverse_` maybeWarning
-                                 die err
+    Left err               -> do
+      warn verbosity `traverse_` maybeWarning -- If there is a warning, print it.
+      die err
     Right (True, exe, xs)  -> return (exe, xs)
-    Right (False, exe, xs) -> do let addition = " Interpreting all parameters"
-                                             ++ " to `run` as a parameter to"
-                                             ++ " the default executable."
-                                 -- if there is a warning, print it together
-                                 -- with the addition.
-                                 notice normal `traverse_` fmap (++addition)
-                                                               maybeWarning
-                                 return (exe, xs)
+    Right (False, exe, xs) -> do
+      let addition = " Interpreting all parameters to `run` as a parameter to"
+                     ++ " the default executable."
+      -- If there is a warning, print it together with the addition.
+      warn verbosity `traverse_` fmap (++addition) maybeWarning
+      return (exe, xs)
   where
     pkg_descr = localPkgDescr lbi
-    whichExecutable :: Either String  -- error string
-                              ( Bool       -- if it was manually chosen
-                              , Executable -- the executable
-                              , [String]   -- the remaining parameters
+    whichExecutable :: Either String       -- Error string.
+                              ( Bool       -- If it was manually chosen.
+                              , Executable -- The executable.
+                              , [String]   -- The remaining parameters.
                               )
     whichExecutable = case (enabledExes, args) of
       ([]   , _)           -> Left "Couldn't find any enabled executables."
@@ -82,25 +82,27 @@ splitRunArgs lbi args =
           Just exe -> return (True, exe, xs)
       where
         enabledExes = filter (buildable . buildInfo) (executables pkg_descr)
+
     maybeWarning :: Maybe String
     maybeWarning = case args of
       []    -> Nothing
       (x:_) -> lookup x components
       where
-        components :: [(String, String)] -- component name, label
-        components = [ (name, "The executable '" ++ name ++ "' is disabled.")
-                     | e <- executables pkg_descr
-                     , let name = exeName e]
-                  ++ [ (name, "There is a test-suite '" ++ name ++ "',"
-                           ++ " but the `run` command is only for"
-                           ++ " executables.")
-                     | t <- testSuites pkg_descr
-                     , let name = testName t]
-                  ++ [ (name, "There is a benchmark '" ++ name ++ "',"
-                           ++ " but the run command is only for"
-                           ++ " executables.")
-                     | b <- benchmarks pkg_descr
-                     , let name = benchmarkName b]
+        components :: [(String, String)] -- Component name, message.
+        components =
+          [ (name, "The executable '" ++ name ++ "' is disabled.")
+          | e <- executables pkg_descr
+          , not . buildable . buildInfo $ e, let name = exeName e]
+
+          ++ [ (name, "There is a test-suite '" ++ name ++ "',"
+                      ++ " but the `run` command is only for executables.")
+             | t <- testSuites pkg_descr
+             , let name = testName t]
+
+          ++ [ (name, "There is a benchmark '" ++ name ++ "',"
+                      ++ " but the `run` command is only for executables.")
+             | b <- benchmarks pkg_descr
+             , let name = benchmarkName b]
 
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
