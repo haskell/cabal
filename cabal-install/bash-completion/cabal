@@ -52,7 +52,7 @@ _cabal_subcommands()
             # using simple regexp and "sandbox" subcommand is printed for each
             # successful substitution.
             "$1" help sandbox |
-            sed -rn '/Flags/q;s/^.* sandbox  *([^ ]*).*/\1/;t p;b;: p;p'
+            sed -rn '/Flags/q;s/^.* cabal sandbox  *([^ ]*).*/\1/;t p;b;: p;p'
             break  # Terminate for loop.
             ;;
         esac
