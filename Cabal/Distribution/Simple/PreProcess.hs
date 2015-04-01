@@ -393,7 +393,7 @@ ppHsc2hs bi lbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) $
+      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) . nub $
           [ "--cc=" ++ programPath gccProg
           , "--ld=" ++ programPath gccProg ]
 
