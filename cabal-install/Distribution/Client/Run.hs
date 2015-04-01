@@ -14,7 +14,10 @@ module Distribution.Client.Run ( run, splitRunArgs )
 import Distribution.Client.Utils             (tryCanonicalizePath)
 
 import Distribution.PackageDescription       (Executable (..),
-                                              PackageDescription (..))
+                                              TestSuite(..),
+                                              Benchmark(..),
+                                              PackageDescription (..),
+                                              BuildInfo(buildable))
 import Distribution.Simple.Compiler          (compilerFlavor, CompilerFlavor(..))
 import Distribution.Simple.Build.PathsModule (pkgPathEnvVar)
 import Distribution.Simple.BuildPaths        (exeExtension)
@@ -25,7 +28,7 @@ import Distribution.Simple.LocalBuildInfo    (ComponentName (..),
 import Distribution.Simple.Utils             (die, notice, rawSystemExitWithEnv,
                                               addLibraryPath)
 import Distribution.System                   (Platform (..))
-import Distribution.Verbosity                (Verbosity)
+import Distribution.Verbosity                (Verbosity, normal)
 
 import qualified Distribution.Simple.GHCJS as GHCJS
 
@@ -33,6 +36,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 import Data.Functor                          ((<$>))
 #endif
 import Data.List                             (find)
+import Data.Foldable                         (traverse_)
 import System.Directory                      (getCurrentDirectory)
 import Distribution.Compat.Environment       (getEnvironment)
 import System.FilePath                       ((<.>), (</>))
@@ -42,23 +46,61 @@ import System.FilePath                       ((<.>), (</>))
 -- forwarded to it.
 splitRunArgs :: LocalBuildInfo -> [String] -> IO (Executable, [String])
 splitRunArgs lbi args =
-  case exes of
-    []    -> die "Couldn't find any executables."
-    [exe] -> case args of
-      []                        -> return (exe, [])
-      (x:xs) | x == exeName exe -> return (exe, xs)
-             | otherwise        -> return (exe, args)
-    _     -> case args of
-      []     -> die $ "This package contains multiple executables. "
-                ++ "You must pass the executable name as the first argument "
-                ++ "to 'cabal run'."
-      (x:xs) -> case find (\exe -> exeName exe == x) exes of
-        Nothing  -> die $ "No executable named '" ++ x ++ "'."
-        Just exe -> return (exe, xs)
+  case whichExecutable of -- Either err (wasManuallyChosen, exe, paramsRest)
+    Left err               -> do -- if there is a warning, print it
+                                 notice normal `traverse_` maybeWarning
+                                 die err
+    Right (True, exe, xs)  -> return (exe, xs)
+    Right (False, exe, xs) -> do let addition = " Interpreting all parameters"
+                                             ++ " to `run` as a parameter to"
+                                             ++ " the default executable."
+                                 -- if there is a warning, print it together
+                                 -- with the addition.
+                                 notice normal `traverse_` fmap (++addition)
+                                                               maybeWarning
+                                 return (exe, xs)
   where
     pkg_descr = localPkgDescr lbi
-    exes      = executables pkg_descr
-
+    whichExecutable :: Either String  -- error string
+                              ( Bool       -- if it was manually chosen
+                              , Executable -- the executable
+                              , [String]   -- the remaining parameters
+                              )
+    whichExecutable = case (enabledExes, args) of
+      ([]   , _)           -> Left "Couldn't find any enabled executables."
+      ([exe], [])          -> return (False, exe, [])
+      ([exe], (x:xs))
+        | x == exeName exe -> return (True, exe, xs)
+        | otherwise        -> return (False, exe, args)
+      (_    , [])          -> Left
+        $ "This package contains multiple executables. "
+        ++ "You must pass the executable name as the first argument "
+        ++ "to 'cabal run'."
+      (_    , (x:xs))      ->
+        case find (\exe -> exeName exe == x) enabledExes of
+          Nothing  -> Left $ "No executable named '" ++ x ++ "'."
+          Just exe -> return (True, exe, xs)
+      where
+        enabledExes = filter (buildable . buildInfo) (executables pkg_descr)
+    maybeWarning :: Maybe String
+    maybeWarning = case args of
+      []    -> Nothing
+      (x:_) -> lookup x components
+      where
+        components :: [(String, String)] -- component name, label
+        components = [ (name, "The executable '" ++ name ++ "' is disabled.")
+                     | e <- executables pkg_descr
+                     , let name = exeName e]
+                  ++ [ (name, "There is a test-suite '" ++ name ++ "',"
+                           ++ " but the `run` command is only for"
+                           ++ " executables.")
+                     | t <- testSuites pkg_descr
+                     , let name = testName t]
+                  ++ [ (name, "There is a benchmark '" ++ name ++ "',"
+                           ++ " but the run command is only for"
+                           ++ " executables.")
+                     | b <- benchmarks pkg_descr
+                     , let name = benchmarkName b]
 
 -- | Run a given executable.
 run :: Verbosity -> LocalBuildInfo -> Executable -> [String] -> IO ()
