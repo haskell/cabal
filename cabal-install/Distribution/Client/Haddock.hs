@@ -34,7 +34,8 @@ import Distribution.InstalledPackageInfo as InstalledPackageInfo
          ( InstalledPackageInfo_(exposed) )
 
 regenerateHaddockIndex :: Verbosity
-                       -> InstalledPackageIndex -> ProgramConfiguration -> FilePath
+                       -> InstalledPackageIndex -> ProgramConfiguration
+                       -> FilePath
                        -> IO ()
 regenerateHaddockIndex verbosity pkgs conf index = do
       (paths, warns) <- haddockPackagePaths pkgs' Nothing
