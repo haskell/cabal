@@ -1039,7 +1039,7 @@ runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
                           (const Nothing)
 
   lbi <- getPersistBuildConfig distPref
-  (exe, exeArgs) <- splitRunArgs lbi extraArgs
+  (exe, exeArgs) <- splitRunArgs verbosity lbi extraArgs
 
   maybeWithSandboxDirOnSearchPath useSandbox $
     build verbosity config distPref buildFlags ["exe:" ++ exeName exe]
