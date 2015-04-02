@@ -1,5 +1,8 @@
 -*-change-log-*-
 
+1.23.x.x (current development version) 
+	* Deal with extra C sources from preprocessors (#238).
+
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
 	* Experimental support for emitting DWARF debug info.
@@ -31,8 +34,7 @@
 	* Make 'cabal test'/'cabal bench' build only what's needed for
 	running tests/benchmarks (#1821).
 	* Build shared libraries by default when linking executables dynamically.
-	* Build profiled libraries by default when profiling executables.
-	* Deal with extra C sources from preprocessors (#238).
+	* Build profiled libraries by default when profiling executable.s
 
 1.20.0.1 Johan Tibell <johan.tibell@gmail.com> May 2014
 	* Fix streaming test output.
