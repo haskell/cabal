@@ -54,7 +54,7 @@ import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , die, setupMessage, intercalate, copyFileVerbose, moreRecentFile
          , findFileWithExtension, findFileWithExtension'
-         , getDirectoryContentsRecursive )
+         , getDirectoryContentsRecursive, ordNubRight )
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), programPath
          , requireProgram, requireProgramVersion
@@ -393,7 +393,9 @@ ppHsc2hs bi lbi =
     platformIndependent = False,
     runPreProcessor = mkSimplePreProcessor $ \inFile outFile verbosity -> do
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
-      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) . nub $
+      -- ordNubRight function helps a bit in case dependent packages bring too many
+      -- command line arguments (see pull request #2516).
+      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) . ordNubRight $
           [ "--cc=" ++ programPath gccProg
           , "--ld=" ++ programPath gccProg ]
 
