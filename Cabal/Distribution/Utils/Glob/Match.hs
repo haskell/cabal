@@ -1,4 +1,4 @@
-module Distribution.Glob.Match where
+module Distribution.Utils.Glob.Match where
 
 import Control.Monad
     ( (>=>) )
@@ -6,7 +6,7 @@ import Data.Maybe
     ( listToMaybe )
 import Data.List
     ( stripPrefix )
-import Distribution.Glob.Type
+import Distribution.Utils.Glob.Type
 
 isMatch :: Glob -> FilePath -> Bool
 isMatch (Glob realGlob) fp = realIsMatch realGlob fp

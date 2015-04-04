@@ -4,7 +4,7 @@ module UnitTests.Distribution.Glob
 
 import Data.Maybe
     ( isNothing )
-import Distribution.Glob
+import Distribution.Utils.Glob
 import Test.Tasty
 import Test.Tasty.HUnit
 

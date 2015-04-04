@@ -1,9 +1,9 @@
-module Distribution.Glob.Parse where
+module Distribution.Utils.Glob.Parse where
 
 import Control.Monad
     ( unless, liftM2 )
 import Distribution.Compat.ReadP
-import Distribution.Glob.Type
+import Distribution.Utils.Glob.Type
 
 -- | We want to ensure this works the same way on all platforms, so we do not
 -- use System.FilePath here.

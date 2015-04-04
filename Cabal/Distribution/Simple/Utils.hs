@@ -200,7 +200,7 @@ import Distribution.Compat.TempFile
 import Distribution.Compat.Exception
          ( tryIO, catchIO, catchExit )
 import Distribution.Verbosity
-import Distribution.Glob
+import Distribution.Utils.Glob
 
 #ifdef VERSION_base
 import qualified Paths_Cabal (version)
@@ -728,16 +728,18 @@ addLibraryPath os paths = addEnv
 matchFileGlob :: FilePath -> IO [FilePath]
 matchFileGlob = matchDirFileGlob "."
 
-matchDirFileGlob :: FilePath -> FilePath -> IO [FilePath]
-matchDirFileGlob dir filepath = case parseFileGlob filepath of
+-- | Return a list of files matching a glob pattern, relative to a given source
+-- directory. Note that not all the returned files are guaranteed to exist.
+matchDirFileGlob :: FilePath -> String -> IO [FilePath]
+matchDirFileGlob dir pattern = case parseFileGlob pattern of
   Nothing ->
-    die $ "invalid file glob '" ++ filepath ++ "'."
+    die $ "invalid file glob '" ++ pattern ++ "'."
   Just (NoGlob filepath') ->
     return [filepath']
   Just (Glob glob) -> do
     files <- getDirectoryContentsRecursive dir
     case filter (realIsMatch glob) files of
-      [] -> die $ "filepath wildcard '" ++ filepath
+      [] -> die $ "glob pattern '" ++ pattern
                   ++ "' does not match any files."
       matches -> return matches
 

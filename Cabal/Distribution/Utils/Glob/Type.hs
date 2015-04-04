@@ -1,4 +1,4 @@
-module Distribution.Glob.Type where
+module Distribution.Utils.Glob.Type where
 
 -- | A part of a glob. The aim is to be reasonably close to bash; see
 -- http://wiki.bash-hackers.org/syntax/expansion/globs
