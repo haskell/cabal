@@ -104,7 +104,7 @@ fakeLookupInstalledPackageId fakeMap index pkg =
 --
 -- Returns such packages along with the dependencies that they're missing.
 --
-brokenPackages :: (HasInstalledPackageId pkg, PackageFixedDeps pkg)
+brokenPackages :: (PackageFixedDeps pkg)
                => FakeMap
                -> PackageIndex pkg
                -> [(pkg, [InstalledPackageId])]
