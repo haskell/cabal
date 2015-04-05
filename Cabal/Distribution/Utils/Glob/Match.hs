@@ -18,15 +18,17 @@ realIsMatch :: RealGlob -> FilePath -> Bool
 realIsMatch (RealGlob parts) fp = isMatch' True parts (toSegments fp)
 
 toSegments :: FilePath -> [String]
-toSegments = filter (not . null) . splitOn '/'
+toSegments = filter (not . null) . endBy '/'
 
--- Not quite the same as the function from Data.List.Split, but this allows
--- for a simpler implementation
-splitOn :: Eq a => a -> [a] -> [[a]]
-splitOn _ [] = []
-splitOn splitter list =
+-- Not quite the same as the function from Data.List.Split (whose first
+-- argument is a sublist, not a single list element). However, we only need to
+-- split on individual elements here, and this allows for a simpler
+-- implementation.
+endBy :: Eq a => a -> [a] -> [[a]]
+endBy _ [] = []
+endBy splitter list =
   let (next, rest) = span (/= splitter) list
-  in  next : splitOn splitter (drop 1 rest)
+  in  next : endBy splitter (drop 1 rest)
 
 -- | Given:
 -- * A Bool which records whether we are at the beginning of the current
