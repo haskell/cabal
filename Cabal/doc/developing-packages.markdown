@@ -894,7 +894,7 @@ describe the package as a whole:
     * `data-files: test/**/*.{html,js}` matches all the `.js` _and_
       `.html` files recursively in the `test` directory.
 
-    The limitation is that `*`/`**` wildcards are not allowed at
+    The limitation is that the wildcards `*` and `**` are not allowed at
     the very end of the pattern.
 
     The reason for this limitation is to concisely express the common
