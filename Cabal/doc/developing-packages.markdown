@@ -880,27 +880,26 @@ describe the package as a whole:
 `data-files:` _filename list_
 :   A list of files to be installed for run-time use by the package.
     This is useful for packages that use a large amount of static data,
-    such as tables of values  or code templates. Cabal provides a way to
+    such as tables of values or code templates. Cabal provides a way to
     [find these files at
     run-time](#accessing-data-files-from-package-code).
 
-    A limited form of `*` wildcards in file names, for example
-    `data-files: images/*.png` matches all the `.png` files in the
-    `images` directory.
+    A reasonably large subset of bash's glob pattern syntax (with the
+    `globstar` option enabled) is supported. For example:
 
-    The limitation is that `*` wildcards are only allowed in place of
-    the file name, not in the directory name or file extension.  In
-    particular, wildcards do not include directories contents
-    recursively. Furthermore, if a wildcard is used it must be used with
-    an extension, so `data-files: data/*` is not allowed. When matching
-    a wildcard plus extension, a file's full extension must match
-    exactly, so `*.gz` matches `foo.gz` but not `foo.tar.gz`. A wildcard
-    that does not match any files is an error.
+    * `data-files: images/*.png` matches all the `.png` files in the
+      `images` directory.
+    * `data-files: test/**/*.js` matches all the `.js` files recursively
+      in the `test` directory.
+    * `data-files: test/**/*.{html,js}` matches all the `.js` _and_
+      `.html` files recursively in the `test` directory.
 
-    The reason for providing only a very limited form of wildcard is to
-    concisely express the common case of a large number of related files
-    of the same file type without making it too easy to accidentally
-    include unwanted files.
+    The limitation is that `*`/`**` wildcards are not allowed at
+    the very end of the pattern.
+
+    The reason for this limitation is to concisely express the common
+    case of a large number of related files of the same file type without
+    making it too easy to accidentally include unwanted files.
 
 `data-dir:` _directory_
 :   The directory where Cabal looks for data files to install, relative
@@ -910,14 +909,14 @@ describe the package as a whole:
 `extra-source-files:` _filename list_
 :   A list of additional files to be included in source distributions
     built with [`setup sdist`](installing-packages.html#setup-sdist). As
-    with `data-files` it can use a limited form of `*` wildcards in file
-    names.
+    with `data-files` it can use a reasonably large subset of bash's
+    glob syntax in file names.
 
 `extra-doc-files:` _filename list_
 :   A list of additional files to be included in source distributions,
     and also copied to the html directory when Haddock documentation is
-    generated. As with `data-files` it can use a limited form of `*`
-    wildcards in file names.
+    generated. As with `data-files` it can use a reasonably large subset
+    of bash's glob syntax in file names.
 
 `extra-tmp-files:` _filename list_
 :   A list of additional files or directories to be removed by [`setup
