@@ -1,4 +1,4 @@
-module UnitTests.Distribution.Glob
+module UnitTests.Distribution.Utils.Glob
   ( tests
   ) where
 
