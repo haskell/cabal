@@ -5,7 +5,7 @@ import Control.Monad
 import Data.Maybe
     ( listToMaybe )
 import Data.List
-    ( stripPrefix )
+    ( stripPrefix, tails )
 import Distribution.Utils.Glob.Type
 
 isMatch :: Glob -> FilePath -> Bool
@@ -58,7 +58,7 @@ isMatch' startSegment (WildMany : parts) segs
   | otherwise =
     case segs of
       first : rest ->
-        let candidates = map (:rest) (iterateWhile drop1 first)
+        let candidates = map (:rest) (tails first)
         in  any (isMatch' False parts) candidates
       [] ->
         isMatch' startSegment parts segs
@@ -85,11 +85,6 @@ charListIsMatch parts c = any (matches c) parts
   where
   matches x (CharLiteral y) = x == y
   matches x (Range start end) = start <= x && x <= end
-
--- | A safe version of 'tail'.
-drop1 :: String -> Maybe String
-drop1 [] = Nothing
-drop1 (_ : tl) = Just tl
 
 -- | Drop one character from a list of path segments, or if the first segment
 -- is empty, move on to the next segment.
