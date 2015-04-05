@@ -78,7 +78,7 @@ module Distribution.Simple.Utils (
         isInSearchPath,
         addLibraryPath,
 
-        -- * simple file globbing
+        -- * file globbing
         matchFileGlob,
         matchDirFileGlob,
         parseFileGlob,
