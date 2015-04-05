@@ -128,7 +128,6 @@ module Distribution.Simple.Utils (
         ordNubRight,
         wrapText,
         wrapLine,
-        tailMay,
   ) where
 
 import Control.Monad
@@ -202,7 +201,6 @@ import Distribution.Compat.Exception
          ( tryIO, catchIO, catchExit )
 import Distribution.Verbosity
 import Distribution.Utils.Glob
-import Distribution.Utils.Safe
 
 #ifdef VERSION_base
 import qualified Paths_Cabal (version)

@@ -245,7 +245,6 @@ library
     Distribution.Utils.Glob.Type
     Distribution.Utils.Glob.Parse
     Distribution.Utils.Glob.Match
-    Distribution.Utils.Safe
     Paths_Cabal
 
   if flag(bundled-binary-generic)
