@@ -370,7 +370,7 @@ configureOptions = commandOptions configureCommand
 
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
-  | cabalLibVersion >= Version [1,21,1] [] = flags_latest
+  | cabalLibVersion >= Version [1,22,0] [] = flags_latest
   -- ^ NB: we expect the latest version to be the most common case.
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
@@ -379,15 +379,19 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion <  Version [1,19,1] [] = flags_1_19_0
   | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_1
   | cabalLibVersion <  Version [1,21,1] [] = flags_1_20_0
+  | cabalLibVersion <  Version [1,22,0] [] = flags_1_21_0
   | otherwise = flags_latest
   where
     -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
     flags_latest = flags        { configConstraints = [] }
 
+    -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
+    flags_1_21_0 = flags_latest { configDebugInfo = NoFlag }
+
     -- Cabal < 1.21.1 doesn't know about 'disable-relocatable'
     -- Cabal < 1.21.1 doesn't know about 'enable-profiling'
     flags_1_20_0 =
-      flags_latest { configRelocatable = NoFlag
+      flags_1_21_0 { configRelocatable = NoFlag
                    , configProf = NoFlag
                    , configProfExe = configProf flags
                    , configProfLib =
@@ -395,8 +399,10 @@ filterConfigureFlags flags cabalLibVersion
                    , configCoverage = NoFlag
                    , configLibCoverage = configCoverage flags
                    }
-    -- Cabal < 1.19.2 doesn't know about '--exact-configuration'.
-    flags_1_19_1 = flags_1_20_0 { configExactConfiguration = NoFlag }
+    -- Cabal < 1.19.2 doesn't know about '--exact-configuration' and
+    -- '--enable-library-stripping'.
+    flags_1_19_1 = flags_1_20_0 { configExactConfiguration = NoFlag
+                                , configStripLibs = NoFlag }
     -- Cabal < 1.19.1 uses '--constraint' instead of '--dependency'.
     flags_1_19_0 = flags_1_19_1 { configDependencies = []
                                 , configConstraints  = configConstraints flags }

@@ -266,7 +266,10 @@ instance Monoid GlobalFlags where
 -- * Config flags
 -- ------------------------------------------------------------
 
--- | Flags to @configure@ command
+-- | Flags to @configure@ command.
+--
+-- IMPORTANT: every time a new flag is added, 'D.C.Setup.filterConfigureFlags'
+-- should be updated.
 data ConfigFlags = ConfigFlags {
     --FIXME: the configPrograms is only here to pass info through to configure
     -- because the type of configure is constrained by the UserHooks.
@@ -1647,7 +1650,7 @@ instance Monoid ReplFlags where
 replCommand :: ProgramConfiguration -> CommandUI ReplFlags
 replCommand progConf = CommandUI
   { commandName         = "repl"
-  , commandSynopsis     = 
+  , commandSynopsis     =
       "Open an interpreter session for the given component."
   , commandDescription  = Just $ \pname -> wrapText $
          "If the current directory contains no package, ignores COMPONENT "
