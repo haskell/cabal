@@ -93,10 +93,11 @@ import Distribution.Simple.Utils
 import qualified Distribution.InstalledPackageInfo as Installed
 
 import Data.List
-         ( sort, sortBy )
+         ( sort, sortBy, nubBy )
 import Data.Maybe
          ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
+import Data.Function (on)
 import Data.Graph (Graph)
 import Control.Exception
          ( assert )
@@ -640,15 +641,19 @@ configuredPackageProblems platform cinfo
 
     mergeDeps :: [Dependency] -> [PackageId] -> [MergeResult Dependency PackageId]
     mergeDeps required specified =
+      let sortNubOn f = nubBy ((==) `on` f) . sortBy (compare `on` f) in
       mergeBy
         (\dep pkgid -> dependencyName dep `compare` packageName pkgid)
-        (sortBy (comparing dependencyName) required)
-        (sortBy (comparing packageName)    specified)
+        (sortNubOn dependencyName required)
+        (sortNubOn packageName    specified)
 
-    -- TODO: It would be nicer to use PackageDeps here so we can be more precise
+    -- TODO: It would be nicer to use ComponentDeps here so we can be more precise
     -- in our checks. That's a bit tricky though, as this currently relies on
     -- the 'buildDepends' field of 'PackageDescription'. (OTOH, that field is
     -- deprecated and should be removed anyway.)
+    -- As long as we _do_ use a flat list here, we have to allow for duplicates
+    -- when we fold specifiedDeps; once we have proper ComponentDeps here we
+    -- should get rid of the `nubOn` in `mergeDeps`.
     requiredDeps :: [Dependency]
     requiredDeps =
       --TODO: use something lower level than finalizePackageDescription
