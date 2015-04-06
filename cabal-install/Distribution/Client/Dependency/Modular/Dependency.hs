@@ -194,18 +194,22 @@ showDep (Dep qpn ci                            ) =
 
 -- | Apply built-in rules for package qualifiers
 --
--- NOTE: We `fmap` over the setup dependencies to qualify the package name, BUT
--- this is _only_ correct because the setup dependencies cannot have conditional
--- sections (setup dependencies cannot depend on flags). IF setup dependencies
--- _could_ depend on flags, then these flag names should NOT be qualified with
--- @Q (Setup pn pp)@ but rather with @pp@: flag assignments are package wide,
--- irrespective of whether or not we treat certain dependencies as independent
--- or not.
+-- NOTE: It's the _dependencies_ of a package that may or may not be independent
+-- from the package itself. Package flag choices must of course be consistent.
 qualifyDeps :: QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
-qualifyDeps (Q pp pn) deps = concat [
-      map (fmap (Q pp))            (nonSetupDeps deps)
-    , map (fmap (Q (Setup pn pp))) (setupDeps    deps)
-    ]
+qualifyDeps (Q pp pn) = go
+  where
+    go :: FlaggedDeps Component PN -> FlaggedDeps Component QPN
+    go = map go1
+
+    go1 :: FlaggedDep Component PN -> FlaggedDep Component QPN
+    go1 (Flagged fn nfo t f) = Flagged (fmap (Q pp) fn) nfo (go t) (go f)
+    go1 (Stanza  sn     t)   = Stanza  (fmap (Q pp) sn)     (go t)
+    go1 (Simple dep comp)    = Simple (goD dep comp) comp
+
+    goD :: Dep PN -> Component -> Dep QPN
+    goD dep ComponentSetup = fmap (Q (Setup pn pp)) dep
+    goD dep _              = fmap (Q           pp ) dep
 
 {-------------------------------------------------------------------------------
   Setting/forgetting the Component
