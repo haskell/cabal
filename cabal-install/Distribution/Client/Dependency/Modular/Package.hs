@@ -103,6 +103,5 @@ makeIndependent ps = [ Q pp pn | (pn, i) <- zip ps [0::Int ..]
                                , let pp = Independent i None
                      ]
 
-
 unQualify :: Q a -> a
 unQualify (Q _ x) = x

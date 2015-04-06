@@ -18,6 +18,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , FalseFlaggedDeps
   , Dep(..)
   , showDep
+  , qualifyDeps
     -- ** Setting/forgetting components
   , forgetCompOpenGoal
   , setCompFlaggedDeps
@@ -190,6 +191,21 @@ showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
   showVar v ++ " => " ++ showQPN qpn ++ showVR vr
 showDep (Dep qpn ci                            ) =
   showQPN qpn ++ showCI ci
+
+-- | Apply built-in rules for package qualifiers
+--
+-- NOTE: We `fmap` over the setup dependencies to qualify the package name, BUT
+-- this is _only_ correct because the setup dependencies cannot have conditional
+-- sections (setup dependencies cannot depend on flags). IF setup dependencies
+-- _could_ depend on flags, then these flag names should NOT be qualified with
+-- @Q (Setup pn pp)@ but rather with @pp@: flag assignments are package wide,
+-- irrespective of whether or not we treat certain dependencies as independent
+-- or not.
+qualifyDeps :: QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
+qualifyDeps (Q pp pn) deps = concat [
+      map (fmap (Q pp))            (nonSetupDeps deps)
+    , map (fmap (Q (Setup pn pp))) (setupDeps    deps)
+    ]
 
 {-------------------------------------------------------------------------------
   Setting/forgetting the Component
