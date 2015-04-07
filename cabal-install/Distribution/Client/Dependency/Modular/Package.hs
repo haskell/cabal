@@ -69,8 +69,25 @@ instI _              = False
 -- | Package path.
 --
 -- Stored in reverse order
-data PP = Independent Int PP | Setup PN PP | None
+data PP =
+    -- User-specified independent goal
+    Independent Int PP
+    -- Setup dependencies are always considered independent from their package
+  | Setup PN PP
+    -- Any dependency on base is considered independent (allows for base shims)
+  | Base PN PP
+    -- Unqualified
+  | None
   deriving (Eq, Ord, Show)
+
+-- | Strip any 'Base' qualifiers from a PP
+--
+-- (the Base qualifier does not get inherited)
+stripBase :: PP -> PP
+stripBase (Independent i pp) = Independent i (stripBase pp)
+stripBase (Setup pn      pp) = Setup pn      (stripBase pp)
+stripBase (Base _pn      pp) =                stripBase pp
+stripBase None               = None
 
 -- | String representation of a package path.
 --
@@ -78,6 +95,7 @@ data PP = Independent Int PP | Setup PN PP | None
 showPP :: PP -> String
 showPP (Independent i pp) = show i ++ "." ++ showPP pp
 showPP (Setup pn      pp) = display pn ++ ".setup." ++ showPP pp
+showPP (Base  pn      pp) = display pn ++ "."       ++ showPP pp
 showPP None               = ""
 
 -- | A qualified entity. Pairs a package path with the entity.
