@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE RecordWildCards #-}
 module Distribution.Client.Dependency.Modular.Dependency (
     -- * Variables
     Var(..)
@@ -18,6 +19,8 @@ module Distribution.Client.Dependency.Modular.Dependency (
   , FalseFlaggedDeps
   , Dep(..)
   , showDep
+  , flattenFlaggedDeps
+  , QualifyOptions(..)
   , qualifyDeps
     -- ** Setting/forgetting components
   , forgetCompOpenGoal
@@ -175,6 +178,17 @@ data FlaggedDep comp qpn =
   | Simple (Dep qpn) comp
   deriving (Eq, Show, Functor)
 
+-- | Conversatively flatten out flagged dependencies
+--
+-- NOTE: We do not filter out duplicates.
+flattenFlaggedDeps :: FlaggedDeps Component qpn -> [(Dep qpn, Component)]
+flattenFlaggedDeps = concatMap aux
+  where
+    aux :: FlaggedDep Component qpn -> [(Dep qpn, Component)]
+    aux (Flagged _ _ t f) = flattenFlaggedDeps t ++ flattenFlaggedDeps f
+    aux (Stanza  _   t)   = flattenFlaggedDeps t
+    aux (Simple d c)      = [(d, c)]
+
 type TrueFlaggedDeps  qpn = FlaggedDeps Component qpn
 type FalseFlaggedDeps qpn = FlaggedDeps Component qpn
 
@@ -192,16 +206,28 @@ showDep (Dep qpn (Constrained [(vr, Goal v _)])) =
 showDep (Dep qpn ci                            ) =
   showQPN qpn ++ showCI ci
 
+-- | Options for goal qualification (used in 'qualifyDeps')
+--
+-- See also 'defaultQualifyOptions'
+data QualifyOptions = QO {
+    -- | Do we have a version of base relying on another version of base?
+    qoBaseShim :: Bool
+
+    -- Should dependencies of the setup script be treated as independent?
+  , qoSetupIndependent :: Bool
+  }
+  deriving Show
+
 -- | Apply built-in rules for package qualifiers
 --
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
-qualifyDeps :: QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
-qualifyDeps (Q pp' pn) = go
+qualifyDeps :: QualifyOptions -> QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
+qualifyDeps QO{..} (Q pp' pn) = go
   where
     -- The Base qualifier does not get inherited
     pp :: PP
-    pp = stripBase pp'
+    pp = (if qoBaseShim then stripBase else id) pp'
 
     go :: FlaggedDeps Component PN -> FlaggedDeps Component QPN
     go = map go1
@@ -212,12 +238,18 @@ qualifyDeps (Q pp' pn) = go
     go1 (Simple dep comp)    = Simple (goD dep comp) comp
 
     goD :: Dep PN -> Component -> Dep QPN
-    goD dep _ | isBase dep = fmap (Q (Base  pn pp)) dep
-    goD dep ComponentSetup = fmap (Q (Setup pn pp)) dep
-    goD dep _              = fmap (Q           pp ) dep
+    goD dep comp
+      | qBase  dep  = fmap (Q (Base  pn pp)) dep
+      | qSetup comp = fmap (Q (Setup pn pp)) dep
+      | otherwise   = fmap (Q           pp ) dep
 
-    isBase :: Dep PN -> Bool
-    isBase (Dep dep _ci) = unPackageName dep == "base"
+    -- Should we qualify this goal with the 'Base' package path?
+    qBase :: Dep PN -> Bool
+    qBase (Dep dep _ci) = qoBaseShim && unPackageName dep == "base"
+
+    -- Should we qualify this goal with the 'Setup' packaeg path?
+    qSetup :: Component -> Bool
+    qSetup comp = qoSetupIndependent && comp == ComponentSetup
 
 {-------------------------------------------------------------------------------
   Setting/forgetting the Component

@@ -34,7 +34,8 @@ data BuildState = BS {
   index :: Index,                -- ^ information about packages and their dependencies
   rdeps :: RevDepMap,            -- ^ set of all package goals, completed and open, with reverse dependencies
   open  :: PSQ (OpenGoal ()) (), -- ^ set of still open goals (flag and package goals)
-  next  :: BuildType             -- ^ kind of node to generate next
+  next  :: BuildType,            -- ^ kind of node to generate next
+  qualifyOptions :: QualifyOptions -- ^ qualification options
 }
 
 -- | Extend the set of open goals with the new goals listed.
@@ -67,7 +68,7 @@ scopedExtendOpen :: QPN -> I -> QGoalReasonChain -> FlaggedDeps Component PN -> 
 scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
   where
     -- Qualify all package names
-    qfdeps = qualifyDeps qpn fdeps
+    qfdeps = qualifyDeps (qualifyOptions s) qpn fdeps
     -- Introduce all package flags
     qfdefs = L.map (\ (fn, b) -> Flagged (FN (PI qpn i) fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals
@@ -158,6 +159,7 @@ buildTree idx ind igs =
       , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
       , open  = P.fromList (L.map (\ qpn -> (topLevelGoal qpn, ())) qpns)
       , next  = Goals
+      , qualifyOptions = defaultQualifyOptions idx
       }
   where
     topLevelGoal qpn = OpenGoal (Simple (Dep qpn (Constrained [])) ()) [UserGoal]

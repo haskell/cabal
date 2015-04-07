@@ -77,7 +77,8 @@ import Distribution.Client.ComponentDeps (Component)
 data ValidateState = VS {
   index :: Index,
   saved :: Map QPN (FlaggedDeps Component QPN), -- saved, scoped, dependencies
-  pa    :: PreAssignment
+  pa    :: PreAssignment,
+  qualifyOptions :: QualifyOptions
 }
 
 type Validate = Reader ValidateState
@@ -124,10 +125,11 @@ validate = cata go
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies
+      qo             <- asks qualifyOptions
       -- obtain dependencies and index-dictated exclusions introduced by the choice
       let (PInfo deps _ mfr) = idx ! pn ! i
       -- qualify the deps in the current scope
-      let qdeps = qualifyDeps qpn deps
+      let qdeps = qualifyDeps qo qpn deps
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
       let goal = Goal (P qpn) gr
@@ -234,4 +236,9 @@ extractNewDeps v gr b fa sa = go
 
 -- | Interface.
 validateTree :: Index -> Tree QGoalReasonChain -> Tree QGoalReasonChain
-validateTree idx t = runReader (validate t) (VS idx M.empty (PA M.empty M.empty M.empty))
+validateTree idx t = runReader (validate t) VS {
+    index = idx
+  , saved = M.empty
+  , pa    = PA M.empty M.empty M.empty
+  , qualifyOptions = defaultQualifyOptions idx
+  }
