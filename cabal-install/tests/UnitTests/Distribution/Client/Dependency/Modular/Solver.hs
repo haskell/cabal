@@ -79,6 +79,14 @@ tests = [
         , runTest $ mkTest db9  "setupDeps7" ["F", "G"] (Just [("A", 1), ("B", 1), ("B",2 ), ("C", 1), ("D", 1), ("E", 1), ("E", 2), ("F", 1), ("G", 1)])
         , runTest $ mkTest db10 "setupDeps8" ["C"] (Just [("C", 1)])
         ]
+    , testGroup "Base shim" [
+          runTest $ mkTest db11 "baseShim1" ["A"] (Just [("A", 1)])
+        , runTest $ mkTest db12 "baseShim2" ["A"] (Just [("A", 1)])
+        , runTest $ mkTest db12 "baseShim3" ["B"] (Just [("B", 1)])
+        , runTest $ mkTest db12 "baseShim4" ["C"] (Just [("A", 1), ("B", 1), ("C", 1)])
+        , runTest $ mkTest db12 "baseShim5" ["D"] Nothing
+        , runTest $ mkTest db12 "baseShim6" ["E"] (Just [("E", 1), ("syb", 2)])
+        ]
     ]
   where
     indep test = test { testIndepGoals = True }
@@ -312,6 +320,44 @@ db10 =
     , Left a1
     , Left a2
     , Right $ exAv "C" 1 [ExFix "A" 2] `withSetupDeps` [ExFix "A" 1]
+    ]
+
+-- | Tests for dealing with base shims
+db11 :: ExampleDb
+db11 =
+  let base3 = exInst "base" 3 "base-3-inst" [base4]
+      base4 = exInst "base" 4 "base-4-inst" []
+  in [
+      Left base3
+    , Left base4
+    , Right $ exAv "A" 1 [ExFix "base" 3]
+    ]
+
+-- | Slightly more realistic version of db11 where base-3 depends on syb
+-- This means that if a package depends on base-3 and on syb, then they MUST
+-- share the version of syb
+--
+-- * Package A relies on base-3 (which relies on base-4)
+-- * Package B relies on base-4
+-- * Package C relies on both A and B
+-- * Package D relies on base-3 and on syb-2, which is not possible because
+--     base-3 has a dependency on syb-1 (non-inheritance of the Base qualifier)
+-- * Package E relies on base-4 and on syb-2, which is fine.
+db12 :: ExampleDb
+db12 =
+  let base3 = exInst "base" 3 "base-3-inst" [base4, syb1]
+      base4 = exInst "base" 4 "base-4-inst" []
+      syb1  = exInst "syb" 1 "syb-1-inst" [base4]
+  in [
+      Left base3
+    , Left base4
+    , Left syb1
+    , Right $ exAv "syb" 2 [ExFix "base" 4]
+    , Right $ exAv "A" 1 [ExFix "base" 3, ExAny "syb"]
+    , Right $ exAv "B" 1 [ExFix "base" 4, ExAny "syb"]
+    , Right $ exAv "C" 1 [ExAny "A", ExAny "B"]
+    , Right $ exAv "D" 1 [ExFix "base" 3, ExFix "syb" 2]
+    , Right $ exAv "E" 1 [ExFix "base" 4, ExFix "syb" 2]
     ]
 
 {-------------------------------------------------------------------------------
