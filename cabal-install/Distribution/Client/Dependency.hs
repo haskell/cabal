@@ -90,10 +90,10 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription (BuildInfo(targetBuildDepends))
 import Distribution.PackageDescription.Configuration (mapCondTree)
 import Distribution.Version
-         ( Version(..), VersionRange, anyVersion, thisVersion, withinRange
+         ( VersionRange, anyVersion, thisVersion, withinRange
          , removeUpperBound, simplifyVersionRange )
 import Distribution.Compiler
-         ( CompilerId(..), CompilerInfo(..), CompilerFlavor(..) )
+         ( CompilerInfo(..) )
 import Distribution.System
          ( Platform )
 import Distribution.Simple.Utils
@@ -483,16 +483,16 @@ applySandboxInstallPolicy
 -- ------------------------------------------------------------
 
 chooseSolver :: Verbosity -> PreSolver -> CompilerInfo -> IO Solver
-chooseSolver _         AlwaysTopDown _                = return TopDown
-chooseSolver _         AlwaysModular _                = return Modular
-chooseSolver verbosity Choose        cinfo            = do
-  let (CompilerId f v) = compilerInfoId cinfo
-      chosenSolver | f == GHC && v <= Version [7] [] = TopDown
-                   | otherwise                       = Modular
-      msg TopDown = warn verbosity "Falling back to topdown solver for GHC < 7."
-      msg Modular = info verbosity "Choosing modular solver."
-  msg chosenSolver
-  return chosenSolver
+chooseSolver verbosity preSolver _cinfo =
+    case preSolver of
+      AlwaysTopDown -> do
+        warn verbosity "Topdown solver is deprecated"
+        return TopDown
+      AlwaysModular -> do
+        return Modular
+      Choose -> do
+        info verbosity "Choosing modular solver."
+        return Modular
 
 runSolver :: Solver -> SolverConfig -> DependencyResolver
 runSolver TopDown = const topDownResolver -- TODO: warn about unsupported options
