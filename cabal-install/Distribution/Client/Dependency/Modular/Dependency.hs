@@ -197,8 +197,12 @@ showDep (Dep qpn ci                            ) =
 -- NOTE: It's the _dependencies_ of a package that may or may not be independent
 -- from the package itself. Package flag choices must of course be consistent.
 qualifyDeps :: QPN -> FlaggedDeps Component PN -> FlaggedDeps Component QPN
-qualifyDeps (Q pp pn) = go
+qualifyDeps (Q pp' pn) = go
   where
+    -- The Base qualifier does not get inherited
+    pp :: PP
+    pp = stripBase pp'
+
     go :: FlaggedDeps Component PN -> FlaggedDeps Component QPN
     go = map go1
 
@@ -208,8 +212,12 @@ qualifyDeps (Q pp pn) = go
     go1 (Simple dep comp)    = Simple (goD dep comp) comp
 
     goD :: Dep PN -> Component -> Dep QPN
+    goD dep _ | isBase dep = fmap (Q (Base  pn pp)) dep
     goD dep ComponentSetup = fmap (Q (Setup pn pp)) dep
     goD dep _              = fmap (Q           pp ) dep
+
+    isBase :: Dep PN -> Bool
+    isBase (Dep dep _ci) = unPackageName dep == "base"
 
 {-------------------------------------------------------------------------------
   Setting/forgetting the Component
