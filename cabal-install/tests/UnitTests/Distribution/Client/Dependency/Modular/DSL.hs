@@ -136,18 +136,20 @@ exAvSrcPkg ex =
          , packageDescrOverride = Nothing
          , packageDescription   = C.GenericPackageDescription{
                C.packageDescription = C.emptyPackageDescription {
-                   C.package        = exAvPkgId ex
-                 , C.library        = error "not yet configured: library"
-                 , C.executables    = error "not yet configured: executables"
-                 , C.testSuites     = error "not yet configured: testSuites"
-                 , C.benchmarks     = error "not yet configured: benchmarks"
-                 , C.buildDepends   = error "not yet configured: buildDepends"
-                 , C.setupBuildInfo = Just C.SetupBuildInfo {
+                   C.package         = exAvPkgId ex
+                 , C.library         = error "not yet configured: library"
+                 , C.foreignLibs     = error "not yet configured: foreign libraries"
+                 , C.executables     = error "not yet configured: executables"
+                 , C.testSuites      = error "not yet configured: testSuites"
+                 , C.benchmarks      = error "not yet configured: benchmarks"
+                 , C.buildDepends    = error "not yet configured: buildDepends"
+                 , C.setupBuildInfo  = Just C.SetupBuildInfo {
                        C.setupDepends = mkSetupDeps (CD.setupDeps (exAvDeps ex))
                      }
                  }
              , C.genPackageFlags = concatMap extractFlags (CD.libraryDeps (exAvDeps ex))
              , C.condLibrary     = Just $ mkCondTree libraryDeps
+             , C.condForeignLibs = []
              , C.condExecutables = []
              , C.condTestSuites  = map (\(t, deps) -> (t, mkCondTree deps)) testSuites
              , C.condBenchmarks  = []

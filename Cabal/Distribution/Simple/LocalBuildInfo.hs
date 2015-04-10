@@ -67,7 +67,9 @@ import Distribution.InstalledPackageInfo (InstalledPackageInfo)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
-         , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
+         , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..)
+         , ForeignLib(..)
+         )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..), PackageKey
@@ -176,12 +178,14 @@ inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 -- Buildable components
 
 data Component = CLib   Library
+               | CFLib  ForeignLib
                | CExe   Executable
                | CTest  TestSuite
                | CBench Benchmark
                deriving (Show, Eq, Read)
 
 data ComponentName = CLibName   -- currently only a single lib
+                   | CFLibName  String
                    | CExeName   String
                    | CTestName  String
                    | CBenchName String
@@ -191,6 +195,7 @@ instance Binary ComponentName
 
 showComponentName :: ComponentName -> String
 showComponentName CLibName          = "library"
+showComponentName (CFLibName  name) = "foreign library '" ++ name ++ "'"
 showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
@@ -205,6 +210,10 @@ data ComponentLocalBuildInfo
     componentExposedModules :: [Installed.ExposedModule],
     componentPackageRenaming :: Map PackageName ModuleRenaming,
     componentLibraries :: [LibraryName]
+  }
+  | FLibComponentLocalBuildInfo {
+    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | ExeComponentLocalBuildInfo {
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
@@ -222,16 +231,18 @@ data ComponentLocalBuildInfo
 
 instance Binary ComponentLocalBuildInfo
 
-foldComponent :: (Library -> a)
+foldComponent :: (Library    -> a)
+              -> (ForeignLib -> a)
               -> (Executable -> a)
-              -> (TestSuite -> a)
-              -> (Benchmark -> a)
+              -> (TestSuite  -> a)
+              -> (Benchmark  -> a)
               -> Component
               -> a
-foldComponent f _ _ _ (CLib   lib) = f lib
-foldComponent _ f _ _ (CExe   exe) = f exe
-foldComponent _ _ f _ (CTest  tst) = f tst
-foldComponent _ _ _ f (CBench bch) = f bch
+foldComponent f _ _ _ _ (CLib   lib)  = f lib
+foldComponent _ f _ _ _ (CFLib  flib) = f flib
+foldComponent _ _ f _ _ (CExe   exe)  = f exe
+foldComponent _ _ _ f _ (CTest  tst)  = f tst
+foldComponent _ _ _ _ f (CBench bch)  = f bch
 
 data LibraryName = LibraryName String
     deriving (Generic, Read, Show)
@@ -240,23 +251,29 @@ instance Binary LibraryName
 
 componentBuildInfo :: Component -> BuildInfo
 componentBuildInfo =
-  foldComponent libBuildInfo buildInfo testBuildInfo benchmarkBuildInfo
+  foldComponent libBuildInfo
+                foreignLibBuildInfo
+                buildInfo
+                testBuildInfo
+                benchmarkBuildInfo
 
 componentName :: Component -> ComponentName
 componentName =
   foldComponent (const CLibName)
-                (CExeName . exeName)
-                (CTestName . testName)
+                (CFLibName  . foreignLibName)
+                (CExeName   . exeName)
+                (CTestName  . testName)
                 (CBenchName . benchmarkName)
 
 -- | All the components in the package (libs, exes, or test suites).
 --
 pkgComponents :: PackageDescription -> [Component]
 pkgComponents pkg =
-    [ CLib  lib | Just lib <- [library pkg] ]
- ++ [ CExe  exe | exe <- executables pkg ]
- ++ [ CTest tst | tst <- testSuites  pkg ]
- ++ [ CBench bm | bm  <- benchmarks  pkg ]
+    [ CLib   lib  | Just lib <- [library pkg] ]
+ ++ [ CFLib  flib | flib <- foreignLibs  pkg ]
+ ++ [ CExe   exe  | exe  <- executables  pkg ]
+ ++ [ CTest  tst  | tst  <- testSuites   pkg ]
+ ++ [ CBench bm   | bm   <- benchmarks   pkg ]
 
 -- | All the components in the package that are buildable and enabled.
 -- Thus this excludes non-buildable components and test suites or benchmarks
@@ -288,6 +305,8 @@ componentDisabledReason _                   = Nothing
 lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
 lookupComponent pkg CLibName =
     fmap CLib $ library pkg
+lookupComponent pkg (CFLibName name) =
+    fmap CFLib $ find ((name ==) . foreignLibName) (foreignLibs pkg)
 lookupComponent pkg (CExeName name) =
     fmap CExe $ find ((name ==) . exeName) (executables pkg)
 lookupComponent pkg (CTestName name) =

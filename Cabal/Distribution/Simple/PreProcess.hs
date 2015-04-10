@@ -36,6 +36,7 @@ import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..)
          , Executable(..)
          , Library(..), libModules
+         , ForeignLib(..), flibModules
          , TestSuite(..), testModules
          , TestSuiteInterface(..)
          , Benchmark(..), benchmarkModules, BenchmarkInterface(..) )
@@ -173,6 +174,12 @@ preprocessComponent pd comp lbi isSrcDist verbosity handlers = case comp of
     setupMessage verbosity "Preprocessing library" (packageId pd)
     forM_ (map ModuleName.toFilePath $ libModules lib) $
       pre dirs (buildDir lbi) (localHandlers bi)
+  (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
+    let flibDir = buildDir lbi </> nm </> nm ++ "-tmp"
+        dirs    = hsSourceDirs bi ++ [autogenModulesDir lbi]
+    setupMessage verbosity ("Preprocessing foreign library '" ++ nm ++ "' for") (packageId pd)
+    forM_ (map ModuleName.toFilePath $ flibModules flib) $
+      pre dirs flibDir (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let exeDir = buildDir lbi </> nm </> nm ++ "-tmp"
         dirs   = hsSourceDirs bi ++ [autogenModulesDir lbi]
@@ -653,6 +660,8 @@ preprocessExtras :: Component
 preprocessExtras comp lbi = case comp of
   CLib _ -> pp $ buildDir lbi
   (CExe Executable { exeName = nm }) ->
+    pp $ buildDir lbi </> nm </> nm ++ "-tmp"
+  (CFLib ForeignLib { foreignLibName = nm }) ->
     pp $ buildDir lbi </> nm </> nm ++ "-tmp"
   CTest test -> do
     case testInterface test of

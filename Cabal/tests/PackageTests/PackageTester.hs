@@ -19,6 +19,7 @@ module PackageTests.PackageTester
     , unregister
     , compileSetup
     , run
+    , getPersistBuildConfig_
 
     -- * Test helpers
     , assertConfigureSucceeded
@@ -29,6 +30,7 @@ module PackageTests.PackageTester
     , assertInstallSucceeded
     , assertOutputContains
     , assertOutputDoesNotContain
+    , requireSuccess
     ) where
 
 import qualified Control.Exception.Extensible as E
@@ -47,8 +49,11 @@ import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Compat.CreatePipe (createPipe)
 import Distribution.Simple.BuildPaths (exeExtension)
+import Distribution.Simple.Configure
+    ( ConfigStateFileError(..), getConfigStateFile )
 import Distribution.Simple.Program.Run (getEffectiveEnvironment)
 import Distribution.Simple.Utils (printRawCommandAndArgsAndEnv)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo)
 import Distribution.ReadE (readEOrFail)
 import Distribution.Verbosity (Verbosity, flagToVerbosity, normal)
 
@@ -59,10 +64,11 @@ data PackageSpec = PackageSpec
     }
 
 data TestsConfig = TestsConfig {
-    testsConfigGhcPath     :: FilePath
-  , testsConfigGhcPkgPath  :: FilePath
-  , testsConfigInPlaceSpec :: PackageSpec
-  , testsConfigBuildDir    :: FilePath    -- ^ @--builddir@ argument
+    testsConfigGhcPath        :: FilePath
+  , testsConfigGhcPkgPath     :: FilePath
+  , testsConfigGccPath        :: FilePath
+  , testsConfigInPlaceSpec    :: PackageSpec
+  , testsConfigBuildDir       :: FilePath    -- ^ @--builddir@ argument
   }
 
 data Success = Failure
@@ -249,6 +255,18 @@ requireSuccess (cmd, exitCode, output) =
 record :: PackageSpec -> Result -> IO ()
 record spec res = do
     C.writeFile (directory spec </> "test-log.txt") (C.pack $ outputText res)
+
+-- Like Distribution.Simple.Configure.getPersistBuildConfig but
+-- doesn't check that the Cabal version matches, which it doesn't when
+-- we run Cabal's own test suite, due to bootstrapping issues.
+getPersistBuildConfig_ :: FilePath -> IO LocalBuildInfo
+getPersistBuildConfig_ filename = do
+    eLBI <- E.try $ getConfigStateFile filename
+    case eLBI of
+      Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return lbi
+      Left (ConfigStateFileBadVersion _ _ (Left err)) -> E.throw err
+      Left err -> E.throw err
+      Right lbi -> return lbi
 
 ------------------------------------------------------------------------
 -- * Test helpers

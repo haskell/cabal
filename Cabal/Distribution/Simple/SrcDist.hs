@@ -43,6 +43,7 @@ module Distribution.Simple.SrcDist (
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
+         , ForeignLib(..)
          , BenchmarkInterface(..) )
 import Distribution.PackageDescription.Check
          ( PackageCheck(..), checkConfiguredPackage, checkPackageFiles )
@@ -179,6 +180,13 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        mainSrc <- findMainExeFile exeBi pps mainPath
        return (mainSrc:biSrcs)
 
+    -- Foreign library sources
+  , fmap concat
+    . withFLib $ \flib@(ForeignLib { foreignLibBuildInfo = flibBi }) -> do
+       biSrcs   <- allSourcesBuildInfo flibBi pps []
+       defFiles <- mapM (findModDefFile flibBi pps) (foreignLibModDefFile flib)
+       return (defFiles ++ biSrcs)
+
     -- Test suites sources.
   , fmap concat
     . withTest $ \t -> do
@@ -246,8 +254,9 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- versions of these functions that ignore the 'buildable' attribute:
     withLib       action = maybe (return []) action (library pkg_descr)
     withExe       action = mapM action (executables pkg_descr)
-    withTest      action = mapM action (testSuites pkg_descr)
-    withBenchmark action = mapM action (benchmarks pkg_descr)
+    withFLib      action = mapM action (foreignLibs pkg_descr)
+    withTest      action = mapM action (testSuites  pkg_descr)
+    withBenchmark action = mapM action (benchmarks  pkg_descr)
 
 
 -- |Prepare a directory tree of source files.
@@ -308,6 +317,13 @@ findMainExeFile exeBi pps mainPath = do
   case ppFile of
     Nothing -> findFile (hsSourceDirs exeBi) mainPath
     Just pp -> return pp
+
+-- | Find a module definition file
+--
+-- TODO: I don't know if this is right
+findModDefFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findModDefFile flibBi _pps modDefPath =
+    findFile (".":hsSourceDirs flibBi) modDefPath
 
 -- | Given a list of include paths, try to find the include file named
 -- @f@. Return the name of the file and the full path, or exit with error if
@@ -480,12 +496,14 @@ mapAllBuildInfo :: (BuildInfo -> BuildInfo)
                 -> (PackageDescription -> PackageDescription)
 mapAllBuildInfo f pkg = pkg {
     library     = fmap mapLibBi (library pkg),
+    foreignLibs = fmap mapFLibBi (foreignLibs pkg),
     executables = fmap mapExeBi (executables pkg),
     testSuites  = fmap mapTestBi (testSuites pkg),
     benchmarks  = fmap mapBenchBi (benchmarks pkg)
   }
   where
-    mapLibBi lib  = lib { libBuildInfo       = f (libBuildInfo lib) }
-    mapExeBi exe  = exe { buildInfo          = f (buildInfo exe) }
-    mapTestBi t   = t   { testBuildInfo      = f (testBuildInfo t) }
-    mapBenchBi bm = bm  { benchmarkBuildInfo = f (benchmarkBuildInfo bm) }
+    mapLibBi   lib  = lib  { libBuildInfo        = f (libBuildInfo lib) }
+    mapFLibBi  flib = flib { foreignLibBuildInfo = f (foreignLibBuildInfo flib) }
+    mapExeBi   exe  = exe  { buildInfo           = f (buildInfo exe) }
+    mapTestBi  tst  = tst  { testBuildInfo       = f (testBuildInfo tst) }
+    mapBenchBi bm   = bm   { benchmarkBuildInfo  = f (benchmarkBuildInfo bm) }

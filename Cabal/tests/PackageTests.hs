@@ -22,7 +22,6 @@ import PackageTests.BuildDeps.TargetSpecificDeps2.Check
 import PackageTests.BuildDeps.TargetSpecificDeps3.Check
 import PackageTests.BuildTestSuiteDetailedV09.Check
 import PackageTests.PackageTester
-    ( PackageSpec(..), TestsConfig(..), compileSetup )
 import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
 import PackageTests.PreProcess.Check
@@ -37,20 +36,18 @@ import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
+import PackageTests.ForeignLibs.Check
 
-import Distribution.Simple.Configure
-    ( ConfigStateFileError(..), getConfigStateFile )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath)
 import Distribution.Simple.Program.Builtin
-    ( ghcProgram, ghcPkgProgram, haddockProgram )
+    ( ghcProgram, ghcPkgProgram, haddockProgram, gccProgram )
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
 import Distribution.Verbosity (normal)
 import Distribution.Version (Version(Version))
 
-import Control.Exception (try, throw)
 import System.Directory
     ( getCurrentDirectory, setCurrentDirectory )
 import System.FilePath ((</>))
@@ -127,7 +124,13 @@ tests version cfg = testGroup "Package Tests" $
           , testCase "PackageTests/CMain"
             (PackageTests.CMain.Check.checkBuild cfg)
           ]
-     else [])
+     else []) ++
+    (if version >= Version [1, 23] []
+      then [ testCase "ForeignLibs"
+             (PackageTests.ForeignLibs.Check.suite cfg)
+           ]
+      else [])
+
 
 -- | Setup system to run the tests
 initTests :: FilePath -> IO TestsConfig
@@ -144,22 +147,26 @@ initTests dist = do
     putStrLn $ "Cabal test suite - testing cabal version " ++
         display cabalVersion
     lbi <- getPersistBuildConfig_ (dist </> "setup-config")
-    (ghc, _) <- requireProgram normal ghcProgram (withPrograms lbi)
-    (ghcPkg, _) <- requireProgram normal ghcPkgProgram (withPrograms lbi)
-    (haddock, _) <- requireProgram normal haddockProgram (withPrograms lbi)
-    let ghcPath = programPath ghc
-        ghcPkgPath = programPath ghcPkg
+    (ghc     , _) <- requireProgram normal ghcProgram     (withPrograms lbi)
+    (ghcPkg  , _) <- requireProgram normal ghcPkgProgram  (withPrograms lbi)
+    (haddock , _) <- requireProgram normal haddockProgram (withPrograms lbi)
+    (gcc     , _) <- requireProgram normal gccProgram     (withPrograms lbi)
+    let ghcPath     = programPath ghc
+        ghcPkgPath  = programPath ghcPkg
         haddockPath = programPath haddock
+        gccPath     = programPath gcc
     putStrLn $ "Using ghc: " ++ ghcPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     putStrLn $ "Using haddock: " ++ haddockPath
+    putStrLn $ "Using gcc: " ++ gccPath
     setCurrentDirectory "tests"
     -- Create a shared Setup executable to speed up Simple tests
     let cfg = TestsConfig {
-              testsConfigGhcPath     = ghcPath
-            , testsConfigGhcPkgPath  = ghcPkgPath
-            , testsConfigInPlaceSpec = inplaceSpec
-            , testsConfigBuildDir    = dist
+              testsConfigGhcPath        = ghcPath
+            , testsConfigGhcPkgPath     = ghcPkgPath
+            , testsConfigGccPath        = gccPath
+            , testsConfigInPlaceSpec    = inplaceSpec
+            , testsConfigBuildDir       = dist
             }
     compileSetup (return cfg) "."
     return cfg
@@ -179,18 +186,6 @@ main =
     ingredients = includingOptions options : defaultIngredients
     options     = [ Option (Proxy :: Proxy BuildDirOption)
                   ]
-
--- Like Distribution.Simple.Configure.getPersistBuildConfig but
--- doesn't check that the Cabal version matches, which it doesn't when
--- we run Cabal's own test suite, due to bootstrapping issues.
-getPersistBuildConfig_ :: FilePath -> IO LocalBuildInfo
-getPersistBuildConfig_ filename = do
-    eLBI <- try $ getConfigStateFile filename
-    case eLBI of
-      Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return lbi
-      Left (ConfigStateFileBadVersion _ _ (Left err)) -> throw err
-      Left err -> throw err
-      Right lbi -> return lbi
 
 {-------------------------------------------------------------------------------
   Command line options

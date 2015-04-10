@@ -748,6 +748,7 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
         LBI.foldComponent
           (const Nothing)
           (const Nothing)
+          (const Nothing)
           (\t ->
             if buildable (testBuildInfo t)
               then Just (testName t)
@@ -799,6 +800,7 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
   let pkgDescr = LBI.localPkgDescr lbi
       nameBenchsOnly =
         LBI.foldComponent
+          (const Nothing)
           (const Nothing)
           (const Nothing)
           (const Nothing)

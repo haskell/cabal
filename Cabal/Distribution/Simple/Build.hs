@@ -42,7 +42,9 @@ import Distribution.Simple.Compiler
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
-         , BenchmarkInterface(..), defaultRenaming )
+         , BenchmarkInterface(..)
+         , ForeignLib(..)
+         , defaultRenaming )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
@@ -54,7 +56,12 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.PreProcess
          ( preprocessComponent, preprocessExtras, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms, pkgKey)
+         ( LocalBuildInfo( compiler
+                         , buildDir
+                         , withPackageDB
+                         , withPrograms
+                         , pkgKey
+                         )
          , Component(..), componentName, getComponent, componentBuildInfo
          , ComponentLocalBuildInfo(..), pkgEnabledComponents
          , withComponentsInBuildOrder, componentsInBuildOrder
@@ -217,6 +224,12 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
       (withPackageDB lbi)
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
+               comp@(CFLib flib) clbi _distPref = do
+    preprocessComponent pkg_descr comp lbi False verbosity suffixes
+    info verbosity $ "Building foreign library " ++ foreignLibName flib ++ "..."
+    buildFLib verbosity numJobs pkg_descr lbi flib clbi
+
+buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
     preprocessComponent pkg_descr comp lbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
@@ -308,6 +321,11 @@ replComponent verbosity pkg_descr lbi suffixes
     let libbi = libBuildInfo lib
         lib' = lib { libBuildInfo = libbi { cSources = cSources libbi ++ extras } }
     replLib verbosity pkg_descr lbi lib' clbi
+
+replComponent verbosity pkg_descr lbi suffixes
+               comp@(CFLib exe) clbi _ = do
+    preprocessComponent pkg_descr comp lbi False verbosity suffixes
+    replFLib verbosity pkg_descr lbi exe clbi
 
 replComponent verbosity pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
@@ -533,6 +551,18 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
     HaskellSuite {} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
     _    -> die "Building is not supported with this compiler."
 
+-- | Build a foreign library
+--
+-- NOTE: We assume that we already checked that we can actually build the
+-- foreign library in configure.
+buildFLib :: Verbosity -> Flag (Maybe Int)
+                       -> PackageDescription -> LocalBuildInfo
+                       -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
+buildFLib verbosity numJobs pkg_descr lbi flib clbi =
+    case compilerFlavor (compiler lbi) of
+      GHC -> GHC.buildFLib verbosity numJobs pkg_descr lbi flib clbi
+      _   -> die "Building is not supported with this compiler."
+
 buildExe :: Verbosity -> Flag (Maybe Int)
                       -> PackageDescription -> LocalBuildInfo
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
@@ -563,6 +593,12 @@ replExe verbosity pkg_descr lbi exe clbi =
     GHCJS -> GHCJS.replExe verbosity NoFlag pkg_descr lbi exe clbi
     _     -> die "A REPL is not supported for this compiler."
 
+replFLib :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
+replFLib verbosity pkg_descr lbi exe clbi =
+  case compilerFlavor (compiler lbi) of
+    GHC -> GHC.replFLib verbosity NoFlag pkg_descr lbi exe clbi
+    _   -> die "A REPL is not supported for this compiler."
 
 initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> PackageDescription  -- ^mostly information from the .cabal file
@@ -571,9 +607,11 @@ initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> IO ()
 initialBuildSteps _distPref pkg_descr lbi verbosity = do
   -- check that there's something to build
-  let buildInfos =
-          map libBuildInfo (maybeToList (library pkg_descr)) ++
-          map buildInfo (executables pkg_descr)
+  let buildInfos = concat [
+         map libBuildInfo        $ maybeToList (library pkg_descr)
+       , map foreignLibBuildInfo $ foreignLibs pkg_descr
+       , map buildInfo           $ executables pkg_descr
+       ]
   unless (any buildable buildInfos) $ do
     let name = display (packageId pkg_descr)
     die ("Package " ++ name ++ " can't be built on this system.")

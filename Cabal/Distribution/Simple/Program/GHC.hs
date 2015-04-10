@@ -118,6 +118,9 @@ data GhcOptions = GhcOptions {
   -- flag.
   ghcOptLinkNoHsMain :: Flag Bool,
 
+  -- | Module definition files (Windows specific)
+  ghcOptLinkModDefFiles :: NubListR FilePath,
+
   --------------------
   -- C and CPP stuff
 
@@ -189,9 +192,10 @@ data GhcOptions = GhcOptions {
   ghcOptStubDir       :: Flag FilePath,
 
   --------------------
-  -- Dynamic linking
+  -- Creating libraries
 
   ghcOptDynLinkMode   :: Flag GhcDynLinkMode,
+  ghcOptStaticLib     :: Flag Bool,
   ghcOptShared        :: Flag Bool,
   ghcOptFPic          :: Flag Bool,
   ghcOptDylibName     :: Flag String,
@@ -296,9 +300,10 @@ renderGhcOptions comp opts
     else []
 
   --------------------
-  -- Dynamic linking
+  -- Creating libraries
 
-  , [ "-shared"  | flagBool ghcOptShared  ]
+  , [ "-staticlib" | flagBool ghcOptStaticLib ]
+  , [ "-shared"    | flagBool ghcOptShared    ]
   , case flagToMaybe (ghcOptDynLinkMode opts) of
       Nothing                  -> []
       Just GhcStaticOnly       -> ["-static"]
@@ -350,6 +355,7 @@ renderGhcOptions comp opts
   , [ "-dynload deploy" | not (null (flags ghcOptRPaths)) ]
   , concat [ [ "-optl-Wl,-rpath," ++ dir]
            | dir <- flags ghcOptRPaths ]
+  , [ modDefFile | modDefFile <- flags ghcOptLinkModDefFiles ]
 
   -------------
   -- Packages
@@ -474,6 +480,7 @@ instance Monoid GhcOptions where
     ghcOptLinkFrameworks     = mempty,
     ghcOptNoLink             = mempty,
     ghcOptLinkNoHsMain       = mempty,
+    ghcOptLinkModDefFiles    = mempty,
     ghcOptCcOptions          = mempty,
     ghcOptCppOptions         = mempty,
     ghcOptCppIncludePath     = mempty,
@@ -498,6 +505,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDir          = mempty,
     ghcOptStubDir            = mempty,
     ghcOptDynLinkMode        = mempty,
+    ghcOptStaticLib          = mempty,
     ghcOptShared             = mempty,
     ghcOptFPic               = mempty,
     ghcOptDylibName          = mempty,
@@ -527,6 +535,7 @@ instance Monoid GhcOptions where
     ghcOptLinkFrameworks     = combine ghcOptLinkFrameworks,
     ghcOptNoLink             = combine ghcOptNoLink,
     ghcOptLinkNoHsMain       = combine ghcOptLinkNoHsMain,
+    ghcOptLinkModDefFiles    = combine ghcOptLinkModDefFiles,
     ghcOptCcOptions          = combine ghcOptCcOptions,
     ghcOptCppOptions         = combine ghcOptCppOptions,
     ghcOptCppIncludePath     = combine ghcOptCppIncludePath,
@@ -551,6 +560,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDir          = combine ghcOptOutputDir,
     ghcOptStubDir            = combine ghcOptStubDir,
     ghcOptDynLinkMode        = combine ghcOptDynLinkMode,
+    ghcOptStaticLib          = combine ghcOptStaticLib,
     ghcOptShared             = combine ghcOptShared,
     ghcOptFPic               = combine ghcOptFPic,
     ghcOptDylibName          = combine ghcOptDylibName,

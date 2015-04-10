@@ -49,6 +49,7 @@ import Data.Traversable (Traversable(traverse))
 -- | Component of a package
 data Component =
     ComponentLib
+  | ComponentPLib  String
   | ComponentExe   String
   | ComponentTest  String
   | ComponentBench String

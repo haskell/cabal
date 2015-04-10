@@ -114,7 +114,7 @@ convSP os arch cinfo strfl (SourcePackage (PackageIdentifier pn pv) gpd _ _pl) =
 convGPD :: OS -> Arch -> CompilerInfo -> Bool ->
            PI PN -> GenericPackageDescription -> PInfo
 convGPD os arch comp strfl pi
-        (GenericPackageDescription pkg flags libs exes tests benchs) =
+        (GenericPackageDescription pkg flags libs plibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
     conv = convCondTree os arch comp pi fds (const True)
@@ -122,6 +122,7 @@ convGPD os arch comp strfl pi
     PInfo
       (maybe []    (conv ComponentLib                       ) libs    ++
        maybe []    (convSetupBuildInfo pi)    (setupBuildInfo pkg)    ++
+       concatMap   (\(nm, ds) -> conv (ComponentPLib nm)  ds) plibs   ++
        concatMap   (\(nm, ds) -> conv (ComponentExe nm)   ds) exes    ++
       prefix (Stanza (SN pi TestStanzas))
         (L.map     (\(nm, ds) -> conv (ComponentTest nm)  ds) tests)  ++
