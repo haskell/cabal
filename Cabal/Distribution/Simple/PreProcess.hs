@@ -50,6 +50,7 @@ import Distribution.System
 import Distribution.Text
 import Distribution.Version
 import Distribution.Verbosity
+import Distribution.Types.ForeignLib
 
 import System.Directory (doesFileExist)
 import System.Info (os, arch)
@@ -156,6 +157,13 @@ preprocessComponent pd comp lbi clbi isSrcDist verbosity handlers = case comp of
     setupMessage verbosity ("Preprocessing library" ++ extra) (packageId pd)
     for_ (map ModuleName.toFilePath $ allLibModules lib clbi) $
       pre dirs (componentBuildDir lbi clbi) (localHandlers bi)
+  (CFLib flib@ForeignLib { foreignLibBuildInfo = bi, foreignLibName = nm }) -> do
+    let flibDir = buildDir lbi </> nm </> nm ++ "-tmp"
+        dirs    = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
+                                     ,autogenPackageModulesDir lbi]
+    setupMessage verbosity ("Preprocessing foreign library '" ++ nm ++ "' for") (packageId pd)
+    for_ (map ModuleName.toFilePath $ foreignLibModules flib) $
+      pre dirs flibDir (localHandlers bi)
   (CExe exe@Executable { buildInfo = bi, exeName = nm }) -> do
     let exeDir = buildDir lbi </> nm </> nm ++ "-tmp"
         dirs   = hsSourceDirs bi ++ [autogenComponentModulesDir lbi clbi
@@ -648,6 +656,8 @@ preprocessExtras :: Component
 preprocessExtras comp lbi = case comp of
   CLib _ -> pp $ buildDir lbi
   (CExe Executable { exeName = nm }) ->
+    pp $ buildDir lbi </> nm </> nm ++ "-tmp"
+  (CFLib ForeignLib { foreignLibName = nm }) ->
     pp $ buildDir lbi </> nm </> nm ++ "-tmp"
   CTest test -> do
     case testInterface test of

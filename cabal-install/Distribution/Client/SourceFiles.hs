@@ -29,6 +29,7 @@ import Distribution.Types.BenchmarkInterface
 import Distribution.Types.TestSuite
 import Distribution.Types.TestSuiteInterface
 import Distribution.Types.BuildInfo
+import Distribution.Types.ForeignLib
 
 import Distribution.ModuleName
 
@@ -71,6 +72,7 @@ needComponent :: PackageDescription -> Component -> Rebuild ()
 needComponent pkg_descr comp =
     case comp of
         CLib lib     -> needLibrary    pkg_descr lib
+        CFLib flib   -> needForeignLib pkg_descr flib
         CExe exe     -> needExecutable pkg_descr exe
         CTest test   -> needTestSuite  pkg_descr test
         CBench bench -> needBenchmark  pkg_descr bench
@@ -83,6 +85,12 @@ needLibrary pkg_descr (Library { exposedModules = modules
                                , signatures     = sigs
                                , libBuildInfo   = bi })
   = needBuildInfo pkg_descr bi (modules ++ sigs)
+
+needForeignLib :: PackageDescription -> ForeignLib -> Rebuild ()
+needForeignLib pkg_descr (ForeignLib { foreignLibModDefFile = fs
+                                     , foreignLibBuildInfo = bi })
+  = do mapM_ needIfExists fs
+       needBuildInfo pkg_descr bi []
 
 needExecutable :: PackageDescription -> Executable -> Rebuild ()
 needExecutable pkg_descr (Executable { modulePath = mainPath

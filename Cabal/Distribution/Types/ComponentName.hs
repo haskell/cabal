@@ -21,6 +21,7 @@ import Text.PrettyPrint as Disp
 -- Libraries live in a separate namespace, so must distinguish
 data ComponentName = CLibName
                    | CSubLibName String
+                   | CFLibName  String
                    | CExeName   String
                    | CTestName  String
                    | CBenchName String
@@ -32,15 +33,17 @@ instance Binary ComponentName
 instance Text ComponentName where
     disp CLibName = Disp.text "lib"
     disp (CSubLibName str) = Disp.text ("lib:" ++ str)
-    disp (CExeName str) = Disp.text ("exe:" ++ str)
-    disp (CTestName str) = Disp.text ("test:" ++ str)
-    disp (CBenchName str) = Disp.text ("bench:" ++ str)
+    disp (CFLibName str)   = Disp.text ("flib:" ++ str)
+    disp (CExeName str)    = Disp.text ("exe:" ++ str)
+    disp (CTestName str)   = Disp.text ("test:" ++ str)
+    disp (CBenchName str)  = Disp.text ("bench:" ++ str)
 
     parse = parseComposite <++ parseSingle
      where
       parseSingle = Parse.string "lib" >> return CLibName
       parseComposite = do
         ctor <- Parse.choice [ Parse.string "lib:" >> return CSubLibName
+                             , Parse.string "flib:" >> return CFLibName
                              , Parse.string "exe:" >> return CExeName
                              , Parse.string "bench:" >> return CBenchName
                              , Parse.string "test:" >> return CTestName ]
@@ -55,6 +58,7 @@ defaultLibName = CLibName
 showComponentName :: ComponentName -> String
 showComponentName CLibName          = "library"
 showComponentName (CSubLibName name) = "library '" ++ name ++ "'"
+showComponentName (CFLibName  name) = "foreign library '" ++ name ++ "'"
 showComponentName (CExeName   name) = "executable '" ++ name ++ "'"
 showComponentName (CTestName  name) = "test suite '" ++ name ++ "'"
 showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
@@ -66,6 +70,7 @@ showComponentName (CBenchName name) = "benchmark '" ++ name ++ "'"
 componentNameString :: ComponentName -> Maybe String
 componentNameString CLibName = Nothing
 componentNameString (CSubLibName n) = Just n
+componentNameString (CFLibName  n) = Just n
 componentNameString (CExeName   n) = Just n
 componentNameString (CTestName  n) = Just n
 componentNameString (CBenchName n) = Just n

@@ -364,6 +364,7 @@ convertLegacyPerPackageFlags configFlags installFlags haddockFlags =
       haddockHoogle             = packageConfigHaddockHoogle,
       haddockHtml               = packageConfigHaddockHtml,
       haddockHtmlLocation       = packageConfigHaddockHtmlLocation,
+      haddockForeignLibs        = packageConfigHaddockForeignLibs,
       haddockExecutables        = packageConfigHaddockExecutables,
       haddockTestSuites         = packageConfigHaddockTestSuites,
       haddockBenchmarks         = packageConfigHaddockBenchmarks,
@@ -661,6 +662,7 @@ convertToLegacyPerPackageConfig PackageConfig {..} =
       haddockHtml          = packageConfigHaddockHtml,
       haddockHtmlLocation  = packageConfigHaddockHtmlLocation,
       haddockForHackage    = mempty, --TODO: added recently
+      haddockForeignLibs   = packageConfigHaddockForeignLibs,
       haddockExecutables   = packageConfigHaddockExecutables,
       haddockTestSuites    = packageConfigHaddockTestSuites,
       haddockBenchmarks    = packageConfigHaddockBenchmarks,
@@ -942,6 +944,7 @@ legacyPackageConfigFieldDescrs =
       ("haddock-"++)
   . filterFields
       [ "hoogle", "html", "html-location"
+      , "foreign-libraries"
       , "executables", "tests", "benchmarks", "all", "internal", "css"
       , "hyperlink-source", "hscolour-css"
       , "contents-location", "keep-temp-files"

@@ -24,9 +24,11 @@ import Distribution.Compat.Prelude
 
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
+import Distribution.Types.ForeignLib
+import Distribution.Types.PackageDescription
 
+import Distribution.Package
 import Distribution.PackageDescription
-import Distribution.Package (Package(..))
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
@@ -83,7 +85,7 @@ install pkg_descr lbi flags = do
   copydest  = fromFlag (copyDest flags)
 
   checkHasLibsOrExes =
-    unless (hasLibs pkg_descr || hasExes pkg_descr) $
+    unless (hasLibs pkg_descr || hasForeignLibs pkg_descr || hasExes pkg_descr) $
       die "No executables and no library found. Nothing to do."
 
 -- | Copy package global files.
@@ -181,6 +183,20 @@ copyComponent verbosity pkg_descr lbi (CLib lib) clbi copydest = do
               ++ display (compilerFlavor (compiler lbi))
               ++ " is not implemented"
 
+copyComponent verbosity pkg_descr lbi (CFLib flib) clbi copydest = do
+    let InstallDirs{
+            flibdir = flibPref
+            } = absoluteComponentInstallDirs pkg_descr lbi (componentUnitId clbi) copydest
+        buildPref = componentBuildDir lbi clbi
+
+    notice verbosity ("Installing foreign library " ++ foreignLibName flib ++ " in " ++ flibPref)
+
+    case compilerFlavor (compiler lbi) of
+      GHC   -> GHC.installFLib   verbosity lbi flibPref buildPref pkg_descr flib
+      _ -> die $ "installing foreign lib with "
+              ++ display (compilerFlavor (compiler lbi))
+              ++ " is not implemented"
+
 copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
     let installDirs@InstallDirs {
             bindir = binPref
@@ -208,7 +224,8 @@ copyComponent verbosity pkg_descr lbi (CExe exe) clbi copydest = do
               ++ " is not implemented"
 
 -- Nothing to do for benchmark/testsuite
-copyComponent _ _ _ _ _ _ = return ()
+copyComponent _ _ _ (CBench _) _ _ = return ()
+copyComponent _ _ _ (CTest _) _ _ = return ()
 
 -- | Install the files listed in data-files
 --

@@ -416,6 +416,7 @@ instance Arbitrary PackageConfig where
         <*> arbitrary <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
         <*> arbitrary
+        <*> arbitrary
         <*> arbitrary <*> arbitrary
         <*> arbitrary
         <*> arbitraryFlag arbitraryShortToken
@@ -435,7 +436,7 @@ instance Arbitrary PackageConfig where
               x15 x16 x17 x18 x19
               x20 x21 x22 x23 x24
               x25 x26 x27 x28 x29
-              x30 x31 x32 x33 x34
+              x30 x31 x32 x33 x33_1 x34
               x35 x36 x37 x38 x39
               x40) =
       [ PackageConfig
@@ -449,7 +450,7 @@ instance Arbitrary PackageConfig where
                               x19'
           x20' x21' x22' x23' x24'
           x25' x26' x27' x28' x29'
-          x30' x31' x32' x33' x34'
+          x30' x31' x32' x33' x33_1' x34'
           x35' x36' (fmap getNonEmpty x37') x38'
                     (fmap getNonEmpty x39')
           x40'
@@ -459,7 +460,7 @@ instance Arbitrary PackageConfig where
           (x15', x16', x17', x18', x19')),
          ((x20', x21', x22', x23', x24'),
           (x25', x26', x27', x28', x29'),
-          (x30', x31', x32', x33', x34'),
+          (x30', x31', x32', (x33', x33_1'), x34'),
           (x35', x36', x37', x38', x39'),
           (x40')))
           <- shrink
@@ -472,7 +473,7 @@ instance Arbitrary PackageConfig where
                        x19)),
                 ((x20, x21, x22, x23, x24),
                  (x25, x26, x27, x28, x29),
-                 (x30, x31, x32, x33, x34),
+                 (x30, x31, x32, (x33, x33_1), x34),
                  (x35, x36, fmap NonEmpty x37, x38, fmap NonEmpty x39),
                  (x40)))
       ]
@@ -539,7 +540,7 @@ instance Arbitrary a => Arbitrary (InstallDirs a) where
         <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  4
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary --  8
         <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary -- 12
-        <*> arbitrary <*> arbitrary                             -- 14
+        <*> arbitrary <*> arbitrary <*> arbitrary               -- 15
 
 instance Arbitrary PackageDB where
     arbitrary = oneof [ pure GlobalPackageDB

@@ -66,6 +66,16 @@ data ComponentLocalBuildInfo
     -- "public library" that has the same name as the package.
     componentIsPublic :: Bool
   }
+  -- TODO: refactor all these duplicates
+  | FLibComponentLocalBuildInfo {
+    componentLocalName :: ComponentName,
+    componentComponentId :: ComponentId,
+    componentUnitId :: UnitId,
+    componentPackageDeps :: [(UnitId, PackageId)],
+    componentIncludes :: [(OpenUnitId, ModuleRenaming)],
+    componentExeDeps :: [UnitId],
+    componentInternalDeps :: [UnitId]
+  }
   | ExeComponentLocalBuildInfo {
     componentLocalName :: ComponentName,
     componentComponentId :: ComponentId,

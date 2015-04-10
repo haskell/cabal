@@ -175,7 +175,8 @@ checkSanity pkg =
   , check (all ($ pkg) [ null . executables
                        , null . testSuites
                        , null . benchmarks
-                       , null . allLibraries ]) $
+                       , null . allLibraries
+                       , null . foreignLibs ]) $
       PackageBuildImpossible
         "No executables, libraries, tests, or benchmarks found. Nothing to do."
 

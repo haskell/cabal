@@ -30,7 +30,7 @@ module Distribution.Simple.BuildPaths (
     exeExtension,
     objExtension,
     dllExtension,
-
+    staticLibExtension,
   ) where
 
 import Prelude ()
@@ -107,9 +107,11 @@ haddockName pkg_descr = display (packageName pkg_descr) <.> "haddock"
 -- ---------------------------------------------------------------------------
 -- Library file names
 
+-- TODO: Should this use staticLibExtension?
 mkLibName :: UnitId -> String
 mkLibName lib = "lib" ++ getHSLibraryName lib <.> "a"
 
+-- TODO: Should this use staticLibExtension?
 mkProfLibName :: UnitId -> String
 mkProfLibName lib =  "lib" ++ getHSLibraryName lib ++ "_p" <.> "a"
 
@@ -143,3 +145,12 @@ dllExtension = case buildOS of
                    Windows -> "dll"
                    OSX     -> "dylib"
                    _       -> "so"
+
+-- | Extension for static libraries
+--
+-- TODO: Here, as well as in dllExtension, it's really the target OS that we're
+-- interested in, not the build OS.
+staticLibExtension :: String
+staticLibExtension = case buildOS of
+                       Windows -> "lib"
+                       _       -> "a"

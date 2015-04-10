@@ -238,6 +238,7 @@ arbitraryComponentDeps db =
     componentName ComponentLib        = Nothing
     componentName ComponentSetup      = Nothing
     componentName (ComponentSubLib n) = Just n
+    componentName (ComponentFLib   n) = Just n
     componentName (ComponentExe    n) = Just n
     componentName (ComponentTest   n) = Just n
     componentName (ComponentBench  n) = Just n

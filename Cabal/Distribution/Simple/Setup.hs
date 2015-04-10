@@ -1288,6 +1288,7 @@ data HscolourFlags = HscolourFlags {
     hscolourExecutables :: Flag Bool,
     hscolourTestSuites  :: Flag Bool,
     hscolourBenchmarks  :: Flag Bool,
+    hscolourForeignLibs :: Flag Bool,
     hscolourDistPref    :: Flag FilePath,
     hscolourVerbosity   :: Flag Verbosity
   }
@@ -1303,6 +1304,7 @@ defaultHscolourFlags = HscolourFlags {
     hscolourTestSuites  = Flag False,
     hscolourBenchmarks  = Flag False,
     hscolourDistPref    = NoFlag,
+    hscolourForeignLibs = Flag False,
     hscolourVerbosity   = Flag normal
   }
 
@@ -1345,14 +1347,23 @@ hscolourCommand = CommandUI
          hscolourBenchmarks (\v flags -> flags { hscolourBenchmarks = v })
          trueArg
 
+      ,option "" ["foreign-libraries"]
+         "Run hscolour for Foreign Library targets"
+         hscolourForeignLibs (\v flags -> flags { hscolourForeignLibs = v })
+         trueArg
+
       ,option "" ["all"]
          "Run hscolour for all targets"
          (\f -> allFlags [ hscolourExecutables f
                          , hscolourTestSuites  f
-                         , hscolourBenchmarks  f])
+                         , hscolourBenchmarks  f
+                         , hscolourForeignLibs f
+                         ])
          (\v flags -> flags { hscolourExecutables = v
                             , hscolourTestSuites  = v
-                            , hscolourBenchmarks  = v })
+                            , hscolourBenchmarks  = v
+                            , hscolourForeignLibs = v
+                            })
          trueArg
 
       ,option "" ["css"]
@@ -1390,6 +1401,7 @@ data HaddockFlags = HaddockFlags {
     haddockExecutables  :: Flag Bool,
     haddockTestSuites   :: Flag Bool,
     haddockBenchmarks   :: Flag Bool,
+    haddockForeignLibs  :: Flag Bool,
     haddockInternal     :: Flag Bool,
     haddockCss          :: Flag FilePath,
     haddockHscolour     :: Flag Bool,
@@ -1412,6 +1424,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockExecutables  = Flag False,
     haddockTestSuites   = Flag False,
     haddockBenchmarks   = Flag False,
+    haddockForeignLibs  = Flag False,
     haddockInternal     = Flag False,
     haddockCss          = NoFlag,
     haddockHscolour     = Flag False,
@@ -1494,14 +1507,23 @@ haddockOptions showOrParseArgs =
    haddockBenchmarks (\v flags -> flags { haddockBenchmarks = v })
    trueArg
 
+  ,option "" ["foreign-libraries"]
+   "Run haddock for Foreign Library targets"
+   haddockForeignLibs (\v flags -> flags { haddockForeignLibs = v })
+   trueArg
+
   ,option "" ["all"]
    "Run haddock for all targets"
    (\f -> allFlags [ haddockExecutables f
                    , haddockTestSuites  f
-                   , haddockBenchmarks  f])
+                   , haddockBenchmarks  f
+                   , haddockForeignLibs f
+                   ])
          (\v flags -> flags { haddockExecutables = v
                             , haddockTestSuites  = v
-                            , haddockBenchmarks  = v })
+                            , haddockBenchmarks  = v
+                            , haddockForeignLibs = v
+                            })
          trueArg
 
   ,option "" ["internal"]

@@ -32,6 +32,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.TargetInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.ForeignLib
 
 import Distribution.Package
 import Distribution.Backpack
@@ -217,6 +218,13 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
       else return Nothing
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
+               comp@(CFLib flib) clbi _distPref = do
+    preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
+    info verbosity $ "Building foreign library " ++ foreignLibName flib ++ "..."
+    buildFLib verbosity numJobs pkg_descr lbi flib clbi
+    return Nothing
+
+buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
     preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
     extras <- preprocessExtras comp lbi
@@ -316,6 +324,11 @@ replComponent verbosity pkg_descr lbi suffixes
     let libbi = libBuildInfo lib
         lib' = lib { libBuildInfo = libbi { cSources = cSources libbi ++ extras } }
     replLib verbosity pkg_descr lbi lib' clbi
+
+replComponent verbosity pkg_descr lbi suffixes
+               comp@(CFLib flib) clbi _ = do
+    preprocessComponent pkg_descr comp lbi clbi False verbosity suffixes
+    replFLib verbosity pkg_descr lbi flib clbi
 
 replComponent verbosity pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do
@@ -543,6 +556,18 @@ buildLib verbosity numJobs pkg_descr lbi lib clbi =
     HaskellSuite {} -> HaskellSuite.buildLib verbosity pkg_descr lbi lib clbi
     _    -> die "Building is not supported with this compiler."
 
+-- | Build a foreign library
+--
+-- NOTE: We assume that we already checked that we can actually build the
+-- foreign library in configure.
+buildFLib :: Verbosity -> Flag (Maybe Int)
+                       -> PackageDescription -> LocalBuildInfo
+                       -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
+buildFLib verbosity numJobs pkg_descr lbi flib clbi =
+    case compilerFlavor (compiler lbi) of
+      GHC -> GHC.buildFLib verbosity numJobs pkg_descr lbi flib clbi
+      _   -> die "Building is not supported with this compiler."
+
 buildExe :: Verbosity -> Flag (Maybe Int)
                       -> PackageDescription -> LocalBuildInfo
                       -> Executable         -> ComponentLocalBuildInfo -> IO ()
@@ -573,6 +598,12 @@ replExe verbosity pkg_descr lbi exe clbi =
     GHCJS -> GHCJS.replExe verbosity NoFlag pkg_descr lbi exe clbi
     _     -> die "A REPL is not supported for this compiler."
 
+replFLib :: Verbosity -> PackageDescription -> LocalBuildInfo
+                      -> ForeignLib         -> ComponentLocalBuildInfo -> IO ()
+replFLib verbosity pkg_descr lbi exe clbi =
+  case compilerFlavor (compiler lbi) of
+    GHC -> GHC.replFLib verbosity NoFlag pkg_descr lbi exe clbi
+    _   -> die "A REPL is not supported for this compiler."
 
 initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> PackageDescription  -- ^mostly information from the .cabal file

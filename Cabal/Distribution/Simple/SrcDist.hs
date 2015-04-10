@@ -59,6 +59,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Program
 import Distribution.Text
+import Distribution.Types.ForeignLib
 import Distribution.Verbosity
 
 import Data.List (partition)
@@ -67,6 +68,7 @@ import Data.Time (UTCTime, getCurrentTime, toGregorian, utctDay)
 import System.Directory ( doesFileExist )
 import System.IO (IOMode(WriteMode), hPutStrLn, withFile)
 import System.FilePath ((</>), (<.>), dropExtension, isRelative)
+import Control.Monad
 
 -- |Create a source distribution.
 sdist :: PackageDescription     -- ^information from the tarball
@@ -170,6 +172,13 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
        mainSrc <- findMainExeFile exeBi pps mainPath
        return (mainSrc:biSrcs)
 
+    -- Foreign library sources
+  , fmap concat
+    . withAllFLib $ \flib@(ForeignLib { foreignLibBuildInfo = flibBi }) -> do
+       biSrcs   <- allSourcesBuildInfo flibBi pps []
+       defFiles <- mapM (findModDefFile flibBi pps) (foreignLibModDefFile flib)
+       return (defFiles ++ biSrcs)
+
     -- Test suites sources.
   , fmap concat
     . withAllTest $ \t -> do
@@ -227,6 +236,7 @@ listPackageSourcesOrdinary verbosity pkg_descr pps =
     -- We have to deal with all libs and executables, so we have local
     -- versions of these functions that ignore the 'buildable' attribute:
     withAllLib       action = traverse action (allLibraries pkg_descr)
+    withAllFLib      action = traverse action (foreignLibs pkg_descr)
     withAllExe       action = traverse action (executables pkg_descr)
     withAllTest      action = traverse action (testSuites pkg_descr)
     withAllBenchmark action = traverse action (benchmarks pkg_descr)
@@ -290,6 +300,13 @@ findMainExeFile exeBi pps mainPath = do
   case ppFile of
     Nothing -> findFile (hsSourceDirs exeBi) mainPath
     Just pp -> return pp
+
+-- | Find a module definition file
+--
+-- TODO: I don't know if this is right
+findModDefFile :: BuildInfo -> [PPSuffixHandler] -> FilePath -> IO FilePath
+findModDefFile flibBi _pps modDefPath =
+    findFile (".":hsSourceDirs flibBi) modDefPath
 
 -- | Given a list of include paths, try to find the include file named
 -- @f@. Return the name of the file and the full path, or exit with error if
@@ -470,12 +487,14 @@ mapAllBuildInfo :: (BuildInfo -> BuildInfo)
 mapAllBuildInfo f pkg = pkg {
     library     = fmap mapLibBi (library pkg),
     subLibraries = fmap mapLibBi (subLibraries pkg),
+    foreignLibs = fmap mapFLibBi (foreignLibs pkg),
     executables = fmap mapExeBi (executables pkg),
     testSuites  = fmap mapTestBi (testSuites pkg),
     benchmarks  = fmap mapBenchBi (benchmarks pkg)
   }
   where
-    mapLibBi lib  = lib { libBuildInfo       = f (libBuildInfo lib) }
-    mapExeBi exe  = exe { buildInfo          = f (buildInfo exe) }
-    mapTestBi t   = t   { testBuildInfo      = f (testBuildInfo t) }
-    mapBenchBi bm = bm  { benchmarkBuildInfo = f (benchmarkBuildInfo bm) }
+    mapLibBi   lib  = lib  { libBuildInfo        = f (libBuildInfo lib) }
+    mapFLibBi  flib = flib { foreignLibBuildInfo = f (foreignLibBuildInfo flib) }
+    mapExeBi   exe  = exe  { buildInfo           = f (buildInfo exe) }
+    mapTestBi  tst  = tst  { testBuildInfo       = f (testBuildInfo tst) }
+    mapBenchBi bm   = bm   { benchmarkBuildInfo  = f (benchmarkBuildInfo bm) }

@@ -57,6 +57,7 @@ import Distribution.ModuleName
 import Distribution.Simple.LocalBuildInfo
          ( Component(..), ComponentName(..)
          , pkgComponents, componentName, componentBuildInfo )
+import Distribution.Types.ForeignLib
 
 import Distribution.Text
          ( display, simpleParse )
@@ -1123,6 +1124,7 @@ selectComponentInfo pinfo pkg =
 componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
 componentStringName pkg CLibName          = display (packageName pkg)
 componentStringName _ (CSubLibName name) = name
+componentStringName _ (CFLibName name)  = name
 componentStringName _ (CExeName   name) = name
 componentStringName _ (CTestName  name) = name
 componentStringName _ (CBenchName name) = name
@@ -1131,6 +1133,7 @@ componentModules :: Component -> [ModuleName]
 -- I think it's unlikely users will ask to build a requirement
 -- which is not mentioned locally.
 componentModules (CLib   lib)   = explicitLibModules lib
+componentModules (CFLib  flib)  = foreignLibModules flib
 componentModules (CExe   exe)   = exeModules exe
 componentModules (CTest  test)  = testModules test
 componentModules (CBench bench) = benchmarkModules bench
@@ -1150,12 +1153,13 @@ componentHsFiles _          = []
 -- Matching component kinds
 --
 
-data ComponentKind = LibKind | ExeKind | TestKind | BenchKind
+data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
   deriving (Eq, Ord, Show)
 
 componentKind :: ComponentName -> ComponentKind
 componentKind  CLibName      = LibKind
 componentKind (CSubLibName _) = LibKind
+componentKind (CFLibName _)  = FLibKind
 componentKind (CExeName   _) = ExeKind
 componentKind (CTestName  _) = TestKind
 componentKind (CBenchName _) = BenchKind
@@ -1176,12 +1180,14 @@ matchComponentKind s
 
 showComponentKind :: ComponentKind -> String
 showComponentKind LibKind   = "library"
+showComponentKind FLibKind  = "foreign library"
 showComponentKind ExeKind   = "executable"
 showComponentKind TestKind  = "test-suite"
 showComponentKind BenchKind = "benchmark"
 
 showComponentKindShort :: ComponentKind -> String
 showComponentKindShort LibKind   = "lib"
+showComponentKindShort FLibKind  = "flib"
 showComponentKindShort ExeKind   = "exe"
 showComponentKindShort TestKind  = "test"
 showComponentKindShort BenchKind = "bench"

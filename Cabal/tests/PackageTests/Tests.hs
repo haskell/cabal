@@ -9,6 +9,7 @@ import qualified PackageTests.CaretOperator.Check
 import qualified PackageTests.TestStanza.Check
 import qualified PackageTests.DeterministicAr.Check
 import qualified PackageTests.TestSuiteTests.ExeV10.Check
+import qualified PackageTests.ForeignLibs.Check
 
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
@@ -55,6 +56,9 @@ tests config = do
   tc "AutogenModules/Package" PackageTests.AutogenModules.Package.Check.suite
   -- Test that Cabal parses and uses 'autogen-modules' fields correctly
   tc "AutogenModules/SrcDist" PackageTests.AutogenModules.SrcDist.Check.suite
+
+  -- Test that foreign libraries work
+  tc "ForeignLibs" PackageTests.ForeignLibs.Check.suite
 
   ---------------------------------------------------------------------
   -- * Test suite tests

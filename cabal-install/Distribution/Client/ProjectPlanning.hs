@@ -239,6 +239,10 @@ sanityCheckElaboratedComponent ElaboratedConfiguredPackage{..}
         Just CLibName        -> True
         Just (CSubLibName _) -> True
         Just (CExeName _)    -> True
+        -- This is interesting: there's no way to declare a dependency
+        -- on a foreign library at the moment, but you may still want
+        -- to install these to the store
+        Just (CFLibName _)   -> True
         Just (CBenchName _)  -> False
         Just (CTestName _)   -> False)
 
@@ -1574,6 +1578,7 @@ elaborateInstallPlan verbosity platform compiler compilerprogdb pkgConfigDB
         elabHaddockHoogle       = perPkgOptionFlag pkgid False packageConfigHaddockHoogle
         elabHaddockHtml         = perPkgOptionFlag pkgid False packageConfigHaddockHtml
         elabHaddockHtmlLocation = perPkgOptionMaybe pkgid packageConfigHaddockHtmlLocation
+        elabHaddockForeignLibs  = perPkgOptionFlag pkgid False packageConfigHaddockForeignLibs
         elabHaddockExecutables  = perPkgOptionFlag pkgid False packageConfigHaddockExecutables
         elabHaddockTestSuites   = perPkgOptionFlag pkgid False packageConfigHaddockTestSuites
         elabHaddockBenchmarks   = perPkgOptionFlag pkgid False packageConfigHaddockBenchmarks
@@ -2544,6 +2549,7 @@ storePackageInstallDirs CabalDirLayout{cabalStorePackageDirectory}
     libdir       = prefix </> "lib"
     libsubdir    = ""
     dynlibdir    = libdir
+    flibdir      = libdir
     libexecdir   = prefix </> "libexec"
     includedir   = libdir </> "include"
     datadir      = prefix </> "share"
@@ -2770,6 +2776,7 @@ setupHsHaddockFlags (ElaboratedConfiguredPackage{..}) _ verbosity builddir =
       haddockHtml          = toFlag elabHaddockHtml,
       haddockHtmlLocation  = maybe mempty toFlag elabHaddockHtmlLocation,
       haddockForHackage    = mempty, --TODO: new flag
+      haddockForeignLibs   = toFlag elabHaddockForeignLibs,
       haddockExecutables   = toFlag elabHaddockExecutables,
       haddockTestSuites    = toFlag elabHaddockTestSuites,
       haddockBenchmarks    = toFlag elabHaddockBenchmarks,
@@ -2869,6 +2876,7 @@ packageHashInputs
     -- Obviously the main deps are relevant
     relevantDeps CD.ComponentLib       = True
     relevantDeps (CD.ComponentSubLib _) = True
+    relevantDeps (CD.ComponentFLib _)   = True
     relevantDeps (CD.ComponentExe _)   = True
     -- Setup deps can affect the Setup.hs behaviour and thus what is built
     relevantDeps  CD.ComponentSetup    = True

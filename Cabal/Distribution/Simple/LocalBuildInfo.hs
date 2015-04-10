@@ -113,6 +113,7 @@ componentBuildDir lbi clbi
                 if display (componentUnitId clbi) == display (componentComponentId clbi)
                     then s
                     else display (componentUnitId clbi)
+            CFLibName s  -> s
             CExeName s   -> s
             CTestName s  -> s
             CBenchName s -> s

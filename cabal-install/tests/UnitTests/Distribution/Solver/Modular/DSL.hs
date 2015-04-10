@@ -298,6 +298,7 @@ exAvSrcPkg ex =
                   in Just $ mkCondTree defaultLib mkLib $ mkBuildInfoTree $
                      Buildable (CD.libraryDeps (exAvDeps ex))
               , C.condSubLibraries = []
+              , C.condForeignLibs = []
               , C.condExecutables =
                   let mkTree = mkCondTree defaultExe mkExe . mkBuildInfoTree . Buildable
                       mkExe bi = mempty { C.buildInfo = bi }

@@ -7,6 +7,9 @@ module Distribution.PackageDescription.Parsec.FieldDescr (
     -- * Library
     libFieldDescrs,
     storeXFieldsLib,
+    -- * Foreign library
+    foreignLibFieldDescrs,
+    storeXFieldsForeignLib,
     -- * Executable
     executableFieldDescrs,
     storeXFieldsExe,
@@ -39,6 +42,7 @@ import           Distribution.Compiler                 (CompilerFlavor (..))
 import           Distribution.ModuleName               (ModuleName)
 import           Distribution.Package
 import           Distribution.PackageDescription
+import           Distribution.Types.ForeignLib
 import           Distribution.Parsec.Class
 import           Distribution.Parsec.Types.Common
 import           Distribution.Parsec.Types.FieldDescr
@@ -194,6 +198,31 @@ storeXFieldsLib f val l@Library { libBuildInfo = bi } | beginsWithX f =
     Just $ l {libBuildInfo =
                  bi{ customFieldsBI = customFieldsBI bi ++ [(fromUTF8BS f, trim val)]}}
 storeXFieldsLib _ _ _ = Nothing
+
+-------------------------------------------------------------------------------
+-- Foreign library
+-------------------------------------------------------------------------------
+
+foreignLibFieldDescrs :: [FieldDescr ForeignLib]
+foreignLibFieldDescrs =
+    [ simpleField "type"
+      disp                   parsec
+      foreignLibType         (\x flib -> flib { foreignLibType = x })
+    , listField "options"
+      disp                   parsec
+      foreignLibOptions      (\x flib -> flib { foreignLibOptions = x })
+    , listField "mod-def-file"
+      showFilePath           parsecFilePath
+      foreignLibModDefFile   (\x flib -> flib { foreignLibModDefFile = x })
+    ] ++ map biToFLib binfoFieldDescrs
+  where
+    biToFLib = liftField foreignLibBuildInfo (\bi flib -> flib{foreignLibBuildInfo=bi})
+
+storeXFieldsForeignLib :: UnknownFieldParser ForeignLib
+storeXFieldsForeignLib f val l@ForeignLib { foreignLibBuildInfo = bi } | beginsWithX f =
+    Just $ l {foreignLibBuildInfo =
+                 bi{ customFieldsBI = customFieldsBI bi ++ [(fromUTF8BS f, trim val)]}}
+storeXFieldsForeignLib _ _ _ = Nothing
 
 -------------------------------------------------------------------------------
 -- Executable

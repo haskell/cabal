@@ -16,6 +16,7 @@ import Distribution.PackageDescription as PD         -- from Cabal
 import Distribution.PackageDescription.Configuration as PDC
 import qualified Distribution.Simple.PackageIndex as SI
 import Distribution.System
+import Distribution.Types.ForeignLib
 
 import           Distribution.Solver.Types.ComponentDeps (Component(..))
 import           Distribution.Solver.Types.OptionalStanza
@@ -111,7 +112,7 @@ convSP os arch cinfo strfl sexes (SourcePackage (PackageIdentifier pn pv) gpd _ 
 convGPD :: OS -> Arch -> CompilerInfo -> StrongFlags -> SolveExecutables ->
            PI PN -> GenericPackageDescription -> PInfo
 convGPD os arch cinfo strfl sexes pi
-        (GenericPackageDescription pkg flags mlib sub_libs exes tests benchs) =
+        (GenericPackageDescription pkg flags mlib sub_libs flibs exes tests benchs) =
   let
     fds  = flagInfo strfl flags
 
@@ -131,6 +132,7 @@ convGPD os arch cinfo strfl sexes pi
     flagged_deps
         = concatMap (\ds -> conv ComponentLib libBuildInfo ds) (maybeToList mlib)
        ++ concatMap (\(nm, ds) -> conv (ComponentSubLib nm)   libBuildInfo       ds) sub_libs
+       ++ concatMap (\(nm, ds) -> conv (ComponentFLib nm)  foreignLibBuildInfo ds) flibs
        ++ concatMap (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes
        ++ prefix (Stanza (SN pi TestStanzas))
             (L.map  (\(nm, ds) -> conv (ComponentTest nm)  testBuildInfo      ds) tests)

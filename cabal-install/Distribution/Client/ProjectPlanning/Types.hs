@@ -231,6 +231,7 @@ data ElaboratedConfiguredPackage
        elabHaddockHoogle         :: Bool,
        elabHaddockHtml           :: Bool,
        elabHaddockHtmlLocation   :: Maybe String,
+       elabHaddockForeignLibs    :: Bool,
        elabHaddockExecutables    :: Bool,
        elabHaddockTestSuites     :: Bool,
        elabHaddockBenchmarks     :: Bool,

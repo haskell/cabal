@@ -283,6 +283,16 @@ mkLinkedComponentsLocalBuildInfo comp rcs = map go rcs
           componentCompatPackageKey = rc_compat_key rc comp,
           componentCompatPackageName = rc_compat_name rc
         }
+      CFLib _ ->
+        FLibComponentLocalBuildInfo {
+          componentUnitId = this_uid,
+          componentComponentId = this_cid,
+          componentLocalName = cname,
+          componentPackageDeps = cpds,
+          componentExeDeps = map unDefUnitId $ rc_internal_build_tools rc,
+          componentInternalDeps = internal_deps,
+          componentIncludes = includes
+        }
       CExe _ ->
         ExeComponentLocalBuildInfo {
           componentUnitId = this_uid,
