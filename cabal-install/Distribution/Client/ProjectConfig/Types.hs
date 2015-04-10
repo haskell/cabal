@@ -247,6 +247,7 @@ data PackageConfig
        packageConfigHaddockHoogle       :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHtml         :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockHtmlLocation :: Flag String, --TODO: [required eventually] use this
+       packageConfigHaddockForeignLibs  :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockExecutables  :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockTestSuites   :: Flag Bool, --TODO: [required eventually] use this
        packageConfigHaddockBenchmarks   :: Flag Bool, --TODO: [required eventually] use this

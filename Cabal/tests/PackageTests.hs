@@ -135,6 +135,8 @@ main = do
                         (lessVerbose verbosity)
                 return with_programs
 
+    -- TODO: maybe have to configure gcc?
+
     -------------------------------------------------------------------
     -- SETTING UP THE DATABASE STACK
     -------------------------------------------------------------------

@@ -48,6 +48,8 @@ import           Distribution.Types.ModuleReexport
 import           Distribution.Types.SourceRepo
                  (RepoKind, RepoType, classifyRepoKind, classifyRepoType)
 import           Distribution.Types.TestType                  (TestType (..))
+import           Distribution.Types.ForeignLibType            (ForeignLibType (..))
+import           Distribution.Types.ForeignLibOption          (ForeignLibOption (..))
 import           Distribution.Version
                  (Version, VersionRange (..), anyVersion, earlierVersion,
                  intersectVersionRanges, laterVersion, majorBoundVersion,
@@ -234,6 +236,21 @@ instance Parsec BenchmarkType where
     parsec = stdParse $ \ver name -> case name of
        "exitcode-stdio" -> BenchmarkTypeExe ver
        _                -> BenchmarkTypeUnknown name ver
+
+instance Parsec ForeignLibType where
+  parsec = do
+    name <- P.munch1 (\c -> isAlphaNum c || c == '-')
+    return $ case name of
+      "native-shared" -> ForeignLibNativeShared
+      "native-static" -> ForeignLibNativeStatic
+      _               -> ForeignLibTypeUnknown
+
+instance Parsec ForeignLibOption where
+  parsec = do
+    name <- P.munch1 (\c -> isAlphaNum c || c == '-')
+    case name of
+      "standalone" -> return ForeignLibStandalone
+      _            -> fail "unrecognized foreign-library option"
 
 instance Parsec OS where
     parsec = classifyOS Compat <$> parsecIdent

@@ -52,6 +52,7 @@ import qualified Distribution.Types.ComponentName as CN
 data Component =
     ComponentLib
   | ComponentSubLib String
+  | ComponentFLib  String
   | ComponentExe   String
   | ComponentTest  String
   | ComponentBench String
@@ -90,6 +91,7 @@ instance Binary a => Binary (ComponentDeps a)
 componentNameToComponent :: CN.ComponentName -> Component
 componentNameToComponent (CN.CLibName)      = ComponentLib
 componentNameToComponent (CN.CSubLibName s) = ComponentSubLib s
+componentNameToComponent (CN.CFLibName s)   = ComponentFLib s
 componentNameToComponent (CN.CExeName s)    = ComponentExe s
 componentNameToComponent (CN.CTestName s)   = ComponentTest s
 componentNameToComponent (CN.CBenchName s)  = ComponentBench s

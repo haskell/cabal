@@ -41,6 +41,8 @@ module Distribution.Types.PackageDescription (
     withTest,
     hasBenchmarks,
     withBenchmark,
+    hasForeignLibs,
+    withForeignLib,
     allBuildInfo,
     enabledBuildInfos,
     updatePackageDescription,
@@ -58,6 +60,7 @@ import Distribution.Types.Library
 import Distribution.Types.TestSuite
 import Distribution.Types.Executable
 import Distribution.Types.Benchmark
+import Distribution.Types.ForeignLib
 
 import Distribution.Types.Component
 import Distribution.Types.ComponentName
@@ -127,6 +130,7 @@ data PackageDescription
         library        :: Maybe Library,
         subLibraries   :: [Library],
         executables    :: [Executable],
+        foreignLibs    :: [ForeignLib],
         testSuites     :: [TestSuite],
         benchmarks     :: [Benchmark],
         dataFiles      :: [FilePath],
@@ -194,6 +198,7 @@ emptyPackageDescription
                       setupBuildInfo = Nothing,
                       library      = Nothing,
                       subLibraries = [],
+                      foreignLibs  = [],
                       executables  = [],
                       testSuites   = [],
                       benchmarks   = [],
@@ -280,6 +285,22 @@ withBenchmark pkg_descr f =
     sequence_ [f bench | bench <- benchmarks pkg_descr, buildable (benchmarkBuildInfo bench)]
 
 -- ---------------------------------------------------------------------------
+-- The ForeignLib type
+
+-- | Does this package have any foreign libraries?
+hasForeignLibs :: PackageDescription -> Bool
+hasForeignLibs p = any (buildable . foreignLibBuildInfo) (foreignLibs p)
+
+-- | Perform the action on each buildable 'ForeignLib' in the package
+-- description.
+withForeignLib :: PackageDescription -> (ForeignLib -> IO ()) -> IO ()
+withForeignLib pkg_descr f =
+  sequence_ [ f flib
+            | flib <- foreignLibs pkg_descr
+            , buildable (foreignLibBuildInfo flib)
+            ]
+
+-- ---------------------------------------------------------------------------
 -- The BuildInfo type
 
 -- | The 'BuildInfo' for the library (if there is one and it's buildable), and
@@ -344,6 +365,7 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
 pkgComponents :: PackageDescription -> [Component]
 pkgComponents pkg =
     [ CLib  lib | lib <- allLibraries pkg ]
+ ++ [ CFLib flib | flib <- foreignLibs pkg ]
  ++ [ CExe  exe | exe <- executables pkg ]
  ++ [ CTest tst | tst <- testSuites  pkg ]
  ++ [ CBench bm | bm  <- benchmarks  pkg ]
@@ -369,6 +391,8 @@ lookupComponent :: PackageDescription -> ComponentName -> Maybe Component
 lookupComponent pkg CLibName = fmap CLib (library pkg)
 lookupComponent pkg (CSubLibName name) =
     fmap CLib $ find ((Just name ==) . libName) (subLibraries pkg)
+lookupComponent pkg (CFLibName name) =
+    fmap CFLib $ find ((name ==) . foreignLibName) (foreignLibs pkg)
 lookupComponent pkg (CExeName name) =
     fmap CExe $ find ((name ==) . exeName) (executables pkg)
 lookupComponent pkg (CTestName name) =

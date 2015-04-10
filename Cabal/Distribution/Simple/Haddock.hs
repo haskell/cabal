@@ -31,6 +31,7 @@ import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
 -- local
+import Distribution.Types.ForeignLib
 import Distribution.Package
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD hiding (Flag)
@@ -124,11 +125,13 @@ haddock pkg_descr _ _ haddockFlags
   |    not (hasLibs pkg_descr)
     && not (fromFlag $ haddockExecutables haddockFlags)
     && not (fromFlag $ haddockTestSuites  haddockFlags)
-    && not (fromFlag $ haddockBenchmarks  haddockFlags) =
+    && not (fromFlag $ haddockBenchmarks  haddockFlags)
+    && not (fromFlag $ haddockForeignLibs haddockFlags)
+    =
       warn (fromFlag $ haddockVerbosity haddockFlags) $
            "No documentation was generated as this package does not contain "
-        ++ "a library. Perhaps you want to use the --executables, --tests or"
-        ++ " --benchmarks flags."
+        ++ "a library. Perhaps you want to use the --executables, --tests,"
+        ++ " --benchmarks or --foreign-libraries flags."
 
 haddock pkg_descr lbi suffixes flags' = do
     let verbosity     = flag haddockVerbosity
@@ -197,8 +200,8 @@ haddock pkg_descr lbi suffixes flags' = do
           Just exe -> do
             withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
               \tmp -> do
-                exeArgs <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
-                           version
+                exeArgs <- fromExecutable verbosity tmp lbi clbi htmlTemplate
+                             version exe
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock verbosity tmpFileOpts comp platform
                   haddockProg exeArgs'
@@ -210,9 +213,16 @@ haddock pkg_descr lbi suffixes flags' = do
         CLib lib -> do
           withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
             \tmp -> do
-              libArgs <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
-                         version
+              libArgs <- fromLibrary verbosity tmp lbi clbi htmlTemplate
+                           version lib
               let libArgs' = commonArgs `mappend` libArgs
+              runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
+        CFLib flib -> do
+          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
+            \tmp -> do
+              flibArgs <- fromForeignLib verbosity tmp lbi clbi htmlTemplate
+                            version flib
+              let libArgs' = commonArgs `mappend` flibArgs
               runHaddock verbosity tmpFileOpts comp platform haddockProg libArgs'
         CExe   _ -> when (flag haddockExecutables) $ doExe component
         CTest  _ -> when (flag haddockTestSuites)  $ doExe component
@@ -276,14 +286,16 @@ componentGhcOptions verbosity lbi bi clbi odir =
                        "haddock only supports GHC and GHCJS"
   in f verbosity lbi bi clbi odir
 
-fromLibrary :: Verbosity
-            -> FilePath
-            -> LocalBuildInfo -> Library -> ComponentLocalBuildInfo
-            -> Maybe PathTemplate -- ^ template for HTML location
-            -> Version
-            -> IO HaddockArgs
-fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
-    inFiles <- map snd `fmap` getLibSourceFiles lbi lib clbi
+mkHaddockArgs :: Verbosity
+              -> FilePath
+              -> LocalBuildInfo
+              -> ComponentLocalBuildInfo
+              -> Maybe PathTemplate -- ^ template for HTML location
+              -> Version
+              -> [FilePath]
+              -> BuildInfo
+              -> IO HaddockArgs
+mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion inFiles bi = do
     ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
     let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
                           -- Noooooooooo!!!!!111
@@ -314,57 +326,59 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
                         (compilerCompatVersion GHC (compiler lbi))
 
     return ifaceArgs {
-      argHideModules = (mempty,otherModules $ bi),
       argGhcOptions  = toFlag (opts, ghcVersion),
       argTargets     = inFiles
     }
-  where
-    bi = libBuildInfo lib
+
+fromLibrary :: Verbosity
+            -> FilePath
+            -> LocalBuildInfo
+            -> ComponentLocalBuildInfo
+            -> Maybe PathTemplate -- ^ template for HTML location
+            -> Version
+            -> Library
+            -> IO HaddockArgs
+fromLibrary verbosity tmp lbi clbi htmlTemplate haddockVersion lib = do
+    inFiles <- map snd `fmap` getLibSourceFiles lbi lib clbi
+    args    <- mkHaddockArgs verbosity tmp lbi clbi htmlTemplate haddockVersion
+                 inFiles (libBuildInfo lib)
+    return args {
+      argHideModules = (mempty, otherModules (libBuildInfo lib))
+    }
 
 fromExecutable :: Verbosity
                -> FilePath
-               -> LocalBuildInfo -> Executable -> ComponentLocalBuildInfo
+               -> LocalBuildInfo
+               -> ComponentLocalBuildInfo
                -> Maybe PathTemplate -- ^ template for HTML location
                -> Version
+               -> Executable
                -> IO HaddockArgs
-fromExecutable verbosity tmp lbi exe clbi htmlTemplate haddockVersion = do
+fromExecutable verbosity tmp lbi clbi htmlTemplate haddockVersion exe = do
     inFiles <- map snd `fmap` getExeSourceFiles lbi exe clbi
-    ifaceArgs <- getInterfaces verbosity lbi clbi htmlTemplate
-    let vanillaOpts = (componentGhcOptions normal lbi bi clbi (buildDir lbi)) {
-                          -- Noooooooooo!!!!!111
-                          -- haddock stomps on our precious .hi
-                          -- and .o files. Workaround by telling
-                          -- haddock to write them elsewhere.
-                          ghcOptObjDir  = toFlag tmp,
-                          ghcOptHiDir   = toFlag tmp,
-                          ghcOptStubDir = toFlag tmp
-                      } `mappend` getGhcCppOpts haddockVersion bi
-        sharedOpts = vanillaOpts {
-                         ghcOptDynLinkMode = toFlag GhcDynamicOnly,
-                         ghcOptFPic        = toFlag True,
-                         ghcOptHiSuffix    = toFlag "dyn_hi",
-                         ghcOptObjSuffix   = toFlag "dyn_o",
-                         ghcOptExtra       =
-                           toNubListR $ hcSharedOptions GHC bi
-                     }
-    opts <- if withVanillaLib lbi
-            then return vanillaOpts
-            else if withSharedLib lbi
-            then return sharedOpts
-            else die $ "Must have vanilla or shared libraries "
-                       ++ "enabled in order to run haddock"
-    ghcVersion <- maybe (die "Compiler has no GHC version")
-                        return
-                        (compilerCompatVersion GHC (compiler lbi))
-
-    return ifaceArgs {
-      argGhcOptions = toFlag (opts, ghcVersion),
-      argOutputDir  = Dir (exeName exe),
-      argTitle      = Flag (exeName exe),
-      argTargets    = inFiles
+    args    <- mkHaddockArgs verbosity tmp lbi clbi htmlTemplate
+                 haddockVersion inFiles (buildInfo exe)
+    return args {
+      argOutputDir  = Dir  (exeName exe),
+      argTitle      = Flag (exeName exe)
     }
-  where
-    bi = buildInfo exe
+
+fromForeignLib :: Verbosity
+               -> FilePath
+               -> LocalBuildInfo
+               -> ComponentLocalBuildInfo
+               -> Maybe PathTemplate -- ^ template for HTML location
+               -> Version
+               -> ForeignLib
+               -> IO HaddockArgs
+fromForeignLib verbosity tmp lbi clbi htmlTemplate haddockVersion flib = do
+    inFiles <- map snd `fmap` getFLibSourceFiles lbi flib clbi
+    args    <- mkHaddockArgs verbosity tmp lbi clbi htmlTemplate
+                 haddockVersion inFiles (foreignLibBuildInfo flib)
+    return args {
+      argOutputDir  = Dir  (foreignLibName flib),
+      argTitle      = Flag (foreignLibName flib)
+    }
 
 compToExe :: Component -> Maybe Executable
 compToExe comp =
@@ -683,6 +697,10 @@ hscolour' onNoHsColour haddockTarget pkg_descr lbi suffixes flags =
           CLib lib -> do
             let outputDir = hscolourPref haddockTarget distPref pkg_descr </> "src"
             runHsColour hscolourProg outputDir =<< getLibSourceFiles lbi lib clbi
+          CFLib flib -> do
+            let outputDir = hscolourPref haddockTarget distPref pkg_descr
+                              </> foreignLibName flib </> "src"
+            runHsColour hscolourProg outputDir =<< getFLibSourceFiles lbi flib clbi
           CExe   _ -> when (fromFlag (hscolourExecutables flags)) $ doExe comp
           CTest  _ -> when (fromFlag (hscolourTestSuites  flags)) $ doExe comp
           CBench _ -> when (fromFlag (hscolourBenchmarks  flags)) $ doExe comp
@@ -716,6 +734,7 @@ haddockToHscolour flags =
       hscolourExecutables = haddockExecutables flags,
       hscolourTestSuites  = haddockTestSuites  flags,
       hscolourBenchmarks  = haddockBenchmarks  flags,
+      hscolourForeignLibs = haddockForeignLibs flags,
       hscolourVerbosity   = haddockVerbosity   flags,
       hscolourDistPref    = haddockDistPref    flags
     }
@@ -749,6 +768,18 @@ getExeSourceFiles lbi exe clbi = do
                 : autogenPackageModulesDir lbi
                 : exeBuildDir lbi exe : hsSourceDirs bi
 
+getFLibSourceFiles :: LocalBuildInfo
+                   -> ForeignLib
+                   -> ComponentLocalBuildInfo
+                   -> IO [(ModuleName.ModuleName, FilePath)]
+getFLibSourceFiles lbi flib clbi = getSourceFiles searchpaths modules
+  where
+    bi          = foreignLibBuildInfo flib
+    modules     = otherModules bi
+    searchpaths = autogenComponentModulesDir lbi clbi
+                : autogenPackageModulesDir lbi
+                : flibBuildDir lbi flib : hsSourceDirs bi
+
 getSourceFiles :: [FilePath]
                   -> [ModuleName.ModuleName]
                   -> IO [(ModuleName.ModuleName, FilePath)]
@@ -760,7 +791,15 @@ getSourceFiles dirs modules = flip traverse modules $ \m -> fmap ((,) m) $
 
 -- | The directory where we put build results for an executable
 exeBuildDir :: LocalBuildInfo -> Executable -> FilePath
-exeBuildDir lbi exe = buildDir lbi </> exeName exe </> exeName exe ++ "-tmp"
+exeBuildDir lbi exe = buildDir lbi </> nm </> nm ++ "-tmp"
+  where
+    nm = exeName exe
+
+-- | The directory where we put build results for a foreign library
+flibBuildDir :: LocalBuildInfo -> ForeignLib -> FilePath
+flibBuildDir lbi flib = buildDir lbi </> nm </> nm ++ "-tmp"
+  where
+    nm = foreignLibName flib
 
 -- ------------------------------------------------------------------------------
 -- Boilerplate Monoid instance.

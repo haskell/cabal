@@ -140,6 +140,9 @@ data GhcOptions = GhcOptions {
   -- flag.
   ghcOptLinkNoHsMain :: Flag Bool,
 
+  -- | Module definition files (Windows specific)
+  ghcOptLinkModDefFiles :: NubListR FilePath,
+
   --------------------
   -- C and CPP stuff
 
@@ -214,9 +217,10 @@ data GhcOptions = GhcOptions {
   ghcOptStubDir       :: Flag FilePath,
 
   --------------------
-  -- Dynamic linking
+  -- Creating libraries
 
   ghcOptDynLinkMode   :: Flag GhcDynLinkMode,
+  ghcOptStaticLib     :: Flag Bool,
   ghcOptShared        :: Flag Bool,
   ghcOptFPic          :: Flag Bool,
   ghcOptDylibName     :: Flag String,
@@ -346,9 +350,10 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
     else []
 
   --------------------
-  -- Dynamic linking
+  -- Creating libraries
 
-  , [ "-shared"  | flagBool ghcOptShared  ]
+  , [ "-staticlib" | flagBool ghcOptStaticLib ]
+  , [ "-shared"    | flagBool ghcOptShared    ]
   , case flagToMaybe (ghcOptDynLinkMode opts) of
       Nothing                  -> []
       Just GhcStaticOnly       -> ["-static"]
@@ -403,6 +408,7 @@ renderGhcOptions comp _platform@(Platform _arch os) opts
   , [ "-dynload deploy" | not (null (flags ghcOptRPaths)) ]
   , concat [ [ "-optl-Wl,-rpath," ++ dir]
            | dir <- flags ghcOptRPaths ]
+  , [ modDefFile | modDefFile <- flags ghcOptLinkModDefFiles ]
 
   -------------
   -- Packages

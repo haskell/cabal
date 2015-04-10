@@ -102,6 +102,8 @@
 	  between an internal and external package (#4020).  This should
 	  not affect many people, as this mode of use already did not
 	  work with the dependency solver.
+	* Support for "foreign libraries" (#2540), which are Haskell
+	  libraries intended to be used by foreign languages like C.
 
 1.24.0.0 Ryan Thomas <ryan@ryant.org> March 2016
 	* Support GHC 8.

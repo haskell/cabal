@@ -81,6 +81,9 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.ForeignLib
+import Distribution.Types.ForeignLibType
+import Distribution.Types.ForeignLibOption
 import Distribution.Simple.Utils
 import Distribution.System
 import Distribution.Version
@@ -545,6 +548,13 @@ configure (pkg_descr0', pbi) cfg = do
          ++ " requires the following language extensions which are not "
          ++ "supported by " ++ display (compilerId comp) ++ ": "
          ++ intercalate ", " (map display exts)
+
+    -- Check foreign library build requirements
+    let flibs = [flib | CFLib flib <- enabledComponents pkg_descr enabled]
+    let unsupportedFLibs = unsupportedForeignLibs comp compPlatform flibs
+    when (not (null unsupportedFLibs)) $
+      die $ "Cannot build some foreign libraries: "
+         ++ intercalate "," unsupportedFLibs
 
     -- Configure known/required programs & external build tools.
     -- Exclude build-tool deps on "internal" exes in the same package
@@ -1782,3 +1792,86 @@ checkRelocatable verbosity pkg lbi
         msg l         = "Library directory of a dependency: " ++ show l ++
                         "\nis not relative to the installation prefix:\n" ++
                         show p
+
+-- -----------------------------------------------------------------------------
+-- Testing foreign library requirements
+
+unsupportedForeignLibs :: Compiler -> Platform -> [ForeignLib] -> [String]
+unsupportedForeignLibs comp platform =
+    mapMaybe (checkForeignLibSupported comp platform)
+
+checkForeignLibSupported :: Compiler -> Platform -> ForeignLib -> Maybe String
+checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
+  where
+    go :: CompilerFlavor -> Maybe String
+    go GHC
+      | compilerVersion comp < mkVersion [7,4] = unsupported [
+        "Building foreign libraires is only supported with GHC >= 7.4"
+      ]
+      | otherwise = goGhcPlatform platform
+    go _   = unsupported [
+        "Building foreign libraries is currently only supported with ghc"
+      ]
+
+    goGhcPlatform :: Platform -> Maybe String
+    goGhcPlatform (Platform X86_64 OSX    ) = goGhcOsx     (foreignLibType flib)
+    goGhcPlatform (Platform I386   Linux  ) = goGhcLinux   (foreignLibType flib)
+    goGhcPlatform (Platform X86_64 Linux  ) = goGhcLinux   (foreignLibType flib)
+    goGhcPlatform (Platform I386   Windows) = goGhcWindows (foreignLibType flib)
+    goGhcPlatform (Platform X86_64 Windows) = goGhcWindows (foreignLibType flib)
+    goGhcPlatform _ = unsupported [
+        "Building foreign libraries is currently only supported on OSX, "
+      , "Linux and Windows"
+      ]
+
+    goGhcOsx :: ForeignLibType -> Maybe String
+    goGhcOsx _ | compilerVersion comp < mkVersion [7,8] = unsupported [
+        "Building foreign libraries on OSX is only supported with GHC >= 7.8"
+      ]
+
+    goGhcOsx ForeignLibNativeShared
+      | standalone = unsupported [
+            "We cannot build standalone libraries on OSX"
+          ]
+      | not (null (foreignLibModDefFile flib)) = unsupported [
+            "Module definition file not supported on OSX"
+          ]
+      | otherwise =
+          Nothing
+    goGhcOsx _ = unsupported [
+        "We can currently only build shared foreign libraries on OSX"
+      ]
+
+    goGhcLinux :: ForeignLibType -> Maybe String
+    goGhcLinux ForeignLibNativeShared
+      | standalone = unsupported [
+            "We cannot build standalone libraries on OSX"
+          ]
+      | not (null (foreignLibModDefFile flib)) = unsupported [
+            "Module definition file not supported on OSX"
+          ]
+      | otherwise =
+          Nothing
+    goGhcLinux _ = unsupported [
+        "We can currently only build shared foreign libraries on Linux"
+      ]
+
+    goGhcWindows :: ForeignLibType -> Maybe String
+    goGhcWindows ForeignLibNativeShared
+      | not standalone = unsupported [
+            "We can currently only build standalone libraries on Windows. Use\n"
+          , "  if os(Windows)\n"
+          , "    options: standalone\n"
+          , "in your foreign-library stanza."
+          ]
+      | otherwise =
+         Nothing
+    goGhcWindows _ = unsupported [
+        "We can currently only build shared foreign libraries on Windows"
+      ]
+
+    standalone :: Bool
+    standalone = ForeignLibStandalone `elem` foreignLibOptions flib
+
+    unsupported :: [String] -> Maybe String
+    unsupported = Just . concat

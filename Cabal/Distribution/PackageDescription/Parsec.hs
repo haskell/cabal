@@ -3,6 +3,7 @@
 {-# LANGUAGE Rank2Types          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE FlexibleContexts    #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.PackageDescription.Parsec
@@ -48,6 +49,7 @@ import           Distribution.Parsec.Types.ParseResult
 import           Distribution.Simple.Utils
                  (die, fromUTF8BS, warn)
 import           Distribution.Text                                 (display)
+import           Distribution.Types.ForeignLib
 import           Distribution.Verbosity                            (Verbosity)
 import           Distribution.Version
                  (LowerBound (..), Version, asVersionIntervals, mkVersion,
@@ -192,7 +194,7 @@ parseGenericPackageDescription' lexWarnings fs = do
         goSections gpd' fields
 
     emptyGpd :: GenericPackageDescription
-    emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] []
+    emptyGpd = GenericPackageDescription emptyPackageDescription [] Nothing [] [] [] [] []
 
     pdFieldParsers :: Map FieldName (PackageDescription -> FieldParser PackageDescription)
     pdFieldParsers = Map.fromList $
@@ -217,6 +219,13 @@ parseGenericPackageDescription' lexWarnings fs = do
             lib <- parseCondTree libFieldDescrs storeXFieldsLib (targetBuildDepends . libBuildInfo) emptyLibrary fields
             -- TODO check duplicate name here?
             let gpd' = gpd { condSubLibraries = condSubLibraries gpd ++ [(name', lib)] }
+            pure gpd'
+
+        | name == "foreign-library" = do
+            name' <- parseName pos args
+            flib <- parseCondTree foreignLibFieldDescrs storeXFieldsForeignLib (targetBuildDepends . foreignLibBuildInfo) emptyForeignLib fields
+            -- TODO check duplicate name here?
+            let gpd' = gpd { condForeignLibs = condForeignLibs gpd ++ [(name', flib)] }
             pure gpd'
 
         | name == "executable" = do

@@ -29,6 +29,8 @@ module Distribution.PackageDescription.PrettyPrint (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.Types.ForeignLib
+
 import Distribution.PackageDescription
 import Distribution.Simple.Utils
 import Distribution.ParseUtils
@@ -284,6 +286,7 @@ showPackageDescription pkg = render $
      ppPackageDescription pkg
      $+$ ppMaybeLibrary (library pkg)
      $+$ ppSubLibraries (subLibraries pkg)
+     $+$ ppForeignLibs  (foreignLibs pkg)
      $+$ ppExecutables  (executables pkg)
      $+$ ppTestSuites   (testSuites pkg)
      $+$ ppBenchmarks   (benchmarks pkg)
@@ -299,6 +302,12 @@ ppSubLibraries libs = vcat [
     emptyLine $ text "library" <+> text libname
         $+$ nest indentWith (ppFields libFieldDescrs lib)
     | lib@Library{ libName = Just libname } <- libs ]
+
+ppForeignLibs :: [ForeignLib] -> Doc
+ppForeignLibs flibs = vcat [
+    emptyLine $ text "foreign library" <+> text flibname
+        $+$ nest indentWith (ppFields foreignLibFieldDescrs flib)
+    | flib@ForeignLib{ foreignLibName = flibname } <- flibs ]
 
 ppExecutables :: [Executable] -> Doc
 ppExecutables exes = vcat [

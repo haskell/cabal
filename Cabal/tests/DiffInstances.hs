@@ -14,6 +14,9 @@ import           Distribution.License            (License)
 import           Distribution.ModuleName         (ModuleName)
 import           Distribution.Package
                  (Dependency, PackageIdentifier, PackageName)
+import           Distribution.Types.ForeignLib
+import           Distribution.Types.ForeignLibOption
+import           Distribution.Types.ForeignLibType
 import           Distribution.PackageDescription
                  (Benchmark, BenchmarkInterface, BenchmarkType, BuildInfo,
                  BuildType, CondTree, Condition, Executable, Flag, FlagName,
@@ -41,6 +44,9 @@ deriveGeneric ''Dependency
 deriveGeneric ''Executable
 deriveGeneric ''Extension
 deriveGeneric ''Flag
+deriveGeneric ''ForeignLib
+deriveGeneric ''ForeignLibOption
+deriveGeneric ''ForeignLibType
 deriveGeneric ''GenericPackageDescription
 deriveGeneric ''KnownExtension
 deriveGeneric ''Language
@@ -75,6 +81,9 @@ instance Diff Executable
 instance Diff Extension
 instance Diff Flag
 instance Diff FlagName where diff = eqDiff
+instance Diff ForeignLib
+instance Diff ForeignLibType
+instance Diff ForeignLibOption
 instance Diff GenericPackageDescription
 instance Diff KnownExtension
 instance Diff Language

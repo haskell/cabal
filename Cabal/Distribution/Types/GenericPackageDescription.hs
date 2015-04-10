@@ -24,6 +24,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.PackageDescription
 
 import Distribution.Types.Library
+import Distribution.Types.ForeignLib
 import Distribution.Types.Executable
 import Distribution.Types.TestSuite
 import Distribution.Types.Benchmark
@@ -42,6 +43,7 @@ data GenericPackageDescription =
         genPackageFlags    :: [Flag],
         condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
         condSubLibraries   :: [(String, CondTree ConfVar [Dependency] Library)],
+        condForeignLibs    :: [(String, CondTree ConfVar [Dependency] ForeignLib)],
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)],
         condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
         condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]

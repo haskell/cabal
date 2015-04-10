@@ -48,6 +48,8 @@ import Distribution.Text
 import Distribution.Compat.ReadP as ReadP hiding ( char )
 import qualified Distribution.Compat.ReadP as ReadP ( char )
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.ForeignLib
+import Distribution.Types.Component
 
 import qualified Data.Map as Map
 import Data.Tree ( Tree(Node) )
@@ -277,10 +279,7 @@ resolveWithFlags dom enabled os arch impl constrs trees checkDeps =
 
     pdTaggedBuildInfo :: PDTagged -> BuildInfo
     pdTaggedBuildInfo (Lib l) = libBuildInfo l
-    pdTaggedBuildInfo (SubLib _ l) = libBuildInfo l
-    pdTaggedBuildInfo (Exe _ e) = buildInfo e
-    pdTaggedBuildInfo (Test _ t) = testBuildInfo t
-    pdTaggedBuildInfo (Bench _ b) = benchmarkBuildInfo b
+    pdTaggedBuildInfo (SubComp _ c) = componentBuildInfo c
     pdTaggedBuildInfo PDNull = mempty
 
 -- | Transforms a 'CondTree' by putting the input under the "then" branch of a
@@ -424,10 +423,15 @@ overallDependencies enabled (TargetSet targets) = mconcat depss
     -- BLANK.  I don't know whose fault this is but I'll use the tag
     -- instead. -- ezyang
     removeDisabledSections (Lib _)     = componentNameRequested enabled CLibName
-    removeDisabledSections (SubLib t _) = componentNameRequested enabled (CSubLibName t)
-    removeDisabledSections (Exe t _)   = componentNameRequested enabled (CExeName t)
-    removeDisabledSections (Test t _)  = componentNameRequested enabled (CTestName t)
-    removeDisabledSections (Bench t _) = componentNameRequested enabled (CBenchName t)
+    removeDisabledSections (SubComp t c)
+        -- Do NOT use componentName
+        = componentNameRequested enabled
+        $ case c of
+            CLib  _ -> CSubLibName t
+            CFLib _ -> CFLibName   t
+            CExe  _ -> CExeName    t
+            CTest _ -> CTestName   t
+            CBench _ -> CBenchName t
     removeDisabledSections PDNull      = True
 
 -- Apply extra constraints to a dependency map.
@@ -448,67 +452,30 @@ constrainBy left extra =
 
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
-flattenTaggedTargets :: TargetSet PDTagged ->
-        (Maybe Library
-        , [(String, Library)], [(String, Executable)], [(String, TestSuite)]
-        , [(String, Benchmark)])
-flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], []) targets
+flattenTaggedTargets :: TargetSet PDTagged -> (Maybe Library, [(String, Component)])
+flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, []) targets
   where
-    untag (_, Lib _) (Just _, _, _, _, _) = userBug "Only one library expected"
-    untag (deps, Lib l) (Nothing, libs, exes, tests, bms) =
-        (Just l', libs, exes, tests, bms)
+    untag (_, Lib _) (Just _, _) = userBug "Only one library expected"
+    untag (deps, Lib l) (Nothing, comps) =
+        (Just l', comps)
       where
         l' = l {
                 libBuildInfo = (libBuildInfo l) { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, SubLib n l) (mb_lib, libs, exes, tests, bms)
-        | any ((== n) . fst) libs =
-          userBug $ "There exist several libs with the same name: '" ++ n ++ "'"
-        -- NB: libraries live in a different namespace than everything else
-        -- TODO: no, (new-style) TESTS live in same namespace!!
-        | otherwise = (mb_lib, (n, l'):libs, exes, tests, bms)
+    untag (deps, SubComp n c) (mb_lib, comps)
+        | any ((== n) . fst) comps =
+          userBug $ "There exist several components with the same name: '" ++ n ++ "'"
+
+        | otherwise = (mb_lib, (n, c') : comps)
       where
-        l' = l {
-                libBuildInfo = (libBuildInfo l) { targetBuildDepends = fromDepMap deps }
-            }
-    untag (deps, Exe n e) (mb_lib, libs, exes, tests, bms)
-        | any ((== n) . fst) exes =
-          userBug $ "There exist several exes with the same name: '" ++ n ++ "'"
-        | any ((== n) . fst) tests =
-          userBug $ "There exists a test with the same name as an exe: '" ++ n ++ "'"
-        | any ((== n) . fst) bms =
-          userBug $ "There exists a benchmark with the same name as an exe: '" ++ n ++ "'"
-        | otherwise = (mb_lib, libs, (n, e'):exes, tests, bms)
-      where
-        e' = e {
-                buildInfo = (buildInfo e) { targetBuildDepends = fromDepMap deps }
-            }
-    untag (deps, Test n t) (mb_lib, libs, exes, tests, bms)
-        | any ((== n) . fst) tests =
-          userBug $ "There exist several tests with the same name: '" ++ n ++ "'"
-        | any ((== n) . fst) exes =
-          userBug $ "There exists an exe with the same name as the test: '" ++ n ++ "'"
-        | any ((== n) . fst) bms =
-          userBug $ "There exists a benchmark with the same name as the test: '" ++ n ++ "'"
-        | otherwise = (mb_lib, libs, exes, (n, t'):tests, bms)
-      where
-        t' = t {
-            testBuildInfo = (testBuildInfo t)
-                { targetBuildDepends = fromDepMap deps }
-            }
-    untag (deps, Bench n b) (mb_lib, libs, exes, tests, bms)
-        | any ((== n) . fst) bms =
-          userBug $ "There exist several benchmarks with the same name: '" ++ n ++ "'"
-        | any ((== n) . fst) exes =
-          userBug $ "There exists an exe with the same name as the benchmark: '" ++ n ++ "'"
-        | any ((== n) . fst) tests =
-          userBug $ "There exists a test with the same name as the benchmark: '" ++ n ++ "'"
-        | otherwise = (mb_lib, libs, exes, tests, (n, b'):bms)
-      where
-        b' = b {
-            benchmarkBuildInfo = (benchmarkBuildInfo b)
-                { targetBuildDepends = fromDepMap deps }
-            }
+        updBI bi = bi { targetBuildDepends = fromDepMap deps }
+        c' = case c of
+              CLib   x -> CLib   x { libBuildInfo        = updBI (libBuildInfo        x) }
+              CFLib  x -> CFLib  x { foreignLibBuildInfo = updBI (foreignLibBuildInfo x) }
+              CExe   x -> CExe   x { buildInfo           = updBI (buildInfo           x) }
+              CTest  x -> CTest  x { testBuildInfo       = updBI (testBuildInfo       x) }
+              CBench x -> CBench x { benchmarkBuildInfo  = updBI (benchmarkBuildInfo  x) }
+
     untag (_, PDNull) x = x  -- actually this should not happen, but let's be liberal
 
 
@@ -516,14 +483,8 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], [])
 -- Convert GenericPackageDescription to PackageDescription
 --
 
--- ezyang: Arguably, this should be:
---      data PDTagged = PDComp Component
---                    | PDNull
 data PDTagged = Lib Library
-              | SubLib String Library
-              | Exe String Executable
-              | Test String TestSuite
-              | Bench String Benchmark
+              | SubComp String Component
               | PDNull
               deriving Show
 
@@ -535,10 +496,7 @@ instance Semigroup PDTagged where
     PDNull    <> x      = x
     x         <> PDNull = x
     Lib l     <> Lib l' = Lib (l <> l')
-    SubLib n l <> SubLib n' l' | n == n' = SubLib n (l <> l')
-    Exe n e   <> Exe   n' e' | n == n' = Exe n (e <> e')
-    Test n t  <> Test  n' t' | n == n' = Test n (t <> t')
-    Bench n b <> Bench n' b' | n == n' = Bench n (b <> b')
+    SubComp n x <> SubComp n' x' | n == n' = SubComp n (x <> x')
     _         <> _  = cabalBug "Cannot combine incompatible tags"
 
 -- | Create a package description with all configurations resolved.
@@ -583,11 +541,13 @@ finalizePD ::
              -- description along with the flag assignments chosen.
 finalizePD userflags enabled satisfyDep
         (Platform arch os) impl constraints
-        (GenericPackageDescription pkg flags mb_lib0 sub_libs0 exes0 tests0 bms0) =
+        (GenericPackageDescription pkg flags mb_lib0 sub_libs0 flibs0 exes0 tests0 bms0) =
     case resolveFlags of
-      Right ((mb_lib', sub_libs', exes', tests', bms'), targetSet, flagVals) ->
+      Right ((mb_lib', comps'), targetSet, flagVals) ->
+        let (sub_libs', flibs', exes', tests', bms') = partitionComponents comps' in
         Right ( pkg { library = mb_lib'
                     , subLibraries = sub_libs'
+                    , foreignLibs = flibs'
                     , executables = exes'
                     , testSuites = tests'
                     , benchmarks = bms'
@@ -599,21 +559,26 @@ finalizePD userflags enabled satisfyDep
   where
     -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
     condTrees =    maybeToList (fmap (mapTreeData Lib) mb_lib0)
-                ++ map (\(name,tree) -> mapTreeData (SubLib name) tree) sub_libs0
-                ++ map (\(name,tree) -> mapTreeData (Exe name) tree) exes0
-                ++ map (\(name,tree) -> mapTreeData (Test name) tree) tests0
-                ++ map (\(name,tree) -> mapTreeData (Bench name) tree) bms0
+                ++ map (\(name,tree) -> mapTreeData (SubComp name . CLib) tree) sub_libs0
+                ++ map (\(name,tree) -> mapTreeData (SubComp name . CFLib) tree) flibs0
+                ++ map (\(name,tree) -> mapTreeData (SubComp name . CExe) tree) exes0
+                ++ map (\(name,tree) -> mapTreeData (SubComp name . CTest) tree) tests0
+                ++ map (\(name,tree) -> mapTreeData (SubComp name . CBench) tree) bms0
 
     resolveFlags =
         case resolveWithFlags flagChoices enabled os arch impl constraints condTrees check of
           Right (targetSet, fs) ->
-              let (mb_lib, sub_libs, exes, tests, bms) = flattenTaggedTargets targetSet in
-              Right ( (fmap (\l -> (libFillInDefaults l) { libName = Nothing }) mb_lib,
-                       map (\(n,l) -> (libFillInDefaults l) { libName = Just n
-                                                            , libExposed = False }) sub_libs,
-                       map (\(n,e) -> (exeFillInDefaults e) { exeName = n }) exes,
-                       map (\(n,t) -> (testFillInDefaults t) { testName = n }) tests,
-                       map (\(n,b) -> (benchFillInDefaults b) { benchmarkName = n }) bms),
+              let (mb_lib, comps) = flattenTaggedTargets targetSet in
+              Right ( (fmap libFillInDefaults mb_lib,
+                       map (\(n,c) ->
+                            foldComponent
+                               (\l -> CLib   (libFillInDefaults l)   { libName = Just n
+                                                                     , libExposed = False })
+                               (\l -> CFLib  (flibFillInDefaults l)  { foreignLibName = n })
+                               (\e -> CExe   (exeFillInDefaults e)   { exeName = n })
+                               (\t -> CTest  (testFillInDefaults t)  { testName = n })
+                               (\b -> CBench (benchFillInDefaults b) { benchmarkName = n })
+                               c) comps),
                      targetSet, fs)
           Left missing      -> Left missing
 
@@ -667,26 +632,37 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- default path will be missing from the package description returned by this
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
-flattenPackageDescription (GenericPackageDescription pkg _ mlib0 sub_libs0 exes0 tests0 bms0) =
-    pkg { library = mlib
+flattenPackageDescription
+  (GenericPackageDescription pkg _ mlib0 sub_libs0 flibs0 exes0 tests0 bms0) =
+    pkg { library      = mlib
         , subLibraries = reverse sub_libs
-        , executables = reverse exes
-        , testSuites = reverse tests
-        , benchmarks = reverse bms
-        , buildDepends = ldeps ++ reverse sub_ldeps ++ reverse edeps ++ reverse tdeps ++ reverse bdeps
+        , foreignLibs  = reverse flibs
+        , executables  = reverse exes
+        , testSuites   = reverse tests
+        , benchmarks   = reverse bms
+        , buildDepends = ldeps
+                      ++ reverse sub_ldeps
+                      ++ reverse pldeps
+                      ++ reverse edeps
+                      ++ reverse tdeps
+                      ++ reverse bdeps
         }
   where
     (mlib, ldeps) = case mlib0 of
         Just lib -> let (l,ds) = ignoreConditions lib in
                     (Just ((libFillInDefaults l) { libName = Nothing }), ds)
         Nothing -> (Nothing, [])
-    (sub_libs, sub_ldeps) = foldr flattenLib ([],[]) sub_libs0
-    (exes, edeps) = foldr flattenExe ([],[]) exes0
-    (tests, tdeps) = foldr flattenTst ([],[]) tests0
-    (bms, bdeps) = foldr flattenBm ([],[]) bms0
+    (sub_libs, sub_ldeps) = foldr flattenLib  ([],[]) sub_libs0
+    (flibs,    pldeps)    = foldr flattenFLib ([],[]) flibs0
+    (exes,     edeps)     = foldr flattenExe  ([],[]) exes0
+    (tests,    tdeps)     = foldr flattenTst  ([],[]) tests0
+    (bms,      bdeps)     = foldr flattenBm   ([],[]) bms0
     flattenLib (n, t) (es, ds) =
         let (e, ds') = ignoreConditions t in
         ( (libFillInDefaults $ e { libName = Just n, libExposed = False }) : es, ds' ++ ds )
+    flattenFLib (n, t) (es, ds) =
+        let (e, ds') = ignoreConditions t in
+        ( (flibFillInDefaults $ e { foreignLibName = n }) : es, ds' ++ ds )
     flattenExe (n, t) (es, ds) =
         let (e, ds') = ignoreConditions t in
         ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds )
@@ -707,6 +683,10 @@ flattenPackageDescription (GenericPackageDescription pkg _ mlib0 sub_libs0 exes0
 libFillInDefaults :: Library -> Library
 libFillInDefaults lib@(Library { libBuildInfo = bi }) =
     lib { libBuildInfo = biFillInDefaults bi }
+
+flibFillInDefaults :: ForeignLib -> ForeignLib
+flibFillInDefaults flib@(ForeignLib { foreignLibBuildInfo = bi }) =
+    flib { foreignLibBuildInfo = biFillInDefaults bi }
 
 exeFillInDefaults :: Executable -> Executable
 exeFillInDefaults exe@(Executable { buildInfo = bi }) =

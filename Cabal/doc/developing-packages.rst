@@ -1432,6 +1432,96 @@ runner:
 See the output of ``cabal help bench`` for a list of options you can
 pass to ``cabal bench``.
 
+Foreign libraries
+"""""""""""""""""
+
+Foreign libraries are system libraries intended to be linked against
+programs written in C or other "foreign" languages. They
+come in two primary flavours: dynamic libraries (``.so`` files on Linux,
+``.dylib`` files on OSX, ``.dll`` files on Windows, etc.) are linked against
+executables when the executable is run (or even lazily during
+execution), while static libraries (``.a`` files on Linux/OSX, ``.lib``
+files on Windows) get linked against the executable at compile time.
+
+Foreign libraries only work with GHC 7.4 and later.
+
+A typical stanza for a foreign library looks like
+
+::
+
+    foreign-library myforeignlib
+      type:                native-shared
+
+      if os(Windows)
+        options: standalone
+        mod-def-file: MyForeignLib.def
+
+      other-modules:       MyForeignLib.SomeModule
+                           MyForeignLib.SomeOtherModule
+      build-depends:       base >=4.7 && <4.9
+      hs-source-dirs:      src
+      c-sources:           csrc/MyForeignLibWrapper.c
+      default-language:    Haskell2010
+
+.. pkg-field:: type: foreign library type
+
+   Cabal recognizes ``native-static`` and ``native-shared`` here, although
+   we currently only support building `native-shared` libraries.
+
+.. pkg-field:: options: foreign library option list
+
+   Options for building the foreign library, typically specific to the
+   specified type of foreign library. Currently we only support
+   ``standalone`` here. A standalone dynamic library is one that does not
+   have any dependencies on other (Haskell) shared libraries; without
+   the ``standalone`` option the generated library would have dependencies
+   on the Haskell runtime library (``libHSrts``), the base library
+   (``libHSbase``), etc. Currently, ``standalone`` *must* be used on Windows
+   and *must not* be used on any other platform.
+
+.. pkg-field:: mod-def-file: filename
+
+   This option can only be used when creating dynamic Windows libraries
+   (that is, when using ``native-shared`` and the ``os`` is ``Windows``). If
+   used, it must be a path to a _module definition file_. The details of
+   module definition files are beyond the scope of this document; see the
+   `GHC <https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/win32-dlls.html>`_
+   manual for some details and some further pointers.
+
+Note that typically foreign libraries should export a way to initialize
+and shutdown the Haskell runtime. In the example above, this is done by
+the ``csrc/MyForeignLibWrapper.c`` file, which might look something like
+
+.. code-block:: c
+
+    #include <stdlib.h>
+    #include "HsFFI.h"
+
+    HsBool myForeignLibInit(void){
+      int argc = 2;
+      char *argv[] = { "+RTS", "-A32m", NULL };
+      char **pargv = argv;
+
+      // Initialize Haskell runtime
+      hs_init(&argc, &pargv);
+
+      // do any other initialization here and
+      // return false if there was a problem
+      return HS_BOOL_TRUE;
+    }
+
+    void myForeignLibExit(void){
+      hs_exit();
+    }
+
+With modern ghc regular libraries are installed in directories that contain
+package keys. This isn't usually a problem because the package gets registered
+in ghc's package DB and so we can figure out what the location of the library
+is. Foreign libraries however don't get registered, which means that we'd have
+to have a way of finding out where a platform library got installed (other than by
+searching the ``lib/`` directory). Instead, we install foreign libraries in
+``~/.cabal/lib``, much like we install executables in ``~/.cabal/bin``.
+
 Build information
 ^^^^^^^^^^^^^^^^^
 .. pkg-section:: None

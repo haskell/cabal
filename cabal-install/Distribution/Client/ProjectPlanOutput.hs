@@ -171,6 +171,7 @@ encodePlanAsJson distDirLayout elaboratedInstallPlan elaboratedSharedConfig =
     comp2str c = case c of
         ComponentDeps.ComponentLib     -> "lib"
         ComponentDeps.ComponentSubLib s -> "lib:"   <> s
+        ComponentDeps.ComponentFLib s  -> "flib:"  <> s
         ComponentDeps.ComponentExe s   -> "exe:"   <> s
         ComponentDeps.ComponentTest s  -> "test:"  <> s
         ComponentDeps.ComponentBench s -> "bench:" <> s

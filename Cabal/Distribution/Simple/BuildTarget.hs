@@ -42,6 +42,7 @@ import Distribution.Compat.Prelude
 import Distribution.Types.TargetInfo
 import Distribution.Types.LocalBuildInfo
 import Distribution.Types.ComponentRequestedSpec
+import Distribution.Types.ForeignLib
 
 import Distribution.Package
 import Distribution.PackageDescription
@@ -474,6 +475,7 @@ pkgComponentInfo pkg =
 componentStringName :: Package pkg => pkg -> ComponentName -> ComponentStringName
 componentStringName pkg CLibName          = display (packageName pkg)
 componentStringName _   (CSubLibName name) = name
+componentStringName _   (CFLibName  name) = name
 componentStringName _   (CExeName   name) = name
 componentStringName _   (CTestName  name) = name
 componentStringName _   (CBenchName name) = name
@@ -487,6 +489,7 @@ componentModules :: Component -> [ModuleName]
 -- Please don't export this function unless you plan on fixing
 -- this.
 componentModules (CLib   lib)   = explicitLibModules lib
+componentModules (CFLib  flib)  = foreignLibModules flib
 componentModules (CExe   exe)   = exeModules exe
 componentModules (CTest  test)  = testModules test
 componentModules (CBench bench) = benchmarkModules bench
@@ -519,12 +522,13 @@ ex_cs =
 -- Matching component kinds
 --
 
-data ComponentKind = LibKind | ExeKind | TestKind | BenchKind
+data ComponentKind = LibKind | FLibKind | ExeKind | TestKind | BenchKind
   deriving (Eq, Ord, Show)
 
 componentKind :: ComponentName -> ComponentKind
 componentKind CLibName = LibKind
 componentKind (CSubLibName _) = LibKind
+componentKind (CFLibName  _) = FLibKind
 componentKind (CExeName   _) = ExeKind
 componentKind (CTestName  _) = TestKind
 componentKind (CBenchName _) = BenchKind
@@ -534,23 +538,25 @@ cinfoKind = componentKind . cinfoName
 
 matchComponentKind :: String -> Match ComponentKind
 matchComponentKind s
-  | s `elem` ["lib", "library"]            = increaseConfidence >> return LibKind
-  | s `elem` ["exe", "executable"]         = increaseConfidence >> return ExeKind
-  | s `elem` ["tst", "test", "test-suite"] = increaseConfidence
-                                             >> return TestKind
-  | s `elem` ["bench", "benchmark"]        = increaseConfidence
-                                             >> return BenchKind
-  | otherwise                              = matchErrorExpected
-                                             "component kind" s
+  | s `elem` ["lib", "library"]                 = return' LibKind
+  | s `elem` ["foreign-lib", "foreign-library"] = return' FLibKind
+  | s `elem` ["exe", "executable"]              = return' ExeKind
+  | s `elem` ["tst", "test", "test-suite"]      = return' TestKind
+  | s `elem` ["bench", "benchmark"]             = return' BenchKind
+  | otherwise = matchErrorExpected "component kind" s
+  where
+    return' ck = increaseConfidence >> return ck
 
 showComponentKind :: ComponentKind -> String
 showComponentKind LibKind   = "library"
+showComponentKind FLibKind  = "foreign-library"
 showComponentKind ExeKind   = "executable"
 showComponentKind TestKind  = "test-suite"
 showComponentKind BenchKind = "benchmark"
 
 showComponentKindShort :: ComponentKind -> String
 showComponentKindShort LibKind   = "lib"
+showComponentKindShort FLibKind  = "flib"
 showComponentKindShort ExeKind   = "exe"
 showComponentKindShort TestKind  = "test"
 showComponentKindShort BenchKind = "bench"
