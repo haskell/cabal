@@ -696,6 +696,11 @@ checkGhcOptions pkg =
         "'ghc-prof-options: -auto-all' is fine during development, but "
         ++ "not recommended in a distributed package. "
 
+  , checkProfFlags ["-fprof-auto"] $
+      PackageDistSuspicious $
+        "'ghc-prof-options: -fprof-auto' is fine during development, but "
+        ++ "not recommended in a distributed package. "
+
   , check ("-threaded" `elem` lib_ghc_options) $
       PackageDistSuspicious $
            "'ghc-options: -threaded' has no effect for libraries. It should "
