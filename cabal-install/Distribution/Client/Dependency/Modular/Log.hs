@@ -85,7 +85,10 @@ logToProgress mbj l = let
                                                      "Could not resolve dependencies:\n" ++
                                                      unlines (showMessages (L.foldr (\ v _ -> v `S.member` cs) True) False ms) ++
                                                      (if exh then "Dependency tree exhaustively searched.\n"
-                                                             else "Backjump limit reached (change with --max-backjumps).\n")
+                                                             else "Backjump limit reached (" ++ currlimit mbj ++
+                                                                      "change with --max-backjumps or try to run with --reorder-goals).\n")
+                                                         where currlimit (Just n) = "currently " ++ show n ++ ", "
+                                                               currlimit Nothing  = ""
     go _  _        []       _         (Just s) _   = Done s
     go _  _        []       _         _        _   = Fail ("Could not resolve dependencies; something strange happened.") -- should not happen
 
