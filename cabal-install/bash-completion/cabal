@@ -45,14 +45,8 @@ _cabal_subcommands()
         case "$word" in
           sandbox)
             # Get list of "cabal sandbox" subcommands from its help message.
-            #
-            # Following command short-circuits if it reaches flags section.
-            # This is to prevent any problems that might arise from unfortunate
-            # word combinations in flag descriptions. Usage section is parsed
-            # using simple regexp and "sandbox" subcommand is printed for each
-            # successful substitution.
             "$1" help sandbox |
-            sed -rn '/Flags/q;s/^.* cabal sandbox  *([^ ]*).*/\1/;t p;b;: p;p'
+            sed -n '1,/^Subcommands:$/d;/^Flags for sandbox:$/,$d;/^ /d;s/^\(.*\):/\1/p'
             break  # Terminate for loop.
             ;;
         esac
