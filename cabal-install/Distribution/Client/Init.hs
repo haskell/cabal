@@ -141,9 +141,9 @@ extendFlags pkgIx sourcePkgDb =
   >=> getCategory
   >=> getExtraSourceFiles
   >=> getLibOrExec
+  >=> getSrcDir
   >=> getLanguage
   >=> getGenComments
-  >=> getSrcDir
   >=> getModulesBuildToolsAndDeps pkgIx
 
 -- | Combine two actions which may return a value, preferring the first. That
