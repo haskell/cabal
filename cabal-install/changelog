@@ -1,4 +1,8 @@
 -*-change-log-*-
+1.22.3.0 Ryan Thomas <ryan@ryant.org> April 2015
+	* Fix bash completion for sandbox subcommands - Fixes #2513 (Mikhail Glushenkov)
+	* filterConfigureFlags: filter more flags (Mikhail Glushenkov)
+
 1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
 	* Don't pass '--{en,dis}able-profiling' to old setup exes.
 	* -Wall police
