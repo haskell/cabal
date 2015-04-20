@@ -1,4 +1,9 @@
 -*-change-log-*-
+1.22.3.0 Ryan Thomas <ryan@ryant.org> April 2015
+	* Fix for the ghcjs-pkg version number handling (Luite Stegeman)
+	* filterConfigureFlags: filter more flags (Mikhail Glushenkov)
+	* Cabal check will fail on -fprof-auto passed as a ghc-option - Fixes #2479 (John Chee)
+
 1.22.2.0 Ryan Thomas <ryan@ryant.org> March 2015
 	* Don't pass '--{en,dis}able-profiling' to old setup.
 	* Add -Wall police
