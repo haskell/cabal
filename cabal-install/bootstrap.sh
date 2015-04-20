@@ -70,8 +70,8 @@ done
 
 # Check the C compiler/linker work.
 LINK="$(for link in collect2 ld; do
-  echo 'main;' | ${CC} -v -x c - -o /dev/null -\#\#\# 2>&1 | grep -q $link &&
-  echo 'main;' | ${CC} -v -x c - -o /dev/null -\#\#\# 2>&1 | grep    $link |
+  echo 'main;' | ${CC} -v -x c - -o /dev/null -\#\#\# 2>&1 | grep -qw $link &&
+  echo 'main;' | ${CC} -v -x c - -o /dev/null -\#\#\# 2>&1 | grep -w  $link |
   sed -e "s|\(.*$link\).*|\1|" -e 's/ //g' -e 's|"||' && break
 done)"
 
