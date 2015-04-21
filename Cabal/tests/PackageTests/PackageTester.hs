@@ -62,6 +62,7 @@ data TestsConfig = TestsConfig {
     testsConfigGhcPath     :: FilePath
   , testsConfigGhcPkgPath  :: FilePath
   , testsConfigInPlaceSpec :: PackageSpec
+  , testsConfigBuildDir    :: FilePath    -- ^ @--builddir@ argument
   }
 
 data Success = Failure
@@ -185,7 +186,7 @@ compileSetup cfg packageDir = do
          [ "--make"
 -- HPC causes trouble -- see #1012
 --       , "-fhpc"
-         , "-package-conf " ++ wd </> "../dist/package.conf.inplace"
+         , "-package-conf " ++ wd </> ".." </> testsConfigBuildDir </> "package.conf.inplace"
          , "Setup.hs"
          ]
     requireSuccess r

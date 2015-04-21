@@ -3,7 +3,7 @@
 -- but import tests from other modules.
 --
 -- Stephen Blackheath, 2009
-
+{-# LANGUAGE DeriveDataTypeable #-}
 module Main where
 
 import PackageTests.BenchmarkExeV10.Check
@@ -56,10 +56,13 @@ import System.Directory
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.Options ( OptionDescription(..), IsOption(..) )
+import Data.Proxy ( Proxy(..) )
+import Data.Typeable ( Typeable )
+import Data.Tagged ( Tagged(..) )
 
-
-tests :: IO TestsConfig -> Version -> [TestTree]
-tests cfg version =
+tests :: Version -> IO TestsConfig -> TestTree
+tests version cfg = testGroup "Package Tests" $
     [ testCase "BuildDeps/SameDepsAllRound"
       (PackageTests.BuildDeps.SameDepsAllRound.Check.suite cfg)
       -- The two following tests were disabled by Johan Tibell as
@@ -126,10 +129,11 @@ tests cfg version =
           ]
      else [])
 
-main :: IO ()
-main = do
+-- | Setup system to run the tests
+initTests :: FilePath -> IO TestsConfig
+initTests dist = do
     wd <- getCurrentDirectory
-    let dbFile = wd </> "dist/package.conf.inplace"
+    let dbFile = wd </> dist </> "package.conf.inplace"
         inplaceSpec = PackageSpec
             { directory = []
             , configOpts = [ "--package-db=" ++ dbFile
@@ -139,7 +143,7 @@ main = do
             }
     putStrLn $ "Cabal test suite - testing cabal version " ++
         display cabalVersion
-    lbi <- getPersistBuildConfig_ ("dist" </> "setup-config")
+    lbi <- getPersistBuildConfig_ (dist </> "setup-config")
     (ghc, _) <- requireProgram normal ghcProgram (withPrograms lbi)
     (ghcPkg, _) <- requireProgram normal ghcPkgProgram (withPrograms lbi)
     (haddock, _) <- requireProgram normal haddockProgram (withPrograms lbi)
@@ -155,10 +159,26 @@ main = do
               testsConfigGhcPath     = ghcPath
             , testsConfigGhcPkgPath  = ghcPkgPath
             , testsConfigInPlaceSpec = inplaceSpec
-          }
+            , testsConfigBuildDir    = dist
+            }
     compileSetup (return cfg) "."
-    defaultMain $ testGroup "Package Tests"
-      (tests (return cfg) cabalVersion)
+    return cfg
+
+-- | Restore system state after tests complete
+--
+-- Currently we don't do anything here
+freeTests :: TestsConfig -> IO ()
+freeTests _ = return ()
+
+main :: IO ()
+main =
+     defaultMainWithIngredients ingredients $
+       askOption $ \(BuildDirOption dist) ->
+         withResource (initTests dist) freeTests (tests cabalVersion)
+  where
+    ingredients = includingOptions options : defaultIngredients
+    options     = [ Option (Proxy :: Proxy BuildDirOption)
+                  ]
 
 -- Like Distribution.Simple.Configure.getPersistBuildConfig but
 -- doesn't check that the Cabal version matches, which it doesn't when
@@ -171,3 +191,17 @@ getPersistBuildConfig_ filename = do
       Left (ConfigStateFileBadVersion _ _ (Left err)) -> throw err
       Left err -> throw err
       Right lbi -> return lbi
+
+{-------------------------------------------------------------------------------
+  Command line options
+-------------------------------------------------------------------------------}
+
+newtype BuildDirOption = BuildDirOption FilePath
+  deriving (Typeable)
+
+-- | The equivalent of cabal's --builddir option
+instance IsOption BuildDirOption where
+  defaultValue   = BuildDirOption "dist"
+  parseValue     = Just . BuildDirOption
+  optionName     = Tagged "builddir"
+  optionHelp     = Tagged "The directory where Cabal puts generated build files"
