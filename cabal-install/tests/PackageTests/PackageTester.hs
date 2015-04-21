@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- TODO This module was originally based on the PackageTests.PackageTester
 -- module in Cabal, however it has a few differences. I suspect that as
@@ -76,6 +77,7 @@ data TestsPaths = TestsPaths
     , configPath :: FilePath -- ^ absolute path of the default config file
                              --   to use for tests (tests are free to use
                              --   a different one).
+    , oldCwd     :: FilePath -- ^ CWD before the tests were run
     }
 
 data Result = Result
@@ -110,42 +112,44 @@ recordRun (cmd, exitCode, exeOutput) thisSucc res =
         }
 
 -- | Run the clean command and return its result.
-cabal_clean :: TestsPaths -> FilePath -> [String] -> IO Result
+cabal_clean :: IO TestsPaths -> FilePath -> [String] -> IO Result
 cabal_clean paths dir args = do
     res <- cabal paths dir (["clean"] ++ args)
     return $ recordRun res CleanSuccess nullResult
 
 -- | Run the exec command and return its result.
-cabal_exec :: TestsPaths -> FilePath -> [String] -> IO Result
+cabal_exec :: IO TestsPaths -> FilePath -> [String] -> IO Result
 cabal_exec paths dir args = do
     res <- cabal paths dir (["exec"] ++ args)
     return $ recordRun res ExecSuccess nullResult
 
 -- | Run the freeze command and return its result.
-cabal_freeze :: TestsPaths -> FilePath -> [String] -> IO Result
+cabal_freeze :: IO TestsPaths -> FilePath -> [String] -> IO Result
 cabal_freeze paths dir args = do
     res <- cabal paths dir (["freeze"] ++ args)
     return $ recordRun res FreezeSuccess nullResult
 
 -- | Run the install command and return its result.
-cabal_install :: TestsPaths -> FilePath -> [String] -> IO Result
+cabal_install :: IO TestsPaths -> FilePath -> [String] -> IO Result
 cabal_install paths dir args = do
     res <- cabal paths dir (["install"] ++ args)
     return $ recordRun res InstallSuccess nullResult
 
 -- | Run the sandbox command and return its result.
-cabal_sandbox :: TestsPaths -> FilePath -> [String] -> IO Result
+cabal_sandbox :: IO TestsPaths -> FilePath -> [String] -> IO Result
 cabal_sandbox paths dir args = do
     res <- cabal paths dir (["sandbox"] ++ args)
     return $ recordRun res SandboxSuccess nullResult
 
 -- | Returns the command that was issued, the return code, and the output text.
-cabal :: TestsPaths -> FilePath -> [String] -> IO (String, ExitCode, String)
+cabal :: IO TestsPaths -> FilePath -> [String] -> IO (String, ExitCode, String)
 cabal paths dir cabalArgs = do
-    run (Just dir) (cabalPath paths) args
-  where
-    args = configFileArg : cabalArgs
-    configFileArg = "--config-file=" ++ configPath paths
+    TestsPaths{..} <- paths
+
+    let args = configFileArg : cabalArgs
+        configFileArg = "--config-file=" ++ configPath
+
+    run (Just dir) cabalPath args
 
 -- | Returns the command that was issued, the return code, and the output text
 run :: Maybe FilePath -> String -> [String] -> IO (String, ExitCode, String)

@@ -3,6 +3,7 @@
 --
 -- This file should do nothing but import tests from other modules and run
 -- them with the path to the correct cabal-install binary.
+{-# LANGUAGE RecordWildCards #-}
 module Main
        where
 
@@ -18,12 +19,11 @@ import Distribution.Simple.Utils ( findProgramVersion )
 import Distribution.Verbosity (normal)
 
 -- Third party modules.
-import qualified Control.Exception.Extensible as E
 import System.Directory
         ( canonicalizePath, getCurrentDirectory, setCurrentDirectory
         , removeFile, doesFileExist )
 import System.FilePath ((</>))
-import Test.Tasty (TestTree, defaultMain, testGroup)
+import Test.Tasty (TestTree, defaultMain, testGroup, withResource)
 import Control.Monad ( when )
 
 -- Module containing common test code.
@@ -39,7 +39,7 @@ import qualified PackageTests.MultipleSource.Check
 
 -- List of tests to run. Each test will be called with the path to the
 -- cabal binary to use.
-tests :: PackageTests.PackageTester.TestsPaths -> TestTree
+tests :: IO TestsPaths -> TestTree
 tests paths = testGroup "Package Tests" $
     [ testGroup "Freeze"         $ PackageTests.Freeze.Check.tests         paths
     , testGroup "Exec"           $ PackageTests.Exec.Check.tests           paths
@@ -51,38 +51,50 @@ cabalProgram = (simpleProgram "cabal") {
     programFindVersion = findProgramVersion "--numeric-version" id
   }
 
-main :: IO ()
-main = do
+-- | System initialization before the tests can be run
+initTests :: IO TestsPaths
+initTests = do
     buildDir <- canonicalizePath "dist/build/cabal"
     let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
     (cabal, _) <- requireProgram normal cabalProgram
                       (setProgramSearchPath programSearchPath defaultProgramDb)
     (ghcPkg, _) <- requireProgram normal ghcPkgProgram defaultProgramDb
     canonicalConfigPath <- canonicalizePath $ "tests" </> packageTestsDirectory
+    cwd <- getCurrentDirectory
 
     let testsPaths = TestsPaths {
-          cabalPath = programPath cabal,
+          cabalPath  = programPath cabal,
           ghcPkgPath = programPath ghcPkg,
-          configPath = canonicalConfigPath </> packageTestsConfigFile
+          configPath = canonicalConfigPath </> packageTestsConfigFile,
+          oldCwd     = cwd
         }
 
+    -- TODO: Using putStrLn kind of messes with tasty's output. Not sure what
+    -- the right approach is here though.
     putStrLn $ "Using cabal: "   ++ cabalPath  testsPaths
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath testsPaths
 
-    cwd <- getCurrentDirectory
-    let confFile = packageTestsDirectory </> "cabal-config"
-        removeConf = do
-          b <- doesFileExist confFile
-          when b $ removeFile confFile
-    let runTests = do
-          setCurrentDirectory "tests"
-          removeConf -- assert that there is no existing config file
-                     -- (we want deterministic testing with the default
-                     --  config values)
-          defaultMain $ tests testsPaths
-    runTests `E.finally` do
-        -- remove the default config file that got created by the tests
-        removeConf
-        -- Change back to the old working directory so that the tests can be
-        -- repeatedly run in `cabal repl` via `:main`.
-        setCurrentDirectory cwd
+    setCurrentDirectory "tests"
+    removeConf -- assert that there is no existing config file
+               -- (we want deterministic testing with the default
+               --  config values)
+    return testsPaths
+
+-- | Restore system state after tests are complete
+freeTests :: TestsPaths -> IO ()
+freeTests TestsPaths{..} = do
+    removeConf
+    -- Change back to the old working directory so that the tests can be
+    -- repeatedly run in `cabal repl` via `:main`.
+    setCurrentDirectory oldCwd
+
+-- | Remove the default config file that got created by the tests
+removeConf :: IO ()
+removeConf = do
+    b <- doesFileExist confFile
+    when b $ removeFile confFile
+  where
+    confFile = packageTestsDirectory </> "cabal-config"
+
+main :: IO ()
+main = defaultMain $ withResource initTests freeTests tests
