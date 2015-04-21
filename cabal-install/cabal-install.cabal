@@ -249,6 +249,9 @@ test-suite package-tests
     filepath,
     process,
     regex-posix,
+    -- if we can rely on base >= 4.7 don't need setenv
+    setenv,
+    tagged,
     tasty,
     tasty-hunit,
     tasty-quickcheck

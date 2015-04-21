@@ -4,6 +4,7 @@
 -- This file should do nothing but import tests from other modules and run
 -- them with the path to the correct cabal-install binary.
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Main
        where
 
@@ -23,8 +24,17 @@ import System.Directory
         ( canonicalizePath, getCurrentDirectory, setCurrentDirectory
         , removeFile, doesFileExist )
 import System.FilePath ((</>))
-import Test.Tasty (TestTree, defaultMain, testGroup, withResource)
+import Test.Tasty
+        ( defaultMainWithIngredients, defaultIngredients
+        , includingOptions, askOption
+        , TestTree, testGroup, withResource
+        )
+import Test.Tasty.Options ( OptionDescription(..), IsOption(..) )
+import Data.Proxy ( Proxy(..) )
+import Data.Typeable ( Typeable )
+import Data.Tagged ( Tagged(..) )
 import Control.Monad ( when )
+import System.SetEnv (unsetEnv)
 
 -- Module containing common test code.
 
@@ -52,9 +62,9 @@ cabalProgram = (simpleProgram "cabal") {
   }
 
 -- | System initialization before the tests can be run
-initTests :: IO TestsPaths
-initTests = do
-    buildDir <- canonicalizePath "dist/build/cabal"
+initTests :: FilePath -> IO TestsPaths
+initTests dist = do
+    buildDir <- canonicalizePath $ dist </> "build" </> "cabal"
     let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
     (cabal, _) <- requireProgram normal cabalProgram
                       (setProgramSearchPath programSearchPath defaultProgramDb)
@@ -68,6 +78,9 @@ initTests = do
           configPath = canonicalConfigPath </> packageTestsConfigFile,
           oldCwd     = cwd
         }
+
+    -- Unset CABAL_SANDBOX_CONFIG (if set)
+    unsetEnv "CABAL_SANDBOX_CONFIG"
 
     -- TODO: Using putStrLn kind of messes with tasty's output. Not sure what
     -- the right approach is here though.
@@ -97,4 +110,25 @@ removeConf = do
     confFile = packageTestsDirectory </> "cabal-config"
 
 main :: IO ()
-main = defaultMain $ withResource initTests freeTests tests
+main =
+     defaultMainWithIngredients ingredients $
+       askOption $ \(BuildDirOption dist) ->
+         withResource (initTests dist) freeTests tests
+  where
+    ingredients = includingOptions options : defaultIngredients
+    options     = [ Option (Proxy :: Proxy BuildDirOption)
+                  ]
+
+{-------------------------------------------------------------------------------
+  Command line options
+-------------------------------------------------------------------------------}
+
+newtype BuildDirOption = BuildDirOption FilePath
+  deriving (Typeable)
+
+-- | The equivalent of cabal's --builddir option
+instance IsOption BuildDirOption where
+  defaultValue   = BuildDirOption "dist"
+  parseValue     = Just . BuildDirOption
+  optionName     = Tagged "builddir"
+  optionHelp     = Tagged "The directory where Cabal puts generated build files"
