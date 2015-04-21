@@ -6,14 +6,14 @@ import System.FilePath
 import qualified Control.Exception as E
 
 
-suite :: FilePath -> Assertion
-suite ghcPath = do
+suite :: IO TestsConfig -> Assertion
+suite cfg = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "SameDepsAllRound"
             , configOpts = []
             , distPref = Nothing
             }
-    result <- cabal_build spec ghcPath
+    result <- cabal_build cfg spec
     do
         assertEqual "cabal build should succeed - see test-log.txt" True (successful result)
       `E.catch` \exc -> do

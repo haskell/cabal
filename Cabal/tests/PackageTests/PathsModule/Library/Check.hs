@@ -1,16 +1,15 @@
 module PackageTests.PathsModule.Library.Check (suite) where
 
 import PackageTests.PackageTester
-    (PackageSpec(..), assertBuildSucceeded, cabal_build)
 import System.FilePath
 import Test.Tasty.HUnit
 
-suite :: FilePath -> Assertion
-suite ghcPath = do
+suite :: IO TestsConfig -> Assertion
+suite cfg = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "PathsModule" </> "Library"
             , distPref = Nothing
             , configOpts = []
             }
-    result <- cabal_build spec ghcPath
+    result <- cabal_build cfg spec
     assertBuildSucceeded result

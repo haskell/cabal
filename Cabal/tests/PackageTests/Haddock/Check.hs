@@ -9,13 +9,12 @@ import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Simple.Utils (withFileContents)
 import PackageTests.PackageTester
-    (PackageSpec(..), assertHaddockSucceeded, cabal_haddock)
 
 this :: String
 this = "Haddock"
 
-suite :: FilePath -> Assertion
-suite ghcPath = do
+suite :: IO TestsConfig -> Assertion
+suite cfg = do
     let dir = "PackageTests" </> this
         haddocksDir = dir </> "dist" </> "doc" </> "html" </> "Haddock"
         spec = PackageSpec
@@ -26,7 +25,7 @@ suite ghcPath = do
 
     haddocksDirExists <- doesDirectoryExist haddocksDir
     when haddocksDirExists (removeDirectoryRecursive haddocksDir)
-    hResult <- cabal_haddock spec [] ghcPath
+    hResult <- cabal_haddock cfg spec []
     assertHaddockSucceeded hResult
 
     let docFiles = map (haddocksDir </>)

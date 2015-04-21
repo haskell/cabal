@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module PackageTests.ReexportedModules.Check where
 
 import Data.Version
@@ -18,10 +19,11 @@ orFail err r = case find (all isSpace . snd) r of
 find' :: (a -> Bool) -> [a] -> Maybe a
 find' = find
 
-suite :: FilePath -> Assertion
-suite ghcPath = do
+suite :: IO TestsConfig -> Assertion
+suite cfg = do
+    TestsConfig{..} <- cfg
     -- ToDo: Turn this into a utility function
-    (_, _, xs) <- run Nothing ghcPath [] ["--info"]
+    (_, _, xs) <- run Nothing testsConfigGhcPath [] ["--info"]
     let compat = (>= Version [7,9] [])
                . orFail "could not parse version"
                . readP_to_S parseVersion
@@ -37,5 +39,5 @@ suite ghcPath = do
                 , configOpts = []
                 , distPref = Nothing
                 }
-        result <- cabal_build spec ghcPath
+        result <- cabal_build cfg spec
         assertBuildSucceeded result

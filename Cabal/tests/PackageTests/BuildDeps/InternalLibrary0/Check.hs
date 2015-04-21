@@ -7,14 +7,14 @@ import System.FilePath
 import Test.Tasty.HUnit
 
 
-suite :: Version -> FilePath -> Assertion
-suite cabalVersion ghcPath = do
+suite ::  IO TestsConfig -> Version -> Assertion
+suite cfg cabalVersion = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "InternalLibrary0"
             , configOpts = []
             , distPref = Nothing
             }
-    result <- cabal_build spec ghcPath
+    result <- cabal_build cfg spec
     assertBuildFailed result
     when (cabalVersion >= Version [1, 7] []) $ do
         let sb = "library which is defined within the same package."
