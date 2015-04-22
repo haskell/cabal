@@ -81,7 +81,7 @@ LINK="$(for link in collect2 ld; do
     Please check your toolchain."
 
 # Warn that were's overriding $LD if set (if you want).
-[ -"$LD"- != -"$LINK"- ] &&
+[ -"$LD"- != -""- ] && [ -"$LD"- != -"$LINK"- ] &&
   echo "Warning: value set in $LD is not the same as C compiler's $LINK." >&2
   echo "Using $LINK instead." >&2
 
