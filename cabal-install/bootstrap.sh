@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
 # A script to bootstrap cabal-install.
 
@@ -51,43 +51,42 @@ GZIP_PROGRAM="${GZIP_PROGRAM:-gzip}"
 SCOPE_OF_INSTALLATION="${SCOPE_OF_INSTALLATION:---user}"
 DEFAULT_PREFIX="${HOME}/.cabal"
 
-# Try to respect $TMPDIR but override if needed - see #1710.
-[ -"$TMPDIR"- = -""- ] || echo "$TMPDIR" | grep -q ld &&
+# Try to respect $TMPDIR.
+[ -"$TMPDIR"- = -""- ] &&
   export TMPDIR=/tmp/cabal-$(echo $(od -XN4 -An /dev/random)) && mkdir $TMPDIR
 
-# Check for a C compiler.
-[ ! -x "$CC" ] && for ccc in gcc clang cc icc; do
-  ${ccc} --version > /dev/null 2>&1 && CC=$ccc &&
-  echo "Using $CC for C compiler. If this is not what you want, set CC." >&2 &&
+# Check for a C compiler, using user-set $CC, if any, first.
+for c in $CC gcc clang cc icc; do
+  $c --version 2>&1 >/dev/null && CC=$c &&
+  echo "Using $c for C compiler. If this is not what you want, set CC." >&2 &&
   break
 done
 
 # None found.
-[ ! -x `which "$CC"` ] &&
-  die "C compiler not found (or could not be run).
-       If a C compiler is installed make sure it is on your PATH,
-       or set the CC variable."
+[ -"$CC"- = -""- ] && die 'C compiler not found (or could not be run).
+  If a C compiler is installed make sure it is on your PATH, or set $CC.'
 
-# Check the C compiler/linker work.
+# Find the correct linker/linker-wrapper.
 LINK="$(for link in collect2 ld; do
-  echo 'main;' | ${CC} -v -x c - -o /dev/null -\#\#\# 2>&1 | grep -qw $link &&
-  echo 'main;' | ${CC} -v -x c - -o /dev/null -\#\#\# 2>&1 | grep -w  $link |
-  sed -e "s|\(.*$link\).*|\1|" -e 's/ //g' -e 's|"||' && break
-done)"
+          [ $($CC -print-prog-name=$link) = $link ] && continue ||
+          $CC -print-prog-name=$link
+        done)"
 
-# They don't.
-[ -z "$LINK" ] &&
-  die "C compiler and linker could not compile a simple test program.
-       Please check your toolchain."
+# Fall back to "ld"... might work.
+[ -$LINK- = -""- ] && LINK=ld
 
-## Warn that were's overriding $LD if set (if you want).
+# And finally, see if we can compile and link something.
+  echo 'int main(){}' | $CC -xc - -o /dev/null ||
+    die "C compiler and linker could not compile a simple test program.
+    Please check your toolchain."
 
-[ -x "$LD" ] && [ "$LD" != "$LINK" ] &&
+# Warn that were's overriding $LD if set (if you want).
+[ -"$LD"- != -"$LINK"- ] &&
   echo "Warning: value set in $LD is not the same as C compiler's $LINK." >&2
   echo "Using $LINK instead." >&2
 
 # Set LD, overriding environment if necessary.
-LD=$LINK
+export LD=$LINK
 
 # Check we're in the right directory, etc.
 grep "cabal-install" ./cabal-install.cabal > /dev/null 2>&1 ||
