@@ -112,7 +112,10 @@ import Data.Foldable              (traverse_)
 import Data.List                  (nub, intercalate)
 import Data.Maybe                 (fromMaybe, maybeToList)
 #if __GLASGOW_HASKELL__ < 710
+import Control.Applicative        (Applicative((<*>), pure))
 import Data.Monoid                (Monoid(mempty, mappend))
+import Data.Foldable              (Foldable(foldMap))
+import Data.Traversable           (Traversable(traverse))
 #endif
 import Data.Typeable               ( Typeable )
 import Control.Monad               (MonadPlus(mplus))
@@ -1144,6 +1147,27 @@ data Condition c = Var c
                  | COr (Condition c) (Condition c)
                  | CAnd (Condition c) (Condition c)
     deriving (Show, Eq, Typeable, Data)
+
+instance Functor Condition where
+  f `fmap` Var c    = Var (f c)
+  _ `fmap` Lit c    = Lit c
+  f `fmap` CNot c   = CNot (fmap f c)
+  f `fmap` COr c d  = COr  (fmap f c) (fmap f d)
+  f `fmap` CAnd c d = CAnd (fmap f c) (fmap f d)
+
+instance Foldable Condition where
+  f `foldMap` Var c    = f c
+  _ `foldMap` Lit _    = mempty
+  f `foldMap` CNot c   = foldMap f c
+  f `foldMap` COr c d  = foldMap f c `mappend` foldMap f d
+  f `foldMap` CAnd c d = foldMap f c `mappend` foldMap f d
+
+instance Traversable Condition where
+  f `traverse` Var c    = Var `fmap` f c
+  _ `traverse` Lit c    = pure $ Lit c
+  f `traverse` CNot c   = CNot `fmap` traverse f c
+  f `traverse` COr c d  = COr  `fmap` traverse f c <*> traverse f d
+  f `traverse` CAnd c d = CAnd `fmap` traverse f c <*> traverse f d
 
 data CondTree v c a = CondNode
     { condTreeData        :: a
