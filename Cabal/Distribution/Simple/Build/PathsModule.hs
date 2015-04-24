@@ -50,7 +50,10 @@ import Data.Maybe
 
 generate :: PackageDescription -> LocalBuildInfo -> String
 generate pkg_descr lbi =
-   let pragmas = ffi_pragmas ++ warning_pragmas
+   let pragmas = cpp_pragma ++ ffi_pragmas ++ warning_pragmas
+
+       cpp_pragma | supports_cpp = "{-# LANGUAGE CPP #-}"
+                  | otherwise    = ""
 
        ffi_pragmas
         | absolute = ""
@@ -89,7 +92,21 @@ generate pkg_descr lbi =
         reloc_imports ++
         "import Prelude\n"++
         "\n"++
-        "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
+        (if supports_cpp
+         then
+           ("#if defined(VERSION_base)\n"++
+            "\n"++
+            "#if MIN_VERSION_base(4,0,0)\n"++
+            "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
+            "#else\n"++
+            "catchIO :: IO a -> (Exception.Exception -> IO a) -> IO a\n"++
+            "#endif\n"++
+            "\n"++
+            "#else\n"++
+            "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n"++
+            "#endif\n")
+         else
+           "catchIO :: IO a -> (Exception.IOException -> IO a) -> IO a\n")++
         "catchIO = Exception.catch\n" ++
         "\n"++
         "version :: Version"++
@@ -217,6 +234,8 @@ generate pkg_descr lbi =
         get_prefix_stuff = get_prefix_win32 buildArch
 
         path_sep = show [pathSeparator]
+
+        supports_cpp = compilerFlavor (compiler lbi) == GHC
 
         supports_language_pragma =
           (compilerFlavor (compiler lbi) == GHC &&
