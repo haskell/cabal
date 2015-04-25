@@ -66,8 +66,8 @@ import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Simple.Program
-         ( defaultProgramConfiguration, builtinPrograms
-         , restoreProgramConfiguration)
+         ( addKnownPrograms, defaultProgramConfiguration, builtinPrograms
+         , reconfigurePrograms, restoreProgramConfiguration )
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run
@@ -76,22 +76,21 @@ import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Build        ( build, repl )
-import Distribution.Simple.SrcDist      ( sdist )
-import Distribution.Simple.Register
-         ( register, unregister )
-
-import Distribution.Simple.Configure
-         ( getPersistBuildConfig, maybeGetPersistBuildConfig
-         , writePersistBuildConfig, checkPersistBuildConfigOutdated
-         , configure, checkForeignDeps, findDistPrefOrDefault )
-
-import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Bench (bench)
 import Distribution.Simple.BuildPaths ( srcPref)
-import Distribution.Simple.Test (test)
-import Distribution.Simple.Install (install)
+import Distribution.Simple.Build        ( build, repl )
+import Distribution.Simple.Configure
+         ( maybeGetPersistBuildConfig, writePersistBuildConfig
+         , configure, checkForeignDeps, findDistPrefOrDefault )
 import Distribution.Simple.Haddock (haddock, hscolour)
+import Distribution.Simple.Install (install)
+import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import Distribution.Simple.Reconfigure
+    ( reconfigure, setupConfigArgsFile, writeArgs )
+import Distribution.Simple.Register
+         ( register, unregister )
+import Distribution.Simple.SrcDist      ( sdist )
+import Distribution.Simple.Test (test)
 import Distribution.Simple.Utils
          (die, notice, info, warn, setupMessage, chattyTry,
           defaultPackageDesc, defaultHookedPackageDesc,
@@ -105,9 +104,9 @@ import Distribution.Text
          ( display )
 
 -- Base
-import System.Environment(getArgs, getProgName)
 import System.Directory(removeFile, doesFileExist,
                         doesDirectoryExist, removeDirectoryRecursive)
+import System.Environment(getArgs, getProgName)
 import System.Exit       (exitWith,ExitCode(..))
 import System.FilePath(searchPathSeparator)
 import Distribution.Compat.Environment (getEnvironment)
@@ -170,8 +169,7 @@ defaultMainHelper hooks args = topHandler $
 
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
     commands =
-      [configureCommand progs `commandAddAction` \fs as ->
-                                                 configureAction    hooks fs as >> return ()
+      [configureCommand progs `commandAddAction` configureAction    hooks args
       ,buildCommand     progs `commandAddAction` buildAction        hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
@@ -196,20 +194,17 @@ allSuffixHandlers hooks
       overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
       overridesPP = unionBy (\x y -> fst x == fst y)
 
-configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
-configureAction hooks flags args = do
+configureAction :: UserHooks -> Args -> ConfigFlags -> Args -> IO ()
+configureAction hooks allArgs flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
     let flags' = flags { configDistPref = toFlag distPref }
+    writeArgs verbosity (setupConfigArgsFile distPref) allArgs
+
     pbi <- preConf hooks args flags'
 
     (mb_pd_file, pkg_descr0) <- confPkgDescr
 
-    --get_pkg_descr (configVerbosity flags')
-    --let pkg_descr = updatePackageDescription pbi pkg_descr0
     let epkg_descr = (pkg_descr0, pbi)
-
-    --(warns, ers) <- sanityCheckPackage pkg_descr
-    --errorOut (configVerbosity flags') warns ers
 
     localbuildinfo0 <- confHook hooks epkg_descr flags'
 
@@ -223,18 +218,18 @@ configureAction hooks flags args = do
 
     let pkg_descr = localPkgDescr localbuildinfo
     postConf hooks args flags' pkg_descr localbuildinfo
-    return localbuildinfo
   where
     verbosity = fromFlag (configVerbosity flags)
+
     confPkgDescr :: IO (Maybe FilePath, GenericPackageDescription)
     confPkgDescr = do
-        mdescr <- readDesc hooks
-        case mdescr of
-          Just descr -> return (Nothing, descr)
-          Nothing -> do
-              pdfile <- defaultPackageDesc verbosity
-              descr  <- readPackageDescription verbosity pdfile
-              return (Just pdfile, descr)
+      mdescr <- readDesc hooks
+      case mdescr of
+        Just descr -> return (Nothing, descr)
+        Nothing -> do
+          pdfile <- defaultPackageDesc verbosity
+          descr  <- readPackageDescription verbosity pdfile
+          return (Just pdfile, descr)
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
@@ -441,45 +436,8 @@ sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
 
 sanityCheckHookedBuildInfo _ _ = return ()
 
-
 getBuildConfig :: UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
-getBuildConfig hooks verbosity distPref = do
-  lbi_wo_programs <- getPersistBuildConfig distPref
-  -- Restore info about unconfigured programs, since it is not serialized
-  let lbi = lbi_wo_programs {
-    withPrograms = restoreProgramConfiguration
-                     (builtinPrograms ++ hookedPrograms hooks)
-                     (withPrograms lbi_wo_programs)
-  }
-
-  case pkgDescrFile lbi of
-    Nothing -> return lbi
-    Just pkg_descr_file -> do
-      outdated <- checkPersistBuildConfigOutdated distPref pkg_descr_file
-      if outdated
-        then reconfigure pkg_descr_file lbi
-        else return lbi
-
-  where
-    reconfigure :: FilePath -> LocalBuildInfo -> IO LocalBuildInfo
-    reconfigure pkg_descr_file lbi = do
-      notice verbosity $ pkg_descr_file ++ " has been changed. "
-                      ++ "Re-configuring with most recently used options. "
-                      ++ "If this fails, please run configure manually.\n"
-      let cFlags = configFlags lbi
-      let cFlags' = cFlags {
-            -- Since the list of unconfigured programs is not serialized,
-            -- restore it to the same value as normally used at the beginning
-            -- of a configure run:
-            configPrograms = restoreProgramConfiguration
-                               (builtinPrograms ++ hookedPrograms hooks)
-                               (configPrograms cFlags),
-
-            -- Use the current, not saved verbosity level:
-            configVerbosity = Flag verbosity
-          }
-      configureAction hooks cFlags' (extraConfigArgs lbi)
-
+getBuildConfig = reconfigure defaultMainHelper setupConfigArgsFile
 
 -- --------------------------------------------------------------------------
 -- Cleaning
