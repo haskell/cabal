@@ -1370,7 +1370,12 @@ values for these fields.
 
 `ghc-prof-options:` _token list_
 :   Additional options for GHC when the package is built with profiling
-    enabled.
+    enabled. For libraries, `-fprof-auto-exported` is enabled by
+    default, automatically adding cost center annotations to all
+    exported bindings. For executables, `-fprof-auto-top` is enabled
+    by default, automatically adding cost center annotations to all
+    top-level bindings. In either case, set `-fno-prof-auto` to
+    override the default.
 
 `ghc-shared-options:` _token list_
 :   Additional options for GHC when the package is built as shared library.
