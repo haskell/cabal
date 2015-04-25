@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveDataTypeable #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Reconfigure
@@ -12,7 +14,8 @@
 -- restores them on demand.
 
 module Distribution.Simple.Reconfigure
-       ( forceReconfigure
+       ( ReconfigureError(..)
+       , forceReconfigure
        , readArgs
        , reconfigure
        , setupConfigArgsFile
@@ -21,18 +24,23 @@ module Distribution.Simple.Reconfigure
 
 import Distribution.Simple.Configure
     ( checkPersistBuildConfigOutdated, tryGetPersistBuildConfig )
+import Distribution.Simple.Command
+    ( CommandParse(..), commandAddAction, commandsRun )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program
-    ( builtinPrograms, restoreProgramConfiguration )
+    ( addKnownPrograms, builtinPrograms, defaultProgramConfiguration
+    , restoreProgramConfiguration )
+import Distribution.Simple.Setup (ConfigFlags, configureCommand, globalCommand)
 import Distribution.Simple.UserHooks (Args, UserHooks(..))
 import Distribution.Simple.Utils
-    ( createDirectoryIfMissingVerbose, notice )
+    ( createDirectoryIfMissingVerbose, info, notice )
 import Distribution.Verbosity (Verbosity, lessVerbose)
 
-import Control.Exception (throwIO)
+import Control.Exception (Exception, throwIO)
 import Control.Monad (liftM)
 import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
+import Data.Typeable
 import System.Directory (doesFileExist)
 import System.FilePath ((</>), takeDirectory)
 
@@ -72,43 +80,85 @@ setupConfigArgsFile = (</> "setup-config-args")
 -- | Read the 'localBuildInfoFile', reconfiguring if necessary. Throws
 -- 'ConfigStateFileError' if the file cannot be read and the package cannot
 -- be reconfigured.
-reconfigure :: (UserHooks -> Args -> IO ())
-               -- ^ entry point, used to reconfigure when needed
-               -- (defaults to 'defaultMainHelper')
+reconfigure :: (UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
+               -- ^ configure action
             -> (FilePath -> FilePath)
-               -- ^ path, relative to @--build-dir@, to the
-               -- saved @configure@ command-line arguments
+               -- ^ path to saved command-line arguments,
+               -- relative to @--build-dir@
             -> UserHooks -> Verbosity -> FilePath
             -> IO LocalBuildInfo
-reconfigure entryPoint configArgsFile hooks verbosity distPref =
-  reconfigure_go True where
-    reconfigure_go retry = do
-      elbi <- tryGetPersistBuildConfig distPref
-      lbi <- case elbi of
-        Left err | retry -> do notice verbosity (show err)
-                               forceReconfigure entryPoint configArgsFile hooks verbosity distPref
-                               reconfigure_go False
-                 | otherwise -> throwIO err
-        Right lbi_wo_programs ->
-          -- Restore info about unconfigured programs, since it is not serialized
-          return lbi_wo_programs {
-            withPrograms = restoreProgramConfiguration
-                           (builtinPrograms ++ hookedPrograms hooks)
-                           (withPrograms lbi_wo_programs)
-          }
-      case pkgDescrFile lbi of
-        Nothing -> return lbi
-        Just pkg_descr_file -> do
-          outdated <- checkPersistBuildConfigOutdated distPref pkg_descr_file
-          if outdated
-            then do
-              notice verbosity $ pkg_descr_file ++ " has changed; reconfiguring..."
-              forceReconfigure entryPoint configArgsFile hooks verbosity distPref
-              reconfigure_go False
-            else return lbi
+reconfigure configureAction configArgsFile hooks verbosity distPref = do
+    elbi <- tryGetPersistBuildConfig distPref
+    lbi <- case elbi of
+      Left err -> do info verbosity (show err)
+                     forceReconfigure_
+      Right lbi_wo_programs ->
+        -- Restore info about unconfigured programs, since it is not serialized
+        return lbi_wo_programs {
+          withPrograms = restoreProgramConfiguration
+                         (builtinPrograms ++ hookedPrograms hooks)
+                         (withPrograms lbi_wo_programs)
+        }
+    case pkgDescrFile lbi of
+      Nothing -> return lbi
+      Just pkg_descr_file -> do
+        outdated <- checkPersistBuildConfigOutdated distPref pkg_descr_file
+        if outdated
+          then do
+            notice verbosity
+              (pkg_descr_file ++ " has changed; reconfiguring...")
+            forceReconfigure_
+          else return lbi
+  where
+    forceReconfigure_ =
+      forceReconfigure configureAction configArgsFile hooks verbosity distPref
 
-forceReconfigure :: (UserHooks -> Args -> IO ()) -> (FilePath -> FilePath) -> UserHooks -> Verbosity -> FilePath -> IO ()
-forceReconfigure entryPoint configArgsFile hooks _ distPref = do
+
+data ReconfigureError
+    = ReconfigureErrorHelp Args
+    | ReconfigureErrorList Args
+    | ReconfigureErrorOther Args [String]
+  deriving (Typeable)
+
+instance Show ReconfigureError where
+  show (ReconfigureErrorHelp args) =
+    "reconfigure: unexpected flag '--help', saved command line was:\n"
+    ++ intercalate " " args
+  show (ReconfigureErrorList args) =
+    "reconfigure: unexpected flag '--list-options', saved command line was:\n"
+    ++ intercalate " " args
+  show (ReconfigureErrorOther args errs) =
+    "reconfigure: saved command line was:\n"
+    ++ intercalate " " args ++ "\n"
+    ++ "encountered errors:\n"
+    ++ intercalate "\n" errs
+
+instance Exception ReconfigureError
+
+-- | Reconfigure the package unconditionally.
+forceReconfigure :: (UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
+                    -- ^ configure action
+                 -> (FilePath -> FilePath)
+                    -- ^ path to saved command-line arguments,
+                    -- relative to @--build-dir@
+                 -> UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
+forceReconfigure configureAction configArgsFile hooks _ distPref = do
     saved <- readArgs (configArgsFile distPref)
     let args = fromMaybe ["configure"] saved
-    entryPoint hooks args
+        commands =
+          [ commandAddAction
+              (configureCommand progs)
+              (configureAction hooks args)
+          ]
+    case commandsRun (globalCommand commands) commands args of
+      CommandHelp _ -> throwIO (ReconfigureErrorHelp args)
+      CommandList _ -> throwIO (ReconfigureErrorList args)
+      CommandErrors errs -> throwIO (ReconfigureErrorOther args errs)
+      CommandReadyToGo (_, commandParse)  ->
+        case commandParse of
+          CommandHelp _ -> throwIO (ReconfigureErrorHelp args)
+          CommandList _ -> throwIO (ReconfigureErrorList args)
+          CommandErrors errs -> throwIO (ReconfigureErrorOther args errs)
+          CommandReadyToGo action -> action
+  where
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration

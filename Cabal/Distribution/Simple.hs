@@ -198,6 +198,7 @@ configureAction :: UserHooks -> Args -> ConfigFlags -> Args -> IO ()
 configureAction hooks allArgs flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
     let flags' = flags { configDistPref = toFlag distPref }
+    -- save command-line options so we can reconfigure later
     writeArgs verbosity (setupConfigArgsFile distPref) allArgs
 
     pbi <- preConf hooks args flags'
@@ -437,7 +438,7 @@ sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
 sanityCheckHookedBuildInfo _ _ = return ()
 
 getBuildConfig :: UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
-getBuildConfig = reconfigure defaultMainHelper setupConfigArgsFile
+getBuildConfig = reconfigure configureAction setupConfigArgsFile
 
 -- --------------------------------------------------------------------------
 -- Cleaning
