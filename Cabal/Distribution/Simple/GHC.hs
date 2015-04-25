@@ -471,13 +471,16 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                       ghcOptHPCDir       = hpcdir Hpc.Vanilla
                     }
 
-      profOpts    = vanillaOpts `mappend` mempty {
-                      ghcOptProfilingMode = toFlag True,
-                      ghcOptHiSuffix      = toFlag "p_hi",
-                      ghcOptObjSuffix     = toFlag "p_o",
-                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi,
-                      ghcOptHPCDir        = hpcdir Hpc.Prof
-                    }
+      profOpts    =
+        let defaultProfOptions = toNubListR [ "-fprof-auto-exported" ]
+            pkgProfOptions = toNubListR (hcProfOptions GHC libBi)
+        in vanillaOpts `mappend` mempty {
+          ghcOptProfilingMode = toFlag True,
+          ghcOptHiSuffix      = toFlag "p_hi",
+          ghcOptObjSuffix     = toFlag "p_o",
+          ghcOptExtra         = defaultProfOptions `mappend` pkgProfOptions,
+          ghcOptHPCDir        = hpcdir Hpc.Prof
+        }
 
       sharedOpts  = vanillaOpts `mappend` mempty {
                       ghcOptDynLinkMode = toFlag GhcDynamicOnly,
@@ -759,14 +762,16 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptDynLinkMode    = toFlag GhcStaticOnly,
                       ghcOptHPCDir         = hpcdir Hpc.Vanilla
                    }
-      profOpts   = baseOpts `mappend` mempty {
-                      ghcOptProfilingMode  = toFlag True,
-                      ghcOptHiSuffix       = toFlag "p_hi",
-                      ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR $
-                                             hcProfOptions GHC exeBi,
-                      ghcOptHPCDir         = hpcdir Hpc.Prof
-                    }
+      profOpts   =
+        let defaultProfOptions = toNubListR [ "-fprof-auto-top" ]
+            pkgProfOptions = toNubListR (hcProfOptions GHC exeBi)
+        in baseOpts `mappend` mempty {
+          ghcOptProfilingMode  = toFlag True,
+          ghcOptHiSuffix       = toFlag "p_hi",
+          ghcOptObjSuffix      = toFlag "p_o",
+          ghcOptExtra          = defaultProfOptions `mappend` pkgProfOptions,
+          ghcOptHPCDir         = hpcdir Hpc.Prof
+        }
       dynOpts    = baseOpts `mappend` mempty {
                       ghcOptDynLinkMode    = toFlag GhcDynamicOnly,
                       ghcOptHiSuffix       = toFlag "dyn_hi",
@@ -976,12 +981,15 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                        ghcOptObjSuffix   = toFlag "dyn_o",
                        ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi
                    }
-      profArgs = vanillaArgs `mappend` mempty {
-                     ghcOptProfilingMode = toFlag True,
-                     ghcOptHiSuffix      = toFlag "p_hi",
-                     ghcOptObjSuffix     = toFlag "p_o",
-                     ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
-                 }
+      profArgs =
+        let defaultProfOptions = toNubListR [ "-fprof-auto-exported" ]
+            pkgProfOptions = toNubListR (hcProfOptions GHC libBi)
+        in vanillaArgs `mappend` mempty {
+          ghcOptProfilingMode = toFlag True,
+          ghcOptHiSuffix      = toFlag "p_hi",
+          ghcOptObjSuffix     = toFlag "p_o",
+          ghcOptExtra         = defaultProfOptions `mappend` pkgProfOptions
+        }
       ghcArgs = if withVanillaLib lbi then vanillaArgs
            else if withSharedLib  lbi then sharedArgs
            else if withProfLib    lbi then profArgs
