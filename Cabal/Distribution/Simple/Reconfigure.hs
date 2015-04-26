@@ -33,12 +33,13 @@ module Distribution.Simple.Reconfigure
 import Distribution.Package
     ( PackageIdentifier(..), PackageName(PackageName), packageId )
 import Distribution.Simple.Command
-    ( CommandParse(..), commandAddAction, commandsRun )
+    ( CommandParse(..), commandAddAction, commandsRun, commandShowOptions )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program
     ( addKnownPrograms, builtinPrograms, defaultProgramConfiguration
     , restoreProgramConfiguration )
-import Distribution.Simple.Setup (ConfigFlags, configureCommand, globalCommand)
+import Distribution.Simple.Setup
+    ( ConfigFlags, GlobalFlags(..), configureCommand, fromFlag, globalCommand )
 import Distribution.Simple.UserHooks (Args, UserHooks(..))
 import Distribution.Simple.Utils
     ( cabalVersion, createDirectoryIfMissingVerbose, info, moreRecentFile
@@ -57,8 +58,9 @@ import Control.Monad (liftM, unless)
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
+import Data.Foldable (foldlM)
 import Data.List (intercalate)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Typeable
 import Distribution.Compat.Binary (decodeOrFailIO, encode)
 import System.Directory (createDirectoryIfMissing, doesFileExist)
@@ -143,9 +145,10 @@ reconfigure :: (UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
             -> (FilePath -> FilePath)
                -- ^ path to saved command-line arguments,
                -- relative to @--build-dir@
+            -> [ConfigFlags -> Maybe (ConfigFlags, String)]
             -> UserHooks -> Verbosity -> FilePath
             -> IO LocalBuildInfo
-reconfigure configureAction configArgsFile hooks verbosity distPref = do
+reconfigure configureAction configArgsFile reqs hooks verbosity distPref = do
     elbi <- tryGetPersistBuildConfig distPref
     lbi <- case elbi of
       Left err -> do info verbosity (show err)
@@ -166,10 +169,17 @@ reconfigure configureAction configArgsFile hooks verbosity distPref = do
             notice verbosity
               (pkg_descr_file ++ " has changed; reconfiguring...")
             forceReconfigure_
-          else return lbi
+          else do
+            let flags = configFlags lbi
+            if checkRequirements flags
+              then forceReconfigure_
+              else return lbi
   where
-    forceReconfigure_ =
-      forceReconfigure configureAction configArgsFile hooks verbosity distPref
+    forceReconfigure_ = forceReconfigure configureAction configArgsFile reqs
+                                         hooks verbosity distPref
+
+    checkRequirements :: ConfigFlags -> Bool -- ^ needs to be reconfigured?
+    checkRequirements flags = (not . null . catMaybes) (map ($ flags) reqs)
 
 -- | Reconfigure the package unconditionally.
 forceReconfigure :: (UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
@@ -177,27 +187,43 @@ forceReconfigure :: (UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildIn
                  -> (FilePath -> FilePath)
                     -- ^ path to saved command-line arguments,
                     -- relative to @--build-dir@
+                 -> [ConfigFlags -> Maybe (ConfigFlags, String)]
                  -> UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
-forceReconfigure configureAction configArgsFile hooks _ distPref = do
+forceReconfigure configureAction configArgsFile reqs hooks verbosity distPref = do
     saved <- readArgs (configArgsFile distPref)
     let args = fromMaybe ["configure"] saved
-        commands =
-          [ commandAddAction
-              (configureCommand progs)
-              (configureAction hooks args)
-          ]
+        commands = [ commandAddAction cmd configureAction_ ]
     case commandsRun (globalCommand commands) commands args of
-      CommandHelp _ -> throwIO (ReconfigureErrorHelp args)
-      CommandList _ -> throwIO (ReconfigureErrorList args)
+      CommandHelp   _    -> throwIO (ReconfigureErrorHelp args)
+      CommandList   _    -> throwIO (ReconfigureErrorList args)
       CommandErrors errs -> throwIO (ReconfigureErrorOther args errs)
-      CommandReadyToGo (_, commandParse)  ->
+      CommandReadyToGo (flags, commandParse)  ->
         case commandParse of
-          CommandHelp _ -> throwIO (ReconfigureErrorHelp args)
-          CommandList _ -> throwIO (ReconfigureErrorList args)
+          _ | fromFlag (globalVersion flags)
+              || fromFlag (globalNumericVersion flags) ->
+                throwIO (ReconfigureErrorOther args ["not a 'configure' command"])
+          CommandHelp   _    -> throwIO (ReconfigureErrorHelp args)
+          CommandList   _    -> throwIO (ReconfigureErrorList args)
           CommandErrors errs -> throwIO (ReconfigureErrorOther args errs)
-          CommandReadyToGo action -> action
+          CommandReadyToGo action        -> action
   where
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
+    cmd = configureCommand progs
+
+    configureAction_ :: ConfigFlags -> Args -> IO LocalBuildInfo
+    configureAction_ flags extraArgs = do
+      flags' <- setRequirements flags
+      let args' = "configure" : commandShowOptions cmd flags'
+      configureAction hooks args' flags' extraArgs
+
+    setRequirements :: ConfigFlags -> IO ConfigFlags
+    setRequirements orig = foldlM setRequirements_go orig reqs where
+      setRequirements_go flags req =
+        case req flags of
+          Nothing -> return flags
+          Just (flags', reason) -> do
+            notice verbosity ("reconfigure: " ++ reason)
+            return flags'
 
 -- | Write command-line arguments to a file, separated by null characters. This
 -- format is also suitable for the @xargs -0@ command. Using the null

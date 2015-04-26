@@ -438,7 +438,7 @@ sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
 sanityCheckHookedBuildInfo _ _ = return ()
 
 getBuildConfig :: UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
-getBuildConfig = reconfigure configureAction setupConfigArgsFile
+getBuildConfig = reconfigure configureAction setupConfigArgsFile []
 
 -- --------------------------------------------------------------------------
 -- Cleaning
