@@ -111,7 +111,7 @@ import System.Exit       (exitWith,ExitCode(..))
 import System.FilePath(searchPathSeparator)
 import Distribution.Compat.Environment (getEnvironment)
 
-import Control.Monad   (when)
+import Control.Monad   (void, when)
 import Data.Foldable   (traverse_)
 import Data.List       (intercalate, unionBy, nub, (\\))
 
@@ -169,7 +169,8 @@ defaultMainHelper hooks args = topHandler $
 
     progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
     commands =
-      [configureCommand progs `commandAddAction` configureAction    hooks args
+      [configureCommand progs `commandAddAction` \fs as ->
+           void (configureAction hooks args fs as)
       ,buildCommand     progs `commandAddAction` buildAction        hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
@@ -194,7 +195,7 @@ allSuffixHandlers hooks
       overridesPP :: [PPSuffixHandler] -> [PPSuffixHandler] -> [PPSuffixHandler]
       overridesPP = unionBy (\x y -> fst x == fst y)
 
-configureAction :: UserHooks -> Args -> ConfigFlags -> Args -> IO ()
+configureAction :: UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction hooks allArgs flags args = do
     distPref <- findDistPrefOrDefault (configDistPref flags)
     let flags' = flags { configDistPref = toFlag distPref }
@@ -219,6 +220,7 @@ configureAction hooks allArgs flags args = do
 
     let pkg_descr = localPkgDescr localbuildinfo
     postConf hooks args flags' pkg_descr localbuildinfo
+    return localbuildinfo
   where
     verbosity = fromFlag (configVerbosity flags)
 
@@ -238,7 +240,7 @@ buildAction hooks flags args = do
   let verbosity = fromFlag $ buildVerbosity flags
       flags' = flags { buildDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig hooks verbosity distPref
+  lbi <- getBuildConfig [] hooks verbosity distPref
   progs <- reconfigurePrograms verbosity
              (buildProgramPaths flags')
              (buildProgramArgs flags')
@@ -254,7 +256,7 @@ replAction hooks flags args = do
   let verbosity = fromFlag $ replVerbosity flags
       flags' = flags { replDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig hooks verbosity distPref
+  lbi <- getBuildConfig [] hooks verbosity distPref
   progs <- reconfigurePrograms verbosity
              (replProgramPaths flags')
              (replProgramArgs flags')
@@ -273,7 +275,7 @@ hscolourAction hooks flags args = do
     let verbosity = fromFlag $ hscolourVerbosity flags
         flags' = flags { hscolourDistPref = toFlag distPref }
     hookedAction preHscolour hscolourHook postHscolour
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig [] hooks verbosity distPref)
                  hooks flags' args
 
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
@@ -282,7 +284,7 @@ haddockAction hooks flags args = do
   let verbosity = fromFlag $ haddockVerbosity flags
       flags' = flags { haddockDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig hooks verbosity distPref
+  lbi <- getBuildConfig [] hooks verbosity distPref
   progs <- reconfigurePrograms verbosity
              (haddockProgramPaths flags')
              (haddockProgramArgs flags')
@@ -318,7 +320,7 @@ copyAction hooks flags args = do
     let verbosity = fromFlag $ copyVerbosity flags
         flags' = flags { copyDistPref = toFlag distPref }
     hookedAction preCopy copyHook postCopy
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig [] hooks verbosity distPref)
                  hooks flags' args
 
 installAction :: UserHooks -> InstallFlags -> Args -> IO ()
@@ -327,7 +329,7 @@ installAction hooks flags args = do
     let verbosity = fromFlag $ installVerbosity flags
         flags' = flags { installDistPref = toFlag distPref }
     hookedAction preInst instHook postInst
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig [] hooks verbosity distPref)
                  hooks flags' args
 
 sdistAction :: UserHooks -> SDistFlags -> Args -> IO ()
@@ -354,14 +356,22 @@ testAction hooks flags args = do
     let verbosity = fromFlag $ testVerbosity flags
         flags' = flags { testDistPref = toFlag distPref }
 
-    localBuildInfo <- getBuildConfig hooks verbosity distPref
-    let pkg_descr = localPkgDescr localBuildInfo
+    let withEnabledTests fs
+          | fromFlagOrDefault False (configTests fs) = Nothing
+          | otherwise = Just (enableTests fs, "enabling tests")
+        enableTests fs = fs { configTests = toFlag True }
+
+    -- Get the persistent build config.
+    -- If necessary, reconfigure with tests enabled.
+    lbi <- getBuildConfig [withEnabledTests] hooks verbosity distPref
+
     -- It is safe to do 'runTests' before the new test handler because the
     -- default action is a no-op and if the package uses the old test interface
     -- the new handler will find no tests.
-    runTests hooks args False pkg_descr localBuildInfo
+    runTests hooks args False (localPkgDescr lbi) lbi
+
     hookedActionWithArgs preTest testHook postTest
-            (getBuildConfig hooks verbosity distPref)
+            (return lbi)  -- already got the persistent build config
             hooks flags' args
 
 benchAction :: UserHooks -> BenchmarkFlags -> Args -> IO ()
@@ -369,8 +379,16 @@ benchAction hooks flags args = do
     distPref <- findDistPrefOrDefault (benchmarkDistPref flags)
     let verbosity = fromFlag $ benchmarkVerbosity flags
         flags' = flags { benchmarkDistPref = toFlag distPref }
+
+        withEnabledBenchs fs
+          | fromFlagOrDefault False (configBenchmarks fs) = Nothing
+          | otherwise = Just (enableBenchs fs, "enabling benchmarks")
+        enableBenchs fs = fs { configBenchmarks = toFlag True }
+
     hookedActionWithArgs preBench benchHook postBench
-            (getBuildConfig hooks verbosity distPref)
+            -- get persistent build config
+            -- if necessary, reconfigure with benchmarks enabled
+            (getBuildConfig [withEnabledBenchs] hooks verbosity distPref)
             hooks flags' args
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
@@ -379,7 +397,7 @@ registerAction hooks flags args = do
     let verbosity = fromFlag $ regVerbosity flags
         flags' = flags { regDistPref = toFlag distPref }
     hookedAction preReg regHook postReg
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig [] hooks verbosity distPref)
                  hooks flags' args
 
 unregisterAction :: UserHooks -> RegisterFlags -> Args -> IO ()
@@ -388,7 +406,7 @@ unregisterAction hooks flags args = do
     let verbosity = fromFlag $ regVerbosity flags
         flags' = flags { regDistPref = toFlag distPref }
     hookedAction preUnreg unregHook postUnreg
-                 (getBuildConfig hooks verbosity distPref)
+                 (getBuildConfig [] hooks verbosity distPref)
                  hooks flags' args
 
 hookedAction :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
@@ -437,8 +455,9 @@ sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
 
 sanityCheckHookedBuildInfo _ _ = return ()
 
-getBuildConfig :: UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
-getBuildConfig = reconfigure configureAction setupConfigArgsFile []
+getBuildConfig :: [ConfigFlags -> Maybe (ConfigFlags, String)]
+               -> UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
+getBuildConfig = reconfigure configureAction setupConfigArgsFile
 
 -- --------------------------------------------------------------------------
 -- Cleaning
