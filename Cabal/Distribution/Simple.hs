@@ -59,7 +59,7 @@ import Distribution.Simple.UserHooks
 import Distribution.Package --must not specify imports, since we're exporting module.
 import Distribution.PackageDescription
          ( PackageDescription(..), GenericPackageDescription
-         , Benchmark(..), BuildInfo(..), Executable(..), TestSuite(..)
+         , Benchmark(..), BuildInfo(..), TestSuite(..)
          , updatePackageDescription, hasLibs
          , HookedBuildInfo, emptyHookedBuildInfo )
 import Distribution.PackageDescription.Parse
@@ -115,7 +115,7 @@ import Distribution.Compat.Environment (getEnvironment)
 
 import Control.Monad   (void, when)
 import Data.Foldable   (traverse_)
-import Data.List       (intercalate, unionBy, nub, (\\))
+import Data.List       (intercalate, unionBy)
 import Data.Maybe      (mapMaybe)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
@@ -461,52 +461,6 @@ unregisterAction hooks flags args = do
     hookedAction preUnreg unregHook postUnreg
                  (getBuildConfig [] hooks verbosity distPref)
                  hooks flags' args
-
-hookedAction :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
-        -> (UserHooks -> PackageDescription -> LocalBuildInfo
-                      -> UserHooks -> flags -> IO ())
-        -> (UserHooks -> Args -> flags -> PackageDescription
-                      -> LocalBuildInfo -> IO ())
-        -> IO LocalBuildInfo
-        -> UserHooks -> flags -> Args -> IO ()
-hookedAction pre_hook cmd_hook =
-    hookedActionWithArgs pre_hook (\h _ pd lbi uh flags -> cmd_hook h pd lbi uh flags)
-
-hookedActionWithArgs :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
-        -> (UserHooks -> Args -> PackageDescription -> LocalBuildInfo
-                      -> UserHooks -> flags -> IO ())
-        -> (UserHooks -> Args -> flags -> PackageDescription
-                      -> LocalBuildInfo -> IO ())
-        -> IO LocalBuildInfo
-        -> UserHooks -> flags -> Args -> IO ()
-hookedActionWithArgs pre_hook cmd_hook post_hook get_build_config hooks flags args = do
-   pbi <- pre_hook hooks args flags
-   localbuildinfo <- get_build_config
-   let pkg_descr0 = localPkgDescr localbuildinfo
-   --pkg_descr0 <- get_pkg_descr (get_verbose flags)
-   sanityCheckHookedBuildInfo pkg_descr0 pbi
-   let pkg_descr = updatePackageDescription pbi pkg_descr0
-   -- TODO: should we write the modified package descr back to the
-   -- localbuildinfo?
-   cmd_hook hooks args pkg_descr localbuildinfo hooks flags
-   post_hook hooks args flags pkg_descr localbuildinfo
-
-sanityCheckHookedBuildInfo :: PackageDescription -> HookedBuildInfo -> IO ()
-sanityCheckHookedBuildInfo PackageDescription { library = Nothing } (Just _,_)
-    = die $ "The buildinfo contains info for a library, "
-         ++ "but the package does not have a library."
-
-sanityCheckHookedBuildInfo pkg_descr (_, hookExes)
-    | not (null nonExistant)
-    = die $ "The buildinfo contains info for an executable called '"
-         ++ head nonExistant ++ "' but the package does not have a "
-         ++ "executable with that name."
-  where
-    pkgExeNames  = nub (map exeName (executables pkg_descr))
-    hookExeNames = nub (map fst hookExes)
-    nonExistant  = hookExeNames \\ pkgExeNames
-
-sanityCheckHookedBuildInfo _ _ = return ()
 
 getBuildConfig :: [ConfigFlags -> Maybe (ConfigFlags, String)]
                -> UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
