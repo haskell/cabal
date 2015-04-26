@@ -59,7 +59,6 @@ import Distribution.Simple.UserHooks
 import Distribution.Package --must not specify imports, since we're exporting module.
 import Distribution.PackageDescription
          ( PackageDescription(..), GenericPackageDescription
-         , Benchmark(..), BuildInfo(..), TestSuite(..)
          , updatePackageDescription, hasLibs
          , HookedBuildInfo, emptyHookedBuildInfo )
 import Distribution.PackageDescription.Parse
@@ -67,8 +66,8 @@ import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
          ( flattenPackageDescription )
 import Distribution.Simple.Program
-         ( addKnownPrograms, defaultProgramConfiguration, builtinPrograms
-         , reconfigurePrograms, restoreProgramConfiguration )
+         ( defaultProgramConfiguration, addKnownPrograms, reconfigurePrograms
+         , restoreProgramConfiguration, builtinPrograms )
 import Distribution.Simple.Program.Db
 import Distribution.Simple.Program.Find
 import Distribution.Simple.Program.Run
@@ -77,7 +76,7 @@ import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Bench (bench)
+import qualified Distribution.Simple.Bench as Bench
 import Distribution.Simple.BuildPaths ( srcPref)
 import Distribution.Simple.Build        ( build, repl )
 import Distribution.Simple.Configure
@@ -86,13 +85,12 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
-import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Reconfigure
     ( reconfigure, setupConfigArgsFile, writeArgs )
 import Distribution.Simple.Register
          ( register, unregister )
 import Distribution.Simple.SrcDist      ( sdist )
-import Distribution.Simple.Test (test)
+import qualified Distribution.Simple.Test as Test
 import Distribution.Simple.Utils
          (die, notice, info, warn, setupMessage, chattyTry,
           defaultPackageDesc, defaultHookedPackageDesc,
@@ -116,7 +114,6 @@ import Distribution.Compat.Environment (getEnvironment)
 import Control.Monad   (void, when)
 import Data.Foldable   (traverse_)
 import Data.List       (intercalate, unionBy)
-import Data.Maybe      (mapMaybe)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -243,7 +240,7 @@ buildAction hooks flags args = do
   let verbosity = fromFlag $ buildVerbosity flags
       flags' = flags { buildDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig [] hooks verbosity distPref
+  lbi <- getBuildConfig hooks [] verbosity distPref
   progs <- reconfigurePrograms verbosity
              (buildProgramPaths flags')
              (buildProgramArgs flags')
@@ -259,7 +256,7 @@ replAction hooks flags args = do
   let verbosity = fromFlag $ replVerbosity flags
       flags' = flags { replDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig [] hooks verbosity distPref
+  lbi <- getBuildConfig hooks [] verbosity distPref
   progs <- reconfigurePrograms verbosity
              (replProgramPaths flags')
              (replProgramArgs flags')
@@ -278,7 +275,7 @@ hscolourAction hooks flags args = do
     let verbosity = fromFlag $ hscolourVerbosity flags
         flags' = flags { hscolourDistPref = toFlag distPref }
     hookedAction preHscolour hscolourHook postHscolour
-                 (getBuildConfig [] hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
@@ -287,7 +284,7 @@ haddockAction hooks flags args = do
   let verbosity = fromFlag $ haddockVerbosity flags
       flags' = flags { haddockDistPref = toFlag distPref }
 
-  lbi <- getBuildConfig [] hooks verbosity distPref
+  lbi <- getBuildConfig hooks [] verbosity distPref
   progs <- reconfigurePrograms verbosity
              (haddockProgramPaths flags')
              (haddockProgramArgs flags')
@@ -323,7 +320,7 @@ copyAction hooks flags args = do
     let verbosity = fromFlag $ copyVerbosity flags
         flags' = flags { copyDistPref = toFlag distPref }
     hookedAction preCopy copyHook postCopy
-                 (getBuildConfig [] hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
 installAction :: UserHooks -> InstallFlags -> Args -> IO ()
@@ -332,7 +329,7 @@ installAction hooks flags args = do
     let verbosity = fromFlag $ installVerbosity flags
         flags' = flags { installDistPref = toFlag distPref }
     hookedAction preInst instHook postInst
-                 (getBuildConfig [] hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
 sdistAction :: UserHooks -> SDistFlags -> Args -> IO ()
@@ -354,95 +351,27 @@ sdistAction hooks flags args = do
     verbosity = fromFlag (sDistVerbosity flags)
 
 testAction :: UserHooks -> TestFlags -> Args -> IO ()
-testAction hooks flags args = do
-    distPref <- findDistPrefOrDefault (testDistPref flags)
-    let verbosity = fromFlag $ testVerbosity flags
-        flags' = flags { testDistPref = toFlag distPref }
+testAction hooks =
+    Test.action
+      (getBuildConfig hooks)
+      (buildAction hooks)
+      (\lbi flags args -> do
+           -- It is safe to do 'runTests' before the new test handler because the
+           -- default action is a no-op and if the package uses the old test
+           -- interface the new handler will find no tests.
+           runTests hooks args False (localPkgDescr lbi) lbi
 
-    let withEnabledTests fs
-          | fromFlagOrDefault False (configTests fs) = Nothing
-          | otherwise = Just (enableTests fs, "enabling tests")
-        enableTests fs = fs { configTests = toFlag True }
-
-    -- Get the persistent build config.
-    -- If necessary, reconfigure with tests enabled.
-    lbi <- getBuildConfig [withEnabledTests] hooks verbosity distPref
-
-    let buildFlags = mempty { buildDistPref = testDistPref flags'
-                            , buildVerbosity = testVerbosity flags'
-                            }
-        buildArgs_ -- extra arguments to 'build'
-          | null args = tests -- build all tests, but *only* tests
-          | otherwise = args -- build only named tests
-        tests = mapMaybe nameTestsOnly $ LBI.pkgComponents pkgDescr
-        pkgDescr = LBI.localPkgDescr lbi
-        nameTestsOnly =
-            LBI.foldComponent
-              (const Nothing)
-              (const Nothing)
-              (\t ->
-                if buildable (testBuildInfo t)
-                  then Just (testName t)
-                else Nothing)
-              (const Nothing)
-
-    if null tests
-       then warn verbosity "test: no buildable test suites"
-      else do
-        -- Ensure that all requested test suites are built.
-        buildAction hooks buildFlags buildArgs_
-
-        -- It is safe to do 'runTests' before the new test handler because the
-        -- default action is a no-op and if the package uses the old test
-        -- interface the new handler will find no tests.
-        runTests hooks args False (localPkgDescr lbi) lbi
-
-        hookedActionWithArgs preTest testHook postTest
-                (return lbi) -- already got the persistent build config
-                hooks flags' args
+           hookedActionWithArgs preTest testHook postTest
+             (return lbi) -- already got the persistent build config
+             hooks flags args)
 
 benchAction :: UserHooks -> BenchmarkFlags -> Args -> IO ()
-benchAction hooks flags args = do
-    distPref <- findDistPrefOrDefault (benchmarkDistPref flags)
-    let verbosity = fromFlag $ benchmarkVerbosity flags
-        flags' = flags { benchmarkDistPref = toFlag distPref }
-
-        withEnabledBenchs fs
-          | fromFlagOrDefault False (configBenchmarks fs) = Nothing
-          | otherwise = Just (enableBenchs fs, "enabling benchmarks")
-        enableBenchs fs = fs { configBenchmarks = toFlag True }
-
-    lbi <- getBuildConfig [withEnabledBenchs] hooks verbosity distPref
-
-    let buildFlags =
-            mempty
-            { buildDistPref = benchmarkDistPref flags'
-            , buildVerbosity = benchmarkVerbosity flags'
-            }
-        buildArgs_
-          | null args = benchs
-          | otherwise = args
-        benchs = mapMaybe nameBenchsOnly $ LBI.pkgComponents pkgDescr
-        pkgDescr = LBI.localPkgDescr lbi
-        nameBenchsOnly =
-          LBI.foldComponent
-            (const Nothing)
-            (const Nothing)
-            (const Nothing)
-            (\b ->
-              if buildable (benchmarkBuildInfo b)
-                then Just (benchmarkName b)
-              else Nothing)
-
-    if null benchs
-      then notice verbosity "benchmark: no buildable benchmarks"
-      else do
-        -- Ensure that all requested benchmarks are built.
-        buildAction hooks buildFlags buildArgs_
-
-        hookedActionWithArgs preBench benchHook postBench
-                (return lbi) -- already got the persistent build config
-                hooks flags' args
+benchAction hooks =
+    Bench.action
+      (getBuildConfig hooks)
+      (buildAction hooks)
+      (\lbi ->
+         hookedActionWithArgs preBench benchHook postBench (return lbi) hooks)
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args = do
@@ -450,7 +379,7 @@ registerAction hooks flags args = do
     let verbosity = fromFlag $ regVerbosity flags
         flags' = flags { regDistPref = toFlag distPref }
     hookedAction preReg regHook postReg
-                 (getBuildConfig [] hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
 unregisterAction :: UserHooks -> RegisterFlags -> Args -> IO ()
@@ -459,12 +388,23 @@ unregisterAction hooks flags args = do
     let verbosity = fromFlag $ regVerbosity flags
         flags' = flags { regDistPref = toFlag distPref }
     hookedAction preUnreg unregHook postUnreg
-                 (getBuildConfig [] hooks verbosity distPref)
+                 (getBuildConfig hooks [] verbosity distPref)
                  hooks flags' args
 
-getBuildConfig :: [ConfigFlags -> Maybe (ConfigFlags, String)]
-               -> UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
-getBuildConfig = reconfigure configureAction setupConfigArgsFile
+getBuildConfig :: UserHooks -> [ConfigFlags -> Maybe (ConfigFlags, String)]
+               -> Verbosity -> FilePath -> IO LocalBuildInfo
+getBuildConfig hooks reqs verbosity distPref = do
+    lbi_wo_programs <- reconfigure cmd (configureAction hooks) setupConfigArgsFile
+                                   reqs verbosity distPref
+    -- Restore info about unconfigured programs, since it is not serialized
+    return lbi_wo_programs {
+      withPrograms = restoreProgramConfiguration
+                     (builtinPrograms ++ hookedPrograms hooks)
+                     (withPrograms lbi_wo_programs)
+    }
+  where
+    cmd = configureCommand progs
+    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
 
 -- --------------------------------------------------------------------------
 -- Cleaning
@@ -653,12 +593,12 @@ getHookedBuildInfo verbosity = do
 defaultTestHook :: Args -> PackageDescription -> LocalBuildInfo
                 -> UserHooks -> TestFlags -> IO ()
 defaultTestHook args pkg_descr localbuildinfo _ flags =
-    test args pkg_descr localbuildinfo flags
+    Test.test args pkg_descr localbuildinfo flags
 
 defaultBenchHook :: Args -> PackageDescription -> LocalBuildInfo
                  -> UserHooks -> BenchmarkFlags -> IO ()
 defaultBenchHook args pkg_descr localbuildinfo _ flags =
-    bench args pkg_descr localbuildinfo flags
+    Bench.bench args pkg_descr localbuildinfo flags
 
 defaultInstallHook :: PackageDescription -> LocalBuildInfo
                    -> UserHooks -> InstallFlags -> IO ()

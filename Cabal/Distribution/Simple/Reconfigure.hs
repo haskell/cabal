@@ -19,6 +19,7 @@ module Distribution.Simple.Reconfigure
        ( -- * Exceptions
          ConfigStateFileError(..), ReconfigureError(..)
          -- * Reconfiguration
+       , Reconfigure
        , reconfigure, forceReconfigure
        , readArgs, writeArgs, setupConfigArgsFile
          -- * Persistent build configuration
@@ -33,15 +34,13 @@ module Distribution.Simple.Reconfigure
 import Distribution.Package
     ( PackageIdentifier(..), PackageName(PackageName), packageId )
 import Distribution.Simple.Command
-    ( CommandParse(..), commandAddAction, commandsRun, commandShowOptions )
+    ( CommandParse(..), CommandUI, commandAddAction, commandsRun
+    , commandShowOptions )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
-import Distribution.Simple.Program
-    ( addKnownPrograms, builtinPrograms, defaultProgramConfiguration
-    , restoreProgramConfiguration )
 import Distribution.Simple.Setup
-    ( ConfigFlags(..), GlobalFlags(..), configureCommand, defaultDistPref
+    ( ConfigFlags(..), GlobalFlags(..), defaultDistPref
     , fromFlag, fromFlagOrDefault, globalCommand, toFlag )
-import Distribution.Simple.UserHooks (Args, UserHooks(..))
+import Distribution.Simple.UserHooks (Args)
 import Distribution.Simple.Utils
     ( cabalVersion, createDirectoryIfMissingVerbose, info, moreRecentFile
     , notice, writeFileAtomic )
@@ -138,29 +137,25 @@ instance Exception ReconfigureError
 -- * Reconfiguration
 -- -----------------------------------------------------------------------------
 
+type Reconfigure = [ConfigFlags -> Maybe (ConfigFlags, String)]
+                   -> Verbosity -> FilePath -> IO LocalBuildInfo
+
 -- | Read the 'localBuildInfoFile', reconfiguring if necessary. Throws
 -- 'ConfigStateFileError' if the file cannot be read and the package cannot
 -- be reconfigured.
-reconfigure :: (UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
+reconfigure :: CommandUI ConfigFlags
+            -> (Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
                -- ^ configure action
             -> (FilePath -> FilePath)
                -- ^ path to saved command-line arguments,
                -- relative to @--build-dir@
-            -> [ConfigFlags -> Maybe (ConfigFlags, String)]
-            -> UserHooks -> Verbosity -> FilePath
-            -> IO LocalBuildInfo
-reconfigure configureAction configArgsFile reqs hooks verbosity distPref = do
+            -> Reconfigure
+reconfigure cmd configureAction configArgsFile reqs verbosity distPref = do
     elbi <- tryGetPersistBuildConfig distPref
     lbi <- case elbi of
       Left err -> do info verbosity (show err)
                      forceReconfigure_
-      Right lbi_wo_programs ->
-        -- Restore info about unconfigured programs, since it is not serialized
-        return lbi_wo_programs {
-          withPrograms = restoreProgramConfiguration
-                         (builtinPrograms ++ hookedPrograms hooks)
-                         (withPrograms lbi_wo_programs)
-        }
+      Right lbi_wo_programs -> return lbi_wo_programs
     case pkgDescrFile lbi of
       Nothing -> return lbi
       Just pkg_descr_file -> do
@@ -176,8 +171,8 @@ reconfigure configureAction configArgsFile reqs hooks verbosity distPref = do
               then forceReconfigure_
               else return lbi
   where
-    forceReconfigure_ = forceReconfigure configureAction configArgsFile reqs_
-                                         hooks verbosity distPref
+    forceReconfigure_ = forceReconfigure cmd configureAction configArgsFile
+                                         reqs_ verbosity distPref
 
     reqs_ = reqs ++ extraRequirements distPref
 
@@ -194,14 +189,14 @@ extraRequirements distPref = [ sameDistPref ]
       where savedDistPref = fromFlagOrDefault defaultDistPref (configDistPref fs)
 
 -- | Reconfigure the package unconditionally.
-forceReconfigure :: (UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
+forceReconfigure :: CommandUI ConfigFlags
+                 -> (Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
                     -- ^ configure action
                  -> (FilePath -> FilePath)
                     -- ^ path to saved command-line arguments,
                     -- relative to @--build-dir@
-                 -> [ConfigFlags -> Maybe (ConfigFlags, String)]
-                 -> UserHooks -> Verbosity -> FilePath -> IO LocalBuildInfo
-forceReconfigure configureAction configArgsFile reqs hooks verbosity distPref = do
+                 -> Reconfigure
+forceReconfigure cmd configureAction configArgsFile reqs verbosity distPref = do
     saved <- readArgs (configArgsFile distPref)
     let args = fromMaybe ["configure"] saved
         commands = [ commandAddAction cmd configureAction_ ]
@@ -219,14 +214,11 @@ forceReconfigure configureAction configArgsFile reqs hooks verbosity distPref = 
           CommandErrors errs -> throwIO (ReconfigureErrorOther args errs)
           CommandReadyToGo action        -> action
   where
-    progs = addKnownPrograms (hookedPrograms hooks) defaultProgramConfiguration
-    cmd = configureCommand progs
-
     configureAction_ :: ConfigFlags -> Args -> IO LocalBuildInfo
     configureAction_ flags extraArgs = do
       flags' <- setRequirements (flags { configVerbosity = toFlag verbosity })
       let args' = "configure" : commandShowOptions cmd flags'
-      configureAction hooks args' flags' extraArgs
+      configureAction args' flags' extraArgs
 
     setRequirements :: ConfigFlags -> IO ConfigFlags
     setRequirements orig = foldlM setRequirements_go orig reqs where
