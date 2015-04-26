@@ -39,7 +39,8 @@ import Distribution.Simple.Program
     ( addKnownPrograms, builtinPrograms, defaultProgramConfiguration
     , restoreProgramConfiguration )
 import Distribution.Simple.Setup
-    ( ConfigFlags, GlobalFlags(..), configureCommand, fromFlag, globalCommand )
+    ( ConfigFlags(..), GlobalFlags(..), configureCommand, defaultDistPref
+    , fromFlag, fromFlagOrDefault, globalCommand, toFlag )
 import Distribution.Simple.UserHooks (Args, UserHooks(..))
 import Distribution.Simple.Utils
     ( cabalVersion, createDirectoryIfMissingVerbose, info, moreRecentFile
@@ -175,11 +176,22 @@ reconfigure configureAction configArgsFile reqs hooks verbosity distPref = do
               then forceReconfigure_
               else return lbi
   where
-    forceReconfigure_ = forceReconfigure configureAction configArgsFile reqs
+    forceReconfigure_ = forceReconfigure configureAction configArgsFile reqs_
                                          hooks verbosity distPref
 
+    reqs_ = reqs ++ extraRequirements distPref
+
     checkRequirements :: ConfigFlags -> Bool -- ^ needs to be reconfigured?
-    checkRequirements flags = (not . null . catMaybes) (map ($ flags) reqs)
+    checkRequirements flags = (not . null . catMaybes) (map ($ flags) reqs_)
+
+extraRequirements :: FilePath -> [ConfigFlags -> Maybe (ConfigFlags, String)]
+extraRequirements distPref = [ sameDistPref ]
+  where
+    sameDistPref fs
+      | savedDistPref == distPref = Nothing
+      | otherwise =
+          Just (fs { configDistPref = toFlag distPref }, "--build-dir changed")
+      where savedDistPref = fromFlagOrDefault defaultDistPref (configDistPref fs)
 
 -- | Reconfigure the package unconditionally.
 forceReconfigure :: (UserHooks -> Args -> ConfigFlags -> Args -> IO LocalBuildInfo)
@@ -212,7 +224,7 @@ forceReconfigure configureAction configArgsFile reqs hooks verbosity distPref = 
 
     configureAction_ :: ConfigFlags -> Args -> IO LocalBuildInfo
     configureAction_ flags extraArgs = do
-      flags' <- setRequirements flags
+      flags' <- setRequirements (flags { configVerbosity = toFlag verbosity })
       let args' = "configure" : commandShowOptions cmd flags'
       configureAction hooks args' flags' extraArgs
 
