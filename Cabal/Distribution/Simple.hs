@@ -58,7 +58,8 @@ import Distribution.Simple.Compiler hiding (Flag)
 import Distribution.Simple.UserHooks
 import Distribution.Package --must not specify imports, since we're exporting module.
 import Distribution.PackageDescription
-         ( PackageDescription(..), GenericPackageDescription, Executable(..)
+         ( PackageDescription(..), GenericPackageDescription
+         , Benchmark(..), BuildInfo(..), Executable(..), TestSuite(..)
          , updatePackageDescription, hasLibs
          , HookedBuildInfo, emptyHookedBuildInfo )
 import Distribution.PackageDescription.Parse
@@ -85,6 +86,7 @@ import Distribution.Simple.Configure
 import Distribution.Simple.Haddock (haddock, hscolour)
 import Distribution.Simple.Install (install)
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
+import qualified Distribution.Simple.LocalBuildInfo as LBI
 import Distribution.Simple.Reconfigure
     ( reconfigure, setupConfigArgsFile, writeArgs )
 import Distribution.Simple.Register
@@ -114,6 +116,7 @@ import Distribution.Compat.Environment (getEnvironment)
 import Control.Monad   (void, when)
 import Data.Foldable   (traverse_)
 import Data.List       (intercalate, unionBy, nub, (\\))
+import Data.Maybe      (mapMaybe)
 
 -- | A simple implementation of @main@ for a Cabal setup script.
 -- It reads the package description file using IO, and performs the
@@ -365,14 +368,38 @@ testAction hooks flags args = do
     -- If necessary, reconfigure with tests enabled.
     lbi <- getBuildConfig [withEnabledTests] hooks verbosity distPref
 
-    -- It is safe to do 'runTests' before the new test handler because the
-    -- default action is a no-op and if the package uses the old test interface
-    -- the new handler will find no tests.
-    runTests hooks args False (localPkgDescr lbi) lbi
+    let buildFlags = mempty { buildDistPref = testDistPref flags'
+                            , buildVerbosity = testVerbosity flags'
+                            }
+        buildArgs_ -- extra arguments to 'build'
+          | null args = tests -- build all tests, but *only* tests
+          | otherwise = args -- build only named tests
+        tests = mapMaybe nameTestsOnly $ LBI.pkgComponents pkgDescr
+        pkgDescr = LBI.localPkgDescr lbi
+        nameTestsOnly =
+            LBI.foldComponent
+              (const Nothing)
+              (const Nothing)
+              (\t ->
+                if buildable (testBuildInfo t)
+                  then Just (testName t)
+                else Nothing)
+              (const Nothing)
 
-    hookedActionWithArgs preTest testHook postTest
-            (return lbi)  -- already got the persistent build config
-            hooks flags' args
+    if null tests
+       then warn verbosity "test: no buildable test suites"
+      else do
+        -- Ensure that all requested test suites are built.
+        buildAction hooks buildFlags buildArgs_
+
+        -- It is safe to do 'runTests' before the new test handler because the
+        -- default action is a no-op and if the package uses the old test
+        -- interface the new handler will find no tests.
+        runTests hooks args False (localPkgDescr lbi) lbi
+
+        hookedActionWithArgs preTest testHook postTest
+                (return lbi) -- already got the persistent build config
+                hooks flags' args
 
 benchAction :: UserHooks -> BenchmarkFlags -> Args -> IO ()
 benchAction hooks flags args = do
@@ -385,11 +412,37 @@ benchAction hooks flags args = do
           | otherwise = Just (enableBenchs fs, "enabling benchmarks")
         enableBenchs fs = fs { configBenchmarks = toFlag True }
 
-    hookedActionWithArgs preBench benchHook postBench
-            -- get persistent build config
-            -- if necessary, reconfigure with benchmarks enabled
-            (getBuildConfig [withEnabledBenchs] hooks verbosity distPref)
-            hooks flags' args
+    lbi <- getBuildConfig [withEnabledBenchs] hooks verbosity distPref
+
+    let buildFlags =
+            mempty
+            { buildDistPref = benchmarkDistPref flags'
+            , buildVerbosity = benchmarkVerbosity flags'
+            }
+        buildArgs_
+          | null args = benchs
+          | otherwise = args
+        benchs = mapMaybe nameBenchsOnly $ LBI.pkgComponents pkgDescr
+        pkgDescr = LBI.localPkgDescr lbi
+        nameBenchsOnly =
+          LBI.foldComponent
+            (const Nothing)
+            (const Nothing)
+            (const Nothing)
+            (\b ->
+              if buildable (benchmarkBuildInfo b)
+                then Just (benchmarkName b)
+              else Nothing)
+
+    if null benchs
+      then notice verbosity "benchmark: no buildable benchmarks"
+      else do
+        -- Ensure that all requested benchmarks are built.
+        buildAction hooks buildFlags buildArgs_
+
+        hookedActionWithArgs preBench benchHook postBench
+                (return lbi) -- already got the persistent build config
+                hooks flags' args
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
 registerAction hooks flags args = do
