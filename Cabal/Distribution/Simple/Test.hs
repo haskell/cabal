@@ -47,11 +47,11 @@ import System.FilePath ( (</>) )
 action :: Reconfigure
        -> (BuildFlags -> Args -> IO ())
        -> (LocalBuildInfo -> TestFlags -> Args -> IO ())
-       -> TestFlags -> Args -> IO ()
-action reconfigure build test_ flags args = do
-    distPref <- findDistPrefOrDefault (testDistPref flags)
-    let flags' = flags { testDistPref = toFlag distPref }
-        verbosity = fromFlag (testVerbosity flags')
+       -> (BuildFlags, TestFlags) -> Args -> IO ()
+action reconfigure build test_ (buildFlags, testFlags) args = do
+    distPref <- findDistPrefOrDefault (testDistPref testFlags)
+    let testFlags' = testFlags { testDistPref = toFlag distPref }
+        verbosity = fromFlag (testVerbosity testFlags')
 
         withEnabledTests fs
           | fromFlagOrDefault False (configTests fs) = Nothing
@@ -62,9 +62,10 @@ action reconfigure build test_ flags args = do
     -- If necessary, reconfigure with tests enabled.
     lbi <- reconfigure [withEnabledTests] verbosity distPref
 
-    let buildFlags = mempty { buildDistPref = testDistPref flags'
-                            , buildVerbosity = testVerbosity flags'
-                            }
+    let buildFlags' = buildFlags
+                      { buildDistPref = testDistPref testFlags
+                      , buildVerbosity = testVerbosity testFlags
+                      }
         buildArgs_ -- extra arguments to 'build'
           | null args = tests -- build all tests, but *only* tests
           | otherwise = args -- build only named tests
@@ -84,9 +85,9 @@ action reconfigure build test_ flags args = do
        then warn verbosity "test: no buildable test suites"
       else do
         -- Ensure that all requested test suites are built.
-        build buildFlags buildArgs_
+        build buildFlags' buildArgs_
 
-        test_ lbi flags' args
+        test_ lbi testFlags' args
 
 -- |Perform the \"@.\/setup test@\" action.
 test :: Args                    -- ^positional command-line arguments

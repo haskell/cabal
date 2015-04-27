@@ -137,8 +137,8 @@ instance Exception ReconfigureError
 -- * Reconfiguration
 -- -----------------------------------------------------------------------------
 
-type Reconfigure = [ConfigFlags -> Maybe (ConfigFlags, String)]
-                   -> Verbosity -> FilePath -> IO LocalBuildInfo
+type Requirement = ConfigFlags -> Maybe (ConfigFlags, String)
+type Reconfigure = [Requirement] -> Verbosity -> FilePath -> IO LocalBuildInfo
 
 -- | Read the 'localBuildInfoFile', reconfiguring if necessary. Throws
 -- 'ConfigStateFileError' if the file cannot be read and the package cannot
@@ -150,8 +150,8 @@ reconfigure :: CommandUI ConfigFlags
                -- ^ path to saved command-line arguments,
                -- relative to @--build-dir@
             -> Reconfigure
-reconfigure cmd configureAction configArgsFile reqs verbosity distPref = do
-    elbi <- tryGetPersistBuildConfig distPref
+reconfigure cmd configureAction configArgsFile reqs verbosity dist = do
+    elbi <- tryGetPersistBuildConfig dist
     lbi <- case elbi of
       Left err -> do info verbosity (show err)
                      forceReconfigure_
@@ -159,34 +159,32 @@ reconfigure cmd configureAction configArgsFile reqs verbosity distPref = do
     case pkgDescrFile lbi of
       Nothing -> return lbi
       Just pkg_descr_file -> do
-        outdated <- checkPersistBuildConfigOutdated distPref pkg_descr_file
+        outdated <- checkPersistBuildConfigOutdated dist pkg_descr_file
         if outdated
           then do
-            notice verbosity
-              (pkg_descr_file ++ " has changed; reconfiguring...")
+            notice verbosity (pkg_descr_file ++ " has changed; reconfiguring...")
             forceReconfigure_
-          else do
-            let flags = configFlags lbi
-            if checkRequirements flags
-              then forceReconfigure_
-              else return lbi
+          else if checkRequirements (configFlags lbi)
+               then forceReconfigure_
+               else return lbi
   where
     forceReconfigure_ = forceReconfigure cmd configureAction configArgsFile
-                                         reqs_ verbosity distPref
+                                         reqs_ verbosity dist
 
-    reqs_ = reqs ++ extraRequirements distPref
+    reqs_ = reqs ++ extraRequirements dist
 
     checkRequirements :: ConfigFlags -> Bool -- ^ needs to be reconfigured?
     checkRequirements flags = (not . null . catMaybes) (map ($ flags) reqs_)
 
-extraRequirements :: FilePath -> [ConfigFlags -> Maybe (ConfigFlags, String)]
-extraRequirements distPref = [ sameDistPref ]
+extraRequirements :: FilePath -> [Requirement]
+extraRequirements dist = [ sameDistPref ]
   where
-    sameDistPref fs
-      | savedDistPref == distPref = Nothing
+    sameDistPref config
+      | savedDist == dist = Nothing
       | otherwise =
-          Just (fs { configDistPref = toFlag distPref }, "--build-dir changed")
-      where savedDistPref = fromFlagOrDefault defaultDistPref (configDistPref fs)
+          let flags = config { configDistPref = toFlag dist }
+          in Just (flags, "--build-dir changed")
+      where savedDist = fromFlagOrDefault defaultDistPref (configDistPref config)
 
 -- | Reconfigure the package unconditionally.
 forceReconfigure :: CommandUI ConfigFlags
@@ -215,10 +213,10 @@ forceReconfigure cmd configureAction configArgsFile reqs verbosity distPref = do
           CommandReadyToGo action        -> action
   where
     configureAction_ :: ConfigFlags -> Args -> IO LocalBuildInfo
-    configureAction_ flags extraArgs = do
-      flags' <- setRequirements (flags { configVerbosity = toFlag verbosity })
-      let args' = "configure" : commandShowOptions cmd flags'
-      configureAction args' flags' extraArgs
+    configureAction_ config extraArgs = do
+      flags <- setRequirements config { configVerbosity = toFlag verbosity }
+      let args' = "configure" : commandShowOptions cmd flags
+      configureAction args' flags extraArgs
 
     setRequirements :: ConfigFlags -> IO ConfigFlags
     setRequirements orig = foldlM setRequirements_go orig reqs where
@@ -268,7 +266,7 @@ setupConfigArgsFile = (</> "setup-config-args")
 
 -- | After running configure, output the 'LocalBuildInfo' to the
 -- 'localBuildInfoFile'.
-writePersistBuildConfig :: FilePath -- ^ The @dist@ directory path.
+writePersistBuildConfig :: FilePath
                         -> LocalBuildInfo -- ^ The 'LocalBuildInfo' to write.
                         -> IO ()
 writePersistBuildConfig distPref lbi = do

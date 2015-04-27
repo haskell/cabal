@@ -181,7 +181,9 @@ defaultMainHelper hooks args = topHandler $
       ,hscolourCommand        `commandAddAction` hscolourAction     hooks
       ,registerCommand        `commandAddAction` registerAction     hooks
       ,unregisterCommand      `commandAddAction` unregisterAction   hooks
-      ,testCommand            `commandAddAction` testAction         hooks
+      , commandAddAction
+          (testCommand (buildOptions progs) defaultBuildFlags)
+          (testAction hooks)
       ,benchmarkCommand       `commandAddAction` benchAction        hooks
       ]
 
@@ -350,7 +352,7 @@ sdistAction hooks flags args = do
   where
     verbosity = fromFlag (sDistVerbosity flags)
 
-testAction :: UserHooks -> TestFlags -> Args -> IO ()
+testAction :: UserHooks -> (BuildFlags, TestFlags) -> Args -> IO ()
 testAction hooks =
     Test.action
       (getBuildConfig hooks)
