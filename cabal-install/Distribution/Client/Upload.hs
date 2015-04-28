@@ -18,12 +18,10 @@ import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
 import Network.Browser
-         ( BrowserAction, request
-         , Authority(..), addAuthority )
+         ( request )
 import Network.HTTP
          ( Header(..), HeaderName(..), findHeader
          , Request(..), RequestMethod(..), Response(..) )
-import Network.TCP (HandleStream)
 import Network.URI (URI(uriPath), parseURI)
 
 import Data.Char        (intToDigit)
@@ -53,12 +51,7 @@ upload verbosity repos mUsername mPassword paths = do
                           else targetRepoURI{uriPath = uriPath targetRepoURI `FilePath.Posix.combine` "upload"}
           Username username <- maybe promptUsername return mUsername
           Password password <- maybe promptPassword return mPassword
-          let auth = addAuthority AuthBasic {
-                       auRealm    = "Hackage",
-                       auUsername = username,
-                       auPassword = password,
-                       auSite     = uploadURI
-                     }
+          let auth = Just (username, password)
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Uploading " ++ path ++ "... "
             handlePackage verbosity uploadURI auth path
@@ -84,17 +77,9 @@ promptPassword = do
 
 report :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> IO ()
 report verbosity repos mUsername mPassword = do
-      let uploadURI = if isOldHackageURI targetRepoURI
-                      then legacyUploadURI
-                      else targetRepoURI{uriPath = ""}
       Username username <- maybe promptUsername return mUsername
       Password password <- maybe promptPassword return mPassword
-      let auth = addAuthority AuthBasic {
-                   auRealm    = "Hackage",
-                   auUsername = username,
-                   auPassword = password,
-                   auSite     = uploadURI
-                 }
+      let auth = Just (username, password)
       forM_ repos $ \repo -> case repoKind repo of
         Left remoteRepo
             -> do dotCabal <- defaultCabalDir
@@ -113,16 +98,14 @@ report verbosity repos mUsername mPassword = do
                                     cabalBrowse verbosity auth $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                                     return ()
         Right{} -> return ()
-  where
-    targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
 
 check :: Verbosity -> [FilePath] -> IO ()
 check verbosity paths = do
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Checking " ++ path ++ "... "
-            handlePackage verbosity checkURI (return ()) path
+            handlePackage verbosity checkURI Nothing path
 
-handlePackage :: Verbosity -> URI -> BrowserAction (HandleStream ByteString) ()
+handlePackage :: Verbosity -> URI -> Maybe (String, String)
               -> FilePath -> IO ()
 handlePackage verbosity uri auth path =
   do req <- mkRequest uri path
