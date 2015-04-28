@@ -94,7 +94,8 @@ cabalBrowse verbosity auth act = do
     p   <- proxy verbosity
     handleJust
         (guard . isDoesNotExistError)
-        (const $ die "Cannot connect to uri. Is http_proxy set?") $
+        (const . die $ "Couldn't establish HTTP connection. "
+                    ++ "Possible cause: HTTP proxy server is down.") $
         browse $ do
             setProxy p
             setErrHandler (warn verbosity . ("http error: "++))
