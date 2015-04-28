@@ -18,8 +18,8 @@ import Network.URI
 import Network.Stream
          ( Result, ConnError(..) )
 import Network.Browser
-         ( Proxy (..), Authority (..), BrowserAction, browse
-         , setOutHandler, setErrHandler, setProxy, setAuthorityGen, request)
+         ( Proxy (..), Authority(..), BrowserAction, browse, setAllowBasicAuth, setAuthorityGen
+         , setOutHandler, setErrHandler, setProxy, request)
 import Control.Monad
          ( mplus, join, liftM, liftM2 )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
@@ -153,10 +153,10 @@ mkRequest uri = Request{ rqURI     = uri
 -- |Carry out a GET request, using the local proxy settings
 getHTTP :: Verbosity -> URI -> IO (Result (Response ByteString))
 getHTTP verbosity uri = liftM (\(_, resp) -> Right resp) $
-                              cabalBrowse verbosity (return ()) (request (mkRequest uri))
+                              cabalBrowse verbosity Nothing (request (mkRequest uri))
 
 cabalBrowse :: Verbosity
-            -> BrowserAction s ()
+            -> Maybe (String, String)
             -> BrowserAction s a
             -> IO a
 cabalBrowse verbosity auth act = do
@@ -165,8 +165,8 @@ cabalBrowse verbosity auth act = do
         setProxy p
         setErrHandler (warn verbosity . ("http error: "++))
         setOutHandler (debug verbosity)
-        auth
-        setAuthorityGen (\_ _ -> return Nothing)
+        setAllowBasicAuth False
+        setAuthorityGen (\_ _ -> return auth)
         act
 
 downloadURI :: Verbosity
