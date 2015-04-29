@@ -22,6 +22,7 @@ module Distribution.Client.Setup
     , listCommand, ListFlags(..)
     , updateCommand
     , upgradeCommand
+    , uninstallCommand
     , infoCommand, InfoFlags(..)
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
@@ -831,6 +832,17 @@ formatCommand = CommandUI {
     commandDescription  = Nothing,
     commandNotes        = Nothing,
     commandUsage        = usageAlternatives "format" ["[FILE]"],
+    commandDefaultFlags = toFlag normal,
+    commandOptions      = \_ -> []
+  }
+
+uninstallCommand  :: CommandUI (Flag Verbosity)
+uninstallCommand = CommandUI {
+    commandName         = "uninstall",
+    commandSynopsis     = "Warn about 'uninstall' not being implemented.",
+    commandDescription  = Nothing,
+    commandNotes        = Nothing,
+    commandUsage        = usageAlternatives "uninstall" ["PACKAGES"],
     commandDefaultFlags = toFlag normal,
     commandOptions      = \_ -> []
   }
