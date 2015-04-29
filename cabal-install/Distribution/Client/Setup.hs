@@ -736,9 +736,7 @@ freezeCommand = CommandUI {
       ++ "\n"
       ++ "An existing `cabal.config` is ignored and overwritten.\n",
     commandNotes        = Nothing,
-    commandUsage        = usageAlternatives "freeze" [""
-                                                     ,"PACKAGES"
-                                                     ],
+    commandUsage        = usageFlags "freeze",
     commandDefaultFlags = defaultFreezeFlags,
     commandOptions      = \ showOrParseArgs -> [
          optionVerbosity freezeVerbosity (\v flags -> flags { freezeVerbosity = v })
