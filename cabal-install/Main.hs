@@ -22,7 +22,7 @@ import Distribution.Client.Setup
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
          , buildCommand, replCommand, testCommand, benchmarkCommand
          , InstallFlags(..), defaultInstallFlags
-         , installCommand, upgradeCommand
+         , installCommand, upgradeCommand, uninstallCommand
          , FetchFlags(..), fetchCommand
          , FreezeFlags(..), freezeCommand
          , GetFlags(..), getCommand, unpackCommand
@@ -254,6 +254,8 @@ mainWorker args = topHandler $
                      regVerbosity      regDistPref
       ,testCommand            `commandAddAction` testAction
       ,benchmarkCommand       `commandAddAction` benchmarkAction
+      ,hiddenCommand $
+       uninstallCommand       `commandAddAction` uninstallAction
       ,hiddenCommand $
        formatCommand          `commandAddAction` formatAction
       ,hiddenCommand $
@@ -1003,6 +1005,17 @@ formatAction verbosityFlag extraArgs _globalFlags = do
   pkgDesc <- readPackageDescription verbosity path
   -- Uses 'writeFileAtomic' under the hood.
   writeGenericPackageDescription path pkgDesc
+
+uninstallAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+uninstallAction _verbosityFlag extraArgs _globalFlags = do
+  let package = case extraArgs of
+        p:_ -> p
+        _   -> "PACKAGE_NAME"
+  die $ "This version of 'cabal-install' does not support the 'uninstall' operation. "
+        ++ "It will likely be implemented at some point in the future; in the meantime "
+        ++ "you're advised to use either 'ghc-pkg unregister " ++ package ++ "' or "
+        ++ "'cabal sandbox hc-pkg -- unregister " ++ package ++ "'."
+
 
 sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> GlobalFlags -> IO ()
 sdistAction (sdistFlags, sdistExFlags) extraArgs _globalFlags = do
