@@ -7,7 +7,7 @@ import qualified Data.ByteString.Lazy.Char8 as B (concat, length, pack, readFile
 import           Data.ByteString.Lazy.Char8 (ByteString)
 
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
-import Distribution.Client.HttpUtils (isOldHackageURI, cabalBrowse)
+import Distribution.Client.HttpUtils (isOldHackageURI)
 
 import Distribution.Simple.Utils (debug, notice, warn, info)
 import Distribution.Verbosity (Verbosity)
@@ -17,6 +17,7 @@ import Distribution.Client.Config
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
+{-
 import Network.Browser
          ( BrowserAction, request
          , Authority(..), addAuthority )
@@ -24,6 +25,7 @@ import Network.HTTP
          ( Header(..), HeaderName(..), findHeader
          , Request(..), RequestMethod(..), Response(..) )
 import Network.TCP (HandleStream)
+-}
 import Network.URI (URI(uriPath), parseURI)
 
 import Data.Char        (intToDigit)
@@ -36,6 +38,8 @@ import qualified System.FilePath.Posix as FilePath.Posix (combine)
 import System.Directory
 import Control.Monad (forM_, when)
 
+type Auth = (String, String, String)
+noAuth = ("","","")
 
 --FIXME: how do we find this path for an arbitrary hackage server?
 -- is it always at some fixed location relative to the server root?
@@ -53,12 +57,15 @@ upload verbosity repos mUsername mPassword paths = do
                           else targetRepoURI{uriPath = uriPath targetRepoURI `FilePath.Posix.combine` "upload"}
           Username username <- maybe promptUsername return mUsername
           Password password <- maybe promptPassword return mPassword
+{-
           let auth = addAuthority AuthBasic {
                        auRealm    = "Hackage",
                        auUsername = username,
                        auPassword = password,
                        auSite     = uploadURI
                      }
+-}
+          let auth = ("Hackage",username,password)
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Uploading " ++ path ++ "... "
             handlePackage verbosity uploadURI auth path
@@ -89,12 +96,15 @@ report verbosity repos mUsername mPassword = do
                       else targetRepoURI{uriPath = ""}
       Username username <- maybe promptUsername return mUsername
       Password password <- maybe promptPassword return mPassword
+{-
       let auth = addAuthority AuthBasic {
                    auRealm    = "Hackage",
                    auUsername = username,
                    auPassword = password,
                    auSite     = uploadURI
                  }
+-}
+      let auth = ("Hackage",username,password)
       forM_ repos $ \repo -> case repoKind repo of
         Left remoteRepo
             -> do dotCabal <- defaultCabalDir
@@ -110,7 +120,7 @@ report verbosity repos mUsername mPassword = do
                              Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
                              Right report' ->
                                  do info verbosity $ "Uploading report for " ++ display (BuildReport.package report')
-                                    cabalBrowse verbosity auth $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)]
+--                                    cabalBrowse verbosity auth $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)] TODO
                                     return ()
         Right{} -> return ()
   where
@@ -120,28 +130,40 @@ check :: Verbosity -> [FilePath] -> IO ()
 check verbosity paths = do
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Checking " ++ path ++ "... "
-            handlePackage verbosity checkURI (return ()) path
+            handlePackage verbosity checkURI noAuth path
 
-handlePackage :: Verbosity -> URI -> BrowserAction (HandleStream ByteString) ()
+type Resp = (Int, ByteString)
+rspCode = fst
+rspBody = snd
+rspReason = snd
+contentTypeHeader _ = Just "" -- TODO HALP
+
+data Req = Req deriving (Show)
+
+runReq :: Req -> IO Resp
+runReq = undefined
+
+handlePackage :: Verbosity -> URI -> Auth
               -> FilePath -> IO ()
 handlePackage verbosity uri auth path =
-  do req <- mkRequest uri path
+  do req <- mkRequest uri path auth
      debug verbosity $ "\n" ++ show req
-     (_,resp) <- cabalBrowse verbosity auth $ request req
+     resp <- runReq req -- cabalBrowse verbosity auth $ request req TODO
      debug verbosity $ show resp
      case rspCode resp of
-       (2,0,0) -> do notice verbosity "Ok"
-       (x,y,z) -> do notice verbosity $ "Error: " ++ path ++ ": "
-                                     ++ map intToDigit [x,y,z] ++ " "
-                                     ++ rspReason resp
-                     case findHeader HdrContentType resp of
+       200 -> do notice verbosity "Ok"
+       rc  -> do notice verbosity $ "Error: " ++ path ++ ": "
+                                     ++ show rc ++ " "
+                                     ++ B.unpack (rspReason resp)
+                 case contentTypeHeader resp of
                        Just contenttype
                          | takeWhile (/= ';') contenttype == "text/plain"
                          -> notice verbosity $ B.unpack $ rspBody resp
                        _ -> debug verbosity $ B.unpack $ rspBody resp
 
-mkRequest :: URI -> FilePath -> IO (Request ByteString)
-mkRequest uri path = 
+mkRequest :: URI -> FilePath -> Auth -> IO Req
+mkRequest uri path auth = undefined
+{-
     do pkg <- readBinaryFile path
        boundary <- genBoundary
        let body = printMultiPart (B.pack boundary) (mkFormData path pkg)
@@ -153,6 +175,7 @@ mkRequest uri path =
                                       Header HdrAccept ("text/plain")],
                          rqBody = body
                         }
+-}
 
 readBinaryFile :: FilePath -> IO ByteString
 readBinaryFile = B.readFile
@@ -160,7 +183,7 @@ readBinaryFile = B.readFile
 genBoundary :: IO String
 genBoundary = do i <- randomRIO (0x10000000000000,0xFFFFFFFFFFFFFF) :: IO Integer
                  return $ showHex i ""
-
+{-
 mkFormData :: FilePath -> ByteString -> [BodyPart]
 mkFormData path pkg =
   -- yes, web browsers are that stupid (re quoting)
@@ -168,7 +191,9 @@ mkFormData path pkg =
              "form-data; name=package; filename=\""++takeFileName path++"\"",
              Header HdrContentType "application/x-gzip"]
    pkg]
+-}
 
+{-
 hdrContentDisposition :: HeaderName
 hdrContentDisposition = HdrCustom "Content-disposition"
 
@@ -188,3 +213,4 @@ crlf = B.pack "\r\n"
 
 dd :: ByteString
 dd = B.pack "--"
+-}

@@ -4,29 +4,33 @@
 module Distribution.Client.HttpUtils (
     DownloadResult(..),
     downloadURI,
-    getHTTP,
-    cabalBrowse,
-    proxy,
+--    cabalBrowse,
+--    proxy,
     isOldHackageURI
   ) where
-
+{-
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
          , Header(..), HeaderName(..), lookupHeader )
 import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
+-}
 import Network.URI
          ( URI (..), URIAuth (..) )
+{-
 import Network.Browser
          ( BrowserAction, browse
          , setOutHandler, setErrHandler, setProxy, setAuthorityGen, request)
 import Network.Stream
          ( Result, ConnError(..) )
+-}
+import Control.Applicative
 import Control.Exception
          ( handleJust )
 import Control.Monad
          ( liftM, guard )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy (ByteString)
+import Data.Maybe (fromMaybe)
 
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
@@ -46,6 +50,9 @@ import System.Directory
          ( doesFileExist )
 import System.IO.Error
          ( isDoesNotExistError )
+import Distribution.Simple.Program
+
+
 
 data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
@@ -54,6 +61,7 @@ trim :: String -> String
 trim = f . f
       where f = reverse . dropWhile isSpace
 
+{-
 -- |Get the local proxy settings
 --TODO: print info message when we're using a proxy based on verbosity
 proxy :: Verbosity -> IO Proxy
@@ -65,7 +73,8 @@ proxy _verbosity = do
       let uri' = trim uri in
       if uri' == "" then NoProxy else Proxy uri' auth
     _ -> p
-
+-}
+{-
 mkRequest :: URI
           -> Maybe String -- ^ Optional etag to be set in the If-None-Match HTTP header.
           -> Request ByteString
@@ -77,15 +86,48 @@ mkRequest uri etag = Request{ rqURI     = uri
                            , " (", display buildOS, "; ", display buildArch, ")"
                            ]
         ifNoneMatchHdr = maybe [] (\t -> [Header HdrIfNoneMatch t]) etag
+-}
 
+userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
+                   , " (", display buildOS, "; ", display buildArch, ")"
+                   ]
+
+
+data HttpProgramLoc = CurlLoc FilePath | WGetLoc FilePath | BITSAdminLoc FilePath | PowerShellLoc FilePath | NoHttpProgram
+
+findHttpProgram :: Verbosity -> IO HttpProgramLoc
+findHttpProgram verbosity =
+    let fpl = findProgramLocation verbosity
+        orFind x y = maybe y (return . Just) =<< x
+        result =  (fmap CurlLoc <$> fpl "curl")
+                  `orFind` (fmap WGetLoc <$> fpl "wget")
+                  `orFind` (fmap BITSAdminLoc <$> fpl "bitsadmin")
+                  `orFind` (fmap PowerShellLoc <$> fpl "powershell")
+    in return . fromMaybe NoHttpProgram =<< result
+
+
+getHTTP :: Verbosity -> URI -> FilePath -> Maybe String -> IO String
+getHTTP verbosity uri fp etag = executeGet =<< findHttpProgram
+    where
+      executeGet (CurlLoc fp) =
+          let prog = simpleConfiguredProgram "curl" (FoundOnSystem fp)
+              args = ["-L","--write-out","%{http_code}","--user-agent",userAgent] ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag -- TODO set curl verbosity?
+          in dropWhile isWhiteSpace <$> getProgramInvocationOutput verbosity (programInvocation prog args)
+      executeGet (WGetLoc fp) = undefined
+
+-- TODO ETC
+
+
+{-
 -- |Carry out a GET request, using the local proxy settings
 getHTTP :: Verbosity
         -> URI
         -> Maybe String -- ^ Optional etag to check if we already have the latest file.
         -> IO (Result (Response ByteString))
-getHTTP verbosity uri etag = liftM (\(_, resp) -> Right resp) $
-                                   cabalBrowse verbosity (return ()) (request (mkRequest uri etag))
-
+getHTTP verbosity uri etag = liftM (\(_, resp) -> Right resp) $ undefined
+--                                   cabalBrowse verbosity (return ()) (request (mkRequest uri etag))
+-}
+{-
 cabalBrowse :: Verbosity
             -> BrowserAction s ()
             -> BrowserAction s a
@@ -103,6 +145,7 @@ cabalBrowse verbosity auth act = do
             auth
             setAuthorityGen (\_ _ -> return Nothing)
             act
+-}
 
 downloadURI :: Verbosity
             -> URI      -- ^ What to download
@@ -113,6 +156,7 @@ downloadURI verbosity uri path | uriScheme uri == "file:" = do
   return (FileDownloaded path)
   -- Can we store the hash of the file so we can safely return path when the
   -- hash matches to avoid unnecessary computation?
+{-
 downloadURI verbosity uri path = do
   let etagPath = path <.> "etag"
   targetExists   <- doesFileExist path
@@ -157,7 +201,7 @@ downloadURI verbosity uri path = do
       --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.
-
+-}
 -- Utility function for legacy support.
 isOldHackageURI :: URI -> Bool
 isOldHackageURI uri

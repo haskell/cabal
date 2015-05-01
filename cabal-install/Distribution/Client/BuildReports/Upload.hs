@@ -4,17 +4,19 @@
 module Distribution.Client.BuildReports.Upload
     ( BuildLog
     , BuildReportId
-    , uploadReports
-    , postBuildReport
-    , putBuildLog
+--    , uploadReports
+--    , postBuildReport
+--    , putBuildLog
     ) where
 
+{-
 import Network.Browser
          ( BrowserAction, request, setAllowRedirects )
 import Network.HTTP
          ( Header(..), HeaderName(..)
          , Request(..), RequestMethod(..), Response(..) )
 import Network.TCP (HandleStream)
+-}
 import Network.URI (URI, uriPath, parseRelativeReference, relativeTo)
 
 import Control.Monad
@@ -28,6 +30,7 @@ import Distribution.Text (display)
 type BuildReportId = URI
 type BuildLog = String
 
+{-
 uploadReports :: URI -> [(BuildReport, Maybe BuildLog)]
               ->  BrowserAction (HandleStream BuildLog) ()
 uploadReports uri reports = do
@@ -78,3 +81,4 @@ putBuildLog reportId buildLog = do
       rqBody    = buildLog
     }
   return ()
+-}
