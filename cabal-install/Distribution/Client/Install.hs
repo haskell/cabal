@@ -31,6 +31,7 @@ module Distribution.Client.Install (
 
 import Data.List
          ( isPrefixOf, unfoldr, nub, sort, (\\) )
+import qualified Data.Map as Map
 import qualified Data.Set as S
 import Data.Maybe
          ( isJust, fromMaybe, mapMaybe, maybeToList )
@@ -582,7 +583,7 @@ printPlan :: Bool -- is dry run
 printPlan dryRun verbosity plan sourcePkgDb = case plan of
   []   -> return ()
   pkgs
-    | verbosity >= Verbosity.verbose -> notice verbosity $ unlines $
+    | verbosity >= Verbosity.verbose -> putStr $ unlines $
         ("In order, the following " ++ wouldWill ++ " be installed:")
       : map showPkgAndReason pkgs
     | otherwise -> notice verbosity $ unlines $
@@ -599,13 +600,14 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showPkgAndReason (pkg', pr) = display (packageId pkg') ++
           showLatest pkg' ++
           showFlagAssignment (nonDefaultFlags pkg') ++
-          showStanzas (stanzas pkg') ++ " " ++
+          showStanzas (stanzas pkg') ++
+          showDep pkg' ++
           case pr of
-            NewPackage     -> "(new package)"
-            NewVersion _   -> "(new version)"
-            Reinstall _ cs -> "(reinstall)" ++ case cs of
+            NewPackage     -> " (new package)"
+            NewVersion _   -> " (new version)"
+            Reinstall _ cs -> " (reinstall)" ++ case cs of
                 []   -> ""
-                diff -> " changes: "  ++ intercalate ", " (map change diff)
+                diff -> " (changes: "  ++ intercalate ", " (map change diff) ++ ")"
 
     showLatest :: ReadyPackage -> String
     showLatest pkg = case mLatestVersion of
@@ -651,6 +653,14 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     change (InBoth     pkgid pkgid') = display pkgid ++ " -> "
                                     ++ display (packageVersion pkgid')
     change (OnlyInRight      pkgid') = display pkgid' ++ " added"
+
+    showDep pkg | Just rdeps <- Map.lookup (packageId pkg) revDeps
+                  = " (via: " ++ unwords (map display rdeps) ++  ")"
+                | otherwise = ""
+
+    revDepGraphEdges = [ (rpid,packageId pkg) | (pkg,_) <- plan, rpid <- depends pkg ]
+
+    revDeps = Map.fromListWith (++) (map (fmap (:[])) revDepGraphEdges)
 
 -- ------------------------------------------------------------
 -- * Post installation stuff
