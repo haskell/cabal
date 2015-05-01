@@ -59,6 +59,7 @@ import Distribution.Client.PackageIndex (PackageIndex)
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Client.Tar as Tar
 import Distribution.Client.FetchUtils
+import Distribution.Client.HttpUtils ( HttpTransport(..) )
 import Distribution.Client.Utils ( tryFindPackageDesc )
 
 import Distribution.PackageDescription
@@ -350,17 +351,18 @@ reportUserTargetProblems problems = do
 -- or they can be named packages (with or without version info).
 --
 resolveUserTargets :: Package pkg
-                   => Verbosity
+                   => HttpTransport
+                   -> Verbosity
                    -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
                    -> IO [PackageSpecifier SourcePackage]
-resolveUserTargets verbosity worldFile available userTargets = do
+resolveUserTargets transport verbosity worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
     -- package references
     packageTargets <- mapM (readPackageTarget verbosity)
-                  =<< mapM (fetchPackageTarget verbosity) . concat
+                  =<< mapM (fetchPackageTarget transport verbosity) . concat
                   =<< mapM (expandUserTarget worldFile) userTargets
 
     -- users are allowed to give package names case-insensitively, so we must
@@ -446,14 +448,15 @@ localPackageError dir =
 
 -- | Fetch any remote targets so that they can be read.
 --
-fetchPackageTarget :: Verbosity
+fetchPackageTarget :: HttpTransport
+                   -> Verbosity
                    -> PackageTarget (PackageLocation ())
                    -> IO (PackageTarget (PackageLocation FilePath))
-fetchPackageTarget verbosity target = case target of
+fetchPackageTarget transport verbosity target = case target of
     PackageTargetNamed      n cs ut -> return (PackageTargetNamed      n cs ut)
     PackageTargetNamedFuzzy n cs ut -> return (PackageTargetNamedFuzzy n cs ut)
     PackageTargetLocation location  -> do
-      location' <- fetchPackage verbosity (fmap (const Nothing) location)
+      location' <- fetchPackage transport verbosity (fmap (const Nothing) location)
       return (PackageTargetLocation location')
 
 

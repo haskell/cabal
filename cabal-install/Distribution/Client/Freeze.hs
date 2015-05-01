@@ -27,6 +27,8 @@ import Distribution.Client.InstallPlan
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..) )
+import Distribution.Client.HttpUtils
+         ( configureTransport )
 import Distribution.Client.Sandbox.PackageEnvironment
          ( loadUserConfig, pkgEnvSavedConfig, showPackageEnvironment,
            userPackageEnvironmentFile )
@@ -42,7 +44,7 @@ import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
-         ( fromFlag, fromFlagOrDefault )
+         ( fromFlag, fromFlagOrDefault, flagToMaybe )
 import Distribution.Simple.Utils
          ( die, notice, debug, writeFileAtomic )
 import Distribution.System
@@ -87,7 +89,9 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
-    pkgSpecifiers <- resolveUserTargets verbosity
+    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+
+    pkgSpecifiers <- resolveUserTargets transport verbosity
                        (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        [UserTargetLocalDir "."]

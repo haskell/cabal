@@ -75,6 +75,7 @@ import Distribution.Client.Check as Check     (check)
 --import Distribution.Client.Clean            (clean)
 import Distribution.Client.Upload as Upload   (upload, check, report)
 import Distribution.Client.Run                (run, splitRunArgs)
+import Distribution.Client.HttpUtils          (configureTransport)
 import Distribution.Client.SrcDist            (sdist)
 import Distribution.Client.Get                (get)
 import Distribution.Client.Sandbox            (sandboxInit
@@ -920,7 +921,8 @@ updateAction verbosityFlag extraArgs globalFlags = do
   (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity
                            (globalFlags { globalRequireSandbox = Flag False })
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
-  update verbosity (globalRepos globalFlags')
+  transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags'))
+  update transport verbosity (globalRepos globalFlags')
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
@@ -983,9 +985,11 @@ uploadAction uploadFlags extraArgs globalFlags = do
                         getProgramInvocationOutput verbosity
                         (simpleProgramInvocation xs xss)
        _             -> pure $ flagToMaybe $ uploadPassword uploadFlags'
+  transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags'))
   if fromFlag (uploadCheck uploadFlags')
-    then Upload.check  verbosity tarfiles
-    else upload verbosity
+    then Upload.check transport verbosity tarfiles
+    else upload transport
+                verbosity
                 (globalRepos globalFlags')
                 (flagToMaybe $ uploadUsername uploadFlags')
                 maybe_password
