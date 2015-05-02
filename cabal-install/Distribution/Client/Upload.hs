@@ -98,8 +98,6 @@ report verbosity repos mUsername mPassword = do
                                     cabalBrowse verbosity auth $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                                     return ()
         Right{} -> return ()
-  where
-    targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
 
 check :: Verbosity -> [FilePath] -> IO ()
 check verbosity paths = do
