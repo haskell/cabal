@@ -77,9 +77,6 @@ promptPassword = do
 
 report :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> IO ()
 report verbosity repos mUsername mPassword = do
-      let uploadURI = if isOldHackageURI targetRepoURI
-                      then legacyUploadURI
-                      else targetRepoURI{uriPath = ""}
       Username username <- maybe promptUsername return mUsername
       Password password <- maybe promptPassword return mPassword
       let auth = Just (username, password)
