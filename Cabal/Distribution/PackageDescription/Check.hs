@@ -1283,7 +1283,7 @@ checkPackageVersions pkg =
         ++ "new major version of the 'base' package is released. If you are "
         ++ "not sure what upper bound to use then use the next  major "
         ++ "version. For example if you have tested your package with 'base' "
-        ++ "version 2 and 3 then use 'build-depends: base >= 2 && < 4'."
+        ++ "version 4.5 and 4.6 then use 'build-depends: base >= 4.5 && < 4.7'."
 
   ]
   where
