@@ -1,4 +1,8 @@
 -*-change-log-*-
+1.18.1.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* Merge pull request #2367 from juhp/patch-2
+	* Fix bootstrap.sh by bumping HTTP to 4000.2.16.1
 
 1.18.0.7 Johan Tibell <johan.tibell@gmail.com> December 2014
 	* Support random 1.1.
