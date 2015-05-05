@@ -1,4 +1,7 @@
 -*-change-log-*-
+1.16.1.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* More restrictive upper bound on network.
+	* Force cabal upload to always use digest auth and never basic auth.
 
 0.14.0 Andres Loeh <andres@well-typed.com> April 2012
 	* Works with ghc-7.4
