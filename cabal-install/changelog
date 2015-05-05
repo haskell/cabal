@@ -1,4 +1,9 @@
 -*-change-log-*-
+1.22.4.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* Add dependency-graph information to `printPlan` output
+	* bootstrap.sh: fixes linker matching to avoid cases where tested linker names appear unexpectedly in compiler output (fixes #2542)
+
 1.22.3.0 Ryan Thomas <ryan@ryant.org> April 2015
 	* Fix bash completion for sandbox subcommands - Fixes #2513 (Mikhail Glushenkov)
 	* filterConfigureFlags: filter more flags (Mikhail Glushenkov)
