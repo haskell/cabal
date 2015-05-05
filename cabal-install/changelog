@@ -1,4 +1,7 @@
 -*-change-log-*-
+1.20.1.0 Ryan Thomas <ryan@ryant.org> May 2015
+	* Force cabal upload to always use digest auth and never basic auth.
+	* bootstrap.sh: install network-uri before HTTP
 
 1.20.0.5 Johan Tibell <johan.tibell@gmail.com> December 2014
 	* Support random 1.1.
