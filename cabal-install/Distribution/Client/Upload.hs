@@ -7,7 +7,7 @@ import qualified Data.ByteString.Lazy.Char8 as B (concat, length, pack, readFile
 import           Data.ByteString.Lazy.Char8 (ByteString)
 
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
-import Distribution.Client.HttpUtils (isOldHackageURI)
+import Distribution.Client.HttpUtils (isOldHackageURI, uploadToURI)
 
 import Distribution.Simple.Utils (debug, notice, warn, info)
 import Distribution.Verbosity (Verbosity)
@@ -38,8 +38,8 @@ import qualified System.FilePath.Posix as FilePath.Posix (combine)
 import System.Directory
 import Control.Monad (forM_, when)
 
-type Auth = (String, String, String)
-noAuth = ("","","")
+type Auth = Maybe (String, String)
+noAuth = Nothing
 
 --FIXME: how do we find this path for an arbitrary hackage server?
 -- is it always at some fixed location relative to the server root?
@@ -57,15 +57,7 @@ upload verbosity repos mUsername mPassword paths = do
                           else targetRepoURI{uriPath = uriPath targetRepoURI `FilePath.Posix.combine` "upload"}
           Username username <- maybe promptUsername return mUsername
           Password password <- maybe promptPassword return mPassword
-{-
-          let auth = addAuthority AuthBasic {
-                       auRealm    = "Hackage",
-                       auUsername = username,
-                       auPassword = password,
-                       auSite     = uploadURI
-                     }
--}
-          let auth = ("Hackage",username,password)
+          let auth = Just (username,password)
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Uploading " ++ path ++ "... "
             handlePackage verbosity uploadURI auth path
@@ -132,38 +124,18 @@ check verbosity paths = do
             notice verbosity $ "Checking " ++ path ++ "... "
             handlePackage verbosity checkURI noAuth path
 
-type Resp = (Int, ByteString)
-rspCode = fst
-rspBody = snd
-rspReason = snd
-contentTypeHeader _ = Just "" -- TODO HALP
-
-data Req = Req deriving (Show)
-
-runReq :: Req -> IO Resp
-runReq = undefined
-
 handlePackage :: Verbosity -> URI -> Auth
               -> FilePath -> IO ()
 handlePackage verbosity uri auth path =
-  do req <- mkRequest uri path auth
-     debug verbosity $ "\n" ++ show req
-     resp <- runReq req -- cabalBrowse verbosity auth $ request req TODO
-     debug verbosity $ show resp
-     case rspCode resp of
-       200 -> do notice verbosity "Ok"
-       rc  -> do notice verbosity $ "Error: " ++ path ++ ": "
-                                     ++ show rc ++ " "
-                                     ++ B.unpack (rspReason resp)
-                 case contentTypeHeader resp of
-                       Just contenttype
-                         | takeWhile (/= ';') contenttype == "text/plain"
-                         -> notice verbosity $ B.unpack $ rspBody resp
-                       _ -> debug verbosity $ B.unpack $ rspBody resp
-
-mkRequest :: URI -> FilePath -> Auth -> IO Req
-mkRequest uri path auth = undefined
+  do resp <- uploadToURI verbosity uri path auth
+     case resp of
+       (200,_)     -> do notice verbosity "Ok"
+       (code,err)  -> do notice verbosity $ "Error: " ++ path ++ ": "
+                                     ++ show code ++ " "
+                                     ++ err
 {-
+mkRequest :: URI -> FilePath -> Auth -> IO Req
+mkRequest uri path auth =
     do pkg <- readBinaryFile path
        boundary <- genBoundary
        let body = printMultiPart (B.pack boundary) (mkFormData path pkg)
@@ -175,7 +147,6 @@ mkRequest uri path auth = undefined
                                       Header HdrAccept ("text/plain")],
                          rqBody = body
                         }
--}
 
 readBinaryFile :: FilePath -> IO ByteString
 readBinaryFile = B.readFile
@@ -183,7 +154,7 @@ readBinaryFile = B.readFile
 genBoundary :: IO String
 genBoundary = do i <- randomRIO (0x10000000000000,0xFFFFFFFFFFFFFF) :: IO Integer
                  return $ showHex i ""
-{-
+
 mkFormData :: FilePath -> ByteString -> [BodyPart]
 mkFormData path pkg =
   -- yes, web browsers are that stupid (re quoting)
@@ -191,9 +162,9 @@ mkFormData path pkg =
              "form-data; name=package; filename=\""++takeFileName path++"\"",
              Header HdrContentType "application/x-gzip"]
    pkg]
--}
 
-{-
+
+
 hdrContentDisposition :: HeaderName
 hdrContentDisposition = HdrCustom "Content-disposition"
 
