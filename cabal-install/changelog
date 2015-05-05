@@ -1,4 +1,15 @@
 -*-change-log-*-
+0.14.1 Ryan Thomas <ryan@ryant.org> May 2015
+	* More restrictive upper bound on network.
+	* Force cabal upload to always use digest auth and never basic auth.
+	* Add the missing JobControl module.
+	* Drop the "ghc-options: -rtsopts" on cabal-install.
+	* Add -threaded and -rtsopts to cabal-install's ghc-options.
+	* Parallelise the install command.
+	* InstallPlan: Add a Processing package state.
+	* Add a '-j' flag for the 'install' command.
+	* Force the log for the error to be printed in parallel with the complete trace.
+	* Remove goal choice nodes after reordering is completed.
 
 0.14.0 Andres Loeh <andres@well-typed.com> April 2012
 	* Works with ghc-7.4
