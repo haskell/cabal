@@ -1,13 +1,14 @@
 -*-change-log-*-
 
 1.23.x.x (current development version)
-	* If there are multiple remote repos, 'cabal update' now updates 
-	them in parallel (#2503)
-	* New 'cabal upload' option '-P'/'--password-command' for reading 
-	Hackage password from arbitrary program output (#2506)
-	* Better warning for 'cabal run' (#2510)
-	* 'cabal init' now warns if the chosen package name is already 
-	registered in the source package index (#2436)
+	* If there are multiple remote repos, 'cabal update' now updates
+	them in parallel (#2503).
+	* New 'cabal upload' option '-P'/'--password-command' for reading
+	Hackage password from arbitrary program output (#2506).
+	* Better warning for 'cabal run' (#2510).
+	* 'cabal init' now warns if the chosen package name is already
+	registered in the source package index (#2436).
+	* New 'cabal install' option: '--offline' (#2578).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
@@ -22,7 +23,7 @@
 	* Support sandboxes in 'bootstrap.sh' (#2137).
 	* Install profiling and shared libs by default in 'bootstrap.sh'
 	(#2009).
-	
+
 1.20.0.3 Johan Tibell <johan.tibell@gmail.com> June 2014
 	* Don't attempt to rename dist if it is already named correctly
 	* Treat all flags of a package as interdependent.
