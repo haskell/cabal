@@ -4,10 +4,8 @@
 module Distribution.Client.HttpUtils (
     DownloadResult(..),
     configureTransport,
-    setupTransportDb,
     HttpTransport(..),
     downloadURI,
-    uploadToURI,
     isOldHackageURI
   ) where
 
@@ -18,12 +16,12 @@ import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
 import Network.URI
          ( URI (..), URIAuth (..) )
 import Network.Browser
-         ( browse, setOutHandler, setErrHandler, setProxy, setAuthorityGen, request
-         , Authority(..), addAuthority)
+         ( browse, setOutHandler, setErrHandler, setProxy
+         , setAuthorityGen, request, setAllowBasicAuth)
 import Control.Applicative
 import qualified Control.Exception as Exception
 import Control.Monad
-         ( when, guard )
+         ( when, guard, foldM )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.List
          ( isPrefixOf )
@@ -51,15 +49,14 @@ import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Simple.Program
          ( simpleProgram, getProgramInvocationOutput, programInvocation
-         , ConfiguredProgram, ProgramInvocation(..) )
+         , ConfiguredProgram, ProgramInvocation(..), defaultProgramConfiguration )
 import Distribution.Simple.Program.Db
-         ( ProgramDb, configureAllKnownPrograms, addKnownPrograms, lookupProgram
-         , defaultProgramDb )
+         ( ProgramDb, configureProgram, lookupProgram )
 import Distribution.Simple.Program.Run
         ( IOEncoding(..), getEffectiveEnvironment )
 import Text.Read (readMaybe)
 import Numeric (showHex)
-import System.IO (hClose, openTempFile)
+import System.IO (hClose, openTempFile, hPutStr)
 import System.FilePath (takeFileName, takeDirectory)
 import System.Random (randomRIO)
 import System.Exit (ExitCode(..))
@@ -88,23 +85,40 @@ userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
                    , " (", display buildOS, "; ", display buildArch, ")"
                    ]
 
+noPostYet :: URI -> String -> Maybe (String, String) -> IO (Int, String)
+noPostYet _ _ _ = die "Posting (for report upload) is not implemented yet"
+
 data HttpTransport = HttpTransport {
       getHttp :: URI -> Maybe String -> FilePath -> IO (Int, Maybe String),
       postHttp :: URI -> String -> Maybe (String, String) -> IO (Int, String),
       putHttpFile :: URI -> FilePath -> Maybe (String,String) -> IO (Int, String)
     }
 
-setupTransportDb :: Verbosity -> ProgramDb -> IO ProgramDb
-setupTransportDb verbosity conf = configureAllKnownPrograms verbosity $ addKnownPrograms progs conf
-    where progs = map simpleProgram ["curl","wget","powershell","bitsadmin"]
+uriToSecure :: URI -> URI
+uriToSecure x | uriScheme x == "http:" = x {uriScheme = "https:"}
+              | otherwise = x
 
-configureTransport :: Verbosity -> ProgramDb -> IO HttpTransport
-configureTransport verbosity initialConf = maybe (plainHttpTransport verbosity) return . pickTransport =<< setupTransportDb verbosity initialConf
-    where
-      pickTransport :: ProgramDb -> Maybe HttpTransport
-      pickTransport conf =     fmap (curlTransport verbosity) (lookupProgram (simpleProgram "curl") conf)
-                           <|> fmap (wgetTransport verbosity) (lookupProgram (simpleProgram "wget") conf)
-                           <|> fmap (powershellTransport verbosity) (lookupProgram (simpleProgram "powershell") conf)
+setupTransportDb :: Verbosity -> IO ProgramDb
+setupTransportDb verbosity = foldM (flip (configureProgram verbosity)) defaultProgramConfiguration progs
+    where progs = map simpleProgram ["curl","wget","powershell"] --TODO add bitsadmin?
+
+configureTransport :: Verbosity -> Maybe String -> IO HttpTransport
+configureTransport verbosity prefTransport = do
+  db <- setupTransportDb verbosity
+  let
+      curlTrans = curlTransport verbosity <$> lookupProgram (simpleProgram "curl") db
+      wgetTrans = wgetTransport verbosity <$> lookupProgram (simpleProgram "wget") db
+      powershellTrans = powershellTransport verbosity <$> lookupProgram (simpleProgram "powershell") db
+      httpTrans = Just (plainHttpTransport verbosity)
+      trans = case prefTransport of
+                (Just "curl") -> curlTrans
+                (Just "wget") -> wgetTrans
+                (Just "powershell") -> powershellTrans
+                (Just "insecure-http") -> httpTrans
+                (Just t) -> error $ "Unknown transport specified: " ++ t
+                Nothing -> curlTrans <|> wgetTrans <|> powershellTrans
+  maybe (die $ "Could not find a secure https transport: Fallback to http by running with --http-transport=insecure-http") return trans
+
 
 statusParseFail :: URI -> String -> IO a
 statusParseFail uri r = die $ "Failed to download " ++ show uri ++ " : No Status Code could be parsed from Response: " ++ r
@@ -112,40 +126,42 @@ statusParseFail uri r = die $ "Failed to download " ++ show uri ++ " : No Status
 curlTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
 curlTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
   where
-    gethttp uri etag destPath = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
-      where args = [show uri,"-o",destPath,"-L","--write-out","%{http_code}","-A",userAgent]
+    gethttp uri' etag destPath = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
+      where args = [show uri,"-o",destPath,"-L","--write-out","%{http_code}","-A",userAgent,"-s","-S"]
                    ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag
             parseResponse x = case readMaybe $ trim x of
               Just i -> return (i, Nothing) -- TODO extract real etag
               Nothing -> statusParseFail uri x
+            uri = uriToSecure uri'
 
-    posthttp = undefined
+    posthttp = noPostYet
 
-    puthttpfile uri path auth = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
+    puthttpfile uri' path auth = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
       where
         args = [show uri,"-F","package=@"++path,"--write-out","%{http_code}","-A",userAgent]
                ++ maybe [] (\(u,p) -> ["--digest","-u",u++":"++p]) auth
         parseResponse x = case readMaybe . trim =<< listToMaybe . take 1 . reverse . lines =<< return x of
           Just i -> return (i,x) -- TODO extract error?
           Nothing -> statusParseFail uri x
-
+        uri = uriToSecure uri'
 
 wgetTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
 wgetTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
   where
-    gethttp uri etag destPath = parseResponse . snd =<< getProgramInvocationOutputAndErrors verbosity (programInvocation prog args)
+    gethttp uri' etag destPath = parseResponse . snd =<< getProgramInvocationOutputAndErrors verbosity (programInvocation prog args)
       where
-        args = ["-S",show uri,"--output-document="++destPath,"--user-agent="++userAgent]
+        args = ["-S",show uri,"--output-document="++destPath,"--user-agent="++userAgent,"--tries=5","--timeout=15"]
                ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag
         parseResponse x =
           let resp = reverse . takeUntil ("HTTP/" `isPrefixOf`) . reverse . map (dropWhile isSpace) . lines $ x
           in case readMaybe =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
             Just i -> return (i, Nothing) --TODO etags
             Nothing -> statusParseFail uri x
+        uri = uriToSecure uri'
 
-    posthttp = undefined
+    posthttp = noPostYet
 
-    puthttpfile uri path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
+    puthttpfile uri' path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
       boundary <- genBoundary
       body <- generateMultipartBody (ByteString.pack boundary) path
       ByteString.hPut tmpHandle body
@@ -158,6 +174,7 @@ wgetTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
             in case readMaybe =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
               Just i -> return (i, x)
               Nothing -> statusParseFail uri x
+          uri = uriToSecure uri'
       parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
 
     takeUntil _ [] = []
@@ -166,13 +183,14 @@ wgetTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
 powershellTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
 powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
   where
-    gethttp uri etag destPath = do
+    gethttp uri' etag destPath = do
       proxyInfo <- proxy verbosity
       let
+        uri = uriToSecure uri'
         escape x = '"' : x ++ "\"" --TODO write/find real escape.
         proxySettings = [] --TODO extract real settings from proxyInfo
 
-        parseResponse x = case readMaybe $ trim x of
+        parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
           Just i -> return (i, Nothing) -- TODO extract real etag
           Nothing -> statusParseFail uri x
 
@@ -181,20 +199,50 @@ powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
                   "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"]
                  ++ maybe [] (\t -> ["$wc.Headers.Add(\"If-None-Match " ++ t ++ ")"]) etag
                  ++ proxySettings
-                 ++ ["$wc.DownloadFile("++ escape (show uri) ++ "," ++ escape destPath ++ ")",
-                     "$wc.ResponseHeaders.Item(\"status\")"]
+                 ++ ["Try {",
+                     "$wc.DownloadFile("++ escape (show uri) ++ "," ++ escape destPath ++ ")",
+                     "} Catch {Write-Error $_; Exit(5);}",
+                     "Write-Host \"200\"",
+                     "Write-Host $wc.ResponseHeaders.Item(\"ETag\")",
+                     "Exit"]
+      withTempFile (takeDirectory destPath) "psScript.ps1" $ \tmpFile tmpHandle -> do
+         hPutStr tmpHandle script
+         hClose tmpHandle
+         foo <- getProgramInvocationOutputAndErrors verbosity (programInvocation prog ["-InputFormat","None","-File",tmpFile])
+         putStrLn $ show foo
+         parseResponse (fst foo)
 
-      parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog [script])
+    posthttp = noPostYet
 
-    posthttp = undefined
+    puthttpfile uri' path auth = do
+      proxyInfo <- proxy verbosity
+      let
+        uri = uriToSecure uri'
+        escape x = '"' : x ++ "\"" --TODO write/find real escape.
+        proxySettings = [] --TODO extract real settings from proxyInfo
 
-    puthttpfile uri path auth = error "powershell upload not yet enabled" --TODO
+        parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
+          Just i -> return (i, x) -- TODO extract real etag
+          Nothing -> statusParseFail uri x
 
--- TODO bitsadmin?
+        script = unlines . map (++";") $
+                 ["$wc = new-object system.net.webclient",
+                  "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"]
+                 ++ proxySettings
+                 ++ ["Try {",
+                     "$wc.UploadFile("++ escape (show uri) ++ "," ++ escape path ++ ")",
+                     "} Catch {Write-Error $_; Exit(1);}",
+                     "Write-Host \"200\"",
+                     "Exit"]
+      withTempFile (takeDirectory path) "psScript.ps1" $ \tmpFile tmpHandle -> do
+         hPutStr tmpHandle script
+         hClose tmpHandle
+         foo <- getProgramInvocationOutputAndErrors verbosity (programInvocation prog ["-InputFormat","None","-File",tmpFile])
+         putStrLn $ show foo
+         parseResponse (fst foo)
 
--- todo ensure an explicit flag to allow plain insecure http
-plainHttpTransport :: Verbosity -> IO HttpTransport
-plainHttpTransport verbosity = return $ HttpTransport gethttp posthttp puthttpfile
+plainHttpTransport :: Verbosity -> HttpTransport
+plainHttpTransport verbosity = HttpTransport gethttp posthttp puthttpfile
   where gethttp uri etag destPath =
           processGetResult destPath . snd =<< cabalBrowse (request
             Request{ rqURI     = uri
@@ -209,7 +257,7 @@ plainHttpTransport verbosity = return $ HttpTransport gethttp posthttp puthttpfi
           where code = case rspCode (resp) of (a,b,c) -> a*100 + b*10 + c
                 etag = lookupHeader HdrETag (rspHeaders resp)
 
-        posthttp = undefined
+        posthttp = noPostYet
 
         puthttpfile uri path auth = do
           boundary <- genBoundary
@@ -241,17 +289,18 @@ plainHttpTransport verbosity = return $ HttpTransport gethttp posthttp puthttpfi
                   setOutHandler (debug verbosity)
                   act
 
-downloadURI :: Verbosity
+downloadURI :: HttpTransport
+            -> Verbosity
             -> URI      -- ^ What to download
             -> FilePath -- ^ Where to put it
             -> IO DownloadResult
-downloadURI verbosity uri path | uriScheme uri == "file:" = do
+downloadURI _transport verbosity uri path | uriScheme uri == "file:" = do
   copyFileVerbose verbosity (uriPath uri) path
   return (FileDownloaded path)
   -- Can we store the hash of the file so we can safely return path when the
   -- hash matches to avoid unnecessary computation?
 
-downloadURI verbosity uri path = withTempFileName (takeDirectory path) (takeFileName path) $ \tmpFile -> do
+downloadURI transport verbosity uri path = withTempFileName (takeDirectory path) (takeFileName path) $ \tmpFile -> do
   let etagPath = path <.> "etag"
   targetExists   <- doesFileExist path
   etagPathExists <- doesFileExist etagPath
@@ -260,7 +309,6 @@ downloadURI verbosity uri path = withTempFileName (takeDirectory path) (takeFile
             then Just <$> readFile etagPath
             else return Nothing
 
-  transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
   result <- getHttp transport uri etag tmpFile
 
   -- Only write the etag if we get a 200 response code.
@@ -278,12 +326,6 @@ downloadURI verbosity uri path = withTempFileName (takeDirectory path) (takeFile
         notice verbosity "Skipping download: Local and remote files match."
         return FileAlreadyInCache
     errCode ->  die $ "Failed to download " ++ show uri ++ " : HTTP code " ++ show errCode
-
-uploadToURI :: Verbosity -> URI -> FilePath -> Maybe (String,String) -> IO (Int, String)
-uploadToURI verbosity uri path auth = do
-  transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
-  putHttpFile transport uri path auth
-
 
 -- Utility function for legacy support.
 isOldHackageURI :: URI -> Bool

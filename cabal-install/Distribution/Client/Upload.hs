@@ -4,7 +4,7 @@
 module Distribution.Client.Upload (check, upload, report) where
 
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
-import Distribution.Client.HttpUtils (isOldHackageURI, uploadToURI)
+import Distribution.Client.HttpUtils (isOldHackageURI, HttpTransport(..))
 
 import Distribution.Simple.Utils (notice, warn, info)
 import Distribution.Verbosity (Verbosity)
@@ -33,8 +33,8 @@ Just legacyUploadURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scri
 checkURI :: URI
 Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/check-pkg"
 
-upload :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> [FilePath] -> IO ()
-upload verbosity repos mUsername mPassword paths = do
+upload :: HttpTransport -> Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> [FilePath] -> IO ()
+upload transport verbosity repos mUsername mPassword paths = do
           let uploadURI = if isOldHackageURI targetRepoURI
                           then legacyUploadURI
                           else targetRepoURI{uriPath = uriPath targetRepoURI `FilePath.Posix.combine` "upload"}
@@ -43,7 +43,7 @@ upload verbosity repos mUsername mPassword paths = do
           let auth = Just (username,password)
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Uploading " ++ path ++ "... "
-            handlePackage verbosity uploadURI auth path
+            handlePackage transport verbosity uploadURI auth path
   where
     targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
 
@@ -88,16 +88,16 @@ report verbosity repos mUsername mPassword = do
                                     return ()
         Right{} -> return ()
 
-check :: Verbosity -> [FilePath] -> IO ()
-check verbosity paths = do
+check :: HttpTransport -> Verbosity -> [FilePath] -> IO ()
+check transport verbosity paths = do
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Checking " ++ path ++ "... "
-            handlePackage verbosity checkURI Nothing path
+            handlePackage transport verbosity checkURI Nothing path
 
-handlePackage :: Verbosity -> URI -> Auth
+handlePackage :: HttpTransport -> Verbosity -> URI -> Auth
               -> FilePath -> IO ()
-handlePackage verbosity uri auth path =
-  do resp <- uploadToURI verbosity uri path auth
+handlePackage transport verbosity uri auth path =
+  do resp <- putHttpFile transport uri path auth
      case resp of
        (200,_)     -> do notice verbosity "Ok"
        (code,err)  -> do notice verbosity $ "Error: " ++ path ++ ": "

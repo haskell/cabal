@@ -27,7 +27,6 @@ import Distribution.Text (display)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils (die)
 import Distribution.Client.HttpUtils
-import Distribution.Simple.Program.Db (defaultProgramDb)
 
 type BuildReportId = URI
 type BuildLog = String
@@ -43,7 +42,7 @@ uploadReports verbosity auth uri reports = do
 postBuildReport :: Verbosity -> (String, String) -> URI -> BuildReport -> IO BuildReportId
 postBuildReport verbosity auth uri buildReport = do
   let fullURI = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" }
-  transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
+  transport <- configureTransport verbosity Nothing
   res <- postHttp transport fullURI (BuildReport.show buildReport) (Just auth)
   case res of
     (303, redir) -> return $ undefined redir --TODO parse redir
@@ -84,7 +83,7 @@ putBuildLog :: Verbosity -> (String, String)
             -> IO ()
 putBuildLog verbosity auth reportId buildLog = do
   let fullURI = reportId {uriPath = uriPath reportId </> "log"}
-  transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
+  transport <- configureTransport verbosity Nothing
   res <- postHttp transport fullURI buildLog (Just auth)
   case res of
     (200, _) -> return ()
