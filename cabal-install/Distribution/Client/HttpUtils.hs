@@ -7,36 +7,31 @@ module Distribution.Client.HttpUtils (
     uploadToURI,
     isOldHackageURI
   ) where
-{-
+
 import Network.HTTP
          ( Request (..), Response (..), RequestMethod (..)
          , Header(..), HeaderName(..), lookupHeader )
--}
 import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
-
 import Network.URI
          ( URI (..), URIAuth (..) )
-{-
 import Network.Browser
-         ( BrowserAction, browse
-         , setOutHandler, setErrHandler, setProxy, setAuthorityGen, request)
-import Network.Stream
-         ( Result, ConnError(..) )
--}
+         ( browse, setOutHandler, setErrHandler, setProxy, setAuthorityGen, request
+         , Authority(..), addAuthority)
 import Control.Applicative
+import qualified Control.Exception as Exception
 import Control.Monad
-         ( when )
+         ( when, guard )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
-import Data.ByteString.Lazy (ByteString)
 import Data.List
          ( isPrefixOf )
 import Data.Maybe
-         ( fromMaybe, listToMaybe )
+         ( listToMaybe )
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
-         ( die, info, warn, debug, notice
-         , copyFileVerbose, writeFileAtomic)
+         ( die, info, warn, debug, notice, writeFileAtomic
+         , copyFileVerbose,  withTempFile
+         , rawSystemStdInOut, toUTF8, fromUTF8, normaliseLineEndings )
 import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
@@ -52,18 +47,19 @@ import System.Directory
 import System.IO.Error
          ( isDoesNotExistError )
 import Distribution.Simple.Program
-import Distribution.Simple.Program.Types
+         ( simpleProgram, getProgramInvocationOutput, programInvocation
+         , ConfiguredProgram, ProgramInvocation(..) )
+import Distribution.Simple.Program.Db
+         ( ProgramDb, configureAllKnownPrograms, addKnownPrograms, lookupProgram
+         , defaultProgramDb )
+import Distribution.Simple.Program.Run
+        ( IOEncoding(..), getEffectiveEnvironment )
 import Text.Read (readMaybe)
+import Numeric (showHex)
 import System.IO (hClose, openTempFile)
 import System.FilePath (takeFileName, takeDirectory)
-import qualified Control.Exception as Exception
-
-import Distribution.Simple.Program.Run
-import Distribution.Simple.Utils
-         ( die, rawSystemExit, rawSystemIOWithEnv, rawSystemStdInOut
-         , toUTF8, fromUTF8, normaliseLineEndings )
-import System.Exit
-         ( ExitCode(..), exitWith )
+import System.Random (randomRIO)
+import System.Exit (ExitCode(..))
 
 data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
@@ -72,7 +68,6 @@ trim :: String -> String
 trim = f . f
       where f = reverse . dropWhile isSpace
 
-{-
 -- |Get the local proxy settings
 --TODO: print info message when we're using a proxy based on verbosity
 proxy :: Verbosity -> IO Proxy
@@ -84,26 +79,252 @@ proxy _verbosity = do
       let uri' = trim uri in
       if uri' == "" then NoProxy else Proxy uri' auth
     _ -> p
--}
 
 userAgent :: String
 userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
                    , " (", display buildOS, "; ", display buildArch, ")"
                    ]
 
-data HttpTransportType = CurlLoc FilePath | WGetLoc FilePath | PowerShellLoc FilePath | BITSAdminLoc FilePath | HttpTransport -- TODO add HTTPS Transport Here.
+data HttpTransport = HttpTransport {
+      getHttp :: URI -> Maybe String -> FilePath -> IO (Int, Maybe String),
+      putHttp :: URI -> FilePath -> Maybe (String,String) -> IO (Int, String)
+    }
 
--- TODO also check config for paths explicitly?
-findHttpTransport :: Verbosity -> IO HttpTransportType
-findHttpTransport verbosity =
-    let fpl = findProgramLocation verbosity
-        orFind :: IO (Maybe a) -> IO (Maybe a) -> IO (Maybe a)
-        orFind x y = maybe y (return . Just) =<< x
-        result =   (fmap CurlLoc <$> fpl "curl")
-                  `orFind` (fmap WGetLoc <$> fpl "wget")
-                  `orFind` (fmap PowerShellLoc <$> fpl "powershell")
-                  `orFind` (fmap BITSAdminLoc <$> fpl "bitsadmin")
-    in return . fromMaybe HttpTransport =<< result
+setupTransportDb :: Verbosity -> ProgramDb -> IO ProgramDb
+setupTransportDb verbosity conf = configureAllKnownPrograms verbosity $ addKnownPrograms progs conf
+    where progs = map simpleProgram ["curl","wget","powershell","bitsadmin"]
+
+configureTransport :: Verbosity -> ProgramDb -> IO HttpTransport
+configureTransport verbosity initialConf = maybe (plainHttpTransport verbosity) return . pickTransport =<< setupTransportDb verbosity initialConf
+    where
+      pickTransport :: ProgramDb -> Maybe HttpTransport
+      pickTransport conf =     fmap (curlTransport verbosity) (lookupProgram (simpleProgram "curl") conf)
+                           <|> fmap (wgetTransport verbosity) (lookupProgram (simpleProgram "wget") conf)
+                           <|> fmap (powershellTransport verbosity) (lookupProgram (simpleProgram "powershell") conf)
+
+statusParseFail :: URI -> String -> IO a
+statusParseFail uri r = die $ "Failed to download " ++ show uri ++ " : No Status Code could be parsed from Response: " ++ r
+
+curlTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
+curlTransport verbosity prog = HttpTransport gethttp puthttp
+  where
+    gethttp uri etag destPath = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
+      where args = [show uri,"-o",destPath,"-L","--write-out","%{http_code}","-A",userAgent]
+                   ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag
+            parseResponse x = case readMaybe $ trim x of
+              Just i -> return (i, Nothing) -- TODO extract real etag
+              Nothing -> statusParseFail uri x
+
+    puthttp uri path auth = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
+      where
+        args = [show uri,"-F","package=@"++path,"--write-out","%{http_code}","-A",userAgent]
+               ++ maybe [] (\(u,p) -> ["--digest","-u",u++":"++p]) auth
+        parseResponse x = case readMaybe . trim =<< listToMaybe . take 1 . reverse . lines =<< return x of
+          Just i -> return (i,x) -- TODO extract error?
+          Nothing -> statusParseFail uri x
+
+
+wgetTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
+wgetTransport verbosity prog = HttpTransport gethttp puthttp
+  where
+    gethttp uri etag destPath = parseResponse . snd =<< getProgramInvocationOutputAndErrors verbosity (programInvocation prog args)
+      where
+        args = ["-S",show uri,"--output-document="++destPath,"--user-agent="++userAgent]
+               ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag
+        parseResponse x =
+          let resp = reverse . takeUntil ("HTTP/" `isPrefixOf`) . reverse . map (dropWhile isSpace) . lines $ x
+          in case readMaybe =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
+            Just i -> return (i, Nothing) --TODO etags
+            Nothing -> statusParseFail uri x
+
+    puthttp uri path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
+      boundary <- genBoundary
+      body <- generateMultipartBody (ByteString.pack boundary) path
+      ByteString.hPut tmpHandle body
+      let args = ["-S",show uri,"--user-agent="++userAgent,"--post-file="++tmpFile]
+                 ++ ["--header=\"++Content-type: multipart/form-data boundary="++boundary++"\""]
+                 ++ maybe [] (\(u,p) -> ["--http-user="++u,"--http-password="++p]) auth
+
+          parseResponse x =
+            let resp = reverse . takeUntil ("HTTP/" `isPrefixOf`) . reverse . map (dropWhile isSpace) . lines $ x
+            in case readMaybe =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
+              Just i -> return (i, x) -- todo parse error?
+              Nothing -> statusParseFail uri x
+      parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
+
+    takeUntil _ [] = []
+    takeUntil p (x:xs) = if p x then [x] else x : takeUntil p xs
+
+powershellTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
+powershellTransport verbosity prog = HttpTransport gethttp puthttp
+  where
+    gethttp uri etag destPath = do
+      proxyInfo <- proxy verbosity
+      let
+        escape x = '"' : x ++ "\"" --TODO write/find real escape.
+        proxySettings = [] --TODO extract real settings from proxyInfo
+
+        parseResponse x = case readMaybe $ trim x of
+          Just i -> return (i, Nothing) -- TODO extract real etag
+          Nothing -> statusParseFail uri x
+
+        script = unlines . map (++";") $
+                 ["$wc = new-object system.net.webclient",
+                  "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"]
+                 ++ maybe [] (\t -> ["$wc.Headers.Add(\"If-None-Match " ++ t ++ ")"]) etag
+                 ++ proxySettings
+                 ++ ["$wc.DownloadFile("++ escape (show uri) ++ "," ++ escape destPath ++ ")",
+                     "$wc.ResponseHeaders.Item(\"status\")"]
+
+      parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog [script])
+
+    puthttp uri path auth = error "powershell upload not yet enabled" --TODO
+
+-- TODO bitsadmin?
+
+-- todo ensure an explicit flag to allow plain insecure http
+plainHttpTransport :: Verbosity -> IO HttpTransport
+plainHttpTransport verbosity = return $ HttpTransport gethttp puthttp
+  where gethttp uri etag destPath =
+          processGetResult destPath . snd =<< cabalBrowse (request
+            Request{ rqURI     = uri
+                   , rqMethod  = GET
+                   , rqHeaders = Header HdrUserAgent userAgent
+                                 : maybe [] (\t -> [Header HdrIfNoneMatch t]) etag
+                   , rqBody    = ByteString.empty })
+
+        processGetResult destPath resp = do
+            when (code==200) $ writeFileAtomic destPath $ rspBody resp
+            return (code, etag)
+          where code = case rspCode (resp) of (a,b,c) -> a*100 + b*10 + c
+                etag = lookupHeader HdrETag (rspHeaders resp)
+
+        puthttp uri path auth = do
+          boundary <- genBoundary
+          body <- generateMultipartBody (ByteString.pack boundary) path
+          let authorize = case auth of
+                Just (u,p) ->
+                  addAuthority (AuthBasic {
+                    auRealm    = "Hackage",
+                    auUsername = u,
+                    auPassword = p,
+                    auSite     = uri
+                    }) >>
+                  setAuthorityGen (\_ _ -> return Nothing)
+                Nothing -> return ()
+          processPutResult . snd <$>  cabalBrowse (authorize >> request Request {
+                         rqURI = uri,
+                         rqMethod = POST,
+                         rqHeaders = [Header HdrContentType ("multipart/form-data; boundary="++boundary),
+                                      Header HdrContentLength (show (ByteString.length body)),
+                                      Header HdrAccept ("text/plain")],
+                         rqBody = body
+                        })
+
+        processPutResult resp = (code, rspReason resp)
+          where code = case rspCode (resp) of (a,b,c) -> a*100 + b*10 + c
+
+        cabalBrowse act = do
+          p <- proxy verbosity
+          Exception.handleJust
+                (guard . isDoesNotExistError)
+                (const . die $ "Couldn't establish HTTP connection. "
+                 ++ "Possible cause: HTTP proxy server is down.") $
+                browse $ do
+                  setProxy p
+                  setErrHandler (warn verbosity . ("http error: "++))
+                  setOutHandler (debug verbosity)
+                  act
+
+getHTTP :: Verbosity -> URI -> Maybe String -> FilePath -> IO (Int, Maybe String)
+getHTTP verbosity uri etag destPath = do
+  transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
+  getHttp transport uri etag destPath
+
+downloadURI :: Verbosity
+            -> URI      -- ^ What to download
+            -> FilePath -- ^ Where to put it
+            -> IO DownloadResult
+downloadURI verbosity uri path | uriScheme uri == "file:" = do
+  copyFileVerbose verbosity (uriPath uri) path
+  return (FileDownloaded path)
+  -- Can we store the hash of the file so we can safely return path when the
+  -- hash matches to avoid unnecessary computation?
+
+downloadURI verbosity uri path = withTempFileName (takeDirectory path) (takeFileName path) $ \tmpFile -> do
+  let etagPath = path <.> "etag"
+  targetExists   <- doesFileExist path
+  etagPathExists <- doesFileExist etagPath
+  -- In rare cases the target file doesn't exist, but the etag does.
+  etag <- if targetExists && etagPathExists
+            then Just <$> readFile etagPath
+            else return Nothing
+
+  result <- getHTTP verbosity uri etag tmpFile
+
+  -- Only write the etag if we get a 200 response code.
+  -- A 304 still sends us an etag header.
+  case result of
+    (200, Just newEtag) -> writeFile etagPath newEtag
+    _ -> return ()
+
+  case fst result of
+    200 -> do
+        info verbosity ("Downloaded to " ++ path)
+        renameFile tmpFile path
+        return (FileDownloaded path)
+    304 -> do
+        notice verbosity "Skipping download: Local and remote files match."
+        return FileAlreadyInCache
+    errCode ->  die $ "Failed to download " ++ show uri ++ " : HTTP code " ++ show errCode
+
+uploadToURI :: Verbosity -> URI -> FilePath -> Maybe (String,String) -> IO (Int, String)
+uploadToURI verbosity uri path auth = do
+  transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
+  putHttp transport uri path auth
+
+
+-- Utility function for legacy support.
+isOldHackageURI :: URI -> Bool
+isOldHackageURI uri
+    = case uriAuthority uri of
+        Just (URIAuth {uriRegName = "hackage.haskell.org"}) ->
+            FilePath.Posix.splitDirectories (uriPath uri) == ["/","packages","archive"]
+        _ -> False
+
+-- Gets us the temp file name but gives us more control over the file itself.
+
+withTempFileName :: FilePath
+             -> String
+             -> (FilePath -> IO a) -> IO a
+withTempFileName tmpDir template action =
+  Exception.bracket
+    (openTempFile tmpDir template)
+    (\(name, _) -> (`when` removeFile name) =<< doesFileExist name)
+    (\(name, h) -> hClose h >> action name)
+
+-- Multipart stuff partially taken from cgi package.
+
+genBoundary :: IO String
+genBoundary = do i <- randomRIO (0x10000000000000,0xFFFFFFFFFFFFFF) :: IO Integer
+                 return $ showHex i ""
+
+generateMultipartBody :: ByteString.ByteString -> FilePath -> IO ByteString.ByteString
+generateMultipartBody boundary path = do
+  pkg <- ByteString.readFile path
+  let
+    crlf = ByteString.pack "\r\n"
+    dd = ByteString.pack "--"
+    printOneMultiPart (hs, c) = printBodyPart (hs,c) ++ [crlf, dd, boundary, dd, crlf]
+    printBodyPart (hs, c) = [crlf, dd, boundary, crlf] ++ map (ByteString.pack . show) hs ++ [crlf, c]
+    formData = ( [Header (HdrCustom "Content-disposition") $
+                   "form-data; name=package; filename=\""++takeFileName path++"\"",
+                   Header HdrContentType "application/x-gzip"],
+                   pkg)
+    body = ByteString.concat $ printOneMultiPart formData
+  return body
+
+-- This should go back in the main program machinery. We need the errors explicitly because wget writes its results to stderr for no good reason.
 
 getProgramInvocationOutputAndErrors :: Verbosity -> ProgramInvocation -> IO (String, String)
 getProgramInvocationOutputAndErrors verbosity
@@ -134,143 +355,3 @@ getProgramInvocationOutputAndErrors verbosity
           case encoding of
             IOEncodingText -> (inputStr, False)
             IOEncodingUTF8 -> (toUTF8 inputStr, True) -- use binary mode for utf8
-
-takeUntil p [] = []
-takeUntil p (x:xs) = if p x then [x] else x : takeUntil p xs
-
-getHTTP :: Verbosity -> URI -> Maybe String -> FilePath -> IO (Maybe String, Int)
-getHTTP verbosity uri etag destPath = executeGet =<< findHttpTransport verbosity
-    where
-      executeGet (CurlLoc fp) =
-          let prog = simpleConfiguredProgram "curl" (FoundOnSystem fp)
-              args = [show uri,"-o",destPath,"-L","--write-out","%{http_code}","-A",userAgent] ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag -- TODO set curl verbosity?
-              parseResponse x = case readMaybe $ trim x of
-                          Just i -> return (Nothing, i) -- TODO extract real etag
-                          Nothing -> die $ "Failed to download " ++ show uri ++ " : No Status Code could be parsed from Response: " ++ x
-          in parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
-      executeGet (WGetLoc fp) =
-          let prog = simpleConfiguredProgram "wget" (FoundOnSystem fp)
-              args = ["-S",show uri,"--output-document="++destPath,"--user-agent="++userAgent] ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag -- TODO set verbosity?
-              parseResponse x =
-                  let resp = reverse . takeUntil ("HTTP/" `isPrefixOf`) . reverse . map (dropWhile isSpace) . lines $ x
-                  in case readMaybe =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
-                       Just i -> return (Nothing, i) --TODO etags
-                       Nothing -> die $ "Failed to download " ++ show uri ++ " : No Status Code could be parsed from Response: " ++ x
-          in parseResponse . snd =<< getProgramInvocationOutputAndErrors verbosity (programInvocation prog args)
-      -- TODO PowerShell isn't finished
-      executeGet (PowerShellLoc fp) = do
-          p <- fetchProxy True
-          let prog = simpleConfiguredProgram "powershell" (FoundOnSystem fp)
-              escape x = '"' : x ++ "\"" --TODO write/find real escape.
-              proxySettings _ = [] --TODO extract real settings
-
-              parseResponse x = case readMaybe $ trim x of
-                          Just i -> return (Nothing, i) -- TODO extract real etag
-                          Nothing -> die $ "Failed to download " ++ show uri ++ " : No Status Code could be parsed from Response: " ++ x
-
-              script = unlines . map (++";") $
-                       ["$wc = new-object system.net.webclient",
-                        "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"]
-                       ++ maybe [] (\t -> ["$wc.Headers.Add(\"If-None-Match " ++ t ++ ")"]) etag
-                       ++ proxySettings p
-                       ++ ["$wc.DownloadFile("++ escape (show uri) ++ "," ++ escape destPath ++ ")",
-                           "$wc.ResponseHeaders.Item(\"status\")"]
-          parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog [script])
--- TODO bitsadmin
--- TODO fallback to http
-
-{-
--- |Carry out a GET request, using the local proxy settings
-getHTTP :: Verbosity
-        -> URI
-        -> Maybe String -- ^ Optional etag to check if we already have the latest file.
-        -> IO (Result (Response ByteString))
-getHTTP verbosity uri etag = liftM (\(_, resp) -> Right resp) $ undefined
---                                   cabalBrowse verbosity (return ()) (request (mkRequest uri etag))
-
-
-cabalBrowse :: Verbosity
-            -> BrowserAction s ()
-            -> BrowserAction s a
-            -> IO a
-cabalBrowse verbosity auth act = do
-    p   <- proxy verbosity
-    handleJust
-        (guard . isDoesNotExistError)
-        (const . die $ "Couldn't establish HTTP connection. "
-                    ++ "Possible cause: HTTP proxy server is down.") $
-        browse $ do
-            setProxy p
-            setErrHandler (warn verbosity . ("http error: "++))
-            setOutHandler (debug verbosity)
-            auth
-            setAuthorityGen (\_ _ -> return Nothing)
-            act
--}
-
-
-withTempFileName :: FilePath
-             -> String
-             -> (FilePath -> IO a) -> IO a
-withTempFileName tmpDir template action =
-  Exception.bracket
-    (openTempFile tmpDir template)
-    (\(name, _) -> (`when` removeFile name) =<< doesFileExist name)
-    (\(name, h) -> hClose h >> action name)
-
-downloadURI :: Verbosity
-            -> URI      -- ^ What to download
-            -> FilePath -- ^ Where to put it
-            -> IO DownloadResult
-downloadURI verbosity uri path | uriScheme uri == "file:" = do
-  copyFileVerbose verbosity (uriPath uri) path
-  return (FileDownloaded path)
-  -- Can we store the hash of the file so we can safely return path when the
-  -- hash matches to avoid unnecessary computation?
-
-downloadURI verbosity uri path = withTempFileName (takeDirectory path) (takeFileName path) $ \tmpFile -> do
-  let etagPath = path <.> "etag"
-  targetExists   <- doesFileExist path
-  etagPathExists <- doesFileExist etagPath
-  -- In rare cases the target file doesn't exist, but the etag does.
-  etag <- if targetExists && etagPathExists
-            then Just <$> readFile etagPath
-            else return Nothing
-
-  result <- getHTTP verbosity uri etag tmpFile
-
-  -- Only write the etag if we get a 200 response code.
-  -- A 304 still sends us an etag header.
-  case result of
-    (Just newEtag, 200) -> writeFile etagPath newEtag
-    _ -> return ()
-
-  case snd result of
-    200 -> do
-        info verbosity ("Downloaded to " ++ path)
-        renameFile tmpFile path
-        return (FileDownloaded path)
-    304 -> do
-        notice verbosity "Skipping download: Local and remote files match."
-        return FileAlreadyInCache
-    errCode ->  die $ "Failed to download " ++ show uri ++ " : HTTP code " ++ show errCode
-
-uploadToURI :: Verbosity -> URI -> FilePath -> Maybe (String,String) -> IO (Int, String)
-uploadToURI verbosity uri path auth = executeUpload =<< findHttpTransport verbosity
-    where
-      executeUpload (CurlLoc fp) =
-          let prog = simpleConfiguredProgram "curl" (FoundOnSystem fp)
-              args = [show uri,"-F","package=@"++path,"--write-out","%{http_code}","-A",userAgent] ++ maybe [] (\(u,p) -> ["--digest","-u",u++":"++p]) auth -- TODO set curl verbosity
-              parseResponse x = case readMaybe . trim =<< listToMaybe . take 1 . reverse . lines =<< return x of
-                          Just i -> return (i,x) -- TODO extract error?
-                          Nothing -> die $ "Failed to download " ++ show uri ++ " : No Status Code could be parsed from Response: " ++ x
-          in parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
--- TODO handle other transports
-
--- Utility function for legacy support.
-isOldHackageURI :: URI -> Bool
-isOldHackageURI uri
-    = case uriAuthority uri of
-        Just (URIAuth {uriRegName = "hackage.haskell.org"}) ->
-            FilePath.Posix.splitDirectories (uriPath uri) == ["/","packages","archive"]
-        _ -> False

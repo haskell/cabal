@@ -3,13 +3,10 @@
 
 module Distribution.Client.Upload (check, upload, report) where
 
-import qualified Data.ByteString.Lazy.Char8 as B (concat, length, pack, readFile, unpack)
-import           Data.ByteString.Lazy.Char8 (ByteString)
-
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
 import Distribution.Client.HttpUtils (isOldHackageURI, uploadToURI)
 
-import Distribution.Simple.Utils (debug, notice, warn, info)
+import Distribution.Simple.Utils (notice, warn, info)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text (display)
 import Distribution.Client.Config
@@ -17,29 +14,16 @@ import Distribution.Client.Config
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import qualified Distribution.Client.BuildReports.Upload as BuildReport
 
-{-
-import Network.Browser
-         ( BrowserAction, request
-         , Authority(..), addAuthority )
-import Network.HTTP
-         ( Header(..), HeaderName(..), findHeader
-         , Request(..), RequestMethod(..), Response(..) )
-import Network.TCP (HandleStream)
--}
 import Network.URI (URI(uriPath), parseURI)
 
-import Data.Char        (intToDigit)
-import Numeric          (showHex)
 import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
 import Control.Exception (bracket)
-import System.Random    (randomRIO)
-import System.FilePath  ((</>), takeExtension, takeFileName)
+import System.FilePath  ((</>), takeExtension)
 import qualified System.FilePath.Posix as FilePath.Posix (combine)
 import System.Directory
 import Control.Monad (forM_, when)
 
 type Auth = Maybe (String, String)
-noAuth = Nothing
 
 --FIXME: how do we find this path for an arbitrary hackage server?
 -- is it always at some fixed location relative to the server root?
@@ -48,7 +32,6 @@ Just legacyUploadURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scri
 
 checkURI :: URI
 Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/check-pkg"
-
 
 upload :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> [FilePath] -> IO ()
 upload verbosity repos mUsername mPassword paths = do
@@ -88,15 +71,7 @@ report verbosity repos mUsername mPassword = do
                       else targetRepoURI{uriPath = ""}
       Username username <- maybe promptUsername return mUsername
       Password password <- maybe promptPassword return mPassword
-{-
-      let auth = addAuthority AuthBasic {
-                   auRealm    = "Hackage",
-                   auUsername = username,
-                   auPassword = password,
-                   auSite     = uploadURI
-                 }
--}
-      let auth = ("Hackage",username,password)
+      let auth = (username,password)
       forM_ repos $ \repo -> case repoKind repo of
         Left remoteRepo
             -> do dotCabal <- defaultCabalDir
@@ -122,7 +97,7 @@ check :: Verbosity -> [FilePath] -> IO ()
 check verbosity paths = do
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Checking " ++ path ++ "... "
-            handlePackage verbosity checkURI noAuth path
+            handlePackage verbosity checkURI Nothing path
 
 handlePackage :: Verbosity -> URI -> Auth
               -> FilePath -> IO ()
@@ -133,55 +108,3 @@ handlePackage verbosity uri auth path =
        (code,err)  -> do notice verbosity $ "Error: " ++ path ++ ": "
                                      ++ show code ++ " "
                                      ++ err
-{-
-mkRequest :: URI -> FilePath -> Auth -> IO Req
-mkRequest uri path auth =
-    do pkg <- readBinaryFile path
-       boundary <- genBoundary
-       let body = printMultiPart (B.pack boundary) (mkFormData path pkg)
-       return $ Request {
-                         rqURI = uri,
-                         rqMethod = POST,
-                         rqHeaders = [Header HdrContentType ("multipart/form-data; boundary="++boundary),
-                                      Header HdrContentLength (show (B.length body)),
-                                      Header HdrAccept ("text/plain")],
-                         rqBody = body
-                        }
-
-readBinaryFile :: FilePath -> IO ByteString
-readBinaryFile = B.readFile
-
-genBoundary :: IO String
-genBoundary = do i <- randomRIO (0x10000000000000,0xFFFFFFFFFFFFFF) :: IO Integer
-                 return $ showHex i ""
-
-mkFormData :: FilePath -> ByteString -> [BodyPart]
-mkFormData path pkg =
-  -- yes, web browsers are that stupid (re quoting)
-  [BodyPart [Header hdrContentDisposition $
-             "form-data; name=package; filename=\""++takeFileName path++"\"",
-             Header HdrContentType "application/x-gzip"]
-   pkg]
-
-
-
-hdrContentDisposition :: HeaderName
-hdrContentDisposition = HdrCustom "Content-disposition"
-
--- * Multipart, partly stolen from the cgi package.
-
-data BodyPart = BodyPart [Header] ByteString
-
-printMultiPart :: ByteString -> [BodyPart] -> ByteString
-printMultiPart boundary xs =
-    B.concat $ map (printBodyPart boundary) xs ++ [crlf, dd, boundary, dd, crlf]
-
-printBodyPart :: ByteString -> BodyPart -> ByteString
-printBodyPart boundary (BodyPart hs c) = B.concat $ [crlf, dd, boundary, crlf] ++ map (B.pack . show) hs ++ [crlf, c]
-
-crlf :: ByteString
-crlf = B.pack "\r\n"
-
-dd :: ByteString
-dd = B.pack "--"
--}
