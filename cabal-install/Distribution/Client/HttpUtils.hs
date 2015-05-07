@@ -3,6 +3,9 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.HttpUtils (
     DownloadResult(..),
+    configureTransport,
+    setupTransportDb,
+    HttpTransport(..),
     downloadURI,
     uploadToURI,
     isOldHackageURI
@@ -87,7 +90,8 @@ userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
 
 data HttpTransport = HttpTransport {
       getHttp :: URI -> Maybe String -> FilePath -> IO (Int, Maybe String),
-      putHttp :: URI -> FilePath -> Maybe (String,String) -> IO (Int, String)
+      postHttp :: URI -> String -> Maybe (String, String) -> IO (Int, String),
+      putHttpFile :: URI -> FilePath -> Maybe (String,String) -> IO (Int, String)
     }
 
 setupTransportDb :: Verbosity -> ProgramDb -> IO ProgramDb
@@ -106,7 +110,7 @@ statusParseFail :: URI -> String -> IO a
 statusParseFail uri r = die $ "Failed to download " ++ show uri ++ " : No Status Code could be parsed from Response: " ++ r
 
 curlTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
-curlTransport verbosity prog = HttpTransport gethttp puthttp
+curlTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
   where
     gethttp uri etag destPath = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
       where args = [show uri,"-o",destPath,"-L","--write-out","%{http_code}","-A",userAgent]
@@ -115,7 +119,9 @@ curlTransport verbosity prog = HttpTransport gethttp puthttp
               Just i -> return (i, Nothing) -- TODO extract real etag
               Nothing -> statusParseFail uri x
 
-    puthttp uri path auth = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
+    posthttp = undefined
+
+    puthttpfile uri path auth = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
       where
         args = [show uri,"-F","package=@"++path,"--write-out","%{http_code}","-A",userAgent]
                ++ maybe [] (\(u,p) -> ["--digest","-u",u++":"++p]) auth
@@ -125,7 +131,7 @@ curlTransport verbosity prog = HttpTransport gethttp puthttp
 
 
 wgetTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
-wgetTransport verbosity prog = HttpTransport gethttp puthttp
+wgetTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
   where
     gethttp uri etag destPath = parseResponse . snd =<< getProgramInvocationOutputAndErrors verbosity (programInvocation prog args)
       where
@@ -137,7 +143,9 @@ wgetTransport verbosity prog = HttpTransport gethttp puthttp
             Just i -> return (i, Nothing) --TODO etags
             Nothing -> statusParseFail uri x
 
-    puthttp uri path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
+    posthttp = undefined
+
+    puthttpfile uri path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
       boundary <- genBoundary
       body <- generateMultipartBody (ByteString.pack boundary) path
       ByteString.hPut tmpHandle body
@@ -148,7 +156,7 @@ wgetTransport verbosity prog = HttpTransport gethttp puthttp
           parseResponse x =
             let resp = reverse . takeUntil ("HTTP/" `isPrefixOf`) . reverse . map (dropWhile isSpace) . lines $ x
             in case readMaybe =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
-              Just i -> return (i, x) -- todo parse error?
+              Just i -> return (i, x)
               Nothing -> statusParseFail uri x
       parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
 
@@ -156,7 +164,7 @@ wgetTransport verbosity prog = HttpTransport gethttp puthttp
     takeUntil p (x:xs) = if p x then [x] else x : takeUntil p xs
 
 powershellTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
-powershellTransport verbosity prog = HttpTransport gethttp puthttp
+powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
   where
     gethttp uri etag destPath = do
       proxyInfo <- proxy verbosity
@@ -178,13 +186,15 @@ powershellTransport verbosity prog = HttpTransport gethttp puthttp
 
       parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog [script])
 
-    puthttp uri path auth = error "powershell upload not yet enabled" --TODO
+    posthttp = undefined
+
+    puthttpfile uri path auth = error "powershell upload not yet enabled" --TODO
 
 -- TODO bitsadmin?
 
 -- todo ensure an explicit flag to allow plain insecure http
 plainHttpTransport :: Verbosity -> IO HttpTransport
-plainHttpTransport verbosity = return $ HttpTransport gethttp puthttp
+plainHttpTransport verbosity = return $ HttpTransport gethttp posthttp puthttpfile
   where gethttp uri etag destPath =
           processGetResult destPath . snd =<< cabalBrowse (request
             Request{ rqURI     = uri
@@ -199,20 +209,15 @@ plainHttpTransport verbosity = return $ HttpTransport gethttp puthttp
           where code = case rspCode (resp) of (a,b,c) -> a*100 + b*10 + c
                 etag = lookupHeader HdrETag (rspHeaders resp)
 
-        puthttp uri path auth = do
+        posthttp = undefined
+
+        puthttpfile uri path auth = do
           boundary <- genBoundary
           body <- generateMultipartBody (ByteString.pack boundary) path
-          let authorize = case auth of
-                Just (u,p) ->
-                  addAuthority (AuthBasic {
-                    auRealm    = "Hackage",
-                    auUsername = u,
-                    auPassword = p,
-                    auSite     = uri
-                    }) >>
-                  setAuthorityGen (\_ _ -> return Nothing)
-                Nothing -> return ()
-          processPutResult . snd <$>  cabalBrowse (authorize >> request Request {
+          let authorize = do
+                setAllowBasicAuth False
+                setAuthorityGen (\_ _ -> return auth)
+          processPutResult . snd <$> cabalBrowse (authorize >> request Request {
                          rqURI = uri,
                          rqMethod = POST,
                          rqHeaders = [Header HdrContentType ("multipart/form-data; boundary="++boundary),
@@ -236,11 +241,6 @@ plainHttpTransport verbosity = return $ HttpTransport gethttp puthttp
                   setOutHandler (debug verbosity)
                   act
 
-getHTTP :: Verbosity -> URI -> Maybe String -> FilePath -> IO (Int, Maybe String)
-getHTTP verbosity uri etag destPath = do
-  transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
-  getHttp transport uri etag destPath
-
 downloadURI :: Verbosity
             -> URI      -- ^ What to download
             -> FilePath -- ^ Where to put it
@@ -260,7 +260,8 @@ downloadURI verbosity uri path = withTempFileName (takeDirectory path) (takeFile
             then Just <$> readFile etagPath
             else return Nothing
 
-  result <- getHTTP verbosity uri etag tmpFile
+  transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
+  result <- getHttp transport uri etag tmpFile
 
   -- Only write the etag if we get a 200 response code.
   -- A 304 still sends us an etag header.
@@ -281,7 +282,7 @@ downloadURI verbosity uri path = withTempFileName (takeDirectory path) (takeFile
 uploadToURI :: Verbosity -> URI -> FilePath -> Maybe (String,String) -> IO (Int, String)
 uploadToURI verbosity uri path auth = do
   transport <- configureTransport verbosity =<< setupTransportDb verbosity defaultProgramDb
-  putHttp transport uri path auth
+  putHttpFile transport uri path auth
 
 
 -- Utility function for legacy support.

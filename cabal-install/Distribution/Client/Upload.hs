@@ -66,9 +66,6 @@ promptPassword = do
 
 report :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> IO ()
 report verbosity repos mUsername mPassword = do
-      let uploadURI = if isOldHackageURI targetRepoURI
-                      then legacyUploadURI
-                      else targetRepoURI{uriPath = ""}
       Username username <- maybe promptUsername return mUsername
       Password password <- maybe promptPassword return mPassword
       let auth = (username,password)
@@ -87,11 +84,9 @@ report verbosity repos mUsername mPassword = do
                              Left errs -> do warn verbosity $ "Errors: " ++ errs -- FIXME
                              Right report' ->
                                  do info verbosity $ "Uploading report for " ++ display (BuildReport.package report')
---                                    cabalBrowse verbosity auth $ BuildReport.uploadReports (remoteRepoURI remoteRepo) [(report', Just buildLog)] TODO
+                                    BuildReport.uploadReports verbosity auth (remoteRepoURI remoteRepo) [(report', Just buildLog)]
                                     return ()
         Right{} -> return ()
-  where
-    targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
 
 check :: Verbosity -> [FilePath] -> IO ()
 check verbosity paths = do
