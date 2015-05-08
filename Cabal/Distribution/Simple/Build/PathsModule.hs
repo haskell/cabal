@@ -80,7 +80,7 @@ generate pkg_descr lbi =
        header =
         pragmas++
         "module " ++ display paths_modulename ++ " (\n"++
-        "    version,\n"++
+        "    version, notes,\n"++
         "    getBinDir, getLibDir, getDataDir, getLibexecDir,\n"++
         "    getDataFileName, getSysconfDir\n"++
         "  ) where\n"++
