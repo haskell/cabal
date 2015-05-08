@@ -110,7 +110,10 @@ generate pkg_descr lbi =
         "catchIO = Exception.catch\n" ++
         "\n"++
         "version :: Version"++
-        "\nversion = Version " ++ show branch ++ " " ++ show tags
+        "\nversion = Version " ++ show branch ++ " " ++ show tags++"\n"++
+        "\n"++
+        "notes :: [String]"++
+        "\nnotes = " ++ show (notes pkg_descr)++"\n"
           where Version branch tags = packageVersion pkg_descr
 
        body

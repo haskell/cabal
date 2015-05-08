@@ -168,6 +168,10 @@ data PackageDescription
         sourceRepos    :: [SourceRepo],
         synopsis       :: String, -- ^A one-line summary of this package
         description    :: String, -- ^A more verbose description of this package
+        -- | Extra notes about this package. The notes can be used as
+        -- a replacement for the old VersionTags. This field will be
+        -- exported to the autogen/Paths_*.hs module. (See GHC #2496)
+        notes          :: [String],
         category       :: String,
         customFieldsPD :: [(String,String)], -- ^Custom fields starting
                                              -- with x-, stored in a
@@ -255,6 +259,7 @@ emptyPackageDescription
                       sourceRepos  = [],
                       synopsis     = "",
                       description  = "",
+                      notes        = [],
                       category     = "",
                       customFieldsPD = [],
                       library      = Nothing,
