@@ -523,7 +523,7 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
       die $ "Can't download packages in offline mode. "
       ++ "Must download the following packages to proceed:\n"
       ++ intercalate ", " (map display notFetched)
-      ++ "\nTry running 'cabal install --only-dependencies'."
+      ++ "\nTry using 'cabal fetch'."
 
   where
     nothingToInstall = null (InstallPlan.ready installPlan)
