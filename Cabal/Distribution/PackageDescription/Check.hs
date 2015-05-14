@@ -728,10 +728,10 @@ checkGhcOptions pkg =
   ]
 
   where
-    has_WerrorWall = flip any ghc_options $ \opts ->
-                               "-Werror" `elem` opts
-                           && ("-Wall"   `elem` opts || "-W" `elem` opts)
-    has_Werror     = any (\opts -> "-Werror" `elem` opts) ghc_options
+    has_WerrorWall = has_Werror && ( has_Wall || has_W )
+    has_Werror     = "-Werror" `elem` all_ghc_options
+    has_Wall       = "-Wall"   `elem` all_ghc_options
+    has_W          = "-W"      `elem` all_ghc_options
 
     (ghc_options, ghc_prof_options) =
       unzip . map (\bi -> (hcOptions GHC bi, hcProfOptions GHC bi))
