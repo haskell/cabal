@@ -589,7 +589,7 @@ checkGhcOptions pkg =
   catMaybes [
 
     check has_WerrorWall $
-      PackageDistInexcusable $
+      PackageDistSuspicious $
            "'ghc-options: -Wall -Werror' makes the package very easy to "
         ++ "break with future GHC versions because new GHC versions often "
         ++ "add new warnings. Use just 'ghc-options: -Wall' instead."
