@@ -609,7 +609,8 @@ checkGhcOptions pkg =
 
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
-        "'ghc-options: -fhpc' is not appropriate for a distributed package."
+           "'ghc-options: -fhpc' is not not necessary. Use the configure flag "
+        ++ " --enable-coverage instead."
 
   , checkFlags ["-prof"] $
       PackageBuildWarning $
