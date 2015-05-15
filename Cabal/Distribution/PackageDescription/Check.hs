@@ -1352,23 +1352,24 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
         ++ "for a distributed package. "
         ++ extraExplanation
 
-  , checkProfFlags ["-auto-all"] $
+  , checkProfFlags ["-fprof-auto", "-fprof-auto-top", "-fprof-auto-calls",
+               "-fprof-cafs", "-fno-prof-count-entries",
+               "-auto-all", "-auto", "-caf-all"] $
       PackageDistSuspicious $
-           "'ghc-prof-options: -auto-all' is fine during development, but "
-        ++ "not recommended in a distributed package. "
-        ++ extraExplanation
-
-  , checkProfFlags ["-fprof-auto"] $
-      PackageDistSuspicious $
-           "'ghc-prof-options: -fprof-auto' is fine during development, but "
-        ++ "not recommended in a distributed package. "
+           "'ghc-options: -fprof*' profiling flags are typically not "
+        ++ "appropriate for a distributed library package. These flags are "
+        ++ "useful to profile this package, but when profiling other packages "
+        ++ "that use this one these flags clutter the profile output with "
+        ++ "excessive detail. If you think other packages really want to see "
+        ++ "cost centres from this package then use '-fprof-auto-exported' "
+        ++ "which puts cost centres only on exported functions. "
         ++ extraExplanation
   ]
   where
     extraExplanation =
-         " If you want to use this, make it conditional based on a flag "
-      ++ "(with 'manual: True' and 'default: False') and enable that flag "
-      ++ "during development."
+         " Alternatively, if you want to use this, make it conditional based "
+      ++ "on a Cabal configuration flag (with 'manual: True' and 'default: "
+      ++ "False') and enable that flag during development."
 
     has_WerrorWall   = has_Werror && ( has_Wall || has_W )
     has_Werror       = "-Werror" `elem` ghc_options
