@@ -672,7 +672,7 @@ checkGhcOptions pkg =
         ++ "the 'extensions' field."
 
   , check ("-threaded" `elem` lib_ghc_options) $
-      PackageDistSuspicious $
+      PackageBuildWarning $
            "'ghc-options: -threaded' has no effect for libraries. It should "
         ++ "only be used for executables."
 
