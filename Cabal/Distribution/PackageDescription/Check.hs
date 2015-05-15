@@ -676,6 +676,16 @@ checkGhcOptions pkg =
            "'ghc-options: -threaded' has no effect for libraries. It should "
         ++ "only be used for executables."
 
+  , check ("-rtsopts" `elem` lib_ghc_options) $
+      PackageBuildWarning $
+           "'ghc-options: -rtsopts' has no effect for libraries. It should "
+        ++ "only be used for executables."
+
+  , check (any (\opt -> "-with-rtsopts" `isPrefixOf` opt) lib_ghc_options) $
+      PackageBuildWarning $
+           "'ghc-options: -with-rtsopts' has no effect for libraries. It "
+        ++ "should only be used for executables."
+
   , checkAlternatives "ghc-options" "extensions"
       [ (flag, display extension) | flag <- all_ghc_options
                                   , Just extension <- [ghcExtension flag] ]
