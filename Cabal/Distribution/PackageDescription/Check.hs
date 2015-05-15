@@ -36,6 +36,7 @@ module Distribution.PackageDescription.Check (
 import Data.Maybe
          ( isNothing, isJust, catMaybes, maybeToList, fromMaybe )
 import Data.List  (sort, group, isPrefixOf, nub, find)
+import Control.Applicative
 import Control.Monad
          ( filterM, liftM )
 import qualified System.Directory as System
@@ -154,6 +155,7 @@ checkPackage gpkg mpkg =
      checkConfiguredPackage pkg
   ++ checkConditionals gpkg
   ++ checkPackageVersions gpkg
+  ++ checkDevelopmentOnlyFlags gpkg
   where
     pkg = fromMaybe (flattenPackageDescription gpkg) mpkg
 
@@ -592,19 +594,7 @@ checkGhcOptions :: PackageDescription -> [PackageCheck]
 checkGhcOptions pkg =
   catMaybes [
 
-    check has_WerrorWall $
-      PackageDistInexcusable $
-           "'ghc-options: -Wall -Werror' makes the package very easy to "
-        ++ "break with future GHC versions because new GHC versions often "
-        ++ "add new warnings. Use just 'ghc-options: -Wall' instead."
-
-  , check (not has_WerrorWall && has_Werror) $
-      PackageDistSuspicious $
-           "'ghc-options: -Werror' makes the package easy to "
-        ++ "break with future GHC versions because new GHC versions often "
-        ++ "add new warnings."
-
-  , checkFlags ["-fasm"] $
+    checkFlags ["-fasm"] $
       PackageDistInexcusable $
            "'ghc-options: -fasm' is unnecessary and will not work on CPU "
         ++ "architectures other than x86, x86-64, ppc or sparc."
@@ -616,21 +606,10 @@ checkGhcOptions pkg =
         ++ "is using the FFI incorrectly and will probably not work with GHC "
         ++ "6.10 or later."
 
-  , checkFlags ["-fdefer-type-errors"] $
-      PackageDistInexcusable $
-          "'ghc-options: -fdefer-type-errors' is fine during development but "
-       ++ "is not appropriate for a distributed package."
-
   , checkFlags ["-fhpc"] $
       PackageDistInexcusable $
-        "'ghc-options: -fhpc' is not appropriate for a distributed package."
-
-    -- -dynamic is not a debug flag
-  , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic")
-           all_ghc_options) $
-      PackageDistInexcusable $
-        "'ghc-options: -d*' debug flags are not appropriate "
-        ++ "for a distributed package."
+           "'ghc-options: -fhpc' is not not necessary. Use the configure flag "
+        ++ " --enable-coverage instead."
 
   , checkFlags ["-prof"] $
       PackageBuildWarning $
@@ -691,20 +670,20 @@ checkGhcOptions pkg =
         "Instead of 'ghc-options: -fglasgow-exts' it is preferable to use "
         ++ "the 'extensions' field."
 
-  , checkProfFlags ["-auto-all"] $
-      PackageDistSuspicious $
-        "'ghc-prof-options: -auto-all' is fine during development, but "
-        ++ "not recommended in a distributed package. "
-
-  , checkProfFlags ["-fprof-auto"] $
-      PackageDistSuspicious $
-        "'ghc-prof-options: -fprof-auto' is fine during development, but "
-        ++ "not recommended in a distributed package. "
-
   , check ("-threaded" `elem` lib_ghc_options) $
-      PackageDistSuspicious $
+      PackageBuildWarning $
            "'ghc-options: -threaded' has no effect for libraries. It should "
         ++ "only be used for executables."
+
+  , check ("-rtsopts" `elem` lib_ghc_options) $
+      PackageBuildWarning $
+           "'ghc-options: -rtsopts' has no effect for libraries. It should "
+        ++ "only be used for executables."
+
+  , check (any (\opt -> "-with-rtsopts" `isPrefixOf` opt) lib_ghc_options) $
+      PackageBuildWarning $
+           "'ghc-options: -with-rtsopts' has no effect for libraries. It "
+        ++ "should only be used for executables."
 
   , checkAlternatives "ghc-options" "extensions"
       [ (flag, display extension) | flag <- all_ghc_options
@@ -728,23 +707,12 @@ checkGhcOptions pkg =
   ]
 
   where
-    has_WerrorWall = has_Werror && ( has_Wall || has_W )
-    has_Werror     = "-Werror" `elem` all_ghc_options
-    has_Wall       = "-Wall"   `elem` all_ghc_options
-    has_W          = "-W"      `elem` all_ghc_options
+    all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
+    lib_ghc_options    = maybe [] (get_ghc_options . libBuildInfo) (library pkg)
+    get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
 
-    (ghc_options, ghc_prof_options) =
-      unzip . map (\bi -> (hcOptions GHC bi, hcProfOptions GHC bi))
-      $ (allBuildInfo pkg)
-    all_ghc_options      = concat ghc_options
-    all_ghc_prof_options = concat ghc_prof_options
-    lib_ghc_options = maybe [] (hcOptions GHC . libBuildInfo) (library pkg)
-
-    checkFlags,checkProfFlags :: [String] -> PackageCheck -> Maybe PackageCheck
-    checkFlags     flags = doCheckFlags flags all_ghc_options
-    checkProfFlags flags = doCheckFlags flags all_ghc_prof_options
-
-    doCheckFlags   flags opts = check (any (`elem` flags) opts)
+    checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
+    checkFlags flags = check (any (`elem` flags) all_ghc_options)
 
     ghcExtension ('-':'f':name) = case name of
       "allow-overlapping-instances"    -> enable  OverlappingInstances
@@ -1352,6 +1320,130 @@ checkConditionals pkg =
       CNot c1    -> condfv c1
       COr  c1 c2 -> condfv c1 ++ condfv c2
       CAnd c1 c2 -> condfv c1 ++ condfv c2
+
+checkDevelopmentOnlyFlagsBuildInfo :: BuildInfo -> [PackageCheck]
+checkDevelopmentOnlyFlagsBuildInfo bi =
+  catMaybes [
+
+    check has_WerrorWall $
+      PackageDistInexcusable $
+           "'ghc-options: -Wall -Werror' makes the package very easy to "
+        ++ "break with future GHC versions because new GHC versions often "
+        ++ "add new warnings. Use just 'ghc-options: -Wall' instead."
+        ++ extraExplanation
+
+  , check (not has_WerrorWall && has_Werror) $
+      PackageDistInexcusable $
+           "'ghc-options: -Werror' makes the package easy to "
+        ++ "break with future GHC versions because new GHC versions often "
+        ++ "add new warnings. "
+        ++ extraExplanation
+
+  , checkFlags ["-fdefer-type-errors"] $
+      PackageDistInexcusable $
+           "'ghc-options: -fdefer-type-errors' is fine during development but "
+        ++ "is not appropriate for a distributed package. "
+        ++ extraExplanation
+
+    -- -dynamic is not a debug flag
+  , check (any (\opt -> "-d" `isPrefixOf` opt && opt /= "-dynamic")
+           ghc_options) $
+      PackageDistInexcusable $
+           "'ghc-options: -d*' debug flags are not appropriate "
+        ++ "for a distributed package. "
+        ++ extraExplanation
+
+  , checkFlags ["-fprof-auto", "-fprof-auto-top", "-fprof-auto-calls",
+               "-fprof-cafs", "-fno-prof-count-entries",
+               "-auto-all", "-auto", "-caf-all"] $
+      PackageDistSuspicious $
+           "'ghc-options: -fprof*' profiling flags are typically not "
+        ++ "appropriate for a distributed library package. These flags are "
+        ++ "useful to profile this package, but when profiling other packages "
+        ++ "that use this one these flags clutter the profile output with "
+        ++ "excessive detail. If you think other packages really want to see "
+        ++ "cost centres from this package then use '-fprof-auto-exported' "
+        ++ "which puts cost centres only on exported functions. "
+        ++ extraExplanation
+  ]
+  where
+    extraExplanation =
+         " Alternatively, if you want to use this, make it conditional based "
+      ++ "on a Cabal configuration flag (with 'manual: True' and 'default: "
+      ++ "False') and enable that flag during development."
+
+    has_WerrorWall   = has_Werror && ( has_Wall || has_W )
+    has_Werror       = "-Werror" `elem` ghc_options
+    has_Wall         = "-Wall"   `elem` ghc_options
+    has_W            = "-W"      `elem` ghc_options
+    ghc_options      = hcOptions GHC bi ++ hcProfOptions GHC bi
+
+    checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
+    checkFlags flags = check (any (`elem` flags) ghc_options)
+
+checkDevelopmentOnlyFlags :: GenericPackageDescription -> [PackageCheck]
+checkDevelopmentOnlyFlags pkg =
+    concatMap checkDevelopmentOnlyFlagsBuildInfo
+              [ bi
+              | (conditions, bi) <- allConditionalBuildInfo
+              , not (any guardedByManualFlag conditions) ]
+  where
+    guardedByManualFlag = definitelyFalse
+
+    -- We've basically got three-values logic here: True, False or unknown
+    -- hence this pattern to propagate the unknown cases properly.
+    definitelyFalse (Var (Flag n)) = maybe False not (Map.lookup n manualFlags)
+    definitelyFalse (Var _)        = False
+    definitelyFalse (Lit  b)       = not b
+    definitelyFalse (CNot c)       = definitelyTrue c
+    definitelyFalse (COr  c1 c2)   = definitelyFalse c1 && definitelyFalse c2
+    definitelyFalse (CAnd c1 c2)   = definitelyFalse c1 || definitelyFalse c2
+
+    definitelyTrue (Var (Flag n)) = fromMaybe False (Map.lookup n manualFlags)
+    definitelyTrue (Var _)        = False
+    definitelyTrue (Lit  b)       = b
+    definitelyTrue (CNot c)       = definitelyFalse c
+    definitelyTrue (COr  c1 c2)   = definitelyTrue c1 || definitelyTrue c2
+    definitelyTrue (CAnd c1 c2)   = definitelyTrue c1 && definitelyTrue c2
+
+    manualFlags = Map.fromList
+                    [ (flagName flag, flagDefault flag)
+                    | flag <- genPackageFlags pkg
+                    , flagManual flag ]
+
+    allConditionalBuildInfo :: [([Condition ConfVar], BuildInfo)]
+    allConditionalBuildInfo =
+        concatMap (collectCondTreePaths libBuildInfo)
+                  (maybeToList (condLibrary pkg))
+
+     ++ concatMap (collectCondTreePaths buildInfo . snd)
+                  (condExecutables pkg)
+
+     ++ concatMap (collectCondTreePaths testBuildInfo . snd)
+                  (condTestSuites pkg)
+
+     ++ concatMap (collectCondTreePaths benchmarkBuildInfo . snd)
+                  (condBenchmarks pkg)
+
+    -- get all the leaf BuildInfo, paired up with the path (in the tree sense)
+    -- of if-conditions that guard it
+    collectCondTreePaths :: (a -> b)
+                         -> CondTree v c a
+                         -> [([Condition v], b)]
+    collectCondTreePaths mapData = go []
+      where 
+        go conditions condNode =
+            -- the data at this level in the tree:
+            (reverse conditions, mapData (condTreeData condNode))
+
+          : concat
+            [ go (condition:conditions) ifThen
+            | (condition, ifThen, _) <- condTreeComponents condNode ]
+
+         ++ concat
+            [ go (condition:conditions) elseThen
+            | (condition, _, Just elseThen) <- condTreeComponents condNode ]
+
 
 -- ------------------------------------------------------------
 -- * Checks involving files in the package
