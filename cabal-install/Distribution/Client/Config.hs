@@ -241,7 +241,8 @@ instance Monoid SavedConfig where
         installSymlinkBinDir         = combine installSymlinkBinDir,
         installOneShot               = combine installOneShot,
         installNumJobs               = combine installNumJobs,
-        installRunTests              = combine installRunTests
+        installRunTests              = combine installRunTests,
+        installOfflineMode           = combine installOfflineMode
         }
         where
           combine        = combine'        savedInstallFlags

@@ -35,7 +35,7 @@ import Data.List
          ( isPrefixOf, unfoldr, nub, sort, (\\) )
 import qualified Data.Set as S
 import Data.Maybe
-         ( isJust, fromMaybe, mapMaybe, catMaybes )
+         ( catMaybes, isJust, isNothing, fromMaybe, mapMaybe )
 import Control.Exception as Exception
          ( Exception(toException), bracket, catches
          , Handler(Handler), handleJust, IOException, SomeException )
@@ -54,7 +54,7 @@ import Data.Traversable
          ( traverse )
 #endif
 import Control.Monad
-         ( forM_, when, unless )
+         ( filterM, forM_, when, unless )
 import System.Directory
          ( getTemporaryDirectory, doesDirectoryExist, doesFileExist,
            createDirectoryIfMissing, removeFile, renameDirectory )
@@ -508,6 +508,22 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
                  ["Use --force-reinstalls if you want to install anyway."]
       else unless dryRun $ warn verbosity
              "Note that reinstalls are always dangerous. Continuing anyway..."
+
+  -- If we are explicitly told to not download anything, check that all packages
+  -- are already fetched.
+  let offline = fromFlagOrDefault False (installOfflineMode installFlags)
+  when offline $ do
+    let pkgs = [ sourcePkg
+               | InstallPlan.Configured (ConfiguredPackage sourcePkg _ _ _)
+                 <- InstallPlan.toList installPlan ]
+    notFetched <- fmap (map packageInfoId)
+                  . filterM (fmap isNothing . checkFetched . packageSource)
+                  $ pkgs
+    unless (null notFetched) $
+      die $ "Can't download packages in offline mode. "
+      ++ "Must download the following packages to proceed:\n"
+      ++ intercalate ", " (map display notFetched)
+      ++ "\nTry using 'cabal fetch'."
 
   where
     nothingToInstall = null (InstallPlan.ready installPlan)
