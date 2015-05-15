@@ -37,7 +37,6 @@ import Data.Maybe
          ( isNothing, isJust, catMaybes, maybeToList, fromMaybe )
 import Data.List  (sort, group, isPrefixOf, nub, find)
 import Control.Applicative
-         ( pure, (<$>), (<*>) )
 import Control.Monad
          ( filterM, liftM )
 import qualified System.Directory as System
@@ -708,23 +707,11 @@ checkGhcOptions pkg =
   ]
 
   where
-    has_WerrorWall = has_Werror && ( has_Wall || has_W )
-    has_Werror     = "-Werror" `elem` all_ghc_options
-    has_Wall       = "-Wall"   `elem` all_ghc_options
-    has_W          = "-W"      `elem` all_ghc_options
-
-    (ghc_options, ghc_prof_options) =
-      unzip . map (\bi -> (hcOptions GHC bi, hcProfOptions GHC bi))
-      $ (allBuildInfo pkg)
-    all_ghc_options      = concat ghc_options
-    all_ghc_prof_options = concat ghc_prof_options
+    all_ghc_options = concatMap (hcOptions GHC) (allBuildInfo pkg)
     lib_ghc_options = maybe [] (hcOptions GHC . libBuildInfo) (library pkg)
 
-    checkFlags,checkProfFlags :: [String] -> PackageCheck -> Maybe PackageCheck
-    checkFlags     flags = doCheckFlags flags all_ghc_options
-    checkProfFlags flags = doCheckFlags flags all_ghc_prof_options
-
-    doCheckFlags   flags opts = check (any (`elem` flags) opts)
+    checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
+    checkFlags flags = check (any (`elem` flags) all_ghc_options)
 
     ghcExtension ('-':'f':name) = case name of
       "allow-overlapping-instances"    -> enable  OverlappingInstances
@@ -1399,8 +1386,8 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
 checkDevelopmentOnlyFlags :: GenericPackageDescription -> [PackageCheck]
 checkDevelopmentOnlyFlags pkg =
     concatMap checkDevelopmentOnlyFlagsBuildInfo
-              [ buildInfo
-              | (conditions, buildInfo) <- allConditionalBuildInfo
+              [ bi
+              | (conditions, bi) <- allConditionalBuildInfo
               , not (any guardedByManualFlag conditions) ]
   where
     guardedByManualFlag = definitelyFalse
