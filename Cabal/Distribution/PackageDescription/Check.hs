@@ -707,8 +707,9 @@ checkGhcOptions pkg =
   ]
 
   where
-    all_ghc_options = concatMap (hcOptions GHC) (allBuildInfo pkg)
-    lib_ghc_options = maybe [] (hcOptions GHC . libBuildInfo) (library pkg)
+    all_ghc_options    = concatMap get_ghc_options (allBuildInfo pkg)
+    lib_ghc_options    = maybe [] (get_ghc_options . libBuildInfo) (library pkg)
+    get_ghc_options bi = hcOptions GHC bi ++ hcProfOptions GHC bi
 
     checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
     checkFlags flags = check (any (`elem` flags) all_ghc_options)
@@ -1352,7 +1353,7 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
         ++ "for a distributed package. "
         ++ extraExplanation
 
-  , checkProfFlags ["-fprof-auto", "-fprof-auto-top", "-fprof-auto-calls",
+  , checkFlags ["-fprof-auto", "-fprof-auto-top", "-fprof-auto-calls",
                "-fprof-cafs", "-fno-prof-count-entries",
                "-auto-all", "-auto", "-caf-all"] $
       PackageDistSuspicious $
@@ -1375,14 +1376,10 @@ checkDevelopmentOnlyFlagsBuildInfo bi =
     has_Werror       = "-Werror" `elem` ghc_options
     has_Wall         = "-Wall"   `elem` ghc_options
     has_W            = "-W"      `elem` ghc_options
-    ghc_options      = hcOptions GHC bi
-    ghc_prof_options = hcProfOptions GHC bi
+    ghc_options      = hcOptions GHC bi ++ hcProfOptions GHC bi
 
-    checkFlags,checkProfFlags :: [String] -> PackageCheck -> Maybe PackageCheck
-    checkFlags     flags = doCheckFlags flags ghc_options
-    checkProfFlags flags = doCheckFlags flags ghc_prof_options
-
-    doCheckFlags   flags opts = check (any (`elem` flags) opts)
+    checkFlags :: [String] -> PackageCheck -> Maybe PackageCheck
+    checkFlags flags = check (any (`elem` flags) ghc_options)
 
 checkDevelopmentOnlyFlags :: GenericPackageDescription -> [PackageCheck]
 checkDevelopmentOnlyFlags pkg =
