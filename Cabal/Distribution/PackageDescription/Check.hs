@@ -36,7 +36,6 @@ module Distribution.PackageDescription.Check (
 import Data.Maybe
          ( isNothing, isJust, catMaybes, maybeToList, fromMaybe )
 import Data.List  (sort, group, isPrefixOf, nub, find)
-import Control.Applicative
 import Control.Monad
          ( filterM, liftM )
 import qualified System.Directory as System
