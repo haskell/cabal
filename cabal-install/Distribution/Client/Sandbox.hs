@@ -21,6 +21,7 @@ module Distribution.Client.Sandbox (
 
     getSandboxConfigFilePath,
     loadConfigOrSandboxConfig,
+    findSavedDistPref,
     initPackageDBIfNeeded,
     maybeWithSandboxDirOnSearchPath,
 
@@ -65,6 +66,8 @@ import Distribution.Client.Sandbox.PackageEnvironment
   , sandboxPackageEnvironmentFile, userPackageEnvironmentFile )
 import Distribution.Client.Sandbox.Types      ( SandboxPackageInfo(..)
                                               , UseSandbox(..) )
+import Distribution.Client.SetupWrapper
+  ( SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Types              ( PackageLocation(..)
                                               , SourcePackage(..) )
 import Distribution.Client.Utils              ( inDir, tryCanonicalizePath
@@ -76,7 +79,8 @@ import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
                                               , PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAuxEx
                                               , interpretPackageDbFlags
-                                              , getPackageDBContents )
+                                              , getPackageDBContents
+                                              , findDistPref )
 import Distribution.Simple.PreProcess         ( knownSuffixHandlers )
 import Distribution.Simple.Program            ( ProgramConfiguration )
 import Distribution.Simple.Setup              ( Flag(..), HaddockFlags(..)
@@ -541,6 +545,14 @@ loadConfigOrSandboxConfig verbosity globalFlags userInstallFlag = do
              ++ "'require-sandbox' temporarily."
         checkFlag (Flag False) = return ()
         checkFlag (NoFlag)     = return ()
+
+-- | Return the saved \"dist/\" prefix, or the default prefix.
+findSavedDistPref :: Verbosity -> GlobalFlags -> Flag FilePath -> IO FilePath
+findSavedDistPref verbosity globalFlags flagDistPref = do
+    (_, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+    let defDistPref = useDistPref defaultSetupScriptOptions
+        flagDistPref' = configDistPref (savedConfigureFlags config) `mappend` flagDistPref
+    findDistPref defDistPref flagDistPref'
 
 -- | If we're in a sandbox, call @withSandboxBinDirOnSearchPath@, otherwise do
 -- nothing.

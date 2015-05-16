@@ -58,7 +58,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Setup
          ( ConfigFlags(..), configureOptions, defaultConfigFlags
          , HaddockFlags(..), haddockOptions, defaultHaddockFlags
-         , installDirsOptions
+         , installDirsOptions, optionDistPref
          , programConfigurationPaths', programConfigurationOptions
          , Flag(..), toFlag, flagToMaybe, fromFlagOrDefault )
 import Distribution.Simple.InstallDirs
@@ -683,6 +683,18 @@ configFieldDescriptions =
        -- But otherwise it masks the upload ones. Either need to
        -- share the options or make then distinct. In any case
        -- they should probably be per-server.
+
+  ++ [ viewAsFieldDescr
+       $ optionDistPref
+       (configDistPref . savedConfigureFlags)
+       (\distPref config ->
+          config
+          { savedConfigureFlags = (savedConfigureFlags config) { configDistPref = distPref }
+          , savedHaddockFlags = (savedHaddockFlags config) { haddockDistPref = distPref }
+          }
+       )
+       ParseArgs
+     ]
 
   where
     toSavedConfig lift options exclusions replacements =
