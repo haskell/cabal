@@ -57,7 +57,7 @@ module Distribution.Simple.Setup (
   buildOptions, haddockOptions, installDirsOptions,
   programConfigurationOptions, programConfigurationPaths',
 
-  defaultDistPref,
+  defaultDistPref, optionDistPref,
 
   Flag(..),
   toFlag,
@@ -354,7 +354,7 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configOptimization = Flag NormalOptimisation,
     configProgPrefix   = Flag (toPathTemplate ""),
     configProgSuffix   = Flag (toPathTemplate ""),
-    configDistPref     = Flag defaultDistPref,
+    configDistPref     = NoFlag,
     configVerbosity    = Flag normal,
     configUserInstall  = Flag False,           --TODO: reverse this
 #if defined(mingw32_HOST_OS)
@@ -832,7 +832,7 @@ data CopyFlags = CopyFlags {
 defaultCopyFlags :: CopyFlags
 defaultCopyFlags  = CopyFlags {
     copyDest      = Flag NoCopyDest,
-    copyDistPref  = Flag defaultDistPref,
+    copyDistPref  = NoFlag,
     copyVerbosity = Flag normal
   }
 
@@ -895,7 +895,7 @@ data InstallFlags = InstallFlags {
 defaultInstallFlags :: InstallFlags
 defaultInstallFlags  = InstallFlags {
     installPackageDB = NoFlag,
-    installDistPref  = Flag defaultDistPref,
+    installDistPref  = NoFlag,
     installUseWrapper = Flag False,
     installInPlace    = Flag False,
     installVerbosity = Flag normal
@@ -977,7 +977,7 @@ defaultSDistFlags :: SDistFlags
 defaultSDistFlags = SDistFlags {
     sDistSnapshot    = Flag False,
     sDistDirectory   = mempty,
-    sDistDistPref    = Flag defaultDistPref,
+    sDistDistPref    = NoFlag,
     sDistListSources = mempty,
     sDistVerbosity   = Flag normal
   }
@@ -1059,7 +1059,7 @@ defaultRegisterFlags = RegisterFlags {
     regGenScript   = Flag False,
     regGenPkgConf  = NoFlag,
     regInPlace     = Flag False,
-    regDistPref    = Flag defaultDistPref,
+    regDistPref    = NoFlag,
     regPrintId     = Flag False,
     regVerbosity   = Flag normal
   }
@@ -1186,7 +1186,7 @@ defaultHscolourFlags = HscolourFlags {
     hscolourExecutables = Flag False,
     hscolourTestSuites  = Flag False,
     hscolourBenchmarks  = Flag False,
-    hscolourDistPref    = Flag defaultDistPref,
+    hscolourDistPref    = NoFlag,
     hscolourVerbosity   = Flag normal
   }
 
@@ -1297,7 +1297,7 @@ defaultHaddockFlags  = HaddockFlags {
     haddockHscolour     = Flag False,
     haddockHscolourCss  = NoFlag,
     haddockContents     = NoFlag,
-    haddockDistPref     = Flag defaultDistPref,
+    haddockDistPref     = NoFlag,
     haddockKeepTempFiles= Flag False,
     haddockVerbosity    = Flag normal
   }
@@ -1463,7 +1463,7 @@ data CleanFlags = CleanFlags {
 defaultCleanFlags :: CleanFlags
 defaultCleanFlags  = CleanFlags {
     cleanSaveConf  = Flag False,
-    cleanDistPref  = Flag defaultDistPref,
+    cleanDistPref  = NoFlag,
     cleanVerbosity = Flag normal
   }
 
@@ -1530,7 +1530,7 @@ defaultBuildFlags :: BuildFlags
 defaultBuildFlags  = BuildFlags {
     buildProgramPaths = mempty,
     buildProgramArgs = [],
-    buildDistPref    = Flag defaultDistPref,
+    buildDistPref    = mempty,
     buildVerbosity   = Flag normal,
     buildNumJobs     = mempty,
     buildArgs        = []
@@ -1630,7 +1630,7 @@ defaultReplFlags :: ReplFlags
 defaultReplFlags  = ReplFlags {
     replProgramPaths = mempty,
     replProgramArgs = [],
-    replDistPref    = Flag defaultDistPref,
+    replDistPref    = NoFlag,
     replVerbosity   = Flag normal,
     replReload      = Flag False
   }
@@ -1759,7 +1759,7 @@ data TestFlags = TestFlags {
 
 defaultTestFlags :: TestFlags
 defaultTestFlags  = TestFlags {
-    testDistPref    = Flag defaultDistPref,
+    testDistPref    = NoFlag,
     testVerbosity   = Flag normal,
     testHumanLog    = toFlag $ toPathTemplate $ "$pkgid-$test-suite.log",
     testMachineLog  = toFlag $ toPathTemplate $ "$pkgid.log",
@@ -1878,7 +1878,7 @@ data BenchmarkFlags = BenchmarkFlags {
 
 defaultBenchmarkFlags :: BenchmarkFlags
 defaultBenchmarkFlags  = BenchmarkFlags {
-    benchmarkDistPref  = Flag defaultDistPref,
+    benchmarkDistPref  = NoFlag,
     benchmarkVerbosity = Flag normal,
     benchmarkOptions   = []
   }

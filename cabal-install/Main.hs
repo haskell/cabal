@@ -87,6 +87,7 @@ import Distribution.Client.Sandbox            (sandboxInit
 
                                               ,getSandboxConfigFilePath
                                               ,loadConfigOrSandboxConfig
+                                              ,findSavedDistPref
                                               ,initPackageDBIfNeeded
                                               ,maybeWithSandboxDirOnSearchPath
                                               ,maybeWithSandboxPackageInfo
@@ -276,13 +277,10 @@ wrapperAction :: Monoid flags
               -> Command (GlobalFlags -> IO ())
 wrapperAction command verbosityFlag distPrefFlag =
   commandAddAction command
-    { commandDefaultFlags = mempty } $ \flags extraArgs _globalFlags -> do
+    { commandDefaultFlags = mempty } $ \flags extraArgs globalFlags -> do
     let verbosity = fromFlagOrDefault normal (verbosityFlag flags)
-        setupScriptOptions = defaultSetupScriptOptions {
-          useDistPref = fromFlagOrDefault
-                          (useDistPref defaultSetupScriptOptions)
-                          (distPrefFlag flags)
-        }
+    distPref <- findSavedDistPref verbosity globalFlags (distPrefFlag flags)
+    let setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
     setupWrapper verbosity setupScriptOptions Nothing
                  command (const flags) extraArgs
 
@@ -324,11 +322,10 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
 
 buildAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
 buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
-  let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                    (buildDistPref buildFlags)
-      verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
+  let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
       noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
                     (buildOnly buildExFlags)
+  distPref <- findSavedDistPref verbosity globalFlags (buildDistPref buildFlags)
 
   -- Calls 'configureAction' to do the real work, so nothing special has to be
   -- done to support sandboxes.
@@ -388,9 +385,8 @@ replAction (replFlags, buildExFlags) extraArgs globalFlags = do
     -- There is a .cabal file in the current directory: start a REPL and load
     -- the project's modules.
     onPkgDesc = do
-      let distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                        (replDistPref replFlags)
-          noAddSource = case replReload replFlags of
+      distPref <- findSavedDistPref verbosity globalFlags (replDistPref replFlags)
+      let noAddSource = case replReload replFlags of
             Flag True -> SkipAddSourceDepsCheck
             _         -> fromFlagOrDefault DontSkipAddSourceDepsCheck
                          (buildOnly buildExFlags)
@@ -644,11 +640,12 @@ reconfigure verbosity distPref     addConfigFlags extraArgs globalFlags
 
 installAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
-installAction (configFlags, _, installFlags, _) _ _globalFlags
-  | fromFlagOrDefault False (installOnly installFlags)
-  = let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
-    in setupWrapper verbosity defaultSetupScriptOptions Nothing
-         installCommand (const mempty) []
+installAction (configFlags, _, installFlags, _) _ globalFlags
+  | fromFlagOrDefault False (installOnly installFlags) = do
+      let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+      distPref <- findSavedDistPref verbosity globalFlags (configDistPref configFlags)
+      let setupOpts = defaultSetupScriptOptions { useDistPref = distPref }
+      setupWrapper verbosity setupOpts Nothing installCommand (const mempty) []
 
 installAction (configFlags, configExFlags, installFlags, haddockFlags)
               extraArgs globalFlags = do
@@ -670,14 +667,19 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   let sandboxDistPref = case useSandbox of
         NoSandbox             -> NoFlag
         UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir
-      configFlags'    = maybeForceTests installFlags' $
-                        savedConfigureFlags   config `mappend` configFlags
+  distPref <- findSavedDistPref verbosity globalFlags
+              (configDistPref configFlags `mappend` sandboxDistPref)
+
+  let configFlags'    = maybeForceTests installFlags' $
+                        savedConfigureFlags   config `mappend`
+                        configFlags { configDistPref = toFlag distPref }
       configExFlags'  = defaultConfigExFlags         `mappend`
                         savedConfigureExFlags config `mappend` configExFlags
       installFlags'   = defaultInstallFlags          `mappend`
                         savedInstallFlags     config `mappend` installFlags
       haddockFlags'   = defaultHaddockFlags          `mappend`
-                        savedHaddockFlags     config `mappend` haddockFlags
+                        savedHaddockFlags     config `mappend`
+                        haddockFlags { haddockDistPref = toFlag distPref }
       globalFlags'    = savedGlobalFlags      config `mappend` globalFlags
   (comp, platform, conf) <- configCompilerAux' configFlags'
   -- TODO: Redesign ProgramDB API to prevent such problems as #2241 in the future.
@@ -687,11 +689,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- may need to create a sandbox-local package DB for this compiler and add a
   -- timestamp record for this compiler to the timestamp file.
   configFlags'' <- case useSandbox of
-        NoSandbox               -> configAbsolutePaths $ configFlags'
-        (UseSandbox sandboxDir) ->
-          return $ (setPackageDB sandboxDir comp platform configFlags') {
-            configDistPref = sandboxDistPref
-            }
+    NoSandbox               -> configAbsolutePaths $ configFlags'
+    (UseSandbox sandboxDir) -> return $ setPackageDB sandboxDir comp platform configFlags'
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf'
@@ -725,14 +724,16 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
         else configFlags'
 
 testAction :: (TestFlags, BuildFlags, BuildExFlags) -> [String] -> GlobalFlags
-              -> IO ()
+           -> IO ()
 testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
   let verbosity      = fromFlagOrDefault normal (testVerbosity testFlags)
-      distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                       (testDistPref testFlags)
-      setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
-      buildFlags'    = buildFlags { buildVerbosity = testVerbosity testFlags
-                                  , buildDistPref  = testDistPref testFlags }
+  distPref <- findSavedDistPref verbosity globalFlags (testDistPref testFlags)
+  let setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
+      testFlags'     = testFlags { testDistPref = toFlag distPref }
+      buildFlags'    = buildFlags
+                       { buildVerbosity = testVerbosity testFlags
+                       , buildDistPref  = toFlag distPref
+                       }
       addConfigFlags = mempty { configTests = toFlag True }
       checkFlags flags
         | fromFlagOrDefault False (configTests flags) = Nothing
@@ -771,7 +772,7 @@ testAction (testFlags, buildFlags, buildExFlags) extraArgs globalFlags = do
 
       maybeWithSandboxDirOnSearchPath useSandbox $
         setupWrapper verbosity setupOptions Nothing
-          Cabal.testCommand (const testFlags) extraArgs'
+          Cabal.testCommand (const testFlags') extraArgs'
 
 benchmarkAction :: (BenchmarkFlags, BuildFlags, BuildExFlags)
                    -> [String] -> GlobalFlags
@@ -780,12 +781,13 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
                 extraArgs globalFlags = do
   let verbosity      = fromFlagOrDefault normal
                        (benchmarkVerbosity benchmarkFlags)
-      distPref       = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                       (benchmarkDistPref benchmarkFlags)
-      setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
+  distPref <- findSavedDistPref verbosity globalFlags (benchmarkDistPref benchmarkFlags)
+  let setupOptions   = defaultSetupScriptOptions { useDistPref = distPref }
+      benchmarkFlags'= benchmarkFlags { benchmarkDistPref = toFlag distPref }
       buildFlags'    = buildFlags
-        { buildVerbosity = benchmarkVerbosity benchmarkFlags
-        , buildDistPref  = benchmarkDistPref  benchmarkFlags }
+                       { buildVerbosity = benchmarkVerbosity benchmarkFlags
+                       , buildDistPref  = toFlag distPref
+                       }
       addConfigFlags = mempty { configBenchmarks = toFlag True }
       checkFlags flags
         | fromFlagOrDefault False (configBenchmarks flags) = Nothing
@@ -824,38 +826,34 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
 
       maybeWithSandboxDirOnSearchPath useSandbox $
         setupWrapper verbosity setupOptions Nothing
-          Cabal.benchmarkCommand (const benchmarkFlags) extraArgs'
+          Cabal.benchmarkCommand (const benchmarkFlags') extraArgs'
 
 haddockAction :: HaddockFlags -> [String] -> GlobalFlags -> IO ()
 haddockAction haddockFlags extraArgs globalFlags = do
   let verbosity = fromFlag (haddockVerbosity haddockFlags)
-      distPref  = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                  (haddockDistPref haddockFlags)
+  distPref <- findSavedDistPref verbosity globalFlags (haddockDistPref haddockFlags)
   (_useSandbox, config) <- reconfigure verbosity distPref
                           mempty [] globalFlags DontSkipAddSourceDepsCheck
                           NoFlag (const Nothing)
   let haddockFlags' = defaultHaddockFlags      `mappend`
-                      savedHaddockFlags config `mappend` haddockFlags
-      setupScriptOptions = defaultSetupScriptOptions {
-        useDistPref = fromFlagOrDefault
-                      (useDistPref defaultSetupScriptOptions)
-                      (haddockDistPref haddockFlags')
-        }
+                      savedHaddockFlags config `mappend`
+                      haddockFlags { haddockDistPref = toFlag distPref }
+      setupScriptOptions = defaultSetupScriptOptions { useDistPref = distPref }
   setupWrapper verbosity setupScriptOptions Nothing
     haddockCommand (const haddockFlags') extraArgs
 
 cleanAction :: CleanFlags -> [String] -> GlobalFlags -> IO ()
-cleanAction cleanFlags extraArgs _globalFlags =
+cleanAction cleanFlags extraArgs globalFlags = do
+  distPref <- findSavedDistPref verbosity globalFlags (cleanDistPref cleanFlags)
+  let setupScriptOptions = defaultSetupScriptOptions
+                           { useDistPref = distPref
+                           , useWin32CleanHack = True
+                           }
+      cleanFlags' = cleanFlags { cleanDistPref = toFlag distPref }
   setupWrapper verbosity setupScriptOptions Nothing
-               cleanCommand (const cleanFlags) extraArgs
+               cleanCommand (const cleanFlags') extraArgs
   where
     verbosity = fromFlagOrDefault normal (cleanVerbosity cleanFlags)
-    setupScriptOptions = defaultSetupScriptOptions {
-      useDistPref = fromFlagOrDefault
-                    (useDistPref defaultSetupScriptOptions)
-                    (cleanDistPref cleanFlags),
-      useWin32CleanHack = True
-      }
 
 listAction :: ListFlags -> [String] -> GlobalFlags -> IO ()
 listAction listFlags extraArgs globalFlags = do
@@ -1027,10 +1025,13 @@ uninstallAction _verbosityFlag extraArgs _globalFlags = do
 
 
 sdistAction :: (SDistFlags, SDistExFlags) -> [String] -> GlobalFlags -> IO ()
-sdistAction (sdistFlags, sdistExFlags) extraArgs _globalFlags = do
+sdistAction (sdistFlags, sdistExFlags) extraArgs globalFlags = do
   unless (null extraArgs) $
     die $ "'sdist' doesn't take any extra arguments: " ++ unwords extraArgs
-  sdist sdistFlags sdistExFlags
+  let verbosity = fromFlag (sDistVerbosity sdistFlags)
+  distPref <- findSavedDistPref verbosity globalFlags (sDistDistPref sdistFlags)
+  let sdistFlags' = sdistFlags { sDistDistPref = toFlag distPref }
+  sdist sdistFlags' sdistExFlags
 
 reportAction :: ReportFlags -> [String] -> GlobalFlags -> IO ()
 reportAction reportFlags extraArgs globalFlags = do
@@ -1049,9 +1050,8 @@ reportAction reportFlags extraArgs globalFlags = do
 runAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
 runAction (buildFlags, buildExFlags) extraArgs globalFlags = do
   let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
-      distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
-                    (buildDistPref buildFlags)
-      noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
+  distPref <- findSavedDistPref verbosity globalFlags (buildDistPref buildFlags)
+  let noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
                     (buildOnly buildExFlags)
 
   -- reconfigure also checks if we're in a sandbox and reinstalls add-source
