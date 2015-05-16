@@ -169,8 +169,7 @@ updateSandboxConfigFileFlag globalFlags =
   case globalSandboxConfigFile globalFlags of
     Flag _ -> return globalFlags
     NoFlag -> do
-      f' <- fmap (fromMaybe NoFlag . fmap Flag) . lookupEnv
-            $ "CABAL_SANDBOX_CONFIG"
+      f' <- fmap (maybe NoFlag Flag) . lookupEnv $ "CABAL_SANDBOX_CONFIG"
       return globalFlags { globalSandboxConfigFile = f' }
 
 -- | Return the path to the sandbox config file - either the default or the one
