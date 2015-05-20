@@ -2,6 +2,8 @@
 
 1.23.x.x (current development version) 
 	* Deal with extra C sources from preprocessors (#238).
+	* Enable '-fprof-auto-exported' for profiled libraries (#193).
+	* Enable '-fprof-auto-top' for profiled executables (#193).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
