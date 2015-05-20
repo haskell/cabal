@@ -29,7 +29,7 @@ import Distribution.Version
          , withinRange )
 import Distribution.InstalledPackageInfo (installedPackageId)
 import Distribution.Package
-         ( InstalledPackageId(..), PackageIdentifier(..),
+         ( InstalledPackageId(..), PackageIdentifier(..), PackageId,
            PackageName(..), Package(..), packageName
          , packageVersion, Dependency(..) )
 import Distribution.PackageDescription
@@ -128,6 +128,19 @@ data SetupScriptOptions = SetupScriptOptions {
     useWorkingDir            :: Maybe FilePath,
     forceExternalSetupMethod :: Bool,
 
+    -- | List of dependencies to use when building Setup.hs
+    useDependencies :: [(InstalledPackageId, PackageId)],
+
+    -- | Is the list of setup dependencies exclusive?
+    --
+    -- This is here for legacy reasons. Before the introduction of the explicit
+    -- setup stanza in .cabal files we compiled Setup.hs scripts with all
+    -- packages in the environment visible, but we will needed to restrict
+    -- _some_ packages; in particular, we need to restrict the version of Cabal
+    -- that the setup script gets linked against (this was the only "dependency
+    -- constraint" that we had previously for Setup scripts).
+    useDependenciesExclusive :: Bool,
+
     -- Used only by 'cabal clean' on Windows.
     --
     -- Note: win32 clean hack
@@ -161,6 +174,8 @@ defaultSetupScriptOptions = SetupScriptOptions {
     usePlatform              = Nothing,
     usePackageDB             = [GlobalPackageDB, UserPackageDB],
     usePackageIndex          = Nothing,
+    useDependencies          = [],
+    useDependenciesExclusive = False,
     useProgramConfig         = emptyProgramConfiguration,
     useDistPref              = defaultDistPref,
     useLoggingHandle         = Nothing,
@@ -247,6 +262,7 @@ buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
 externalSetupMethod :: SetupMethod
 externalSetupMethod verbosity options pkg bt mkargs = do
   debug verbosity $ "Using external setup method with build-type " ++ show bt
+  debug verbosity $ "Using explicit dependencies: " ++ show (useDependenciesExclusive options)
   createDirectoryIfMissingVerbose verbosity True setupDir
   (cabalLibVersion, mCabalLibInstalledPkgId, options') <- cabalLibVersionToUse
   debug verbosity $ "Using Cabal library version " ++ display cabalLibVersion
@@ -491,6 +507,9 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             = case compilerFlavor compiler of
                       GHCJS -> (ghcjsProgram, ["-build-runner"])
                       _     -> (ghcProgram,   ["-threaded"])
+          cabalDep = maybe [] (\ipkgid -> [(ipkgid, cabalPkgid)])
+                              maybeCabalLibInstalledPkgId
+          addRenaming (ipid, pid) = (ipid, pid, defaultRenaming)
           ghcOptions = mempty {
               ghcOptVerbosity       = Flag verbosity
             , ghcOptMode            = Flag GhcModeMake
@@ -501,9 +520,13 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptSourcePathClear = Flag True
             , ghcOptSourcePath      = toNubListR [workingDir]
             , ghcOptPackageDBs      = usePackageDB options''
+            , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
             , ghcOptPackages        = toNubListR $
-                maybe [] (\ipkgid -> [(ipkgid, cabalPkgid, defaultRenaming)])
-                maybeCabalLibInstalledPkgId
+                                        map addRenaming $
+                                        if useDependenciesExclusive options'
+                                          then useDependencies options'
+                                          else useDependencies options'
+                                                 ++ cabalDep
             , ghcOptExtra           = toNubListR extraOpts
             }
       let ghcCmdLine = renderGhcOptions compiler ghcOptions

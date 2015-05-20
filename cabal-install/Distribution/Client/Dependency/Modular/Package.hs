@@ -4,7 +4,6 @@ module Distribution.Client.Dependency.Modular.Package
    module Distribution.Package) where
 
 import Data.List as L
-import Data.Map as M
 
 import Distribution.Package -- from Cabal
 import Distribution.Text    -- from Cabal
@@ -67,13 +66,19 @@ instI :: I -> Bool
 instI (I _ (Inst _)) = True
 instI _              = False
 
--- | Package path. (Stored in "reverse" order.)
-type PP = [PN]
+-- | Package path.
+--
+-- Stored in reverse order
+data PP = Independent Int PP | Setup PN PP | None
+  deriving (Eq, Ord, Show)
 
 -- | String representation of a package path.
+--
+-- NOTE: This always ends in a period
 showPP :: PP -> String
-showPP = intercalate "." . L.map display . reverse
-
+showPP (Independent i pp) = show i ++ "." ++ showPP pp
+showPP (Setup pn      pp) = display pn ++ ".setup." ++ showPP pp
+showPP None               = ""
 
 -- | A qualified entity. Pairs a package path with the entity.
 data Q a = Q PP a
@@ -81,8 +86,8 @@ data Q a = Q PP a
 
 -- | Standard string representation of a qualified entity.
 showQ :: (a -> String) -> (Q a -> String)
-showQ showa (Q [] x) = showa x
-showQ showa (Q pp x) = showPP pp ++ "." ++ showa x
+showQ showa (Q None x) = showa x
+showQ showa (Q pp   x) = showPP pp ++ showa x
 
 -- | Qualified package name.
 type QPN = Q PN
@@ -91,21 +96,13 @@ type QPN = Q PN
 showQPN :: QPN -> String
 showQPN = showQ display
 
--- | The scope associates every package with a path. The convention is that packages
--- not in the data structure have an empty path associated with them.
-type Scope = Map PN PP
-
--- | An empty scope structure, for initialization.
-emptyScope :: Scope
-emptyScope = M.empty
-
 -- | Create artificial parents for each of the package names, making
 -- them all independent.
-makeIndependent :: [PN] -> Scope
-makeIndependent ps = L.foldl (\ sc (n, p) -> M.insert p [PackageName (show n)] sc) emptyScope (zip ([0..] :: [Int]) ps)
+makeIndependent :: [PN] -> [QPN]
+makeIndependent ps = [ Q pp pn | (pn, i) <- zip ps [0::Int ..]
+                               , let pp = Independent i None
+                     ]
 
-qualify :: Scope -> PN -> QPN
-qualify sc pn = Q (findWithDefault [] pn sc) pn
 
 unQualify :: Q a -> a
 unQualify (Q _ x) = x

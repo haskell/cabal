@@ -2,11 +2,13 @@ module Main
        where
 
 import Test.Tasty
+import Test.Tasty.Options
 
 import qualified UnitTests.Distribution.Client.Sandbox
 import qualified UnitTests.Distribution.Client.UserConfig
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
+import qualified UnitTests.Distribution.Client.Dependency.Modular.Solver
 
 tests :: TestTree
 tests = testGroup "Unit Tests" [
@@ -18,7 +20,17 @@ tests = testGroup "Unit Tests" [
        UnitTests.Distribution.Client.Targets.tests
   ,testGroup "UnitTests.Distribution.Client.Dependency.Modular.PSQ"
         UnitTests.Distribution.Client.Dependency.Modular.PSQ.tests
+  ,testGroup "UnitTests.Distribution.Client.Dependency.Modular.Solver"
+        UnitTests.Distribution.Client.Dependency.Modular.Solver.tests
+  ]
+
+-- Extra options for running the test suite
+extraOptions :: [OptionDescription]
+extraOptions = concat [
+    UnitTests.Distribution.Client.Dependency.Modular.Solver.options
   ]
 
 main :: IO ()
-main = defaultMain tests
+main = defaultMainWithIngredients
+         (includingOptions extraOptions : defaultIngredients)
+         tests

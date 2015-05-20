@@ -13,11 +13,14 @@ import Distribution.System
 import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Package
 
-mkPlan :: Platform -> CompilerInfo ->
+import Distribution.Client.ComponentDeps (ComponentDeps)
+import qualified Distribution.Client.ComponentDeps as CD
+
+mkPlan :: Platform -> CompilerInfo -> Bool ->
           SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           [CP QPN] -> Either [PlanProblem] InstallPlan
-mkPlan plat comp iidx sidx cps =
-  new plat comp (SI.fromList (map (convCP iidx sidx) cps))
+mkPlan plat comp indepGoals iidx sidx cps =
+  new plat comp indepGoals (SI.fromList (map (convCP iidx sidx) cps))
 
 convCP :: SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           CP QPN -> PlanPackage
@@ -25,15 +28,15 @@ convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting $ InstalledPackage
                   (fromJust $ SI.lookupInstalledPackageId iidx pi)
-                  (map confSrcId ds')
+                  (map confSrcId $ CD.nonSetupDeps ds')
     Right pi -> Configured $ ConfiguredPackage
                   (fromJust $ CI.lookupPackageId sidx pi)
                   fa
                   es
                   ds'
   where
-    ds' :: [ConfiguredId]
-    ds' = map convConfId ds
+    ds' :: ComponentDeps [ConfiguredId]
+    ds' = fmap (map convConfId) ds
 
 convPI :: PI QPN -> Either InstalledPackageId PackageId
 convPI (PI _ (I _ (Inst pi))) = Left pi
