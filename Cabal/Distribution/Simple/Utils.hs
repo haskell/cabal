@@ -78,11 +78,12 @@ module Distribution.Simple.Utils (
         isInSearchPath,
         addLibraryPath,
 
-        -- * simple file globbing
+        -- * file globbing
         matchFileGlob,
         matchDirFileGlob,
         parseFileGlob,
-        FileGlob(..),
+        Glob(..),
+        isRealGlob,
 
         -- * modification time
         moreRecentFile,
@@ -156,7 +157,7 @@ import System.Exit
 import System.FilePath
     ( normalise, (</>), (<.>)
     , getSearchPath, joinPath, takeDirectory, splitFileName
-    , splitExtension, splitExtensions, splitDirectories
+    , splitExtension, splitDirectories
     , searchPathSeparator )
 import System.Directory
     ( createDirectory, renameFile, removeDirectoryRecursive )
@@ -199,6 +200,7 @@ import Distribution.Compat.TempFile
 import Distribution.Compat.Exception
          ( tryIO, catchIO, catchExit )
 import Distribution.Verbosity
+import Distribution.Utils.Glob
 
 #ifdef VERSION_base
 import qualified Paths_Cabal (version)
@@ -723,43 +725,22 @@ addLibraryPath os paths = addEnv
 ----------------
 -- File globbing
 
-data FileGlob
-   -- | No glob at all, just an ordinary file
-   = NoGlob FilePath
-
-   -- | dir prefix and extension, like @\"foo\/bar\/\*.baz\"@ corresponds to
-   --    @FileGlob \"foo\/bar\" \".baz\"@
-   | FileGlob FilePath String
-
-parseFileGlob :: FilePath -> Maybe FileGlob
-parseFileGlob filepath = case splitExtensions filepath of
-  (filepath', ext) -> case splitFileName filepath' of
-    (dir, "*") | '*' `elem` dir
-              || '*' `elem` ext
-              || null ext            -> Nothing
-               | null dir            -> Just (FileGlob "." ext)
-               | otherwise           -> Just (FileGlob dir ext)
-    _          | '*' `elem` filepath -> Nothing
-               | otherwise           -> Just (NoGlob filepath)
-
 matchFileGlob :: FilePath -> IO [FilePath]
 matchFileGlob = matchDirFileGlob "."
 
-matchDirFileGlob :: FilePath -> FilePath -> IO [FilePath]
-matchDirFileGlob dir filepath = case parseFileGlob filepath of
-  Nothing -> die $ "invalid file glob '" ++ filepath
-                ++ "'. Wildcards '*' are only allowed in place of the file"
-                ++ " name, not in the directory name or file extension."
-                ++ " If a wildcard is used it must be with an file extension."
-  Just (NoGlob filepath') -> return [filepath']
-  Just (FileGlob dir' ext) -> do
-    files <- getDirectoryContents (dir </> dir')
-    case   [ dir' </> file
-           | file <- files
-           , let (name, ext') = splitExtensions file
-           , not (null name) && ext' == ext ] of
-      []      -> die $ "filepath wildcard '" ++ filepath
-                    ++ "' does not match any files."
+-- | Return a list of files matching a glob pattern, relative to a given source
+-- directory. Note that not all the returned files are guaranteed to exist.
+matchDirFileGlob :: FilePath -> String -> IO [FilePath]
+matchDirFileGlob dir pattern = case parseFileGlob pattern of
+  Nothing ->
+    die $ "invalid file glob '" ++ pattern ++ "'."
+  Just (NoGlob filepath') ->
+    return [filepath']
+  Just (Glob glob) -> do
+    files <- getDirectoryContentsRecursive dir
+    case filter (realIsMatch glob) files of
+      [] -> die $ "glob pattern '" ++ pattern
+                  ++ "' does not match any files."
       matches -> return matches
 
 --------------------

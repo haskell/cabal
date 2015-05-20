@@ -8,6 +8,7 @@ import qualified UnitTests.Distribution.Compat.CreatePipe
 import qualified UnitTests.Distribution.Compat.ReadP
 import qualified UnitTests.Distribution.Simple.Program.Internal
 import qualified UnitTests.Distribution.Utils.NubList
+import qualified UnitTests.Distribution.Utils.Glob
 
 tests :: TestTree
 tests = testGroup "Unit Tests" $
@@ -19,6 +20,8 @@ tests = testGroup "Unit Tests" $
         UnitTests.Distribution.Simple.Program.Internal.tests
     , testGroup "Distribution.Utils.NubList"
         UnitTests.Distribution.Utils.NubList.tests
+    , testGroup "Distribution.Utils.Glob"
+        UnitTests.Distribution.Utils.Glob.tests
     ]
 
 main :: IO ()
