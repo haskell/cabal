@@ -3,7 +3,7 @@
 1.23.x.x (current development version) 
 	* Deal with extra C sources from preprocessors (#238).
 	* Include cabal_macros.h when running c2hs (#2600).
-        * Don't recompile C sources unless needed (#2601).
+	* Don't recompile C sources unless needed (#2601).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
