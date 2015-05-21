@@ -16,7 +16,6 @@ module Distribution.Client.Dependency.Modular.Builder (buildTree) where
 -- flag-guarded dependencies, we cannot introduce them immediately. Instead, we
 -- store the entire dependency.
 
-import Control.Monad.Reader hiding (sequence, mapM)
 import Data.List as L
 import Data.Map as M
 import Prelude hiding (sequence, mapM)
@@ -35,7 +34,8 @@ data BuildState = BS {
   index :: Index,                -- ^ information about packages and their dependencies
   rdeps :: RevDepMap,            -- ^ set of all package goals, completed and open, with reverse dependencies
   open  :: PSQ (OpenGoal ()) (), -- ^ set of still open goals (flag and package goals)
-  next  :: BuildType             -- ^ kind of node to generate next
+  next  :: BuildType,            -- ^ kind of node to generate next
+  qualifyOptions :: QualifyOptions -- ^ qualification options
 }
 
 -- | Extend the set of open goals with the new goals listed.
@@ -65,19 +65,10 @@ extendOpen qpn' gs s@(BS { rdeps = gs', open = o' }) = go gs' o' gs
 -- dependencies and then extend the set of open goals accordingly.
 scopedExtendOpen :: QPN -> I -> QGoalReasonChain -> FlaggedDeps Component PN -> FlagInfo ->
                     BuildState -> BuildState
-scopedExtendOpen qpn@(Q pp pn) i gr fdeps fdefs s = extendOpen qpn gs s
+scopedExtendOpen qpn i gr fdeps fdefs s = extendOpen qpn gs s
   where
     -- Qualify all package names
-    --
-    -- NOTE: We `fmap` over the setup dependencies to qualify the package name,
-    -- BUT this is _only_ correct because the setup dependencies cannot have
-    -- conditional sections (setup dependencies cannot depend on flags). IF
-    -- setup dependencies _could_ depend on flags, then these flag names should
-    -- NOT be qualified with @Q (Setup pn pp)@ but rather with @pp@: flag
-    -- assignments are package wide, irrespective of whether or not we treat
-    -- certain dependencies as independent or not.
-    qfdeps = L.map (fmap (Q pp))            (nonSetupDeps fdeps)
-          ++ L.map (fmap (Q (Setup pn pp))) (setupDeps    fdeps)
+    qfdeps = qualifyDeps (qualifyOptions s) qpn fdeps
     -- Introduce all package flags
     qfdefs = L.map (\ (fn, b) -> Flagged (FN (PI qpn i) fn) b [] []) $ M.toList fdefs
     -- Combine new package and flag goals
@@ -168,6 +159,7 @@ buildTree idx ind igs =
       , rdeps = M.fromList (L.map (\ qpn -> (qpn, []))              qpns)
       , open  = P.fromList (L.map (\ qpn -> (topLevelGoal qpn, ())) qpns)
       , next  = Goals
+      , qualifyOptions = defaultQualifyOptions idx
       }
   where
     topLevelGoal qpn = OpenGoal (Simple (Dep qpn (Constrained [])) ()) [UserGoal]
