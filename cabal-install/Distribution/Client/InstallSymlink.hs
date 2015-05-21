@@ -48,6 +48,7 @@ import Distribution.Package
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
+import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.PackageDescription.Configuration
@@ -122,7 +123,7 @@ symlinkBinaries comp configFlags installFlags plan =
         | (ReadyPackage _ _flags _ deps, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               pkg_key = mkPackageKey (packageKeySupported comp) pkgid
-                                     (map Installed.packageKey deps) []
+                                     (map Installed.packageKey (CD.nonSetupDeps deps)) []
               publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
               prefix = substTemplate pkgid pkg_key prefixTemplate

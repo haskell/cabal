@@ -67,7 +67,7 @@ import System.IO.Error
 
 import Distribution.Client.Targets
 import Distribution.Client.Configure
-         ( chooseCabalVersion )
+         ( chooseCabalVersion, configureSetupScript )
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
          ( Solver(..) )
@@ -107,6 +107,7 @@ import qualified Distribution.Client.World as World
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
+import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
@@ -583,8 +584,8 @@ packageStatus _comp installedPkgIndex cpkg =
             -> [MergeResult PackageIdentifier PackageIdentifier]
     changes pkg pkg' = filter changed $
       mergeBy (comparing packageName)
-        (resolveInstalledIds $ Installed.depends pkg) -- deps of installed pkg
-        (resolveInstalledIds $ depends $ pkg')        -- deps of configured pkg
+        (resolveInstalledIds $ Installed.depends pkg)          -- deps of installed pkg
+        (resolveInstalledIds $ CD.nonSetupDeps (depends pkg')) -- deps of configured pkg
 
     -- convert to source pkg ids via index
     resolveInstalledIds :: [InstalledPackageId] -> [PackageIdentifier]
@@ -1024,7 +1025,7 @@ performInstallations verbosity
         installLocalPackage verbosity buildLimit
                             (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
-                                 (setupScriptOptions installedPkgIndex cacheLock)
+                                 (setupScriptOptions installedPkgIndex cacheLock rpkg)
                                  miscOptions configFlags' installFlags haddockFlags
                                  cinfo platform pkg pkgoverride mpath useLogFile
 
@@ -1038,31 +1039,19 @@ performInstallations verbosity
     distPref        = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
                       (configDistPref configFlags)
 
-    setupScriptOptions index lock = SetupScriptOptions {
-      useCabalVersion  = chooseCabalVersion configExFlags
-                         (libVersion miscOptions),
-      useCompiler      = Just comp,
-      usePlatform      = Just platform,
-      -- Hack: we typically want to allow the UserPackageDB for finding the
-      -- Cabal lib when compiling any Setup.hs even if we're doing a global
-      -- install. However we also allow looking in a specific package db.
-      usePackageDB     = if UserPackageDB `elem` packageDBs
-                           then packageDBs
-                           else let (db@GlobalPackageDB:dbs) = packageDBs
-                                 in db : UserPackageDB : dbs,
-                                --TODO: use Ord instance:
-                                -- insert UserPackageDB packageDBs
-      usePackageIndex  = if UserPackageDB `elem` packageDBs
-                           then Just index
-                           else Nothing,
-      useProgramConfig = conf,
-      useDistPref      = distPref,
-      useLoggingHandle = Nothing,
-      useWorkingDir    = Nothing,
-      forceExternalSetupMethod = parallelInstall,
-      useWin32CleanHack        = False,
-      setupCacheLock   = Just lock
-    }
+    setupScriptOptions index lock rpkg =
+      configureSetupScript
+        packageDBs
+        comp
+        platform
+        conf
+        distPref
+        (chooseCabalVersion configExFlags (libVersion miscOptions))
+        (Just lock)
+        parallelInstall
+        index
+        (Just rpkg)
+
     reportingLevel = fromFlag (installBuildReports installFlags)
     logsDir        = fromFlag (globalLogsDir globalFlags)
 
@@ -1211,10 +1200,10 @@ installReadyPackage platform cinfo configFlags
     -- In the end only one set gets passed to Setup.hs configure, depending on
     -- the Cabal version we are talking to.
     configConstraints  = [ thisPackageVersion (packageId deppkg)
-                         | deppkg <- deps ],
+                         | deppkg <- CD.nonSetupDeps deps ],
     configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                             Installed.installedPackageId deppkg)
-                         | deppkg <- deps ],
+                         | deppkg <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
     configBenchmarks         = toFlag False,

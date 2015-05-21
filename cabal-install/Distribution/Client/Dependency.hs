@@ -513,12 +513,12 @@ resolveDependencies :: Platform
     --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
 resolveDependencies platform comp _solver params
   | null (depResolverTargets params)
-  = return (mkInstallPlan platform comp [])
+  = return (mkInstallPlan platform comp (depResolverIndependentGoals params) [])
 
 resolveDependencies platform comp  solver params =
 
     Step (debugDepResolverParams finalparams)
-  $ fmap (mkInstallPlan platform comp)
+  $ fmap (mkInstallPlan platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)
                      platform comp installedPkgIndex sourcePkgIndex
@@ -553,10 +553,11 @@ resolveDependencies platform comp  solver params =
 --
 mkInstallPlan :: Platform
               -> CompilerInfo
+              -> Bool
               -> [InstallPlan.PlanPackage] -> InstallPlan
-mkInstallPlan platform comp pkgIndex =
+mkInstallPlan platform comp indepGoals pkgIndex =
   let index = InstalledPackageIndex.fromList pkgIndex in
-  case InstallPlan.new platform comp index of
+  case InstallPlan.new platform comp indepGoals index of
     Right plan     -> plan
     Left  problems -> error $ unlines $
         "internal error: could not construct a valid install plan."

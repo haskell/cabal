@@ -70,6 +70,9 @@ import Distribution.InstalledPackageInfo
 import Distribution.Simple.Utils
          ( lowercase, comparing )
 
+import Distribution.Client.ComponentDeps (ComponentDeps)
+import qualified Distribution.Client.ComponentDeps as CD
+
 -- | Subclass of packages that have specific versioned dependencies.
 --
 -- So for example a not-yet-configured package has dependencies on version
@@ -78,10 +81,10 @@ import Distribution.Simple.Utils
 --  dependency graphs) only make sense on this subclass of package types.
 --
 class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> [InstalledPackageId]
+  depends :: pkg -> ComponentDeps [InstalledPackageId]
 
 instance PackageFixedDeps (InstalledPackageInfo_ str) where
-  depends info = installedDepends info
+  depends = CD.fromInstalled . installedDepends
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 --
