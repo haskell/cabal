@@ -51,6 +51,7 @@ executable cabal
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
         Distribution.Client.Check
+        Distribution.Client.ComponentDeps
         Distribution.Client.Config
         Distribution.Client.Configure
         Distribution.Client.Dependency
@@ -68,6 +69,7 @@ executable cabal
         Distribution.Client.Dependency.Modular.Flag
         Distribution.Client.Dependency.Modular.Index
         Distribution.Client.Dependency.Modular.IndexConversion
+        Distribution.Client.Dependency.Modular.Linking
         Distribution.Client.Dependency.Modular.Log
         Distribution.Client.Dependency.Modular.Message
         Distribution.Client.Dependency.Modular.Package
@@ -114,6 +116,7 @@ executable cabal
         Distribution.Client.Update
         Distribution.Client.Upload
         Distribution.Client.Utils
+        Distribution.Client.Utils.LabeledGraph
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.Environment
@@ -180,6 +183,7 @@ Test-Suite unit-tests
   other-modules:
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
+    UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Sandbox
     UnitTests.Distribution.Client.UserConfig
   build-depends:
@@ -201,6 +205,7 @@ Test-Suite unit-tests
         tasty,
         tasty-hunit,
         tasty-quickcheck,
+        tagged,
         QuickCheck >= 2.5
 
   if flag(old-directory)

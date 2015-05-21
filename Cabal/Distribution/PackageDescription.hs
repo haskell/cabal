@@ -104,6 +104,9 @@ module Distribution.PackageDescription (
         RepoKind(..),
         RepoType(..),
         knownRepoTypes,
+
+        -- * Custom setup build information
+        SetupBuildInfo(..),
   ) where
 
 import Distribution.Compat.Binary (Binary)
@@ -190,6 +193,7 @@ data PackageDescription
         -- transitioning to specifying just a single version, not a range.
         specVersionRaw :: Either Version VersionRange,
         buildType      :: Maybe BuildType,
+        setupBuildInfo :: Maybe SetupBuildInfo,
         -- components
         library        :: Maybe Library,
         executables    :: [Executable],
@@ -257,6 +261,7 @@ emptyPackageDescription
                       description  = "",
                       category     = "",
                       customFieldsPD = [],
+                      setupBuildInfo = Nothing,
                       library      = Nothing,
                       executables  = [],
                       testSuites   = [],
@@ -300,6 +305,29 @@ instance Text BuildType where
       "Custom"    -> Custom
       "Make"      -> Make
       _           -> UnknownBuildType name
+
+-- ---------------------------------------------------------------------------
+-- The SetupBuildInfo type
+
+-- One can see this as a very cut-down version of BuildInfo below.
+-- To keep things simple for tools that compile Setup.hs we limit the
+-- options authors can specify to just Haskell package dependencies.
+
+data SetupBuildInfo = SetupBuildInfo {
+        setupDepends :: [Dependency]
+    }
+    deriving (Generic, Show, Eq, Read, Typeable, Data)
+
+instance Binary SetupBuildInfo
+
+instance Monoid SetupBuildInfo where
+  mempty = SetupBuildInfo {
+    setupDepends = mempty
+  }
+  mappend a b = SetupBuildInfo {
+    setupDepends = combine setupDepends
+  }
+    where combine field = field a `mappend` field b
 
 -- ---------------------------------------------------------------------------
 -- Module renaming

@@ -33,6 +33,9 @@ import Distribution.Client.Dependency.Types
          , Progress(..), foldProgress )
 
 import qualified Distribution.Client.PackageIndex as PackageIndex
+import Distribution.Client.ComponentDeps
+         ( ComponentDeps )
+import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Package
@@ -562,7 +565,10 @@ finaliseSelectedPackages pref selected constraints =
     finaliseSource mipkg (SemiConfiguredPackage pkg flags stanzas deps) =
       InstallPlan.Configured (ConfiguredPackage pkg flags stanzas deps')
       where
-        deps' = map (confId . pickRemaining mipkg) deps
+        -- We cheat in the cabal solver, and classify all dependencies as
+        -- library dependencies.
+        deps' :: ComponentDeps [ConfiguredId]
+        deps' = CD.fromLibraryDeps $ map (confId . pickRemaining mipkg) deps
 
     -- InstalledOrSource indicates that we either have a source package
     -- available, or an installed one, or both. In the case that we have both

@@ -23,8 +23,6 @@ import qualified System.FilePath.Posix as FilePath.Posix (combine)
 import System.Directory
 import Control.Monad (forM_, when)
 
-type Auth = Maybe (String, String)
-
 --FIXME: how do we find this path for an arbitrary hackage server?
 -- is it always at some fixed location relative to the server root?
 legacyUploadURI :: URI
@@ -40,7 +38,7 @@ upload transport verbosity repos mUsername mPassword paths = do
                           else targetRepoURI{uriPath = uriPath targetRepoURI `FilePath.Posix.combine` "upload"}
           Username username <- maybe promptUsername return mUsername
           Password password <- maybe promptPassword return mPassword
-          let auth = Just (username,password)
+          let auth = Just (username, password)
           flip mapM_ paths $ \path -> do
             notice verbosity $ "Uploading " ++ path ++ "... "
             handlePackage transport verbosity uploadURI auth path
@@ -68,7 +66,7 @@ report :: Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> IO ()
 report verbosity repos mUsername mPassword = do
       Username username <- maybe promptUsername return mUsername
       Password password <- maybe promptPassword return mPassword
-      let auth = (username,password)
+      let auth = (username, password)
       forM_ repos $ \repo -> case repoKind repo of
         Left remoteRepo
             -> do dotCabal <- defaultCabalDir
@@ -94,7 +92,8 @@ check transport verbosity paths = do
             notice verbosity $ "Checking " ++ path ++ "... "
             handlePackage transport verbosity checkURI Nothing path
 
-handlePackage :: HttpTransport -> Verbosity -> URI -> Auth
+handlePackage :: HttpTransport -> Verbosity
+              -> URI -> Maybe (String, String)
               -> FilePath -> IO ()
 handlePackage transport verbosity uri auth path =
   do resp <- putHttpFile transport uri path auth
