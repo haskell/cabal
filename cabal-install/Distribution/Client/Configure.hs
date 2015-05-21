@@ -13,6 +13,7 @@
 -----------------------------------------------------------------------------
 module Distribution.Client.Configure (
     configure,
+    configureSetupScript,
     chooseCabalVersion,
   ) where
 
@@ -29,6 +30,9 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Targets
          ( userToPackageConstraint )
+import qualified Distribution.Client.ComponentDeps as CD
+import Distribution.Package (PackageId)
+import Distribution.Client.JobControl (Lock)
 
 import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo, compilerInfo, PackageDB(..), PackageDBStack )
@@ -40,7 +44,10 @@ import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( Package(..), packageName, Dependency(..), thisPackageVersion )
+         ( Package(..), InstalledPackageId, packageName
+         , Dependency(..), thisPackageVersion
+         )
+import qualified Distribution.PackageDescription as PkgDesc
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.PackageDescription.Configuration
@@ -59,6 +66,7 @@ import Distribution.Version
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
 #endif
+import Data.Maybe (isJust, fromMaybe)
 
 -- | Choose the Cabal version such that the setup scripts compiled against this
 -- version will support the given command-line flags.
@@ -100,51 +108,113 @@ configure verbosity packageDBs repos comp platform conf
                             progress
   case maybePlan of
     Left message -> do
-      info verbosity message
-      setupWrapper verbosity (setupScriptOptions installedPkgIndex) Nothing
+      info verbosity $
+           "Warning: solver failed to find a solution:\n"
+        ++ message
+        ++ "Trying configure anyway."
+      setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing) Nothing
         configureCommand (const configFlags) extraArgs
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [pkg@(ReadyPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] ->
+      [pkg@(ReadyPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] -> do
         configurePackage verbosity
           (InstallPlan.planPlatform installPlan)
           (InstallPlan.planCompiler installPlan)
-          (setupScriptOptions installedPkgIndex)
+          (setupScriptOptions installedPkgIndex (Just pkg))
           configFlags pkg extraArgs
 
       _ -> die $ "internal error: configure install plan should have exactly "
               ++ "one local ready package."
 
   where
-    setupScriptOptions index = SetupScriptOptions {
-      useCabalVersion  = chooseCabalVersion configExFlags
-                         (flagToMaybe (configCabalVersion configExFlags)),
-      useCompiler      = Just comp,
-      usePlatform      = Just platform,
-      usePackageDB     = packageDBs',
-      usePackageIndex  = index',
-      useProgramConfig = conf,
-      useDistPref      = fromFlagOrDefault
-                           (useDistPref defaultSetupScriptOptions)
-                           (configDistPref configFlags),
-      useLoggingHandle = Nothing,
-      useWorkingDir    = Nothing,
-      useWin32CleanHack        = False,
-      forceExternalSetupMethod = False,
-      setupCacheLock   = Nothing
-    }
-      where
-        -- Hack: we typically want to allow the UserPackageDB for finding the
-        -- Cabal lib when compiling any Setup.hs even if we're doing a global
-        -- install. However we also allow looking in a specific package db.
-        (packageDBs', index') =
-          case packageDBs of
-            (GlobalPackageDB:dbs) | UserPackageDB `notElem` dbs
-                -> (GlobalPackageDB:UserPackageDB:dbs, Nothing)
-            -- but if the user is using an odd db stack, don't touch it
-            dbs -> (dbs, Just index)
+    setupScriptOptions :: InstalledPackageIndex -> Maybe ReadyPackage -> SetupScriptOptions
+    setupScriptOptions =
+      configureSetupScript
+        packageDBs
+        comp
+        platform
+        conf
+        (fromFlagOrDefault
+           (useDistPref defaultSetupScriptOptions)
+           (configDistPref configFlags))
+        (chooseCabalVersion
+           configExFlags
+           (flagToMaybe (configCabalVersion configExFlags)))
+        Nothing
+        False
 
     logMsg message rest = debug verbosity message >> rest
+
+configureSetupScript :: PackageDBStack
+                     -> Compiler
+                     -> Platform
+                     -> ProgramConfiguration
+                     -> FilePath
+                     -> VersionRange
+                     -> Maybe Lock
+                     -> Bool
+                     -> InstalledPackageIndex
+                     -> Maybe ReadyPackage
+                     -> SetupScriptOptions
+configureSetupScript packageDBs
+                     comp
+                     platform
+                     conf
+                     distPref
+                     cabalVersion
+                     lock
+                     forceExternal
+                     index
+                     mpkg
+  = SetupScriptOptions {
+      useCabalVersion   = cabalVersion
+    , useCompiler       = Just comp
+    , usePlatform       = Just platform
+    , usePackageDB      = packageDBs'
+    , usePackageIndex   = index'
+    , useProgramConfig  = conf
+    , useDistPref       = distPref
+    , useLoggingHandle  = Nothing
+    , useWorkingDir     = Nothing
+    , setupCacheLock    = lock
+    , useWin32CleanHack = False
+    , forceExternalSetupMethod = forceExternal
+      -- If we have explicit setup dependencies, list them; otherwise, we give
+      -- the empty list of dependencies; ideally, we would fix the version of
+      -- Cabal here, so that we no longer need the special case for that in
+      -- `compileSetupExecutable` in `externalSetupMethod`, but we don't yet
+      -- know the version of Cabal at this point, but only find this there.
+      -- Therefore, for now, we just leave this blank.
+    , useDependencies          = fromMaybe [] explicitSetupDeps
+    , useDependenciesExclusive = isJust explicitSetupDeps
+    }
+  where
+    -- When we are compiling a legacy setup script without an explicit
+    -- setup stanza, we typically want to allow the UserPackageDB for
+    -- finding the Cabal lib when compiling any Setup.hs even if we're doing
+    -- a global install. However we also allow looking in a specific package
+    -- db.
+    packageDBs' :: PackageDBStack
+    index'      :: Maybe InstalledPackageIndex
+    (packageDBs', index') =
+      case packageDBs of
+        (GlobalPackageDB:dbs) | UserPackageDB `notElem` dbs
+                              , Nothing <- explicitSetupDeps
+            -> (GlobalPackageDB:UserPackageDB:dbs, Nothing)
+        -- but if the user is using an odd db stack, don't touch it
+        _otherwise -> (packageDBs, Just index)
+
+    explicitSetupDeps :: Maybe [(InstalledPackageId, PackageId)]
+    explicitSetupDeps = do
+      ReadyPackage (SourcePackage _ gpkg _ _) _ _ deps <- mpkg
+      -- Check if there is an explicit setup stanza
+      _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
+      -- Return the setup dependencies computed by the solver
+      return [ ( Installed.installedPackageId deppkg
+               , Installed.sourcePackageId    deppkg
+               )
+             | deppkg <- CD.setupDeps deps
+             ]
 
 -- | Make an 'InstallPlan' for the unpacked package in the current directory,
 -- and all its dependencies.
@@ -236,10 +306,10 @@ configurePackage verbosity platform comp scriptOptions configFlags
       -- deps.  In the end only one set gets passed to Setup.hs configure,
       -- depending on the Cabal version we are talking to.
       configConstraints  = [ thisPackageVersion (packageId deppkg)
-                           | deppkg <- deps ],
+                           | deppkg <- CD.nonSetupDeps deps ],
       configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
                               Installed.installedPackageId deppkg)
-                           | deppkg <- deps ],
+                           | deppkg <- CD.nonSetupDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,
       configVerbosity          = toFlag verbosity,

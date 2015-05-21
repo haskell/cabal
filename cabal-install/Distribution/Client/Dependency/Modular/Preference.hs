@@ -7,8 +7,14 @@ import qualified Data.List as L
 import qualified Data.Map as M
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
+import Control.Applicative
 #endif
+import qualified Data.Set as S
+import Prelude hiding (sequence)
+import Control.Monad.Reader hiding (sequence)
 import Data.Ord
+import Data.Map (Map)
+import Data.Traversable (sequence)
 
 import Distribution.Client.Dependency.Types
   ( PackageConstraint(..), PackagePreferences(..), InstalledPreference(..) )
@@ -25,12 +31,30 @@ import Distribution.Client.Dependency.Modular.Version
 -- | Generic abstraction for strategies that just rearrange the package order.
 -- Only packages that match the given predicate are reordered.
 packageOrderFor :: (PN -> Bool) -> (PN -> I -> I -> Ordering) -> Tree a -> Tree a
-packageOrderFor p cmp = trav go
+packageOrderFor p cmp' = trav go
   where
     go (PChoiceF v@(Q _ pn) r cs)
       | p pn                        = PChoiceF v r (P.sortByKeys (flip (cmp pn)) cs)
       | otherwise                   = PChoiceF v r                               cs
     go x                            = x
+
+    cmp :: PN -> POption -> POption -> Ordering
+    cmp pn (POption i _) (POption i' _) = cmp' pn i i'
+
+-- | Prefer to link packages whenever possible
+preferLinked :: Tree a -> Tree a
+preferLinked = trav go
+  where
+    go (PChoiceF qn a  cs) = PChoiceF qn a (P.sortByKeys cmp cs)
+    go x                   = x
+
+    cmp (POption _ linkedTo) (POption _ linkedTo') = cmpL linkedTo linkedTo'
+
+    cmpL Nothing  Nothing  = EQ
+    cmpL Nothing  (Just _) = GT
+    cmpL (Just _) Nothing  = LT
+    cmpL (Just _) (Just _) = EQ
+
 
 -- | Ordering that treats preferred versions as greater than non-preferred
 -- versions.
@@ -114,7 +138,7 @@ enforcePackageConstraints pcs = trav go
     go (PChoiceF qpn@(Q _ pn)               gr      ts) =
       let c = toConflictSet (Goal (P qpn) gr)
           -- compose the transformation functions for each of the relevant constraint
-          g = \ i -> foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
+          g = \ (POption i _) -> foldl (\ h pc -> h . processPackageConstraintP   c i pc) id
                            (M.findWithDefault [] pn pcs)
       in PChoiceF qpn gr      (P.mapWithKey g ts)
     go (FChoiceF qfn@(FN (PI (Q _ pn) _) f) gr tr m ts) =
@@ -166,15 +190,15 @@ preferLatest :: Tree a -> Tree a
 preferLatest = preferLatestFor (const True)
 
 -- | Require installed packages.
-requireInstalled :: (PN -> Bool) -> Tree (QGoalReasonChain, a) -> Tree (QGoalReasonChain, a)
+requireInstalled :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 requireInstalled p = trav go
   where
-    go (PChoiceF v@(Q _ pn) i@(gr, _) cs)
-      | p pn      = PChoiceF v i (P.mapWithKey installed cs)
-      | otherwise = PChoiceF v i                         cs
+    go (PChoiceF v@(Q _ pn) gr cs)
+      | p pn      = PChoiceF v gr (P.mapWithKey installed cs)
+      | otherwise = PChoiceF v gr                         cs
       where
-        installed (I _ (Inst _)) x = x
-        installed _              _ = Fail (toConflictSet (Goal (P v) gr)) CannotInstall
+        installed (POption (I _ (Inst _)) _) x = x
+        installed _ _ = Fail (toConflictSet (Goal (P v) gr)) CannotInstall
     go x          = x
 
 -- | Avoid reinstalls.
@@ -190,20 +214,21 @@ requireInstalled p = trav go
 -- they are, perhaps this should just result in trying to reinstall those other
 -- packages as well. However, doing this all neatly in one pass would require to
 -- change the builder, or at least to change the goal set after building.
-avoidReinstalls :: (PN -> Bool) -> Tree (QGoalReasonChain, a) -> Tree (QGoalReasonChain, a)
+avoidReinstalls :: (PN -> Bool) -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 avoidReinstalls p = trav go
   where
-    go (PChoiceF qpn@(Q _ pn) i@(gr, _) cs)
-      | p pn      = PChoiceF qpn i disableReinstalls
-      | otherwise = PChoiceF qpn i cs
+    go (PChoiceF qpn@(Q _ pn) gr cs)
+      | p pn      = PChoiceF qpn gr disableReinstalls
+      | otherwise = PChoiceF qpn gr cs
       where
         disableReinstalls =
-          let installed = [ v | (I v (Inst _), _) <- toList cs ]
+          let installed = [ v | (POption (I v (Inst _)) _, _) <- toList cs ]
           in  P.mapWithKey (notReinstall installed) cs
 
-        notReinstall vs (I v InRepo) _
-          | v `elem` vs                = Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
-        notReinstall _  _            x = x
+        notReinstall vs (POption (I v InRepo) _) _ | v `elem` vs =
+          Fail (toConflictSet (Goal (P qpn) gr)) CannotReinstall
+        notReinstall _ _ x =
+          x
     go x          = x
 
 -- | Always choose the first goal in the list next, abandoning all
@@ -229,10 +254,23 @@ preferBaseGoalChoice = trav go
     go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys preferBase xs)
     go x                = x
 
-    preferBase :: OpenGoal -> OpenGoal -> Ordering
-    preferBase (OpenGoal (Simple (Dep (Q [] pn) _)) _) _ | unPN pn == "base" = LT
-    preferBase _ (OpenGoal (Simple (Dep (Q [] pn) _)) _) | unPN pn == "base" = GT
-    preferBase _ _                                                           = EQ
+    preferBase :: OpenGoal comp -> OpenGoal comp -> Ordering
+    preferBase (OpenGoal (Simple (Dep (Q _pp pn) _) _) _) _ | unPN pn == "base" = LT
+    preferBase _ (OpenGoal (Simple (Dep (Q _pp pn) _) _) _) | unPN pn == "base" = GT
+    preferBase _ _                                                              = EQ
+
+-- | Deal with setup dependencies after regular dependencies, so that we can
+-- will link setup depencencies against package dependencies when possible
+deferSetupChoices :: Tree a -> Tree a
+deferSetupChoices = trav go
+  where
+    go (GoalChoiceF xs) = GoalChoiceF (P.sortByKeys deferSetup xs)
+    go x                = x
+
+    deferSetup :: OpenGoal comp -> OpenGoal comp -> Ordering
+    deferSetup (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) _ = GT
+    deferSetup _ (OpenGoal (Simple (Dep (Q (Setup _ _) _) _) _) _) = LT
+    deferSetup _ _                                                 = EQ
 
 -- | Transformation that sorts choice nodes so that
 -- child nodes with a small branching degree are preferred. As a
@@ -279,3 +317,43 @@ preferEasyGoalChoices' = para (inn . go)
     go (GoalChoiceF xs) = GoalChoiceF (P.map fst (P.sortBy (comparing (choices . snd)) xs))
     go x                = fmap fst x
 
+-- | Monad used internally in enforceSingleInstanceRestriction
+type EnforceSIR = Reader (Map (PI PN) QPN)
+
+-- | Enforce ghc's single instance restriction
+--
+-- From the solver's perspective, this means that for any package instance
+-- (that is, package name + package version) there can be at most one qualified
+-- goal resolving to that instance (there may be other goals _linking_ to that
+-- instance however).
+enforceSingleInstanceRestriction :: Tree QGoalReasonChain -> Tree QGoalReasonChain
+enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
+  where
+    go :: TreeF QGoalReasonChain (EnforceSIR (Tree QGoalReasonChain)) -> EnforceSIR (Tree QGoalReasonChain)
+
+    -- We just verify package choices
+    go (PChoiceF qpn gr cs) =
+      PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) cs)
+
+    -- For all other nodes we don't check anything
+    go (FChoiceF qfn gr t m cs)       = FChoice qfn gr t m <$> sequence cs
+    go (SChoiceF qsn gr t   cs)       = SChoice qsn gr t   <$> sequence cs
+    go (GoalChoiceF         cs)       = GoalChoice         <$> sequence cs
+    go (DoneF revDepMap)              = return $ Done revDepMap
+    go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
+
+    -- The check proper
+    goP :: QPN -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
+    goP qpn@(Q _ pn) (POption i linkedTo) r = do
+      let inst = PI pn i
+      env <- ask
+      case (linkedTo, M.lookup inst env) of
+        (Just _, _) ->
+          -- For linked nodes we don't check anything
+          r
+        (Nothing, Nothing) ->
+          -- Not linked, not already used
+          local (M.insert inst qpn) r
+        (Nothing, Just qpn') -> do
+          -- Not linked, already used. This is an error
+          return $ Fail (S.fromList [P qpn, P qpn']) MultipleInstances

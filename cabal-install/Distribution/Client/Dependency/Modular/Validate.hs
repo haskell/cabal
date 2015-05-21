@@ -1,4 +1,4 @@
-module Distribution.Client.Dependency.Modular.Validate where
+module Distribution.Client.Dependency.Modular.Validate (validateTree) where
 
 -- Validation of the tree.
 --
@@ -20,6 +20,8 @@ import Distribution.Client.Dependency.Modular.Index
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.PSQ as P
 import Distribution.Client.Dependency.Modular.Tree
+
+import Distribution.Client.ComponentDeps (Component)
 
 -- In practice, most constraints are implication constraints (IF we have made
 -- a number of choices, THEN we also have to ensure that). We call constraints
@@ -74,19 +76,19 @@ import Distribution.Client.Dependency.Modular.Tree
 -- | The state needed during validation.
 data ValidateState = VS {
   index :: Index,
-  saved :: Map QPN (FlaggedDeps QPN), -- saved, scoped, dependencies
+  saved :: Map QPN (FlaggedDeps Component QPN), -- saved, scoped, dependencies
   pa    :: PreAssignment
 }
 
 type Validate = Reader ValidateState
 
-validate :: Tree (QGoalReasonChain, Scope) -> Validate (Tree QGoalReasonChain)
+validate :: Tree QGoalReasonChain -> Validate (Tree QGoalReasonChain)
 validate = cata go
   where
-    go :: TreeF (QGoalReasonChain, Scope) (Validate (Tree QGoalReasonChain)) -> Validate (Tree QGoalReasonChain)
+    go :: TreeF QGoalReasonChain (Validate (Tree QGoalReasonChain)) -> Validate (Tree QGoalReasonChain)
 
-    go (PChoiceF qpn (gr,  sc)     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr sc) ts)
-    go (FChoiceF qfn (gr, _sc) b m ts) =
+    go (PChoiceF qpn gr     ts) = PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn gr) ts)
+    go (FChoiceF qfn gr b m ts) =
       do
         -- Flag choices may occur repeatedly (because they can introduce new constraints
         -- in various places). However, subsequent choices must be consistent. We thereby
@@ -99,7 +101,7 @@ validate = cata go
                        Nothing -> return $ Fail (toConflictSet (Goal (F qfn) gr)) (MalformedFlagChoice qfn)
           Nothing -> -- flag choice is new, follow both branches
                      FChoice qfn gr b m <$> sequence (P.mapWithKey (goF qfn gr) ts)
-    go (SChoiceF qsn (gr, _sc) b   ts) =
+    go (SChoiceF qsn gr b   ts) =
       do
         -- Optional stanza choices are very similar to flag choices.
         PA _ _ psa <- asks pa -- obtain current stanza-preassignment
@@ -117,13 +119,16 @@ validate = cata go
     go (FailF    c fr              ) = pure (Fail c fr)
 
     -- What to do for package nodes ...
-    goP :: QPN -> QGoalReasonChain -> Scope -> I -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
-    goP qpn@(Q _pp pn) gr sc i r = do
+    goP :: QPN -> QGoalReasonChain -> POption -> Validate (Tree QGoalReasonChain) -> Validate (Tree QGoalReasonChain)
+    goP qpn@(Q pp pn) gr (POption i _) r = do
       PA ppa pfa psa <- asks pa    -- obtain current preassignment
       idx            <- asks index -- obtain the index
       svd            <- asks saved -- obtain saved dependencies
-      let (PInfo deps _ _ mfr) = idx ! pn ! i -- obtain dependencies and index-dictated exclusions introduced by the choice
-      let qdeps = L.map (fmap (qualify sc)) deps -- qualify the deps in the current scope
+      -- obtain dependencies and index-dictated exclusions introduced by the choice
+      let (PInfo deps _ mfr) = idx ! pn ! i
+      -- qualify the deps in the current scope
+      let qdeps = L.map (fmap (Q pp))            (nonSetupDeps deps)
+               ++ L.map (fmap (Q (Setup pn pp))) (setupDeps    deps)
       -- the new active constraints are given by the instance we have chosen,
       -- plus the dependency information we have for that instance
       let goal = Goal (P qpn) gr
@@ -188,11 +193,11 @@ validate = cata go
 -- | We try to extract as many concrete dependencies from the given flagged
 -- dependencies as possible. We make use of all the flag knowledge we have
 -- already acquired.
-extractDeps :: FAssignment -> SAssignment -> FlaggedDeps QPN -> [Dep QPN]
+extractDeps :: FAssignment -> SAssignment -> FlaggedDeps comp QPN -> [Dep QPN]
 extractDeps fa sa deps = do
   d <- deps
   case d of
-    Simple sd           -> return sd
+    Simple sd _         -> return sd
     Flagged qfn _ td fd -> case M.lookup qfn fa of
                              Nothing    -> mzero
                              Just True  -> extractDeps fa sa td
@@ -205,13 +210,14 @@ extractDeps fa sa deps = do
 -- | We try to find new dependencies that become available due to the given
 -- flag or stanza choice. We therefore look for the choice in question, and then call
 -- 'extractDeps' for everything underneath.
-extractNewDeps :: Var QPN -> QGoalReasonChain -> Bool -> FAssignment -> SAssignment -> FlaggedDeps QPN -> [Dep QPN]
+extractNewDeps :: Var QPN -> QGoalReasonChain -> Bool -> FAssignment -> SAssignment -> FlaggedDeps comp QPN -> [Dep QPN]
 extractNewDeps v gr b fa sa = go
   where
+    go :: FlaggedDeps comp QPN -> [Dep QPN] -- Type annotation necessary (polymorphic recursion)
     go deps = do
       d <- deps
       case d of
-        Simple _             -> mzero
+        Simple _ _           -> mzero
         Flagged qfn' _ td fd
           | v == F qfn'      -> L.map (resetGoal (Goal v gr)) $
                                 if b then extractDeps fa sa td else extractDeps fa sa fd
@@ -228,5 +234,5 @@ extractNewDeps v gr b fa sa = go
                                   Just False -> []
 
 -- | Interface.
-validateTree :: Index -> Tree (QGoalReasonChain, Scope) -> Tree QGoalReasonChain
+validateTree :: Index -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 validateTree idx t = runReader (validate t) (VS idx M.empty (PA M.empty M.empty M.empty))
