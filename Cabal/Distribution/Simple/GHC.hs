@@ -86,7 +86,7 @@ import qualified Distribution.Simple.Program.Ld    as Ld
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
-         ( toFlag, fromFlag, configCoverage, configDistPref )
+         ( toFlag, fromFlag, fromFlagOrDefault, configCoverage, configDistPref )
 import qualified Distribution.Simple.Setup as Cabal
         ( Flag(..) )
 import Distribution.Simple.Compiler
@@ -561,10 +561,12 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                }
                odir          = fromFlag (ghcOptObjDir vanillaCcOpts)
            createDirectoryIfMissingVerbose verbosity True odir
-           runGhcProg vanillaCcOpts
-           unless forRepl $
-             whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
-           unless forRepl $ whenProfLib (runGhcProg profCcOpts)
+           needsRecomp <- checkNeedsRecompilation filename vanillaCcOpts
+           when needsRecomp $ do
+               runGhcProg vanillaCcOpts
+               unless forRepl $
+                 whenSharedLib forceSharedLib (runGhcProg sharedCcOpts)
+               unless forRepl $ whenProfLib (runGhcProg profCcOpts)
       | filename <- cSources libBi]
 
   -- TODO: problem here is we need the .c files built first, so we can load them
@@ -855,9 +857,11 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                                                        else GhcStaticOnly),
                        ghcOptProfilingMode = toFlag (withProfExe lbi)
                      }
-              odir = fromFlag (ghcOptObjDir opts)
+              odir  = fromFlag (ghcOptObjDir opts)
           createDirectoryIfMissingVerbose verbosity True odir
-          runGhcProg opts
+          needsRecomp <- checkNeedsRecompilation filename opts
+          when needsRecomp $ 
+            runGhcProg opts
      | filename <- cSrcs ]
 
   -- TODO: problem here is we need the .c files built first, so we can load them
@@ -869,6 +873,19 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   unless forRepl $ do
     info verbosity "Linking..."
     runGhcProg linkOpts { ghcOptOutputFile = toFlag (targetDir </> exeNameReal) }
+
+-- | Returns True if the modification date of the given source file is newer than
+-- the object file we last compiled for it, or if no object file exists yet.
+checkNeedsRecompilation :: FilePath -> GhcOptions -> IO Bool
+checkNeedsRecompilation filename opts = filename `moreRecentFile` oname
+    where oname = getObjectFileName filename opts
+
+-- | Finds the object file name of the given source file
+getObjectFileName :: FilePath -> GhcOptions -> FilePath
+getObjectFileName filename opts = oname
+    where odir  = fromFlag (ghcOptObjDir opts)
+          oext  = fromFlagOrDefault "o" (ghcOptObjSuffix opts)
+          oname = odir </> replaceExtension filename oext
 
 -- | Calculate the RPATHs for the component we are building.
 --
