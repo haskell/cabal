@@ -39,7 +39,7 @@ import Distribution.Verbosity    ( Verbosity )
 import qualified Data.ByteString.Lazy as BS
 import Control.Exception         ( evaluate )
 import Control.Monad             ( liftM, unless )
-import Data.List                 ( (\\), intersect, nub )
+import Data.List                 ( (\\), intersect, nub, intercalate )
 import Data.Maybe                ( catMaybes )
 import System.Directory          ( createDirectoryIfMissing,
                                    doesDirectoryExist, doesFileExist,
@@ -156,13 +156,21 @@ addBuildTreeRefs verbosity path l' refType = do
       (path `replaceExtension` "cache")
 
 -- | Remove given local build tree references from the index.
-removeBuildTreeRefs :: Verbosity -> FilePath -> [FilePath] -> IO [FilePath]
-removeBuildTreeRefs _         _   [] =
+removeBuildTreeRefs :: Verbosity 
+                    -> FilePath 
+                    -> [FilePath]    -- ^ Refs to remove
+                    -> [FilePath]    -- ^ Existent refs
+                    -> IO [FilePath]
+removeBuildTreeRefs _         _   [] _ =
   error "Distribution.Client.Sandbox.Index.removeBuildTreeRefs: unexpected"
-removeBuildTreeRefs verbosity path l' = do
+removeBuildTreeRefs verbosity path l' refs = do
   checkIndexExists path
   l <- mapM canonicalizePathNoThrow l'
   let tmpFile = path <.> "tmp"
+      notExistentSources = filter (`notElem` refs) l
+  unless (null notExistentSources) $
+    die $ "sources '" ++ (intercalate "', '" notExistentSources) ++ 
+          "' do not exist"
   -- Performance note: on my system, it takes 'index --remove-source'
   -- approx. 3,5s to filter a 65M file. Real-life indices are expected to be
   -- much smaller.
@@ -172,7 +180,6 @@ removeBuildTreeRefs verbosity path l' = do
   debug verbosity $ "Successfully renamed '" ++ tmpFile
     ++ "' to '" ++ path ++ "'"
   updatePackageIndexCacheFile verbosity path (path `replaceExtension` "cache")
-  -- FIXME: return only the refs that vere actually removed.
   return l
     where
       p l entry = case readBuildTreeRef entry of
