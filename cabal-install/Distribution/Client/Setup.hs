@@ -24,6 +24,7 @@ module Distribution.Client.Setup
     , upgradeCommand
     , uninstallCommand
     , infoCommand, InfoFlags(..)
+    , initConfigCommand
     , fetchCommand, FetchFlags(..)
     , freezeCommand, FreezeFlags(..)
     , getCommand, unpackCommand, GetFlags(..)
@@ -169,6 +170,7 @@ globalCommand commands = CommandUI {
           , "list"
           , "info"
           , "user-config"
+          , "init-config"
           , "get"
           , "init"
           , "configure"
@@ -213,6 +215,7 @@ globalCommand commands = CommandUI {
         , addCmd "list"
         , addCmd "fetch"
         , addCmd "user-config"
+        , addCmd "init-config"
         , par
         , startGroup "package"
         , addCmd "get"
@@ -797,6 +800,19 @@ upgradeCommand = configureCommand {
     commandDefaultFlags = (mempty, mempty, mempty, mempty),
     commandOptions      = commandOptions installCommand
   }
+
+initConfigCommand :: CommandUI (Flag Verbosity)
+initConfigCommand = CommandUI {
+    commandName = "init-config",
+    commandSynopsis = "Create global cabal configuration file when missing.",
+    commandDescription = Just $ \_ -> wrapText $
+                         "Checks to see if global configuration file is present.\n"
+                         ++ "If it's not present, then creates a default one.\n",
+    commandNotes = Nothing,
+    commandUsage        = \pname -> "Usage: " ++ pname ++ " init-config\n",
+    commandDefaultFlags = toFlag normal,
+    commandOptions = \_ -> []
+}
 
 {-
 cleanCommand  :: CommandUI ()
