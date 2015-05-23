@@ -24,7 +24,7 @@ import Network.Stream
 import Control.Exception
          ( handleJust )
 import Control.Monad
-         ( liftM, guard )
+         ( liftM, guard, when )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
 import Data.ByteString.Lazy (ByteString)
 
@@ -147,16 +147,30 @@ downloadURI verbosity uri path = do
     Left err   -> die $ "Failed to download " ++ show uri ++ " : " ++ show err
     Right rsp -> case rspCode rsp of
       (2,0,0) -> do
-        info verbosity ("Downloaded to " ++ path)
-        writeFileAtomic path $ rspBody rsp
-        return (FileDownloaded path)
+        let index = rspBody rsp
+        case lookupHeader HdrContentLength (rspHeaders rsp) >>= readMaybe of
+            Just contentLength -> do
+              let indexLength = ByteString.length index
+              when (indexLength /= contentLength) $
+                  die $ "Failed to download " ++ show uri
+                        ++ " : Expected content length "   ++ (show contentLength)
+                        ++ " doesn't match actual length " ++ (show indexLength)
+
+              info verbosity ("Downloaded to " ++ path)
+              writeFileAtomic path $ rspBody rsp
+              return (FileDownloaded path)
+            Nothing -> die $ "Failed to download " ++ show uri ++ " cannot verify index file length"
       (3,0,4) -> do
         notice verbosity "Skipping download: Local and remote files match."
         return FileAlreadyInCache
       (_,_,_) -> return (FileDownloaded path)
-      --FIXME: check the content-length header matches the body length.
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.
+  where
+    readMaybe :: Read a => String -> Maybe a
+    readMaybe s = case reads s of
+                   [(a,"")] -> Just a
+                   _        -> Nothing
 
 -- Utility function for legacy support.
 isOldHackageURI :: URI -> Bool
