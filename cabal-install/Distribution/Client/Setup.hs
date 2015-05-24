@@ -166,6 +166,7 @@ globalCommand commands = CommandUI {
           , "update"
           , "install"
           , "fetch"
+          , "format"
           , "list"
           , "info"
           , "user-config"
@@ -228,6 +229,7 @@ globalCommand commands = CommandUI {
         , addCmd "bench"
         , par
         , addCmd "check"
+        , addCmd "format"
         , addCmd "sdist"
         , addCmd "upload"
         , addCmd "report"

@@ -246,6 +246,7 @@ mainWorker args = topHandler $
       ,execCommand            `commandAddAction` execAction
       ,userConfigCommand      `commandAddAction` userConfigAction
       ,cleanCommand           `commandAddAction` cleanAction
+      ,formatCommand          `commandAddAction` formatAction
       ,wrapperAction copyCommand
                      copyVerbosity     copyDistPref
       ,wrapperAction hscolourCommand
@@ -256,8 +257,6 @@ mainWorker args = topHandler $
       ,benchmarkCommand       `commandAddAction` benchmarkAction
       ,hiddenCommand $
        uninstallCommand       `commandAddAction` uninstallAction
-      ,hiddenCommand $
-       formatCommand          `commandAddAction` formatAction
       ,hiddenCommand $
        upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $

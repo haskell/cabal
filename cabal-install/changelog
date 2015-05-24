@@ -9,6 +9,7 @@
 	* 'cabal init' now warns if the chosen package name is already
 	registered in the source package index (#2436).
 	* New 'cabal install' option: '--offline' (#2578).
+	* 'cabal format` command now list in '--help' message. (#2460)
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
