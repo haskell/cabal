@@ -1,10 +1,15 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_HADDOCK hide #-}
 
-module Distribution.Compat.Environment (getEnvironment)
+module Distribution.Compat.Environment (getEnvironment, lookupEnv)
        where
 
 import qualified System.Environment as System
+#if __GLASGOW_HASKELL__ >= 706
+import System.Environment (lookupEnv)
+#else
+import Distribution.Compat.Exception (catchIO)
+#endif
 
 #ifdef mingw32_HOST_OS
 import qualified Data.Char as Char (toUpper)
@@ -22,3 +27,10 @@ getEnvironment = fmap upcaseVars System.getEnvironment
 #else
 getEnvironment = System.getEnvironment
 #endif
+
+#if __GLASGOW_HASKELL__ < 706
+-- | @lookupEnv var@ returns the value of the environment variable @var@, or
+-- @Nothing@ if there is no such value.
+lookupEnv :: String -> IO (Maybe String)
+lookupEnv name = (Just `fmap` System.getEnv name) `catchIO` const (return Nothing)
+#endif /* __GLASGOW_HASKELL__ < 706 */

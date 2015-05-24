@@ -29,19 +29,7 @@ import Foreign.C.Error (throwErrnoIfMinus1_)
 import System.Posix.Internals ( withFilePath )
 #endif /* mingw32_HOST_OS */
 
-#if MIN_VERSION_base(4,6,0)
-import System.Environment (lookupEnv)
-#else
-import System.Environment (getEnv)
-import Distribution.Compat.Exception (catchIO)
-#endif
-
-#if !MIN_VERSION_base(4,6,0)
--- | @lookupEnv var@ returns the value of the environment variable @var@, or
--- @Nothing@ if there is no such value.
-lookupEnv :: String -> IO (Maybe String)
-lookupEnv name = (Just `fmap` getEnv name) `catchIO` const (return Nothing)
-#endif /* !MIN_VERSION_base(4,6,0) */
+import Distribution.Compat.Environment (lookupEnv)
 
 -- | @setEnv name value@ sets the specified environment variable to @value@.
 --
