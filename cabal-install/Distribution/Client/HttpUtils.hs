@@ -157,7 +157,7 @@ downloadURI verbosity uri path = do
                         ++ " doesn't match actual length " ++ (show indexLength)
 
               info verbosity ("Downloaded to " ++ path)
-              writeFileAtomic path $ rspBody rsp
+              writeFileAtomic path index 
               return (FileDownloaded path)
             Nothing -> die $ "Failed to download " ++ show uri ++ " cannot verify index file length"
       (3,0,4) -> do
