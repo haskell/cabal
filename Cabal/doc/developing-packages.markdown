@@ -1334,20 +1334,21 @@ values for these fields.
     For backwards compatibility, the old variant `hs-source-dir` is also
     recognized.
 
-`extensions:` _identifier list_
-:   A list of Haskell extensions used by every module. Extension names
-    are the constructors of the [Extension][extension] type. These
-    determine corresponding compiler options. In particular, `CPP` specifies that
-    Haskell source files are to be preprocessed with a C preprocessor.
+`default-extensions:` _identifier list_
+:   A list of Haskell extensions used by every module. These determine
+    corresponding compiler options enabled for all files. Extension names are
+    the constructors of the [Extension][extension] type. For example, `CPP`
+    specifies that Haskell source files are to be preprocessed with a C
+    preprocessor.
 
-    Extensions used only by one module may be specified by placing a
-    `LANGUAGE` pragma in the source file affected, e.g.:
+`other-extensions:` _identifier list_
+:   A list of Haskell extensions used by some (but not necessarily all) modules.
+    From GHC version 6.6 onward, these may be specified by placing a `LANGUAGE`
+    pragma in the source files affected e.g.
 
     ~~~~~~~~~~~~~~~~
     {-# LANGUAGE CPP, MultiParamTypeClasses #-}
     ~~~~~~~~~~~~~~~~
-
-    Note:  GHC versions prior to 6.6 do not support the `LANGUAGE` pragma.
 
 `build-tools:` _program list_
 :   A list of programs, possibly annotated with versions, needed to
