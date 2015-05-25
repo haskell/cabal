@@ -9,10 +9,7 @@ module Distribution.Client.HttpUtils (
     proxy,
     isOldHackageURI
   ) where
-
-import Network.HTTP
-         ( Request (..), Response (..), RequestMethod (..)
-         , Header(..), HeaderName(..), lookupHeader )
+import Network.HTTP ( Request (..), Response (..), RequestMethod (..) , Header(..), HeaderName(..), lookupHeader ) 
 import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
 import Network.URI
          ( URI (..), URIAuth (..) )
@@ -37,6 +34,8 @@ import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
          ( display )
+import Distribution.Client.Utils
+         ( readMaybe )
 import Data.Char ( isSpace )
 import qualified System.FilePath.Posix as FilePath.Posix
          ( splitDirectories )
@@ -166,11 +165,6 @@ downloadURI verbosity uri path = do
       (_,_,_) -> return (FileDownloaded path)
       --TODO: stream the download into the file rather than buffering the whole
       --      thing in memory.
-  where
-    readMaybe :: Read a => String -> Maybe a
-    readMaybe s = case reads s of
-                   [(a,"")] -> Just a
-                   _        -> Nothing
 
 -- Utility function for legacy support.
 isOldHackageURI :: URI -> Bool

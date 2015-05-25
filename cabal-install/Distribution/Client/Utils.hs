@@ -10,7 +10,8 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , moreRecentFile, existsAndIsMoreRecentThan
                                  , tryFindAddSourcePackageDesc
                                  , tryFindPackageDesc
-                                 , relaxEncodingErrors)
+                                 , relaxEncodingErrors
+                                 , readMaybe)
        where
 
 import Distribution.Compat.Exception   ( catchIO )
@@ -86,6 +87,11 @@ duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
                _  -> False
     moreThanOne (_:_:_) = True
     moreThanOne _       = False
+
+readMaybe :: Read a => String -> Maybe a
+readMaybe s = case reads s of
+                [(a,"")] -> Just a
+                _        -> Nothing
 
 -- | Like 'removeFile', but does not throw an exception when the file does not
 -- exist.

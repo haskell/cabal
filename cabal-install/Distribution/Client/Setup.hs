@@ -55,6 +55,8 @@ import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
          ( UserConstraint, readUserConstraint )
+import Distribution.Client.Utils
+         ( readMaybe )
 import Distribution.Utils.NubList
          ( NubList, toNubList, fromNubList)
 
@@ -1721,9 +1723,6 @@ initCommand = CommandUI {
       , optionVerbosity IT.initVerbosity (\v flags -> flags { IT.initVerbosity = v })
       ]
   }
-  where readMaybe s = case reads s of
-                        [(x,"")]  -> Just x
-                        _         -> Nothing
 
 -- ------------------------------------------------------------
 -- * SDist flags
