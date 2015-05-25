@@ -146,19 +146,19 @@ downloadURI verbosity uri path = do
     Left err   -> die $ "Failed to download " ++ show uri ++ " : " ++ show err
     Right rsp -> case rspCode rsp of
       (2,0,0) -> do
-        let index = rspBody rsp
+        let body = rspBody rsp
         case lookupHeader HdrContentLength (rspHeaders rsp) >>= readMaybe of
             Just contentLength -> do
-              let indexLength = ByteString.length index
-              when (indexLength /= contentLength) $
+              let bodyLength = ByteString.length body
+              when (bodyLength /= contentLength) $
                   die $ "Failed to download " ++ show uri
                         ++ " : Expected content length "   ++ (show contentLength)
-                        ++ " doesn't match actual length " ++ (show indexLength)
+                        ++ " doesn't match actual length " ++ (show bodyLength)
 
               info verbosity ("Downloaded to " ++ path)
-              writeFileAtomic path index 
+              writeFileAtomic path body 
               return (FileDownloaded path)
-            Nothing -> die $ "Failed to download " ++ show uri ++ " cannot verify index file length"
+            Nothing -> die $ "Failed to download " ++ show uri ++ " cannot verify downloaded file length"
       (3,0,4) -> do
         notice verbosity "Skipping download: Local and remote files match."
         return FileAlreadyInCache
