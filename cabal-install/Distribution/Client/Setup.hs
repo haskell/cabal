@@ -1163,7 +1163,8 @@ data InstallFlags = InstallFlags {
     installSymlinkBinDir    :: Flag FilePath,
     installOneShot          :: Flag Bool,
     installNumJobs          :: Flag (Maybe Int),
-    installRunTests         :: Flag Bool
+    installRunTests         :: Flag Bool,
+    installOfflineMode      :: Flag Bool
   }
 
 defaultInstallFlags :: InstallFlags
@@ -1190,7 +1191,8 @@ defaultInstallFlags = InstallFlags {
     installSymlinkBinDir   = mempty,
     installOneShot         = Flag False,
     installNumJobs         = mempty,
-    installRunTests        = mempty
+    installRunTests        = mempty,
+    installOfflineMode     = Flag False
   }
   where
     docIndexFile = toPathTemplate ("$datadir" </> "doc"
@@ -1401,6 +1403,10 @@ installOptions showOrParseArgs =
       , optionNumJobs
         installNumJobs (\v flags -> flags { installNumJobs = v })
 
+      , option [] ["offline"]
+          "Don't download packages from the Internet."
+          installOfflineMode (\v flags -> flags { installOfflineMode = v })
+          (yesNoOpt showOrParseArgs)
       ] ++ case showOrParseArgs of      -- TODO: remove when "cabal install"
                                         -- avoids
           ParseArgs ->
@@ -1435,7 +1441,8 @@ instance Monoid InstallFlags where
     installSymlinkBinDir   = mempty,
     installOneShot         = mempty,
     installNumJobs         = mempty,
-    installRunTests        = mempty
+    installRunTests        = mempty,
+    installOfflineMode     = mempty
   }
   mappend a b = InstallFlags {
     installDocumentation   = combine installDocumentation,
@@ -1460,7 +1467,8 @@ instance Monoid InstallFlags where
     installSymlinkBinDir   = combine installSymlinkBinDir,
     installOneShot         = combine installOneShot,
     installNumJobs         = combine installNumJobs,
-    installRunTests        = combine installRunTests
+    installRunTests        = combine installRunTests,
+    installOfflineMode     = combine installOfflineMode
   }
     where combine field = field a `mappend` field b
 

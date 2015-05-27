@@ -10,6 +10,7 @@
 --
 -- Types for the top-down dependency resolver.
 -----------------------------------------------------------------------------
+{-# LANGUAGE CPP #-}
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
@@ -17,6 +18,7 @@ import Distribution.Client.Types
          , OptionalStanza, ConfiguredId(..) )
 import Distribution.Client.InstallPlan
          ( ConfiguredPackage(..), PlanPackage(..) )
+import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Package
          ( PackageIdentifier, Dependency
@@ -113,10 +115,10 @@ instance PackageSourceDeps InstalledPackageEx where
   sourceDeps (InstalledPackageEx _ _ deps) = deps
 
 instance PackageSourceDeps ConfiguredPackage where
-  sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId deps
+  sourceDeps (ConfiguredPackage _ _ _ deps) = map confSrcId $ CD.nonSetupDeps deps
 
 instance PackageSourceDeps ReadyPackage where
-  sourceDeps (ReadyPackage _ _ _ deps) = map packageId deps
+  sourceDeps (ReadyPackage _ _ _ deps) = map packageId $ CD.nonSetupDeps deps
 
 instance PackageSourceDeps InstalledPackage where
   sourceDeps (InstalledPackage _ deps) = deps

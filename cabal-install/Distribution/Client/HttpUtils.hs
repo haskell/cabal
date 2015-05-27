@@ -16,10 +16,11 @@ import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
 import Network.URI
          ( URI (..), URIAuth (..) )
 import Network.Browser
-         ( browse, setOutHandler, setErrHandler, setProxy
-         , setAuthorityGen, request, setAllowBasicAuth)
+         ( browse, setAllowBasicAuth, setAuthorityGen
+         , setOutHandler, setErrHandler, setProxy, request)
 import Control.Applicative
-import qualified Control.Exception as Exception
+import Control.Exception
+         ( handleJust, bracket )
 import Control.Monad
          ( when, guard, foldM )
 import qualified Data.ByteString.Lazy.Char8 as ByteString
@@ -295,7 +296,7 @@ plainHttpTransport verbosity = HttpTransport gethttp posthttp puthttpfile
 
         cabalBrowse act = do
           p <- proxy verbosity
-          Exception.handleJust
+          handleJust
                 (guard . isDoesNotExistError)
                 (const . die $ "Couldn't establish HTTP connection. "
                  ++ "Possible cause: HTTP proxy server is down.") $
@@ -307,7 +308,7 @@ plainHttpTransport verbosity = HttpTransport gethttp posthttp puthttpfile
 
 downloadURI :: HttpTransport
             -> Verbosity
-            -> URI      -- ^ What to download
+            -> URI
             -> FilePath -- ^ Where to put it
             -> IO DownloadResult
 downloadURI _transport verbosity uri path | uriScheme uri == "file:" = do
@@ -357,7 +358,7 @@ withTempFileName :: FilePath
              -> String
              -> (FilePath -> IO a) -> IO a
 withTempFileName tmpDir template action =
-  Exception.bracket
+  bracket
     (openTempFile tmpDir template)
     (\(name, _) -> (`when` removeFile name) =<< doesFileExist name)
     (\(name, h) -> hClose h >> action name)

@@ -316,12 +316,13 @@ readPackageIndexFile mkPkg indexFile = do
 --
 parsePackageIndex :: ByteString
                   -> Either String ([MkPackageEntry], [Dependency])
-parsePackageIndex = accum 0 [] [] . Tar.read
+parsePackageIndex = accum 0 [] Map.empty . Tar.read
   where
     accum blockNo pkgs prefs es = case es of
       Tar.Fail err   -> Left  err
-      Tar.Done       -> Right (reverse pkgs, reverse prefs)
-      Tar.Next e es' -> accum blockNo' pkgs' prefs' es'
+      Tar.Done       -> Right (reverse pkgs, concat (Map.elems prefs))
+      Tar.Next e es' -> blockNo' `seq` prefs' `seq`
+                        accum blockNo' pkgs' prefs' es'
         where
           (pkgs', prefs') = extract blockNo pkgs prefs e
           blockNo'        = blockNo + Tar.entrySizeInBlocks e
@@ -336,8 +337,8 @@ parsePackageIndex = accum 0 [] [] . Tar.read
           return (mkPkgEntry:pkgs, prefs)
 
         tryExtractPrefs = do
-          prefs' <- extractPrefs entry
-          return (pkgs, prefs'++prefs)
+          (loc,prefs') <- extractPrefs entry
+          return (pkgs, Map.insert loc prefs' prefs)
 
 extractPkg :: Tar.Entry -> BlockNo -> Maybe MkPackageEntry
 extractPkg entry blockNo = case Tar.entryContent entry of
@@ -372,12 +373,14 @@ extractPkg entry blockNo = case Tar.entryContent entry of
   where
     fileName = Tar.entryPath entry
 
-extractPrefs :: Tar.Entry -> Maybe [Dependency]
+extractPrefs :: Tar.Entry -> Maybe (FilePath, [Dependency])
 extractPrefs entry = case Tar.entryContent entry of
   Tar.NormalFile content _
-     | takeFileName (Tar.entryPath entry) == "preferred-versions"
-    -> Just . parsePreferredVersions
-     . BS.Char8.unpack $ content
+     | takeFileName entrypath == "preferred-versions"
+    -> Just (entrypath, prefs)
+    where
+      entrypath = Tar.entryPath entry
+      prefs     = parsePreferredVersions (BS.Char8.unpack content)
   _ -> Nothing
 
 parsePreferredVersions :: String -> [Dependency]

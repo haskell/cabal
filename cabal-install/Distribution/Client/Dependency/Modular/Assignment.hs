@@ -6,11 +6,13 @@ import Data.Array as A
 import Data.List as L
 import Data.Map as M
 import Data.Maybe
-import Data.Graph
 import Prelude hiding (pi)
 
 import Distribution.PackageDescription (FlagAssignment) -- from Cabal
 import Distribution.Client.Types (OptionalStanza)
+import Distribution.Client.Utils.LabeledGraph
+import Distribution.Client.ComponentDeps (ComponentDeps, Component)
+import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Dependency
@@ -77,13 +79,13 @@ toCPs :: Assignment -> RevDepMap -> [CP QPN]
 toCPs (A pa fa sa) rdm =
   let
     -- get hold of the graph
-    g   :: Graph
-    vm  :: Vertex -> ((), QPN, [QPN])
+    g   :: Graph Component
+    vm  :: Vertex -> ((), QPN, [(Component, QPN)])
     cvm :: QPN -> Maybe Vertex
     -- Note that the RevDepMap contains duplicate dependencies. Therefore the nub.
     (g, vm, cvm) = graphFromEdges (L.map (\ (x, xs) -> ((), x, nub xs))
                                   (M.toList rdm))
-    tg :: Graph
+    tg :: Graph Component
     tg = transposeG g
     -- Topsort the dependency graph, yielding a list of pkgs in the right order.
     -- The graph will still contain all the installed packages, and it might
@@ -106,17 +108,20 @@ toCPs (A pa fa sa) rdm =
            M.toList $
            sa
     -- Dependencies per package.
-    depp :: QPN -> [PI QPN]
+    depp :: QPN -> [(Component, PI QPN)]
     depp qpn = let v :: Vertex
                    v   = fromJust (cvm qpn)
-                   dvs :: [Vertex]
+                   dvs :: [(Component, Vertex)]
                    dvs = tg A.! v
-               in L.map (\ dv -> case vm dv of (_, x, _) -> PI x (pa M.! x)) dvs
+               in L.map (\ (comp, dv) -> case vm dv of (_, x, _) -> (comp, PI x (pa M.! x))) dvs
+    -- Translated to PackageDeps
+    depp' :: QPN -> ComponentDeps [PI QPN]
+    depp' = CD.fromList . L.map (\(comp, d) -> (comp, [d])) . depp
   in
     L.map (\ pi@(PI qpn _) -> CP pi
                                  (M.findWithDefault [] qpn fapp)
                                  (M.findWithDefault [] qpn sapp)
-                                 (depp qpn))
+                                 (depp' qpn))
           ps
 
 -- | Finalize an assignment and a reverse dependency map.
@@ -126,8 +131,8 @@ finalize :: Index -> Assignment -> RevDepMap -> IO ()
 finalize idx (A pa fa _) rdm =
   let
     -- get hold of the graph
-    g  :: Graph
-    vm :: Vertex -> ((), QPN, [QPN])
+    g  :: Graph Component
+    vm :: Vertex -> ((), QPN, [(Component, QPN)])
     (g, vm) = graphFromEdges' (L.map (\ (x, xs) -> ((), x, xs)) (M.toList rdm))
     -- topsort the dependency graph, yielding a list of pkgs in the right order
     f :: [PI QPN]

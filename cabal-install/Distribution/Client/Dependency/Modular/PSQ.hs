@@ -57,7 +57,7 @@ casePSQ (PSQ xs) n c =
     (k, v) : ys -> c k v (PSQ ys)
 
 splits :: PSQ k a -> PSQ k (a, PSQ k a)
-splits = go id 
+splits = go id
   where
     go f xs = casePSQ xs
         (PSQ [])
@@ -92,3 +92,6 @@ null (PSQ xs) = S.null xs
 
 toList :: PSQ k a -> [(k, a)]
 toList (PSQ xs) = xs
+
+union :: PSQ k a -> PSQ k a -> PSQ k a
+union (PSQ xs) (PSQ ys) = PSQ (xs ++ ys)

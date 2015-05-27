@@ -486,6 +486,7 @@ ppC2hs bi lbi =
           -- Options from the current package:
            [ "--cpp=" ++ programPath gccProg, "--cppopts=-E" ]
         ++ [ "--cppopts=" ++ opt | opt <- getCppOptions bi lbi ]
+        ++ [ "--cppopts=-include" ++ (autogenModulesDir lbi </> cppHeaderName) ]
         ++ [ "--include=" ++ outBaseDir ]
 
           -- Options from dependent packages

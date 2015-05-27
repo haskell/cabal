@@ -27,6 +27,9 @@ import Distribution.PackageDescription.Configuration
          ( mapTreeData )
 import Distribution.Client.PackageIndex
          ( PackageIndex, PackageFixedDeps(..) )
+import Distribution.Client.ComponentDeps
+         ( ComponentDeps )
+import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Version
          ( VersionRange )
 import Distribution.Simple.Compiler
@@ -91,7 +94,8 @@ data ConfiguredPackage = ConfiguredPackage
        SourcePackage       -- package info, including repo
        FlagAssignment      -- complete flag assignment for the package
        [OptionalStanza]    -- list of enabled optional stanzas for the package
-       [ConfiguredId]      -- set of exact dependencies (installed or source).
+       (ComponentDeps [ConfiguredId])
+                           -- set of exact dependencies (installed or source).
                            -- These must be consistent with the 'buildDepends'
                            -- in the 'PackageDescription' that you'd get by
                            -- applying the flag assignment and optional stanzas.
@@ -121,7 +125,7 @@ instance Package ConfiguredPackage where
   packageId (ConfiguredPackage pkg _ _ _) = packageId pkg
 
 instance PackageFixedDeps ConfiguredPackage where
-  depends (ConfiguredPackage _ _ _ deps) = map confInstId deps
+  depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
 
 instance HasInstalledPackageId ConfiguredPackage where
   installedPackageId = fakeInstalledPackageId . packageId
@@ -129,17 +133,17 @@ instance HasInstalledPackageId ConfiguredPackage where
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
 data ReadyPackage = ReadyPackage
-       SourcePackage           -- see 'ConfiguredPackage'.
-       FlagAssignment          --
-       [OptionalStanza]        --
-       [InstalledPackageInfo]  -- Installed dependencies.
+       SourcePackage                           -- see 'ConfiguredPackage'.
+       FlagAssignment                          --
+       [OptionalStanza]                        --
+       (ComponentDeps [InstalledPackageInfo])  -- Installed dependencies.
   deriving Show
 
 instance Package ReadyPackage where
   packageId (ReadyPackage pkg _ _ _) = packageId pkg
 
 instance PackageFixedDeps ReadyPackage where
-  depends (ReadyPackage _ _ _ deps) = map installedPackageId deps
+  depends (ReadyPackage _ _ _ deps) = fmap (map installedPackageId) deps
 
 instance HasInstalledPackageId ReadyPackage where
   installedPackageId = fakeInstalledPackageId . packageId
@@ -150,7 +154,7 @@ instance HasInstalledPackageId ReadyPackage where
 readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
 readyPackageKey comp (ReadyPackage pkg _ _ deps) =
     mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map Info.packageKey deps) []
+                 (map Info.packageKey (CD.nonSetupDeps deps)) []
 
 
 -- | Sometimes we need to convert a 'ReadyPackage' back to a
@@ -158,7 +162,7 @@ readyPackageKey comp (ReadyPackage pkg _ _ deps) =
 -- Ready or Configured.
 readyPackageToConfiguredPackage :: ReadyPackage -> ConfiguredPackage
 readyPackageToConfiguredPackage (ReadyPackage srcpkg flags stanzas deps) =
-    ConfiguredPackage srcpkg flags stanzas (map aux deps)
+    ConfiguredPackage srcpkg flags stanzas (fmap (map aux) deps)
   where
     aux :: InstalledPackageInfo -> ConfiguredId
     aux info = ConfiguredId {

@@ -80,7 +80,7 @@ explore = cata go
     go (PChoiceF qpn _     ts) (A pa fa sa)   =
       asum $                                      -- try children in order,
       P.mapWithKey                                -- when descending ...
-        (\ k r -> r (A (M.insert qpn k pa) fa sa)) -- record the pkg choice
+        (\ (POption k _) r -> r (A (M.insert qpn k pa) fa sa)) -- record the pkg choice
       ts
     go (FChoiceF qfn _ _ _ ts) (A pa fa sa)   =
       asum $                                      -- try children in order,
@@ -107,7 +107,7 @@ exploreLog = cata go
       backjumpInfo c $
       asum $                                      -- try children in order,
       P.mapWithKey                                -- when descending ...
-        (\ k r -> tryWith (TryP (PI qpn k)) $     -- log and ...
+        (\ i@(POption k _) r -> tryWith (TryP qpn i) $     -- log and ...
                     r (A (M.insert qpn k pa) fa sa)) -- record the pkg choice
       ts
     go (FChoiceF qfn c _ _ ts) (A pa fa sa)   =
