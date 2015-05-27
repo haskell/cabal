@@ -260,7 +260,7 @@ globalCommand commands = CommandUI {
     commandNotes = Nothing,
     commandDefaultFlags = mempty,
     commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 6; ParseArgs -> id)
+      (case showOrParseArgs of ShowArgs -> take 7; ParseArgs -> id)
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -291,6 +291,11 @@ globalCommand commands = CommandUI {
          globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
          trueArg
 
+      ,option [] ["http-transport"]
+         "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'insecure-http'. (default: 'curl')"
+         globalConfigFile (\v flags -> flags { globalHttpTransport = v })
+         (reqArgFlag "HttpTransport")
+
       ,option [] ["remote-repo"]
          "The name and url for a remote repository"
          globalRemoteRepos (\v flags -> flags { globalRemoteRepos = v })
@@ -315,11 +320,6 @@ globalCommand commands = CommandUI {
          "The location of the world file"
          globalWorldFile (\v flags -> flags { globalWorldFile = v })
          (reqArgFlag "FILE")
-
-      ,option [] ["http-transport"]
-         "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'insecure-http'. (default: 'curl')"
-         globalConfigFile (\v flags -> flags { globalHttpTransport = v })
-         (reqArgFlag "HttpTransport")
       ]
   }
 

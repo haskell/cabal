@@ -56,6 +56,7 @@ import Distribution.Simple.Program.Run
         ( IOEncoding(..), getEffectiveEnvironment )
 import Text.Read (readMaybe)
 import Numeric (showHex)
+import System.Directory (canonicalizePath)
 import System.IO (hClose, openTempFile, hPutStr)
 import System.FilePath (takeFileName, takeDirectory)
 import System.Random (randomRIO)
@@ -95,12 +96,12 @@ data HttpTransport = HttpTransport {
     }
 
 uriToSecure :: URI -> URI
-uriToSecure x | uriScheme x == "http:" = x {uriScheme = "https:"}
+uriToSecure x -- | uriScheme x == "http:" = x {uriScheme = "https:"}
               | otherwise = x
 
 setupTransportDb :: Verbosity -> IO ProgramDb
 setupTransportDb verbosity = foldM (flip (configureProgram verbosity)) defaultProgramConfiguration progs
-    where progs = map simpleProgram ["curl","wget","powershell"] --TODO add bitsadmin?
+    where progs = map simpleProgram ["curl","wget","powershell"]
 
 configureTransport :: Verbosity -> Maybe String -> IO HttpTransport
 configureTransport verbosity prefTransport = do
@@ -161,12 +162,16 @@ wgetTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
 
     posthttp = noPostYet
 
-    puthttpfile uri' path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
+    puthttpfile _uri _path _auth = die $ "Https upload with wget is not yet supported. Either ensure curl is in your path or fallback to http by running with --http-transport=insecure-http."
+
+    -- TODO this doesn't do proper multipart with wget, which is not easy. It should be fixed.
+    puthttpfileBroken uri' path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
       boundary <- genBoundary
       body <- generateMultipartBody (ByteString.pack boundary) path
       ByteString.hPut tmpHandle body
+      hClose tmpHandle
       let args = ["-S",show uri,"--user-agent="++userAgent,"--post-file="++tmpFile]
-                 ++ ["--header=\"++Content-type: multipart/form-data boundary="++boundary++"\""]
+                 ++ ["--header=\"Content-type: multipart/form-data boundary="++boundary++"\""]
                  ++ maybe [] (\(u,p) -> ["--http-user="++u,"--http-password="++p]) auth
 
           parseResponse x =
@@ -197,7 +202,7 @@ powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
         script = unlines . map (++";") $
                  ["$wc = new-object system.net.webclient",
                   "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"]
-                 ++ maybe [] (\t -> ["$wc.Headers.Add(\"If-None-Match " ++ t ++ ")"]) etag
+                 ++ maybe [] (\t -> ["$wc.Headers.Add(\"If-None-Match\"," ++ t ++ ")"]) etag
                  ++ proxySettings
                  ++ ["Try {",
                      "$wc.DownloadFile("++ escape (show uri) ++ "," ++ escape destPath ++ ")",
@@ -214,11 +219,17 @@ powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
 
     posthttp = noPostYet
 
-    puthttpfile uri' path auth = do
+
+    puthttpfile uri' path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
+      boundary <- genBoundary
+      body <- generateMultipartBody (ByteString.pack boundary) path
+      ByteString.hPut tmpHandle body
+      hClose tmpHandle
+      fullPath <- canonicalizePath tmpFile
       proxyInfo <- proxy verbosity
       let
         uri = uriToSecure uri'
-        escape x = '"' : x ++ "\"" --TODO write/find real escape.
+        escape x = show x
         proxySettings = [] --TODO extract real settings from proxyInfo
 
         parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
@@ -227,13 +238,18 @@ powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
 
         script = unlines . map (++";") $
                  ["$wc = new-object system.net.webclient",
-                  "$wc.Headers.Add(\"user-agent\","++escape userAgent++")"]
+                  "$wc.Headers.Add(\"user-agent\","++escape userAgent++")",
+                  "$wc.Headers.Add(\"Content-type\","++"\"multipart/form-data; boundary="++boundary++"\")"]
+                 ++ authSettings
                  ++ proxySettings
                  ++ ["Try {",
-                     "$wc.UploadFile("++ escape (show uri) ++ "," ++ escape path ++ ")",
+                     "$bytes = [System.IO.File]::ReadAllBytes("++escape fullPath++")",
+                     "$wc.UploadData("++ escape (show uri) ++ ",$bytes)",
                      "} Catch {Write-Error $_; Exit(1);}",
                      "Write-Host \"200\"",
                      "Exit"]
+        authSettings = case auth of Just (u,p) -> ["$wc.Credentials = new-object System.Net.NetworkCredential("++escape u ++ "," ++ escape p ++ ",\"\")"]; Nothing -> []
+
       withTempFile (takeDirectory path) "psScript.ps1" $ \tmpFile tmpHandle -> do
          hPutStr tmpHandle script
          hClose tmpHandle
