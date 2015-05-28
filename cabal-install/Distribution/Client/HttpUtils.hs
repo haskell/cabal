@@ -97,7 +97,7 @@ data HttpTransport = HttpTransport {
     }
 
 uriToSecure :: URI -> URI
-uriToSecure x -- | uriScheme x == "http:" = x {uriScheme = "https:"}
+uriToSecure x | uriScheme x == "http:" = x {uriScheme = "https:"}
               | otherwise = x
 
 setupTransportDb :: Verbosity -> IO ProgramDb
@@ -166,7 +166,7 @@ wgetTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
     puthttpfile _uri _path _auth = die $ "Https upload with wget is not yet supported. Either ensure curl is in your path or fallback to http by running with --http-transport=insecure-http."
 
     -- TODO this doesn't do proper multipart with wget, which is not easy. It should be fixed.
-    puthttpfileBroken uri' path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
+    _puthttpfileBroken uri' path auth = withTempFile (takeDirectory path) (takeFileName path) $ \tmpFile tmpHandle -> do
       boundary <- genBoundary
       body <- generateMultipartBody (ByteString.pack boundary) path
       ByteString.hPut tmpHandle body
@@ -190,7 +190,7 @@ powershellTransport :: Verbosity -> ConfiguredProgram -> HttpTransport
 powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
   where
     gethttp uri' etag destPath = do
-      proxyInfo <- proxy verbosity
+      _proxyInfo <- proxy verbosity
       let
         uri = uriToSecure uri'
         escape x = '"' : x ++ "\"" --TODO write/find real escape.
@@ -227,7 +227,7 @@ powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
       ByteString.hPut tmpHandle body
       hClose tmpHandle
       fullPath <- canonicalizePath tmpFile
-      proxyInfo <- proxy verbosity
+      _proxyInfo <- proxy verbosity
       let
         uri = uriToSecure uri'
         escape x = show x
@@ -251,10 +251,10 @@ powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
                      "Exit"]
         authSettings = case auth of Just (u,p) -> ["$wc.Credentials = new-object System.Net.NetworkCredential("++escape u ++ "," ++ escape p ++ ",\"\")"]; Nothing -> []
 
-      withTempFile (takeDirectory path) "psScript.ps1" $ \tmpFile tmpHandle -> do
-         hPutStr tmpHandle script
-         hClose tmpHandle
-         foo <- getProgramInvocationOutputAndErrors verbosity (programInvocation prog ["-InputFormat","None","-File",tmpFile])
+      withTempFile (takeDirectory path) "psScript.ps1" $ \tmpScriptFile tmpScriptHandle -> do
+         hPutStr tmpScriptHandle script
+         hClose tmpScriptHandle
+         foo <- getProgramInvocationOutputAndErrors verbosity (programInvocation prog ["-InputFormat","None","-File",tmpScriptFile])
          putStrLn $ show foo
          parseResponse (fst foo)
 
