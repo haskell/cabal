@@ -55,13 +55,18 @@ import Distribution.Simple.Program.Db
          ( ProgramDb, configureProgram, lookupProgram )
 import Distribution.Simple.Program.Run
         ( IOEncoding(..), getEffectiveEnvironment )
-import Text.Read (readMaybe)
 import Numeric (showHex)
 import System.Directory (canonicalizePath)
 import System.IO (hClose, openTempFile, hPutStr)
 import System.FilePath (takeFileName, takeDirectory)
 import System.Random (randomRIO)
 import System.Exit (ExitCode(..))
+
+readMay :: Read a => String -> Maybe a
+readMay s = case [x | (x,t) <- reads s, ("","") <- lex t] of
+                [x] -> Just x
+                _ -> Nothing
+
 
 data DownloadResult = FileAlreadyInCache | FileDownloaded FilePath deriving (Eq)
 
@@ -131,7 +136,7 @@ curlTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
     gethttp uri' etag destPath = parseResponse =<< getProgramInvocationOutput verbosity (programInvocation prog args)
       where args = [show uri,"-o",destPath,"-L","--write-out","%{http_code}","-A",userAgent,"-s","-S"]
                    ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag
-            parseResponse x = case readMaybe $ trim x of
+            parseResponse x = case readMay $ trim x of
               Just i -> return (i, Nothing) -- TODO extract real etag
               Nothing -> statusParseFail uri x
             uri = uriToSecure uri'
@@ -142,7 +147,7 @@ curlTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
       where
         args = [show uri,"-F","package=@"++path,"--write-out","%{http_code}","-A",userAgent]
                ++ maybe [] (\(u,p) -> ["--digest","-u",u++":"++p]) auth
-        parseResponse x = case readMaybe . trim =<< listToMaybe . take 1 . reverse . lines =<< return x of
+        parseResponse x = case readMay . trim =<< listToMaybe . take 1 . reverse . lines =<< return x of
           Just i -> return (i,x) -- TODO extract error?
           Nothing -> statusParseFail uri x
         uri = uriToSecure uri'
@@ -156,7 +161,7 @@ wgetTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
                ++ maybe [] (\t -> ["--header","If-None-Match: " ++ t]) etag
         parseResponse x =
           let resp = reverse . takeUntil ("HTTP/" `isPrefixOf`) . reverse . map (dropWhile isSpace) . lines $ x
-          in case readMaybe =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
+          in case readMay =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
             Just i -> return (i, Nothing) --TODO etags
             Nothing -> statusParseFail uri x
         uri = uriToSecure uri'
@@ -177,7 +182,7 @@ wgetTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
 
           parseResponse x =
             let resp = reverse . takeUntil ("HTTP/" `isPrefixOf`) . reverse . map (dropWhile isSpace) . lines $ x
-            in case readMaybe =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
+            in case readMay =<< listToMaybe . drop 1 . words =<< listToMaybe resp of
               Just i -> return (i, x)
               Nothing -> statusParseFail uri x
           uri = uriToSecure uri'
@@ -196,7 +201,7 @@ powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
         escape x = '"' : x ++ "\"" --TODO write/find real escape.
         proxySettings = [] --TODO extract real settings from proxyInfo
 
-        parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
+        parseResponse x = case readMay . unlines . take 1 . lines $ trim x of
           Just i -> return (i, Nothing) -- TODO extract real etag
           Nothing -> statusParseFail uri x
 
@@ -233,7 +238,7 @@ powershellTransport verbosity prog = HttpTransport gethttp posthttp puthttpfile
         escape x = show x
         proxySettings = [] --TODO extract real settings from proxyInfo
 
-        parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
+        parseResponse x = case readMay . unlines . take 1 . lines $ trim x of
           Just i -> return (i, x) -- TODO extract real etag
           Nothing -> statusParseFail uri x
 

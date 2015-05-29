@@ -15,7 +15,7 @@ import Network.HTTP
          , Request(..), RequestMethod(..), Response(..) )
 import Network.TCP (HandleStream)
 -}
-import Network.URI (URI, uriPath, parseRelativeReference, relativeTo)
+import Network.URI (URI, uriPath) --parseRelativeReference, relativeTo)
 
 import Control.Monad
          ( forM_ )
