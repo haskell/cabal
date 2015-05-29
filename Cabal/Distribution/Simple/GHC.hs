@@ -273,11 +273,11 @@ getPackageDBContents verbosity packagedb conf = do
   toPackageIndex verbosity pkgss conf
 
 -- | Given a package DB stack, return all installed packages.
-getInstalledPackages :: Verbosity -> PackageDBStack -> ProgramConfiguration
+getInstalledPackages :: Verbosity -> Compiler -> PackageDBStack -> ProgramConfiguration
                      -> IO InstalledPackageIndex
-getInstalledPackages verbosity packagedbs conf = do
+getInstalledPackages verbosity comp packagedbs conf = do
   checkPackageDbEnvVar
-  checkPackageDbStack packagedbs
+  checkPackageDbStack comp packagedbs
   pkgss <- getInstalledPackages' verbosity packagedbs conf
   index <- toPackageIndex verbosity pkgss conf
   return $! hackRtsPackage index
@@ -331,15 +331,31 @@ checkPackageDbEnvVar :: IO ()
 checkPackageDbEnvVar =
     Internal.checkPackageDbEnvVar "GHC" "GHC_PACKAGE_PATH"
 
-checkPackageDbStack :: PackageDBStack -> IO ()
-checkPackageDbStack (GlobalPackageDB:rest)
+checkPackageDbStack :: Compiler -> PackageDBStack -> IO ()
+checkPackageDbStack comp =
+  let ghcVersion = compilerVersion comp
+  in if ghcVersion < Version [7,6] []
+        then checkPackageDbStackPre76
+        else checkPackageDbStackPost76
+
+checkPackageDbStackPost76 :: PackageDBStack -> IO ()
+checkPackageDbStackPost76 (GlobalPackageDB:rest)
   | GlobalPackageDB `notElem` rest = return ()
-checkPackageDbStack rest
+checkPackageDbStackPost76 rest
+  | GlobalPackageDB `elem` rest =
+  die $ "If the global package db is specified, it must be "
+     ++ "specified first and cannot be specified multiple times"
+checkPackageDbStackPost76 _ = return ()
+
+checkPackageDbStackPre76 :: PackageDBStack -> IO ()
+checkPackageDbStackPre76 (GlobalPackageDB:rest)
+  | GlobalPackageDB `notElem` rest = return ()
+checkPackageDbStackPre76 rest
   | GlobalPackageDB `notElem` rest =
   die $ "With current ghc versions the global package db is always used "
-     ++ "and must be listed first. This ghc limitation may be lifted in "
-     ++ "future, see http://hackage.haskell.org/trac/ghc/ticket/5977"
-checkPackageDbStack _ =
+     ++ "and must be listed first. This ghc limitation is lifted in GHC 7.6,"
+     ++ "see http://hackage.haskell.org/trac/ghc/ticket/5977"
+checkPackageDbStackPre76 _ =
   die $ "If the global package db is specified, it must be "
      ++ "specified first and cannot be specified multiple times"
 
@@ -690,7 +706,7 @@ startInterpreter verbosity conf comp packageDBs = do
         ghcOptMode       = toFlag GhcModeInteractive,
         ghcOptPackageDBs = packageDBs
         }
-  checkPackageDbStack packageDBs
+  checkPackageDbStack comp packageDBs
   (ghcProg, _) <- requireProgram verbosity ghcProgram conf
   runGHC verbosity ghcProg comp replOpts
 
