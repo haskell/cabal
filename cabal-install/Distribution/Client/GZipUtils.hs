@@ -19,7 +19,7 @@ module Distribution.Client.GZipUtils (
 
 import Data.Monoid ((<>))
 import Control.Monad.ST.Lazy (ST)
-import Data.ByteString.Lazy as BS (ByteString, take, unpack, fromStrict)
+import Data.ByteString.Lazy as BS (ByteString, take, unpack, fromChunks)
 import qualified Data.ByteString as SBS (ByteString)
 import qualified Codec.Compression.GZip as GZip
 import Codec.Compression.Zlib.Internal
@@ -46,7 +46,8 @@ maybeDecompress bytes | verifyGzipMagicHeader bytes = GZip.decompress bytes
 maybeDecompress bytes = fromMaybe bytes $ foldDecompressStreamWithInput outputAv inputReq err s bytes
   where
     outputAv :: SBS.ByteString -> Maybe ByteString -> Maybe ByteString
-    outputAv outchunk = fmap (<> fromStrict outchunk)
+    outputAv outchunk = fmap (<> fromChunks [outchunk])
+      -- (7.4.2 and down do not support 'fromStrict'.)
 
     inputReq :: ByteString -> Maybe ByteString
     inputReq = Just
@@ -56,4 +57,3 @@ maybeDecompress bytes = fromMaybe bytes $ foldDecompressStreamWithInput outputAv
 
     s :: forall s . DecompressStream (ST s)
     s = decompressST gzipOrZlibFormat defaultDecompressParams
-
