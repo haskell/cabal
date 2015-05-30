@@ -823,8 +823,14 @@ benchmarkAction (benchmarkFlags, buildFlags, buildExFlags)
 
 haddockAction :: HaddockFlags -> [String] -> GlobalFlags -> IO ()
 haddockAction haddockFlags extraArgs globalFlags = do
-  let verbosity = fromFlag (haddockVerbosity haddockFlags)
-  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
+  let verbosity   = fromFlag (haddockVerbosity haddockFlags)
+      distPref    = fromFlagOrDefault (useDistPref defaultSetupScriptOptions)
+                    (haddockDistPref haddockFlags)
+
+  (_useSandbox, config) <- reconfigure verbosity distPref mempty []
+                          globalFlags DontSkipAddSourceDepsCheck NoFlag
+                          (const Nothing)
+  --(_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let haddockFlags' = defaultHaddockFlags      `mappend`
                       savedHaddockFlags config `mappend` haddockFlags
       setupScriptOptions = defaultSetupScriptOptions {
