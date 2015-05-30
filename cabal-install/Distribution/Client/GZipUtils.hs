@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.GZipUtils
@@ -15,30 +17,43 @@ module Distribution.Client.GZipUtils (
     maybeDecompress,
   ) where
 
-import qualified Data.ByteString.Lazy.Internal as BS (ByteString(..))
-import Data.ByteString.Lazy (ByteString)
-import Codec.Compression.GZip
+import Data.Monoid ((<>))
+import Control.Monad.ST.Lazy (ST)
+import Data.ByteString.Lazy as BS (ByteString, take, unpack, fromStrict)
+import qualified Data.ByteString as SBS (ByteString)
+import qualified Codec.Compression.GZip as GZip
 import Codec.Compression.Zlib.Internal
+import Data.Maybe (fromMaybe)
 
--- | Attempts to decompress the `bytes' under the assumption that
--- "data format" error at the very beginning of the stream means
--- that it is already decompressed. Caller should make sanity checks
--- to verify that it is not, in fact, garbage.
+-- | Does the argument start with @0x1f8b@?  See
+-- <http://tools.ietf.org/html/rfc1952#page-5>.
+verifyGzipMagicHeader :: ByteString -> Bool
+verifyGzipMagicHeader = (== [31, 139]) . BS.unpack . BS.take 2
+
+-- | If first two bytes of input contain magic gzip marker, decompress as gzip.
+-- If they don't, attempt to decompress as zlib.  If that fails, return input
+-- bytestring.  It is the callers responsibility to verify that it is not, in
+-- fact, garbage.
 --
 -- This is to deal with http proxies that lie to us and transparently
 -- decompress without removing the content-encoding header. See:
--- <https://github.com/haskell/cabal/issues/678>
+-- <https://github.com/haskell/cabal/issues/678>.  (Zlib does not provide a
+-- magic marker that we can check for, so the only safe way to determine
+-- whether the string is zlib-compressed is to try decompress it.)
 --
 maybeDecompress :: ByteString -> ByteString
-maybeDecompress bytes = foldStream $ decompressWithErrors gzipOrZlibFormat defaultDecompressParams bytes
+maybeDecompress bytes | verifyGzipMagicHeader bytes = GZip.decompress bytes
+maybeDecompress bytes = fromMaybe bytes $ foldDecompressStreamWithInput outputAv inputReq err s bytes
   where
-    -- DataError at the beginning of the stream probably means that stream is not compressed.
-    -- Returning it as-is.
-    -- TODO: alternatively, we might consider looking for the two magic bytes
-    -- at the beginning of the gzip header.
-    foldStream (StreamError DataError _) = bytes
-    foldStream somethingElse = doFold somethingElse
+    outputAv :: SBS.ByteString -> Maybe ByteString -> Maybe ByteString
+    outputAv outchunk = fmap (<> fromStrict outchunk)
 
-    doFold StreamEnd               = BS.Empty
-    doFold (StreamChunk bs stream) = BS.Chunk bs (doFold stream)
-    doFold (StreamError _ msg)  = error $ "Codec.Compression.Zlib: " ++ msg
+    inputReq :: ByteString -> Maybe ByteString
+    inputReq = Just
+
+    err :: DecompressError -> Maybe ByteString
+    err _ = Nothing
+
+    s :: forall s . DecompressStream (ST s)
+    s = decompressST gzipOrZlibFormat defaultDecompressParams
+
