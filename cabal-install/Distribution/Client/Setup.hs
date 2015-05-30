@@ -43,6 +43,7 @@ module Distribution.Client.Setup
     --TODO: stop exporting these:
     , showRepo
     , parseRepo
+    , readRepo
     ) where
 
 import Distribution.Client.Types
@@ -2148,8 +2149,9 @@ parseRepo = do
   uriStr <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
   uri <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
   return $ RemoteRepo {
-    remoteRepoName = name,
-    remoteRepoURI  = uri
+    remoteRepoName     = name,
+    remoteRepoURI      = uri,
+    remoteRepoRootKeys = ()
   }
 
 -- ------------------------------------------------------------
