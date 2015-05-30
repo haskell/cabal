@@ -113,6 +113,10 @@ module Distribution.Simple.Utils (
         writeUTF8File,
         normaliseLineEndings,
 
+        -- * BOM
+        startsWithBOM,
+        fileHasBOM,
+
         -- * generic utils
         dropWhileEndLE,
         takeWhileEndLE,
@@ -1237,6 +1241,16 @@ toUTF8 (c:cs)
                  : chr (0x80 .|.  (w .&. 0x3F))
                  : toUTF8 cs
   where w = ord c
+
+-- | Whether BOM is at the beginning of the input
+startsWithBOM :: String -> Bool
+startsWithBOM ('\xFEFF':_) = True
+startsWithBOM _            = False
+
+-- | Check whether a file has Unicode byte order mark (BOM).
+fileHasBOM :: FilePath -> IO Bool
+fileHasBOM f = fmap (startsWithBOM . fromUTF8)
+             . hGetContents =<< openBinaryFile f ReadMode
 
 -- | Ignore a Unicode byte order mark (BOM) at the beginning of the input
 --
