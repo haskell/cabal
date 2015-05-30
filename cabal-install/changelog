@@ -25,6 +25,9 @@
 	* Improved error message for unsatisfiable package constraints
 	(#2727).
 	* Fixed a space leak in 'cabal update' (#2826).
+	* Added 'cabal init-config'. Creates a cabal configuration file 
+	if isn't present. Either in the default location or as specified
+	by --config-file (#2553)
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

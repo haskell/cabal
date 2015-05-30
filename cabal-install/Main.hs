@@ -29,6 +29,7 @@ import Distribution.Client.Setup
          , checkCommand
          , formatCommand
          , updateCommand
+         , InitConfigFlags(..), initConfigCommand
          , ListFlags(..), listCommand
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
@@ -59,7 +60,7 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile, userConfigDiff
-         , userConfigUpdate )
+         , userConfigUpdate, createDefaultConfigFile )
 import Distribution.Client.Targets
          ( readUserTargets )
 import qualified Distribution.Client.List as List
@@ -231,6 +232,7 @@ mainWorker args = topHandler $
     commands =
       [installCommand         `commandAddAction` installAction
       ,updateCommand          `commandAddAction` updateAction
+      ,initConfigCommand      `commandAddAction` initConfigAction
       ,listCommand            `commandAddAction` listAction
       ,infoCommand            `commandAddAction` infoAction
       ,fetchCommand           `commandAddAction` fetchAction
@@ -923,6 +925,23 @@ updateAction verbosityFlag extraArgs globalFlags = do
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags'))
   update transport verbosity (globalRepos globalFlags')
+
+initConfigAction :: InitConfigFlags -> [String] -> GlobalFlags -> IO ()
+initConfigAction flags extraArgs globalFlags = do
+  unless (null extraArgs) $
+    die $ "'init-config' doesn't take any extra arguments: " ++ unwords extraArgs
+  defPath <- defaultConfigFile
+  let verbosity        = fromFlag $ initConfigVerbose flags
+      force            = fromFlag $ initConfigForce flags
+      globalConfigFlag = globalConfigFile globalFlags 
+      fpath            = fromFlagOrDefault defPath globalConfigFlag
+  fexists <- doesFileExist fpath
+  case fexists of
+    False -> createDefaultConfigFile verbosity fpath
+    True  -> do
+      case force of
+        False -> die $ fpath ++ " already exists"
+        True  -> createDefaultConfigFile verbosity fpath
 
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()

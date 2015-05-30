@@ -21,6 +21,7 @@ module Distribution.Client.Setup
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
+    , initConfigCommand, InitConfigFlags(..)
     , upgradeCommand
     , uninstallCommand
     , infoCommand, InfoFlags(..)
@@ -169,6 +170,7 @@ globalCommand commands = CommandUI {
           [ "help"
           , "update"
           , "install"
+          , "init-config"
           , "fetch"
           , "list"
           , "info"
@@ -211,6 +213,7 @@ globalCommand commands = CommandUI {
         [ startGroup "global"
         , addCmd "update"
         , addCmd "install"
+        , addCmd "init-config"
         , par
         , addCmd "help"
         , addCmd "info"
@@ -797,6 +800,40 @@ freezeCommand = CommandUI {
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
 
+  }
+
+-- ------------------------------------------------------------
+-- * Init-config command
+-- ------------------------------------------------------------
+
+data InitConfigFlags = InitConfigFlags {
+    initConfigVerbose :: Flag Verbosity,
+    initConfigForce   :: Flag Bool
+  }
+  deriving Show
+
+defaultInitConfigFlags :: InitConfigFlags
+defaultInitConfigFlags = InitConfigFlags {
+    initConfigVerbose  = Flag normal,
+    initConfigForce    = Flag False
+  }
+
+initConfigCommand :: CommandUI InitConfigFlags
+initConfigCommand = CommandUI {
+    commandName         = "init-config",
+    commandSynopsis     = "Create default config file if it doesn't already exist.",
+    commandDescription  = Just $ \_ ->
+        "Create default config file if it doesn't already exist.\n",
+    commandNotes        = Nothing,
+    commandUsage        = usageFlags "init-config",
+    commandDefaultFlags = defaultInitConfigFlags,
+    commandOptions      = \_ -> [
+      optionVerbosity initConfigVerbose (\v flags -> flags { initConfigVerbose = v })
+    , option ['f'] ["force"]
+       "Overwrite file even if it already exists."
+       initConfigForce (\v flags -> flags { initConfigForce = v })
+       trueArg
+      ]
   }
 
 -- ------------------------------------------------------------
