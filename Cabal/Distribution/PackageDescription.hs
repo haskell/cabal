@@ -98,6 +98,7 @@ module Distribution.PackageDescription (
         GenericPackageDescription(..),
         Flag(..), FlagName(..), FlagAssignment,
         CondTree(..), ConfVar(..), Condition(..),
+        cNot,
 
         -- * Source repositories
         SourceRepo(..),
@@ -1175,6 +1176,11 @@ data Condition c = Var c
                  | COr (Condition c) (Condition c)
                  | CAnd (Condition c) (Condition c)
     deriving (Show, Eq, Typeable, Data)
+
+cNot :: Condition a -> Condition a
+cNot (Lit b)  = Lit (not b)
+cNot (CNot c) = c
+cNot c        = CNot c
 
 instance Functor Condition where
   f `fmap` Var c    = Var (f c)
