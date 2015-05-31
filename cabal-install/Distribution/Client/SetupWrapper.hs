@@ -105,6 +105,7 @@ import Control.Monad       ( when, unless )
 import Data.List           ( foldl1' )
 import Data.Maybe          ( fromMaybe, isJust )
 import Data.Char           ( isSpace )
+import Distribution.Client.Compat.ExecutablePath  ( getExecutablePath )
 
 #ifdef mingw32_HOST_OS
 import Distribution.Simple.Utils
@@ -222,12 +223,22 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
 --
 determineSetupMethod :: SetupScriptOptions -> BuildType -> SetupMethod
 determineSetupMethod options buildType'
-  | forceExternalSetupMethod options = externalSetupMethod
+    -- This order is picked so that it's stable. The build type and
+    -- required cabal version are external info, coming from .cabal
+    -- files and the command line. Those do switch between the
+    -- external and self & internal methods, but that info itself can
+    -- be considered stable. The logging and force-external conditions
+    -- are internally generated choices but now these only switch
+    -- between the self and internal setup methods, which are
+    -- consistent with each other.
+  | buildType' == Custom             = externalSetupMethod
+  | not (cabalVersion `withinRange`
+         useCabalVersion options)    = externalSetupMethod
   | isJust (useLoggingHandle options)
- || buildType' == Custom             = externalSetupMethod
-  | cabalVersion `withinRange`
-      useCabalVersion options        = internalSetupMethod
-  | otherwise                        = externalSetupMethod
+    -- Forcing is done to use an external process e.g. due to parallel
+    -- build concerns.
+ || forceExternalSetupMethod options = selfExecSetupMethod
+  | otherwise                        = internalSetupMethod
 
 type SetupMethod = Verbosity
                 -> SetupScriptOptions
@@ -254,6 +265,34 @@ buildTypeAction Configure = Simple.defaultMainWithHooksArgs
 buildTypeAction Make      = Make.defaultMainArgs
 buildTypeAction Custom               = error "buildTypeAction Custom"
 buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
+
+-- ------------------------------------------------------------
+-- * Self-Exec SetupMethod
+-- ------------------------------------------------------------
+
+selfExecSetupMethod :: SetupMethod
+selfExecSetupMethod verbosity options _pkg bt mkargs = do
+  let args = ["act-as-setup",
+              "--build-type=" ++ display bt,
+              "--"] ++ mkargs cabalVersion
+  debug verbosity $ "Using self-exec internal setup method with build-type "
+                 ++ show bt ++ " and args:\n  " ++ show args
+  path <- getExecutablePath
+  info verbosity $ unwords (path : args)
+  case useLoggingHandle options of
+    Nothing        -> return ()
+    Just logHandle -> info verbosity $ "Redirecting build log to "
+                                    ++ show logHandle
+
+  searchpath <- programSearchPathAsPATHVar
+                (getProgramSearchPath (useProgramConfig options))
+  env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+
+  process <- runProcess path args
+             (useWorkingDir options) env Nothing
+             (useLoggingHandle options) (useLoggingHandle options)
+  exitCode <- waitForProcess process
+  unless (exitCode == ExitSuccess) $ exitWith exitCode
 
 -- ------------------------------------------------------------
 -- * External SetupMethod

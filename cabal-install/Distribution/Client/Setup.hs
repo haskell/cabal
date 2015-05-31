@@ -35,6 +35,7 @@ module Distribution.Client.Setup
     , initCommand, IT.InitFlags(..)
     , sdistCommand, SDistFlags(..), SDistExFlags(..), ArchiveFormat(..)
     , win32SelfUpgradeCommand, Win32SelfUpgradeFlags(..)
+    , actAsSetupCommand, ActAsSetupFlags(..)
     , sandboxCommand, defaultSandboxLocation, SandboxFlags(..)
     , execCommand, ExecFlags(..)
     , userConfigCommand, UserConfigFlags(..)
@@ -79,7 +80,7 @@ import Distribution.Version
 import Distribution.Package
          ( PackageIdentifier, packageName, packageVersion, Dependency(..) )
 import Distribution.PackageDescription
-         ( RepoKind(..) )
+         ( BuildType(..), RepoKind(..) )
 import Distribution.Text
          ( Text(..), display )
 import Distribution.ReadE
@@ -1810,6 +1811,47 @@ instance Monoid Win32SelfUpgradeFlags where
     }
   mappend a b = Win32SelfUpgradeFlags {
     win32SelfUpgradeVerbosity = combine win32SelfUpgradeVerbosity
+    }
+    where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * ActAsSetup flags
+-- ------------------------------------------------------------
+
+data ActAsSetupFlags = ActAsSetupFlags {
+    actAsSetupBuildType :: Flag BuildType
+}
+
+defaultActAsSetupFlags :: ActAsSetupFlags
+defaultActAsSetupFlags = ActAsSetupFlags {
+    actAsSetupBuildType = toFlag Simple
+}
+
+actAsSetupCommand :: CommandUI ActAsSetupFlags
+actAsSetupCommand = CommandUI {
+  commandName         = "act-as-setup",
+  commandSynopsis     = "Run as-if this was a Setup.hs",
+  commandDescription  = Nothing,
+  commandNotes        = Nothing,
+  commandUsage        = \pname ->
+    "Usage: " ++ pname ++ " act-as-setup\n",
+  commandDefaultFlags = defaultActAsSetupFlags,
+  commandOptions      = \_ ->
+      [option "" ["build-type"]
+         "Use the given build type."
+         actAsSetupBuildType (\v flags -> flags { actAsSetupBuildType = v })
+         (reqArg "BUILD-TYPE" (readP_to_E ("Cannot parse build type: "++)
+                               (fmap toFlag parse))
+                              (map display . flagToList))
+      ]
+}
+
+instance Monoid ActAsSetupFlags where
+  mempty      = ActAsSetupFlags {
+     actAsSetupBuildType = mempty
+    }
+  mappend a b = ActAsSetupFlags {
+    actAsSetupBuildType = combine actAsSetupBuildType
     }
     where combine field = field a `mappend` field b
 
