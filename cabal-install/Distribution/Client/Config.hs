@@ -867,7 +867,7 @@ showConfigWithComments :: SavedConfig -> SavedConfig -> String
 showConfigWithComments comment vals = Disp.render $
       case fmap ppRemoteRepoSection . fromNubList . globalRemoteRepos . savedGlobalFlags $ vals of
         [] -> Disp.text ""
-        (x:xs) -> foldl' ($+$) x xs
+        (x:xs) -> foldl' (\ r r' -> r $+$ Disp.text "" $+$ r') x xs
   $+$ Disp.text ""
   $+$ ppFields (skipSomeFields configFieldDescriptions) mcomment vals
   $+$ Disp.text ""
