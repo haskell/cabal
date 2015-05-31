@@ -504,6 +504,10 @@ defaultRemoteRepo = RemoteRepo name uri ()
     -- but new config files can use the new url (without the /packages/archive)
     -- and avoid having to do a http redirect
 
+    -- Use this as a source for crypto credentials when finding old remote-repo
+    -- entries that match repo name and url (not only be used for generating
+    -- fresh config files).
+
 --
 -- * Config file reading
 --
@@ -861,7 +865,11 @@ showConfig = showConfigWithComments mempty
 
 showConfigWithComments :: SavedConfig -> SavedConfig -> String
 showConfigWithComments comment vals = Disp.render $
-      ppFields configFieldDescriptions mcomment vals
+      case fmap ppRemoteRepoSection . fromNubList . globalRemoteRepos . savedGlobalFlags $ vals of
+        [] -> Disp.text ""
+        (x:xs) -> foldl' ($+$) x xs
+  $+$ Disp.text ""
+  $+$ ppFields (skipSomeFields configFieldDescriptions) mcomment vals
   $+$ Disp.text ""
   $+$ ppSection "haddock" "" haddockFlagsFields
                 (fmap savedHaddockFlags mcomment) (savedHaddockFlags vals)
@@ -885,9 +893,17 @@ showConfigWithComments comment vals = Disp.render $
                (fmap (field . savedConfigureFlags) mcomment)
                ((field . savedConfigureFlags) vals)
 
+    -- skip fields based on field name.  currently only skips "remote-repo",
+    -- because that is rendered as a section.  (see 'ppRemoteRepoSection'.)
+    skipSomeFields = filter ((/= "remote-repo") . fieldName)
+
 -- | Fields for the 'install-dirs' sections.
 installDirsFields :: [FieldDescr (InstallDirs (Flag PathTemplate))]
 installDirsFields = map viewAsFieldDescr installDirsOptions
+
+ppRemoteRepoSection :: RemoteRepo -> Doc
+ppRemoteRepoSection vals = ppSection "remote-repo" (remoteRepoName vals)
+        remoteRepoFields Nothing vals
 
 remoteRepoFields :: [FieldDescr RemoteRepo]
 remoteRepoFields =
