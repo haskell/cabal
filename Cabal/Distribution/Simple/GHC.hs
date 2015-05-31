@@ -787,7 +787,9 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                       ghcOptLinkLibPath    = toNubListR $ extraLibDirs exeBi,
                       ghcOptLinkFrameworks = toNubListR $ PD.frameworks exeBi,
                       ghcOptInputFiles     = toNubListR
-                                             [exeDir </> x | x <- cObjs],
+                                             [exeDir </> x | x <- cObjs]
+                    }
+      dynLinkerOpts = mempty {
                       ghcOptRPaths         = rpaths
                    }
       replOpts   = baseOpts {
@@ -833,9 +835,9 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
         | otherwise    = doingTH && (withProfExe lbi || withDynExe lbi)
 
       linkOpts = commonOpts `mappend`
-                 linkerOpts `mappend` mempty {
-                      ghcOptLinkNoHsMain   = toFlag (not isHaskellMain)
-                 }
+                 linkerOpts `mappend`
+                 mempty { ghcOptLinkNoHsMain   = toFlag (not isHaskellMain) } `mappend`
+                 (if withStaticExe then mempty else dynLinkerOpts)
 
   -- Build static/dynamic object files for TH, if needed.
   when compileForTH $
