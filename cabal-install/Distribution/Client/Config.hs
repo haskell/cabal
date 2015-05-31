@@ -107,6 +107,8 @@ import qualified Text.PrettyPrint as Disp
          ( render, text, empty )
 import Text.PrettyPrint
          ( ($+$) )
+import Text.PrettyPrint.HughesPJ
+         ( text, Doc )
 import System.Directory
          ( createDirectoryIfMissing, getAppUserDataDirectory, renameFile )
 import Network.URI
@@ -126,8 +128,6 @@ import Data.Version
 import Data.Char
          ( isSpace )
 import qualified Data.Map as M
-import Text.PrettyPrint.HughesPJ
-         ( text )
 import Data.Function
          ( on )
 import Data.List
