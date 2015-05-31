@@ -95,6 +95,7 @@ import Distribution.Compat.Exception
 import System.Directory    ( doesFileExist )
 import System.FilePath     ( (</>), (<.>) )
 import System.IO           ( Handle, hPutStr )
+import System.Environment  ( getExecutablePath )
 import System.Exit         ( ExitCode(..), exitWith )
 import System.Process      ( runProcess, waitForProcess )
 #if !MIN_VERSION_base(4,8,0)
@@ -222,12 +223,12 @@ setupWrapper verbosity options mpkg cmd flags extraArgs = do
 --
 determineSetupMethod :: SetupScriptOptions -> BuildType -> SetupMethod
 determineSetupMethod options buildType'
-  | forceExternalSetupMethod options = externalSetupMethod
+  | buildType' == Custom             = externalSetupMethod
+  | not (cabalVersion `withinRange`
+         useCabalVersion options)    = externalSetupMethod
   | isJust (useLoggingHandle options)
- || buildType' == Custom             = externalSetupMethod
-  | cabalVersion `withinRange`
-      useCabalVersion options        = internalSetupMethod
-  | otherwise                        = externalSetupMethod
+ || forceExternalSetupMethod options = selfExecSetupMethod
+  | otherwise                        = internalSetupMethod
 
 type SetupMethod = Verbosity
                 -> SetupScriptOptions
@@ -254,6 +255,35 @@ buildTypeAction Configure = Simple.defaultMainWithHooksArgs
 buildTypeAction Make      = Make.defaultMainArgs
 buildTypeAction Custom               = error "buildTypeAction Custom"
 buildTypeAction (UnknownBuildType _) = error "buildTypeAction UnknownBuildType"
+
+-- ------------------------------------------------------------
+-- * Self-Exec SetupMethod
+-- ------------------------------------------------------------
+
+selfExecSetupMethod :: SetupMethod
+selfExecSetupMethod verbosity options pkg bt mkargs = do
+  let args = ["act-as-setup",
+              "--build-type=" ++ display bt,
+              "--"] ++ mkargs cabalVersion
+  debug verbosity $ "Using self-exec internal setup method with build-type "
+                 ++ show bt ++ " and args:\n  " ++ show args
+  path <- getExecutablePath
+  info verbosity $ unwords (path : args)
+  case useLoggingHandle options of
+    Nothing        -> return ()
+    Just logHandle -> info verbosity $ "Redirecting build log to "
+                                    ++ show logHandle
+
+  searchpath <- programSearchPathAsPATHVar
+                (getProgramSearchPath (useProgramConfig options))
+  env        <- getEffectiveEnvironment [("PATH", Just searchpath)]
+
+  process <- runProcess path args
+             (useWorkingDir options) env Nothing
+             (useLoggingHandle options) (useLoggingHandle options)
+  exitCode <- waitForProcess process
+  unless (exitCode == ExitSuccess) $ exitWith exitCode
+    
 
 -- ------------------------------------------------------------
 -- * External SetupMethod
