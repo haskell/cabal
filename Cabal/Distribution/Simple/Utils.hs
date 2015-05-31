@@ -116,6 +116,7 @@ module Distribution.Simple.Utils (
         -- * BOM
         startsWithBOM,
         fileHasBOM,
+        ignoreBOM,
 
         -- * generic utils
         dropWhileEndLE,
