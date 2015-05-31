@@ -72,7 +72,7 @@ import Distribution.Text
          ( Text(..), display )
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
-         ( die, warn, intercalate, fromUTF8, lowercase )
+         ( die, warn, intercalate, fromUTF8, lowercase, ignoreBOM )
 
 import Data.List
          ( find, nub )
@@ -542,7 +542,7 @@ readPackageTarget verbosity target = case target of
 
     parsePackageDescription' :: BS.ByteString -> Maybe GenericPackageDescription
     parsePackageDescription' content =
-      case parsePackageDescription . fromUTF8 . BS.Char8.unpack $ content of
+      case parsePackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
         ParseOk _ pkg -> Just pkg
         _             -> Nothing
 

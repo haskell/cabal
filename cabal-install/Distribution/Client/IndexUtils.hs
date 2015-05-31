@@ -59,7 +59,7 @@ import Distribution.Text
 import Distribution.Verbosity
          ( Verbosity, normal, lessVerbose )
 import Distribution.Simple.Utils
-         ( die, warn, info, fromUTF8 )
+         ( die, warn, info, fromUTF8, ignoreBOM )
 
 import Data.Char   (isAlphaNum)
 import Data.Maybe  (mapMaybe, fromMaybe)
@@ -349,7 +349,7 @@ extractPkg entry blockNo = case Tar.entryContent entry of
           Just ver -> Just $ return (NormalPackage pkgid descr content blockNo)
             where
               pkgid  = PackageIdentifier (PackageName pkgname) ver
-              parsed = parsePackageDescription . fromUTF8 . BS.Char8.unpack
+              parsed = parsePackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack
                                                $ content
               descr  = case parsed of
                 ParseOk _ d -> d
@@ -497,7 +497,7 @@ packageIndexFromCache mkPkg hnd entrs mode = accum mempty [] entrs
 
     readPackageDescription :: ByteString -> IO GenericPackageDescription
     readPackageDescription content =
-      case parsePackageDescription . fromUTF8 . BS.Char8.unpack $ content of
+      case parsePackageDescription . ignoreBOM . fromUTF8 . BS.Char8.unpack $ content of
         ParseOk _ d -> return d
         _           -> interror "failed to parse .cabal file"
 
