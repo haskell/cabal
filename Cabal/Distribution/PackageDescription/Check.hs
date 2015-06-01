@@ -1063,12 +1063,23 @@ checkCabalVersion pkg =
         ++ "compatibility with earlier Cabal versions then you may be able to "
         ++ "use an equivalent compiler-specific flag."
 
-  , check (specVersion pkg >= Version [1,21] []
+  , check (specVersion pkg >= Version [1,23] []
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Just Custom) $
       PackageBuildWarning $
-           "Packages using 'cabal-version: >= 1.22' with 'build-type: Custom' "
+           "Packages using 'cabal-version: >= 1.23' with 'build-type: Custom' "
         ++ "must use a 'custom-setup' section with a 'setup-depends' field "
+        ++ "that specifies the dependencies of the Setup.hs script itself. "
+        ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
+        ++ "so a simple example would be 'setup-depends: base, Cabal'."
+
+  , check (specVersion pkg < Version [1,23] []
+           && isNothing (setupBuildInfo pkg)
+           && buildType pkg == Just Custom) $
+      PackageBuildWarning $
+           "From version 1.23 cabal supports specifiying explicit dependencies "
+        ++ "for Custom setup scripts. Consider using cabal-version >= 1.23 and "
+        ++ "adding a 'custom-setup' section with a 'setup-depends' field "
         ++ "that specifies the dependencies of the Setup.hs script itself. "
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
         ++ "so a simple example would be 'setup-depends: base, Cabal'."
@@ -1447,7 +1458,7 @@ checkDevelopmentOnlyFlags pkg =
                          -> CondTree v c a
                          -> [([Condition v], b)]
     collectCondTreePaths mapData = go []
-      where 
+      where
         go conditions condNode =
             -- the data at this level in the tree:
             (reverse conditions, mapData (condTreeData condNode))
