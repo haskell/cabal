@@ -88,6 +88,24 @@ alreadyLinked = error "addLinking called on tree that already contains linked no
 
 {-------------------------------------------------------------------------------
   Validation
+
+  Validation of links is a separate pass that's performed after normal
+  validation. Validation of links checks that if the tree indicates that a
+  package is linked, then everything underneath that choice really matches the
+  package we have linked to.
+
+  This is interesting because it isn't unidirectional. Consider that we've
+  chosen a.foo to be version 1 and later decide that b.foo should link to a.foo.
+  Now foo depends on bar. Because a.foo and b.foo are linked, it's required that
+  a.bar and b.bar are also linked. However, it's not required that we actually
+  choose a.bar before b.bar. Goal choice order is relatively free. It's possible
+  that we choose a.bar first, but also possible that we choose b.bar first. In
+  both cases, we have to recognize that we have freedom of choice for the first
+  of the two, but no freedom of choice for the second.
+
+  This is what LinkGroups are all about. Using LinkGroup, we can record (in the
+  situation above) that a.bar and b.bar need to be linked even if we haven't
+  chosen either of them yet.
 -------------------------------------------------------------------------------}
 
 data ValidateState = VS {
@@ -190,29 +208,41 @@ pickConcrete qpn@(Q pp _) i = do
     case M.lookup qpn (vsLinks vs) of
       -- Package is not yet in a LinkGroup. Create a new singleton link group.
       Nothing -> do
-        let lg = (lgSingleton qpn (Just i)) { lgCanon = Just pp }
+        let lg = lgSingleton qpn (Just $ PI pp i)
         updateLinkGroup lg
 
       -- Package is already in a link group. Since we are picking a concrete
-      -- instance here, it must by definition by the canonical package.
+      -- instance here, it must by definition be the canonical package.
       Just lg ->
-        makeCanonical lg qpn
+        makeCanonical lg qpn i
 
 pickLink :: QPN -> I -> PP -> FlaggedDeps comp QPN -> UpdateState ()
-pickLink qpn@(Q _ pn) i pp' deps = do
+pickLink qpn@(Q pp pn) i pp' deps = do
     vs <- get
     -- Find the link group for the package we are linking to, and add this package
     --
     -- Since the builder never links to a package without having first picked a
     -- concrete instance for that package, and since we create singleton link
-    -- groups for concrete instances, this  link group must exist.
+    -- groups for concrete instances, this link group must exist (and must
+    -- in fact already have a canonical member).
     let lg = vsLinks vs ! Q pp' pn
-    lg' <- lift' $ lgAddMember qpn i lg
+
+    -- Verify here that the member we add is in fact for the same package and
+    -- matches the version of the canonical instance. However, violations of
+    -- these checks would indicate a bug in the linker, not a true conflict.
+    let sanityCheck :: Maybe (PI PP) -> Bool
+        sanityCheck Nothing              = False
+        sanityCheck (Just (PI _ canonI)) = pn == lgPackage lg && i == canonI
+    assert (sanityCheck (lgCanon lg)) $ return ()
+
+    -- Since we already have a canonical member, we just need to add the new
+    -- member into the group
+    let lg' = lg { lgMembers = S.insert pp (lgMembers lg) }
     updateLinkGroup lg'
     linkDeps [P qpn] pp' deps
 
-makeCanonical :: LinkGroup -> QPN -> UpdateState ()
-makeCanonical lg qpn@(Q pp _) =
+makeCanonical :: LinkGroup -> QPN -> I -> UpdateState ()
+makeCanonical lg qpn@(Q pp _) i =
     case lgCanon lg of
       -- There is already a canonical member. Fail.
       Just _ ->
@@ -221,9 +251,18 @@ makeCanonical lg qpn@(Q pp _) =
                    ++ " canonical member of " ++ showLinkGroup lg
                  )
       Nothing -> do
-        let lg' = lg { lgCanon = Just pp }
+        let lg' = lg { lgCanon = Just (PI pp i) }
         updateLinkGroup lg'
 
+-- | Link the dependencies of linked parents.
+--
+-- When we decide to link one package against another we walk through the
+-- package's direct depedencies and make sure that they're all linked to each
+-- other by merging their link groups (or creating new singleton link groups if
+-- they don't have link groups yet). We do not need to do this recursively,
+-- because having the direct dependencies in a link group means that we must
+-- have already made or will make sooner or later a link choice for one of these
+-- as well, and cover their dependencies at that point.
 linkDeps :: [Var QPN] -> PP -> FlaggedDeps comp QPN -> UpdateState ()
 linkDeps parents pp' = mapM_ go
   where
@@ -260,6 +299,13 @@ pickStanza qsn b = do
     verifyStanza qsn
     linkNewDeps (S qsn) b
 
+-- | Link dependencies that we discover after making a flag choice.
+--
+-- When we make a flag choice for a package, then new dependencies for that
+-- package might become available. If the package under consideration is in a
+-- non-trivial link group, then these new dependencies have to be linked as
+-- well. In linkNewDeps, we compute such new dependencies and make sure they are
+-- linked.
 linkNewDeps :: Var QPN -> Bool -> UpdateState ()
 linkNewDeps var b = do
     vs <- get
@@ -337,6 +383,11 @@ verifyStanza (SN (PI qpn@(Q _pp pn) i) sn) = do
     -- We can only pick a stanza after picking an instance; link group must exist
     verifyStanza' (SN (PI pn i) sn) (vsLinks vs ! qpn)
 
+-- | Verify that all packages in the link group agree on flag assignments
+--
+-- For the given flag and the link group, obtain all assignments for the flag
+-- that have already been made for link group members, and check that they are
+-- equal.
 verifyFlag' :: FN PN -> LinkGroup -> UpdateState ()
 verifyFlag' (FN (PI pn i) fn) lg = do
     vs <- get
@@ -348,6 +399,13 @@ verifyFlag' (FN (PI pn i) fn) lg = do
                     , "flag " ++ show fn ++ " incompatible"
                     )
 
+-- | Verify that all packages in the link group agree on stanza assignments
+--
+-- For the given stanza and the link group, obtain all assignments for the
+-- stanza that have already been made for link group members, and check that
+-- they are equal.
+--
+-- This function closely mirrors 'verifyFlag''.
 verifyStanza' :: SN PN -> LinkGroup -> UpdateState ()
 verifyStanza' (SN (PI pn i) sn) lg = do
     vs <- get
@@ -374,16 +432,13 @@ data LinkGroup = LinkGroup {
       -- | The name of the package of this link group
       lgPackage :: PN
 
-      -- | The version of the package of this link group
-      --
-      -- We may not know this version yet (if we are constructing link groups
-      -- for dependencies)
-    , lgInstance :: Maybe I
-
       -- | The canonical member of this link group (the one where we picked
       -- a concrete instance). Once we have picked a canonical member, all
       -- other packages must link to this one.
-    , lgCanon :: Maybe PP
+      --
+      -- We may not know this yet (if we are constructing link groups
+      -- for dependencies)
+    , lgCanon :: Maybe (PI PP)
 
       -- | The members of the link group
     , lgMembers :: Set PP
@@ -395,12 +450,20 @@ data LinkGroup = LinkGroup {
     }
     deriving Show
 
+-- | Package version of this group
+--
+-- This is only known once we have picked a canonical element.
+lgInstance :: LinkGroup -> Maybe I
+lgInstance = fmap (\(PI _ i) -> i) . lgCanon
+
 showLinkGroup :: LinkGroup -> String
 showLinkGroup lg =
     "{" ++ intercalate "," (map showMember (S.toList (lgMembers lg))) ++ "}"
   where
     showMember :: PP -> String
-    showMember pp = (if lgCanon lg == Just pp then "*" else "")
+    showMember pp = case lgCanon lg of
+                      Just (PI pp' _i) | pp == pp' -> "*"
+                      _otherwise                   -> ""
                  ++ case lgInstance lg of
                       Nothing -> showQPN (qpn pp)
                       Just i  -> showPI (PI (qpn pp) i)
@@ -408,25 +471,23 @@ showLinkGroup lg =
     qpn :: PP -> QPN
     qpn pp = Q pp (lgPackage lg)
 
-lgSingleton :: QPN -> Maybe I -> LinkGroup
-lgSingleton (Q pp pn) inst = LinkGroup {
-      lgPackage  = pn
-    , lgInstance = inst
-    , lgCanon    = Nothing
-    , lgMembers  = S.singleton pp
-    , lgBlame    = []
+-- | Creates a link group that contains a single member.
+lgSingleton :: QPN -> Maybe (PI PP) -> LinkGroup
+lgSingleton (Q pp pn) canon = LinkGroup {
+      lgPackage = pn
+    , lgCanon   = canon
+    , lgMembers = S.singleton pp
+    , lgBlame   = []
     }
 
 lgMerge :: [Var QPN] -> LinkGroup -> LinkGroup -> Either Conflict LinkGroup
 lgMerge blame lg lg' = do
-    canon <- pick (lgCanon    lg) (lgCanon    lg')
-    inst  <- pick (lgInstance lg) (lgInstance lg')
+    canon <- pick (lgCanon lg) (lgCanon lg')
     return LinkGroup {
-        lgPackage  = lgPackage lg
-      , lgInstance = inst
-      , lgCanon    = canon
-      , lgMembers  = lgMembers lg `S.union` lgMembers lg'
-      , lgBlame    = blame ++ lgBlame lg ++ lgBlame lg'
+        lgPackage = lgPackage lg
+      , lgCanon   = canon
+      , lgMembers = lgMembers lg `S.union` lgMembers lg'
+      , lgBlame   = blame ++ lgBlame lg ++ lgBlame lg'
       }
   where
     pick :: Eq a => Maybe a -> Maybe a -> Either Conflict (Maybe a)
@@ -440,7 +501,7 @@ lgMerge blame lg lg' = do
                              , lgConflictSet lg
                              , lgConflictSet lg'
                              ]
-                          ,    "cannot merge "++ showLinkGroup lg
+                          ,    "cannot merge " ++ showLinkGroup lg
                             ++ " and " ++ showLinkGroup lg'
                           )
 
@@ -448,18 +509,6 @@ lgConflictSet :: LinkGroup -> ConflictSet QPN
 lgConflictSet lg = S.fromList (map aux (S.toList (lgMembers lg)) ++ lgBlame lg)
   where
     aux pp = P (Q pp (lgPackage lg))
-
-lgAddMember :: QPN -> I -> LinkGroup -> Either Conflict LinkGroup
-lgAddMember qpn@(Q pp pn) i lg = do
-    assert (pn == lgPackage lg) $ Right ()
-    let lg' = lg { lgMembers = S.insert pp (lgMembers lg) }
-    case lgInstance lg of
-      Nothing             -> Right $ lg' { lgInstance = Just i }
-      Just i' | i == i'   -> Right lg'
-              | otherwise -> Left ( lgConflictSet lg'
-                                  ,    "cannot add " ++ showQPN qpn
-                                    ++ " to " ++ showLinkGroup lg
-                                  )
 
 {-------------------------------------------------------------------------------
   Auxiliary
