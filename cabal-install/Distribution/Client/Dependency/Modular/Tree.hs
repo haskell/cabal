@@ -30,8 +30,22 @@ data Tree a =
   -- the system, as opposed to flags that are used to explicitly enable or
   -- disable some functionality.
 
--- | A package option is an instance, together with an optional annotation that
--- this package is linked to the same package with another prefix
+-- | A package option is a package instance with an optional linking annotation
+--
+-- The modular solver has a number of package goals to solve for, and can only
+-- pick a single package version for a single goal. In order to allow to
+-- install multiple versions of the same package as part of a single solution
+-- the solver uses qualified goals. For example, @0.P@ and @1.P@ might both
+-- be qualified goals for @P@, allowing to pick a difference version of package
+-- @P@ for @0.P@ and @1.P@.
+--
+-- Linking is an essential part of this story. In addition to picking a specific
+-- version for @1.P@, the solver can also decide to link @1.P@ to @0.P@ (or
+-- vice versa). Teans that @1.P@ and @0.P@ really must be the very same package
+-- (and hence must have the same build time configuration, and their
+-- dependencies must also be the exact same).
+--
+-- See <http://www.well-typed.com/blog/2015/03/qualified-goals/> for details.
 data POption = POption I (Maybe PP)
   deriving (Eq, Show)
 
