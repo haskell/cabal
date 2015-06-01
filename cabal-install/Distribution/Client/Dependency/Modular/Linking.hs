@@ -459,12 +459,6 @@ lgAddMember qpn@(Q pp pn) i lg = do
   Auxiliary
 -------------------------------------------------------------------------------}
 
--- | Extract the package instance from a Var
-varPI :: Var QPN -> (QPN, Maybe I)
-varPI (P qpn)               = (qpn, Nothing)
-varPI (F (FN (PI qpn i) _)) = (qpn, Just i)
-varPI (S (SN (PI qpn i) _)) = (qpn, Just i)
-
 allEqual :: Eq a => [a] -> Bool
 allEqual []       = True
 allEqual [_]      = True

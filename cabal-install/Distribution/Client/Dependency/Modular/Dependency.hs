@@ -5,6 +5,7 @@ module Distribution.Client.Dependency.Modular.Dependency (
     Var(..)
   , simplifyVar
   , showVar
+  , varPI
     -- * Conflict sets
   , ConflictSet
   , showCS
@@ -93,6 +94,12 @@ showVar :: Var QPN -> String
 showVar (P qpn) = showQPN qpn
 showVar (F qfn) = showQFN qfn
 showVar (S qsn) = showQSN qsn
+
+-- | Extract the package instance from a Var
+varPI :: Var QPN -> (QPN, Maybe I)
+varPI (P qpn)               = (qpn, Nothing)
+varPI (F (FN (PI qpn i) _)) = (qpn, Just i)
+varPI (S (SN (PI qpn i) _)) = (qpn, Just i)
 
 {-------------------------------------------------------------------------------
   Conflict sets
