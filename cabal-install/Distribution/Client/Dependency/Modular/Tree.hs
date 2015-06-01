@@ -1,10 +1,10 @@
 {-# LANGUAGE DeriveFunctor, DeriveFoldable, DeriveTraversable #-}
 module Distribution.Client.Dependency.Modular.Tree where
 
-import Control.Monad hiding (mapM)
+import Control.Monad hiding (mapM, sequence)
 import Data.Foldable
 import Data.Traversable
-import Prelude hiding (foldr, mapM)
+import Prelude hiding (foldr, mapM, sequence)
 
 import Distribution.Client.Dependency.Modular.Dependency
 import Distribution.Client.Dependency.Modular.Flag
@@ -94,6 +94,14 @@ inn (SChoiceF    p i b   ts) = SChoice    p i b   ts
 inn (GoalChoiceF         ts) = GoalChoice         ts
 inn (DoneF       x         ) = Done       x
 inn (FailF       c x       ) = Fail       c x
+
+innM :: Monad m => TreeF a (m (Tree a)) -> m (Tree a)
+innM (PChoiceF    p i     ts) = liftM (PChoice    p i    ) (sequence ts)
+innM (FChoiceF    p i b m ts) = liftM (FChoice    p i b m) (sequence ts)
+innM (SChoiceF    p i b   ts) = liftM (SChoice    p i b  ) (sequence ts)
+innM (GoalChoiceF         ts) = liftM (GoalChoice        ) (sequence ts)
+innM (DoneF       x         ) = return $ Done     x
+innM (FailF       c x       ) = return $ Fail     c x
 
 -- | Determines whether a tree is active, i.e., isn't a failure node.
 active :: Tree a -> Bool
