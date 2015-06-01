@@ -122,7 +122,8 @@ import Data.Foldable              (Foldable(foldMap))
 import Data.Traversable           (Traversable(traverse))
 #endif
 import Data.Typeable               ( Typeable )
-import Control.Monad               (MonadPlus(mplus))
+import Control.Applicative         (Alternative(..))
+import Control.Monad               (MonadPlus(mplus,mzero), ap)
 import GHC.Generics                (Generic)
 import Text.PrettyPrint as Disp
 import qualified Distribution.Compat.ReadP as Parse
@@ -1202,6 +1203,32 @@ instance Traversable Condition where
   f `traverse` CNot c   = CNot `fmap` traverse f c
   f `traverse` COr c d  = COr  `fmap` traverse f c <*> traverse f d
   f `traverse` CAnd c d = CAnd `fmap` traverse f c <*> traverse f d
+
+instance Applicative Condition where
+  pure  = return
+  (<*>) = ap
+
+instance Monad Condition where
+  return = Var
+  -- Terminating cases
+  (>>=) (Lit x) _ = Lit x
+  (>>=) (Var x) f = f x
+  -- Recursing cases
+  (>>=) (CNot  x  ) f = CNot (x >>= f)
+  (>>=) (COr   x y) f = COr  (x >>= f) (y >>= f)
+  (>>=) (CAnd  x y) f = CAnd (x >>= f) (y >>= f)
+
+instance Monoid (Condition a) where
+  mempty = Lit False
+  mappend = COr
+
+instance Alternative Condition where
+  empty = mempty
+  (<|>) = mappend
+
+instance MonadPlus Condition where
+  mzero = mempty
+  mplus = mappend
 
 data CondTree v c a = CondNode
     { condTreeData        :: a
