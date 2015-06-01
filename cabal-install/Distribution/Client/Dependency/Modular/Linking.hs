@@ -364,6 +364,12 @@ verifyStanza' (SN (PI pn i) sn) lg = do
 -------------------------------------------------------------------------------}
 
 -- | Set of packages that must be linked together
+--
+-- A LinkGroup is between several qualified package names. In the validation
+-- state, we maintain a map vsLinks from qualified package names to link groups.
+-- There is an invariant that for all members of a link group, vsLinks must map
+-- to the same link group. The function updateLinkGroup can be used to
+-- re-establish this invariant after creating or expanding a LinkGroup.
 data LinkGroup = LinkGroup {
       -- | The name of the package of this link group
       lgPackage :: PN
