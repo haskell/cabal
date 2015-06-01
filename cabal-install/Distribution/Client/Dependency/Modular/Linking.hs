@@ -39,6 +39,21 @@ import Distribution.Client.ComponentDeps (Component)
 type RelatedGoals = Map (PN, I) [PP]
 type Linker       = Reader RelatedGoals
 
+-- | Introduce link nodes into tree tree
+--
+-- Linking is a traversal of the solver tree that adapts package choice nodes
+-- and adds the option to link wherever appropriate: Package goals are called
+-- "related" if they are for the same version of the same package (but have
+-- different prefixes). A link option is available in a package choice node
+-- whenever we can choose an instance that has already been chosen for a related
+-- goal at a higher position in the tree.
+--
+-- The code here proceeds by maintaining a finite map recording choices that
+-- have been made at higher positions in the tree. For each pair of package name
+-- and instance, it stores the prefixes at which we have made a choice for this
+-- package instance. Whenever we make a choice, we extend the map. Whenever we
+-- find a choice, we look into the map in order to find out what link options we
+-- have to add.
 addLinking :: Tree QGoalReasonChain -> Tree QGoalReasonChain
 addLinking = (`runReader` M.empty) .  cata go
   where
@@ -50,13 +65,8 @@ addLinking = (`runReader` M.empty) .  cata go
       cs' <- T.sequence $ P.mapWithKey (goP qpn) cs
       let newCs = concatMap (linkChoices env qpn) (P.toList cs')
       return $ PChoice qpn gr (cs' `P.union` P.fromList newCs)
-
-    -- For all other nodes we just recurse
-    go (FChoiceF qfn gr t m cs)       = FChoice qfn gr t m  <$> T.sequence cs
-    go (SChoiceF qsn gr t   cs)       = SChoice qsn gr t    <$> T.sequence cs
-    go (GoalChoiceF         cs)       = GoalChoice          <$> T.sequence cs
-    go (DoneF revDepMap)              = return $ Done revDepMap
-    go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
+    go _otherwise =
+      innM _otherwise
 
     -- Recurse underneath package choices. Here we just need to make sure
     -- that we record the package choice so that it is available below
