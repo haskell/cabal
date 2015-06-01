@@ -1071,6 +1071,17 @@ checkCabalVersion pkg =
         ++ "that specifies the dependencies of the Setup.hs script itself. "
         ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
         ++ "so a simple example would be 'setup-depends: base, Cabal'."
+
+  , check (specVersion pkg < Version [1,23] []
+           && isNothing (setupBuildInfo pkg)
+           && buildType pkg == Just Custom) $
+      PackageBuildWarning $
+           "From version 1.23 cabal supports specifiying explicit dependencies "
+        ++ "for Custom setup scripts. Consider using cabal-version >= 1.23 and "
+        ++ "adding a 'custom-setup' section with a 'setup-depends' field "
+        ++ "that specifies the dependencies of the Setup.hs script itself. "
+        ++ "The 'setup-depends' field uses the same syntax as 'build-depends', "
+        ++ "so a simple example would be 'setup-depends: base, Cabal'."
   ]
   where
     -- Perform a check on packages that use a version of the spec less than
