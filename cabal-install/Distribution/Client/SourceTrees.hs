@@ -1,6 +1,7 @@
 -- | Handling of source packages under a directory root.
 module Distribution.Client.SourceTrees (
-    readSourcePackagesInDir
+    readSourcePackagesInDir,
+    constrainDepsToSourcePackages
     ) where
 
 import Control.Monad (filterM)
@@ -9,12 +10,13 @@ import Distribution.Verbosity (Verbosity)
 import Distribution.Client.Types (SourcePackage(..))
 import System.FilePath ((</>))
 
+import qualified Distribution.Client.Dependency.Types as Dependency.Types
+import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Client.Types as Types
 import qualified Distribution.Package as Package
 import qualified Distribution.PackageDescription as PackageDescription
 import qualified Distribution.PackageDescription.Parse as Parse
-import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Simple.Utils as Utils
-import qualified Distribution.Client.Types as Types
 import qualified System.Directory as Directory
 import qualified System.FilePath as FilePath
 
@@ -43,3 +45,11 @@ readSourcePackagesInDir verbosity rootDir = do
       packageSource        = Types.LocalUnpackedPackage path,
       packageDescrOverride = Nothing
     }
+
+-- | Create a set of constraints that require that all packages
+-- mentioned in the given index come from source packages.
+constrainDepsToSourcePackages :: PackageIndex.PackageIndex SourcePackage
+                              -> [Dependency.Types.PackageConstraint]
+constrainDepsToSourcePackages =
+  map (Dependency.Types.PackageConstraintSource . Package.packageName)
+  . PackageIndex.allPackages
