@@ -331,16 +331,11 @@ enforceSingleInstanceRestriction = (`runReader` M.empty) . cata go
   where
     go :: TreeF QGoalReasonChain (EnforceSIR (Tree QGoalReasonChain)) -> EnforceSIR (Tree QGoalReasonChain)
 
-    -- We just verify package choices
+    -- We just verify package choices.
     go (PChoiceF qpn gr cs) =
       PChoice qpn gr <$> sequence (P.mapWithKey (goP qpn) cs)
-
-    -- For all other nodes we don't check anything
-    go (FChoiceF qfn gr t m cs)       = FChoice qfn gr t m <$> sequence cs
-    go (SChoiceF qsn gr t   cs)       = SChoice qsn gr t   <$> sequence cs
-    go (GoalChoiceF         cs)       = GoalChoice         <$> sequence cs
-    go (DoneF revDepMap)              = return $ Done revDepMap
-    go (FailF conflictSet failReason) = return $ Fail conflictSet failReason
+    go _otherwise =
+      innM _otherwise
 
     -- The check proper
     goP :: QPN -> POption -> EnforceSIR (Tree QGoalReasonChain) -> EnforceSIR (Tree QGoalReasonChain)
