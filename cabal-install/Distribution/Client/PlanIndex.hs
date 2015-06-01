@@ -115,7 +115,13 @@ brokenPackages fakeMap index =
                  , isNothing (fakeLookupInstalledPackageId fakeMap index pkg') ]
   , not (null missing) ]
 
-
+-- | Compute all roots of the install plan, and verify that the transitive
+-- plans from those roots are all consistent.
+--
+-- NOTE: This does not check for dependency cycles. Moreover, dependency cycles
+-- may be absent from the subplans even if the larger plan contains a dependency
+-- cycle. Such cycles may or may not be an issue; either way, we don't check
+-- for them here.
 dependencyInconsistencies :: forall pkg. (PackageFixedDeps pkg, HasInstalledPackageId pkg)
                           => FakeMap
                           -> Bool
