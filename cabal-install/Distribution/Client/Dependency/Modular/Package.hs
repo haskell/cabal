@@ -93,9 +93,9 @@ stripBase None               = None
 --
 -- NOTE: This always ends in a period
 showPP :: PP -> String
-showPP (Independent i pp) = show i ++ "." ++ showPP pp
-showPP (Setup pn      pp) = display pn ++ ".setup." ++ showPP pp
-showPP (Base  pn      pp) = display pn ++ "."       ++ showPP pp
+showPP (Independent i pp) = show i                 ++ "." ++ showPP pp
+showPP (Setup pn      pp) = display pn ++ "-setup" ++ "." ++ showPP pp
+showPP (Base  pn      pp) = display pn             ++ "." ++ showPP pp
 showPP None               = ""
 
 -- | A qualified entity. Pairs a package path with the entity.
