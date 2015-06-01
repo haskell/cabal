@@ -6,6 +6,7 @@ import Test.Tasty.Options
 
 import qualified UnitTests.Distribution.Client.Sandbox
 import qualified UnitTests.Distribution.Client.UserConfig
+import qualified UnitTests.Distribution.Client.SourceTrees
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
 import qualified UnitTests.Distribution.Client.Dependency.Modular.Solver
@@ -16,6 +17,8 @@ tests = testGroup "Unit Tests" [
        UnitTests.Distribution.Client.UserConfig.tests
   ,testGroup "Distribution.Client.Sandbox"
        UnitTests.Distribution.Client.Sandbox.tests
+  ,testGroup "Distribution.Client.SourceTrees"
+       UnitTests.Distribution.Client.SourceTrees.tests
   ,testGroup "Distribution.Client.Targets"
        UnitTests.Distribution.Client.Targets.tests
   ,testGroup "UnitTests.Distribution.Client.Dependency.Modular.PSQ"
