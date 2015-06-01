@@ -107,7 +107,7 @@ type Validate = Reader ValidateState
 --
 -- * Linked dependencies,
 -- * Equal flag assignments
--- * And something to do with stanzas (TODO)
+-- * Equal stanza assignments
 validateLinking :: Index -> Tree QGoalReasonChain -> Tree QGoalReasonChain
 validateLinking index = (`runReader` initVS) . cata go
   where
