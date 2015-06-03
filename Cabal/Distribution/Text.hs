@@ -57,8 +57,9 @@ instance Text Version where
 
   parse = do
       branch <- Parse.sepBy1 digits (Parse.char '.')
-      tags   <- Parse.many (Parse.char '-' >> Parse.munch1 Char.isAlphaNum)
-      return (Version branch tags)  --TODO: should we ignore the tags?
+                -- allow but ignore tags:
+      _tags  <- Parse.many (Parse.char '-' >> Parse.munch1 Char.isAlphaNum)
+      return (Version branch [])
     where
       digits = do
         first <- Parse.satisfy Char.isDigit
