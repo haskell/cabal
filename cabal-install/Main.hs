@@ -37,6 +37,7 @@ import Distribution.Client.Setup
          , InitFlags(initVerbosity), initCommand
          , SDistFlags(..), SDistExFlags(..), sdistCommand
          , Win32SelfUpgradeFlags(..), win32SelfUpgradeCommand
+         , ActAsSetupFlags(..), actAsSetupCommand
          , SandboxFlags(..), sandboxCommand
          , ExecFlags(..), execCommand
          , UserConfigFlags(..), userConfigCommand
@@ -112,12 +113,14 @@ import Distribution.Client.Utils              (determineNumJobs
                                               ,existsAndIsMoreRecentThan)
 
 import Distribution.PackageDescription
-         ( Executable(..), benchmarkName, benchmarkBuildInfo, testName
-         , testBuildInfo, buildable )
+         ( BuildType(..), Executable(..), benchmarkName, benchmarkBuildInfo
+         , testName, testBuildInfo, buildable )
 import Distribution.PackageDescription.Parse
          ( readPackageDescription )
 import Distribution.PackageDescription.PrettyPrint
          ( writeGenericPackageDescription )
+import qualified Distribution.Simple as Simple
+import qualified Distribution.Make as Make
 import Distribution.Simple.Build
          ( startInterpreter )
 import Distribution.Simple.Command
@@ -262,6 +265,8 @@ mainWorker args = topHandler $
        upgradeCommand         `commandAddAction` upgradeAction
       ,hiddenCommand $
        win32SelfUpgradeCommand`commandAddAction` win32SelfUpgradeAction
+      ,hiddenCommand $
+       actAsSetupCommand`commandAddAction` actAsSetupAction
       ]
 
 wrapperAction :: Monoid flags
@@ -1155,3 +1160,17 @@ win32SelfUpgradeAction selfUpgradeFlags (pid:path:_extraArgs) _globalFlags = do
   let verbosity = fromFlag (win32SelfUpgradeVerbosity selfUpgradeFlags)
   Win32SelfUpgrade.deleteOldExeFile verbosity (read pid) path
 win32SelfUpgradeAction _ _ _ = return ()
+
+-- | Used as an entry point when cabal-install needs to invoke itself
+-- as a setup script. This can happen e.g. when doing parallel builds.
+--
+actAsSetupAction :: ActAsSetupFlags -> [String] -> GlobalFlags -> IO ()
+actAsSetupAction actAsSetupFlags args _globalFlags =
+  let bt = fromFlag (actAsSetupBuildType actAsSetupFlags)
+  in case bt of
+    Simple    -> Simple.defaultMainArgs args
+    Configure -> Simple.defaultMainWithHooksArgs
+                  Simple.autoconfUserHooks args
+    Make      -> Make.defaultMainArgs args
+    Custom               -> error "actAsSetupAction Custom"
+    (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
