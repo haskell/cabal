@@ -48,7 +48,7 @@ createArLibArchive verbosity lbi targetPath files = do
   (ar, _) <- requireProgram verbosity arProgram progConf
 
   let (targetDir, targetName) = splitFileName targetPath
-  withTempDirectory verbosity targetDir targetName $ \ tmpDir -> do
+  withTempDirectory verbosity targetDir "objs" $ \ tmpDir -> do
   let tmpPath = tmpDir </> targetName
 
   -- The args to use with "ar" are actually rather subtle and system-dependent.
