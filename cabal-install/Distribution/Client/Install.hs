@@ -1269,8 +1269,8 @@ installLocalTarballPackage verbosity jobLimit pkgid
   tmp <- getTemporaryDirectory
   withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
     onFailure UnpackFailed $ do
-      let relUnpackedPath = display pkgid
-          absUnpackedPath = tmpDirPath </> relUnpackedPath
+      let relUnpackedPath = "."
+          absUnpackedPath = tmpDirPath
           descFilePath = absUnpackedPath
                      </> display (packageName pkgid) <.> "cabal"
       withJobLimit jobLimit $ do
