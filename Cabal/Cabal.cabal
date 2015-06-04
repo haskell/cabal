@@ -251,6 +251,10 @@ library
   default-language: Haskell98
   default-extensions: CPP
 
+flag run-failing-tests
+  Description: Set this to run some version number unit tests that are failing
+  Default: False
+
 -- Small, fast running tests.
 test-suite unit-tests
   type: exitcode-stdio-1.0
@@ -266,9 +270,12 @@ test-suite unit-tests
     tasty,
     tasty-hunit,
     tasty-quickcheck,
+    pretty,
     QuickCheck < 2.9,
     Cabal
   ghc-options: -Wall
+  if flag(run-failing-tests)
+    ghc-options: -DRUN_FAILING_TESTS=1
   default-language: Haskell98
 
 -- Large, system tests that build packages.
