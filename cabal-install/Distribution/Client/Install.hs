@@ -156,7 +156,7 @@ import Distribution.Simple.Utils as Utils
          ( notice, info, warn, debug, debugNoWrap, die
          , intercalate, withTempDirectory )
 import Distribution.Client.Utils
-         ( determineNumJobs, inDir, mergeBy, MergeResult(..)
+         ( determineNumJobs, inDir, logDirChange, mergeBy, MergeResult(..)
          , tryCanonicalizePath )
 import Distribution.System
          ( Platform, OS(Windows), buildOS )
@@ -1424,49 +1424,50 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
   -- Path to the optional log file.
   mLogPath <- maybeLogPath ipid
 
-  -- Configure phase
-  onFailure ConfigureFailed $ withJobLimit buildLimit $ do
-    when (numJobs > 1) $ notice verbosity $
-      "Configuring " ++ display pkgid ++ "..."
-    setup configureCommand configureFlags mLogPath
-
-  -- Build phase
-    onFailure BuildFailed $ do
+  logDirChange (maybe putStr appendFile mLogPath) workingDir $ do
+    -- Configure phase
+    onFailure ConfigureFailed $ withJobLimit buildLimit $ do
       when (numJobs > 1) $ notice verbosity $
-        "Building " ++ display pkgid ++ "..."
-      setup buildCommand' buildFlags mLogPath
+        "Configuring " ++ display pkgid ++ "..."
+      setup configureCommand configureFlags mLogPath
 
-  -- Doc generation phase
-      docsResult <- if shouldHaddock
-        then (do setup haddockCommand haddockFlags' mLogPath
-                 return DocsOk)
-               `catchIO`   (\_ -> return DocsFailed)
-               `catchExit` (\_ -> return DocsFailed)
-        else return DocsNotTried
+    -- Build phase
+      onFailure BuildFailed $ do
+        when (numJobs > 1) $ notice verbosity $
+          "Building " ++ display pkgid ++ "..."
+        setup buildCommand' buildFlags mLogPath
 
-  -- Tests phase
-      onFailure TestsFailed $ do
-        when (testsEnabled && PackageDescription.hasTests pkg) $
-            setup Cabal.testCommand testFlags mLogPath
+    -- Doc generation phase
+        docsResult <- if shouldHaddock
+          then (do setup haddockCommand haddockFlags' mLogPath
+                   return DocsOk)
+                 `catchIO`   (\_ -> return DocsFailed)
+                 `catchExit` (\_ -> return DocsFailed)
+          else return DocsNotTried
 
-        let testsResult | testsEnabled = TestsOk
-                        | otherwise = TestsNotTried
+    -- Tests phase
+        onFailure TestsFailed $ do
+          when (testsEnabled && PackageDescription.hasTests pkg) $
+              setup Cabal.testCommand testFlags mLogPath
 
-      -- Install phase
-        onFailure InstallFailed $ criticalSection installLock $ do
-          -- Capture installed package configuration file
-          maybePkgConf <- maybeGenPkgConf mLogPath
+          let testsResult | testsEnabled = TestsOk
+                          | otherwise = TestsNotTried
 
-          -- Actual installation
-          withWin32SelfUpgrade verbosity ipid configFlags
-                               cinfo platform pkg $ do
-            case rootCmd miscOptions of
-              (Just cmd) -> reexec cmd
-              Nothing    -> do
-                setup Cabal.copyCommand copyFlags mLogPath
-                when shouldRegister $ do
-                  setup Cabal.registerCommand registerFlags mLogPath
-          return (Right (BuildOk docsResult testsResult maybePkgConf))
+        -- Install phase
+          onFailure InstallFailed $ criticalSection installLock $ do
+            -- Capture installed package configuration file
+            maybePkgConf <- maybeGenPkgConf mLogPath
+
+            -- Actual installation
+            withWin32SelfUpgrade verbosity ipid configFlags
+                                 cinfo platform pkg $ do
+              case rootCmd miscOptions of
+                (Just cmd) -> reexec cmd
+                Nothing    -> do
+                  setup Cabal.copyCommand copyFlags mLogPath
+                  when shouldRegister $ do
+                    setup Cabal.registerCommand registerFlags mLogPath
+            return (Right (BuildOk docsResult testsResult maybePkgConf))
 
   where
     pkgid            = packageId pkg
