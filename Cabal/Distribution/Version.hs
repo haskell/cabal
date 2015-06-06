@@ -743,7 +743,7 @@ instance Text VersionRange where
            (\v _ -> (Disp.text "==" <> dispWild v               , 0))
            (\(r1, p1) (r2, p2) -> (punct 2 p1 r1 <+> Disp.text "||" <+> punct 2 p2 r2 , 2))
            (\(r1, p1) (r2, p2) -> (punct 1 p1 r1 <+> Disp.text "&&" <+> punct 1 p2 r2 , 1))
-           (\(r, p)   -> (Disp.parens r, p))
+           (\(r, _)   -> (Disp.parens r, 0))
 
     where dispWild (Version b _) =
                Disp.hcat (Disp.punctuate (Disp.char '.') (map Disp.int b))
