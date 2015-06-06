@@ -18,16 +18,15 @@ module Distribution.Client.GZipUtils (
     maybeDecompress,
   ) where
 
-import Data.Monoid ((<>))
-import Control.Monad.ST.Lazy (ST)
-#if MIN_VERSION_zlib(0,6,0)
-import Data.ByteString.Lazy as BS (ByteString, fromChunks)
-#else
-import Data.ByteString.Lazy.Internal as BS (ByteString(Empty, Chunk))
-#endif
-import qualified Data.ByteString as SBS (ByteString)
 import Codec.Compression.Zlib.Internal
-import Data.Maybe (fromMaybe)
+import Data.ByteString.Lazy.Internal as BS (ByteString(Empty, Chunk))
+
+#if MIN_VERSION_zlib(0,6,0)
+import Control.Exception (throw)
+import Control.Monad (liftM)
+import Control.Monad.ST.Lazy (ST, runST)
+import qualified Data.ByteString as Strict
+#endif
 
 -- | Attempts to decompress the `bytes' under the assumption that
 -- "data format" error at the very beginning of the stream means
@@ -40,20 +39,37 @@ import Data.Maybe (fromMaybe)
 --
 maybeDecompress :: ByteString -> ByteString
 #if MIN_VERSION_zlib(0,6,0)
-maybeDecompress bytes = fromMaybe bytes $ foldDecompressStreamWithInput outputAv inputReq err s bytes
+maybeDecompress bytes = runST (go bytes decompressor)
   where
-    outputAv :: SBS.ByteString -> Maybe ByteString -> Maybe ByteString
-    outputAv outchunk = fmap (fromChunks [outchunk] <>)
-      -- (7.4.2 and down do not support 'fromStrict'.)
+    decompressor :: DecompressStream (ST s)
+    decompressor = decompressST gzipOrZlibFormat defaultDecompressParams
 
-    inputReq :: ByteString -> Maybe ByteString
-    inputReq = Just
+    -- DataError at the beginning of the stream probably means that stream is
+    -- not compressed, so we return it it as-is.
+    -- TODO: alternatively, we might consider looking for the two magic bytes
+    -- at the beginning of the gzip header.
+    go :: Monad m => ByteString -> DecompressStream m -> m ByteString
+    go cs (DecompressOutputAvailable bs k) = liftM (Chunk bs) $ go' cs =<< k
+    go _  (DecompressStreamEnd       bs  ) = return $ Chunk bs Empty
+    go cs (DecompressStreamError _err    ) = return cs
+    go cs (DecompressInputRequired      k) = go cs' =<< k c
+      where
+        (c, cs') = uncons cs
 
-    err :: DecompressError -> Maybe ByteString
-    err _ = Nothing
+    -- Once we have received any output though we regard errors as actual errors
+    -- and we throw them (as pure exceptions).
+    -- TODO: We could (and should) avoid these pure exceptions.
+    go' :: Monad m => ByteString -> DecompressStream m -> m ByteString
+    go' cs (DecompressOutputAvailable bs k) = liftM (Chunk bs) $ go' cs =<< k
+    go' _  (DecompressStreamEnd       bs  ) = return $ Chunk bs Empty
+    go' _  (DecompressStreamError err     ) = throw err
+    go' cs (DecompressInputRequired      k) = go' cs' =<< k c
+      where
+        (c, cs') = uncons cs
 
-    s :: forall s . DecompressStream (ST s)
-    s = decompressST gzipOrZlibFormat defaultDecompressParams
+    uncons :: ByteString -> (Strict.ByteString, ByteString)
+    uncons Empty        = (Strict.empty, Empty)
+    uncons (Chunk c cs) = (c, cs)
 #else
 maybeDecompress bytes = foldStream $ decompressWithErrors gzipOrZlibFormat defaultDecompressParams bytes
   where
