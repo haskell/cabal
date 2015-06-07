@@ -8,7 +8,6 @@ import Control.Exception.Base                  (evaluate)
 import Control.Exception                       (try, SomeException)
 import Control.Monad                           (void)
 import Data.ByteString.Lazy.Char8     as BS    (pack, init, length)
-import Data.Either                             (isLeft)
 import Data.Monoid                             ((<>))
 import Distribution.Client.GZipUtils           (maybeDecompress)
 
@@ -34,3 +33,8 @@ maybeDecompressUnitTest =
 
     runBrokenStream :: IO (Either SomeException ())
     runBrokenStream = try . void . evaluate . BS.length $ maybeDecompress (BS.init compressedZlib <> BS.pack "*")
+
+-- (Only available from "Data.Either" since 7.8.)
+isLeft :: Either a b -> Bool
+isLeft (Right _) = False
+isLeft (Left _) = True
