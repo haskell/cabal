@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module PackageTests.InitConfig.Check
+module PackageTests.UserConfig.Check
        ( tests
        ) where
 
@@ -15,25 +15,25 @@ import System.FilePath ((</>))
 import System.IO.Error (isDoesNotExistError)
 
 dir :: FilePath
-dir = packageTestsDirectory 
+dir = packageTestsDirectory
 
 tests :: TestsPaths -> [TestTree]
 tests paths =
     [ testCase "runs without error" $ do
           removeCabalConfig
-          result <- cabal_initconfig paths dir []
+          result <- cabal_userconfig paths dir ["init"]
           assertInitConfigSucceeded result
 
     , testCase "doesn't overwrite without -f" $ do
           removeCabalConfig
-          _      <- cabal_initconfig paths dir []
-          result <- cabal_initconfig paths dir []
+          _      <- cabal_userconfig paths dir ["init"]
+          result <- cabal_userconfig paths dir ["init"]
           assertInitConfigFailed result
 
     , testCase "overwrites with -f" $ do
           removeCabalConfig
-          _      <- cabal_initconfig paths dir []
-          result <- cabal_initconfig paths dir ["-f"]
+          _      <- cabal_userconfig paths dir ["init"]
+          result <- cabal_userconfig paths dir ["init", "-f"]
           assertInitConfigSucceeded result
     ]
 

@@ -29,7 +29,7 @@ module PackageTests.PackageTester
     , cabal_freeze
     , cabal_install
     , cabal_sandbox
-    , cabal_initconfig
+    , cabal_userconfig
     , run
 
     -- * Test helpers
@@ -132,9 +132,9 @@ cabal_freeze paths dir args = do
     return $ recordRun res FreezeSuccess nullResult
 
 -- | Run the init-config command and return its result.
-cabal_initconfig :: TestsPaths -> FilePath -> [String] -> IO Result
-cabal_initconfig paths dir args = do
-    res <- cabal paths dir (["init-config"] ++ args)
+cabal_userconfig :: TestsPaths -> FilePath -> [String] -> IO Result
+cabal_userconfig paths dir args = do
+    res <- cabal paths dir (["user-config"] ++ args)
     return $ recordRun res InitConfigSuccess nullResult
 
 -- | Run the install command and return its result.

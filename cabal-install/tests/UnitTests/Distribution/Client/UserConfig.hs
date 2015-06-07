@@ -8,8 +8,9 @@ import Data.List (sort, nub)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
 #endif
-import System.Directory (getCurrentDirectory, removeDirectoryRecursive, createDirectoryIfMissing)
-import System.FilePath (takeDirectory)
+import System.Directory (getCurrentDirectory, removeDirectoryRecursive, createDirectoryIfMissing,
+                         doesFileExist, getTemporaryDirectory)
+import System.FilePath (takeDirectory, (</>))
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -19,6 +20,7 @@ import Distribution.Client.Config
 import Distribution.Utils.NubList (fromNubList)
 import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
 import Distribution.Simple.Setup (ConfigFlags (..), fromFlag)
+import Distribution.Simple.Utils (withTempDirectory)
 import Distribution.Verbosity (silent)
 
 tests :: [TestTree]
@@ -26,6 +28,7 @@ tests = [ testCase "nullDiffOnCreate" nullDiffOnCreateTest
         , testCase "canDetectDifference" canDetectDifference
         , testCase "canUpdateConfig" canUpdateConfig
         , testCase "doubleUpdateConfig" doubleUpdateConfig
+        , testCase "newDefaultConfig" newDefaultConfig
         ]
 
 nullDiffOnCreateTest :: Assertion
@@ -78,6 +81,19 @@ doubleUpdateConfig = bracketTest . const $ do
         listUnique (map show . fromNubList . configProgramPathExtra $ savedConfigureFlags updated)
     assertBool ("Field 'build-summary' doesn't contain duplicates") $
         listUnique (map show . fromNubList . installSummaryFile $ savedInstallFlags updated)
+
+
+newDefaultConfig :: Assertion
+newDefaultConfig = do
+    sysTmpDir <- getTemporaryDirectory
+    withTempDirectory silent sysTmpDir "cabal-test" $ \tmpDir -> do
+        let configFile  = tmpDir </> "tmp.config"
+        createDirectoryIfMissing True tmpDir
+        -- Create default config
+        createDefaultConfigFile silent configFile
+        -- Check that file was written
+        exists <- doesFileExist configFile
+        assertBool ("Config file should be written to " ++ configFile) exists
 
 
 listUnique :: Ord a => [a] -> Bool

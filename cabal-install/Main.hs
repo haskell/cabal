@@ -29,7 +29,6 @@ import Distribution.Client.Setup
          , checkCommand
          , formatCommand
          , updateCommand
-         , InitConfigFlags(..), initConfigCommand
          , ListFlags(..), listCommand
          , InfoFlags(..), infoCommand
          , UploadFlags(..), uploadCommand
@@ -232,7 +231,6 @@ mainWorker args = topHandler $
     commands =
       [installCommand         `commandAddAction` installAction
       ,updateCommand          `commandAddAction` updateAction
-      ,initConfigCommand      `commandAddAction` initConfigAction
       ,listCommand            `commandAddAction` listAction
       ,infoCommand            `commandAddAction` infoAction
       ,fetchCommand           `commandAddAction` fetchAction
@@ -926,23 +924,6 @@ updateAction verbosityFlag extraArgs globalFlags = do
   transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags'))
   update transport verbosity (globalRepos globalFlags')
 
-initConfigAction :: InitConfigFlags -> [String] -> GlobalFlags -> IO ()
-initConfigAction flags extraArgs globalFlags = do
-  unless (null extraArgs) $
-    die $ "'init-config' doesn't take any extra arguments: " ++ unwords extraArgs
-  defPath <- defaultConfigFile
-  let verbosity        = fromFlag $ initConfigVerbose flags
-      force            = fromFlag $ initConfigForce flags
-      globalConfigFlag = globalConfigFile globalFlags 
-      fpath            = fromFlagOrDefault defPath globalConfigFlag
-  fexists <- doesFileExist fpath
-  case fexists of
-    False -> createDefaultConfigFile verbosity fpath
-    True  -> do
-      case force of
-        False -> die $ fpath ++ " already exists"
-        True  -> createDefaultConfigFile verbosity fpath
-
 upgradeAction :: (ConfigFlags, ConfigExFlags, InstallFlags, HaddockFlags)
               -> [String] -> GlobalFlags -> IO ()
 upgradeAction _ _ _ = die $
@@ -1183,13 +1164,22 @@ execAction execFlags extraArgs globalFlags = do
 userConfigAction :: UserConfigFlags -> [String] -> GlobalFlags -> IO ()
 userConfigAction ucflags extraArgs globalFlags = do
   let verbosity = fromFlag (userConfigVerbosity ucflags)
+      force     = fromFlag (userConfigForce ucflags)
   case extraArgs of
+    ("init":_) -> do
+      path       <- configFile
+      fileExists <- doesFileExist path
+      if (not fileExists || (fileExists && force))
+      then createDefaultConfigFile verbosity path
+      else die $ path ++ " already exists."
     ("diff":_) -> mapM_ putStrLn =<< userConfigDiff globalFlags
     ("update":_) -> userConfigUpdate verbosity globalFlags
     -- Error handling.
     [] -> die $ "Please specify a subcommand (see 'help user-config')"
     _  -> die $ "Unknown 'user-config' subcommand: " ++ unwords extraArgs
-
+  where configFile = do
+          defaultFile <- defaultConfigFile
+          return $ fromFlagOrDefault defaultFile (globalConfigFile globalFlags)
 
 -- | See 'Distribution.Client.Install.withWin32SelfUpgrade' for details.
 --

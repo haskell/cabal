@@ -21,7 +21,6 @@ module Distribution.Client.Setup
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
-    , initConfigCommand, InitConfigFlags(..)
     , upgradeCommand
     , uninstallCommand
     , infoCommand, InfoFlags(..)
@@ -800,40 +799,6 @@ freezeCommand = CommandUI {
                          freezeShadowPkgs       (\v flags -> flags { freezeShadowPkgs       = v })
                          freezeStrongFlags      (\v flags -> flags { freezeStrongFlags      = v })
 
-  }
-
--- ------------------------------------------------------------
--- * Init-config command
--- ------------------------------------------------------------
-
-data InitConfigFlags = InitConfigFlags {
-    initConfigVerbose :: Flag Verbosity,
-    initConfigForce   :: Flag Bool
-  }
-  deriving Show
-
-defaultInitConfigFlags :: InitConfigFlags
-defaultInitConfigFlags = InitConfigFlags {
-    initConfigVerbose  = Flag normal,
-    initConfigForce    = Flag False
-  }
-
-initConfigCommand :: CommandUI InitConfigFlags
-initConfigCommand = CommandUI {
-    commandName         = "init-config",
-    commandSynopsis     = "Create default config file if it doesn't already exist.",
-    commandDescription  = Just $ \_ ->
-        "Create default config file if it doesn't already exist.\n",
-    commandNotes        = Nothing,
-    commandUsage        = usageFlags "init-config",
-    commandDefaultFlags = defaultInitConfigFlags,
-    commandOptions      = \_ -> [
-      optionVerbosity initConfigVerbose (\v flags -> flags { initConfigVerbose = v })
-    , option ['f'] ["force"]
-       "Overwrite file even if it already exists."
-       initConfigForce (\v flags -> flags { initConfigForce = v })
-       trueArg
-      ]
   }
 
 -- ------------------------------------------------------------
@@ -2163,15 +2128,18 @@ instance Monoid ExecFlags where
 -- ------------------------------------------------------------
 
 data UserConfigFlags = UserConfigFlags {
-  userConfigVerbosity :: Flag Verbosity
+  userConfigVerbosity :: Flag Verbosity,
+  userConfigForce     :: Flag Bool
 }
 
 instance Monoid UserConfigFlags where
   mempty = UserConfigFlags {
-    userConfigVerbosity = toFlag normal
+    userConfigVerbosity = toFlag normal,
+    userConfigForce     = toFlag False
     }
   mappend a b = UserConfigFlags {
-    userConfigVerbosity = combine userConfigVerbosity
+    userConfigVerbosity = combine userConfigVerbosity,
+    userConfigForce     = combine userConfigForce
     }
     where combine field = field a `mappend` field b
 
@@ -2186,6 +2154,9 @@ userConfigCommand = CommandUI {
     ++ " (i.e. all bindings that are actually defined and not commented out)"
     ++ " and the default config of the new version.\n"
     ++ "\n"
+    ++ "init: Creates a new config file at either ~/.cabal/config or as"
+    ++ " specified by --config-file, if given. The file won't be overwritten"
+    ++ " unless -f or --force is given.\n"
     ++ "diff: Shows a pseudo-diff of the user's ~/.cabal/config file and"
     ++ " the default configuration that would be created by cabal if the"
     ++ " config file did not exist.\n"
@@ -2193,10 +2164,14 @@ userConfigCommand = CommandUI {
     ++ " created by default, and write the result back to ~/.cabal/config.",
 
   commandNotes        = Nothing,
-  commandUsage        = usageAlternatives "user-config" ["diff", "update"],
+  commandUsage        = usageAlternatives "user-config" ["init", "diff", "update"],
   commandDefaultFlags = mempty,
   commandOptions      = \ _ -> [
    optionVerbosity userConfigVerbosity (\v flags -> flags { userConfigVerbosity = v })
+ , option ['f'] ["force"]
+     "Overwrite file if it already exists."
+     userConfigForce (\v flags -> flags { userConfigForce = v })
+     trueArg
    ]
   }
 
