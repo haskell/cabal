@@ -22,19 +22,19 @@ tests paths =
     [ testCase "runs without error" $ do
           removeCabalConfig
           result <- cabal_userconfig paths dir ["init"]
-          assertInitConfigSucceeded result
+          assertUserConfigSucceeded result
 
     , testCase "doesn't overwrite without -f" $ do
           removeCabalConfig
           _      <- cabal_userconfig paths dir ["init"]
           result <- cabal_userconfig paths dir ["init"]
-          assertInitConfigFailed result
+          assertUserConfigFailed result
 
     , testCase "overwrites with -f" $ do
           removeCabalConfig
           _      <- cabal_userconfig paths dir ["init"]
           result <- cabal_userconfig paths dir ["init", "-f"]
-          assertInitConfigSucceeded result
+          assertUserConfigSucceeded result
     ]
 
 removeCabalConfig :: IO ()

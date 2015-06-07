@@ -39,8 +39,8 @@ module PackageTests.PackageTester
     , assertFreezeSucceeded
     , assertInstallSucceeded
     , assertSandboxSucceeded
-    , assertInitConfigSucceeded
-    , assertInitConfigFailed
+    , assertUserConfigSucceeded
+    , assertUserConfigFailed
     ) where
 
 import qualified Control.Exception.Extensible as E
@@ -225,16 +225,16 @@ assertSandboxSucceeded result = unless (successful result) $
     "expected: \'cabal sandbox\' should succeed\n" ++
     "  output: " ++ outputText result
 
-assertInitConfigSucceeded :: Result -> Assertion
-assertInitConfigSucceeded result = unless (successful result) $
+assertUserConfigSucceeded :: Result -> Assertion
+assertUserConfigSucceeded result = unless (successful result) $
     assertFailure $
-    "expected: \'cabal init-config\' should succeed\n" ++
+    "expected: \'cabal user-config\' should succeed\n" ++
     "  output: " ++ outputText result
 
-assertInitConfigFailed :: Result -> Assertion
-assertInitConfigFailed result = when (successful result) $
+assertUserConfigFailed :: Result -> Assertion
+assertUserConfigFailed result = when (successful result) $
     assertFailure $
-    "expected: \'cabal init-config\' should fail\n" ++
+    "expected: \'cabal user-config\' should fail\n" ++
     "  output: " ++ outputText result
 
 
