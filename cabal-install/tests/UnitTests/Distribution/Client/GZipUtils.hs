@@ -21,9 +21,9 @@ tests = [ testCase "maybeDecompress" maybeDecompressUnitTest
 
 maybeDecompressUnitTest :: Assertion
 maybeDecompressUnitTest =
-        assertBool "decompress plain" (maybeDecompress original       == original)
-     >> assertBool "decompress zlib"  (maybeDecompress compressedZlib == original)
-     >> assertBool "decompress gzip"  (maybeDecompress compressedGZip == original)
+        assertBool "decompress plain"            (maybeDecompress original              == original)
+     >> assertBool "decompress zlib (with show)" (show (maybeDecompress compressedZlib) == show original)
+     >> assertBool "decompress gzip (with show)" (show (maybeDecompress compressedGZip) == show original)
      >> (runBrokenStream >>= assertBool "decompress broken" . isLeft)
   where
     original = BS.pack "original uncompressed input"
