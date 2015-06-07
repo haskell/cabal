@@ -24,7 +24,7 @@ maybeDecompressUnitTest =
         assertBool "decompress plain"            (maybeDecompress original              == original)
      >> assertBool "decompress zlib (with show)" (show (maybeDecompress compressedZlib) == show original)
      >> assertBool "decompress gzip (with show)" (show (maybeDecompress compressedGZip) == show original)
-     >> (runBrokenStream >>= assertBool "decompress broken" . isLeft)
+     >> (runBrokenStream >>= assertBool "decompress broken stream" . isLeft)
   where
     original = BS.pack "original uncompressed input"
     compressedZlib = Zlib.compress original

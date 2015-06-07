@@ -45,9 +45,9 @@ maybeDecompress bytes = runST (go bytes decompressor)
     decompressor = decompressST gzipOrZlibFormat defaultDecompressParams
 
     -- DataError at the beginning of the stream probably means that stream is
-    -- not compressed, so we return it it as-is.
+    -- not compressed, so we return it as-is.
     -- TODO: alternatively, we might consider looking for the two magic bytes
-    -- at the beginning of the gzip header.
+    -- at the beginning of the gzip header.  (not an option for zlib, though.)
     go :: Monad m => ByteString -> DecompressStream m -> m ByteString
     go cs (DecompressOutputAvailable bs k) = liftM (Chunk bs) $ go' cs =<< k
     go _  (DecompressStreamEnd       bs  ) = return $ Chunk bs Empty
