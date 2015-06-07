@@ -51,7 +51,7 @@ maybeDecompress bytes = runST (go bytes decompressor)
     go :: Monad m => ByteString -> DecompressStream m -> m ByteString
     go cs (DecompressOutputAvailable bs k) = liftM (Chunk bs) $ go' cs =<< k
     go _  (DecompressStreamEnd       bs  ) = return $ Chunk bs Empty
-    go cs (DecompressStreamError _err    ) = return cs
+    go _  (DecompressStreamError _err    ) = return bytes
     go cs (DecompressInputRequired      k) = go cs' =<< k c
       where
         (c, cs') = uncons cs
