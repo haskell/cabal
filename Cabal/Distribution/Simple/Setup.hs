@@ -1428,7 +1428,7 @@ instance Monoid HaddockFlags where
     haddockProgramPaths = combine haddockProgramPaths,
     haddockProgramArgs  = combine haddockProgramArgs,
     haddockHoogle       = combine haddockHoogle,
-    haddockHtml         = combine haddockHoogle,
+    haddockHtml         = combine haddockHtml,
     haddockHtmlLocation = combine haddockHtmlLocation,
     haddockExecutables  = combine haddockExecutables,
     haddockTestSuites   = combine haddockTestSuites,
