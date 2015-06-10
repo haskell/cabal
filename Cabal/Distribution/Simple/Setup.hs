@@ -386,7 +386,7 @@ configureCommand progConf = CommandUI
       ++ "\n"
       ++ "The configuration affects several other commands, "
       ++ "including build, test, bench, run, repl.\n"
-  , commandNotes        = Just (\_ -> programFlagsDescription progConf)
+  , commandNotes        = Just $ \_pname -> programFlagsDescription progConf
   , commandUsage        = \pname ->
       "Usage: " ++ pname ++ " configure [FLAGS]\n"
   , commandDefaultFlags = defaultConfigFlags progConf
@@ -534,7 +534,12 @@ configureOptions showOrParseArgs =
          (boolOpt' ([],["user"]) ([], ["global"]))
 
       ,option "" ["package-db"]
-         "Use a given package database (to satisfy dependencies and register in). May be a specific file, 'global', 'user' or 'clear'."
+         (   "Append the given package database to the list of package"
+          ++ " databases used (to satisfy dependencies and register into)."
+          ++ " May be a specific file, 'global' or 'user'. The initial list"
+          ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+          ++ " depending on context. Use 'clear' to reset the list to empty."
+          ++ " See the user guide for details.")
          configPackageDBs (\v flags -> flags { configPackageDBs = v })
          (reqArg' "DB" readPackageDbList showPackageDbList)
 
