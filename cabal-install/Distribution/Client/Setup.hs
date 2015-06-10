@@ -363,9 +363,20 @@ globalRepos globalFlags = remoteRepos ++ localRepos
 -- ------------------------------------------------------------
 
 configureCommand :: CommandUI ConfigFlags
-configureCommand = (Cabal.configureCommand defaultProgramConfiguration) {
-    commandDefaultFlags = mempty
+configureCommand = c
+  { commandDefaultFlags = mempty
+  , commandNotes = Just $ \pname -> (case commandNotes c of
+         Nothing -> ""
+         Just n  -> n pname ++ "\n")
+       ++ "Examples:\n"
+       ++ "  " ++ pname ++ " configure\n"
+       ++ "    Configure with defaults;\n"
+       ++ "  " ++ pname ++ " configure --enable-tests -fcustomflag\n"
+       ++ "    Configure building package including tests,\n"
+       ++ "    with some package-specific flag.\n"
   }
+ where
+  c = Cabal.configureCommand defaultProgramConfiguration
 
 configureOptions ::  ShowOrParseArgs -> [OptionField ConfigFlags]
 configureOptions = commandOptions configureCommand
@@ -852,11 +863,19 @@ runCommand :: CommandUI (BuildFlags, BuildExFlags)
 runCommand = CommandUI {
     commandName         = "run",
     commandSynopsis     = "Builds and runs an executable.",
-    commandDescription  = Just $ \_ -> wrapText $
+    commandDescription  = Just $ \pname -> wrapText $
          "Builds and then runs the specified executable. If no executable is "
       ++ "specified, but the package contains just one executable, that one "
-      ++ "is built and executed.\n",
-    commandNotes        = Nothing,
+      ++ "is built and executed.\n"
+      ++ "\n"
+      ++ "Use `" ++ pname ++ " test --show-details=streaming` to run a "
+      ++ "test-suite and get its full output.\n",
+    commandNotes        = Just $ \pname ->
+          "Examples:\n"
+       ++ "  " ++ pname ++ " run\n"
+       ++ "    Run the only executable in the current package;\n"
+       ++ "  " ++ pname ++ " run foo -- --fooflag\n"
+       ++ "    Works similar to `./foo --fooflag`.\n",
     commandUsage        = usageAlternatives "run"
         ["[FLAGS] [EXECUTABLE] [-- EXECUTABLE_FLAGS]"],
     commandDefaultFlags = mempty,
@@ -957,7 +976,12 @@ getCommand = CommandUI {
        ++ "the source\ntarball and unpacks it in a local subdirectory. "
        ++ "Alternatively, with -s it will\nget the code from the source "
        ++ "repository specified by the package.\n",
-    commandNotes        = Nothing,
+    commandNotes        = Just $ \pname ->
+          "Examples:\n"
+       ++ "  " ++ pname ++ " get hlint\n"
+       ++ "    Download the latest stable version of hlint;\n"
+       ++ "  " ++ pname ++ " get lens --source-repository=head\n"
+       ++ "    Download the source repository (i.e. git clone from github).\n",
     commandUsage        = usagePackages "get",
     commandDefaultFlags = defaultGetFlags,
     commandOptions      = \_ -> [
@@ -1037,7 +1061,10 @@ listCommand = CommandUI {
       ++ "config:ignore-sandbox is False, use the sandbox package database. "
       ++ "Otherwise, use the package database specified with --package-db. "
       ++ "If not specified, use the user package database.\n",
-    commandNotes        = Nothing,
+    commandNotes        = Just $ \pname ->
+         "Examples:\n"
+      ++ "  " ++ pname ++ " list pandoc\n"
+      ++ "    Will find pandoc, pandoc-citeproc, pandoc-lens, ...\n",
     commandUsage        = usageAlternatives "list" [ "[FLAGS]"
                                                    , "[FLAGS] STRINGS"],
     commandDefaultFlags = defaultListFlags,
@@ -1055,7 +1082,12 @@ listCommand = CommandUI {
             trueArg
 
         , option "" ["package-db"]
-          "Use a given package database. May be a specific file, 'global', 'user' or 'clear'."
+          (   "Append the given package database to the list of package"
+           ++ " databases used (to satisfy dependencies and register into)."
+           ++ " May be a specific file, 'global' or 'user'. The initial list"
+           ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+           ++ " depending on context. Use 'clear' to reset the list to empty."
+           ++ " See the user guide for details.")
           listPackageDBs (\v flags -> flags { listPackageDBs = v })
           (reqArg' "DB" readPackageDbList showPackageDbList)
 
@@ -1108,7 +1140,12 @@ infoCommand = CommandUI {
         optionVerbosity infoVerbosity (\v flags -> flags { infoVerbosity = v })
 
         , option "" ["package-db"]
-          "Use a given package database. May be a specific file, 'global', 'user' or 'clear'."
+          (   "Append the given package database to the list of package"
+           ++ " databases used (to satisfy dependencies and register into)."
+           ++ " May be a specific file, 'global' or 'user'. The initial list"
+           ++ " is ['global'], ['global', 'user'], or ['global', $sandbox],"
+           ++ " depending on context. Use 'clear' to reset the list to empty."
+           ++ " See the user guide for details.")
           infoPackageDBs (\v flags -> flags { infoPackageDBs = v })
           (reqArg' "DB" readPackageDbList showPackageDbList)
 
@@ -1242,11 +1279,24 @@ installCommand = CommandUI {
      ++ " that, `configure` must be used.)\n"
      ++ " In contrast, without a sandbox, the flags to `install` are saved and"
      ++ " affect future commands such as `build` and `repl`. See the help for"
-     ++ " `configure` for a list of commands being affected.\n",
+     ++ " `configure` for a list of commands being affected.\n"
+     ++ "\n"
+     ++ "Installed executables will by default (and without a sandbox)"
+     ++ " be put into `~/.cabal/bin/`."
+     ++ " If you want installed executable to be available globally, make"
+     ++ " sure that the PATH environment variable contains that directory.\n"
+     ++ "When using a sandbox, executables will be put into"
+     ++ " `$SANDBOX/bin/` (by default: `./.cabal-sandbox/bin/`).\n"
+     ++ "\n"
+     ++ "When specifying --bindir, consider also specifying --datadir;"
+     ++ " this way the sandbox can be deleted and the executable should"
+     ++ " continue working as long as bindir and datadir are left untouched.",
   commandNotes        = Just $ \pname ->
-        ( case commandNotes configureCommand of
-            Just desc -> desc pname ++ "\n"
-            Nothing   -> "" )
+        ( case commandNotes
+               $ Cabal.configureCommand defaultProgramConfiguration
+          of Just desc -> desc pname ++ "\n"
+             Nothing   -> ""
+        )
      ++ "Examples:\n"
      ++ "  " ++ pname ++ " install                 "
      ++ "    Package in the current directory\n"
@@ -1255,7 +1305,11 @@ installCommand = CommandUI {
      ++ "  " ++ pname ++ " install foo-1.0         "
      ++ "    Specific version of a package\n"
      ++ "  " ++ pname ++ " install 'foo < 2'       "
-     ++ "    Constrained package version\n",
+     ++ "    Constrained package version\n"
+     ++ "  " ++ pname ++ " install haddock --bindir=$HOME/hask-bin/ --datadir=$HOME/hask-data/\n"
+     ++ "  " ++ (map (const ' ') pname)
+                      ++ "                         "
+     ++ "    Change installation destination\n",
   commandDefaultFlags = (mempty, mempty, mempty, mempty),
   commandOptions      = \showOrParseArgs ->
        liftOptions get1 set1
@@ -1893,7 +1947,7 @@ sandboxCommand = CommandUI {
       ++ " commands, e.g. `repl`, `build`, `exec`."
     , paragraph $ "Currently, " ++ pname ++ " will not search for a sandbox"
       ++ " in folders above the current one, so cabal will not see the sandbox"
-      ++ " if you are in a subfolder of a sandboxes."
+      ++ " if you are in a subfolder of a sandbox."
     , paragraph "Subcommands:"
     , headLine "init:"
     , indentParagraph $ "Initialize a sandbox in the current directory."
@@ -1903,7 +1957,7 @@ sandboxCommand = CommandUI {
     , indentParagraph $ "Remove the sandbox; deleting all the packages"
       ++ " installed inside."
     , headLine "add-source:"
-    , indentParagraph $ "Make one or more local package available in the"
+    , indentParagraph $ "Make one or more local packages available in the"
       ++ " sandbox. PATHS may be relative or absolute."
       ++ " Typical usecase is when you need"
       ++ " to make a (temporary) modification to a dependency: You download"
@@ -1927,9 +1981,23 @@ sandboxCommand = CommandUI {
       ++ " installed in the sandbox. For subcommands, see the help for"
       ++ " ghc-pkg. Affected by the compiler version specified by `configure`."
     ],
-  commandNotes        = Just $ \_ ->
+  commandNotes        = Just $ \pname ->
        relevantConfigValuesText ["require-sandbox"
-                                ,"ignore-sandbox"],
+                                ,"ignore-sandbox"]
+    ++ "\n"
+    ++ "Examples:\n"
+    ++ "  Set up a sandbox with one local dependency, located at ../foo:\n"
+    ++ "    " ++ pname ++ " sandbox init\n"
+    ++ "    " ++ pname ++ " sandbox add-source ../foo\n"
+    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "  Reset the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox delete\n"
+    ++ "    " ++ pname ++ " sandbox init\n"
+    ++ "    " ++ pname ++ " install --only-dependencies\n"
+    ++ "  List the packages in the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox hc-pkg list\n"
+    ++ "  Unregister the `broken` package from the sandbox:\n"
+    ++ "    " ++ pname ++ " sandbox hc-pkg -- --force unregister broken\n",
   commandUsage        = usageAlternatives "sandbox"
     [ "init          [FLAGS]"
     , "delete        [FLAGS]"
@@ -2002,20 +2070,20 @@ execCommand = CommandUI {
     ++ " has more control and can, for example, execute custom scripts which"
     ++ " indirectly execute GHC.\n"
     ++ "\n"
-    ++ "See `" ++ pname ++ " sandbox`.",
+    ++ "Note that `" ++ pname ++ " repl` is different from `" ++ pname
+    ++ " exec -- ghci` as the latter will not forward any additional flags"
+    ++ " being defined in the local package to ghci.\n"
+    ++ "\n"
+    ++ "See `" ++ pname ++ " sandbox`.\n",
   commandNotes        = Just $ \pname ->
        "Examples:\n"
-    ++ "  Install the executable package pandoc into a sandbox and run it:\n"
-    ++ "    " ++ pname ++ " sandbox init\n"
-    ++ "    " ++ pname ++ " install pandoc\n"
-    ++ "    " ++ pname ++ " exec pandoc foo.md\n\n"
-    ++ "  Install the executable package hlint into the user package database\n"
-    ++ "  and run it:\n"
-    ++ "    " ++ pname ++ " install --user hlint\n"
-    ++ "    " ++ pname ++ " exec hlint Foo.hs\n\n"
-    ++ "  Execute runghc on Foo.hs with runghc configured to use the\n"
-    ++ "  sandbox package database (if a sandbox is being used):\n"
-    ++ "    " ++ pname ++ " exec runghc Foo.hs\n",
+    ++ "  " ++ pname ++ " exec -- ghci -Wall\n"
+    ++ "    Start a repl session with sandbox packages and all warnings;\n"
+    ++ "  " ++ pname ++ " exec gitit -- -f gitit.cnf\n"
+    ++ "    Give gitit access to the sandbox packages, and pass it a flag;\n"
+    ++ "  " ++ pname ++ " exec runghc Foo.hs\n"
+    ++ "    Execute runghc on Foo.hs with runghc configured to use the\n"
+    ++ "    sandbox package database (if a sandbox is being used).\n",
   commandUsage        = \pname ->
        "Usage: " ++ pname ++ " exec [FLAGS] [--] COMMAND [--] [ARGS]\n",
 
