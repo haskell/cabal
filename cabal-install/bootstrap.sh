@@ -190,7 +190,7 @@ NETWORK_VER="2.6.0.2"; NETWORK_VER_REGEXP="2\.[0-6]\."
                        # >= 2.0 && < 2.7
 NETWORK_URI_VER="2.6.0.1"; NETWORK_URI_VER_REGEXP="2\.6\."
                        # >= 2.6 && < 2.7
-CABAL_VER="1.22.3.0";  CABAL_VER_REGEXP="1\.22"
+CABAL_VER="1.22.4.0";  CABAL_VER_REGEXP="1\.22"
                        # >= 1.22 && < 1.23
 TRANS_VER="0.4.2.0";   TRANS_VER_REGEXP="0\.[4]\."
                        # >= 0.2.* && < 0.5

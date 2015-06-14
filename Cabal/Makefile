@@ -1,5 +1,5 @@
 
-VERSION=1.22.3.0
+VERSION=1.22.4.0
 
 #KIND=devel
 KIND=rc
