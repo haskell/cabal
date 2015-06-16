@@ -1579,10 +1579,11 @@ checkLicensesExist ops pkg = do
 checkSetupExists :: Monad m => CheckPackageContentOps m
                  -> PackageDescription
                  -> m (Maybe PackageCheck)
-checkSetupExists ops _ = do
+checkSetupExists ops pkg = do
+  let simpleBuild = buildType pkg == Just Simple
   hsexists  <- doesFileExist ops "Setup.hs"
   lhsexists <- doesFileExist ops "Setup.lhs"
-  return $ check (not hsexists && not lhsexists) $
+  return $ check (not simpleBuild && not hsexists && not lhsexists) $
     PackageDistInexcusable $
       "The package is missing a Setup.hs or Setup.lhs script."
 
