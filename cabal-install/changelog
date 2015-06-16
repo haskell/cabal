@@ -1,4 +1,7 @@
 -*-change-log-*-
+1.22.5.0 Ryan Thomas <ryan@ryant.org> June 2015
+	* Reduce temporary directory name length, fixes #2502. (Edward Z. Yang)
+
 1.22.4.0 Ryan Thomas <ryan@ryant.org> May 2015
 	* Force cabal upload to always use digest auth and never basic auth.
 	* Add dependency-graph information to `printPlan` output
