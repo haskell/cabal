@@ -18,7 +18,7 @@ module Distribution.Client.IndexUtils (
   getSourcePackagesStrict,
   convert,
 
-  readPackageIndexFile,
+  --readPackageIndexFile,
   parsePackageIndex,
   readRepoIndex,
   updateRepoIndexCache,
@@ -297,6 +297,8 @@ packageDesc (BuildTreeRef _ _ descr _ _) = descr
 -- specific instance of 'Package' that you might want to use. In the simple
 -- case you can just use @\_ p -> p@ here.
 --
+
+{-
 readPackageIndexFile :: Package pkg
                      => (PackageEntry -> pkg)
                      -> FilePath
@@ -311,34 +313,38 @@ readPackageIndexFile mkPkg indexFile = do
   pkgs <- evaluate $ PackageIndex.fromList (map mkPkg pkgEntries)
   return (pkgs, prefs)
 
+-}
+
 -- | Parse an uncompressed \"00-index.tar\" repository index file represented
 -- as a 'ByteString'.
 --
-parsePackageIndex :: ByteString
-                  -> Either String ([MkPackageEntry], [Dependency])
-parsePackageIndex = accum 0 [] Map.empty . Tar.read
-  where
-    accum blockNo pkgs prefs es = case es of
-      Tar.Fail err   -> Left  err
-      Tar.Done       -> Right (reverse pkgs, concat (Map.elems prefs))
-      Tar.Next e es' -> blockNo' `seq` prefs' `seq`
-                        accum blockNo' pkgs' prefs' es'
-        where
-          (pkgs', prefs') = extract blockNo pkgs prefs e
-          blockNo'        = blockNo + Tar.entrySizeInBlocks e
 
-    extract blockNo pkgs prefs entry =
-       fromMaybe (pkgs, prefs) $
-                 tryExtractPkg
-         `mplus` tryExtractPrefs
+data PackageOrDep = Pkg PackageEntry | Dep Dependency
+
+parsePackageIndex :: ByteString
+                  -> [IO PackageOrDep]
+parsePackageIndex = accum 0 . Tar.read
+  where
+    accum blockNo es = case es of
+      Tar.Fail err   -> error ("parsePackageIndex: " ++ err)
+      Tar.Done       -> []
+      Tar.Next e es' -> ps ++ accum blockNo' es'
+        where
+          ps       = extract blockNo e
+          blockNo' = blockNo + Tar.entrySizeInBlocks e
+
+    extract blockNo entry = tryExtractPkg ++ tryExtractPrefs
       where
+        maybeToList Nothing  = []
+        maybeToList (Just a) = [a]
+
         tryExtractPkg = do
-          mkPkgEntry <- extractPkg entry blockNo
-          return (mkPkgEntry:pkgs, prefs)
+          mkPkgEntry <- maybeToList $ extractPkg entry blockNo
+          return (fmap Pkg mkPkgEntry)
 
         tryExtractPrefs = do
-          (loc,prefs') <- extractPrefs entry
-          return (pkgs, Map.insert loc prefs' prefs)
+          (_,prefs') <- maybeToList $ extractPrefs entry
+          map (return . Dep) $ prefs'
 
 extractPkg :: Tar.Entry -> BlockNo -> Maybe MkPackageEntry
 extractPkg entry blockNo = case Tar.entryContent entry of
@@ -392,23 +398,29 @@ parsePreferredVersions = mapMaybe simpleParse
 -- Reading and updating the index cache
 --
 
+lazySequence :: [IO a] -> IO [a]
+lazySequence [] = return []
+lazySequence (x:xs) = unsafeInterleaveIO $ do
+    x'  <- unsafeInterleaveIO x
+    xs' <- lazySequence xs
+    return (x':xs')
+
 updatePackageIndexCacheFile :: Verbosity -> FilePath -> FilePath -> IO ()
 updatePackageIndexCacheFile verbosity indexFile cacheFile = do
     info verbosity ("Updating index cache file " ++ cacheFile)
-    (mkPkgs, prefs) <- either fail return
-                       . parsePackageIndex
-                       . maybeDecompress
-                       =<< BS.readFile indexFile
-    pkgEntries <- sequence mkPkgs
-    let cache = mkCache pkgEntries prefs
+    pkgsOrPrefs <- return
+                 . parsePackageIndex
+                 . maybeDecompress
+               =<< BS.readFile indexFile
+    entries <- lazySequence pkgsOrPrefs
+    let cache = mkCache entries
     writeFile cacheFile (showIndexCache cache)
   where
-    mkCache pkgs prefs =
-        [ CachePreference pref          | pref <- prefs ]
-     ++ [ CachePackageId pkgid blockNo
-        | (NormalPackage pkgid _ _ blockNo) <- pkgs ]
-     ++ [ CacheBuildTreeRef refType blockNo
-        | (BuildTreeRef refType _ _ _ blockNo) <- pkgs]
+    toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo
+    toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
+    toCache (Dep d) = CachePreference d
+
+    mkCache = map toCache
 
 data ReadPackageIndexMode = ReadPackageIndexStrict
                           | ReadPackageIndexLazyIO
