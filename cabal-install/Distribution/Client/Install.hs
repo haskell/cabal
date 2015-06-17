@@ -407,16 +407,17 @@ planPackages comp platform mSandboxPkgInfo solver
     testsEnabled = fromFlagOrDefault False $ configTests configFlags
     benchmarksEnabled = fromFlagOrDefault False $ configBenchmarks configFlags
 
-    reinstall        = fromFlag (installReinstall        installFlags)
-    reorderGoals     = fromFlag (installReorderGoals     installFlags)
-    independentGoals = fromFlag (installIndependentGoals installFlags)
-    avoidReinstalls  = fromFlag (installAvoidReinstalls  installFlags)
-    shadowPkgs       = fromFlag (installShadowPkgs       installFlags)
-    strongFlags      = fromFlag (installStrongFlags      installFlags)
-    maxBackjumps     = fromFlag (installMaxBackjumps     installFlags)
-    upgradeDeps      = fromFlag (installUpgradeDeps      installFlags)
-    onlyDeps         = fromFlag (installOnlyDeps         installFlags)
-    allowNewer       = fromFlag (configAllowNewer        configExFlags)
+    reinstall        = fromFlag (installOverrideReinstall installFlags) ||
+                       fromFlag (installReinstall         installFlags)
+    reorderGoals     = fromFlag (installReorderGoals      installFlags)
+    independentGoals = fromFlag (installIndependentGoals  installFlags)
+    avoidReinstalls  = fromFlag (installAvoidReinstalls   installFlags)
+    shadowPkgs       = fromFlag (installShadowPkgs        installFlags)
+    strongFlags      = fromFlag (installStrongFlags       installFlags)
+    maxBackjumps     = fromFlag (installMaxBackjumps      installFlags)
+    upgradeDeps      = fromFlag (installUpgradeDeps       installFlags)
+    onlyDeps         = fromFlag (installOnlyDeps          installFlags)
+    allowNewer       = fromFlag (configAllowNewer         configExFlags)
 
 -- | Remove the provided targets from the install plan.
 pruneInstallPlan :: Package targetpkg
