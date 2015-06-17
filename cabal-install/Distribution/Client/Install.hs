@@ -1264,16 +1264,16 @@ installLocalTarballPackage
 installLocalTarballPackage verbosity jobLimit pkgid
                            tarballPath distPref installPkg = do
   tmp <- getTemporaryDirectory
-  withTempDirectory verbosity tmp (display pkgid) $ \tmpDirPath ->
+  withTempDirectory verbosity tmp "cabal-tmp" $ \tmpDirPath ->
     onFailure UnpackFailed $ do
-      let relUnpackedPath = "."
-          absUnpackedPath = tmpDirPath
+      let relUnpackedPath = display pkgid
+          absUnpackedPath = tmpDirPath </> relUnpackedPath
           descFilePath = absUnpackedPath
                      </> display (packageName pkgid) <.> "cabal"
       withJobLimit jobLimit $ do
         info verbosity $ "Extracting " ++ tarballPath
                       ++ " to " ++ tmpDirPath ++ "..."
-        extractTarGzFile tmpDirPath relUnpackedPath tarballPath
+        extractTarGzFile absUnpackedPath relUnpackedPath tarballPath
         exists <- doesFileExist descFilePath
         when (not exists) $
           die $ "Package .cabal file not found: " ++ show descFilePath
