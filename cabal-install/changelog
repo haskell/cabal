@@ -1,4 +1,7 @@
 -*-change-log-*-
+1.22.6.0 Ryan Thomas <ryan@ryant.org> June 2015
+	* A fix for @ezyang's fix for #2502. (Mikhail Glushenkov)
+
 1.22.5.0 Ryan Thomas <ryan@ryant.org> June 2015
 	* Reduce temporary directory name length, fixes #2502. (Edward Z. Yang)
 
