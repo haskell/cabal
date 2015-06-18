@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternGuards #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.GHC.Internal
@@ -38,6 +39,7 @@ import Distribution.PackageDescription as PD
          ( BuildInfo(..), Library(..), libModules
          , hcOptions, usedExtensions, ModuleRenaming, lookupRenaming )
 import Distribution.Compat.Exception ( catchExit, catchIO )
+import Distribution.Lex (tokenizeQuotedWords)
 import Distribution.Simple.Compiler
          ( CompilerFlavor(..), Compiler(..), DebugInfoLevel(..), OptimisationLevel(..) )
 import Distribution.Simple.Program.GHC
@@ -146,12 +148,19 @@ configureToolchain implInfo ghcProg ghcInfo =
     gccLinkerFlags = getFlags "Gcc Linker flags"
     ldLinkerFlags  = getFlags "Ld Linker flags"
 
-    getFlags key = case M.lookup key ghcInfo of
-                   Nothing -> []
-                   Just flags ->
-                       case reads flags of
-                       [(args, "")] -> args
-                       _ -> [] -- XXX Should should be an error really
+    -- It appears that GHC 7.6 and earlier encode the tokenized flags as a
+    -- [String] in these settings whereas later versions just encode the flags as
+    -- String.
+    --
+    -- We first try to parse as a [String] and if this fails then tokenize the
+    -- flags ourself.
+    getFlags :: String -> [String]
+    getFlags key =
+        case M.lookup key ghcInfo of
+          Nothing -> []
+          Just flags
+            | (flags', ""):_ <- reads flags -> flags'
+            | otherwise -> tokenizeQuotedWords flags
 
     configureGcc :: Verbosity -> ConfiguredProgram -> IO ConfiguredProgram
     configureGcc v gccProg = do
