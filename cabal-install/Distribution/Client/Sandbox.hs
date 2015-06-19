@@ -117,7 +117,8 @@ import System.Directory                       ( createDirectory
                                               , removeDirectoryRecursive
                                               , removeFile
                                               , renameDirectory )
-import System.FilePath                        ( (</>), getSearchPath
+import System.FilePath                        ( (</>), equalFilePath
+                                              , getSearchPath
                                               , searchPathSeparator
                                               , takeDirectory )
 
@@ -340,8 +341,8 @@ sandboxDelete verbosity _sandboxFlags globalFlags = do
 
       -- Remove the @cabal.sandbox.config@ file, unless it's in a non-standard
       -- location.
-      let isNonDefaultConfigLocation =
-            pkgEnvFile /= (curDir </> sandboxPackageEnvironmentFile)
+      let isNonDefaultConfigLocation = not $ equalFilePath pkgEnvFile $
+                                       curDir </> sandboxPackageEnvironmentFile
 
       if isNonDefaultConfigLocation
         then warn verbosity $ "Sandbox config file is in non-default location: '"
@@ -349,8 +350,8 @@ sandboxDelete verbosity _sandboxFlags globalFlags = do
         else removeFile pkgEnvFile
 
       -- Remove the sandbox directory, unless we're using a shared sandbox.
-      let isNonDefaultSandboxLocation =
-            sandboxDir /= (curDir </> defaultSandboxLocation)
+      let isNonDefaultSandboxLocation = not $ equalFilePath sandboxDir $
+                                        curDir </> defaultSandboxLocation
 
       when isNonDefaultSandboxLocation $
         die $ "Non-default sandbox location used: '" ++ sandboxDir
