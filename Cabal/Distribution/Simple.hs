@@ -333,7 +333,6 @@ sdistAction hooks flags args = do
                 let pkg_descr0 = flattenPackageDescription ppd
                 sanityCheckHookedBuildInfo pkg_descr0 pbi
                 let pkg_descr = updatePackageDescription pbi pkg_descr0
-
                 sDistHook hooks pkg_descr mlbi hooks flags
                 postSDist hooks args flags pkg_descr mlbi
   where verbosity = fromFlag (sDistVerbosity flags)

@@ -70,6 +70,7 @@ module Distribution.Simple.Utils (
         findFirstFile,
         findFileWithExtension,
         findFileWithExtension',
+        findAllFilesWithExtension,
         findModuleFile,
         findModuleFiles,
         getDirectoryContentsRecursive,
@@ -617,6 +618,16 @@ findFileWithExtension extensions searchPath baseName =
     | path <- nub searchPath
     , ext <- nub extensions ]
 
+findAllFilesWithExtension :: [String]
+                          -> [FilePath]
+                          -> FilePath
+                          -> IO [FilePath]
+findAllFilesWithExtension extensions searchPath basename =
+  findAllFiles id
+    [ path </> basename <.> ext
+    | path <- nub searchPath
+    , ext <- nub extensions ]
+
 -- | Like 'findFileWithExtension' but returns which element of the search path
 -- the file was found in, and the file path relative to that base directory.
 --
@@ -637,6 +648,9 @@ findFirstFile file = findFirst
                               if exists
                                 then return (Just x)
                                 else findFirst xs
+
+findAllFiles :: (a -> FilePath) -> [a] -> IO [a]
+findAllFiles file = filterM (doesFileExist . file)
 
 -- | Finds the files corresponding to a list of Haskell module names.
 --

@@ -55,7 +55,7 @@ import Distribution.Version
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, withUTF8FileContents, writeUTF8File
          , installOrdinaryFiles, installMaybeExecutableFiles
-         , findFile, findFileWithExtension, matchFileGlob
+         , findFile, findFileWithExtension, findAllFilesWithExtension, matchFileGlob
          , withTempDirectory, defaultPackageDesc
          , die, warn, notice, info, setupMessage )
 import Distribution.Simple.Setup ( Flag(..), SDistFlags(..)
@@ -432,10 +432,10 @@ allSourcesBuildInfo :: BuildInfo
                        -> IO [FilePath]
 allSourcesBuildInfo bi pps modules = do
   let searchDirs = hsSourceDirs bi
-  sources <- sequence
+  sources <- fmap concat $ sequence $
     [ let file = ModuleName.toFilePath module_
-      in findFileWithExtension suffixes searchDirs file
-         >>= maybe (notFound module_) return
+      in findAllFilesWithExtension suffixes searchDirs file
+         >>= nonEmpty (notFound module_) return
     | module_ <- modules ++ otherModules bi ]
   bootFiles <- sequence
     [ let file = ModuleName.toFilePath module_
@@ -446,6 +446,8 @@ allSourcesBuildInfo bi pps modules = do
   return $ sources ++ catMaybes bootFiles ++ cSources bi ++ jsSources bi
 
   where
+    nonEmpty x _ [] = x
+    nonEmpty _ f xs = f xs
     suffixes = ppSuffixes pps ++ ["hs", "lhs"]
     notFound m = die $ "Error: Could not find module: " ++ display m
                  ++ " with any suffix: " ++ show suffixes
