@@ -130,7 +130,7 @@ assertMyExecutableNotFound paths = do
     result <- cabal_exec paths dir ["my-executable"]
     assertExecFailed result
     let output = outputText result
-        expected = "cabal: The program 'my-executable' is required but it " ++
+        expected = "The program 'my-executable' is required but it " ++
                    "could not be found"
         errMsg = "should not have found a my-executable\n" ++ output
     assertBool errMsg $
