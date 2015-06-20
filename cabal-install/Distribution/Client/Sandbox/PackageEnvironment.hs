@@ -276,7 +276,7 @@ inheritedPackageEnvironment verbosity pkgEnv = do
   case (pkgEnvInherit pkgEnv) of
     NoFlag                -> return mempty
     confPathFlag@(Flag _) -> do
-      conf <- loadConfig verbosity confPathFlag NoFlag
+      conf <- loadConfig verbosity confPathFlag
       return $ mempty { pkgEnvSavedConfig = conf }
 
 -- | Load the user package environment if it exists (the optional "cabal.config"
@@ -350,8 +350,7 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   inherited <- inheritedPackageEnvironment verbosity user
 
   -- Layer the package environment settings over settings from ~/.cabal/config.
-  cabalConfig <- fmap unsetSymlinkBinDir $
-                 loadConfig verbosity configFileFlag NoFlag
+  cabalConfig <- fmap unsetSymlinkBinDir $ loadConfig verbosity configFileFlag
   return (sandboxDir,
           updateInstallDirs $
           (base `mappend` (toPkgEnv cabalConfig) `mappend`
