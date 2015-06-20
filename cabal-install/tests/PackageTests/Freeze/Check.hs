@@ -110,4 +110,7 @@ removeCabalConfig = do
 
 readCabalConfig :: IO String
 readCabalConfig = do
-    readFile $ dir </> "cabal.config"
+    config <- readFile $ dir </> "cabal.config"
+    -- Ensure that the file is closed so that it can be
+    -- deleted by the next test on Windows.
+    length config `seq` return config
