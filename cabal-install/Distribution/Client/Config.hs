@@ -372,24 +372,6 @@ instance Monoid SavedConfig where
           lastNonEmpty = lastNonEmpty'   savedHaddockFlags
 
 
-updateInstallDirs :: Flag Bool -> SavedConfig -> SavedConfig
-updateInstallDirs userInstallFlag
-  savedConfig@SavedConfig {
-    savedConfigureFlags    = configureFlags,
-    savedUserInstallDirs   = userInstallDirs,
-    savedGlobalInstallDirs = globalInstallDirs
-  } =
-  savedConfig {
-    savedConfigureFlags = configureFlags {
-      configInstallDirs = installDirs
-    }
-  }
-  where
-    installDirs | userInstall = userInstallDirs
-                | otherwise   = globalInstallDirs
-    userInstall = fromFlagOrDefault defaultUserInstall $
-                    configUserInstall configureFlags `mappend` userInstallFlag
-
 --
 -- * Default config
 --
@@ -500,8 +482,8 @@ defaultRemoteRepo = RemoteRepo name uri
 -- * Config file reading
 --
 
-loadConfig :: Verbosity -> Flag FilePath -> Flag Bool -> IO SavedConfig
-loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
+loadConfig :: Verbosity -> Flag FilePath -> IO SavedConfig
+loadConfig verbosity configFileFlag = addBaseConf $ do
   let sources = [
         ("commandline option",   return . flagToMaybe $ configFileFlag),
         ("env var CABAL_CONFIG", lookup "CABAL_CONFIG" `liftM` getEnvironment),
@@ -536,7 +518,7 @@ loadConfig verbosity configFileFlag userInstallFlag = addBaseConf $ do
     addBaseConf body = do
       base  <- baseSavedConfig
       extra <- body
-      return (updateInstallDirs userInstallFlag (base `mappend` extra))
+      return (base `mappend` extra)
 
 readConfigFile :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
 readConfigFile initial file = handleNotExists $
@@ -902,7 +884,7 @@ withProgramOptionsFields =
 -- '~/.cabal/config' and the one that cabal would generate if it didn't exist.
 userConfigDiff :: GlobalFlags -> IO [String]
 userConfigDiff globalFlags = do
-  userConfig <- loadConfig normal (globalConfigFile globalFlags) mempty
+  userConfig <- loadConfig normal (globalConfigFile globalFlags)
   testConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
   return $ reverse . foldl' createDiff [] . M.toList
                 $ M.unionWith combine
@@ -945,7 +927,7 @@ userConfigDiff globalFlags = do
 -- | Update the user's ~/.cabal/config' keeping the user's customizations.
 userConfigUpdate :: Verbosity -> GlobalFlags -> IO ()
 userConfigUpdate verbosity globalFlags = do
-  userConfig <- loadConfig normal (globalConfigFile globalFlags) mempty
+  userConfig <- loadConfig normal (globalConfigFile globalFlags)
   newConfig <- liftM2 mappend baseSavedConfig initialSavedConfig
   commentConf <- commentSavedConfig
   cabalFile <- defaultConfigFile
