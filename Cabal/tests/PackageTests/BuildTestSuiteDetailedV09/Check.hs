@@ -5,14 +5,14 @@ import System.FilePath ((</>))
 
 import PackageTests.PackageTester
 
-suite :: PackageSpec -> FilePath -> Assertion
-suite inplaceSpec ghcPath = do
+suite :: SuiteConfig -> Assertion
+suite config = do
     let dir = "PackageTests" </> "BuildTestSuiteDetailedV09"
-        spec = inplaceSpec
+        spec = (inplaceSpec config)
             { directory = dir
-            , configOpts = "--enable-tests" : configOpts inplaceSpec
+            , configOpts = "--enable-tests" : configOpts (inplaceSpec config)
             }
-    confResult <- cabal_configure spec ghcPath
+    confResult <- cabal_configure config spec
     assertConfigureSucceeded confResult
-    buildResult <- cabal_build spec ghcPath
+    buildResult <- cabal_build config spec
     assertBuildSucceeded buildResult

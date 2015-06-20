@@ -8,14 +8,14 @@ import qualified Control.Exception as E
 import Text.Regex.Posix
 
 
-suite :: FilePath -> Assertion
-suite ghcPath = do
+suite :: SuiteConfig -> Assertion
+suite config = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "TargetSpecificDeps3"
             , configOpts = []
             , distPref = Nothing
             }
-    result <- cabal_build spec ghcPath
+    result <- cabal_build config spec
     do
         assertEqual "cabal build should fail - see test-log.txt" False (successful result)
         assertBool "error should be in lemon.hs" $
