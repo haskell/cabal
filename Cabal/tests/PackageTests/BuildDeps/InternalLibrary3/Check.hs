@@ -6,8 +6,8 @@ import System.FilePath
 import Test.Tasty.HUnit
 
 
-suite :: FilePath -> FilePath -> Assertion
-suite ghcPath ghcPkgPath = do
+suite :: SuiteConfig -> Assertion
+suite config = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "InternalLibrary3"
             , configOpts = []
@@ -19,12 +19,12 @@ suite ghcPath ghcPkgPath = do
             , distPref = Nothing
             }
 
-    unregister "InternalLibrary3" ghcPkgPath
-    iResult <- cabal_install specTI ghcPath
+    unregister config "InternalLibrary3"
+    iResult <- cabal_install config specTI
     assertInstallSucceeded iResult
-    bResult <- cabal_build spec ghcPath
+    bResult <- cabal_build config spec
     assertBuildSucceeded bResult
-    unregister "InternalLibrary3"ghcPkgPath
+    unregister config "InternalLibrary3"
 
     (_, _, output) <- run (Just $ directory spec) (directory spec </> "dist" </> "build" </> "lemon" </> "lemon") [] []
     C.appendFile (directory spec </> "test-log.txt") (C.pack $ "\ndist/build/lemon/lemon\n"++output)

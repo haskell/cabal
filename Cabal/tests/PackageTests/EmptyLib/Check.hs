@@ -5,12 +5,12 @@ import System.FilePath
 import Test.Tasty.HUnit
 
 -- See https://github.com/haskell/cabal/issues/1241
-emptyLib :: FilePath -> Assertion
-emptyLib ghcPath = do
+emptyLib :: SuiteConfig -> Assertion
+emptyLib config = do
    let spec = PackageSpec
           { directory = "PackageTests" </> "EmptyLib" </> "empty"
           , configOpts = []
           , distPref = Nothing
           }
-   result <- cabal_build spec ghcPath
+   result <- cabal_build config spec
    assertBuildSucceeded result
