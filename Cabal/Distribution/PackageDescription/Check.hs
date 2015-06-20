@@ -1076,7 +1076,7 @@ checkCabalVersion pkg =
   , check (specVersion pkg < Version [1,23] []
            && isNothing (setupBuildInfo pkg)
            && buildType pkg == Just Custom) $
-      PackageBuildWarning $
+      PackageDistSuspicious $
            "From version 1.23 cabal supports specifiying explicit dependencies "
         ++ "for Custom setup scripts. Consider using cabal-version >= 1.23 and "
         ++ "adding a 'custom-setup' section with a 'setup-depends' field "
