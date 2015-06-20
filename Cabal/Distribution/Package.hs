@@ -178,22 +178,18 @@ instance Text InstalledPackageId where
 -- The trailing newline is MANDATORY.
 --
 -- There is also a variant of package key which is prefixed by a informational
--- string.  This key MUST NOT be used in the computation of the hash proper,
--- but it is useful for human-readable consumption.
+-- string.  This is strictly for backwards compatibility with GHC 7.10.
 --
 -- @
 --      infokey     ::= infostring "_" key
 --      infostring  ::= [A-Za-z0-9-]+
 -- @
 --
--- For example, Cabal provides a key with the first five characters of the
--- package name for linker symbols.
---
 data PackageKey
     -- | Modern package key which is a hash of the PackageId and the transitive
-    -- dependency key.  Manually inline it here so we can get the instances
-    -- we need.  Also contains a short informative string
-    = PackageKey !String {-# UNPACK #-} !Word64 {-# UNPACK #-} !Word64
+    -- dependency key.  It's manually inlined here so we can get the instances
+    -- we need.  There's an optional prefix for compatibility with GHC 7.10.
+    = PackageKey (Maybe String) {-# UNPACK #-} !Word64 {-# UNPACK #-} !Word64
     -- | Old-style package key which is just a 'PackageId'.  Required because
     -- old versions of GHC assume that the 'sourcePackageId' recorded for an
     -- installed package coincides with the package key it was compiled with.
@@ -204,8 +200,8 @@ instance Binary PackageKey
 
 -- | Convenience function which converts a fingerprint into a new-style package
 -- key.
-fingerprintPackageKey :: String -> Fingerprint -> PackageKey
-fingerprintPackageKey s (Fingerprint a b) = PackageKey s a b
+fingerprintPackageKey :: Fingerprint -> PackageKey
+fingerprintPackageKey (Fingerprint a b) = PackageKey Nothing a b
 
 -- | Generates a 'PackageKey' from a 'PackageId', sorted package keys of the
 -- immediate dependencies.
@@ -215,7 +211,7 @@ mkPackageKey :: Bool -- are modern style package keys supported?
              -> [(ModuleName, (PackageKey, ModuleName))] -- hole instantiations
              -> PackageKey
 mkPackageKey True pid deps holes =
-    fingerprintPackageKey stubName . fingerprintString $
+    fingerprintPackageKey . fingerprintString $
         display pid ++ "\n" ++
         -- NB: packageKeyHash, NOT display
         concat [ display m ++ " " ++ packageKeyHash p'
@@ -223,7 +219,6 @@ mkPackageKey True pid deps holes =
                | (m, (p', m')) <- sortBy (comparing fst) holes] ++
         concat [ packageKeyHash d ++ "\n"
                | d <- sortBy (comparing packageKeyHash) deps]
-  where stubName = take 5 (filter (/= '-') (unPackageName (pkgName pid)))
 mkPackageKey False pid _ _ = OldPackageKey pid
 
 -- The base-62 code is based off of 'locators'
@@ -284,22 +279,27 @@ packageKeyLibraryName pid (PackageKey _ w1 w2) =
 packageKeyLibraryName _ (OldPackageKey pid) = display pid
 
 instance Text PackageKey where
-  disp (PackageKey prefix w1 w2) = Disp.text prefix <> Disp.char '_'
-                        <> Disp.text (toBase62 w1) <> Disp.text (toBase62 w2)
+  disp (PackageKey mb_prefix w1 w2)
+    = maybe Disp.empty (\r -> Disp.text r <> Disp.char '_') mb_prefix <>
+      Disp.text (toBase62 w1) <> Disp.text (toBase62 w2)
   disp (OldPackageKey pid) = disp pid
 
-  parse = parseNew <++ parseOld
+  parse = parseNewWithAnnot <++ parseNew <++ parseOld
     where parseNew = do
-            prefix <- Parse.munch1 (\c -> Char.isAlphaNum c || c `elem` "-")
-            _ <- Parse.char '_' -- if we use '-' it's ambiguous
-            fmap (fingerprintPackageKey prefix . readBase62Fingerprint)
+            fmap (fingerprintPackageKey . readBase62Fingerprint)
                 . Parse.count (word64Base62Len * 2)
                 $ Parse.satisfy Char.isAlphaNum
+          parseNewWithAnnot = do
+            -- this is ignored
+            prefix <- Parse.munch1 (\c -> Char.isAlphaNum c || c `elem` "-")
+            _ <- Parse.char '_' -- if we use '-' it's ambiguous
+            PackageKey _ w1 w2 <- parseNew
+            return (PackageKey (Just prefix) w1 w2)
           parseOld = do pid <- parse
                         return (OldPackageKey pid)
 
 instance NFData PackageKey where
-    rnf (PackageKey prefix _ _) = rnf prefix
+    rnf (PackageKey mb _ _) = rnf mb
     rnf (OldPackageKey pid) = rnf pid
 
 -- ------------------------------------------------------------
