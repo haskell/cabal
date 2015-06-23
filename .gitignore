@@ -38,3 +38,6 @@ Cabal/ghc.mk
 # TAGS files
 TAGS
 tags
+
+# stack artifacts
+/.stack-work/
