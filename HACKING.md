@@ -74,7 +74,7 @@ To build and test the `Cabal` library, do:
     for example with:
 
     ~~~~
-    cabal exec -- sh -c "echo \$GHC_PACKAGE_PATH" | sed s/:.*//
+    cabal exec -- sh -c "echo \$GHC_PACKAGE_PATH" | sed 's/:.*//'
     ~~~~
 
     the result should be something like
