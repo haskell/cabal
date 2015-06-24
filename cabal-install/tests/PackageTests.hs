@@ -11,7 +11,7 @@ import Distribution.Simple.Program.Builtin (ghcPkgProgram)
 import Distribution.Simple.Program.Db
         (defaultProgramDb, requireProgram, setProgramSearchPath)
 import Distribution.Simple.Program.Find
-        (ProgramSearchPathEntry(ProgramSearchPathDir), defaultProgramSearchPath)
+        (ProgramSearchPathEntry(ProgramSearchPathDir))
 import Distribution.Simple.Program.Types
         ( Program(..), simpleProgram, programPath)
 import Distribution.Simple.Utils ( findProgramVersion )
@@ -54,7 +54,7 @@ cabalProgram = (simpleProgram "cabal") {
 main :: IO ()
 main = do
     buildDir <- canonicalizePath "dist/build/cabal"
-    let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
+    let programSearchPath = [ProgramSearchPathDir buildDir]
     (cabal, _) <- requireProgram normal cabalProgram
                       (setProgramSearchPath programSearchPath defaultProgramDb)
     (ghcPkg, _) <- requireProgram normal ghcPkgProgram defaultProgramDb
