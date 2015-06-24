@@ -1158,20 +1158,26 @@ executeInstallPlan verbosity comp jobCtl useLogFile plan0 installPkg =
         -- now cannot build, we mark as failing due to 'DependentFailed'
         -- which kind of means it was not their fault.
 
-    -- Print build log if something went wrong, and 'Installed $PKGID'
-    -- otherwise.
+    -- Print to summary of the build and the build log (if not
+    -- already printed on stdout).
     printBuildResult :: PackageId -> PackageKey -> BuildResult -> IO ()
     printBuildResult pkgid pkg_key buildResult = case buildResult of
-        (Right _) -> notice verbosity $ "Installed " ++ display pkgid
+        (Right _) -> do
+          notice verbosity $ "Installed " ++ display pkgid
+          showBuildLogFile pkgid pkg_key
         (Left _)  -> do
           notice verbosity $ "Failed to install " ++ display pkgid
-          when (verbosity >= normal) $
-            case useLogFile of
-              Nothing                 -> return ()
-              Just (mkLogFileName, _) -> do
-                let logName = mkLogFileName pkgid pkg_key
-                putStr $ "Build log ( " ++ logName ++ " ):\n"
-                printFile logName
+          showBuildLogFile pkgid pkg_key
+
+    showBuildLogFile :: PackageId -> PackageKey -> IO ()
+    showBuildLogFile pkgid pkg_key = do
+      when (verbosity >= normal) $
+        case useLogFile of
+          Nothing                 -> return ()
+          Just (mkLogFileName, _) -> do
+            let logName = mkLogFileName pkgid pkg_key
+            putStr $ "Build log ( " ++ logName ++ " ):\n"
+            printFile logName
 
     printFile :: FilePath -> IO ()
     printFile path = readFile path >>= putStr
