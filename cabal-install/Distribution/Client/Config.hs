@@ -35,6 +35,7 @@ module Distribution.Client.Config (
     installDirsFields,
     withProgramsFields,
     withProgramOptionsFields,
+    writeConfigFile,                            
     userConfigDiff,
     userConfigUpdate
   ) where

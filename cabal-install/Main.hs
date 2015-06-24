@@ -23,6 +23,7 @@ import Distribution.Client.Setup
          , buildCommand, replCommand, testCommand, benchmarkCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand, uninstallCommand
+         , initConfigCommand
          , FetchFlags(..), fetchCommand
          , FreezeFlags(..), freezeCommand
          , GetFlags(..), getCommand, unpackCommand
@@ -59,7 +60,10 @@ import Distribution.Client.SetupWrapper
          ( setupWrapper, SetupScriptOptions(..), defaultSetupScriptOptions )
 import Distribution.Client.Config
          ( SavedConfig(..), loadConfig, defaultConfigFile, userConfigDiff
-         , userConfigUpdate )
+         , userConfigUpdate 
+         , initialSavedConfig
+         , commentSavedConfig
+         , writeConfigFile)
 import Distribution.Client.Targets
          ( readUserTargets )
 import qualified Distribution.Client.List as List
@@ -233,6 +237,7 @@ mainWorker args = topHandler $
       ,fetchCommand           `commandAddAction` fetchAction
       ,freezeCommand          `commandAddAction` freezeAction
       ,getCommand             `commandAddAction` getAction
+      ,initConfigCommand      `commandAddAction` initConfigAction                              
       ,hiddenCommand $
        unpackCommand          `commandAddAction` unpackAction
       ,checkCommand           `commandAddAction` checkAction
@@ -900,6 +905,18 @@ infoAction infoFlags extraArgs globalFlags = do
        globalFlags'
        infoFlags
        targets
+
+initConfigAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
+initConfigAction _ extraArgs _ = do
+  unless (null extraArgs) $
+    die $ "'init-config' doesn't take any extra arguments: " ++ unwords extraArgs
+  initialConf <- initialSavedConfig
+  commentConf <- commentSavedConfig
+  cabalFile <- defaultConfigFile
+  exists <- doesFileExist cabalFile
+  if exists
+  then putStrLn "Cabal config file already exists."
+  else writeConfigFile cabalFile commentConf initialConf
 
 updateAction :: Flag Verbosity -> [String] -> GlobalFlags -> IO ()
 updateAction verbosityFlag extraArgs globalFlags = do
