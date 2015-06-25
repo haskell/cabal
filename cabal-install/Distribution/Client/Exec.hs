@@ -12,6 +12,10 @@
 module Distribution.Client.Exec ( exec
                                 ) where
 
+import Control.Monad (unless)
+
+import Data.Foldable (forM_)
+
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
@@ -25,11 +29,12 @@ import Distribution.Simple.Program.Db  (ProgramDb, requireProgram, modifyProgram
 import Distribution.Simple.Program.Find (ProgramSearchPathEntry(..))
 import Distribution.Simple.Program.Run (programInvocation, runProgramInvocation)
 import Distribution.Simple.Program.Types ( simpleProgram, ConfiguredProgram(..) )
-import Distribution.Simple.Utils       (die)
+import Distribution.Simple.Utils       (die, warn)
 
 import Distribution.System    (Platform)
 import Distribution.Verbosity (Verbosity)
 
+import System.Directory ( doesDirectoryExist )
 import System.FilePath (searchPathSeparator, (</>))
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
@@ -87,6 +92,12 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
         gDb <- getGlobalPackageDB verbosity program
         sandboxConfigFilePath <- getSandboxConfigFilePath mempty
         let compilerPackagePath = hcPackagePath gDb
+        -- Packages database must exist, otherwise things will start
+        -- failing in mysterious ways.
+        forM_ compilerPackagePath $ \fp -> do
+          exists <- doesDirectoryExist fp
+          unless exists $ warn verbosity $ "Package database is not a directory: " ++ fp
+        -- Build the environment
         return [ (packagePathEnvVar, compilerPackagePath)
                , ("CABAL_SANDBOX_PACKAGE_PATH", compilerPackagePath)
                , ("CABAL_SANDBOX_CONFIG", Just sandboxConfigFilePath)
