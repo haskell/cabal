@@ -39,7 +39,6 @@ module Distribution.Simple.Register (
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
          , ComponentName(..), getComponentLocalBuildInfo
-         , LibraryName(..)
          , InstallDirs(..), absoluteInstallDirs )
 import Distribution.Simple.BuildPaths (haddockName)
 
@@ -65,7 +64,8 @@ import Distribution.Simple.Setup
 import Distribution.PackageDescription
          ( PackageDescription(..), Library(..), BuildInfo(..), libModules )
 import Distribution.Package
-         ( Package(..), packageName, InstalledPackageId(..) )
+         ( Package(..), packageName, InstalledPackageId(..)
+         , getHSLibraryName )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo, InstalledPackageInfo_(InstalledPackageInfo)
          , showInstalledPackageInfo )
@@ -299,7 +299,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
   InstalledPackageInfo {
     IPI.installedPackageId = ipid,
     IPI.sourcePackageId    = packageId   pkg,
-    IPI.packageKey         = pkgKey lbi,
+    IPI.packageKey         = componentPackageKey clbi,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
     IPI.maintainer         = maintainer  pkg,
@@ -324,9 +324,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg ipid lib lbi clbi installDirs =
                                then libdir installDirs : extraLibDirs bi
                                else                      extraLibDirs bi,
     IPI.dataDir            = datadir installDirs,
-    IPI.hsLibraries        = [ libname
-                             | LibraryName libname <- componentLibraries clbi
-                             , hasLibrary ],
+    IPI.hsLibraries        = if hasLibrary
+                               then [getHSLibraryName (componentLibraryName clbi)]
+                               else [],
     IPI.extraLibraries     = extraLibs bi,
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
     IPI.includeDirs        = absinc ++ adjustRelIncDirs relinc,

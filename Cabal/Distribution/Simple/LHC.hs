@@ -54,13 +54,12 @@ import Distribution.Simple.PackageIndex
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.ParseUtils  ( ParseResult(..) )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..),
-           LibraryName(..) )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import Distribution.Simple.InstallDirs
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Utils
 import Distribution.Package
-         ( Package(..) )
+         ( Package(..), LibraryName, getHSLibraryName )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -319,12 +318,8 @@ substTopDir topDir ipo
 buildLib :: Verbosity -> PackageDescription -> LocalBuildInfo
                       -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildLib verbosity pkg_descr lbi lib clbi = do
-  libName <- case componentLibraries clbi of
-             [libName] -> return libName
-             [] -> die "No library name found when building library"
-             _  -> die "Multiple library names found when building library"
-
-  let pref = buildDir lbi
+  let libName = componentLibraryName clbi
+      pref = buildDir lbi
       pkgid = packageId pkg_descr
       runGhcProg = rawSystemProgramConf verbosity lhcProgram (withPrograms lbi)
       ifVanillaLib forceVanilla = when (forceVanilla || withVanillaLib lbi)
@@ -688,7 +683,7 @@ ghcCcOptions lbi bi clbi odir
      ++ ["-odir", odir]
 
 mkGHCiLibName :: LibraryName -> String
-mkGHCiLibName (LibraryName lib) = lib <.> "o"
+mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 -- -----------------------------------------------------------------------------
 -- Installing
@@ -755,18 +750,18 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   flip mapM_ hcrFiles $ \(srcBase, srcFile) -> runLhc ["--install-library", srcBase </> srcFile]
 
   -- copy the built library files over:
-  ifVanilla $ mapM_ (copy builtDir targetDir)       vanillaLibNames
-  ifProf    $ mapM_ (copy builtDir targetDir)       profileLibNames
-  ifGHCi    $ mapM_ (copy builtDir targetDir)       ghciLibNames
-  ifShared  $ mapM_ (copy builtDir dynlibTargetDir) sharedLibNames
+  ifVanilla $ copy builtDir targetDir       vanillaLibName
+  ifProf    $ copy builtDir targetDir       profileLibName
+  ifGHCi    $ copy builtDir targetDir       ghciLibName
+  ifShared  $ copy builtDir dynlibTargetDir sharedLibName
 
   where
     cid = compilerId (compiler lbi)
-    libNames = componentLibraries clbi
-    vanillaLibNames = map mkLibName             libNames
-    profileLibNames = map mkProfLibName         libNames
-    ghciLibNames    = map mkGHCiLibName         libNames
-    sharedLibNames  = map (mkSharedLibName cid) libNames
+    libName = componentLibraryName clbi
+    vanillaLibName = mkLibName           libName
+    profileLibName = mkProfLibName       libName
+    ghciLibName    = mkGHCiLibName       libName
+    sharedLibName  = mkSharedLibName cid libName
 
     hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))

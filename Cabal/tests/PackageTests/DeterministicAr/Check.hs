@@ -18,11 +18,11 @@ import System.IO
 import Test.Tasty.HUnit (Assertion, assertFailure)
 
 import Distribution.Compiler              (CompilerFlavor(..), CompilerId(..))
-import Distribution.Package               (packageKeyHash)
+import Distribution.Package               (getHSLibraryName)
 import Distribution.Version               (Version(..))
 import Distribution.Simple.Compiler       (compilerId)
 import Distribution.Simple.Configure      (getPersistBuildConfig)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, pkgKey)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localLibraryName)
 
 -- Perhaps these should live in PackageTester.
 
@@ -82,11 +82,9 @@ checkMetadata :: LocalBuildInfo -> FilePath -> Assertion
 checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h -> do
     hFileSize h >>= checkArchive h
   where
-    path = dir </> "libHS" ++ this ++ "-0"
-           ++ (if ghc_7_10 then ("-" ++ packageKeyHash (pkgKey lbi)) else "")
-           ++ ".a"
+    path = dir </> "lib" ++ getHSLibraryName (localLibraryName lbi) ++ ".a"
 
-    ghc_7_10 = case compilerId (compiler lbi) of
+    _ghc_7_10 = case compilerId (compiler lbi) of
       CompilerId GHC version | version >= Version [7, 10] [] -> True
       _                                                      -> False
 

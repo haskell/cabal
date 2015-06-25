@@ -35,10 +35,11 @@ import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 
 import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
-         , Dependency(..), thisPackageVersion, mkPackageKey, packageName )
+         , Dependency(..), thisPackageVersion, PackageKey(..), packageName
+         , LibraryName(..) )
 import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor(..), compilerFlavor
-         , PackageDB(..), PackageDBStack, packageKeySupported )
+         , PackageDB(..), PackageDBStack )
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
@@ -54,13 +55,13 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.PreProcess
          ( preprocessComponent, preprocessExtras, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms, pkgKey)
+         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms)
          , Component(..), componentName, getComponent, componentBuildInfo
          , ComponentLocalBuildInfo(..), pkgEnabledComponents
          , withComponentsInBuildOrder, componentsInBuildOrder
          , ComponentName(..), showComponentName
          , ComponentDisabledReason(..), componentDisabledReason
-         , inplacePackageId, LibraryName(..) )
+         , inplacePackageId )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -392,7 +393,7 @@ testSuiteLibV09AsLibAndExe :: PackageDescription
 testSuiteLibV09AsLibAndExe pkg_descr
                      test@TestSuite { testInterface = TestSuiteLibV09 _ m }
                      clbi lbi distPref pwd =
-    (pkg, lib, libClbi, lbi', ipi, exe, exeClbi)
+    (pkg, lib, libClbi, lbi, ipi, exe, exeClbi)
   where
     bi  = testBuildInfo test
     lib = Library {
@@ -406,8 +407,9 @@ testSuiteLibV09AsLibAndExe pkg_descr
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
-                , componentLibraries = [LibraryName (testName test)]
+                , componentLibraryName = LibraryName "test"
                 , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
+                , componentPackageKey = OldPackageKey (PackageIdentifier (PackageName (testName test)) (pkgVersion (package pkg_descr)))
                 }
     pkg = pkg_descr {
             package      = (package pkg_descr) {
@@ -418,16 +420,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
           , testSuites   = []
           , library      = Just lib
           }
-    -- Hack to make the library compile with the right package key.
-    -- Probably the "right" way to do this is move this information to
-    -- the ComponentLocalBuildInfo, but it seems odd that a single package
-    -- can define multiple actual packages.
-    lbi' = lbi {
-        pkgKey = mkPackageKey (packageKeySupported (compiler lbi))
-                              (package pkg) [] []
-    }
     ipkgid = inplacePackageId (packageId pkg)
-    ipi    = inplaceInstalledPackageInfo pwd distPref pkg ipkgid lib lbi' libClbi
+    ipi    = inplaceInstalledPackageInfo pwd distPref pkg ipkgid lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg

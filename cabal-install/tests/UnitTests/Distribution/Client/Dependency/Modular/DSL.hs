@@ -243,12 +243,14 @@ exInstPkgId ex = C.PackageIdentifier {
     , pkgVersion = Version [exInstVersion ex, 0, 0] []
     }
 
+exInstLibName :: ExampleInstalled -> C.LibraryName
+exInstLibName ex = C.packageKeyLibraryName (exInstPkgId ex) (exInstKey ex)
+
 exInstKey :: ExampleInstalled -> C.PackageKey
 exInstKey ex =
     C.mkPackageKey True
                    (exInstPkgId ex)
-                   (map exInstKey (exInstBuildAgainst ex))
-                   []
+                   (map exInstLibName (exInstBuildAgainst ex))
 
 exAvIdx :: [ExampleAvailable] -> CI.PackageIndex.PackageIndex SourcePackage
 exAvIdx = CI.PackageIndex.fromList . map exAvSrcPkg

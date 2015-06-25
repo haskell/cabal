@@ -33,7 +33,7 @@ import Distribution.PackageDescription
 import Distribution.Simple.Compiler
          ( packageKeySupported )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, pkgKey, withPrograms), externalPackageDeps )
+         ( LocalBuildInfo(compiler, withPrograms), externalPackageDeps, localPackageKey )
 import Distribution.Simple.Program.Db
          ( configuredPrograms )
 import Distribution.Simple.Program.Types
@@ -97,11 +97,12 @@ generateMacros prefix name version =
     (major1:major2:minor:_) = map show (versionBranch version ++ repeat 0)
 
 -- | Generate the @CURRENT_PACKAGE_KEY@ definition for the package key
---   of the current package, if supported by the compiler
+--   of the current package, if supported by the compiler.
+--   NB: this only makes sense for definite packages.
 generatePackageKeyMacro :: LocalBuildInfo -> String
 generatePackageKeyMacro lbi
   | packageKeySupported (compiler lbi) =
-      "#define CURRENT_PACKAGE_KEY \"" ++ display (pkgKey lbi) ++ "\"\n\n"
+      "#define CURRENT_PACKAGE_KEY \"" ++ display (localPackageKey lbi) ++ "\"\n\n"
   | otherwise = ""
 
 fixchar :: Char -> Char

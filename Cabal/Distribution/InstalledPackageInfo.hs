@@ -28,6 +28,7 @@
 
 module Distribution.InstalledPackageInfo (
         InstalledPackageInfo_(..), InstalledPackageInfo,
+        libraryName,
         OriginalModule(..), ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
@@ -50,7 +51,8 @@ import Distribution.License     ( License(..) )
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
          , PackageId, InstalledPackageId(..)
-         , packageName, packageVersion, PackageKey(..) )
+         , packageName, packageVersion, PackageKey(..)
+         , LibraryName(..) )
 import qualified Distribution.Package as Package
 import Distribution.ModuleName
          ( ModuleName )
@@ -109,6 +111,9 @@ data InstalledPackageInfo_ m
         pkgRoot           :: Maybe FilePath
     }
     deriving (Generic, Read, Show)
+
+libraryName :: InstalledPackageInfo_ a -> LibraryName
+libraryName ipi = Package.packageKeyLibraryName (sourcePackageId ipi) (packageKey ipi)
 
 instance Binary m => Binary (InstalledPackageInfo_ m)
 
@@ -287,7 +292,7 @@ basicFieldDescrs =
                            installedPackageId     (\ipid pkg -> pkg{installedPackageId=ipid})
  , simpleField "key"
                            disp                   parse
-                           packageKey             (\ipid pkg -> pkg{packageKey=ipid})
+                           packageKey             (\pk pkg -> pkg{packageKey=pk})
  , simpleField "license"
                            disp                   parseLicenseQ
                            license                (\l pkg -> pkg{license=l})

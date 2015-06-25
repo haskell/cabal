@@ -17,7 +17,8 @@ module Distribution.Client.Types where
 import Distribution.Package
          ( PackageName, PackageId, Package(..)
          , mkPackageKey, PackageKey, InstalledPackageId(..)
-         , HasInstalledPackageId(..), PackageInstalled(..) )
+         , HasInstalledPackageId(..), PackageInstalled(..)
+         , LibraryName, packageKeyLibraryName )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -154,7 +155,13 @@ instance HasInstalledPackageId ReadyPackage where
 readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
 readyPackageKey comp (ReadyPackage pkg _ _ deps) =
     mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map Info.packageKey (CD.nonSetupDeps deps)) []
+                 (map Info.libraryName (CD.nonSetupDeps deps))
+
+-- | Extracts a library name from ReadyPackage, a common operation needed
+-- to calculate build paths.
+readyLibraryName :: Compiler -> ReadyPackage -> LibraryName
+readyLibraryName comp ready@(ReadyPackage pkg _ _ _) =
+    packageKeyLibraryName (packageId pkg) (readyPackageKey comp ready)
 
 
 -- | Sometimes we need to convert a 'ReadyPackage' back to a

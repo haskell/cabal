@@ -113,7 +113,7 @@ testSuiteLogPath template pkg_descr lbi name result =
     fromPathTemplate $ substPathTemplate env template
     where
         env = initialPathTemplateEnv
-                (PD.package pkg_descr) (LBI.pkgKey lbi)
+                (PD.package pkg_descr) (LBI.localLibraryName lbi)
                 (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi)
                 ++  [ (TestSuiteNameVar, toPathTemplate name)
                     , (TestSuiteResultVar, toPathTemplate $ resultString result)
