@@ -21,13 +21,14 @@ module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
         externalPackageDeps,
         inplacePackageId,
+        localPackageKey,
+        localLibraryName,
 
         -- * Buildable package components
         Component(..),
         ComponentName(..),
         showComponentName,
         ComponentLocalBuildInfo(..),
-        LibraryName(..),
         foldComponent,
         componentName,
         componentBuildInfo,
@@ -70,8 +71,8 @@ import Distribution.PackageDescription
          , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( PackageId, Package(..), InstalledPackageId(..), PackageKey
-         , PackageName )
+         ( PackageId, Package(..), InstalledPackageId(..)
+         , PackageName, LibraryName(..), PackageKey(..) )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack, DebugInfoLevel
          , OptimisationLevel, ProfDetailLevel )
@@ -128,9 +129,6 @@ data LocalBuildInfo = LocalBuildInfo {
         localPkgDescr :: PackageDescription,
                 -- ^ The resolved package description, that does not contain
                 -- any conditionals.
-        pkgKey        :: PackageKey,
-                -- ^ The package key for the current build, calculated from
-                -- the package ID and the dependency graph.
         instantiatedWith :: [(ModuleName, (InstalledPackageInfo, ModuleName))],
         withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
         withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
@@ -153,6 +151,26 @@ data LocalBuildInfo = LocalBuildInfo {
   } deriving (Generic, Read, Show)
 
 instance Binary LocalBuildInfo
+
+-- | Extract the 'PackageKey' from the library component of a
+-- 'LocalBuildInfo' if it exists, or make a fake package key based
+-- on the package ID.
+localPackageKey :: LocalBuildInfo -> PackageKey
+localPackageKey lbi =
+    foldr go (OldPackageKey (package (localPkgDescr lbi))) (componentsConfigs lbi)
+  where go (_, clbi, _) old_pk = case clbi of
+            LibComponentLocalBuildInfo { componentPackageKey = pk } -> pk
+            _ -> old_pk
+
+-- | Extract the 'LibraryName' from the library component of a
+-- 'LocalBuildInfo' if it exists, or make a library name based
+-- on the package ID.
+localLibraryName :: LocalBuildInfo -> LibraryName
+localLibraryName lbi =
+    foldr go (LibraryName (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+  where go (_, clbi, _) old_n = case clbi of
+            LibComponentLocalBuildInfo { componentLibraryName = n } -> n
+            _ -> old_n
 
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
@@ -204,9 +222,10 @@ data ComponentLocalBuildInfo
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageKey :: PackageKey,
+    componentLibraryName :: LibraryName,
     componentExposedModules :: [Installed.ExposedModule],
-    componentPackageRenaming :: Map PackageName ModuleRenaming,
-    componentLibraries :: [LibraryName]
+    componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | ExeComponentLocalBuildInfo {
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
@@ -234,11 +253,6 @@ foldComponent f _ _ _ (CLib   lib) = f lib
 foldComponent _ f _ _ (CExe   exe) = f exe
 foldComponent _ _ f _ (CTest  tst) = f tst
 foldComponent _ _ _ f (CBench bch) = f bch
-
-data LibraryName = LibraryName String
-    deriving (Generic, Read, Show)
-
-instance Binary LibraryName
 
 componentBuildInfo :: Component -> BuildInfo
 componentBuildInfo =
@@ -478,7 +492,7 @@ absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
 absoluteInstallDirs pkg lbi copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
-    (pkgKey lbi)
+    (localLibraryName lbi)
     (compilerInfo (compiler lbi))
     copydest
     (hostPlatform lbi)
@@ -490,7 +504,7 @@ prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
 prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
-    (pkgKey lbi)
+    (localLibraryName lbi)
     (compilerInfo (compiler lbi))
     (hostPlatform lbi)
     (installDirTemplates lbi)
@@ -501,6 +515,6 @@ substPathTemplate pkgid lbi = fromPathTemplate
                                 . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv
                    pkgid
-                   (pkgKey lbi)
+                   (localLibraryName lbi)
                    (compilerInfo (compiler lbi))
                    (hostPlatform lbi)

@@ -62,7 +62,7 @@ import Distribution.Package
     , packageName, packageVersion, Package(..)
     , Dependency(Dependency), simplifyDependency
     , InstalledPackageId(..), thisPackageVersion
-    , mkPackageKey, PackageKey(..), packageKeyLibraryName )
+    , mkPackageKey, packageKeyLibraryName )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, emptyInstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -94,7 +94,6 @@ import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-    , LibraryName(..)
     , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
     , ComponentName(..), showComponentName, pkgEnabledComponents
     , componentBuildInfo, componentName, checkComponentsCyclic )
@@ -564,27 +563,6 @@ configure (pkg_descr0, pbi) cfg
                          | (name, uses) <- inconsistencies
                          , (pkg, ver) <- uses ]
 
-        -- Calculate the package key.  We're going to store it in LocalBuildInfo
-        -- canonically, but ComponentsLocalBuildInfo also needs to know about it
-        -- XXX Do we need the internal deps?
-        -- NB: does *not* include holeDeps!
-        let pkg_key = mkPackageKey (packageKeySupported comp)
-                                   (package pkg_descr)
-                                   (map Installed.packageKey externalPkgDeps)
-                                   (map (\(k,(p,m)) -> (k,(Installed.packageKey p,m))) hole_insts)
-
-        -- internal component graph
-        buildComponents <-
-          case mkComponentsGraph pkg_descr internalPkgDeps of
-            Left  componentCycle -> reportComponentCycle componentCycle
-            Right components     ->
-              case mkComponentsLocalBuildInfo packageDependsIndex pkg_descr
-                                              internalPkgDeps externalPkgDeps holeDeps
-                                              (Map.fromList hole_insts)
-                                              pkg_key components of
-                Left  problems    -> reportModuleReexportProblems problems
-                Right components' -> return components'
-
         -- installation directories
         defaultDirs <- defaultInstallDirs flavor userInstall (hasLibs pkg_descr)
         let installDirs = combineInstallDirs fromFlagOrDefault
@@ -628,6 +606,16 @@ configure (pkg_descr0, pbi) cfg
 
         (pkg_descr', programsConfig''') <-
           configurePkgconfigPackages verbosity pkg_descr programsConfig''
+
+        -- internal component graph
+        buildComponents <-
+          case mkComponentsGraph pkg_descr internalPkgDeps of
+            Left  componentCycle -> reportComponentCycle componentCycle
+            Right components     ->
+              mkComponentsLocalBuildInfo comp packageDependsIndex pkg_descr
+                                         internalPkgDeps externalPkgDeps holeDeps
+                                         (Map.fromList hole_insts)
+                                         components
 
         split_objs <-
            if not (fromFlag $ configSplitObjs cfg)
@@ -726,7 +714,6 @@ configure (pkg_descr0, pbi) cfg
                     installedPkgs       = packageDependsIndex,
                     pkgDescrFile        = Nothing,
                     localPkgDescr       = pkg_descr',
-                    pkgKey              = pkg_key,
                     instantiatedWith    = hole_insts,
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
@@ -1299,20 +1286,19 @@ reportComponentCycle cnames =
             [ "'" ++ showComponentName cname ++ "'"
             | cname <- cnames ++ [head cnames] ]
 
-mkComponentsLocalBuildInfo :: InstalledPackageIndex
+mkComponentsLocalBuildInfo :: Compiler
+                           -> InstalledPackageIndex
                            -> PackageDescription
                            -> [PackageId] -- internal package deps
                            -> [InstalledPackageInfo] -- external package deps
                            -> [InstalledPackageInfo] -- hole package deps
                            -> Map ModuleName (InstalledPackageInfo, ModuleName)
-                           -> PackageKey
                            -> [(Component, [ComponentName])]
-                           -> Either [(ModuleReexport, String)] -- errors
-                                     [(ComponentName, ComponentLocalBuildInfo,
-                                                      [ComponentName])] -- ok
-mkComponentsLocalBuildInfo installedPackages pkg_descr
+                           -> IO [(ComponentName, ComponentLocalBuildInfo,
+                                                  [ComponentName])]
+mkComponentsLocalBuildInfo comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps holePkgDeps hole_insts
-                           pkg_key graph =
+                           graph =
     sequence
       [ do clbi <- componentLocalBuildInfo c
            return (componentName c, clbi, cdeps)
@@ -1333,12 +1319,24 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
                                                       (Installed.installedPackageId pkg) m)
                                       (Map.lookup n hole_insts)))
                         (PD.exposedSignatures lib)
-        reexports <- resolveModuleReexports installedPackages
-                                            (packageId pkg_descr)
-                                            externalPkgDeps lib
+        let mb_reexports = resolveModuleReexports installedPackages
+                                                  (packageId pkg_descr)
+                                                  externalPkgDeps lib
+        reexports <- case mb_reexports of
+            Left problems -> reportModuleReexportProblems problems
+            Right r -> return r
+
+        -- Calculate the version hash and package key.
+        let externalPkgs = selectSubset bi externalPkgDeps
+            pkg_key = mkPackageKey (packageKeySupported comp)
+                        (package pkg_descr)
+                        (map Installed.libraryName externalPkgs)
+            version_hash = packageKeyLibraryName (package pkg_descr) pkg_key
+
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
-          componentLibraries   = [ LibraryName ("HS" ++ packageKeyLibraryName (package pkg_descr) pkg_key) ],
+          componentPackageKey = pkg_key,
+          componentLibraryName = version_hash,
           componentPackageRenaming = cprns,
           componentExposedModules = exports ++ reexports ++ esigs
         }
@@ -1366,8 +1364,6 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
                     | pkg <- selectSubset bi externalPkgDeps ]
                  ++ [ (inplacePackageId pkgid, pkgid)
                     | pkgid <- selectSubset bi internalPkgDeps ]
-                 ++ [ (Installed.installedPackageId pkg, packageId pkg)
-                    | pkg <- holePkgDeps ]
                else [ (Installed.installedPackageId pkg, packageId pkg)
                     | pkg <- externalPkgDeps ]
         cprns = if newPackageDepsBehaviour pkg_descr

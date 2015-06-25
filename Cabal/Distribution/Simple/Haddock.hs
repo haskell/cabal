@@ -27,7 +27,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 import Distribution.Package
          ( PackageIdentifier(..)
          , Package(..)
-         , PackageName(..), packageName )
+         , PackageName(..), packageName, LibraryName(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), usedExtensions
@@ -310,8 +310,7 @@ fromLibrary verbosity tmp lbi lib clbi htmlTemplate haddockVersion = do
                           -- haddock to write them elsewhere.
                           ghcOptObjDir     = toFlag tmp,
                           ghcOptHiDir      = toFlag tmp,
-                          ghcOptStubDir    = toFlag tmp,
-                          ghcOptPackageKey = toFlag $ pkgKey lbi
+                          ghcOptStubDir    = toFlag tmp
                       } `mappend` getGhcCppOpts haddockVersion bi
         sharedOpts = vanillaOpts {
                          ghcOptDynLinkMode = toFlag GhcDynamicOnly,
@@ -619,7 +618,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id =
   (PrefixVar, prefix (installDirTemplates lbi))
-  : initialPathTemplateEnv pkg_id (pkgKey lbi) (compilerInfo (compiler lbi))
+  : initialPathTemplateEnv pkg_id (LibraryName (display pkg_id)) (compilerInfo (compiler lbi))
   (hostPlatform lbi)
 
 -- ------------------------------------------------------------------------------

@@ -44,7 +44,8 @@ import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), mkPackageKey, PackageKey )
+         ( PackageIdentifier, Package(packageId), mkPackageKey
+         , packageKeyLibraryName, LibraryName )
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
@@ -112,7 +113,7 @@ symlinkBinaries comp configFlags installFlags plan =
 --    TODO: do we want to do this here? :
 --      createDirectoryIfMissing True publicBinDir
       fmap catMaybes $ sequence
-        [ do privateBinDir <- pkgBinDir pkg pkg_key
+        [ do privateBinDir <- pkgBinDir pkg libname
              ok <- symlinkBinary
                      publicBinDir  privateBinDir
                      publicExeName privateExeName
@@ -123,11 +124,12 @@ symlinkBinaries comp configFlags installFlags plan =
         | (ReadyPackage _ _flags _ deps, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               pkg_key = mkPackageKey (packageKeySupported comp) pkgid
-                                     (map Installed.packageKey (CD.nonSetupDeps deps)) []
+                                     (map Installed.libraryName (CD.nonSetupDeps deps))
+              libname = packageKeyLibraryName pkgid pkg_key
               publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
-              prefix = substTemplate pkgid pkg_key prefixTemplate
-              suffix = substTemplate pkgid pkg_key suffixTemplate ]
+              prefix = substTemplate pkgid libname prefixTemplate
+              suffix = substTemplate pkgid libname suffixTemplate ]
   where
     exes =
       [ (cpkg, pkg, exe)
@@ -146,8 +148,8 @@ symlinkBinaries comp configFlags installFlags plan =
 
     -- This is sadly rather complicated. We're kind of re-doing part of the
     -- configuration for the package. :-(
-    pkgBinDir :: PackageDescription -> PackageKey -> IO FilePath
-    pkgBinDir pkg pkg_key = do
+    pkgBinDir :: PackageDescription -> LibraryName -> IO FilePath
+    pkgBinDir pkg libname = do
       defaultDirs <- InstallDirs.defaultInstallDirs
                        compilerFlavor
                        (fromFlag (configUserInstall configFlags))
@@ -155,14 +157,14 @@ symlinkBinaries comp configFlags installFlags plan =
       let templateDirs = InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
           absoluteDirs = InstallDirs.absoluteInstallDirs
-                           (packageId pkg) pkg_key
+                           (packageId pkg) libname
                            cinfo InstallDirs.NoCopyDest
                            platform templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
 
-    substTemplate pkgid pkg_key = InstallDirs.fromPathTemplate
+    substTemplate pkgid libname = InstallDirs.fromPathTemplate
                                 . InstallDirs.substPathTemplate env
-      where env = InstallDirs.initialPathTemplateEnv pkgid pkg_key
+      where env = InstallDirs.initialPathTemplateEnv pkgid libname
                                                      cinfo platform
 
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")

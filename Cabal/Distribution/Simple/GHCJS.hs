@@ -26,11 +26,11 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo_(..) )
+import Distribution.Package ( LibraryName(..), getHSLibraryName )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
-         , LibraryName(..) )
+         ( LocalBuildInfo(..), ComponentLocalBuildInfo(..) )
 import qualified Distribution.Simple.Hpc as Hpc
 import Distribution.Simple.InstallDirs hiding ( absoluteInstallDirs )
 import Distribution.Simple.BuildPaths
@@ -301,11 +301,8 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
-  libName <- case componentLibraries clbi of
-             [libName] -> return libName
-             [] -> die "No library name found when building library"
-             _  -> die "Multiple library names found when building library"
-  let libTargetDir = buildDir lbi
+  let libName@(LibraryName cname) = componentLibraryName clbi
+      libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (not forRepl && (forceVanilla || withVanillaLib lbi))
       whenProfLib = when (not forRepl && withProfLib lbi)
@@ -332,9 +329,6 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
   -- Determine if program coverage should be enabled and if so, what
   -- '-hpcdir' should be.
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
-      -- Component name. Not 'libName' because that has the "HS" prefix
-      -- that GHC gives Haskell libraries.
-      cname = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
@@ -348,14 +342,13 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       baseOpts    = componentGhcOptions verbosity lbi libBi clbi libTargetDir
       linkJsLibOpts = mempty {
                         ghcOptExtra = toNubListR $
-                          [ "-link-js-lib"     , (\(LibraryName l) -> l) libName
+                          [ "-link-js-lib"     , getHSLibraryName libName
                           , "-js-lib-outputdir", libTargetDir ] ++
                           concatMap (\x -> ["-js-lib-src",x]) jsSrcs
                       }
       vanillaOptsNoJsLib = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = numJobs,
-                      ghcOptPackageKey   = toFlag (pkgKey lbi),
                       ghcOptSigOf        = hole_insts,
                       ghcOptInputModules = toNubListR $ libModules lib,
                       ghcOptHPCDir       = hpcdir Hpc.Vanilla
@@ -506,7 +499,6 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
                 ghcOptDynLinkMode        = toFlag GhcDynamicOnly,
                 ghcOptInputFiles         = toNubListR dynamicObjectFiles,
                 ghcOptOutputFile         = toFlag sharedLibFilePath,
-                ghcOptPackageKey         = toFlag (pkgKey lbi),
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
                 ghcOptPackages           = toNubListR $
@@ -727,9 +719,9 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   whenProf    $ copyModuleFiles "js_p_hi"
   whenShared  $ copyModuleFiles "js_dyn_hi"
 
-  whenVanilla $ mapM_ (installOrdinary builtDir targetDir . toJSLibName) vanillaLibNames
-  whenProf    $ mapM_ (installOrdinary builtDir targetDir . toJSLibName) profileLibNames
-  whenShared  $ mapM_ (installShared   builtDir dynlibTargetDir . toJSLibName) sharedLibNames
+  whenVanilla $ installOrdinary builtDir targetDir $ toJSLibName vanillaLibName
+  whenProf    $ installOrdinary builtDir targetDir $ toJSLibName profileLibName
+  whenShared  $ installShared   builtDir dynlibTargetDir $ toJSLibName sharedLibName
 
   when (ghcjsNativeToo $ compiler lbi) $ do
     -- copy .hi files over:
@@ -738,10 +730,10 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
     whenShared  $ copyModuleFiles "dyn_hi"
 
     -- copy the built library files over:
-    whenVanilla $ mapM_ (installOrdinary builtDir targetDir)       vanillaLibNames
-    whenProf    $ mapM_ (installOrdinary builtDir targetDir)       profileLibNames
-    whenGHCi    $ mapM_ (installOrdinary builtDir targetDir)       ghciLibNames
-    whenShared  $ mapM_ (installShared   builtDir dynlibTargetDir) sharedLibNames
+    whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
+    whenProf    $ installOrdinary builtDir targetDir       profileLibName
+    whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
+    whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
 
   where
     install isShared srcDir dstDir name = do
@@ -762,11 +754,11 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libNames = componentLibraries clbi
-    vanillaLibNames = map mkLibName              libNames
-    profileLibNames = map mkProfLibName          libNames
-    ghciLibNames    = map Internal.mkGHCiLibName libNames
-    sharedLibNames  = map (mkSharedLibName cid)  libNames
+    libName = componentLibraryName clbi
+    vanillaLibName = mkLibName              libName
+    profileLibName = mkProfLibName          libName
+    ghciLibName    = Internal.mkGHCiLibName libName
+    sharedLibName  = (mkSharedLibName cid)  libName
 
     hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))
@@ -810,7 +802,6 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
-          ghcOptPackageKey   = toFlag (pkgKey lbi),
           ghcOptInputModules = toNubListR $ exposedModules lib
         }
       profArgs = adjustExts "js_p_hi" "js_p_o" vanillaArgs `mappend` mempty {

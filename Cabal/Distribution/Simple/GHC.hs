@@ -413,12 +413,8 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
-  libName <- case componentLibraries clbi of
-             [libName] -> return libName
-             [] -> die "No library name found when building library"
-             _  -> die "Multiple library names found when building library"
-
-  let libTargetDir = buildDir lbi
+  let libName = componentLibraryName clbi
+      libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
       whenProfLib = when (withProfLib lbi)
@@ -430,8 +426,6 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       ghcVersion = compilerVersion comp
       implInfo  = getImplInfo comp
       (Platform _hostArch hostOS) = hostPlatform lbi
-      hole_insts = map (\(k,(p,n)) -> (k, (InstalledPackageInfo.packageKey p,n)))
-                   (instantiatedWith lbi)
 
   (ghcProg, _) <- requireProgram verbosity ghcProgram (withPrograms lbi)
   let runGhcProg = runGHC verbosity ghcProg comp
@@ -465,8 +459,6 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       vanillaOpts = baseOpts `mappend` mempty {
                       ghcOptMode         = toFlag GhcModeMake,
                       ghcOptNumJobs      = numJobs,
-                      ghcOptPackageKey   = toFlag (pkgKey lbi),
-                      ghcOptSigOf        = hole_insts,
                       ghcOptInputModules = toNubListR $ libModules lib,
                       ghcOptHPCDir       = hpcdir Hpc.Vanilla
                     }
@@ -658,7 +650,6 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                                && ghcVersion < Version [7,8] [])
                                             then toFlag sharedLibInstallPath
                                             else mempty,
-                ghcOptPackageKey         = toFlag (pkgKey lbi),
                 ghcOptNoAutoLinkPackages = toFlag True,
                 ghcOptPackageDBs         = withPackageDB lbi,
                 ghcOptPackages           = toNubListR $
@@ -969,7 +960,6 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
-          ghcOptPackageKey   = toFlag (pkgKey lbi),
           ghcOptInputModules = toNubListR $ exposedModules lib
         }
       sharedArgs = vanillaArgs `mappend` mempty {
@@ -1056,10 +1046,10 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
   whenShared  $ copyModuleFiles "dyn_hi"
 
   -- copy the built library files over:
-  whenVanilla $ mapM_ (installOrdinary builtDir targetDir)       vanillaLibNames
-  whenProf    $ mapM_ (installOrdinary builtDir targetDir)       profileLibNames
-  whenGHCi    $ mapM_ (installOrdinary builtDir targetDir)       ghciLibNames
-  whenShared  $ mapM_ (installShared   builtDir dynlibTargetDir) sharedLibNames
+  whenVanilla $ installOrdinary builtDir targetDir       vanillaLibName
+  whenProf    $ installOrdinary builtDir targetDir       profileLibName
+  whenGHCi    $ installOrdinary builtDir targetDir       ghciLibName
+  whenShared  $ installShared   builtDir dynlibTargetDir sharedLibName
 
   where
     install isShared srcDir dstDir name = do
@@ -1080,11 +1070,11 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libNames = componentLibraries clbi
-    vanillaLibNames = map mkLibName              libNames
-    profileLibNames = map mkProfLibName          libNames
-    ghciLibNames    = map Internal.mkGHCiLibName libNames
-    sharedLibNames  = map (mkSharedLibName cid)  libNames
+    libName = componentLibraryName clbi
+    vanillaLibName = mkLibName              libName
+    profileLibName = mkProfLibName          libName
+    ghciLibName    = Internal.mkGHCiLibName libName
+    sharedLibName  = (mkSharedLibName cid)  libName
 
     hasLib    = not $ null (libModules lib)
                    && null (cSources (libBuildInfo lib))
