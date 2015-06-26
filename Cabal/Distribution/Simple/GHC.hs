@@ -966,7 +966,6 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
         (componentGhcOptions verbosity lbi libBi clbi (buildDir lbi))
         `mappend` mempty {
           ghcOptMode         = toFlag GhcModeAbiHash,
-          ghcOptPackageKey   = toFlag (pkgKey lbi),
           ghcOptInputModules = toNubListR $ exposedModules lib
         }
       sharedArgs = vanillaArgs `mappend` mempty {
