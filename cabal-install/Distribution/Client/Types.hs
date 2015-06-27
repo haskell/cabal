@@ -235,11 +235,20 @@ data PackageLocation local =
 data LocalRepo = LocalRepo
   deriving (Show,Eq)
 
-data RemoteRepo = RemoteRepo {
-    remoteRepoName :: String,
-    remoteRepoURI  :: URI
-  }
+data RemoteRepo =
+    RemoteRepo {
+      remoteRepoName     :: String,
+      remoteRepoURI      :: URI,
+      remoteRepoRootKeys :: ()
+    }
+
+  -- FIXME: discuss this type some more.
+
   deriving (Show,Eq,Ord)
+
+-- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
+emptyRemoteRepo :: String -> RemoteRepo
+emptyRemoteRepo name = RemoteRepo name (error "RemoteRepo: empty URI!") ()
 
 data Repo = Repo {
     repoKind     :: Either RemoteRepo LocalRepo,
