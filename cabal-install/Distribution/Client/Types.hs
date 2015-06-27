@@ -38,7 +38,7 @@ import Distribution.Text (display)
 import qualified Distribution.InstalledPackageInfo as Info
 
 import Data.Map (Map)
-import Network.URI (URI)
+import Network.URI (URI, nullURI)
 import Data.ByteString.Lazy (ByteString)
 import Control.Exception
          ( SomeException )
@@ -248,7 +248,7 @@ data RemoteRepo =
 
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
 emptyRemoteRepo :: String -> RemoteRepo
-emptyRemoteRepo name = RemoteRepo name (error "RemoteRepo: empty URI!") ()
+emptyRemoteRepo name = RemoteRepo name nullURI ()
 
 data Repo = Repo {
     repoKind     :: Either RemoteRepo LocalRepo,
