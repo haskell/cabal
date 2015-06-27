@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -508,6 +507,19 @@ defaultRemoteRepo = RemoteRepo name uri ()
     -- entries that match repo name and url (not only be used for generating
     -- fresh config files).
 
+-- For the default repo we know extra information, fill this in.
+--
+-- We need this because the 'defaultRemoteRepo' above is only used for the
+-- first time when a config file is made. So for users with older config files
+-- we might have only have older info. This lets us fill that in even for old
+-- config files.
+--
+addInfoForKnownRepos :: RemoteRepo -> RemoteRepo
+addInfoForKnownRepos repo@RemoteRepo{ remoteRepoName = "hackage.haskell.org" } =
+    repo
+      --remoteRepoRootKeys --TODO: when this list is empty, fill in known crypto credentials
+addInfoForKnownRepos other = other
+
 --
 -- * Config file reading
 --
@@ -783,11 +795,16 @@ parseConfig initial = \str -> do
   config <- parse others
   let user0   = savedUserInstallDirs config
       global0 = savedGlobalInstallDirs config
-      compileRemoteRepos = reverse . nubBy ((==) `on` remoteRepoName)
-  (compileRemoteRepos -> remoteRepoSections, haddockFlags, user, global, paths, args) <-
+  (remoteRepoSections0, haddockFlags, user, global, paths, args) <-
     foldM parseSections
           ([], savedHaddockFlags config, user0, global0, [], [])
           knownSections
+
+  let remoteRepoSections =
+          map addInfoForKnownRepos
+        . reverse
+        . nubBy ((==) `on` remoteRepoName)
+        $ remoteRepoSections0
 
   return config {
     savedGlobalFlags       = (savedGlobalFlags config) {
