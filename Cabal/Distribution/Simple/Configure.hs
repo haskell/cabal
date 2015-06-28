@@ -69,6 +69,7 @@ import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.PackageDescription as PD
     ( PackageDescription(..), specVersion, GenericPackageDescription(..)
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
+    , ForeignLib(..), ForeignLibType(..), ForeignLibOption(..)
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..)
     , ModuleReexport(..) , defaultRenaming )
@@ -106,7 +107,7 @@ import Distribution.Simple.Utils
     , writeFileAtomic
     , withTempFile )
 import Distribution.System
-    ( OS(..), buildOS, Platform (..), buildPlatform )
+    ( OS(..), buildOS, Platform (..), Arch(..), buildPlatform )
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
@@ -132,7 +133,7 @@ import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
     ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
 import Data.Maybe
-    ( isNothing, catMaybes, fromMaybe, isJust )
+    ( isNothing, catMaybes, fromMaybe, isJust, mapMaybe )
 import Data.Either
     ( partitionEithers )
 import qualified Data.Set as Set
@@ -272,7 +273,7 @@ currentCompilerId :: PackageIdentifier
 currentCompilerId = PackageIdentifier (PackageName System.Info.compilerName)
                                       System.Info.compilerVersion
 
--- | Parse the @setup-config@ file header, returning the package identifiers 
+-- | Parse the @setup-config@ file header, returning the package identifiers
 -- for Cabal and the compiler.
 parseHeader :: ByteString -- ^ The file contents.
             -> (PackageIdentifier, PackageIdentifier)
@@ -581,6 +582,13 @@ configure (pkg_descr0, pbi) cfg
              ++ " requires the following language extensions which are not "
              ++ "supported by " ++ display (compilerId comp) ++ ": "
              ++ intercalate ", " (map display exts)
+
+        -- check foreign library build requirements
+        let flibs = [flib | CFLib flib <- pkgEnabledComponents pkg_descr]
+        let unsupportedFLibs = unsupportedForeignLibs comp compPlatform flibs
+        when (not (null unsupportedFLibs)) $
+          die $ "Cannot build some foreign libraries: "
+             ++ intercalate "," unsupportedFLibs
 
         -- configured known/required programs & external build tools
         -- exclude build-tool deps on "internal" exes in the same package
@@ -1290,6 +1298,11 @@ mkComponentsLocalBuildInfo installedPackages pkg_descr
           componentPackageRenaming = cprns,
           componentExposedModules = exports ++ reexports ++ esigs
         }
+      CFLib _ ->
+        return FLibComponentLocalBuildInfo {
+          componentPackageDeps = cpds,
+          componentPackageRenaming = cprns
+        }
       CExe _ ->
         return ExeComponentLocalBuildInfo {
           componentPackageDeps = cpds,
@@ -1700,3 +1713,82 @@ checkRelocatable verbosity pkg lbi
         msg l         = "Library directory of a dependency: " ++ show l ++
                         "\nis not relative to the installation prefix:\n" ++
                         show p
+
+-- -----------------------------------------------------------------------------
+-- Testing foreign library requirements
+
+unsupportedForeignLibs :: Compiler -> Platform -> [ForeignLib] -> [String]
+unsupportedForeignLibs comp platform =
+    mapMaybe (checkForeignLibSupported comp platform)
+
+checkForeignLibSupported :: Compiler -> Platform -> ForeignLib -> Maybe String
+checkForeignLibSupported comp platform flib = go (compilerFlavor comp)
+  where
+    go :: CompilerFlavor -> Maybe String
+    go GHC = goGhcPlatform platform
+    go _   = unsupported [
+        "Building foreign libraries is currently only supported with ghc"
+      ]
+
+    goGhcPlatform :: Platform -> Maybe String
+    goGhcPlatform (Platform X86_64 OSX    ) = goGhcOsx     (foreignLibType flib)
+    goGhcPlatform (Platform I386   Linux  ) = goGhcLinux   (foreignLibType flib)
+    goGhcPlatform (Platform X86_64 Linux  ) = goGhcLinux   (foreignLibType flib)
+    goGhcPlatform (Platform I386   Windows) = goGhcWindows (foreignLibType flib)
+    goGhcPlatform (Platform X86_64 Windows) = goGhcWindows (foreignLibType flib)
+    goGhcPlatform _ = unsupported [
+        "Building foreign libraries is currently only supported on OSX, "
+      , "Linux and Windows"
+      ]
+
+    goGhcOsx :: ForeignLibType -> Maybe String
+    goGhcOsx _ | compilerVersion comp < Version [7,8] [] = unsupported [
+        "Building foreign libraries on OSX is only supported with GHC >= 7.8"
+      ]
+
+    goGhcOsx ForeignLibNativeShared
+      | standalone = unsupported [
+            "We cannot build standalone libraries on OSX"
+          ]
+      | not (null (foreignLibModDefFile flib)) = unsupported [
+            "Module definition file not supported on OSX"
+          ]
+      | otherwise =
+          Nothing
+    goGhcOsx _ = unsupported [
+        "We can currently only build shared foreign libraries on OSX"
+      ]
+
+    goGhcLinux :: ForeignLibType -> Maybe String
+    goGhcLinux ForeignLibNativeShared
+      | standalone = unsupported [
+            "We cannot build standalone libraries on OSX"
+          ]
+      | not (null (foreignLibModDefFile flib)) = unsupported [
+            "Module definition file not supported on OSX"
+          ]
+      | otherwise =
+          Nothing
+    goGhcLinux _ = unsupported [
+        "We can currently only build shared foreign libraries on Linux"
+      ]
+
+    goGhcWindows :: ForeignLibType -> Maybe String
+    goGhcWindows ForeignLibNativeShared
+      | not standalone = unsupported [
+            "We can currently only build standalone libraries on Windows. Use\n"
+          , "  if os(Windows)\n"
+          , "    options: standalone\n"
+          , "in your foreign-library stanza."
+          ]
+      | otherwise =
+         Nothing
+    goGhcWindows _ = unsupported [
+        "We can currently only build shared foreign libraries on Windows"
+      ]
+
+    standalone :: Bool
+    standalone = ForeignLibStandalone `elem` foreignLibOptions flib
+
+    unsupported :: [String] -> Maybe String
+    unsupported = Just . concat

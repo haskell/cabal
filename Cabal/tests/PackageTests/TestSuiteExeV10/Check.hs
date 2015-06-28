@@ -23,16 +23,16 @@ import Distribution.Version (Version(..), orLaterVersion)
 
 import PackageTests.PackageTester
 
-checks :: FilePath -> [TestTree]
-checks ghcPath =
-    [ testCase "Test" $ checkTest ghcPath ]
-    ++ hpcTestMatrix ghcPath ++
-    [ testCase "TestNoHpc/NoTix" $ checkTestNoHpcNoTix ghcPath
-    , testCase "TestNoHpc/NoMarkup" $ checkTestNoHpcNoMarkup ghcPath
+checks :: IO TestsConfig -> [TestTree]
+checks cfg =
+    [ testCase "Test" $ checkTest cfg ]
+    ++ hpcTestMatrix cfg ++
+    [ testCase "TestNoHpc/NoTix" $ checkTestNoHpcNoTix cfg
+    , testCase "TestNoHpc/NoMarkup" $ checkTestNoHpcNoMarkup cfg
     ]
 
-hpcTestMatrix :: FilePath -> [TestTree]
-hpcTestMatrix ghcPath = do
+hpcTestMatrix :: IO TestsConfig -> [TestTree]
+hpcTestMatrix cfg = do
     libProf <- [True, False]
     exeProf <- [True, False]
     exeDyn <- [True, False]
@@ -53,13 +53,13 @@ hpcTestMatrix ghcPath = do
             , enable exeDyn "executable-dynamic"
             , enable shared "shared"
             ]
-    return $ testCase name $ checkTestWithHpc ghcPath name opts
+    return $ testCase name $ checkTestWithHpc cfg name opts
 
 dir :: FilePath
 dir = "PackageTests" </> "TestSuiteExeV10"
 
-checkTest :: FilePath -> Assertion
-checkTest ghcPath = buildAndTest ghcPath "Default" [] []
+checkTest :: IO TestsConfig -> Assertion
+checkTest cfg = buildAndTest cfg "Default" [] []
 
 shouldExist :: FilePath -> Assertion
 shouldExist path = doesFileExist path >>= assertBool (path ++ " should exist")
@@ -69,12 +69,12 @@ shouldNotExist path =
     doesFileExist path >>= assertBool (path ++ " should exist") . not
 
 -- | Ensure that both .tix file and markup are generated if coverage is enabled.
-checkTestWithHpc :: FilePath -> String -> [String] -> Assertion
-checkTestWithHpc ghcPath name extraOpts = do
+checkTestWithHpc :: IO TestsConfig -> String -> [String] -> Assertion
+checkTestWithHpc cfg name extraOpts = do
     isCorrectVersion <- correctHpcVersion
     when isCorrectVersion $ do
         let distPref' = dir </> "dist-" ++ name
-        buildAndTest ghcPath name [] ("--enable-coverage" : extraOpts)
+        buildAndTest cfg name [] ("--enable-coverage" : extraOpts)
         lbi <- getPersistBuildConfig distPref'
         let way = guessWay lbi
             CompilerId comp version = compilerId (compiler lbi)
@@ -90,9 +90,9 @@ checkTestWithHpc ghcPath name extraOpts = do
             ]
 
 -- | Ensures that even if -fhpc is manually provided no .tix file is output.
-checkTestNoHpcNoTix :: FilePath -> Assertion
-checkTestNoHpcNoTix ghcPath = do
-    buildAndTest ghcPath "NoHpcNoTix" []
+checkTestNoHpcNoTix :: IO TestsConfig -> Assertion
+checkTestNoHpcNoTix cfg = do
+    buildAndTest cfg "NoHpcNoTix" []
       [ "--ghc-option=-fhpc"
       , "--ghc-option=-hpcdir"
       , "--ghc-option=dist-NoHpcNoTix/hpc/vanilla" ]
@@ -102,10 +102,10 @@ checkTestNoHpcNoTix ghcPath = do
 
 -- | Ensures that even if a .tix file happens to be left around
 -- markup isn't generated.
-checkTestNoHpcNoMarkup :: FilePath -> Assertion
-checkTestNoHpcNoMarkup ghcPath = do
+checkTestNoHpcNoMarkup :: IO TestsConfig -> Assertion
+checkTestNoHpcNoMarkup cfg = do
     let tixFile = tixFilePath "dist-NoHpcNoMarkup" Vanilla "test-Foo"
-    buildAndTest ghcPath "NoHpcNoMarkup"
+    buildAndTest cfg "NoHpcNoMarkup"
       [("HPCTIXFILE", Just tixFile)]
       [ "--ghc-option=-fhpc"
       , "--ghc-option=-hpcdir"
@@ -115,16 +115,16 @@ checkTestNoHpcNoMarkup ghcPath = do
 -- | Build and test a package and ensure that both were successful.
 --
 -- The flag "--enable-tests" is provided in addition to the given flags.
-buildAndTest :: FilePath -> String -> [(String, Maybe String)] -> [String] -> IO ()
-buildAndTest ghcPath name envOverrides flags = do
+buildAndTest :: IO TestsConfig -> String -> [(String, Maybe String)] -> [String] -> IO ()
+buildAndTest cfg name envOverrides flags = do
     let spec = PackageSpec
             { directory = dir
             , distPref = Just $ "dist-" ++ name
             , configOpts = "--enable-tests" : flags
             }
-    buildResult <- cabal_build spec ghcPath
+    buildResult <- cabal_build cfg spec
     assertBuildSucceeded buildResult
-    testResult <- cabal_test spec envOverrides [] ghcPath
+    testResult <- cabal_test cfg spec envOverrides []
     assertTestSucceeded testResult
 
 -- | Checks for a suitable HPC version for testing.

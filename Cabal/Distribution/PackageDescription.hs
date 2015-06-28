@@ -47,6 +47,17 @@ module Distribution.PackageDescription (
         hasLibs,
         libModules,
 
+        -- ** Foreign libraries
+        ForeignLib(..),
+        ForeignLibType(..),
+        ForeignLibOption(..),
+        emptyForeignLib,
+        withFLib,
+        hasForeignLibs,
+        flibModules,
+        knownForeignLibTypes,
+        flibIsShared,
+
         -- ** Executables
         Executable(..),
         emptyExecutable,
@@ -142,6 +153,7 @@ import Distribution.Version
 import Distribution.License  (License(UnspecifiedLicense))
 import Distribution.Compiler (CompilerFlavor)
 import Distribution.System   (OS, Arch)
+import Distribution.PackageDescription.Utils (cabalBug)
 import Distribution.Text
          ( Text(..), display )
 import Language.Haskell.Extension
@@ -198,6 +210,7 @@ data PackageDescription
         setupBuildInfo :: Maybe SetupBuildInfo,
         -- components
         library        :: Maybe Library,
+        foreignLibs    :: [ForeignLib],
         executables    :: [Executable],
         testSuites     :: [TestSuite],
         benchmarks     :: [Benchmark],
@@ -265,6 +278,7 @@ emptyPackageDescription
                       customFieldsPD = [],
                       setupBuildInfo = Nothing,
                       library      = Nothing,
+                      foreignLibs  = [],
                       executables  = [],
                       testSuites   = [],
                       benchmarks   = [],
@@ -485,6 +499,117 @@ instance Text ModuleReexport where
                     Parse.skipSpaces
                     parse
       return (ModuleReexport mpkgname origname newname)
+
+-- ---------------------------------------------------------------------------
+-- Foreign libraries
+
+data ForeignLib = ForeignLib {
+      foreignLibName       :: String
+    , foreignLibType       :: ForeignLibType
+    , foreignLibOptions    :: [ForeignLibOption]
+    , foreignLibBuildInfo  :: BuildInfo
+
+      -- | (Windows-specific) module definition files
+      --
+      -- This is a list rather than a maybe field so that we can flatten
+      -- the condition trees (for instance, when creating an sdist)
+    , foreignLibModDefFile :: [FilePath]
+    }
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+data ForeignLibType =
+      ForeignLibNativeShared
+    | ForeignLibNativeStatic
+    | ForeignLibTypeUnknown
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+data ForeignLibOption =
+     -- | Merge in all dependent libraries
+     ForeignLibStandalone
+    deriving (Generic, Show, Read, Eq, Typeable, Data)
+
+instance Text ForeignLibType where
+  disp ForeignLibNativeShared = text "native-shared"
+  disp ForeignLibNativeStatic = text "native-static"
+  disp ForeignLibTypeUnknown  = text "unknown"
+
+  parse = Parse.choice [
+      do _ <- Parse.string "native-shared" ; return ForeignLibNativeShared
+    , do _ <- Parse.string "native-static" ; return ForeignLibNativeStatic
+    ]
+
+instance Text ForeignLibOption where
+  disp ForeignLibStandalone = text "standalone"
+
+  parse = Parse.choice [
+      do _ <- Parse.string "standalone" ; return ForeignLibStandalone
+    ]
+
+instance Binary ForeignLib
+instance Binary ForeignLibType
+instance Binary ForeignLibOption
+
+instance Monoid ForeignLibType where
+  mempty = ForeignLibTypeUnknown
+  ForeignLibTypeUnknown `mappend` b = b
+  a `mappend` ForeignLibTypeUnknown = a
+  _ `mappend` _ = error "Ambiguous foreign library type"
+
+instance Monoid ForeignLib where
+  mempty = ForeignLib {
+      foreignLibName       = mempty
+    , foreignLibType       = ForeignLibTypeUnknown
+    , foreignLibOptions    = []
+    , foreignLibBuildInfo  = mempty
+    , foreignLibModDefFile = []
+    }
+  mappend a b = ForeignLib {
+      foreignLibName       = combine' foreignLibName
+    , foreignLibType       = combine  foreignLibType
+    , foreignLibOptions    = combine  foreignLibOptions
+    , foreignLibBuildInfo  = combine  foreignLibBuildInfo
+    , foreignLibModDefFile = combine  foreignLibModDefFile
+    }
+    where combine field = field a `mappend` field b
+          combine' field = case (field a, field b) of
+            ("","") -> ""
+            ("", x) -> x
+            (x, "") -> x
+            (x, y) -> error $ "Ambiguous values for foreign library field: '"
+                        ++ x ++ "' and '" ++ y ++ "'"
+
+emptyForeignLib :: ForeignLib
+emptyForeignLib = mempty
+
+-- |does this package have any foreign libraries?
+hasForeignLibs :: PackageDescription -> Bool
+hasForeignLibs p = any (buildable . foreignLibBuildInfo) (foreignLibs p)
+
+-- | Perform the action on each buildable 'ForeignLib' in the package
+-- description.
+withFLib :: PackageDescription -> (ForeignLib -> IO ()) -> IO ()
+withFLib pkg_descr f =
+  sequence_ [ f flib
+            | flib <- foreignLibs pkg_descr
+            , buildable (foreignLibBuildInfo flib)
+            ]
+
+-- | Get all the module names from a foreign library
+flibModules :: ForeignLib -> [ModuleName]
+flibModules flib = otherModules (foreignLibBuildInfo flib)
+
+knownForeignLibTypes :: [ForeignLibType]
+knownForeignLibTypes = [
+      ForeignLibNativeShared
+    , ForeignLibNativeStatic
+    ]
+
+flibIsShared :: ForeignLib -> Bool
+flibIsShared flib =
+    case foreignLibType flib of
+      ForeignLibNativeShared -> True
+      ForeignLibNativeStatic -> False
+      ForeignLibTypeUnknown  -> cabalBug "Unknown foreign library type"
 
 -- ---------------------------------------------------------------------------
 -- The Executable type
@@ -1127,8 +1252,9 @@ updatePackageDescription (mb_lib_bi, exe_bi) p
 data GenericPackageDescription =
     GenericPackageDescription {
         packageDescription :: PackageDescription,
-        genPackageFlags       :: [Flag],
+        genPackageFlags    :: [Flag],
         condLibrary        :: Maybe (CondTree ConfVar [Dependency] Library),
+        condForeignLibs    :: [(String, CondTree ConfVar [Dependency] ForeignLib)],
         condExecutables    :: [(String, CondTree ConfVar [Dependency] Executable)],
         condTestSuites     :: [(String, CondTree ConfVar [Dependency] TestSuite)],
         condBenchmarks     :: [(String, CondTree ConfVar [Dependency] Benchmark)]

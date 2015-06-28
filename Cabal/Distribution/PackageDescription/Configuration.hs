@@ -33,7 +33,7 @@ import Distribution.Package
          ( PackageName, Dependency(..) )
 import Distribution.PackageDescription
          ( GenericPackageDescription(..), PackageDescription(..)
-         , Library(..), Executable(..), BuildInfo(..)
+         , Library(..), ForeignLib(..), Executable(..), BuildInfo(..)
          , Flag(..), FlagName(..), FlagAssignment
          , Benchmark(..), CondTree(..), ConfVar(..), Condition(..)
          , TestSuite(..) )
@@ -350,11 +350,12 @@ overallDependencies (TargetSet targets) = mconcat depss
   where
     (depss, _) = unzip $ filter (removeDisabledSections . snd) targets
     removeDisabledSections :: PDTagged -> Bool
-    removeDisabledSections (Lib _) = True
-    removeDisabledSections (Exe _ _) = True
-    removeDisabledSections (Test _ t) = testEnabled t
+    removeDisabledSections (Lib _)     = True
+    removeDisabledSections (FLib _ _)  = True
+    removeDisabledSections (Exe _ _)   = True
+    removeDisabledSections (Test _ t)  = testEnabled t
     removeDisabledSections (Bench _ b) = benchmarkEnabled b
-    removeDisabledSections PDNull = True
+    removeDisabledSections PDNull      = True
 
 -- Apply extra constraints to a dependency map.
 -- Combines dependencies where the result will only contain keys from the left
@@ -375,50 +376,74 @@ constrainBy left extra =
 -- | Collect up the targets in a TargetSet of tagged targets, storing the
 -- dependencies as we go.
 flattenTaggedTargets :: TargetSet PDTagged ->
-        (Maybe Library, [(String, Executable)], [(String, TestSuite)]
-        , [(String, Benchmark)])
-flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) targets
+        ( Maybe Library
+        , [(String, ForeignLib)]
+        , [(String, Executable)]
+        , [(String, TestSuite)]
+        , [(String, Benchmark)]
+        )
+flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], [], []) targets
   where
-    untag (_, Lib _) (Just _, _, _, _) = userBug "Only one library expected"
-    untag (deps, Lib l) (Nothing, exes, tests, bms) =
-        (Just l', exes, tests, bms)
+    untag (_, Lib _) (Just _, _, _, _, _) = userBug "Only one library expected"
+    untag (deps, Lib l) (Nothing, flibs, exes, tests, bms) =
+        (Just l', flibs, exes, tests, bms)
       where
         l' = l {
                 libBuildInfo = (libBuildInfo l) { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, Exe n e) (mlib, exes, tests, bms)
+    untag (deps, FLib n l) (mlib, flibs, exes, tests, bms)
+        | any ((== n) . fst) flibs =
+          userBug $ "There exists several foreign libraries with the same name: '" ++ n ++ "'"
+        | any ((== n) . fst) exes =
+          userBug $ "There exists an exe with the same name as a foreign library: '" ++ n ++ "'"
+        | any ((== n) . fst) tests =
+          userBug $ "There exists a test with the same name as a foreign library: '" ++ n ++ "'"
+        | any ((== n) . fst) bms =
+          userBug $ "There exists a benchmark with the same name as a foreign library: '" ++ n ++ "'"
+        | otherwise = (mlib, (n, l'):flibs, exes, tests, bms)
+      where
+        l' = l {
+                foreignLibBuildInfo = (foreignLibBuildInfo l) { targetBuildDepends = fromDepMap deps }
+            }
+    untag (deps, Exe n e) (mlib, flibs, exes, tests, bms)
+        | any ((== n) . fst) flibs =
+          userBug $ "There exists a foreign library with the same name as an exe: '" ++ n ++ "'"
         | any ((== n) . fst) exes =
           userBug $ "There exist several exes with the same name: '" ++ n ++ "'"
         | any ((== n) . fst) tests =
           userBug $ "There exists a test with the same name as an exe: '" ++ n ++ "'"
         | any ((== n) . fst) bms =
           userBug $ "There exists a benchmark with the same name as an exe: '" ++ n ++ "'"
-        | otherwise = (mlib, (n, e'):exes, tests, bms)
+        | otherwise = (mlib, flibs, (n, e'):exes, tests, bms)
       where
         e' = e {
                 buildInfo = (buildInfo e) { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, Test n t) (mlib, exes, tests, bms)
+    untag (deps, Test n t) (mlib, flibs, exes, tests, bms)
+        | any ((== n) . fst) flibs =
+          userBug $ "There exists a foreign library with the same name as the test: '" ++ n ++ "'"
         | any ((== n) . fst) tests =
           userBug $ "There exist several tests with the same name: '" ++ n ++ "'"
         | any ((== n) . fst) exes =
           userBug $ "There exists an exe with the same name as the test: '" ++ n ++ "'"
         | any ((== n) . fst) bms =
           userBug $ "There exists a benchmark with the same name as the test: '" ++ n ++ "'"
-        | otherwise = (mlib, exes, (n, t'):tests, bms)
+        | otherwise = (mlib, flibs, exes, (n, t'):tests, bms)
       where
         t' = t {
             testBuildInfo = (testBuildInfo t)
                 { targetBuildDepends = fromDepMap deps }
             }
-    untag (deps, Bench n b) (mlib, exes, tests, bms)
+    untag (deps, Bench n b) (mlib, flibs, exes, tests, bms)
+        | any ((== n) . fst) flibs =
+          userBug $ "There exists a foreign library with the same name as the benchmark: '" ++ n ++ "'"
         | any ((== n) . fst) bms =
           userBug $ "There exist several benchmarks with the same name: '" ++ n ++ "'"
         | any ((== n) . fst) exes =
           userBug $ "There exists an exe with the same name as the benchmark: '" ++ n ++ "'"
         | any ((== n) . fst) tests =
           userBug $ "There exists a test with the same name as the benchmark: '" ++ n ++ "'"
-        | otherwise = (mlib, exes, tests, (n, b'):bms)
+        | otherwise = (mlib, flibs, exes, tests, (n, b'):bms)
       where
         b' = b {
             benchmarkBuildInfo = (benchmarkBuildInfo b)
@@ -432,6 +457,7 @@ flattenTaggedTargets (TargetSet targets) = foldr untag (Nothing, [], [], []) tar
 --
 
 data PDTagged = Lib Library
+              | FLib String ForeignLib
               | Exe String Executable
               | Test String TestSuite
               | Bench String Benchmark
@@ -440,11 +466,13 @@ data PDTagged = Lib Library
 
 instance Monoid PDTagged where
     mempty = PDNull
-    PDNull `mappend` x = x
-    x `mappend` PDNull = x
-    Lib l `mappend` Lib l' = Lib (l `mappend` l')
-    Exe n e `mappend` Exe n' e' | n == n' = Exe n (e `mappend` e')
-    Test n t `mappend` Test n' t' | n == n' = Test n (t `mappend` t')
+
+    PDNull    `mappend` x                     = x
+    x         `mappend` PDNull                = x
+    Lib     l `mappend` Lib      l'           = Lib     (l `mappend` l')
+    FLib  n l `mappend` FLib  n' l' | n == n' = FLib  n (l `mappend` l')
+    Exe   n e `mappend` Exe   n' e' | n == n' = Exe   n (e `mappend` e')
+    Test  n t `mappend` Test  n' t' | n == n' = Test  n (t `mappend` t')
     Bench n b `mappend` Bench n' b' | n == n' = Bench n (b `mappend` b')
     _ `mappend` _ = cabalBug "Cannot combine incompatible tags"
 
@@ -484,10 +512,11 @@ finalizePackageDescription ::
              -- description along with the flag assignments chosen.
 finalizePackageDescription userflags satisfyDep
         (Platform arch os) impl constraints
-        (GenericPackageDescription pkg flags mlib0 exes0 tests0 bms0) =
+        (GenericPackageDescription pkg flags mlib0 flibs0 exes0 tests0 bms0) =
     case resolveFlags of
-      Right ((mlib, exes', tests', bms'), targetSet, flagVals) ->
+      Right ((mlib, flibs', exes', tests', bms'), targetSet, flagVals) ->
         Right ( pkg { library = mlib
+                    , foreignLibs = flibs'
                     , executables = exes'
                     , testSuites = tests'
                     , benchmarks = bms'
@@ -503,6 +532,7 @@ finalizePackageDescription userflags satisfyDep
   where
     -- Combine lib, exes, and tests into one list of @CondTree@s with tagged data
     condTrees = maybeToList (fmap (mapTreeData Lib) mlib0 )
+                ++ map (\(name,tree) -> mapTreeData (FLib name) tree) flibs0
                 ++ map (\(name,tree) -> mapTreeData (Exe name) tree) exes0
                 ++ map (\(name,tree) -> mapTreeData (Test name) tree) tests0
                 ++ map (\(name,tree) -> mapTreeData (Bench name) tree) bms0
@@ -510,8 +540,9 @@ finalizePackageDescription userflags satisfyDep
     resolveFlags =
         case resolveWithFlags flagChoices os arch impl constraints condTrees check of
           Right (targetSet, fs) ->
-              let (mlib, exes, tests, bms) = flattenTaggedTargets targetSet in
+              let (mlib, flibs, exes, tests, bms) = flattenTaggedTargets targetSet in
               Right ( (fmap libFillInDefaults mlib,
+                       map (\(n,e) -> (flibFillInDefaults e) { foreignLibName = n }) flibs,
                        map (\(n,e) -> (exeFillInDefaults e) { exeName = n }) exes,
                        map (\(n,t) -> (testFillInDefaults t) { testName = n }) tests,
                        map (\(n,b) -> (benchFillInDefaults b) { benchmarkName = n }) bms),
@@ -554,21 +585,30 @@ resolveWithFlags [] Distribution.System.Linux Distribution.System.I386 (Distribu
 -- default path will be missing from the package description returned by this
 -- function.
 flattenPackageDescription :: GenericPackageDescription -> PackageDescription
-flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0 tests0 bms0) =
-    pkg { library = mlib
-        , executables = reverse exes
-        , testSuites = reverse tests
-        , benchmarks = reverse bms
-        , buildDepends = ldeps ++ reverse edeps ++ reverse tdeps ++ reverse bdeps
+flattenPackageDescription (GenericPackageDescription pkg _ mlib0 flibs0 exes0 tests0 bms0) =
+    pkg { library      = mlib
+        , foreignLibs  = reverse flibs
+        , executables  = reverse exes
+        , testSuites   = reverse tests
+        , benchmarks   = reverse bms
+        , buildDepends = ldeps
+                      ++ reverse pldeps
+                      ++ reverse edeps
+                      ++ reverse tdeps
+                      ++ reverse bdeps
         }
   where
     (mlib, ldeps) = case mlib0 of
         Just lib -> let (l,ds) = ignoreConditions lib in
                     (Just (libFillInDefaults l), ds)
         Nothing -> (Nothing, [])
+    (flibs, pldeps) = foldr flattenFLib ([],[]) flibs0
     (exes, edeps) = foldr flattenExe ([],[]) exes0
     (tests, tdeps) = foldr flattenTst ([],[]) tests0
     (bms, bdeps) = foldr flattenBm ([],[]) bms0
+    flattenFLib (n, t) (es, ds) =
+        let (e, ds') = ignoreConditions t in
+        ( (flibFillInDefaults $ e { foreignLibName = n }) : es, ds' ++ ds )
     flattenExe (n, t) (es, ds) =
         let (e, ds') = ignoreConditions t in
         ( (exeFillInDefaults $ e { exeName = n }) : es, ds' ++ ds )
@@ -589,6 +629,10 @@ flattenPackageDescription (GenericPackageDescription pkg _ mlib0 exes0 tests0 bm
 libFillInDefaults :: Library -> Library
 libFillInDefaults lib@(Library { libBuildInfo = bi }) =
     lib { libBuildInfo = biFillInDefaults bi }
+
+flibFillInDefaults :: ForeignLib -> ForeignLib
+flibFillInDefaults flib@(ForeignLib { foreignLibBuildInfo = bi }) =
+    flib { foreignLibBuildInfo = biFillInDefaults bi }
 
 exeFillInDefaults :: Executable -> Executable
 exeFillInDefaults exe@(Executable { buildInfo = bi }) =

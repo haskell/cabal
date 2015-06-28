@@ -18,7 +18,9 @@ module Distribution.Simple.Install (
 
 import Distribution.PackageDescription (
         PackageDescription(..), BuildInfo(..), Library(..),
-        hasLibs, withLib, hasExes, withExe )
+        hasLibs, withLib, hasExes, withExe,
+        hasForeignLibs, withFLib
+        )
 import Distribution.Package (Package(..))
 import Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs,
@@ -64,6 +66,7 @@ install pkg_descr lbi flags = do
          bindir     = binPref,
          libdir     = libPref,
 --         dynlibdir  = dynlibPref, --see TODO below
+         flibdir    = flibPref,
          datadir    = dataPref,
          docdir     = docPref,
          htmldir    = htmlPref,
@@ -115,6 +118,8 @@ install pkg_descr lbi flags = do
   let buildPref = buildDir lbi
   when (hasLibs pkg_descr) $
     notice verbosity ("Installing library in " ++ libPref)
+  when (hasForeignLibs pkg_descr) $
+    notice verbosity ("Installing foreign libraries in " ++ flibPref)
   when (hasExes pkg_descr) $ do
     notice verbosity ("Installing executable(s) in " ++ binPref)
     inPath <- isInSearchPath binPref
@@ -129,6 +134,8 @@ install pkg_descr lbi flags = do
   case compilerFlavor (compiler lbi) of
      GHC  -> do withLibLBI pkg_descr lbi $
                   GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
+                withFLib pkg_descr $
+                  GHC.installFLib verbosity lbi flibPref buildPref pkg_descr
                 withExe pkg_descr $
                   GHC.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
      GHCJS-> do withLibLBI pkg_descr lbi $

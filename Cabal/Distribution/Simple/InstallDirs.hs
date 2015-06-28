@@ -87,6 +87,7 @@ data InstallDirs dir = InstallDirs {
         libdir       :: dir,
         libsubdir    :: dir,
         dynlibdir    :: dir,
+        flibdir      :: dir, -- ^ foreign libraries
         libexecdir   :: dir,
         includedir   :: dir,
         datadir      :: dir,
@@ -108,6 +109,7 @@ instance Functor InstallDirs where
     libsubdir    = f (libsubdir dirs),
     dynlibdir    = f (dynlibdir dirs),
     libexecdir   = f (libexecdir dirs),
+    flibdir      = f (flibdir dirs),
     includedir   = f (includedir dirs),
     datadir      = f (datadir dirs),
     datasubdir   = f (datasubdir dirs),
@@ -125,6 +127,7 @@ instance Monoid dir => Monoid (InstallDirs dir) where
       libdir       = mempty,
       libsubdir    = mempty,
       dynlibdir    = mempty,
+      flibdir      = mempty,
       libexecdir   = mempty,
       includedir   = mempty,
       datadir      = mempty,
@@ -147,6 +150,7 @@ combineInstallDirs combine a b = InstallDirs {
     libdir       = libdir a     `combine` libdir b,
     libsubdir    = libsubdir a  `combine` libsubdir b,
     dynlibdir    = dynlibdir a  `combine` dynlibdir b,
+    flibdir      = flibdir a    `combine` flibdir b,
     libexecdir   = libexecdir a `combine` libexecdir b,
     includedir   = includedir a `combine` includedir b,
     datadir      = datadir a    `combine` datadir b,
@@ -218,6 +222,7 @@ defaultInstallDirs comp userInstall _hasLibs = do
            UHC    -> "$pkgid"
            _other -> "$abi" </> "$libname",
       dynlibdir    = "$libdir",
+      flibdir      = "$libdir",
       libexecdir   = case buildOS of
         Windows   -> "$prefix" </> "$libname"
         _other    -> "$prefix" </> "libexec",
@@ -259,6 +264,7 @@ substituteInstallDirTemplates env dirs = dirs'
       libdir     = subst libdir     [prefixVar, bindirVar],
       libsubdir  = subst libsubdir  [],
       dynlibdir  = subst dynlibdir  [prefixVar, bindirVar, libdirVar],
+      flibdir    = subst flibdir    [prefixVar, bindirVar, libdirVar],
       libexecdir = subst libexecdir prefixBinLibVars,
       includedir = subst includedir prefixBinLibVars,
       datadir    = subst datadir    prefixBinLibVars,

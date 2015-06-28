@@ -18,7 +18,7 @@ import System.IO.Error (isDoesNotExistError)
 dir :: FilePath
 dir = packageTestsDirectory </> "Freeze"
 
-tests :: TestsPaths -> [TestTree]
+tests :: IO TestsPaths -> [TestTree]
 tests paths =
     [ testCase "runs without error" $ do
           removeCabalConfig

@@ -3,7 +3,7 @@
 -- but import tests from other modules.
 --
 -- Stephen Blackheath, 2009
-
+{-# LANGUAGE DeriveDataTypeable #-}
 module Main where
 
 import PackageTests.BenchmarkExeV10.Check
@@ -21,7 +21,7 @@ import PackageTests.BuildDeps.TargetSpecificDeps1.Check
 import PackageTests.BuildDeps.TargetSpecificDeps2.Check
 import PackageTests.BuildDeps.TargetSpecificDeps3.Check
 import PackageTests.BuildTestSuiteDetailedV09.Check
-import PackageTests.PackageTester (PackageSpec(..), compileSetup)
+import PackageTests.PackageTester
 import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
 import PackageTests.PreProcess.Check
@@ -36,99 +36,107 @@ import PackageTests.TestStanza.Check
 import PackageTests.TestSuiteExeV10.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
+import PackageTests.ForeignLibs.Check
 
-import Distribution.Simple.Configure
-    ( ConfigStateFileError(..), getConfigStateFile )
 import Distribution.Simple.LocalBuildInfo (LocalBuildInfo(..))
 import Distribution.Simple.Program.Types (programPath)
 import Distribution.Simple.Program.Builtin
-    ( ghcProgram, ghcPkgProgram, haddockProgram )
+    ( ghcProgram, ghcPkgProgram, haddockProgram, gccProgram )
 import Distribution.Simple.Program.Db (requireProgram)
 import Distribution.Simple.Utils (cabalVersion)
 import Distribution.Text (display)
 import Distribution.Verbosity (normal)
 import Distribution.Version (Version(Version))
 
-import Control.Exception (try, throw)
 import System.Directory
     ( getCurrentDirectory, setCurrentDirectory )
 import System.FilePath ((</>))
 import Test.Tasty
 import Test.Tasty.HUnit
+import Test.Tasty.Options ( OptionDescription(..), IsOption(..) )
+import Data.Proxy ( Proxy(..) )
+import Data.Typeable ( Typeable )
+import Data.Tagged ( Tagged(..) )
 
-
-tests :: Version -> PackageSpec -> FilePath -> FilePath -> [TestTree]
-tests version inplaceSpec ghcPath ghcPkgPath =
+tests :: Version -> IO TestsConfig -> TestTree
+tests version cfg = testGroup "Package Tests" $
     [ testCase "BuildDeps/SameDepsAllRound"
-      (PackageTests.BuildDeps.SameDepsAllRound.Check.suite ghcPath)
+      (PackageTests.BuildDeps.SameDepsAllRound.Check.suite cfg)
       -- The two following tests were disabled by Johan Tibell as
       -- they have been failing for a long time:
       -- , testCase "BuildDeps/GlobalBuildDepsNotAdditive1/"
-      --   (PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite ghcPath)
+      --   (PackageTests.BuildDeps.GlobalBuildDepsNotAdditive1.Check.suite cfg)
       -- , testCase "BuildDeps/GlobalBuildDepsNotAdditive2/"
-      --   (PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite ghcPath)
+      --   (PackageTests.BuildDeps.GlobalBuildDepsNotAdditive2.Check.suite cfg)
     , testCase "BuildDeps/InternalLibrary0"
-      (PackageTests.BuildDeps.InternalLibrary0.Check.suite version ghcPath)
-    , testCase "PreProcess" (PackageTests.PreProcess.Check.suite ghcPath)
+      (PackageTests.BuildDeps.InternalLibrary0.Check.suite cfg version)
+    , testCase "PreProcess" (PackageTests.PreProcess.Check.suite cfg)
     , testCase "PreProcessExtraSources"
-      (PackageTests.PreProcessExtraSources.Check.suite ghcPath)
-    , testCase "TestStanza" (PackageTests.TestStanza.Check.suite ghcPath)
+      (PackageTests.PreProcessExtraSources.Check.suite cfg)
+    , testCase "TestStanza" (PackageTests.TestStanza.Check.suite cfg)
       -- ^ The Test stanza test will eventually be required
       -- only for higher versions.
-    , testGroup "TestSuiteExeV10" (PackageTests.TestSuiteExeV10.Check.checks ghcPath)
-    , testCase "TestOptions" (PackageTests.TestOptions.Check.suite ghcPath)
-    , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite ghcPath)
+    , testGroup "TestSuiteExeV10" (PackageTests.TestSuiteExeV10.Check.checks cfg)
+    , testCase "TestOptions" (PackageTests.TestOptions.Check.suite cfg)
+    , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite cfg)
       -- ^ The benchmark stanza test will eventually be required
       -- only for higher versions.
     , testCase "BenchmarkExeV10/Test"
-      (PackageTests.BenchmarkExeV10.Check.checkBenchmark ghcPath)
-    , testCase "BenchmarkOptions" (PackageTests.BenchmarkOptions.Check.suite ghcPath)
+      (PackageTests.BenchmarkExeV10.Check.checkBenchmark cfg)
+    , testCase "BenchmarkOptions" (PackageTests.BenchmarkOptions.Check.suite cfg)
     , testCase "TemplateHaskell/vanilla"
-      (PackageTests.TemplateHaskell.Check.vanilla ghcPath)
+      (PackageTests.TemplateHaskell.Check.vanilla cfg)
     , testCase "TemplateHaskell/profiling"
-      (PackageTests.TemplateHaskell.Check.profiling ghcPath)
+      (PackageTests.TemplateHaskell.Check.profiling cfg)
     , testCase "PathsModule/Executable"
-      (PackageTests.PathsModule.Executable.Check.suite ghcPath)
-    , testCase "PathsModule/Library" (PackageTests.PathsModule.Library.Check.suite ghcPath)
+      (PackageTests.PathsModule.Executable.Check.suite cfg)
+    , testCase "PathsModule/Library" (PackageTests.PathsModule.Library.Check.suite cfg)
     , testCase "DeterministicAr"
-        (PackageTests.DeterministicAr.Check.suite ghcPath ghcPkgPath)
+        (PackageTests.DeterministicAr.Check.suite cfg)
     , testCase "EmptyLib/emptyLib"
-      (PackageTests.EmptyLib.Check.emptyLib ghcPath)
-    , testCase "Haddock" (PackageTests.Haddock.Check.suite ghcPath)
+      (PackageTests.EmptyLib.Check.emptyLib cfg)
+    , testCase "Haddock" (PackageTests.Haddock.Check.suite cfg)
     , testCase "BuildTestSuiteDetailedV09"
-      (PackageTests.BuildTestSuiteDetailedV09.Check.suite inplaceSpec ghcPath)
+      (PackageTests.BuildTestSuiteDetailedV09.Check.suite cfg)
     , testCase "OrderFlags"
-      (PackageTests.OrderFlags.Check.suite ghcPath)
+      (PackageTests.OrderFlags.Check.suite cfg)
     , testCase "TemplateHaskell/dynamic"
-      (PackageTests.TemplateHaskell.Check.dynamic ghcPath)
+      (PackageTests.TemplateHaskell.Check.dynamic cfg)
     , testCase "ReexportedModules"
-      (PackageTests.ReexportedModules.Check.suite ghcPath)
+      (PackageTests.ReexportedModules.Check.suite cfg)
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []
      then [ testCase "BuildDeps/TargetSpecificDeps1"
-            (PackageTests.BuildDeps.TargetSpecificDeps1.Check.suite ghcPath)
+            (PackageTests.BuildDeps.TargetSpecificDeps1.Check.suite cfg)
           , testCase "BuildDeps/TargetSpecificDeps2"
-            (PackageTests.BuildDeps.TargetSpecificDeps2.Check.suite ghcPath)
+            (PackageTests.BuildDeps.TargetSpecificDeps2.Check.suite cfg)
           , testCase "BuildDeps/TargetSpecificDeps3"
-            (PackageTests.BuildDeps.TargetSpecificDeps3.Check.suite ghcPath)
+            (PackageTests.BuildDeps.TargetSpecificDeps3.Check.suite cfg)
           , testCase "BuildDeps/InternalLibrary1"
-            (PackageTests.BuildDeps.InternalLibrary1.Check.suite ghcPath)
+            (PackageTests.BuildDeps.InternalLibrary1.Check.suite cfg)
           , testCase "BuildDeps/InternalLibrary2"
-            (PackageTests.BuildDeps.InternalLibrary2.Check.suite ghcPath ghcPkgPath)
+            (PackageTests.BuildDeps.InternalLibrary2.Check.suite cfg)
           , testCase "BuildDeps/InternalLibrary3"
-            (PackageTests.BuildDeps.InternalLibrary3.Check.suite ghcPath ghcPkgPath)
+            (PackageTests.BuildDeps.InternalLibrary3.Check.suite cfg)
           , testCase "BuildDeps/InternalLibrary4"
-            (PackageTests.BuildDeps.InternalLibrary4.Check.suite ghcPath ghcPkgPath)
+            (PackageTests.BuildDeps.InternalLibrary4.Check.suite cfg)
           , testCase "PackageTests/CMain"
-            (PackageTests.CMain.Check.checkBuild ghcPath)
+            (PackageTests.CMain.Check.checkBuild cfg)
           ]
-     else [])
+     else []) ++
+    (if version >= Version [1, 23] []
+      then [ testCase "ForeignLibs"
+             (PackageTests.ForeignLibs.Check.suite cfg)
+           ]
+      else [])
 
-main :: IO ()
-main = do
+
+-- | Setup system to run the tests
+initTests :: FilePath -> IO TestsConfig
+initTests dist = do
     wd <- getCurrentDirectory
-    let dbFile = wd </> "dist/package.conf.inplace"
+    let dbFile = wd </> dist </> "package.conf.inplace"
         inplaceSpec = PackageSpec
             { directory = []
             , configOpts = [ "--package-db=" ++ dbFile
@@ -138,30 +146,57 @@ main = do
             }
     putStrLn $ "Cabal test suite - testing cabal version " ++
         display cabalVersion
-    lbi <- getPersistBuildConfig_ ("dist" </> "setup-config")
-    (ghc, _) <- requireProgram normal ghcProgram (withPrograms lbi)
-    (ghcPkg, _) <- requireProgram normal ghcPkgProgram (withPrograms lbi)
-    (haddock, _) <- requireProgram normal haddockProgram (withPrograms lbi)
-    let ghcPath = programPath ghc
-        ghcPkgPath = programPath ghcPkg
+    lbi <- getPersistBuildConfig_ (dist </> "setup-config")
+    (ghc     , _) <- requireProgram normal ghcProgram     (withPrograms lbi)
+    (ghcPkg  , _) <- requireProgram normal ghcPkgProgram  (withPrograms lbi)
+    (haddock , _) <- requireProgram normal haddockProgram (withPrograms lbi)
+    (gcc     , _) <- requireProgram normal gccProgram     (withPrograms lbi)
+    let ghcPath     = programPath ghc
+        ghcPkgPath  = programPath ghcPkg
         haddockPath = programPath haddock
+        gccPath     = programPath gcc
     putStrLn $ "Using ghc: " ++ ghcPath
     putStrLn $ "Using ghc-pkg: " ++ ghcPkgPath
     putStrLn $ "Using haddock: " ++ haddockPath
+    putStrLn $ "Using gcc: " ++ gccPath
     setCurrentDirectory "tests"
     -- Create a shared Setup executable to speed up Simple tests
-    compileSetup "." ghcPath
-    defaultMain $ testGroup "Package Tests"
-      (tests cabalVersion inplaceSpec ghcPath ghcPkgPath)
+    let cfg = TestsConfig {
+              testsConfigGhcPath        = ghcPath
+            , testsConfigGhcPkgPath     = ghcPkgPath
+            , testsConfigGccPath        = gccPath
+            , testsConfigInPlaceSpec    = inplaceSpec
+            , testsConfigBuildDir       = dist
+            }
+    compileSetup (return cfg) "."
+    return cfg
 
--- Like Distribution.Simple.Configure.getPersistBuildConfig but
--- doesn't check that the Cabal version matches, which it doesn't when
--- we run Cabal's own test suite, due to bootstrapping issues.
-getPersistBuildConfig_ :: FilePath -> IO LocalBuildInfo
-getPersistBuildConfig_ filename = do
-    eLBI <- try $ getConfigStateFile filename
-    case eLBI of
-      Left (ConfigStateFileBadVersion _ _ (Right lbi)) -> return lbi
-      Left (ConfigStateFileBadVersion _ _ (Left err)) -> throw err
-      Left err -> throw err
-      Right lbi -> return lbi
+-- | Restore system state after tests complete
+--
+-- Currently we don't do anything here
+freeTests :: TestsConfig -> IO ()
+freeTests _ = return ()
+
+main :: IO ()
+main =
+     defaultMainWithIngredients ingredients $
+       askOption $ \(BuildDirOption dist) ->
+         withResource (initTests dist) freeTests (tests cabalVersion)
+  where
+    ingredients = includingOptions options : defaultIngredients
+    options     = [ Option (Proxy :: Proxy BuildDirOption)
+                  ]
+
+{-------------------------------------------------------------------------------
+  Command line options
+-------------------------------------------------------------------------------}
+
+newtype BuildDirOption = BuildDirOption FilePath
+  deriving (Typeable)
+
+-- | The equivalent of cabal's --builddir option
+instance IsOption BuildDirOption where
+  defaultValue   = BuildDirOption "dist"
+  parseValue     = Just . BuildDirOption
+  optionName     = Tagged "builddir"
+  optionHelp     = Tagged "The directory where Cabal puts generated build files"

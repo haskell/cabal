@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 module PackageTests.BuildTestSuiteDetailedV09.Check where
 
 import Test.Tasty.HUnit
@@ -5,14 +6,15 @@ import System.FilePath ((</>))
 
 import PackageTests.PackageTester
 
-suite :: PackageSpec -> FilePath -> Assertion
-suite inplaceSpec ghcPath = do
+suite :: IO TestsConfig -> Assertion
+suite cfg = do
+    TestsConfig{..} <- cfg
     let dir = "PackageTests" </> "BuildTestSuiteDetailedV09"
-        spec = inplaceSpec
+        spec = testsConfigInPlaceSpec
             { directory = dir
-            , configOpts = "--enable-tests" : configOpts inplaceSpec
+            , configOpts = "--enable-tests" : configOpts testsConfigInPlaceSpec
             }
-    confResult <- cabal_configure spec ghcPath
+    confResult <- cabal_configure cfg spec
     assertConfigureSucceeded confResult
-    buildResult <- cabal_build spec ghcPath
+    buildResult <- cabal_build cfg spec
     assertBuildSucceeded buildResult

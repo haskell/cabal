@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 module PackageTests.Exec.Check
        ( tests
        ) where
@@ -20,7 +21,7 @@ import System.Directory (getDirectoryContents)
 dir :: FilePath
 dir = packageTestsDirectory </> "Exec"
 
-tests :: TestsPaths -> [TestTree]
+tests :: IO TestsPaths -> [TestTree]
 tests paths =
     [ testCase "exits with failure if given no argument" $ do
           result <- cabal_exec paths dir []
@@ -90,7 +91,7 @@ tests paths =
               errMsg = "my library should have been found"
           assertBool errMsg $
               libNameAndVersion `isInfixOf` (intercalate " " . lines $ output)
-          
+
 
     -- , testCase "can find executables built from the package" $ do
 
@@ -110,7 +111,7 @@ tests paths =
               libNameAndVersion `isInfixOf` (intercalate " " . lines $ output)
     ]
 
-cleanPreviousBuilds :: TestsPaths -> IO ()
+cleanPreviousBuilds :: IO TestsPaths -> IO ()
 cleanPreviousBuilds paths = do
     sandboxExists <- not . null . filter (== "cabal.sandbox.config") <$>
                          getDirectoryContents dir
@@ -119,13 +120,13 @@ cleanPreviousBuilds paths = do
         assertSandboxSucceeded =<< cabal_sandbox paths dir ["delete"]
 
 
-assertPackageInstall :: TestsPaths -> IO ()
+assertPackageInstall :: IO TestsPaths -> IO ()
 assertPackageInstall paths = do
     assertSandboxSucceeded =<< cabal_sandbox paths dir ["init"]
     assertInstallSucceeded =<< cabal_install paths dir []
 
 
-assertMyExecutableNotFound :: TestsPaths -> IO ()
+assertMyExecutableNotFound :: IO TestsPaths -> IO ()
 assertMyExecutableNotFound paths = do
     result <- cabal_exec paths dir ["my-executable"]
     assertExecFailed result
@@ -138,8 +139,9 @@ assertMyExecutableNotFound paths = do
 
 
 
-assertMyLibIsNotAvailableOutsideofSandbox :: TestsPaths -> String -> IO ()
+assertMyLibIsNotAvailableOutsideofSandbox :: IO TestsPaths -> String -> IO ()
 assertMyLibIsNotAvailableOutsideofSandbox paths libNameAndVersion = do
-    (_, _, output) <- run (Just $ dir) (ghcPkgPath paths) ["list"]
+    TestsPaths{..} <- paths
+    (_, _, output) <- run (Just $ dir) ghcPkgPath ["list"]
     assertBool "my library should not have been found" $ not $
         libNameAndVersion `isInfixOf` (intercalate " " . lines $ output)

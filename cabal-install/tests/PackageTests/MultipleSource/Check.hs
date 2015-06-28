@@ -15,7 +15,7 @@ import System.FilePath  ((</>))
 dir :: FilePath
 dir = packageTestsDirectory </> "MultipleSource"
 
-tests :: TestsPaths -> [TestTree]
+tests :: IO TestsPaths -> [TestTree]
 tests paths =
     [ testCase "finds second source of multiple source" $ do
           sandboxExists <- doesDirectoryExist $ dir </> ".cabal-sandbox"

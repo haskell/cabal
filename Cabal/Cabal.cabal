@@ -315,6 +315,7 @@ test-suite package-tests
     tasty,
     tasty-quickcheck,
     tasty-hunit,
+    tagged,
     QuickCheck >= 2.1.0.1 && < 2.9,
     Cabal,
     process,
