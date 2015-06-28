@@ -14,7 +14,7 @@ import System.FilePath (takeDirectory)
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Distribution.Client.Compat.Environment (lookupEnv, setEnv)
+import Distribution.Compat.Environment (lookupEnv, setEnv)
 import Distribution.Client.Config
 import Distribution.Utils.NubList (fromNubList)
 import Distribution.Client.Setup (GlobalFlags (..), InstallFlags (..))
