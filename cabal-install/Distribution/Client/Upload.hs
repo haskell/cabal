@@ -4,9 +4,10 @@
 module Distribution.Client.Upload (check, upload, report) where
 
 import Distribution.Client.Types (Username(..), Password(..),Repo(..),RemoteRepo(..))
-import Distribution.Client.HttpUtils (isOldHackageURI, HttpTransport(..))
+import Distribution.Client.HttpUtils
+         ( isOldHackageURI, HttpTransport(..), remoteRepoTryUpgradeToHttps )
 
-import Distribution.Simple.Utils (notice, warn, info)
+import Distribution.Simple.Utils (notice, warn, info, die)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Text (display)
 import Distribution.Client.Config
@@ -19,7 +20,7 @@ import Network.URI (URI(uriPath), parseURI)
 import System.IO        (hFlush, stdin, stdout, hGetEcho, hSetEcho)
 import Control.Exception (bracket)
 import System.FilePath  ((</>), takeExtension)
-import qualified System.FilePath.Posix as FilePath.Posix (combine)
+import qualified System.FilePath.Posix as FilePath.Posix ((</>))
 import System.Directory
 import Control.Monad (forM_, when)
 
@@ -35,17 +36,24 @@ Just checkURI = parseURI "http://hackage.haskell.org/cgi-bin/hackage-scripts/che
 
 upload :: HttpTransport -> Verbosity -> [Repo] -> Maybe Username -> Maybe Password -> [FilePath] -> IO ()
 upload transport verbosity repos mUsername mPassword paths = do
-          let uploadURI = if isOldHackageURI targetRepoURI
-                          then legacyUploadURI
-                          else targetRepoURI{uriPath = uriPath targetRepoURI `FilePath.Posix.combine` "upload"}
-          Username username <- maybe promptUsername return mUsername
-          Password password <- maybe promptPassword return mPassword
-          let auth = Just (username,password)
-          flip mapM_ paths $ \path -> do
-            notice verbosity $ "Uploading " ++ path ++ "... "
-            handlePackage transport verbosity uploadURI auth path
-  where
-    targetRepoURI = remoteRepoURI $ last [ remoteRepo | Left remoteRepo <- map repoKind repos ] --FIXME: better error message when no repos are given
+    targetRepo <-
+      case [ remoteRepo | Left remoteRepo <- map repoKind repos ] of
+        [] -> die $ "Cannot upload. No remote repositories are configured."
+        rs -> remoteRepoTryUpgradeToHttps transport (last rs)
+    let targetRepoURI = remoteRepoURI targetRepo
+        uploadURI
+          | isOldHackageURI targetRepoURI
+          = legacyUploadURI
+          | otherwise
+          = targetRepoURI {
+              uriPath = uriPath targetRepoURI FilePath.Posix.</> "upload"
+            }
+    Username username <- maybe promptUsername return mUsername
+    Password password <- maybe promptPassword return mPassword
+    let auth = Just (username,password)
+    flip mapM_ paths $ \path -> do
+      notice verbosity $ "Uploading " ++ path ++ "... "
+      handlePackage transport verbosity uploadURI auth path
 
 promptUsername :: IO Username
 promptUsername = do

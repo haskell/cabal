@@ -27,7 +27,8 @@ module Distribution.Client.FetchUtils (
 
 import Distribution.Client.Types
 import Distribution.Client.HttpUtils
-         ( downloadURI, isOldHackageURI, DownloadResult(..), HttpTransport(..) )
+         ( downloadURI, isOldHackageURI, DownloadResult(..)
+         , HttpTransport(..), transportCheckHttps, remoteRepoCheckHttps )
 
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
@@ -110,6 +111,7 @@ fetchPackage transport verbosity loc = case loc of
       return (RepoTarballPackage repo pkgid local)
   where
     downloadTarballPackage uri = do
+      transportCheckHttps transport uri
       notice verbosity ("Downloading " ++ show uri)
       tmpdir <- getTemporaryDirectory
       (path, hnd) <- openTempFile tmpdir "cabal-.tar.gz"
@@ -133,6 +135,7 @@ fetchRepoTarball transport verbosity repo pkgid = do
       Right LocalRepo -> return (packageFile repo pkgid)
 
       Left remoteRepo -> do
+        remoteRepoCheckHttps transport remoteRepo
         let uri  = packageURI remoteRepo pkgid
             dir  = packageDir       repo pkgid
             path = packageFile      repo pkgid
@@ -143,9 +146,10 @@ fetchRepoTarball transport verbosity repo pkgid = do
 -- | Downloads an index file to [config-dir/packages/serv-id].
 --
 downloadIndex :: HttpTransport -> Verbosity -> RemoteRepo -> FilePath -> IO DownloadResult
-downloadIndex transport verbosity repo cacheDir = do
-  let uri = (remoteRepoURI repo) {
-              uriPath = uriPath (remoteRepoURI repo)
+downloadIndex transport verbosity remoteRepo cacheDir = do
+  remoteRepoCheckHttps transport remoteRepo
+  let uri = (remoteRepoURI remoteRepo) {
+              uriPath = uriPath (remoteRepoURI remoteRepo)
                           `FilePath.Posix.combine` "00-index.tar.gz"
             }
       path = cacheDir </> "00-index" <.> "tar.gz"

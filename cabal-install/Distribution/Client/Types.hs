@@ -239,7 +239,15 @@ data RemoteRepo =
     RemoteRepo {
       remoteRepoName     :: String,
       remoteRepoURI      :: URI,
-      remoteRepoRootKeys :: ()
+      remoteRepoRootKeys :: (),
+
+      -- | Normally a repo just specifies an HTTP or HTTPS URI, but as a
+      -- special case we may know a repo supports both and want to try HTTPS
+      -- if we can, but still allow falling back to HTTP.
+      --
+      -- This field is not currently stored in the config file, but is filled
+      -- in automagically for known repos.
+      remoteRepoShouldTryHttps :: Bool
     }
 
   -- FIXME: discuss this type some more.
@@ -248,7 +256,7 @@ data RemoteRepo =
 
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
 emptyRemoteRepo :: String -> RemoteRepo
-emptyRemoteRepo name = RemoteRepo name nullURI ()
+emptyRemoteRepo name = RemoteRepo name nullURI () False
 
 data Repo = Repo {
     repoKind     :: Either RemoteRepo LocalRepo,
