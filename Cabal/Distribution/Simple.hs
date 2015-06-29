@@ -80,7 +80,7 @@ import Distribution.Simple.Register
 import Distribution.Simple.Configure
          ( getPersistBuildConfig, maybeGetPersistBuildConfig
          , writePersistBuildConfig, checkPersistBuildConfigOutdated
-         , configure, checkForeignDeps )
+         , configure, checkForeignDeps, findDistPrefOrDefault )
 
 import Distribution.Simple.LocalBuildInfo ( LocalBuildInfo(..) )
 import Distribution.Simple.Bench (bench)
@@ -197,150 +197,166 @@ allSuffixHandlers hooks
 
 configureAction :: UserHooks -> ConfigFlags -> Args -> IO LocalBuildInfo
 configureAction hooks flags args = do
-                let distPref = fromFlag $ configDistPref flags
-                pbi <- preConf hooks args flags
+    distPref <- findDistPrefOrDefault (configDistPref flags)
+    let flags' = flags { configDistPref = toFlag distPref }
+    pbi <- preConf hooks args flags'
 
-                (mb_pd_file, pkg_descr0) <- confPkgDescr
+    (mb_pd_file, pkg_descr0) <- confPkgDescr
 
-                --    get_pkg_descr (configVerbosity flags')
-                --let pkg_descr = updatePackageDescription pbi pkg_descr0
-                let epkg_descr = (pkg_descr0, pbi)
+    --get_pkg_descr (configVerbosity flags')
+    --let pkg_descr = updatePackageDescription pbi pkg_descr0
+    let epkg_descr = (pkg_descr0, pbi)
 
-                --(warns, ers) <- sanityCheckPackage pkg_descr
-                --errorOut (configVerbosity flags') warns ers
+    --(warns, ers) <- sanityCheckPackage pkg_descr
+    --errorOut (configVerbosity flags') warns ers
 
-                localbuildinfo0 <- confHook hooks epkg_descr flags
+    localbuildinfo0 <- confHook hooks epkg_descr flags'
 
-                -- remember the .cabal filename if we know it
-                -- and all the extra command line args
-                let localbuildinfo = localbuildinfo0 {
-                                       pkgDescrFile = mb_pd_file,
-                                       extraConfigArgs = args
-                                     }
-                writePersistBuildConfig distPref localbuildinfo
+    -- remember the .cabal filename if we know it
+    -- and all the extra command line args
+    let localbuildinfo = localbuildinfo0 {
+                           pkgDescrFile = mb_pd_file,
+                           extraConfigArgs = args
+                         }
+    writePersistBuildConfig distPref localbuildinfo
 
-                let pkg_descr = localPkgDescr localbuildinfo
-                postConf hooks args flags pkg_descr localbuildinfo
-                return localbuildinfo
-              where
-                verbosity = fromFlag (configVerbosity flags)
-                confPkgDescr :: IO (Maybe FilePath, GenericPackageDescription)
-                confPkgDescr = do
-                  mdescr <- readDesc hooks
-                  case mdescr of
-                    Just descr -> return (Nothing, descr)
-                    Nothing -> do
-                      pdfile <- defaultPackageDesc verbosity
-                      descr  <- readPackageDescription verbosity pdfile
-                      return (Just pdfile, descr)
+    let pkg_descr = localPkgDescr localbuildinfo
+    postConf hooks args flags' pkg_descr localbuildinfo
+    return localbuildinfo
+  where
+    verbosity = fromFlag (configVerbosity flags)
+    confPkgDescr :: IO (Maybe FilePath, GenericPackageDescription)
+    confPkgDescr = do
+        mdescr <- readDesc hooks
+        case mdescr of
+          Just descr -> return (Nothing, descr)
+          Nothing -> do
+              pdfile <- defaultPackageDesc verbosity
+              descr  <- readPackageDescription verbosity pdfile
+              return (Just pdfile, descr)
 
 buildAction :: UserHooks -> BuildFlags -> Args -> IO ()
 buildAction hooks flags args = do
-  let distPref  = fromFlag $ buildDistPref flags
-      verbosity = fromFlag $ buildVerbosity flags
+  distPref <- findDistPrefOrDefault (buildDistPref flags)
+  let verbosity = fromFlag $ buildVerbosity flags
+      flags' = flags { buildDistPref = toFlag distPref }
 
   lbi <- getBuildConfig hooks verbosity distPref
   progs <- reconfigurePrograms verbosity
-             (buildProgramPaths flags)
-             (buildProgramArgs flags)
+             (buildProgramPaths flags')
+             (buildProgramArgs flags')
              (withPrograms lbi)
 
   hookedAction preBuild buildHook postBuild
                (return lbi { withPrograms = progs })
-               hooks flags { buildArgs = args } args
+               hooks flags' { buildArgs = args } args
 
 replAction :: UserHooks -> ReplFlags -> Args -> IO ()
 replAction hooks flags args = do
-  let distPref  = fromFlag $ replDistPref flags
-      verbosity = fromFlag $ replVerbosity flags
+  distPref <- findDistPrefOrDefault (replDistPref flags)
+  let verbosity = fromFlag $ replVerbosity flags
+      flags' = flags { replDistPref = toFlag distPref }
 
   lbi <- getBuildConfig hooks verbosity distPref
   progs <- reconfigurePrograms verbosity
-             (replProgramPaths flags)
-             (replProgramArgs flags)
+             (replProgramPaths flags')
+             (replProgramArgs flags')
              (withPrograms lbi)
 
-  pbi <- preRepl hooks args flags
+  pbi <- preRepl hooks args flags'
   let lbi' = lbi { withPrograms = progs }
       pkg_descr0 = localPkgDescr lbi'
       pkg_descr = updatePackageDescription pbi pkg_descr0
-  replHook hooks pkg_descr lbi' hooks flags args
-  postRepl hooks args flags pkg_descr lbi'
+  replHook hooks pkg_descr lbi' hooks flags' args
+  postRepl hooks args flags' pkg_descr lbi'
 
 hscolourAction :: UserHooks -> HscolourFlags -> Args -> IO ()
-hscolourAction hooks flags args
-    = do let distPref  = fromFlag $ hscolourDistPref flags
-             verbosity = fromFlag $ hscolourVerbosity flags
-         hookedAction preHscolour hscolourHook postHscolour
-                      (getBuildConfig hooks verbosity distPref)
-                      hooks flags args
+hscolourAction hooks flags args = do
+    distPref <- findDistPrefOrDefault (hscolourDistPref flags)
+    let verbosity = fromFlag $ hscolourVerbosity flags
+        flags' = flags { hscolourDistPref = toFlag distPref }
+    hookedAction preHscolour hscolourHook postHscolour
+                 (getBuildConfig hooks verbosity distPref)
+                 hooks flags' args
 
 haddockAction :: UserHooks -> HaddockFlags -> Args -> IO ()
 haddockAction hooks flags args = do
-  let distPref  = fromFlag $ haddockDistPref flags
-      verbosity = fromFlag $ haddockVerbosity flags
+  distPref <- findDistPrefOrDefault (haddockDistPref flags)
+  let verbosity = fromFlag $ haddockVerbosity flags
+      flags' = flags { haddockDistPref = toFlag distPref }
 
   lbi <- getBuildConfig hooks verbosity distPref
   progs <- reconfigurePrograms verbosity
-             (haddockProgramPaths flags)
-             (haddockProgramArgs flags)
+             (haddockProgramPaths flags')
+             (haddockProgramArgs flags')
              (withPrograms lbi)
 
   hookedAction preHaddock haddockHook postHaddock
                (return lbi { withPrograms = progs })
-               hooks flags args
+               hooks flags' args
 
 cleanAction :: UserHooks -> CleanFlags -> Args -> IO ()
 cleanAction hooks flags args = do
-                pbi <- preClean hooks args flags
+    distPref <- findDistPrefOrDefault (cleanDistPref flags)
+    let flags' = flags { cleanDistPref = toFlag distPref }
 
-                pdfile <- defaultPackageDesc verbosity
-                ppd <- readPackageDescription verbosity pdfile
-                let pkg_descr0 = flattenPackageDescription ppd
-                -- We don't sanity check for clean as an error
-                -- here would prevent cleaning:
-                --sanityCheckHookedBuildInfo pkg_descr0 pbi
-                let pkg_descr = updatePackageDescription pbi pkg_descr0
+    pbi <- preClean hooks args flags'
 
-                cleanHook hooks pkg_descr () hooks flags
-                postClean hooks args flags pkg_descr ()
-  where verbosity = fromFlag (cleanVerbosity flags)
+    pdfile <- defaultPackageDesc verbosity
+    ppd <- readPackageDescription verbosity pdfile
+    let pkg_descr0 = flattenPackageDescription ppd
+    -- We don't sanity check for clean as an error
+    -- here would prevent cleaning:
+    --sanityCheckHookedBuildInfo pkg_descr0 pbi
+    let pkg_descr = updatePackageDescription pbi pkg_descr0
+
+    cleanHook hooks pkg_descr () hooks flags'
+    postClean hooks args flags' pkg_descr ()
+  where
+    verbosity = fromFlag (cleanVerbosity flags)
 
 copyAction :: UserHooks -> CopyFlags -> Args -> IO ()
-copyAction hooks flags args
-    = do let distPref  = fromFlag $ copyDistPref flags
-             verbosity = fromFlag $ copyVerbosity flags
-         hookedAction preCopy copyHook postCopy
-                      (getBuildConfig hooks verbosity distPref)
-                      hooks flags args
+copyAction hooks flags args = do
+    distPref <- findDistPrefOrDefault (copyDistPref flags)
+    let verbosity = fromFlag $ copyVerbosity flags
+        flags' = flags { copyDistPref = toFlag distPref }
+    hookedAction preCopy copyHook postCopy
+                 (getBuildConfig hooks verbosity distPref)
+                 hooks flags' args
 
 installAction :: UserHooks -> InstallFlags -> Args -> IO ()
-installAction hooks flags args
-    = do let distPref  = fromFlag $ installDistPref flags
-             verbosity = fromFlag $ installVerbosity flags
-         hookedAction preInst instHook postInst
-                      (getBuildConfig hooks verbosity distPref)
-                      hooks flags args
+installAction hooks flags args = do
+    distPref <- findDistPrefOrDefault (installDistPref flags)
+    let verbosity = fromFlag $ installVerbosity flags
+        flags' = flags { installDistPref = toFlag distPref }
+    hookedAction preInst instHook postInst
+                 (getBuildConfig hooks verbosity distPref)
+                 hooks flags' args
 
 sdistAction :: UserHooks -> SDistFlags -> Args -> IO ()
 sdistAction hooks flags args = do
-                let distPref = fromFlag $ sDistDistPref flags
-                pbi <- preSDist hooks args flags
+    distPref <- findDistPrefOrDefault (sDistDistPref flags)
+    let flags' = flags { sDistDistPref = toFlag distPref }
+    pbi <- preSDist hooks args flags'
 
-                mlbi <- maybeGetPersistBuildConfig distPref
-                pdfile <- defaultPackageDesc verbosity
-                ppd <- readPackageDescription verbosity pdfile
-                let pkg_descr0 = flattenPackageDescription ppd
-                sanityCheckHookedBuildInfo pkg_descr0 pbi
-                let pkg_descr = updatePackageDescription pbi pkg_descr0
-                sDistHook hooks pkg_descr mlbi hooks flags
-                postSDist hooks args flags pkg_descr mlbi
-  where verbosity = fromFlag (sDistVerbosity flags)
+    mlbi <- maybeGetPersistBuildConfig distPref
+    pdfile <- defaultPackageDesc verbosity
+    ppd <- readPackageDescription verbosity pdfile
+    let pkg_descr0 = flattenPackageDescription ppd
+    sanityCheckHookedBuildInfo pkg_descr0 pbi
+    let pkg_descr = updatePackageDescription pbi pkg_descr0
+
+    sDistHook hooks pkg_descr mlbi hooks flags'
+    postSDist hooks args flags' pkg_descr mlbi
+  where
+    verbosity = fromFlag (sDistVerbosity flags)
 
 testAction :: UserHooks -> TestFlags -> Args -> IO ()
 testAction hooks flags args = do
-    let distPref  = fromFlag $ testDistPref flags
-        verbosity = fromFlag $ testVerbosity flags
+    distPref <- findDistPrefOrDefault (testDistPref flags)
+    let verbosity = fromFlag $ testVerbosity flags
+        flags' = flags { testDistPref = toFlag distPref }
+
     localBuildInfo <- getBuildConfig hooks verbosity distPref
     let pkg_descr = localPkgDescr localBuildInfo
     -- It is safe to do 'runTests' before the new test handler because the
@@ -349,31 +365,34 @@ testAction hooks flags args = do
     runTests hooks args False pkg_descr localBuildInfo
     hookedActionWithArgs preTest testHook postTest
             (getBuildConfig hooks verbosity distPref)
-            hooks flags args
+            hooks flags' args
 
 benchAction :: UserHooks -> BenchmarkFlags -> Args -> IO ()
 benchAction hooks flags args = do
-    let distPref  = fromFlag $ benchmarkDistPref flags
-        verbosity = fromFlag $ benchmarkVerbosity flags
+    distPref <- findDistPrefOrDefault (benchmarkDistPref flags)
+    let verbosity = fromFlag $ benchmarkVerbosity flags
+        flags' = flags { benchmarkDistPref = toFlag distPref }
     hookedActionWithArgs preBench benchHook postBench
             (getBuildConfig hooks verbosity distPref)
-            hooks flags args
+            hooks flags' args
 
 registerAction :: UserHooks -> RegisterFlags -> Args -> IO ()
-registerAction hooks flags args
-    = do let distPref  = fromFlag $ regDistPref flags
-             verbosity = fromFlag $ regVerbosity flags
-         hookedAction preReg regHook postReg
-                      (getBuildConfig hooks verbosity distPref)
-                      hooks flags args
+registerAction hooks flags args = do
+    distPref <- findDistPrefOrDefault (regDistPref flags)
+    let verbosity = fromFlag $ regVerbosity flags
+        flags' = flags { regDistPref = toFlag distPref }
+    hookedAction preReg regHook postReg
+                 (getBuildConfig hooks verbosity distPref)
+                 hooks flags' args
 
 unregisterAction :: UserHooks -> RegisterFlags -> Args -> IO ()
-unregisterAction hooks flags args
-    = do let distPref  = fromFlag $ regDistPref flags
-             verbosity = fromFlag $ regVerbosity flags
-         hookedAction preUnreg unregHook postUnreg
-                      (getBuildConfig hooks verbosity distPref)
-                      hooks flags args
+unregisterAction hooks flags args = do
+    distPref <- findDistPrefOrDefault (regDistPref flags)
+    let verbosity = fromFlag $ regVerbosity flags
+        flags' = flags { regDistPref = toFlag distPref }
+    hookedAction preUnreg unregHook postUnreg
+                 (getBuildConfig hooks verbosity distPref)
+                 hooks flags' args
 
 hookedAction :: (UserHooks -> Args -> flags -> IO HookedBuildInfo)
         -> (UserHooks -> PackageDescription -> LocalBuildInfo
@@ -466,7 +485,7 @@ getBuildConfig hooks verbosity distPref = do
 
 clean :: PackageDescription -> CleanFlags -> IO ()
 clean pkg_descr flags = do
-    let distPref = fromFlag $ cleanDistPref flags
+    let distPref = fromFlagOrDefault defaultDistPref $ cleanDistPref flags
     notice verbosity "cleaning..."
 
     maybeConfig <- if fromFlag (cleanSaveConf flags)

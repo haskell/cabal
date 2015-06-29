@@ -9,8 +9,8 @@ import Test.Tasty.HUnit
 dir :: FilePath
 dir = "PackageTests" </> "BenchmarkExeV10"
 
-checkBenchmark :: FilePath -> Assertion
-checkBenchmark ghcPath = do
+checkBenchmark :: SuiteConfig -> Assertion
+checkBenchmark config = do
     let spec = PackageSpec dir Nothing ["--enable-benchmarks"]
-    buildResult <- cabal_build spec ghcPath
+    buildResult <- cabal_build config spec
     assertBuildSucceeded buildResult

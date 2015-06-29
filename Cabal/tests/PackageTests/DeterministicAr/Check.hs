@@ -30,9 +30,9 @@ import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, pkgKey)
 assertFailure' :: String -> IO a
 assertFailure' msg = assertFailure msg >> return {-unpossible!-}undefined
 
-ghcPkg_field :: String -> String -> FilePath -> IO [FilePath]
-ghcPkg_field libraryName fieldName ghcPkgPath = do
-    (cmd, exitCode, raw) <- run Nothing ghcPkgPath []
+ghcPkg_field :: SuiteConfig -> String -> String -> IO [FilePath]
+ghcPkg_field config libraryName fieldName = do
+    (cmd, exitCode, raw) <- run Nothing (ghcPkgPath config) []
         ["--user", "field", libraryName, fieldName]
     let output = filter ('\r' /=) raw -- Windows
     -- copypasta of PackageTester.requireSuccess
@@ -45,9 +45,9 @@ ghcPkg_field libraryName fieldName ghcPkgPath = do
             ++ show prefix ++ " prefix on every line.\noutput: " ++ output
         Just fields -> return fields
 
-ghcPkg_field1 :: String -> String -> FilePath -> IO FilePath
-ghcPkg_field1 libraryName fieldName ghcPkgPath = do
-    fields <- ghcPkg_field libraryName fieldName ghcPkgPath
+ghcPkg_field1 :: SuiteConfig -> String -> String -> IO FilePath
+ghcPkg_field1 config libraryName fieldName = do
+    fields <- ghcPkg_field config libraryName fieldName
     case fields of
         [field] -> return field
         _ -> assertFailure' $ "Command ghc-pkg field failed: "
@@ -58,8 +58,8 @@ ghcPkg_field1 libraryName fieldName ghcPkgPath = do
 this :: String
 this = "DeterministicAr"
 
-suite :: FilePath -> FilePath -> Assertion
-suite ghcPath ghcPkgPath = do
+suite :: SuiteConfig -> Assertion
+suite config = do
     let dir = "PackageTests" </> this
     let spec = PackageSpec
             { directory = dir
@@ -67,15 +67,15 @@ suite ghcPath ghcPkgPath = do
             , distPref = Nothing
             }
 
-    unregister this ghcPkgPath
-    iResult <- cabal_install spec ghcPath
+    unregister config this
+    iResult <- cabal_install config spec
     assertInstallSucceeded iResult
 
     let distBuild = dir </> "dist" </> "build"
-    libdir <- ghcPkg_field1 this "library-dirs" ghcPkgPath
+    libdir <- ghcPkg_field1 config this "library-dirs"
     lbi    <- getPersistBuildConfig (dir </> "dist")
     mapM_ (checkMetadata lbi) [distBuild, libdir]
-    unregister this ghcPkgPath
+    unregister config this
 
 -- Almost a copypasta of Distribution.Simple.Program.Ar.wipeMetadata
 checkMetadata :: LocalBuildInfo -> FilePath -> Assertion

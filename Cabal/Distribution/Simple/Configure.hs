@@ -33,6 +33,7 @@ module Distribution.Simple.Configure (configure,
                                       checkPersistBuildConfigOutdated,
                                       tryGetPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
+                                      findDistPref, findDistPrefOrDefault,
                                       localBuildInfoFile,
                                       getInstalledPackages, getPackageDBContents,
                                       configCompiler, configCompilerAux,
@@ -86,9 +87,9 @@ import Distribution.Simple.Program
     , userSpecifyArgss, userSpecifyPaths
     , lookupProgram, requireProgram, requireProgramVersion
     , pkgConfigProgram, gccProgram, rawSystemProgramStdoutConf )
-import Distribution.Simple.Setup
-    ( ConfigFlags(..), CopyDest(..), Flag(..), fromFlag, fromFlagOrDefault
-    , flagToMaybe )
+import Distribution.Simple.Setup as Setup
+    ( ConfigFlags(..), CopyDest(..), Flag(..), defaultDistPref
+    , fromFlag, fromFlagOrDefault, flagToMaybe, toFlag )
 import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
@@ -158,6 +159,7 @@ import Distribution.Text
 import Text.PrettyPrint
     ( render, (<>), ($+$), char, text, comma
     , quotes, punctuate, nest, sep, hsep )
+import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
 
 -- | The errors that can be thrown when reading the @setup-config@ file.
@@ -311,6 +313,30 @@ localBuildInfoFile distPref = distPref </> "setup-config"
 -- -----------------------------------------------------------------------------
 -- * Configuration
 -- -----------------------------------------------------------------------------
+
+-- | Return the \"dist/\" prefix, or the default prefix. The prefix is taken from
+-- (in order of highest to lowest preference) the override prefix, the \"CABAL_BUILDDIR\"
+-- environment variable, or the default prefix.
+findDistPref :: FilePath  -- ^ default \"dist\" prefix
+             -> Setup.Flag FilePath  -- ^ override \"dist\" prefix
+             -> IO FilePath
+findDistPref defDistPref overrideDistPref = do
+    envDistPref <- liftM parseEnvDistPref (lookupEnv "CABAL_BUILDDIR")
+    return $ fromFlagOrDefault defDistPref (mappend envDistPref overrideDistPref)
+  where
+    parseEnvDistPref env =
+      case env of
+        Just distPref | not (null distPref) -> toFlag distPref
+        _ -> NoFlag
+
+-- | Return the \"dist/\" prefix, or the default prefix. The prefix is taken from
+-- (in order of highest to lowest preference) the override prefix, the \"CABAL_BUILDDIR\"
+-- environment variable, or 'defaultDistPref' is used. Call this function to resolve a
+-- @*DistPref@ flag whenever it is not known to be set. (The @*DistPref@ flags are always
+-- set to a definite value before invoking 'UserHooks'.)
+findDistPrefOrDefault :: Setup.Flag FilePath  -- ^ override \"dist\" prefix
+                      -> IO FilePath
+findDistPrefOrDefault = findDistPref defaultDistPref
 
 -- |Perform the \"@.\/setup configure@\" action.
 -- Returns the @.setup-config@ file.
