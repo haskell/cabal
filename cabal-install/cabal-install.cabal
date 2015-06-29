@@ -109,6 +109,7 @@ executable cabal
         Distribution.Client.Sandbox.Types
         Distribution.Client.Setup
         Distribution.Client.SetupWrapper
+        Distribution.Client.SourceTrees
         Distribution.Client.SrcDist
         Distribution.Client.Tar
         Distribution.Client.Targets
@@ -181,6 +182,7 @@ Test-Suite unit-tests
   hs-source-dirs: tests, .
   ghc-options: -Wall -fwarn-tabs
   other-modules:
+    UnitTests.Distribution.Client.SourceTrees
     UnitTests.Distribution.Client.Targets
     UnitTests.Distribution.Client.Dependency.Modular.PSQ
     UnitTests.Distribution.Client.Dependency.Modular.Solver

@@ -103,6 +103,8 @@ import Distribution.Client.Sandbox.PackageEnvironment
                                               ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
 import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
+import Distribution.Client.SourceTrees        (constrainDepsToSourcePackages,
+                                               isCwdASourceTree, readSourcePackagesInDir)
 import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
@@ -329,22 +331,25 @@ buildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
       verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
       noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
                     (buildOnly buildExFlags)
+  isSourceTree <- isCwdASourceTree
+  if isSourceTree
+     then buildSourceTree verbosity distPref buildFlags extraArgs
+     else do
+       -- Calls 'configureAction' to do the real work, so nothing special has to be
+       -- done to support sandboxes.
+       (useSandbox, config) <- reconfigure verbosity distPref
+                               mempty [] globalFlags noAddSource
+                               (buildNumJobs buildFlags) (const Nothing)
 
-  -- Calls 'configureAction' to do the real work, so nothing special has to be
-  -- done to support sandboxes.
-  (useSandbox, config) <- reconfigure verbosity distPref
-                          mempty [] globalFlags noAddSource
-                          (buildNumJobs buildFlags) (const Nothing)
-
-  maybeWithSandboxDirOnSearchPath useSandbox $
-    build verbosity config distPref buildFlags extraArgs
+       maybeWithSandboxDirOnSearchPath useSandbox $
+         build verbosity config distPref buildFlags extraArgs
 
 
 -- | Actually do the work of building the package. This is separate from
 -- 'buildAction' so that 'testAction' and 'benchmarkAction' do not invoke
 -- 'reconfigure' twice.
 build :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
-build verbosity config distPref buildFlags extraArgs =
+build verbosity config distPref buildFlags extraArgs = do
   setupWrapper verbosity setupOptions Nothing
                (Cabal.buildCommand progConf) mkBuildFlags extraArgs
   where
@@ -356,6 +361,17 @@ build verbosity config distPref buildFlags extraArgs =
       { buildVerbosity = toFlag verbosity
       , buildDistPref  = toFlag distPref
       }
+
+buildSourceTree :: Verbosity -> FilePath -> BuildFlags
+                -> [String] -> IO ()
+buildSourceTree verbosity distPref buildFlags extraArgs = do
+    info verbosity "Building source tree..."
+    cwd <- getCurrentDirectory
+    srcIndex <- readSourcePackagesInDir verbosity cwd
+    let srcConstraints = constrainDepsToSourcePackages srcIndex
+    -- TODO: Use both Cabal and cabal-install's readUserTargets to
+    -- figure out what to build.
+    return ()
 
 -- | Make sure that we don't pass new flags to setup scripts compiled against
 -- old versions of Cabal.
