@@ -97,10 +97,10 @@ check transport verbosity paths = do
 handlePackage :: HttpTransport -> Verbosity -> URI -> Auth
               -> FilePath -> IO ()
 handlePackage transport verbosity uri auth path =
-  do resp <- putHttpFile transport uri path auth
+  do resp <- postHttpFile transport verbosity uri path auth
      case resp of
        (200,_)     -> do notice verbosity "Ok"
-       (code,err)  -> do notice verbosity $ "Error: " ++ path ++ ": "
-                                     ++ show code ++ " "
+       (code,err)  -> do notice verbosity $ "Error uploading " ++ path ++ ": "
+                                     ++ "http code " ++ show code ++ "\n"
                                      ++ err
 

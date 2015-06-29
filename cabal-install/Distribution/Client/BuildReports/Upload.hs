@@ -43,7 +43,7 @@ postBuildReport :: Verbosity -> (String, String) -> URI -> BuildReport -> IO Bui
 postBuildReport verbosity auth uri buildReport = do
   let fullURI = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" }
   transport <- configureTransport verbosity Nothing
-  res <- postHttp transport fullURI (BuildReport.show buildReport) (Just auth)
+  res <- postHttp transport verbosity fullURI (BuildReport.show buildReport) (Just auth)
   case res of
     (303, redir) -> return $ undefined redir --TODO parse redir
     _ -> die "unrecognized response" -- give response
@@ -84,7 +84,7 @@ putBuildLog :: Verbosity -> (String, String)
 putBuildLog verbosity auth reportId buildLog = do
   let fullURI = reportId {uriPath = uriPath reportId </> "log"}
   transport <- configureTransport verbosity Nothing
-  res <- postHttp transport fullURI buildLog (Just auth)
+  res <- postHttp transport verbosity fullURI buildLog (Just auth)
   case res of
     (200, _) -> return ()
     _ -> die "unrecognized response" -- give response

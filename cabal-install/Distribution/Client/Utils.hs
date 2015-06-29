@@ -2,8 +2,10 @@
 
 module Distribution.Client.Utils ( MergeResult(..)
                                  , mergeBy, duplicates, duplicatesBy
+                                 , readMaybe
                                  , inDir, determineNumJobs, numberOfProcessors
                                  , removeExistingFile
+                                 , withTempFileName
                                  , makeAbsoluteToCwd, filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath
                                  , canonicalizePathNoThrow
@@ -24,20 +26,24 @@ import Data.Bits
          ( (.|.), shiftL, shiftR )
 import Data.Char
          ( ord, chr )
+#if MIN_VERSION_base(4,6,0)
+import Text.Read
+         ( readMaybe )
+#endif
 import Data.List
          ( isPrefixOf, sortBy, groupBy )
 import Data.Word
          ( Word8, Word32)
 import Foreign.C.Types ( CInt(..) )
 import qualified Control.Exception as Exception
-         ( finally )
+         ( finally, bracket )
 import System.Directory
          ( canonicalizePath, doesFileExist, getCurrentDirectory
          , removeFile, setCurrentDirectory )
 import System.FilePath
          ( (</>), isAbsolute )
 import System.IO
-         ( Handle
+         ( Handle, hClose, openTempFile
 #if MIN_VERSION_base(4,4,0)
          , hGetEncoding, hSetEncoding
 #endif
@@ -87,6 +93,14 @@ duplicatesBy cmp = filter moreThanOne . groupBy eq . sortBy cmp
     moreThanOne (_:_:_) = True
     moreThanOne _       = False
 
+#if !MIN_VERSION_base(4,6,0)
+-- | An implementation of readMaybe, for compatability with older base versions.
+readMaybe :: Read a => String -> Maybe a
+readMaybe s = case reads s of
+                [(x,"")] -> Just x
+                _        -> Nothing
+#endif
+
 -- | Like 'removeFile', but does not throw an exception when the file does not
 -- exist.
 removeExistingFile :: FilePath -> IO ()
@@ -94,6 +108,19 @@ removeExistingFile path = do
   exists <- doesFileExist path
   when exists $
     removeFile path
+
+-- | A variant of 'withTempFile' that only gives us the file name, and while
+-- it will clean up the file afterwards, it's lenient if the file is
+-- moved\/deleted.
+--
+withTempFileName :: FilePath
+                 -> String
+                 -> (FilePath -> IO a) -> IO a
+withTempFileName tmpDir template action =
+  Exception.bracket
+    (openTempFile tmpDir template)
+    (\(name, _) -> removeExistingFile name)
+    (\(name, h) -> hClose h >> action name)
 
 -- | Executes the action in the specified directory.
 inDir :: Maybe FilePath -> IO a -> IO a
