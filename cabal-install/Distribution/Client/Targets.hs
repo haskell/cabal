@@ -265,7 +265,7 @@ readUserTarget targetstr =
             uriScheme    = scheme,
             uriAuthority = Just URIAuth { uriRegName = host }
           }
-          | scheme /= "http:" ->
+          | scheme /= "http:" && scheme /= "https:" ->
             Just (Left (UserTargetUnexpectedUriScheme targetstr))
 
           | null host ->
@@ -332,7 +332,7 @@ reportUserTargetProblems problems = do
               $ unlines
                   [ "URL target not supported '" ++ name ++ "'."
                   | name <- target ]
-             ++ "Only 'http://' URLs are supported."
+             ++ "Only 'http://' and 'https://' URLs are supported."
 
     case [ target | UserTargetUnrecognisedUri target <- problems ] of
       []     -> return ()
