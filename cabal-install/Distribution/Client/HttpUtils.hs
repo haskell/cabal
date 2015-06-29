@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 -----------------------------------------------------------------------------
 -- | Separate module for HTTP actions, using a proxy server if one exists
 -----------------------------------------------------------------------------
@@ -22,7 +22,9 @@ import Network.URI
 import Network.Browser
          ( browse, setOutHandler, setErrHandler, setProxy
          , setAuthorityGen, request, setAllowBasicAuth, setUserAgent )
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative
+#endif
 import qualified Control.Exception as Exception
 import Control.Monad
          ( when, guard )
