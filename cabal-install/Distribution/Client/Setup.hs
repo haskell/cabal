@@ -294,7 +294,7 @@ globalCommand commands = CommandUI {
          trueArg
 
       ,option [] ["http-transport"]
-         "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'insecure-http'. (default: 'curl')"
+         "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
          globalConfigFile (\v flags -> flags { globalHttpTransport = v })
          (reqArgFlag "HttpTransport")
 
