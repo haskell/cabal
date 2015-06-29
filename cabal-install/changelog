@@ -9,6 +9,8 @@
 	* 'cabal init' now warns if the chosen package name is already
 	registered in the source package index (#2436).
 	* New 'cabal install' option: '--offline' (#2578).
+	* Accept 'builddir' field in cabal.config (#2484)
+	* Read 'builddir' option from 'CABAL_BUILDDIR' environment variable
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

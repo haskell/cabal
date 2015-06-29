@@ -7,6 +7,7 @@ module Main
        where
 
 -- Modules from Cabal.
+import Distribution.Simple.Configure (findDistPrefOrDefault)
 import Distribution.Simple.Program.Builtin (ghcPkgProgram)
 import Distribution.Simple.Program.Db
         (defaultProgramDb, requireProgram, setProgramSearchPath)
@@ -14,11 +15,13 @@ import Distribution.Simple.Program.Find
         (ProgramSearchPathEntry(ProgramSearchPathDir), defaultProgramSearchPath)
 import Distribution.Simple.Program.Types
         ( Program(..), simpleProgram, programPath)
+import Distribution.Simple.Setup ( Flag(..) )
 import Distribution.Simple.Utils ( findProgramVersion )
 import Distribution.Verbosity (normal)
 
 -- Third party modules.
 import qualified Control.Exception.Extensible as E
+import Distribution.Compat.Environment ( setEnv )
 import System.Directory
         ( canonicalizePath, getCurrentDirectory, setCurrentDirectory
         , removeFile, doesFileExist )
@@ -53,7 +56,11 @@ cabalProgram = (simpleProgram "cabal") {
 
 main :: IO ()
 main = do
-    buildDir <- canonicalizePath "dist/build/cabal"
+    -- Find the builddir used to build Cabal
+    distPref <- findDistPrefOrDefault NoFlag
+    -- Use the default builddir for all of the subsequent package tests
+    setEnv "CABAL_BUILDDIR" "dist"
+    buildDir <- canonicalizePath (distPref </> "build/cabal")
     let programSearchPath = ProgramSearchPathDir buildDir : defaultProgramSearchPath
     (cabal, _) <- requireProgram normal cabalProgram
                       (setProgramSearchPath programSearchPath defaultProgramDb)

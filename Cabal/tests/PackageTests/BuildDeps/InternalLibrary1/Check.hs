@@ -5,12 +5,12 @@ import System.FilePath
 import Test.Tasty.HUnit
 
 
-suite :: FilePath -> Assertion
-suite ghcPath = do
+suite :: SuiteConfig -> Assertion
+suite config = do
     let spec = PackageSpec
             { directory = "PackageTests" </> "BuildDeps" </> "InternalLibrary1"
             , configOpts = []
             , distPref = Nothing
             }
-    result <- cabal_build spec ghcPath
+    result <- cabal_build config spec
     assertBuildSucceeded result

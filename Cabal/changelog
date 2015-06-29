@@ -4,6 +4,7 @@
 	* Deal with extra C sources from preprocessors (#238).
 	* Include cabal_macros.h when running c2hs (#2600).
 	* Don't recompile C sources unless needed (#2601).
+	* Read 'builddir' option from 'CABAL_BUILDDIR' environment variable
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.

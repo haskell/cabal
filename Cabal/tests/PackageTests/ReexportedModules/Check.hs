@@ -18,10 +18,10 @@ orFail err r = case find (all isSpace . snd) r of
 find' :: (a -> Bool) -> [a] -> Maybe a
 find' = find
 
-suite :: FilePath -> Assertion
-suite ghcPath = do
+suite :: SuiteConfig -> Assertion
+suite config = do
     -- ToDo: Turn this into a utility function
-    (_, _, xs) <- run Nothing ghcPath [] ["--info"]
+    (_, _, xs) <- run Nothing (ghcPath config) [] ["--info"]
     let compat = (>= Version [7,9] [])
                . orFail "could not parse version"
                . readP_to_S parseVersion
@@ -37,5 +37,5 @@ suite ghcPath = do
                 , configOpts = []
                 , distPref = Nothing
                 }
-        result <- cabal_build spec ghcPath
+        result <- cabal_build config spec
         assertBuildSucceeded result
