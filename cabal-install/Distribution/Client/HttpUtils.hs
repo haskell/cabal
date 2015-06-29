@@ -7,6 +7,9 @@ module Distribution.Client.HttpUtils (
     configureTransport,
     HttpTransport(..),
     downloadURI,
+    transportCheckHttps,
+    remoteRepoCheckHttps,
+    remoteRepoTryUpgradeToHttps,
     isOldHackageURI
   ) where
 
@@ -27,7 +30,7 @@ import qualified Data.ByteString.Lazy.Char8 as BS
 import Data.List
          ( isPrefixOf, find, intercalate )
 import Data.Maybe
-         ( catMaybes, listToMaybe, maybeToList )
+         ( listToMaybe, maybeToList )
 import qualified Paths_cabal_install (version)
 import Distribution.Verbosity (Verbosity)
 import Distribution.Simple.Utils
@@ -36,6 +39,8 @@ import Distribution.Simple.Utils
          , rawSystemStdInOut, toUTF8, fromUTF8, normaliseLineEndings )
 import Distribution.Client.Utils
          ( readMaybe, withTempFileName )
+import Distribution.Client.Types
+         ( RemoteRepo(..) )
 import Distribution.System
          ( buildOS, buildArch )
 import Distribution.Text
@@ -87,17 +92,28 @@ downloadURI _transport verbosity uri path | uriScheme uri == "file:" = do
   -- Can we store the hash of the file so we can safely return path when the
   -- hash matches to avoid unnecessary computation?
 
-downloadURI transport verbosity uri path =
-    withTempFileName (takeDirectory path) (takeFileName path) $ \tmpFile -> do
-      let etagPath = path <.> "etag"
-      targetExists   <- doesFileExist path
-      etagPathExists <- doesFileExist etagPath
-      -- In rare cases the target file doesn't exist, but the etag does.
-      etag <- if targetExists && etagPathExists
-                then Just <$> readFile etagPath
-                else return Nothing
+downloadURI transport verbosity uri path = do
 
-      result <- getHttp transport verbosity uri etag tmpFile
+    let etagPath = path <.> "etag"
+    targetExists   <- doesFileExist path
+    etagPathExists <- doesFileExist etagPath
+    -- In rare cases the target file doesn't exist, but the etag does.
+    etag <- if targetExists && etagPathExists
+              then Just <$> readFile etagPath
+              else return Nothing
+
+    -- Only use the external http transports if we actually have to
+    -- (or have been told to do so)
+    let transport'
+          | uriScheme uri == "http:"
+          , not (transportManuallySelected transport)
+          = plainHttpTransport
+
+          | otherwise
+          = transport
+
+    withTempFileName (takeDirectory path) (takeFileName path) $ \tmpFile -> do
+      result <- getHttp transport' verbosity uri etag tmpFile
 
       -- Only write the etag if we get a 200 response code.
       -- A 304 still sends us an etag header.
@@ -115,6 +131,63 @@ downloadURI transport verbosity uri path =
             return FileAlreadyInCache
         errCode ->  die $ "Failed to download " ++ show uri
                        ++ " : HTTP code " ++ show errCode
+
+------------------------------------------------------------------------------
+-- Utilities for repo url management
+--
+
+remoteRepoCheckHttps :: HttpTransport -> RemoteRepo -> IO ()
+remoteRepoCheckHttps transport repo
+  | uriScheme (remoteRepoURI repo) == "https:"
+  , not (transportSupportsHttps transport)
+              = die $ "The remote repository '" ++ remoteRepoName repo
+                   ++ "' specifies a URL that " ++ requiresHttpsErrorMessage
+  | otherwise = return ()
+
+transportCheckHttps :: HttpTransport -> URI -> IO ()
+transportCheckHttps transport uri
+  | uriScheme uri == "https:"
+  , not (transportSupportsHttps transport)
+              = die $ "The URL " ++ show uri
+                   ++ " " ++ requiresHttpsErrorMessage
+  | otherwise = return ()
+
+requiresHttpsErrorMessage :: String
+requiresHttpsErrorMessage =
+      "requires HTTPS however the built-in HTTP implementation "
+   ++ "does not support HTTPS. The transport implementations with HTTPS "
+   ++ "support are " ++ intercalate ", "
+      [ name | (name, _, True, _ ) <- supportedTransports ]
+   ++ ". One of these will be selected automatically if the corresponding "
+   ++ "external program is available, or one can be selected specifically "
+   ++ "with the global flag --http-transport="
+
+remoteRepoTryUpgradeToHttps :: HttpTransport -> RemoteRepo -> IO RemoteRepo
+remoteRepoTryUpgradeToHttps transport repo
+  | remoteRepoShouldTryHttps repo
+  , uriScheme (remoteRepoURI repo) == "http:"
+  , not (transportSupportsHttps transport)
+  , not (transportManuallySelected transport)
+  = die $ "The builtin HTTP implementation does not support HTTPS, but using "
+       ++ "HTTPS for authenticated uploads is recommended. "
+       ++ "The transport implementations with HTTPS support are "
+       ++ intercalate ", " [ name | (name, _, True, _ ) <- supportedTransports ]
+       ++ "but they require the corresponding external program to be "
+       ++ "available. You can either make one available or use plain HTTP by "
+       ++ "using the global flag --http-transport=plain-http (or putting the "
+       ++ "equivalent in the config file). With plain HTTP, your password "
+       ++ "is sent using HTTP digest authentication so it cannot be easily "
+       ++ "intercepted, but it is not as secure as using HTTPS."
+
+  | remoteRepoShouldTryHttps repo
+  , uriScheme (remoteRepoURI repo) == "http:"
+  , transportSupportsHttps transport
+  = return repo {
+      remoteRepoURI = (remoteRepoURI repo) { uriScheme = "https:" }
+    }
+
+  | otherwise
+  = return repo
 
 -- | Utility function for legacy support.
 isOldHackageURI :: URI -> Bool
@@ -145,7 +218,16 @@ data HttpTransport = HttpTransport {
       -- with optional auth (username, password) and return the HTTP status
       -- code and any error string.
       postHttpFile :: Verbosity -> URI -> FilePath -> Maybe Auth
-                   -> IO (HttpCode, String)
+                   -> IO (HttpCode, String),
+
+      -- | Whether this transport supports https or just http.
+      transportSupportsHttps :: Bool,
+
+      -- | Whether this transport implementation was specifically chosen by
+      -- the user via configuration, or whether it was automatically selected. 
+      -- Strictly speaking this is not a property of the transport itself but
+      -- about how it was chosen. Nevertheless it's convenient to keep here.
+      transportManuallySelected :: Bool
     }
     --TODO: why does postHttp return a redirect, but postHttpFile return errors?
 
@@ -190,8 +272,8 @@ configureTransport verbosity (Just name) =
           Just prog -> snd <$> requireProgram verbosity prog emptyProgramDb
                        --      ^^ if it fails, it'll fail here
 
-        let Just trans = mkTrans progdb
-        return trans
+        let Just transport = mkTrans progdb
+        return transport { transportManuallySelected = True }
 
       Nothing -> die $ "Unknown HTTP transport specified: " ++ name
                     ++ ". The supported transports are "
@@ -209,19 +291,15 @@ configureTransport verbosity Nothing = do
                   [ prog | (_, Just prog, _, _) <- supportedTransports ]
                   emptyProgramDb
 
-    let availableHttpsTransports =
-          [ mkTrans progdb
-          | (_, _, _tls@True, mkTrans) <- supportedTransports ]
+    let availableTransports =
+          [ (name, transport)
+          | (name, _, _, mkTrans) <- supportedTransports
+          , transport <- maybeToList (mkTrans progdb) ]
+        -- there's always one because the plain one is last and never fails
+    let (name, transport) = head availableTransports
+    debug verbosity $ "Selected http transport implementation: " ++ name
 
-    case catMaybes availableHttpsTransports of
-      (trans:_) -> return trans
-      []        -> die $ "Could not find a https transport: fallback to plain"
-                      ++ "http by running with --http-transport=plain-http"
-
-statusParseFail :: URI -> String -> IO a
-statusParseFail uri r =
-    die $ "Failed to download " ++ show uri ++ " : "
-       ++ "No Status Code could be parsed from response: " ++ r
+    return transport { transportManuallySelected = False }
 
 
 ------------------------------------------------------------------------------
@@ -230,9 +308,9 @@ statusParseFail uri r =
 
 curlTransport :: ConfiguredProgram -> HttpTransport
 curlTransport prog =
-    HttpTransport gethttp posthttp posthttpfile
+    HttpTransport gethttp posthttp posthttpfile True False
   where
-    gethttp verbosity uri' etag destPath = do
+    gethttp verbosity uri etag destPath = do
         withTempFile (takeDirectory destPath)
                      "curl-headers.txt" $ \tmpFile tmpHandle -> do
           hClose tmpHandle
@@ -252,12 +330,10 @@ curlTransport prog =
           headers <- readFile tmpFile
           (code, _err, etag') <- parseResponse uri resp headers
           return (code, etag')
-      where
-        uri = uriToSecure uri'
 
     posthttp = noPostYet
 
-    posthttpfile verbosity uri' path auth = do
+    posthttpfile verbosity uri path auth = do
         let args = [ show uri
                    , "--form", "package=@"++path
                    , "--write-out", "%{http_code}"
@@ -271,8 +347,6 @@ curlTransport prog =
                   (programInvocation prog args)
         (code, err, _etag) <- parseResponse uri resp ""
         return (code, err)
-      where
-        uri = uriToSecure uri'
 
     -- on success these curl involcations produces an output like "200"
     -- and on failure it has the server error response first
@@ -298,9 +372,9 @@ curlTransport prog =
 
 wgetTransport :: ConfiguredProgram -> HttpTransport
 wgetTransport prog =
-    HttpTransport gethttp posthttp posthttpfile
+    HttpTransport gethttp posthttp posthttpfile True False
   where
-    gethttp verbosity uri' etag destPath = do
+    gethttp verbosity uri etag destPath = do
         resp <- runWGet verbosity args
         (code, _err, etag') <- parseResponse uri resp
         return (code, etag')
@@ -315,11 +389,9 @@ wgetTransport prog =
                [ ["--header", "If-None-Match: " ++ t]
                | t <- maybeToList etag ]
 
-        uri = uriToSecure uri'
-
     posthttp = noPostYet
 
-    posthttpfile verbosity  uri' path auth =
+    posthttpfile verbosity  uri path auth =
         withTempFile (takeDirectory path)
                      (takeFileName path) $ \tmpFile tmpHandle -> do
           (body, boundary) <- generateMultipartBody path
@@ -340,8 +412,6 @@ wgetTransport prog =
           resp <- runWGet verbosity args
           (code, err, _etag) <- parseResponse uri resp
           return (code, err)
-      where
-        uri = uriToSecure uri'
 
     runWGet verbosity args = do
         -- wget returns its output on stderr rather than stdout
@@ -378,9 +448,9 @@ wgetTransport prog =
 
 powershellTransport :: ConfiguredProgram -> HttpTransport
 powershellTransport prog =
-    HttpTransport gethttp posthttp posthttpfile
+    HttpTransport gethttp posthttp posthttpfile True False
   where
-    gethttp verbosity uri' etag destPath =
+    gethttp verbosity uri etag destPath =
         withTempFile (takeDirectory destPath)
                      "psScript.ps1" $ \tmpFile tmpHandle -> do
            hPutStr tmpHandle script
@@ -404,7 +474,6 @@ powershellTransport prog =
             , "Write-Host $wc.ResponseHeaders.Item(\"ETag\")"
             , "Exit" ]
 
-        uri = uriToSecure uri'
         escape x = '"' : x ++ "\"" --TODO write/find real escape.
 
         parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
@@ -413,7 +482,7 @@ powershellTransport prog =
 
     posthttp = noPostYet
 
-    posthttpfile verbosity uri' path auth =
+    posthttpfile verbosity uri path auth =
         withTempFile (takeDirectory path)
                      (takeFileName path) $ \tmpFile tmpHandle ->
         withTempFile (takeDirectory path)
@@ -447,7 +516,6 @@ powershellTransport prog =
             , "Write-Host \"200\""
             , "Exit" ]
 
-        uri = uriToSecure uri'
         escape x = show x
 
         parseResponse x = case readMaybe . unlines . take 1 . lines $ trim x of
@@ -461,7 +529,7 @@ powershellTransport prog =
 
 plainHttpTransport :: HttpTransport
 plainHttpTransport =
-    HttpTransport gethttp posthttp posthttpfile
+    HttpTransport gethttp posthttp posthttpfile False False
   where
     gethttp verbosity uri etag destPath = do
       let req = Request{
@@ -533,9 +601,10 @@ userAgent = concat [ "cabal-install/", display Paths_cabal_install.version
                    , " (", display buildOS, "; ", display buildArch, ")"
                    ]
 
-uriToSecure :: URI -> URI
-uriToSecure x | uriScheme x == "http:" = x {uriScheme = "https:"} 
-              | otherwise = x
+statusParseFail :: URI -> String -> IO a
+statusParseFail uri r =
+    die $ "Failed to download " ++ show uri ++ " : "
+       ++ "No Status Code could be parsed from response: " ++ r
 
 -- Trim
 trim :: String -> String

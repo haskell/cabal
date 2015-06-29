@@ -477,7 +477,7 @@ defaultUserInstall = True
 -- global installs on Windows but that no longer works on Windows Vista or 7.
 
 defaultRemoteRepo :: RemoteRepo
-defaultRemoteRepo = RemoteRepo name uri ()
+defaultRemoteRepo = RemoteRepo name uri () False
   where
     name = "hackage.haskell.org"
     uri  = URI "http:" (Just (URIAuth "" name "")) "/" "" ""
@@ -499,8 +499,10 @@ defaultRemoteRepo = RemoteRepo name uri ()
 --
 addInfoForKnownRepos :: RemoteRepo -> RemoteRepo
 addInfoForKnownRepos repo@RemoteRepo{ remoteRepoName = "hackage.haskell.org" } =
-    repo
+    repo {
       --remoteRepoRootKeys --TODO: when this list is empty, fill in known crypto credentials
+      remoteRepoShouldTryHttps = True
+    }
 addInfoForKnownRepos other = other
 
 --
