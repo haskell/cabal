@@ -294,6 +294,7 @@ instance Monoid SavedConfig where
         configUserInstall         = combine configUserInstall,
         -- TODO: NubListify
         configPackageDBs          = lastNonEmpty configPackageDBs,
+        configView                = combine configView,
         configGHCiLib             = combine configGHCiLib,
         configSplitObjs           = combine configSplitObjs,
         configStripExes           = combine configStripExes,

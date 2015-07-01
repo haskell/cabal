@@ -314,6 +314,7 @@ data ConfigFlags = ConfigFlags {
     configVerbosity :: Flag Verbosity, -- ^verbosity level
     configUserInstall :: Flag Bool,    -- ^The --user\/--global flag
     configPackageDBs :: [Maybe PackageDB], -- ^Which package DBs to use
+    configView      :: Flag String,    -- ^Which view to use
     configGHCiLib   :: Flag Bool,      -- ^Enable compiling library for GHCi
     configSplitObjs :: Flag Bool,      -- ^Enable -split-objs with GHC
     configStripExes :: Flag Bool,      -- ^Enable executable stripping
@@ -563,6 +564,11 @@ configureOptions showOrParseArgs =
          configPackageDBs (\v flags -> flags { configPackageDBs = v })
          (reqArg' "DB" readPackageDbList showPackageDbList)
 
+      ,option "" ["view"]
+         "Use the given view"
+         configView (\v flags -> flags { configView = v })
+         (reqArgFlag "VIEW")
+
       ,option "f" ["flags"]
          "Force values for the given flags in Cabal conditionals in the .cabal file.  E.g., --flags=\"debug -usebytestrings\" forces the flag \"debug\" to true and \"usebytestrings\" to false."
          configConfigurationsFlags (\v flags -> flags { configConfigurationsFlags = v })
@@ -786,6 +792,7 @@ instance Monoid ConfigFlags where
     configVerbosity     = mempty,
     configUserInstall   = mempty,
     configPackageDBs    = mempty,
+    configView          = mempty,
     configGHCiLib       = mempty,
     configSplitObjs     = mempty,
     configStripExes     = mempty,
@@ -831,6 +838,7 @@ instance Monoid ConfigFlags where
     configVerbosity     = combine configVerbosity,
     configUserInstall   = combine configUserInstall,
     configPackageDBs    = combine configPackageDBs,
+    configView          = combine configView,
     configGHCiLib       = combine configGHCiLib,
     configSplitObjs     = combine configSplitObjs,
     configStripExes     = combine configStripExes,
@@ -1084,7 +1092,9 @@ data RegisterFlags = RegisterFlags {
     regInPlace     :: Flag Bool,
     regDistPref    :: Flag FilePath,
     regPrintId     :: Flag Bool,
-    regVerbosity   :: Flag Verbosity
+    regVerbosity   :: Flag Verbosity,
+    regHidden      :: Flag Bool,
+    regView        :: Flag String
   }
   deriving Show
 
@@ -1096,7 +1106,9 @@ defaultRegisterFlags = RegisterFlags {
     regInPlace     = Flag False,
     regDistPref    = NoFlag,
     regPrintId     = Flag False,
-    regVerbosity   = Flag normal
+    regVerbosity   = Flag normal,
+    regHidden      = Flag False,
+    regView        = NoFlag
   }
 
 registerCommand :: CommandUI RegisterFlags
@@ -1141,6 +1153,15 @@ registerCommand = CommandUI
          "print the installed package ID calculated for this package"
          regPrintId (\v flags -> flags { regPrintId = v })
          trueArg
+      ,option "" ["hide-pkg"]
+         "Hides the package after registering"
+         regHidden (\v flags -> flags { regHidden = v })
+         trueArg
+      ,option "" ["add-to-view"]
+         "Adds the package to the view. Removes older version in view if present."
+         regView (\v flags -> flags { regView = v })
+         (reqArgFlag "VIEW")
+
       ]
   }
 
@@ -1185,7 +1206,10 @@ instance Monoid RegisterFlags where
     regInPlace     = mempty,
     regPrintId     = mempty,
     regDistPref    = mempty,
-    regVerbosity   = mempty
+    regVerbosity   = mempty,
+    regHidden      = mempty,
+    regView        = mempty
+
   }
   mappend a b = RegisterFlags {
     regPackageDB   = combine regPackageDB,
@@ -1194,7 +1218,10 @@ instance Monoid RegisterFlags where
     regInPlace     = combine regInPlace,
     regPrintId     = combine regPrintId,
     regDistPref    = combine regDistPref,
-    regVerbosity   = combine regVerbosity
+    regVerbosity   = combine regVerbosity,
+    regHidden      = combine regHidden,
+    regView        = combine regView
+
   }
     where combine field = field a `mappend` field b
 

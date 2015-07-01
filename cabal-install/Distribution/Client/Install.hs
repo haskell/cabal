@@ -1037,7 +1037,7 @@ performInstallations verbosity
           installUnpackedPackage verbosity buildLimit installLock numJobs libname
                                  (setupScriptOptions installedPkgIndex cacheLock rpkg)
                                  miscOptions configFlags' installFlags haddockFlags
-                                 cinfo platform pkg pkgoverride mpath useLogFile
+                                 cinfo platform pkg pkgoverride mpath useLogFile Cabal.NoFlag
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -1340,11 +1340,13 @@ installUnpackedPackage
   -> PackageDescriptionOverride
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
   -> UseLogFile -- ^ File to log output to (if any)
+  -> Cabal.Flag String
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs libname
                        scriptOptions miscOptions
                        configFlags installFlags haddockFlags
-                       cinfo platform pkg pkgoverride workingDir useLogFile = do
+                       cinfo platform pkg pkgoverride workingDir
+                       useLogFile view = do
 
   -- Override the .cabal file if necessary
   case pkgoverride of
@@ -1437,7 +1439,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs libname
     shouldRegister = PackageDescription.hasLibs pkg
     registerFlags _ = Cabal.emptyRegisterFlags {
       Cabal.regDistPref   = configDistPref configFlags,
-      Cabal.regVerbosity  = toFlag verbosity'
+      Cabal.regVerbosity  = toFlag verbosity',
+      Cabal.regView       = configView configFlags
     }
     verbosity' = maybe verbosity snd useLogFile
     tempTemplate name = name ++ "-" ++ display pkgid

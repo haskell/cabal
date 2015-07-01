@@ -1093,6 +1093,7 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
                                  , HcPkg.flagPackageConf = v < [7,5]
                                  , HcPkg.useSingleFileDb = v < [7,9]
                                  , HcPkg.multInstEnabled = v >= [7,11]
+                                 , HcPkg.supportsView    = v >= [7,11]
                                  }
   where
     v               = versionBranch ver

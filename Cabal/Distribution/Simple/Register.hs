@@ -110,12 +110,16 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
     when (fromFlag (regPrintId regFlags)) $ do
       putStrLn (display (IPI.installedPackageId installedPkgInfo))
 
+    let installedPkgInfo' = if (fromFlagOrDefault False $ regHidden regFlags)
+                              then installedPkgInfo {IPI.exposed = False}
+                              else installedPkgInfo
+
      -- Three different modes:
     case () of
-     _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo
-       | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
+     _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo'
+       | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo'
        | otherwise             -> registerPackage verbosity
-                                    installedPkgInfo pkg lbi inplace packageDbs
+                                    installedPkgInfo' pkg lbi inplace packageDbs
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -146,6 +150,10 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
                "Registration scripts are not implemented for this compiler"
                (compiler lbi) (withPrograms lbi)
                (writeHcPkgRegisterScript verbosity installedPkgInfo packageDbs)
+
+    addToView ipid view = case compilerFlavor (compiler lbi) of
+                            GHC -> HcPkg.addPackageToView (GHC.hcPkgInfo $ (withPrograms lbi))
+                                   verbosity ipid
 
 register _ _ regFlags = notice verbosity "No package to register"
   where

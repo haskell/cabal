@@ -22,6 +22,11 @@ module Distribution.Simple.Program.HcPkg (
     dump,
     list,
 
+    -- * View operations
+    isViewEnabled,
+    createView,
+    addPackageToView,
+
     -- * Program invocations
     initInvocation,
     registerInvocation,
@@ -57,10 +62,12 @@ import Distribution.Verbosity
 import Distribution.Compat.Exception
          ( catchExit )
 
+import Control.Monad
+         ( liftM2 )
 import Data.Char
          ( isSpace )
 import Data.List
-         ( stripPrefix )
+         ( stripPrefix, isInfixOf )
 import System.FilePath as FilePath
          ( (</>), splitPath, splitDirectories, joinPath, isPathSeparator )
 import qualified System.FilePath.Posix as FilePath.Posix
@@ -75,6 +82,7 @@ data HcPkgInfo = HcPkgInfo
   , flagPackageConf :: Bool -- ^ use package-conf option instead of package-db
   , useSingleFileDb :: Bool -- ^ requires single file package database
   , multInstEnabled :: Bool -- ^ ghc-pkg supports --enable-multi-instance
+  , supportsView    :: Bool -- ^ views are supported.
   }
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.
@@ -268,6 +276,38 @@ list hpi verbosity packagedb = do
 
   where
     parsePackageIds = sequence . map simpleParse . words
+
+isViewEnabled :: HcPkgInfo -> Verbosity -> IO Bool
+isViewEnabled hpi verbosity =
+    liftM2 (&&) (return (supportsView hpi))
+      ((not . isInfixOf "No Views") <$>
+        getProgramInvocationOutput verbosity invocation)
+  where invocation = programInvocation (hcPkgProgram hpi) args
+        -- Using multiple DBs can be very problematic.
+        -- So it chooses only user pacage DB by default.
+        args = ["list-views", packageDbOpts hpi UserPackageDB]
+
+createView :: HcPkgInfo -> Verbosity -> Either String FilePath -> IO ()
+createView hpi verbosity view =
+    runProgramInvocation verbosity invocation
+  where
+      invocation = programInvocation (hcPkgProgram hpi) args
+      args = ["view create", packageDbOpts hpi UserPackageDB] ++
+        case view of
+          Left name -> [name]
+          Right path -> ["--view-file", path]
+
+addPackageToView ::  HcPkgInfo -> Verbosity
+     -> String -> InstalledPackageId -> IO ()
+addPackageToView hpi verbosity view ipid =
+    runProgramInvocation verbosity invocation
+  where
+      invocation = programInvocation (hcPkgProgram hpi) args
+      args = ["view-modify", view, "add-package", show ipid, packageDbOpts hpi UserPackageDB]
+
+-- TODO:
+-- getPackagesInView
+-- removePackageFromView
 
 --------------------------
 -- The program invocations

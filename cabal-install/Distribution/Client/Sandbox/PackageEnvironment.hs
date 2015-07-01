@@ -28,6 +28,7 @@ module Distribution.Client.Sandbox.PackageEnvironment (
   , commentPackageEnvironment
   , sandboxPackageEnvironmentFile
   , userPackageEnvironmentFile
+  , sandboxDirHash
   ) where
 
 import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig
@@ -57,13 +58,22 @@ import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , showPWarning, simpleField
                                        , syntaxError, warning )
 import Distribution.System             ( Platform )
+import Distribution.Simple.Program     ( ProgramConfiguration )
 import Distribution.Verbosity          ( Verbosity, normal )
+import Distribution.Simple.GHC         ( hcPkgInfo )
+import Distribution.Simple.Program.HcPkg( supportsView )
+import Distribution.Compiler           ( CompilerFlavor( GHC ) )
 import Control.Monad                   ( foldM, liftM2, when, unless )
 import Data.List                       ( partition )
 import Data.Maybe                      ( isJust )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                     ( Monoid(..) )
 #endif
+import Data.Bits                       ( shiftL, shiftR, xor )
+import Data.Char                       ( ord )
+import Data.Word                       ( Word32 )
+import Numeric                         ( showHex )
+import Data.List                       ( foldl' )
 import Distribution.Compat.Exception   ( catchIO )
 import System.Directory                ( doesDirectoryExist, doesFileExist
                                        , renameFile )
@@ -191,14 +201,16 @@ basePackageEnvironment =
 -- | Initial configuration that we write out to the package environment file if
 -- it does not exist. When the package environment gets loaded this
 -- configuration gets layered on top of 'basePackageEnvironment'.
-initialPackageEnvironment :: FilePath -> Compiler -> Platform
-                             -> IO PackageEnvironment
-initialPackageEnvironment sandboxDir compiler platform = do
+initialPackageEnvironment :: Verbosity -> FilePath -> Compiler -> Platform
+                             -> ProgramConfiguration -> IO PackageEnvironment
+initialPackageEnvironment verbosity sandboxDir compiler platform conf = do
   defInstallDirs <- defaultInstallDirs (compilerFlavor compiler)
                     {- userInstall= -} False {- _hasLibs= -} False
   let initialConfig = commonPackageEnvironmentConfig sandboxDir
       installDirs   = combineInstallDirs (\d f -> Flag $ fromFlagOrDefault d f)
                       defInstallDirs (savedUserInstallDirs initialConfig)
+      confFlags = setPackageDB sandboxDir compiler platform
+                             (savedConfigureFlags initialConfig) conf
   return $ mempty {
     pkgEnvSavedConfig = initialConfig {
        savedUserInstallDirs   = installDirs,
@@ -206,8 +218,7 @@ initialPackageEnvironment sandboxDir compiler platform = do
        savedGlobalFlags = (savedGlobalFlags initialConfig) {
           globalLocalRepos = toNubList [sandboxDir </> "packages"]
           },
-       savedConfigureFlags = setPackageDB sandboxDir compiler platform
-                             (savedConfigureFlags initialConfig),
+       savedConfigureFlags = confFlags,
        savedInstallFlags = (savedInstallFlags initialConfig) {
          installSummaryFile = toNubList [toPathTemplate (sandboxDir </>
                                                "logs" </> "build.log")]
@@ -227,14 +238,46 @@ sandboxPackageDBPath sandboxDir compiler platform =
 -- into a sandbox.
 
 -- | Use the package DB location specific for this compiler.
-setPackageDB :: FilePath -> Compiler -> Platform -> ConfigFlags -> ConfigFlags
-setPackageDB sandboxDir compiler platform configFlags =
-  configFlags {
-    configPackageDBs = [Just (SpecificPackageDB $ sandboxPackageDBPath
+setPackageDB :: FilePath -> Compiler -> Platform -> ConfigFlags ->
+                ProgramConfiguration -> ConfigFlags
+setPackageDB sandboxDir compiler platform configFlags conf =
+  if viewEnabled
+    then configFlags {
+      configPackageDBs = [Just UserPackageDB],
+      configView = Flag $ sandboxDirHash sandboxDir
+    }
+    else configFlags {
+      configPackageDBs = [Just (SpecificPackageDB $ sandboxPackageDBPath
                                                       sandboxDir
                                                       compiler
                                                       platform)]
     }
+  where viewEnabled = case compilerFlavor compiler of
+                        GHC -> supportsView $ hcPkgInfo conf
+                        _ -> False
+
+-- | A general purpose hash function. It is exported as the hash
+-- of sanbox dir needs to be calculated in two different modules.
+-- See http://en.wikipedia.org/wiki/Jenkins_hash_function
+sandboxDirHash :: FilePath -> String
+sandboxDirHash str = showHex (loop_finish $ foldl' loop 0 str) ""
+  where
+    loop :: Word32 -> Char -> Word32
+    loop hash key_i' = hash'''
+      where
+        key_i   = toEnum . ord $ key_i'
+        hash'   = hash + key_i
+        hash''  = hash' + (shiftL hash' 10)
+        hash''' = hash'' `xor` (shiftR hash'' 6)
+
+    loop_finish :: Word32 -> Word32
+    loop_finish hash = hash'''
+      where
+        hash'   = hash + (shiftL hash 3)
+        hash''  = hash' `xor` (shiftR hash' 11)
+        hash''' = hash'' + (shiftL hash'' 15)
+
+
 
 -- | Almost the same as 'savedConf `mappend` pkgEnv', but some settings are
 -- overridden instead of mappend'ed.
@@ -390,14 +433,16 @@ createPackageEnvironmentFile :: Verbosity -> FilePath -> FilePath
                                 -> IncludeComments
                                 -> Compiler
                                 -> Platform
+                                -> ProgramConfiguration
                                 -> IO ()
 createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile incComments
-  compiler platform = do
+  compiler platform conf = do
   notice verbosity $ "Writing a default package environment file to "
     ++ pkgEnvFile
 
   commentPkgEnv <- commentPackageEnvironment sandboxDir
-  initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
+  initialPkgEnv <-  initialPackageEnvironment verbosity sandboxDir compiler
+                     platform conf
   writePackageEnvironmentFile pkgEnvFile incComments commentPkgEnv initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.

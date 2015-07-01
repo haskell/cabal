@@ -306,7 +306,7 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   let configFlags''  = case useSandbox of
         NoSandbox               -> configFlags'
         (UseSandbox sandboxDir) -> setPackageDB sandboxDir
-                                   comp platform configFlags'
+                                   comp platform configFlags' conf
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
@@ -708,8 +708,11 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- may need to create a sandbox-local package DB for this compiler and add a
   -- timestamp record for this compiler to the timestamp file.
   configFlags'' <- case useSandbox of
-    NoSandbox               -> configAbsolutePaths $ configFlags'
-    (UseSandbox sandboxDir) -> return $ setPackageDB sandboxDir comp platform configFlags'
+        NoSandbox               -> configAbsolutePaths $ configFlags'
+        (UseSandbox sandboxDir) ->
+          return $ (setPackageDB sandboxDir comp platform configFlags' conf) {
+            configDistPref = sandboxDistPref
+            }
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf'
