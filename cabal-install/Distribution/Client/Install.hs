@@ -72,6 +72,8 @@ import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
          ( Solver(..) )
 import Distribution.Client.FetchUtils
+import Distribution.Client.HttpUtils
+         ( configureTransport, HttpTransport (..) )
 import qualified Distribution.Client.Haddock as Haddock (regenerateHaddockIndex)
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
@@ -228,7 +230,7 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 -- TODO: Make InstallContext a proper data type with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( InstalledPackageIndex, SourcePackageDb
-                      , [UserTarget], [PackageSpecifier SourcePackage] )
+                      , [UserTarget], [PackageSpecifier SourcePackage], HttpTransport )
 
 -- TODO: Make InstallArgs a proper data type with documented fields or just get
 -- rid of it completely.
@@ -255,6 +257,7 @@ makeInstallContext verbosity
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
+    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
 
     (userTargets, pkgSpecifiers) <- case mUserTargets of
       Nothing           ->
@@ -268,13 +271,13 @@ makeInstallContext verbosity
         let userTargets | null userTargets0 = [UserTargetLocalDir "."]
                         | otherwise         = userTargets0
 
-        pkgSpecifiers <- resolveUserTargets verbosity
+        pkgSpecifiers <- resolveUserTargets transport verbosity
                          (fromFlag $ globalWorldFile globalFlags)
                          (packageIndex sourcePkgDb)
                          userTargets
         return (userTargets, pkgSpecifiers)
 
-    return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers)
+    return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers, transport)
 
 -- | Make an install plan given install context and install arguments.
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
@@ -284,7 +287,7 @@ makeInstallPlan verbosity
    _, configFlags, configExFlags, installFlags,
    _)
   (installedPkgIndex, sourcePkgDb,
-   _, pkgSpecifiers) = do
+   _, pkgSpecifiers, _) = do
 
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerInfo comp)
@@ -300,7 +303,7 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
 processInstallPlan verbosity
   args@(_,_, comp, _, _, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
-   userTargets, pkgSpecifiers) installPlan = do
+   userTargets, pkgSpecifiers, _) installPlan = do
     checkPrintPlan verbosity comp installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
 
@@ -687,7 +690,7 @@ reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String ->
 reportPlanningFailure verbosity
   (_, _, comp, platform, _, _, _
   ,_, configFlags, _, installFlags, _)
-  (_, sourcePkgDb, _, pkgSpecifiers)
+  (_, sourcePkgDb, _, pkgSpecifiers, _)
   message = do
 
   when reportFailure $ do
@@ -1015,13 +1018,14 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
+  transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
 
   executeInstallPlan verbosity comp jobControl useLogFile installPlan $ \rpkg ->
     -- Calculate the package key (ToDo: Is this right for source install)
     let pkg_key = readyPackageKey comp rpkg in
     installReadyPackage platform cinfo configFlags
                         rpkg $ \configFlags' src pkg pkgoverride ->
-      fetchSourcePackage verbosity fetchLimit src $ \src' ->
+      fetchSourcePackage transport verbosity fetchLimit src $ \src' ->
         installLocalPackage verbosity buildLimit
                             (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs pkg_key
@@ -1217,18 +1221,19 @@ installReadyPackage platform cinfo configFlags
       Right (desc, _) -> desc
 
 fetchSourcePackage
-  :: Verbosity
+  :: HttpTransport
+  -> Verbosity
   -> JobLimit
   -> PackageLocation (Maybe FilePath)
   -> (PackageLocation FilePath -> IO BuildResult)
   -> IO BuildResult
-fetchSourcePackage verbosity fetchLimit src installPkg = do
+fetchSourcePackage transport verbosity fetchLimit src installPkg = do
   fetched <- checkFetched src
   case fetched of
     Just src' -> installPkg src'
     Nothing   -> onFailure DownloadFailed $ do
                    loc <- withJobLimit fetchLimit $
-                            fetchPackage verbosity src
+                            fetchPackage transport verbosity src
                    installPkg loc
 
 

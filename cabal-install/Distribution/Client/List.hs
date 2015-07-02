@@ -30,7 +30,7 @@ import Distribution.Simple.Compiler
 import Distribution.Simple.Program (ProgramConfiguration)
 import Distribution.Simple.Utils
         ( equating, comparing, die, notice )
-import Distribution.Simple.Setup (fromFlag)
+import Distribution.Simple.Setup (fromFlag, flagToMaybe)
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.PackageIndex as PackageIndex
@@ -55,6 +55,8 @@ import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.FetchUtils
          ( isFetched )
+import Distribution.Client.HttpUtils
+        ( configureTransport )
 
 import Data.List
          ( sortBy, groupBy, sort, nub, intersperse, maximumBy, partition )
@@ -187,7 +189,8 @@ info verbosity packageDBs repos comp conf
                       (InstalledPackageIndex.allPackages installedPkgIndex)
                    ++ map packageId
                       (PackageIndex.allPackages sourcePkgIndex)
-    pkgSpecifiers <- resolveUserTargets verbosity
+    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+    pkgSpecifiers <- resolveUserTargets transport verbosity
                        (fromFlag $ globalWorldFile globalFlags)
                        sourcePkgs' userTargets
 

@@ -126,7 +126,8 @@ data GlobalFlags = GlobalFlags {
     globalLogsDir           :: Flag FilePath,
     globalWorldFile         :: Flag FilePath,
     globalRequireSandbox    :: Flag Bool,
-    globalIgnoreSandbox     :: Flag Bool
+    globalIgnoreSandbox     :: Flag Bool,
+    globalHttpTransport     :: Flag String
   }
 
 defaultGlobalFlags :: GlobalFlags
@@ -141,7 +142,8 @@ defaultGlobalFlags  = GlobalFlags {
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
     globalRequireSandbox    = Flag False,
-    globalIgnoreSandbox     = Flag False
+    globalIgnoreSandbox     = Flag False,
+    globalHttpTransport     = mempty
   }
 
 globalCommand :: [Command action] -> CommandUI GlobalFlags
@@ -260,7 +262,7 @@ globalCommand commands = CommandUI {
     commandNotes = Nothing,
     commandDefaultFlags = mempty,
     commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 6; ParseArgs -> id)
+      (case showOrParseArgs of ShowArgs -> take 7; ParseArgs -> id)
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -290,6 +292,11 @@ globalCommand commands = CommandUI {
          "Ignore any existing sandbox"
          globalIgnoreSandbox (\v flags -> flags { globalIgnoreSandbox = v })
          trueArg
+
+      ,option [] ["http-transport"]
+         "Set a transport for http(s) requests. Accepts 'curl', 'wget', 'powershell', and 'plain-http'. (default: 'curl')"
+         globalConfigFile (\v flags -> flags { globalHttpTransport = v })
+         (reqArgFlag "HttpTransport")
 
       ,option [] ["remote-repo"]
          "The name and url for a remote repository"
@@ -330,7 +337,8 @@ instance Monoid GlobalFlags where
     globalLogsDir           = mempty,
     globalWorldFile         = mempty,
     globalRequireSandbox    = mempty,
-    globalIgnoreSandbox     = mempty
+    globalIgnoreSandbox     = mempty,
+    globalHttpTransport     = mempty
   }
   mappend a b = GlobalFlags {
     globalVersion           = combine globalVersion,
@@ -343,7 +351,8 @@ instance Monoid GlobalFlags where
     globalLogsDir           = combine globalLogsDir,
     globalWorldFile         = combine globalWorldFile,
     globalRequireSandbox    = combine globalRequireSandbox,
-    globalIgnoreSandbox     = combine globalIgnoreSandbox
+    globalIgnoreSandbox     = combine globalIgnoreSandbox,
+    globalHttpTransport     = combine globalHttpTransport
   }
     where combine field = field a `mappend` field b
 
@@ -1953,7 +1962,7 @@ sandboxCommand = CommandUI {
     , headLine "init:"
     , indentParagraph $ "Initialize a sandbox in the current directory."
       ++ " An existing package database will not be modified, but settings"
-      ++ " (such as the location of the database) can be modified this way." 
+      ++ " (such as the location of the database) can be modified this way."
     , headLine "delete:"
     , indentParagraph $ "Remove the sandbox; deleting all the packages"
       ++ " installed inside."
@@ -2254,14 +2263,15 @@ readRepo = readPToMaybe parseRepo
 
 parseRepo :: Parse.ReadP r RemoteRepo
 parseRepo = do
-  name <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
-  _ <- Parse.char ':'
+  name   <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "_-.")
+  _      <- Parse.char ':'
   uriStr <- Parse.munch1 (\c -> isAlphaNum c || c `elem` "+-=._/*()@'$:;&!?~")
-  uri <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
-  return $ RemoteRepo {
-    remoteRepoName     = name,
-    remoteRepoURI      = uri,
-    remoteRepoRootKeys = ()
+  uri    <- maybe Parse.pfail return (parseAbsoluteURI uriStr)
+  return RemoteRepo {
+    remoteRepoName           = name,
+    remoteRepoURI            = uri,
+    remoteRepoRootKeys       = (),
+    remoteRepoShouldTryHttps = False
   }
 
 -- ------------------------------------------------------------

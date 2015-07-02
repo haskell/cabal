@@ -27,7 +27,8 @@ module Distribution.Client.FetchUtils (
 
 import Distribution.Client.Types
 import Distribution.Client.HttpUtils
-         ( downloadURI, isOldHackageURI, DownloadResult(..) )
+         ( downloadURI, isOldHackageURI, DownloadResult(..)
+         , HttpTransport(..), transportCheckHttps, remoteRepoCheckHttps )
 
 import Distribution.Package
          ( PackageId, packageName, packageVersion )
@@ -88,10 +89,11 @@ checkFetched loc = case loc of
 
 -- | Fetch a package if we don't have it already.
 --
-fetchPackage :: Verbosity
+fetchPackage :: HttpTransport
+             -> Verbosity
              -> PackageLocation (Maybe FilePath)
              -> IO (PackageLocation FilePath)
-fetchPackage verbosity loc = case loc of
+fetchPackage transport verbosity loc = case loc of
     LocalUnpackedPackage dir  ->
       return (LocalUnpackedPackage dir)
     LocalTarballPackage  file ->
@@ -105,22 +107,23 @@ fetchPackage verbosity loc = case loc of
       path <- downloadTarballPackage uri
       return (RemoteTarballPackage uri path)
     RepoTarballPackage repo pkgid Nothing -> do
-      local <- fetchRepoTarball verbosity repo pkgid
+      local <- fetchRepoTarball transport verbosity repo pkgid
       return (RepoTarballPackage repo pkgid local)
   where
     downloadTarballPackage uri = do
+      transportCheckHttps transport uri
       notice verbosity ("Downloading " ++ show uri)
       tmpdir <- getTemporaryDirectory
       (path, hnd) <- openTempFile tmpdir "cabal-.tar.gz"
       hClose hnd
-      _ <- downloadURI verbosity uri path
+      _ <- downloadURI transport verbosity uri path
       return path
 
 
 -- | Fetch a repo package if we don't have it already.
 --
-fetchRepoTarball :: Verbosity -> Repo -> PackageId -> IO FilePath
-fetchRepoTarball verbosity repo pkgid = do
+fetchRepoTarball :: HttpTransport -> Verbosity -> Repo -> PackageId -> IO FilePath
+fetchRepoTarball transport verbosity repo pkgid = do
   fetched <- doesFileExist (packageFile repo pkgid)
   if fetched
     then do info verbosity $ display pkgid ++ " has already been downloaded."
@@ -132,24 +135,26 @@ fetchRepoTarball verbosity repo pkgid = do
       Right LocalRepo -> return (packageFile repo pkgid)
 
       Left remoteRepo -> do
+        remoteRepoCheckHttps transport remoteRepo
         let uri  = packageURI remoteRepo pkgid
             dir  = packageDir       repo pkgid
             path = packageFile      repo pkgid
         createDirectoryIfMissing True dir
-        _ <- downloadURI verbosity uri path
+        _ <- downloadURI transport verbosity uri path
         return path
 
 -- | Downloads an index file to [config-dir/packages/serv-id].
 --
-downloadIndex :: Verbosity -> RemoteRepo -> FilePath -> IO DownloadResult
-downloadIndex verbosity repo cacheDir = do
-  let uri = (remoteRepoURI repo) {
-              uriPath = uriPath (remoteRepoURI repo)
+downloadIndex :: HttpTransport -> Verbosity -> RemoteRepo -> FilePath -> IO DownloadResult
+downloadIndex transport verbosity remoteRepo cacheDir = do
+  remoteRepoCheckHttps transport remoteRepo
+  let uri = (remoteRepoURI remoteRepo) {
+              uriPath = uriPath (remoteRepoURI remoteRepo)
                           `FilePath.Posix.combine` "00-index.tar.gz"
             }
       path = cacheDir </> "00-index" <.> "tar.gz"
   createDirectoryIfMissing True cacheDir
-  downloadURI verbosity uri path
+  downloadURI transport verbosity uri path
 
 
 -- ------------------------------------------------------------
