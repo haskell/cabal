@@ -34,6 +34,10 @@ module Distribution.Simple.Register (
     inplaceInstalledPackageInfo,
     absoluteInstalledPackageInfo,
     generalInstalledPackageInfo,
+
+    viewSupported,
+    createView,
+    addPackageToView
   ) where
 
 import Distribution.Simple.LocalBuildInfo
@@ -60,7 +64,7 @@ import           Distribution.Simple.Program.HcPkg (HcPkgInfo)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Setup
          ( RegisterFlags(..), CopyDest(..)
-         , fromFlag, fromFlagOrDefault, flagToMaybe )
+         , fromFlag, fromFlagOrDefault, flagToMaybe , Flag(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), Library(..), BuildInfo(..), libModules )
 import Distribution.Package
@@ -120,6 +124,10 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
        | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo'
        | otherwise             -> registerPackage verbosity
                                     installedPkgInfo' pkg lbi inplace packageDbs
+    print $  "registering" ++ show (IPI.installedPackageId installedPkgInfo) ++ "in view " ++ show (regView regFlags )
+    case regView regFlags of
+      Flag view -> addPackageToView verbosity (compiler lbi) (withPrograms lbi) view (IPI.installedPackageId installedPkgInfo)
+      _ -> return ()
 
   where
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
@@ -150,10 +158,6 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
                "Registration scripts are not implemented for this compiler"
                (compiler lbi) (withPrograms lbi)
                (writeHcPkgRegisterScript verbosity installedPkgInfo packageDbs)
-
-    addToView ipid view = case compilerFlavor (compiler lbi) of
-                            GHC -> HcPkg.addPackageToView (GHC.hcPkgInfo $ (withPrograms lbi))
-                                   verbosity ipid
 
 register _ _ regFlags = notice verbosity "No package to register"
   where
@@ -238,12 +242,31 @@ invokeHcPkg verbosity comp conf dbStack extraArgs =
 withHcPkg :: String -> Compiler -> ProgramConfiguration
           -> (HcPkgInfo -> IO a) -> IO a
 withHcPkg name comp conf f =
-  case compilerFlavor comp of
-    GHC   -> f (GHC.hcPkgInfo conf)
-    GHCJS -> f (GHCJS.hcPkgInfo conf)
-    LHC   -> f (LHC.hcPkgInfo conf)
+  case getHcPkgInfo comp conf of
+    Just hcPkgInfo -> f hcPkgInfo
     _     -> die ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
+
+getHcPkgInfo comp conf = case compilerFlavor comp of
+                           GHC   -> Just (GHC.hcPkgInfo conf)
+                           GHCJS -> Just (GHCJS.hcPkgInfo conf)
+                           LHC   -> Just (LHC.hcPkgInfo conf)
+                           _     -> Nothing
+
+viewSupported :: Compiler -> ProgramConfiguration -> Bool
+viewSupported comp conf = case getHcPkgInfo comp conf of
+                            Just hpi -> HcPkg.supportsView hpi
+                            _ -> False
+
+createView :: Verbosity -> Compiler -> ProgramConfiguration
+           -> Either String FilePath -> IO ()
+createView verbosity comp conf view =
+  withHcPkg "createView" comp conf (\hpi -> HcPkg.createView hpi verbosity view)
+
+addPackageToView :: Verbosity -> Compiler -> ProgramConfiguration
+                 -> String -> InstalledPackageId -> IO ()
+addPackageToView verbosity comp conf view_name ipid =
+  withHcPkg "addPackageToView" comp conf (\hpi -> HcPkg.addPackageToView hpi verbosity view_name ipid)
 
 registerPackage :: Verbosity
                 -> InstalledPackageInfo

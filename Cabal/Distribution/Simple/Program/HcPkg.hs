@@ -23,9 +23,9 @@ module Distribution.Simple.Program.HcPkg (
     list,
 
     -- * View operations
-    isViewEnabled,
     createView,
     addPackageToView,
+    removePackageFromView,
 
     -- * Program invocations
     initInvocation,
@@ -63,11 +63,12 @@ import Distribution.Compat.Exception
          ( catchExit )
 
 import Control.Monad
-         ( liftM2 )
+         ( when )
 import Data.Char
          ( isSpace )
 import Data.List
-         ( stripPrefix, isInfixOf )
+         ( stripPrefix )
+import qualified Data.List as List
 import System.FilePath as FilePath
          ( (</>), splitPath, splitDirectories, joinPath, isPathSeparator )
 import qualified System.FilePath.Posix as FilePath.Posix
@@ -277,37 +278,42 @@ list hpi verbosity packagedb = do
   where
     parsePackageIds = sequence . map simpleParse . words
 
-isViewEnabled :: HcPkgInfo -> Verbosity -> IO Bool
-isViewEnabled hpi verbosity =
-    liftM2 (&&) (return (supportsView hpi))
-      ((not . isInfixOf "No Views") <$>
-        getProgramInvocationOutput verbosity invocation)
-  where invocation = programInvocation (hcPkgProgram hpi) args
-        -- Using multiple DBs can be very problematic.
-        -- So it chooses only user pacage DB by default.
-        args = ["list-views", packageDbOpts hpi UserPackageDB]
-
 createView :: HcPkgInfo -> Verbosity -> Either String FilePath -> IO ()
 createView hpi verbosity view =
-    runProgramInvocation verbosity invocation
+    when (supportsView hpi) $ runProgramInvocation verbosity invocation
   where
-      invocation = programInvocation (hcPkgProgram hpi) args
-      args = ["view create", packageDbOpts hpi UserPackageDB] ++
-        case view of
-          Left name -> [name]
-          Right path -> ["--view-file", path]
+    invocation = programInvocation (hcPkgProgram hpi) args
+    args = ["view", "create", packageDbOpts hpi UserPackageDB] ++
+      case view of
+        Left name -> [name]
+        Right path -> ["--view-file", path]
 
+-- | Adds a package to the given view
 addPackageToView ::  HcPkgInfo -> Verbosity
-     -> String -> InstalledPackageId -> IO ()
-addPackageToView hpi verbosity view ipid =
-    runProgramInvocation verbosity invocation
+                 -> String -> InstalledPackageId -> IO ()
+addPackageToView hpi verbosity view ipid = do
+    removePackageFromView hpi verbosity view pkgid
+    when (supportsView hpi) $ runProgramInvocation verbosity invocation
   where
-      invocation = programInvocation (hcPkgProgram hpi) args
-      args = ["view-modify", view, "add-package", show ipid, packageDbOpts hpi UserPackageDB]
+    invocation = programInvocation (hcPkgProgram hpi) args
+    args = ["view-modify", view, "add-package", "--ipid", display ipid, packageDbOpts hpi UserPackageDB]
+    -- init clashes with this module's init.
+    pkgid = List.init . reverse . snd . (span (/= '-')) . reverse . display $ ipid
+
+-- | Removes a package from the given view. As only one instance of package can be in a view
+-- we do not need ipid. TODO: Fourth argument type must be PackageId but there is no suitable InstalledPackageId
+-- to PackageId function now.
+removePackageFromView ::  HcPkgInfo -> Verbosity
+                      -> String -> String -> IO ()
+removePackageFromView hpi verbosity view packageId =
+    when (supportsView hpi) $ runProgramInvocation verbosity invocation
+  where
+    invocation = programInvocation (hcPkgProgram hpi) args
+    args = ["view-modify", view, "remove-package", packageId, packageDbOpts hpi UserPackageDB]
+
 
 -- TODO:
--- getPackagesInView
--- removePackageFromView
+-- getPackagesInView -- For GC
 
 --------------------------
 -- The program invocations

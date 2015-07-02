@@ -60,8 +60,7 @@ import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
 import Distribution.System             ( Platform )
 import Distribution.Simple.Program     ( ProgramConfiguration )
 import Distribution.Verbosity          ( Verbosity, normal )
-import Distribution.Simple.GHC         ( hcPkgInfo )
-import Distribution.Simple.Program.HcPkg( supportsView )
+import qualified Distribution.Simple.Register as Register
 import Distribution.Compiler           ( CompilerFlavor( GHC ) )
 import Control.Monad                   ( foldM, liftM2, when, unless )
 import Data.List                       ( partition )
@@ -241,7 +240,7 @@ sandboxPackageDBPath sandboxDir compiler platform =
 setPackageDB :: FilePath -> Compiler -> Platform -> ConfigFlags ->
                 ProgramConfiguration -> ConfigFlags
 setPackageDB sandboxDir compiler platform configFlags conf =
-  if viewEnabled
+  if viewSupported
     then configFlags {
       configPackageDBs = [Just UserPackageDB],
       configView = Flag $ sandboxDirHash sandboxDir
@@ -252,9 +251,8 @@ setPackageDB sandboxDir compiler platform configFlags conf =
                                                       compiler
                                                       platform)]
     }
-  where viewEnabled = case compilerFlavor compiler of
-                        GHC -> supportsView $ hcPkgInfo conf
-                        _ -> False
+  where viewSupported = Register.viewSupported compiler conf
+
 
 -- | A general purpose hash function. It is exported as the hash
 -- of sanbox dir needs to be calculated in two different modules.

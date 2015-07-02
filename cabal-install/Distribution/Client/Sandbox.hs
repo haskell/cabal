@@ -316,6 +316,11 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
     (compilerId comp) platform
 
+  let viewFile = sandboxDir </> sandboxDirHash sandboxDir
+  appendFile viewFile ""
+  Register.createView verbosity comp conf (Right viewFile)
+
+
 -- | Entry point for the 'cabal sandbox delete' command.
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
 sandboxDelete verbosity _sandboxFlags globalFlags = do
