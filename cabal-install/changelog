@@ -11,6 +11,12 @@
 	* New 'cabal install' option: '--offline' (#2578).
 	* Accept 'builddir' field in cabal.config (#2484)
 	* Read 'builddir' option from 'CABAL_BUILDDIR' environment variable
+	* Remote repos may now be configured to use https URLs
+	* Install target URLs can now use https
+	  e.g. cabal install https://example.com/foo-1.0.tar.gz
+	* Automatically use https for cabal upload for the main
+	  hackage.haskell.org (other repos will use whatever they are
+	  configured to use)
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).

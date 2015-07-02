@@ -5,17 +5,17 @@ module Distribution.Client.BuildReports.Upload
     ( BuildLog
     , BuildReportId
     , uploadReports
-    , postBuildReport
-    , putBuildLog
     ) where
 
+{-
 import Network.Browser
          ( BrowserAction, request, setAllowRedirects )
 import Network.HTTP
          ( Header(..), HeaderName(..)
          , Request(..), RequestMethod(..), Response(..) )
 import Network.TCP (HandleStream)
-import Network.URI (URI, uriPath, parseRelativeReference, relativeTo)
+-}
+import Network.URI (URI, uriPath) --parseRelativeReference, relativeTo)
 
 import Control.Monad
          ( forM_ )
@@ -24,22 +24,31 @@ import System.FilePath.Posix
 import qualified Distribution.Client.BuildReports.Anonymous as BuildReport
 import Distribution.Client.BuildReports.Anonymous (BuildReport)
 import Distribution.Text (display)
+import Distribution.Verbosity (Verbosity)
+import Distribution.Simple.Utils (die)
+import Distribution.Client.HttpUtils
 
 type BuildReportId = URI
 type BuildLog = String
 
-uploadReports :: URI -> [(BuildReport, Maybe BuildLog)]
-              ->  BrowserAction (HandleStream BuildLog) ()
-uploadReports uri reports = do
+uploadReports :: Verbosity -> (String, String) -> URI -> [(BuildReport, Maybe BuildLog)] -> IO ()
+uploadReports verbosity auth uri reports = do
   forM_ reports $ \(report, mbBuildLog) -> do
-     buildId <- postBuildReport uri report
+     buildId <- postBuildReport verbosity auth uri report
      case mbBuildLog of
-       Just buildLog -> putBuildLog buildId buildLog
+       Just buildLog -> putBuildLog verbosity auth buildId buildLog
        Nothing       -> return ()
 
-postBuildReport :: URI -> BuildReport
-                -> BrowserAction (HandleStream BuildLog) BuildReportId
-postBuildReport uri buildReport = do
+postBuildReport :: Verbosity -> (String, String) -> URI -> BuildReport -> IO BuildReportId
+postBuildReport verbosity auth uri buildReport = do
+  let fullURI = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" }
+  transport <- configureTransport verbosity Nothing
+  res <- postHttp transport verbosity fullURI (BuildReport.show buildReport) (Just auth)
+  case res of
+    (303, redir) -> return $ undefined redir --TODO parse redir
+    _ -> die "unrecognized response" -- give response
+
+{-
   setAllowRedirects False
   (_, response) <- request Request {
     rqURI     = uri { uriPath = "/package" </> display (BuildReport.package buildReport) </> "reports" },
@@ -64,17 +73,18 @@ postBuildReport uri buildReport = do
               -> return $ buildId
     _         -> error "Unrecognised response from server."
   where body  = BuildReport.show buildReport
+-}
 
-putBuildLog :: BuildReportId -> BuildLog
-            -> BrowserAction (HandleStream BuildLog) ()
-putBuildLog reportId buildLog = do
-  --FIXME: do something if the request fails
-  (_, _response) <- request Request {
-      rqURI     = reportId{uriPath = uriPath reportId </> "log"},
-      rqMethod  = PUT,
-      rqHeaders = [Header HdrContentType   ("text/plain"),
-                   Header HdrContentLength (show (length buildLog)),
-                   Header HdrAccept        ("text/plain")],
-      rqBody    = buildLog
-    }
-  return ()
+
+-- TODO force this to be a PUT?
+
+putBuildLog :: Verbosity -> (String, String)
+            -> BuildReportId -> BuildLog
+            -> IO ()
+putBuildLog verbosity auth reportId buildLog = do
+  let fullURI = reportId {uriPath = uriPath reportId </> "log"}
+  transport <- configureTransport verbosity Nothing
+  res <- postHttp transport verbosity fullURI buildLog (Just auth)
+  case res of
+    (200, _) -> return ()
+    _ -> die "unrecognized response" -- give response
