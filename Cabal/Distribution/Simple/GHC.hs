@@ -473,7 +473,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
       profOpts    = vanillaOpts `mappend` mempty {
                       ghcOptProfilingMode = toFlag True,
-                      ghcOptProfilingAuto = toFlag GhcProfAutoExported,
+                      ghcOptProfilingAuto = Internal.profDetailLevelFlag True
+                                              (withProfLibDetail lbi),
                       ghcOptHiSuffix      = toFlag "p_hi",
                       ghcOptObjSuffix     = toFlag "p_o",
                       ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi,
@@ -762,7 +763,8 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                    }
       profOpts   = baseOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
-                      ghcOptProfilingAuto  = toFlag GhcProfAutoToplevel,
+                      ghcOptProfilingAuto  = Internal.profDetailLevelFlag False
+                                               (withProfExeDetail lbi),
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
                       ghcOptExtra          = toNubListR (hcProfOptions GHC exeBi),
@@ -979,7 +981,8 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                    }
       profArgs   = vanillaArgs `mappend` mempty {
                      ghcOptProfilingMode = toFlag True,
-                     ghcOptProfilingAuto = toFlag GhcProfAutoExported,
+                     ghcOptProfilingAuto = Internal.profDetailLevelFlag True
+                                             (withProfLibDetail lbi),
                      ghcOptHiSuffix      = toFlag "p_hi",
                      ghcOptObjSuffix     = toFlag "p_o",
                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi

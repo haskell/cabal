@@ -25,7 +25,8 @@ module Distribution.Simple.GHC.Internal (
         getHaskellObjects,
         mkGhcOptPackages,
         substTopDir,
-        checkPackageDbEnvVar
+        checkPackageDbEnvVar,
+        profDetailLevelFlag,
  ) where
 
 import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
@@ -41,10 +42,11 @@ import Distribution.PackageDescription as PD
 import Distribution.Compat.Exception ( catchExit, catchIO )
 import Distribution.Lex (tokenizeQuotedWords)
 import Distribution.Simple.Compiler
-         ( CompilerFlavor(..), Compiler(..), DebugInfoLevel(..), OptimisationLevel(..) )
+         ( CompilerFlavor(..), Compiler(..), DebugInfoLevel(..)
+         , OptimisationLevel(..), ProfDetailLevel(..) )
 import Distribution.Simple.Program.GHC
 import Distribution.Simple.Setup
-         ( toFlag )
+         ( Flag, toFlag )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.Simple.Program
          ( Program(..), ConfiguredProgram(..), ProgramConfiguration
@@ -499,3 +501,14 @@ checkPackageDbEnvVar compilerName packagePathEnvVar = do
                ++ packagePathEnvVar ++ " is incompatible with Cabal. Use the "
                ++ "flag --package-db to specify a package database (it can be "
                ++ "used multiple times)."
+
+profDetailLevelFlag :: Bool -> ProfDetailLevel -> Flag GhcProfAuto
+profDetailLevelFlag forLib mpl =
+    case mpl of
+      ProfDetailNone                -> mempty
+      ProfDetailDefault | forLib    -> toFlag GhcProfAutoExported
+                        | otherwise -> toFlag GhcProfAutoToplevel
+      ProfDetailExportedFunctions   -> toFlag GhcProfAutoExported
+      ProfDetailToplevelFunctions   -> toFlag GhcProfAutoToplevel
+      ProfDetailAllFunctions        -> toFlag GhcProfAutoAll
+      ProfDetailOther _             -> mempty

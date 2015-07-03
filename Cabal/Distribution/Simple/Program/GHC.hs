@@ -292,6 +292,8 @@ renderGhcOptions comp opts
   , [ "-prof" | flagBool ghcOptProfilingMode ]
 
   , case flagToMaybe (ghcOptProfilingAuto opts) of
+      _ | not (flagBool ghcOptProfilingMode)
+                                -> []
       Nothing                   -> []
       Just GhcProfAutoAll
         | flagProfAuto implInfo -> ["-fprof-auto"]

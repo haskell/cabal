@@ -52,7 +52,7 @@ import Distribution.Compiler
 import Distribution.Utils.NubList
 import Distribution.Simple.Compiler
     ( CompilerFlavor(..), Compiler(..), compilerFlavor, compilerVersion
-    , compilerInfo
+    , compilerInfo, ProfDetailLevel(..), knownProfDetailLevels
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack, reexportedModulesSupported
     , packageKeySupported, renamingPackageFlagsSupported )
@@ -345,7 +345,6 @@ configure :: (GenericPackageDescription, HookedBuildInfo)
 configure (pkg_descr0, pbi) cfg
   = do  let distPref = fromFlag (configDistPref cfg)
             buildDir' = distPref </> "build"
-            verbosity = fromFlag (configVerbosity cfg)
 
         setupMessage verbosity "Configuring" (packageId pkg_descr0)
 
@@ -682,10 +681,24 @@ configure (pkg_descr0, pbi) cfg
             ++ "is not being built. Linking will fail if any executables "
             ++ "depend on the library."
 
-        let withProf_ = fromFlagOrDefault False (configProf cfg)
-            withProfExe_ = fromFlagOrDefault withProf_ $ configProfExe cfg
-            withProfLib_ = fromFlagOrDefault withProfExe_ $ configProfLib cfg
-        when (withProfExe_ && not withProfLib_) $ warn verbosity $
+        -- The --profiling flag sets the default for both libs and exes,
+        -- but can be overidden by --library-profiling, or the old deprecated
+        -- --executable-profiling flag.
+        let profEnabledLibOnly = configProfLib cfg
+            profEnabledBoth    = fromFlagOrDefault False (configProf cfg)
+            profEnabledLib = fromFlagOrDefault profEnabledBoth profEnabledLibOnly
+            profEnabledExe = fromFlagOrDefault profEnabledBoth (configProfExe cfg)
+
+        -- The --profiling-detail and --library-profiling-detail flags behave
+        -- similarly
+        profDetailLibOnly <- checkProfDetail (configProfLibDetail cfg)
+        profDetailBoth    <- liftM (fromFlagOrDefault ProfDetailDefault)
+                                   (checkProfDetail (configProfDetail cfg))
+        let profDetailLib = fromFlagOrDefault profDetailBoth profDetailLibOnly
+            profDetailExe = profDetailBoth
+
+        when (profEnabledExe && not profEnabledLib) $
+          warn verbosity $
                "Executables will be built with profiling, but library "
             ++ "profiling is disabled. Linking will fail if any executables "
             ++ "depend on the library."
@@ -717,10 +730,12 @@ configure (pkg_descr0, pbi) cfg
                     instantiatedWith    = hole_insts,
                     withPrograms        = programsConfig''',
                     withVanillaLib      = fromFlag $ configVanillaLib cfg,
-                    withProfLib         = withProfLib_,
+                    withProfLib         = profEnabledLib,
                     withSharedLib       = withSharedLib_,
                     withDynExe          = withDynExe_,
-                    withProfExe         = withProfExe_,
+                    withProfExe         = profEnabledExe,
+                    withProfLibDetail   = profDetailLib,
+                    withProfExeDetail   = profDetailExe,
                     withOptimization    = fromFlag $ configOptimization cfg,
                     withDebugInfo       = fromFlag $ configDebugInfo cfg,
                     withGHCiLib         = fromFlagOrDefault ghciLibByDefault $
@@ -768,6 +783,8 @@ configure (pkg_descr0, pbi) cfg
         return lbi
 
     where
+      verbosity = fromFlag (configVerbosity cfg)
+
       addExtraIncludeLibDirs pkg_descr =
           let extraBi = mempty { extraLibDirs = configExtraLibDirs cfg
                                , PD.includeDirs = configExtraIncludeDirs cfg}
@@ -778,6 +795,15 @@ configure (pkg_descr0, pbi) cfg
           in pkg_descr{ library     = modifyLib        `fmap` library pkg_descr
                       , executables = modifyExecutable  `map`
                                       executables pkg_descr}
+
+      checkProfDetail (Flag (ProfDetailOther other)) = do
+        warn verbosity $
+             "Unknown profiling detail level '" ++ other
+          ++ "', using default.\n"
+          ++ "The profiling detail levels are: " ++ intercalate ", "
+             [ name | (name, _, _) <- knownProfDetailLevels ]
+        return (Flag ProfDetailDefault)
+      checkProfDetail other = return other
 
 mkProgramsConfig :: ConfigFlags -> ProgramConfiguration -> ProgramConfiguration
 mkProgramsConfig cfg initialProgramsConfig = programsConfig

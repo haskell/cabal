@@ -393,7 +393,7 @@ configureOptions = commandOptions configureCommand
 
 filterConfigureFlags :: ConfigFlags -> Version -> ConfigFlags
 filterConfigureFlags flags cabalLibVersion
-  | cabalLibVersion >= Version [1,22,0] [] = flags_latest
+  | cabalLibVersion >= Version [1,23,0] [] = flags_latest
   -- ^ NB: we expect the latest version to be the most common case.
   | cabalLibVersion <  Version [1,3,10] [] = flags_1_3_10
   | cabalLibVersion <  Version [1,10,0] [] = flags_1_10_0
@@ -403,13 +403,18 @@ filterConfigureFlags flags cabalLibVersion
   | cabalLibVersion <  Version [1,19,2] [] = flags_1_19_1
   | cabalLibVersion <  Version [1,21,1] [] = flags_1_20_0
   | cabalLibVersion <  Version [1,22,0] [] = flags_1_21_0
+  | cabalLibVersion <  Version [1,23,0] [] = flags_1_22_0
   | otherwise = flags_latest
   where
     -- Cabal >= 1.19.1 uses '--dependency' and does not need '--constraint'.
     flags_latest = flags        { configConstraints = [] }
 
+    -- Cabal < 1.23 doesn't know about '--profiling-detail'.
+    flags_1_22_0 = flags_latest { configProfDetail    = NoFlag
+                                , configProfLibDetail = NoFlag }
+
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
-    flags_1_21_0 = flags_latest { configDebugInfo = NoFlag }
+    flags_1_21_0 = flags_1_22_0 { configDebugInfo = NoFlag }
 
     -- Cabal < 1.21.1 doesn't know about 'disable-relocatable'
     -- Cabal < 1.21.1 doesn't know about 'enable-profiling'
