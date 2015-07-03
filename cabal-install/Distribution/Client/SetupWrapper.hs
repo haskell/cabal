@@ -46,6 +46,8 @@ import Distribution.Simple.Compiler
          ( Compiler(compilerId), compilerFlavor, PackageDB(..), PackageDBStack )
 import Distribution.Simple.PreProcess
          ( runSimplePreProcessor, ppUnlit )
+import Distribution.Simple.Build.Macros
+         ( generatePackageVersionMacros )
 import Distribution.Simple.Program
          ( ProgramConfiguration, emptyProgramConfiguration
          , getProgramSearchPath, getDbProgramOutput, runDbProgram, ghcProgram
@@ -57,6 +59,7 @@ import Distribution.Simple.Program.Run
 import qualified Distribution.Simple.Program.Strip as Strip
 import Distribution.Simple.BuildPaths
          ( defaultDistPref, exeExtension )
+
 import Distribution.Simple.Command
          ( CommandUI(..), commandShowOptions )
 import Distribution.Simple.Program.GHC
@@ -548,7 +551,16 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                       _     -> (ghcProgram,   ["-threaded"])
           cabalDep = maybe [] (\ipkgid -> [(ipkgid, cabalPkgid)])
                               maybeCabalLibInstalledPkgId
+
+          -- We do a few things differently once packages opt-in and declare
+          -- a custom-settup stanza. In particular we then enforce the deps
+          -- specified, but also let the Setup.hs use the version macros.
+          newPedanticDeps     = useDependenciesExclusive options'
+          selectedDeps
+            | newPedanticDeps = useDependencies options'
+            | otherwise       = useDependencies options' ++ cabalDep
           addRenaming (ipid, pid) = (ipid, pid, defaultRenaming)
+          cppMacrosFile = setupDir </> "setup_macros.h"
           ghcOptions = mempty {
               ghcOptVerbosity       = Flag verbosity
             , ghcOptMode            = Flag GhcModeMake
@@ -559,16 +571,17 @@ externalSetupMethod verbosity options pkg bt mkargs = do
             , ghcOptSourcePathClear = Flag True
             , ghcOptSourcePath      = toNubListR [workingDir]
             , ghcOptPackageDBs      = usePackageDB options''
-            , ghcOptHideAllPackages = Flag (useDependenciesExclusive options')
-            , ghcOptPackages        = toNubListR $
-                                        map addRenaming $
-                                        if useDependenciesExclusive options'
-                                          then useDependencies options'
-                                          else useDependencies options'
-                                                 ++ cabalDep
+            , ghcOptHideAllPackages = Flag newPedanticDeps
+            , ghcOptCabal           = Flag newPedanticDeps
+            , ghcOptPackages        = toNubListR $ map addRenaming selectedDeps
+            , ghcOptCppIncludes     = toNubListR [ cppMacrosFile
+                                                 | newPedanticDeps ]
             , ghcOptExtra           = toNubListR extraOpts
             }
       let ghcCmdLine = renderGhcOptions compiler ghcOptions
+      when newPedanticDeps $
+        rewriteFile cppMacrosFile (generatePackageVersionMacros
+                                     [ pid | (_ipid, pid) <- selectedDeps ])
       case useLoggingHandle options of
         Nothing          -> runDbProgram verbosity program conf ghcCmdLine
 
