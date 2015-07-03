@@ -272,6 +272,8 @@ instance Monoid SavedConfig where
         configSharedLib           = combine configSharedLib,
         configDynExe              = combine configDynExe,
         configProfExe             = combine configProfExe,
+        configProfDetail          = combine configProfDetail,
+        configProfLibDetail       = combine configProfLibDetail,
         -- TODO: NubListify
         configConfigureArgs       = lastNonEmpty configConfigureArgs,
         configOptimization        = combine configOptimization,

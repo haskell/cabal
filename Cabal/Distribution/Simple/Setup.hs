@@ -85,6 +85,7 @@ import Distribution.Simple.Compiler
          ( CompilerFlavor(..), defaultCompilerFlavor, PackageDB(..)
          , DebugInfoLevel(..), flagToDebugInfoLevel
          , OptimisationLevel(..), flagToOptimisationLevel
+         , ProfDetailLevel(..), flagToProfDetailLevel
          , absolutePackageDBPath )
 import Distribution.Simple.Utils
          ( wrapText, wrapLine, lowercase, intercalate )
@@ -295,6 +296,10 @@ data ConfigFlags = ConfigFlags {
                                           -- executables.
     configProf          :: Flag Bool,     -- ^Enable profiling in the library
                                           -- and executables.
+    configProfDetail    :: Flag ProfDetailLevel, -- ^Profiling detail level
+                                          --  in the library and executables.
+    configProfLibDetail :: Flag ProfDetailLevel, -- ^Profiling  detail level
+                                                 -- in the library
     configConfigureArgs :: [String],      -- ^Extra arguments to @configure@
     configOptimization  :: Flag OptimisationLevel,  -- ^Enable optimization.
     configProgPrefix    :: Flag PathTemplate, -- ^Installed executable prefix.
@@ -351,6 +356,8 @@ defaultConfigFlags progConf = emptyConfigFlags {
     configDynExe       = Flag False,
     configProfExe      = NoFlag,
     configProf         = NoFlag,
+    configProfDetail   = NoFlag,
+    configProfLibDetail= NoFlag,
     configOptimization = Flag NormalOptimisation,
     configProgPrefix   = Flag (toPathTemplate ""),
     configProgSuffix   = Flag (toPathTemplate ""),
@@ -463,7 +470,7 @@ configureOptions showOrParseArgs =
          (boolOpt [] [])
 
       ,option "" ["profiling"]
-         "Executable profiling (requires library profiling)"
+         "Executable and library profiling"
          configProf (\v flags -> flags { configProf = v })
          (boolOpt [] [])
 
@@ -471,6 +478,19 @@ configureOptions showOrParseArgs =
          "Executable profiling (DEPRECATED)"
          configProfExe (\v flags -> flags { configProfExe = v })
          (boolOpt [] [])
+
+      ,option "" ["profiling-detail"]
+         ("Profiling detail level for executable and library (default, " ++
+          "none, exported-functions, toplevel-functions,  all-functions).")
+         configProfDetail (\v flags -> flags { configProfDetail = v })
+         (reqArg' "level" (Flag . flagToProfDetailLevel)
+                          showProfDetailLevelFlag)
+
+      ,option "" ["library-profiling-detail"]
+         "Profiling detail level for libraries only."
+         configProfLibDetail (\v flags -> flags { configProfLibDetail = v })
+         (reqArg' "level" (Flag . flagToProfDetailLevel)
+                          showProfDetailLevelFlag)
 
       ,multiOption "optimization"
          configOptimization (\v flags -> flags { configOptimization = v })
@@ -646,6 +666,17 @@ showPackageDbList = map showPackageDb
     showPackageDb (Just UserPackageDB)          = "user"
     showPackageDb (Just (SpecificPackageDB db)) = db
 
+showProfDetailLevelFlag :: Flag ProfDetailLevel -> [String]
+showProfDetailLevelFlag dl =
+  case dl of
+    NoFlag                           -> []
+    Flag ProfDetailNone              -> ["none"]
+    Flag ProfDetailDefault           -> ["default"]
+    Flag ProfDetailExportedFunctions -> ["exported-functions"]
+    Flag ProfDetailToplevelFunctions -> ["toplevel-functions"]
+    Flag ProfDetailAllFunctions      -> ["all-functions"]
+    Flag (ProfDetailOther other)     -> [other]
+
 
 parseDependency :: Parse.ReadP r (PackageName, InstalledPackageId)
 parseDependency = do
@@ -743,6 +774,8 @@ instance Monoid ConfigFlags where
     configDynExe        = mempty,
     configProfExe       = mempty,
     configProf          = mempty,
+    configProfDetail    = mempty,
+    configProfLibDetail = mempty,
     configConfigureArgs = mempty,
     configOptimization  = mempty,
     configProgPrefix    = mempty,
@@ -786,6 +819,8 @@ instance Monoid ConfigFlags where
     configDynExe        = combine configDynExe,
     configProfExe       = combine configProfExe,
     configProf          = combine configProf,
+    configProfDetail    = combine configProfDetail,
+    configProfLibDetail = combine configProfLibDetail,
     configConfigureArgs = combine configConfigureArgs,
     configOptimization  = combine configOptimization,
     configProgPrefix    = combine configProgPrefix,
