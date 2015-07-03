@@ -20,7 +20,7 @@ module Distribution.Client.Install (
 
     -- * Lower-level interface that allows to manipulate the install plan
     makeInstallContext,
-    makeInstallPlan,
+    makeInstallPlans,
     processInstallPlan,
     InstallArgs,
     InstallContext,
@@ -205,14 +205,14 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 
     installContext <- makeInstallContext verbosity args (Just userTargets0)
     planResult     <- foldProgress logMsg (return . Left) (return . Right) =<<
-                      makeInstallPlan verbosity args installContext
+                      makeInstallPlans verbosity args installContext
 
     case planResult of
         Left message -> do
             reportPlanningFailure verbosity args installContext message
             die' message
-        Right installPlan ->
-            processInstallPlan verbosity args installContext installPlan
+        Right installPlans ->
+            mapM_ (processInstallPlan verbosity args installContext) installPlans
   where
     args :: InstallArgs
     args = (packageDBs, repos, comp, platform, conf, useSandbox, mSandboxPkgInfo,
@@ -282,9 +282,9 @@ makeInstallContext verbosity
     return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers, transport)
 
 -- | Make an install plan given install context and install arguments.
-makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                -> IO (Progress String String InstallPlan)
-makeInstallPlan verbosity
+makeInstallPlans :: Verbosity -> InstallArgs -> InstallContext
+                -> IO (Progress String String [(PackageSpecifier SourcePackage, InstallPlan)])
+makeInstallPlans verbosity
   (_, _, comp, platform, _, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
    _)
@@ -294,24 +294,24 @@ makeInstallPlan verbosity
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
-    return $ planPackages comp platform mSandboxPkgInfo solver
+    return . sequence $ map (\pkgspec -> ((fmap ((,) pkgspec)) $ planPackages comp platform mSandboxPkgInfo solver
       configFlags configExFlags installFlags
-      installedPkgIndex sourcePkgDb pkgSpecifiers
+      installedPkgIndex sourcePkgDb [pkgspec])) pkgSpecifiers
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                   -> InstallPlan
+                   -> (PackageSpecifier SourcePackage, InstallPlan)
                    -> IO ()
 processInstallPlan verbosity
   args@(_,_, comp, _, _, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
-   userTargets, pkgSpecifiers, _) installPlan = do
+   userTargets, _) pkgSpecPlan@(pkgSpecifier, installPlan) = do
     checkPrintPlan verbosity comp installedPkgIndex installPlan sourcePkgDb
-      installFlags pkgSpecifiers
+      installFlags [pkgSpecifier]
 
     unless (dryRun || nothingToInstall) $ do
       installPlan' <- performInstallations verbosity
-                      args installedPkgIndex installPlan
+                      args installedPkgIndex pkgSpecPlan
       postInstallActions verbosity args userTargets installPlan'
   where
     dryRun = fromFlag (installDryRun installFlags)
@@ -1004,12 +1004,12 @@ type UseLogFile = Maybe (PackageIdentifier -> LibraryName -> FilePath, Verbosity
 performInstallations :: Verbosity
                      -> InstallArgs
                      -> InstalledPackageIndex
-                     -> InstallPlan
+                     -> (PackageSpecifier SourcePackage, InstallPlan)
                      -> IO InstallPlan
 performInstallations verbosity
   (packageDBs, _, comp, _, conf, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
-  installedPkgIndex installPlan = do
+  installedPkgIndex pkgSpecPlan@(pkgSpecifier, installPlan) = do
 
   -- With 'install -j' it can be a bit hard to tell whether a sandbox is used.
   whenUsingSandbox useSandbox $ \sandboxDir ->
@@ -1036,8 +1036,11 @@ performInstallations verbosity
                             (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs libname
                                  (setupScriptOptions installedPkgIndex cacheLock rpkg)
-                                 miscOptions configFlags' installFlags haddockFlags
-                                 cinfo platform pkg pkgoverride mpath useLogFile Cabal.NoFlag
+                                 miscOptions configFlags' installFlags haddockFlags cinfo
+                                 platform pkg pkgoverride mpath useLogFile
+                                 (if (pkgSpecifierTarget pkgSpecifier == (packageName $ packageId pkg))
+                                     then configView configFlags
+                                     else Cabal.NoFlag)
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -1440,7 +1443,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs libname
     registerFlags _ = Cabal.emptyRegisterFlags {
       Cabal.regDistPref   = configDistPref configFlags,
       Cabal.regVerbosity  = toFlag verbosity',
-      Cabal.regView       = configView configFlags
+      Cabal.regView       = view,
+      Cabal.regHidden     = Cabal.Flag $ view /= Cabal.Flag "default"
     }
     verbosity' = maybe verbosity snd useLogFile
     tempTemplate name = name ++ "-" ++ display pkgid

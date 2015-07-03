@@ -122,14 +122,16 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
     case () of
      _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo'
        | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo'
-       | otherwise             -> registerPackage verbosity
-                                    installedPkgInfo' pkg lbi inplace packageDbs
-    print $  "registering" ++ show (IPI.installedPackageId installedPkgInfo) ++ "in view " ++ show (regView regFlags )
-    case regView regFlags of
-      Flag view -> addPackageToView verbosity (compiler lbi) (withPrograms lbi) view (IPI.installedPackageId installedPkgInfo)
-      _ -> return ()
+       | otherwise             -> registerNow installedPkgInfo'
 
   where
+    registerNow installedPkgInfo = do
+      registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
+      when (not inplace) $ case regView regFlags of
+                             Flag view -> addPackageToView verbosity (compiler lbi) (withPrograms lbi)
+                                            view (IPI.installedPackageId installedPkgInfo)
+                             _ -> return ()
+
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
     regFile             = fromMaybe (display (packageId pkg) <.> "conf")
                                     (fromFlag (regGenPkgConf regFlags))

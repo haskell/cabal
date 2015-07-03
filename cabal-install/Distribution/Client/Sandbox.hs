@@ -56,7 +56,7 @@ import Distribution.Client.Dependency         ( foldProgress )
 import Distribution.Client.IndexUtils         ( BuildTreeRefType(..) )
 import Distribution.Client.Install            ( InstallArgs,
                                                 makeInstallContext,
-                                                makeInstallPlan,
+                                                makeInstallPlans,
                                                 processInstallPlan )
 import Distribution.Utils.NubList            ( fromNubList )
 
@@ -608,10 +608,10 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
       -- might want to use some lower-level features this in the future.
       withSandboxBinDirOnSearchPath sandboxDir $ do
         installContext <- makeInstallContext verbosity args Nothing
-        installPlan    <- foldProgress logMsg die' return =<<
-                          makeInstallPlan verbosity args installContext
+        installPlans    <- foldProgress logMsg die' return =<<
+                          makeInstallPlans verbosity args installContext
 
-        processInstallPlan verbosity args installContext installPlan
+        mapM_ (processInstallPlan verbosity args installContext) installPlans
         writeIORef retVal ReinstalledSomeDeps
 
   readIORef retVal
