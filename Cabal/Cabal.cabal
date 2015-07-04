@@ -308,6 +308,9 @@ test-suite package-tests
     PackageTests.TestOptions.Check
     PackageTests.TestStanza.Check
     PackageTests.TestSuiteExeV10.Check
+    Test.Distribution.Version
+    Test.Laws
+    Test.QuickCheck.Utils
   hs-source-dirs: tests
   build-depends:
     base,
