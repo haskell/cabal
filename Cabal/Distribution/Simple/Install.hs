@@ -79,6 +79,8 @@ install pkg_descr lbi flags = do
       progPrefixPref = substPathTemplate (packageId pkg_descr) lbi (progPrefix lbi)
       progSuffixPref = substPathTemplate (packageId pkg_descr) lbi (progSuffix lbi)
 
+  unless (hasLibs pkg_descr || hasExes pkg_descr) $
+      die "No executables and no library found. Nothing to do."
   docExists <- doesDirectoryExist $ haddockPref distPref pkg_descr
   info verbosity ("directory " ++ haddockPref distPref pkg_descr ++
                   " does exist: " ++ show docExists)
