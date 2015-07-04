@@ -305,7 +305,7 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
 processInstallPlan verbosity
   args@(_,_, comp, _, _, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
-   userTargets, _) pkgSpecPlan@(pkgSpecifier, installPlan) = do
+   userTargets, pkgSpecifiers, _) pkgSpecPlan@(pkgSpecifier, installPlan) = do
     checkPrintPlan verbosity comp installedPkgIndex installPlan sourcePkgDb
       installFlags [pkgSpecifier]
 

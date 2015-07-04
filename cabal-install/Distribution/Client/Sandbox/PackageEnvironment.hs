@@ -206,7 +206,11 @@ initialPackageEnvironment verbosity sandboxDir compiler platform conf = do
   defInstallDirs <- defaultInstallDirs (compilerFlavor compiler)
                     {- userInstall= -} False {- _hasLibs= -} False
   let initialConfig = commonPackageEnvironmentConfig sandboxDir
-      installDirs   = combineInstallDirs (\d f -> Flag $ fromFlagOrDefault d f)
+      installDirs   = if (Register.viewSupported compiler conf)
+                         -- Executables are best managed separately and be rebuilt everytime
+                         -- it is installed to keep it simple
+                         then mempty {bindir = Flag $ toPathTemplate (sandboxDir </> "bin")}
+                         else combineInstallDirs (\d f -> Flag $ fromFlagOrDefault d f)
                       defInstallDirs (savedUserInstallDirs initialConfig)
       confFlags = setPackageDB sandboxDir compiler platform
                              (savedConfigureFlags initialConfig) conf

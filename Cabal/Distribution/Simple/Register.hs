@@ -249,6 +249,7 @@ withHcPkg name comp conf f =
     _     -> die ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
 
+getHcPkgInfo :: Compiler -> ProgramConfiguration -> Maybe HcPkgInfo
 getHcPkgInfo comp conf = case compilerFlavor comp of
                            GHC   -> Just (GHC.hcPkgInfo conf)
                            GHCJS -> Just (GHCJS.hcPkgInfo conf)
