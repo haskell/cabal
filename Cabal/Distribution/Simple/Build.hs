@@ -42,7 +42,7 @@ import Distribution.Simple.Compiler
 import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
-         , BenchmarkInterface(..), defaultRenaming )
+         , BenchmarkInterface(..), allBuildInfo, defaultRenaming )
 import qualified Distribution.InstalledPackageInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
@@ -80,8 +80,6 @@ import Distribution.Text
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Maybe
-         ( maybeToList )
 import Data.Either
          ( partitionEithers )
 import Data.List
@@ -571,12 +569,10 @@ initialBuildSteps :: FilePath -- ^"dist" prefix
                   -> IO ()
 initialBuildSteps _distPref pkg_descr lbi verbosity = do
   -- check that there's something to build
-  let buildInfos =
-          map libBuildInfo (maybeToList (library pkg_descr)) ++
-          map buildInfo (executables pkg_descr)
-  unless (any buildable buildInfos) $ do
+  unless (not . null $ allBuildInfo pkg_descr) $ do
     let name = display (packageId pkg_descr)
-    die ("Package " ++ name ++ " can't be built on this system.")
+    die $ "No libraries, executables, tests, or benchmarks "
+       ++ "are enabled for package " ++ name ++ "."
 
   createDirectoryIfMissingVerbose verbosity True (buildDir lbi)
 
