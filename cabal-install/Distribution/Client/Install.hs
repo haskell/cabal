@@ -119,6 +119,7 @@ import Distribution.Simple.Program (ProgramConfiguration,
                                     defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import qualified Distribution.Simple.Register as Register
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
@@ -162,8 +163,6 @@ import Distribution.Text
 import Distribution.Verbosity as Verbosity
          ( Verbosity, showForCabal, normal, verbose )
 import Distribution.Simple.BuildPaths ( exeExtension )
-import Distribution.Simple.GHC.ImplInfo ( ghcVersionImplInfo, supportsMultInst )
-import Distribution.Simple.Compiler ( compilerVersion )
 
 --TODO:
 -- * assign flags to packages individually
@@ -281,11 +280,15 @@ makeInstallContext verbosity
 
     return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers, transport)
 
--- | Make an install plan given install context and install arguments.
+-- | Make an install plan given install context and install arguments. It works
+-- in two different way with two different conditions. If multInst is not
+-- available, it returns InstallPlan of all the package specifier in one go
+-- as (undefined, installplan). When multInst is enabled it returns InstallPlan
+-- of every package specifier as single entity as [(pkgspec, installplan of pkgspec)]
 makeInstallPlans :: Verbosity -> InstallArgs -> InstallContext
                 -> IO (Progress String String [(PackageSpecifier SourcePackage, InstallPlan)])
 makeInstallPlans verbosity
-  (_, _, comp, platform, _, _, mSandboxPkgInfo,
+  (_, _, comp, platform, conf, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
    _)
   (installedPkgIndex, sourcePkgDb,
@@ -294,19 +297,25 @@ makeInstallPlans verbosity
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
-    return . sequence $ map (\pkgspec -> ((fmap ((,) pkgspec)) $ planPackages comp platform mSandboxPkgInfo solver
-      configFlags configExFlags installFlags
-      installedPkgIndex sourcePkgDb [pkgspec])) pkgSpecifiers
+    return $ if (Register.multInstEnabled comp conf)
+               then sequence $ map (\pkgspec -> ((fmap ((,) pkgspec)) $
+                      planPackages comp conf platform mSandboxPkgInfo solver
+                      configFlags configExFlags installFlags
+                      installedPkgIndex sourcePkgDb [pkgspec])) pkgSpecifiers
+               else fmap (return . (,) undefined) $ planPackages comp conf
+                      platform mSandboxPkgInfo solver
+                      configFlags configExFlags installFlags
+                      installedPkgIndex sourcePkgDb pkgSpecifiers
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> (PackageSpecifier SourcePackage, InstallPlan)
                    -> IO ()
 processInstallPlan verbosity
-  args@(_,_, comp, _, _, _, _, _, _, _, installFlags, _)
+  args@(_,_, comp, _, conf, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
    userTargets, pkgSpecifiers, _) pkgSpecPlan@(pkgSpecifier, installPlan) = do
-    checkPrintPlan verbosity comp installedPkgIndex installPlan sourcePkgDb
+    checkPrintPlan verbosity comp conf installedPkgIndex installPlan sourcePkgDb
       installFlags [pkgSpecifier]
 
     unless (dryRun || nothingToInstall) $ do
@@ -322,6 +331,7 @@ processInstallPlan verbosity
 -- ------------------------------------------------------------
 
 planPackages :: Compiler
+             -> ProgramConfiguration
              -> Platform
              -> Maybe SandboxPackageInfo
              -> Solver
@@ -332,7 +342,7 @@ planPackages :: Compiler
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
-planPackages comp platform mSandboxPkgInfo solver
+planPackages comp conf platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
@@ -353,7 +363,7 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . setReorderGoals reorderGoals
 
-      . (if (supportsMultInst . ghcVersionImplInfo . compilerVersion $ comp)
+      . (if Register.multInstEnabled comp conf
             then id
             else setAvoidReinstalls avoidReinstalls)
 
@@ -448,13 +458,14 @@ pruneInstallPlan pkgSpecifiers =
 -- either requested or needed.
 checkPrintPlan :: Verbosity
                -> Compiler
+               -> ProgramConfiguration
                -> InstalledPackageIndex
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
                -> [PackageSpecifier SourcePackage]
                -> IO ()
-checkPrintPlan verbosity comp installed installPlan sourcePkgDb
+checkPrintPlan verbosity comp conf installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
 
   -- User targets that are already installed.
@@ -503,9 +514,9 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
   -- If the install plan is dangerous, we print various warning messages. In
   -- particular, if we can see that packages are likely to be broken, we even
   -- bail out (unless installation has been forced with --force-reinstalls).
-  -- As with supportsMultInst packages cannot break when installing new packages
+  -- As with multInstEnabled packages cannot break when installing new packages
   -- we are not printing anything or exiting the program
-  when (containsReinstalls && not (supportsMultInst . ghcVersionImplInfo . compilerVersion $ comp)) $ do
+  when (containsReinstalls && not (Register.multInstEnabled comp conf)) $ do
     if breaksPkgs
       then do
         (if dryRun || overrideReinstall then warn verbosity else die) $ unlines $

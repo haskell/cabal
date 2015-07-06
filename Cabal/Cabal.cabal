@@ -231,7 +231,6 @@ library
     Distribution.Verbosity
     Distribution.Version
     Language.Haskell.Extension
-    Distribution.Simple.GHC.ImplInfo
 
   other-modules:
     Distribution.Compat.Binary
@@ -242,6 +241,7 @@ library
     Distribution.Simple.GHC.Internal
     Distribution.Simple.GHC.IPI641
     Distribution.Simple.GHC.IPI642
+    Distribution.Simple.GHC.ImplInfo
     Paths_Cabal
 
   if flag(bundled-binary-generic)

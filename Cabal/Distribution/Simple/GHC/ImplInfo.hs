@@ -50,8 +50,6 @@ data GhcImplInfo = GhcImplInfo
   , flagProfAuto         :: Bool -- ^ new style -fprof-auto* flags
   , flagPackageConf      :: Bool -- ^ use package-conf instead of package-db
   , flagDebugInfo        :: Bool -- ^ -g flag supported
-  , supportsMultInst     :: Bool -- ^ ghc-pkg can register multiple instances of
-                                 --   same version of package
   }
 
 getImplInfo :: Compiler -> GhcImplInfo
@@ -86,7 +84,6 @@ ghcVersionImplInfo (Version v _) = GhcImplInfo
   , flagProfAuto         = v >= [7,4]
   , flagPackageConf      = v <  [7,5]
   , flagDebugInfo        = v >= [7,10]
-  , supportsMultInst     = v >= [7,11]
   }
 
 ghcjsVersionImplInfo :: Version -> Version -> GhcImplInfo
@@ -108,7 +105,6 @@ ghcjsVersionImplInfo _ghcjsVer _ghcVer = GhcImplInfo
   , flagProfAuto         = True
   , flagPackageConf      = False
   , flagDebugInfo        = False
-  , supportsMultInst     = False
   }
 
 lhcVersionImplInfo :: Version -> GhcImplInfo

@@ -35,6 +35,7 @@ module Distribution.Simple.Register (
     absoluteInstalledPackageInfo,
     generalInstalledPackageInfo,
 
+    multInstEnabled,
     viewSupported,
     createView,
     addPackageToView
@@ -255,6 +256,11 @@ getHcPkgInfo comp conf = case compilerFlavor comp of
                            GHCJS -> Just (GHCJS.hcPkgInfo conf)
                            LHC   -> Just (LHC.hcPkgInfo conf)
                            _     -> Nothing
+
+multInstEnabled :: Compiler -> ProgramConfiguration -> Bool
+multInstEnabled comp conf = case getHcPkgInfo comp conf of
+                            Just hpi -> HcPkg.multInstEnabled hpi
+                            _ -> False
 
 viewSupported :: Compiler -> ProgramConfiguration -> Bool
 viewSupported comp conf = case getHcPkgInfo comp conf of

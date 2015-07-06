@@ -272,8 +272,7 @@ dumpPackageEnvironment verbosity _sandboxFlags globalFlags = do
   putStrLn . showPackageEnvironmentWithComments (Just commentPkgEnv) $ pkgEnv
 
 -- | Entry point for the 'cabal sandbox init' command.
-sandboxInit :: Verbosity -> SandboxFlags  -> GlobalFlags
-               -> IO ()
+sandboxInit :: Verbosity -> SandboxFlags  -> GlobalFlags -> IO ()
 sandboxInit verbosity sandboxFlags globalFlags = do
   -- Warn if there's a 'cabal-dev' sandbox.
   isCabalDevSandbox <- liftM2 (&&) (doesDirectoryExist "cabal-dev")

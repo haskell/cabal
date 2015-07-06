@@ -61,7 +61,7 @@ import Distribution.System             ( Platform )
 import Distribution.Simple.Program     ( ProgramConfiguration )
 import Distribution.Verbosity          ( Verbosity, normal )
 import qualified Distribution.Simple.Register as Register
-import Distribution.Compiler           ( CompilerFlavor( GHC ) )
+-- import Distribution.Compiler           ( CompilerFlavor( GHC ) )
 import Control.Monad                   ( foldM, liftM2, when, unless )
 import Data.List                       ( partition )
 import Data.Maybe                      ( isJust )
@@ -200,9 +200,9 @@ basePackageEnvironment =
 -- | Initial configuration that we write out to the package environment file if
 -- it does not exist. When the package environment gets loaded this
 -- configuration gets layered on top of 'basePackageEnvironment'.
-initialPackageEnvironment :: Verbosity -> FilePath -> Compiler -> Platform
+initialPackageEnvironment :: FilePath -> Compiler -> Platform
                              -> ProgramConfiguration -> IO PackageEnvironment
-initialPackageEnvironment verbosity sandboxDir compiler platform conf = do
+initialPackageEnvironment sandboxDir compiler platform conf = do
   defInstallDirs <- defaultInstallDirs (compilerFlavor compiler)
                     {- userInstall= -} False {- _hasLibs= -} False
   let initialConfig = commonPackageEnvironmentConfig sandboxDir
@@ -443,7 +443,7 @@ createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile incComments
     ++ pkgEnvFile
 
   commentPkgEnv <- commentPackageEnvironment sandboxDir
-  initialPkgEnv <-  initialPackageEnvironment verbosity sandboxDir compiler
+  initialPkgEnv <-  initialPackageEnvironment sandboxDir compiler
                      platform conf
   writePackageEnvironmentFile pkgEnvFile incComments commentPkgEnv initialPkgEnv
 
