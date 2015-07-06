@@ -190,9 +190,12 @@ checkSanity pkg =
   , check (null . versionBranch . packageVersion $ pkg) $
       PackageBuildImpossible "No 'version' field."
 
-  , check (null (executables pkg) && isNothing (library pkg)) $
+  , check (all ($ pkg) [ null . executables
+                       , null . testSuites
+                       , null . benchmarks
+                       , isNothing . library ]) $
       PackageBuildImpossible
-        "No executables and no library found. Nothing to do."
+        "No executables, libraries, tests, or benchmarks found. Nothing to do."
 
   , check (not (null duplicateNames)) $
       PackageBuildImpossible $ "Duplicate sections: " ++ commaSep duplicateNames
