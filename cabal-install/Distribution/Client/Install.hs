@@ -316,7 +316,10 @@ processInstallPlan verbosity
   (installedPkgIndex, sourcePkgDb,
    userTargets, pkgSpecifiers, _) pkgSpecPlan@(pkgSpecifier, installPlan) = do
     checkPrintPlan verbosity comp conf installedPkgIndex installPlan sourcePkgDb
-      installFlags [pkgSpecifier]
+              installFlags $
+                if Register.multInstEnabled comp conf
+                  then [pkgSpecifier]
+                  else pkgSpecifiers
 
     unless (dryRun || nothingToInstall) $ do
       installPlan' <- performInstallations verbosity
@@ -1020,7 +1023,7 @@ performInstallations :: Verbosity
 performInstallations verbosity
   (packageDBs, _, comp, _, conf, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
-  installedPkgIndex pkgSpecPlan@(pkgSpecifier, installPlan) = do
+  installedPkgIndex (pkgSpecifier, installPlan) = do
 
   -- With 'install -j' it can be a bit hard to tell whether a sandbox is used.
   whenUsingSandbox useSandbox $ \sandboxDir ->
