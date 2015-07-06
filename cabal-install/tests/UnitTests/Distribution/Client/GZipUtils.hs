@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 module UnitTests.Distribution.Client.GZipUtils (
   tests
   ) where
@@ -21,9 +20,7 @@ import Test.Tasty.QuickCheck
 
 tests :: [TestTree]
 tests = [ testCase "maybeDecompress" maybeDecompressUnitTest
-#if MIN_VERSION_zlib(0,6,0)
         , testProperty "decompress plain" prop_maybeDecompress_plain
-#endif
         , testProperty "decompress zlib"  prop_maybeDecompress_zlib
         , testProperty "decompress gzip"  prop_maybeDecompress_gzip
         ]

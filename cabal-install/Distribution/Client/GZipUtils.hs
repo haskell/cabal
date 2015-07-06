@@ -77,7 +77,7 @@ maybeDecompress bytes = foldStream $ decompressWithErrors gzipOrZlibFormat defau
     -- Returning it as-is.
     -- TODO: alternatively, we might consider looking for the two magic bytes
     -- at the beginning of the gzip header.
-    foldStream (StreamError DataError _) = bytes
+    foldStream (StreamError _ _) = bytes
     foldStream somethingElse = doFold somethingElse
 
     doFold StreamEnd               = BS.Empty
