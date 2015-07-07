@@ -473,6 +473,8 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
 
       profOpts    = vanillaOpts `mappend` mempty {
                       ghcOptProfilingMode = toFlag True,
+                      ghcOptProfilingAuto = Internal.profDetailLevelFlag True
+                                              (withProfLibDetail lbi),
                       ghcOptHiSuffix      = toFlag "p_hi",
                       ghcOptObjSuffix     = toFlag "p_o",
                       ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi,
@@ -761,10 +763,11 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
                    }
       profOpts   = baseOpts `mappend` mempty {
                       ghcOptProfilingMode  = toFlag True,
+                      ghcOptProfilingAuto  = Internal.profDetailLevelFlag False
+                                               (withProfExeDetail lbi),
                       ghcOptHiSuffix       = toFlag "p_hi",
                       ghcOptObjSuffix      = toFlag "p_o",
-                      ghcOptExtra          = toNubListR $
-                                             hcProfOptions GHC exeBi,
+                      ghcOptExtra          = toNubListR (hcProfOptions GHC exeBi),
                       ghcOptHPCDir         = hpcdir Hpc.Prof
                     }
       dynOpts    = baseOpts `mappend` mempty {
@@ -976,12 +979,14 @@ libAbiHash verbosity _pkg_descr lbi lib clbi = do
                        ghcOptObjSuffix   = toFlag "dyn_o",
                        ghcOptExtra       = toNubListR $ hcSharedOptions GHC libBi
                    }
-      profArgs = vanillaArgs `mappend` mempty {
+      profArgs   = vanillaArgs `mappend` mempty {
                      ghcOptProfilingMode = toFlag True,
+                     ghcOptProfilingAuto = Internal.profDetailLevelFlag True
+                                             (withProfLibDetail lbi),
                      ghcOptHiSuffix      = toFlag "p_hi",
                      ghcOptObjSuffix     = toFlag "p_o",
                      ghcOptExtra         = toNubListR $ hcProfOptions GHC libBi
-                 }
+                   }
       ghcArgs = if withVanillaLib lbi then vanillaArgs
            else if withSharedLib  lbi then sharedArgs
            else if withProfLib    lbi then profArgs

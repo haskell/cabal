@@ -1372,6 +1372,21 @@ values for these fields.
 :   Additional options for GHC when the package is built with profiling
     enabled.
 
+    Note that as of Cabal-1.24, the default profiling detail level defaults to
+    `exported-functions` for libraries and `toplevel-funcitons` for
+    executables. For GHC these correspond to the flags `-fprof-auto-exported`
+    and `-fprof-auto-top`. Prior to Cabal-1.24 the level defaulted to `none`.
+    These levels can be adjusted by the person building the package with the
+    `--profiling-detail` and `--library-profiling-detail` flags.
+
+    It is typically better for the person building the package to pick the
+    profiling detail level rather than for the package author. So unless you
+    have special needs it is probably better not to specify any of the GHC
+    `-fprof-auto*` flags here. However if you wish to override the profiling
+    detail level, you can do so using the `ghc-prof-options` field: use
+    `-fno-prof-auto` or one of the other `-fprof-auto*` flags.
+
+
 `ghc-shared-options:` _token list_
 :   Additional options for GHC when the package is built as shared library.
 

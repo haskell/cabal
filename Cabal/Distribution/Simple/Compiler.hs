@@ -53,13 +53,19 @@ module Distribution.Simple.Compiler (
         parmakeSupported,
         reexportedModulesSupported,
         renamingPackageFlagsSupported,
-        packageKeySupported
+        packageKeySupported,
+
+        -- * Support for profiling detail levels
+        ProfDetailLevel(..),
+        knownProfDetailLevels,
+        flagToProfDetailLevel,
   ) where
 
 import Distribution.Compiler
 import Distribution.Version (Version(..))
 import Distribution.Text (display)
 import Language.Haskell.Extension (Language(Haskell98), Extension)
+import Distribution.Simple.Utils (lowercase)
 
 import Control.Monad (liftM)
 import Distribution.Compat.Binary (Binary)
@@ -285,3 +291,44 @@ ghcSupported key comp =
           case M.lookup key (compilerProperties comp) of
             Just "YES" -> True
             _          -> False
+
+-- ------------------------------------------------------------
+-- * Profiling detail level
+-- ------------------------------------------------------------
+
+-- | Some compilers (notably GHC) support profiling and can instrument
+-- programs so the system can account costs to different functions. There are
+-- different levels of detail that can be used for this accounting.
+-- For compilers that do not support this notion or the particular detail
+-- levels, this is either ignored or just capped to some similar level
+-- they do support.
+--
+data ProfDetailLevel = ProfDetailNone
+                     | ProfDetailDefault
+                     | ProfDetailExportedFunctions
+                     | ProfDetailToplevelFunctions
+                     | ProfDetailAllFunctions
+                     | ProfDetailOther String
+    deriving (Eq, Generic, Read, Show)
+
+instance Binary ProfDetailLevel
+
+flagToProfDetailLevel :: String -> ProfDetailLevel
+flagToProfDetailLevel "" = ProfDetailDefault
+flagToProfDetailLevel s  =
+    case lookup (lowercase s)
+                [ (name, value)
+                | (primary, aliases, value) <- knownProfDetailLevels
+                , name <- primary : aliases ]
+      of Just value -> value
+         Nothing    -> ProfDetailOther s
+
+knownProfDetailLevels :: [(String, [String], ProfDetailLevel)]
+knownProfDetailLevels =
+  [ ("default",            [],                  ProfDetailDefault)
+  , ("none",               [],                  ProfDetailNone)
+  , ("exported-functions", ["exported"],        ProfDetailExportedFunctions)
+  , ("toplevel-functions", ["toplevel", "top"], ProfDetailToplevelFunctions)
+  , ("all-functions",      ["all"],             ProfDetailAllFunctions)
+  ]
+

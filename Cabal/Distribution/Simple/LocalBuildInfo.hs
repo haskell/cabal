@@ -74,7 +74,7 @@ import Distribution.Package
          , PackageName )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack, DebugInfoLevel
-         , OptimisationLevel )
+         , OptimisationLevel, ProfDetailLevel )
 import Distribution.Simple.PackageIndex
          ( InstalledPackageIndex, allPackages )
 import Distribution.ModuleName ( ModuleName )
@@ -139,6 +139,8 @@ data LocalBuildInfo = LocalBuildInfo {
         withSharedLib :: Bool,  -- ^Whether to build shared versions of libs.
         withDynExe    :: Bool,  -- ^Whether to link executables dynamically
         withProfExe   :: Bool,  -- ^Whether to build executables for profiling.
+        withProfLibDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
+        withProfExeDetail :: ProfDetailLevel, -- ^Level of automatic profile detail.
         withOptimization :: OptimisationLevel, -- ^Whether to build with optimization (if available).
         withDebugInfo :: DebugInfoLevel, -- ^Whether to emit debug info (if available).
         withGHCiLib   :: Bool,  -- ^Whether to build libs suitable for use with GHCi.
