@@ -1051,10 +1051,7 @@ performInstallations verbosity
           installUnpackedPackage verbosity buildLimit installLock numJobs libname
                                  (setupScriptOptions installedPkgIndex cacheLock rpkg)
                                  miscOptions configFlags' installFlags haddockFlags cinfo
-                                 platform pkg pkgoverride mpath useLogFile
-                                 (if (pkgSpecifierTarget pkgSpecifier == (packageName $ packageId pkg))
-                                     then configView configFlags
-                                     else Cabal.NoFlag)
+                                 platform pkg pkgoverride mpath useLogFile (view pkg)
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -1134,6 +1131,12 @@ performInstallations verbosity
                      else flagToMaybe (installRootCmd installFlags),
       libVersion = flagToMaybe (configCabalVersion configExFlags)
     }
+    view pkg = if (Register.multInstEnabled comp conf)
+                 then
+                   if pkgSpecifierTarget pkgSpecifier == (packageName $ packageId pkg)
+                     then configView configFlags
+                     else Cabal.NoFlag
+                 else Cabal.Flag "default"
 
 
 executeInstallPlan :: Verbosity
