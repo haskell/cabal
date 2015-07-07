@@ -16,6 +16,7 @@ module Distribution.Simple.Program.HcPkg (
     invoke,
     register,
     reregister,
+    preregister,
     unregister,
     expose,
     hide,
@@ -26,6 +27,7 @@ module Distribution.Simple.Program.HcPkg (
     initInvocation,
     registerInvocation,
     reregisterInvocation,
+    preregisterInvocation,
     unregisterInvocation,
     exposeInvocation,
     hideInvocation,
@@ -117,6 +119,20 @@ reregister :: HcPkgInfo -> Verbosity -> PackageDBStack
 reregister hpi verbosity packagedb pkgFile =
   runProgramInvocation verbosity
     (reregisterInvocation hpi verbosity packagedb pkgFile)
+
+
+-- | Call @hc-pkg@ to pre-register a package (e.g. don't assume
+-- files exist.)
+--
+-- > hc-pkg register --force {filename | -} [--user | --global | --package-db]
+--
+preregister :: HcPkgInfo -> Verbosity -> PackageDBStack
+           -> Either FilePath
+                     InstalledPackageInfo
+           -> IO ()
+preregister hpi verbosity packagedb pkgFile =
+  runProgramInvocation verbosity
+    (preregisterInvocation hpi verbosity packagedb pkgFile)
 
 
 -- | Call @hc-pkg@ to unregister a package
@@ -279,33 +295,36 @@ initInvocation hpi verbosity path =
     args = ["init", path]
         ++ verbosityOpts hpi verbosity
 
-registerInvocation, reregisterInvocation
+registerInvocation, reregisterInvocation, preregisterInvocation
   :: HcPkgInfo -> Verbosity -> PackageDBStack
   -> Either FilePath InstalledPackageInfo
   -> ProgramInvocation
-registerInvocation   = registerInvocation' "register"
-reregisterInvocation = registerInvocation' "update"
+registerInvocation   = registerInvocation' False "register"
+reregisterInvocation = registerInvocation' False "update"
+preregisterInvocation = registerInvocation' True "update"
 
-
-registerInvocation' :: String -> HcPkgInfo -> Verbosity -> PackageDBStack
+registerInvocation' :: Bool
+                    -> String -> HcPkgInfo -> Verbosity -> PackageDBStack
                     -> Either FilePath InstalledPackageInfo
                     -> ProgramInvocation
-registerInvocation' cmdname hpi verbosity packagedbs (Left pkgFile) =
+registerInvocation' force cmdname hpi verbosity packagedbs (Left pkgFile) =
     programInvocation (hcPkgProgram hpi) args
   where
     args = [cmdname, pkgFile]
+        ++ (if force then ["--force"] else [])
         ++ (if noPkgDbStack hpi
               then [packageDbOpts hpi (last packagedbs)]
               else packageDbStackOpts hpi packagedbs)
         ++ verbosityOpts hpi verbosity
 
-registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
+registerInvocation' force cmdname hpi verbosity packagedbs (Right pkgInfo) =
     (programInvocation (hcPkgProgram hpi) args) {
       progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
       progInvokeInputEncoding = IOEncodingUTF8
     }
   where
     args = [cmdname, "-"]
+        ++ (if force then ["--force"] else [])
         ++ (if noPkgDbStack hpi
               then [packageDbOpts hpi (last packagedbs)]
               else packageDbStackOpts hpi packagedbs)

@@ -21,6 +21,7 @@ module Distribution.Simple.Build (
 
     initialBuildSteps,
     writeAutogenFiles,
+    testSuiteLibV09AsLibAndExe,
   ) where
 
 import qualified Distribution.Simple.GHC   as GHC
