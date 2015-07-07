@@ -626,24 +626,80 @@ be controlled with the following command line options.
 :   Build without optimization. This is suited for development: building
     will be quicker, but the resulting library or programs will be slower.
 
+`--enable-profiling`
+:   Build libraries and executables with profiling enabled (for compilers
+    that support profiling as a separate mode). For this to work, all
+    libraries used by this package must also have been built with profiling
+    support. For libraries this involves building an additional instance of
+    the library in addition to the normal non-profiling instance. For
+    executables it changes the single executable to be built in profiling mode.
+
+    This flag covers both libraries and executables, but can be overridden
+    by the `--enable-library-profiling` flag.
+
+    See also the `--profiling-detail` flag below.
+
+`--disable-profiling`
+:   (default) Do not enable profiling in generated libraries and executables.
+
 `--enable-library-profiling` or `-p`
-:   Request that an additional version of the library with profiling
-    features enabled be built and installed (only for implementations
-    that support profiling).
+:   As with `--enable-profiling` above, but it applies only for libraries. So
+    this generates an additional profiling instance of the library in addition
+    to the normal non-profiling instance.
+
+    The `--enable-profiling` flag controls the profiling mode for both
+    libraries and executables, but if different modes are desired for
+    libraries versus executables then use `--enable-library-profiling` as well.
 
 `--disable-library-profiling`
 :   (default) Do not generate an additional profiling version of the
     library.
 
-`--enable-profiling`
-:   Any executables generated should have profiling enabled (only for
-    implementations that support profiling). For this to work, all
-    libraries used by these executables must also have been built with
-    profiling support. The library will be built with profiling enabled (if
-    supported) unless `--disable-library-profiling` is specified.
+`--profiling-detail`[=_level_]
+:   Some compilers that support profiling, notably GHC, can allocate costs to
+    different parts of the program and there are different levels of
+    granularity or detail with which this can be done. In particular for GHC
+    this concept is called "cost centers", and GHC can automatically add cost
+    centers, and can do so in different ways.
 
-`--disable-profiling`
-:   (default) Do not enable profiling in generated executables.
+    This flag covers both libraries and executables, but can be overridden
+    by the `--library-profiling-detail` flag.
+
+    Currently this setting is ignored for compilers other than GHC. The levels
+    that cabal currently supports are:
+
+    `default`
+    :    For GHC this uses `exported-functions` for libraries and
+         `toplevel-functions` for executables.
+
+    `none`
+    :    No costs will be assigned to any code within this component.
+
+    `exported-functions`
+    :    Costs will be assigned at the granularity of all top level functions
+         exported from each module. In GHC specifically, this is for non-inline
+         functions.
+
+    `toplevel-functions`
+    :    Costs will be assigned at the granularity of all top level functions
+         in each module, whether they are exported from the module or not.
+         In GHC specifically, this is for non-inline functions.
+
+    `all-functions`
+    :    Costs will be assigned at the granularity of all functions in each
+         module, whether top level or local. In GHC specifically, this is for
+         non-inline toplevel or where-bound functions or values.
+
+    This flag is new in Cabal-1.24. Prior versions used the equivalent of
+    `none` above.
+
+`--library-profiling-detail`[=_level_]
+:   As with `--profiling-detail` above, but it applies only for libraries.
+
+    The level for both libraries and executables is set by the
+    `--profiling-detail` flag, but if different levels are desired for
+    libraries versus executables then use `--library-profiling-detail` as well.
+
 
 `--enable-library-vanilla`
 :   (default) Build ordinary libraries (as opposed to profiling

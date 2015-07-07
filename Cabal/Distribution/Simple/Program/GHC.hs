@@ -4,6 +4,7 @@ module Distribution.Simple.Program.GHC (
     GhcMode(..),
     GhcOptimisation(..),
     GhcDynLinkMode(..),
+    GhcProfAuto(..),
 
     ghcInvocation,
     renderGhcOptions,
@@ -161,6 +162,9 @@ data GhcOptions = GhcOptions {
   -- | Compile in profiling mode; the @ghc -prof@ flag.
   ghcOptProfilingMode :: Flag Bool,
 
+  -- | Automatically add profiling cost centers; the @ghc -fprof-auto*@ flags.
+  ghcOptProfilingAuto :: Flag GhcProfAuto,
+
   -- | Use the \"split object files\" feature; the @ghc -split-objs@ flag.
   ghcOptSplitObjs     :: Flag Bool,
 
@@ -230,6 +234,10 @@ data GhcDynLinkMode = GhcStaticOnly       -- ^ @-static@
                     | GhcStaticAndDynamic -- ^ @-static -dynamic-too@
  deriving (Show, Eq)
 
+data GhcProfAuto = GhcProfAutoAll       -- ^ @-fprof-auto@
+                 | GhcProfAutoToplevel  -- ^ @-fprof-auto-top@
+                 | GhcProfAutoExported  -- ^ @-fprof-auto-exported@
+ deriving (Show, Eq)
 
 runGHC :: Verbosity -> ConfiguredProgram -> Compiler -> GhcOptions -> IO ()
 runGHC verbosity ghcProg comp opts = do
@@ -282,6 +290,20 @@ renderGhcOptions comp opts
   , [ "-g" | flagDebugInfo implInfo && flagBool ghcOptDebugInfo ]
 
   , [ "-prof" | flagBool ghcOptProfilingMode ]
+
+  , case flagToMaybe (ghcOptProfilingAuto opts) of
+      _ | not (flagBool ghcOptProfilingMode)
+                                -> []
+      Nothing                   -> []
+      Just GhcProfAutoAll
+        | flagProfAuto implInfo -> ["-fprof-auto"]
+        | otherwise             -> ["-auto-all"] -- not the same, but close
+      Just GhcProfAutoToplevel
+        | flagProfAuto implInfo -> ["-fprof-auto-top"]
+        | otherwise             -> ["-auto-all"]
+      Just GhcProfAutoExported
+        | flagProfAuto implInfo -> ["-fprof-auto-exported"]
+        | otherwise             -> ["-auto"]
 
   , [ "-split-objs" | flagBool ghcOptSplitObjs ]
 
@@ -485,6 +507,7 @@ instance Monoid GhcOptions where
     ghcOptOptimisation       = mempty,
     ghcOptDebugInfo          = mempty,
     ghcOptProfilingMode      = mempty,
+    ghcOptProfilingAuto      = mempty,
     ghcOptSplitObjs          = mempty,
     ghcOptNumJobs            = mempty,
     ghcOptHPCDir             = mempty,
@@ -538,6 +561,7 @@ instance Monoid GhcOptions where
     ghcOptOptimisation       = combine ghcOptOptimisation,
     ghcOptDebugInfo          = combine ghcOptDebugInfo,
     ghcOptProfilingMode      = combine ghcOptProfilingMode,
+    ghcOptProfilingAuto      = combine ghcOptProfilingAuto,
     ghcOptSplitObjs          = combine ghcOptSplitObjs,
     ghcOptNumJobs            = combine ghcOptNumJobs,
     ghcOptHPCDir             = combine ghcOptHPCDir,
