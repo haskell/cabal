@@ -431,7 +431,8 @@ initialSavedConfig = do
       globalWorldFile    = toFlag worldFile
     },
     savedConfigureFlags  = mempty {
-      configProgramPathExtra = toNubList extraPath
+      configProgramPathExtra = toNubList extraPath,
+      configView             = toFlag "default"
     },
     savedInstallFlags    = mempty {
       installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],

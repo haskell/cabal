@@ -484,6 +484,12 @@ checkPrintPlan verbosity comp conf installed installPlan sourcePkgDb
          "All the requested packages are already installed:"
        : map (display . packageId) preExistingTargets
       ++ ["Use --reinstall if you want to reinstall anyway."]
+    --setup Cabal.registerCommand (Cabal.emptyRegisterFlags {
+    --  Cabal.regDistPref   = configDistPref configFlags,
+    --  Cabal.regVerbosity  = toFlag verbosity',
+    --  Cabal.regView       = view,
+    --  Cabal.regHidden     = Cabal.Flag $ view /= Cabal.Flag "default"
+    --}) mLogPath
 
   let lPlan = linearizeInstallPlan comp installed installPlan
   -- Are any packages classified as reinstalls?
