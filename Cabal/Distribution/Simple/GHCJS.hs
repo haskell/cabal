@@ -8,6 +8,7 @@ module Distribution.Simple.GHCJS (
         libAbiHash,
         hcPkgInfo,
         registerPackage,
+        preregisterPackage,
         componentGhcOptions,
         getLibDir,
         isDynamic,
@@ -840,6 +841,17 @@ registerPackage :: Verbosity
                 -> IO ()
 registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
   HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity packageDbs
+    (Right installedPkgInfo)
+
+preregisterPackage :: Verbosity
+                -> InstalledPackageInfo
+                -> PackageDescription
+                -> LocalBuildInfo
+                -> Bool
+                -> PackageDBStack
+                -> IO ()
+preregisterPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
+  HcPkg.preregister (hcPkgInfo $ withPrograms lbi) verbosity packageDbs
     (Right installedPkgInfo)
 
 componentGhcOptions :: Verbosity -> LocalBuildInfo

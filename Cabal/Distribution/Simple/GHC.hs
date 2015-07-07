@@ -41,6 +41,7 @@ module Distribution.Simple.GHC (
         libAbiHash,
         hcPkgInfo,
         registerPackage,
+        preregisterPackage,
         componentGhcOptions,
         componentCcGhcOptions,
         getLibDir,
@@ -1118,6 +1119,18 @@ registerPackage
   -> IO ()
 registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
   HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity
+    packageDbs (Right installedPkgInfo)
+
+preregisterPackage
+  :: Verbosity
+  -> InstalledPackageInfo
+  -> PackageDescription
+  -> LocalBuildInfo
+  -> Bool
+  -> PackageDBStack
+  -> IO ()
+preregisterPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
+  HcPkg.preregister (hcPkgInfo $ withPrograms lbi) verbosity
     packageDbs (Right installedPkgInfo)
 
 pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath

@@ -72,7 +72,7 @@ import Distribution.PackageDescription as PD
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..)
-    , ModuleReexport(..) , defaultRenaming )
+    , ModuleReexport(..) , defaultRenaming, TestSuiteInterface(..) )
 import Distribution.ModuleName
     ( ModuleName )
 import Distribution.PackageDescription.Configuration
@@ -97,9 +97,14 @@ import Distribution.Simple.LocalBuildInfo
     , LibraryName(..)
     , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
     , ComponentName(..), showComponentName, pkgEnabledComponents
-    , componentBuildInfo, componentName, checkComponentsCyclic )
+    , componentBuildInfo, componentName, checkComponentsCyclic
+    , getComponent )
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
+import Distribution.Simple.Register
+    ( preregisterPackage, inplaceInstalledPackageInfo )
+import Distribution.Simple.Build
+    ( testSuiteLibV09AsLibAndExe )
 import Distribution.Simple.Utils
     ( die, warn, info, setupMessage
     , createDirectoryIfMissingVerbose, moreRecentFile
@@ -147,7 +152,8 @@ import Data.Traversable
     ( mapM )
 import Data.Typeable
 import System.Directory
-    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
+    ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory
+    , getCurrentDirectory )
 import System.FilePath
     ( (</>), isAbsolute )
 import qualified System.Info
@@ -762,6 +768,11 @@ configure (pkg_descr0, pbi) cfg
         info verbosity $ "Using compiler: " ++ showCompilerId comp
         info verbosity $ "Using install prefix: " ++ prefix dirs
 
+        sequence_
+          [ let c = getComponent pkg_descr cname
+             in preregisterComponent verbosity pkg_descr lbi c clbi distPref
+          | (cname, clbi, _) <- componentsConfigs lbi ]
+
         let dirinfo name dir isPrefixRelative =
               info verbosity $ name ++ " installed in: " ++ dir ++ relNote
               where relNote = case buildOS of
@@ -814,6 +825,34 @@ mkProgramsConfig cfg initialProgramsConfig = programsConfig
                    $ initialProgramsConfig
     searchpath     = getProgramSearchPath (initialProgramsConfig)
                   ++ map ProgramSearchPathDir (fromNubList $ configProgramPathExtra cfg)
+
+preregisterComponent :: Verbosity
+                      -> PackageDescription
+                      -> LocalBuildInfo
+                      -> Component
+                      -> ComponentLocalBuildInfo
+                      -> FilePath
+                      -> IO ()
+preregisterComponent verbosity pkg_descr lbi (CLib lib) clbi distPref = do
+    -- Pre-register the library in-place, so exes can depend
+    -- on internally defined libraries and GHC can use the
+    -- database to find information about the package it is compiling.
+    pwd <- getCurrentDirectory
+    let -- The in place registration uses the "-inplace" suffix, not an ABI hash
+        ipkgid           = inplacePackageId (packageId installedPkgInfo)
+        installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
+                                                       ipkgid lib lbi clbi
+
+    preregisterPackage verbosity
+      installedPkgInfo pkg_descr lbi True -- True meaning in place
+      (withPackageDB lbi)
+preregisterComponent verbosity pkg_descr lbi0
+        (CTest test@TestSuite { testInterface = PD.TestSuiteLibV09{} }) clbi distPref = do
+    pwd <- getCurrentDirectory
+    let (pkg, _, _, lbi, ipi, _, _) =
+          testSuiteLibV09AsLibAndExe pkg_descr test clbi lbi0 distPref pwd
+    preregisterPackage verbosity ipi pkg lbi True $ withPackageDB lbi
+preregisterComponent _ _ _ _ _ _ = return ()
 
 -- -----------------------------------------------------------------------------
 -- Configuring package dependencies

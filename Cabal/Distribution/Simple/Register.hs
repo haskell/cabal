@@ -30,6 +30,7 @@ module Distribution.Simple.Register (
     initPackageDB,
     invokeHcPkg,
     registerPackage,
+    preregisterPackage,
     generateRegistrationInfo,
     inplaceInstalledPackageInfo,
     absoluteInstalledPackageInfo,
@@ -258,6 +259,23 @@ registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
     HaskellSuite {} ->
       HaskellSuite.registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
     _    -> die "Registering is not implemented for this compiler"
+
+preregisterPackage :: Verbosity
+                -> InstalledPackageInfo
+                -> PackageDescription
+                -> LocalBuildInfo
+                -> Bool
+                -> PackageDBStack
+                -> IO ()
+preregisterPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
+  let msg = if inplace
+            then "In-place preregistering"
+            else "preregistering"
+  setupMessage verbosity msg (packageId pkg)
+  case compilerFlavor (compiler lbi) of
+    GHC   -> GHC.preregisterPackage   verbosity installedPkgInfo pkg lbi inplace packageDbs
+    GHCJS -> GHCJS.preregisterPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
+    _    -> return ()
 
 writeHcPkgRegisterScript :: Verbosity
                          -> InstalledPackageInfo
