@@ -55,6 +55,8 @@ import Distribution.Simple.Program.Types
          ( Program(..), ConfiguredProgram(..), simpleProgram )
 import Distribution.Simple.Utils
          ( findProgramVersion )
+import Distribution.Compat.Environment
+         ( lookupEnv )
 import Distribution.Compat.Exception
          ( catchIO )
 import Distribution.Verbosity
@@ -67,6 +69,8 @@ import Data.Char
 
 import Data.List
          ( isInfixOf )
+import Data.Maybe
+         ( isJust )
 import qualified Data.Map as Map
 
 -- ------------------------------------------------------------
@@ -344,5 +348,12 @@ cppProgram = simpleProgram "cpp"
 
 pkgConfigProgram :: Program
 pkgConfigProgram = (simpleProgram "pkg-config") {
-    programFindVersion = findProgramVersion "--version" id
+    programFindVersion = findProgramVersion "--version" id,
+    programPostConf = \_ pkgProg -> do
+        pkgConfigPath <- lookupEnv "PKG_CONFIG_PATH"
+        let pkgProg' = pkgProg {
+            programOverrideEnv = ("PKG_CONFIG_PATH", pkgConfigPath)
+                                : programOverrideEnv pkgProg
+            }
+        return (if isJust pkgConfigPath then pkgProg' else pkgProg)
   }
