@@ -55,6 +55,8 @@ import Distribution.Simple.Program.Types
          ( Program(..), ConfiguredProgram(..), simpleProgram )
 import Distribution.Simple.Utils
          ( findProgramVersion )
+import Distribution.Compat.Environment
+         ( lookupEnv )
 import Distribution.Compat.Exception
          ( catchIO )
 import Distribution.Verbosity
@@ -69,8 +71,6 @@ import Data.List
          ( isInfixOf )
 import Data.Maybe
          ( isJust )
-import System.Environment
-         ( lookupEnv )
 import qualified Data.Map as Map
 
 -- ------------------------------------------------------------
