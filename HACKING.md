@@ -115,7 +115,7 @@ identical; only the first two steps are different:
     ~~~~
     cabal sandbox init
     cabal sandbox add-source ../Cabal/
-    cabal install --only-dependencies
+    cabal install --only-dependencies --enable-tests
     ~~~~
 
 (In addition, the absolute sandbox path will be slightly different
