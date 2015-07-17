@@ -27,6 +27,11 @@ module Distribution.Client.Dependency.Types (
 
     Progress(..),
     foldProgress,
+
+    LabeledPackageConstraint(..),
+    ConstraintSource(..),
+    unlabelPackageConstraint,
+    debugConstraintSource
   ) where
 
 #if !MIN_VERSION_base(4,8,0)
@@ -105,7 +110,7 @@ type DependencyResolver = Platform
                        -> InstalledPackageIndex
                        ->          PackageIndex.PackageIndex SourcePackage
                        -> (PackageName -> PackagePreferences)
-                       -> [PackageConstraint]
+                       -> [LabeledPackageConstraint]
                        -> [PackageName]
                        -> Progress String String [ResolverPackage]
 
@@ -250,3 +255,34 @@ instance Applicative (Progress step fail) where
 instance Monoid fail => Alternative (Progress step fail) where
   empty   = Fail mempty
   p <|> q = foldProgress Step (const q) Done p
+
+-- | 'PackageConstraint' labeled with its source. The source is optional
+-- because not all constraints are tracked currently.
+data LabeledPackageConstraint
+   = LabeledPackageConstraint PackageConstraint (Maybe ConstraintSource)
+
+unlabelPackageConstraint :: LabeledPackageConstraint -> PackageConstraint
+unlabelPackageConstraint (LabeledPackageConstraint pc _) = pc
+
+-- | Source of a 'PackageConstraint'.
+data ConstraintSource
+   = ConstraintSourceMainConfig
+   | ConstraintSourceSandboxConfig
+   | ConstraintSourceUserConfig
+   | ConstraintSourceCommandlineFlag
+   | ConstraintSourceUserTarget
+   | ConstraintSourceNonUpgradeablePackage
+   | ConstraintSourceModifiedAddSourceDep
+  deriving (Eq, Show)
+
+-- | Description of a 'ConstraintSource'.
+debugConstraintSource :: ConstraintSource -> String
+debugConstraintSource ConstraintSourceMainConfig = "main config file"
+debugConstraintSource ConstraintSourceSandboxConfig = "sandbox config file"
+debugConstraintSource ConstraintSourceUserConfig = "cabal.config"
+debugConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
+debugConstraintSource ConstraintSourceUserTarget = "user target"
+debugConstraintSource ConstraintSourceNonUpgradeablePackage =
+    "non-upgradeable package"
+debugConstraintSource ConstraintSourceModifiedAddSourceDep =
+    "modified add-source dependency"

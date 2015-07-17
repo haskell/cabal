@@ -52,7 +52,7 @@ import Distribution.Client.Types
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
 import Distribution.Client.Dependency.Types
-         ( AllowNewer(..), PreSolver(..) )
+         ( AllowNewer(..), PreSolver(..), ConstraintSource(..) )
 import qualified Distribution.Client.Init.Types as IT
          ( InitFlags(..), PackageType(..) )
 import Distribution.Client.Targets
@@ -453,7 +453,7 @@ filterConfigureFlags flags cabalLibVersion
 --
 data ConfigExFlags = ConfigExFlags {
     configCabalVersion :: Flag Version,
-    configExConstraints:: [UserConstraint],
+    configExConstraints:: [(UserConstraint, ConstraintSource)],
     configPreferences  :: [Dependency],
     configSolver       :: Flag PreSolver,
     configAllowNewer   :: Flag AllowNewer
@@ -470,14 +470,17 @@ configureExCommand = configureCommand {
          liftOptions fst setFst
          (filter ((`notElem` ["constraint", "dependency", "exact-configuration"])
                   . optionName) $ configureOptions  showOrParseArgs)
-      ++ liftOptions snd setSnd (configureExOptions showOrParseArgs)
+      ++ liftOptions snd setSnd
+         (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
   }
   where
     setFst a (_,b) = (a,b)
     setSnd b (a,_) = (a,b)
 
-configureExOptions ::  ShowOrParseArgs -> [OptionField ConfigExFlags]
-configureExOptions _showOrParseArgs =
+configureExOptions :: ShowOrParseArgs
+                   -> ConstraintSource
+                   -> [OptionField ConfigExFlags]
+configureExOptions _showOrParseArgs src =
   [ option [] ["cabal-lib-version"]
       ("Select which version of the Cabal lib to use to build packages "
       ++ "(useful for testing).")
@@ -489,8 +492,8 @@ configureExOptions _showOrParseArgs =
       "Specify constraints on a package (version, installed/source, flags)"
       configExConstraints (\v flags -> flags { configExConstraints = v })
       (reqArg "CONSTRAINT"
-              (fmap (\x -> [x]) (ReadE readUserConstraint))
-              (map display))
+              ((\x -> [(x, src)]) `fmap` ReadE readUserConstraint)
+              (map $ display . fst))
 
   , option [] ["preference"]
       "Specify preferences (soft constraints) on the version of a package"
@@ -1332,7 +1335,7 @@ installCommand = CommandUI {
                            , "exact-configuration"])
                 . optionName) $
                               configureOptions   showOrParseArgs)
-    ++ liftOptions get2 set2 (configureExOptions showOrParseArgs)
+    ++ liftOptions get2 set2 (configureExOptions showOrParseArgs ConstraintSourceCommandlineFlag)
     ++ liftOptions get3 set3 (installOptions     showOrParseArgs)
     ++ liftOptions get4 set4 (haddockOptions     showOrParseArgs)
   }

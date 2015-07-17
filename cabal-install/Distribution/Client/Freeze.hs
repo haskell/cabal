@@ -20,6 +20,8 @@ import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Types
+         ( ConstraintSource(..), LabeledPackageConstraint(..) )
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
@@ -162,7 +164,9 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
       . setStrongFlags strongFlags
 
       . addConstraints
-          [ PackageConstraintStanzas (pkgSpecifierTarget pkgSpecifier) stanzas
+          [ let pkg = pkgSpecifierTarget pkgSpecifier
+                pc = PackageConstraintStanzas pkg stanzas
+            in LabeledPackageConstraint pc Nothing
           | pkgSpecifier <- pkgSpecifiers ]
 
       . maybe id applySandboxInstallPolicy mSandboxPkgInfo
@@ -218,14 +222,15 @@ freezePackages verbosity pkgs = do
     addFrozenConstraints config =
         config {
             savedConfigureExFlags = (savedConfigureExFlags config) {
-                configExConstraints = constraints pkgs
+                configExConstraints = map constraint pkgs
             }
         }
-    constraints = map $ pkgIdToConstraint . packageId
+    constraint pkg =
+        (pkgIdToConstraint $ packageId pkg, ConstraintSourceUserConfig)
       where
-        pkgIdToConstraint pkg =
-            UserConstraintVersion (packageName pkg)
-                                  (thisVersion $ packageVersion pkg)
+        pkgIdToConstraint pkgId =
+            UserConstraintVersion (packageName pkgId)
+                                  (thisVersion $ packageVersion pkgId)
     createPkgEnv config = mempty { pkgEnvSavedConfig = config }
     showPkgEnv = BS.Char8.pack . showPackageEnvironment
 

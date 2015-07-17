@@ -26,7 +26,8 @@ import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Solver
          ( SolverConfig(..), solve )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, ResolverPackage, PackageConstraint(..) )
+         ( DependencyResolver, ResolverPackage
+         , PackageConstraint(..), unlabelPackageConstraint )
 import Distribution.System
          ( Platform(..) )
 
@@ -41,7 +42,9 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pprefs pcs pns =
       -- Indices have to be converted into solver-specific uniform index.
       idx    = convPIs os arch cinfo (shadowPkgs sc) (strongFlags sc) iidx sidx
       -- Constraints have to be converted into a finite map indexed by PN.
-      gcs    = M.fromListWith (++) (map (\ pc -> (pcName pc, [pc])) pcs)
+      gcs    = M.fromListWith (++) (map pair pcs)
+        where
+          pair lpc = (pcName $ unlabelPackageConstraint lpc, [lpc])
 
       -- Results have to be converted into an install plan.
       postprocess :: Assignment -> RevDepMap -> [ResolverPackage]

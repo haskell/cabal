@@ -44,6 +44,8 @@ import Distribution.Client.Types
          ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
+import Distribution.Client.Dependency.Types
+         ( ConstraintSource(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, defaultGlobalFlags
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
@@ -676,7 +678,7 @@ configFieldDescriptions =
        ]
 
   ++ toSavedConfig liftConfigExFlag
-       (configureExOptions ParseArgs)
+       (configureExOptions ParseArgs ConstraintSourceMainConfig)
        [] []
 
   ++ toSavedConfig liftInstallFlag

@@ -52,7 +52,8 @@ import Distribution.Package
 import Distribution.Client.Types
          ( SourcePackage(..), PackageLocation(..), OptionalStanza(..) )
 import Distribution.Client.Dependency.Types
-         ( PackageConstraint(..) )
+         ( PackageConstraint(..), ConstraintSource(..)
+         , LabeledPackageConstraint(..) )
 
 import qualified Distribution.Client.World as World
 import Distribution.Client.PackageIndex (PackageIndex)
@@ -187,12 +188,15 @@ pkgSpecifierTarget (NamedPackage name _)       = name
 pkgSpecifierTarget (SpecificSourcePackage pkg) = packageName pkg
 
 pkgSpecifierConstraints :: Package pkg
-                        => PackageSpecifier pkg -> [PackageConstraint]
-pkgSpecifierConstraints (NamedPackage _ constraints) = constraints
+                        => PackageSpecifier pkg -> [LabeledPackageConstraint]
+pkgSpecifierConstraints (NamedPackage _ constraints) = map toLpc constraints
+  where
+    toLpc pc = LabeledPackageConstraint pc (Just ConstraintSourceUserTarget)
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
-  [PackageConstraintVersion (packageName pkg)
-                            (thisVersion (packageVersion pkg))]
-
+    [LabeledPackageConstraint pc (Just ConstraintSourceUserTarget)]
+  where
+    pc = PackageConstraintVersion (packageName pkg)
+         (thisVersion (packageVersion pkg))
 
 -- ------------------------------------------------------------
 -- * Parsing and checking user targets

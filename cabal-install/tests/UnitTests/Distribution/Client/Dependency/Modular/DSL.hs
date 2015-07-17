@@ -287,7 +287,8 @@ exResolve db targets indepGoals = runProgress $
                               (C.PackageName p) [TestStanzas])
                        (exDbPkgs db)
     targets'     = map (\p -> NamedPackage (C.PackageName p) []) targets
-    params       = addConstraints enableTests
+    params       = addConstraints
+                   (map (\pc -> LabeledPackageConstraint pc Nothing) enableTests)
                  $ (standardInstallPolicy instIdx avaiIdx targets') {
                        depResolverIndependentGoals = indepGoals
                      }
