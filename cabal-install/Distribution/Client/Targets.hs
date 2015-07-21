@@ -351,13 +351,13 @@ reportUserTargetProblems problems = do
 -- or they can be named packages (with or without version info).
 --
 resolveUserTargets :: Package pkg
-                   => HttpTransport
-                   -> Verbosity
+                   => Verbosity
+                   -> HttpTransport
                    -> FilePath
                    -> PackageIndex pkg
                    -> [UserTarget]
                    -> IO [PackageSpecifier SourcePackage]
-resolveUserTargets transport verbosity worldFile available userTargets = do
+resolveUserTargets verbosity transport worldFile available userTargets = do
 
     -- given the user targets, get a list of fully or partially resolved
     -- package references

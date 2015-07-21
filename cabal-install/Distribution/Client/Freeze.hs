@@ -91,7 +91,7 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
 
     transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
 
-    pkgSpecifiers <- resolveUserTargets transport verbosity
+    pkgSpecifiers <- resolveUserTargets verbosity transport
                        (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        [UserTargetLocalDir "."]
