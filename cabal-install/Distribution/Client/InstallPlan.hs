@@ -672,10 +672,11 @@ configuredPackageProblems platform cinfo
 
 -- | Compute the dependency closure of a _source_ package in a install plan
 --
--- See `Distribution.Simple.dependencyClosure`
+-- See `Distribution.Client.PlanIndex.dependencyClosure`
 dependencyClosure :: InstallPlan
                   -> [PackageIdentifier]
-                  -> Either (PackageIndex PlanPackage) [(PlanPackage, [InstalledPackageId])]
+                  -> Either [(PlanPackage, [InstalledPackageId])]
+                            (PackageIndex PlanPackage)
 dependencyClosure installPlan pids =
     PlanIndex.dependencyClosure
       (planFakeMap installPlan)
