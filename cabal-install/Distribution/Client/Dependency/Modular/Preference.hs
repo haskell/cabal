@@ -101,18 +101,18 @@ processPackageConstraintP :: ConflictSet QPN
                           -> LabeledPackageConstraint
                           -> Tree a
                           -> Tree a
-processPackageConstraintP c i (LabeledPackageConstraint pc src) r =
-    case (i, pc) of
-      (I v _, PackageConstraintVersion _ vr)
-          | checkVR vr v  -> r
-          | otherwise     -> Fail c (GlobalConstraintVersion vr src)
-      (_,     PackageConstraintInstalled _)
-          | instI i       -> r
-          | otherwise     -> Fail c (GlobalConstraintInstalled src)
-      (_,     PackageConstraintSource    _)
-          | not (instI i) -> r
-          | otherwise     -> Fail c (GlobalConstraintSource src)
-      (_,     _) -> r
+processPackageConstraintP c i (LabeledPackageConstraint pc src) r = go i pc
+  where
+    go (I v _) (PackageConstraintVersion _ vr)
+        | checkVR vr v  = r
+        | otherwise     = Fail c (GlobalConstraintVersion vr src)
+    go _       (PackageConstraintInstalled _)
+        | instI i       = r
+        | otherwise     = Fail c (GlobalConstraintInstalled src)
+    go _       (PackageConstraintSource    _)
+        | not (instI i) = r
+        | otherwise     = Fail c (GlobalConstraintSource src)
+    go _       _ = r
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
@@ -124,14 +124,14 @@ processPackageConstraintF :: Flag
                           -> LabeledPackageConstraint
                           -> Tree a
                           -> Tree a
-processPackageConstraintF f c b' (LabeledPackageConstraint pc src) r =
-    case pc of
-      PackageConstraintFlags _ fa ->
-          case L.lookup f fa of
-            Nothing            -> r
-            Just b | b == b'   -> r
-                   | otherwise -> Fail c (GlobalConstraintFlag src)
-      _                           -> r
+processPackageConstraintF f c b' (LabeledPackageConstraint pc src) r = go pc
+  where
+    go (PackageConstraintFlags _ fa) =
+        case L.lookup f fa of
+          Nothing            -> r
+          Just b | b == b'   -> r
+                 | otherwise -> Fail c (GlobalConstraintFlag src)
+    go _                             = r
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
@@ -143,12 +143,12 @@ processPackageConstraintS :: OptionalStanza
                           -> LabeledPackageConstraint
                           -> Tree a
                           -> Tree a
-processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r =
-    case pc of
-      PackageConstraintStanzas _ ss ->
-          if not b' && s `elem` ss then Fail c (GlobalConstraintFlag src)
-                                   else r
-      _                             -> r
+processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r = go pc
+  where
+    go (PackageConstraintStanzas _ ss) =
+        if not b' && s `elem` ss then Fail c (GlobalConstraintFlag src)
+                                 else r
+    go _                               = r
 
 -- | Traversal that tries to establish various kinds of user constraints. Works
 -- by selectively disabling choices that have been ruled out by global user

@@ -329,7 +329,7 @@ tryLoadSandboxPackageEnvironmentFile :: Verbosity -> FilePath -> (Flag FilePath)
 tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   let pkgEnvDir = takeDirectory pkgEnvFile
   minp   <- readPackageEnvironmentFile
-            ConstraintSourceSandboxConfig mempty pkgEnvFile
+            (ConstraintSourceSandboxConfig pkgEnvFile) mempty pkgEnvFile
   pkgEnv <- handleParseResult verbosity pkgEnvFile minp
 
   -- Get the saved sandbox directory.
@@ -429,7 +429,7 @@ pkgEnvFieldDescrs src = [
     configFieldDescriptions' :: [FieldDescr SavedConfig]
     configFieldDescriptions' = filter
       (\(FieldDescr name _ _) -> name /= "preference" && name /= "constraint")
-      configFieldDescriptions
+      (configFieldDescriptions src)
 
     toPkgEnv :: FieldDescr SavedConfig -> FieldDescr PackageEnvironment
     toPkgEnv fieldDescr =
@@ -566,7 +566,7 @@ showPackageEnvironmentWithComments :: (Maybe PackageEnvironment)
                                       -> PackageEnvironment
                                       -> String
 showPackageEnvironmentWithComments mdefPkgEnv pkgEnv = Disp.render $
-      ppFields (pkgEnvFieldDescrs ConstraintSourceSandboxConfig)
+      ppFields (pkgEnvFieldDescrs ConstraintSourceUnknown)
                mdefPkgEnv pkgEnv
   $+$ Disp.text ""
   $+$ ppSection "install-dirs" "" installDirsFields

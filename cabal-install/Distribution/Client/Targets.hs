@@ -191,9 +191,9 @@ pkgSpecifierConstraints :: Package pkg
                         => PackageSpecifier pkg -> [LabeledPackageConstraint]
 pkgSpecifierConstraints (NamedPackage _ constraints) = map toLpc constraints
   where
-    toLpc pc = LabeledPackageConstraint pc (Just ConstraintSourceUserTarget)
+    toLpc pc = LabeledPackageConstraint pc ConstraintSourceUserTarget
 pkgSpecifierConstraints (SpecificSourcePackage pkg)  =
-    [LabeledPackageConstraint pc (Just ConstraintSourceUserTarget)]
+    [LabeledPackageConstraint pc ConstraintSourceUserTarget]
   where
     pc = PackageConstraintVersion (packageName pkg)
          (thisVersion (packageVersion pkg))

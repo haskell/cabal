@@ -166,7 +166,7 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
       . addConstraints
           [ let pkg = pkgSpecifierTarget pkgSpecifier
                 pc = PackageConstraintStanzas pkg stanzas
-            in LabeledPackageConstraint pc Nothing
+            in LabeledPackageConstraint pc ConstraintSourceFreeze
           | pkgSpecifier <- pkgSpecifiers ]
 
       . maybe id applySandboxInstallPolicy mSandboxPkgInfo
