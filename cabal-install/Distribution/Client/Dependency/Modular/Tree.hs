@@ -56,10 +56,10 @@ data FailReason = InconsistentInitialConstraints
                 | CannotReinstall
                 | Shadowed
                 | Broken
-                | GlobalConstraintVersion VR (Maybe ConstraintSource)
-                | GlobalConstraintInstalled (Maybe ConstraintSource)
-                | GlobalConstraintSource (Maybe ConstraintSource)
-                | GlobalConstraintFlag (Maybe ConstraintSource)
+                | GlobalConstraintVersion VR ConstraintSource
+                | GlobalConstraintInstalled ConstraintSource
+                | GlobalConstraintSource ConstraintSource
+                | GlobalConstraintFlag ConstraintSource
                 | ManualFlag
                 | BuildFailureNotInIndex PN
                 | MalformedFlagChoice QFN

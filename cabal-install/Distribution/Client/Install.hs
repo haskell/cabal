@@ -70,7 +70,7 @@ import Distribution.Client.Configure
          ( chooseCabalVersion, configureSetupScript )
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
-         ( Solver(..), LabeledPackageConstraint(..) )
+         ( Solver(..), ConstraintSource(..), LabeledPackageConstraint(..) )
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils
          ( configureTransport, HttpTransport (..) )
@@ -372,7 +372,7 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . addConstraints
           -- version constraints from the config file or command line
-            [ LabeledPackageConstraint (userToPackageConstraint pc) (Just src)
+            [ LabeledPackageConstraint (userToPackageConstraint pc) src
             | (pc, src) <- configExConstraints configExFlags ]
 
       . addConstraints
@@ -380,7 +380,7 @@ planPackages comp platform mSandboxPkgInfo solver
           -- is silly. We should check if the flags are appropriate
           [ let pc = PackageConstraintFlags
                      (pkgSpecifierTarget pkgSpecifier) flags
-            in LabeledPackageConstraint pc Nothing
+            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | let flags = configConfigurationsFlags configFlags
           , not (null flags)
           , pkgSpecifier <- pkgSpecifiers ]
@@ -388,7 +388,7 @@ planPackages comp platform mSandboxPkgInfo solver
       . addConstraints
           [ let pc = PackageConstraintStanzas
                      (pkgSpecifierTarget pkgSpecifier) stanzas
-            in LabeledPackageConstraint pc Nothing
+            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | pkgSpecifier <- pkgSpecifiers ]
 
       . maybe id applySandboxInstallPolicy mSandboxPkgInfo

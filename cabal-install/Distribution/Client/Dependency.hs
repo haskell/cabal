@@ -161,8 +161,7 @@ debugDepResolverParams p =
   ++ "\nstrategy: " ++ show (depResolverPreferenceDefault p)
   where
     debugLabeledConstraint (LabeledPackageConstraint pc src) =
-        debugPackageConstraint pc ++ maybe "" showSrc src
-    showSrc src = " (" ++ debugConstraintSource src ++ ")"
+        debugPackageConstraint pc ++ " (" ++ debugConstraintSource src ++ ")"
 
 -- | A package selection preference for a particular package.
 --
@@ -281,7 +280,7 @@ dontUpgradeNonUpgradeablePackages params =
     extraConstraints =
       [ LabeledPackageConstraint
         (PackageConstraintInstalled pkgname)
-        (Just ConstraintSourceNonUpgradeablePackage)
+        ConstraintSourceNonUpgradeablePackage
       | all (/=PackageName "base") (depResolverTargets params)
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
                                    , "integer-simple" ]
@@ -484,8 +483,7 @@ applySandboxInstallPolicy
   . addConstraints
       [ let pc = PackageConstraintVersion (packageName pkg)
                  (thisVersion (packageVersion pkg))
-        in LabeledPackageConstraint pc
-           (Just ConstraintSourceModifiedAddSourceDep)
+        in LabeledPackageConstraint pc ConstraintSourceModifiedAddSourceDep
       | pkg <- modifiedDeps ]
 
   . addTargets [ packageName pkg | pkg <- modifiedDeps ]

@@ -113,6 +113,5 @@ showFR _ (MalformedFlagChoice qfn)        = " (INTERNAL ERROR: MALFORMED FLAG CH
 showFR _ (MalformedStanzaChoice qsn)      = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
 showFR _ EmptyGoalChoice                  = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
 
-showConstraintSource :: Maybe ConstraintSource -> String
-showConstraintSource Nothing    = "global constraint"
-showConstraintSource (Just src) = "global constraint from " ++ debugConstraintSource src
+showConstraintSource :: ConstraintSource -> String
+showConstraintSource src = "constraint from " ++ debugConstraintSource src
