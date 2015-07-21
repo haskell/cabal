@@ -16,9 +16,6 @@ module Distribution.Client.PackageIndex (
   -- * Package index data type
   PackageIndex,
 
-  -- * Fine-grained package dependencies
-  PackageFixedDeps(..),
-
   -- * Creating an index
   fromList,
 
@@ -61,30 +58,12 @@ import Data.Maybe (isJust, fromMaybe)
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
          , Package(..), packageName, packageVersion
-         , Dependency(Dependency)
-         , InstalledPackageId, installedDepends )
+         , Dependency(Dependency) )
 import Distribution.Version
          ( withinRange )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo_ )
 import Distribution.Simple.Utils
          ( lowercase, comparing )
 
-import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
-
--- | Subclass of packages that have specific versioned dependencies.
---
--- So for example a not-yet-configured package has dependencies on version
--- ranges, not specific versions. A configured or an already installed package
--- depends on exact versions. Some operations or data structures (like
---  dependency graphs) only make sense on this subclass of package types.
---
-class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> ComponentDeps [InstalledPackageId]
-
-instance PackageFixedDeps (InstalledPackageInfo_ str) where
-  depends = CD.fromInstalled . installedDepends
 
 -- | The collection of information about packages from one or more 'PackageDB's.
 --

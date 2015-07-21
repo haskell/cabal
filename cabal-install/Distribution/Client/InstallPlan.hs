@@ -55,7 +55,7 @@ import Distribution.Client.Types
          , ReadyPackage(..), readyPackageToConfiguredPackage
          , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas
          , InstalledPackage(..), fakeInstalledPackageId
-         , ConfiguredId(..)
+         , ConfiguredId(..), PackageFixedDeps(..)
          )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..), packageName
@@ -70,8 +70,6 @@ import Distribution.PackageDescription
          )
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
-import Distribution.Client.PackageIndex
-         ( PackageFixedDeps(..) )
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.PackageDescription.Configuration

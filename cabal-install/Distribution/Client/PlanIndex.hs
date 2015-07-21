@@ -42,7 +42,7 @@ import Distribution.Version
 
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.Client.PackageIndex
+import Distribution.Client.Types
          ( PackageFixedDeps(..) )
 import Distribution.Simple.PackageIndex
          ( PackageIndex, allPackages, insert, lookupInstalledPackageId )
