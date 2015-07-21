@@ -36,44 +36,30 @@ module Distribution.Client.InstallPlan (
   closed,
   consistent,
   acyclic,
-  configuredPackageValid,
 
   -- ** Details on invalid plans
   PlanProblem(..),
   showPlanProblem,
-  PackageProblem(..),
-  showPackageProblem,
   problems,
-  configuredPackageProblems,
 
   -- ** Querying the install plan
   dependencyClosure,
   ) where
 
 import Distribution.Client.Types
-         ( SourcePackage(packageDescription), ConfiguredPackage(..)
+         ( ConfiguredPackage(..)
          , ReadyPackage(..), readyPackageToConfiguredPackage
-         , InstalledPackage, BuildFailure, BuildSuccess(..), enableStanzas
+         , InstalledPackage, BuildFailure, BuildSuccess(..)
          , InstalledPackage(..), fakeInstalledPackageId
-         , ConfiguredId(..), PackageFixedDeps(..)
+         , PackageFixedDeps(..)
          )
 import Distribution.Package
-         ( PackageIdentifier(..), PackageName(..), Package(..), packageName
-         , Dependency(..), PackageId, InstalledPackageId
-         , HasInstalledPackageId(..) )
+         ( PackageIdentifier(..), PackageName(..), Package(..)
+         , InstalledPackageId, HasInstalledPackageId(..) )
 import Distribution.Version
-         ( Version, withinRange )
-import Distribution.PackageDescription
-         ( GenericPackageDescription(genPackageFlags)
-         , Flag(flagName), FlagName(..)
-         , SetupBuildInfo(..), setupBuildInfo
-         )
-import Distribution.Client.PackageUtils
-         ( externalBuildDepends )
+         ( Version )
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.PackageDescription.Configuration
-         ( finalizePackageDescription )
 import Distribution.Simple.PackageIndex
          ( PackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -86,18 +72,13 @@ import Distribution.System
          ( Platform )
 import Distribution.Compiler
          ( CompilerInfo(..) )
-import Distribution.Client.Utils
-         ( duplicates, duplicatesBy, mergeBy, MergeResult(..) )
 import Distribution.Simple.Utils
-         ( comparing, intercalate )
+         ( intercalate )
 import qualified Distribution.InstalledPackageInfo as Installed
 
-import Data.List
-         ( sort, sortBy, nubBy )
 import Data.Maybe
          ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
-import Data.Function (on)
 import Data.Graph (Graph)
 import Control.Exception
          ( assert )
@@ -205,9 +186,7 @@ data InstallPlan = InstallPlan {
 
 invariant :: InstallPlan -> Bool
 invariant plan =
-    valid (planPlatform plan)
-          (planCompiler plan)
-          (planFakeMap plan)
+    valid (planFakeMap plan)
           (planIndepGoals plan)
           (planIndex plan)
 
@@ -248,7 +227,7 @@ new platform cinfo indepGoals index =
               . map (\p -> (fakeInstalledPackageId (packageId p), installedPackageId p))
               . filter isPreExisting
               $ PackageIndex.allPackages index in
-  case problems platform cinfo fakeMap indepGoals index of
+  case problems fakeMap indepGoals index of
     [] -> Right InstallPlan {
             planIndex      = index,
             planFakeMap    = fakeMap,
@@ -256,8 +235,8 @@ new platform cinfo indepGoals index =
             planGraphRev   = Graph.transposeG graph,
             planPkgOf      = vertexToPkgId,
             planVertexOf   = fromMaybe noSuchPkgId . pkgIdToVertex,
-            planPlatform   = platform,
-            planCompiler   = cinfo,
+            planPlatform   = platform, --TODO: now unused
+            planCompiler   = cinfo,    --TODO: now unused
             planIndepGoals = indepGoals
           }
       where (graph, vertexToPkgId, pkgIdToVertex) =
@@ -424,24 +403,17 @@ checkConfiguredPackage pkg                =
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
 --
-valid :: Platform -> CompilerInfo -> FakeMap -> Bool -> PlanIndex -> Bool
-valid platform cinfo fakeMap indepGoals index =
-    null $ problems platform cinfo fakeMap indepGoals index
+valid :: FakeMap -> Bool -> PlanIndex -> Bool
+valid fakeMap indepGoals index =
+    null $ problems fakeMap indepGoals index
 
 data PlanProblem =
-     PackageInvalid       ConfiguredPackage [PackageProblem]
-   | PackageMissingDeps   PlanPackage [PackageIdentifier]
+     PackageMissingDeps   PlanPackage [PackageIdentifier]
    | PackageCycle         [PlanPackage]
    | PackageInconsistency PackageName [(PackageIdentifier, Version)]
    | PackageStateInvalid  PlanPackage PlanPackage
 
 showPlanProblem :: PlanProblem -> String
-showPlanProblem (PackageInvalid pkg packageProblems) =
-     "Package " ++ display (packageId pkg)
-  ++ " has an invalid configuration, in particular:\n"
-  ++ unlines [ "  " ++ showPackageProblem problem
-             | problem <- packageProblems ]
-
 showPlanProblem (PackageMissingDeps pkg missingDeps) =
      "Package " ++ display (packageId pkg)
   ++ " depends on the following packages which are missing from the plan: "
@@ -476,15 +448,10 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
 --
-problems :: Platform -> CompilerInfo -> FakeMap -> Bool
-         -> PlanIndex -> [PlanProblem]
-problems platform cinfo fakeMap indepGoals index =
-     [ PackageInvalid pkg packageProblems
-     | Configured pkg <- PackageIndex.allPackages index
-     , let packageProblems = configuredPackageProblems platform cinfo pkg
-     , not (null packageProblems) ]
+problems :: FakeMap -> Bool -> PlanIndex -> [PlanProblem]
+problems fakeMap indepGoals index =
 
-  ++ [ PackageMissingDeps pkg (catMaybes (map (fmap packageId . PlanIndex.fakeLookupInstalledPackageId fakeMap index) missingDeps))
+     [ PackageMissingDeps pkg (catMaybes (map (fmap packageId . PlanIndex.fakeLookupInstalledPackageId fakeMap index) missingDeps))
      | (pkg, missingDeps) <- PlanIndex.brokenPackages fakeMap index ]
 
   ++ [ PackageCycle cycleGroup
@@ -564,109 +531,6 @@ stateDependencyRelation (Failed    _ _) (Failed    _ _) = True
 
 stateDependencyRelation _               _               = False
 
--- | A 'ConfiguredPackage' is valid if the flag assignment is total and if
--- in the configuration given by the flag assignment, all the package
--- dependencies are satisfied by the specified packages.
---
-configuredPackageValid :: Platform -> CompilerInfo -> ConfiguredPackage -> Bool
-configuredPackageValid platform cinfo pkg =
-  null (configuredPackageProblems platform cinfo pkg)
-
-data PackageProblem = DuplicateFlag FlagName
-                    | MissingFlag   FlagName
-                    | ExtraFlag     FlagName
-                    | DuplicateDeps [PackageIdentifier]
-                    | MissingDep    Dependency
-                    | ExtraDep      PackageIdentifier
-                    | InvalidDep    Dependency PackageIdentifier
-
-showPackageProblem :: PackageProblem -> String
-showPackageProblem (DuplicateFlag (FlagName flag)) =
-  "duplicate flag in the flag assignment: " ++ flag
-
-showPackageProblem (MissingFlag (FlagName flag)) =
-  "missing an assignment for the flag: " ++ flag
-
-showPackageProblem (ExtraFlag (FlagName flag)) =
-  "extra flag given that is not used by the package: " ++ flag
-
-showPackageProblem (DuplicateDeps pkgids) =
-     "duplicate packages specified as selected dependencies: "
-  ++ intercalate ", " (map display pkgids)
-
-showPackageProblem (MissingDep dep) =
-     "the package has a dependency " ++ display dep
-  ++ " but no package has been selected to satisfy it."
-
-showPackageProblem (ExtraDep pkgid) =
-     "the package configuration specifies " ++ display pkgid
-  ++ " but (with the given flag assignment) the package does not actually"
-  ++ " depend on any version of that package."
-
-showPackageProblem (InvalidDep dep pkgid) =
-     "the package depends on " ++ display dep
-  ++ " but the configuration specifies " ++ display pkgid
-  ++ " which does not satisfy the dependency."
-
-configuredPackageProblems :: Platform -> CompilerInfo
-                          -> ConfiguredPackage -> [PackageProblem]
-configuredPackageProblems platform cinfo
-  (ConfiguredPackage pkg specifiedFlags stanzas specifiedDeps') =
-     [ DuplicateFlag flag | ((flag,_):_) <- duplicates specifiedFlags ]
-  ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
-  ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
-  ++ [ DuplicateDeps pkgs
-     | pkgs <- CD.nonSetupDeps (fmap (duplicatesBy (comparing packageName)) specifiedDeps) ]
-  ++ [ MissingDep dep       | OnlyInLeft  dep       <- mergedDeps ]
-  ++ [ ExtraDep       pkgid | OnlyInRight     pkgid <- mergedDeps ]
-  ++ [ InvalidDep dep pkgid | InBoth      dep pkgid <- mergedDeps
-                            , not (packageSatisfiesDependency pkgid dep) ]
-  where
-    specifiedDeps :: ComponentDeps [PackageId]
-    specifiedDeps = fmap (map confSrcId) specifiedDeps'
-
-    mergedFlags = mergeBy compare
-      (sort $ map flagName (genPackageFlags (packageDescription pkg)))
-      (sort $ map fst specifiedFlags)
-
-    packageSatisfiesDependency
-      (PackageIdentifier name  version)
-      (Dependency        name' versionRange) = assert (name == name') $
-        version `withinRange` versionRange
-
-    dependencyName (Dependency name _) = name
-
-    mergedDeps :: [MergeResult Dependency PackageId]
-    mergedDeps = mergeDeps requiredDeps (CD.flatDeps specifiedDeps)
-
-    mergeDeps :: [Dependency] -> [PackageId] -> [MergeResult Dependency PackageId]
-    mergeDeps required specified =
-      let sortNubOn f = nubBy ((==) `on` f) . sortBy (compare `on` f) in
-      mergeBy
-        (\dep pkgid -> dependencyName dep `compare` packageName pkgid)
-        (sortNubOn dependencyName required)
-        (sortNubOn packageName    specified)
-
-    -- TODO: It would be nicer to use ComponentDeps here so we can be more precise
-    -- in our checks. That's a bit tricky though, as this currently relies on
-    -- the 'buildDepends' field of 'PackageDescription'. (OTOH, that field is
-    -- deprecated and should be removed anyway.)
-    -- As long as we _do_ use a flat list here, we have to allow for duplicates
-    -- when we fold specifiedDeps; once we have proper ComponentDeps here we
-    -- should get rid of the `nubOn` in `mergeDeps`.
-    requiredDeps :: [Dependency]
-    requiredDeps =
-      --TODO: use something lower level than finalizePackageDescription
-      case finalizePackageDescription specifiedFlags
-         (const True)
-         platform cinfo
-         []
-         (enableStanzas stanzas $ packageDescription pkg) of
-        Right (resolvedPkg, _) ->
-             externalBuildDepends resolvedPkg
-          ++ maybe [] setupDepends (setupBuildInfo resolvedPkg)
-        Left  _ ->
-          error "configuredPackageInvalidDeps internal error"
 
 -- | Compute the dependency closure of a _source_ package in a install plan
 --
