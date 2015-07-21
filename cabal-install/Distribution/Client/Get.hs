@@ -94,7 +94,7 @@ get verbosity repos globalFlags getFlags userTargets = do
 
   transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
 
-  pkgSpecifiers <- resolveUserTargets transport verbosity
+  pkgSpecifiers <- resolveUserTargets verbosity transport
                    (fromFlag $ globalWorldFile globalFlags)
                    (packageIndex sourcePkgDb)
                    userTargets

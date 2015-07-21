@@ -190,7 +190,7 @@ info verbosity packageDBs repos comp conf
                    ++ map packageId
                       (PackageIndex.allPackages sourcePkgIndex)
     transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
-    pkgSpecifiers <- resolveUserTargets transport verbosity
+    pkgSpecifiers <- resolveUserTargets verbosity transport
                        (fromFlag $ globalWorldFile globalFlags)
                        sourcePkgs' userTargets
 
