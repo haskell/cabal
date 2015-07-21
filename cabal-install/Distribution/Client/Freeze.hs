@@ -197,16 +197,15 @@ pruneInstallPlan :: InstallPlan.InstallPlan
                  -> [PackageSpecifier SourcePackage]
                  -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
-    mapLeft (removeSelf pkgIds . PackageIndex.allPackages) $
+    either (const brokenPkgsErr)
+           (removeSelf pkgIds . PackageIndex.allPackages) $
     InstallPlan.dependencyClosure installPlan pkgIds
   where
     pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
-    mapLeft f (Left v)  = f v
-    mapLeft _ (Right _) = error "planPackages: installPlan contains broken packages"
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= thisPkg)
-    removeSelf _ =
-        error $ "internal error: 'pruneInstallPlan' given "
-           ++ "unexpected package specifiers!"
+    removeSelf _  = error $ "internal error: 'pruneInstallPlan' given "
+                         ++ "unexpected package specifiers!"
+    brokenPkgsErr = error "planPackages: installPlan contains broken packages"
 
 
 freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()
