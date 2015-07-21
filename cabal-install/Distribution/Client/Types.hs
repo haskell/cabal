@@ -20,14 +20,14 @@ import Distribution.Package
          , HasInstalledPackageId(..), PackageInstalled(..)
          , LibraryName, packageKeyLibraryName )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+         ( InstalledPackageInfo, InstalledPackageInfo_ )
 import Distribution.PackageDescription
          ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
          , TestSuite(..) )
 import Distribution.PackageDescription.Configuration
          ( mapTreeData )
 import Distribution.Client.PackageIndex
-         ( PackageIndex, PackageFixedDeps(..) )
+         ( PackageIndex )
 import Distribution.Client.ComponentDeps
          ( ComponentDeps )
 import qualified Distribution.Client.ComponentDeps as CD
@@ -57,6 +57,20 @@ data SourcePackageDb = SourcePackageDb {
 -- ------------------------------------------------------------
 -- * Various kinds of information about packages
 -- ------------------------------------------------------------
+
+-- | Subclass of packages that have specific versioned dependencies.
+--
+-- So for example a not-yet-configured package has dependencies on version
+-- ranges, not specific versions. A configured or an already installed package
+-- depends on exact versions. Some operations or data structures (like
+--  dependency graphs) only make sense on this subclass of package types.
+--
+class Package pkg => PackageFixedDeps pkg where
+  depends :: pkg -> ComponentDeps [InstalledPackageId]
+
+instance PackageFixedDeps (InstalledPackageInfo_ str) where
+  depends = CD.fromInstalled . installedDepends
+
 
 -- | InstalledPackage caches its dependencies as source package IDs.
 -- This is for the benefit of the top-down solver only.
