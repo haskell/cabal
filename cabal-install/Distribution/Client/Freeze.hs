@@ -23,7 +23,7 @@ import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
-         ( PlanPackage )
+         ( InstallPlan, PlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..) )
@@ -36,7 +36,10 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Package
-         ( Package, packageId, packageName, packageVersion )
+         ( Package, packageId, packageName, packageVersion
+         , HasInstalledPackageId )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
@@ -130,7 +133,9 @@ planPackages :: Verbosity
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
-             -> IO [PlanPackage]
+             -> IO [PlanPackage InstalledPackageInfo
+                                ConfiguredPackage
+                                iresult ifailure]
 planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers = do
 
@@ -193,9 +198,11 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 -- 2) not a dependency (directly or transitively) of the package we are
 --    freezing.  This is useful for removing previously installed packages
 --    which are no longer required from the install plan.
-pruneInstallPlan :: InstallPlan.InstallPlan
+pruneInstallPlan :: (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
+                     HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
+                 => InstallPlan ipkg srcpkg iresult ifailure
                  -> [PackageSpecifier SourcePackage]
-                 -> [PlanPackage]
+                 -> [PlanPackage ipkg srcpkg iresult ifailure]
 pruneInstallPlan installPlan pkgSpecifiers =
     either (const brokenPkgsErr)
            (removeSelf pkgIds . PackageIndex.allPackages) $

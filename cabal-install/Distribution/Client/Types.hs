@@ -131,49 +131,40 @@ instance HasInstalledPackageId ConfiguredPackage where
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
-data ReadyPackage = ReadyPackage
-       SourcePackage                           -- see 'ConfiguredPackage'.
-       FlagAssignment                          --
-       [OptionalStanza]                        --
-       (ComponentDeps [InstalledPackageInfo])  -- Installed dependencies.
-  deriving Show
+data ReadyPackage srcpkg ipkg
+   = ReadyPackage
+       srcpkg                  -- see 'ConfiguredPackage'.
+       (ComponentDeps [ipkg])  -- Installed dependencies.
+  deriving (Eq, Show)
 
-instance Package ReadyPackage where
-  packageId (ReadyPackage pkg _ _ _) = packageId pkg
+instance Package srcpkg => Package (ReadyPackage srcpkg ipkg) where
+  packageId (ReadyPackage srcpkg _deps) = packageId srcpkg
 
-instance PackageFixedDeps ReadyPackage where
-  depends (ReadyPackage _ _ _ deps) = fmap (map installedPackageId) deps
+instance (Package srcpkg, HasInstalledPackageId ipkg) =>
+         PackageFixedDeps (ReadyPackage srcpkg ipkg) where
+  depends (ReadyPackage _ deps) = fmap (map installedPackageId) deps
 
-instance HasInstalledPackageId ReadyPackage where
-  installedPackageId = fakeInstalledPackageId . packageId
+instance HasInstalledPackageId srcpkg =>
+         HasInstalledPackageId (ReadyPackage srcpkg ipkg) where
+  installedPackageId (ReadyPackage pkg _) = installedPackageId pkg
 
 
 -- | Extracts a package key from ReadyPackage, a common operation needed
 -- to calculate build paths.
-readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
-readyPackageKey comp (ReadyPackage pkg _ _ deps) =
+readyPackageKey :: Compiler
+                -> ReadyPackage ConfiguredPackage InstalledPackageInfo
+                -> PackageKey
+readyPackageKey comp (ReadyPackage pkg deps) =
     mkPackageKey (packageKeySupported comp) (packageId pkg)
                  (map Info.libraryName (CD.nonSetupDeps deps))
 
 -- | Extracts a library name from ReadyPackage, a common operation needed
 -- to calculate build paths.
-readyLibraryName :: Compiler -> ReadyPackage -> LibraryName
-readyLibraryName comp ready@(ReadyPackage pkg _ _ _) =
+readyLibraryName :: Compiler
+                 -> ReadyPackage ConfiguredPackage InstalledPackageInfo
+                 -> LibraryName
+readyLibraryName comp ready@(ReadyPackage pkg _) =
     packageKeyLibraryName (packageId pkg) (readyPackageKey comp ready)
-
-
--- | Sometimes we need to convert a 'ReadyPackage' back to a
--- 'ConfiguredPackage'. For example, a failed 'PlanPackage' can be *either*
--- Ready or Configured.
-readyPackageToConfiguredPackage :: ReadyPackage -> ConfiguredPackage
-readyPackageToConfiguredPackage (ReadyPackage srcpkg flags stanzas deps) =
-    ConfiguredPackage srcpkg flags stanzas (fmap (map aux) deps)
-  where
-    aux :: InstalledPackageInfo -> ConfiguredId
-    aux info = ConfiguredId {
-        confSrcId  = Info.sourcePackageId info
-      , confInstId = installedPackageId info
-      }
 
 
 -- | A package description along with the location of the package sources.

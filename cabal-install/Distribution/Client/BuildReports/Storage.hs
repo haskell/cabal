@@ -36,6 +36,8 @@ import Distribution.Package
          ( PackageId, packageId )
 import Distribution.PackageDescription
          ( FlagAssignment )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
@@ -116,7 +118,10 @@ storeLocal cinfo templates reports platform = sequence_
 -- * InstallPlan support
 -- ------------------------------------------------------------
 
-fromInstallPlan :: InstallPlan -> [(BuildReport, Maybe Repo)]
+fromInstallPlan :: InstallPlan InstalledPackageInfo
+                               ConfiguredPackage
+                               BuildSuccess BuildFailure
+                -> [(BuildReport, Maybe Repo)]
 fromInstallPlan plan = catMaybes
                      . map (fromPlanPackage platform comp)
                      . InstallPlan.toList
@@ -125,18 +130,23 @@ fromInstallPlan plan = catMaybes
         comp     = compilerInfoId (InstallPlan.planCompiler plan)
 
 fromPlanPackage :: Platform -> CompilerId
-                -> InstallPlan.PlanPackage
+                -> InstallPlan.PlanPackage InstalledPackageInfo
+                                           ConfiguredPackage
+                                           BuildSuccess BuildFailure
                 -> Maybe (BuildReport, Maybe Repo)
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
-  InstallPlan.Installed (ReadyPackage srcPkg flags _ deps) result
+  InstallPlan.Installed (ReadyPackage (ConfiguredPackage srcPkg flags _ _) deps)
+                         _ result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags (map packageId (CD.nonSetupDeps deps))
+                                (packageId srcPkg) flags
+                                (map packageId (CD.nonSetupDeps deps))
                                 (Right result)
               , extractRepo srcPkg)
 
   InstallPlan.Failed (ConfiguredPackage srcPkg flags _ deps) result
     -> Just $ ( BuildReport.new os arch comp
-                                (packageId srcPkg) flags (map confSrcId (CD.nonSetupDeps deps))
+                                (packageId srcPkg) flags
+                                (map confSrcId (CD.nonSetupDeps deps))
                                 (Left result)
               , extractRepo srcPkg )
 

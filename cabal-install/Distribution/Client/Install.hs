@@ -136,13 +136,17 @@ import Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
          , Package(..), LibraryName
-         , Dependency(..), thisPackageVersion, InstalledPackageId, installedPackageId )
+         , Dependency(..), thisPackageVersion
+         , InstalledPackageId, installedPackageId
+         , HasInstalledPackageId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
          , FlagName(..), FlagAssignment )
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import Distribution.ParseUtils
          ( showPWarning )
 import Distribution.Version
@@ -279,7 +283,10 @@ makeInstallContext verbosity
 
 -- | Make an install plan given install context and install arguments.
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                -> IO (Progress String String InstallPlan)
+                -> IO (Progress String String
+                                (InstallPlan InstalledPackageInfo
+                                             ConfiguredPackage
+                                             iresult ifailure))
 makeInstallPlan verbosity
   (_, _, comp, platform, _, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
@@ -296,13 +303,15 @@ makeInstallPlan verbosity
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                   -> InstallPlan
+                   -> InstallPlan InstalledPackageInfo
+                                  ConfiguredPackage
+                                  BuildSuccess BuildFailure
                    -> IO ()
 processInstallPlan verbosity
-  args@(_,_, comp, _, _, _, _, _, _, _, installFlags, _)
+  args@(_,_, _, _, _, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
    userTargets, pkgSpecifiers, _) installPlan = do
-    checkPrintPlan verbosity comp installedPkgIndex installPlan sourcePkgDb
+    checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
 
     unless (dryRun || nothingToInstall) $ do
@@ -327,7 +336,10 @@ planPackages :: Compiler
              -> InstalledPackageIndex
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
-             -> Progress String String InstallPlan
+             -> Progress String String
+                         (InstallPlan InstalledPackageInfo
+                                      ConfiguredPackage
+                                      iresult ifailure)
 planPackages comp platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers =
@@ -407,8 +419,13 @@ planPackages comp platform mSandboxPkgInfo solver
     allowNewer       = fromFlag (configAllowNewer        configExFlags)
 
 -- | Remove the provided targets from the install plan.
-pruneInstallPlan :: Package pkg => [PackageSpecifier pkg] -> InstallPlan
-                    -> Progress String String InstallPlan
+pruneInstallPlan :: (Package targetpkg, Package srcpkg, Package ipkg,
+                     PackageFixedDeps srcpkg, PackageFixedDeps ipkg,
+                     HasInstalledPackageId srcpkg, HasInstalledPackageId ipkg)
+                 => [PackageSpecifier targetpkg]
+                 -> InstallPlan ipkg srcpkg iresult ifailure
+                 -> Progress String String
+                             (InstallPlan ipkg srcpkg iresult ifailure)
 pruneInstallPlan pkgSpecifiers =
   -- TODO: this is a general feature and should be moved to D.C.Dependency
   -- Also, the InstallPlan.remove should return info more precise to the
@@ -416,7 +433,7 @@ pruneInstallPlan pkgSpecifiers =
   either (Fail . explain) Done
   . InstallPlan.remove (\pkg -> packageName pkg `elem` targetnames)
   where
-    explain :: [InstallPlan.PlanProblem] -> String
+    explain :: [InstallPlan.PlanProblem ipkg srcpkg iresult ifailure] -> String
     explain problems =
       "Cannot select only the dependencies (as requested by the "
       ++ "'--only-dependencies' flag), "
@@ -441,14 +458,15 @@ pruneInstallPlan pkgSpecifiers =
 -- | Perform post-solver checks of the install plan and print it if
 -- either requested or needed.
 checkPrintPlan :: Verbosity
-               -> Compiler
                -> InstalledPackageIndex
-               -> InstallPlan
+               -> InstallPlan InstalledPackageInfo
+                              ConfiguredPackage
+                              BuildSuccess ifailure
                -> SourcePackageDb
                -> InstallFlags
                -> [PackageSpecifier SourcePackage]
                -> IO ()
-checkPrintPlan verbosity comp installed installPlan sourcePkgDb
+checkPrintPlan verbosity installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
 
   -- User targets that are already installed.
@@ -465,7 +483,7 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
        : map (display . packageId) preExistingTargets
       ++ ["Use --reinstall if you want to reinstall anyway."]
 
-  let lPlan = linearizeInstallPlan comp installed installPlan
+  let lPlan = linearizeInstallPlan installed installPlan
   -- Are any packages classified as reinstalls?
   let reinstalledPkgs = concatMap (extractReinstalls . snd) lPlan
   -- Packages that are already broken.
@@ -533,11 +551,13 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
     dryRun            = fromFlag (installDryRun            installFlags)
     overrideReinstall = fromFlag (installOverrideReinstall installFlags)
 
-linearizeInstallPlan :: Compiler
-                     -> InstalledPackageIndex
-                     -> InstallPlan
-                     -> [(ReadyPackage, PackageStatus)]
-linearizeInstallPlan comp installedPkgIndex plan =
+--TODO: this type is too specific
+linearizeInstallPlan :: (PackageFixedDeps srcpkg, HasInstalledPackageId srcpkg)
+                     => InstalledPackageIndex
+                     -> InstallPlan InstalledPackageInfo srcpkg
+                                    BuildSuccess ifailure
+                     -> [(ReadyPackage srcpkg InstalledPackageInfo, PackageStatus)]
+linearizeInstallPlan installedPkgIndex plan =
     unfoldr next plan
   where
     next plan' = case InstallPlan.ready plan' of
@@ -545,12 +565,13 @@ linearizeInstallPlan comp installedPkgIndex plan =
       (pkg:_) -> Just ((pkg, status), plan'')
         where
           pkgid  = installedPackageId pkg
-          status = packageStatus comp installedPkgIndex pkg
-          plan'' = InstallPlan.completed pkgid
-                     (BuildOk DocsNotTried TestsNotTried
-                              (Just $ Installed.emptyInstalledPackageInfo
-                              { Installed.sourcePackageId = packageId pkg
-                              , Installed.installedPackageId = pkgid }))
+          status = packageStatus installedPkgIndex pkg
+          ipkg   = Installed.emptyInstalledPackageInfo {
+                     Installed.sourcePackageId    = packageId pkg,
+                     Installed.installedPackageId = pkgid
+                   }
+          plan'' = InstallPlan.completed pkgid (Just ipkg)
+                     (BuildOk DocsNotTried TestsNotTried (Just ipkg))
                      (InstallPlan.processing [pkg] plan')
           --FIXME: This is a bit of a hack,
           -- pretending that each package is installed
@@ -567,8 +588,11 @@ extractReinstalls :: PackageStatus -> [InstalledPackageId]
 extractReinstalls (Reinstall ipids _) = ipids
 extractReinstalls _                   = []
 
-packageStatus :: Compiler -> InstalledPackageIndex -> ReadyPackage -> PackageStatus
-packageStatus _comp installedPkgIndex cpkg =
+packageStatus :: (Package srcpkg, HasInstalledPackageId ipkg)
+              => InstalledPackageIndex
+              -> ReadyPackage srcpkg ipkg
+              -> PackageStatus
+packageStatus installedPkgIndex cpkg =
   case PackageIndex.lookupPackageName installedPkgIndex
                                       (packageName cpkg) of
     [] -> NewPackage
@@ -580,8 +604,9 @@ packageStatus _comp installedPkgIndex cpkg =
 
   where
 
-    changes :: Installed.InstalledPackageInfo
-            -> ReadyPackage
+    changes :: (Package srcpkg, HasInstalledPackageId ipkg)
+            => Installed.InstalledPackageInfo
+            -> ReadyPackage srcpkg ipkg
             -> [MergeResult PackageIdentifier PackageIdentifier]
     changes pkg pkg' = filter changed $
       mergeBy (comparing packageName)
@@ -602,7 +627,7 @@ packageStatus _comp installedPkgIndex cpkg =
 
 printPlan :: Bool -- is dry run
           -> Verbosity
-          -> [(ReadyPackage, PackageStatus)]
+          -> [(ReadyPackage ConfiguredPackage ipkg, PackageStatus)]
           -> SourcePackageDb
           -> IO ()
 printPlan dryRun verbosity plan sourcePkgDb = case plan of
@@ -622,7 +647,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     showPkg (pkg, _) = display (packageId pkg) ++
                        showLatest (pkg)
 
-    showPkgAndReason (pkg', pr) = display (packageId pkg') ++
+    showPkgAndReason (ReadyPackage pkg' _, pr) = display (packageId pkg') ++
           showLatest pkg' ++
           showFlagAssignment (nonDefaultFlags pkg') ++
           showStanzas (stanzas pkg') ++ " " ++
@@ -633,7 +658,7 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
                 []   -> ""
                 diff -> " changes: "  ++ intercalate ", " (map change diff)
 
-    showLatest :: ReadyPackage -> String
+    showLatest :: Package srcpkg => srcpkg -> String
     showLatest pkg = case mLatestVersion of
         Just latestVersion ->
             if packageVersion pkg < latestVersion
@@ -651,15 +676,15 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
     toFlagAssignment :: [Flag] -> FlagAssignment
     toFlagAssignment = map (\ f -> (flagName f, flagDefault f))
 
-    nonDefaultFlags :: ReadyPackage -> FlagAssignment
-    nonDefaultFlags (ReadyPackage spkg fa _ _) =
+    nonDefaultFlags :: ConfiguredPackage -> FlagAssignment
+    nonDefaultFlags (ConfiguredPackage spkg fa _ _) =
       let defaultAssignment =
             toFlagAssignment
              (genPackageFlags (Source.packageDescription spkg))
       in  fa \\ defaultAssignment
 
-    stanzas :: ReadyPackage -> [OptionalStanza]
-    stanzas (ReadyPackage _ _ sts _) = sts
+    stanzas :: ConfiguredPackage -> [OptionalStanza]
+    stanzas (ConfiguredPackage _ _ sts _) = sts
 
     showStanzas :: [OptionalStanza] -> String
     showStanzas = concatMap ((' ' :) . showStanza)
@@ -759,7 +784,9 @@ theSpecifiedPackage pkgSpec =
 postInstallActions :: Verbosity
                    -> InstallArgs
                    -> [UserTarget]
-                   -> InstallPlan
+                   -> InstallPlan InstalledPackageInfo
+                                  ConfiguredPackage
+                                  BuildSuccess BuildFailure
                    -> IO ()
 postInstallActions verbosity
   (packageDBs, _, comp, platform, conf, useSandbox, mSandboxPkgInfo
@@ -837,7 +864,7 @@ regenerateHaddockIndex :: Verbosity
                        -> UseSandbox
                        -> ConfigFlags
                        -> InstallFlags
-                       -> InstallPlan
+                       -> InstallPlan ipkg srcpkg BuildSuccess ifailure
                        -> IO ()
 regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
                        configFlags installFlags installPlan
@@ -874,8 +901,8 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
         normalUserInstall     = (UserPackageDB `elem` packageDBs)
                              && all (not . isSpecificPackageDB) packageDBs
 
-        installedDocs (InstallPlan.Installed _ (BuildOk DocsOk _ _)) = True
-        installedDocs _                                              = False
+        installedDocs (InstallPlan.Installed _ _ (BuildOk DocsOk _ _)) = True
+        installedDocs _                                                = False
         isSpecificPackageDB (SpecificPackageDB _) = True
         isSpecificPackageDB _                     = False
 
@@ -896,7 +923,10 @@ symlinkBinaries :: Verbosity
                 -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
-                -> InstallPlan -> IO ()
+                -> InstallPlan InstalledPackageInfo
+                               ConfiguredPackage
+                               iresult ifailure
+                -> IO ()
 symlinkBinaries verbosity comp configFlags installFlags plan = do
   failed <- InstallSymlink.symlinkBinaries comp configFlags installFlags plan
   case failed of
@@ -920,7 +950,9 @@ symlinkBinaries verbosity comp configFlags installFlags plan = do
     bindir = fromFlag (installSymlinkBinDir installFlags)
 
 
-printBuildFailures :: InstallPlan -> IO ()
+printBuildFailures :: Package srcpkg
+                   => InstallPlan ipkg srcpkg iresult BuildFailure
+                   -> IO ()
 printBuildFailures plan =
   case [ (pkg, reason)
        | InstallPlan.Failed pkg reason <- InstallPlan.toList plan ] of
@@ -964,15 +996,18 @@ printBuildFailures plan =
 -- | If we're working inside a sandbox and some add-source deps were installed,
 -- update the timestamps of those deps.
 updateSandboxTimestampsFile :: UseSandbox -> Maybe SandboxPackageInfo
-                            -> Compiler -> Platform -> InstallPlan
+                            -> Compiler -> Platform
+                            -> InstallPlan ipkg ConfiguredPackage
+                                           iresult ifailure
                             -> IO ()
 updateSandboxTimestampsFile (UseSandbox sandboxDir)
                             (Just (SandboxPackageInfo _ _ _ allAddSourceDeps))
                             comp platform installPlan =
   withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
-    let allInstalled = [ pkg | InstallPlan.Installed pkg _
+    let allInstalled = [ pkg | InstallPlan.Installed pkg _ _
                             <- InstallPlan.toList installPlan ]
-        allSrcPkgs   = [ pkg | ReadyPackage pkg _ _ _ <- allInstalled ]
+        allSrcPkgs   = [ pkg | ReadyPackage (ConfiguredPackage pkg _ _ _) _
+                            <- allInstalled ]
         allPaths     = [ pth | LocalUnpackedPackage pth
                             <- map packageSource allSrcPkgs]
     allPathsCanonical <- mapM tryCanonicalizePath allPaths
@@ -996,8 +1031,12 @@ type UseLogFile = Maybe (PackageIdentifier -> LibraryName -> FilePath, Verbosity
 performInstallations :: Verbosity
                      -> InstallArgs
                      -> InstalledPackageIndex
-                     -> InstallPlan
-                     -> IO InstallPlan
+                     -> InstallPlan InstalledPackageInfo
+                                    ConfiguredPackage
+                                    BuildSuccess BuildFailure
+                     -> IO (InstallPlan InstalledPackageInfo
+                                        ConfiguredPackage
+                                        BuildSuccess BuildFailure)
 performInstallations verbosity
   (packageDBs, _, comp, _, conf, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
@@ -1115,9 +1154,15 @@ executeInstallPlan :: Verbosity
                    -> Compiler
                    -> JobControl IO (PackageId, LibraryName, BuildResult)
                    -> UseLogFile
-                   -> InstallPlan
-                   -> (ReadyPackage -> IO BuildResult)
-                   -> IO InstallPlan
+                   -> InstallPlan InstalledPackageInfo
+                                  ConfiguredPackage
+                                  BuildSuccess BuildFailure
+                   -> (ReadyPackage ConfiguredPackage
+                                    InstalledPackageInfo
+                       -> IO BuildResult)
+                   -> IO (InstallPlan InstalledPackageInfo
+                                      ConfiguredPackage
+                                      BuildSuccess BuildFailure)
 executeInstallPlan verbosity comp jobCtl useLogFile plan0 installPkg =
     tryNewTasks 0 plan0
   where
@@ -1147,12 +1192,18 @@ executeInstallPlan verbosity comp jobCtl useLogFile plan0 installPkg =
           plan'      = updatePlan pkgid buildResult plan
       tryNewTasks taskCount' plan'
 
-    updatePlan :: PackageIdentifier -> BuildResult -> InstallPlan -> InstallPlan
-    updatePlan pkgid (Right buildSuccess) =
-      InstallPlan.completed (Source.fakeInstalledPackageId pkgid) buildSuccess
+    updatePlan :: PackageIdentifier -> BuildResult
+               -> InstallPlan InstalledPackageInfo ConfiguredPackage
+                              BuildSuccess BuildFailure
+               -> InstallPlan InstalledPackageInfo ConfiguredPackage
+                              BuildSuccess BuildFailure
+    updatePlan pkgid (Right buildSuccess@(BuildOk _ _ mipkg)) =
+        InstallPlan.completed (Source.fakeInstalledPackageId pkgid)
+                              mipkg buildSuccess
 
     updatePlan pkgid (Left buildFailure) =
-      InstallPlan.failed    (Source.fakeInstalledPackageId pkgid) buildFailure depsFailure
+        InstallPlan.failed (Source.fakeInstalledPackageId pkgid)
+                           buildFailure depsFailure
       where
         depsFailure = DependentFailed pkgid
         -- So this first pkgid failed for whatever reason (buildFailure).
@@ -1187,16 +1238,21 @@ executeInstallPlan verbosity comp jobCtl useLogFile plan0 installPkg =
 -- NB: when updating this function, don't forget to also update
 -- 'configurePackage' in D.C.Configure.
 installReadyPackage :: Platform -> CompilerInfo
-                       -> ConfigFlags
-                       -> ReadyPackage
-                       -> (ConfigFlags -> PackageLocation (Maybe FilePath)
-                                       -> PackageDescription
-                                       -> PackageDescriptionOverride -> a)
-                       -> a
+                    -> ConfigFlags
+                    -> ReadyPackage ConfiguredPackage
+                                    InstalledPackageInfo
+                    -> (ConfigFlags -> PackageLocation (Maybe FilePath)
+                                    -> PackageDescription
+                                    -> PackageDescriptionOverride
+                                    -> a)
+                    -> a
 installReadyPackage platform cinfo configFlags
-  (ReadyPackage (SourcePackage _ gpkg source pkgoverride)
-   flags stanzas deps)
-  installPkg = installPkg configFlags {
+                    (ReadyPackage (ConfiguredPackage
+                                    (SourcePackage _ gpkg source pkgoverride)
+                                    flags stanzas _)
+                                   deps)
+                    installPkg =
+  installPkg configFlags {
     configConfigurationsFlags = flags,
     -- We generate the legacy constraints as well as the new style precise deps.
     -- In the end only one set gets passed to Setup.hs configure, depending on
