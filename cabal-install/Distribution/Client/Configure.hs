@@ -122,8 +122,7 @@ configure verbosity packageDBs repos comp platform conf
                                  _ _ _)
              _)] -> do
         configurePackage verbosity
-          (InstallPlan.planPlatform installPlan)
-          (InstallPlan.planCompiler installPlan)
+          platform (compilerInfo comp)
           (setupScriptOptions installedPkgIndex (Just pkg))
           configFlags pkg extraArgs
 

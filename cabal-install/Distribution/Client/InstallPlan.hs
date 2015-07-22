@@ -27,10 +27,6 @@ module Distribution.Client.InstallPlan (
   showPlanIndex,
   showInstallPlan,
 
-  -- ** Query functions
-  planPlatform,
-  planCompiler,
-
   -- * Checking validity of plans
   valid,
   closed,
@@ -63,13 +59,9 @@ import Distribution.Client.PlanIndex
 import qualified Distribution.Client.PlanIndex as PlanIndex
 import Distribution.Text
          ( display )
-import Distribution.System
-         ( Platform )
-import Distribution.Compiler
-         ( CompilerInfo(..) )
-import Distribution.Simple.Utils
-         ( intercalate )
 
+import Data.List
+         ( intercalate )
 import Data.Maybe
          ( fromMaybe, maybeToList )
 import qualified Data.Graph as Graph
@@ -176,8 +168,6 @@ data InstallPlan ipkg srcpkg iresult ifailure = InstallPlan {
     planGraphRev   :: Graph,
     planPkgOf      :: Graph.Vertex -> PlanPackage ipkg srcpkg iresult ifailure,
     planVertexOf   :: InstalledPackageId -> Graph.Vertex,
-    planPlatform   :: Platform,
-    planCompiler   :: CompilerInfo,
     planIndepGoals :: Bool
   }
 
@@ -222,11 +212,11 @@ showPlanPackageTag (Failed    _   _) = "Failed"
 --
 new :: (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
         HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
-    => Platform -> CompilerInfo -> Bool
+    => Bool
     -> PlanIndex ipkg srcpkg iresult ifailure
     -> Either [PlanProblem ipkg srcpkg iresult ifailure]
               (InstallPlan ipkg srcpkg iresult ifailure)
-new platform cinfo indepGoals index =
+new indepGoals index =
   -- NB: Need to pre-initialize the fake-map with pre-existing
   -- packages
   let isPreExisting (PreExisting _) = True
@@ -243,8 +233,6 @@ new platform cinfo indepGoals index =
             planGraphRev   = Graph.transposeG graph,
             planPkgOf      = vertexToPkgId,
             planVertexOf   = fromMaybe noSuchPkgId . pkgIdToVertex,
-            planPlatform   = platform, --TODO: now unused
-            planCompiler   = cinfo,    --TODO: now unused
             planIndepGoals = indepGoals
           }
       where (graph, vertexToPkgId, pkgIdToVertex) =
@@ -269,7 +257,7 @@ remove :: (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
        -> Either [PlanProblem ipkg srcpkg iresult ifailure]
                  (InstallPlan ipkg srcpkg iresult ifailure)
 remove shouldRemove plan =
-    new (planPlatform plan) (planCompiler plan) (planIndepGoals plan) newIndex
+    new (planIndepGoals plan) newIndex
   where
     newIndex = PackageIndex.fromList $
                  filter (not . shouldRemove) (toList plan)
