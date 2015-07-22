@@ -49,9 +49,9 @@ module Distribution.Client.InstallPlan (
 import Distribution.Client.Types
          ( ConfiguredPackage(..)
          , ReadyPackage(..), readyPackageToConfiguredPackage
-         , InstalledPackage, BuildFailure, BuildSuccess(..)
-         , InstalledPackage(..), fakeInstalledPackageId
+         , BuildFailure, BuildSuccess(..)
          , PackageFixedDeps(..)
+         , fakeInstalledPackageId
          )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
@@ -74,6 +74,8 @@ import Distribution.Compiler
          ( CompilerInfo(..) )
 import Distribution.Simple.Utils
          ( intercalate )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as Installed
 
 import Data.Maybe
@@ -141,7 +143,7 @@ type PlanIndex = PackageIndex PlanPackage
 -- 'PackageInstalled' instance it would be too easy to get this wrong (and,
 -- for instance, call graph traversal functions from Cabal rather than from
 -- cabal-install). Instead, see 'PackageFixedDeps'.
-data PlanPackage = PreExisting InstalledPackage
+data PlanPackage = PreExisting InstalledPackageInfo
                  | Configured  ConfiguredPackage
                  | Processing  ReadyPackage
                  | Installed   ReadyPackage BuildSuccess
@@ -294,7 +296,7 @@ ready plan = assert check readyPackages
         Just (Configured  _)                            -> Nothing
         Just (Processing  _)                            -> Nothing
         Just (Failed    _ _)                            -> internalError depOnFailed
-        Just (PreExisting (InstalledPackage instPkg _)) -> Just instPkg
+        Just (PreExisting instPkg)                      -> Just instPkg
         Just (Installed _ (BuildOk _ _ (Just instPkg))) -> Just instPkg
         Just (Installed _ (BuildOk _ _ Nothing))        -> internalError depOnNonLib
         Nothing                                         -> internalError incomplete
