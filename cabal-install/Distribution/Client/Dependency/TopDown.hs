@@ -292,7 +292,8 @@ topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
       $ finaliseSelectedPackages preferences selected' constraints'
 
     toResolverPackage :: FinalSelectedPackage -> ResolverPackage
-    toResolverPackage (SelectedInstalled pkg) = PreExisting pkg
+    toResolverPackage (SelectedInstalled (InstalledPackage pkg _))
+                                              = PreExisting pkg
     toResolverPackage (SelectedSource    pkg) = Configured  pkg
 
 addTopLevelTargets :: [PackageName]

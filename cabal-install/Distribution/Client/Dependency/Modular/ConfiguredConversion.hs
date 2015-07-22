@@ -12,16 +12,14 @@ import Distribution.Client.Dependency.Modular.Configured
 import Distribution.Client.Dependency.Modular.Package
 
 import Distribution.Client.ComponentDeps (ComponentDeps)
-import qualified Distribution.Client.ComponentDeps as CD
 
 
 convCP :: SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
           CP QPN -> ResolverPackage
 convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
-    Left  pi -> PreExisting $ InstalledPackage
+    Left  pi -> PreExisting
                   (fromJust $ SI.lookupInstalledPackageId iidx pi)
-                  (map confSrcId $ CD.nonSetupDeps ds')
     Right pi -> Configured $ ConfiguredPackage
                   (fromJust $ CI.lookupPackageId sidx pi)
                   fa
