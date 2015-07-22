@@ -14,13 +14,15 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( InstalledPackage(..), SourcePackage(..), ReadyPackage(..)
+         ( SourcePackage(..), ReadyPackage(..)
          , ConfiguredPackage(..)
          , OptionalStanza, ConfiguredId(..) )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Package
-         ( PackageIdentifier, Dependency
+         ( PackageId, PackageIdentifier, Dependency
          , Package(packageId) )
 import Distribution.PackageDescription
          ( FlagAssignment )
@@ -47,6 +49,12 @@ data FinalSelectedPackage
 
 type TopologicalSortNumber = Int
 
+-- | InstalledPackage caches its dependencies as source package IDs.
+data InstalledPackage
+   = InstalledPackage
+       InstalledPackageInfo
+       [PackageId]
+
 data InstalledPackageEx
    = InstalledPackageEx
        InstalledPackage
@@ -67,6 +75,9 @@ data SemiConfiguredPackage
        [OptionalStanza]  -- enabled optional stanzas
        [Dependency]      -- dependencies we end up with when we apply
                          -- the flag assignment
+
+instance Package InstalledPackage where
+  packageId (InstalledPackage pkg _) = packageId pkg
 
 instance Package InstalledPackageEx where
   packageId (InstalledPackageEx p _ _) = packageId p

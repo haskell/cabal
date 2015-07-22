@@ -19,10 +19,8 @@ import Distribution.Client.Dependency.TopDown.Types
 import qualified Distribution.Client.Dependency.TopDown.Constraints as Constraints
 import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
-import Distribution.Client.IndexUtils
-         ( convert )
 import Distribution.Client.Types
-         ( SourcePackage(..), ConfiguredPackage(..), InstalledPackage(..)
+         ( SourcePackage(..), ConfiguredPackage(..)
          , enableStanzas, ConfiguredId(..), fakeInstalledPackageId )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, ResolverPackage(..), PackageConstraint(..)
@@ -30,15 +28,19 @@ import Distribution.Client.Dependency.Types
          , Progress(..), foldProgress )
 
 import qualified Distribution.Client.PackageIndex as PackageIndex
+import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
+import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
 import Distribution.Client.ComponentDeps
          ( ComponentDeps )
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Package
-         ( PackageName(..), PackageId, Package(..), packageVersion, packageName
-         , Dependency(Dependency), thisPackageVersion
-         , simplifyDependency )
+         ( PackageName(..), PackageId, PackageIdentifier(..)
+         , InstalledPackageId(..)
+         , Package(..), packageVersion, packageName
+         , Dependency(Dependency), thisPackageVersion, simplifyDependency )
 import Distribution.PackageDescription
          ( PackageDescription(buildDepends) )
 import Distribution.Client.PackageUtils
@@ -46,7 +48,7 @@ import Distribution.Client.PackageUtils
 import Distribution.PackageDescription.Configuration
          ( finalizePackageDescription, flattenPackageDescription )
 import Distribution.Version
-         ( VersionRange, withinRange, simplifyVersionRange
+         ( Version(..), VersionRange, withinRange, simplifyVersionRange
          , UpperBound(..), asVersionIntervals )
 import Distribution.Compiler
          ( CompilerInfo )
@@ -248,9 +250,12 @@ search configure pref constraints =
 topDownResolver :: DependencyResolver
 topDownResolver platform cinfo installedPkgIndex sourcePkgIndex
                 preferences constraints targets =
-    mapMessages (topDownResolver' platform cinfo
-                                  (convert installedPkgIndex) sourcePkgIndex
-                                  preferences constraints targets)
+    mapMessages $ topDownResolver'
+                    platform cinfo
+                    (convertInstalledPackageIndex installedPkgIndex)
+                    sourcePkgIndex
+                    preferences constraints
+                    targets
   where
     mapMessages :: Progress Log Failure a -> Progress String String a
     mapMessages = foldProgress (Step . showLog) (Fail . showFailure) Done
@@ -539,6 +544,43 @@ selectNeededSubset installedPkgIndex sourcePkgIndex = select mempty mempty
         notAlreadyIncluded name =
             null (PackageIndex.lookupPackageName installedPkgIndex' name)
          && null (PackageIndex.lookupPackageName sourcePkgIndex' name)
+
+
+-- | The old top down solver assumes that installed packages are indexed by
+-- their source package id. But these days they're actually indexed by an
+-- installed package id and there can be many installed packages with the same
+-- source package id. This function tries to do a convertion, but it can only
+-- be partial.
+--
+convertInstalledPackageIndex :: InstalledPackageIndex
+                             -> PackageIndex InstalledPackage
+convertInstalledPackageIndex index' = PackageIndex.fromList
+    -- There can be multiple installed instances of each package version,
+    -- like when the same package is installed in the global & user DBs.
+    -- InstalledPackageIndex.allPackagesBySourcePackageId gives us the
+    -- installed packages with the most preferred instances first, so by
+    -- picking the first we should get the user one. This is almost but not
+    -- quite the same as what ghc does.
+    [ InstalledPackage ipkg (sourceDepsOf index' ipkg)
+    | (_,ipkg:_) <- InstalledPackageIndex.allPackagesBySourcePackageId index' ]
+  where
+    -- The InstalledPackageInfo only lists dependencies by the
+    -- InstalledPackageId, which means we do not directly know the corresponding
+    -- source dependency. The only way to find out is to lookup the
+    -- InstalledPackageId to get the InstalledPackageInfo and look at its
+    -- source PackageId. But if the package is broken because it depends on
+    -- other packages that do not exist then we have a problem we cannot find
+    -- the original source package id. Instead we make up a bogus package id.
+    -- This should have the same effect since it should be a dependency on a
+    -- nonexistent package.
+    sourceDepsOf index ipkg =
+      [ maybe (brokenPackageId depid) packageId mdep
+      | let depids = InstalledPackageInfo.depends ipkg
+            getpkg = InstalledPackageIndex.lookupInstalledPackageId index
+      , (depid, mdep) <- zip depids (map getpkg depids) ]
+
+    brokenPackageId (InstalledPackageId str) =
+      PackageIdentifier (PackageName (str ++ "-broken")) (Version [] [])
 
 -- ------------------------------------------------------------
 -- * Post processing the solution

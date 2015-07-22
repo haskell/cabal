@@ -72,22 +72,6 @@ instance PackageFixedDeps (InstalledPackageInfo_ str) where
   depends = CD.fromInstalled . installedDepends
 
 
--- | InstalledPackage caches its dependencies as source package IDs.
--- This is for the benefit of the top-down solver only.
-data InstalledPackage = InstalledPackage
-       InstalledPackageInfo
-       [PackageId]
-
-instance Package InstalledPackage where
-  packageId (InstalledPackage pkg _) = packageId pkg
-instance PackageFixedDeps InstalledPackage where
-  depends (InstalledPackage pkg _) = depends pkg
-instance HasInstalledPackageId InstalledPackage where
-  installedPackageId (InstalledPackage pkg _) = installedPackageId pkg
-instance PackageInstalled InstalledPackage where
-  installedDepends (InstalledPackage pkg _) = installedDepends pkg
-
-
 -- | In order to reuse the implementation of PackageIndex which relies on
 -- 'InstalledPackageId', we need to be able to synthesize these IDs prior
 -- to installation.  Eventually, we'll move to a representation of
