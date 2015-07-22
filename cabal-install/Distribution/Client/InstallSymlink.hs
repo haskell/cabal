@@ -27,7 +27,9 @@ import Distribution.Simple.Compiler
 symlinkBinaries :: Compiler
                 -> ConfigFlags
                 -> InstallFlags
-                -> InstallPlan
+                -> InstallPlan InstalledPackageInfo
+                               ConfiguredPackage
+                               iresult ifailure
                 -> IO [(PackageIdentifier, String, FilePath)]
 symlinkBinaries _ _ _ _ = return []
 
@@ -37,7 +39,8 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 #else
 
 import Distribution.Client.Types
-         ( SourcePackage(..), ReadyPackage(..), enableStanzas )
+         ( SourcePackage(..), ReadyPackage(..), enableStanzas
+         , ConfiguredPackage(..) )
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
@@ -56,6 +59,8 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Setup
          ( ConfigFlags(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Simple.Compiler
          ( Compiler, CompilerInfo(..), packageKeySupported )
@@ -100,7 +105,9 @@ import Data.Maybe
 symlinkBinaries :: Compiler
                 -> ConfigFlags
                 -> InstallFlags
-                -> InstallPlan
+                -> InstallPlan InstalledPackageInfo
+                               ConfiguredPackage
+                               iresult ifailure
                 -> IO [(PackageIdentifier, String, FilePath)]
 symlinkBinaries comp configFlags installFlags plan =
   case flagToMaybe (installSymlinkBinDir installFlags) of
@@ -120,7 +127,7 @@ symlinkBinaries comp configFlags installFlags plan =
                then return Nothing
                else return (Just (pkgid, publicExeName,
                                   privateBinDir </> privateExeName))
-        | (ReadyPackage _ _flags _ deps, pkg, exe) <- exes
+        | (ReadyPackage (ConfiguredPackage _ _flags _ _) deps, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               pkg_key = mkPackageKey (packageKeySupported comp) pkgid
                                      (map Installed.packageKey (CD.nonSetupDeps deps)) []
@@ -131,13 +138,16 @@ symlinkBinaries comp configFlags installFlags plan =
   where
     exes =
       [ (cpkg, pkg, exe)
-      | InstallPlan.Installed cpkg _ <- InstallPlan.toList plan
+      | InstallPlan.Installed cpkg _ _ <- InstallPlan.toList plan
       , let pkg   = pkgDescription cpkg
       , exe <- PackageDescription.executables pkg
       , PackageDescription.buildable (PackageDescription.buildInfo exe) ]
 
-    pkgDescription :: ReadyPackage -> PackageDescription
-    pkgDescription (ReadyPackage (SourcePackage _ pkg _ _) flags stanzas _) =
+    pkgDescription :: ReadyPackage ConfiguredPackage ipkg -> PackageDescription
+    pkgDescription (ReadyPackage (ConfiguredPackage
+                                    (SourcePackage _ pkg _ _)
+                                    flags stanzas _)
+                                  _) =
       case finalizePackageDescription flags
              (const True)
              platform cinfo [] (enableStanzas stanzas pkg) of

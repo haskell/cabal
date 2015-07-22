@@ -42,6 +42,7 @@ import Distribution.Simple.Setup
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
+import Distribution.InstalledPackageInfo (InstalledPackageInfo) 
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( Package(..), InstalledPackageId, packageName
@@ -116,7 +117,10 @@ configure verbosity packageDBs repos comp platform conf
         configureCommand (const configFlags) extraArgs
 
     Right installPlan -> case InstallPlan.ready installPlan of
-      [pkg@(ReadyPackage (SourcePackage _ _ (LocalUnpackedPackage _) _) _ _ _)] -> do
+      [pkg@(ReadyPackage
+             (ConfiguredPackage (SourcePackage _ _ (LocalUnpackedPackage _) _)
+                                 _ _ _)
+             _)] -> do
         configurePackage verbosity
           (InstallPlan.planPlatform installPlan)
           (InstallPlan.planCompiler installPlan)
@@ -127,7 +131,10 @@ configure verbosity packageDBs repos comp platform conf
               ++ "one local ready package."
 
   where
-    setupScriptOptions :: InstalledPackageIndex -> Maybe ReadyPackage -> SetupScriptOptions
+    setupScriptOptions :: InstalledPackageIndex
+                       -> Maybe (ReadyPackage ConfiguredPackage
+                                              InstalledPackageInfo)
+                       -> SetupScriptOptions
     setupScriptOptions =
       configureSetupScript
         packageDBs
@@ -154,7 +161,8 @@ configureSetupScript :: PackageDBStack
                      -> Maybe Lock
                      -> Bool
                      -> InstalledPackageIndex
-                     -> Maybe ReadyPackage
+                     -> Maybe (ReadyPackage ConfiguredPackage
+                                            InstalledPackageInfo)
                      -> SetupScriptOptions
 configureSetupScript packageDBs
                      comp
@@ -206,7 +214,8 @@ configureSetupScript packageDBs
 
     explicitSetupDeps :: Maybe [(InstalledPackageId, PackageId)]
     explicitSetupDeps = do
-      ReadyPackage (SourcePackage _ gpkg _ _) _ _ deps <- mpkg
+      ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _) deps
+                 <- mpkg
       -- Check if there is an explicit setup stanza
       _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
       -- Return the setup dependencies computed by the solver
@@ -224,7 +233,10 @@ planLocalPackage :: Verbosity -> Compiler
                  -> ConfigFlags -> ConfigExFlags
                  -> InstalledPackageIndex
                  -> SourcePackageDb
-                 -> IO (Progress String String InstallPlan)
+                 -> IO (Progress String String
+                                 (InstallPlan InstalledPackageInfo
+                                              ConfiguredPackage
+                                              iresult ifailure))
 planLocalPackage verbosity comp platform configFlags configExFlags installedPkgIndex
   (SourcePackageDb _ packagePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
@@ -290,11 +302,14 @@ configurePackage :: Verbosity
                  -> Platform -> CompilerInfo
                  -> SetupScriptOptions
                  -> ConfigFlags
-                 -> ReadyPackage
+                 -> ReadyPackage ConfiguredPackage InstalledPackageInfo
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
-  (ReadyPackage (SourcePackage _ gpkg _ _) flags stanzas deps) extraArgs =
+                 (ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _)
+                                                  flags stanzas _)
+                               deps)
+                 extraArgs =
 
   setupWrapper verbosity
     scriptOptions (Just pkg) configureCommand configureFlags extraArgs
