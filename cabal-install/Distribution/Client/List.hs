@@ -15,7 +15,8 @@ module Distribution.Client.List (
 
 import Distribution.Package
          ( PackageName(..), Package(..), packageName, packageVersion
-         , Dependency(..), simplifyDependency )
+         , Dependency(..), simplifyDependency
+         , InstalledPackageId )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -44,7 +45,7 @@ import Distribution.Text
 import Distribution.Client.Types
          ( SourcePackage(..), Repo, SourcePackageDb(..) )
 import Distribution.Client.Dependency.Types
-         ( PackageConstraint(..), ExtDependency(..) )
+         ( PackageConstraint(..) )
 import Distribution.Client.Targets
          ( UserTarget, resolveUserTargets, PackageSpecifier(..) )
 import Distribution.Client.Setup
@@ -292,6 +293,11 @@ data PackageDisplayInfo = PackageDisplayInfo {
     haveTarball       :: Bool
   }
 
+-- | Covers source dependencies and installed dependencies in
+-- one type.
+data ExtDependency = SourceDependency Dependency
+                   | InstalledDependency InstalledPackageId
+
 showPackageSummaryInfo :: PackageDisplayInfo -> String
 showPackageSummaryInfo pkginfo =
   renderStyle (style {lineLength = 80, ribbonsPerLine = 1}) $
@@ -344,7 +350,7 @@ showPackageDetailedInfo pkginfo =
    , entry "Source repo"   sourceRepo   orNotSpecified text
    , entry "Executables"   executables  hideIfNull     (commaSep text)
    , entry "Flags"         flags        hideIfNull     (commaSep dispFlag)
-   , entry "Dependencies"  dependencies hideIfNull     (commaSep disp)
+   , entry "Dependencies"  dependencies hideIfNull     (commaSep dispExtDep)
    , entry "Documentation" haddockHtml  showIfInstalled text
    , entry "Cached"        haveTarball  alwaysShow     dispYesNo
    , if not (hasLib pkginfo) then empty else
@@ -377,6 +383,9 @@ showPackageDetailedInfo pkginfo =
     dispFlag f = case flagName f of FlagName n -> text n
     dispYesNo True  = text "Yes"
     dispYesNo False = text "No"
+
+    dispExtDep (SourceDependency    dep) = disp dep
+    dispExtDep (InstalledDependency dep) = disp dep
 
     isInstalled = not (null (installedVersions pkginfo))
     hasExes = length (executables pkginfo) >= 2
