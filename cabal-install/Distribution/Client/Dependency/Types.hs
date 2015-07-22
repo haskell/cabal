@@ -18,6 +18,7 @@ module Distribution.Client.Dependency.Types (
     PreSolver(..),
     Solver(..),
     DependencyResolver,
+    ResolverPackage(..),
 
     AllowNewer(..), isAllowNewer,
     PackageConstraint(..),
@@ -45,8 +46,8 @@ import Data.Monoid
 #endif
 
 import Distribution.Client.Types
-         ( OptionalStanza(..), SourcePackage(..) )
-import qualified Distribution.Client.InstallPlan as InstallPlan
+         ( OptionalStanza(..), SourcePackage(..), ConfiguredPackage
+         , InstalledPackage )
 
 import Distribution.Compat.ReadP
          ( (<++) )
@@ -120,7 +121,15 @@ type DependencyResolver = Platform
                        -> (PackageName -> PackagePreferences)
                        -> [PackageConstraint]
                        -> [PackageName]
-                       -> Progress String String [InstallPlan.PlanPackage]
+                       -> Progress String String [ResolverPackage]
+
+-- | The dependency resolver picks either pre-existing installed packages
+-- or it picks source packages along with package configuration.
+--
+-- This is like the 'InstallPlan.PlanPackage' but with fewer cases.
+--
+data ResolverPackage = PreExisting InstalledPackage
+                     | Configured  ConfiguredPackage
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously

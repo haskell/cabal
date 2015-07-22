@@ -26,9 +26,7 @@ import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Solver
          ( SolverConfig(..), solve )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, PackageConstraint(..) )
-import Distribution.Client.InstallPlan
-         ( PlanPackage )
+         ( DependencyResolver, ResolverPackage, PackageConstraint(..) )
 import Distribution.System
          ( Platform(..) )
 
@@ -46,7 +44,7 @@ modularResolver sc (Platform arch os) cinfo iidx sidx pprefs pcs pns =
       gcs    = M.fromListWith (++) (map (\ pc -> (pcName pc, [pc])) pcs)
 
       -- Results have to be converted into an install plan.
-      postprocess :: Assignment -> RevDepMap -> [PlanPackage]
+      postprocess :: Assignment -> RevDepMap -> [ResolverPackage]
       postprocess a rdm = map (convCP iidx sidx) (toCPs a rdm)
 
       -- Helper function to extract the PN from a constraint.

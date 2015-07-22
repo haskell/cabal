@@ -21,14 +21,11 @@ import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import Distribution.Client.IndexUtils
          ( convert )
-import qualified Distribution.Client.InstallPlan as InstallPlan
-import Distribution.Client.InstallPlan
-         ( PlanPackage(..) )
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..), InstalledPackage(..)
          , enableStanzas, ConfiguredId(..), fakeInstalledPackageId )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, PackageConstraint(..)
+         ( DependencyResolver, ResolverPackage(..), PackageConstraint(..)
          , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 
@@ -266,7 +263,7 @@ topDownResolver' :: Platform -> CompilerInfo
                  -> (PackageName -> PackagePreferences)
                  -> [PackageConstraint]
                  -> [PackageName]
-                 -> Progress Log Failure [PlanPackage]
+                 -> Progress Log Failure [ResolverPackage]
 topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
                  preferences constraints targets =
       fmap (uncurry finalise)
@@ -288,11 +285,15 @@ topDownResolver' platform cinfo installedPkgIndex sourcePkgIndex
     initialPkgNames = Set.fromList targets
 
     finalise selected' constraints' =
-        PackageIndex.allPackages
+        map toResolverPackage
+      . PackageIndex.allPackages
       . fst . improvePlan installedPkgIndex' constraints'
       . PackageIndex.fromList
       $ finaliseSelectedPackages preferences selected' constraints'
 
+    toResolverPackage :: FinalSelectedPackage -> ResolverPackage
+    toResolverPackage (SelectedInstalled pkg) = PreExisting pkg
+    toResolverPackage (SelectedSource    pkg) = Configured  pkg
 
 addTopLevelTargets :: [PackageName]
                    -> Constraints
@@ -545,7 +546,7 @@ selectNeededSubset installedPkgIndex sourcePkgIndex = select mempty mempty
 finaliseSelectedPackages :: (PackageName -> PackagePreferences)
                          -> SelectedPackages
                          -> Constraints
-                         -> [PlanPackage]
+                         -> [FinalSelectedPackage]
 finaliseSelectedPackages pref selected constraints =
   map finaliseSelected (PackageIndex.allPackages selected)
   where
@@ -561,9 +562,9 @@ finaliseSelectedPackages pref selected constraints =
         Just (InstalledOnly _)        -> finaliseInstalled ipkg
         Just (InstalledAndSource _ _) -> finaliseSource (Just ipkg) apkg
 
-    finaliseInstalled (InstalledPackageEx pkg _ _) = InstallPlan.PreExisting pkg
+    finaliseInstalled (InstalledPackageEx pkg _ _) = SelectedInstalled pkg
     finaliseSource mipkg (SemiConfiguredPackage pkg flags stanzas deps) =
-      InstallPlan.Configured (ConfiguredPackage pkg flags stanzas deps')
+        SelectedSource (ConfiguredPackage pkg flags stanzas deps')
       where
         -- We cheat in the cabal solver, and classify all dependencies as
         -- library dependencies.
@@ -649,8 +650,8 @@ finaliseSelectedPackages pref selected constraints =
 --
 improvePlan :: PackageIndex InstalledPackage
             -> Constraints
-            -> PackageIndex PlanPackage
-            -> (PackageIndex PlanPackage, Constraints)
+            -> PackageIndex FinalSelectedPackage
+            -> (PackageIndex FinalSelectedPackage, Constraints)
 improvePlan installed constraints0 selected0 =
   foldl' improve (selected0, constraints0) (reverseTopologicalOrder selected0)
   where
@@ -663,26 +664,26 @@ improvePlan installed constraints0 selected0 =
     -- already installed with the exact same dependencies and all the packages
     -- in the plan that it depends on are in the installed state
     improvePkg selected constraints pkgid = do
-      Configured pkg  <- PackageIndex.lookupPackageId selected  pkgid
-      ipkg            <- PackageIndex.lookupPackageId installed pkgid
+      SelectedSource pkg  <- PackageIndex.lookupPackageId selected  pkgid
+      ipkg                <- PackageIndex.lookupPackageId installed pkgid
       guard $ all (isInstalled selected) (sourceDeps pkg)
       tryInstalled selected constraints [ipkg]
 
     isInstalled selected pkgid =
       case PackageIndex.lookupPackageId selected pkgid of
-        Just (PreExisting _) -> True
-        _                    -> False
+        Just (SelectedInstalled _) -> True
+        _                          -> False
 
-    tryInstalled :: PackageIndex PlanPackage -> Constraints
+    tryInstalled :: PackageIndex FinalSelectedPackage -> Constraints
                  -> [InstalledPackage]
-                 -> Maybe (PackageIndex PlanPackage, Constraints)
+                 -> Maybe (PackageIndex FinalSelectedPackage, Constraints)
     tryInstalled selected constraints [] = Just (selected, constraints)
     tryInstalled selected constraints (pkg:pkgs) =
       case constraintsOk (packageId pkg) (sourceDeps pkg) constraints of
         Nothing           -> Nothing
         Just constraints' -> tryInstalled selected' constraints' pkgs'
           where
-            selected' = PackageIndex.insert (PreExisting pkg) selected
+            selected' = PackageIndex.insert (SelectedInstalled pkg) selected
             pkgs'      = catMaybes (map notSelected (sourceDeps pkg)) ++ pkgs
             notSelected pkgid =
               case (PackageIndex.lookupPackageId installed pkgid
@@ -698,7 +699,7 @@ improvePlan installed constraints0 selected0 =
       where
         dep = thisPackageVersion pkgid'
 
-    reverseTopologicalOrder :: PackageIndex PlanPackage -> [PackageId]
+    reverseTopologicalOrder :: PackageIndex FinalSelectedPackage -> [PackageId]
     reverseTopologicalOrder index = map (packageId . toPkg)
                                   . Graph.topSort
                                   . Graph.transposeG
@@ -1001,7 +1002,7 @@ listOf disp (x0:x1:xs) = disp x0 ++ go x1 xs
 -- this duplication could be avoided, but that's a bit of work and the top-down
 -- solver is legacy code anyway.
 --
--- (NOTE: This is called at two types: InstalledPackage and PlanPackage.)
+-- (NOTE: This is called at two types: InstalledPackage and FinalSelectedPackage.)
 dependencyGraph :: PackageSourceDeps pkg
                 => PackageIndex pkg
                 -> (Graph.Graph,
