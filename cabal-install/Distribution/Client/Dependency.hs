@@ -72,8 +72,8 @@ import Distribution.Client.Types
          ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
          , ConfiguredPackage(..), ConfiguredId(..), enableStanzas )
 import Distribution.Client.Dependency.Types
-         ( PreSolver(..), Solver(..), DependencyResolver, PackageConstraint(..)
-         , debugPackageConstraint
+         ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
+         , PackageConstraint(..), debugPackageConstraint
          , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
@@ -607,7 +607,7 @@ interpretPackagesPreference selected defaultPref prefs =
 validateSolverResult :: Platform
                      -> CompilerInfo
                      -> Bool
-                     -> [InstallPlan.PlanPackage]
+                     -> [ResolverPackage]
                      -> InstallPlan
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
@@ -617,7 +617,10 @@ validateSolverResult platform comp indepGoals pkgs =
       problems               -> error (formatPkgProblems problems)
 
   where
-    index = InstalledPackageIndex.fromList pkgs
+    index = InstalledPackageIndex.fromList (map toPlanPackage pkgs)
+
+    toPlanPackage (PreExisting pkg) = InstallPlan.PreExisting pkg
+    toPlanPackage (Configured  pkg) = InstallPlan.Configured  pkg
 
     formatPkgProblems  = formatProblemMessage . map showPlanPackageProblem
     formatPlanProblems = formatProblemMessage . map InstallPlan.showPlanProblem
@@ -642,11 +645,11 @@ showPlanPackageProblem (InvalidConfiguredPackage pkg packageProblems) =
              | problem <- packageProblems ]
 
 planPackagesProblems :: Platform -> CompilerInfo
-                     -> [InstallPlan.PlanPackage]
+                     -> [ResolverPackage]
                      -> [PlanPackageProblem]
 planPackagesProblems platform cinfo pkgs =
      [ InvalidConfiguredPackage pkg packageProblems
-     | InstallPlan.Configured pkg <- pkgs
+     | Configured pkg <- pkgs
      , let packageProblems = configuredPackageProblems platform cinfo pkg
      , not (null packageProblems) ]
 

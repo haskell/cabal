@@ -14,10 +14,9 @@
 module Distribution.Client.Dependency.TopDown.Types where
 
 import Distribution.Client.Types
-         ( SourcePackage(..), ReadyPackage(..), InstalledPackage(..)
+         ( InstalledPackage(..), SourcePackage(..), ReadyPackage(..)
+         , ConfiguredPackage(..)
          , OptionalStanza, ConfiguredId(..) )
-import Distribution.Client.InstallPlan
-         ( ConfiguredPackage(..), PlanPackage(..) )
 import qualified Distribution.Client.ComponentDeps as CD
 
 import Distribution.Package
@@ -41,6 +40,10 @@ data InstalledOrSource installed source
    | SourceOnly                   source
    | InstalledAndSource installed source
   deriving Eq
+
+data FinalSelectedPackage
+   = SelectedInstalled InstalledPackage
+   | SelectedSource    ConfiguredPackage
 
 type TopologicalSortNumber = Int
 
@@ -79,6 +82,10 @@ instance (Package installed, Package source)
   packageId (InstalledOnly      p  ) = packageId p
   packageId (SourceOnly         p  ) = packageId p
   packageId (InstalledAndSource p _) = packageId p
+
+instance Package FinalSelectedPackage where
+  packageId (SelectedInstalled pkg) = packageId pkg
+  packageId (SelectedSource    pkg) = packageId pkg
 
 
 -- | We can have constraints on selecting just installed or just source
@@ -123,9 +130,7 @@ instance PackageSourceDeps ReadyPackage where
 instance PackageSourceDeps InstalledPackage where
   sourceDeps (InstalledPackage _ deps) = deps
 
-instance PackageSourceDeps PlanPackage where
-  sourceDeps (PreExisting pkg) = sourceDeps pkg
-  sourceDeps (Configured  pkg) = sourceDeps pkg
-  sourceDeps (Processing pkg)  = sourceDeps pkg
-  sourceDeps (Installed pkg _) = sourceDeps pkg
-  sourceDeps (Failed    pkg _) = sourceDeps pkg
+instance PackageSourceDeps FinalSelectedPackage where
+  sourceDeps (SelectedInstalled pkg) = sourceDeps pkg
+  sourceDeps (SelectedSource    pkg) = sourceDeps pkg
+
