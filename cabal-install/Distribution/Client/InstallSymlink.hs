@@ -23,15 +23,16 @@ import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Setup (InstallFlags)
 import Distribution.Simple.Setup (ConfigFlags)
 import Distribution.Simple.Compiler
+import Distribution.System
 
-symlinkBinaries :: Compiler
+symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan InstalledPackageInfo
                                ConfiguredPackage
                                iresult ifailure
                 -> IO [(PackageIdentifier, String, FilePath)]
-symlinkBinaries _ _ _ _ = return []
+symlinkBinaries _ _ _ _ _ = return []
 
 symlinkBinary :: FilePath -> FilePath -> String -> String -> IO Bool
 symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
@@ -64,7 +65,9 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Simple.Compiler
-         ( Compiler, CompilerInfo(..), packageKeySupported )
+         ( Compiler, compilerInfo, CompilerInfo(..), packageKeySupported )
+import Distribution.System
+         ( Platform )
 
 import System.Posix.Files
          ( getSymbolicLinkStatus, isSymbolicLink, createSymbolicLink
@@ -103,14 +106,14 @@ import Data.Maybe
 -- controlled from the config file. Of course it only works on POSIX systems
 -- with symlinks so is not available to Windows users.
 --
-symlinkBinaries :: Compiler
+symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan InstalledPackageInfo
                                ConfiguredPackage
                                iresult ifailure
                 -> IO [(PackageIdentifier, String, FilePath)]
-symlinkBinaries comp configFlags installFlags plan =
+symlinkBinaries platform comp configFlags installFlags plan =
   case flagToMaybe (installSymlinkBinDir installFlags) of
     Nothing            -> return []
     Just symlinkBinDir
@@ -180,8 +183,7 @@ symlinkBinaries comp configFlags installFlags plan =
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")
     prefixTemplate   = fromFlagTemplate (configProgPrefix configFlags)
     suffixTemplate   = fromFlagTemplate (configProgSuffix configFlags)
-    platform         = InstallPlan.planPlatform plan
-    cinfo            = InstallPlan.planCompiler plan
+    cinfo            = compilerInfo comp
     (CompilerId compilerFlavor _) = compilerInfoId cinfo
 
 symlinkBinary :: FilePath -- ^ The canonical path of the public bin dir

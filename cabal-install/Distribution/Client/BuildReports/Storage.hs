@@ -118,16 +118,16 @@ storeLocal cinfo templates reports platform = sequence_
 -- * InstallPlan support
 -- ------------------------------------------------------------
 
-fromInstallPlan :: InstallPlan InstalledPackageInfo
+fromInstallPlan :: Platform -> CompilerId
+                -> InstallPlan InstalledPackageInfo
                                ConfiguredPackage
                                BuildSuccess BuildFailure
                 -> [(BuildReport, Maybe Repo)]
-fromInstallPlan plan = catMaybes
-                     . map (fromPlanPackage platform comp)
-                     . InstallPlan.toList
-                     $ plan
-  where platform = InstallPlan.planPlatform plan
-        comp     = compilerInfoId (InstallPlan.planCompiler plan)
+fromInstallPlan platform comp plan =
+     catMaybes
+   . map (fromPlanPackage platform comp)
+   . InstallPlan.toList
+   $ plan
 
 fromPlanPackage :: Platform -> CompilerId
                 -> InstallPlan.PlanPackage InstalledPackageInfo

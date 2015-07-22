@@ -618,7 +618,7 @@ validateSolverResult :: Platform
                                     iresult ifailure
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
-      [] -> case InstallPlan.new platform comp indepGoals index of
+      [] -> case InstallPlan.new indepGoals index of
               Right plan     -> plan
               Left  problems -> error (formatPlanProblems problems)
       problems               -> error (formatPkgProblems problems)
