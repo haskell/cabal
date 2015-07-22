@@ -799,9 +799,12 @@ postInstallActions verbosity
       [ World.WorldPkgInfo dep []
       | UserTargetNamed dep <- targets ]
 
-  let buildReports = BuildReports.fromInstallPlan installPlan
-  BuildReports.storeLocal (compilerInfo comp) (fromNubList $ installSummaryFile installFlags) buildReports
-    (InstallPlan.planPlatform installPlan)
+  let buildReports = BuildReports.fromInstallPlan platform (compilerId comp)
+                                                  installPlan
+  BuildReports.storeLocal (compilerInfo comp)
+                          (fromNubList $ installSummaryFile installFlags)
+                          buildReports
+                          platform
   when (reportingLevel >= AnonymousReports) $
     BuildReports.storeAnonymous buildReports
   when (reportingLevel == DetailedReports) $
@@ -810,7 +813,7 @@ postInstallActions verbosity
   regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
                          configFlags installFlags installPlan
 
-  symlinkBinaries verbosity comp configFlags installFlags installPlan
+  symlinkBinaries verbosity platform comp configFlags installFlags installPlan
 
   printBuildFailures installPlan
 
@@ -920,15 +923,17 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
 
 
 symlinkBinaries :: Verbosity
-                -> Compiler
+                -> Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
                 -> InstallPlan InstalledPackageInfo
                                ConfiguredPackage
                                iresult ifailure
                 -> IO ()
-symlinkBinaries verbosity comp configFlags installFlags plan = do
-  failed <- InstallSymlink.symlinkBinaries comp configFlags installFlags plan
+symlinkBinaries verbosity platform comp configFlags installFlags plan = do
+  failed <- InstallSymlink.symlinkBinaries platform comp
+                                           configFlags installFlags
+                                           plan
   case failed of
     [] -> return ()
     [(_, exe, path)] ->
@@ -1038,7 +1043,7 @@ performInstallations :: Verbosity
                                         ConfiguredPackage
                                         BuildSuccess BuildFailure)
 performInstallations verbosity
-  (packageDBs, _, comp, _, conf, useSandbox, _,
+  (packageDBs, _, comp, platform, conf, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
   installedPkgIndex installPlan = do
 
@@ -1071,8 +1076,7 @@ performInstallations verbosity
                                  cinfo platform pkg pkgoverride mpath useLogFile
 
   where
-    platform = InstallPlan.planPlatform installPlan
-    cinfo    = InstallPlan.planCompiler installPlan
+    cinfo = compilerInfo comp
 
     numJobs         = determineNumJobs (installNumJobs installFlags)
     numFetchJobs    = 2
