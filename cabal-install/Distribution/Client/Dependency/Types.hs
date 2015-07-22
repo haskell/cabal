@@ -13,8 +13,6 @@
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency.Types (
-    ExtDependency(..),
-
     PreSolver(..),
     Solver(..),
     DependencyResolver,
@@ -48,9 +46,6 @@ import Data.Monoid
 import Distribution.Client.Types
          ( OptionalStanza(..), SourcePackage(..), ConfiguredPackage )
 
-import Distribution.Compat.ReadP
-         ( (<++) )
-
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
 import Distribution.PackageDescription
@@ -61,7 +56,7 @@ import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
-         ( Dependency, PackageName, InstalledPackageId )
+         ( PackageName )
 import Distribution.Version
          ( VersionRange, simplifyVersionRange )
 import Distribution.Compiler
@@ -76,16 +71,6 @@ import Text.PrettyPrint
 
 import Prelude hiding (fail)
 
--- | Covers source dependencies and installed dependencies in
--- one type.
-data ExtDependency = SourceDependency Dependency
-                   | InstalledDependency InstalledPackageId
-
-instance Text ExtDependency where
-  disp (SourceDependency    dep) = disp dep
-  disp (InstalledDependency dep) = disp dep
-
-  parse = (SourceDependency `fmap` parse) <++ (InstalledDependency `fmap` parse)
 
 -- | All the solvers that can be selected.
 data PreSolver = AlwaysTopDown | AlwaysModular | Choose
