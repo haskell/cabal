@@ -220,6 +220,7 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
 
     -- simplify trees by (partially) evaluating all conditions and converting
     -- dependencies to dependency maps.
+    simplifiedTrees :: [CondTree FlagName DependencyMap PDTagged]
     simplifiedTrees = map ( mapTreeConstrs toDepMap  -- convert to maps
                           . mapTreeConds (fst . simplifyWithSysParams os arch impl))
                           trees
@@ -228,6 +229,9 @@ resolveWithFlags dom os arch impl constrs trees checkDeps =
     -- either succeeds or returns a binary tree with the missing dependencies
     -- encountered in each run.  Since the tree is constructed lazily, we
     -- avoid some computation overhead in the successful case.
+    try :: [(FlagName, [Bool])]
+        -> [(FlagName, Bool)]
+        -> Either (BT [Dependency]) (TargetSet PDTagged, FlagAssignment)
     try [] flags =
         let targetSet = TargetSet $ flip map simplifiedTrees $
                 -- apply additional constraints to all dependencies
@@ -337,11 +341,11 @@ overallDependencies (TargetSet targets) = mconcat depss
   where
     (depss, _) = unzip $ filter (removeDisabledSections . snd) targets
     removeDisabledSections :: PDTagged -> Bool
-    removeDisabledSections (Lib _) = True
-    removeDisabledSections (Exe _ _) = True
-    removeDisabledSections (Test _ t) = testEnabled t
-    removeDisabledSections (Bench _ b) = benchmarkEnabled b
-    removeDisabledSections PDNull = True
+    removeDisabledSections (Lib l)     = buildable (libBuildInfo l)
+    removeDisabledSections (Exe _ e)   = buildable (buildInfo e)
+    removeDisabledSections (Test _ t)  = testEnabled t && buildable (testBuildInfo t)
+    removeDisabledSections (Bench _ b) = benchmarkEnabled b && buildable (benchmarkBuildInfo b)
+    removeDisabledSections PDNull      = True
 
 -- Apply extra constraints to a dependency map.
 -- Combines dependencies where the result will only contain keys from the left
@@ -482,10 +486,6 @@ finalizePackageDescription userflags satisfyDep
                     , testSuites = tests'
                     , benchmarks = bms'
                     , buildDepends = fromDepMap (overallDependencies targetSet)
-                      --TODO: we need to find a way to avoid pulling in deps
-                      -- for non-buildable components. However cannot simply
-                      -- filter at this stage, since if the package were not
-                      -- available we would have failed already.
                     }
               , flagVals )
 
