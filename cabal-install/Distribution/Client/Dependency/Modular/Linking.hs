@@ -274,6 +274,10 @@ linkDeps parents pp' = mapM_ go
           lg'  = M.findWithDefault (lgSingleton qpn' Nothing) qpn' $ vsLinks vs
       lg'' <- lift' $ lgMerge parents lg lg'
       updateLinkGroup lg''
+    -- For extensions and language dependencies, there is nothing to do.
+    -- No choice is involved, just checking, so there is nothing to link.
+    go (Simple (Ext  _)             _) = return ()
+    go (Simple (Lang _)             _) = return ()
     go (Flagged fn _ t f) = do
       vs <- get
       case M.lookup fn (vsFlags vs) of
