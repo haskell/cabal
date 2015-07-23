@@ -2,6 +2,8 @@ module Distribution.Client.Dependency.Modular.Solver where
 
 import Data.Map as M
 
+import Distribution.Compiler (CompilerInfo)
+
 import Distribution.Client.Dependency.Types
 
 import Distribution.Client.Dependency.Modular.Assignment
@@ -26,13 +28,14 @@ data SolverConfig = SolverConfig {
   maxBackjumps          :: Maybe Int
 }
 
-solve :: SolverConfig ->          -- solver parameters
-         Index ->                 -- all available packages as an index
+solve :: SolverConfig ->                      -- solver parameters
+         CompilerInfo ->
+         Index ->                             -- all available packages as an index
          (PN -> PackagePreferences) ->        -- preferences
          Map PN [LabeledPackageConstraint] -> -- global constraints
          [PN] ->                              -- global goals
          Log Message (Assignment, RevDepMap)
-solve sc idx userPrefs userConstraints userGoals =
+solve sc cinfo idx userPrefs userConstraints userGoals =
   explorePhase     $
   heuristicsPhase  $
   preferencesPhase $
@@ -54,7 +57,7 @@ solve sc idx userPrefs userConstraints userGoals =
                        P.enforcePackageConstraints userConstraints .
                        P.enforceSingleInstanceRestriction .
                        validateLinking idx .
-                       validateTree idx
+                       validateTree cinfo idx
     prunePhase       = (if avoidReinstalls sc then P.avoidReinstalls (const True) else id) .
                        -- packages that can never be "upgraded":
                        P.requireInstalled (`elem` [ PackageName "base"

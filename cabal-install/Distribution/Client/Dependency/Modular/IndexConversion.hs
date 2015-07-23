@@ -120,13 +120,13 @@ convGPD os arch comp strfl pi
     conv = convCondTree os arch comp pi fds (const True)
   in
     PInfo
-      (maybe []    (conv ComponentLib                       ) libs    ++
+      (maybe []    (conv ComponentLib                     libBuildInfo         ) libs    ++
        maybe []    (convSetupBuildInfo pi)    (setupBuildInfo pkg)    ++
-       concatMap   (\(nm, ds) -> conv (ComponentExe nm)   ds) exes    ++
+       concatMap   (\(nm, ds) -> conv (ComponentExe nm)   buildInfo          ds) exes    ++
       prefix (Stanza (SN pi TestStanzas))
-        (L.map     (\(nm, ds) -> conv (ComponentTest nm)  ds) tests)  ++
+        (L.map     (\(nm, ds) -> conv (ComponentTest nm)  testBuildInfo      ds) tests)  ++
       prefix (Stanza (SN pi BenchStanzas))
-        (L.map     (\(nm, ds) -> conv (ComponentBench nm) ds) benchs))
+        (L.map     (\(nm, ds) -> conv (ComponentBench nm) benchmarkBuildInfo ds) benchs))
       fds
       Nothing
 
@@ -143,11 +143,16 @@ flagInfo strfl = M.fromList . L.map (\ (MkFlag fn _ b m) -> (fn, FInfo b m (not 
 convCondTree :: OS -> Arch -> CompilerInfo -> PI PN -> FlagInfo ->
                 (a -> Bool) -> -- how to detect if a branch is active
                 Component ->
+                (a -> BuildInfo) ->
                 CondTree ConfVar [Dependency] a -> FlaggedDeps Component PN
-convCondTree os arch cinfo pi@(PI pn _) fds p comp (CondNode info ds branches)
-  | p info    = L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional dependencies
-              ++ concatMap (convBranch os arch cinfo pi fds p comp) branches
+convCondTree os arch cinfo pi@(PI pn _) fds p comp getInfo (CondNode info ds branches)
+  | p info    =  L.map (\d -> D.Simple (convDep pn d) comp) ds  -- unconditional package dependencies
+              ++ L.map (\e -> D.Simple (Ext  e) comp) (PD.allExtensions bi) -- unconditional extension dependencies
+              ++ L.map (\l -> D.Simple (Lang l) comp) (PD.allLanguages  bi) -- unconditional language dependencies
+              ++ concatMap (convBranch os arch cinfo pi fds p comp getInfo) branches
   | otherwise = []
+  where
+    bi = getInfo info
 
 -- | Branch interpreter.
 --
@@ -161,12 +166,13 @@ convBranch :: OS -> Arch -> CompilerInfo ->
               PI PN -> FlagInfo ->
               (a -> Bool) -> -- how to detect if a branch is active
               Component ->
+              (a -> BuildInfo) ->
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
                Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
-convBranch os arch cinfo pi@(PI pn _) fds p comp (c', t', mf') =
-  go c' (          convCondTree os arch cinfo pi fds p comp   t')
-        (maybe [] (convCondTree os arch cinfo pi fds p comp) mf')
+convBranch os arch cinfo pi@(PI pn _) fds p comp getInfo (c', t', mf') =
+  go c' (          convCondTree os arch cinfo pi fds p comp getInfo   t')
+        (maybe [] (convCondTree os arch cinfo pi fds p comp getInfo) mf')
   where
     go :: Condition ConfVar ->
           FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
