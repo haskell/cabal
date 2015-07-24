@@ -274,9 +274,9 @@ instance NFData PackageKey where
 -- | A library name consists of not only a source package
 -- id ('PackageId') but also the library names of all textual
 -- dependencies; thus, a library name uniquely identifies an
--- installed packages up to the dependency resolution done by Cabal.
+-- installed package up to the dependency resolution done by Cabal.
 -- Create using 'packageKeyLibraryName'.  Library names are opaque,
--- Cabal defined strings.
+-- Cabal-defined strings.
 newtype LibraryName
     = LibraryName String
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
