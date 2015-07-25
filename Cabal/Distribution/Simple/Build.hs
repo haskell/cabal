@@ -407,7 +407,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
-                , componentLibraryName = LibraryName "test"
+                , componentLibraryName = LibraryName (testName test)
                 , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
                 , componentPackageKey = OldPackageKey (PackageIdentifier (PackageName (testName test)) (pkgVersion (package pkg_descr)))
                 }

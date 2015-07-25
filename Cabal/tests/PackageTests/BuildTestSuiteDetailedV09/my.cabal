@@ -18,3 +18,8 @@ test-suite test-Dummy
   type:       detailed-0.9
   test-module: Dummy
   build-depends: base, Cabal
+
+test-suite test-Dummy2
+  type:       detailed-0.9
+  test-module: Dummy2
+  build-depends: base, Cabal

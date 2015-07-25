@@ -16,3 +16,5 @@ suite config = do
     assertConfigureSucceeded confResult
     buildResult <- cabal_build config spec
     assertBuildSucceeded buildResult
+    testResult <- cabal_test config spec [] ["test-Dummy", "test-Dummy2"]
+    assertTestSucceeded testResult
