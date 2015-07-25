@@ -164,7 +164,7 @@ convBranch :: OS -> Arch -> CompilerInfo ->
               (Condition ConfVar,
                CondTree ConfVar [Dependency] a,
                Maybe (CondTree ConfVar [Dependency] a)) -> FlaggedDeps Component PN
-convBranch os arch cinfo pi fds p comp (c', t', mf') =
+convBranch os arch cinfo pi@(PI pn _) fds p comp (c', t', mf') =
   go c' (          convCondTree os arch cinfo pi fds p comp   t')
         (maybe [] (convCondTree os arch cinfo pi fds p comp) mf')
   where
@@ -198,11 +198,16 @@ convBranch os arch cinfo pi fds p comp (c', t', mf') =
     -- with deferring flag choices will then usually first resolve this package,
     -- and try an already installed version before imposing a default flag choice
     -- that might not be what we want.
+    --
+    -- Note that we make assumptions here on the form of the dependencies that
+    -- can occur at this point. In particular, no occurrences of Fixed, and no
+    -- occurrences of multiple version ranges, as all dependencies below this
+    -- point have been generated using 'convDep'.
     extractCommon :: FlaggedDeps Component PN -> FlaggedDeps Component PN -> FlaggedDeps Component PN
-    extractCommon ps ps' = [ D.Simple (Dep pn (Constrained [])) comp
-                           | D.Simple (Dep pn  _) _ <- ps
-                           , D.Simple (Dep pn' _) _ <- ps'
-                           , pn == pn'
+    extractCommon ps ps' = [ D.Simple (Dep pn1 (Constrained [(vr1 .||. vr2, Goal (P pn) [])])) comp
+                           | D.Simple (Dep pn1 (Constrained [(vr1, _)])) _ <- ps
+                           , D.Simple (Dep pn2 (Constrained [(vr2, _)])) _ <- ps'
+                           , pn1 == pn2
                            ]
 
 -- | Convert a Cabal dependency to a solver-specific dependency.
