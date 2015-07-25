@@ -21,7 +21,7 @@ import qualified Distribution.Compat.ReadP as Parse
 import qualified Text.PrettyPrint          as Disp
 
 import Data.Version (Version(Version))
-import qualified Data.Char as Char (isDigit, isAlphaNum, isSpace)
+import qualified Data.Char as Char (isDigit, isAlpha, isAlphaNum, isSpace)
 
 class Text a where
   disp  :: a -> Disp.Doc
@@ -58,6 +58,10 @@ instance Text Version where
   parse = do
       branch <- Parse.sepBy1 digits (Parse.char '.')
                 -- allow but ignore tags:
+      _tag   <- Parse.optional $ do
+        c  <- Parse.satisfy Char.isAlpha
+        cs <- Parse.munch   Char.isAlphaNum
+        return (c : cs)
       _tags  <- Parse.many (Parse.char '-' >> Parse.munch1 Char.isAlphaNum)
       return (Version branch [])
     where
