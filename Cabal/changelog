@@ -10,6 +10,7 @@
 	  respetively (GHC's '-fprof-auto-{exported,top}' flags) (#193).
 	* New 'custom-setup' stanza to specify setup deps. Setup is also built
 	  with the cabal_macros.h style macros, for conditional compilation.
+	* Include Mac OS X framework headers in include path
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* Support GHC 7.10.
