@@ -346,7 +346,9 @@ componentCcGhcOptions verbosity implInfo lbi bi clbi pref filename =
       ghcOptInputFiles     = toNubListR [filename],
 
       ghcOptCppIncludePath = toNubListR $ [autogenModulesDir lbi, odir]
-                                          ++ PD.includeDirs bi,
+                                          ++ PD.includeDirs bi
+                                          ++ ["/System/Library/Frameworks/"++fw++"/Headers"
+                                              | isOSX, fw <- PD.frameworks bi ],
       ghcOptPackageDBs     = withPackageDB lbi,
       ghcOptPackages       = toNubListR $ mkGhcOptPackages clbi,
       ghcOptCcOptions      = toNubListR $
@@ -362,6 +364,7 @@ componentCcGhcOptions verbosity implInfo lbi bi clbi pref filename =
       ghcOptObjDir         = toFlag odir
     }
   where
+    isOSX = case buildOS of OSX -> True; _ -> False
     odir | hasCcOdirBug implInfo = pref </> takeDirectory filename
          | otherwise             = pref
          -- ghc 6.4.0 had a bug in -odir handling for C compilations.
@@ -385,7 +388,9 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptSourcePath      = toNubListR $ [odir] ++ (hsSourceDirs bi)
                                            ++ [autogenModulesDir lbi],
       ghcOptCppIncludePath  = toNubListR $ [autogenModulesDir lbi, odir]
-                                           ++ PD.includeDirs bi,
+                                           ++ PD.includeDirs bi
+                                           ++ ["/System/Library/Frameworks/"++fw++"/Headers"
+                                               | isOSX, fw <- PD.frameworks bi ],
       ghcOptCppOptions      = toNubListR $ cppOptions bi,
       ghcOptCppIncludes     = toNubListR $
                               [autogenModulesDir lbi </> cppHeaderName],
@@ -403,6 +408,8 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptExtensionMap    = M.fromList . compilerExtensions $ (compiler lbi)
     }
   where
+    isOSX = case buildOS of OSX -> True; _ -> False
+
     toGhcOptimisation NoOptimisation      = mempty --TODO perhaps override?
     toGhcOptimisation NormalOptimisation  = toFlag GhcNormalOptimisation
     toGhcOptimisation MaximumOptimisation = toFlag GhcMaximumOptimisation
