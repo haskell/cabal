@@ -410,9 +410,6 @@ ppHsc2hs bi lbi =
           | isOSX
           , opt <- nub (concatMap Installed.frameworkDirs pkgs)
           , what <- ["--cflag", "--lflag"] ]
-       ++ [ "--cflag=-I/System/Library/Frameworks/" ++ opt ++ "/Headers"
-          | isOSX
-          , opt <- nub (concatMap Installed.frameworks pkgs) ]
        ++ [ "--lflag=" ++ arg
           | isOSX
           , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs
