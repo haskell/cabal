@@ -131,38 +131,36 @@ instance HasInstalledPackageId ConfiguredPackage where
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
-data ReadyPackage srcpkg ipkg
+data GenericReadyPackage srcpkg ipkg
    = ReadyPackage
        srcpkg                  -- see 'ConfiguredPackage'.
        (ComponentDeps [ipkg])  -- Installed dependencies.
   deriving (Eq, Show)
 
-instance Package srcpkg => Package (ReadyPackage srcpkg ipkg) where
+type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledPackageInfo
+
+instance Package srcpkg => Package (GenericReadyPackage srcpkg ipkg) where
   packageId (ReadyPackage srcpkg _deps) = packageId srcpkg
 
 instance (Package srcpkg, HasInstalledPackageId ipkg) =>
-         PackageFixedDeps (ReadyPackage srcpkg ipkg) where
+         PackageFixedDeps (GenericReadyPackage srcpkg ipkg) where
   depends (ReadyPackage _ deps) = fmap (map installedPackageId) deps
 
 instance HasInstalledPackageId srcpkg =>
-         HasInstalledPackageId (ReadyPackage srcpkg ipkg) where
+         HasInstalledPackageId (GenericReadyPackage srcpkg ipkg) where
   installedPackageId (ReadyPackage pkg _) = installedPackageId pkg
 
 
 -- | Extracts a package key from ReadyPackage, a common operation needed
 -- to calculate build paths.
-readyPackageKey :: Compiler
-                -> ReadyPackage ConfiguredPackage InstalledPackageInfo
-                -> PackageKey
+readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
 readyPackageKey comp (ReadyPackage pkg deps) =
     mkPackageKey (packageKeySupported comp) (packageId pkg)
                  (map Info.libraryName (CD.nonSetupDeps deps))
 
 -- | Extracts a library name from ReadyPackage, a common operation needed
 -- to calculate build paths.
-readyLibraryName :: Compiler
-                 -> ReadyPackage ConfiguredPackage InstalledPackageInfo
-                 -> LibraryName
+readyLibraryName :: Compiler -> ReadyPackage -> LibraryName
 readyLibraryName comp ready@(ReadyPackage pkg _) =
     packageKeyLibraryName (packageId pkg) (readyPackageKey comp ready)
 

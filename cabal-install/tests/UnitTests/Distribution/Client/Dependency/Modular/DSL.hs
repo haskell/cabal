@@ -261,11 +261,7 @@ exInstIdx = C.PackageIndex.fromList . map exInstInfo
 exResolve :: ExampleDb
           -> [ExamplePkgName]
           -> Bool
-          -> ([String], Either String
-                               (CI.InstallPlan.InstallPlan
-                                    C.InstalledPackageInfo
-                                    ConfiguredPackage
-                                    isuccess ifailure))
+          -> ([String], Either String CI.InstallPlan.InstallPlan)
 exResolve db targets indepGoals = runProgress $
     resolveDependencies C.buildPlatform
                         (C.unknownCompilerInfo C.buildCompilerId C.NoAbiTag)
@@ -286,14 +282,11 @@ exResolve db targets indepGoals = runProgress $
                        depResolverIndependentGoals = indepGoals
                      }
 
-extractInstallPlan :: CI.InstallPlan.InstallPlan ipkg ConfiguredPackage
-                                                 isuccess ifailure
+extractInstallPlan :: CI.InstallPlan.InstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]
 extractInstallPlan = catMaybes . map confPkg . CI.InstallPlan.toList
   where
-    confPkg :: CI.InstallPlan.PlanPackage ipkg ConfiguredPackage
-                                          isuccess ifailure
-            -> Maybe (String, Int)
+    confPkg :: CI.InstallPlan.PlanPackage -> Maybe (String, Int)
     confPkg (CI.InstallPlan.Configured pkg) = Just $ srcPkg pkg
     confPkg _                               = Nothing
 

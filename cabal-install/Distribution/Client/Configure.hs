@@ -42,7 +42,6 @@ import Distribution.Simple.Setup
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Utils
          ( defaultPackageDesc )
-import Distribution.InstalledPackageInfo (InstalledPackageInfo) 
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( Package(..), InstalledPackageId, packageName
@@ -131,8 +130,7 @@ configure verbosity packageDBs repos comp platform conf
 
   where
     setupScriptOptions :: InstalledPackageIndex
-                       -> Maybe (ReadyPackage ConfiguredPackage
-                                              InstalledPackageInfo)
+                       -> Maybe ReadyPackage
                        -> SetupScriptOptions
     setupScriptOptions =
       configureSetupScript
@@ -160,8 +158,7 @@ configureSetupScript :: PackageDBStack
                      -> Maybe Lock
                      -> Bool
                      -> InstalledPackageIndex
-                     -> Maybe (ReadyPackage ConfiguredPackage
-                                            InstalledPackageInfo)
+                     -> Maybe ReadyPackage
                      -> SetupScriptOptions
 configureSetupScript packageDBs
                      comp
@@ -232,10 +229,7 @@ planLocalPackage :: Verbosity -> Compiler
                  -> ConfigFlags -> ConfigExFlags
                  -> InstalledPackageIndex
                  -> SourcePackageDb
-                 -> IO (Progress String String
-                                 (InstallPlan InstalledPackageInfo
-                                              ConfiguredPackage
-                                              iresult ifailure))
+                 -> IO (Progress String String InstallPlan)
 planLocalPackage verbosity comp platform configFlags configExFlags installedPkgIndex
   (SourcePackageDb _ packagePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
@@ -301,7 +295,7 @@ configurePackage :: Verbosity
                  -> Platform -> CompilerInfo
                  -> SetupScriptOptions
                  -> ConfigFlags
-                 -> ReadyPackage ConfiguredPackage InstalledPackageInfo
+                 -> ReadyPackage
                  -> [String]
                  -> IO ()
 configurePackage verbosity platform comp scriptOptions configFlags
