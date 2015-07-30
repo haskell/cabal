@@ -19,6 +19,9 @@
 	  hackage.haskell.org (other repos will use whatever they are
 	  configured to use).
 	* Support for dependencies of custom Setup.hs scripts.
+	* 'cabal' program itself now can be used as an external setup
+	method. This fixes an issue when Cabal version mismatch caused
+	unnecessary reconfigures (#2633).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
