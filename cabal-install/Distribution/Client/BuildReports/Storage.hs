@@ -75,7 +75,8 @@ storeAnonymous reports = sequence_
              . onlyRemote
     repoName (_,_,rrepo) = remoteRepoName rrepo
 
-    onlyRemote :: [(BuildReport, Maybe Repo)] -> [(BuildReport, Repo, RemoteRepo)]
+    onlyRemote :: [(BuildReport, Maybe Repo)]
+               -> [(BuildReport, Repo, RemoteRepo)]
     onlyRemote rs =
       [ (report, repo, remoteRepo)
       | (report, Just repo@Repo { repoKind = Left remoteRepo }) <- rs ]
@@ -147,7 +148,8 @@ fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
   _ -> Nothing
 
   where
-    extractRepo (SourcePackage { packageSource = RepoTarballPackage repo _ _ }) = Just repo
+    extractRepo (SourcePackage { packageSource = RepoTarballPackage repo _ _ })
+                  = Just repo
     extractRepo _ = Nothing
 
 fromPlanningFailure :: Platform -> CompilerId

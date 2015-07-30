@@ -151,9 +151,11 @@ debugDepResolverParams :: DepResolverParams -> String
 debugDepResolverParams p =
      "targets: " ++ intercalate ", " (map display (depResolverTargets p))
   ++ "\nconstraints: "
-  ++   concatMap (("\n  " ++) . debugPackageConstraint) (depResolverConstraints p)
+  ++   concatMap (("\n  " ++) . debugPackageConstraint)
+       (depResolverConstraints p)
   ++ "\npreferences: "
-  ++   concatMap (("\n  " ++) . debugPackagePreference) (depResolverPreferences p)
+  ++   concatMap (("\n  " ++) . debugPackagePreference)
+       (depResolverPreferences p)
   ++ "\nstrategy: " ++ show (depResolverPreferenceDefault p)
 
 -- | A package selection preference for a particular package.
@@ -701,7 +703,8 @@ configuredPackageProblems platform cinfo
   ++ [ MissingFlag flag | OnlyInLeft  flag <- mergedFlags ]
   ++ [ ExtraFlag   flag | OnlyInRight flag <- mergedFlags ]
   ++ [ DuplicateDeps pkgs
-     | pkgs <- CD.nonSetupDeps (fmap (duplicatesBy (comparing packageName)) specifiedDeps) ]
+     | pkgs <- CD.nonSetupDeps (fmap (duplicatesBy (comparing packageName))
+                                specifiedDeps) ]
   ++ [ MissingDep dep       | OnlyInLeft  dep       <- mergedDeps ]
   ++ [ ExtraDep       pkgid | OnlyInRight     pkgid <- mergedDeps ]
   ++ [ InvalidDep dep pkgid | InBoth      dep pkgid <- mergedDeps
@@ -724,7 +727,8 @@ configuredPackageProblems platform cinfo
     mergedDeps :: [MergeResult Dependency PackageId]
     mergedDeps = mergeDeps requiredDeps (CD.flatDeps specifiedDeps)
 
-    mergeDeps :: [Dependency] -> [PackageId] -> [MergeResult Dependency PackageId]
+    mergeDeps :: [Dependency] -> [PackageId]
+              -> [MergeResult Dependency PackageId]
     mergeDeps required specified =
       let sortNubOn f = nubBy ((==) `on` f) . sortBy (compare `on` f) in
       mergeBy
@@ -732,13 +736,13 @@ configuredPackageProblems platform cinfo
         (sortNubOn dependencyName required)
         (sortNubOn packageName    specified)
 
-    -- TODO: It would be nicer to use ComponentDeps here so we can be more precise
-    -- in our checks. That's a bit tricky though, as this currently relies on
-    -- the 'buildDepends' field of 'PackageDescription'. (OTOH, that field is
-    -- deprecated and should be removed anyway.)
-    -- As long as we _do_ use a flat list here, we have to allow for duplicates
-    -- when we fold specifiedDeps; once we have proper ComponentDeps here we
-    -- should get rid of the `nubOn` in `mergeDeps`.
+    -- TODO: It would be nicer to use ComponentDeps here so we can be more
+    -- precise in our checks. That's a bit tricky though, as this currently
+    -- relies on the 'buildDepends' field of 'PackageDescription'. (OTOH, that
+    -- field is deprecated and should be removed anyway.)  As long as we _do_
+    -- use a flat list here, we have to allow for duplicates when we fold
+    -- specifiedDeps; once we have proper ComponentDeps here we should get rid
+    -- of the `nubOn` in `mergeDeps`.
     requiredDeps :: [Dependency]
     requiredDeps =
       --TODO: use something lower level than finalizePackageDescription
