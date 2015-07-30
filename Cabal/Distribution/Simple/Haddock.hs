@@ -466,15 +466,28 @@ renderArgs :: Verbosity
               -> (([String], FilePath) -> IO a)
               -> IO a
 renderArgs verbosity tmpFileOpts version comp args k = do
+  let haddockSupportsUTF8          = version >= Version [2,14,4] []
+      haddockSupportsResponseFiles = version >  Version [2,16,1] []
   createDirectoryIfMissingVerbose verbosity True outputDir
   withTempFileEx tmpFileOpts outputDir "haddock-prologue.txt" $
     \prologueFileName h -> do
           do
-             when (version >= Version [2,14,4] []) (hSetEncoding h utf8)
+             when haddockSupportsUTF8 (hSetEncoding h utf8)
              hPutStrLn h $ fromFlag $ argPrologue args
              hClose h
              let pflag = "--prologue=" ++ prologueFileName
-             k (pflag : renderPureArgs version comp args, result)
+                 renderedArgs = pflag : renderPureArgs version comp args
+             if haddockSupportsResponseFiles 
+               then
+                 withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
+                    \responseFileName hf -> do
+                         when haddockSupportsUTF8 (hSetEncoding hf utf8)
+                         mapM_ (hPutStrLn hf) renderedArgs
+                         hClose hf
+                         let respFile = "@" ++ responseFileName
+                         k ([respFile], result)
+               else
+                 k (renderedArgs, result)
     where
       outputDir = (unDir $ argOutputDir args)
       result = intercalate ", "
