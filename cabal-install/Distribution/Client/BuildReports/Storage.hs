@@ -36,8 +36,6 @@ import Distribution.Package
          ( PackageId, packageId )
 import Distribution.PackageDescription
          ( FlagAssignment )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.Simple.InstallDirs
          ( PathTemplate, fromPathTemplate
          , initialPathTemplateEnv, substPathTemplate )
@@ -119,9 +117,7 @@ storeLocal cinfo templates reports platform = sequence_
 -- ------------------------------------------------------------
 
 fromInstallPlan :: Platform -> CompilerId
-                -> InstallPlan InstalledPackageInfo
-                               ConfiguredPackage
-                               BuildSuccess BuildFailure
+                -> InstallPlan
                 -> [(BuildReport, Maybe Repo)]
 fromInstallPlan platform comp plan =
      catMaybes
@@ -130,9 +126,7 @@ fromInstallPlan platform comp plan =
    $ plan
 
 fromPlanPackage :: Platform -> CompilerId
-                -> InstallPlan.PlanPackage InstalledPackageInfo
-                                           ConfiguredPackage
-                                           BuildSuccess BuildFailure
+                -> InstallPlan.PlanPackage
                 -> Maybe (BuildReport, Maybe Repo)
 fromPlanPackage (Platform arch os) comp planPackage = case planPackage of
   InstallPlan.Installed (ReadyPackage (ConfiguredPackage srcPkg flags _ _) deps)

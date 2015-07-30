@@ -83,8 +83,6 @@ import Distribution.Client.Targets
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
 import qualified Distribution.InstalledPackageInfo as Installed
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(PackageIdentifier), PackageId
          , Package(..), packageName, packageVersion
@@ -525,10 +523,7 @@ resolveDependencies :: Platform
                     -> CompilerInfo
                     -> Solver
                     -> DepResolverParams
-                    -> Progress String String
-                                (InstallPlan InstalledPackageInfo
-                                             ConfiguredPackage
-                                             iresult ifailure)
+                    -> Progress String String InstallPlan
 
     --TODO: is this needed here? see dontUpgradeNonUpgradeablePackages
 resolveDependencies platform comp _solver params
@@ -613,9 +608,7 @@ validateSolverResult :: Platform
                      -> CompilerInfo
                      -> Bool
                      -> [ResolverPackage]
-                     -> InstallPlan InstalledPackageInfo
-                                    ConfiguredPackage
-                                    iresult ifailure
+                     -> InstallPlan
 validateSolverResult platform comp indepGoals pkgs =
     case planPackagesProblems platform comp pkgs of
       [] -> case InstallPlan.new indepGoals index of
