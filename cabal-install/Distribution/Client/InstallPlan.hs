@@ -133,7 +133,7 @@ data PlanPackage ipkg srcpkg iresult ifailure
    | Installed   (ReadyPackage srcpkg ipkg) (Maybe ipkg) iresult
    | Failed      srcpkg ifailure
 
-instance (Package ipkg, Package srcpkg) => 
+instance (Package ipkg, Package srcpkg) =>
          Package (PlanPackage ipkg srcpkg iresult ifailure) where
   packageId (PreExisting ipkg)     = packageId ipkg
   packageId (Configured  spkg)     = packageId spkg
