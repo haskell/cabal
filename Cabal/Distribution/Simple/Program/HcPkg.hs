@@ -22,6 +22,11 @@ module Distribution.Simple.Program.HcPkg (
     dump,
     list,
 
+    -- * View operations
+    createView,
+    addPackageToView,
+    removePackageFromView,
+
     -- * Program invocations
     initInvocation,
     registerInvocation,
@@ -57,10 +62,13 @@ import Distribution.Verbosity
 import Distribution.Compat.Exception
          ( catchExit )
 
+import Control.Monad
+         ( when )
 import Data.Char
          ( isSpace )
 import Data.List
          ( stripPrefix )
+import qualified Data.List as List
 import System.FilePath as FilePath
          ( (</>), splitPath, splitDirectories, joinPath, isPathSeparator )
 import qualified System.FilePath.Posix as FilePath.Posix
@@ -74,6 +82,8 @@ data HcPkgInfo = HcPkgInfo
   , noVerboseFlag   :: Bool -- ^ hc-pkg does not support verbosity flags
   , flagPackageConf :: Bool -- ^ use package-conf option instead of package-db
   , useSingleFileDb :: Bool -- ^ requires single file package database
+  , multInstEnabled :: Bool -- ^ ghc-pkg supports --enable-multi-instance
+  , supportsView    :: Bool -- ^ views are supported.
   }
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.
@@ -268,6 +278,53 @@ list hpi verbosity packagedb = do
   where
     parsePackageIds = sequence . map simpleParse . words
 
+-- Create a view from either name or symlink via filepath.
+createView :: HcPkgInfo -> Verbosity -> Either String FilePath -> IO ()
+createView hpi verbosity view =
+    when (supportsView hpi) $ runProgramInvocation verbosity invocation
+  where
+    invocation = programInvocation (hcPkgProgram hpi) args
+    args = ["view", "create", packageDbOpts hpi UserPackageDB] ++
+      case view of
+        Left name -> [name]
+        Right path -> ["--view-file", path]
+
+-- | Adds a package to the given view.
+addPackageToView ::  HcPkgInfo -> Verbosity
+                 -> String -> InstalledPackageId -> IO ()
+addPackageToView hpi verbosity view ipid = do
+    removePackageFromView hpi verbosity view pkgid
+    when (supportsView hpi) $ runProgramInvocation verbosity invocation
+  where
+    invocation = programInvocation (hcPkgProgram hpi) args
+    args = ["view-modify",
+           view, "add-package",
+           "--ipid", display ipid,
+           packageDbOpts hpi UserPackageDB]
+    -- init clashes with this module's init.
+    pkgid = List.init . reverse . snd . (span (/= '-')) . reverse $
+              display ipid
+
+-- | Removes a package from the given view. As only one instance of package can
+-- be in a view we do not need ipid. TODO: Fourth argument type must be
+-- PackageId but there is no suitable InstalledPackageId to PackageId function
+-- now.
+removePackageFromView ::  HcPkgInfo -> Verbosity
+                      -> String -> String -> IO ()
+removePackageFromView hpi verbosity view packageId =
+    when (supportsView hpi) $ runProgramInvocation verbosity invocation
+  where
+    invocation = programInvocation (hcPkgProgram hpi) args
+    args = ["view-modify",
+           view,
+           "remove-package",
+           packageId,
+           packageDbOpts hpi UserPackageDB]
+
+
+-- TODO:
+-- getPackagesInView -- For GC
+
 --------------------------
 -- The program invocations
 --
@@ -293,11 +350,14 @@ registerInvocation' :: String -> HcPkgInfo -> Verbosity -> PackageDBStack
 registerInvocation' cmdname hpi verbosity packagedbs (Left pkgFile) =
     programInvocation (hcPkgProgram hpi) args
   where
-    args = [cmdname, pkgFile]
+    args' = [cmdname, pkgFile]
         ++ (if noPkgDbStack hpi
               then [packageDbOpts hpi (last packagedbs)]
               else packageDbStackOpts hpi packagedbs)
         ++ verbosityOpts hpi verbosity
+    args = (if multInstEnabled hpi
+              then args' ++ ["--enable-multi-instance"]
+              else args')
 
 registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
     (programInvocation (hcPkgProgram hpi) args) {
@@ -305,12 +365,14 @@ registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
       progInvokeInputEncoding = IOEncodingUTF8
     }
   where
-    args = [cmdname, "-"]
+    args' = [cmdname, "-"]
         ++ (if noPkgDbStack hpi
               then [packageDbOpts hpi (last packagedbs)]
               else packageDbStackOpts hpi packagedbs)
         ++ verbosityOpts hpi verbosity
-
+    args = (if multInstEnabled hpi
+              then args' ++ ["--enable-multi-instance"]
+              else args')
 
 unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
                      -> ProgramInvocation

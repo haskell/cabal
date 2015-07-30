@@ -1092,6 +1092,11 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
                                  , HcPkg.noVerboseFlag   = v < [6,11]
                                  , HcPkg.flagPackageConf = v < [7,5]
                                  , HcPkg.useSingleFileDb = v < [7,9]
+                                 , HcPkg.multInstEnabled = v >= [7,10]
+                                 -- False as we don't know when ghc-pkg change
+                                 -- will be enabled. Will set an appropiate
+                                 -- version when ghc-pkg patch has been approved
+                                 , HcPkg.supportsView    = False
                                  }
   where
     v               = versionBranch ver

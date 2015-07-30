@@ -34,6 +34,11 @@ module Distribution.Simple.Register (
     inplaceInstalledPackageInfo,
     absoluteInstalledPackageInfo,
     generalInstalledPackageInfo,
+
+    multInstEnabled,
+    viewSupported,
+    createView,
+    addPackageToView
   ) where
 
 import Distribution.Simple.LocalBuildInfo
@@ -60,7 +65,7 @@ import           Distribution.Simple.Program.HcPkg (HcPkgInfo)
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.Setup
          ( RegisterFlags(..), CopyDest(..)
-         , fromFlag, fromFlagOrDefault, flagToMaybe )
+         , fromFlag, fromFlagOrDefault, flagToMaybe , Flag(..) )
 import Distribution.PackageDescription
          ( PackageDescription(..), Library(..), BuildInfo(..), libModules )
 import Distribution.Package
@@ -110,14 +115,24 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
     when (fromFlag (regPrintId regFlags)) $ do
       putStrLn (display (IPI.installedPackageId installedPkgInfo))
 
+    let installedPkgInfo' = if (fromFlagOrDefault False $ regHidden regFlags)
+                              then installedPkgInfo {IPI.exposed = False}
+                              else installedPkgInfo
+
      -- Three different modes:
     case () of
-     _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo
-       | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo
-       | otherwise             -> registerPackage verbosity
-                                    installedPkgInfo pkg lbi inplace packageDbs
+     _ | modeGenerateRegFile   -> writeRegistrationFile installedPkgInfo'
+       | modeGenerateRegScript -> writeRegisterScript   installedPkgInfo'
+       | otherwise             -> registerNow installedPkgInfo'
 
   where
+    registerNow installedPkgInfo = do
+      registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs
+      when (not inplace) $ case regView regFlags of
+                             Flag view -> addPackageToView verbosity (compiler lbi) (withPrograms lbi)
+                                            view (IPI.installedPackageId installedPkgInfo)
+                             _ -> return ()
+
     modeGenerateRegFile = isJust (flagToMaybe (regGenPkgConf regFlags))
     regFile             = fromMaybe (display (packageId pkg) <.> "conf")
                                     (fromFlag (regGenPkgConf regFlags))
@@ -230,12 +245,37 @@ invokeHcPkg verbosity comp conf dbStack extraArgs =
 withHcPkg :: String -> Compiler -> ProgramConfiguration
           -> (HcPkgInfo -> IO a) -> IO a
 withHcPkg name comp conf f =
-  case compilerFlavor comp of
-    GHC   -> f (GHC.hcPkgInfo conf)
-    GHCJS -> f (GHCJS.hcPkgInfo conf)
-    LHC   -> f (LHC.hcPkgInfo conf)
+  case getHcPkgInfo comp conf of
+    Just hcPkgInfo -> f hcPkgInfo
     _     -> die ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
+
+getHcPkgInfo :: Compiler -> ProgramConfiguration -> Maybe HcPkgInfo
+getHcPkgInfo comp conf = case compilerFlavor comp of
+                           GHC   -> Just (GHC.hcPkgInfo conf)
+                           GHCJS -> Just (GHCJS.hcPkgInfo conf)
+                           LHC   -> Just (LHC.hcPkgInfo conf)
+                           _     -> Nothing
+
+multInstEnabled :: Compiler -> ProgramConfiguration -> Bool
+multInstEnabled comp conf = case getHcPkgInfo comp conf of
+                            Just hpi -> HcPkg.multInstEnabled hpi
+                            _ -> False
+
+viewSupported :: Compiler -> ProgramConfiguration -> Bool
+viewSupported comp conf = case getHcPkgInfo comp conf of
+                            Just hpi -> HcPkg.supportsView hpi
+                            _ -> False
+
+createView :: Verbosity -> Compiler -> ProgramConfiguration
+           -> Either String FilePath -> IO ()
+createView verbosity comp conf view =
+  withHcPkg "createView" comp conf (\hpi -> HcPkg.createView hpi verbosity view)
+
+addPackageToView :: Verbosity -> Compiler -> ProgramConfiguration
+                 -> String -> InstalledPackageId -> IO ()
+addPackageToView verbosity comp conf view_name ipid =
+  withHcPkg "addPackageToView" comp conf (\hpi -> HcPkg.addPackageToView hpi verbosity view_name ipid)
 
 registerPackage :: Verbosity
                 -> InstalledPackageInfo

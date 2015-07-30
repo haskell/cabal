@@ -20,7 +20,7 @@ module Distribution.Client.Install (
 
     -- * Lower-level interface that allows to manipulate the install plan
     makeInstallContext,
-    makeInstallPlan,
+    makeInstallPlans,
     processInstallPlan,
     InstallArgs,
     InstallContext,
@@ -119,6 +119,7 @@ import Distribution.Simple.Program (ProgramConfiguration,
                                     defaultProgramConfiguration)
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
+import qualified Distribution.Simple.Register as Register
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
@@ -203,14 +204,14 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 
     installContext <- makeInstallContext verbosity args (Just userTargets0)
     planResult     <- foldProgress logMsg (return . Left) (return . Right) =<<
-                      makeInstallPlan verbosity args installContext
+                      makeInstallPlans verbosity args installContext
 
     case planResult of
         Left message -> do
             reportPlanningFailure verbosity args installContext message
             die' message
-        Right installPlan ->
-            processInstallPlan verbosity args installContext installPlan
+        Right installPlans ->
+            mapM_ (processInstallPlan verbosity args installContext) installPlans
   where
     args :: InstallArgs
     args = (packageDBs, repos, comp, platform, conf, useSandbox, mSandboxPkgInfo,
@@ -279,11 +280,15 @@ makeInstallContext verbosity
 
     return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers, transport)
 
--- | Make an install plan given install context and install arguments.
-makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                -> IO (Progress String String InstallPlan)
-makeInstallPlan verbosity
-  (_, _, comp, platform, _, _, mSandboxPkgInfo,
+-- | Make an install plan given install context and install arguments. It works
+-- in two different way with two different conditions. If multInst is not
+-- available, it returns InstallPlan of all the package specifier in one go
+-- as (undefined, installplan). When multInst is enabled it returns InstallPlan
+-- of every package specifier as single entity as [(pkgspec, installplan of pkgspec)]
+makeInstallPlans :: Verbosity -> InstallArgs -> InstallContext
+                -> IO (Progress String String [(PackageSpecifier SourcePackage, InstallPlan)])
+makeInstallPlans verbosity
+  (_, _, comp, platform, conf, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
    _)
   (installedPkgIndex, sourcePkgDb,
@@ -292,24 +297,33 @@ makeInstallPlan verbosity
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
-    return $ planPackages comp platform mSandboxPkgInfo solver
-      configFlags configExFlags installFlags
-      installedPkgIndex sourcePkgDb pkgSpecifiers
+    return $ if (Register.multInstEnabled comp conf)
+               then sequence $ map (\pkgspec -> ((fmap ((,) pkgspec)) $
+                      planPackages comp conf platform mSandboxPkgInfo solver
+                      configFlags configExFlags installFlags
+                      installedPkgIndex sourcePkgDb [pkgspec])) pkgSpecifiers
+               else fmap (return . (,) undefined) $ planPackages comp conf
+                      platform mSandboxPkgInfo solver
+                      configFlags configExFlags installFlags
+                      installedPkgIndex sourcePkgDb pkgSpecifiers
 
 -- | Given an install plan, perform the actual installations.
 processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
-                   -> InstallPlan
+                   -> (PackageSpecifier SourcePackage, InstallPlan)
                    -> IO ()
 processInstallPlan verbosity
-  args@(_,_, comp, _, _, _, _, _, _, _, installFlags, _)
+  args@(_,_, comp, _, conf, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
-   userTargets, pkgSpecifiers, _) installPlan = do
-    checkPrintPlan verbosity comp installedPkgIndex installPlan sourcePkgDb
-      installFlags pkgSpecifiers
+   userTargets, pkgSpecifiers, _) pkgSpecPlan@(pkgSpecifier, installPlan) = do
+    checkPrintPlan verbosity comp conf installedPkgIndex installPlan sourcePkgDb
+              installFlags $
+                if Register.multInstEnabled comp conf
+                  then [pkgSpecifier]
+                  else pkgSpecifiers
 
     unless (dryRun || nothingToInstall) $ do
       installPlan' <- performInstallations verbosity
-                      args installedPkgIndex installPlan
+                      args installedPkgIndex pkgSpecPlan
       postInstallActions verbosity args userTargets installPlan'
   where
     dryRun = fromFlag (installDryRun installFlags)
@@ -320,6 +334,7 @@ processInstallPlan verbosity
 -- ------------------------------------------------------------
 
 planPackages :: Compiler
+             -> ProgramConfiguration
              -> Platform
              -> Maybe SandboxPackageInfo
              -> Solver
@@ -330,7 +345,7 @@ planPackages :: Compiler
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
-planPackages comp platform mSandboxPkgInfo solver
+planPackages comp conf platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
@@ -351,7 +366,9 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . setReorderGoals reorderGoals
 
-      . setAvoidReinstalls avoidReinstalls
+      . (if Register.multInstEnabled comp conf
+            then id
+            else setAvoidReinstalls avoidReinstalls)
 
       . setShadowPkgs shadowPkgs
 
@@ -444,13 +461,14 @@ pruneInstallPlan pkgSpecifiers =
 -- either requested or needed.
 checkPrintPlan :: Verbosity
                -> Compiler
+               -> ProgramConfiguration
                -> InstalledPackageIndex
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
                -> [PackageSpecifier SourcePackage]
                -> IO ()
-checkPrintPlan verbosity comp installed installPlan sourcePkgDb
+checkPrintPlan verbosity comp conf installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
 
   -- User targets that are already installed.
@@ -466,6 +484,12 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
          "All the requested packages are already installed:"
        : map (display . packageId) preExistingTargets
       ++ ["Use --reinstall if you want to reinstall anyway."]
+    --setup Cabal.registerCommand (Cabal.emptyRegisterFlags {
+    --  Cabal.regDistPref   = configDistPref configFlags,
+    --  Cabal.regVerbosity  = toFlag verbosity',
+    --  Cabal.regView       = view,
+    --  Cabal.regHidden     = Cabal.Flag $ view /= Cabal.Flag "default"
+    --}) mLogPath
 
   let lPlan = linearizeInstallPlan comp installed installPlan
   -- Are any packages classified as reinstalls?
@@ -499,7 +523,9 @@ checkPrintPlan verbosity comp installed installPlan sourcePkgDb
   -- If the install plan is dangerous, we print various warning messages. In
   -- particular, if we can see that packages are likely to be broken, we even
   -- bail out (unless installation has been forced with --force-reinstalls).
-  when containsReinstalls $ do
+  -- As with multInstEnabled packages cannot break when installing new packages
+  -- we are not printing anything or exiting the program
+  when (containsReinstalls && not (Register.multInstEnabled comp conf)) $ do
     if breaksPkgs
       then do
         (if dryRun || overrideReinstall then warn verbosity else die) $ unlines $
@@ -998,12 +1024,12 @@ type UseLogFile = Maybe (PackageIdentifier -> LibraryName -> FilePath, Verbosity
 performInstallations :: Verbosity
                      -> InstallArgs
                      -> InstalledPackageIndex
-                     -> InstallPlan
+                     -> (PackageSpecifier SourcePackage, InstallPlan)
                      -> IO InstallPlan
 performInstallations verbosity
   (packageDBs, _, comp, _, conf, useSandbox, _,
    globalFlags, configFlags, configExFlags, installFlags, haddockFlags)
-  installedPkgIndex installPlan = do
+  installedPkgIndex (pkgSpecifier, installPlan) = do
 
   -- With 'install -j' it can be a bit hard to tell whether a sandbox is used.
   whenUsingSandbox useSandbox $ \sandboxDir ->
@@ -1030,8 +1056,8 @@ performInstallations verbosity
                             (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs libname
                                  (setupScriptOptions installedPkgIndex cacheLock rpkg)
-                                 miscOptions configFlags' installFlags haddockFlags
-                                 cinfo platform pkg pkgoverride mpath useLogFile
+                                 miscOptions configFlags' installFlags haddockFlags cinfo
+                                 platform pkg pkgoverride mpath useLogFile (view pkg)
 
   where
     platform = InstallPlan.planPlatform installPlan
@@ -1111,6 +1137,12 @@ performInstallations verbosity
                      else flagToMaybe (installRootCmd installFlags),
       libVersion = flagToMaybe (configCabalVersion configExFlags)
     }
+    view pkg = if (Register.multInstEnabled comp conf)
+                 then
+                   if pkgSpecifierTarget pkgSpecifier == (packageName $ packageId pkg)
+                     then configView configFlags
+                     else Cabal.NoFlag
+                 else Cabal.Flag "default"
 
 
 executeInstallPlan :: Verbosity
@@ -1334,11 +1366,13 @@ installUnpackedPackage
   -> PackageDescriptionOverride
   -> Maybe FilePath -- ^ Directory to change to before starting the installation.
   -> UseLogFile -- ^ File to log output to (if any)
+  -> Cabal.Flag String
   -> IO BuildResult
 installUnpackedPackage verbosity buildLimit installLock numJobs libname
                        scriptOptions miscOptions
                        configFlags installFlags haddockFlags
-                       cinfo platform pkg pkgoverride workingDir useLogFile = do
+                       cinfo platform pkg pkgoverride workingDir
+                       useLogFile view = do
 
   -- Override the .cabal file if necessary
   case pkgoverride of
@@ -1431,7 +1465,9 @@ installUnpackedPackage verbosity buildLimit installLock numJobs libname
     shouldRegister = PackageDescription.hasLibs pkg
     registerFlags _ = Cabal.emptyRegisterFlags {
       Cabal.regDistPref   = configDistPref configFlags,
-      Cabal.regVerbosity  = toFlag verbosity'
+      Cabal.regVerbosity  = toFlag verbosity',
+      Cabal.regView       = view,
+      Cabal.regHidden     = Cabal.Flag $ view /= Cabal.Flag "default"
     }
     verbosity' = maybe verbosity snd useLogFile
     tempTemplate name = name ++ "-" ++ display pkgid

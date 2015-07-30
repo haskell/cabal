@@ -56,7 +56,7 @@ import Distribution.Client.Dependency         ( foldProgress )
 import Distribution.Client.IndexUtils         ( BuildTreeRefType(..) )
 import Distribution.Client.Install            ( InstallArgs,
                                                 makeInstallContext,
-                                                makeInstallPlan,
+                                                makeInstallPlans,
                                                 processInstallPlan )
 import Distribution.Utils.NubList            ( fromNubList )
 
@@ -65,7 +65,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
   , createPackageEnvironmentFile, classifyPackageEnvironment
   , tryLoadSandboxPackageEnvironmentFile, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
-  , sandboxPackageEnvironmentFile, userPackageEnvironmentFile )
+  , sandboxPackageEnvironmentFile, userPackageEnvironmentFile, sandboxDirHash )
 import Distribution.Client.Sandbox.Types      ( SandboxPackageInfo(..)
                                               , UseSandbox(..) )
 import Distribution.Client.SetupWrapper
@@ -106,17 +106,13 @@ import qualified Data.Map                          as M
 import qualified Data.Set                          as S
 import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
-import Data.Bits                              ( shiftL, shiftR, xor )
-import Data.Char                              ( ord )
 import Data.Foldable                          ( forM_ )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
-import Data.List                              ( delete, foldl' )
+import Data.List                              ( delete )
 import Data.Maybe                             ( fromJust )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                            ( mempty, mappend )
 #endif
-import Data.Word                              ( Word32 )
-import Numeric                                ( showHex )
 import System.Directory                       ( createDirectory
                                               , doesDirectoryExist
                                               , doesFileExist
@@ -124,10 +120,11 @@ import System.Directory                       ( createDirectory
                                               , removeDirectoryRecursive
                                               , removeFile
                                               , renameDirectory )
-import System.FilePath                        ( (</>), equalFilePath
+import System.FilePath                        ( (</>), (<.>), equalFilePath
                                               , getSearchPath
                                               , searchPathSeparator
                                               , takeDirectory )
+import System.Posix.Files                     ( createSymbolicLink )
 
 
 --
@@ -142,28 +139,7 @@ snapshotDirectoryName = "snapshots"
 -- | Non-standard build dir that is used for building add-source deps instead of
 -- "dist". Fixes surprising behaviour in some cases (see issue #1281).
 sandboxBuildDir :: FilePath -> FilePath
-sandboxBuildDir sandboxDir = "dist/dist-sandbox-" ++ showHex sandboxDirHash ""
-  where
-    sandboxDirHash = jenkins sandboxDir
-
-    -- See http://en.wikipedia.org/wiki/Jenkins_hash_function
-    jenkins :: String -> Word32
-    jenkins str = loop_finish $ foldl' loop 0 str
-      where
-        loop :: Word32 -> Char -> Word32
-        loop hash key_i' = hash'''
-          where
-            key_i   = toEnum . ord $ key_i'
-            hash'   = hash + key_i
-            hash''  = hash' + (shiftL hash' 10)
-            hash''' = hash'' `xor` (shiftR hash'' 6)
-
-        loop_finish :: Word32 -> Word32
-        loop_finish hash = hash'''
-          where
-            hash'   = hash + (shiftL hash 3)
-            hash''  = hash' `xor` (shiftR hash' 11)
-            hash''' = hash'' + (shiftL hash'' 15)
+sandboxBuildDir sandboxDir = "dist/dist-sandbox-" ++ sandboxDirHash sandboxDir
 
 --
 -- * Basic sandbox functions.
@@ -227,7 +203,7 @@ tryGetIndexFilePath' globalFlags = do
 getSandboxPackageDB :: ConfigFlags -> IO PackageDB
 getSandboxPackageDB configFlags = do
   case configPackageDBs configFlags of
-    [Just sandboxDB@(SpecificPackageDB _)] -> return sandboxDB
+    [Just sandboxDB] -> return sandboxDB
     -- TODO: should we allow multiple package DBs (e.g. with 'inherit')?
 
     []                                     ->
@@ -279,12 +255,15 @@ initPackageDBIfNeeded :: Verbosity -> ConfigFlags
                          -> Compiler -> ProgramConfiguration
                          -> IO ()
 initPackageDBIfNeeded verbosity configFlags comp conf = do
-  SpecificPackageDB dbPath <- getSandboxPackageDB configFlags
-  packageDBExists <- doesDirectoryExist dbPath
-  unless packageDBExists $
-    Register.initPackageDB verbosity comp conf dbPath
-  when packageDBExists $
-    debug verbosity $ "The package database already exists: " ++ dbPath
+  db <- getSandboxPackageDB configFlags
+  case db of
+    SpecificPackageDB dbPath ->
+      do packageDBExists <- doesDirectoryExist dbPath
+         unless packageDBExists $
+           Register.initPackageDB verbosity comp conf dbPath
+         when packageDBExists $
+           debug verbosity $ "The package database already exists: " ++ dbPath
+    _ -> return ()
 
 -- | Entry point for the 'cabal sandbox dump-pkgenv' command.
 dumpPackageEnvironment :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
@@ -319,7 +298,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   -- Create the package environment file.
   pkgEnvFile <- getSandboxConfigFilePath globalFlags
   createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile
-    NoComments comp platform
+    NoComments comp platform conf
   (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   let config      = pkgEnvSavedConfig pkgEnv
       configFlags = savedConfigureFlags config
@@ -336,6 +315,15 @@ sandboxInit verbosity sandboxFlags globalFlags = do
   initPackageDBIfNeeded verbosity configFlags comp conf
   maybeAddCompilerTimestampRecord verbosity sandboxDir indexFile
     (compilerId comp) platform
+  when (Register.viewSupported comp conf) $ do
+    let viewFile = sandboxDir </> "views" </> sandboxDirHash sandboxDir <.> "view"
+        ghcEnvFile = ".ghc.environment"
+    appendFile viewFile ""
+    Register.createView verbosity comp conf (Right viewFile)
+    removeFile ghcEnvFile
+    -- TODO: Add windows equivalent
+    createSymbolicLink ghcEnvFile viewFile
+
 
 -- | Entry point for the 'cabal sandbox delete' command.
 sandboxDelete :: Verbosity -> SandboxFlags -> GlobalFlags -> IO ()
@@ -624,10 +612,10 @@ reinstallAddSourceDeps verbosity configFlags' configExFlags
       -- might want to use some lower-level features this in the future.
       withSandboxBinDirOnSearchPath sandboxDir $ do
         installContext <- makeInstallContext verbosity args Nothing
-        installPlan    <- foldProgress logMsg die' return =<<
-                          makeInstallPlan verbosity args installContext
+        installPlans    <- foldProgress logMsg die' return =<<
+                          makeInstallPlans verbosity args installContext
 
-        processInstallPlan verbosity args installContext installPlan
+        mapM_ (processInstallPlan verbosity args installContext) installPlans
         writeIORef retVal ReinstalledSomeDeps
 
   readIORef retVal

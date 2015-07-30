@@ -294,6 +294,7 @@ instance Monoid SavedConfig where
         configUserInstall         = combine configUserInstall,
         -- TODO: NubListify
         configPackageDBs          = lastNonEmpty configPackageDBs,
+        configView                = combine configView,
         configGHCiLib             = combine configGHCiLib,
         configSplitObjs           = combine configSplitObjs,
         configStripExes           = combine configStripExes,
@@ -430,7 +431,8 @@ initialSavedConfig = do
       globalWorldFile    = toFlag worldFile
     },
     savedConfigureFlags  = mempty {
-      configProgramPathExtra = toNubList extraPath
+      configProgramPathExtra = toNubList extraPath,
+      configView             = toFlag "default"
     },
     savedInstallFlags    = mempty {
       installSummaryFile = toNubList [toPathTemplate (logsDir </> "build.log")],
