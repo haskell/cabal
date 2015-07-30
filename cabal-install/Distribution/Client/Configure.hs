@@ -112,8 +112,8 @@ configure verbosity packageDBs repos comp platform conf
            "Warning: solver failed to find a solution:\n"
         ++ message
         ++ "Trying configure anyway."
-      setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing) Nothing
-        configureCommand (const configFlags) extraArgs
+      setupWrapper verbosity (setupScriptOptions installedPkgIndex Nothing)
+        Nothing configureCommand (const configFlags) extraArgs
 
     Right installPlan -> case InstallPlan.ready installPlan of
       [pkg@(ReadyPackage
@@ -230,10 +230,12 @@ planLocalPackage :: Verbosity -> Compiler
                  -> InstalledPackageIndex
                  -> SourcePackageDb
                  -> IO (Progress String String InstallPlan)
-planLocalPackage verbosity comp platform configFlags configExFlags installedPkgIndex
+planLocalPackage verbosity comp platform configFlags configExFlags
+  installedPkgIndex
   (SourcePackageDb _ packagePrefs) = do
   pkg <- readPackageDescription verbosity =<< defaultPackageDesc verbosity
-  solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags) (compilerInfo comp)
+  solver <- chooseSolver verbosity (fromFlag $ configSolver configExFlags)
+            (compilerInfo comp)
 
   let -- We create a local package and ask to resolve a dependency on it
       localPkg = SourcePackage {

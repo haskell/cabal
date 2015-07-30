@@ -89,7 +89,8 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
-    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+    transport <- configureTransport verbosity
+                 (flagToMaybe (globalHttpTransport globalFlags))
 
     pkgSpecifiers <- resolveUserTargets verbosity transport
                        (fromFlag $ globalWorldFile globalFlags)

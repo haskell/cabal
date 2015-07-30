@@ -215,7 +215,8 @@ showInstallPlan :: (HasInstalledPackageId ipkg, HasInstalledPackageId srcpkg)
                 => GenericInstallPlan ipkg srcpkg iresult ifailure -> String
 showInstallPlan plan =
     showPlanIndex (planIndex plan) ++ "\n" ++
-    "fake map:\n  " ++ intercalate "\n  " (map showKV (Map.toList (planFakeMap plan)))
+    "fake map:\n  " ++
+    intercalate "\n  " (map showKV (Map.toList (planFakeMap plan)))
   where showKV (k,v) = display k ++ " -> " ++ display v
 
 showPlanPackageTag :: GenericPlanPackage ipkg srcpkg iresult ifailure -> String
@@ -239,7 +240,8 @@ new indepGoals index =
   let isPreExisting (PreExisting _) = True
       isPreExisting _ = False
       fakeMap = Map.fromList
-              . map (\p -> (fakeInstalledPackageId (packageId p), installedPackageId p))
+              . map (\p -> (fakeInstalledPackageId (packageId p)
+                           ,installedPackageId p))
               . filter isPreExisting
               $ PackageIndex.allPackages index in
   case problems fakeMap indepGoals index of
@@ -307,9 +309,11 @@ ready plan = assert check readyPackages
 
     isInstalledDep :: InstalledPackageId -> Maybe ipkg
     isInstalledDep pkgid =
-      -- NB: Need to check if the ID has been updated in planFakeMap, in which case we
-      -- might be dealing with an old pointer
-      case PlanIndex.fakeLookupInstalledPackageId (planFakeMap plan) (planIndex plan) pkgid of
+      -- NB: Need to check if the ID has been updated in planFakeMap, in which
+      -- case we might be dealing with an old pointer
+      case PlanIndex.fakeLookupInstalledPackageId
+           (planFakeMap plan) (planIndex plan) pkgid
+      of
         Just (PreExisting ipkg)            -> Just ipkg
         Just (Configured  _)               -> Nothing
         Just (Processing  _)               -> Nothing
@@ -413,7 +417,8 @@ lookupProcessingPackage plan pkgid =
   -- planFakeMap
   case PackageIndex.lookupInstalledPackageId (planIndex plan) pkgid of
     Just (Processing pkg) -> pkg
-    _  -> internalError $ "not in processing state or no such pkg " ++ display pkgid
+    _  -> internalError $ "not in processing state or no such pkg " ++
+                          display pkgid
 
 -- | Check a package that we expect to be in the configured or failed state.
 --
@@ -494,18 +499,24 @@ problems :: (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
          -> [PlanProblem ipkg srcpkg iresult ifailure]
 problems fakeMap indepGoals index =
 
-     [ PackageMissingDeps pkg (catMaybes (map (fmap packageId . PlanIndex.fakeLookupInstalledPackageId fakeMap index) missingDeps))
+     [ PackageMissingDeps pkg
+       (catMaybes
+        (map
+         (fmap packageId . PlanIndex.fakeLookupInstalledPackageId fakeMap index)
+         missingDeps))
      | (pkg, missingDeps) <- PlanIndex.brokenPackages fakeMap index ]
 
   ++ [ PackageCycle cycleGroup
      | cycleGroup <- PlanIndex.dependencyCycles fakeMap index ]
 
   ++ [ PackageInconsistency name inconsistencies
-     | (name, inconsistencies) <- PlanIndex.dependencyInconsistencies fakeMap indepGoals index ]
+     | (name, inconsistencies) <-
+       PlanIndex.dependencyInconsistencies fakeMap indepGoals index ]
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
-     , Just pkg' <- map (PlanIndex.fakeLookupInstalledPackageId fakeMap index) (CD.nonSetupDeps (depends pkg))
+     , Just pkg' <- map (PlanIndex.fakeLookupInstalledPackageId fakeMap index)
+                    (CD.nonSetupDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
 
 -- | The graph of packages (nodes) and dependencies (edges) must be acyclic.
@@ -590,8 +601,10 @@ dependencyClosure :: (HasInstalledPackageId ipkg,   PackageFixedDeps ipkg,
                       HasInstalledPackageId srcpkg, PackageFixedDeps srcpkg)
                   => GenericInstallPlan ipkg srcpkg iresult ifailure
                   -> [PackageIdentifier]
-                  -> Either [(GenericPlanPackage ipkg srcpkg iresult ifailure, [InstalledPackageId])]
-                            (PackageIndex (GenericPlanPackage ipkg srcpkg iresult ifailure))
+                  -> Either [(GenericPlanPackage ipkg srcpkg iresult ifailure,
+                              [InstalledPackageId])]
+                            (PackageIndex
+                             (GenericPlanPackage ipkg srcpkg iresult ifailure))
 dependencyClosure installPlan pids =
     PlanIndex.dependencyClosure
       (planFakeMap installPlan)

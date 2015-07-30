@@ -230,7 +230,8 @@ install verbosity packageDBs repos comp platform conf useSandbox mSandboxPkgInfo
 -- TODO: Make InstallContext a proper data type with documented fields.
 -- | Common context for makeInstallPlan and processInstallPlan.
 type InstallContext = ( InstalledPackageIndex, SourcePackageDb
-                      , [UserTarget], [PackageSpecifier SourcePackage], HttpTransport )
+                      , [UserTarget], [PackageSpecifier SourcePackage]
+                      , HttpTransport )
 
 -- TODO: Make InstallArgs a proper data type with documented fields or just get
 -- rid of it completely.
@@ -257,7 +258,8 @@ makeInstallContext verbosity
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
-    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+    transport <- configureTransport verbosity
+                 (flagToMaybe (globalHttpTransport globalFlags))
 
     (userTargets, pkgSpecifiers) <- case mUserTargets of
       Nothing           ->
@@ -277,7 +279,8 @@ makeInstallContext verbosity
                          userTargets
         return (userTargets, pkgSpecifiers)
 
-    return (installedPkgIndex, sourcePkgDb, userTargets, pkgSpecifiers, transport)
+    return (installedPkgIndex, sourcePkgDb, userTargets
+           ,pkgSpecifiers, transport)
 
 -- | Make an install plan given install context and install arguments.
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
@@ -508,7 +511,8 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
           : map (display . Installed.sourcePackageId) newBrokenPkgs
           ++ if overrideReinstall
                then if dryRun then [] else
-                 ["Continuing even though the plan contains dangerous reinstalls."]
+                 ["Continuing even though " ++
+                  "the plan contains dangerous reinstalls."]
                else
                  ["Use --force-reinstalls if you want to install anyway."]
       else unless dryRun $ warn verbosity
@@ -591,8 +595,10 @@ packageStatus installedPkgIndex cpkg =
             -> [MergeResult PackageIdentifier PackageIdentifier]
     changes pkg pkg' = filter changed $
       mergeBy (comparing packageName)
-        (resolveInstalledIds $ Installed.depends pkg)          -- deps of installed pkg
-        (resolveInstalledIds $ CD.nonSetupDeps (depends pkg')) -- deps of configured pkg
+        -- deps of installed pkg
+        (resolveInstalledIds $ Installed.depends pkg)
+        -- deps of configured pkg
+        (resolveInstalledIds $ CD.nonSetupDeps (depends pkg'))
 
     -- convert to source pkg ids via index
     resolveInstalledIds :: [InstalledPackageId] -> [PackageIdentifier]
@@ -690,7 +696,8 @@ printPlan dryRun verbosity plan sourcePkgDb = case plan of
 
 -- | Report a solver failure. This works slightly differently to
 -- 'postInstallActions', as (by definition) we don't have an install plan.
-reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String -> IO ()
+reportPlanningFailure :: Verbosity -> InstallArgs -> InstallContext -> String
+                      -> IO ()
 reportPlanningFailure verbosity
   (_, _, comp, platform, _, _, _
   ,_, configFlags, _, installFlags, _)
@@ -700,12 +707,13 @@ reportPlanningFailure verbosity
   when reportFailure $ do
 
     -- Only create reports for explicitly named packages
-    let pkgids =
-          filter (SourcePackageIndex.elemByPackageId (packageIndex sourcePkgDb)) $
+    let pkgids = filter
+          (SourcePackageIndex.elemByPackageId (packageIndex sourcePkgDb)) $
           mapMaybe theSpecifiedPackage pkgSpecifiers
 
-        buildReports = BuildReports.fromPlanningFailure platform (compilerId comp)
-          pkgids (configConfigurationsFlags configFlags)
+        buildReports = BuildReports.fromPlanningFailure platform
+                       (compilerId comp) pkgids
+                       (configConfigurationsFlags configFlags)
 
     when (not (null buildReports)) $
       info verbosity $
@@ -714,7 +722,8 @@ reportPlanningFailure verbosity
 
     -- Save reports
     BuildReports.storeLocal (compilerInfo comp)
-                            (fromNubList $ installSummaryFile installFlags) buildReports platform
+                            (fromNubList $ installSummaryFile installFlags)
+                            buildReports platform
 
     -- Save solver log
     case logFile of
@@ -734,7 +743,8 @@ reportPlanningFailure verbosity
     -- So we fail.
     dummyLibraryName = error "reportPlanningFailure: library name not available"
 
--- | If a 'PackageSpecifier' refers to a single package, return Just that package.
+-- | If a 'PackageSpecifier' refers to a single package, return Just that
+-- package.
 theSpecifiedPackage :: Package pkg => PackageSpecifier pkg -> Maybe PackageId
 theSpecifiedPackage pkgSpec =
   case pkgSpec of
@@ -1031,7 +1041,8 @@ performInstallations verbosity
   installLock  <- newLock -- serialise installation
   cacheLock    <- newLock -- serialise access to setup exe cache
 
-  transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+  transport <- configureTransport verbosity
+               (flagToMaybe (globalHttpTransport globalFlags))
 
   executeInstallPlan verbosity comp jobControl useLogFile installPlan $ \rpkg ->
     -- Calculate the package key (ToDo: Is this right for source install)
@@ -1042,8 +1053,10 @@ performInstallations verbosity
         installLocalPackage verbosity buildLimit
                             (packageId pkg) src' distPref $ \mpath ->
           installUnpackedPackage verbosity buildLimit installLock numJobs libname
-                                 (setupScriptOptions installedPkgIndex cacheLock rpkg)
-                                 miscOptions configFlags' installFlags haddockFlags
+                                 (setupScriptOptions installedPkgIndex
+                                  cacheLock rpkg)
+                                 miscOptions configFlags'
+                                 installFlags haddockFlags
                                  cinfo platform pkg pkgoverride mpath useLogFile
 
   where
@@ -1108,7 +1121,8 @@ performInstallations verbosity
           | parallelInstall                   = False
           | otherwise                         = False
 
-    substLogFileName :: PathTemplate -> PackageIdentifier -> LibraryName -> FilePath
+    substLogFileName :: PathTemplate -> PackageIdentifier -> LibraryName
+                     -> FilePath
     substLogFileName template pkg libname = fromPathTemplate
                                           . substPathTemplate env
                                           $ template
@@ -1416,7 +1430,8 @@ installUnpackedPackage verbosity buildLimit installLock numJobs libname
           maybePkgConf <- maybeGenPkgConf mLogPath
 
           -- Actual installation
-          withWin32SelfUpgrade verbosity libname configFlags cinfo platform pkg $ do
+          withWin32SelfUpgrade verbosity libname configFlags
+                               cinfo platform pkg $ do
             case rootCmd miscOptions of
               (Just cmd) -> reexec cmd
               Nothing    -> do
@@ -1588,4 +1603,5 @@ withWin32SelfUpgrade verbosity libname configFlags cinfo platform pkg action = d
                            platform templateDirs
         substTemplate  = InstallDirs.fromPathTemplate
                        . InstallDirs.substPathTemplate env
-          where env = InstallDirs.initialPathTemplateEnv pkgid libname cinfo platform
+          where env = InstallDirs.initialPathTemplateEnv pkgid libname
+                      cinfo platform

@@ -131,7 +131,8 @@ symlinkBinaries platform comp configFlags installFlags plan =
         | (ReadyPackage (ConfiguredPackage _ _flags _ _) deps, pkg, exe) <- exes
         , let pkgid  = packageId pkg
               pkg_key = mkPackageKey (packageKeySupported comp) pkgid
-                                     (map Installed.libraryName (CD.nonSetupDeps deps))
+                                     (map Installed.libraryName
+                                      (CD.nonSetupDeps deps))
               libname = packageKeyLibraryName pkgid pkg_key
               publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
