@@ -13,15 +13,17 @@
 	* Read 'builddir' option from 'CABAL_BUILDDIR' environment variable.
 	* Remote repos may now be configured to use https URLs. This uses
 	either curl or wget or, on Windows, PowerShell, under the hood (#2687).
-	* Install target URLs can now use https
-	  e.g. 'cabal install https://example.com/foo-1.0.tar.gz'.
+	* Install target URLs can now use https e.g. 'cabal install
+	https://example.com/foo-1.0.tar.gz'.
 	* Automatically use https for cabal upload for the main
-	  hackage.haskell.org (other repos will use whatever they are
-	  configured to use).
+	hackage.haskell.org (other repos will use whatever they are
+	configured to use).
 	* Support for dependencies of custom Setup.hs scripts.
 	* 'cabal' program itself now can be used as an external setup
 	method. This fixes an issue when Cabal version mismatch caused
 	unnecessary reconfigures (#2633).
+	* Improved error message for unsatisfiable package constraints
+	(#2727).
 
 1.22.0.0 Johan Tibell <johan.tibell@gmail.com> January 2015
 	* New command: user-config (#2159).
