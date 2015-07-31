@@ -17,7 +17,8 @@ import Data.Map (Map)
 import Data.Traversable (sequence)
 
 import Distribution.Client.Dependency.Types
-  ( PackageConstraint(..), PackagePreferences(..), InstalledPreference(..) )
+  ( PackageConstraint(..), LabeledPackageConstraint(..)
+  , PackagePreferences(..), InstalledPreference(..) )
 import Distribution.Client.Types
   ( OptionalStanza(..) )
 
@@ -95,44 +96,66 @@ preferLatestOrdering (I v1 _) (I v2 _) = compare v1 v2
 -- given instance for a P-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintP :: ConflictSet QPN -> I -> PackageConstraint -> Tree a -> Tree a
-processPackageConstraintP c (I v _) (PackageConstraintVersion _ vr) r
-  | checkVR vr v  = r
-  | otherwise     = Fail c (GlobalConstraintVersion vr)
-processPackageConstraintP c i       (PackageConstraintInstalled _)  r
-  | instI i       = r
-  | otherwise     = Fail c GlobalConstraintInstalled
-processPackageConstraintP c i       (PackageConstraintSource    _)  r
-  | not (instI i) = r
-  | otherwise     = Fail c GlobalConstraintSource
-processPackageConstraintP _ _       _                               r = r
+processPackageConstraintP :: ConflictSet QPN
+                          -> I
+                          -> LabeledPackageConstraint
+                          -> Tree a
+                          -> Tree a
+processPackageConstraintP c i (LabeledPackageConstraint pc src) r = go i pc
+  where
+    go (I v _) (PackageConstraintVersion _ vr)
+        | checkVR vr v  = r
+        | otherwise     = Fail c (GlobalConstraintVersion vr src)
+    go _       (PackageConstraintInstalled _)
+        | instI i       = r
+        | otherwise     = Fail c (GlobalConstraintInstalled src)
+    go _       (PackageConstraintSource    _)
+        | not (instI i) = r
+        | otherwise     = Fail c (GlobalConstraintSource src)
+    go _       _ = r
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintF :: Flag -> ConflictSet QPN -> Bool -> PackageConstraint -> Tree a -> Tree a
-processPackageConstraintF f c b' (PackageConstraintFlags _ fa) r =
-  case L.lookup f fa of
-    Nothing            -> r
-    Just b | b == b'   -> r
-           | otherwise -> Fail c GlobalConstraintFlag
-processPackageConstraintF _ _ _  _                             r = r
+processPackageConstraintF :: Flag
+                          -> ConflictSet QPN
+                          -> Bool
+                          -> LabeledPackageConstraint
+                          -> Tree a
+                          -> Tree a
+processPackageConstraintF f c b' (LabeledPackageConstraint pc src) r = go pc
+  where
+    go (PackageConstraintFlags _ fa) =
+        case L.lookup f fa of
+          Nothing            -> r
+          Just b | b == b'   -> r
+                 | otherwise -> Fail c (GlobalConstraintFlag src)
+    go _                             = r
 
 -- | Helper function that tries to enforce a single package constraint on a
 -- given flag setting for an F-node. Translates the constraint into a
 -- tree-transformer that either leaves the subtree untouched, or replaces it
 -- with an appropriate failure node.
-processPackageConstraintS :: OptionalStanza -> ConflictSet QPN -> Bool -> PackageConstraint -> Tree a -> Tree a
-processPackageConstraintS s c b' (PackageConstraintStanzas _ ss) r =
-  if not b' && s `elem` ss then Fail c GlobalConstraintFlag
-                           else r
-processPackageConstraintS _ _ _  _                             r = r
+processPackageConstraintS :: OptionalStanza
+                          -> ConflictSet QPN
+                          -> Bool
+                          -> LabeledPackageConstraint
+                          -> Tree a
+                          -> Tree a
+processPackageConstraintS s c b' (LabeledPackageConstraint pc src) r = go pc
+  where
+    go (PackageConstraintStanzas _ ss) =
+        if not b' && s `elem` ss then Fail c (GlobalConstraintFlag src)
+                                 else r
+    go _                               = r
 
 -- | Traversal that tries to establish various kinds of user constraints. Works
 -- by selectively disabling choices that have been ruled out by global user
 -- constraints.
-enforcePackageConstraints :: M.Map PN [PackageConstraint] -> Tree QGoalReasonChain -> Tree QGoalReasonChain
+enforcePackageConstraints :: M.Map PN [LabeledPackageConstraint]
+                          -> Tree QGoalReasonChain
+                          -> Tree QGoalReasonChain
 enforcePackageConstraints pcs = trav go
   where
     go (PChoiceF qpn@(Q _ pn)               gr      ts) =
@@ -169,8 +192,8 @@ enforceManualFlags = trav go
             ([], y : ys) -> P.fromList (y : L.map (\ (b, _) -> (b, Fail c ManualFlag)) ys)
             _            -> ts -- something has been manually selected, leave things alone
       where
-        isDisabled (_, Fail _ GlobalConstraintFlag) = True
-        isDisabled _                                = False
+        isDisabled (_, Fail _ (GlobalConstraintFlag _)) = True
+        isDisabled _                                    = False
     go x                                                   = x
 
 -- | Prefer installed packages over non-installed packages, generally.

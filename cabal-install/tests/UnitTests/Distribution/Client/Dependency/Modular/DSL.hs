@@ -287,10 +287,11 @@ exResolve db targets indepGoals = runProgress $
                               (C.PackageName p) [TestStanzas])
                        (exDbPkgs db)
     targets'     = map (\p -> NamedPackage (C.PackageName p) []) targets
-    params       = addConstraints enableTests
+    params       = addConstraints (map toLpc enableTests)
                  $ (standardInstallPolicy instIdx avaiIdx targets') {
                        depResolverIndependentGoals = indepGoals
                      }
+    toLpc     pc = LabeledPackageConstraint pc ConstraintSourceUnknown
 
 extractInstallPlan :: CI.InstallPlan.InstallPlan
                    -> [(ExamplePkgName, ExamplePkgVersion)]

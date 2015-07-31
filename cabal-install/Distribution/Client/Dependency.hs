@@ -74,6 +74,8 @@ import Distribution.Client.Types
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), debugPackageConstraint
+         , LabeledPackageConstraint(..), unlabelPackageConstraint
+         , ConstraintSource(..), debugConstraintSource
          , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
@@ -134,7 +136,7 @@ import Control.Exception
 --
 data DepResolverParams = DepResolverParams {
        depResolverTargets           :: [PackageName],
-       depResolverConstraints       :: [PackageConstraint],
+       depResolverConstraints       :: [LabeledPackageConstraint],
        depResolverPreferences       :: [PackagePreference],
        depResolverPreferenceDefault :: PackagesPreferenceDefault,
        depResolverInstalledPkgIndex :: InstalledPackageIndex,
@@ -151,12 +153,15 @@ debugDepResolverParams :: DepResolverParams -> String
 debugDepResolverParams p =
      "targets: " ++ intercalate ", " (map display (depResolverTargets p))
   ++ "\nconstraints: "
-  ++   concatMap (("\n  " ++) . debugPackageConstraint)
+  ++   concatMap (("\n  " ++) . debugLabeledConstraint)
        (depResolverConstraints p)
   ++ "\npreferences: "
   ++   concatMap (("\n  " ++) . debugPackagePreference)
        (depResolverPreferences p)
   ++ "\nstrategy: " ++ show (depResolverPreferenceDefault p)
+  where
+    debugLabeledConstraint (LabeledPackageConstraint pc src) =
+        debugPackageConstraint pc ++ " (" ++ debugConstraintSource src ++ ")"
 
 -- | A package selection preference for a particular package.
 --
@@ -207,7 +212,7 @@ addTargets extraTargets params =
       depResolverTargets = extraTargets ++ depResolverTargets params
     }
 
-addConstraints :: [PackageConstraint]
+addConstraints :: [LabeledPackageConstraint]
                -> DepResolverParams -> DepResolverParams
 addConstraints extraConstraints params =
     params {
@@ -273,7 +278,9 @@ dontUpgradeNonUpgradeablePackages params =
     addConstraints extraConstraints params
   where
     extraConstraints =
-      [ PackageConstraintInstalled pkgname
+      [ LabeledPackageConstraint
+        (PackageConstraintInstalled pkgname)
+        ConstraintSourceNonUpgradeablePackage
       | all (/=PackageName "base") (depResolverTargets params)
       , pkgname <- map PackageName [ "base", "ghc-prim", "integer-gmp"
                                    , "integer-simple" ]
@@ -474,8 +481,10 @@ applySandboxInstallPolicy
         (thisVersion (packageVersion pkg)) | pkg <- otherDeps ]
 
   . addConstraints
-      [ PackageConstraintVersion (packageName pkg)
-        (thisVersion (packageVersion pkg)) | pkg <- modifiedDeps ]
+      [ let pc = PackageConstraintVersion (packageName pkg)
+                 (thisVersion (packageVersion pkg))
+        in LabeledPackageConstraint pc ConstraintSourceModifiedAddSourceDep
+      | pkg <- modifiedDeps ]
 
   . addTargets [ packageName pkg | pkg <- modifiedDeps ]
 
@@ -814,8 +823,9 @@ resolveWithoutDependencies (DepResolverParams targets constraints
     packageConstraints pkgname =
       Map.findWithDefault anyVersion pkgname packageVersionConstraintMap
     packageVersionConstraintMap =
-      Map.fromList [ (name, range)
-                   | PackageConstraintVersion name range <- constraints ]
+      let pcs = map unlabelPackageConstraint constraints
+      in Map.fromList [ (name, range)
+                      | PackageConstraintVersion name range <- pcs ]
 
     packagePreferences :: PackageName -> PackagePreferences
     packagePreferences = interpretPackagesPreference

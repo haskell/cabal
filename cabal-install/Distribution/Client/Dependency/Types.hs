@@ -27,6 +27,11 @@ module Distribution.Client.Dependency.Types (
 
     Progress(..),
     foldProgress,
+
+    LabeledPackageConstraint(..),
+    ConstraintSource(..),
+    unlabelPackageConstraint,
+    debugConstraintSource
   ) where
 
 #if !MIN_VERSION_base(4,8,0)
@@ -105,7 +110,7 @@ type DependencyResolver = Platform
                        -> InstalledPackageIndex
                        ->          PackageIndex.PackageIndex SourcePackage
                        -> (PackageName -> PackagePreferences)
-                       -> [PackageConstraint]
+                       -> [LabeledPackageConstraint]
                        -> [PackageName]
                        -> Progress String String [ResolverPackage]
 
@@ -250,3 +255,65 @@ instance Applicative (Progress step fail) where
 instance Monoid fail => Alternative (Progress step fail) where
   empty   = Fail mempty
   p <|> q = foldProgress Step (const q) Done p
+
+-- | 'PackageConstraint' labeled with its source.
+data LabeledPackageConstraint
+   = LabeledPackageConstraint PackageConstraint ConstraintSource
+
+unlabelPackageConstraint :: LabeledPackageConstraint -> PackageConstraint
+unlabelPackageConstraint (LabeledPackageConstraint pc _) = pc
+
+-- | Source of a 'PackageConstraint'.
+data ConstraintSource =
+
+  -- | Main config file, which is ~/.cabal/config by default.
+  ConstraintSourceMainConfig FilePath
+
+  -- | Sandbox config file, which is ./cabal.sandbox.config by default.
+  | ConstraintSourceSandboxConfig FilePath
+
+  -- | ./cabal.config.
+  | ConstraintSourceUserConfig
+
+  -- | Flag specified on the command line.
+  | ConstraintSourceCommandlineFlag
+
+  -- | Target specified by the user, e.g., @cabal install package-0.1.0.0@
+  -- implies @package==0.1.0.0@.
+  | ConstraintSourceUserTarget
+
+  -- | Internal requirement to use installed versions of packages like ghc-prim.
+  | ConstraintSourceNonUpgradeablePackage
+
+  -- | Internal requirement to use the add-source version of a package when that
+  -- version is installed and the source is modified.
+  | ConstraintSourceModifiedAddSourceDep
+
+  -- | Internal constraint used by @cabal freeze@.
+  | ConstraintSourceFreeze
+
+  -- | Constraint specified by a config file, a command line flag, or a user
+  -- target, when a more specific source is not known.
+  | ConstraintSourceConfigFlagOrTarget
+
+  -- | The source of the constraint is not specified.
+  | ConstraintSourceUnknown
+  deriving (Eq, Show)
+
+-- | Description of a 'ConstraintSource'.
+debugConstraintSource :: ConstraintSource -> String
+debugConstraintSource (ConstraintSourceMainConfig path) =
+    "main config " ++ path
+debugConstraintSource (ConstraintSourceSandboxConfig path) =
+    "sandbox config " ++ path
+debugConstraintSource ConstraintSourceUserConfig = "cabal.config"
+debugConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
+debugConstraintSource ConstraintSourceUserTarget = "user target"
+debugConstraintSource ConstraintSourceNonUpgradeablePackage =
+    "non-upgradeable package"
+debugConstraintSource ConstraintSourceModifiedAddSourceDep =
+    "modified add-source dependency"
+debugConstraintSource ConstraintSourceFreeze = "cabal freeze"
+debugConstraintSource ConstraintSourceConfigFlagOrTarget =
+    "config file, command line flag, or user target"
+debugConstraintSource ConstraintSourceUnknown = "unknown source"
