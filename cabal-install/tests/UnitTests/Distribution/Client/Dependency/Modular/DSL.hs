@@ -20,7 +20,8 @@ import qualified Data.Map as Map
 -- Cabal
 import qualified Distribution.Compiler             as C
 import qualified Distribution.InstalledPackageInfo as C
-import qualified Distribution.Package              as C hiding (HasInstalledPackageId(..))
+import qualified Distribution.Package              as C
+  hiding (HasInstalledPackageId(..))
 import qualified Distribution.PackageDescription   as C
 import qualified Distribution.Simple.PackageIndex  as C.PackageIndex
 import qualified Distribution.System               as C
@@ -102,8 +103,10 @@ data ExampleAvailable = ExAv {
   , exAvDeps    :: ComponentDeps [ExampleDependency]
   }
 
-exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency] -> ExampleAvailable
-exAv n v ds = ExAv { exAvName = n, exAvVersion = v, exAvDeps = CD.fromLibraryDeps ds }
+exAv :: ExamplePkgName -> ExamplePkgVersion -> [ExampleDependency]
+     -> ExampleAvailable
+exAv n v ds = ExAv { exAvName = n, exAvVersion = v
+                   , exAvDeps = CD.fromLibraryDeps ds }
 
 withSetupDeps :: ExampleAvailable -> [ExampleDependency] -> ExampleAvailable
 withSetupDeps ex setupDeps = ex {
@@ -117,7 +120,8 @@ data ExampleInstalled = ExInst {
   , exInstBuildAgainst :: [ExampleInstalled]
   }
 
-exInst :: ExamplePkgName -> ExamplePkgVersion -> ExamplePkgHash -> [ExampleInstalled] -> ExampleInstalled
+exInst :: ExamplePkgName -> ExamplePkgVersion -> ExamplePkgHash
+       -> [ExampleInstalled] -> ExampleInstalled
 exInst = ExInst
 
 type ExampleDb = [Either ExampleInstalled ExampleAvailable]
@@ -146,10 +150,12 @@ exAvSrcPkg ex =
                        C.setupDepends = mkSetupDeps (CD.setupDeps (exAvDeps ex))
                      }
                  }
-             , C.genPackageFlags = concatMap extractFlags (CD.libraryDeps (exAvDeps ex))
+             , C.genPackageFlags = concatMap extractFlags
+                                   (CD.libraryDeps (exAvDeps ex))
              , C.condLibrary     = Just $ mkCondTree libraryDeps
              , C.condExecutables = []
-             , C.condTestSuites  = map (\(t, deps) -> (t, mkCondTree deps)) testSuites
+             , C.condTestSuites  = map (\(t, deps) -> (t, mkCondTree deps))
+                                   testSuites
              , C.condBenchmarks  = []
              }
          }
@@ -159,10 +165,12 @@ exAvSrcPkg ex =
                      , [(ExampleTestName, [ExampleDependency])]
                      )
     splitTopLevel []                = ([], [])
-    splitTopLevel (ExTest t a:deps) = let (other, testSuites) = splitTopLevel deps
-                                      in (other, (t, a):testSuites)
-    splitTopLevel (dep:deps)        = let (other, testSuites) = splitTopLevel deps
-                                      in (dep:other, testSuites)
+    splitTopLevel (ExTest t a:deps) =
+      let (other, testSuites) = splitTopLevel deps
+      in (other, (t, a):testSuites)
+    splitTopLevel (dep:deps)        =
+      let (other, testSuites) = splitTopLevel deps
+      in (dep:other, testSuites)
 
     extractFlags :: ExampleDependency -> [C.Flag]
     extractFlags (ExAny _)      = []
@@ -193,7 +201,8 @@ exAvSrcPkg ex =
 
     mkFlagged :: Monoid a
               => (ExampleFlagName, [ExampleDependency], [ExampleDependency])
-              -> (C.Condition C.ConfVar, DependencyTree a, Maybe (DependencyTree a))
+              -> (C.Condition C.ConfVar
+                 , DependencyTree a, Maybe (DependencyTree a))
     mkFlagged (f, a, b) = ( C.Var (C.Flag (C.FlagName f))
                           , mkCondTree a
                           , Just (mkCondTree b)
@@ -274,7 +283,8 @@ exResolve db targets indepGoals = runProgress $
                        packageIndex       = exAvIdx avai
                      , packagePreferences = Map.empty
                      }
-    enableTests  = map (\p -> PackageConstraintStanzas (C.PackageName p) [TestStanzas])
+    enableTests  = map (\p -> PackageConstraintStanzas
+                              (C.PackageName p) [TestStanzas])
                        (exDbPkgs db)
     targets'     = map (\p -> NamedPackage (C.PackageName p) []) targets
     params       = addConstraints enableTests
@@ -292,7 +302,8 @@ extractInstallPlan = catMaybes . map confPkg . CI.InstallPlan.toList
 
     srcPkg :: ConfiguredPackage -> (String, Int)
     srcPkg (ConfiguredPackage pkg _flags _stanzas _deps) =
-      let C.PackageIdentifier (C.PackageName p) (Version (n:_) _) = packageInfoId pkg
+      let C.PackageIdentifier (C.PackageName p) (Version (n:_) _) =
+            packageInfoId pkg
       in (p, n)
 
 {-------------------------------------------------------------------------------

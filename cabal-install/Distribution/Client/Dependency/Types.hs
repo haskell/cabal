@@ -13,11 +13,10 @@
 -- Common types for dependency resolution.
 -----------------------------------------------------------------------------
 module Distribution.Client.Dependency.Types (
-    ExtDependency(..),
-
     PreSolver(..),
     Solver(..),
     DependencyResolver,
+    ResolverPackage(..),
 
     AllowNewer(..), isAllowNewer,
     PackageConstraint(..),
@@ -45,21 +44,19 @@ import Data.Monoid
 #endif
 
 import Distribution.Client.Types
-         ( OptionalStanza(..), SourcePackage(..) )
-import qualified Distribution.Client.InstallPlan as InstallPlan
-
-import Distribution.Compat.ReadP
-         ( (<++) )
+         ( OptionalStanza(..), SourcePackage(..), ConfiguredPackage )
 
 import qualified Distribution.Compat.ReadP as Parse
          ( pfail, munch1 )
 import Distribution.PackageDescription
          ( FlagAssignment, FlagName(..) )
+import Distribution.InstalledPackageInfo
+         ( InstalledPackageInfo )
 import qualified Distribution.Client.PackageIndex as PackageIndex
          ( PackageIndex )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import Distribution.Package
-         ( Dependency, PackageName, InstalledPackageId )
+         ( PackageName )
 import Distribution.Version
          ( VersionRange, simplifyVersionRange )
 import Distribution.Compiler
@@ -74,16 +71,6 @@ import Text.PrettyPrint
 
 import Prelude hiding (fail)
 
--- | Covers source dependencies and installed dependencies in
--- one type.
-data ExtDependency = SourceDependency Dependency
-                   | InstalledDependency InstalledPackageId
-
-instance Text ExtDependency where
-  disp (SourceDependency    dep) = disp dep
-  disp (InstalledDependency dep) = disp dep
-
-  parse = (SourceDependency `fmap` parse) <++ (InstalledDependency `fmap` parse)
 
 -- | All the solvers that can be selected.
 data PreSolver = AlwaysTopDown | AlwaysModular | Choose
@@ -120,7 +107,15 @@ type DependencyResolver = Platform
                        -> (PackageName -> PackagePreferences)
                        -> [PackageConstraint]
                        -> [PackageName]
-                       -> Progress String String [InstallPlan.PlanPackage]
+                       -> Progress String String [ResolverPackage]
+
+-- | The dependency resolver picks either pre-existing installed packages
+-- or it picks source packages along with package configuration.
+--
+-- This is like the 'InstallPlan.PlanPackage' but with fewer cases.
+--
+data ResolverPackage = PreExisting InstalledPackageInfo
+                     | Configured  ConfiguredPackage
 
 -- | Per-package constraints. Package constraints must be respected by the
 -- solver. Multiple constraints for each package can be given, though obviously
