@@ -23,7 +23,8 @@ import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..)
          , enableStanzas, ConfiguredId(..), fakeInstalledPackageId )
 import Distribution.Client.Dependency.Types
-         ( DependencyResolver, ResolverPackage(..), PackageConstraint(..)
+         ( DependencyResolver, ResolverPackage(..)
+         , PackageConstraint(..), unlabelPackageConstraint
          , PackagePreferences(..), InstalledPreference(..)
          , Progress(..), foldProgress )
 
@@ -254,7 +255,8 @@ topDownResolver platform cinfo installedPkgIndex sourcePkgIndex
                     platform cinfo
                     (convertInstalledPackageIndex installedPkgIndex)
                     sourcePkgIndex
-                    preferences constraints
+                    preferences
+                    (map unlabelPackageConstraint constraints)
                     targets
   where
     mapMessages :: Progress Log Failure a -> Progress String String a

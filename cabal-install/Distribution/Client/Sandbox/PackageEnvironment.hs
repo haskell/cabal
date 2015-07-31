@@ -36,6 +36,7 @@ import Distribution.Client.Config      ( SavedConfig(..), commentSavedConfig
                                        , installDirsFields, withProgramsFields
                                        , withProgramOptionsFields
                                        , defaultCompiler )
+import Distribution.Client.Dependency.Types ( ConstraintSource (..) )
 import Distribution.Client.ParseUtils  ( parseFields, ppFields, ppSection )
 import Distribution.Client.Setup       ( GlobalFlags(..), ConfigExFlags(..)
                                        , InstallFlags(..)
@@ -284,7 +285,7 @@ inheritedPackageEnvironment verbosity pkgEnv = do
 userPackageEnvironment :: Verbosity -> FilePath -> IO PackageEnvironment
 userPackageEnvironment verbosity pkgEnvDir = do
   let path = pkgEnvDir </> userPackageEnvironmentFile
-  minp <- readPackageEnvironmentFile mempty path
+  minp <- readPackageEnvironmentFile ConstraintSourceUserConfig mempty path
   case minp of
     Nothing -> return mempty
     Just (ParseOk warns parseResult) -> do
@@ -327,7 +328,8 @@ tryLoadSandboxPackageEnvironmentFile :: Verbosity -> FilePath -> (Flag FilePath)
                                         -> IO (FilePath, PackageEnvironment)
 tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
   let pkgEnvDir = takeDirectory pkgEnvFile
-  minp   <- readPackageEnvironmentFile mempty pkgEnvFile
+  minp   <- readPackageEnvironmentFile
+            (ConstraintSourceSandboxConfig pkgEnvFile) mempty pkgEnvFile
   pkgEnv <- handleParseResult verbosity pkgEnvFile minp
 
   -- Get the saved sandbox directory.
@@ -401,15 +403,15 @@ createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile incComments
   writePackageEnvironmentFile pkgEnvFile incComments commentPkgEnv initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
-pkgEnvFieldDescrs :: [FieldDescr PackageEnvironment]
-pkgEnvFieldDescrs = [
+pkgEnvFieldDescrs :: ConstraintSource -> [FieldDescr PackageEnvironment]
+pkgEnvFieldDescrs src = [
   simpleField "inherit"
     (fromFlagOrDefault Disp.empty . fmap Disp.text) (optional parseFilePathQ)
     pkgEnvInherit (\v pkgEnv -> pkgEnv { pkgEnvInherit = v })
 
     -- FIXME: Should we make these fields part of ~/.cabal/config ?
   , commaNewLineListField "constraints"
-    Text.disp Text.parse
+    (Text.disp . fst) ((\pc -> (pc, src)) `fmap` Text.parse)
     (configExConstraints . savedConfigureExFlags . pkgEnvSavedConfig)
     (\v pkgEnv -> updateConfigureExFlags pkgEnv
                   (\flags -> flags { configExConstraints = v }))
@@ -427,7 +429,7 @@ pkgEnvFieldDescrs = [
     configFieldDescriptions' :: [FieldDescr SavedConfig]
     configFieldDescriptions' = filter
       (\(FieldDescr name _ _) -> name /= "preference" && name /= "constraint")
-      configFieldDescriptions
+      (configFieldDescriptions src)
 
     toPkgEnv :: FieldDescr SavedConfig -> FieldDescr PackageEnvironment
     toPkgEnv fieldDescr =
@@ -446,11 +448,11 @@ pkgEnvFieldDescrs = [
       }
 
 -- | Read the package environment file.
-readPackageEnvironmentFile :: PackageEnvironment -> FilePath
+readPackageEnvironmentFile :: ConstraintSource -> PackageEnvironment -> FilePath
                               -> IO (Maybe (ParseResult PackageEnvironment))
-readPackageEnvironmentFile initial file =
+readPackageEnvironmentFile src initial file =
   handleNotExists $
-  fmap (Just . parsePackageEnvironment initial) (readFile file)
+  fmap (Just . parsePackageEnvironment src initial) (readFile file)
   where
     handleNotExists action = catchIO action $ \ioe ->
       if isDoesNotExistError ioe
@@ -458,9 +460,9 @@ readPackageEnvironmentFile initial file =
         else ioError ioe
 
 -- | Parse the package environment file.
-parsePackageEnvironment :: PackageEnvironment -> String
+parsePackageEnvironment :: ConstraintSource -> PackageEnvironment -> String
                            -> ParseResult PackageEnvironment
-parsePackageEnvironment initial str = do
+parsePackageEnvironment src initial str = do
   fields <- readFields str
   let (knownSections, others) = partition isKnownSection fields
   pkgEnv <- parse others
@@ -491,7 +493,7 @@ parsePackageEnvironment initial str = do
     isKnownSection _                                                    = False
 
     parse :: [ParseUtils.Field] -> ParseResult PackageEnvironment
-    parse = parseFields pkgEnvFieldDescrs initial
+    parse = parseFields (pkgEnvFieldDescrs src) initial
 
     parseSections :: SectionsAccum -> ParseUtils.Field
                      -> ParseResult SectionsAccum
@@ -564,7 +566,8 @@ showPackageEnvironmentWithComments :: (Maybe PackageEnvironment)
                                       -> PackageEnvironment
                                       -> String
 showPackageEnvironmentWithComments mdefPkgEnv pkgEnv = Disp.render $
-      ppFields pkgEnvFieldDescrs mdefPkgEnv pkgEnv
+      ppFields (pkgEnvFieldDescrs ConstraintSourceUnknown)
+               mdefPkgEnv pkgEnv
   $+$ Disp.text ""
   $+$ ppSection "install-dirs" "" installDirsFields
                 (fmap installDirsSection mdefPkgEnv) (installDirsSection pkgEnv)

@@ -26,11 +26,11 @@ data SolverConfig = SolverConfig {
   maxBackjumps          :: Maybe Int
 }
 
-solve :: SolverConfig ->   -- solver parameters
-         Index ->          -- all available packages as an index
-         (PN -> PackagePreferences) -> -- preferences
-         Map PN [PackageConstraint] -> -- global constraints
-         [PN] ->                       -- global goals
+solve :: SolverConfig ->          -- solver parameters
+         Index ->                 -- all available packages as an index
+         (PN -> PackagePreferences) ->        -- preferences
+         Map PN [LabeledPackageConstraint] -> -- global constraints
+         [PN] ->                              -- global goals
          Log Message (Assignment, RevDepMap)
 solve sc idx userPrefs userConstraints userGoals =
   explorePhase     $

@@ -18,7 +18,9 @@ module Distribution.Client.Configure (
   ) where
 
 import Distribution.Client.Dependency
-import Distribution.Client.Dependency.Types (AllowNewer(..), isAllowNewer)
+import Distribution.Client.Dependency.Types
+         ( AllowNewer(..), isAllowNewer, ConstraintSource(..)
+         , LabeledPackageConstraint(..) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.IndexUtils as IndexUtils
@@ -262,19 +264,23 @@ planLocalPackage verbosity comp platform configFlags configExFlags
             -- version constraints from the config file or command line
             -- TODO: should warn or error on constraints that are not on direct
             -- deps or flag constraints not on the package in question.
-            (map userToPackageConstraint (configExConstraints configExFlags))
+            [ LabeledPackageConstraint (userToPackageConstraint uc) src
+            | (uc, src) <- configExConstraints configExFlags ]
 
         . addConstraints
             -- package flags from the config file or command line
-            [ PackageConstraintFlags (packageName pkg)
-                                     (configConfigurationsFlags configFlags) ]
+            [ let pc = PackageConstraintFlags (packageName pkg)
+                       (configConfigurationsFlags configFlags)
+              in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
+            ]
 
         . addConstraints
             -- '--enable-tests' and '--enable-benchmarks' constraints from
-            -- command line
-            [ PackageConstraintStanzas (packageName pkg) $
-                [ TestStanzas  | testsEnabled ] ++
-                [ BenchStanzas | benchmarksEnabled ]
+            -- the config file or command line
+            [ let pc = PackageConstraintStanzas (packageName pkg) $
+                       [ TestStanzas  | testsEnabled ] ++
+                       [ BenchStanzas | benchmarksEnabled ]
+              in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
             ]
 
         $ standardInstallPolicy

@@ -70,7 +70,7 @@ import Distribution.Client.Configure
          ( chooseCabalVersion, configureSetupScript )
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
-         ( Solver(..) )
+         ( Solver(..), ConstraintSource(..), LabeledPackageConstraint(..) )
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils
          ( configureTransport, HttpTransport (..) )
@@ -372,18 +372,23 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . addConstraints
           -- version constraints from the config file or command line
-            (map userToPackageConstraint (configExConstraints configExFlags))
+            [ LabeledPackageConstraint (userToPackageConstraint pc) src
+            | (pc, src) <- configExConstraints configExFlags ]
 
       . addConstraints
           --FIXME: this just applies all flags to all targets which
           -- is silly. We should check if the flags are appropriate
-          [ PackageConstraintFlags (pkgSpecifierTarget pkgSpecifier) flags
+          [ let pc = PackageConstraintFlags
+                     (pkgSpecifierTarget pkgSpecifier) flags
+            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | let flags = configConfigurationsFlags configFlags
           , not (null flags)
           , pkgSpecifier <- pkgSpecifiers ]
 
       . addConstraints
-          [ PackageConstraintStanzas (pkgSpecifierTarget pkgSpecifier) stanzas
+          [ let pc = PackageConstraintStanzas
+                     (pkgSpecifierTarget pkgSpecifier) stanzas
+            in LabeledPackageConstraint pc ConstraintSourceConfigFlagOrTarget
           | pkgSpecifier <- pkgSpecifiers ]
 
       . maybe id applySandboxInstallPolicy mSandboxPkgInfo

@@ -44,6 +44,8 @@ import Distribution.Client.Types
          ( RemoteRepo(..), Username(..), Password(..), emptyRemoteRepo )
 import Distribution.Client.BuildReports.Types
          ( ReportLevel(..) )
+import Distribution.Client.Dependency.Types
+         ( ConstraintSource(..) )
 import Distribution.Client.Setup
          ( GlobalFlags(..), globalCommand, defaultGlobalFlags
          , ConfigExFlags(..), configureExOptions, defaultConfigExFlags
@@ -551,7 +553,8 @@ loadConfig verbosity configFileFlag = addBaseConf $ do
 
 readConfigFile :: SavedConfig -> FilePath -> IO (Maybe (ParseResult SavedConfig))
 readConfigFile initial file = handleNotExists $
-  fmap (Just . parseConfig initial) (readFile file)
+  fmap (Just . parseConfig (ConstraintSourceMainConfig file) initial)
+       (readFile file)
 
   where
     handleNotExists action = catchIO action $ \ioe ->
@@ -606,8 +609,8 @@ commentSavedConfig = do
 
 -- | All config file fields.
 --
-configFieldDescriptions :: [FieldDescr SavedConfig]
-configFieldDescriptions =
+configFieldDescriptions :: ConstraintSource -> [FieldDescr SavedConfig]
+configFieldDescriptions src =
 
      toSavedConfig liftGlobalFlag
        (commandOptions (globalCommand []) ParseArgs)
@@ -676,7 +679,7 @@ configFieldDescriptions =
        ]
 
   ++ toSavedConfig liftConfigExFlag
-       (configureExOptions ParseArgs)
+       (configureExOptions ParseArgs src)
        [] []
 
   ++ toSavedConfig liftInstallFlag
@@ -787,8 +790,11 @@ liftReportFlag :: FieldDescr ReportFlags -> FieldDescr SavedConfig
 liftReportFlag = liftField
   savedReportFlags (\flags conf -> conf { savedReportFlags = flags })
 
-parseConfig :: SavedConfig -> String -> ParseResult SavedConfig
-parseConfig initial = \str -> do
+parseConfig :: ConstraintSource
+            -> SavedConfig
+            -> String
+            -> ParseResult SavedConfig
+parseConfig src initial = \str -> do
   fields <- readFields str
   let (knownSections, others) = partition isKnownSection fields
   config <- parse others
@@ -827,7 +833,7 @@ parseConfig initial = \str -> do
     isKnownSection (ParseUtils.Section _ "program-default-options" _ _) = True
     isKnownSection _                                                    = False
 
-    parse = parseFields (configFieldDescriptions
+    parse = parseFields (configFieldDescriptions src
                       ++ deprecatedFieldDescriptions) initial
 
     parseSections (rs, h, u, g, p, a)
@@ -885,7 +891,8 @@ showConfigWithComments comment vals = Disp.render $
         [] -> Disp.text ""
         (x:xs) -> foldl' (\ r r' -> r $+$ Disp.text "" $+$ r') x xs
   $+$ Disp.text ""
-  $+$ ppFields (skipSomeFields configFieldDescriptions) mcomment vals
+  $+$ ppFields (skipSomeFields (configFieldDescriptions ConstraintSourceUnknown))
+               mcomment vals
   $+$ Disp.text ""
   $+$ ppSection "haddock" "" haddockFlagsFields
                 (fmap savedHaddockFlags mcomment) (savedHaddockFlags vals)
