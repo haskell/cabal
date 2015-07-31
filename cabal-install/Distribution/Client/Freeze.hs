@@ -23,7 +23,7 @@ import Distribution.Client.Dependency
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.InstallPlan
-         ( PlanPackage )
+         ( InstallPlan, PlanPackage )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.Setup
          ( GlobalFlags(..), FreezeFlags(..), ConfigExFlags(..) )
@@ -89,9 +89,10 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
 
-    transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
+    transport <- configureTransport verbosity
+                 (flagToMaybe (globalHttpTransport globalFlags))
 
-    pkgSpecifiers <- resolveUserTargets transport verbosity
+    pkgSpecifiers <- resolveUserTargets verbosity transport
                        (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        [UserTargetLocalDir "."]
@@ -193,20 +194,19 @@ planPackages verbosity comp platform mSandboxPkgInfo freezeFlags
 -- 2) not a dependency (directly or transitively) of the package we are
 --    freezing.  This is useful for removing previously installed packages
 --    which are no longer required from the install plan.
-pruneInstallPlan :: InstallPlan.InstallPlan
+pruneInstallPlan :: InstallPlan
                  -> [PackageSpecifier SourcePackage]
                  -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
-    mapLeft (removeSelf pkgIds . PackageIndex.allPackages) $
+    either (const brokenPkgsErr)
+           (removeSelf pkgIds . PackageIndex.allPackages) $
     InstallPlan.dependencyClosure installPlan pkgIds
   where
     pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
-    mapLeft f (Left v)  = f v
-    mapLeft _ (Right _) = error "planPackages: installPlan contains broken packages"
     removeSelf [thisPkg] = filter (\pp -> packageId pp /= thisPkg)
-    removeSelf _ =
-        error $ "internal error: 'pruneInstallPlan' given "
-           ++ "unexpected package specifiers!"
+    removeSelf _  = error $ "internal error: 'pruneInstallPlan' given "
+                         ++ "unexpected package specifiers!"
+    brokenPkgsErr = error "planPackages: installPlan contains broken packages"
 
 
 freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()

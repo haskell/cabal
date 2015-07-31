@@ -87,7 +87,7 @@ fetch verbosity packageDBs repos comp platform conf
 
     transport <- configureTransport verbosity (flagToMaybe (globalHttpTransport globalFlags))
 
-    pkgSpecifiers <- resolveUserTargets transport verbosity
+    pkgSpecifiers <- resolveUserTargets verbosity transport
                        (fromFlag $ globalWorldFile globalFlags)
                        (packageIndex sourcePkgDb)
                        userTargets
@@ -139,7 +139,7 @@ planPackages verbosity comp platform fetchFlags
       -- that are in the 'InstallPlan.Configured' state.
       return
         [ pkg
-        | (InstallPlan.Configured (InstallPlan.ConfiguredPackage pkg _ _ _))
+        | (InstallPlan.Configured (ConfiguredPackage pkg _ _ _))
             <- InstallPlan.toList installPlan ]
 
   | otherwise =

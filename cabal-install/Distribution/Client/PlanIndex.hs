@@ -27,7 +27,7 @@ import qualified Data.Graph as Graph
 import Data.Array ((!))
 import Data.Map (Map)
 import Data.Maybe (isNothing, fromMaybe, fromJust)
-import Data.Either (lefts)
+import Data.Either (rights)
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
@@ -42,7 +42,7 @@ import Distribution.Version
 
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
-import Distribution.Client.PackageIndex
+import Distribution.Client.Types
          ( PackageFixedDeps(..) )
 import Distribution.Simple.PackageIndex
          ( PackageIndex, allPackages, insert, lookupInstalledPackageId )
@@ -131,7 +131,7 @@ dependencyInconsistencies fakeMap indepGoals index  =
     concatMap (dependencyInconsistencies' fakeMap) subplans
   where
     subplans :: [PackageIndex pkg]
-    subplans = lefts $
+    subplans = rights $
                  map (dependencyClosure fakeMap index)
                      (rootSets fakeMap indepGoals index)
 
@@ -253,11 +253,11 @@ dependencyClosure :: (PackageFixedDeps pkg, HasInstalledPackageId pkg)
                   => FakeMap
                   -> PackageIndex pkg
                   -> [InstalledPackageId]
-                  -> Either (PackageIndex pkg)
-                            [(pkg, [InstalledPackageId])]
+                  -> Either [(pkg, [InstalledPackageId])]
+                            (PackageIndex pkg)
 dependencyClosure fakeMap index pkgids0 = case closure mempty [] pkgids0 of
-  (completed, []) -> Left completed
-  (completed, _)  -> Right (brokenPackages fakeMap completed)
+  (completed, []) -> Right completed
+  (completed, _)  -> Left (brokenPackages fakeMap completed)
  where
     closure completed failed []             = (completed, failed)
     closure completed failed (pkgid:pkgids) =
