@@ -20,7 +20,7 @@ module Distribution.Client.Dependency.Types (
 
     AllowNewer(..), isAllowNewer,
     PackageConstraint(..),
-    debugPackageConstraint,
+    showPackageConstraint,
     PackagePreferences(..),
     InstalledPreference(..),
     PackagesPreferenceDefault(..),
@@ -31,7 +31,7 @@ module Distribution.Client.Dependency.Types (
     LabeledPackageConstraint(..),
     ConstraintSource(..),
     unlabelPackageConstraint,
-    debugConstraintSource
+    showConstraintSource
   ) where
 
 #if !MIN_VERSION_base(4,8,0)
@@ -138,19 +138,19 @@ data PackageConstraint
 -- | Provide a textual representation of a package constraint
 -- for debugging purposes.
 --
-debugPackageConstraint :: PackageConstraint -> String
-debugPackageConstraint (PackageConstraintVersion pn vr) =
+showPackageConstraint :: PackageConstraint -> String
+showPackageConstraint (PackageConstraintVersion pn vr) =
   display pn ++ " " ++ display (simplifyVersionRange vr)
-debugPackageConstraint (PackageConstraintInstalled pn) =
+showPackageConstraint (PackageConstraintInstalled pn) =
   display pn ++ " installed"
-debugPackageConstraint (PackageConstraintSource pn) =
+showPackageConstraint (PackageConstraintSource pn) =
   display pn ++ " source"
-debugPackageConstraint (PackageConstraintFlags pn fs) =
+showPackageConstraint (PackageConstraintFlags pn fs) =
   "flags " ++ display pn ++ " " ++ unwords (map (uncurry showFlag) fs)
   where
     showFlag (FlagName f) True  = "+" ++ f
     showFlag (FlagName f) False = "-" ++ f
-debugPackageConstraint (PackageConstraintStanzas pn ss) =
+showPackageConstraint (PackageConstraintStanzas pn ss) =
   "stanzas " ++ display pn ++ " " ++ unwords (map showStanza ss)
   where
     showStanza TestStanzas  = "test"
@@ -301,19 +301,19 @@ data ConstraintSource =
   deriving (Eq, Show)
 
 -- | Description of a 'ConstraintSource'.
-debugConstraintSource :: ConstraintSource -> String
-debugConstraintSource (ConstraintSourceMainConfig path) =
+showConstraintSource :: ConstraintSource -> String
+showConstraintSource (ConstraintSourceMainConfig path) =
     "main config " ++ path
-debugConstraintSource (ConstraintSourceSandboxConfig path) =
+showConstraintSource (ConstraintSourceSandboxConfig path) =
     "sandbox config " ++ path
-debugConstraintSource ConstraintSourceUserConfig = "cabal.config"
-debugConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
-debugConstraintSource ConstraintSourceUserTarget = "user target"
-debugConstraintSource ConstraintSourceNonUpgradeablePackage =
+showConstraintSource ConstraintSourceUserConfig = "cabal.config"
+showConstraintSource ConstraintSourceCommandlineFlag = "command line flag"
+showConstraintSource ConstraintSourceUserTarget = "user target"
+showConstraintSource ConstraintSourceNonUpgradeablePackage =
     "non-upgradeable package"
-debugConstraintSource ConstraintSourceModifiedAddSourceDep =
+showConstraintSource ConstraintSourceModifiedAddSourceDep =
     "modified add-source dependency"
-debugConstraintSource ConstraintSourceFreeze = "cabal freeze"
-debugConstraintSource ConstraintSourceConfigFlagOrTarget =
+showConstraintSource ConstraintSourceFreeze = "cabal freeze"
+showConstraintSource ConstraintSourceConfigFlagOrTarget =
     "config file, command line flag, or user target"
-debugConstraintSource ConstraintSourceUnknown = "unknown source"
+showConstraintSource ConstraintSourceUnknown = "unknown source"

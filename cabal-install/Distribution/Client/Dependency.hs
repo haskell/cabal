@@ -73,9 +73,9 @@ import Distribution.Client.Types
          , ConfiguredPackage(..), ConfiguredId(..), enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
-         , PackageConstraint(..), debugPackageConstraint
+         , PackageConstraint(..), showPackageConstraint
          , LabeledPackageConstraint(..), unlabelPackageConstraint
-         , ConstraintSource(..), debugConstraintSource
+         , ConstraintSource(..), showConstraintSource
          , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
@@ -149,19 +149,20 @@ data DepResolverParams = DepResolverParams {
        depResolverMaxBackjumps      :: Maybe Int
      }
 
-debugDepResolverParams :: DepResolverParams -> String
-debugDepResolverParams p =
+showDepResolverParams :: DepResolverParams -> String
+showDepResolverParams p =
      "targets: " ++ intercalate ", " (map display (depResolverTargets p))
   ++ "\nconstraints: "
-  ++   concatMap (("\n  " ++) . debugLabeledConstraint)
+  ++   concatMap (("\n  " ++) . showLabeledConstraint)
        (depResolverConstraints p)
   ++ "\npreferences: "
-  ++   concatMap (("\n  " ++) . debugPackagePreference)
+  ++   concatMap (("\n  " ++) . showPackagePreference)
        (depResolverPreferences p)
   ++ "\nstrategy: " ++ show (depResolverPreferenceDefault p)
   where
-    debugLabeledConstraint (LabeledPackageConstraint pc src) =
-        debugPackageConstraint pc ++ " (" ++ debugConstraintSource src ++ ")"
+    showLabeledConstraint :: LabeledPackageConstraint -> String
+    showLabeledConstraint (LabeledPackageConstraint pc src) =
+        showPackageConstraint pc ++ " (" ++ showConstraintSource src ++ ")"
 
 -- | A package selection preference for a particular package.
 --
@@ -180,10 +181,10 @@ data PackagePreference =
 -- | Provide a textual representation of a package preference
 -- for debugging purposes.
 --
-debugPackagePreference :: PackagePreference -> String
-debugPackagePreference (PackageVersionPreference   pn vr) =
+showPackagePreference :: PackagePreference -> String
+showPackagePreference (PackageVersionPreference   pn vr) =
   display pn ++ " " ++ display (simplifyVersionRange vr)
-debugPackagePreference (PackageInstalledPreference pn ip) =
+showPackagePreference (PackageInstalledPreference pn ip) =
   display pn ++ " " ++ show ip
 
 basicDepResolverParams :: InstalledPackageIndex
@@ -545,7 +546,7 @@ resolveDependencies platform comp _solver params
 
 resolveDependencies platform comp  solver params =
 
-    Step (debugDepResolverParams finalparams)
+    Step (showDepResolverParams finalparams)
   $ fmap (validateSolverResult platform comp indGoals)
   $ runSolver solver (SolverConfig reorderGoals indGoals noReinstalls
                       shadowing strFlags maxBkjumps)

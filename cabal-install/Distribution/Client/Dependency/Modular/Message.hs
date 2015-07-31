@@ -13,7 +13,7 @@ import Distribution.Client.Dependency.Modular.Flag
 import Distribution.Client.Dependency.Modular.Package
 import Distribution.Client.Dependency.Modular.Tree
 import Distribution.Client.Dependency.Types
-         ( ConstraintSource(..), debugConstraintSource )
+         ( ConstraintSource(..), showConstraintSource )
 
 data Message =
     Enter           -- ^ increase indentation level
@@ -97,10 +97,10 @@ showFR _ CannotInstall                    = " (only already installed instances 
 showFR _ CannotReinstall                  = " (avoiding to reinstall a package with same version but new dependencies)"
 showFR _ Shadowed                         = " (shadowed by another installed package with same version)"
 showFR _ Broken                           = " (package is broken)"
-showFR _ (GlobalConstraintVersion vr src) = " (" ++ showConstraintSource src ++ " requires " ++ display vr ++ ")"
-showFR _ (GlobalConstraintInstalled src)  = " (" ++ showConstraintSource src ++ " requires installed instance)"
-showFR _ (GlobalConstraintSource src)     = " (" ++ showConstraintSource src ++ " requires source instance)"
-showFR _ (GlobalConstraintFlag src)       = " (" ++ showConstraintSource src ++ " requires opposite flag selection)"
+showFR _ (GlobalConstraintVersion vr src) = " (" ++ constraintSource src ++ " requires " ++ display vr ++ ")"
+showFR _ (GlobalConstraintInstalled src)  = " (" ++ constraintSource src ++ " requires installed instance)"
+showFR _ (GlobalConstraintSource src)     = " (" ++ constraintSource src ++ " requires source instance)"
+showFR _ (GlobalConstraintFlag src)       = " (" ++ constraintSource src ++ " requires opposite flag selection)"
 showFR _ ManualFlag                       = " (manual flag can only be changed explicitly)"
 showFR _ (BuildFailureNotInIndex pn)      = " (unknown package: " ++ display pn ++ ")"
 showFR c Backjump                         = " (backjumping, conflict set: " ++ showCS c ++ ")"
@@ -113,5 +113,5 @@ showFR _ (MalformedFlagChoice qfn)        = " (INTERNAL ERROR: MALFORMED FLAG CH
 showFR _ (MalformedStanzaChoice qsn)      = " (INTERNAL ERROR: MALFORMED STANZA CHOICE: " ++ showQSN qsn ++ ")"
 showFR _ EmptyGoalChoice                  = " (INTERNAL ERROR: EMPTY GOAL CHOICE)"
 
-showConstraintSource :: ConstraintSource -> String
-showConstraintSource src = "constraint from " ++ debugConstraintSource src
+constraintSource :: ConstraintSource -> String
+constraintSource src = "constraint from " ++ showConstraintSource src
