@@ -656,6 +656,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
                                            Internal.mkGhcOptPackages clbi ,
                 ghcOptLinkLibs           = toNubListR $ extraLibs libBi,
                 ghcOptLinkLibPath        = toNubListR $ extraLibDirs libBi,
+                ghcOptLinkFrameworks     = toNubListR $ PD.frameworks libBi,
                 ghcOptRPaths             = rpaths
               }
 
