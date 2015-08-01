@@ -793,6 +793,7 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = lhcPkgProg
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
                                  , HcPkg.useSingleFileDb = True
+                                 , HcPkg.supportsMultInst= False
                                  }
   where
     Just lhcPkgProg = lookupProgram lhcPkgProgram conf

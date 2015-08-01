@@ -873,6 +873,7 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcjsPkgProg
                                  , HcPkg.noVerboseFlag   = False
                                  , HcPkg.flagPackageConf = False
                                  , HcPkg.useSingleFileDb = v < [7,9]
+                                 , HcPkg.supportsMultInst = False
                                  }
   where
     v                 = versionBranch ver

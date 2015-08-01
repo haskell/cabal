@@ -118,6 +118,7 @@ import Distribution.Simple.Program (ProgramConfiguration,
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
+import qualified Distribution.Simple.Register as Register
 import Distribution.Simple.Setup
          ( haddockCommand, HaddockFlags(..)
          , buildCommand, BuildFlags(..), emptyBuildFlags
@@ -286,7 +287,7 @@ makeInstallContext verbosity
 makeInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                 -> IO (Progress String String InstallPlan)
 makeInstallPlan verbosity
-  (_, _, comp, platform, _, _, mSandboxPkgInfo,
+  (_, _, comp, platform, conf, _, mSandboxPkgInfo,
    _, configFlags, configExFlags, installFlags,
    _)
   (installedPkgIndex, sourcePkgDb,
@@ -295,7 +296,7 @@ makeInstallPlan verbosity
     solver <- chooseSolver verbosity (fromFlag (configSolver configExFlags))
               (compilerInfo comp)
     notice verbosity "Resolving dependencies..."
-    return $ planPackages comp platform mSandboxPkgInfo solver
+    return $ planPackages comp conf platform mSandboxPkgInfo solver
       configFlags configExFlags installFlags
       installedPkgIndex sourcePkgDb pkgSpecifiers
 
@@ -304,10 +305,10 @@ processInstallPlan :: Verbosity -> InstallArgs -> InstallContext
                    -> InstallPlan
                    -> IO ()
 processInstallPlan verbosity
-  args@(_,_, _, _, _, _, _, _, _, _, installFlags, _)
+  args@(_,_, comp, _, conf, _, _, _, _, _, installFlags, _)
   (installedPkgIndex, sourcePkgDb,
    userTargets, pkgSpecifiers, _) installPlan = do
-    checkPrintPlan verbosity installedPkgIndex installPlan sourcePkgDb
+    checkPrintPlan verbosity comp conf installedPkgIndex installPlan sourcePkgDb
       installFlags pkgSpecifiers
 
     unless (dryRun || nothingToInstall) $ do
@@ -323,6 +324,7 @@ processInstallPlan verbosity
 -- ------------------------------------------------------------
 
 planPackages :: Compiler
+             -> ProgramConfiguration
              -> Platform
              -> Maybe SandboxPackageInfo
              -> Solver
@@ -333,7 +335,7 @@ planPackages :: Compiler
              -> SourcePackageDb
              -> [PackageSpecifier SourcePackage]
              -> Progress String String InstallPlan
-planPackages comp platform mSandboxPkgInfo solver
+planPackages comp conf platform mSandboxPkgInfo solver
              configFlags configExFlags installFlags
              installedPkgIndex sourcePkgDb pkgSpecifiers =
 
@@ -354,8 +356,9 @@ planPackages comp platform mSandboxPkgInfo solver
 
       . setReorderGoals reorderGoals
 
-      . setAvoidReinstalls avoidReinstalls
-
+      . (if Register.multInstEnabled comp conf
+            then id
+            else setAvoidReinstalls avoidReinstalls)
       . setShadowPkgs shadowPkgs
 
       . setStrongFlags strongFlags
@@ -453,13 +456,15 @@ pruneInstallPlan pkgSpecifiers =
 -- | Perform post-solver checks of the install plan and print it if
 -- either requested or needed.
 checkPrintPlan :: Verbosity
+               -> Compiler
+               -> ProgramConfiguration
                -> InstalledPackageIndex
                -> InstallPlan
                -> SourcePackageDb
                -> InstallFlags
                -> [PackageSpecifier SourcePackage]
                -> IO ()
-checkPrintPlan verbosity installed installPlan sourcePkgDb
+checkPrintPlan verbosity comp conf installed installPlan sourcePkgDb
   installFlags pkgSpecifiers = do
 
   -- User targets that are already installed.
@@ -478,7 +483,14 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
 
   let lPlan = linearizeInstallPlan installed installPlan
   -- Are any packages classified as reinstalls?
-  let reinstalledPkgs = concatMap (extractReinstalls . snd) lPlan
+  -- With multInstEnabled packages are installed as different instance of the
+  -- same version, so it doesnt replace packages with different IPID. Same IPID
+  -- strictly means same package key so there will not be linking error and
+  -- packages will generally work. But to fully make packages non-mutable, a
+  -- future plan is to compute IPID uniquely from source hash.
+  let reinstalledPkgs =  if (Register.multInstEnabled comp conf)
+                           then []
+                           else concatMap (extractReinstalls . snd) lPlan
   -- Packages that are already broken.
   let oldBrokenPkgs =
           map Installed.installedPackageId

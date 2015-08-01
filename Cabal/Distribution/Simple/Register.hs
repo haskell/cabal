@@ -27,6 +27,8 @@ module Distribution.Simple.Register (
     register,
     unregister,
 
+    multInstEnabled,
+
     initPackageDB,
     invokeHcPkg,
     registerPackage,
@@ -230,12 +232,22 @@ invokeHcPkg verbosity comp conf dbStack extraArgs =
 withHcPkg :: String -> Compiler -> ProgramConfiguration
           -> (HcPkgInfo -> IO a) -> IO a
 withHcPkg name comp conf f =
-  case compilerFlavor comp of
-    GHC   -> f (GHC.hcPkgInfo conf)
-    GHCJS -> f (GHCJS.hcPkgInfo conf)
-    LHC   -> f (LHC.hcPkgInfo conf)
+  case getHcPkgInfo comp conf of
+    Just hcPkgInfo -> f hcPkgInfo
     _     -> die ("Distribution.Simple.Register." ++ name ++ ":\
                   \not implemented for this compiler")
+
+getHcPkgInfo :: Compiler -> ProgramConfiguration -> Maybe HcPkgInfo
+getHcPkgInfo comp conf = case compilerFlavor comp of
+                           GHC   -> Just (GHC.hcPkgInfo conf)
+                           GHCJS -> Just (GHCJS.hcPkgInfo conf)
+                           LHC   -> Just (LHC.hcPkgInfo conf)
+                           _     -> Nothing
+
+multInstEnabled :: Compiler -> ProgramConfiguration -> Bool
+multInstEnabled comp conf = case getHcPkgInfo comp conf of
+                            Just hpi -> HcPkg.supportsMultInst hpi
+                            _ -> False
 
 registerPackage :: Verbosity
                 -> InstalledPackageInfo

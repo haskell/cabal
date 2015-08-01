@@ -74,6 +74,7 @@ data HcPkgInfo = HcPkgInfo
   , noVerboseFlag   :: Bool -- ^ hc-pkg does not support verbosity flags
   , flagPackageConf :: Bool -- ^ use package-conf option instead of package-db
   , useSingleFileDb :: Bool -- ^ requires single file package database
+  , supportsMultInst:: Bool -- ^ ghc-pkg supports --enable-multi-instance
   }
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.
@@ -300,7 +301,7 @@ registerInvocation' cmdname hpi verbosity packagedbs (Left pkgFile) =
         ++ verbosityOpts hpi verbosity
 
 registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
-    (programInvocation (hcPkgProgram hpi) args) {
+    (programInvocation (hcPkgProgram hpi) args') {
       progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
       progInvokeInputEncoding = IOEncodingUTF8
     }
@@ -310,6 +311,9 @@ registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
               then [packageDbOpts hpi (last packagedbs)]
               else packageDbStackOpts hpi packagedbs)
         ++ verbosityOpts hpi verbosity
+    args' = (if supportsMultInst hpi
+               then args ++ ["--enable-multi-instance"]
+               else args)
 
 
 unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
