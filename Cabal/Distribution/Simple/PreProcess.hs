@@ -395,59 +395,59 @@ ppHsc2hs bi lbi =
       (gccProg, _) <- requireProgram verbosity gccProgram (withPrograms lbi)
       -- ordNubRight function helps a bit in case dependent packages bring too many
       -- command line arguments (see pull request #2516).
-      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) . ordNubRight $
-          [ "--cc=" ++ programPath gccProg
-          , "--ld=" ++ programPath gccProg ]
+      let allowedToNub = 
+            [ "--cc=" ++ programPath gccProg
+            , "--ld=" ++ programPath gccProg ]
 
-          -- Additional gcc options
-       ++ [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
-                                    ++ programOverrideArgs gccProg ]
-       ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs  gccProg
-                                    ++ programOverrideArgs gccProg ]
+            -- Additional gcc options
+            ++ [ "--cflag=" ++ opt | opt <- programDefaultArgs  gccProg
+                                         ++ programOverrideArgs gccProg ]
+            ++ [ "--lflag=" ++ opt | opt <- programDefaultArgs  gccProg
+                                         ++ programOverrideArgs gccProg ]
+            -- Note that on ELF systems, wherever we use -L, we must also use -R
+            -- because presumably that -L dir is not on the normal path for the
+            -- system's dynamic linker. This is needed because hsc2hs works by
+            -- compiling a C program and then running it.
 
-          -- OSX frameworks:
-       ++ [ what ++ "=-F" ++ opt
-          | isOSX
-          , opt <- nub (concatMap Installed.frameworkDirs pkgs)
-          , what <- ["--cflag", "--lflag"] ]
-       ++ [ "--lflag=" ++ arg
-          | isOSX
-          , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs
-          , arg <- ["-framework", opt] ]
+            ++ [ "--cflag="   ++ opt | opt <- platformDefines lbi ]
 
-          -- Note that on ELF systems, wherever we use -L, we must also use -R
-          -- because presumably that -L dir is not on the normal path for the
-          -- system's dynamic linker. This is needed because hsc2hs works by
-          -- compiling a C program and then running it.
+            -- Options from the current package:
+            ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
+            ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
+                                           ++ PD.cppOptions   bi ]
+            ++ [ "--cflag="   ++ opt | opt <-
+                    [ "-I" ++ autogenModulesDir lbi,
+                      "-include", autogenModulesDir lbi </> cppHeaderName ] ]
+            ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
+            ++ [ "--lflag=-Wl,-R," ++ opt | isELF
+                                     , opt <- PD.extraLibDirs bi ]
+            ++ [ "--lflag=-l" ++ opt | opt <- PD.extraLibs    bi ]
+            ++ [ "--lflag="   ++ opt | opt <- PD.ldOptions    bi ]
 
-       ++ [ "--cflag="   ++ opt | opt <- platformDefines lbi ]
-
-          -- Options from the current package:
-       ++ [ "--cflag=-I" ++ dir | dir <- PD.includeDirs  bi ]
-       ++ [ "--cflag="   ++ opt | opt <- PD.ccOptions    bi
-                                      ++ PD.cppOptions   bi ]
-       ++ [ "--cflag="   ++ opt | opt <-
-               [ "-I" ++ autogenModulesDir lbi,
-                 "-include", autogenModulesDir lbi </> cppHeaderName ] ]
-       ++ [ "--lflag=-L" ++ opt | opt <- PD.extraLibDirs bi ]
-       ++ [ "--lflag=-Wl,-R," ++ opt | isELF
-                                , opt <- PD.extraLibDirs bi ]
-       ++ [ "--lflag=-l" ++ opt | opt <- PD.extraLibs    bi ]
-       ++ [ "--lflag="   ++ opt | opt <- PD.ldOptions    bi ]
-
-          -- Options from dependent packages
-       ++ [ "--cflag=" ++ opt
-          | pkg <- pkgs
-          , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
-                ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
-       ++ [ "--lflag=" ++ opt
-          | pkg <- pkgs
-          , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
-                ++ [ "-Wl,-R," ++ opt | isELF
-                                 , opt <- Installed.libraryDirs    pkg ]
-                ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
-                ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
-       ++ ["-o", outFile, inFile]
+            -- Options from dependent packages
+            ++ [ "--cflag=" ++ opt
+               | pkg <- pkgs
+               , opt <- [ "-I" ++ opt | opt <- Installed.includeDirs pkg ]
+                     ++ [         opt | opt <- Installed.ccOptions   pkg ] ]
+            ++ [ "--lflag=" ++ opt
+               | pkg <- pkgs
+               , opt <- [ "-L" ++ opt | opt <- Installed.libraryDirs    pkg ]
+                     ++ [ "-Wl,-R," ++ opt | isELF
+                                      , opt <- Installed.libraryDirs    pkg ]
+                     ++ [ "-l" ++ opt | opt <- Installed.extraLibraries pkg ]
+                     ++ [         opt | opt <- Installed.ldOptions      pkg ] ]
+            ++ ["-o", outFile, inFile]
+          noNub =
+            -- OSX frameworks:
+            [ what ++ "=-F" ++ opt
+              | isOSX
+              , opt <- nub (concatMap Installed.frameworkDirs pkgs)
+              , what <- ["--cflag", "--lflag"] ]
+            ++ [ "--lflag=" ++ arg
+                 | isOSX
+                 , opt <- PD.frameworks bi ++ concatMap Installed.frameworks pkgs
+                 , arg <- ["-framework", opt] ]
+      rawSystemProgramConf verbosity hsc2hsProgram (withPrograms lbi) $ (ordNubRight allowedToNub) ++ noNub
   }
   where
     pkgs = PackageIndex.topologicalOrder (packageHacks (installedPkgs lbi))
