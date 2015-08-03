@@ -28,9 +28,7 @@ import Distribution.System
 symlinkBinaries :: Platform -> Compiler
                 -> ConfigFlags
                 -> InstallFlags
-                -> InstallPlan InstalledPackageInfo
-                               ConfiguredPackage
-                               iresult ifailure
+                -> InstallPlan 
                 -> IO [(PackageIdentifier, String, FilePath)]
 symlinkBinaries _ _ _ _ _ = return []
 
