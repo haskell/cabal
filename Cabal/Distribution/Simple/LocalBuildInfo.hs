@@ -20,9 +20,9 @@
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
         externalPackageDeps,
-        inplacePackageId,
         localPackageKey,
-        localLibraryName,
+        localCompatPackageKey,
+        localInstalledPackageId,
 
         -- * Buildable package components
         Component(..),
@@ -31,6 +31,7 @@ module Distribution.Simple.LocalBuildInfo (
         ComponentLocalBuildInfo(..),
         foldComponent,
         componentName,
+        componentUnitDeps,
         componentBuildInfo,
         componentEnabled,
         componentDisabledReason,
@@ -72,7 +73,7 @@ import Distribution.PackageDescription
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..)
-         , PackageName, LibraryName(..), PackageKey(..) )
+         , PackageName, PackageKey(..) )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack, DebugInfoLevel
          , OptimisationLevel, ProfDetailLevel )
@@ -157,20 +158,32 @@ instance Binary LocalBuildInfo
 -- on the package ID.
 localPackageKey :: LocalBuildInfo -> PackageKey
 localPackageKey lbi =
-    foldr go (OldPackageKey (package (localPkgDescr lbi))) (componentsConfigs lbi)
+    foldr go (PackageKey (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
   where go (_, clbi, _) old_pk = case clbi of
             LibComponentLocalBuildInfo { componentPackageKey = pk } -> pk
             _ -> old_pk
 
--- | Extract the 'LibraryName' from the library component of a
--- 'LocalBuildInfo' if it exists, or make a library name based
+-- | Extract the compatibility 'PackageKey' from the library component of a
+-- 'LocalBuildInfo' if it exists, or make a fake package key based
 -- on the package ID.
-localLibraryName :: LocalBuildInfo -> LibraryName
-localLibraryName lbi =
-    foldr go (LibraryName (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
-  where go (_, clbi, _) old_n = case clbi of
-            LibComponentLocalBuildInfo { componentLibraryName = n } -> n
-            _ -> old_n
+localCompatPackageKey :: LocalBuildInfo -> PackageKey
+localCompatPackageKey lbi =
+    foldr go (PackageKey (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+  where go (_, clbi, _) old_pk = case clbi of
+            LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> pk
+            _ -> old_pk
+
+-- | Extract the 'InstalledPackageId' from the library component of a
+-- 'LocalBuildInfo' if it exists, or make a fake IPID based
+-- on the package ID.
+-- TODO: IPID should be recorded globally for the package, not just in the
+-- Library component
+localInstalledPackageId :: LocalBuildInfo -> InstalledPackageId
+localInstalledPackageId lbi =
+    foldr go (InstalledPackageId (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+  where go (_, clbi, _) old_ipid = case clbi of
+            LibComponentLocalBuildInfo { componentIPID = ipid } -> ipid
+            _ -> old_ipid
 
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
@@ -185,12 +198,6 @@ externalPackageDeps lbi =
     -- True if this dependency is an internal one (depends on the library
     -- defined in the same package).
     internal pkgid = pkgid == packageId (localPkgDescr lbi)
-
--- | The installed package Id we use for local packages registered in the local
--- package db. This is what is used for intra-package deps between components.
---
-inplacePackageId :: PackageId -> InstalledPackageId
-inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 
 -- -----------------------------------------------------------------------------
 -- Buildable components
@@ -223,7 +230,8 @@ data ComponentLocalBuildInfo
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
     componentPackageKey :: PackageKey,
-    componentLibraryName :: LibraryName,
+    componentCompatPackageKey :: PackageKey,
+    componentIPID :: InstalledPackageId,
     componentExposedModules :: [Installed.ExposedModule],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
@@ -257,6 +265,11 @@ foldComponent _ _ _ f (CBench bch) = f bch
 componentBuildInfo :: Component -> BuildInfo
 componentBuildInfo =
   foldComponent libBuildInfo buildInfo testBuildInfo benchmarkBuildInfo
+
+-- TODO: Backpack needs to do something different here
+componentUnitDeps :: ComponentLocalBuildInfo -> [PackageKey]
+componentUnitDeps = map (convIPID . fst) . componentPackageDeps
+    where convIPID (InstalledPackageId a) = PackageKey a
 
 componentName :: Component -> ComponentName
 componentName =
@@ -492,7 +505,7 @@ absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
 absoluteInstallDirs pkg lbi copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
-    (localLibraryName lbi)
+    (localInstalledPackageId lbi)
     (compilerInfo (compiler lbi))
     copydest
     (hostPlatform lbi)
@@ -504,7 +517,7 @@ prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
 prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
-    (localLibraryName lbi)
+    (localInstalledPackageId lbi)
     (compilerInfo (compiler lbi))
     (hostPlatform lbi)
     (installDirTemplates lbi)
@@ -515,6 +528,6 @@ substPathTemplate pkgid lbi = fromPathTemplate
                                 . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv
                    pkgid
-                   (localLibraryName lbi)
+                   (localInstalledPackageId lbi)
                    (compilerInfo (compiler lbi))
                    (hostPlatform lbi)

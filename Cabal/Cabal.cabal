@@ -74,6 +74,7 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/MyLibrary.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
+  tests/PackageTests/BuildTestSuiteDetailedV09/Dummy2.hs
   tests/PackageTests/CMain/Bar.hs
   tests/PackageTests/CMain/Setup.hs
   tests/PackageTests/CMain/foo.c
@@ -94,6 +95,9 @@ extra-source-files:
   tests/PackageTests/PreProcess/Foo.hsc
   tests/PackageTests/PreProcess/Main.hs
   tests/PackageTests/PreProcess/my.cabal
+  tests/PackageTests/PreProcessExtraSources/Foo.hsc
+  tests/PackageTests/PreProcessExtraSources/Main.hs
+  tests/PackageTests/PreProcessExtraSources/my.cabal
   tests/PackageTests/ReexportedModules/ReexportedModules.cabal
   tests/PackageTests/TemplateHaskell/dynamic/Exe.hs
   tests/PackageTests/TemplateHaskell/dynamic/Lib.hs
@@ -113,10 +117,17 @@ extra-source-files:
   tests/PackageTests/TestSuiteTests/ExeV10/Foo.hs
   tests/PackageTests/TestSuiteTests/ExeV10/my.cabal
   tests/PackageTests/TestSuiteTests/ExeV10/tests/test-Foo.hs
-  tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
+  tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
+  tests/PackageTests/UniqueIPID/P1/M.hs
+  tests/PackageTests/UniqueIPID/P1/my.cabal
+  tests/PackageTests/UniqueIPID/P2/M.hs
+  tests/PackageTests/UniqueIPID/P2/my.cabal
   tests/Setup.hs
+  tests/Test/Distribution/Version.hs
+  tests/Test/Laws.hs
+  tests/Test/QuickCheck/Utils.hs
   tests/hackage/check.sh
   tests/hackage/download.sh
   tests/hackage/unpack.sh
@@ -309,6 +320,7 @@ test-suite package-tests
     PackageTests.TestStanza.Check
     PackageTests.TestSuiteTests.ExeV10.Check
     PackageTests.TestSuiteTests.LibV09.Check
+    PackageTests.UniqueIPID.Check
     Test.Distribution.Version
     Test.Laws
     Test.QuickCheck.Utils

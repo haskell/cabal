@@ -37,6 +37,7 @@ module Distribution.Simple.Configure (configure,
                                       tryGetPersistBuildConfig,
                                       maybeGetPersistBuildConfig,
                                       findDistPref, findDistPrefOrDefault,
+                                      computeIPID,
                                       localBuildInfoFile,
                                       getInstalledPackages, getPackageDBContents,
                                       configCompiler, configCompilerAux,
@@ -58,14 +59,14 @@ import Distribution.Simple.Compiler
     , compilerInfo, ProfDetailLevel(..), knownProfDetailLevels
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack, reexportedModulesSupported
-    , packageKeySupported, renamingPackageFlagsSupported )
-import Distribution.Simple.PreProcess ( platformDefines )
+    , packageKeySupported, renamingPackageFlagsSupported
+    , unifiedIPIDRequired )
+import Distribution.Simple.PreProcess ( platformDefines, knownSuffixHandlers )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(..), PackageId
     , packageName, packageVersion, Package(..)
     , Dependency(Dependency), simplifyDependency
-    , InstalledPackageId(..), thisPackageVersion
-    , mkPackageKey, packageKeyLibraryName )
+    , InstalledPackageId(..), thisPackageVersion, PackageKey(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.InstalledPackageInfo (InstalledPackageInfo, emptyInstalledPackageInfo)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
@@ -75,7 +76,7 @@ import Distribution.PackageDescription as PD
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..)
-    , ModuleReexport(..) , defaultRenaming )
+    , ModuleReexport(..) , defaultRenaming, FlagAssignment )
 import Distribution.ModuleName
     ( ModuleName )
 import Distribution.PackageDescription.Configuration
@@ -97,9 +98,11 @@ import Distribution.Simple.InstallDirs
     ( InstallDirs(..), defaultInstallDirs, combineInstallDirs )
 import Distribution.Simple.LocalBuildInfo
     ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-    , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
+    , absoluteInstallDirs, prefixRelativeInstallDirs
     , ComponentName(..), showComponentName, pkgEnabledComponents
-    , componentBuildInfo, componentName, checkComponentsCyclic )
+    , componentBuildInfo, componentName, checkComponentsCyclic
+    , lookupComponent )
+import Distribution.Simple.SrcDist ( listPackageSources )
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
@@ -113,7 +116,9 @@ import Distribution.System
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
-    ( Verbosity, lessVerbose )
+    ( Verbosity, lessVerbose, silent )
+import Distribution.Simple.InstallDirs
+    ( fromPathTemplate, substPathTemplate, toPathTemplate, packageTemplateEnv )
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -134,11 +139,12 @@ import Control.Exception ( ErrorCall(..) )
 import Control.Monad
     ( liftM, when, unless, foldM, filterM )
 import Distribution.Compat.Binary ( decodeOrFailIO, encode )
+import GHC.Fingerprint ( Fingerprint(..), fingerprintString )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
+    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix, sort )
 import Data.Maybe
     ( isNothing, catMaybes, fromMaybe, isJust )
 import Data.Either
@@ -153,6 +159,9 @@ import Data.Map (Map)
 import Data.Traversable
     ( mapM )
 import Data.Typeable
+import Data.Char ( chr, isAlphaNum )
+import Numeric ( showIntAtBase, showHex )
+import Data.Bits ( shift )
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
@@ -168,6 +177,15 @@ import Text.PrettyPrint
     , quotes, punctuate, nest, sep, hsep )
 import Distribution.Compat.Environment ( lookupEnv )
 import Distribution.Compat.Exception ( catchExit, catchIO )
+
+-- Imports for fingerprint calculation
+#if __GLASGOW_HASKELL__ >= 710
+import GHC.Fingerprint ( getFileHash )
+#else
+import GHC.Fingerprint ( fingerprintData )
+import Data.Traversable ( forM )
+import Foreign.Ptr ( castPtr )
+#endif
 
 -- | The errors that can be thrown when reading the @setup-config@ file.
 data ConfigStateFileError
@@ -620,10 +638,10 @@ configure (pkg_descr0, pbi) cfg
           case mkComponentsGraph pkg_descr internalPkgDeps of
             Left  componentCycle -> reportComponentCycle componentCycle
             Right components     ->
-              mkComponentsLocalBuildInfo comp packageDependsIndex pkg_descr
+              mkComponentsLocalBuildInfo cfg comp packageDependsIndex pkg_descr
                                          internalPkgDeps externalPkgDeps holeDeps
                                          (Map.fromList hole_insts)
-                                         components
+                                         components (configConfigurationsFlags cfg)
 
         split_objs <-
            if not (fromFlag $ configSplitObjs cfg)
@@ -1294,7 +1312,52 @@ reportComponentCycle cnames =
             [ "'" ++ showComponentName cname ++ "'"
             | cname <- cnames ++ [head cnames] ]
 
-mkComponentsLocalBuildInfo :: Compiler
+getKeyForReexport :: Compiler -> InstalledPackageInfo -> PackageKey
+getKeyForReexport comp | unifiedIPIDRequired comp = Installed.packageKey
+                       -- NB: This assumes that we're not reexporting a Backpack
+                       -- module, which seems quite reasonable.
+                       | otherwise = PackageKey . display . Installed.installedPackageId
+
+computeIPID :: PackageDescription
+            -> [InstalledPackageId] -- library only external deps
+            -> FlagAssignment
+            -> IO InstalledPackageId
+computeIPID pkg_descr dep_ipids flagAssignment = do
+    -- sdist produces too much noise, so silent
+    (ordfiles, exefiles) <-
+      listPackageSources silent pkg_descr knownSuffixHandlers
+    let files = sort $ ordfiles ++ exefiles
+    fileHashes <-
+#if __GLASGOW_HASKELL__ >= 710
+      mapM getFileHash files
+#else
+      forM files $ \f -> do
+        bs <- BS.readFile f
+        BS.useAsCStringLen bs $ \(ptr, len) -> fingerprintData (castPtr ptr) len
+#endif
+    -- show is found to be faster than intercalate and then replacement of
+    -- special character used in intercalating. We cannot simply hash by
+    -- doubly concating list, as it just flatten out the nested list, so
+    -- different sources can produce same hash
+    let hash = hashToBase62 $
+                (show $ dep_ipids)
+                      ++ show (zip files $
+                           map (flip showHex "" . fpToInteger) fileHashes)
+                      ++ show flagAssignment
+    return $ InstalledPackageId (display (package pkg_descr) ++ "-" ++ hash)
+  where
+    representBase62 x
+        | x < 10 = chr (48 + x)
+        | x < 36 = chr (65 + x - 10)
+        | x < 62 = chr (97 + x - 36)
+        | otherwise = '@'
+    fpToInteger (Fingerprint a b) =
+      toInteger a * (shift (1 :: Integer) 64) + toInteger b
+    hashToBase62 s = showIntAtBase 62 representBase62
+                      (fpToInteger $ fingerprintString s) ""
+
+mkComponentsLocalBuildInfo :: ConfigFlags
+                           -> Compiler
                            -> InstalledPackageIndex
                            -> PackageDescription
                            -> [PackageId] -- internal package deps
@@ -1302,13 +1365,48 @@ mkComponentsLocalBuildInfo :: Compiler
                            -> [InstalledPackageInfo] -- hole package deps
                            -> Map ModuleName (InstalledPackageInfo, ModuleName)
                            -> [(Component, [ComponentName])]
+                           -> FlagAssignment
                            -> IO [(ComponentName, ComponentLocalBuildInfo,
                                                   [ComponentName])]
-mkComponentsLocalBuildInfo comp installedPackages pkg_descr
+mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps holePkgDeps hole_insts
-                           graph =
+                           graph flagAssignment = do
+    -- Calculate IPID
+    ipid@(InstalledPackageId str) <-
+      case configIPID cfg of
+        Flag ipid0 ->
+            -- Hack to reuse install dirs machinery
+            -- NB: no real IPID available at this point
+            let env = packageTemplateEnv (package pkg_descr) (InstalledPackageId "")
+                str = fromPathTemplate (substPathTemplate env (toPathTemplate ipid0))
+            in return (InstalledPackageId str)
+        _ ->
+          -- Only pull in externalPkgs from the library
+          let externalPkgs = maybe [] (\lib -> selectSubset (componentBuildInfo lib)
+                                                            externalPkgDeps)
+                                      (lookupComponent pkg_descr CLibName)
+              dep_ipids = map Installed.installedPackageId externalPkgs
+          in computeIPID pkg_descr dep_ipids flagAssignment
+    let extractCandidateCompatKey s
+            = case simpleParse s :: Maybe PackageId of
+                -- Something like 'foo-0.1', use it verbatim.
+                -- (NB: hash tags look like tags, so they are parsed,
+                -- so the extra equality check tests if a tag was dropped.)
+                Just pid | display pid == s -> s
+                -- Something like 'foo-0.1-XXX', take the stuff at the end.
+                _ -> reverse (takeWhile isAlphaNum (reverse s))
+        cand_compat_key = PackageKey (extractCandidateCompatKey str)
+        old_style_key = PackageKey (display (package pkg_descr))
+        best_key = PackageKey str
+        (key, compat_key) =
+            if packageKeySupported comp
+                then (best_key,
+                      if unifiedIPIDRequired comp
+                        then best_key
+                        else cand_compat_key)
+                else (old_style_key, old_style_key)
     sequence
-      [ do clbi <- componentLocalBuildInfo c
+      [ do clbi <- componentLocalBuildInfo ipid key compat_key c
            return (componentName c, clbi, cdeps)
       | (c, cdeps) <- graph ]
   where
@@ -1317,34 +1415,29 @@ mkComponentsLocalBuildInfo comp installedPackages pkg_descr
     -- we just take the subset for the package names this component
     -- needs. Note, this only works because we cannot yet depend on two
     -- versions of the same package.
-    componentLocalBuildInfo component =
+    componentLocalBuildInfo ipid key compat_key component =
       case component of
       CLib lib -> do
         let exports = map (\n -> Installed.ExposedModule n Nothing Nothing)
                           (PD.exposedModules lib)
             esigs = map (\n -> Installed.ExposedModule n Nothing
                                 (fmap (\(pkg,m) -> Installed.OriginalModule
-                                                      (Installed.installedPackageId pkg) m)
+                                                      (getKeyForReexport comp pkg) m)
                                       (Map.lookup n hole_insts)))
                         (PD.exposedSignatures lib)
-        let mb_reexports = resolveModuleReexports installedPackages
+        let mb_reexports = resolveModuleReexports comp installedPackages
                                                   (packageId pkg_descr)
+                                                  key
                                                   externalPkgDeps lib
         reexports <- case mb_reexports of
             Left problems -> reportModuleReexportProblems problems
             Right r -> return r
 
-        -- Calculate the version hash and package key.
-        let externalPkgs = selectSubset bi externalPkgDeps
-            pkg_key = mkPackageKey (packageKeySupported comp)
-                        (package pkg_descr)
-                        (map Installed.libraryName externalPkgs)
-            version_hash = packageKeyLibraryName (package pkg_descr) pkg_key
-
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
-          componentPackageKey = pkg_key,
-          componentLibraryName = version_hash,
+          componentIPID = ipid,
+          componentPackageKey = key,
+          componentCompatPackageKey = compat_key,
           componentPackageRenaming = cprns,
           componentExposedModules = exports ++ reexports ++ esigs
         }
@@ -1370,7 +1463,7 @@ mkComponentsLocalBuildInfo comp installedPackages pkg_descr
                then dedup $
                     [ (Installed.installedPackageId pkg, packageId pkg)
                     | pkg <- selectSubset bi externalPkgDeps ]
-                 ++ [ (inplacePackageId pkgid, pkgid)
+                 ++ [ (ipid, pkgid)
                     | pkgid <- selectSubset bi internalPkgDeps ]
                else [ (Installed.installedPackageId pkg, packageId pkg)
                     | pkg <- externalPkgDeps ]
@@ -1403,13 +1496,15 @@ mkComponentsLocalBuildInfo comp installedPackages pkg_descr
 -- directly to its original defining location (rather than indirectly via a
 -- chain of re-exporting packages).
 --
-resolveModuleReexports :: InstalledPackageIndex
+resolveModuleReexports :: Compiler
+                       -> InstalledPackageIndex
                        -> PackageId
+                       -> PackageKey
                        -> [InstalledPackageInfo]
                        -> Library
                        -> Either [(ModuleReexport, String)] -- errors
                                  [Installed.ExposedModule] -- ok
-resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
+resolveModuleReexports comp installedPackages srcpkgid key externalPkgDeps lib =
     case partitionEithers (map resolveModuleReexport (PD.reexportedModules lib)) of
       ([],  ok) -> Right ok
       (errs, _) -> Left  errs
@@ -1436,9 +1531,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
                             ++ otherModules (libBuildInfo lib)
         , let exportingPackageName = packageName srcpkgid
               definingModuleName   = visibleModuleName
-              -- we don't know the InstalledPackageId of this package yet
-              -- we will fill it in later, before registration.
-              definingPackageId    = InstalledPackageId ""
+              definingPackageId    = key
               originalModule = Installed.OriginalModule definingPackageId
                                                         definingModuleName
               exposedModule  = Installed.ExposedModule visibleModuleName
@@ -1457,7 +1550,7 @@ resolveModuleReexports installedPackages srcpkgid externalPkgDeps lib =
         -- The first case is the modules actually defined in this package.
         -- In this case the reexport will point to this package.
             Nothing -> return exposedModule { Installed.exposedReexport =
-                            Just (Installed.OriginalModule (Installed.installedPackageId pkg)
+                            Just (Installed.OriginalModule (getKeyForReexport comp pkg)
                                                  (Installed.exposedName exposedModule)) }
         -- On the other hand, a visible module might actually be itself
         -- a re-export! In this case, the re-export info for the package

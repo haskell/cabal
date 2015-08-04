@@ -36,6 +36,7 @@ import PackageTests.TestSuiteTests.ExeV10.Check
 import PackageTests.TestSuiteTests.LibV09.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
+import PackageTests.UniqueIPID.Check
 
 import Distribution.Simple.Configure
     ( ConfigStateFileError(..), findDistPrefOrDefault, getConfigStateFile )
@@ -109,6 +110,8 @@ tests config version =
       (PackageTests.TemplateHaskell.Check.dynamic config)
     , testCase "ReexportedModules"
       (PackageTests.ReexportedModules.Check.suite config)
+    , testCase "UniqueIPID"
+      (PackageTests.UniqueIPID.Check.suite config)
     ] ++
     -- These tests are only required to pass on cabal version >= 1.7
     (if version >= Version [1, 7] []

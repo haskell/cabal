@@ -31,8 +31,7 @@ module Distribution.Simple.GHC.Internal (
 
 import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
 import Distribution.Package
-         ( InstalledPackageId, PackageId, LibraryName
-         , getHSLibraryName )
+         ( InstalledPackageId, PackageId, PackageKey, getHSLibraryName )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -375,7 +374,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
       ghcOptPackageKey  = case clbi of
-        LibComponentLocalBuildInfo { componentPackageKey = pk } -> toFlag pk
+        LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> toFlag pk
         _ -> mempty,
       ghcOptSigOf           = hole_insts,
       ghcOptPackageDBs      = withPackageDB lbi,
@@ -429,7 +428,7 @@ filterGhciFlags = filter supported
     supported "-unreg"    = False
     supported _           = True
 
-mkGHCiLibName :: LibraryName -> String
+mkGHCiLibName :: PackageKey -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 ghcLookupProperty :: String -> Compiler -> Bool

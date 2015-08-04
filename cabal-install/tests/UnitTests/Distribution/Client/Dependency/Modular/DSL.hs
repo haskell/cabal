@@ -241,7 +241,7 @@ exInstInfo :: ExampleInstalled -> C.InstalledPackageInfo
 exInstInfo ex = C.emptyInstalledPackageInfo {
       C.installedPackageId = C.InstalledPackageId (exInstHash ex)
     , C.sourcePackageId    = exInstPkgId ex
-    , C.packageKey         = exInstKey ex
+    , C.packageKey         = C.PackageKey (exInstHash ex)
     , C.depends            = map (C.InstalledPackageId . exInstHash)
                                  (exInstBuildAgainst ex)
     }
@@ -251,15 +251,6 @@ exInstPkgId ex = C.PackageIdentifier {
       pkgName    = C.PackageName (exInstName ex)
     , pkgVersion = Version [exInstVersion ex, 0, 0] []
     }
-
-exInstLibName :: ExampleInstalled -> C.LibraryName
-exInstLibName ex = C.packageKeyLibraryName (exInstPkgId ex) (exInstKey ex)
-
-exInstKey :: ExampleInstalled -> C.PackageKey
-exInstKey ex =
-    C.mkPackageKey True
-                   (exInstPkgId ex)
-                   (map exInstLibName (exInstBuildAgainst ex))
 
 exAvIdx :: [ExampleAvailable] -> CI.PackageIndex.PackageIndex SourcePackage
 exAvIdx = CI.PackageIndex.fromList . map exAvSrcPkg

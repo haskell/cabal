@@ -15,10 +15,9 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..)
-         , mkPackageKey, PackageKey, InstalledPackageId(..)
-         , HasInstalledPackageId(..), PackageInstalled(..)
-         , LibraryName, packageKeyLibraryName )
+         ( PackageName, PackageId, Package(..), PackageKey(..)
+         , InstalledPackageId(..)
+         , HasInstalledPackageId(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -33,10 +32,7 @@ import Distribution.Client.ComponentDeps
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Version
          ( VersionRange )
-import Distribution.Simple.Compiler
-         ( Compiler, packageKeySupported )
 import Distribution.Text (display)
-import qualified Distribution.InstalledPackageInfo as Info
 
 import Data.Map (Map)
 import Network.URI (URI, nullURI)
@@ -83,6 +79,11 @@ instance PackageFixedDeps InstalledPackageInfo where
 -- plan.
 fakeInstalledPackageId :: PackageId -> InstalledPackageId
 fakeInstalledPackageId = InstalledPackageId . (".fake."++) . display
+
+-- | Sometimes it's a bit difficult to get a package key, so we just
+-- fake something up.  Eventually wire up the real package keys here!
+fakePackageKey :: PackageId -> PackageKey
+fakePackageKey = PackageKey . display
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -149,20 +150,6 @@ instance (Package srcpkg, HasInstalledPackageId ipkg) =>
 instance HasInstalledPackageId srcpkg =>
          HasInstalledPackageId (GenericReadyPackage srcpkg ipkg) where
   installedPackageId (ReadyPackage pkg _) = installedPackageId pkg
-
-
--- | Extracts a package key from ReadyPackage, a common operation needed
--- to calculate build paths.
-readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
-readyPackageKey comp (ReadyPackage pkg deps) =
-    mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map Info.libraryName (CD.nonSetupDeps deps))
-
--- | Extracts a library name from ReadyPackage, a common operation needed
--- to calculate build paths.
-readyLibraryName :: Compiler -> ReadyPackage -> LibraryName
-readyLibraryName comp ready@(ReadyPackage pkg _) =
-    packageKeyLibraryName (packageId pkg) (readyPackageKey comp ready)
 
 
 -- | A package description along with the location of the package sources.
