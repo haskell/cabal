@@ -56,7 +56,7 @@ import Distribution.Simple.Compiler
     , showCompilerId, unsupportedLanguages, unsupportedExtensions
     , PackageDB(..), PackageDBStack, reexportedModulesSupported
     , packageKeySupported, renamingPackageFlagsSupported )
-import Distribution.Simple.PreProcess ( platformDefines )
+import Distribution.Simple.PreProcess ( platformDefines, knownSuffixHandlers )
 import Distribution.Package
     ( PackageName(PackageName), PackageIdentifier(..), PackageId
     , packageName, packageVersion, Package(..)
@@ -72,7 +72,7 @@ import Distribution.PackageDescription as PD
     , Library(..), hasLibs, Executable(..), BuildInfo(..), allExtensions
     , HookedBuildInfo, updatePackageDescription, allBuildInfo
     , Flag(flagName), FlagName(..), TestSuite(..), Benchmark(..)
-    , ModuleReexport(..) , defaultRenaming )
+    , ModuleReexport(..) , defaultRenaming, FlagAssignment )
 import Distribution.ModuleName
     ( ModuleName )
 import Distribution.PackageDescription.Configuration
@@ -97,6 +97,7 @@ import Distribution.Simple.LocalBuildInfo
     , absoluteInstallDirs, prefixRelativeInstallDirs, inplacePackageId
     , ComponentName(..), showComponentName, pkgEnabledComponents
     , componentBuildInfo, componentName, checkComponentsCyclic )
+import Distribution.Simple.SrcDist ( listPackageSources )
 import Distribution.Simple.BuildPaths
     ( autogenModulesDir )
 import Distribution.Simple.Utils
@@ -110,7 +111,7 @@ import Distribution.System
 import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
-    ( Verbosity, lessVerbose )
+    ( Verbosity, lessVerbose, silent )
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -126,11 +127,16 @@ import Control.Exception
 import Control.Monad
     ( liftM, when, unless, foldM, filterM )
 import Distribution.Compat.Binary ( decodeOrFailIO, encode )
+import GHC.Fingerprint ( Fingerprint(..), fingerprintString
+#if __GLASGOW_HASKELL__ >= 710
+                       , getFileHash
+#endif
+                       )
 import Data.ByteString.Lazy (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Lazy.Char8 as BLC8
 import Data.List
-    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix )
+    ( (\\), nub, partition, isPrefixOf, inits, stripPrefix, sort )
 import Data.Maybe
     ( isNothing, catMaybes, fromMaybe, isJust )
 import Data.Either
@@ -145,6 +151,9 @@ import Data.Map (Map)
 import Data.Traversable
     ( mapM )
 import Data.Typeable
+import Data.Char ( chr )
+import Numeric ( showIntAtBase, showHex )
+import Data.Bits ( shift )
 import System.Directory
     ( doesFileExist, createDirectoryIfMissing, getTemporaryDirectory )
 import System.FilePath
@@ -615,7 +624,7 @@ configure (pkg_descr0, pbi) cfg
               mkComponentsLocalBuildInfo comp packageDependsIndex pkg_descr
                                          internalPkgDeps externalPkgDeps holeDeps
                                          (Map.fromList hole_insts)
-                                         components
+                                         components (configConfigurationsFlags cfg)
 
         split_objs <-
            if not (fromFlag $ configSplitObjs cfg)
@@ -1294,11 +1303,12 @@ mkComponentsLocalBuildInfo :: Compiler
                            -> [InstalledPackageInfo] -- hole package deps
                            -> Map ModuleName (InstalledPackageInfo, ModuleName)
                            -> [(Component, [ComponentName])]
+                           -> FlagAssignment
                            -> IO [(ComponentName, ComponentLocalBuildInfo,
                                                   [ComponentName])]
 mkComponentsLocalBuildInfo comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps holePkgDeps hole_insts
-                           graph =
+                           graph flagAssignment =
     sequence
       [ do clbi <- componentLocalBuildInfo c
            return (componentName c, clbi, cdeps)
@@ -1333,9 +1343,33 @@ mkComponentsLocalBuildInfo comp installedPackages pkg_descr
                         (map Installed.libraryName externalPkgs)
             version_hash = packageKeyLibraryName (package pkg_descr) pkg_key
 
+        -- Calculate IPID
+        ipid <- do
+          -- sdist produces too much noise, so silent
+          (ordfiles, exefiles) <-
+            listPackageSources silent pkg_descr knownSuffixHandlers
+          let files = sort $ ordfiles ++ exefiles
+          fileHashes <-
+#if __GLASGOW_HASKELL__ >= 710
+            mapM getFileHash files
+#else
+            mapM (\x -> readFile x >>= (return . fingerprintString)) files
+#endif
+          -- show is found to be faster than intercalate and then replacement of
+          -- special character used in intercalating. We cannot simply hash by
+          -- doubly concating list, as it just flatten out the nested list, so
+          -- different sources can produce same hash
+          return $ InstalledPackageId $ (display (package pkg_descr)) ++ "-" ++
+            (hashToBase62 $
+              (show $ map Installed.installedPackageId externalPkgs)
+                        ++ show (zip files $
+                             map (flip showHex "" . fpToInteger) fileHashes)
+                        ++ show flagAssignment)
+
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
           componentPackageKey = pkg_key,
+          componentIPID = ipid,
           componentLibraryName = version_hash,
           componentPackageRenaming = cprns,
           componentExposedModules = exports ++ reexports ++ esigs
@@ -1387,6 +1421,16 @@ mkComponentsLocalBuildInfo comp installedPackages pkg_descr
         [ pkg | pkg <- pkgs, packageName pkg `elem` names bi ]
 
     names bi = [ name | Dependency name _ <- targetBuildDepends bi ]
+
+    representBase62 x
+        | x < 10 = chr (48 + x)
+        | x < 36 = chr (65 + x - 10)
+        | x < 62 = chr (97 + x - 36)
+        | otherwise = '@'
+    fpToInteger (Fingerprint a b) =
+      toInteger a * (shift (1 :: Integer) 64) + toInteger b
+    hashToBase62 s = showIntAtBase 62 representBase62
+                      (fpToInteger $ fingerprintString s) ""
 
 -- | Given the author-specified re-export declarations from the .cabal file,
 -- resolve them to the form that we need for the package database.
