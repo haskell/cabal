@@ -39,7 +39,7 @@ module Distribution.Simple.Register (
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), ComponentLocalBuildInfo(..)
          , ComponentName(..), getComponentLocalBuildInfo
-         , InstallDirs(..), absoluteInstallDirs )
+         , InstallDirs(..), absoluteInstallDirs, localIPID )
 import Distribution.Simple.BuildPaths (haddockName)
 
 import qualified Distribution.Simple.GHC   as GHC
@@ -49,7 +49,7 @@ import qualified Distribution.Simple.UHC   as UHC
 import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 
 import Distribution.Simple.Compiler
-         ( compilerVersion, Compiler, CompilerFlavor(..), compilerFlavor
+         ( Compiler, CompilerFlavor(..), compilerFlavor
          , PackageDB, PackageDBStack, absolutePackageDBPaths
          , registrationPackageDB )
 import Distribution.Simple.Program
@@ -77,7 +77,6 @@ import Distribution.System
          ( OS(..), buildOS )
 import Distribution.Text
          ( display )
-import Distribution.Version ( Version(..) )
 import Distribution.Verbosity as Verbosity
          ( Verbosity, normal )
 
@@ -168,17 +167,9 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
 
   --TODO: the method of setting the InstalledPackageId is compiler specific
   --      this aspect should be delegated to a per-compiler helper.
-  let comp = compiler lbi
-  ipid <-
-    case compilerFlavor comp of
-     GHC | compilerVersion comp >= Version [6,11] [] -> do
-            s <- GHC.libAbiHash verbosity pkg lbi lib clbi
-            return (InstalledPackageId (display (packageId pkg) ++ '-':s))
-     GHCJS -> do
-            s <- GHCJS.libAbiHash verbosity pkg lbi lib clbi
-            return (InstalledPackageId (display (packageId pkg) ++ '-':s))
-     _other -> do
-            return (InstalledPackageId (display (packageId pkg)))
+  let ipid = case localIPID lbi of
+               Just i -> i
+               _ -> error "No library found"
 
   installedPkgInfo <-
     if inplace

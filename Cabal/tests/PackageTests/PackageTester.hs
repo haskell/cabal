@@ -15,6 +15,7 @@ module PackageTests.PackageTester
     , cabal_test
     , cabal_bench
     , cabal_install
+    , cabal_register
     , unregister
     , compileSetup
     , run
@@ -27,6 +28,7 @@ module PackageTests.PackageTester
     , assertTestSucceeded
     , assertTestFailed
     , assertInstallSucceeded
+    , assertRegisterSucceeded
     , assertOutputContains
     , assertOutputDoesNotContain
     ) where
@@ -70,6 +72,7 @@ data Success = Failure
              | BuildSuccess
              | HaddockSuccess
              | InstallSuccess
+             | RegisterSuccess
              | TestSuccess
              | BenchSuccess
              deriving (Eq, Show)
@@ -162,6 +165,26 @@ cabal_install config spec = do
             return buildResult
     record spec res
     return res
+
+cabal_register :: SuiteConfig -> PackageSpec -> [String] -> IO Result
+cabal_register config spec extraArgs = do
+    res <- doCabalRegister config spec extraArgs
+    record spec res
+    return res
+
+doCabalRegister :: SuiteConfig -> PackageSpec -> [String] -> IO Result
+doCabalRegister config spec extraArgs = do
+    configResult <- doCabalConfigure config spec
+    if successful configResult
+        then do
+            buildResult <- doCabalBuild config spec
+            if successful buildResult
+              then do res <- cabal config spec [] ("register" : extraArgs)
+                      return $ recordRun res RegisterSuccess configResult
+              else return buildResult
+        else
+            return configResult
+
 
 cabal_test :: SuiteConfig -> PackageSpec -> [(String, Maybe String)]
            -> [String] -> IO Result
@@ -296,6 +319,13 @@ assertInstallSucceeded result = unless (successful result) $
     assertFailure $
     "expected: \'setup install\' should succeed\n" ++
     "  output: " ++ outputText result
+
+assertRegisterSucceeded :: Result -> Assertion
+assertRegisterSucceeded result = unless (successful result) $
+    assertFailure $
+    "expected: \'setup register\' should succeed\n" ++
+    "  output: " ++ outputText result
+
 
 assertOutputContains :: String -> Result -> Assertion
 assertOutputContains needle result =

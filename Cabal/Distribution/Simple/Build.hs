@@ -36,7 +36,7 @@ import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
          , Dependency(..), thisPackageVersion, PackageKey(..), packageName
-         , LibraryName(..) )
+         , LibraryName(..), InstalledPackageId(..) )
 import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor(..), compilerFlavor
          , PackageDB(..), PackageDBStack )
@@ -408,6 +408,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
                 , componentLibraryName = LibraryName (testName test)
+                , componentIPID = InstalledPackageId $ display (package pkg_descr) ++ "-inplace"
                 , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
                 , componentPackageKey = OldPackageKey (PackageIdentifier (PackageName (testName test)) (pkgVersion (package pkg_descr)))
                 }

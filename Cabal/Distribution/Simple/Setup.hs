@@ -76,7 +76,7 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
 import Distribution.Package ( Dependency(..)
                             , PackageName
-                            , InstalledPackageId )
+                            , InstalledPackageId(..) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
