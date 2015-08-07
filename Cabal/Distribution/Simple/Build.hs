@@ -20,6 +20,8 @@ module Distribution.Simple.Build (
     startInterpreter,
 
     initialBuildSteps,
+    inplaceRegisterLibrary,
+    createInternalPackageDB,
     writeAutogenFiles,
   ) where
 
@@ -55,13 +57,15 @@ import Distribution.Simple.BuildTarget
 import Distribution.Simple.PreProcess
          ( preprocessComponent, preprocessExtras, PPSuffixHandler )
 import Distribution.Simple.LocalBuildInfo
-         ( LocalBuildInfo(compiler, buildDir, withPackageDB, withPrograms)
+         ( LocalBuildInfo( compiler, buildDir, withPackageDB, withPrograms
+                         , installedPkgs )
          , Component(..), componentName, getComponent, componentBuildInfo
          , ComponentLocalBuildInfo(..), pkgEnabledComponents
          , withComponentsInBuildOrder, componentsInBuildOrder
          , ComponentName(..), showComponentName
          , ComponentDisabledReason(..), componentDisabledReason
          , inplacePackageId )
+import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -86,7 +90,7 @@ import Data.Either
 import Data.List
          ( intersect, intercalate )
 import Control.Monad
-         ( when, unless, forM_ )
+         ( when, unless, forM_, void )
 import System.FilePath
          ( (</>), (<.>) )
 import System.Directory
@@ -185,6 +189,27 @@ startInterpreter verbosity programDb comp packageDBs =
     GHCJS -> GHCJS.startInterpreter verbosity programDb comp packageDBs
     _     -> die "A REPL is not supported with this compiler."
 
+-- | Register a library in-place, so exes can depend on internally defined
+-- libraries.
+inplaceRegisterLibrary :: Verbosity
+                       -> FilePath -- ^ top of the build tree
+                       -> FilePath -- ^ location of the dist tree
+                       -> PackageDescription
+                       -> Library
+                       -> LocalBuildInfo
+                       -> ComponentLocalBuildInfo
+                       -> IO LocalBuildInfo
+inplaceRegisterLibrary verbosity inplaceDir distPref pkg_descr lib lbi clbi = do
+    registerPackage verbosity
+      installedPkgInfo pkg_descr lbi True -- True meaning in place
+      (withPackageDB lbi)
+    return lbi { installedPkgs = PackageIndex.insert installedPkgInfo (installedPkgs lbi) }
+  where
+    -- The in place registration uses the "-inplace" suffix, not an ABI hash
+    ipkgid           = inplacePackageId (packageId installedPkgInfo)
+    installedPkgInfo = inplaceInstalledPackageInfo inplaceDir distPref pkg_descr
+                                                   ipkgid lib lbi clbi
+
 buildComponent :: Verbosity
                -> Flag (Maybe Int)
                -> PackageDescription
@@ -203,17 +228,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
         lib' = lib { libBuildInfo = addExtraCSources libbi extras }
     buildLib verbosity numJobs pkg_descr lbi lib' clbi
 
-    -- Register the library in-place, so exes can depend
-    -- on internally defined libraries.
     pwd <- getCurrentDirectory
-    let -- The in place registration uses the "-inplace" suffix, not an ABI hash
-        ipkgid           = inplacePackageId (packageId installedPkgInfo)
-        installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
-                                                       ipkgid lib' lbi clbi
-
-    registerPackage verbosity
-      installedPkgInfo pkg_descr lbi True -- True meaning in place
-      (withPackageDB lbi)
+    void $ inplaceRegisterLibrary verbosity pwd distPref pkg_descr lib' lbi clbi
 
 buildComponent verbosity numJobs pkg_descr lbi suffixes
                comp@(CExe exe) clbi _ = do

@@ -50,7 +50,7 @@ import Distribution.Simple.Setup
          ( defaultHscolourFlags
          , Flag(..), toFlag, flagToMaybe, flagToList, fromFlag
          , HaddockFlags(..), HscolourFlags(..) )
-import Distribution.Simple.Build (initialBuildSteps)
+import Distribution.Simple.Build (initialBuildSteps, inplaceRegisterLibrary, createInternalPackageDB)
 import Distribution.Simple.InstallDirs
          ( InstallDirs(..)
          , PathTemplateEnv, PathTemplate, PathTemplateVariable(..)
@@ -58,7 +58,7 @@ import Distribution.Simple.InstallDirs
          , substPathTemplate, initialPathTemplateEnv )
 import Distribution.Simple.LocalBuildInfo
          ( LocalBuildInfo(..), Component(..), ComponentLocalBuildInfo(..)
-         , withAllComponentsInBuildOrder )
+         , withAllComponentsInBuildOrder, allComponentsInBuildOrder, getComponent )
 import Distribution.Simple.BuildPaths
          ( haddockName, hscolourPref, autogenModulesDir)
 import Distribution.Simple.PackageIndex (dependencyClosure)
@@ -83,13 +83,13 @@ import Distribution.Verbosity
 import Language.Haskell.Extension
 
 
-import Control.Monad    ( when, forM_ )
+import Control.Monad    ( when, forM_, foldM_ )
 import Data.Either      ( rights )
 import Data.Foldable    ( traverse_ )
 import Data.Monoid
 import Data.Maybe       ( fromMaybe, listToMaybe )
 
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, getCurrentDirectory)
 import System.FilePath  ( (</>), (<.>)
                         , normalise, splitPath, joinPath, isAbsolute )
 import System.IO        (hClose, hPutStrLn, hSetEncoding, utf8)
@@ -188,7 +188,8 @@ haddock pkg_descr lbi suffixes flags = do
 
     -- the tools match the requests, we can proceed
 
-    initialBuildSteps (flag haddockDistPref) pkg_descr lbi verbosity
+    let distPref = flag haddockDistPref
+    initialBuildSteps distPref pkg_descr lbi verbosity
 
     when (flag haddockHscolour) $
       hscolour' (warn verbosity) pkg_descr lbi suffixes
@@ -200,33 +201,42 @@ haddock pkg_descr lbi suffixes flags = do
             , fromFlags (haddockTemplateEnv lbi (packageId pkg_descr)) flags
             , fromPackageDescription pkg_descr ]
 
+    pwd <- getCurrentDirectory
+    internalPackageDB <- createInternalPackageDB verbosity lbi distPref
     let pre c = preprocessComponent pkg_descr c lbi False verbosity suffixes
-    withAllComponentsInBuildOrder pkg_descr lbi $ \component clbi -> do
+        intLbi = lbi { withPackageDB = withPackageDB lbi ++ [internalPackageDB] }
+    forFoldM_ intLbi (allComponentsInBuildOrder intLbi) $ \lbi' (cname, clbi) -> do
+      let component = getComponent pkg_descr cname
       pre component
       let
         doExe com = case (compToExe com) of
           Just exe -> do
-            withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
+            withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
               \tmp -> do
-                exeArgs <- fromExecutable verbosity tmp lbi exe clbi htmlTemplate
-                           version
+                exeArgs <- fromExecutable verbosity tmp lbi' exe
+                           clbi htmlTemplate version
                 let exeArgs' = commonArgs `mappend` exeArgs
                 runHaddock verbosity tmpFileOpts comp confHaddock exeArgs'
           Nothing -> do
            warn (fromFlag $ haddockVerbosity flags)
              "Unsupported component, skipping..."
            return ()
+        flaggedExe flagArg com = do
+          when (flag flagArg) $ doExe com
+          return lbi'
       case component of
         CLib lib -> do
-          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi) "tmp" $
+          withTempDirectoryEx verbosity tmpFileOpts (buildDir lbi') "tmp" $
             \tmp -> do
-              libArgs <- fromLibrary verbosity tmp lbi lib clbi htmlTemplate
+              libArgs <- fromLibrary verbosity tmp lbi' lib clbi htmlTemplate
                          version
               let libArgs' = commonArgs `mappend` libArgs
               runHaddock verbosity tmpFileOpts comp confHaddock libArgs'
-        CExe   _ -> when (flag haddockExecutables) $ doExe component
-        CTest  _ -> when (flag haddockTestSuites)  $ doExe component
-        CBench _ -> when (flag haddockBenchmarks)  $ doExe component
+              inplaceRegisterLibrary verbosity pwd distPref pkg_descr
+                                     lib lbi' clbi
+        CExe   _ -> flaggedExe haddockExecutables component
+        CTest  _ -> flaggedExe haddockTestSuites  component
+        CBench _ -> flaggedExe haddockBenchmarks  component
 
     forM_ (extraDocFiles pkg_descr) $ \ fpath -> do
       files <- matchFileGlob fpath
@@ -239,6 +249,7 @@ haddock pkg_descr lbi suffixes flags = do
     flag f        = fromFlag $ f flags
     htmlTemplate  = fmap toPathTemplate . flagToMaybe . haddockHtmlLocation
                     $ flags
+    forFoldM_ a l f = foldM_ f a l
 
 -- ------------------------------------------------------------------------------
 -- Contributions to HaddockArgs.
@@ -477,7 +488,7 @@ renderArgs verbosity tmpFileOpts version comp args k = do
              hClose h
              let pflag = "--prologue=" ++ prologueFileName
                  renderedArgs = pflag : renderPureArgs version comp args
-             if haddockSupportsResponseFiles 
+             if haddockSupportsResponseFiles
                then
                  withTempFileEx tmpFileOpts outputDir "haddock-response.txt" $
                     \responseFileName hf -> do
