@@ -74,8 +74,6 @@ extra-source-files:
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/MyLibrary.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/lemon.hs
   tests/PackageTests/BuildDeps/TargetSpecificDeps3/my.cabal
-  tests/PackageTests/BuildTestSuiteDetailedV09/Dummy.hs
-  tests/PackageTests/BuildTestSuiteDetailedV09/my.cabal
   tests/PackageTests/CMain/Bar.hs
   tests/PackageTests/CMain/Setup.hs
   tests/PackageTests/CMain/foo.c
@@ -112,9 +110,12 @@ extra-source-files:
   tests/PackageTests/TestOptions/TestOptions.cabal
   tests/PackageTests/TestOptions/test-TestOptions.hs
   tests/PackageTests/TestStanza/my.cabal
-  tests/PackageTests/TestSuiteExeV10/Foo.hs
-  tests/PackageTests/TestSuiteExeV10/my.cabal
-  tests/PackageTests/TestSuiteExeV10/tests/test-Foo.hs
+  tests/PackageTests/TestSuiteTests/ExeV10/Foo.hs
+  tests/PackageTests/TestSuiteTests/ExeV10/my.cabal
+  tests/PackageTests/TestSuiteTests/ExeV10/tests/test-Foo.hs
+  tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
+  tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
+  tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
   tests/Setup.hs
   tests/hackage/check.sh
   tests/hackage/download.sh
@@ -292,7 +293,6 @@ test-suite package-tests
     PackageTests.BuildDeps.TargetSpecificDeps1.Check
     PackageTests.BuildDeps.TargetSpecificDeps2.Check
     PackageTests.BuildDeps.TargetSpecificDeps3.Check
-    PackageTests.BuildTestSuiteDetailedV09.Check
     PackageTests.CMain.Check
     PackageTests.DeterministicAr.Check
     PackageTests.EmptyLib.Check
@@ -307,7 +307,8 @@ test-suite package-tests
     PackageTests.TemplateHaskell.Check
     PackageTests.TestOptions.Check
     PackageTests.TestStanza.Check
-    PackageTests.TestSuiteExeV10.Check
+    PackageTests.TestSuiteTests.ExeV10.Check
+    PackageTests.TestSuiteTests.LibV09.Check
     Test.Distribution.Version
     Test.Laws
     Test.QuickCheck.Utils

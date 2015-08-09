@@ -20,7 +20,6 @@ import PackageTests.BuildDeps.SameDepsAllRound.Check
 import PackageTests.BuildDeps.TargetSpecificDeps1.Check
 import PackageTests.BuildDeps.TargetSpecificDeps2.Check
 import PackageTests.BuildDeps.TargetSpecificDeps3.Check
-import PackageTests.BuildTestSuiteDetailedV09.Check
 import PackageTests.PackageTester (PackageSpec(..), SuiteConfig(..), compileSetup)
 import PackageTests.PathsModule.Executable.Check
 import PackageTests.PathsModule.Library.Check
@@ -33,7 +32,8 @@ import PackageTests.EmptyLib.Check
 import PackageTests.Haddock.Check
 import PackageTests.TestOptions.Check
 import PackageTests.TestStanza.Check
-import PackageTests.TestSuiteExeV10.Check
+import PackageTests.TestSuiteTests.ExeV10.Check
+import PackageTests.TestSuiteTests.LibV09.Check
 import PackageTests.OrderFlags.Check
 import PackageTests.ReexportedModules.Check
 
@@ -77,7 +77,12 @@ tests config version =
     , testCase "TestStanza" (PackageTests.TestStanza.Check.suite config)
       -- ^ The Test stanza test will eventually be required
       -- only for higher versions.
-    , testGroup "TestSuiteExeV10" (PackageTests.TestSuiteExeV10.Check.checks config)
+    , testGroup "TestSuiteTests"
+      [ testGroup "ExeV10"
+        (PackageTests.TestSuiteTests.ExeV10.Check.checks config)
+      , testGroup "LibV09"
+        (PackageTests.TestSuiteTests.LibV09.Check.checks config)
+      ]
     , testCase "TestOptions" (PackageTests.TestOptions.Check.suite config)
     , testCase "BenchmarkStanza" (PackageTests.BenchmarkStanza.Check.suite config)
       -- ^ The benchmark stanza test will eventually be required
@@ -98,8 +103,6 @@ tests config version =
     , testCase "EmptyLib/emptyLib"
       (PackageTests.EmptyLib.Check.emptyLib config)
     , testCase "Haddock" (PackageTests.Haddock.Check.suite config)
-    , testCase "BuildTestSuiteDetailedV09"
-      (PackageTests.BuildTestSuiteDetailedV09.Check.suite config)
     , testCase "OrderFlags"
       (PackageTests.OrderFlags.Check.suite config)
     , testCase "TemplateHaskell/dynamic"
