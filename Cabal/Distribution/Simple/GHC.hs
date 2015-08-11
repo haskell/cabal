@@ -448,6 +448,7 @@ buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
       cname = display $ PD.package $ localPkgDescr lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
+        | forRepl = mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way cname
         | otherwise = mempty
 
@@ -728,6 +729,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
   let isCoverageEnabled = fromFlag $ configCoverage $ configFlags lbi
       distPref = fromFlag $ configDistPref $ configFlags lbi
       hpcdir way
+        | forRepl = mempty  -- HPC is not supported in ghci
         | isCoverageEnabled = toFlag $ Hpc.mixDir distPref way exeName'
         | otherwise = mempty
 
