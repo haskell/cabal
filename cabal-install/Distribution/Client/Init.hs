@@ -18,6 +18,8 @@ module Distribution.Client.Init (
 
     -- * Commands
     initCabal
+  , pvpize
+  , incVersion
 
   ) where
 
@@ -467,11 +469,11 @@ chooseDep flags (m, Just ps)
       return $ P.Dependency (P.pkgName . head $ pids)
                             (pvpize . maximum . map P.pkgVersion $ pids)
 
-    pvpize :: Version -> VersionRange
-    pvpize v = orLaterVersion v'
-               `intersectVersionRanges`
-               earlierVersion (incVersion 1 v')
-      where v' = (v { versionBranch = take 2 (versionBranch v) })
+pvpize :: Version -> VersionRange
+pvpize v = orLaterVersion v'
+           `intersectVersionRanges`
+           earlierVersion (incVersion 1 v')
+  where v' = (v { versionBranch = take 2 (versionBranch v) })
 
 incVersion :: Int -> Version -> Version
 incVersion n (Version vlist tags) = Version (incVersion' n vlist) tags

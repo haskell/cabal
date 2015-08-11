@@ -159,6 +159,7 @@ executable cabal
         Distribution.Client.FetchUtils
         Distribution.Client.FileMonitor
         Distribution.Client.Freeze
+        Distribution.Client.GenBounds
         Distribution.Client.Get
         Distribution.Client.Glob
         Distribution.Client.GlobalFlags
