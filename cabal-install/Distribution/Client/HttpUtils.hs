@@ -18,7 +18,7 @@ import Network.HTTP
          , Header(..), HeaderName(..), lookupHeader )
 import Network.HTTP.Proxy ( Proxy(..), fetchProxy)
 import Network.URI
-         ( URI (..), URIAuth (..) )
+         ( URI (..), URIAuth (..), uriToString )
 import Network.Browser
          ( browse, setOutHandler, setErrHandler, setProxy
          , setAuthorityGen, request, setAllowBasicAuth, setUserAgent )
@@ -381,7 +381,7 @@ wgetTransport prog =
         (code, _err, etag') <- parseResponse uri resp
         return (code, etag')
       where
-        args = [ show uri
+        args = [ uriToString id uri ""
                , "--output-document=" ++ destPath
                , "--user-agent=" ++ userAgent
                , "--tries=5"
@@ -400,7 +400,7 @@ wgetTransport prog =
           BS.hPut tmpHandle body
           BS.writeFile "wget.in" body
           hClose tmpHandle
-          let args = [ show uri
+          let args = [ uriToString id uri ""
                      , "--post-file=" ++ tmpFile
                      , "--user-agent=" ++ userAgent
                      , "--server-response"
