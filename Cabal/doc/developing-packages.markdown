@@ -1081,9 +1081,7 @@ machine-readable log files.  The `detailed-0.9` interface requires the
 #### Example: Package using `exitcode-stdio-1.0` interface ####
 
 The example package description and executable source file below demonstrate
-the use of the `exitcode-stdio-1.0` interface.  For brevity, the example package
-does not include a library or any normal executables, but a real package would
-be required to have at least one library or executable.
+the use of the `exitcode-stdio-1.0` interface.
 
 foo.cabal:
 
@@ -1115,12 +1113,10 @@ main = do
 #### Example: Package using `detailed-0.9` interface ####
 
 The example package description and test module source file below demonstrate
-the use of the `detailed-0.9` interface.  For brevity, the example package does
-note include a library or any normal executables, but a real package would be
-required to have at least one library or executable.  The test module below
-also develops a simple implementation of the interface set by
-`Distribution.TestSuite`, but in actual usage the implementation would be
-provided by the library that provides the testing facility.
+the use of the `detailed-0.9` interface.  The test module also develops a simple
+implementation of the interface set by `Distribution.TestSuite`, but in actual
+usage the implementation would be provided by the library that provides the
+testing facility.
 
 bar.cabal:
 
@@ -1208,9 +1204,7 @@ channels.
 #### Example: Package using `exitcode-stdio-1.0` interface ####
 
 The example package description and executable source file below demonstrate
-the use of the `exitcode-stdio-1.0` interface.  For brevity, the example package
-does not include a library or any normal executables, but a real package would
-be required to have at least one library or executable.
+the use of the `exitcode-stdio-1.0` interface.
 
 foo.cabal:
 
