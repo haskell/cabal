@@ -160,6 +160,8 @@ Test-Suite unit-tests
         array,
         bytestring,
         Cabal,
+        cabal-install-lib,
+        cabal-install-solver,
         containers,
         mtl,
         pretty,

@@ -23,6 +23,7 @@ tests = testGroup "Unit Tests" [
        UnitTests.Distribution.Client.GZipUtils.tests
   ,testGroup "UnitTests.Distribution.Client.Dependency.Modular.PSQ"
         UnitTests.Distribution.Client.Dependency.Modular.PSQ.tests
+   -- TODO: Move this to cabal-install-solver once policies are moved elsewhere
   ,testGroup "UnitTests.Distribution.Client.Dependency.Modular.Solver"
         UnitTests.Distribution.Client.Dependency.Modular.Solver.tests
   ]
