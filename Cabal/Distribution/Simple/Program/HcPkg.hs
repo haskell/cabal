@@ -37,7 +37,7 @@ import Prelude hiding (init)
 import Distribution.Package
          ( PackageId, InstalledPackageId(..) )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo_(..)
+         ( InstalledPackageInfo, InstalledPackageInfo(..)
          , showInstalledPackageInfo
          , emptyInstalledPackageInfo, fieldsInstalledPackageInfo )
 import Distribution.ParseUtils
