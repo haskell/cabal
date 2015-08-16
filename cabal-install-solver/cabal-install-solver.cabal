@@ -63,3 +63,24 @@ library
 
   default-language:    Haskell2010
   other-extensions:    CPP, DeriveFunctor, RecordWildCards, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving
+
+Test-Suite unit-tests
+  type: exitcode-stdio-1.0
+  main-is: UnitTests.hs
+  hs-source-dirs: tests, .
+  ghc-options: -Wall -fwarn-tabs
+  other-modules:
+    UnitTests.Distribution.Client.Dependency.Modular.PSQ
+  build-depends:
+        base,
+        array,
+        Cabal,
+        cabal-install-lib,
+        containers,
+        mtl,
+        pretty,
+        tasty,
+        tasty-hunit,
+        tasty-quickcheck,
+        tagged,
+        QuickCheck >= 2.5
