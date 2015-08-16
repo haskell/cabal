@@ -834,7 +834,7 @@ buildOrReplExe forRepl verbosity numJobs _pkg_descr lbi
       linkOpts = commonOpts `mappend`
                  linkerOpts `mappend`
                  mempty { ghcOptLinkNoHsMain   = toFlag (not isHaskellMain) } `mappend`
-                 (if withStaticExe then mempty else dynLinkerOpts)
+                 (if withDynExe lbi then dynLinkerOpts else mempty)
 
   -- Build static/dynamic object files for TH, if needed.
   when compileForTH $
