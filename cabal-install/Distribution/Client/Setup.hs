@@ -17,7 +17,7 @@ module Distribution.Client.Setup
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
                         , configureExOptions
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
-    , replCommand, testCommand, benchmarkCommand
+    , replCommand, showBuildInfoCommand, testCommand, benchmarkCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , listCommand, ListFlags(..)
     , updateCommand
@@ -190,6 +190,7 @@ globalCommand commands = CommandUI {
           , "haddock"
           , "hscolour"
           , "copy"
+          , "show-build-info"
           , "register"
           , "sandbox"
           , "exec"
@@ -236,6 +237,7 @@ globalCommand commands = CommandUI {
         , addCmd "upload"
         , addCmd "report"
         , par
+        , addCmd "show-build-info"
         , addCmd "freeze"
         , addCmd "haddock"
         , addCmd "hscolour"
@@ -576,6 +578,25 @@ instance Monoid BuildExFlags where
     buildOnly    = combine buildOnly
   }
     where combine field = field a `mappend` field b
+
+-- ------------------------------------------------------------
+-- * show-build-info command
+-- ------------------------------------------------------------
+
+showBuildInfoCommand :: CommandUI (BuildFlags, BuildExFlags)
+showBuildInfoCommand = parent {
+    commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandOptions      =
+      \showOrParseArgs -> liftOptions fst setFst
+                          (commandOptions parent showOrParseArgs)
+                          ++
+                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
+  }
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+    parent = Cabal.showBuildInfoCommand defaultProgramConfiguration
 
 -- ------------------------------------------------------------
 -- * Repl command

@@ -47,6 +47,29 @@ deprecated without breaking older packages.
 
 ### Unstable command-line ###
 
+### Querying for compiler configuration for a package ###
+
+Cabal provides the `show-build-info` command-line action for tooling
+authors who need to query Cabal for details on how it would compile
+a package component. At the moment this is only supported when using the GHC
+compiler. This offers a few advantages over using the Cabal API directly,
+
+ * The `Cabal` interfaces are prone to change and are a bit verbose for casual
+   use
+
+ * Some tools built on top of Cabal provide features that further modify
+   the compiler configuration (e.g. the sandbox functionality of
+   `cabal-install`).
+
+  * Linking directly against `Cabal` has unfortunately interactions with
+  `cabal-install` in the presence of later upgrades.
+
+The `show-build-info` command addresses these issues by providing a lightweight,
+out-of-process interface for querying Cabal about compiler configuration. See
+the Haddock documentation in `Distribution.Simple.ShowBuildInfo` for further
+details on the format exposed by this command.
+
+
 ## Functions and Types ##
 
 The Cabal library follows the [Package Versioning Policy][PVP]. This

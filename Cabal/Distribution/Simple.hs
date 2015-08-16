@@ -72,7 +72,7 @@ import Distribution.Simple.PreProcess (knownSuffixHandlers, PPSuffixHandler)
 import Distribution.Simple.Setup
 import Distribution.Simple.Command
 
-import Distribution.Simple.Build        ( build, repl )
+import Distribution.Simple.Build        ( build, showBuildInfo, repl )
 import Distribution.Simple.SrcDist      ( sdist )
 import Distribution.Simple.Register
          ( register, unregister )
@@ -172,6 +172,7 @@ defaultMainHelper hooks args = topHandler $
       [configureCommand progs `commandAddAction` \fs as ->
                                                  configureAction    hooks fs as >> return ()
       ,buildCommand     progs `commandAddAction` buildAction        hooks
+      ,showBuildInfoCommand progs `commandAddAction` showBuildInfoAction    hooks
       ,replCommand      progs `commandAddAction` replAction         hooks
       ,installCommand         `commandAddAction` installAction      hooks
       ,copyCommand            `commandAddAction` copyAction         hooks
@@ -250,6 +251,27 @@ buildAction hooks flags args = do
   hookedAction preBuild buildHook postBuild
                (return lbi { withPrograms = progs })
                hooks flags' { buildArgs = args } args
+
+showBuildInfoAction :: UserHooks -> BuildFlags -> Args -> IO ()
+showBuildInfoAction hooks flags args = do
+  distPref <- findDistPrefOrDefault (buildDistPref flags)
+  let verbosity = fromFlag $ buildVerbosity flags
+      flags' = flags { buildDistPref = toFlag distPref }
+
+  lbi <- getBuildConfig hooks verbosity distPref
+  progs <- reconfigurePrograms verbosity
+             (buildProgramPaths flags')
+             (buildProgramArgs flags')
+             (withPrograms lbi)
+
+  pbi <- preBuild hooks args flags'
+  let lbi' = lbi { withPrograms = progs }
+      pkg_descr0 = localPkgDescr lbi'
+      pkg_descr = updatePackageDescription pbi pkg_descr0
+  -- TODO: Somehow don't ignore build hook?
+  showBuildInfo pkg_descr lbi' flags
+
+  postBuild hooks args flags' pkg_descr lbi'
 
 replAction :: UserHooks -> ReplFlags -> Args -> IO ()
 replAction hooks flags args = do

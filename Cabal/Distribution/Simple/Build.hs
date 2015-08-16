@@ -16,7 +16,7 @@
 --
 
 module Distribution.Simple.Build (
-    build, repl,
+    build, showBuildInfo, repl,
     startInterpreter,
 
     initialBuildSteps,
@@ -65,6 +65,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
+import Distribution.Simple.ShowBuildInfo
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName, exeExtension )
 import Distribution.Simple.Register
@@ -73,6 +74,7 @@ import Distribution.Simple.Test.LibV09 ( stubFilePath, stubName )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
          , die, info, debug, warn, setupMessage )
+import Distribution.Simple.Utils.Json
 
 import Distribution.Verbosity
          ( Verbosity )
@@ -127,6 +129,19 @@ build pkg_descr lbi flags suffixes = do
                  }
     in buildComponent verbosity (buildNumJobs flags) pkg_descr
                       lbi' suffixes comp clbi distPref
+
+
+showBuildInfo :: PackageDescription  -- ^ Mostly information from the .cabal file
+              -> LocalBuildInfo      -- ^ Configuration information
+              -> BuildFlags          -- ^ Flags that the user passed to build
+              -> IO ()
+showBuildInfo pkg_descr lbi flags = do
+  let verbosity = fromFlag (buildVerbosity flags)
+  targets  <- readBuildTargets pkg_descr (buildArgs flags)
+  targets' <- checkBuildTargets verbosity pkg_descr targets
+  let componentsToBuild = componentsInBuildOrder lbi (map fst targets')
+      doc = mkBuildInfo pkg_descr lbi flags componentsToBuild
+  putStrLn $ renderJson doc ""
 
 
 repl     :: PackageDescription  -- ^ Mostly information from the .cabal file

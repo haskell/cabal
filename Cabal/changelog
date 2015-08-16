@@ -1,6 +1,8 @@
 -*-change-log-*-
 
 1.23.x.x (current development version)
+	* Add 'show-build-info' command for tooling authors to get reliable
+	  access to Cabal's build configuration for a package
 	* Deal with extra C sources from preprocessors (#238).
 	* Include cabal_macros.h when running c2hs (#2600).
 	* Don't recompile C sources unless needed (#2601).

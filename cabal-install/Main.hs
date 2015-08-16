@@ -20,7 +20,8 @@ import Distribution.Client.Setup
          , ConfigFlags(..)
          , ConfigExFlags(..), defaultConfigExFlags, configureExCommand
          , BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
-         , buildCommand, replCommand, testCommand, benchmarkCommand
+         , buildCommand, showBuildInfoCommand, replCommand, testCommand
+         , benchmarkCommand
          , InstallFlags(..), defaultInstallFlags
          , installCommand, upgradeCommand, uninstallCommand
          , FetchFlags(..), fetchCommand
@@ -246,6 +247,7 @@ mainWorker args = topHandler $
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
       ,buildCommand           `commandAddAction` buildAction
+      ,showBuildInfoCommand   `commandAddAction` showBuildInfoAction
       ,replCommand            `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
       ,haddockCommand         `commandAddAction` haddockAction
@@ -348,6 +350,38 @@ build :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
 build verbosity config distPref buildFlags extraArgs =
   setupWrapper verbosity setupOptions Nothing
                (Cabal.buildCommand progConf) mkBuildFlags extraArgs
+  where
+    progConf     = defaultProgramConfiguration
+    setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
+
+    mkBuildFlags version = filterBuildFlags version config buildFlags'
+    buildFlags' = buildFlags
+      { buildVerbosity = toFlag verbosity
+      , buildDistPref  = toFlag distPref
+      }
+
+showBuildInfoAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+showBuildInfoAction (buildFlags, buildExFlags) extraArgs globalFlags = do
+  let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
+      noAddSource = fromFlagOrDefault DontSkipAddSourceDepsCheck
+                    (buildOnly buildExFlags)
+
+  -- Calls 'configureAction' to do the real work, so nothing special has to be
+  -- done to support sandboxes.
+  (useSandbox, config, distPref) <- reconfigure verbosity
+                                    (buildDistPref buildFlags)
+                                    mempty [] globalFlags noAddSource
+                                    (buildNumJobs buildFlags) (const Nothing)
+
+  maybeWithSandboxDirOnSearchPath useSandbox $
+    showBuildInfo verbosity config distPref buildFlags extraArgs
+
+-- | Show a machine-readable representation of some basic build configuration
+-- information.
+showBuildInfo :: Verbosity -> SavedConfig -> FilePath -> BuildFlags -> [String] -> IO ()
+showBuildInfo verbosity config distPref buildFlags extraArgs =
+  setupWrapper verbosity setupOptions Nothing
+               (Cabal.showBuildInfoCommand progConf) mkBuildFlags extraArgs
   where
     progConf     = defaultProgramConfiguration
     setupOptions = defaultSetupScriptOptions { useDistPref = distPref }
