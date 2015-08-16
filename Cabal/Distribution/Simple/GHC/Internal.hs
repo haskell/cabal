@@ -36,7 +36,7 @@ import Distribution.Package
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo_(..) )
+                                ( InstalledPackageInfo(..) )
 import Distribution.PackageDescription as PD
          ( BuildInfo(..), Library(..), libModules
          , hcOptions, usedExtensions, ModuleRenaming, lookupRenaming )

@@ -20,7 +20,7 @@ import Distribution.Package
          , HasInstalledPackageId(..), PackageInstalled(..)
          , LibraryName, packageKeyLibraryName )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo_ )
+         ( InstalledPackageInfo )
 import Distribution.PackageDescription
          ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
          , TestSuite(..) )
@@ -68,7 +68,7 @@ data SourcePackageDb = SourcePackageDb {
 class Package pkg => PackageFixedDeps pkg where
   depends :: pkg -> ComponentDeps [InstalledPackageId]
 
-instance PackageFixedDeps (InstalledPackageInfo_ str) where
+instance PackageFixedDeps InstalledPackageInfo where
   depends = CD.fromInstalled . installedDepends
 
 

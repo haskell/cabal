@@ -67,7 +67,7 @@ import Distribution.Package
          ( Package(..), packageName, InstalledPackageId(..)
          , getHSLibraryName )
 import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo_(InstalledPackageInfo)
+         ( InstalledPackageInfo, InstalledPackageInfo(InstalledPackageInfo)
          , showInstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as IPI
 import Distribution.Simple.Utils
