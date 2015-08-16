@@ -19,6 +19,7 @@ import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.FetchUtils hiding (fetchPackage)
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Policies
 import Distribution.Client.IndexUtils as IndexUtils
          ( getSourcePackages, getInstalledPackages )
 import Distribution.Client.HttpUtils

@@ -20,6 +20,7 @@ import Distribution.Client.Config ( SavedConfig(..) )
 import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Policies
 import Distribution.Client.Dependency.Types
          ( ConstraintSource(..), LabeledPackageConstraint(..) )
 import Distribution.Client.IndexUtils as IndexUtils

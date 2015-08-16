@@ -18,6 +18,7 @@ module Distribution.Client.Configure (
   ) where
 
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Policies
 import Distribution.Client.Dependency.Types
          ( AllowNewer(..), isAllowNewer, ConstraintSource(..)
          , LabeledPackageConstraint(..) )

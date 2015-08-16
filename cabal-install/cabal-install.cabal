@@ -53,7 +53,7 @@ executable cabal
         Distribution.Client.Check
         Distribution.Client.Config
         Distribution.Client.Configure
-        Distribution.Client.Dependency
+        Distribution.Client.Dependency.Policies
         Distribution.Client.Exec
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
@@ -68,12 +68,10 @@ executable cabal
         Distribution.Client.Init.Licenses
         Distribution.Client.Init.Types
         Distribution.Client.Install
-        Distribution.Client.InstallPlan
         Distribution.Client.InstallSymlink
         Distribution.Client.JobControl
         Distribution.Client.List
         Distribution.Client.ParseUtils
-        Distribution.Client.PlanIndex
         Distribution.Client.Run
         Distribution.Client.Sandbox
         Distribution.Client.Sandbox.Index

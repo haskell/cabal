@@ -22,9 +22,12 @@ cabal-version:       >=1.10
 
 library
   ghc-options:         -Wall -fwarn-tabs
-  exposed-modules:     Distribution.Client.Dependency.Types,
+  exposed-modules:     Distribution.Client.Dependency
+                       Distribution.Client.Dependency.Types,
                        Distribution.Client.Dependency.TopDown,
-                       Distribution.Client.Dependency.Modular
+                       Distribution.Client.Dependency.Modular,
+                       Distribution.Client.InstallPlan,
+                       Distribution.Client.PlanIndex
 
   other-modules:       Distribution.Client.Dependency.TopDown.Types,
                        Distribution.Client.Dependency.TopDown.Constraints,
