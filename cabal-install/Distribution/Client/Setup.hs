@@ -23,7 +23,7 @@ module Distribution.Client.Setup
     , configureExCommand, ConfigExFlags(..), defaultConfigExFlags
     , buildCommand, BuildFlags(..), BuildExFlags(..), SkipAddSourceDepsCheck(..)
     , filterTestFlags
-    , replCommand, testCommand, benchmarkCommand, testOptions
+    , replCommand, testCommand, showBuildInfoCommand, benchmarkCommand, testOptions
                         , configureExOptions, reconfigureCommand
     , installCommand, InstallFlags(..), installOptions, defaultInstallFlags
     , filterHaddockArgs, filterHaddockFlags, haddockOptions
@@ -197,6 +197,7 @@ globalCommand commands = CommandUI {
           , "outdated"
           , "haddock"
           , "hscolour"
+          , "show-build-info"
           , "exec"
           , "new-build"
           , "new-configure"
@@ -283,6 +284,7 @@ globalCommand commands = CommandUI {
         , addCmd "upload"
         , addCmd "report"
         , par
+        , addCmd "show-build-info"
         , addCmd "freeze"
         , addCmd "gen-bounds"
         , addCmd "outdated"
@@ -860,6 +862,25 @@ filterTestFlags flags cabalLibVersion
       -- Cabal < 3.0 doesn't know about --test-wrapper
       Cabal.testWrapper = NoFlag
       }
+
+-- ------------------------------------------------------------
+-- * show-build-info command
+-- ------------------------------------------------------------
+
+showBuildInfoCommand :: CommandUI (BuildFlags, BuildExFlags)
+showBuildInfoCommand = parent {
+    commandDefaultFlags = (commandDefaultFlags parent, mempty),
+    commandOptions      =
+      \showOrParseArgs -> liftOptions fst setFst
+                          (commandOptions parent showOrParseArgs)
+                          ++
+                          liftOptions snd setSnd (buildExOptions showOrParseArgs)
+  }
+  where
+    setFst a (_,b) = (a,b)
+    setSnd b (a,_) = (a,b)
+
+    parent = Cabal.showBuildInfoCommand defaultProgramDb
 
 -- ------------------------------------------------------------
 -- * Repl command
