@@ -64,7 +64,7 @@ import Distribution.Simple.BuildPaths
 import Distribution.Simple.PackageIndex (dependencyClosure)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-         ( InstalledPackageInfo_(..) )
+         ( InstalledPackageInfo(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.Simple.Utils

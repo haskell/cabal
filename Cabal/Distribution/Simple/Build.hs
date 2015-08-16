@@ -388,7 +388,7 @@ testSuiteLibV09AsLibAndExe :: PackageDescription
                            -> (PackageDescription,
                                Library, ComponentLocalBuildInfo,
                                LocalBuildInfo,
-                               IPI.InstalledPackageInfo_ ModuleName,
+                               IPI.InstalledPackageInfo,
                                Executable, ComponentLocalBuildInfo)
 testSuiteLibV09AsLibAndExe pkg_descr
                      test@TestSuite { testInterface = TestSuiteLibV09 _ m }

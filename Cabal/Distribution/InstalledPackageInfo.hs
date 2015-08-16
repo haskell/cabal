@@ -27,7 +27,7 @@
 -- This module is meant to be local-only to Distribution...
 
 module Distribution.InstalledPackageInfo (
-        InstalledPackageInfo_(..), InstalledPackageInfo,
+        InstalledPackageInfo(..),
         libraryName,
         OriginalModule(..), ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
@@ -71,7 +71,7 @@ import GHC.Generics (Generic)
 -- The InstalledPackageInfo type
 
 
-data InstalledPackageInfo_ m
+data InstalledPackageInfo
    = InstalledPackageInfo {
         -- these parts are exactly the same as PackageDescription
         installedPackageId :: InstalledPackageId,
@@ -90,8 +90,8 @@ data InstalledPackageInfo_ m
         -- these parts are required by an installed package only:
         exposed           :: Bool,
         exposedModules    :: [ExposedModule],
-        instantiatedWith  :: [(m, OriginalModule)],
-        hiddenModules     :: [m],
+        instantiatedWith  :: [(ModuleName, OriginalModule)],
+        hiddenModules     :: [ModuleName],
         trusted           :: Bool,
         importDirs        :: [FilePath],
         libraryDirs       :: [FilePath],
@@ -112,23 +112,21 @@ data InstalledPackageInfo_ m
     }
     deriving (Generic, Read, Show)
 
-libraryName :: InstalledPackageInfo_ a -> LibraryName
+libraryName :: InstalledPackageInfo -> LibraryName
 libraryName ipi = Package.packageKeyLibraryName (sourcePackageId ipi) (packageKey ipi)
 
-instance Binary m => Binary (InstalledPackageInfo_ m)
+instance Binary InstalledPackageInfo
 
-instance Package.Package (InstalledPackageInfo_ str) where
+instance Package.Package InstalledPackageInfo where
    packageId = sourcePackageId
 
-instance Package.HasInstalledPackageId (InstalledPackageInfo_ str) where
+instance Package.HasInstalledPackageId InstalledPackageInfo where
    installedPackageId = installedPackageId
 
-instance Package.PackageInstalled (InstalledPackageInfo_ str) where
+instance Package.PackageInstalled InstalledPackageInfo where
    installedDepends = depends
 
-type InstalledPackageInfo = InstalledPackageInfo_ ModuleName
-
-emptyInstalledPackageInfo :: InstalledPackageInfo_ m
+emptyInstalledPackageInfo :: InstalledPackageInfo
 emptyInstalledPackageInfo
    = InstalledPackageInfo {
         installedPackageId = InstalledPackageId "",
