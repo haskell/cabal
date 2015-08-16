@@ -30,6 +30,7 @@ import qualified Distribution.Version              as C
 -- cabal-install
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Policies
 import Distribution.Client.Dependency.Types
 import Distribution.Client.Types
 import qualified Distribution.Client.InstallPlan   as CI.InstallPlan

@@ -8,7 +8,6 @@ import qualified UnitTests.Distribution.Client.Sandbox
 import qualified UnitTests.Distribution.Client.UserConfig
 import qualified UnitTests.Distribution.Client.Targets
 import qualified UnitTests.Distribution.Client.GZipUtils
-import qualified UnitTests.Distribution.Client.Dependency.Modular.PSQ
 import qualified UnitTests.Distribution.Client.Dependency.Modular.Solver
 
 tests :: TestTree
@@ -21,8 +20,7 @@ tests = testGroup "Unit Tests" [
        UnitTests.Distribution.Client.Targets.tests
   ,testGroup "Distribution.Client.GZipUtils"
        UnitTests.Distribution.Client.GZipUtils.tests
-  ,testGroup "UnitTests.Distribution.Client.Dependency.Modular.PSQ"
-        UnitTests.Distribution.Client.Dependency.Modular.PSQ.tests
+   -- TODO: Move this to cabal-install-solver once policies are moved elsewhere
   ,testGroup "UnitTests.Distribution.Client.Dependency.Modular.Solver"
         UnitTests.Distribution.Client.Dependency.Modular.Solver.tests
   ]

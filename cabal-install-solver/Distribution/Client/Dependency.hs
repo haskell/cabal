@@ -29,13 +29,6 @@ module Distribution.Client.Dependency (
     PackagePreference(..),
     InstalledPreference(..),
 
-    -- ** Standard policy
-    standardInstallPolicy,
-    PackageSpecifier(..),
-
-    -- ** Sandbox policy
-    applySandboxInstallPolicy,
-
     -- ** Extra policy options
     dontUpgradeNonUpgradeablePackages,
     hideBrokenInstalledPackages,
@@ -44,6 +37,7 @@ module Distribution.Client.Dependency (
 
     -- ** Policy utils
     addConstraints,
+    addTargets,
     addPreferences,
     setPreferenceDefault,
     setReorderGoals,
@@ -56,7 +50,8 @@ module Distribution.Client.Dependency (
     hideInstalledPackagesSpecificByInstalledPackageId,
     hideInstalledPackagesSpecificBySourcePackageId,
     hideInstalledPackagesAllVersions,
-    removeUpperBounds
+    removeUpperBounds,
+    basicDepResolverParams
   ) where
 
 import Distribution.Client.Dependency.TopDown
@@ -69,8 +64,8 @@ import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 import Distribution.Client.Types
-         ( SourcePackageDb(SourcePackageDb), SourcePackage(..)
-         , ConfiguredPackage(..), ConfiguredId(..), enableStanzas )
+         ( SourcePackage(..), ConfiguredPackage(..), ConfiguredId(..)
+         , enableStanzas )
 import Distribution.Client.Dependency.Types
          ( PreSolver(..), Solver(..), DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), showPackageConstraint
@@ -79,9 +74,6 @@ import Distribution.Client.Dependency.Types
          , AllowNewer(..), PackagePreferences(..), InstalledPreference(..)
          , PackagesPreferenceDefault(..)
          , Progress(..), foldProgress )
-import Distribution.Client.Sandbox.Types
-         ( SandboxPackageInfo(..) )
-import Distribution.Client.Targets
 import Distribution.Client.ComponentDeps (ComponentDeps)
 import qualified Distribution.Client.ComponentDeps as CD
 import qualified Distribution.InstalledPackageInfo as Installed
@@ -100,7 +92,7 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Client.PackageUtils
          ( externalBuildDepends )
 import Distribution.Version
-         ( VersionRange, anyVersion, thisVersion, withinRange
+         ( VersionRange, anyVersion, withinRange
          , removeUpperBound, simplifyVersionRange )
 import Distribution.Compiler
          ( CompilerInfo(..) )
@@ -437,73 +429,6 @@ reinstallTargets :: DepResolverParams -> DepResolverParams
 reinstallTargets params =
     hideInstalledPackagesAllVersions (depResolverTargets params) params
 
-
-standardInstallPolicy :: InstalledPackageIndex
-                      -> SourcePackageDb
-                      -> [PackageSpecifier SourcePackage]
-                      -> DepResolverParams
-standardInstallPolicy
-    installedPkgIndex (SourcePackageDb sourcePkgIndex sourcePkgPrefs)
-    pkgSpecifiers
-
-  = addPreferences
-      [ PackageVersionPreference name ver
-      | (name, ver) <- Map.toList sourcePkgPrefs ]
-
-  . addConstraints
-      (concatMap pkgSpecifierConstraints pkgSpecifiers)
-
-  . addTargets
-      (map pkgSpecifierTarget pkgSpecifiers)
-
-  . hideInstalledPackagesSpecificBySourcePackageId
-      [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
-
-  . addSourcePackages
-      [ pkg  | SpecificSourcePackage pkg <- pkgSpecifiers ]
-
-  $ basicDepResolverParams
-      installedPkgIndex sourcePkgIndex
-
-applySandboxInstallPolicy :: SandboxPackageInfo
-                             -> DepResolverParams
-                             -> DepResolverParams
-applySandboxInstallPolicy
-  (SandboxPackageInfo modifiedDeps otherDeps allSandboxPkgs _allDeps)
-  params
-
-  = addPreferences [ PackageInstalledPreference n PreferInstalled
-                   | n <- installedNotModified ]
-
-  . addTargets installedNotModified
-
-  . addPreferences
-      [ PackageVersionPreference (packageName pkg)
-        (thisVersion (packageVersion pkg)) | pkg <- otherDeps ]
-
-  . addConstraints
-      [ let pc = PackageConstraintVersion (packageName pkg)
-                 (thisVersion (packageVersion pkg))
-        in LabeledPackageConstraint pc ConstraintSourceModifiedAddSourceDep
-      | pkg <- modifiedDeps ]
-
-  . addTargets [ packageName pkg | pkg <- modifiedDeps ]
-
-  . hideInstalledPackagesSpecificBySourcePackageId
-      [ packageId pkg | pkg <- modifiedDeps ]
-
-  -- We don't need to add source packages for add-source deps to the
-  -- 'installedPkgIndex' since 'getSourcePackages' did that for us.
-
-  $ params
-
-  where
-    installedPkgIds =
-      map fst . InstalledPackageIndex.allPackagesBySourcePackageId
-      $ allSandboxPkgs
-    modifiedPkgIds       = map packageId modifiedDeps
-    installedNotModified = [ packageName pkg | pkg <- installedPkgIds,
-                             pkg `notElem` modifiedPkgIds ]
 
 -- ------------------------------------------------------------
 -- * Interface to the standard resolver

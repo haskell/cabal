@@ -209,6 +209,10 @@ OLD_TIME_VER="1.1.0.3"; OLD_TIME_VER_REGEXP="1\.[01]\.?"
                        # >=1.0.0.0 && <1.2
 OLD_LOCALE_VER="1.0.0.7"; OLD_LOCALE_VER_REGEXP="1\.0\.?"
                        # >=1.0.0.0 && <1.1
+CABAL_INSTALL_LIB_VER="1.23.0.0";    CABAL_INSTALL_LIB_VER_REGEXP="1\.23\.?"
+                       # >= 1.23 && < 1.24
+CABAL_INSTALL_SOLVER_VER="1.23.0.0"; CABAL_INSTALL_SOLVER_VER_REGEXP="1\.23\.?"
+                       # >= 1.23 && < 1.24
 
 HACKAGE_URL="https://hackage.haskell.org/package"
 
@@ -378,6 +382,8 @@ info_pkg "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 info_pkg "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 info_pkg "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 info_pkg "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+info_pkg "cabal-install-lib"   ${CABAL_INSTALL_LIB_VER}     ${CABAL_INSTALL_LIB_VER_REGEXP}
+info_pkg "cabal-install-solve" ${CABAL_INSTALL_SOLVE_VER}   ${CABAL_INSTALL_SOLVE_VER_REGEXP}
 
 do_pkg   "deepseq"      ${DEEPSEQ_VER} ${DEEPSEQ_VER_REGEXP}
 do_pkg   "binary"       ${BINARY_VER}  ${BINARY_VER_REGEXP}
@@ -398,6 +404,8 @@ do_pkg   "HTTP"         ${HTTP_VER}    ${HTTP_VER_REGEXP}
 do_pkg   "zlib"         ${ZLIB_VER}    ${ZLIB_VER_REGEXP}
 do_pkg   "random"       ${RANDOM_VER}  ${RANDOM_VER_REGEXP}
 do_pkg   "stm"          ${STM_VER}     ${STM_VER_REGEXP}
+do_pkg   "cabal-install-lib"   ${CABAL_INSTALL_LIB_VER}     ${CABAL_INSTALL_LIB_VER_REGEXP}
+do_pkg   "cabal-install-solve" ${CABAL_INSTALL_SOLVE_VER}   ${CABAL_INSTALL_SOLVE_VER_REGEXP}
 
 install_pkg "cabal-install"
 

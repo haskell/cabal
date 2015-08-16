@@ -69,6 +69,7 @@ import Distribution.Client.Targets
 import Distribution.Client.Configure
          ( chooseCabalVersion, configureSetupScript )
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Policies
 import Distribution.Client.Dependency.Types
          ( Solver(..), ConstraintSource(..), LabeledPackageConstraint(..) )
 import Distribution.Client.FetchUtils

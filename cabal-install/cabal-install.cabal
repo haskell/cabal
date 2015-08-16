@@ -51,34 +51,9 @@ executable cabal
         Distribution.Client.BuildReports.Types
         Distribution.Client.BuildReports.Upload
         Distribution.Client.Check
-        Distribution.Client.ComponentDeps
         Distribution.Client.Config
         Distribution.Client.Configure
-        Distribution.Client.Dependency
-        Distribution.Client.Dependency.TopDown
-        Distribution.Client.Dependency.TopDown.Constraints
-        Distribution.Client.Dependency.TopDown.Types
-        Distribution.Client.Dependency.Types
-        Distribution.Client.Dependency.Modular
-        Distribution.Client.Dependency.Modular.Assignment
-        Distribution.Client.Dependency.Modular.Builder
-        Distribution.Client.Dependency.Modular.Configured
-        Distribution.Client.Dependency.Modular.ConfiguredConversion
-        Distribution.Client.Dependency.Modular.Dependency
-        Distribution.Client.Dependency.Modular.Explore
-        Distribution.Client.Dependency.Modular.Flag
-        Distribution.Client.Dependency.Modular.Index
-        Distribution.Client.Dependency.Modular.IndexConversion
-        Distribution.Client.Dependency.Modular.Linking
-        Distribution.Client.Dependency.Modular.Log
-        Distribution.Client.Dependency.Modular.Message
-        Distribution.Client.Dependency.Modular.Package
-        Distribution.Client.Dependency.Modular.Preference
-        Distribution.Client.Dependency.Modular.PSQ
-        Distribution.Client.Dependency.Modular.Solver
-        Distribution.Client.Dependency.Modular.Tree
-        Distribution.Client.Dependency.Modular.Validate
-        Distribution.Client.Dependency.Modular.Version
+        Distribution.Client.Dependency.Policies
         Distribution.Client.Exec
         Distribution.Client.Fetch
         Distribution.Client.FetchUtils
@@ -93,14 +68,10 @@ executable cabal
         Distribution.Client.Init.Licenses
         Distribution.Client.Init.Types
         Distribution.Client.Install
-        Distribution.Client.InstallPlan
         Distribution.Client.InstallSymlink
         Distribution.Client.JobControl
         Distribution.Client.List
-        Distribution.Client.PackageIndex
-        Distribution.Client.PackageUtils
         Distribution.Client.ParseUtils
-        Distribution.Client.PlanIndex
         Distribution.Client.Run
         Distribution.Client.Sandbox
         Distribution.Client.Sandbox.Index
@@ -112,36 +83,33 @@ executable cabal
         Distribution.Client.SrcDist
         Distribution.Client.Tar
         Distribution.Client.Targets
-        Distribution.Client.Types
         Distribution.Client.Update
         Distribution.Client.Upload
-        Distribution.Client.Utils
-        Distribution.Client.Utils.LabeledGraph
         Distribution.Client.World
         Distribution.Client.Win32SelfUpgrade
         Distribution.Client.Compat.ExecutablePath
-        Distribution.Client.Compat.FilePerms
         Distribution.Client.Compat.Process
         Distribution.Client.Compat.Semaphore
-        Distribution.Client.Compat.Time
         Paths_cabal_install
 
     -- NOTE: when updating build-depends, don't forget to update version regexps
     -- in bootstrap.sh.
     build-depends:
-        array      >= 0.1      && < 0.6,
-        base       >= 4.3      && < 5,
-        bytestring >= 0.9      && < 1,
-        Cabal      >= 1.23     && < 1.24,
-        containers >= 0.1      && < 0.6,
-        filepath   >= 1.0      && < 1.5,
-        HTTP       >= 4000.1.5 && < 4000.3,
-        mtl        >= 2.0      && < 3,
-        pretty     >= 1        && < 1.2,
-        random     >= 1        && < 1.2,
-        stm        >= 2.0      && < 3,
-        time       >= 1.1      && < 1.6,
-        zlib       >= 0.5.3    && < 0.7
+        array                 >= 0.1      && < 0.6,
+        base                  >= 4.3      && < 5,
+        bytestring            >= 0.9      && < 1,
+        Cabal                 >= 1.23     && < 1.24,
+        cabal-install-lib     >= 1.23     && < 1.24,
+        cabal-install-solver  >= 1.23     && < 1.24,
+        containers            >= 0.1      && < 0.6,
+        filepath              >= 1.0      && < 1.5,
+        HTTP                  >= 4000.1.5 && < 4000.3,
+        mtl                   >= 2.0      && < 3,
+        pretty                >= 1        && < 1.2,
+        random                >= 1        && < 1.2,
+        stm                   >= 2.0      && < 3,
+        time                  >= 1.1      && < 1.6,
+        zlib                  >= 0.5.3    && < 0.7
 
     if flag(old-directory)
       build-depends: directory >= 1 && < 1.2, old-time >= 1 && < 1.2,
@@ -181,7 +149,6 @@ Test-Suite unit-tests
   ghc-options: -Wall -fwarn-tabs
   other-modules:
     UnitTests.Distribution.Client.Targets
-    UnitTests.Distribution.Client.Dependency.Modular.PSQ
     UnitTests.Distribution.Client.Dependency.Modular.Solver
     UnitTests.Distribution.Client.Dependency.Modular.DSL
     UnitTests.Distribution.Client.GZipUtils
@@ -192,6 +159,8 @@ Test-Suite unit-tests
         array,
         bytestring,
         Cabal,
+        cabal-install-lib,
+        cabal-install-solver,
         containers,
         mtl,
         pretty,

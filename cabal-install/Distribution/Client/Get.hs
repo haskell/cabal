@@ -34,6 +34,7 @@ import Distribution.Client.Setup
 import Distribution.Client.Types
 import Distribution.Client.Targets
 import Distribution.Client.Dependency
+import Distribution.Client.Dependency.Policies
 import Distribution.Client.FetchUtils
 import Distribution.Client.HttpUtils
         ( configureTransport, HttpTransport(..) )
