@@ -53,13 +53,13 @@ library
 
   -- NOTE: when updating build-depends, don't forget to update version regexps
   -- in bootstrap.sh.
-  build-depends:       base                >= 4.3     && <5,
+  build-depends:       array               >= 0.1     && <0.6,
+                       base                >= 4.3     && <5,
                        Cabal               >= 1.22    && <1.24,
                        cabal-install-lib   >= 1.22    && <1.24,
-                       pretty              >= 1.1     && <1.2,
-                       containers          >= 0.5     && <0.6,
-                       array               >= 0.5     && <0.6,
-                       mtl                 >= 2.2     && <2.3
+                       containers          >= 0.1     && <0.6,
+                       mtl                 >= 2.0     && <2.3,
+                       pretty              >= 1       && <1.2
 
   default-language:    Haskell2010
   other-extensions:    CPP, DeriveFunctor, RecordWildCards, DeriveFoldable, DeriveTraversable, GeneralizedNewtypeDeriving
