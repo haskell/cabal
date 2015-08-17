@@ -902,7 +902,7 @@ getInstalledPackages verbosity comp packageDBs progconf = do
 
   info verbosity "Reading installed packages..."
   case compilerFlavor comp of
-    GHC   -> GHC.getInstalledPackages verbosity packageDBs progconf
+    GHC   -> GHC.getInstalledPackages verbosity comp packageDBs progconf
     GHCJS -> GHCJS.getInstalledPackages verbosity packageDBs progconf
     JHC   -> JHC.getInstalledPackages verbosity packageDBs progconf
     LHC   -> LHC.getInstalledPackages verbosity packageDBs progconf
