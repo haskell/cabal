@@ -824,7 +824,7 @@ checkPaths pkg =
   , isOutsideTree path ]
   ++
   [ PackageDistInexcusable $
-      quote (kind ++ ": " ++ path) ++ " is an absolute directory."
+      quote (kind ++ ": " ++ path) ++ " is an absolute path."
   | (path, kind) <- relPaths
   , isAbsolute path ]
   ++
@@ -863,6 +863,7 @@ checkPaths pkg =
       ++ [ (path, "extra-doc-files") | path <- extraDocFiles pkg ]
       ++ [ (path, "data-files")      | path <- dataFiles     pkg ]
       ++ [ (path, "data-dir")        | path <- [dataDir      pkg]]
+      ++ [ (path, "license-file")    | path <- licenseFiles  pkg ]
       ++ concat
          [    [ (path, "c-sources")        | path <- cSources        bi ]
            ++ [ (path, "js-sources")       | path <- jsSources       bi ]
