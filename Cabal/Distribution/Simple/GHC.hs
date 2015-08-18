@@ -332,11 +332,10 @@ checkPackageDbEnvVar =
     Internal.checkPackageDbEnvVar "GHC" "GHC_PACKAGE_PATH"
 
 checkPackageDbStack :: Compiler -> PackageDBStack -> IO ()
-checkPackageDbStack comp =
-  let ghcVersion = compilerVersion comp
-  in if ghcVersion < Version [7,6] []
-        then checkPackageDbStackPre76
-        else checkPackageDbStackPost76
+checkPackageDbStack comp = if flagPackageConf implInfo
+                              then checkPackageDbStackPre76
+                              else checkPackageDbStackPost76
+  where implInfo = ghcVersionImplInfo (compilerVersion comp)
 
 checkPackageDbStackPost76 :: PackageDBStack -> IO ()
 checkPackageDbStackPost76 (GlobalPackageDB:rest)
