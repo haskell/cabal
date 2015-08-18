@@ -15,7 +15,7 @@ module Distribution.Simple.Program.Ar (
     multiStageProgramInvocation
   ) where
 
-import Control.Monad (when, unless)
+import Control.Monad (unless)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
 import Data.Char (isSpace)
@@ -26,8 +26,6 @@ import Distribution.Simple.Program
 import Distribution.Simple.Program.Run
          ( programInvocation, multiStageProgramInvocation
          , runProgramInvocation )
-import qualified Distribution.Simple.Program.Strip as Strip
-         ( stripLib )
 import Distribution.Simple.Utils
          ( dieWithLocation, withTempDirectory )
 import Distribution.System
@@ -86,7 +84,6 @@ createArLibArchive verbosity lbi targetPath files = do
         | inv <- multiStageProgramInvocation
                    simple (initial, middle, final) files ]
 
-  when stripLib $ Strip.stripLib verbosity platform progConf tmpPath
   unless (hostArch == Arm) $ -- See #1537
     wipeMetadata tmpPath
   equal <- filesEqual tmpPath targetPath
@@ -94,8 +91,7 @@ createArLibArchive verbosity lbi targetPath files = do
 
   where
     progConf = withPrograms lbi
-    stripLib = stripLibs    lbi
-    platform@(Platform hostArch hostOS) = hostPlatform lbi
+    Platform hostArch hostOS = hostPlatform lbi
     verbosityOpts v | v >= deafening = ["-v"]
                     | v >= verbose   = []
                     | otherwise      = ["-c"]
