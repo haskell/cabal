@@ -452,23 +452,39 @@ verbosityOpts verbosity
   | otherwise              = ["-w", "-v0"]
 
 
-packageDbArgs :: GhcImplInfo -> PackageDBStack -> [String]
-packageDbArgs implInfo dbstack = case dbstack of
+packageDbArgsConf :: PackageDBStack -> [String]
+packageDbArgsConf dbstack = case dbstack of
   (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
-  (GlobalPackageDB:dbs)               -> ("-no-user-" ++ packageDbFlag)
+  (GlobalPackageDB:dbs)               -> ("-no-user-package-conf")
                                        : concatMap specific dbs
   _ -> ierror
   where
-    specific (SpecificPackageDB db) = [ '-':packageDbFlag , db ]
-    specific _ = ierror
-    ierror     = error $ "internal error: unexpected package db stack: "
-                      ++ show dbstack
-    packageDbFlag
-      | flagPackageConf implInfo
-      = "package-conf"
-      | otherwise
-      = "package-db"
+    specific (SpecificPackageDB db) = [ "-package-conf", db ]
+    specific _                      = ierror
+    ierror = error $ "internal error: unexpected package db stack: "
+                  ++ show dbstack
 
+packageDbArgsDb :: PackageDBStack -> [String]
+-- special cases to make arguments prettier in common scenarios
+packageDbArgsDb dbstack = case dbstack of
+  (GlobalPackageDB:UserPackageDB:dbs)
+    | all isSpecific dbs              -> concatMap single dbs
+  (GlobalPackageDB:dbs)
+    | all isSpecific dbs              -> "-no-user-package-db"
+                                       : concatMap single dbs
+  dbs                                 -> "-clear-package-db"
+                                       : concatMap single dbs
+ where
+   single (SpecificPackageDB db) = [ "-package-db", db ]
+   single GlobalPackageDB        = [ "-global-package-db" ]
+   single UserPackageDB          = [ "-user-package-db" ]
+   isSpecific (SpecificPackageDB _) = True
+   isSpecific _                     = False
+
+packageDbArgs :: GhcImplInfo -> PackageDBStack -> [String]
+packageDbArgs implInfo
+  | flagPackageConf implInfo = packageDbArgsConf
+  | otherwise                = packageDbArgsDb
 
 -- -----------------------------------------------------------------------------
 -- Boilerplate Monoid instance for GhcOptions
