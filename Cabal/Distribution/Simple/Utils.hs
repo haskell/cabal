@@ -238,8 +238,16 @@ die :: String -> IO a
 die msg = ioError (userError msg)
 
 topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
-topHandlerWith cont prog = Exception.catch prog handle
+topHandlerWith cont prog =
+    Exception.catches prog [
+        Exception.Handler rethrowAsyncExceptions
+      , Exception.Handler handle
+      ]
   where
+    -- Let async exceptions rise to the top for the default top-handler
+    rethrowAsyncExceptions :: Exception.AsyncException -> IO a
+    rethrowAsyncExceptions = throwIO
+
     handle :: Exception.SomeException -> IO a
     handle se = do
       hFlush stdout
