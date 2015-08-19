@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface, ScopedTypeVariables #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Simple.Utils
@@ -146,7 +146,9 @@ import Data.Char as Char
 import Data.Foldable
     ( traverse_ )
 import Data.List
-   ( nub, unfoldr, isPrefixOf, tails, intercalate )
+    ( nub, unfoldr, isPrefixOf, tails, intercalate )
+import Data.Typeable
+    ( cast )
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
 import qualified Data.Set as Set
@@ -235,23 +237,42 @@ dieWithLocation filename lineno msg =
 die :: String -> IO a
 die msg = ioError (userError msg)
 
-topHandlerWith :: (Exception.IOException -> IO a) -> IO a -> IO a
-topHandlerWith cont prog = catchIO prog handle
+topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
+topHandlerWith cont prog =
+    Exception.catches prog [
+        Exception.Handler rethrowAsyncExceptions
+      , Exception.Handler handle
+      ]
   where
-    handle ioe = do
+    -- Let async exceptions rise to the top for the default top-handler
+    rethrowAsyncExceptions :: Exception.AsyncException -> IO a
+    rethrowAsyncExceptions = throwIO
+
+    handle :: Exception.SomeException -> IO a
+    handle se = do
       hFlush stdout
       pname <- getProgName
-      hPutStr stderr (mesage pname)
-      cont ioe
-      where
-        mesage pname = wrapText (pname ++ ": " ++ file ++ detail)
-        file         = case ioeGetFileName ioe of
-                         Nothing   -> ""
-                         Just path -> path ++ location ++ ": "
-        location     = case ioeGetLocation ioe of
-                         l@(n:_) | Char.isDigit n -> ':' : l
-                         _                        -> ""
-        detail       = ioeGetErrorString ioe
+      hPutStr stderr (message pname se)
+      cont se
+
+    message :: String -> Exception.SomeException -> String
+    message pname (Exception.SomeException se) =
+      case cast se :: Maybe Exception.IOException of
+        Just ioe ->
+          let file         = case ioeGetFileName ioe of
+                               Nothing   -> ""
+                               Just path -> path ++ location ++ ": "
+              location     = case ioeGetLocation ioe of
+                               l@(n:_) | Char.isDigit n -> ':' : l
+                               _                        -> ""
+              detail       = ioeGetErrorString ioe
+          in wrapText (pname ++ ": " ++ file ++ detail)
+        Nothing ->
+#if __GLASGOW_HASKELL__ < 710
+          show se
+#else
+          Exception.displayException se
+#endif
 
 topHandler :: IO a -> IO a
 topHandler prog = topHandlerWith (const $ exitWith (ExitFailure 1)) prog
