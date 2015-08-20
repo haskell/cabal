@@ -40,6 +40,7 @@ module Distribution.Client.Targets (
 
   -- * User constraints
   UserConstraint(..),
+  userConstraintPackageName,
   readUserConstraint,
   userToPackageConstraint
 
@@ -692,6 +693,13 @@ data UserConstraint =
    | UserConstraintStanzas   PackageName [OptionalStanza]
   deriving (Show,Eq)
 
+userConstraintPackageName :: UserConstraint -> PackageName
+userConstraintPackageName uc = case uc of
+  UserConstraintVersion   name _ -> name
+  UserConstraintInstalled name   -> name
+  UserConstraintSource    name   -> name
+  UserConstraintFlags     name _ -> name
+  UserConstraintStanzas   name _ -> name
 
 userToPackageConstraint :: UserConstraint -> PackageConstraint
 -- At the moment, the types happen to be directly equivalent
