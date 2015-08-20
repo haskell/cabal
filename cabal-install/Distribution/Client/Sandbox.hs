@@ -61,7 +61,7 @@ import Distribution.Client.Install            ( InstallArgs,
 import Distribution.Utils.NubList            ( fromNubList )
 
 import Distribution.Client.Sandbox.PackageEnvironment
-  ( PackageEnvironment(..), IncludeComments(..), PackageEnvironmentType(..)
+  ( PackageEnvironment(..), PackageEnvironmentType(..)
   , createPackageEnvironmentFile, classifyPackageEnvironment
   , tryLoadSandboxPackageEnvironmentFile, loadUserConfig
   , commentPackageEnvironment, showPackageEnvironmentWithComments
@@ -318,8 +318,7 @@ sandboxInit verbosity sandboxFlags globalFlags = do
 
   -- Create the package environment file.
   pkgEnvFile <- getSandboxConfigFilePath globalFlags
-  createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile
-    NoComments comp platform
+  createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile comp platform
   (_sandboxDir, pkgEnv) <- tryLoadSandboxConfig verbosity globalFlags
   let config      = pkgEnvSavedConfig pkgEnv
       configFlags = savedConfigureFlags config
