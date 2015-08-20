@@ -11,7 +11,6 @@
 
 module Distribution.Client.Sandbox.PackageEnvironment (
     PackageEnvironment(..)
-  , IncludeComments(..)
   , PackageEnvironmentType(..)
   , classifyPackageEnvironment
   , createPackageEnvironmentFile
@@ -383,24 +382,16 @@ tryLoadSandboxPackageEnvironmentFile verbosity pkgEnvFile configFileFlag = do
              }
           }
 
--- | Should the generated package environment file include comments?
-data IncludeComments = IncludeComments | NoComments
-
 -- | Create a new package environment file, replacing the existing one if it
 -- exists. Note that the path parameters should point to existing directories.
 createPackageEnvironmentFile :: Verbosity -> FilePath -> FilePath
-                                -> IncludeComments
                                 -> Compiler
                                 -> Platform
                                 -> IO ()
-createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile incComments
-  compiler platform = do
-  notice verbosity $ "Writing a default package environment file to "
-    ++ pkgEnvFile
-
-  commentPkgEnv <- commentPackageEnvironment sandboxDir
+createPackageEnvironmentFile verbosity sandboxDir pkgEnvFile compiler platform = do
+  notice verbosity $ "Writing a default package environment file to " ++ pkgEnvFile
   initialPkgEnv <- initialPackageEnvironment sandboxDir compiler platform
-  writePackageEnvironmentFile pkgEnvFile incComments commentPkgEnv initialPkgEnv
+  writePackageEnvironmentFile pkgEnvFile initialPkgEnv
 
 -- | Descriptions of all fields in the package environment file.
 pkgEnvFieldDescrs :: ConstraintSource -> [FieldDescr PackageEnvironment]
@@ -536,18 +527,13 @@ type SectionsAccum = (HaddockFlags, InstallDirs (Flag PathTemplate)
                      , [(String, FilePath)], [(String, [String])])
 
 -- | Write out the package environment file.
-writePackageEnvironmentFile :: FilePath -> IncludeComments
-                               -> PackageEnvironment -> PackageEnvironment
-                               -> IO ()
-writePackageEnvironmentFile path incComments comments pkgEnv = do
+writePackageEnvironmentFile :: FilePath -> PackageEnvironment -> IO ()
+writePackageEnvironmentFile path pkgEnv = do
   let tmpPath = (path <.> "tmp")
   writeFile tmpPath $ explanation ++ pkgEnvStr ++ "\n"
   renameFile tmpPath path
   where
-    pkgEnvStr = case incComments of
-      IncludeComments -> showPackageEnvironmentWithComments
-                         (Just comments) pkgEnv
-      NoComments      -> showPackageEnvironment pkgEnv
+    pkgEnvStr = showPackageEnvironment pkgEnv
     explanation = unlines
       ["-- This is a Cabal package environment file."
       ,"-- THIS FILE IS AUTO-GENERATED. DO NOT EDIT DIRECTLY."
