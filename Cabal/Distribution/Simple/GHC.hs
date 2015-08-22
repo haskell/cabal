@@ -1075,11 +1075,13 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       let src = srcDir </> name
           dst = dstDir </> name
       createDirectoryIfMissingVerbose verbosity True dstDir
+
       if isShared
-        then do when (stripLibs lbi) $ Strip.stripLib verbosity
-                                       (hostPlatform lbi) (withPrograms lbi) src
-                installExecutableFile verbosity src dst
+        then installExecutableFile verbosity src dst
         else installOrdinaryFile   verbosity src dst
+
+      when (stripLibs lbi) $ Strip.stripLib verbosity
+                             (hostPlatform lbi) (withPrograms lbi) dst
 
     installOrdinary = install False
     installShared   = install True
