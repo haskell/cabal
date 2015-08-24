@@ -309,6 +309,7 @@ data ConfigFlags = ConfigFlags {
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
+    configIPID          :: Flag String, -- ^ explicit IPID to be used
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configVerbosity :: Flag Verbosity, -- ^verbosity level
@@ -573,6 +574,11 @@ configureOptions showOrParseArgs =
          configExtraIncludeDirs (\v flags -> flags {configExtraIncludeDirs = v})
          (reqArg' "PATH" (\x -> [x]) id)
 
+      ,option "" ["ipid"]
+         "Installed package ID to compile this package as"
+         configIPID (\v flags -> flags {configIPID = v})
+         (reqArgFlag "IPID")
+
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
@@ -795,6 +801,7 @@ instance Monoid ConfigFlags where
     configDependencies  = mempty,
     configInstantiateWith     = mempty,
     configExtraIncludeDirs    = mempty,
+    configIPID          = mempty,
     configConfigurationsFlags = mempty,
     configTests               = mempty,
     configCoverage         = mempty,
@@ -840,6 +847,7 @@ instance Monoid ConfigFlags where
     configDependencies  = combine configDependencies,
     configInstantiateWith     = combine configInstantiateWith,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
+    configIPID          = combine configIPID,
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests               = combine configTests,
     configCoverage         = combine configCoverage,

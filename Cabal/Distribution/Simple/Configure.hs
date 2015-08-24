@@ -112,6 +112,8 @@ import Distribution.Version
          ( Version(..), anyVersion, orLaterVersion, withinRange, isAnyVersion )
 import Distribution.Verbosity
     ( Verbosity, lessVerbose, silent )
+import Distribution.Simple.InstallDirs
+    ( fromPathTemplate, substPathTemplate, toPathTemplate, packageTemplateEnv )
 
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
@@ -621,7 +623,7 @@ configure (pkg_descr0, pbi) cfg
           case mkComponentsGraph pkg_descr internalPkgDeps of
             Left  componentCycle -> reportComponentCycle componentCycle
             Right components     ->
-              mkComponentsLocalBuildInfo comp packageDependsIndex pkg_descr
+              mkComponentsLocalBuildInfo cfg comp packageDependsIndex pkg_descr
                                          internalPkgDeps externalPkgDeps holeDeps
                                          (Map.fromList hole_insts)
                                          components (configConfigurationsFlags cfg)
@@ -1295,7 +1297,8 @@ reportComponentCycle cnames =
             [ "'" ++ showComponentName cname ++ "'"
             | cname <- cnames ++ [head cnames] ]
 
-mkComponentsLocalBuildInfo :: Compiler
+mkComponentsLocalBuildInfo :: ConfigFlags
+                           -> Compiler
                            -> InstalledPackageIndex
                            -> PackageDescription
                            -> [PackageId] -- internal package deps
@@ -1306,7 +1309,7 @@ mkComponentsLocalBuildInfo :: Compiler
                            -> FlagAssignment
                            -> IO [(ComponentName, ComponentLocalBuildInfo,
                                                   [ComponentName])]
-mkComponentsLocalBuildInfo comp installedPackages pkg_descr
+mkComponentsLocalBuildInfo cfg comp installedPackages pkg_descr
                            internalPkgDeps externalPkgDeps holePkgDeps hole_insts
                            graph flagAssignment =
     sequence
@@ -1344,27 +1347,34 @@ mkComponentsLocalBuildInfo comp installedPackages pkg_descr
             version_hash = packageKeyLibraryName (package pkg_descr) pkg_key
 
         -- Calculate IPID
-        ipid <- do
-          -- sdist produces too much noise, so silent
-          (ordfiles, exefiles) <-
-            listPackageSources silent pkg_descr knownSuffixHandlers
-          let files = sort $ ordfiles ++ exefiles
-          fileHashes <-
+        ipid <-
+          case configIPID cfg of
+            Flag ipid ->
+                -- Hack to reuse install dirs machinery
+                let env = packageTemplateEnv (package pkg_descr) version_hash
+                in return . InstalledPackageId
+                       $ fromPathTemplate (substPathTemplate env (toPathTemplate ipid))
+            _ -> do
+              -- sdist produces too much noise, so silent
+              (ordfiles, exefiles) <-
+                listPackageSources silent pkg_descr knownSuffixHandlers
+              let files = sort $ ordfiles ++ exefiles
+              fileHashes <-
 #if __GLASGOW_HASKELL__ >= 710
-            mapM getFileHash files
+                mapM getFileHash files
 #else
-            mapM (\x -> readFile x >>= (return . fingerprintString)) files
+                mapM (\x -> readFile x >>= (return . fingerprintString)) files
 #endif
-          -- show is found to be faster than intercalate and then replacement of
-          -- special character used in intercalating. We cannot simply hash by
-          -- doubly concating list, as it just flatten out the nested list, so
-          -- different sources can produce same hash
-          return $ InstalledPackageId $ (display (package pkg_descr)) ++ "-" ++
-            (hashToBase62 $
-              (show $ map Installed.installedPackageId externalPkgs)
-                        ++ show (zip files $
-                             map (flip showHex "" . fpToInteger) fileHashes)
-                        ++ show flagAssignment)
+              -- show is found to be faster than intercalate and then replacement of
+              -- special character used in intercalating. We cannot simply hash by
+              -- doubly concating list, as it just flatten out the nested list, so
+              -- different sources can produce same hash
+              return $ InstalledPackageId $ (display (package pkg_descr)) ++ "-" ++
+                (hashToBase62 $
+                  (show $ map Installed.installedPackageId externalPkgs)
+                            ++ show (zip files $
+                                 map (flip showHex "" . fpToInteger) fileHashes)
+                            ++ show flagAssignment)
 
         return LibComponentLocalBuildInfo {
           componentPackageDeps = cpds,
