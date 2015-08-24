@@ -683,9 +683,15 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- However, this is the same behaviour that 'cabal install' has in the normal
   -- mode of operation, so we stick to it for consistency.
 
+  let installFlags'   = defaultInstallFlags          `mappend`
+                        savedInstallFlags     config `mappend` installFlags
+
+  (_, platform', _) <- let configFlags' = maybeForceTests installFlags' $
+                                          savedConfigureFlags   config `mappend` configFlags
+                       in configCompilerAux' configFlags'
   let sandboxDistPref = case useSandbox of
         NoSandbox             -> NoFlag
-        UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir
+        UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir platform'
   distPref <- findSavedDistPref config
               (configDistPref configFlags `mappend` sandboxDistPref)
 
@@ -694,8 +700,6 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
                         configFlags { configDistPref = toFlag distPref }
       configExFlags'  = defaultConfigExFlags         `mappend`
                         savedConfigureExFlags config `mappend` configExFlags
-      installFlags'   = defaultInstallFlags          `mappend`
-                        savedInstallFlags     config `mappend` installFlags
       haddockFlags'   = defaultHaddockFlags          `mappend`
                         savedHaddockFlags     config `mappend`
                         haddockFlags { haddockDistPref = toFlag distPref }

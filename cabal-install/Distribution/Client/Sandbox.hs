@@ -93,7 +93,7 @@ import Distribution.Simple.Utils              ( die, debug, notice, info, warn
                                               , intercalate, topHandlerWith
                                               , createDirectoryIfMissingVerbose )
 import Distribution.Package                   ( Package(..) )
-import Distribution.System                    ( Platform )
+import Distribution.System                    ( Platform(..) )
 import Distribution.Text                      ( display )
 import Distribution.Verbosity                 ( Verbosity, lessVerbose )
 import Distribution.Compat.Environment        ( lookupEnv, setEnv )
@@ -141,10 +141,10 @@ snapshotDirectoryName = "snapshots"
 
 -- | Non-standard build dir that is used for building add-source deps instead of
 -- "dist". Fixes surprising behaviour in some cases (see issue #1281).
-sandboxBuildDir :: FilePath -> FilePath
-sandboxBuildDir sandboxDir = "dist/dist-sandbox-" ++ showHex sandboxDirHash ""
+sandboxBuildDir :: FilePath -> Platform -> FilePath
+sandboxBuildDir sandboxDir (Platform arch _) = "dist/dist-sandbox-" ++ showHex sandboxDirHash ""
   where
-    sandboxDirHash = jenkins sandboxDir
+    sandboxDirHash = jenkins $ sandboxDir ++ show arch
 
     -- See http://en.wikipedia.org/wiki/Jenkins_hash_function
     jenkins :: String -> Word32
@@ -598,7 +598,8 @@ reinstallAddSourceDeps :: Verbosity
                           -> IO WereDepsReinstalled
 reinstallAddSourceDeps verbosity configFlags' configExFlags
                        installFlags globalFlags sandboxDir = topHandler' $ do
-  let sandboxDistPref     = sandboxBuildDir sandboxDir
+  (_, platform', _)      <- configCompilerAux' configFlags'
+  let sandboxDistPref     = sandboxBuildDir sandboxDir platform'
       configFlags         = configFlags'
                             { configDistPref  = Flag sandboxDistPref }
       haddockFlags        = mempty
