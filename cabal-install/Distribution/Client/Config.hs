@@ -76,6 +76,8 @@ import Distribution.ParseUtils
          , parseFilePathQ, parseTokenQ )
 import Distribution.Client.ParseUtils
          ( parseFields, ppFields, ppSection )
+import Distribution.Client.HttpUtils
+         ( isOldHackageURI )
 import qualified Distribution.ParseUtils as ParseUtils
          ( Field(..) )
 import qualified Distribution.Text as Text
@@ -503,10 +505,9 @@ defaultRemoteRepo = RemoteRepo name uri () False
 --
 addInfoForKnownRepos :: RemoteRepo -> RemoteRepo
 addInfoForKnownRepos repo@RemoteRepo{ remoteRepoName = "hackage.haskell.org" } =
-    repo {
-      --remoteRepoRootKeys --TODO: when this list is empty, fill in known crypto credentials
-      remoteRepoShouldTryHttps = True
-    }
+    tryHttps $ if isOldHackageURI (remoteRepoURI repo) then defaultRemoteRepo else repo
+  where
+    tryHttps       r = r { remoteRepoShouldTryHttps = True }
 addInfoForKnownRepos other = other
 
 --
