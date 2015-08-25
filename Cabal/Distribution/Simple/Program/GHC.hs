@@ -452,6 +452,7 @@ verbosityOpts verbosity
   | otherwise              = ["-w", "-v0"]
 
 
+-- | GHC <7.6 uses '-package-conf' instead of '-package-db'.
 packageDbArgsConf :: PackageDBStack -> [String]
 packageDbArgsConf dbstack = case dbstack of
   (GlobalPackageDB:UserPackageDB:dbs) -> concatMap specific dbs
@@ -464,6 +465,8 @@ packageDbArgsConf dbstack = case dbstack of
     ierror = error $ "internal error: unexpected package db stack: "
                   ++ show dbstack
 
+-- | GHC >= 7.6 uses the '-package-db' flag. See
+-- https://ghc.haskell.org/trac/ghc/ticket/5977.
 packageDbArgsDb :: PackageDBStack -> [String]
 -- special cases to make arguments prettier in common scenarios
 packageDbArgsDb dbstack = case dbstack of
