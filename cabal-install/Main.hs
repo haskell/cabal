@@ -686,12 +686,12 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   let installFlags'   = defaultInstallFlags          `mappend`
                         savedInstallFlags     config `mappend` installFlags
 
-  (_, platform', _) <- let configFlags' = maybeForceTests installFlags' $
-                                          savedConfigureFlags   config `mappend` configFlags
-                       in configCompilerAux' configFlags'
+  (comp', platform', _) <- let configFlags' = maybeForceTests installFlags' $
+                                              savedConfigureFlags config `mappend` configFlags
+                           in configCompilerAux' configFlags'
   let sandboxDistPref = case useSandbox of
         NoSandbox             -> NoFlag
-        UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir platform'
+        UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir comp' platform'
   distPref <- findSavedDistPref config
               (configDistPref configFlags `mappend` sandboxDistPref)
 

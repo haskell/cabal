@@ -78,6 +78,7 @@ import Distribution.PackageDescription.Configuration
                                               ( flattenPackageDescription )
 import Distribution.PackageDescription.Parse  ( readPackageDescription )
 import Distribution.Simple.Compiler           ( Compiler(..), PackageDB(..)
+                                              , showCompilerIdWithAbi
                                               , PackageDBStack )
 import Distribution.Simple.Configure          ( configCompilerAuxEx
                                               , interpretPackageDbFlags
@@ -141,10 +142,12 @@ snapshotDirectoryName = "snapshots"
 
 -- | Non-standard build dir that is used for building add-source deps instead of
 -- "dist". Fixes surprising behaviour in some cases (see issue #1281).
-sandboxBuildDir :: FilePath -> Platform -> FilePath
-sandboxBuildDir sandboxDir (Platform arch _) = "dist/dist-sandbox-" ++ showHex sandboxDirHash ""
+sandboxBuildDir :: FilePath -> Compiler -> Platform -> FilePath
+sandboxBuildDir sandboxDir = buildDir sandboxDirHashPath
   where
-    sandboxDirHash = jenkins $ sandboxDir ++ show arch
+    buildDir path compiler platform = path </> (display platform ++ "-" ++ showCompilerIdWithAbi compiler)
+    sandboxDirHashPath = "dist" </> ("dist-" ++ showHex sandboxDirHash "")
+    sandboxDirHash = jenkins sandboxDir
 
     -- See http://en.wikipedia.org/wiki/Jenkins_hash_function
     jenkins :: String -> Word32
@@ -598,8 +601,8 @@ reinstallAddSourceDeps :: Verbosity
                           -> IO WereDepsReinstalled
 reinstallAddSourceDeps verbosity configFlags' configExFlags
                        installFlags globalFlags sandboxDir = topHandler' $ do
-  (_, platform', _)      <- configCompilerAux' configFlags'
-  let sandboxDistPref     = sandboxBuildDir sandboxDir platform'
+  (comp', platform', _)  <- configCompilerAux' configFlags'
+  let sandboxDistPref     = sandboxBuildDir sandboxDir comp' platform'
       configFlags         = configFlags'
                             { configDistPref  = Flag sandboxDistPref }
       haddockFlags        = mempty
