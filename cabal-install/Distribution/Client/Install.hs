@@ -67,7 +67,7 @@ import System.IO.Error
 
 import Distribution.Client.Targets
 import Distribution.Client.Configure
-         ( chooseCabalVersion, configureSetupScript )
+         ( chooseCabalVersion, configureSetupScript, checkConfigExFlags )
 import Distribution.Client.Dependency
 import Distribution.Client.Dependency.Types
          ( Solver(..), ConstraintSource(..), LabeledPackageConstraint(..) )
@@ -254,10 +254,12 @@ makeInstallContext :: Verbosity -> InstallArgs -> Maybe [UserTarget]
                       -> IO InstallContext
 makeInstallContext verbosity
   (packageDBs, repos, comp, _, conf,_,_,
-   globalFlags, _, _, _, _) mUserTargets = do
+   globalFlags, _, configExFlags, _, _) mUserTargets = do
 
     installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
     sourcePkgDb       <- getSourcePackages    verbosity repos
+    checkConfigExFlags verbosity installedPkgIndex
+                       (packageIndex sourcePkgDb) configExFlags
     transport <- configureTransport verbosity
                  (flagToMaybe (globalHttpTransport globalFlags))
 
