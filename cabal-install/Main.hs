@@ -1090,7 +1090,7 @@ getAction :: GetFlags -> [String] -> GlobalFlags -> IO ()
 getAction getFlags extraArgs globalFlags = do
   let verbosity = fromFlag (getVerbosity getFlags)
   targets <- readUserTargets verbosity extraArgs
-  config <- loadConfig verbosity (globalConfigFile globalFlags)
+  (_useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags mempty
   let globalFlags' = savedGlobalFlags config `mappend` globalFlags
   get verbosity
     (globalRepos (savedGlobalFlags config))
