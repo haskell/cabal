@@ -749,7 +749,7 @@ reportPlanningFailure verbosity
     case logFile of
       Nothing -> return ()
       Just template -> forM_ pkgids $ \pkgid ->
-        let env = initialPathTemplateEnv pkgid dummyIpid
+        let env = initialPathTemplateEnv pkgid dummyKey
                     (compilerInfo comp) platform
             path = fromPathTemplate $ substPathTemplate env template
         in  writeFile path message
@@ -758,10 +758,10 @@ reportPlanningFailure verbosity
     reportFailure = fromFlag (installReportPlanningFailure installFlags)
     logFile = flagToMaybe (installLogFile installFlags)
 
-    -- A IPID is calculated from the transitive closure of
+    -- A key is calculated from the transitive closure of
     -- dependencies, but when the solver fails we don't have that.
     -- So we fail.
-    dummyIpid = error "reportPlanningFailure: installed package ID not available"
+    dummyKey = error "reportPlanningFailure: key not available"
 
 -- | If a 'PackageSpecifier' refers to a single package, return Just that
 -- package.

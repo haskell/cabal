@@ -29,18 +29,15 @@ suite config = do
                 }
     removeDirectoryRecursive (dir </> db) `catchIO` const (return ())
     _ <- run Nothing (ghcPkgPath config) [] ["init", dir </> db]
-    _ <- cabal_configure config spec1
-    _ <- cabal_configure config spec2
-    _ <- cabal_build config spec1
-    _ <- cabal_build config spec1 -- test rebuild cycle works
+    assertConfigureSucceeded =<< cabal_configure config spec1
+    assertConfigureSucceeded =<< cabal_configure config spec2
+    assertBuildSucceeded =<< cabal_build config spec1
+    assertBuildSucceeded =<< cabal_build config spec1 -- test rebuild cycle works
     hResult1 <- cabal_register config spec1 ["--print-ipid", "--inplace"]
     assertRegisterSucceeded hResult1
-    _ <- cabal_build config spec2
+    assertBuildSucceeded =<< cabal_build config spec2
     hResult2 <- cabal_register config spec2 ["--print-ipid", "--inplace"]
     assertRegisterSucceeded hResult2
-    -- Second register will fail
-    hResult3 <- cabal_register config spec2 ["--inplace"]
-    assertRegisterFailed hResult3
     when ((exIPID $ outputText hResult1) == (exIPID $ outputText hResult2)) $
       assertFailure $ "cabal has not calculated different Installed " ++
         "package ID when source is changed."

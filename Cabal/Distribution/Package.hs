@@ -128,10 +128,10 @@ instance Text InstalledPackageId where
 -- * Package Keys
 -- ------------------------------------------------------------
 
--- | A 'UnitKey' uniquely identifies an entry in the installed
+-- | A 'PackageKey' uniquely identifies an entry in the installed
 -- database; it's used for install paths, symbols, etc.  In fact,
--- 'UnitKey's are equivalent to 'InstalledPackageId's when no
--- Backpack is involved.  However, with Backpack, a 'UnitKey' additionally
+-- 'PackageKey's are equivalent to 'InstalledPackageId's when no
+-- Backpack is involved.  However, with Backpack, a 'PackageKey' additionally
 -- what unit in a package is used, as well as how the requirements of
 -- a unit were filled.
 --

@@ -234,6 +234,7 @@ library
     Distribution.Simple.Test.LibV09
     Distribution.Simple.Test.Log
     Distribution.Simple.UHC
+    Distribution.Simple.UnitIndex
     Distribution.Simple.UserHooks
     Distribution.Simple.Utils
     Distribution.System

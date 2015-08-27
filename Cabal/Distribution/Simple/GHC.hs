@@ -1127,16 +1127,17 @@ registerPackage
   -> Bool
   -> PackageDBStack
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs = do
+registerPackage verbosity installedPkgInfo _pkg lbi inplace packageDbs = do
   -- Sanity check: make sure we aren't clobbering something with
-  -- the same key
+  -- the same key (but only do this for non-inplace registration).
   let hpi = hcPkgInfo $ withPrograms lbi
-  old_pkgs <- HcPkg.describe hpi verbosity packageDbs
-                    (InstalledPackageInfo.sourcePackageId installedPkgInfo)
-  let key = InstalledPackageInfo.packageKey installedPkgInfo
-  when (any ((==key) . InstalledPackageInfo.packageKey) old_pkgs)
-    . die $ "identical key " ++ display key ++ " already exists in DB; "
-         ++ programId (HcPkg.hcPkgProgram hpi) ++ " unregister it first."
+  when (not inplace) $ do
+    old_pkgs <- HcPkg.describe hpi verbosity packageDbs
+                      (InstalledPackageInfo.sourcePackageId installedPkgInfo)
+    let key = InstalledPackageInfo.packageKey installedPkgInfo
+    when (any ((==key) . InstalledPackageInfo.packageKey) old_pkgs)
+      . die $ "identical key " ++ display key ++ " already exists in DB; "
+           ++ programId (HcPkg.hcPkgProgram hpi) ++ " unregister it first."
   HcPkg.reregister hpi verbosity
     packageDbs (Right installedPkgInfo)
 
