@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 711
+{-# LANGUAGE PatternSynonyms #-}
+#endif
 
 #ifndef MIN_VERSION_binary
 #define MIN_VERSION_binary(x, y, z) 0
@@ -14,7 +17,12 @@ module Distribution.Compat.Binary
 #endif
        ) where
 
-import Control.Exception (ErrorCall(..), catch, evaluate)
+import Control.Exception (catch, evaluate)
+#if __GLASGOW_HASKELL__ >= 711
+import Control.Exception (pattern ErrorCall)
+#else
+import Control.Exception (ErrorCall(..))
+#endif
 import Data.ByteString.Lazy (ByteString)
 
 #if __GLASGOW_HASKELL__ < 706

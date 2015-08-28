@@ -2,6 +2,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+#if __GLASGOW_HASKELL__ >= 711
+{-# LANGUAGE PatternSynonyms #-}
+#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -122,7 +125,12 @@ import qualified Distribution.Simple.HaskellSuite as HaskellSuite
 -- Prefer the more generic Data.Traversable.mapM to Prelude.mapM
 import Prelude hiding ( mapM )
 import Control.Exception
-    ( ErrorCall(..), Exception, evaluate, throw, throwIO, try )
+    ( Exception, evaluate, throw, throwIO, try )
+#if __GLASGOW_HASKELL__ >= 711
+import Control.Exception ( pattern ErrorCall )
+#else
+import Control.Exception ( ErrorCall(..) )
+#endif
 import Control.Monad
     ( liftM, when, unless, foldM, filterM )
 import Distribution.Compat.Binary ( decodeOrFailIO, encode )
