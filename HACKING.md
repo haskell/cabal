@@ -21,6 +21,13 @@ list, which is a good place to ask questions.
 
 [Cabal/tests/README.md]: Cabal/tests/README.md
 
+Setting up on a Unix-like system
+--------------------------------
+
+The instructions below have been compiled into a Bash script which can
+do the setup in a fully automated fashion. See the file `setup-dev.sh`
+in the root directory of this Git repository.
+
 Building Cabal from git cloned sources and running the tests
 ------------------------------------------------------------
 
