@@ -241,6 +241,7 @@ topHandlerWith :: forall a. (Exception.SomeException -> IO a) -> IO a -> IO a
 topHandlerWith cont prog =
     Exception.catches prog [
         Exception.Handler rethrowAsyncExceptions
+      , Exception.Handler rethrowExitStatus
       , Exception.Handler handle
       ]
   where
@@ -248,6 +249,11 @@ topHandlerWith cont prog =
     rethrowAsyncExceptions :: Exception.AsyncException -> IO a
     rethrowAsyncExceptions = throwIO
 
+    -- ExitCode gets thrown asynchronously too, and we don't want to print it
+    rethrowExitStatus :: ExitCode -> IO a
+    rethrowExitStatus = throwIO
+
+    -- Print all other exceptions
     handle :: Exception.SomeException -> IO a
     handle se = do
       hFlush stdout
