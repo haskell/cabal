@@ -19,9 +19,8 @@ import Data.Foldable (forM_)
 import qualified Distribution.Simple.GHC   as GHC
 import qualified Distribution.Simple.GHCJS as GHCJS
 
-import Distribution.Client.Sandbox (getSandboxConfigFilePath)
 import Distribution.Client.Sandbox.PackageEnvironment (sandboxPackageDBPath)
-import Distribution.Client.Sandbox.Types              (UseSandbox (..))
+import Distribution.Client.Sandbox.Types              (UseSandbox (..), SandboxMetadata(..))
 
 import Distribution.Simple.Compiler    (Compiler, CompilerFlavor(..), compilerFlavor)
 import Distribution.Simple.Program     (ghcProgram, ghcjsProgram, lookupProgram)
@@ -38,7 +37,6 @@ import System.Directory ( doesDirectoryExist )
 import System.FilePath (searchPathSeparator, (</>))
 #if !MIN_VERSION_base(4,8,0)
 import Control.Applicative ((<$>))
-import Data.Monoid (mempty)
 #endif
 
 
@@ -65,23 +63,23 @@ exec verbosity useSandbox comp platform programDb extraArgs =
 
         [] -> die "Please specify an executable to run"
   where
-    environmentOverrides = 
+    environmentOverrides =
         case useSandbox of
             NoSandbox -> return []
-            (UseSandbox sandboxDir) ->
-                sandboxEnvironment verbosity sandboxDir comp platform programDb
+            (UseSandbox sandboxMetadata) ->
+                sandboxEnvironment verbosity sandboxMetadata comp platform programDb
 
 
 -- | Return the package's sandbox environment.
 --
 -- The environment sets GHC_PACKAGE_PATH so that GHC will use the sandbox.
 sandboxEnvironment :: Verbosity
-                   -> FilePath
+                   -> SandboxMetadata
                    -> Compiler
                    -> Platform
                    -> ProgramDb
                    -> IO [(String, Maybe String)]
-sandboxEnvironment verbosity sandboxDir comp platform programDb =
+sandboxEnvironment verbosity sandboxMetadata comp platform programDb =
     case compilerFlavor comp of
       GHC   -> env GHC.getGlobalPackageDB   ghcProgram   "GHC_PACKAGE_PATH"
       GHCJS -> env GHCJS.getGlobalPackageDB ghcjsProgram "GHCJS_PACKAGE_PATH"
@@ -90,7 +88,7 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
     env getGlobalPackageDB hcProgram packagePathEnvVar = do
         let Just program = lookupProgram hcProgram programDb
         gDb <- getGlobalPackageDB verbosity program
-        sandboxConfigFilePath <- getSandboxConfigFilePath mempty
+        let sandboxConfigFilePath = smSandboxConfigFile sandboxMetadata
         let compilerPackagePath = hcPackagePath gDb
         -- Packages database must exist, otherwise things will start
         -- failing in mysterious ways.
@@ -104,6 +102,7 @@ sandboxEnvironment verbosity sandboxDir comp platform programDb =
                ]
 
     hcPackagePath gDb =
+        let sandboxDir = smSandboxDirectory sandboxMetadata in
         let s = sandboxPackageDBPath sandboxDir comp platform
             in Just $ prependToSearchPath gDb s
 
@@ -129,5 +128,6 @@ requireProgram' verbosity useSandbox programDb exe = do
         flip modifyProgramSearchPath programDb $ \searchPath ->
             case useSandbox of
                 NoSandbox -> searchPath
-                UseSandbox sandboxDir ->
+                UseSandbox sandboxMetadata ->
+                  let sandboxDir = smSandboxDirectory sandboxMetadata in
                     ProgramSearchPathDir (sandboxDir </> "bin") : searchPath
