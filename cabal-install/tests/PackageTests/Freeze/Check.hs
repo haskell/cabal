@@ -42,7 +42,7 @@ tests paths =
               " ghc-prim ==" `isInfixOf` (intercalate " " $ lines $ c)
 
     , testCase "does not freeze packages which are not dependend upon" $ do
-          -- XXX Test this against a package installed in the sandbox but
+          -- TODO: Test this against a package installed in the sandbox but
           -- not depended upon.
           removeCabalConfig
           result <- cabal_freeze paths dir []
