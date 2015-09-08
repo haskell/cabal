@@ -1146,7 +1146,7 @@ checkCabalVersion pkg =
     depsUsingWildcardSyntax = [ dep | dep@(Dependency _ vr) <- buildDepends pkg
                                     , usesWildcardSyntax vr ]
 
-    -- XXX: If the user writes build-depends: foo with (), this is
+    -- TODO: If the user writes build-depends: foo with (), this is
     -- indistinguishable from build-depends: foo, so there won't be an
     -- error even though there should be
     depsUsingThinningRenamingSyntax =

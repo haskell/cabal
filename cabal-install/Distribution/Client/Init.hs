@@ -381,7 +381,7 @@ getModulesBuildToolsAndDeps :: InstalledPackageIndex -> InitFlags -> IO InitFlag
 getModulesBuildToolsAndDeps pkgIx flags = do
   dir <- maybe getCurrentDirectory return . flagToMaybe $ packageDir flags
 
-  -- XXX really should use guessed source roots.
+  -- TODO: really should use guessed source roots.
   sourceFiles <- scanForModules dir
 
   Just mods <-      return (exposedModules flags)
