@@ -9,39 +9,17 @@
 -----------------------------------------------------------------------------
 
 module Distribution.Client.Sandbox.Types (
-  UseSandbox(..), isUseSandbox, whenUsingSandbox,
+  UseSandbox(..),
   SandboxPackageInfo(..)
   ) where
 
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.Types (SourcePackage)
 
-#if !MIN_VERSION_base(4,8,0)
-import Data.Monoid
-#endif
 import qualified Data.Set as S
 
--- | Are we using a sandbox?
-data UseSandbox = UseSandbox FilePath | NoSandbox
-
-instance Monoid UseSandbox where
-  mempty = NoSandbox
-
-  NoSandbox        `mappend` s                  = s
-  u0@(UseSandbox _) `mappend` NoSandbox         = u0
-  (UseSandbox   _)  `mappend` u1@(UseSandbox _) = u1
-
--- | Convert a @UseSandbox@ value to a boolean. Useful in conjunction with
--- @when@.
-isUseSandbox :: UseSandbox -> Bool
-isUseSandbox (UseSandbox _) = True
-isUseSandbox NoSandbox      = False
-
--- | Execute an action only if we're in a sandbox, feeding to it the path to the
--- sandbox directory.
-whenUsingSandbox :: UseSandbox -> (FilePath -> IO ()) -> IO ()
-whenUsingSandbox NoSandbox               _   = return ()
-whenUsingSandbox (UseSandbox sandboxDir) act = act sandboxDir
+-- | Are we using a sandbox? XXX: Comment update
+data UseSandbox = UseSandbox { usSandboxDir :: FilePath }
 
 -- | Data about the packages installed in the sandbox that is passed from
 -- 'reinstallAddSourceDeps' to the solver.

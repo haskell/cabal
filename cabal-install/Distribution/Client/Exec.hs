@@ -65,11 +65,9 @@ exec verbosity useSandbox comp platform programDb extraArgs =
 
         [] -> die "Please specify an executable to run"
   where
-    environmentOverrides = 
-        case useSandbox of
-            NoSandbox -> return []
-            (UseSandbox sandboxDir) ->
-                sandboxEnvironment verbosity sandboxDir comp platform programDb
+    environmentOverrides =
+      let sandboxDir = usSandboxDir useSandbox in
+        sandboxEnvironment verbosity sandboxDir comp platform programDb
 
 
 -- | Return the package's sandbox environment.
@@ -118,7 +116,7 @@ requireProgram' :: Verbosity
                 -> ProgramDb
                 -> String
                 -> IO ConfiguredProgram
-requireProgram' verbosity useSandbox programDb exe = do
+requireProgram' verbosity (UseSandbox sandboxDir) programDb exe = do
     (program, _) <- requireProgram
                         verbosity
                         (simpleProgram exe)
@@ -127,7 +125,4 @@ requireProgram' verbosity useSandbox programDb exe = do
   where
     updateSearchPath =
         flip modifyProgramSearchPath programDb $ \searchPath ->
-            case useSandbox of
-                NoSandbox -> searchPath
-                UseSandbox sandboxDir ->
-                    ProgramSearchPathDir (sandboxDir </> "bin") : searchPath
+          ProgramSearchPathDir (sandboxDir </> "bin") : searchPath

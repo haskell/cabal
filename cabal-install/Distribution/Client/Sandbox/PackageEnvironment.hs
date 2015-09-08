@@ -11,8 +11,6 @@
 
 module Distribution.Client.Sandbox.PackageEnvironment (
     PackageEnvironment(..)
-  , PackageEnvironmentType(..)
-  , classifyPackageEnvironment
   , createPackageEnvironmentFile
   , tryLoadSandboxPackageEnvironmentFile
   , readPackageEnvironmentFile
@@ -48,7 +46,7 @@ import Distribution.Simple.InstallDirs ( InstallDirs(..), PathTemplate
                                        , fromPathTemplate, toPathTemplate )
 import Distribution.Simple.Setup       ( Flag(..)
                                        , ConfigFlags(..), HaddockFlags(..)
-                                       , fromFlagOrDefault, toFlag, flagToMaybe )
+                                       , fromFlagOrDefault, toFlag )
 import Distribution.Simple.Utils       ( die, info, notice, warn )
 import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , commaListField, commaNewLineListField
@@ -58,14 +56,13 @@ import Distribution.ParseUtils         ( FieldDescr(..), ParseResult(..)
                                        , syntaxError, warning )
 import Distribution.System             ( Platform )
 import Distribution.Verbosity          ( Verbosity, normal )
-import Control.Monad                   ( foldM, liftM2, when, unless )
+import Control.Monad                   ( foldM, when, unless )
 import Data.List                       ( partition )
-import Data.Maybe                      ( isJust )
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid                     ( Monoid(..) )
 #endif
 import Distribution.Compat.Exception   ( catchIO )
-import System.Directory                ( doesDirectoryExist, doesFileExist
+import System.Directory                ( doesDirectoryExist
                                        , renameFile )
 import System.FilePath                 ( (<.>), (</>), takeDirectory )
 import System.IO.Error                 ( isDoesNotExistError )
@@ -112,32 +109,6 @@ sandboxPackageEnvironmentFile = "cabal.sandbox.config"
 -- settings. Created by the user.
 userPackageEnvironmentFile :: FilePath
 userPackageEnvironmentFile = "cabal.config"
-
--- | Type of the current package environment.
-data PackageEnvironmentType =
-  SandboxPackageEnvironment   -- ^ './cabal.sandbox.config'
-  | UserPackageEnvironment    -- ^ './cabal.config'
-  | AmbientPackageEnvironment -- ^ '~/.cabal/config'
-
--- | Is there a 'cabal.sandbox.config' or 'cabal.config' in this
--- directory?
-classifyPackageEnvironment :: FilePath -> Flag FilePath -> Flag Bool
-                              -> IO PackageEnvironmentType
-classifyPackageEnvironment pkgEnvDir sandboxConfigFileFlag ignoreSandboxFlag =
-  do isSandbox <- liftM2 (||) (return forceSandboxConfig)
-                  (configExists sandboxPackageEnvironmentFile)
-     isUser    <- configExists userPackageEnvironmentFile
-     return (classify isSandbox isUser)
-  where
-    configExists fname   = doesFileExist (pkgEnvDir </> fname)
-    ignoreSandbox        = fromFlagOrDefault False ignoreSandboxFlag
-    forceSandboxConfig   = isJust . flagToMaybe $ sandboxConfigFileFlag
-
-    classify :: Bool -> Bool -> PackageEnvironmentType
-    classify True _
-      | not ignoreSandbox = SandboxPackageEnvironment
-    classify _    True    = UserPackageEnvironment
-    classify _    False   = AmbientPackageEnvironment
 
 -- | Defaults common to 'initialPackageEnvironment' and
 -- 'commentPackageEnvironment'.

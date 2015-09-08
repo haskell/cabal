@@ -340,6 +340,7 @@ data ConfigFlags = ConfigFlags {
 
 instance Binary ConfigFlags
 
+-- XXX: This is actually no longer used by cabal-install!
 configAbsolutePaths :: ConfigFlags -> IO ConfigFlags
 configAbsolutePaths f =
   (\v -> f { configPackageDBs = v })
