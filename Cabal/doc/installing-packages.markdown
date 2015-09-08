@@ -1019,6 +1019,45 @@ This command takes the following options:
     any supplemental files installed --- plain Haskell libraries should
     be fine.
 
+### Package Identifiers ###
+
+When a package is registered in a DB, it is registered with various identifiers
+for identifying it. Currently there are following identifiers:
+
+#### Package name ####
+
+The name of package like "bytestring". It is fully specified in package
+description file.
+
+#### Package version ####
+
+The version of the package like "0.10.6.0". It is fully specified in package
+description file.
+
+#### Package ID ####
+
+Concatenation of package name and package version with `-` in between. It can be
+calculated from package description file.
+
+#### Package Key ####
+
+It is required for doing full recompilation if any of its direct or indirect
+dependencies is changed. It is a merkle tree of package IDs, meaning it is
+calculated by hashing the package ID of the package plus the package key of all
+its dependencies. A change in Package Key implies that there is a change in
+dependency tree, but same package key can produce different builds as its hash
+does not include source or output. It is calculated in configure step.
+
+#### Installed Package ID ####
+
+This identifier uniquely identifies the package. Same Installed Package ID means
+a package will behave exactly the same way. Currently it is calculated by
+hashing the source of the package, flag assignments passed and Installed Package
+ID of all dependencies in configure step. Earlier it was calculated by taking
+GHC ABI hash of the library (meaning it can be replaced with other package with
+same Installed package ID but does not guarantee same behaviour) in the register
+step.
+
 ## setup unregister ##
 
 Deregister this package with the compiler.

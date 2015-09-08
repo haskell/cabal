@@ -64,14 +64,17 @@ data InstalledPackageInfo = InstalledPackageInfo {
 mkInstalledPackageId :: Current.PackageIdentifier -> Current.InstalledPackageId
 mkInstalledPackageId = Current.InstalledPackageId . display
 
+mkPackageKey :: Current.PackageIdentifier -> Current.PackageKey
+mkPackageKey = Current.PackageKey . display
+
 toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
 toCurrent ipi@InstalledPackageInfo{} =
   let pid = convertPackageId (package ipi)
       mkExposedModule m = Current.ExposedModule m Nothing Nothing
   in Current.InstalledPackageInfo {
-    Current.installedPackageId = mkInstalledPackageId (convertPackageId (package ipi)),
+    Current.installedPackageId = mkInstalledPackageId pid,
     Current.sourcePackageId    = pid,
-    Current.packageKey         = Current.OldPackageKey pid,
+    Current.packageKey         = mkPackageKey pid,
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
     Current.maintainer         = maintainer ipi,
@@ -82,6 +85,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.synopsis           = "",
     Current.description        = description ipi,
     Current.category           = category ipi,
+    Current.abiHash            = Current.AbiHash "",
     Current.exposed            = exposed ipi,
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.instantiatedWith   = [],
@@ -96,6 +100,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
     Current.depends            = map (mkInstalledPackageId.convertPackageId) (depends ipi),
+    Current.unitDepends        = map (mkPackageKey.convertPackageId) (depends ipi),
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
     Current.frameworkDirs      = frameworkDirs ipi,

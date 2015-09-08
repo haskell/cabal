@@ -57,7 +57,7 @@ import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
 
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion, LibraryName )
+         ( PackageIdentifier, packageName, packageVersion, InstalledPackageId )
 import Distribution.System
          ( OS(..), buildOS, Platform(..) )
 import Distribution.Compiler
@@ -183,7 +183,7 @@ appendSubdirs append dirs = dirs {
 -- users to be able to configure @--libdir=\/usr\/lib64@ for example but
 -- because by default we want to support installing multiple versions of
 -- packages and building the same package for multiple compilers we append the
--- libsubdir to get: @\/usr\/lib64\/$libname\/$compiler@.
+-- libsubdir to get: @\/usr\/lib64\/$ipid\/$compiler@.
 --
 -- An additional complication is the need to support relocatable packages on
 -- systems which support such things, like Windows.
@@ -216,10 +216,10 @@ defaultInstallDirs comp userInstall _hasLibs = do
            JHC    -> "$compiler"
            LHC    -> "$compiler"
            UHC    -> "$pkgid"
-           _other -> "$abi" </> "$libname",
+           _other -> "$abi" </> "$ipid",
       dynlibdir    = "$libdir",
       libexecdir   = case buildOS of
-        Windows   -> "$prefix" </> "$libname"
+        Windows   -> "$prefix" </> "$ipid"
         _other    -> "$prefix" </> "libexec",
       includedir   = "$libdir" </> "$libsubdir" </> "include",
       datadir      = case buildOS of
@@ -287,13 +287,13 @@ substituteInstallDirTemplates env dirs = dirs'
 -- substituting for all the variables in the abstract paths, to get real
 -- absolute path.
 absoluteInstallDirs :: PackageIdentifier
-                    -> LibraryName
+                    -> InstalledPackageId
                     -> CompilerInfo
                     -> CopyDest
                     -> Platform
                     -> InstallDirs PathTemplate
                     -> InstallDirs FilePath
-absoluteInstallDirs pkgId libname compilerId copydest platform dirs =
+absoluteInstallDirs pkgId ipid compilerId copydest platform dirs =
     (case copydest of
        CopyTo destdir -> fmap ((destdir </>) . dropDrive)
        _              -> id)
@@ -301,7 +301,7 @@ absoluteInstallDirs pkgId libname compilerId copydest platform dirs =
   . fmap fromPathTemplate
   $ substituteInstallDirTemplates env dirs
   where
-    env = initialPathTemplateEnv pkgId libname compilerId platform
+    env = initialPathTemplateEnv pkgId ipid compilerId platform
 
 
 -- |The location prefix for the /copy/ command.
@@ -317,12 +317,12 @@ data CopyDest
 -- independent\" package).
 --
 prefixRelativeInstallDirs :: PackageIdentifier
-                          -> LibraryName
+                          -> InstalledPackageId
                           -> CompilerInfo
                           -> Platform
                           -> InstallDirTemplates
                           -> InstallDirs (Maybe FilePath)
-prefixRelativeInstallDirs pkgId libname compilerId platform dirs =
+prefixRelativeInstallDirs pkgId ipid compilerId platform dirs =
     fmap relative
   . appendSubdirs combinePathTemplate
   $ -- substitute the path template into each other, except that we map
@@ -332,7 +332,7 @@ prefixRelativeInstallDirs pkgId libname compilerId platform dirs =
       prefix = PathTemplate [Variable PrefixVar]
     }
   where
-    env = initialPathTemplateEnv pkgId libname compilerId platform
+    env = initialPathTemplateEnv pkgId ipid compilerId platform
 
     -- If it starts with $prefix then it's relative and produce the relative
     -- path by stripping off $prefix/ or $prefix
@@ -372,7 +372,7 @@ data PathTemplateVariable =
      | PkgNameVar    -- ^ The @$pkg@ package name path variable
      | PkgVerVar     -- ^ The @$version@ package version path variable
      | PkgIdVar      -- ^ The @$pkgid@ package Id path variable, eg @foo-1.0@
-     | LibNameVar    -- ^ The @$libname@ expanded package key path variable
+     | IpidVar       -- ^ The @$ipid@ path variable
      | CompilerVar   -- ^ The compiler name and version, eg @ghc-6.6.1@
      | OSVar         -- ^ The operating system name, eg @windows@ or @linux@
      | ArchVar       -- ^ The CPU architecture name, eg @i386@ or @x86_64@
@@ -415,21 +415,21 @@ substPathTemplate environment (PathTemplate template) =
 
 -- | The initial environment has all the static stuff but no paths
 initialPathTemplateEnv :: PackageIdentifier
-                       -> LibraryName
+                       -> InstalledPackageId
                        -> CompilerInfo
                        -> Platform
                        -> PathTemplateEnv
-initialPathTemplateEnv pkgId libname compiler platform =
-     packageTemplateEnv  pkgId libname
+initialPathTemplateEnv pkgId ipid compiler platform =
+     packageTemplateEnv  pkgId ipid
   ++ compilerTemplateEnv compiler
   ++ platformTemplateEnv platform
   ++ abiTemplateEnv compiler platform
 
-packageTemplateEnv :: PackageIdentifier -> LibraryName -> PathTemplateEnv
-packageTemplateEnv pkgId libname =
+packageTemplateEnv :: PackageIdentifier -> InstalledPackageId -> PathTemplateEnv
+packageTemplateEnv pkgId ipid =
   [(PkgNameVar,  PathTemplate [Ordinary $ display (packageName pkgId)])
   ,(PkgVerVar,   PathTemplate [Ordinary $ display (packageVersion pkgId)])
-  ,(LibNameVar,  PathTemplate [Ordinary $ display libname])
+  ,(IpidVar,      PathTemplate [Ordinary $ display ipid])
   ,(PkgIdVar,    PathTemplate [Ordinary $ display pkgId])
   ]
 
@@ -478,7 +478,7 @@ installDirsTemplateEnv dirs =
 
 instance Show PathTemplateVariable where
   show PrefixVar     = "prefix"
-  show LibNameVar     = "libname"
+  show IpidVar       = "ipid"
   show BindirVar     = "bindir"
   show LibdirVar     = "libdir"
   show LibsubdirVar  = "libsubdir"
@@ -515,8 +515,9 @@ instance Read PathTemplateVariable where
                  ,("docdir",     DocdirVar)
                  ,("htmldir",    HtmldirVar)
                  ,("pkgid",      PkgIdVar)
-                 ,("pkgkey",     LibNameVar) -- backwards compatibility
-                 ,("libname",    LibNameVar)
+                 ,("libname",    IpidVar) -- backwards compatibility
+                 ,("pkgkey",     IpidVar) -- backwards compatibility
+                 ,("ipid",       IpidVar)
                  ,("pkg",        PkgNameVar)
                  ,("version",    PkgVerVar)
                  ,("compiler",   CompilerVar)

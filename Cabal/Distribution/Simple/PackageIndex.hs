@@ -126,6 +126,11 @@ instance Binary a => Binary (PackageIndex a)
 
 -- | The default package index which contains 'InstalledPackageInfo'.  Normally
 -- use this.
+--
+-- TODO: InstalledPackageInfo is less suitable as we move it more towards
+-- being a unit-oriented thing; eventually want this to be some sort of
+-- synthetic record based on aggregating together InstalledPackageInfos
+-- and indefinite unit records.
 type InstalledPackageIndex = PackageIndex InstalledPackageInfo
 
 instance HasInstalledPackageId a => Monoid (PackageIndex a) where

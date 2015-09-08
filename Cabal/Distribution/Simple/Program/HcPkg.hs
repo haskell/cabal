@@ -20,6 +20,7 @@ module Distribution.Simple.Program.HcPkg (
     expose,
     hide,
     dump,
+    describe,
     list,
 
     -- * Program invocations
@@ -30,6 +31,7 @@ module Distribution.Simple.Program.HcPkg (
     exposeInvocation,
     hideInvocation,
     dumpInvocation,
+    describeInvocation,
     listInvocation,
   ) where
 
@@ -55,7 +57,7 @@ import Distribution.Simple.Utils
 import Distribution.Verbosity
          ( Verbosity, deafening, silent )
 import Distribution.Compat.Exception
-         ( catchExit )
+         ( catchIO )
 
 import Data.Char
          ( isSpace )
@@ -74,6 +76,7 @@ data HcPkgInfo = HcPkgInfo
   , noVerboseFlag   :: Bool -- ^ hc-pkg does not support verbosity flags
   , flagPackageConf :: Bool -- ^ use package-conf option instead of package-db
   , useSingleFileDb :: Bool -- ^ requires single file package database
+  , supportsMultInst:: Bool -- ^ ghc-pkg supports --enable-multi-instance
   }
 
 -- | Call @hc-pkg@ to initialise a package database at the location {path}.
@@ -138,6 +141,21 @@ expose hpi verbosity packagedb pkgid =
   runProgramInvocation verbosity
     (exposeInvocation hpi verbosity packagedb pkgid)
 
+-- | Call @hc-pkg@ to retrieve a specific package
+--
+-- > hc-pkg describe [pkgid] [--user | --global | --package-db]
+--
+describe :: HcPkgInfo -> Verbosity -> PackageDBStack -> PackageId -> IO [InstalledPackageInfo]
+describe hpi verbosity packagedb pid = do
+
+  output <- getProgramInvocationOutput verbosity
+              (describeInvocation hpi verbosity packagedb pid)
+    `catchIO` \_ -> return ""
+
+  case parsePackages output of
+    Left ok -> return ok
+    _       -> die $ "failed to parse output of '"
+                  ++ programId (hcPkgProgram hpi) ++ " describe " ++ display pid ++ "'"
 
 -- | Call @hc-pkg@ to hide a package.
 --
@@ -157,40 +175,40 @@ dump hpi verbosity packagedb = do
 
   output <- getProgramInvocationOutput verbosity
               (dumpInvocation hpi verbosity packagedb)
-    `catchExit` \_ -> die $ programId (hcPkgProgram hpi) ++ " dump failed"
+    `catchIO` \_ -> die $ programId (hcPkgProgram hpi) ++ " dump failed"
 
   case parsePackages output of
     Left ok -> return ok
     _       -> die $ "failed to parse output of '"
                   ++ programId (hcPkgProgram hpi) ++ " dump'"
 
+parsePackages :: String -> Either [InstalledPackageInfo] [PError]
+parsePackages str =
+  let parsed = map parseInstalledPackageInfo' (splitPkgs str)
+   in case [ msg | ParseFailed msg <- parsed ] of
+        []   -> Left [   setInstalledPackageId
+                       . maybe id mungePackagePaths (pkgRoot pkg)
+                       $ pkg
+                     | ParseOk _ pkg <- parsed ]
+        msgs -> Right msgs
   where
-    parsePackages str =
-      let parsed = map parseInstalledPackageInfo' (splitPkgs str)
-       in case [ msg | ParseFailed msg <- parsed ] of
-            []   -> Left [   setInstalledPackageId
-                           . maybe id mungePackagePaths (pkgRoot pkg)
-                           $ pkg
-                         | ParseOk _ pkg <- parsed ]
-            msgs -> Right msgs
-
     parseInstalledPackageInfo' =
       parseFieldsFlat fieldsInstalledPackageInfo emptyInstalledPackageInfo
 
-    --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
-    -- and converting back and forth with lines/unlines.
-    splitPkgs :: String -> [String]
-    splitPkgs = checkEmpty . map unlines . splitWith ("---" ==) . lines
-      where
-        -- Handle the case of there being no packages at all.
-        checkEmpty [s] | all isSpace s = []
-        checkEmpty ss                  = ss
+--TODO: this could be a lot faster. We're doing normaliseLineEndings twice
+-- and converting back and forth with lines/unlines.
+splitPkgs :: String -> [String]
+splitPkgs = checkEmpty . map unlines . splitWith ("---" ==) . lines
+  where
+    -- Handle the case of there being no packages at all.
+    checkEmpty [s] | all isSpace s = []
+    checkEmpty ss                  = ss
 
-        splitWith :: (a -> Bool) -> [a] -> [[a]]
-        splitWith p xs = ys : case zs of
-                           []   -> []
-                           _:ws -> splitWith p ws
-          where (ys,zs) = break p xs
+    splitWith :: (a -> Bool) -> [a] -> [[a]]
+    splitWith p xs = ys : case zs of
+                       []   -> []
+                       _:ws -> splitWith p ws
+      where (ys,zs) = break p xs
 
 mungePackagePaths :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
 -- Perform path/URL variable substitution as per the Cabal ${pkgroot} spec
@@ -258,7 +276,7 @@ list hpi verbosity packagedb = do
 
   output <- getProgramInvocationOutput verbosity
               (listInvocation hpi verbosity packagedb)
-    `catchExit` \_ -> die $ programId (hcPkgProgram hpi) ++ " list failed"
+    `catchIO` \_ -> die $ programId (hcPkgProgram hpi) ++ " list failed"
 
   case parsePackageIds output of
     Just ok -> return ok
@@ -300,7 +318,7 @@ registerInvocation' cmdname hpi verbosity packagedbs (Left pkgFile) =
         ++ verbosityOpts hpi verbosity
 
 registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
-    (programInvocation (hcPkgProgram hpi) args) {
+    (programInvocation (hcPkgProgram hpi) args') {
       progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
       progInvokeInputEncoding = IOEncodingUTF8
     }
@@ -310,6 +328,9 @@ registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
               then [packageDbOpts hpi (last packagedbs)]
               else packageDbStackOpts hpi packagedbs)
         ++ verbosityOpts hpi verbosity
+    args' = (if supportsMultInst hpi
+               then args ++ ["--enable-multi-instance"]
+               else args)
 
 
 unregisterInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
@@ -327,6 +348,15 @@ exposeInvocation hpi verbosity packagedb pkgid =
        ["expose", packageDbOpts hpi packagedb, display pkgid]
     ++ verbosityOpts hpi verbosity
 
+describeInvocation :: HcPkgInfo -> Verbosity -> PackageDBStack -> PackageId
+                   -> ProgramInvocation
+describeInvocation hpi verbosity packagedbs pkgid =
+  programInvocation (hcPkgProgram hpi) $
+       ["describe", display pkgid]
+    ++ (if noPkgDbStack hpi
+          then [packageDbOpts hpi (last packagedbs)]
+          else packageDbStackOpts hpi packagedbs)
+    ++ verbosityOpts hpi verbosity
 
 hideInvocation :: HcPkgInfo -> Verbosity -> PackageDB -> PackageId
                -> ProgramInvocation

@@ -27,8 +27,8 @@
 -- This module is meant to be local-only to Distribution...
 
 module Distribution.InstalledPackageInfo (
+        AbiHash(..),
         InstalledPackageInfo(..),
-        libraryName,
         OriginalModule(..), ExposedModule(..),
         ParseResult(..), PError(..), PWarning,
         emptyInstalledPackageInfo,
@@ -51,8 +51,7 @@ import Distribution.License     ( License(..) )
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
          , PackageId, InstalledPackageId(..)
-         , packageName, packageVersion, PackageKey(..)
-         , LibraryName(..) )
+         , packageName, packageVersion, PackageKey(..) )
 import qualified Distribution.Package as Package
 import Distribution.ModuleName
          ( ModuleName )
@@ -66,16 +65,21 @@ import qualified Distribution.Compat.ReadP as Parse
 import Distribution.Compat.Binary  (Binary)
 import Data.Maybe   (fromMaybe)
 import GHC.Generics (Generic)
+import qualified Data.Char as Char
 
 -- -----------------------------------------------------------------------------
 -- The InstalledPackageInfo type
 
-
+-- For BC reasons, we continue to name this record an InstalledPackageInfo;
+-- but it would more accurately be called an InstalledUnitInfo with Backpack
 data InstalledPackageInfo
    = InstalledPackageInfo {
         -- these parts are exactly the same as PackageDescription
         installedPackageId :: InstalledPackageId,
         sourcePackageId    :: PackageId,
+        -- With old versions of Cabal, installedPackageId may not coincide
+        -- with installedPackageId; with new versions, they are equal
+        -- (unless Backpack is being used.)
         packageKey         :: PackageKey,
         license           :: License,
         copyright         :: String,
@@ -88,6 +92,7 @@ data InstalledPackageInfo
         description       :: String,
         category          :: String,
         -- these parts are required by an installed package only:
+        abiHash           :: AbiHash,
         exposed           :: Bool,
         exposedModules    :: [ExposedModule],
         instantiatedWith  :: [(ModuleName, OriginalModule)],
@@ -102,6 +107,7 @@ data InstalledPackageInfo
         includeDirs       :: [FilePath],
         includes          :: [String],
         depends           :: [InstalledPackageId],
+        unitDepends       :: [PackageKey],
         ccOptions         :: [String],
         ldOptions         :: [String],
         frameworkDirs     :: [FilePath],
@@ -111,9 +117,6 @@ data InstalledPackageInfo
         pkgRoot           :: Maybe FilePath
     }
     deriving (Generic, Read, Show)
-
-libraryName :: InstalledPackageInfo -> LibraryName
-libraryName ipi = Package.packageKeyLibraryName (sourcePackageId ipi) (packageKey ipi)
 
 instance Binary InstalledPackageInfo
 
@@ -131,8 +134,7 @@ emptyInstalledPackageInfo
    = InstalledPackageInfo {
         installedPackageId = InstalledPackageId "",
         sourcePackageId    = PackageIdentifier (PackageName "") noVersion,
-        packageKey         = OldPackageKey (PackageIdentifier
-                                               (PackageName "") noVersion),
+        packageKey         = PackageKey "",
         license           = UnspecifiedLicense,
         copyright         = "",
         maintainer        = "",
@@ -143,6 +145,7 @@ emptyInstalledPackageInfo
         synopsis          = "",
         description       = "",
         category          = "",
+        abiHash           = AbiHash "",
         exposed           = False,
         exposedModules    = [],
         hiddenModules     = [],
@@ -157,6 +160,7 @@ emptyInstalledPackageInfo
         includeDirs       = [],
         includes          = [],
         depends           = [],
+        unitDepends       = [],
         ccOptions         = [],
         ldOptions         = [],
         frameworkDirs     = [],
@@ -172,9 +176,20 @@ noVersion = Version [] []
 -- -----------------------------------------------------------------------------
 -- Exposed modules
 
+newtype AbiHash = AbiHash String
+    deriving (Show, Read, Generic)
+instance Binary AbiHash
+
+instance Text AbiHash where
+    disp (AbiHash abi) = Disp.text abi
+    parse = fmap AbiHash (Parse.munch Char.isAlphaNum)
+
+-- -----------------------------------------------------------------------------
+-- Exposed modules
+
 data OriginalModule
    = OriginalModule {
-       originalPackageId :: InstalledPackageId,
+       originalPackageId :: PackageKey,
        originalModuleName :: ModuleName
      }
   deriving (Generic, Eq, Read, Show)
@@ -333,6 +348,9 @@ installedFieldDescrs = [
  , listField   "hidden-modules"
         disp               parseModuleNameQ
         hiddenModules      (\xs    pkg -> pkg{hiddenModules=xs})
+ , simpleField "abi-hash"
+        disp               parse
+        abiHash            (\abi    pkg -> pkg{abiHash=abi})
  , listField   "instantiated-with"
         showInstantiatedWith parseInstantiatedWith
         instantiatedWith   (\xs    pkg -> pkg{instantiatedWith=xs})
@@ -365,6 +383,9 @@ installedFieldDescrs = [
  , listField   "depends"
         disp               parse
         depends            (\xs pkg -> pkg{depends=xs})
+ , listField   "unit-depends"
+        disp               parse
+        unitDepends        (\xs pkg -> pkg{unitDepends=xs})
  , listField   "cc-options"
         showToken          parseTokenQ
         ccOptions          (\path  pkg -> pkg{ccOptions=path})
