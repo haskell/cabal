@@ -76,7 +76,7 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
 import Distribution.Package ( Dependency(..)
                             , PackageName
-                            , InstalledPackageId )
+                            , ComponentId(..) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
@@ -309,6 +309,7 @@ data ConfigFlags = ConfigFlags {
     configScratchDir    :: Flag FilePath,
     configExtraLibDirs  :: [FilePath],   -- ^ path to search for extra libraries
     configExtraIncludeDirs :: [FilePath],   -- ^ path to search for header files
+    configIPID          :: Flag String, -- ^ explicit IPID to be used
 
     configDistPref :: Flag FilePath, -- ^"dist" prefix
     configVerbosity :: Flag Verbosity, -- ^verbosity level
@@ -320,8 +321,8 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, InstalledPackageId)],
-    configInstantiateWith :: [(ModuleName, (InstalledPackageId, ModuleName))],
+    configDependencies :: [(PackageName, ComponentId)],
+    configInstantiateWith :: [(ModuleName, (ComponentId, ModuleName))],
       -- ^The packages depended on.
     configConfigurationsFlags :: FlagAssignment,
     configTests               :: Flag Bool, -- ^Enable test suite compilation
@@ -573,6 +574,11 @@ configureOptions showOrParseArgs =
          configExtraIncludeDirs (\v flags -> flags {configExtraIncludeDirs = v})
          (reqArg' "PATH" (\x -> [x]) id)
 
+      ,option "" ["ipid"]
+         "Installed package ID to compile this package as"
+         configIPID (\v flags -> flags {configIPID = v})
+         (reqArgFlag "IPID")
+
       ,option "" ["extra-lib-dirs"]
          "A list of directories to search for external libraries"
          configExtraLibDirs (\v flags -> flags {configExtraLibDirs = v})
@@ -678,14 +684,14 @@ showProfDetailLevelFlag dl =
     Flag (ProfDetailOther other)     -> [other]
 
 
-parseDependency :: Parse.ReadP r (PackageName, InstalledPackageId)
+parseDependency :: Parse.ReadP r (PackageName, ComponentId)
 parseDependency = do
   x <- parse
   _ <- Parse.char '='
   y <- parse
   return (x, y)
 
-parseHoleMapEntry :: Parse.ReadP r (ModuleName, (InstalledPackageId, ModuleName))
+parseHoleMapEntry :: Parse.ReadP r (ModuleName, (ComponentId, ModuleName))
 parseHoleMapEntry = do
   x <- parse
   _ <- Parse.char '='
@@ -795,6 +801,7 @@ instance Monoid ConfigFlags where
     configDependencies  = mempty,
     configInstantiateWith     = mempty,
     configExtraIncludeDirs    = mempty,
+    configIPID          = mempty,
     configConfigurationsFlags = mempty,
     configTests               = mempty,
     configCoverage         = mempty,
@@ -840,6 +847,7 @@ instance Monoid ConfigFlags where
     configDependencies  = combine configDependencies,
     configInstantiateWith     = combine configInstantiateWith,
     configExtraIncludeDirs    = combine configExtraIncludeDirs,
+    configIPID          = combine configIPID,
     configConfigurationsFlags = combine configConfigurationsFlags,
     configTests               = combine configTests,
     configCoverage         = combine configCoverage,

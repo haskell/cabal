@@ -13,7 +13,7 @@ import Distribution.Compiler (CompilerFlavor(..), CompilerId(..))
 import Distribution.PackageDescription (package)
 import Distribution.Simple.Compiler (compilerId)
 import Distribution.Simple.Configure (getPersistBuildConfig)
-import Distribution.Simple.LocalBuildInfo (compiler, localPkgDescr, localPackageKey)
+import Distribution.Simple.LocalBuildInfo (compiler, localPkgDescr, localCompatPackageKey)
 import Distribution.Simple.Hpc
 import Distribution.Simple.Program.Builtin (hpcProgram)
 import Distribution.Simple.Program.Db
@@ -86,7 +86,7 @@ checkTestWithHpc config name extraOpts = do
             CompilerId comp version = compilerId (compiler lbi)
             subdir
               | comp == GHC && version >= Version [7, 10] [] =
-                  display (localPackageKey lbi)
+                  display (localCompatPackageKey lbi)
               | otherwise = display (package $ localPkgDescr lbi)
         mapM_ shouldExist
             [ mixDir distPref' way "my-0.1" </> subdir </> "Foo.mix"

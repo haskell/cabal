@@ -20,9 +20,8 @@
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
         externalPackageDeps,
-        inplacePackageId,
-        localPackageKey,
-        localLibraryName,
+        localComponentId,
+        localCompatPackageKey,
 
         -- * Buildable package components
         Component(..),
@@ -71,8 +70,8 @@ import Distribution.PackageDescription
          , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( PackageId, Package(..), InstalledPackageId(..)
-         , PackageName, LibraryName(..), PackageKey(..) )
+         ( PackageId, Package(..), ComponentId(..)
+         , PackageName, ComponentId(..) )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack, DebugInfoLevel
          , OptimisationLevel, ProfDetailLevel )
@@ -152,29 +151,29 @@ data LocalBuildInfo = LocalBuildInfo {
 
 instance Binary LocalBuildInfo
 
--- | Extract the 'PackageKey' from the library component of a
+-- | Extract the 'ComponentId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake package key based
 -- on the package ID.
-localPackageKey :: LocalBuildInfo -> PackageKey
-localPackageKey lbi =
-    foldr go (OldPackageKey (package (localPkgDescr lbi))) (componentsConfigs lbi)
+localComponentId :: LocalBuildInfo -> ComponentId
+localComponentId lbi =
+    foldr go (ComponentId (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
   where go (_, clbi, _) old_pk = case clbi of
-            LibComponentLocalBuildInfo { componentPackageKey = pk } -> pk
+            LibComponentLocalBuildInfo { componentId = pk } -> pk
             _ -> old_pk
 
--- | Extract the 'LibraryName' from the library component of a
--- 'LocalBuildInfo' if it exists, or make a library name based
+-- | Extract the compatibility 'ComponentId' from the library component of a
+-- 'LocalBuildInfo' if it exists, or make a fake package key based
 -- on the package ID.
-localLibraryName :: LocalBuildInfo -> LibraryName
-localLibraryName lbi =
-    foldr go (LibraryName (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
-  where go (_, clbi, _) old_n = case clbi of
-            LibComponentLocalBuildInfo { componentLibraryName = n } -> n
-            _ -> old_n
+localCompatPackageKey :: LocalBuildInfo -> ComponentId
+localCompatPackageKey lbi =
+    foldr go (ComponentId (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+  where go (_, clbi, _) old_pk = case clbi of
+            LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> pk
+            _ -> old_pk
 
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
-externalPackageDeps :: LocalBuildInfo -> [(InstalledPackageId, PackageId)]
+externalPackageDeps :: LocalBuildInfo -> [(ComponentId, PackageId)]
 externalPackageDeps lbi =
     -- TODO:  what about non-buildable components?
     nub [ (ipkgid, pkgid)
@@ -185,12 +184,6 @@ externalPackageDeps lbi =
     -- True if this dependency is an internal one (depends on the library
     -- defined in the same package).
     internal pkgid = pkgid == packageId (localPkgDescr lbi)
-
--- | The installed package Id we use for local packages registered in the local
--- package db. This is what is used for intra-package deps between components.
---
-inplacePackageId :: PackageId -> InstalledPackageId
-inplacePackageId pkgid = InstalledPackageId (display pkgid ++ "-inplace")
 
 -- -----------------------------------------------------------------------------
 -- Buildable components
@@ -221,22 +214,22 @@ data ComponentLocalBuildInfo
     -- The 'BuildInfo' specifies a set of build dependencies that must be
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
-    componentPackageKey :: PackageKey,
-    componentLibraryName :: LibraryName,
+    componentPackageDeps :: [(ComponentId, PackageId)],
+    componentId :: ComponentId,
+    componentCompatPackageKey :: ComponentId,
     componentExposedModules :: [Installed.ExposedModule],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | ExeComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageDeps :: [(ComponentId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | TestComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageDeps :: [(ComponentId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | BenchComponentLocalBuildInfo {
-    componentPackageDeps :: [(InstalledPackageId, PackageId)],
+    componentPackageDeps :: [(ComponentId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   deriving (Generic, Read, Show)
@@ -492,7 +485,7 @@ absoluteInstallDirs :: PackageDescription -> LocalBuildInfo -> CopyDest
 absoluteInstallDirs pkg lbi copydest =
   InstallDirs.absoluteInstallDirs
     (packageId pkg)
-    (localLibraryName lbi)
+    (localComponentId lbi)
     (compilerInfo (compiler lbi))
     copydest
     (hostPlatform lbi)
@@ -504,7 +497,7 @@ prefixRelativeInstallDirs :: PackageId -> LocalBuildInfo
 prefixRelativeInstallDirs pkg_descr lbi =
   InstallDirs.prefixRelativeInstallDirs
     (packageId pkg_descr)
-    (localLibraryName lbi)
+    (localComponentId lbi)
     (compilerInfo (compiler lbi))
     (hostPlatform lbi)
     (installDirTemplates lbi)
@@ -515,6 +508,6 @@ substPathTemplate pkgid lbi = fromPathTemplate
                                 . ( InstallDirs.substPathTemplate env )
     where env = initialPathTemplateEnv
                    pkgid
-                   (localLibraryName lbi)
+                   (localComponentId lbi)
                    (compilerInfo (compiler lbi))
                    (hostPlatform lbi)

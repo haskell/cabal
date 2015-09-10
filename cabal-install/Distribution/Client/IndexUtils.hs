@@ -469,8 +469,8 @@ data IndexCacheEntry = CachePackageId PackageId BlockNo
                      | CachePreference Dependency
   deriving (Eq)
 
-packageKey, blocknoKey, buildTreeRefKey, preferredVersionKey :: String
-packageKey = "pkg:"
+installedComponentId, blocknoKey, buildTreeRefKey, preferredVersionKey :: String
+installedComponentId = "pkg:"
 blocknoKey = "b#"
 buildTreeRefKey     = "build-tree-ref:"
 preferredVersionKey = "pref-ver:"
@@ -479,7 +479,7 @@ readIndexCacheEntry :: BSS.ByteString -> Maybe IndexCacheEntry
 readIndexCacheEntry = \line ->
   case BSS.words line of
     [key, pkgnamestr, pkgverstr, sep, blocknostr]
-      | key == BSS.pack packageKey && sep == BSS.pack blocknoKey ->
+      | key == BSS.pack installedComponentId && sep == BSS.pack blocknoKey ->
       case (parseName pkgnamestr, parseVer pkgverstr [],
             parseBlockNo blocknostr) of
         (Just pkgname, Just pkgver, Just blockno)
@@ -522,7 +522,7 @@ readIndexCacheEntry = \line ->
 
 showIndexCacheEntry :: IndexCacheEntry -> String
 showIndexCacheEntry entry = unwords $ case entry of
-   CachePackageId pkgid b -> [ packageKey
+   CachePackageId pkgid b -> [ installedComponentId
                              , display (packageName pkgid)
                              , display (packageVersion pkgid)
                              , blocknoKey

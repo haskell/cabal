@@ -24,7 +24,7 @@ import Data.List
 import qualified Data.Map as M ( empty )
 import Distribution.Compat.ReadP
 import Distribution.InstalledPackageInfo
-import Distribution.Package hiding (installedPackageId)
+import Distribution.Package hiding (installedComponentId)
 import Distribution.PackageDescription
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler as C
@@ -150,8 +150,8 @@ parsePackage x = map fst (filter (\ (_,y) -> null y) (readP_to_S parse x))
 -- | Create a trivial package info from a directory name.
 mkInstalledPackageInfo :: PackageId -> InstalledPackageInfo
 mkInstalledPackageInfo p = emptyInstalledPackageInfo
-  { installedPackageId = InstalledPackageId (display p),
-    sourcePackageId    = p }
+  { installedComponentId = ComponentId (display p),
+    sourcePackageId     = p }
 
 
 -- -----------------------------------------------------------------------------
@@ -236,8 +236,8 @@ uhcPackageDbOptions user system db = map (\ x -> "--pkg-searchpath=" ++ x)
 
 installLib :: Verbosity -> LocalBuildInfo
            -> FilePath -> FilePath -> FilePath
-           -> PackageDescription -> Library -> IO ()
-installLib verbosity _lbi targetDir _dynlibTargetDir builtDir pkg _library = do
+           -> PackageDescription -> Library -> ComponentLocalBuildInfo -> IO ()
+installLib verbosity _lbi targetDir _dynlibTargetDir builtDir pkg _library _clbi = do
     -- putStrLn $ "dest:  " ++ targetDir
     -- putStrLn $ "built: " ++ builtDir
     installDirectoryContents verbosity (builtDir </> display (packageId pkg)) targetDir

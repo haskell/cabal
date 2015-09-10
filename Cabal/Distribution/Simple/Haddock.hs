@@ -27,7 +27,7 @@ import qualified Distribution.Simple.GHCJS as GHCJS
 import Distribution.Package
          ( PackageIdentifier(..)
          , Package(..)
-         , PackageName(..), packageName, LibraryName(..) )
+         , PackageName(..), packageName, ComponentId(..) )
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), usedExtensions
@@ -631,7 +631,7 @@ haddockPackageFlags lbi clbi htmlTemplate = do
 haddockTemplateEnv :: LocalBuildInfo -> PackageIdentifier -> PathTemplateEnv
 haddockTemplateEnv lbi pkg_id =
   (PrefixVar, prefix (installDirTemplates lbi))
-  : initialPathTemplateEnv pkg_id (LibraryName (display pkg_id)) (compilerInfo (compiler lbi))
+  : initialPathTemplateEnv pkg_id (ComponentId (display pkg_id)) (compilerInfo (compiler lbi))
   (hostPlatform lbi)
 
 -- ------------------------------------------------------------------------------

@@ -17,7 +17,7 @@ import Distribution.Package               (getHSLibraryName)
 import Distribution.Version               (Version(..))
 import Distribution.Simple.Compiler       (compilerId)
 import Distribution.Simple.Configure      (getPersistBuildConfig)
-import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localLibraryName)
+import Distribution.Simple.LocalBuildInfo (LocalBuildInfo, compiler, localComponentId)
 
 -- Perhaps these should live in PackageTester.
 
@@ -51,7 +51,7 @@ checkMetadata :: LocalBuildInfo -> FilePath -> Assertion
 checkMetadata lbi dir = withBinaryFile path ReadMode $ \ h -> do
     hFileSize h >>= checkArchive h
   where
-    path = dir </> "lib" ++ getHSLibraryName (localLibraryName lbi) ++ ".a"
+    path = dir </> "lib" ++ getHSLibraryName (localComponentId lbi) ++ ".a"
 
     _ghc_7_10 = case compilerId (compiler lbi) of
       CompilerId GHC version | version >= Version [7, 10] [] -> True

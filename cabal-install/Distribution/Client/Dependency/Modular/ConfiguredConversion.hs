@@ -19,7 +19,7 @@ convCP :: SI.InstalledPackageIndex -> CI.PackageIndex SourcePackage ->
 convCP iidx sidx (CP qpi fa es ds) =
   case convPI qpi of
     Left  pi -> PreExisting
-                  (fromJust $ SI.lookupInstalledPackageId iidx pi)
+                  (fromJust $ SI.lookupComponentId iidx pi)
     Right pi -> Configured $ ConfiguredPackage
                   (fromJust $ CI.lookupPackageId sidx pi)
                   fa
@@ -29,7 +29,7 @@ convCP iidx sidx (CP qpi fa es ds) =
     ds' :: ComponentDeps [ConfiguredId]
     ds' = fmap (map convConfId) ds
 
-convPI :: PI QPN -> Either InstalledPackageId PackageId
+convPI :: PI QPN -> Either ComponentId PackageId
 convPI (PI _ (I _ (Inst pi))) = Left pi
 convPI qpi                    = Right $ confSrcId $ convConfId qpi
 
@@ -42,4 +42,4 @@ convConfId (PI (Q _ pn) (I v loc)) = ConfiguredId {
     sourceId    = PackageIdentifier pn v
     installedId = case loc of
                     Inst pi    -> pi
-                    _otherwise -> fakeInstalledPackageId sourceId
+                    _otherwise -> fakeComponentId sourceId
