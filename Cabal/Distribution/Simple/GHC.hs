@@ -428,7 +428,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
-  let libName = componentLibraryName clbi
+  let libName = componentPackageKey clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
@@ -1090,7 +1090,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentLibraryName clbi
+    libName = componentPackageKey clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName
@@ -1126,8 +1126,18 @@ registerPackage
   -> Bool
   -> PackageDBStack
   -> IO ()
-registerPackage verbosity installedPkgInfo _pkg lbi _inplace packageDbs =
-  HcPkg.reregister (hcPkgInfo $ withPrograms lbi) verbosity
+registerPackage verbosity installedPkgInfo _pkg lbi inplace packageDbs = do
+  -- Sanity check: make sure we aren't clobbering something with
+  -- the same key (but only do this for non-inplace registration).
+  let hpi = hcPkgInfo $ withPrograms lbi
+  when (not inplace) $ do
+    old_pkgs <- HcPkg.describe hpi verbosity packageDbs
+                      (InstalledPackageInfo.sourcePackageId installedPkgInfo)
+    let key = InstalledPackageInfo.packageKey installedPkgInfo
+    when (any ((==key) . InstalledPackageInfo.packageKey) old_pkgs)
+      . die $ "identical key " ++ display key ++ " already exists in DB; "
+           ++ programId (HcPkg.hcPkgProgram hpi) ++ " unregister it first."
+  HcPkg.reregister hpi verbosity
     packageDbs (Right installedPkgInfo)
 
 pkgRoot :: Verbosity -> LocalBuildInfo -> PackageDB -> IO FilePath

@@ -85,7 +85,7 @@ data GhcOptions = GhcOptions {
   -- requires both the short and long form of the package id;
   -- the @ghc -package@ or @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (InstalledPackageId, PackageId, ModuleRenaming),
+    NubListR (PackageKey, PackageId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,

@@ -21,7 +21,7 @@ import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..)
-         , enableStanzas, ConfiguredId(..), fakeInstalledPackageId )
+         , enableStanzas, ConfiguredId(..), fakePackageKey )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), unlabelPackageConstraint
@@ -39,7 +39,7 @@ import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Package
          ( PackageName(..), PackageId, PackageIdentifier(..)
-         , InstalledPackageId(..)
+         , PackageKey(..)
          , Package(..), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion, simplifyDependency )
 import Distribution.PackageDescription
@@ -578,10 +578,10 @@ convertInstalledPackageIndex index' = PackageIndex.fromList
     sourceDepsOf index ipkg =
       [ maybe (brokenPackageId depid) packageId mdep
       | let depids = InstalledPackageInfo.depends ipkg
-            getpkg = InstalledPackageIndex.lookupInstalledPackageId index
+            getpkg = InstalledPackageIndex.lookupPackageKey index
       , (depid, mdep) <- zip depids (map getpkg depids) ]
 
-    brokenPackageId (InstalledPackageId str) =
+    brokenPackageId (PackageKey str) =
       PackageIdentifier (PackageName (str ++ "-broken")) (Version [] [])
 
 -- ------------------------------------------------------------
@@ -644,7 +644,7 @@ finaliseSelectedPackages pref selected constraints =
     confId :: InstalledOrSource InstalledPackageEx UnconfiguredPackage -> ConfiguredId
     confId pkg = ConfiguredId {
         confSrcId  = packageId pkg
-      , confInstId = fakeInstalledPackageId (packageId pkg)
+      , confInstId = fakePackageKey (packageId pkg)
       }
 
     pickRemaining mipkg dep@(Dependency _name versionRange) =

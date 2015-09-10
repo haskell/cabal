@@ -15,10 +15,9 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..)
-         , mkPackageKey, PackageKey, InstalledPackageId(..)
-         , HasInstalledPackageId(..), PackageInstalled(..)
-         , LibraryName, packageKeyLibraryName )
+         ( PackageName, PackageId, Package(..), PackageKey(..)
+         , InstalledPackageId(..)
+         , HasPackageKey(..), PackageInstalled(..) )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import Distribution.PackageDescription
@@ -33,10 +32,7 @@ import Distribution.Client.ComponentDeps
 import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.Version
          ( VersionRange )
-import Distribution.Simple.Compiler
-         ( Compiler, packageKeySupported )
 import Distribution.Text (display)
-import qualified Distribution.InstalledPackageInfo as Info
 
 import Data.Map (Map)
 import Network.URI (URI, nullURI)
@@ -66,7 +62,7 @@ data SourcePackageDb = SourcePackageDb {
 --  dependency graphs) only make sense on this subclass of package types.
 --
 class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> ComponentDeps [InstalledPackageId]
+  depends :: pkg -> ComponentDeps [PackageKey]
 
 instance PackageFixedDeps InstalledPackageInfo where
   depends = CD.fromInstalled . installedDepends
@@ -83,6 +79,11 @@ instance PackageFixedDeps InstalledPackageInfo where
 -- plan.
 fakeInstalledPackageId :: PackageId -> InstalledPackageId
 fakeInstalledPackageId = InstalledPackageId . (".fake."++) . display
+
+-- | Sometimes it's a bit difficult to get a package key, so we just
+-- fake something up.  Eventually wire up the real package keys here!
+fakePackageKey :: PackageId -> PackageKey
+fakePackageKey = PackageKey . display
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -114,7 +115,7 @@ data ConfiguredPackage = ConfiguredPackage
 -- and use it consistently instead of InstalledPackageIds?
 data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
-  , confInstId :: InstalledPackageId
+  , confInstId :: PackageKey
   }
 
 instance Show ConfiguredId where
@@ -126,8 +127,8 @@ instance Package ConfiguredPackage where
 instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
 
-instance HasInstalledPackageId ConfiguredPackage where
-  installedPackageId = fakeInstalledPackageId . packageId
+instance HasPackageKey ConfiguredPackage where
+  packageKey = fakePackageKey . packageId
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
@@ -142,27 +143,13 @@ type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledPackageInfo
 instance Package srcpkg => Package (GenericReadyPackage srcpkg ipkg) where
   packageId (ReadyPackage srcpkg _deps) = packageId srcpkg
 
-instance (Package srcpkg, HasInstalledPackageId ipkg) =>
+instance (Package srcpkg, HasPackageKey ipkg) =>
          PackageFixedDeps (GenericReadyPackage srcpkg ipkg) where
-  depends (ReadyPackage _ deps) = fmap (map installedPackageId) deps
+  depends (ReadyPackage _ deps) = fmap (map packageKey) deps
 
-instance HasInstalledPackageId srcpkg =>
-         HasInstalledPackageId (GenericReadyPackage srcpkg ipkg) where
-  installedPackageId (ReadyPackage pkg _) = installedPackageId pkg
-
-
--- | Extracts a package key from ReadyPackage, a common operation needed
--- to calculate build paths.
-readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
-readyPackageKey comp (ReadyPackage pkg deps) =
-    mkPackageKey (packageKeySupported comp) (packageId pkg)
-                 (map Info.libraryName (CD.nonSetupDeps deps))
-
--- | Extracts a library name from ReadyPackage, a common operation needed
--- to calculate build paths.
-readyLibraryName :: Compiler -> ReadyPackage -> LibraryName
-readyLibraryName comp ready@(ReadyPackage pkg _) =
-    packageKeyLibraryName (packageId pkg) (readyPackageKey comp ready)
+instance HasPackageKey srcpkg =>
+         HasPackageKey (GenericReadyPackage srcpkg ipkg) where
+  packageKey (ReadyPackage pkg _) = packageKey pkg
 
 
 -- | A package description along with the location of the package sources.

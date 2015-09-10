@@ -24,7 +24,7 @@ import Data.List
 import qualified Data.Map as M ( empty )
 import Distribution.Compat.ReadP
 import Distribution.InstalledPackageInfo
-import Distribution.Package hiding (installedPackageId)
+import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.BuildPaths
 import Distribution.Simple.Compiler as C
