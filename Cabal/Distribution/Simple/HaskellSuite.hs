@@ -190,8 +190,9 @@ installLib
   -> FilePath  -- ^Build location
   -> PackageDescription
   -> Library
+  -> ComponentLocalBuildInfo
   -> IO ()
-installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib = do
+installLib verbosity lbi targetDir dynlibTargetDir builtDir pkg lib _clbi = do
   let conf = withPrograms lbi
   runDbProgram verbosity haskellSuitePkgProgram conf $
     [ "install-library"
