@@ -216,7 +216,7 @@ pruneInstallPlan installPlan pkgSpecifiers =
 freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()
 freezePackages verbosity pkgs = do
     pkgEnv <- fmap (createPkgEnv . addFrozenConstraints) $
-                   loadUserConfig verbosity ""
+                   loadUserConfig verbosity "" Nothing
     writeFileAtomic userPackageEnvironmentFile $ showPkgEnv pkgEnv
   where
     addFrozenConstraints config =

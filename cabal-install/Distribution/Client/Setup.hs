@@ -120,6 +120,7 @@ data GlobalFlags = GlobalFlags {
     globalNumericVersion    :: Flag Bool,
     globalConfigFile        :: Flag FilePath,
     globalSandboxConfigFile :: Flag FilePath,
+    globalConstraintsFile   :: Flag FilePath,
     globalRemoteRepos       :: NubList RemoteRepo,     -- ^ Available Hackage servers.
     globalCacheDir          :: Flag FilePath,
     globalLocalRepos        :: NubList FilePath,
@@ -136,6 +137,7 @@ defaultGlobalFlags  = GlobalFlags {
     globalNumericVersion    = Flag False,
     globalConfigFile        = mempty,
     globalSandboxConfigFile = mempty,
+    globalConstraintsFile   = mempty,
     globalRemoteRepos       = mempty,
     globalCacheDir          = mempty,
     globalLocalRepos        = mempty,
@@ -262,7 +264,7 @@ globalCommand commands = CommandUI {
     commandNotes = Nothing,
     commandDefaultFlags = mempty,
     commandOptions      = \showOrParseArgs ->
-      (case showOrParseArgs of ShowArgs -> take 7; ParseArgs -> id)
+      (case showOrParseArgs of ShowArgs -> take 8; ParseArgs -> id)
       [option ['V'] ["version"]
          "Print version information"
          globalVersion (\v flags -> flags { globalVersion = v })
@@ -281,6 +283,11 @@ globalCommand commands = CommandUI {
       ,option [] ["sandbox-config-file"]
          "Set an alternate location for the sandbox config file (default: './cabal.sandbox.config')"
          globalConfigFile (\v flags -> flags { globalSandboxConfigFile = v })
+         (reqArgFlag "FILE")
+
+      ,option [] ["constraints-file"]
+         "Set a location for a global constraints file for projects without their own cabal.config freeze file."
+         globalConfigFile (\v flags -> flags {globalConstraintsFile = v})
          (reqArgFlag "FILE")
 
       ,option [] ["require-sandbox"]
@@ -331,6 +338,7 @@ instance Monoid GlobalFlags where
     globalNumericVersion    = mempty,
     globalConfigFile        = mempty,
     globalSandboxConfigFile = mempty,
+    globalConstraintsFile   = mempty,
     globalRemoteRepos       = mempty,
     globalCacheDir          = mempty,
     globalLocalRepos        = mempty,
@@ -345,6 +353,7 @@ instance Monoid GlobalFlags where
     globalNumericVersion    = combine globalNumericVersion,
     globalConfigFile        = combine globalConfigFile,
     globalSandboxConfigFile = combine globalConfigFile,
+    globalConstraintsFile   = combine globalConstraintsFile,
     globalRemoteRepos       = combine globalRemoteRepos,
     globalCacheDir          = combine globalCacheDir,
     globalLocalRepos        = combine globalLocalRepos,
