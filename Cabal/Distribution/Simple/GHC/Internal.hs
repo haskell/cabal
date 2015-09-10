@@ -31,11 +31,11 @@ module Distribution.Simple.GHC.Internal (
 
 import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
 import Distribution.Package
-         ( PackageId, PackageKey, getHSLibraryName )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo(..) )
+         ( PackageId, InstalledUnitId, getHSLibraryName )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
+import qualified Distribution.InstalledUnitInfo as InstalledUnitInfo
+                                ( InstalledUnitInfo(..) )
 import Distribution.PackageDescription as PD
          ( BuildInfo(..), Library(..), libModules
          , hcOptions, usedExtensions, ModuleRenaming, lookupRenaming )
@@ -373,8 +373,8 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptVerbosity       = toFlag verbosity,
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
-      ghcOptPackageKey  = case clbi of
-        LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> toFlag pk
+      ghcOptInstalledUnitId  = case clbi of
+        LibComponentLocalBuildInfo { componentCompatInstalledUnitId = pk } -> toFlag pk
         _ -> mempty,
       ghcOptSigOf           = hole_insts,
       ghcOptPackageDBs      = withPackageDB lbi,
@@ -412,7 +412,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcDebugInfo NormalDebugInfo  = toFlag True
     toGhcDebugInfo MaximalDebugInfo = toFlag True
 
-    hole_insts = map (\(k,(p,n)) -> (k, (InstalledPackageInfo.packageKey p,n)))
+    hole_insts = map (\(k,(p,n)) -> (k, (InstalledUnitInfo.installedUnitId p,n)))
                  (instantiatedWith lbi)
 
 -- | Strip out flags that are not supported in ghci
@@ -428,7 +428,7 @@ filterGhciFlags = filter supported
     supported "-unreg"    = False
     supported _           = True
 
-mkGHCiLibName :: PackageKey -> String
+mkGHCiLibName :: InstalledUnitId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 ghcLookupProperty :: String -> Compiler -> Bool
@@ -459,26 +459,26 @@ getHaskellObjects implInfo lib lbi pref wanted_obj_ext allow_split_objs
                | x <- libModules lib ]
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
-                 -> [(PackageKey, PackageId, ModuleRenaming)]
+                 -> [(InstalledUnitId, PackageId, ModuleRenaming)]
 mkGhcOptPackages clbi =
   map (\(i,p) -> (i,p,lookupRenaming p (componentPackageRenaming clbi)))
       (componentPackageDeps clbi)
 
-substTopDir :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
+substTopDir :: FilePath -> InstalledUnitInfo -> InstalledUnitInfo
 substTopDir topDir ipo
  = ipo {
-       InstalledPackageInfo.importDirs
-           = map f (InstalledPackageInfo.importDirs ipo),
-       InstalledPackageInfo.libraryDirs
-           = map f (InstalledPackageInfo.libraryDirs ipo),
-       InstalledPackageInfo.includeDirs
-           = map f (InstalledPackageInfo.includeDirs ipo),
-       InstalledPackageInfo.frameworkDirs
-           = map f (InstalledPackageInfo.frameworkDirs ipo),
-       InstalledPackageInfo.haddockInterfaces
-           = map f (InstalledPackageInfo.haddockInterfaces ipo),
-       InstalledPackageInfo.haddockHTMLs
-           = map f (InstalledPackageInfo.haddockHTMLs ipo)
+       InstalledUnitInfo.importDirs
+           = map f (InstalledUnitInfo.importDirs ipo),
+       InstalledUnitInfo.libraryDirs
+           = map f (InstalledUnitInfo.libraryDirs ipo),
+       InstalledUnitInfo.includeDirs
+           = map f (InstalledUnitInfo.includeDirs ipo),
+       InstalledUnitInfo.frameworkDirs
+           = map f (InstalledUnitInfo.frameworkDirs ipo),
+       InstalledUnitInfo.haddockInterfaces
+           = map f (InstalledUnitInfo.haddockInterfaces ipo),
+       InstalledUnitInfo.haddockHTMLs
+           = map f (InstalledUnitInfo.haddockHTMLs ipo)
    }
     where f ('$':'t':'o':'p':'d':'i':'r':rest) = topDir ++ rest
           f x = x

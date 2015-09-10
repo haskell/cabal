@@ -21,7 +21,7 @@ import Distribution.Client.Dependency.TopDown.Constraints
          ( Satisfiable(..) )
 import Distribution.Client.Types
          ( SourcePackage(..), ConfiguredPackage(..)
-         , enableStanzas, ConfiguredId(..), fakePackageKey )
+         , enableStanzas, ConfiguredId(..), fakeInstalledUnitId )
 import Distribution.Client.Dependency.Types
          ( DependencyResolver, ResolverPackage(..)
          , PackageConstraint(..), unlabelPackageConstraint
@@ -31,7 +31,7 @@ import Distribution.Client.Dependency.Types
 import qualified Distribution.Client.PackageIndex as PackageIndex
 import qualified Distribution.Simple.PackageIndex  as InstalledPackageIndex
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
+import qualified Distribution.InstalledUnitInfo as InstalledUnitInfo
 import Distribution.Client.ComponentDeps
          ( ComponentDeps )
 import qualified Distribution.Client.ComponentDeps as CD
@@ -39,7 +39,7 @@ import Distribution.Client.PackageIndex
          ( PackageIndex )
 import Distribution.Package
          ( PackageName(..), PackageId, PackageIdentifier(..)
-         , PackageKey(..)
+         , InstalledUnitId(..)
          , Package(..), packageVersion, packageName
          , Dependency(Dependency), thisPackageVersion, simplifyDependency )
 import Distribution.PackageDescription
@@ -566,10 +566,10 @@ convertInstalledPackageIndex index' = PackageIndex.fromList
     [ InstalledPackage ipkg (sourceDepsOf index' ipkg)
     | (_,ipkg:_) <- InstalledPackageIndex.allPackagesBySourcePackageId index' ]
   where
-    -- The InstalledPackageInfo only lists dependencies by the
+    -- The InstalledUnitInfo only lists dependencies by the
     -- InstalledPackageId, which means we do not directly know the corresponding
     -- source dependency. The only way to find out is to lookup the
-    -- InstalledPackageId to get the InstalledPackageInfo and look at its
+    -- InstalledPackageId to get the InstalledUnitInfo and look at its
     -- source PackageId. But if the package is broken because it depends on
     -- other packages that do not exist then we have a problem we cannot find
     -- the original source package id. Instead we make up a bogus package id.
@@ -577,11 +577,11 @@ convertInstalledPackageIndex index' = PackageIndex.fromList
     -- nonexistent package.
     sourceDepsOf index ipkg =
       [ maybe (brokenPackageId depid) packageId mdep
-      | let depids = InstalledPackageInfo.depends ipkg
-            getpkg = InstalledPackageIndex.lookupPackageKey index
+      | let depids = InstalledUnitInfo.depends ipkg
+            getpkg = InstalledPackageIndex.lookupInstalledUnitId index
       , (depid, mdep) <- zip depids (map getpkg depids) ]
 
-    brokenPackageId (PackageKey str) =
+    brokenPackageId (InstalledUnitId str) =
       PackageIdentifier (PackageName (str ++ "-broken")) (Version [] [])
 
 -- ------------------------------------------------------------
@@ -644,7 +644,7 @@ finaliseSelectedPackages pref selected constraints =
     confId :: InstalledOrSource InstalledPackageEx UnconfiguredPackage -> ConfiguredId
     confId pkg = ConfiguredId {
         confSrcId  = packageId pkg
-      , confInstId = fakePackageKey (packageId pkg)
+      , confInstId = fakeInstalledUnitId (packageId pkg)
       }
 
     pickRemaining mipkg dep@(Dependency _name versionRange) =

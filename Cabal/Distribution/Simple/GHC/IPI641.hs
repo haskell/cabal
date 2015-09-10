@@ -9,19 +9,19 @@
 --
 
 module Distribution.Simple.GHC.IPI641 (
-    InstalledPackageInfo(..),
+    InstalledUnitInfo(..),
     toCurrent,
   ) where
 
-import qualified Distribution.InstalledPackageInfo as Current
-import qualified Distribution.Package as Current hiding (packageKey)
+import qualified Distribution.InstalledUnitInfo as Current
+import qualified Distribution.Package as Current hiding (installedUnitId)
 import Distribution.Text (display)
 
 import Distribution.Simple.GHC.IPI642
          ( PackageIdentifier, convertPackageId
          , License, convertLicense, convertModuleName )
 
--- | This is the InstalledPackageInfo type used by ghc-6.4 and 6.4.1.
+-- | This is the InstalledUnitInfo type used by ghc-6.4 and 6.4.1.
 --
 -- It's here purely for the 'Read' instance so that we can read the package
 -- database used by those ghc versions. It is a little hacky to read the
@@ -30,7 +30,7 @@ import Distribution.Simple.GHC.IPI642
 --
 -- In ghc-6.4.2 the format changed a bit. See "Distribution.Simple.GHC.IPI642"
 --
-data InstalledPackageInfo = InstalledPackageInfo {
+data InstalledUnitInfo = InstalledUnitInfo {
     package           :: PackageIdentifier,
     license           :: License,
     copyright         :: String,
@@ -64,18 +64,18 @@ data InstalledPackageInfo = InstalledPackageInfo {
 mkInstalledPackageId :: Current.PackageIdentifier -> Current.InstalledPackageId
 mkInstalledPackageId = Current.InstalledPackageId . display
 
-mkPackageKey :: Current.PackageIdentifier -> Current.PackageKey
-mkPackageKey = Current.PackageKey . display
+mkInstalledUnitId :: Current.PackageIdentifier -> Current.InstalledUnitId
+mkInstalledUnitId = Current.InstalledUnitId . display
 
-toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
-toCurrent ipi@InstalledPackageInfo{} =
+toCurrent :: InstalledUnitInfo -> Current.InstalledUnitInfo
+toCurrent ipi@InstalledUnitInfo{} =
   let pid = convertPackageId (package ipi)
       mkExposedModule m = Current.ExposedModule m Nothing Nothing
-  in Current.InstalledPackageInfo {
+  in Current.InstalledUnitInfo {
     Current.installedPackageId = mkInstalledPackageId pid,
     Current.sourcePackageId    = pid,
-    Current.packageKey         = mkPackageKey pid,
-    Current.compatPackageKey   = mkPackageKey pid,
+    Current.installedUnitId         = mkInstalledUnitId pid,
+    Current.compatPackageKey   = mkInstalledUnitId pid,
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
     Current.maintainer         = maintainer ipi,
@@ -91,7 +91,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.instantiatedWith   = [],
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
-    Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
+    Current.trusted            = Current.trusted Current.emptyInstalledUnitInfo,
     Current.importDirs         = importDirs ipi,
     Current.libraryDirs        = libraryDirs ipi,
     Current.dataDir            = "",
@@ -100,7 +100,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.extraGHCiLibraries = [],
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map (mkPackageKey.convertPackageId) (depends ipi),
+    Current.depends            = map (mkInstalledUnitId.convertPackageId) (depends ipi),
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
     Current.frameworkDirs      = frameworkDirs ipi,

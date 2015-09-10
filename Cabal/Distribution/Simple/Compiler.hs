@@ -54,7 +54,7 @@ module Distribution.Simple.Compiler (
         reexportedModulesSupported,
         renamingPackageFlagsSupported,
         unifiedIPIDRequired,
-        packageKeySupported,
+        installedUnitIdSupported,
 
         -- * Support for profiling detail levels
         ProfDetailLevel(..),
@@ -282,8 +282,8 @@ unifiedIPIDRequired :: Compiler -> Bool
 unifiedIPIDRequired = ghcSupported "Requires unified installed package IDs"
 
 -- | Does this compiler support package keys?
-packageKeySupported :: Compiler -> Bool
-packageKeySupported = ghcSupported "Uses package keys"
+installedUnitIdSupported :: Compiler -> Bool
+installedUnitIdSupported = ghcSupported "Uses package keys"
 
 -- | Utility function for GHC only features
 ghcSupported :: String -> Compiler -> Bool

@@ -175,7 +175,7 @@ library
     Distribution.Compat.Exception
     Distribution.Compat.ReadP
     Distribution.Compiler
-    Distribution.InstalledPackageInfo
+    Distribution.InstalledUnitInfo
     Distribution.License
     Distribution.Make
     Distribution.ModuleName

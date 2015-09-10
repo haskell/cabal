@@ -19,9 +19,9 @@ import qualified Data.Map as Map
 
 -- Cabal
 import qualified Distribution.Compiler             as C
-import qualified Distribution.InstalledPackageInfo as C
+import qualified Distribution.InstalledUnitInfo as C
 import qualified Distribution.Package              as C
-  hiding (HasPackageKey(..))
+  hiding (HasInstalledUnitId(..))
 import qualified Distribution.PackageDescription   as C
 import qualified Distribution.Simple.PackageIndex  as C.PackageIndex
 import qualified Distribution.System               as C
@@ -237,12 +237,12 @@ exAvPkgId ex = C.PackageIdentifier {
     , pkgVersion = Version [exAvVersion ex, 0, 0] []
     }
 
-exInstInfo :: ExampleInstalled -> C.InstalledPackageInfo
-exInstInfo ex = C.emptyInstalledPackageInfo {
+exInstInfo :: ExampleInstalled -> C.InstalledUnitInfo
+exInstInfo ex = C.emptyInstalledUnitInfo {
       C.installedPackageId = C.InstalledPackageId (exInstHash ex)
     , C.sourcePackageId    = exInstPkgId ex
-    , C.packageKey         = C.PackageKey (exInstHash ex)
-    , C.depends            = map (C.PackageKey . exInstHash)
+    , C.installedUnitId         = C.InstalledUnitId (exInstHash ex)
+    , C.depends            = map (C.InstalledUnitId . exInstHash)
                                  (exInstBuildAgainst ex)
     }
 

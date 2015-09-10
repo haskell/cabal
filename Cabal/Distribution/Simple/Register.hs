@@ -31,9 +31,9 @@ module Distribution.Simple.Register (
     invokeHcPkg,
     registerPackage,
     generateRegistrationInfo,
-    inplaceInstalledPackageInfo,
-    absoluteInstalledPackageInfo,
-    generalInstalledPackageInfo,
+    inplaceInstalledUnitInfo,
+    absoluteInstalledUnitInfo,
+    generalInstalledUnitInfo,
   ) where
 
 import Distribution.Simple.LocalBuildInfo
@@ -66,10 +66,10 @@ import Distribution.PackageDescription
 import Distribution.Package
          ( Package(..), packageName
          , getHSLibraryName )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo(InstalledPackageInfo)
-         , showInstalledPackageInfo, AbiHash(..) )
-import qualified Distribution.InstalledPackageInfo as IPI
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo, InstalledUnitInfo(InstalledUnitInfo)
+         , showInstalledUnitInfo, AbiHash(..) )
+import qualified Distribution.InstalledUnitInfo as IPI
 import Distribution.Simple.Utils
          ( writeUTF8File, writeFileAtomic, setFileExecutable
          , die, notice, setupMessage, shortRelativePath )
@@ -136,7 +136,7 @@ register pkg@PackageDescription { library       = Just lib  } lbi regFlags
 
     writeRegistrationFile installedPkgInfo = do
       notice verbosity ("Creating package registration file: " ++ regFile)
-      writeUTF8File regFile (showInstalledPackageInfo installedPkgInfo)
+      writeUTF8File regFile (showInstalledUnitInfo installedPkgInfo)
 
     writeRegisterScript installedPkgInfo =
       case compilerFlavor (compiler lbi) of
@@ -161,7 +161,7 @@ generateRegistrationInfo :: Verbosity
                          -> Bool
                          -> FilePath
                          -> PackageDB
-                         -> IO InstalledPackageInfo
+                         -> IO InstalledUnitInfo
 generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packageDb = do
   --TODO: eliminate pwd!
   pwd <- getCurrentDirectory
@@ -179,12 +179,12 @@ generateRegistrationInfo verbosity pkg lib lbi clbi inplace reloc distPref packa
 
   installedPkgInfo <-
     if inplace
-      then return (inplaceInstalledPackageInfo pwd distPref
+      then return (inplaceInstalledUnitInfo pwd distPref
                      pkg abi_hash lib lbi clbi)
     else if reloc
       then relocRegistrationInfo verbosity
                      pkg lib lbi clbi abi_hash packageDb
-      else return (absoluteInstalledPackageInfo
+      else return (absoluteInstalledUnitInfo
                      pkg abi_hash lib lbi clbi)
 
 
@@ -197,11 +197,11 @@ relocRegistrationInfo :: Verbosity
                       -> ComponentLocalBuildInfo
                       -> AbiHash
                       -> PackageDB
-                      -> IO InstalledPackageInfo
+                      -> IO InstalledUnitInfo
 relocRegistrationInfo verbosity pkg lib lbi clbi abi_hash packageDb =
   case (compilerFlavor (compiler lbi)) of
     GHC -> do fs <- GHC.pkgRoot verbosity lbi packageDb
-              return (relocatableInstalledPackageInfo
+              return (relocatableInstalledUnitInfo
                         pkg abi_hash lib lbi clbi fs)
     _   -> die "Distribution.Simple.Register.relocRegistrationInfo: \
                \not implemented for this compiler"
@@ -235,7 +235,7 @@ withHcPkg name comp conf f =
                   \not implemented for this compiler")
 
 registerPackage :: Verbosity
-                -> InstalledPackageInfo
+                -> InstalledUnitInfo
                 -> PackageDescription
                 -> LocalBuildInfo
                 -> Bool
@@ -257,7 +257,7 @@ registerPackage verbosity installedPkgInfo pkg lbi inplace packageDbs = do
     _    -> die "Registering is not implemented for this compiler"
 
 writeHcPkgRegisterScript :: Verbosity
-                         -> InstalledPackageInfo
+                         -> InstalledUnitInfo
                          -> PackageDBStack
                          -> HcPkgInfo
                          -> IO ()
@@ -277,12 +277,12 @@ regScriptFileName = case buildOS of
 
 
 -- -----------------------------------------------------------------------------
--- Making the InstalledPackageInfo
+-- Making the InstalledUnitInfo
 
--- | Construct 'InstalledPackageInfo' for a library in a package, given a set
+-- | Construct 'InstalledUnitInfo' for a library in a package, given a set
 -- of installation directories.
 --
-generalInstalledPackageInfo
+generalInstalledUnitInfo
   :: ([FilePath] -> [FilePath]) -- ^ Translate relative include dir paths to
                                 -- absolute paths.
   -> PackageDescription
@@ -291,13 +291,13 @@ generalInstalledPackageInfo
   -> LocalBuildInfo
   -> ComponentLocalBuildInfo
   -> InstallDirs FilePath
-  -> InstalledPackageInfo
-generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDirs =
-  InstalledPackageInfo {
+  -> InstalledUnitInfo
+generalInstalledUnitInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDirs =
+  InstalledUnitInfo {
     IPI.installedPackageId = componentIPID clbi,
     IPI.sourcePackageId    = packageId   pkg,
-    IPI.packageKey         = componentPackageKey clbi,
-    IPI.compatPackageKey   = componentCompatPackageKey clbi,
+    IPI.installedUnitId         = componentInstalledUnitId clbi,
+    IPI.compatPackageKey   = componentCompatInstalledUnitId clbi,
     IPI.license            = license     pkg,
     IPI.copyright          = copyright   pkg,
     IPI.maintainer         = maintainer  pkg,
@@ -313,9 +313,9 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
     IPI.exposedModules     = componentExposedModules clbi,
     IPI.hiddenModules      = otherModules bi,
     IPI.instantiatedWith   = map (\(k,(p,n)) ->
-                                   (k,IPI.OriginalModule (IPI.packageKey p) n))
+                                   (k,IPI.OriginalModule (IPI.installedUnitId p) n))
                                  (instantiatedWith lbi),
-    IPI.trusted            = IPI.trusted IPI.emptyInstalledPackageInfo,
+    IPI.trusted            = IPI.trusted IPI.emptyInstalledUnitInfo,
     IPI.importDirs         = [ libdir installDirs | hasModules ],
     -- Note. the libsubdir and datasubdir templates have already been expanded
     -- into libdir and datadir.
@@ -324,7 +324,7 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
                                else                      extraLibDirs bi,
     IPI.dataDir            = datadir installDirs,
     IPI.hsLibraries        = if hasLibrary
-                               then [getHSLibraryName (componentPackageKey clbi)]
+                               then [getHSLibraryName (componentInstalledUnitId clbi)]
                                else [],
     IPI.extraLibraries     = extraLibs bi,
     IPI.extraGHCiLibraries = extraGHCiLibs bi,
@@ -349,21 +349,21 @@ generalInstalledPackageInfo adjustRelIncDirs pkg abi_hash lib lbi clbi installDi
                             || (not (null (jsSources bi)) &&
                                 compilerFlavor (compiler lbi) == GHCJS)
 
--- | Construct 'InstalledPackageInfo' for a library that is in place in the
+-- | Construct 'InstalledUnitInfo' for a library that is in place in the
 -- build tree.
 --
 -- This function knows about the layout of in place packages.
 --
-inplaceInstalledPackageInfo :: FilePath -- ^ top of the build tree
+inplaceInstalledUnitInfo :: FilePath -- ^ top of the build tree
                             -> FilePath -- ^ location of the dist tree
                             -> PackageDescription
                             -> AbiHash
                             -> Library
                             -> LocalBuildInfo
                             -> ComponentLocalBuildInfo
-                            -> InstalledPackageInfo
-inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
-    generalInstalledPackageInfo adjustRelativeIncludeDirs
+                            -> InstalledUnitInfo
+inplaceInstalledUnitInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
+    generalInstalledUnitInfo adjustRelativeIncludeDirs
                                 pkg abi_hash lib lbi clbi installDirs
   where
     adjustRelativeIncludeDirs = map (inplaceDir </>)
@@ -379,19 +379,19 @@ inplaceInstalledPackageInfo inplaceDir distPref pkg abi_hash lib lbi clbi =
     inplaceHtmldir = inplaceDocdir </> "html" </> display (packageName pkg)
 
 
--- | Construct 'InstalledPackageInfo' for the final install location of a
+-- | Construct 'InstalledUnitInfo' for the final install location of a
 -- library package.
 --
 -- This function knows about the layout of installed packages.
 --
-absoluteInstalledPackageInfo :: PackageDescription
+absoluteInstalledUnitInfo :: PackageDescription
                              -> AbiHash
                              -> Library
                              -> LocalBuildInfo
                              -> ComponentLocalBuildInfo
-                             -> InstalledPackageInfo
-absoluteInstalledPackageInfo pkg abi_hash lib lbi clbi =
-    generalInstalledPackageInfo adjustReativeIncludeDirs
+                             -> InstalledUnitInfo
+absoluteInstalledUnitInfo pkg abi_hash lib lbi clbi =
+    generalInstalledUnitInfo adjustReativeIncludeDirs
                                 pkg abi_hash lib lbi clbi installDirs
   where
     -- For installed packages we install all include files into one dir,
@@ -403,15 +403,15 @@ absoluteInstalledPackageInfo pkg abi_hash lib lbi clbi =
     installDirs = absoluteInstallDirs pkg lbi NoCopyDest
 
 
-relocatableInstalledPackageInfo :: PackageDescription
+relocatableInstalledUnitInfo :: PackageDescription
                                 -> AbiHash
                                 -> Library
                                 -> LocalBuildInfo
                                 -> ComponentLocalBuildInfo
                                 -> FilePath
-                                -> InstalledPackageInfo
-relocatableInstalledPackageInfo pkg abi_hash lib lbi clbi pkgroot =
-    generalInstalledPackageInfo adjustReativeIncludeDirs
+                                -> InstalledUnitInfo
+relocatableInstalledUnitInfo pkg abi_hash lib lbi clbi pkgroot =
+    generalInstalledUnitInfo adjustReativeIncludeDirs
                                 pkg abi_hash lib lbi clbi installDirs
   where
     -- For installed packages we install all include files into one dir,

@@ -36,7 +36,7 @@ import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
          , Dependency(..), thisPackageVersion, packageName
-         , InstalledPackageId(..), PackageKey(..) )
+         , InstalledPackageId(..), InstalledUnitId(..) )
 import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor(..), compilerFlavor
          , PackageDB(..), PackageDBStack )
@@ -44,7 +44,7 @@ import Distribution.PackageDescription
          ( PackageDescription(..), BuildInfo(..), Library(..), Executable(..)
          , TestSuite(..), TestSuiteInterface(..), Benchmark(..)
          , BenchmarkInterface(..), allBuildInfo, defaultRenaming )
-import qualified Distribution.InstalledPackageInfo as IPI
+import qualified Distribution.InstalledUnitInfo as IPI
 import qualified Distribution.ModuleName as ModuleName
 import Distribution.ModuleName (ModuleName)
 
@@ -67,7 +67,7 @@ import qualified Distribution.Simple.Program.HcPkg as HcPkg
 import Distribution.Simple.BuildPaths
          ( autogenModulesDir, autogenModuleName, cppHeaderName, exeExtension )
 import Distribution.Simple.Register
-         ( registerPackage, inplaceInstalledPackageInfo )
+         ( registerPackage, inplaceInstalledUnitInfo )
 import Distribution.Simple.Test.LibV09 ( stubFilePath, stubName )
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose, rewriteFile
@@ -206,7 +206,7 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     -- on internally defined libraries.
     pwd <- getCurrentDirectory
     let -- The in place registration uses the "-inplace" suffix, not an ABI hash
-        installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
+        installedPkgInfo = inplaceInstalledUnitInfo pwd distPref pkg_descr
                                                        (IPI.AbiHash "") lib' lbi clbi
 
     registerPackage verbosity
@@ -386,7 +386,7 @@ testSuiteLibV09AsLibAndExe :: PackageDescription
                            -> (PackageDescription,
                                Library, ComponentLocalBuildInfo,
                                LocalBuildInfo,
-                               IPI.InstalledPackageInfo,
+                               IPI.InstalledUnitInfo,
                                Executable, ComponentLocalBuildInfo)
 testSuiteLibV09AsLibAndExe pkg_descr
                      test@TestSuite { testInterface = TestSuiteLibV09 _ m }
@@ -406,8 +406,8 @@ testSuiteLibV09AsLibAndExe pkg_descr
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
                 , componentIPID = InstalledPackageId $ display (packageId pkg)
-                , componentPackageKey = PackageKey $ display (packageId pkg)
-                , componentCompatPackageKey = PackageKey $ display (packageId pkg)
+                , componentInstalledUnitId = InstalledUnitId $ display (packageId pkg)
+                , componentCompatInstalledUnitId = InstalledUnitId $ display (packageId pkg)
                 , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
                 }
     pkg = pkg_descr {
@@ -419,7 +419,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           , testSuites   = []
           , library      = Just lib
           }
-    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (IPI.AbiHash "") lib lbi libClbi
+    ipi    = inplaceInstalledUnitInfo pwd distPref pkg (IPI.AbiHash "") lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg
@@ -439,7 +439,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- that exposes the relevant test suite library.
     exeClbi = ExeComponentLocalBuildInfo {
                 componentPackageDeps =
-                    (IPI.packageKey ipi, packageId ipi)
+                    (IPI.installedUnitId ipi, packageId ipi)
                   : (filter (\(_, x) -> let PackageName name = pkgName x
                                         in name == "Cabal" || name == "base")
                             (componentPackageDeps clbi)),

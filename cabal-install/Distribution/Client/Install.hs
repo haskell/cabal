@@ -104,7 +104,7 @@ import qualified Distribution.Client.InstallSymlink as InstallSymlink
 import qualified Distribution.Client.PackageIndex as SourcePackageIndex
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
 import qualified Distribution.Client.World as World
-import qualified Distribution.InstalledPackageInfo as Installed
+import qualified Distribution.InstalledUnitInfo as Installed
 import Distribution.Client.Compat.ExecutablePath
 import Distribution.Client.JobControl
 import qualified Distribution.Client.ComponentDeps as CD
@@ -136,10 +136,10 @@ import Distribution.Simple.InstallDirs as InstallDirs
          , initialPathTemplateEnv, installDirsTemplateEnv )
 import Distribution.Package
          ( PackageIdentifier(..), PackageId, packageName, packageVersion
-         , Package(..), InstalledPackageId(..), PackageKey(..)
+         , Package(..), InstalledPackageId(..), InstalledUnitId(..)
          , Dependency(..), thisPackageVersion
          , InstalledPackageId
-         , HasPackageKey(..) )
+         , HasInstalledUnitId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
 import Distribution.PackageDescription
          ( PackageDescription, GenericPackageDescription(..), Flag(..)
@@ -484,16 +484,16 @@ checkPrintPlan verbosity installed installPlan sourcePkgDb
   let reinstalledPkgs = concatMap (extractReinstalls . snd) lPlan
   -- Packages that are already broken.
   let oldBrokenPkgs =
-          map Installed.packageKey
+          map Installed.installedUnitId
         . PackageIndex.reverseDependencyClosure installed
-        . map (Installed.packageKey . fst)
+        . map (Installed.installedUnitId . fst)
         . PackageIndex.brokenPackages
         $ installed
   let excluded = reinstalledPkgs ++ oldBrokenPkgs
   -- Packages that are reverse dependencies of replaced packages are very
   -- likely to be broken. We exclude packages that are already broken.
   let newBrokenPkgs =
-        filter (\ p -> not (Installed.packageKey p `elem` excluded))
+        filter (\ p -> not (Installed.installedUnitId p `elem` excluded))
                (PackageIndex.reverseDependencyClosure installed reinstalledPkgs)
   let containsReinstalls = not (null reinstalledPkgs)
   let breaksPkgs         = not (null newBrokenPkgs)
@@ -559,11 +559,11 @@ linearizeInstallPlan installedPkgIndex plan =
       []      -> Nothing
       (pkg:_) -> Just ((pkg, status), plan'')
         where
-          pkgid  = packageKey pkg
+          pkgid  = installedUnitId pkg
           status = packageStatus installedPkgIndex pkg
-          ipkg   = Installed.emptyInstalledPackageInfo {
+          ipkg   = Installed.emptyInstalledUnitInfo {
                      Installed.sourcePackageId    = packageId pkg,
-                     Installed.packageKey = pkgid
+                     Installed.installedUnitId = pkgid
                    }
           plan'' = InstallPlan.completed pkgid (Just ipkg)
                      (BuildOk DocsNotTried TestsNotTried (Just ipkg))
@@ -575,11 +575,11 @@ linearizeInstallPlan installedPkgIndex plan =
 
 data PackageStatus = NewPackage
                    | NewVersion [Version]
-                   | Reinstall  [PackageKey] [PackageChange]
+                   | Reinstall  [InstalledUnitId] [PackageChange]
 
 type PackageChange = MergeResult PackageIdentifier PackageIdentifier
 
-extractReinstalls :: PackageStatus -> [PackageKey]
+extractReinstalls :: PackageStatus -> [InstalledUnitId]
 extractReinstalls (Reinstall ipids _) = ipids
 extractReinstalls _                   = []
 
@@ -593,12 +593,12 @@ packageStatus installedPkgIndex cpkg =
     ps ->  case filter ((== packageId cpkg)
                         . Installed.sourcePackageId) (concatMap snd ps) of
       []           -> NewVersion (map fst ps)
-      pkgs@(pkg:_) -> Reinstall (map Installed.packageKey pkgs)
+      pkgs@(pkg:_) -> Reinstall (map Installed.installedUnitId pkgs)
                                 (changes pkg cpkg)
 
   where
 
-    changes :: Installed.InstalledPackageInfo
+    changes :: Installed.InstalledUnitInfo
             -> ReadyPackage
             -> [MergeResult PackageIdentifier PackageIdentifier]
     changes pkg pkg' = filter changed $
@@ -609,13 +609,13 @@ packageStatus installedPkgIndex cpkg =
         (resolveInstalledIds $ CD.nonSetupDeps (depends pkg'))
 
     -- convert to source pkg ids via index
-    resolveInstalledIds :: [PackageKey] -> [PackageIdentifier]
+    resolveInstalledIds :: [InstalledUnitId] -> [PackageIdentifier]
     resolveInstalledIds =
         nub
       . sort
       . map Installed.sourcePackageId
       . catMaybes
-      . map (PackageIndex.lookupPackageKey installedPkgIndex)
+      . map (PackageIndex.lookupInstalledUnitId installedPkgIndex)
 
     changed (InBoth    pkgid pkgid') = pkgid /= pkgid'
     changed _                        = True
@@ -880,7 +880,7 @@ regenerateHaddockIndex verbosity packageDBs comp platform conf useSandbox
   notice verbosity $
      "Updating documentation index " ++ indexFile
 
-  --TODO: might be nice if the install plan gave us the new InstalledPackageInfo
+  --TODO: might be nice if the install plan gave us the new InstalledUnitInfo
   installedPkgIndex <- getInstalledPackages verbosity comp packageDBs conf
   Haddock.regenerateHaddockIndex verbosity installedPkgIndex conf indexFile
 
@@ -1187,11 +1187,11 @@ executeInstallPlan verbosity _comp jobCtl useLogFile plan0 installPkg =
     updatePlan :: PackageIdentifier -> BuildResult -> InstallPlan
                -> InstallPlan
     updatePlan pkgid (Right buildSuccess@(BuildOk _ _ mipkg)) =
-        InstallPlan.completed (Source.fakePackageKey pkgid)
+        InstallPlan.completed (Source.fakeInstalledUnitId pkgid)
                               mipkg buildSuccess
 
     updatePlan pkgid (Left buildFailure) =
-        InstallPlan.failed (Source.fakePackageKey pkgid)
+        InstallPlan.failed (Source.fakeInstalledUnitId pkgid)
                            buildFailure depsFailure
       where
         depsFailure = DependentFailed pkgid
@@ -1248,7 +1248,7 @@ installReadyPackage platform cinfo configFlags
     configConstraints  = [ thisPackageVersion (packageId deppkg)
                          | deppkg <- CD.nonSetupDeps deps ],
     configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
-                            Installed.packageKey deppkg)
+                            Installed.installedUnitId deppkg)
                          | deppkg <- CD.nonSetupDeps deps ],
     -- Use '--exact-configuration' if supported.
     configExactConfiguration = toFlag True,
@@ -1500,7 +1500,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
                         (configUserInstall configFlags')
 
     maybeGenPkgConf :: Maybe FilePath
-                    -> IO (Maybe Installed.InstalledPackageInfo)
+                    -> IO (Maybe Installed.InstalledUnitInfo)
     maybeGenPkgConf mLogPath =
       if shouldRegister then do
         tmp <- getTemporaryDirectory
@@ -1511,7 +1511,7 @@ installUnpackedPackage verbosity buildLimit installLock numJobs
               }
           setup Cabal.registerCommand registerFlags' mLogPath
           withUTF8FileContents pkgConfFile $ \pkgConfText ->
-            case Installed.parseInstalledPackageInfo pkgConfText of
+            case Installed.parseInstalledUnitInfo pkgConfText of
               Installed.ParseFailed perror    -> pkgConfParseFailed perror
               Installed.ParseOk warns pkgConf -> do
                 unless (null warns) $

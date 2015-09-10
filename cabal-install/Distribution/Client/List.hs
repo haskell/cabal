@@ -16,10 +16,10 @@ module Distribution.Client.List (
 import Distribution.Package
          ( PackageName(..), Package(..), packageName, packageVersion
          , Dependency(..), simplifyDependency
-         , PackageKey )
+         , InstalledUnitId )
 import Distribution.ModuleName (ModuleName)
 import Distribution.License (License)
-import qualified Distribution.InstalledPackageInfo as Installed
+import qualified Distribution.InstalledUnitInfo as Installed
 import qualified Distribution.PackageDescription   as Source
 import Distribution.PackageDescription
          ( Flag(..), FlagName(..) )
@@ -91,7 +91,7 @@ getPkgList verbosity packageDBs repos comp conf listFlags pats = do
                        (Map.lookup name (packagePreferences sourcePkgDb))
 
         pkgsInfo ::
-          [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage])]
+          [(PackageName, [Installed.InstalledUnitInfo], [SourcePackage])]
         pkgsInfo
             -- gather info for all packages
           | null pats = mergePackages
@@ -102,7 +102,7 @@ getPkgList verbosity packageDBs repos comp conf listFlags pats = do
           | otherwise = pkgsInfoMatching
 
         pkgsInfoMatching ::
-          [(PackageName, [Installed.InstalledPackageInfo], [SourcePackage])]
+          [(PackageName, [Installed.InstalledUnitInfo], [SourcePackage])]
         pkgsInfoMatching =
           let matchingInstalled = matchingPackages
                                   InstalledPackageIndex.searchByNameSubstring
@@ -254,7 +254,7 @@ sourcePkgsInfo ::
   -> PackageName
   -> InstalledPackageIndex
   -> PackageIndex.PackageIndex SourcePackage
-  -> (VersionRange, [Installed.InstalledPackageInfo], [SourcePackage])
+  -> (VersionRange, [Installed.InstalledUnitInfo], [SourcePackage])
 sourcePkgsInfo prefs name installedPkgIndex sourcePkgIndex =
   (pref, installedPkgs, sourcePkgs)
   where
@@ -296,7 +296,7 @@ data PackageDisplayInfo = PackageDisplayInfo {
 -- | Covers source dependencies and installed dependencies in
 -- one type.
 data ExtDependency = SourceDependency Dependency
-                   | InstalledDependency PackageKey
+                   | InstalledDependency InstalledUnitId
 
 showPackageSummaryInfo :: PackageDisplayInfo -> String
 showPackageSummaryInfo pkginfo =
@@ -418,7 +418,7 @@ reflowLines = vcat . map text . lines
 -- package name.
 --
 mergePackageInfo :: VersionRange
-                 -> [Installed.InstalledPackageInfo]
+                 -> [Installed.InstalledUnitInfo]
                  -> [SourcePackage]
                  -> Maybe SourcePackage
                  -> Bool
@@ -477,7 +477,7 @@ mergePackageInfo versionPref installedPkgs sourcePkgs selectedPkg showVer =
   }
   where
     combine f x g y  = fromJust (fmap f x `mplus` fmap g y)
-    installed :: Maybe Installed.InstalledPackageInfo
+    installed :: Maybe Installed.InstalledUnitInfo
     installed = latestWithPref versionPref installedPkgs
 
     getListOfExposedModules lib = Source.exposedModules lib
@@ -521,10 +521,10 @@ latestWithPref pref pkgs = Just (maximumBy (comparing prefThenVersion) pkgs)
 -- same package by name. In the result pairs, the lists are guaranteed to not
 -- both be empty.
 --
-mergePackages :: [Installed.InstalledPackageInfo]
+mergePackages :: [Installed.InstalledUnitInfo]
               -> [SourcePackage]
               -> [( PackageName
-                  , [Installed.InstalledPackageInfo]
+                  , [Installed.InstalledUnitInfo]
                   , [SourcePackage] )]
 mergePackages installedPkgs sourcePkgs =
     map collect

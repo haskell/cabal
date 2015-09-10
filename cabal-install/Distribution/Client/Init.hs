@@ -61,8 +61,8 @@ import Distribution.Verbosity
   ( Verbosity )
 import Distribution.ModuleName
   ( ModuleName, fromString )  -- And for the Text instance
-import Distribution.InstalledPackageInfo
-  ( InstalledPackageInfo, sourcePackageId, exposed )
+import Distribution.InstalledUnitInfo
+  ( InstalledUnitInfo, sourcePackageId, exposed )
 import qualified Distribution.Package as P
 import Language.Haskell.Extension ( Language(..) )
 
@@ -414,10 +414,10 @@ getModulesBuildToolsAndDeps pkgIx flags = do
 importsToDeps :: InitFlags -> [ModuleName] -> InstalledPackageIndex -> IO [P.Dependency]
 importsToDeps flags mods pkgIx = do
 
-  let modMap :: M.Map ModuleName [InstalledPackageInfo]
+  let modMap :: M.Map ModuleName [InstalledUnitInfo]
       modMap  = M.map (filter exposed) $ moduleNameIndex pkgIx
 
-      modDeps :: [(ModuleName, Maybe [InstalledPackageInfo])]
+      modDeps :: [(ModuleName, Maybe [InstalledUnitInfo])]
       modDeps = map (id &&& flip M.lookup modMap) mods
 
   message flags "\nGuessing dependencies..."
@@ -426,7 +426,7 @@ importsToDeps flags mods pkgIx = do
 -- Given a module and a list of installed packages providing it,
 -- choose a dependency (i.e. package + version range) to use for that
 -- module.
-chooseDep :: InitFlags -> (ModuleName, Maybe [InstalledPackageInfo])
+chooseDep :: InitFlags -> (ModuleName, Maybe [InstalledUnitInfo])
           -> IO (Maybe P.Dependency)
 
 chooseDep flags (m, Nothing)

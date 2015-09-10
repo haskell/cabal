@@ -25,7 +25,7 @@ module Distribution.Package (
         InstalledPackageId(..),
 
         -- * Package keys (used for linker symbols)
-        PackageKey(..),
+        InstalledUnitId(..),
         getHSLibraryName,
 
         -- * Package source dependencies
@@ -36,7 +36,7 @@ module Distribution.Package (
 
         -- * Package classes
         Package(..), packageName, packageVersion,
-        HasPackageKey(..),
+        HasInstalledUnitId(..),
         PackageInstalled(..),
   ) where
 
@@ -128,32 +128,32 @@ instance Text InstalledPackageId where
 -- * Package Keys
 -- ------------------------------------------------------------
 
--- | A 'PackageKey' uniquely identifies an entry in the installed
+-- | A 'InstalledUnitId' uniquely identifies an entry in the installed
 -- database; it's used for install paths, symbols, etc.  In fact,
--- 'PackageKey's are equivalent to 'InstalledPackageId's when no
--- Backpack is involved.  However, with Backpack, a 'PackageKey' also
+-- 'InstalledUnitId's are equivalent to 'InstalledPackageId's when no
+-- Backpack is involved.  However, with Backpack, a 'InstalledUnitId' also
 -- records the name of a unit (if this is an internal unit of a package),
 -- and when the unit is indefinite, information about how the
 -- requirements of the unit were filled.
 --
-data PackageKey
-    = PackageKey String
+data InstalledUnitId
+    = InstalledUnitId String
     deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
-instance Binary PackageKey
+instance Binary InstalledUnitId
 
-instance Text PackageKey where
-  disp (PackageKey str) = text str
+instance Text InstalledUnitId where
+  disp (InstalledUnitId str) = text str
 
-  parse = PackageKey `fmap` Parse.munch1 abi_char
+  parse = InstalledUnitId `fmap` Parse.munch1 abi_char
    where abi_char c = Char.isAlphaNum c || c `elem` "-_."
 
-instance NFData PackageKey where
-    rnf (PackageKey pk) = rnf pk
+instance NFData InstalledUnitId where
+    rnf (InstalledUnitId pk) = rnf pk
 
 -- | Returns library name prefixed with HS, suitable for filenames
-getHSLibraryName :: PackageKey -> String
-getHSLibraryName (PackageKey s) = "HS" ++ s
+getHSLibraryName :: InstalledUnitId -> String
+getHSLibraryName (InstalledUnitId s) = "HS" ++ s
 
 -- ------------------------------------------------------------
 -- * Package source dependencies
@@ -214,14 +214,14 @@ instance Package PackageIdentifier where
   packageId = id
 
 -- | Packages that have an installed package ID
-class Package pkg => HasPackageKey pkg where
-  packageKey :: pkg -> PackageKey
+class Package pkg => HasInstalledUnitId pkg where
+  installedUnitId :: pkg -> InstalledUnitId
 
 -- | Class of installed packages.
 --
 -- The primary data type which is an instance of this package is
--- 'InstalledPackageInfo', but when we are doing install plans in Cabal install
+-- 'InstalledUnitInfo', but when we are doing install plans in Cabal install
 -- we may have other, installed package-like things which contain more metadata.
 -- Installed packages have exact dependencies 'installedDepends'.
-class (HasPackageKey pkg) => PackageInstalled pkg where
-  installedDepends :: pkg -> [PackageKey]
+class (HasInstalledUnitId pkg) => PackageInstalled pkg where
+  installedDepends :: pkg -> [InstalledUnitId]

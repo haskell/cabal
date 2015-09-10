@@ -15,7 +15,7 @@ import qualified Distribution.Client.PackageIndex as CI
 import Distribution.Client.Types
 import Distribution.Client.ComponentDeps (Component(..))
 import Distribution.Compiler
-import Distribution.InstalledPackageInfo as IPI
+import Distribution.InstalledUnitInfo as IPI
 import Distribution.Package                          -- from Cabal
 import Distribution.PackageDescription as PD         -- from Cabal
 import qualified Distribution.Simple.PackageIndex as SI
@@ -63,9 +63,9 @@ convIPI :: Bool -> SI.InstalledPackageIndex -> Index
 convIPI sip = mkIndex . convIPI' sip
 
 -- | Convert a single installed package into the solver-specific format.
-convIP :: SI.InstalledPackageIndex -> InstalledPackageInfo -> (PN, I, PInfo)
+convIP :: SI.InstalledPackageIndex -> InstalledUnitInfo -> (PN, I, PInfo)
 convIP idx ipi =
-  let ipid = IPI.packageKey ipi
+  let ipid = IPI.installedUnitId ipi
       i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
       pn = pkgName (sourcePackageId ipi)
   in  case mapM (convIPId pn idx) (IPI.depends ipi) of
@@ -82,9 +82,9 @@ convIP idx ipi =
 -- May return Nothing if the package can't be found in the index. That
 -- indicates that the original package having this dependency is broken
 -- and should be ignored.
-convIPId :: PN -> SI.InstalledPackageIndex -> PackageKey -> Maybe (FlaggedDep () PN)
+convIPId :: PN -> SI.InstalledPackageIndex -> InstalledUnitId -> Maybe (FlaggedDep () PN)
 convIPId pn' idx ipid =
-  case SI.lookupPackageKey idx ipid of
+  case SI.lookupInstalledUnitId idx ipid of
     Nothing  -> Nothing
     Just ipi -> let i = I (pkgVersion (sourcePackageId ipi)) (Inst ipid)
                     pn = pkgName (sourcePackageId ipi)

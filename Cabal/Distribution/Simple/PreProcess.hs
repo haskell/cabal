@@ -39,8 +39,8 @@ import Distribution.PackageDescription as PD
          , TestSuite(..), testModules
          , TestSuiteInterface(..)
          , Benchmark(..), benchmarkModules, BenchmarkInterface(..) )
-import qualified Distribution.InstalledPackageInfo as Installed
-         ( InstalledPackageInfo(..) )
+import qualified Distribution.InstalledUnitInfo as Installed
+         ( InstalledUnitInfo(..) )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.CCompiler
          ( cSourceExtensions )

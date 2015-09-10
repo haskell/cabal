@@ -63,10 +63,10 @@ import Distribution.Simple.BuildPaths
          ( haddockName, hscolourPref, autogenModulesDir)
 import Distribution.Simple.PackageIndex (dependencyClosure)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-         ( InstalledPackageInfo(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+import qualified Distribution.InstalledUnitInfo as InstalledUnitInfo
+         ( InstalledUnitInfo(..) )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
 import Distribution.Simple.Utils
          ( die, copyFileTo, warn, notice, intercalate, setupMessage
          , createDirectoryIfMissingVerbose
@@ -563,10 +563,10 @@ renderPureArgs version comp args = concat
 
 ---------------------------------------------------------------------------------
 
--- | Given a list of 'InstalledPackageInfo's, return a list of interfaces and
+-- | Given a list of 'InstalledUnitInfo's, return a list of interfaces and
 -- HTML paths, and an optional warning for packages with missing documentation.
-haddockPackagePaths :: [InstalledPackageInfo]
-                    -> Maybe (InstalledPackageInfo -> FilePath)
+haddockPackagePaths :: [InstalledUnitInfo]
+                    -> Maybe (InstalledUnitInfo -> FilePath)
                     -> IO ([(FilePath, Maybe FilePath)], Maybe String)
 haddockPackagePaths ipkgs mkHtmlPath = do
   interfaces <- sequence
@@ -593,14 +593,14 @@ haddockPackagePaths ipkgs mkHtmlPath = do
     -- Don't warn about missing documentation for these packages. See #1231.
     noHaddockWhitelist = map PackageName [ "rts" ]
 
-    -- Actually extract interface and HTML paths from an 'InstalledPackageInfo'.
-    interfaceAndHtmlPath :: InstalledPackageInfo
+    -- Actually extract interface and HTML paths from an 'InstalledUnitInfo'.
+    interfaceAndHtmlPath :: InstalledUnitInfo
                          -> Maybe (FilePath, Maybe FilePath)
     interfaceAndHtmlPath pkg = do
-      interface <- listToMaybe (InstalledPackageInfo.haddockInterfaces pkg)
+      interface <- listToMaybe (InstalledUnitInfo.haddockInterfaces pkg)
       html <- case mkHtmlPath of
         Nothing -> fmap fixFileUrl
-                        (listToMaybe (InstalledPackageInfo.haddockHTMLs pkg))
+                        (listToMaybe (InstalledUnitInfo.haddockHTMLs pkg))
         Just mkPath -> Just (mkPath pkg)
       return (interface, if null html then Nothing else Just html)
       where

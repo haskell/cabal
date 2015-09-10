@@ -44,15 +44,15 @@ module Distribution.Client.InstallPlan (
   dependencyClosure,
   ) where
 
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
 import Distribution.Package
          ( PackageIdentifier(..), PackageName(..), Package(..)
-         , HasPackageKey(..), PackageKey(..) )
+         , HasInstalledUnitId(..), InstalledUnitId(..) )
 import Distribution.Client.Types
          ( BuildSuccess, BuildFailure
          , PackageFixedDeps(..), ConfiguredPackage
-         , GenericReadyPackage(..), fakePackageKey )
+         , GenericReadyPackage(..), fakeInstalledUnitId )
 import Distribution.Version
          ( Version )
 import Distribution.Client.ComponentDeps (ComponentDeps)
@@ -140,7 +140,7 @@ data GenericPlanPackage ipkg srcpkg iresult ifailure
    | Failed      srcpkg ifailure
 
 type PlanPackage = GenericPlanPackage
-                   InstalledPackageInfo ConfiguredPackage
+                   InstalledUnitInfo ConfiguredPackage
                    BuildSuccess BuildFailure
 
 instance (Package ipkg, Package srcpkg) =>
@@ -152,7 +152,7 @@ instance (Package ipkg, Package srcpkg) =>
   packageId (Failed      spkg   _) = packageId spkg
 
 instance (PackageFixedDeps srcpkg,
-          PackageFixedDeps ipkg, HasPackageKey ipkg) =>
+          PackageFixedDeps ipkg, HasInstalledUnitId ipkg) =>
          PackageFixedDeps (GenericPlanPackage ipkg srcpkg iresult ifailure) where
   depends (PreExisting pkg)     = depends pkg
   depends (Configured  pkg)     = depends pkg
@@ -160,16 +160,16 @@ instance (PackageFixedDeps srcpkg,
   depends (Installed   pkg _ _) = depends pkg
   depends (Failed      pkg   _) = depends pkg
 
-instance (HasPackageKey ipkg, HasPackageKey srcpkg) =>
-         HasPackageKey
+instance (HasInstalledUnitId ipkg, HasInstalledUnitId srcpkg) =>
+         HasInstalledUnitId
          (GenericPlanPackage ipkg srcpkg iresult ifailure) where
-  packageKey (PreExisting ipkg ) = packageKey ipkg
-  packageKey (Configured  spkg)  = packageKey spkg
-  packageKey (Processing  rpkg)  = packageKey rpkg
+  installedUnitId (PreExisting ipkg ) = installedUnitId ipkg
+  installedUnitId (Configured  spkg)  = installedUnitId spkg
+  installedUnitId (Processing  rpkg)  = installedUnitId rpkg
   -- NB: defer to the actual installed package info in this case
-  packageKey (Installed _ (Just ipkg) _) = packageKey ipkg
-  packageKey (Installed rpkg _        _) = packageKey rpkg
-  packageKey (Failed      spkg        _) = packageKey spkg
+  installedUnitId (Installed _ (Just ipkg) _) = installedUnitId ipkg
+  installedUnitId (Installed rpkg _        _) = installedUnitId rpkg
+  installedUnitId (Failed      spkg        _) = installedUnitId spkg
 
 
 data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
@@ -179,20 +179,20 @@ data GenericInstallPlan ipkg srcpkg iresult ifailure = GenericInstallPlan {
     planGraphRev   :: Graph,
     planPkgOf      :: Graph.Vertex
                       -> GenericPlanPackage ipkg srcpkg iresult ifailure,
-    planVertexOf   :: PackageKey -> Graph.Vertex,
+    planVertexOf   :: InstalledUnitId -> Graph.Vertex,
     planIndepGoals :: Bool
   }
 
 -- | 'GenericInstallPlan' specialised to most commonly used types.
 type InstallPlan = GenericInstallPlan
-                   InstalledPackageInfo ConfiguredPackage
+                   InstalledUnitInfo ConfiguredPackage
                    BuildSuccess BuildFailure
 
 type PlanIndex ipkg srcpkg iresult ifailure =
      PackageIndex (GenericPlanPackage ipkg srcpkg iresult ifailure)
 
-invariant :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-              HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+invariant :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+              HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
           => GenericInstallPlan ipkg srcpkg iresult ifailure -> Bool
 invariant plan =
     valid (planFakeMap plan)
@@ -202,16 +202,16 @@ invariant plan =
 internalError :: String -> a
 internalError msg = error $ "InstallPlan: internal error: " ++ msg
 
-showPlanIndex :: (HasPackageKey ipkg, HasPackageKey srcpkg)
+showPlanIndex :: (HasInstalledUnitId ipkg, HasInstalledUnitId srcpkg)
               => PlanIndex ipkg srcpkg iresult ifailure -> String
 showPlanIndex index =
     intercalate "\n" (map showPlanPackage (PackageIndex.allPackages index))
   where showPlanPackage p =
             showPlanPackageTag p ++ " "
                 ++ display (packageId p) ++ " ("
-                ++ display (packageKey p) ++ ")"
+                ++ display (installedUnitId p) ++ ")"
 
-showInstallPlan :: (HasPackageKey ipkg, HasPackageKey srcpkg)
+showInstallPlan :: (HasInstalledUnitId ipkg, HasInstalledUnitId srcpkg)
                 => GenericInstallPlan ipkg srcpkg iresult ifailure -> String
 showInstallPlan plan =
     showPlanIndex (planIndex plan) ++ "\n" ++
@@ -228,8 +228,8 @@ showPlanPackageTag (Failed    _   _) = "Failed"
 
 -- | Build an installation plan from a valid set of resolved packages.
 --
-new :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-        HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+new :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+        HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
     => Bool
     -> PlanIndex ipkg srcpkg iresult ifailure
     -> Either [PlanProblem ipkg srcpkg iresult ifailure]
@@ -240,8 +240,8 @@ new indepGoals index =
   let isPreExisting (PreExisting _) = True
       isPreExisting _ = False
       fakeMap = Map.fromList
-              . map (\p -> (fakePackageKey (packageId p)
-                           ,packageKey p))
+              . map (\p -> (fakeInstalledUnitId (packageId p)
+                           ,installedUnitId p))
               . filter isPreExisting
               $ PackageIndex.allPackages index in
   case problems fakeMap indepGoals index of
@@ -269,8 +269,8 @@ toList = PackageIndex.allPackages . planIndex
 -- the dependencies of a package or set of packages without actually
 -- installing the package itself, as when doing development.
 --
-remove :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-           HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+remove :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+           HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
        => (GenericPlanPackage ipkg srcpkg iresult ifailure -> Bool)
        -> GenericInstallPlan ipkg srcpkg iresult ifailure
        -> Either [PlanProblem ipkg srcpkg iresult ifailure]
@@ -307,11 +307,11 @@ ready plan = assert check readyPackages
     hasAllInstalledDeps :: srcpkg -> Maybe (ComponentDeps [ipkg])
     hasAllInstalledDeps = T.mapM (mapM isInstalledDep) . depends
 
-    isInstalledDep :: PackageKey -> Maybe ipkg
+    isInstalledDep :: InstalledUnitId -> Maybe ipkg
     isInstalledDep pkgid =
       -- NB: Need to check if the ID has been updated in planFakeMap, in which
       -- case we might be dealing with an old pointer
-      case PlanIndex.fakeLookupPackageKey
+      case PlanIndex.fakeLookupInstalledUnitId
            (planFakeMap plan) (planIndex plan) pkgid
       of
         Just (PreExisting ipkg)            -> Just ipkg
@@ -329,8 +329,8 @@ ready plan = assert check readyPackages
 --
 -- * The package must exist in the graph and be in the configured state.
 --
-processing :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-               HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+processing :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+               HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
            => [GenericReadyPackage srcpkg ipkg]
            -> GenericInstallPlan ipkg srcpkg iresult ifailure
            -> GenericInstallPlan ipkg srcpkg iresult ifailure
@@ -347,9 +347,9 @@ processing pkgs plan = assert (invariant plan') plan'
 -- * The package must exist in the graph and be in the processing state.
 -- * The package must have had no uninstalled dependent packages.
 --
-completed :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-              HasPackageKey srcpkg, PackageFixedDeps srcpkg)
-          => PackageKey
+completed :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+              HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
+          => InstalledUnitId
           -> Maybe ipkg -> iresult
           -> GenericInstallPlan ipkg srcpkg iresult ifailure
           -> GenericInstallPlan ipkg srcpkg iresult ifailure
@@ -361,13 +361,13 @@ completed pkgid mipkg buildResult plan = assert (invariant plan') plan'
                   planFakeMap = insert_fake_mapping mipkg
                               $ planFakeMap plan,
                   planIndex = PackageIndex.insert installed
-                            . PackageIndex.deletePackageKey pkgid
+                            . PackageIndex.deleteInstalledUnitId pkgid
                             $ planIndex plan
                 }
     -- ...but be sure to use the *old* IPID for the lookup for the
     -- preexisting record
     installed = Installed (lookupProcessingPackage plan pkgid) mipkg buildResult
-    insert_fake_mapping (Just ipkg) = Map.insert pkgid (packageKey ipkg)
+    insert_fake_mapping (Just ipkg) = Map.insert pkgid (installedUnitId ipkg)
     insert_fake_mapping  _          = id
 
 -- | Marks a package in the graph as having failed. It also marks all the
@@ -376,9 +376,9 @@ completed pkgid mipkg buildResult plan = assert (invariant plan') plan'
 -- * The package must exist in the graph and be in the processing
 -- state.
 --
-failed :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-           HasPackageKey srcpkg, PackageFixedDeps srcpkg)
-       => PackageKey         -- ^ The id of the package that failed to install
+failed :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+           HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
+       => InstalledUnitId         -- ^ The id of the package that failed to install
        -> ifailure           -- ^ The build result to use for the failed package
        -> ifailure           -- ^ The build result to use for its dependencies
        -> GenericInstallPlan ipkg srcpkg iresult ifailure
@@ -399,7 +399,7 @@ failed pkgid buildResult buildResult' plan = assert (invariant plan') plan'
 -- | Lookup the reachable packages in the reverse dependency graph.
 --
 packagesThatDependOn :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                     -> PackageKey
+                     -> InstalledUnitId
                      -> [GenericPlanPackage ipkg srcpkg iresult ifailure]
 packagesThatDependOn plan pkgid = map (planPkgOf plan)
                           . tail
@@ -410,12 +410,12 @@ packagesThatDependOn plan pkgid = map (planPkgOf plan)
 -- | Lookup a package that we expect to be in the processing state.
 --
 lookupProcessingPackage :: GenericInstallPlan ipkg srcpkg iresult ifailure
-                        -> PackageKey
+                        -> InstalledUnitId
                         -> GenericReadyPackage srcpkg ipkg
 lookupProcessingPackage plan pkgid =
   -- NB: processing packages are guaranteed to not indirect through
   -- planFakeMap
-  case PackageIndex.lookupPackageKey (planIndex plan) pkgid of
+  case PackageIndex.lookupInstalledUnitId (planIndex plan) pkgid of
     Just (Processing pkg) -> pkg
     _  -> internalError $ "not in processing state or no such pkg " ++
                           display pkgid
@@ -440,8 +440,8 @@ checkConfiguredPackage pkg                =
 --
 -- * if the result is @False@ use 'problems' to get a detailed list.
 --
-valid :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-          HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+valid :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+          HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
       => FakeMap -> Bool
       -> PlanIndex ipkg srcpkg iresult ifailure
       -> Bool
@@ -492,8 +492,8 @@ showPlanProblem (PackageStateInvalid pkg pkg') =
 -- error messages. This is mainly intended for debugging purposes.
 -- Use 'showPlanProblem' for a human readable explanation.
 --
-problems :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-             HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+problems :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+             HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
          => FakeMap -> Bool
          -> PlanIndex ipkg srcpkg iresult ifailure
          -> [PlanProblem ipkg srcpkg iresult ifailure]
@@ -502,7 +502,7 @@ problems fakeMap indepGoals index =
      [ PackageMissingDeps pkg
        (catMaybes
         (map
-         (fmap packageId . PlanIndex.fakeLookupPackageKey fakeMap index)
+         (fmap packageId . PlanIndex.fakeLookupInstalledUnitId fakeMap index)
          missingDeps))
      | (pkg, missingDeps) <- PlanIndex.brokenPackages fakeMap index ]
 
@@ -515,7 +515,7 @@ problems fakeMap indepGoals index =
 
   ++ [ PackageStateInvalid pkg pkg'
      | pkg <- PackageIndex.allPackages index
-     , Just pkg' <- map (PlanIndex.fakeLookupPackageKey fakeMap index)
+     , Just pkg' <- map (PlanIndex.fakeLookupInstalledUnitId fakeMap index)
                     (CD.nonSetupDeps (depends pkg))
      , not (stateDependencyRelation pkg pkg') ]
 
@@ -524,8 +524,8 @@ problems fakeMap indepGoals index =
 -- * if the result is @False@ use 'PackageIndex.dependencyCycles' to find out
 --   which packages are involved in dependency cycles.
 --
-acyclic :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-            HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+acyclic :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+            HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
         => FakeMap -> PlanIndex ipkg srcpkg iresult ifailure -> Bool
 acyclic fakeMap = null . PlanIndex.dependencyCycles fakeMap
 
@@ -536,7 +536,7 @@ acyclic fakeMap = null . PlanIndex.dependencyCycles fakeMap
 -- * if the result is @False@ use 'PackageIndex.brokenPackages' to find out
 --   which packages depend on packages not in the index.
 --
-closed :: (HasPackageKey ipkg, PackageFixedDeps ipkg,
+closed :: (HasInstalledUnitId ipkg, PackageFixedDeps ipkg,
            PackageFixedDeps srcpkg)
        => FakeMap -> PlanIndex ipkg srcpkg iresult ifailure -> Bool
 closed fakeMap = null . PlanIndex.brokenPackages fakeMap
@@ -557,8 +557,8 @@ closed fakeMap = null . PlanIndex.brokenPackages fakeMap
 -- * if the result is @False@ use 'PackageIndex.dependencyInconsistencies' to
 --   find out which packages are.
 --
-consistent :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-               HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+consistent :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+               HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
            => FakeMap -> PlanIndex ipkg srcpkg iresult ifailure -> Bool
 consistent fakeMap = null . PlanIndex.dependencyInconsistencies fakeMap False
 
@@ -597,19 +597,19 @@ stateDependencyRelation _               _                 = False
 -- | Compute the dependency closure of a _source_ package in a install plan
 --
 -- See `Distribution.Client.PlanIndex.dependencyClosure`
-dependencyClosure :: (HasPackageKey ipkg,   PackageFixedDeps ipkg,
-                      HasPackageKey srcpkg, PackageFixedDeps srcpkg)
+dependencyClosure :: (HasInstalledUnitId ipkg,   PackageFixedDeps ipkg,
+                      HasInstalledUnitId srcpkg, PackageFixedDeps srcpkg)
                   => GenericInstallPlan ipkg srcpkg iresult ifailure
                   -> [PackageIdentifier]
                   -> Either [(GenericPlanPackage ipkg srcpkg iresult ifailure,
-                              [PackageKey])]
+                              [InstalledUnitId])]
                             (PackageIndex
                              (GenericPlanPackage ipkg srcpkg iresult ifailure))
 dependencyClosure installPlan pids =
     PlanIndex.dependencyClosure
       (planFakeMap installPlan)
       (planIndex installPlan)
-      (map (resolveFakeId . fakePackageKey) pids)
+      (map (resolveFakeId . fakeInstalledUnitId) pids)
   where
-    resolveFakeId :: PackageKey -> PackageKey
+    resolveFakeId :: InstalledUnitId -> InstalledUnitId
     resolveFakeId ipid = Map.findWithDefault ipid ipid (planFakeMap installPlan)

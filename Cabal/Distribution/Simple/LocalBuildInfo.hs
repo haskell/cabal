@@ -20,8 +20,8 @@
 module Distribution.Simple.LocalBuildInfo (
         LocalBuildInfo(..),
         externalPackageDeps,
-        localPackageKey,
-        localCompatPackageKey,
+        localInstalledUnitId,
+        localCompatInstalledUnitId,
         localInstalledPackageId,
 
         -- * Buildable package components
@@ -64,15 +64,15 @@ import Distribution.Simple.InstallDirs hiding (absoluteInstallDirs,
                                                substPathTemplate, )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
 import Distribution.Simple.Program (ProgramConfiguration)
-import Distribution.InstalledPackageInfo (InstalledPackageInfo)
+import Distribution.InstalledUnitInfo (InstalledUnitInfo)
 import Distribution.PackageDescription
          ( PackageDescription(..), withLib, Library(libBuildInfo), withExe
          , Executable(exeName, buildInfo), withTest, TestSuite(..)
          , BuildInfo(buildable), Benchmark(..), ModuleRenaming(..) )
-import qualified Distribution.InstalledPackageInfo as Installed
+import qualified Distribution.InstalledUnitInfo as Installed
 import Distribution.Package
          ( PackageId, Package(..), InstalledPackageId(..)
-         , PackageName, PackageKey(..) )
+         , PackageName, InstalledUnitId(..) )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack, DebugInfoLevel
          , OptimisationLevel, ProfDetailLevel )
@@ -129,7 +129,7 @@ data LocalBuildInfo = LocalBuildInfo {
         localPkgDescr :: PackageDescription,
                 -- ^ The resolved package description, that does not contain
                 -- any conditionals.
-        instantiatedWith :: [(ModuleName, (InstalledPackageInfo, ModuleName))],
+        instantiatedWith :: [(ModuleName, (InstalledUnitInfo, ModuleName))],
         withPrograms  :: ProgramConfiguration, -- ^Location and args for all programs
         withPackageDB :: PackageDBStack,  -- ^What package database to use, global\/user
         withVanillaLib:: Bool,  -- ^Whether to build normal libs.
@@ -152,24 +152,24 @@ data LocalBuildInfo = LocalBuildInfo {
 
 instance Binary LocalBuildInfo
 
--- | Extract the 'PackageKey' from the library component of a
+-- | Extract the 'InstalledUnitId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake package key based
 -- on the package ID.
-localPackageKey :: LocalBuildInfo -> PackageKey
-localPackageKey lbi =
-    foldr go (PackageKey (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+localInstalledUnitId :: LocalBuildInfo -> InstalledUnitId
+localInstalledUnitId lbi =
+    foldr go (InstalledUnitId (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
   where go (_, clbi, _) old_pk = case clbi of
-            LibComponentLocalBuildInfo { componentPackageKey = pk } -> pk
+            LibComponentLocalBuildInfo { componentInstalledUnitId = pk } -> pk
             _ -> old_pk
 
--- | Extract the compatibility 'PackageKey' from the library component of a
+-- | Extract the compatibility 'InstalledUnitId' from the library component of a
 -- 'LocalBuildInfo' if it exists, or make a fake package key based
 -- on the package ID.
-localCompatPackageKey :: LocalBuildInfo -> PackageKey
-localCompatPackageKey lbi =
-    foldr go (PackageKey (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
+localCompatInstalledUnitId :: LocalBuildInfo -> InstalledUnitId
+localCompatInstalledUnitId lbi =
+    foldr go (InstalledUnitId (display (package (localPkgDescr lbi)))) (componentsConfigs lbi)
   where go (_, clbi, _) old_pk = case clbi of
-            LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> pk
+            LibComponentLocalBuildInfo { componentCompatInstalledUnitId = pk } -> pk
             _ -> old_pk
 
 -- | Extract the 'InstalledPackageId' from the library component of a
@@ -186,7 +186,7 @@ localInstalledPackageId lbi =
 
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
-externalPackageDeps :: LocalBuildInfo -> [(PackageKey, PackageId)]
+externalPackageDeps :: LocalBuildInfo -> [(InstalledUnitId, PackageId)]
 externalPackageDeps lbi =
     -- TODO:  what about non-buildable components?
     nub [ (ipkgid, pkgid)
@@ -227,23 +227,23 @@ data ComponentLocalBuildInfo
     -- The 'BuildInfo' specifies a set of build dependencies that must be
     -- satisfied in terms of version ranges. This field fixes those dependencies
     -- to the specific versions available on this machine for this compiler.
-    componentPackageDeps :: [(PackageKey, PackageId)],
-    componentPackageKey :: PackageKey,
-    componentCompatPackageKey :: PackageKey,
+    componentPackageDeps :: [(InstalledUnitId, PackageId)],
+    componentInstalledUnitId :: InstalledUnitId,
+    componentCompatInstalledUnitId :: InstalledUnitId,
     componentIPID :: InstalledPackageId,
     componentExposedModules :: [Installed.ExposedModule],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | ExeComponentLocalBuildInfo {
-    componentPackageDeps :: [(PackageKey, PackageId)],
+    componentPackageDeps :: [(InstalledUnitId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | TestComponentLocalBuildInfo {
-    componentPackageDeps :: [(PackageKey, PackageId)],
+    componentPackageDeps :: [(InstalledUnitId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   | BenchComponentLocalBuildInfo {
-    componentPackageDeps :: [(PackageKey, PackageId)],
+    componentPackageDeps :: [(InstalledUnitId, PackageId)],
     componentPackageRenaming :: Map PackageName ModuleRenaming
   }
   deriving (Generic, Read, Show)

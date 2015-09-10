@@ -8,7 +8,7 @@
 -- Maintainer  :  cabal-devel@haskell.org
 -- Portability :  portable
 --
--- Utilities for parsing 'PackageDescription' and 'InstalledPackageInfo'.
+-- Utilities for parsing 'PackageDescription' and 'InstalledUnitInfo'.
 --
 -- The @.cabal@ file format is not trivial, especially with the introduction
 -- of configurations and the section syntax that goes with that. This module

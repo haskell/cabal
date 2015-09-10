@@ -38,10 +38,10 @@ module Distribution.Simple.Program.HcPkg (
 import Prelude hiding (init)
 import Distribution.Package
          ( PackageId, InstalledPackageId(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo, InstalledPackageInfo(..)
-         , showInstalledPackageInfo
-         , emptyInstalledPackageInfo, fieldsInstalledPackageInfo )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo, InstalledUnitInfo(..)
+         , showInstalledUnitInfo
+         , emptyInstalledUnitInfo, fieldsInstalledUnitInfo )
 import Distribution.ParseUtils
 import Distribution.Simple.Compiler
          ( PackageDB(..), PackageDBStack )
@@ -101,7 +101,7 @@ invoke hpi verbosity dbStack extraArgs =
 --
 register :: HcPkgInfo -> Verbosity -> PackageDBStack
          -> Either FilePath
-                   InstalledPackageInfo
+                   InstalledUnitInfo
          -> IO ()
 register hpi verbosity packagedb pkgFile =
   runProgramInvocation verbosity
@@ -114,7 +114,7 @@ register hpi verbosity packagedb pkgFile =
 --
 reregister :: HcPkgInfo -> Verbosity -> PackageDBStack
            -> Either FilePath
-                     InstalledPackageInfo
+                     InstalledUnitInfo
            -> IO ()
 reregister hpi verbosity packagedb pkgFile =
   runProgramInvocation verbosity
@@ -144,7 +144,7 @@ expose hpi verbosity packagedb pkgid =
 --
 -- > hc-pkg describe [pkgid] [--user | --global | --package-db]
 --
-describe :: HcPkgInfo -> Verbosity -> PackageDBStack -> PackageId -> IO [InstalledPackageInfo]
+describe :: HcPkgInfo -> Verbosity -> PackageDBStack -> PackageId -> IO [InstalledUnitInfo]
 describe hpi verbosity packagedb pid = do
 
   output <- getProgramInvocationOutput verbosity
@@ -169,7 +169,7 @@ hide hpi verbosity packagedb pkgid =
 -- | Call @hc-pkg@ to get all the details of all the packages in the given
 -- package database.
 --
-dump :: HcPkgInfo -> Verbosity -> PackageDB -> IO [InstalledPackageInfo]
+dump :: HcPkgInfo -> Verbosity -> PackageDB -> IO [InstalledUnitInfo]
 dump hpi verbosity packagedb = do
 
   output <- getProgramInvocationOutput verbosity
@@ -181,9 +181,9 @@ dump hpi verbosity packagedb = do
     _       -> die $ "failed to parse output of '"
                   ++ programId (hcPkgProgram hpi) ++ " dump'"
 
-parsePackages :: String -> Either [InstalledPackageInfo] [PError]
+parsePackages :: String -> Either [InstalledUnitInfo] [PError]
 parsePackages str =
-  let parsed = map parseInstalledPackageInfo' (splitPkgs str)
+  let parsed = map parseInstalledUnitInfo' (splitPkgs str)
    in case [ msg | ParseFailed msg <- parsed ] of
         []   -> Left [   setInstalledPackageId
                        . maybe id mungePackagePaths (pkgRoot pkg)
@@ -191,8 +191,8 @@ parsePackages str =
                      | ParseOk _ pkg <- parsed ]
         msgs -> Right msgs
   where
-    parseInstalledPackageInfo' =
-      parseFieldsFlat fieldsInstalledPackageInfo emptyInstalledPackageInfo
+    parseInstalledUnitInfo' =
+      parseFieldsFlat fieldsInstalledUnitInfo emptyInstalledUnitInfo
 
 --TODO: this could be a lot faster. We're doing normaliseLineEndings twice
 -- and converting back and forth with lines/unlines.
@@ -209,7 +209,7 @@ splitPkgs = checkEmpty . map unlines . splitWith ("---" ==) . lines
                        _:ws -> splitWith p ws
       where (ys,zs) = break p xs
 
-mungePackagePaths :: FilePath -> InstalledPackageInfo -> InstalledPackageInfo
+mungePackagePaths :: FilePath -> InstalledUnitInfo -> InstalledUnitInfo
 -- Perform path/URL variable substitution as per the Cabal ${pkgroot} spec
 -- (http://www.haskell.org/pipermail/libraries/2009-May/011772.html)
 -- Paths/URLs can be relative to ${pkgroot} or ${pkgrooturl}.
@@ -249,8 +249,8 @@ mungePackagePaths pkgroot pkginfo =
 
 -- Older installed package info files did not have the installedPackageId
 -- field, so if it is missing then we fill it as the source package ID.
-setInstalledPackageId :: InstalledPackageInfo -> InstalledPackageInfo
-setInstalledPackageId pkginfo@InstalledPackageInfo {
+setInstalledPackageId :: InstalledUnitInfo -> InstalledUnitInfo
+setInstalledPackageId pkginfo@InstalledUnitInfo {
                         installedPackageId = InstalledPackageId "",
                         sourcePackageId    = pkgid
                       }
@@ -298,14 +298,14 @@ initInvocation hpi verbosity path =
 
 registerInvocation, reregisterInvocation
   :: HcPkgInfo -> Verbosity -> PackageDBStack
-  -> Either FilePath InstalledPackageInfo
+  -> Either FilePath InstalledUnitInfo
   -> ProgramInvocation
 registerInvocation   = registerInvocation' "register"
 reregisterInvocation = registerInvocation' "update"
 
 
 registerInvocation' :: String -> HcPkgInfo -> Verbosity -> PackageDBStack
-                    -> Either FilePath InstalledPackageInfo
+                    -> Either FilePath InstalledUnitInfo
                     -> ProgramInvocation
 registerInvocation' cmdname hpi verbosity packagedbs (Left pkgFile) =
     programInvocation (hcPkgProgram hpi) args
@@ -318,7 +318,7 @@ registerInvocation' cmdname hpi verbosity packagedbs (Left pkgFile) =
 
 registerInvocation' cmdname hpi verbosity packagedbs (Right pkgInfo) =
     (programInvocation (hcPkgProgram hpi) args) {
-      progInvokeInput         = Just (showInstalledPackageInfo pkgInfo),
+      progInvokeInput         = Just (showInstalledUnitInfo pkgInfo),
       progInvokeInputEncoding = IOEncodingUTF8
     }
   where

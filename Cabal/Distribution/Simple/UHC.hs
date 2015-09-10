@@ -23,7 +23,7 @@ import Control.Monad
 import Data.List
 import qualified Data.Map as M ( empty )
 import Distribution.Compat.ReadP
-import Distribution.InstalledPackageInfo
+import Distribution.InstalledUnitInfo
 import Distribution.Package
 import Distribution.PackageDescription
 import Distribution.Simple.BuildPaths
@@ -101,7 +101,7 @@ getInstalledPackages verbosity comp packagedbs conf = do
           concatMap lines $ pkgDirs
   -- putStrLn $ "pkgs: " ++ show pkgs
   let iPkgs =
-        map mkInstalledPackageInfo $
+        map mkInstalledUnitInfo $
         concatMap parsePackage $
         pkgs
   -- putStrLn $ "installed pkgs: " ++ show iPkgs
@@ -148,8 +148,8 @@ parsePackage :: String -> [PackageId]
 parsePackage x = map fst (filter (\ (_,y) -> null y) (readP_to_S parse x))
 
 -- | Create a trivial package info from a directory name.
-mkInstalledPackageInfo :: PackageId -> InstalledPackageInfo
-mkInstalledPackageInfo p = emptyInstalledPackageInfo
+mkInstalledUnitInfo :: PackageId -> InstalledUnitInfo
+mkInstalledUnitInfo p = emptyInstalledUnitInfo
   { installedPackageId = InstalledPackageId (display p),
     sourcePackageId    = p }
 
@@ -258,7 +258,7 @@ uhcPackageSubDir       compilerid = compilerid </> uhcTarget </> uhcTargetVarian
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
+  -> InstalledUnitInfo
   -> PackageDescription
   -> LocalBuildInfo
   -> Bool
@@ -270,7 +270,7 @@ registerPackage verbosity installedPkgInfo pkg lbi inplace _packageDbs = do
                 | otherwise = libdir installDirs </> uhcPackageSubDir                 (display compilerid)
     createDirectoryIfMissingVerbose verbosity True pkgdir
     writeUTF8File (pkgdir </> installedPkgConfig)
-                  (showInstalledPackageInfo installedPkgInfo)
+                  (showInstalledUnitInfo installedPkgInfo)
   where
     pkgid      = packageId pkg
     compilerid = compilerId (compiler lbi)

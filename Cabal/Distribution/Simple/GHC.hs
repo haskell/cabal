@@ -57,10 +57,10 @@ import Distribution.PackageDescription as PD
          ( PackageDescription(..), BuildInfo(..), Executable(..), Library(..)
          , allExtensions, libModules, exeModules
          , hcOptions, hcSharedOptions, hcProfOptions )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
-import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
-                                ( InstalledPackageInfo(..) )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
+import qualified Distribution.InstalledUnitInfo as InstalledUnitInfo
+                                ( InstalledUnitInfo(..) )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -290,11 +290,11 @@ getInstalledPackages verbosity comp packagedbs conf = do
         _  -> index -- No (or multiple) ghc rts package is registered!!
                     -- Feh, whatever, the ghc test suite does some crazy stuff.
 
--- | Given a list of @(PackageDB, InstalledPackageInfo)@ pairs, produce a
+-- | Given a list of @(PackageDB, InstalledUnitInfo)@ pairs, produce a
 -- @PackageIndex@. Helper function used by 'getPackageDBContents' and
 -- 'getInstalledPackages'.
 toPackageIndex :: Verbosity
-               -> [(PackageDB, [InstalledPackageInfo])]
+               -> [(PackageDB, [InstalledUnitInfo])]
                -> ProgramConfiguration
                -> IO InstalledPackageIndex
 toPackageIndex verbosity pkgss conf = do
@@ -361,16 +361,16 @@ checkPackageDbStackPre76 _ =
 -- GHC < 6.10 put "$topdir/include/mingw" in rts's installDirs. This
 -- breaks when you want to use a different gcc, so we need to filter
 -- it out.
-removeMingwIncludeDir :: InstalledPackageInfo -> InstalledPackageInfo
+removeMingwIncludeDir :: InstalledUnitInfo -> InstalledUnitInfo
 removeMingwIncludeDir pkg =
-    let ids = InstalledPackageInfo.includeDirs pkg
+    let ids = InstalledUnitInfo.includeDirs pkg
         ids' = filter (not . ("mingw" `isSuffixOf`)) ids
-    in pkg { InstalledPackageInfo.includeDirs = ids' }
+    in pkg { InstalledUnitInfo.includeDirs = ids' }
 
 -- | Get the packages from specific PackageDBs, not cumulative.
 --
 getInstalledPackages' :: Verbosity -> [PackageDB] -> ProgramConfiguration
-                     -> IO [(PackageDB, [InstalledPackageInfo])]
+                     -> IO [(PackageDB, [InstalledUnitInfo])]
 getInstalledPackages' verbosity packagedbs conf
   | ghcVersion >= Version [6,9] [] =
   sequence
@@ -428,7 +428,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs pkg_descr lbi lib clbi = do
-  let libName = componentPackageKey clbi
+  let libName = componentInstalledUnitId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (forceVanilla || withVanillaLib lbi)
@@ -1090,7 +1090,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentPackageKey clbi
+    libName = componentInstalledUnitId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName
@@ -1120,7 +1120,7 @@ hcPkgInfo conf = HcPkg.HcPkgInfo { HcPkg.hcPkgProgram    = ghcPkgProg
 
 registerPackage
   :: Verbosity
-  -> InstalledPackageInfo
+  -> InstalledUnitInfo
   -> PackageDescription
   -> LocalBuildInfo
   -> Bool
@@ -1132,9 +1132,9 @@ registerPackage verbosity installedPkgInfo _pkg lbi inplace packageDbs = do
   let hpi = hcPkgInfo $ withPrograms lbi
   when (not inplace) $ do
     old_pkgs <- HcPkg.describe hpi verbosity packageDbs
-                      (InstalledPackageInfo.sourcePackageId installedPkgInfo)
-    let key = InstalledPackageInfo.packageKey installedPkgInfo
-    when (any ((==key) . InstalledPackageInfo.packageKey) old_pkgs)
+                      (InstalledUnitInfo.sourcePackageId installedPkgInfo)
+    let key = InstalledUnitInfo.installedUnitId installedPkgInfo
+    when (any ((==key) . InstalledUnitInfo.installedUnitId) old_pkgs)
       . die $ "identical key " ++ display key ++ " already exists in DB; "
            ++ programId (HcPkg.hcPkgProgram hpi) ++ " unregister it first."
   HcPkg.reregister hpi verbosity

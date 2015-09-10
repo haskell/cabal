@@ -15,11 +15,11 @@
 module Distribution.Client.Types where
 
 import Distribution.Package
-         ( PackageName, PackageId, Package(..), PackageKey(..)
+         ( PackageName, PackageId, Package(..), InstalledUnitId(..)
          , InstalledPackageId(..)
-         , HasPackageKey(..), PackageInstalled(..) )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
+         , HasInstalledUnitId(..), PackageInstalled(..) )
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
 import Distribution.PackageDescription
          ( Benchmark(..), GenericPackageDescription(..), FlagAssignment
          , TestSuite(..) )
@@ -62,9 +62,9 @@ data SourcePackageDb = SourcePackageDb {
 --  dependency graphs) only make sense on this subclass of package types.
 --
 class Package pkg => PackageFixedDeps pkg where
-  depends :: pkg -> ComponentDeps [PackageKey]
+  depends :: pkg -> ComponentDeps [InstalledUnitId]
 
-instance PackageFixedDeps InstalledPackageInfo where
+instance PackageFixedDeps InstalledUnitInfo where
   depends = CD.fromInstalled . installedDepends
 
 
@@ -82,8 +82,8 @@ fakeInstalledPackageId = InstalledPackageId . (".fake."++) . display
 
 -- | Sometimes it's a bit difficult to get a package key, so we just
 -- fake something up.  Eventually wire up the real package keys here!
-fakePackageKey :: PackageId -> PackageKey
-fakePackageKey = PackageKey . display
+fakeInstalledUnitId :: PackageId -> InstalledUnitId
+fakeInstalledUnitId = InstalledUnitId . display
 
 -- | A 'ConfiguredPackage' is a not-yet-installed package along with the
 -- total configuration information. The configuration information is total in
@@ -115,7 +115,7 @@ data ConfiguredPackage = ConfiguredPackage
 -- and use it consistently instead of InstalledPackageIds?
 data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
-  , confInstId :: PackageKey
+  , confInstId :: InstalledUnitId
   }
 
 instance Show ConfiguredId where
@@ -127,8 +127,8 @@ instance Package ConfiguredPackage where
 instance PackageFixedDeps ConfiguredPackage where
   depends (ConfiguredPackage _ _ _ deps) = fmap (map confInstId) deps
 
-instance HasPackageKey ConfiguredPackage where
-  packageKey = fakePackageKey . packageId
+instance HasInstalledUnitId ConfiguredPackage where
+  installedUnitId = fakeInstalledUnitId . packageId
 
 -- | Like 'ConfiguredPackage', but with all dependencies guaranteed to be
 -- installed already, hence itself ready to be installed.
@@ -138,18 +138,18 @@ data GenericReadyPackage srcpkg ipkg
        (ComponentDeps [ipkg])  -- Installed dependencies.
   deriving (Eq, Show)
 
-type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledPackageInfo
+type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledUnitInfo
 
 instance Package srcpkg => Package (GenericReadyPackage srcpkg ipkg) where
   packageId (ReadyPackage srcpkg _deps) = packageId srcpkg
 
-instance (Package srcpkg, HasPackageKey ipkg) =>
+instance (Package srcpkg, HasInstalledUnitId ipkg) =>
          PackageFixedDeps (GenericReadyPackage srcpkg ipkg) where
-  depends (ReadyPackage _ deps) = fmap (map packageKey) deps
+  depends (ReadyPackage _ deps) = fmap (map installedUnitId) deps
 
-instance HasPackageKey srcpkg =>
-         HasPackageKey (GenericReadyPackage srcpkg ipkg) where
-  packageKey (ReadyPackage pkg _) = packageKey pkg
+instance HasInstalledUnitId srcpkg =>
+         HasInstalledUnitId (GenericReadyPackage srcpkg ipkg) where
+  installedUnitId (ReadyPackage pkg _) = installedUnitId pkg
 
 
 -- | A package description along with the location of the package sources.
@@ -259,7 +259,7 @@ data BuildFailure = PlanningFailed
                   | TestsFailed     SomeException
                   | InstallFailed   SomeException
 data BuildSuccess = BuildOk         DocsResult TestsResult
-                                    (Maybe InstalledPackageInfo)
+                                    (Maybe InstalledUnitInfo)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
 data TestsResult = TestsNotTried | TestsOk

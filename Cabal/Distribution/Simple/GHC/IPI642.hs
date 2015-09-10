@@ -9,7 +9,7 @@
 --
 
 module Distribution.Simple.GHC.IPI642 (
-    InstalledPackageInfo(..),
+    InstalledUnitInfo(..),
     toCurrent,
 
     -- Don't use these, they're only for conversion purposes
@@ -18,8 +18,8 @@ module Distribution.Simple.GHC.IPI642 (
     convertModuleName
   ) where
 
-import qualified Distribution.InstalledPackageInfo as Current
-import qualified Distribution.Package as Current hiding (packageKey)
+import qualified Distribution.InstalledUnitInfo as Current
+import qualified Distribution.Package as Current hiding (installedUnitId)
 import qualified Distribution.License as Current
 
 import Distribution.Version (Version)
@@ -28,7 +28,7 @@ import Distribution.Text (simpleParse,display)
 
 import Data.Maybe
 
--- | This is the InstalledPackageInfo type used by ghc-6.4.2 and later.
+-- | This is the InstalledUnitInfo type used by ghc-6.4.2 and later.
 --
 -- It's here purely for the 'Read' instance so that we can read the package
 -- database used by those ghc versions. It is a little hacky to read the
@@ -38,7 +38,7 @@ import Data.Maybe
 -- In ghc-6.4.1 and before the format was slightly different.
 -- See "Distribution.Simple.GHC.IPI642"
 --
-data InstalledPackageInfo = InstalledPackageInfo {
+data InstalledUnitInfo = InstalledUnitInfo {
     package           :: PackageIdentifier,
     license           :: License,
     copyright         :: String,
@@ -87,8 +87,8 @@ convertPackageId PackageIdentifier { pkgName = n, pkgVersion = v } =
 mkInstalledPackageId :: Current.PackageIdentifier -> Current.InstalledPackageId
 mkInstalledPackageId = Current.InstalledPackageId . display
 
-mkPackageKey :: Current.PackageIdentifier -> Current.PackageKey
-mkPackageKey = Current.PackageKey . display
+mkInstalledUnitId :: Current.PackageIdentifier -> Current.InstalledUnitId
+mkInstalledUnitId = Current.InstalledUnitId . display
 
 convertModuleName :: String -> ModuleName
 convertModuleName s = fromJust $ simpleParse s
@@ -102,15 +102,15 @@ convertLicense PublicDomain = Current.PublicDomain
 convertLicense AllRightsReserved = Current.AllRightsReserved
 convertLicense OtherLicense = Current.OtherLicense
 
-toCurrent :: InstalledPackageInfo -> Current.InstalledPackageInfo
-toCurrent ipi@InstalledPackageInfo{} =
+toCurrent :: InstalledUnitInfo -> Current.InstalledUnitInfo
+toCurrent ipi@InstalledUnitInfo{} =
   let pid = convertPackageId (package ipi)
       mkExposedModule m = Current.ExposedModule m Nothing Nothing
-  in Current.InstalledPackageInfo {
+  in Current.InstalledUnitInfo {
     Current.installedPackageId = mkInstalledPackageId pid,
     Current.sourcePackageId    = pid,
-    Current.packageKey         = mkPackageKey pid,
-    Current.compatPackageKey   = mkPackageKey pid,
+    Current.installedUnitId         = mkInstalledUnitId pid,
+    Current.compatPackageKey   = mkInstalledUnitId pid,
     Current.abiHash            = Current.AbiHash "", -- bogus but old GHCs don't care.
     Current.license            = convertLicense (license ipi),
     Current.copyright          = copyright ipi,
@@ -126,7 +126,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.exposedModules     = map (mkExposedModule . convertModuleName) (exposedModules ipi),
     Current.hiddenModules      = map convertModuleName (hiddenModules ipi),
     Current.instantiatedWith   = [],
-    Current.trusted            = Current.trusted Current.emptyInstalledPackageInfo,
+    Current.trusted            = Current.trusted Current.emptyInstalledUnitInfo,
     Current.importDirs         = importDirs ipi,
     Current.libraryDirs        = libraryDirs ipi,
     Current.dataDir            = "",
@@ -135,7 +135,7 @@ toCurrent ipi@InstalledPackageInfo{} =
     Current.extraGHCiLibraries = extraGHCiLibraries ipi,
     Current.includeDirs        = includeDirs ipi,
     Current.includes           = includes ipi,
-    Current.depends            = map (mkPackageKey.convertPackageId) (depends ipi),
+    Current.depends            = map (mkInstalledUnitId.convertPackageId) (depends ipi),
     Current.ccOptions          = ccOptions ipi,
     Current.ldOptions          = ldOptions ipi,
     Current.frameworkDirs      = frameworkDirs ipi,

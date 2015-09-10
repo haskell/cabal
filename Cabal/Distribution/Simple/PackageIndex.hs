@@ -26,7 +26,7 @@ module Distribution.Simple.PackageIndex (
 
   insert,
 
-  deletePackageKey,
+  deleteInstalledUnitId,
   deleteSourcePackageId,
   deletePackageName,
 --  deleteDependency,
@@ -34,7 +34,7 @@ module Distribution.Simple.PackageIndex (
   -- * Queries
 
   -- ** Precise lookups
-  lookupPackageKey,
+  lookupInstalledUnitId,
   lookupSourcePackageId,
   lookupPackageId,
   lookupPackageName,
@@ -84,13 +84,13 @@ import Distribution.Package
          ( PackageName(..), PackageId
          , Package(..), packageName, packageVersion
          , Dependency(Dependency)--, --PackageFixedDeps(..)
-         , HasPackageKey(..), PackageInstalled(..)
-         , PackageKey )
+         , HasInstalledUnitId(..), PackageInstalled(..)
+         , InstalledUnitId )
 import Distribution.ModuleName
          ( ModuleName )
-import Distribution.InstalledPackageInfo
-         ( InstalledPackageInfo )
-import qualified Distribution.InstalledPackageInfo as IPI
+import Distribution.InstalledUnitInfo
+         ( InstalledUnitInfo )
+import qualified Distribution.InstalledUnitInfo as IPI
 import Distribution.Version
          ( Version, withinRange )
 import Distribution.Simple.Utils (lowercase, comparing, equating)
@@ -98,14 +98,14 @@ import Distribution.Simple.Utils (lowercase, comparing, equating)
 -- | The collection of information about packages from one or more 'PackageDB's.
 -- These packages generally should have an instance of 'PackageInstalled'
 --
--- Packages are uniquely identified in by their 'PackageKey', they can
+-- Packages are uniquely identified in by their 'InstalledUnitId', they can
 -- also be efficiently looked up by package name or by name and version.
 --
 data PackageIndex a = PackageIndex
-  -- The primary index. Each InstalledPackageInfo record is uniquely identified
-  -- by its PackageKey.
+  -- The primary index. Each InstalledUnitInfo record is uniquely identified
+  -- by its InstalledUnitId.
   --
-  !(Map PackageKey a)
+  !(Map InstalledUnitId a)
 
   -- This auxiliary index maps package names (case-sensitively) to all the
   -- versions and instances of that package. This allows us to find all
@@ -113,7 +113,7 @@ data PackageIndex a = PackageIndex
   --
   -- It is a three-level index. The first level is the package name,
   -- the second is the package version and the final level is instances
-  -- of the same package version. These are unique by PackageKey
+  -- of the same package version. These are unique by InstalledUnitId
   -- and are kept in preference order.
   --
   -- FIXME: Clarify what "preference order" means. Check that this invariant is
@@ -124,28 +124,28 @@ data PackageIndex a = PackageIndex
 
 instance Binary a => Binary (PackageIndex a)
 
--- | The default package index which contains 'InstalledPackageInfo'.  Normally
+-- | The default package index which contains 'InstalledUnitInfo'.  Normally
 -- use this.
-type InstalledPackageIndex = PackageIndex InstalledPackageInfo
+type InstalledPackageIndex = PackageIndex InstalledUnitInfo
 
-instance HasPackageKey a => Monoid (PackageIndex a) where
+instance HasInstalledUnitId a => Monoid (PackageIndex a) where
   mempty  = PackageIndex Map.empty Map.empty
   mappend = merge
   --save one mappend with empty in the common case:
   mconcat [] = mempty
   mconcat xs = foldr1 mappend xs
 
-invariant :: HasPackageKey a => PackageIndex a -> Bool
+invariant :: HasInstalledUnitId a => PackageIndex a -> Bool
 invariant (PackageIndex pids pnames) =
-     map packageKey (Map.elems pids)
+     map installedUnitId (Map.elems pids)
   == sort
-     [ assert pinstOk (packageKey pinst)
+     [ assert pinstOk (installedUnitId pinst)
      | (pname, pvers)  <- Map.toList pnames
      , let pversOk = not (Map.null pvers)
      , (pver,  pinsts) <- assert pversOk $ Map.toList pvers
-     , let pinsts'  = sortBy (comparing packageKey) pinsts
+     , let pinsts'  = sortBy (comparing installedUnitId) pinsts
            pinstsOk = all (\g -> length g == 1)
-                          (groupBy (equating packageKey) pinsts')
+                          (groupBy (equating installedUnitId) pinsts')
      , pinst           <- assert pinstsOk $ pinsts'
      , let pinstOk = packageName    pinst == pname
                   && packageVersion pinst == pver
@@ -156,8 +156,8 @@ invariant (PackageIndex pids pnames) =
 -- * Internal helpers
 --
 
-mkPackageIndex :: HasPackageKey a
-               => Map PackageKey a
+mkPackageIndex :: HasInstalledUnitId a
+               => Map InstalledUnitId a
                -> Map PackageName (Map Version [a])
                -> PackageIndex a
 mkPackageIndex pids pnames = assert (invariant index) index
@@ -170,13 +170,13 @@ mkPackageIndex pids pnames = assert (invariant index) index
 
 -- | Build an index out of a bunch of packages.
 --
--- If there are duplicates by 'PackageKey' then later ones mask earlier
+-- If there are duplicates by 'InstalledUnitId' then later ones mask earlier
 -- ones.
 --
-fromList :: HasPackageKey a => [a] -> PackageIndex a
+fromList :: HasInstalledUnitId a => [a] -> PackageIndex a
 fromList pkgs = mkPackageIndex pids pnames
   where
-    pids      = Map.fromList [ (packageKey pkg, pkg) | pkg <- pkgs ]
+    pids      = Map.fromList [ (installedUnitId pkg, pkg) | pkg <- pkgs ]
     pnames    =
       Map.fromList
         [ (packageName (head pkgsN), pvers)
@@ -186,7 +186,7 @@ fromList pkgs = mkPackageIndex pids pnames
         , let pvers =
                 Map.fromList
                 [ (packageVersion (head pkgsNV),
-                   nubBy (equating packageKey) (reverse pkgsNV))
+                   nubBy (equating installedUnitId) (reverse pkgsNV))
                 | pkgsNV <- groupBy (equating packageVersion) pkgsN
                 ]
         ]
@@ -198,14 +198,14 @@ fromList pkgs = mkPackageIndex pids pnames
 -- | Merge two indexes.
 --
 -- Packages from the second mask packages from the first if they have the exact
--- same 'PackageKey'.
+-- same 'InstalledUnitId'.
 --
 -- For packages with the same source 'PackageId', packages from the second are
 -- \"preferred\" over those from the first. Being preferred means they are top
 -- result when we do a lookup by source 'PackageId'. This is the mechanism we
 -- use to prefer user packages over global packages.
 --
-merge :: HasPackageKey a => PackageIndex a -> PackageIndex a
+merge :: HasInstalledUnitId a => PackageIndex a -> PackageIndex a
       -> PackageIndex a
 merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
   mkPackageIndex (Map.unionWith (\_ y -> y) pids1 pids2)
@@ -214,7 +214,7 @@ merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
     -- Packages in the second list mask those in the first, however preferred
     -- packages go first in the list.
     mergeBuckets xs ys = ys ++ (xs \\ ys)
-    (\\) = deleteFirstsBy (equating packageKey)
+    (\\) = deleteFirstsBy (equating installedUnitId)
 
 
 -- | Inserts a single package into the index.
@@ -222,12 +222,12 @@ merge (PackageIndex pids1 pnames1) (PackageIndex pids2 pnames2) =
 -- This is equivalent to (but slightly quicker than) using 'mappend' or
 -- 'merge' with a singleton index.
 --
-insert :: HasPackageKey a => a -> PackageIndex a -> PackageIndex a
+insert :: HasInstalledUnitId a => a -> PackageIndex a -> PackageIndex a
 insert pkg (PackageIndex pids pnames) =
     mkPackageIndex pids' pnames'
 
   where
-    pids'   = Map.insert (packageKey pkg) pkg pids
+    pids'   = Map.insert (installedUnitId pkg) pkg pids
     pnames' = insertPackageName pnames
     insertPackageName =
       Map.insertWith' (\_ -> insertPackageVersion)
@@ -239,15 +239,15 @@ insert pkg (PackageIndex pids pnames) =
                      (packageVersion pkg) [pkg]
 
     insertPackageInstance pkgs =
-      pkg : deleteBy (equating packageKey) pkg pkgs
+      pkg : deleteBy (equating installedUnitId) pkg pkgs
 
 
 -- | Removes a single installed package from the index.
 --
-deletePackageKey :: HasPackageKey a
-                         => PackageKey -> PackageIndex a
+deleteInstalledUnitId :: HasInstalledUnitId a
+                         => InstalledUnitId -> PackageIndex a
                          -> PackageIndex a
-deletePackageKey ipkgid original@(PackageIndex pids pnames) =
+deleteInstalledUnitId ipkgid original@(PackageIndex pids pnames) =
   case Map.updateLookupWithKey (\_ _ -> Nothing) ipkgid pids of
     (Nothing,     _)     -> original
     (Just spkgid, pids') -> mkPackageIndex pids'
@@ -263,12 +263,12 @@ deletePackageKey ipkgid original@(PackageIndex pids pnames) =
 
     deletePkgInstance =
         (\xs -> if List.null xs then Nothing else Just xs)
-      . List.deleteBy (\_ pkg -> packageKey pkg == ipkgid) undefined
+      . List.deleteBy (\_ pkg -> installedUnitId pkg == ipkgid) undefined
 
 
 -- | Removes all packages with this source 'PackageId' from the index.
 --
-deleteSourcePackageId :: HasPackageKey a => PackageId -> PackageIndex a
+deleteSourcePackageId :: HasInstalledUnitId a => PackageId -> PackageIndex a
                       -> PackageIndex a
 deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
   case Map.lookup (packageName pkgid) pnames of
@@ -276,7 +276,7 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
     Just pvers  -> case Map.lookup (packageVersion pkgid) pvers of
       Nothing   -> original
       Just pkgs -> mkPackageIndex
-                     (foldl' (flip (Map.delete . packageKey)) pids pkgs)
+                     (foldl' (flip (Map.delete . installedUnitId)) pids pkgs)
                      (deletePkgName pnames)
   where
     deletePkgName =
@@ -289,13 +289,13 @@ deleteSourcePackageId pkgid original@(PackageIndex pids pnames) =
 
 -- | Removes all packages with this (case-sensitive) name from the index.
 --
-deletePackageName :: HasPackageKey a => PackageName -> PackageIndex a
+deletePackageName :: HasInstalledUnitId a => PackageName -> PackageIndex a
                   -> PackageIndex a
 deletePackageName name original@(PackageIndex pids pnames) =
   case Map.lookup name pnames of
     Nothing     -> original
     Just pvers  -> mkPackageIndex
-                     (foldl' (flip (Map.delete . packageKey)) pids
+                     (foldl' (flip (Map.delete . installedUnitId)) pids
                              (concat (Map.elems pvers)))
                      (Map.delete name pnames)
 
@@ -329,7 +329,7 @@ allPackagesByName (PackageIndex _ pnames) =
 --
 -- They are grouped by source package id (package name and version).
 --
-allPackagesBySourcePackageId :: HasPackageKey a => PackageIndex a
+allPackagesBySourcePackageId :: HasInstalledUnitId a => PackageIndex a
                              -> [(PackageId, [a])]
 allPackagesBySourcePackageId (PackageIndex _ pnames) =
   [ (packageId ipkg, ipkgs)
@@ -342,18 +342,18 @@ allPackagesBySourcePackageId (PackageIndex _ pnames) =
 
 -- | Does a lookup by source package id (name & version).
 --
--- Since multiple package DBs mask each other by 'PackageKey',
+-- Since multiple package DBs mask each other by 'InstalledUnitId',
 -- then we get back at most one package.
 --
-lookupPackageKey :: PackageIndex a -> PackageKey
+lookupInstalledUnitId :: PackageIndex a -> InstalledUnitId
                          -> Maybe a
-lookupPackageKey (PackageIndex pids _) pid = Map.lookup pid pids
+lookupInstalledUnitId (PackageIndex pids _) pid = Map.lookup pid pids
 
 
 -- | Does a lookup by source package id (name & version).
 --
 -- There can be multiple installed packages with the same source 'PackageId'
--- but different 'PackageKey'. They are returned in order of
+-- but different 'InstalledUnitId'. They are returned in order of
 -- preference, with the most preferred first.
 --
 lookupSourcePackageId :: PackageIndex a -> PackageId -> [a]
@@ -457,7 +457,7 @@ dependencyCycles :: PackageInstalled a => PackageIndex a -> [[a]]
 dependencyCycles index =
   [ vs | Graph.CyclicSCC vs <- Graph.stronglyConnComp adjacencyList ]
   where
-    adjacencyList = [ (pkg, packageKey pkg, installedDepends pkg)
+    adjacencyList = [ (pkg, installedUnitId pkg, installedDepends pkg)
                     | pkg <- allPackages index ]
 
 
@@ -466,12 +466,12 @@ dependencyCycles index =
 -- Returns such packages along with the dependencies that they're missing.
 --
 brokenPackages :: PackageInstalled a => PackageIndex a
-               -> [(a, [PackageKey])]
+               -> [(a, [InstalledUnitId])]
 brokenPackages index =
   [ (pkg, missing)
   | pkg  <- allPackages index
   , let missing = [ pkg' | pkg' <- installedDepends pkg
-                         , isNothing (lookupPackageKey index pkg') ]
+                         , isNothing (lookupInstalledUnitId index pkg') ]
   , not (null missing) ]
 
 -- | Tries to take the transitive closure of the package dependencies.
@@ -483,17 +483,17 @@ brokenPackages index =
 -- the original given 'PackageId's do not occur in the index.
 --
 dependencyClosure :: PackageInstalled a => PackageIndex a
-                  -> [PackageKey]
+                  -> [InstalledUnitId]
                   -> Either (PackageIndex a)
-                            [(a, [PackageKey])]
+                            [(a, [InstalledUnitId])]
 dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
   (completed, []) -> Left completed
   (completed, _)  -> Right (brokenPackages completed)
  where
     closure completed failed []             = (completed, failed)
-    closure completed failed (pkgid:pkgids) = case lookupPackageKey index pkgid of
+    closure completed failed (pkgid:pkgids) = case lookupInstalledUnitId index pkgid of
       Nothing   -> closure completed (pkgid:failed) pkgids
-      Just pkg  -> case lookupPackageKey completed (packageKey pkg) of
+      Just pkg  -> case lookupInstalledUnitId completed (installedUnitId pkg) of
         Just _  -> closure completed  failed pkgids
         Nothing -> closure completed' failed pkgids'
           where completed' = insert pkg completed
@@ -504,7 +504,7 @@ dependencyClosure index pkgids0 = case closure mempty [] pkgids0 of
 -- * The given 'PackageId's must be in the index.
 --
 reverseDependencyClosure :: PackageInstalled a => PackageIndex a
-                         -> [PackageKey]
+                         -> [InstalledUnitId]
                          -> [a]
 reverseDependencyClosure index =
     map vertexToPkg
@@ -538,7 +538,7 @@ reverseTopologicalOrder index = map toPkgId
 dependencyGraph :: PackageInstalled a => PackageIndex a
                 -> (Graph.Graph,
                     Graph.Vertex -> a,
-                    PackageKey -> Maybe Graph.Vertex)
+                    InstalledUnitId -> Maybe Graph.Vertex)
 dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
   where
     graph = Array.listArray bounds
@@ -546,7 +546,7 @@ dependencyGraph index = (graph, vertex_to_pkg, id_to_vertex)
               | pkg <- pkgs ]
 
     pkgs             = sortBy (comparing packageId) (allPackages index)
-    vertices         = zip (map packageKey pkgs) [0..]
+    vertices         = zip (map installedUnitId pkgs) [0..]
     vertex_map       = Map.fromList vertices
     id_to_vertex pid = Map.lookup pid vertex_map
 
@@ -576,22 +576,22 @@ dependencyInconsistencies index =
 
   where -- for each PackageName,
         --   for each package with that name,
-        --     the InstalledPackageInfo and the package Ids of packages
+        --     the InstalledUnitInfo and the package Ids of packages
         --     that depend on it.
         inverseIndex = Map.fromListWith (Map.unionWith (\(a,b) (_,b') -> (a,b++b')))
           [ (packageName dep,
              Map.fromList [(ipid,(dep,[packageId pkg]))])
           | pkg <- allPackages index
           , ipid <- installedDepends pkg
-          , Just dep <- [lookupPackageKey index ipid]
+          , Just dep <- [lookupInstalledUnitId index ipid]
           ]
 
         reallyIsInconsistent :: PackageInstalled a => [a] -> Bool
         reallyIsInconsistent []       = False
         reallyIsInconsistent [_p]     = False
         reallyIsInconsistent [p1, p2] =
-          let pid1 = packageKey p1
-              pid2 = packageKey p2
+          let pid1 = installedUnitId p1
+              pid2 = installedUnitId p2
           in pid1 `notElem` installedDepends p2
           && pid2 `notElem` installedDepends p1
         reallyIsInconsistent _ = True
@@ -600,7 +600,7 @@ dependencyInconsistencies index =
 -- 'InstalledPackageIndex' and turns it into a map from module names to their
 -- source packages.  It's used to initialize the @build-deps@ field in @cabal
 -- init@.
-moduleNameIndex :: InstalledPackageIndex -> Map ModuleName [InstalledPackageInfo]
+moduleNameIndex :: InstalledPackageIndex -> Map ModuleName [InstalledUnitInfo]
 moduleNameIndex index =
   Map.fromListWith (++) $ do
     pkg <- allPackages index

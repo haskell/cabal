@@ -76,7 +76,7 @@ import qualified Text.PrettyPrint as Disp
 import Distribution.ModuleName
 import Distribution.Package ( Dependency(..)
                             , PackageName
-                            , PackageKey(..) )
+                            , InstalledUnitId(..) )
 import Distribution.PackageDescription
          ( FlagName(..), FlagAssignment )
 import Distribution.Simple.Command hiding (boolOpt, boolOpt')
@@ -321,8 +321,8 @@ data ConfigFlags = ConfigFlags {
     configStripLibs :: Flag Bool,      -- ^Enable library stripping
     configConstraints :: [Dependency], -- ^Additional constraints for
                                        -- dependencies.
-    configDependencies :: [(PackageName, PackageKey)],
-    configInstantiateWith :: [(ModuleName, (PackageKey, ModuleName))],
+    configDependencies :: [(PackageName, InstalledUnitId)],
+    configInstantiateWith :: [(ModuleName, (InstalledUnitId, ModuleName))],
       -- ^The packages depended on.
     configConfigurationsFlags :: FlagAssignment,
     configTests               :: Flag Bool, -- ^Enable test suite compilation
@@ -684,14 +684,14 @@ showProfDetailLevelFlag dl =
     Flag (ProfDetailOther other)     -> [other]
 
 
-parseDependency :: Parse.ReadP r (PackageName, PackageKey)
+parseDependency :: Parse.ReadP r (PackageName, InstalledUnitId)
 parseDependency = do
   x <- parse
   _ <- Parse.char '='
   y <- parse
   return (x, y)
 
-parseHoleMapEntry :: Parse.ReadP r (ModuleName, (PackageKey, ModuleName))
+parseHoleMapEntry :: Parse.ReadP r (ModuleName, (InstalledUnitId, ModuleName))
 parseHoleMapEntry = do
   x <- parse
   _ <- Parse.char '='
