@@ -23,6 +23,7 @@ module Distribution.Simple.LocalBuildInfo (
         inplacePackageId,
         localPackageKey,
         localLibraryName,
+        localIPID,
 
         -- * Buildable package components
         Component(..),
@@ -172,6 +173,16 @@ localLibraryName lbi =
             LibComponentLocalBuildInfo { componentLibraryName = n } -> n
             _ -> old_n
 
+-- | Extract the 'IPID' from the library component of a
+-- 'LocalBuildInfo' if it exists
+localIPID :: LocalBuildInfo -> Maybe InstalledPackageId
+localIPID lbi =
+    foldr go Nothing (componentsConfigs lbi)
+  where go (_, clbi, _) old_ipid = case clbi of
+            LibComponentLocalBuildInfo { componentIPID = ipid } -> Just ipid
+            _ -> old_ipid
+
+
 -- | External package dependencies for the package as a whole. This is the
 -- union of the individual 'componentPackageDeps', less any internal deps.
 externalPackageDeps :: LocalBuildInfo -> [(InstalledPackageId, PackageId)]
@@ -223,6 +234,7 @@ data ComponentLocalBuildInfo
     -- to the specific versions available on this machine for this compiler.
     componentPackageDeps :: [(InstalledPackageId, PackageId)],
     componentPackageKey :: PackageKey,
+    componentIPID :: InstalledPackageId,
     componentLibraryName :: LibraryName,
     componentExposedModules :: [Installed.ExposedModule],
     componentPackageRenaming :: Map PackageName ModuleRenaming
