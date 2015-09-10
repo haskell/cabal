@@ -1344,6 +1344,22 @@ values for these fields.
     {-# LANGUAGE CPP, MultiParamTypeClasses #-}
     ~~~~~~~~~~~~~~~~
 
+    In Cabal-1.24 the dependency solver will use this and `default-extensions` information.
+    Cabal prior to 1.24 will abort compilation if the current compiler doesn't provide
+    the extensions.
+
+    If you use some extensions conditionally, using CPP or conditional module lists,
+    it is good to replicate the condition in `other-extensions` declarations:
+
+    ~~~~~~~~~~~~~~~~
+    other-extensions: CPP
+    if impl(ghc >= 7.5)
+      other-extensions: PolyKinds
+    ~~~~~~~~~~~~~~~~
+
+    You could also omit the conditionally used extensions, as they are for information only,
+    but it is recommended to replicate them in `other-extensions` declarations.
+
 `build-tools:` _program list_
 :   A list of programs, possibly annotated with versions, needed to
     build this package, e.g. `c2hs >= 0.15, cpphs`.If no version
@@ -1701,15 +1717,15 @@ and outside then they are combined using the following rules.
     items, for example
 
     ~~~~~~~~~~~~~~~~
-    Extensions: CPP
+    other-extensions: CPP
     if impl(ghc)
-      Extensions: MultiParamTypeClasses
+      other-extensions: MultiParamTypeClasses
     ~~~~~~~~~~~~~~~~
 
     when compiled using GHC will be combined to
 
     ~~~~~~~~~~~~~~~~
-    Extensions: CPP, MultiParamTypeClasses
+    other-extensions: CPP, MultiParamTypeClasses
     ~~~~~~~~~~~~~~~~
 
     Similarly, if two conditional sections appear at the same nesting
