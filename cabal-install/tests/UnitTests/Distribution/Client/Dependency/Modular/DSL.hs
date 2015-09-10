@@ -21,7 +21,7 @@ import qualified Data.Map as Map
 import qualified Distribution.Compiler             as C
 import qualified Distribution.InstalledPackageInfo as C
 import qualified Distribution.Package              as C
-  hiding (HasInstalledPackageId(..))
+  hiding (HasComponentId(..))
 import qualified Distribution.PackageDescription   as C
 import qualified Distribution.Simple.PackageIndex  as C.PackageIndex
 import qualified Distribution.System               as C
@@ -239,10 +239,9 @@ exAvPkgId ex = C.PackageIdentifier {
 
 exInstInfo :: ExampleInstalled -> C.InstalledPackageInfo
 exInstInfo ex = C.emptyInstalledPackageInfo {
-      C.installedPackageId = C.InstalledPackageId (exInstHash ex)
+      C.installedComponentId = C.ComponentId (exInstHash ex)
     , C.sourcePackageId    = exInstPkgId ex
-    , C.packageKey         = exInstKey ex
-    , C.depends            = map (C.InstalledPackageId . exInstHash)
+    , C.depends            = map (C.ComponentId . exInstHash)
                                  (exInstBuildAgainst ex)
     }
 
@@ -251,15 +250,6 @@ exInstPkgId ex = C.PackageIdentifier {
       pkgName    = C.PackageName (exInstName ex)
     , pkgVersion = Version [exInstVersion ex, 0, 0] []
     }
-
-exInstLibName :: ExampleInstalled -> C.LibraryName
-exInstLibName ex = C.packageKeyLibraryName (exInstPkgId ex) (exInstKey ex)
-
-exInstKey :: ExampleInstalled -> C.PackageKey
-exInstKey ex =
-    C.mkPackageKey True
-                   (exInstPkgId ex)
-                   (map exInstLibName (exInstBuildAgainst ex))
 
 exAvIdx :: [ExampleAvailable] -> CI.PackageIndex.PackageIndex SourcePackage
 exAvIdx = CI.PackageIndex.fromList . map exAvSrcPkg

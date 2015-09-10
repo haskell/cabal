@@ -49,7 +49,7 @@ import Distribution.Simple.Utils
          ( defaultPackageDesc )
 import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Package
-         ( Package(..), InstalledPackageId, packageName
+         ( Package(..), ComponentId, packageName
          , Dependency(..), thisPackageVersion
          )
 import qualified Distribution.PackageDescription as PkgDesc
@@ -217,14 +217,14 @@ configureSetupScript packageDBs
         -- but if the user is using an odd db stack, don't touch it
         _otherwise -> (packageDBs, Just index)
 
-    explicitSetupDeps :: Maybe [(InstalledPackageId, PackageId)]
+    explicitSetupDeps :: Maybe [(ComponentId, PackageId)]
     explicitSetupDeps = do
       ReadyPackage (ConfiguredPackage (SourcePackage _ gpkg _ _) _ _ _) deps
                  <- mpkg
       -- Check if there is an explicit setup stanza
       _buildInfo <- PkgDesc.setupBuildInfo (PkgDesc.packageDescription gpkg)
       -- Return the setup dependencies computed by the solver
-      return [ ( Installed.installedPackageId deppkg
+      return [ ( Installed.installedComponentId deppkg
                , Installed.sourcePackageId    deppkg
                )
              | deppkg <- CD.setupDeps deps
@@ -356,7 +356,7 @@ configurePackage verbosity platform comp scriptOptions configFlags
       configConstraints  = [ thisPackageVersion (packageId deppkg)
                            | deppkg <- CD.nonSetupDeps deps ],
       configDependencies = [ (packageName (Installed.sourcePackageId deppkg),
-                              Installed.installedPackageId deppkg)
+                              Installed.installedComponentId deppkg)
                            | deppkg <- CD.nonSetupDeps deps ],
       -- Use '--exact-configuration' if supported.
       configExactConfiguration = toFlag True,

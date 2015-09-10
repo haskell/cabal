@@ -40,19 +40,17 @@ symlinkBinary _ _ _ _ = fail "Symlinking feature not available on Windows"
 import Distribution.Client.Types
          ( SourcePackage(..)
          , GenericReadyPackage(..), ReadyPackage, enableStanzas
-         , ConfiguredPackage(..) )
+         , ConfiguredPackage(..) , fakeComponentId)
 import Distribution.Client.Setup
          ( InstallFlags(installSymlinkBinDir) )
 import qualified Distribution.Client.InstallPlan as InstallPlan
 import Distribution.Client.InstallPlan (InstallPlan)
 
 import Distribution.Package
-         ( PackageIdentifier, Package(packageId), mkPackageKey
-         , packageKeyLibraryName, LibraryName )
+         ( PackageIdentifier, Package(packageId), ComponentId(..) )
 import Distribution.Compiler
          ( CompilerId(..) )
 import qualified Distribution.PackageDescription as PackageDescription
-import qualified Distribution.Client.ComponentDeps as CD
 import Distribution.PackageDescription
          ( PackageDescription )
 import Distribution.PackageDescription.Configuration
@@ -60,9 +58,8 @@ import Distribution.PackageDescription.Configuration
 import Distribution.Simple.Setup
          ( ConfigFlags(..), fromFlag, fromFlagOrDefault, flagToMaybe )
 import qualified Distribution.Simple.InstallDirs as InstallDirs
-import qualified Distribution.InstalledPackageInfo as Installed
 import Distribution.Simple.Compiler
-         ( Compiler, compilerInfo, CompilerInfo(..), packageKeySupported )
+         ( Compiler, compilerInfo, CompilerInfo(..) )
 import Distribution.System
          ( Platform )
 
@@ -118,7 +115,7 @@ symlinkBinaries platform comp configFlags installFlags plan =
 --    TODO: do we want to do this here? :
 --      createDirectoryIfMissing True publicBinDir
       fmap catMaybes $ sequence
-        [ do privateBinDir <- pkgBinDir pkg libname
+        [ do privateBinDir <- pkgBinDir pkg ipid
              ok <- symlinkBinary
                      publicBinDir  privateBinDir
                      publicExeName privateExeName
@@ -126,16 +123,14 @@ symlinkBinaries platform comp configFlags installFlags plan =
                then return Nothing
                else return (Just (pkgid, publicExeName,
                                   privateBinDir </> privateExeName))
-        | (ReadyPackage (ConfiguredPackage _ _flags _ _) deps, pkg, exe) <- exes
+        | (ReadyPackage (ConfiguredPackage _ _flags _ _) _, pkg, exe) <- exes
         , let pkgid  = packageId pkg
-              pkg_key = mkPackageKey (packageKeySupported comp) pkgid
-                                     (map Installed.libraryName
-                                      (CD.nonSetupDeps deps))
-              libname = packageKeyLibraryName pkgid pkg_key
+              -- This is a bit dodgy; probably won't work for Backpack packages
+              ipid = fakeComponentId pkgid
               publicExeName  = PackageDescription.exeName exe
               privateExeName = prefix ++ publicExeName ++ suffix
-              prefix = substTemplate pkgid libname prefixTemplate
-              suffix = substTemplate pkgid libname suffixTemplate ]
+              prefix = substTemplate pkgid ipid prefixTemplate
+              suffix = substTemplate pkgid ipid suffixTemplate ]
   where
     exes =
       [ (cpkg, pkg, exe)
@@ -157,8 +152,8 @@ symlinkBinaries platform comp configFlags installFlags plan =
 
     -- This is sadly rather complicated. We're kind of re-doing part of the
     -- configuration for the package. :-(
-    pkgBinDir :: PackageDescription -> LibraryName -> IO FilePath
-    pkgBinDir pkg libname = do
+    pkgBinDir :: PackageDescription -> ComponentId -> IO FilePath
+    pkgBinDir pkg ipid = do
       defaultDirs <- InstallDirs.defaultInstallDirs
                        compilerFlavor
                        (fromFlag (configUserInstall configFlags))
@@ -166,14 +161,14 @@ symlinkBinaries platform comp configFlags installFlags plan =
       let templateDirs = InstallDirs.combineInstallDirs fromFlagOrDefault
                            defaultDirs (configInstallDirs configFlags)
           absoluteDirs = InstallDirs.absoluteInstallDirs
-                           (packageId pkg) libname
+                           (packageId pkg) ipid
                            cinfo InstallDirs.NoCopyDest
                            platform templateDirs
       canonicalizePath (InstallDirs.bindir absoluteDirs)
 
-    substTemplate pkgid libname = InstallDirs.fromPathTemplate
-                                . InstallDirs.substPathTemplate env
-      where env = InstallDirs.initialPathTemplateEnv pkgid libname
+    substTemplate pkgid ipid = InstallDirs.fromPathTemplate
+                             . InstallDirs.substPathTemplate env
+      where env = InstallDirs.initialPathTemplateEnv pkgid ipid
                                                      cinfo platform
 
     fromFlagTemplate = fromFlagOrDefault (InstallDirs.toPathTemplate "")

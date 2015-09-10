@@ -27,9 +27,9 @@ import Distribution.Version
          ( Version(..), VersionRange, anyVersion
          , intersectVersionRanges, orLaterVersion
          , withinRange )
-import Distribution.InstalledPackageInfo (installedPackageId)
+import Distribution.InstalledPackageInfo (installedComponentId)
 import Distribution.Package
-         ( InstalledPackageId(..), PackageIdentifier(..), PackageId,
+         ( ComponentId(..), PackageIdentifier(..), PackageId,
            PackageName(..), Package(..), packageName
          , packageVersion, Dependency(..) )
 import Distribution.PackageDescription
@@ -133,7 +133,7 @@ data SetupScriptOptions = SetupScriptOptions {
     forceExternalSetupMethod :: Bool,
 
     -- | List of dependencies to use when building Setup.hs
-    useDependencies :: [(InstalledPackageId, PackageId)],
+    useDependencies :: [(ComponentId, PackageId)],
 
     -- | Is the list of setup dependencies exclusive?
     --
@@ -335,7 +335,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
       Nothing    -> getInstalledPackages verbosity
                     comp (usePackageDB options') conf
 
-  cabalLibVersionToUse :: IO (Version, (Maybe InstalledPackageId)
+  cabalLibVersionToUse :: IO (Version, (Maybe ComponentId)
                              ,SetupScriptOptions)
   cabalLibVersionToUse = do
     savedVer <- savedVersion
@@ -364,7 +364,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
           (&&) <$> setupProgFile `existsAndIsMoreRecentThan` setupHs
                <*> setupProgFile `existsAndIsMoreRecentThan` setupVersionFile
 
-      installedVersion :: IO (Version, Maybe InstalledPackageId
+      installedVersion :: IO (Version, Maybe ComponentId
                              ,SetupScriptOptions)
       installedVersion = do
         (comp,    conf,    options')  <- configureCompiler options
@@ -411,7 +411,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
     UnknownBuildType _ -> error "buildTypeScript UnknownBuildType"
 
   installedCabalVersion :: SetupScriptOptions -> Compiler -> ProgramConfiguration
-                        -> IO (Version, Maybe InstalledPackageId
+                        -> IO (Version, Maybe ComponentId
                               ,SetupScriptOptions)
   installedCabalVersion options' _ _ | packageName pkg == PackageName "Cabal" =
     return (packageVersion pkg, Nothing, options')
@@ -426,7 +426,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
                  ++ " but no suitable version is installed."
       pkgs -> let ipkginfo = head . snd . bestVersion fst $ pkgs
               in return (packageVersion ipkginfo
-                        ,Just . installedPackageId $ ipkginfo, options'')
+                        ,Just . installedComponentId $ ipkginfo, options'')
 
   bestVersion :: (a -> Version) -> [a] -> a
   bestVersion f = firstMaximumBy (comparing (preference . f))
@@ -499,7 +499,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- | Look up the setup executable in the cache; update the cache if the setup
   -- executable is not found.
   getCachedSetupExecutable :: SetupScriptOptions
-                           -> Version -> Maybe InstalledPackageId
+                           -> Version -> Maybe ComponentId
                            -> IO FilePath
   getCachedSetupExecutable options' cabalLibVersion
                            maybeCabalLibInstalledPkgId = do
@@ -534,7 +534,7 @@ externalSetupMethod verbosity options pkg bt mkargs = do
   -- Currently this is GHC/GHCJS only. It should really be generalised.
   --
   compileSetupExecutable :: SetupScriptOptions
-                         -> Version -> Maybe InstalledPackageId -> Bool
+                         -> Version -> Maybe ComponentId -> Bool
                          -> IO FilePath
   compileSetupExecutable options' cabalLibVersion maybeCabalLibInstalledPkgId
                          forceCompile = do

@@ -31,8 +31,7 @@ module Distribution.Simple.GHC.Internal (
 
 import Distribution.Simple.GHC.ImplInfo ( GhcImplInfo (..) )
 import Distribution.Package
-         ( InstalledPackageId, PackageId, LibraryName
-         , getHSLibraryName )
+         ( PackageId, ComponentId, getHSLibraryName )
 import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
@@ -374,8 +373,8 @@ componentGhcOptions verbosity lbi bi clbi odir =
       ghcOptVerbosity       = toFlag verbosity,
       ghcOptHideAllPackages = toFlag True,
       ghcOptCabal           = toFlag True,
-      ghcOptPackageKey  = case clbi of
-        LibComponentLocalBuildInfo { componentPackageKey = pk } -> toFlag pk
+      ghcOptComponentId  = case clbi of
+        LibComponentLocalBuildInfo { componentCompatPackageKey = pk } -> toFlag pk
         _ -> mempty,
       ghcOptSigOf           = hole_insts,
       ghcOptPackageDBs      = withPackageDB lbi,
@@ -413,7 +412,7 @@ componentGhcOptions verbosity lbi bi clbi odir =
     toGhcDebugInfo NormalDebugInfo  = toFlag True
     toGhcDebugInfo MaximalDebugInfo = toFlag True
 
-    hole_insts = map (\(k,(p,n)) -> (k, (InstalledPackageInfo.packageKey p,n)))
+    hole_insts = map (\(k,(p,n)) -> (k, (InstalledPackageInfo.installedComponentId p,n)))
                  (instantiatedWith lbi)
 
 -- | Strip out flags that are not supported in ghci
@@ -429,7 +428,7 @@ filterGhciFlags = filter supported
     supported "-unreg"    = False
     supported _           = True
 
-mkGHCiLibName :: LibraryName -> String
+mkGHCiLibName :: ComponentId -> String
 mkGHCiLibName lib = getHSLibraryName lib <.> "o"
 
 ghcLookupProperty :: String -> Compiler -> Bool
@@ -460,7 +459,7 @@ getHaskellObjects implInfo lib lbi pref wanted_obj_ext allow_split_objs
                | x <- libModules lib ]
 
 mkGhcOptPackages :: ComponentLocalBuildInfo
-                 -> [(InstalledPackageId, PackageId, ModuleRenaming)]
+                 -> [(ComponentId, PackageId, ModuleRenaming)]
 mkGhcOptPackages clbi =
   map (\(i,p) -> (i,p,lookupRenaming p (componentPackageRenaming clbi)))
       (componentPackageDeps clbi)

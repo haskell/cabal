@@ -57,7 +57,7 @@ import System.FilePath ((</>), isPathSeparator, pathSeparator)
 import System.FilePath (dropDrive)
 
 import Distribution.Package
-         ( PackageIdentifier, packageName, packageVersion, LibraryName )
+         ( PackageIdentifier, packageName, packageVersion, ComponentId )
 import Distribution.System
          ( OS(..), buildOS, Platform(..) )
 import Distribution.Compiler
@@ -287,7 +287,7 @@ substituteInstallDirTemplates env dirs = dirs'
 -- substituting for all the variables in the abstract paths, to get real
 -- absolute path.
 absoluteInstallDirs :: PackageIdentifier
-                    -> LibraryName
+                    -> ComponentId
                     -> CompilerInfo
                     -> CopyDest
                     -> Platform
@@ -317,7 +317,7 @@ data CopyDest
 -- independent\" package).
 --
 prefixRelativeInstallDirs :: PackageIdentifier
-                          -> LibraryName
+                          -> ComponentId
                           -> CompilerInfo
                           -> Platform
                           -> InstallDirTemplates
@@ -372,7 +372,7 @@ data PathTemplateVariable =
      | PkgNameVar    -- ^ The @$pkg@ package name path variable
      | PkgVerVar     -- ^ The @$version@ package version path variable
      | PkgIdVar      -- ^ The @$pkgid@ package Id path variable, eg @foo-1.0@
-     | LibNameVar    -- ^ The @$libname@ expanded package key path variable
+     | LibNameVar    -- ^ The @$libname@ path variable
      | CompilerVar   -- ^ The compiler name and version, eg @ghc-6.6.1@
      | OSVar         -- ^ The operating system name, eg @windows@ or @linux@
      | ArchVar       -- ^ The CPU architecture name, eg @i386@ or @x86_64@
@@ -415,7 +415,7 @@ substPathTemplate environment (PathTemplate template) =
 
 -- | The initial environment has all the static stuff but no paths
 initialPathTemplateEnv :: PackageIdentifier
-                       -> LibraryName
+                       -> ComponentId
                        -> CompilerInfo
                        -> Platform
                        -> PathTemplateEnv
@@ -425,7 +425,7 @@ initialPathTemplateEnv pkgId libname compiler platform =
   ++ platformTemplateEnv platform
   ++ abiTemplateEnv compiler platform
 
-packageTemplateEnv :: PackageIdentifier -> LibraryName -> PathTemplateEnv
+packageTemplateEnv :: PackageIdentifier -> ComponentId -> PathTemplateEnv
 packageTemplateEnv pkgId libname =
   [(PkgNameVar,  PathTemplate [Ordinary $ display (packageName pkgId)])
   ,(PkgVerVar,   PathTemplate [Ordinary $ display (packageVersion pkgId)])
@@ -478,7 +478,7 @@ installDirsTemplateEnv dirs =
 
 instance Show PathTemplateVariable where
   show PrefixVar     = "prefix"
-  show LibNameVar     = "libname"
+  show LibNameVar    = "libname"
   show BindirVar     = "bindir"
   show LibdirVar     = "libdir"
   show LibsubdirVar  = "libsubdir"
@@ -515,8 +515,8 @@ instance Read PathTemplateVariable where
                  ,("docdir",     DocdirVar)
                  ,("htmldir",    HtmldirVar)
                  ,("pkgid",      PkgIdVar)
-                 ,("pkgkey",     LibNameVar) -- backwards compatibility
                  ,("libname",    LibNameVar)
+                 ,("pkgkey",     LibNameVar) -- backwards compatibility
                  ,("pkg",        PkgNameVar)
                  ,("version",    PkgVerVar)
                  ,("compiler",   CompilerVar)

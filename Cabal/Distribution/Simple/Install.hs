@@ -16,13 +16,9 @@ module Distribution.Simple.Install (
         install,
   ) where
 
-import Distribution.PackageDescription (
-        PackageDescription(..), BuildInfo(..), Library(..),
-        hasLibs, withLib, hasExes, withExe )
+import Distribution.PackageDescription
 import Distribution.Package (Package(..))
-import Distribution.Simple.LocalBuildInfo (
-        LocalBuildInfo(..), InstallDirs(..), absoluteInstallDirs,
-        substPathTemplate, withLibLBI)
+import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.BuildPaths (haddockName, haddockPref)
 import Distribution.Simple.Utils
          ( createDirectoryIfMissingVerbose
@@ -69,6 +65,8 @@ install pkg_descr lbi flags = do
          htmldir    = htmlPref,
          haddockdir = interfacePref,
          includedir = incPref})
+             -- Using the library clbi for binPref is a hack;
+             -- binPref should be computed per executable
              = absoluteInstallDirs pkg_descr lbi copydest
 
       --TODO: decide if we need the user to be able to control the libdir
@@ -126,32 +124,33 @@ install pkg_descr lbi flags = do
 
   -- install include files for all compilers - they may be needed to compile
   -- haskell files (using the CPP extension)
+  --
   when (hasLibs pkg_descr) $ installIncludeFiles verbosity pkg_descr incPref
 
-  case compilerFlavor (compiler lbi) of
-     GHC  -> do withLibLBI pkg_descr lbi $
-                  GHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
-                withExe pkg_descr $
-                  GHC.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
-     GHCJS-> do withLibLBI pkg_descr lbi $
-                  GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
-                withExe pkg_descr $
-                  GHCJS.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
-     LHC  -> do withLibLBI pkg_descr lbi $
-                  LHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
-                withExe pkg_descr $
-                  LHC.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
-     JHC  -> do withLib pkg_descr $
-                  JHC.installLib verbosity libPref buildPref pkg_descr
-                withExe pkg_descr $
-                  JHC.installExe verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
-     UHC  -> do withLib pkg_descr $ UHC.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
-     HaskellSuite {} ->
-       withLib pkg_descr $
-         HaskellSuite.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
-     _    -> die $ "installing with "
-                ++ display (compilerFlavor (compiler lbi))
-                ++ " is not implemented"
+  withLibLBI pkg_descr lbi $
+    case compilerFlavor (compiler lbi) of
+      GHC   -> GHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
+      GHCJS -> GHCJS.installLib verbosity lbi libPref dynlibPref buildPref pkg_descr
+      LHC   -> LHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
+      JHC   -> JHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
+      UHC   -> UHC.installLib   verbosity lbi libPref dynlibPref buildPref pkg_descr
+      HaskellSuite _ -> HaskellSuite.installLib
+                                verbosity lbi libPref dynlibPref buildPref pkg_descr
+      _ -> \_ _ -> die $ "installing with "
+                      ++ display (compilerFlavor (compiler lbi))
+                      ++ " is not implemented"
+
+  withExe pkg_descr $
+    case compilerFlavor (compiler lbi) of
+      GHC   -> GHC.installExe   verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
+      GHCJS -> GHCJS.installExe verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
+      LHC   -> LHC.installExe   verbosity lbi installDirs buildPref (progPrefixPref, progSuffixPref) pkg_descr
+      JHC   -> JHC.installExe   verbosity binPref buildPref (progPrefixPref, progSuffixPref) pkg_descr
+      UHC   -> \_ -> return ()
+      HaskellSuite {} -> \_ -> return ()
+      _ -> \_ -> die $ "installing with "
+                    ++ display (compilerFlavor (compiler lbi))
+                    ++ " is not implemented"
   -- register step should be performed by caller.
 
 -- | Install the files listed in data-files

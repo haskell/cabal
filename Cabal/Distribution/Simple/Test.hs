@@ -25,7 +25,6 @@ import Distribution.Simple.InstallDirs
     ( fromPathTemplate, initialPathTemplateEnv, substPathTemplate
     , PathTemplate )
 import qualified Distribution.Simple.LocalBuildInfo as LBI
-    ( LocalBuildInfo(..), localLibraryName )
 import Distribution.Simple.Setup ( TestFlags(..), fromFlag, configCoverage )
 import Distribution.Simple.UserHooks ( Args )
 import qualified Distribution.Simple.Test.ExeV10 as ExeV10
@@ -132,5 +131,5 @@ packageLogPath template pkg_descr lbi =
     fromPathTemplate $ substPathTemplate env template
     where
         env = initialPathTemplateEnv
-                (PD.package pkg_descr) (LBI.localLibraryName lbi)
+                (PD.package pkg_descr) (LBI.localComponentId lbi)
                 (compilerInfo $ LBI.compiler lbi) (LBI.hostPlatform lbi)

@@ -35,8 +35,8 @@ import qualified Distribution.Simple.Build.PathsModule as Build.PathsModule
 
 import Distribution.Package
          ( Package(..), PackageName(..), PackageIdentifier(..)
-         , Dependency(..), thisPackageVersion, PackageKey(..), packageName
-         , LibraryName(..) )
+         , Dependency(..), thisPackageVersion, packageName
+         , ComponentId(..), ComponentId(..) )
 import Distribution.Simple.Compiler
          ( Compiler, CompilerFlavor(..), compilerFlavor
          , PackageDB(..), PackageDBStack )
@@ -60,8 +60,7 @@ import Distribution.Simple.LocalBuildInfo
          , ComponentLocalBuildInfo(..), pkgEnabledComponents
          , withComponentsInBuildOrder, componentsInBuildOrder
          , ComponentName(..), showComponentName
-         , ComponentDisabledReason(..), componentDisabledReason
-         , inplacePackageId )
+         , ComponentDisabledReason(..), componentDisabledReason )
 import Distribution.Simple.Program.Types
 import Distribution.Simple.Program.Db
 import qualified Distribution.Simple.Program.HcPkg as HcPkg
@@ -207,9 +206,8 @@ buildComponent verbosity numJobs pkg_descr lbi suffixes
     -- on internally defined libraries.
     pwd <- getCurrentDirectory
     let -- The in place registration uses the "-inplace" suffix, not an ABI hash
-        ipkgid           = inplacePackageId (packageId installedPkgInfo)
         installedPkgInfo = inplaceInstalledPackageInfo pwd distPref pkg_descr
-                                                       ipkgid lib' lbi clbi
+                                                       (IPI.AbiHash "") lib' lbi clbi
 
     registerPackage verbosity
       installedPkgInfo pkg_descr lbi True -- True meaning in place
@@ -407,9 +405,9 @@ testSuiteLibV09AsLibAndExe pkg_descr
     libClbi = LibComponentLocalBuildInfo
                 { componentPackageDeps = componentPackageDeps clbi
                 , componentPackageRenaming = componentPackageRenaming clbi
-                , componentLibraryName = LibraryName (testName test)
+                , componentId = ComponentId $ display (packageId pkg)
+                , componentCompatPackageKey = ComponentId $ display (packageId pkg)
                 , componentExposedModules = [IPI.ExposedModule m Nothing Nothing]
-                , componentPackageKey = OldPackageKey (PackageIdentifier (PackageName (testName test)) (pkgVersion (package pkg_descr)))
                 }
     pkg = pkg_descr {
             package      = (package pkg_descr) {
@@ -420,8 +418,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
           , testSuites   = []
           , library      = Just lib
           }
-    ipkgid = inplacePackageId (packageId pkg)
-    ipi    = inplaceInstalledPackageInfo pwd distPref pkg ipkgid lib lbi libClbi
+    ipi    = inplaceInstalledPackageInfo pwd distPref pkg (IPI.AbiHash "") lib lbi libClbi
     testDir = buildDir lbi </> stubName test
           </> stubName test ++ "-tmp"
     testLibDep = thisPackageVersion $ package pkg
@@ -441,7 +438,7 @@ testSuiteLibV09AsLibAndExe pkg_descr
     -- that exposes the relevant test suite library.
     exeClbi = ExeComponentLocalBuildInfo {
                 componentPackageDeps =
-                    (IPI.installedPackageId ipi, packageId ipi)
+                    (IPI.installedComponentId ipi, packageId ipi)
                   : (filter (\(_, x) -> let PackageName name = pkgName x
                                         in name == "Cabal" || name == "base")
                             (componentPackageDeps clbi)),

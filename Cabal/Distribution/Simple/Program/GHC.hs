@@ -76,7 +76,7 @@ data GhcOptions = GhcOptions {
 
   -- | The package key the modules will belong to; the @ghc -this-package-key@
   -- flag.
-  ghcOptPackageKey   :: Flag PackageKey,
+  ghcOptComponentId   :: Flag ComponentId,
 
   -- | GHC package databases to use, the @ghc -package-conf@ flag.
   ghcOptPackageDBs    :: PackageDBStack,
@@ -85,7 +85,7 @@ data GhcOptions = GhcOptions {
   -- requires both the short and long form of the package id;
   -- the @ghc -package@ or @ghc -package-id@ flags.
   ghcOptPackages      ::
-    NubListR (InstalledPackageId, PackageId, ModuleRenaming),
+    NubListR (ComponentId, PackageId, ModuleRenaming),
 
   -- | Start with a clean package set; the @ghc -hide-all-packages@ flag
   ghcOptHideAllPackages :: Flag Bool,
@@ -95,7 +95,7 @@ data GhcOptions = GhcOptions {
   ghcOptNoAutoLinkPackages :: Flag Bool,
 
   -- | What packages are implementing the signatures
-  ghcOptSigOf :: [(ModuleName, (PackageKey, ModuleName))],
+  ghcOptSigOf :: [(ModuleName, (ComponentId, ModuleName))],
 
   -----------------
   -- Linker stuff
@@ -379,7 +379,7 @@ renderGhcOptions comp opts
   , concat [ [if packageKeySupported comp
                 then "-this-package-key"
                 else "-package-name", display pkgid]
-             | pkgid <- flag ghcOptPackageKey ]
+             | pkgid <- flag ghcOptComponentId ]
 
   , [ "-hide-all-packages"     | flagBool ghcOptHideAllPackages ]
   , [ "-no-auto-link-packages" | flagBool ghcOptNoAutoLinkPackages ]
@@ -503,7 +503,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDynFile      = mempty,
     ghcOptSourcePathClear    = mempty,
     ghcOptSourcePath         = mempty,
-    ghcOptPackageKey         = mempty,
+    ghcOptComponentId         = mempty,
     ghcOptPackageDBs         = mempty,
     ghcOptPackages           = mempty,
     ghcOptHideAllPackages    = mempty,
@@ -557,7 +557,7 @@ instance Monoid GhcOptions where
     ghcOptOutputDynFile      = combine ghcOptOutputDynFile,
     ghcOptSourcePathClear    = combine ghcOptSourcePathClear,
     ghcOptSourcePath         = combine ghcOptSourcePath,
-    ghcOptPackageKey         = combine ghcOptPackageKey,
+    ghcOptComponentId         = combine ghcOptComponentId,
     ghcOptPackageDBs         = combine ghcOptPackageDBs,
     ghcOptPackages           = combine ghcOptPackages,
     ghcOptHideAllPackages    = combine ghcOptHideAllPackages,

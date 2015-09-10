@@ -26,7 +26,7 @@ import Distribution.InstalledPackageInfo
          ( InstalledPackageInfo )
 import qualified Distribution.InstalledPackageInfo as InstalledPackageInfo
                                 ( InstalledPackageInfo(..) )
-import Distribution.Package ( LibraryName(..), getHSLibraryName )
+import Distribution.Package ( ComponentId(..), getHSLibraryName )
 import Distribution.Simple.PackageIndex ( InstalledPackageIndex )
 import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.LocalBuildInfo
@@ -301,7 +301,7 @@ buildOrReplLib :: Bool -> Verbosity  -> Cabal.Flag (Maybe Int)
                -> PackageDescription -> LocalBuildInfo
                -> Library            -> ComponentLocalBuildInfo -> IO ()
 buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
-  let libName@(LibraryName cname) = componentLibraryName clbi
+  let libName@(ComponentId cname) = componentId clbi
       libTargetDir = buildDir lbi
       whenVanillaLib forceVanilla =
         when (not forRepl && (forceVanilla || withVanillaLib lbi))
@@ -312,7 +312,7 @@ buildOrReplLib forRepl verbosity numJobs _pkg_descr lbi lib clbi = do
       ifReplLib = when forRepl
       comp = compiler lbi
       implInfo = getImplInfo comp
-      hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.packageKey p,n)))
+      hole_insts = map (\(k,(p,n)) -> (k,(InstalledPackageInfo.installedComponentId p,n)))
                        (instantiatedWith lbi)
       nativeToo = ghcjsNativeToo comp
 
@@ -756,7 +756,7 @@ installLib verbosity lbi targetDir dynlibTargetDir builtDir _pkg lib clbi = do
       >>= installOrdinaryFiles verbosity targetDir
 
     cid = compilerId (compiler lbi)
-    libName = componentLibraryName clbi
+    libName = componentId clbi
     vanillaLibName = mkLibName              libName
     profileLibName = mkProfLibName          libName
     ghciLibName    = Internal.mkGHCiLibName libName

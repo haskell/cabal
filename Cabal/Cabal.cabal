@@ -120,6 +120,10 @@ extra-source-files:
   tests/PackageTests/TestSuiteTests/LibV09/LibV09.cabal
   tests/PackageTests/TestSuiteTests/LibV09/Lib.hs
   tests/PackageTests/TestSuiteTests/LibV09/tests/Deadlock.hs
+  tests/PackageTests/UniqueIPID/P1/M.hs
+  tests/PackageTests/UniqueIPID/P1/my.cabal
+  tests/PackageTests/UniqueIPID/P2/M.hs
+  tests/PackageTests/UniqueIPID/P2/my.cabal
   tests/Setup.hs
   tests/Test/Distribution/Version.hs
   tests/Test/Laws.hs
@@ -316,6 +320,7 @@ test-suite package-tests
     PackageTests.TestStanza.Check
     PackageTests.TestSuiteTests.ExeV10.Check
     PackageTests.TestSuiteTests.LibV09.Check
+    PackageTests.UniqueIPID.Check
     Test.Distribution.Version
     Test.Laws
     Test.QuickCheck.Utils

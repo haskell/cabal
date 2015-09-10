@@ -411,7 +411,8 @@ filterConfigureFlags flags cabalLibVersion
 
     -- Cabal < 1.23 doesn't know about '--profiling-detail'.
     flags_1_22_0 = flags_latest { configProfDetail    = NoFlag
-                                , configProfLibDetail = NoFlag }
+                                , configProfLibDetail = NoFlag
+                                , configIPID          = NoFlag }
 
     -- Cabal < 1.22 doesn't know about '--disable-debug-info'.
     flags_1_21_0 = flags_1_22_0 { configDebugInfo = NoFlag }
