@@ -112,7 +112,7 @@ freeze verbosity packageDBs repos comp platform conf mSandboxPkgInfo
                      "The following packages would be frozen:"
                    : formatPkgs pkgs
 
-             else freezePackages verbosity pkgs
+             else freezePackages globalFlags verbosity pkgs
 
   where
     dryRun = fromFlag (freezeDryRun freezeFlags)
@@ -213,10 +213,11 @@ pruneInstallPlan installPlan pkgSpecifiers =
     brokenPkgsErr = error "planPackages: installPlan contains broken packages"
 
 
-freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()
-freezePackages verbosity pkgs = do
+freezePackages :: Package pkg => GlobalFlags -> Verbosity -> [pkg] -> IO ()
+freezePackages globalFlags verbosity pkgs = do
+
     pkgEnv <- fmap (createPkgEnv . addFrozenConstraints) $
-                   loadUserConfig verbosity "" Nothing
+                   loadUserConfig verbosity ""  (flagToMaybe . globalConstraintsFile $ globalFlags)
     writeFileAtomic userPackageEnvironmentFile $ showPkgEnv pkgEnv
   where
     addFrozenConstraints config =
