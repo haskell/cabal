@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor, DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Types
@@ -39,10 +39,13 @@ import Distribution.Text (display)
 import qualified Distribution.InstalledPackageInfo as Info
 
 import Data.Map (Map)
-import Network.URI (URI, nullURI)
+import Network.URI (URI, URIAuth(..), nullURI)
 import Data.ByteString.Lazy (ByteString)
 import Control.Exception
          ( SomeException )
+import GHC.Generics (Generic)
+import Data.Binary (Binary(..))
+
 
 newtype Username = Username { unUsername :: String }
 newtype Password = Password { unPassword :: String }
@@ -53,6 +56,9 @@ data SourcePackageDb = SourcePackageDb {
   packageIndex       :: PackageIndex SourcePackage,
   packagePreferences :: Map PackageName VersionRange
 }
+  deriving (Eq, Generic)
+
+instance Binary SourcePackageDb
 
 -- ------------------------------------------------------------
 -- * Various kinds of information about packages
@@ -98,7 +104,9 @@ data ConfiguredPackage = ConfiguredPackage
                            -- These must be consistent with the 'buildDepends'
                            -- in the 'PackageDescription' that you'd get by
                            -- applying the flag assignment and optional stanzas.
-  deriving Show
+  deriving (Eq, Show, Generic)
+
+instance Binary ConfiguredPackage
 
 -- | A ConfiguredId is a package ID for a configured package.
 --
@@ -116,6 +124,9 @@ data ConfiguredId = ConfiguredId {
     confSrcId  :: PackageId
   , confInstId :: InstalledPackageId
   }
+  deriving (Eq, Generic)
+
+instance Binary ConfiguredId
 
 instance Show ConfiguredId where
   show = show . confSrcId
@@ -135,7 +146,7 @@ data GenericReadyPackage srcpkg ipkg
    = ReadyPackage
        srcpkg                  -- see 'ConfiguredPackage'.
        (ComponentDeps [ipkg])  -- Installed dependencies.
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 type ReadyPackage = GenericReadyPackage ConfiguredPackage InstalledPackageInfo
 
@@ -150,10 +161,14 @@ instance HasInstalledPackageId srcpkg =>
          HasInstalledPackageId (GenericReadyPackage srcpkg ipkg) where
   installedPackageId (ReadyPackage pkg _) = installedPackageId pkg
 
+instance (Binary srcpkg, Binary ipkg) => Binary (GenericReadyPackage srcpkg ipkg)
 
 -- | Extracts a package key from ReadyPackage, a common operation needed
 -- to calculate build paths.
-readyPackageKey :: Compiler -> ReadyPackage -> PackageKey
+readyPackageKey :: Package srcpkg
+                => Compiler
+                -> GenericReadyPackage srcpkg InstalledPackageInfo
+                -> PackageKey
 readyPackageKey comp (ReadyPackage pkg deps) =
     mkPackageKey (packageKeySupported comp) (packageId pkg)
                  (map Info.libraryName (CD.nonSetupDeps deps))
@@ -173,7 +188,9 @@ data SourcePackage = SourcePackage {
     packageSource        :: PackageLocation (Maybe FilePath),
     packageDescrOverride :: PackageDescriptionOverride
   }
-  deriving Show
+  deriving (Eq, Show, Generic)
+
+instance Binary SourcePackage
 
 -- | We sometimes need to override the .cabal file in the tarball with
 -- the newer one from the package index.
@@ -184,7 +201,9 @@ instance Package SourcePackage where packageId = packageInfoId
 data OptionalStanza
     = TestStanzas
     | BenchStanzas
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary OptionalStanza
 
 enableStanzas
     :: [OptionalStanza]
@@ -224,10 +243,19 @@ data PackageLocation local =
 --TODO:
 --  * add support for darcs and other SCM style remote repos with a local cache
 --  | ScmPackage
-  deriving (Show, Functor)
+  deriving (Show, Functor, Eq, Ord, Generic)
+
+instance Binary local => Binary (PackageLocation local)
+instance Binary URI
+
+instance Binary URIAuth where
+  put (URIAuth a b c) = do put a; put b; put c
+  get = do a <- get; b <- get; c <- get; return $! URIAuth a b c
 
 data LocalRepo = LocalRepo
-  deriving (Show,Eq)
+  deriving (Show, Eq, Ord, Generic)
+
+instance Binary LocalRepo
 
 data RemoteRepo =
     RemoteRepo {
@@ -246,7 +274,9 @@ data RemoteRepo =
 
   -- FIXME: discuss this type some more.
 
-  deriving (Show,Eq,Ord)
+  deriving (Show, Eq, Ord, Generic)
+
+instance Binary RemoteRepo
 
 -- | Construct a partial 'RemoteRepo' value to fold the field parser list over.
 emptyRemoteRepo :: String -> RemoteRepo
@@ -256,7 +286,9 @@ data Repo = Repo {
     repoKind     :: Either RemoteRepo LocalRepo,
     repoLocalDir :: FilePath
   }
-  deriving (Show,Eq)
+  deriving (Show, Eq, Ord, Generic)
+
+instance Binary Repo
 
 -- ------------------------------------------------------------
 -- * Build results
@@ -271,8 +303,22 @@ data BuildFailure = PlanningFailed
                   | BuildFailed     SomeException
                   | TestsFailed     SomeException
                   | InstallFailed   SomeException
+  deriving (Show, Generic)
 data BuildSuccess = BuildOk         DocsResult TestsResult
                                     (Maybe InstalledPackageInfo)
+  deriving (Show, Generic)
 
 data DocsResult  = DocsNotTried  | DocsFailed  | DocsOk
+  deriving (Show, Generic)
 data TestsResult = TestsNotTried | TestsOk
+  deriving (Show, Generic)
+
+instance Binary BuildFailure
+instance Binary BuildSuccess
+instance Binary DocsResult
+instance Binary TestsResult
+
+--FIXME: this is a total cheat
+instance Binary SomeException where
+  put _ = return ()
+  get = fail "cannot serialise exceptions"

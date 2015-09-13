@@ -65,6 +65,8 @@ import Distribution.Client.Targets
 import qualified Distribution.Client.List as List
          ( list, info )
 
+import qualified Distribution.Client.MultiPkg as MultiPkg (configure, build)
+
 import Distribution.Client.Install            (install)
 import Distribution.Client.Configure          (configure)
 import Distribution.Client.Update             (update)
@@ -246,6 +248,12 @@ mainWorker args = topHandler $
       ,initCommand            `commandAddAction` initAction
       ,configureExCommand     `commandAddAction` configureAction
       ,buildCommand           `commandAddAction` buildAction
+      ,hiddenCommand $
+       configureExCommand { commandName = "new-configure" }
+                              `commandAddAction` newConfigureAction
+      ,hiddenCommand $
+       buildCommand { commandName = "new-build" }
+                              `commandAddAction` newBuildAction
       ,replCommand            `commandAddAction` replAction
       ,sandboxCommand         `commandAddAction` sandboxAction
       ,haddockCommand         `commandAddAction` haddockAction
@@ -1193,3 +1201,41 @@ actAsSetupAction actAsSetupFlags args _globalFlags =
     Make      -> Make.defaultMainArgs args
     Custom               -> error "actAsSetupAction Custom"
     (UnknownBuildType _) -> error "actAsSetupAction UnknownBuildType"
+
+------------------------------------------------------------------------------
+-- New nix style local build ui
+--
+
+newConfigureAction :: (ConfigFlags, ConfigExFlags)
+                   -> [String] -> GlobalFlags -> IO ()
+newConfigureAction (configFlags, configExFlags) extraArgs globalFlags = do
+  let verbosity = fromFlagOrDefault normal (configVerbosity configFlags)
+
+  (useSandbox, config) <- fmap
+                          (updateInstallDirs (configUserInstall configFlags))
+                          (loadConfigOrSandboxConfig verbosity globalFlags)
+
+  let configFlags'   = savedConfigureFlags   config `mappend` configFlags
+      configExFlags' = savedConfigureExFlags config `mappend` configExFlags
+      globalFlags'   = savedGlobalFlags      config `mappend` globalFlags
+
+  MultiPkg.configure verbosity
+                     globalFlags' configFlags' configExFlags' useSandbox
+                     extraArgs
+
+newBuildAction :: (BuildFlags, BuildExFlags) -> [String] -> GlobalFlags -> IO ()
+newBuildAction (buildFlags, buildExFlags) extraArgs globalFlags = do
+  let verbosity   = fromFlagOrDefault normal (buildVerbosity buildFlags)
+
+  (useSandbox, config) <- loadConfigOrSandboxConfig verbosity globalFlags
+
+  let configFlags'   = savedConfigureFlags   config
+      configExFlags' = savedConfigureExFlags config
+      globalFlags'   = savedGlobalFlags      config
+
+  MultiPkg.build verbosity
+                 globalFlags'
+                 configFlags' configExFlags' useSandbox
+                 buildFlags   buildExFlags
+                 extraArgs
+

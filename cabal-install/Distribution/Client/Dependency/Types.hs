@@ -1,5 +1,4 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE CPP, DeriveFunctor, DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Dependency.Types
@@ -73,6 +72,8 @@ import Distribution.Text
 
 import Text.PrettyPrint
          ( text )
+import GHC.Generics (Generic)
+import Data.Binary (Binary(..))
 
 import Prelude hiding (fail)
 
@@ -133,7 +134,9 @@ data PackageConstraint
    | PackageConstraintSource    PackageName
    | PackageConstraintFlags     PackageName FlagAssignment
    | PackageConstraintStanzas   PackageName [OptionalStanza]
-  deriving (Show,Eq)
+  deriving (Eq,Show,Generic)
+
+instance Binary PackageConstraint
 
 -- | Provide a textual representation of a package constraint
 -- for debugging purposes.

@@ -1,5 +1,4 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE CPP, DeriveFunctor, DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.PackageIndex
@@ -54,6 +53,8 @@ import Data.List (groupBy, sortBy, isInfixOf)
 import Data.Monoid (Monoid(..))
 #endif
 import Data.Maybe (isJust, fromMaybe)
+import GHC.Generics (Generic)
+import Data.Binary (Binary(..))
 
 import Distribution.Package
          ( PackageName(..), PackageIdentifier(..)
@@ -78,7 +79,7 @@ newtype PackageIndex pkg = PackageIndex
   --
   (Map PackageName [pkg])
 
-  deriving (Show, Read, Functor)
+  deriving (Eq, Show, Read, Functor, Generic)
 
 instance Package pkg => Monoid (PackageIndex pkg) where
   mempty  = PackageIndex Map.empty
@@ -86,6 +87,8 @@ instance Package pkg => Monoid (PackageIndex pkg) where
   --save one mappend with empty in the common case:
   mconcat [] = mempty
   mconcat xs = foldr1 mappend xs
+
+instance Binary pkg => Binary (PackageIndex pkg)
 
 invariant :: Package pkg => PackageIndex pkg -> Bool
 invariant (PackageIndex m) = all (uncurry goodBucket) (Map.toList m)

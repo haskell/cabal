@@ -38,11 +38,11 @@ import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..) )
 
 import Distribution.Package
-         ( Package, packageId, packageName, packageVersion )
+         ( Package, packageId, packageName, packageVersion
+         , HasInstalledPackageId(..) )
 import Distribution.Simple.Compiler
          ( Compiler, compilerInfo, PackageDBStack )
 import Distribution.Simple.PackageIndex (InstalledPackageIndex)
-import qualified Distribution.Simple.PackageIndex as PackageIndex
 import Distribution.Simple.Program
          ( ProgramConfiguration )
 import Distribution.Simple.Setup
@@ -202,15 +202,14 @@ pruneInstallPlan :: InstallPlan
                  -> [PackageSpecifier SourcePackage]
                  -> [PlanPackage]
 pruneInstallPlan installPlan pkgSpecifiers =
-    either (const brokenPkgsErr)
-           (removeSelf pkgIds . PackageIndex.allPackages) $
+    removeSelf pkgIds $
     InstallPlan.dependencyClosure installPlan pkgIds
   where
-    pkgIds = [ packageId pkg | SpecificSourcePackage pkg <- pkgSpecifiers ]
-    removeSelf [thisPkg] = filter (\pp -> packageId pp /= thisPkg)
+    pkgIds = [ fakeInstalledPackageId (packageId pkg)
+             | SpecificSourcePackage pkg <- pkgSpecifiers ]
+    removeSelf [thisPkg] = filter (\pp -> installedPackageId pp /= thisPkg)
     removeSelf _  = error $ "internal error: 'pruneInstallPlan' given "
                          ++ "unexpected package specifiers!"
-    brokenPkgsErr = error "planPackages: installPlan contains broken packages"
 
 
 freezePackages :: Package pkg => Verbosity -> [pkg] -> IO ()

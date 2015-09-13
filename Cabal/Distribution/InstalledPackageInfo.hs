@@ -110,7 +110,7 @@ data InstalledPackageInfo_ m
         haddockHTMLs      :: [FilePath],
         pkgRoot           :: Maybe FilePath
     }
-    deriving (Generic, Read, Show)
+    deriving (Eq, Generic, Read, Show)
 
 libraryName :: InstalledPackageInfo_ a -> LibraryName
 libraryName ipi = Package.packageKeyLibraryName (sourcePackageId ipi) (packageKey ipi)
@@ -187,7 +187,7 @@ data ExposedModule
        exposedReexport  :: Maybe OriginalModule,
        exposedSignature :: Maybe OriginalModule -- This field is unused for now.
      }
-  deriving (Generic, Read, Show)
+  deriving (Eq, Generic, Read, Show)
 
 instance Text OriginalModule where
     disp (OriginalModule ipi m) =

@@ -398,6 +398,26 @@ getInstalledPackages' verbosity packagedbs conf = do
     Just ghcVersion = programVersion ghcProg
     failToRead file = die $ "cannot read ghc package database " ++ file
 
+getInstalledPackagesFingerprint :: Verbosity -> [PackageDB]
+                                -> IO [Maybe UTCTime]
+getInstalledPackagesFingerprint verbosity packagedbs =
+  | ghcVersion >= Version [6,9] [] =
+  
+  | otherwise =
+
+    sequence
+      [ catchIO (Just `fmap` getModificationTime probeFile) $ \e ->
+          if isDoesNotExistError e
+            then return Nothing
+            else ioError e
+      | repo <- packagedbs
+      , let probeFile = repoLocalDir repo </> "00-index.cache"
+      ]
+
+getPackageDBPath :: PackageDB -> FilePath
+getPackageDBPath (SpecificPackageDB path) = path </> "package.cache"
+ --Or file directly
+
 -- -----------------------------------------------------------------------------
 -- Building
 

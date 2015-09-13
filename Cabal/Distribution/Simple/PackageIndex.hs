@@ -30,6 +30,7 @@ module Distribution.Simple.PackageIndex (
   deleteSourcePackageId,
   deletePackageName,
 --  deleteDependency,
+  mapPreservingId,
 
   -- * Queries
 
@@ -120,7 +121,7 @@ data PackageIndex a = PackageIndex
   -- preserved. See #1463 for discussion.
   !(Map PackageName (Map Version [a]))
 
-  deriving (Generic, Show, Read)
+  deriving (Eq, Generic, Show, Read)
 
 instance Binary a => Binary (PackageIndex a)
 
@@ -307,6 +308,30 @@ deleteDependency (Dependency name verstionRange) =
   delete' name (\pkg -> packageVersion pkg `withinRange` verstionRange)
 -}
 
+-- | Map over all the packages in the index, but each package's id is not
+-- allowed to change (allowing a somewhat more efficient implementation).
+--
+mapPreservingId :: (HasInstalledPackageId a, HasInstalledPackageId b)
+                => (a -> b)
+                -> PackageIndex a
+                -> PackageIndex b
+mapPreservingId f (PackageIndex _pids pnames) =
+    PackageIndex pids' pnames'
+  where
+    f' pkg = assert (installedPackageId pkg == installedPackageId pkg'
+                     && packageId pkg == packageId pkg')
+             pkg'
+      where
+        pkg' = f pkg
+
+    -- map over the auxiliary name version maps
+    pnames' = fmap (fmap (map f')) pnames
+    -- but reconstruct the primary index to preserve sharing  
+    pids'   = Map.fromList [ (installedPackageId pkg, pkg)
+                           | pvers <- Map.elems pnames'
+                           , pkgs <- Map.elems pvers
+                           , pkg  <- pkgs ]
+
 --
 -- * Bulk queries
 --
@@ -340,7 +365,7 @@ allPackagesBySourcePackageId (PackageIndex _ pnames) =
 -- * Lookups
 --
 
--- | Does a lookup by source package id (name & version).
+-- | Does a lookup by installed package id.
 --
 -- Since multiple package DBs mask each other by 'InstalledPackageId',
 -- then we get back at most one package.

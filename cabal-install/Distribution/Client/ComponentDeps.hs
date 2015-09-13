@@ -9,7 +9,7 @@
 -- >   )
 -- > import qualified Distribution.Client.ComponentDeps as CD
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor, DeriveGeneric #-}
 module Distribution.Client.ComponentDeps (
     -- * Fine-grained package dependencies
     Component(..)
@@ -34,6 +34,8 @@ module Distribution.Client.ComponentDeps (
 
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Binary
+import GHC.Generics
 import Data.Foldable (fold)
 
 #if !MIN_VERSION_base(4,8,0)
@@ -53,14 +55,16 @@ data Component =
   | ComponentTest  String
   | ComponentBench String
   | ComponentSetup
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
+
+instance Binary Component
 
 -- | Dependency for a single component
 type ComponentDep a = (Component, a)
 
 -- | Fine-grained dependencies for a package
 newtype ComponentDeps a = ComponentDeps { unComponentDeps :: Map Component a }
-  deriving (Show, Functor, Eq, Ord)
+  deriving (Show, Functor, Eq, Ord, Generic)
 
 instance Monoid a => Monoid (ComponentDeps a) where
   mempty =
@@ -73,6 +77,8 @@ instance Foldable ComponentDeps where
 
 instance Traversable ComponentDeps where
   traverse f = fmap ComponentDeps . traverse f . unComponentDeps
+
+instance Binary a => Binary (ComponentDeps a)
 
 {-------------------------------------------------------------------------------
   Construction

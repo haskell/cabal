@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, DeriveGeneric #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Distribution.Client.Targets
@@ -105,6 +105,8 @@ import System.Directory
          ( doesFileExist, doesDirectoryExist )
 import Network.URI
          ( URI(..), URIAuth(..), parseAbsoluteURI )
+import GHC.Generics (Generic)
+import Data.Binary (Binary(..))
 
 -- ------------------------------------------------------------
 -- * User targets
@@ -181,7 +183,9 @@ data PackageSpecifier pkg =
      -- | A fully specified source package.
      --
    | SpecificSourcePackage pkg
-  deriving Show
+  deriving (Eq, Show, Generic)
+
+instance Binary pkg => Binary (PackageSpecifier pkg)
 
 pkgSpecifierTarget :: Package pkg => PackageSpecifier pkg -> PackageName
 pkgSpecifierTarget (NamedPackage name _)       = name

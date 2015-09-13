@@ -925,6 +925,18 @@ getPackageDBContents verbosity comp packageDB progconf = do
     _   -> getInstalledPackages verbosity comp [packageDB] progconf
 
 
+getInstalledPackagesFingerprint :: Verbosity -> Compiler
+                                -> PackageDBStack
+                                -> ProgramConfiguration
+                                -> IO InstalledPackageIndex
+getInstalledPackagesFingerprint verbosity comp packageDBs _progconf =
+  case compilerFlavor comp of
+    GHC   -> GHC.getInstalledPackagesFingerprint   verbosity comp packageDBs
+    GHCJS -> GHCJS.getInstalledPackagesFingerprint verbosity comp packageDBs
+    other     -> do
+      warn verbosity $ "don't know how to find a fingerprint for the "
+                    ++ "installed package databases for " ++ display other
+
 -- | The user interface specifies the package dbs to use with a combination of
 -- @--global@, @--user@ and @--package-db=global|user|clear|$file@.
 -- This function combines the global/user flag and interprets the package-db
