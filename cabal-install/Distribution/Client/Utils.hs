@@ -6,6 +6,7 @@ module Distribution.Client.Utils ( MergeResult(..)
                                  , inDir, determineNumJobs, numberOfProcessors
                                  , removeExistingFile
                                  , withTempFileName
+                                 , parentsOfCurrentDirectory
                                  , makeAbsoluteToCwd, filePathToByteString
                                  , byteStringToFilePath, tryCanonicalizePath
                                  , canonicalizePathNoThrow
@@ -31,7 +32,7 @@ import Text.Read
          ( readMaybe )
 #endif
 import Data.List
-         ( isPrefixOf, sortBy, groupBy )
+         ( isPrefixOf, sortBy, groupBy, inits )
 import Data.Word
          ( Word8, Word32)
 import Foreign.C.Types ( CInt(..) )
@@ -41,7 +42,7 @@ import System.Directory
          ( canonicalizePath, doesFileExist, getCurrentDirectory
          , removeFile, setCurrentDirectory )
 import System.FilePath
-         ( (</>), isAbsolute )
+         ( (</>), isAbsolute, splitDirectories, joinPath )
 import System.IO
          ( Handle, hClose, openTempFile
 #if MIN_VERSION_base(4,4,0)
@@ -121,6 +122,14 @@ withTempFileName tmpDir template action =
     (openTempFile tmpDir template)
     (\(name, _) -> removeExistingFile name)
     (\(name, h) -> hClose h >> action name)
+
+-- | Return a list of all the parent directories of the current
+-- directory, in order of current directory, parent directory,
+-- its parent, etc.
+parentsOfCurrentDirectory :: IO [FilePath]
+parentsOfCurrentDirectory = do
+  d <- getCurrentDirectory
+  return $ map joinPath $ reverse $ inits $ splitDirectories d
 
 -- | Executes the action in the specified directory.
 inDir :: Maybe FilePath -> IO a -> IO a

@@ -10,11 +10,12 @@
 
 module Distribution.Client.Sandbox.Types (
   UseSandbox(..), isUseSandbox, whenUsingSandbox,
-  SandboxPackageInfo(..)
+  SandboxPackageInfo(..), SandboxMetadata(..)
   ) where
 
 import qualified Distribution.Simple.PackageIndex as InstalledPackageIndex
 import Distribution.Client.Types (SourcePackage)
+import Distribution.Client.Sandbox.PackageEnvironment (PackageEnvironment(..))
 
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
@@ -22,7 +23,7 @@ import Data.Monoid
 import qualified Data.Set as S
 
 -- | Are we using a sandbox?
-data UseSandbox = UseSandbox FilePath | NoSandbox
+data UseSandbox = UseSandbox SandboxMetadata | NoSandbox
 
 instance Monoid UseSandbox where
   mempty = NoSandbox
@@ -40,8 +41,8 @@ isUseSandbox NoSandbox      = False
 -- | Execute an action only if we're in a sandbox, feeding to it the path to the
 -- sandbox directory.
 whenUsingSandbox :: UseSandbox -> (FilePath -> IO ()) -> IO ()
-whenUsingSandbox NoSandbox               _   = return ()
-whenUsingSandbox (UseSandbox sandboxDir) act = act sandboxDir
+whenUsingSandbox NoSandbox                    _   = return ()
+whenUsingSandbox (UseSandbox sandboxMetadata) act = act (smSandboxDirectory sandboxMetadata)
 
 -- | Data about the packages installed in the sandbox that is passed from
 -- 'reinstallAddSourceDeps' to the solver.
@@ -62,3 +63,11 @@ data SandboxPackageInfo = SandboxPackageInfo {
   allAddSourceDependencies      :: !(S.Set FilePath)
   -- ^ A set of paths to all add-source dependencies, for convenience.
   }
+
+-- | Metadata about the sandbox
+-- FIXME: doc comments for individual fields
+data SandboxMetadata = SandboxMetadata {
+      smSandboxDirectory :: !FilePath,
+      smSandboxConfigFile :: !FilePath,
+      smPackageEnvironment :: !PackageEnvironment
+    }

@@ -89,7 +89,7 @@ import Distribution.Client.Sandbox.Timestamp
          ( withUpdateTimestamps )
 import Distribution.Client.Sandbox.Types
          ( SandboxPackageInfo(..), UseSandbox(..), isUseSandbox
-         , whenUsingSandbox )
+         , whenUsingSandbox, SandboxMetadata(..) )
 import Distribution.Client.Tar (extractTarGzFile)
 import Distribution.Client.Types as Source
 import Distribution.Client.BuildReports.Types
@@ -997,7 +997,7 @@ updateSandboxTimestampsFile :: UseSandbox -> Maybe SandboxPackageInfo
                             -> Compiler -> Platform
                             -> InstallPlan
                             -> IO ()
-updateSandboxTimestampsFile (UseSandbox sandboxDir)
+updateSandboxTimestampsFile (UseSandbox sandboxMetadata)
                             (Just (SandboxPackageInfo _ _ _ allAddSourceDeps))
                             comp platform installPlan =
   withUpdateTimestamps sandboxDir (compilerId comp) platform $ \_ -> do
@@ -1009,6 +1009,8 @@ updateSandboxTimestampsFile (UseSandbox sandboxDir)
                             <- map packageSource allSrcPkgs]
     allPathsCanonical <- mapM tryCanonicalizePath allPaths
     return $! filter (`S.member` allAddSourceDeps) allPathsCanonical
+  where
+    sandboxDir = smSandboxDirectory sandboxMetadata
 
 updateSandboxTimestampsFile _ _ _ _ _ = return ()
 

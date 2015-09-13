@@ -86,7 +86,6 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,sandboxHcPkg
                                               ,dumpPackageEnvironment
 
-                                              ,getSandboxConfigFilePath
                                               ,loadConfigOrSandboxConfig
                                               ,findSavedDistPref
                                               ,initPackageDBIfNeeded
@@ -95,8 +94,8 @@ import Distribution.Client.Sandbox            (sandboxInit
                                               ,WereDepsReinstalled(..)
                                               ,maybeReinstallAddSourceDeps
                                               ,tryGetIndexFilePath
+                                              ,getSandboxMetadata
                                               ,sandboxBuildDir
-                                              ,updateSandboxConfigFileFlag
                                               ,updateInstallDirs
 
                                               ,configCompilerAux'
@@ -105,7 +104,7 @@ import Distribution.Client.Sandbox.PackageEnvironment
                                               (setPackageDB
                                               ,userPackageEnvironmentFile)
 import Distribution.Client.Sandbox.Timestamp  (maybeAddCompilerTimestampRecord)
-import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox)
+import Distribution.Client.Sandbox.Types      (UseSandbox(..), whenUsingSandbox, SandboxMetadata(..))
 import Distribution.Client.Types              (Password (..))
 import Distribution.Client.Init               (initCabal)
 import qualified Distribution.Client.Win32SelfUpgrade as Win32SelfUpgrade
@@ -202,7 +201,8 @@ mainWorker args = topHandler $
         CommandList     opts           -> printOptionsList opts
         CommandErrors   errs           -> printErrors errs
         CommandReadyToGo action        -> do
-          globalFlags' <- updateSandboxConfigFileFlag globalFlags
+          let globalFlags' = globalFlags    -- FIXME: Hmm... this is an interesting one: globalFlags' <- updateSandboxConfigFileFlag globalFlags
+
           action globalFlags'
 
   where
@@ -304,9 +304,10 @@ configureAction (configFlags, configExFlags) extraArgs globalFlags = do
   -- may need to create a sandbox-local package DB for this compiler and add a
   -- timestamp record for this compiler to the timestamp file.
   let configFlags''  = case useSandbox of
-        NoSandbox               -> configFlags'
-        (UseSandbox sandboxDir) -> setPackageDB sandboxDir
-                                   comp platform configFlags'
+        NoSandbox -> configFlags'
+        (UseSandbox sandboxMetadata) ->
+          let sandboxDir = smSandboxDirectory sandboxMetadata in
+            setPackageDB sandboxDir comp platform configFlags'
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf
@@ -536,11 +537,14 @@ reconfigure verbosity flagDistPref addConfigFlags extraArgs globalFlags
             }
           flags       = mconcat [configFlags, addConfigFlags, distVerbFlags]
 
+      -- Figure out where the sandbox config file is
+      let (UseSandbox sandboxMetadata) = useSandbox    -- FIXME: Refutable match! the old code used current directory here!
+
       -- Was the sandbox created after the package was already configured? We
       -- may need to skip reinstallation of add-source deps and force
       -- reconfigure.
       let buildConfig       = localBuildInfoFile distPref
-      sandboxConfig        <- getSandboxConfigFilePath globalFlags
+      let sandboxConfig     = smSandboxConfigFile sandboxMetadata
       isSandboxConfigNewer <-
         sandboxConfig `existsAndIsMoreRecentThan` buildConfig
 
@@ -684,8 +688,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- mode of operation, so we stick to it for consistency.
 
   let sandboxDistPref = case useSandbox of
-        NoSandbox             -> NoFlag
-        UseSandbox sandboxDir -> Flag $ sandboxBuildDir sandboxDir
+        NoSandbox                  -> NoFlag
+        UseSandbox sandboxMetadata -> Flag $ sandboxBuildDir $ smSandboxDirectory sandboxMetadata
   distPref <- findSavedDistPref config
               (configDistPref configFlags `mappend` sandboxDistPref)
 
@@ -708,8 +712,8 @@ installAction (configFlags, configExFlags, installFlags, haddockFlags)
   -- may need to create a sandbox-local package DB for this compiler and add a
   -- timestamp record for this compiler to the timestamp file.
   configFlags'' <- case useSandbox of
-    NoSandbox               -> configAbsolutePaths $ configFlags'
-    (UseSandbox sandboxDir) -> return $ setPackageDB sandboxDir comp platform configFlags'
+    NoSandbox                    -> configAbsolutePaths $ configFlags'
+    (UseSandbox sandboxMetadata) -> return $ setPackageDB (smSandboxDirectory sandboxMetadata) comp platform configFlags'
 
   whenUsingSandbox useSandbox $ \sandboxDir -> do
     initPackageDBIfNeeded verbosity configFlags'' comp conf'
@@ -1128,23 +1132,30 @@ sandboxAction sandboxFlags extraArgs globalFlags = do
     ("add-source":extra) -> do
         when (noExtraArgs extra) $
           die "The 'sandbox add-source' command expects at least one argument"
-        sandboxAddSource verbosity extra sandboxFlags globalFlags
+        sandboxMetadata <- getSandboxMetadata verbosity globalFlags -- FIXME: calls here should perhaps be "inlined" into each of the functions... (of course then we're back to GlobalFlags for those functions, but perhaps that's OK?)
+        sandboxAddSource verbosity extra sandboxFlags sandboxMetadata
     ("delete-source":extra) -> do
         when (noExtraArgs extra) $
           die ("The 'sandbox delete-source' command expects " ++
               "at least one argument")
-        sandboxDeleteSource verbosity extra sandboxFlags globalFlags
-    ["list-sources"] -> sandboxListSources verbosity sandboxFlags globalFlags
+        sandboxMetadata <- getSandboxMetadata verbosity globalFlags
+        sandboxDeleteSource verbosity extra sandboxMetadata
+    ["list-sources"] -> do
+        sandboxMetadata <- getSandboxMetadata verbosity globalFlags
+        sandboxListSources verbosity sandboxMetadata
 
     -- More advanced commands.
     ("hc-pkg":extra) -> do
         when (noExtraArgs extra) $
             die $ "The 'sandbox hc-pkg' command expects at least one argument"
-        sandboxHcPkg verbosity sandboxFlags globalFlags extra
+        sandboxMetadata <- getSandboxMetadata verbosity globalFlags
+        sandboxHcPkg verbosity sandboxMetadata extra
     ["buildopts"] -> die "Not implemented!"
 
     -- Hidden commands.
-    ["dump-pkgenv"]  -> dumpPackageEnvironment verbosity sandboxFlags globalFlags
+    ["dump-pkgenv"] -> do
+        sandboxMetadata <- getSandboxMetadata verbosity globalFlags
+        dumpPackageEnvironment sandboxMetadata
 
     -- Error handling.
     [] -> die $ "Please specify a subcommand (see 'help sandbox')"
