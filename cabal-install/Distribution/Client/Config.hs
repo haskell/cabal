@@ -428,7 +428,7 @@ initialSavedConfig = do
   return mempty {
     savedGlobalFlags     = mempty {
       globalCacheDir     = toFlag cacheDir,
-      globalRemoteRepos  = toNubList [defaultRemoteRepo],
+      globalRemoteRepos  = toNubList [addInfoForKnownRepos defaultRemoteRepo],
       globalWorldFile    = toFlag worldFile
     },
     savedConfigureFlags  = mempty {
