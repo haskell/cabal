@@ -108,7 +108,6 @@ import Control.Exception                      ( assert, bracket_ )
 import Control.Monad                          ( forM, liftM2, unless, when )
 import Data.Bits                              ( shiftL, shiftR, xor )
 import Data.Char                              ( ord )
-import Data.Foldable                          ( forM_ )
 import Data.IORef                             ( newIORef, writeIORef, readIORef )
 import Data.List                              ( delete, foldl' )
 import Data.Maybe                             ( fromJust )
@@ -177,11 +176,7 @@ updateSandboxConfigFileFlag globalFlags =
   case globalSandboxConfigFile globalFlags of
     Flag _ -> return globalFlags
     NoFlag -> do
-      fp <- lookupEnv "CABAL_SANDBOX_CONFIG"
-      forM_ fp $ \fp' -> do      -- Check for existence if environment variable set
-        exists <- doesFileExist fp'
-        unless exists $ die $ "Cabal sandbox file in $CABAL_SANDBOX_CONFIG does not exist: " ++ fp'
-      let f' = maybe NoFlag Flag fp
+      f' <- fmap (maybe NoFlag Flag) . lookupEnv $ "CABAL_SANDBOX_CONFIG"
       return globalFlags { globalSandboxConfigFile = f' }
 
 -- | Return the path to the sandbox config file - either the default or the one
