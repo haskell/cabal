@@ -21,6 +21,8 @@ import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Class
 import           Control.Exception
 
+import           Distribution.Text
+import           Distribution.Compat.ReadP (char, (+++))
 import           Distribution.Client.Glob
 import           Distribution.Client.Utils (mergeBy, MergeResult(..))
 
@@ -34,11 +36,18 @@ type Hash = Int
 type ModTime = UTCTime
 
 -- | A path specified by file globbing
-data GlobPath = Directory Glob GlobPath
-              | File Glob
+data GlobPath = GlobDir Glob GlobPath
+              | GlobFile Glob
               deriving (Show, Generic)
 
 instance Binary GlobPath
+
+instance Text GlobPath where
+  disp = error "GlobPath disp"
+  parse = dir +++ file
+    where
+      dir = GlobDir <$> parse <* char '/' <*> parse
+      file = GlobFile <$> parse
 
 -- | A list of search paths
 type SearchPaths = [FilePath]
@@ -158,7 +167,7 @@ checkFileStatusChanged statusCacheFile root = do
           return cached
         Nothing -> somethingChanged
 
-    probeGlobPath :: FilePath      -- ^ absolute path of the directory we are looking in
+    probeGlobPath :: FilePath      -- ^ path of the directory we are looking in relative to @root@
                   -> CachedGlobPath
                   -> ChangedT CachedGlobPath
                      -- ^ returns True if previous CachedGlobPath is still valid
@@ -191,7 +200,7 @@ checkFileStatusChanged statusCacheFile root = do
 
         -- Only in current filesystem state (directory added)
         probeMergeResult (OnlyInRight path) = do
-          cgp <- liftIO $ buildCachedGlobPath root globPath
+          cgp <- liftIO $ buildCachedGlobPath root (dirName </> path) globPath
           if hasMatchingFiles cgp
             then somethingChanged
             else do cacheChanged
@@ -234,10 +243,28 @@ checkFileStatusChanged statusCacheFile root = do
         return (chash == chash')
 
 buildCachedGlobPath :: FilePath -- ^ the root directory
-                    -> GlobPath
+                    -> FilePath -- ^ directory we are examining relative to the root
+                    -> GlobPath -- ^ the matching glob
                     -> IO CachedGlobPath
-buildCachedGlobPath root path = do
-    undefined
+buildCachedGlobPath root dir globPath = do
+    all <- getDirectoryContents (root </> dir)
+    dirMTime <- getModificationTime (root </> dir)
+    case globPath of
+      GlobDir glob globPath' -> do
+        all' <- filterM doesDirectoryExist $ filter (globMatches glob) all
+        subdirs <- forM all' $ \subdir -> do
+          cgp <- buildCachedGlobPath root (dir </> subdir) globPath'
+          return (subdir, cgp)
+        return $ CSubdirs glob globPath dirMTime subdirs
+
+      GlobFile glob -> do
+        all' <- filterM doesFileExist $ filter (globMatches glob) all
+        files <- forM all' $ \file -> do
+          let path = root </> dir </> file
+          mtime <- getModificationTime path
+          hash <- readFileHash path
+          return (file, mtime, hash)
+        return $ CFiles glob dirMTime files
 
 updateFileStatusCache
     :: (Binary a)
@@ -282,11 +309,11 @@ genFileStatusCache root specs cachedValue = do
                else return CSingleFileNotFound
       return $ Map.singleton path cfs
 
-    go (GlobHashPath globs) = do
-      undefined
+    go (GlobHashPath globPath) =
+      CGlobHashPath <$> mapM (buildCachedGlobPath root ".") globPath
 
     go (SearchPath paths name) = do
-      return Map.empty
+      undefined
 
 readFileHash :: FilePath -> IO Hash
 readFileHash file =

@@ -2,6 +2,7 @@
 
 import System.IO
 import Distribution.Client.FileStatusCache
+import Distribution.Text (simpleParse)
 import Control.Monad.Reader
 import Control.Monad.Trans.Except
 import Control.Monad.Error.Class
@@ -45,16 +46,21 @@ main = do
 
   test "glob match" $ do
     touch "dir1/good-a"
-    updateCache [GlobHashPath "dir1/good*"]
+    updateCache [globHashPath "dir1/good*"]
     touch "dir1/good-b"
     touch "dir1/bad"
     assertChanged True
 
   test "glob no match" $ do
     touch "dir1/good-a"
-    updateCache [GlobHashPath "dir1/good*"]
+    updateCache [globHashPath "dir1/good*"]
     touch "dir1/bad"
     assertChanged True
+
+globHashPath :: String -> FileSpec
+globHashPath glob
+  | Just glob' <- simpleParse glob = GlobHashPath glob'
+  | otherwise                      = error $ "Failed to parse "++glob
 
 newtype TestM a = TestM { runTestM :: ExceptT String (ReaderT FilePath IO) a }
                 deriving (Functor, Applicative, Monad, MonadIO, MonadError String)
