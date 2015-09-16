@@ -14,6 +14,7 @@ import           Data.Foldable
 import qualified Data.Hashable as Hashable
 import           Data.List (sort)
 import           Data.Time (UTCTime(..), Day(..))
+import           Data.Monoid ((<>))
 import           Control.Monad
 import           Control.Monad.IO.Class
 import qualified Control.Monad.Trans.State as State
@@ -70,20 +71,28 @@ data CachedGlobPath = CSubdirs Glob GlobPath ModTime [(FilePath, CachedGlobPath)
                     | CFiles Glob ModTime [(FilePath, ModTime, Hash)]
                     deriving (Show, Generic, Binary)
 
+-- | @CSearchPath paths_searched file_name found_dir mod_time@
+data CachedSearchPath = CSearchPath [FilePath] String (Maybe (FilePath, ModTime))
+                      deriving (Show, Generic)
+instance Binary CachedSearchPath
+
 -- | The cached status of a file.
 --
 -- All file paths are relative to the root directory.
 data CachedFileSpec = CSingleHashedFile ModTime Hash
                     | CSingleFile ModTime
                     | CSingleFileNotFound
-                    | CGlobHashPath CachedGlobPath
-                    | CSearchPath [FilePath] FilePath FilePath ModTime
-                      -- ^ @CSearchPath search_paths file_name found_dir mod_time@
                     deriving (Show, Generic)
-
 instance Binary CachedFileSpec
 
-data FileStatusCache a = FileStatusCache a (Map FilePath CachedFileSpec)
+data FileStatusCache = FileStatusCache (Map FilePath CachedFileSpec)
+                                       [CachedGlobPath]
+                                       [CachedSearchPath]
+
+instance Monoid FileStatusCache where
+  mempty = FileStatusCache Map.empty [] []
+  FileStatusCache a b c `mappend` FileStatusCache x y z =
+    FileStatusCache (a<>x) (b<>y) (c<>z)
 
 -- | Does a 'CachedGlobPath' have any relevant files within it?
 hasMatchingFiles :: CachedGlobPath -> Bool
@@ -125,11 +134,12 @@ checkFileStatusChanged statusCacheFile root = do
                        =<< Binary.decodeFileOrFail statusCacheFile
     case mfileCache of
       Nothing -> return Changed
-      Just (FileStatusCache cachedValue fileCache) -> do
-         print fileCache
-         res <- runMaybeT
-                $ State.runStateT (Map.traverseWithKey probe fileCache)
-                                  CacheUnchanged
+      Just (FileStatusCache singlePaths globPaths searchPaths , cachedValue) -> do
+         res <- runMaybeT $ flip State.runStateT CacheUnchanged $ do
+           singlePaths' <- Map.traverseWithKey probeSingle singlePaths
+           globPaths' <- traverse (probeGlobPath ".") globPaths
+           searchPaths' <- traverse probeSearch searchPaths
+           return $ FileStatusCache singlePaths' globPaths' searchPaths'
          case res of
            Nothing -> return Changed
            Just (cache', CacheChanged) ->
@@ -138,34 +148,34 @@ checkFileStatusChanged statusCacheFile root = do
            Just (_, CacheUnchanged) -> return (Unchanged cachedValue)
   where
     -- | Returns whether the returned cache matches the previous cache
-    probe :: FilePath -> CachedFileSpec
-          -> ChangedT CachedFileSpec
-    probe file CSingleFileNotFound = do
+    probeSingle :: FilePath -> CachedFileSpec -> ChangedT CachedFileSpec
+    probeSingle file CSingleFileNotFound = do
       exists <- liftIO $ doesFileExist (root </> file)
       if exists
         then somethingChanged
         else return CSingleFileNotFound
 
-    probe file cached@(CSingleFile mtime) = do
+    probeSingle file cached@(CSingleFile mtime) = do
       same <- liftIO $ probeModificationTime (root </> file) mtime
       unless same somethingChanged
       return cached
 
-    probe file cached@(CSingleHashedFile mtime hash) = do
+    probeSingle file cached@(CSingleHashedFile mtime hash) = do
       probeHashedFile (root </> file) mtime hash
       return cached
 
-    probe file (CGlobHashPath globpath) =
-      CGlobHashPath <$> probeGlobPath (root </> file) globpath
-
-    probe file cached@(CSearchPath searchDirs name foundDir mtime) = do
+    probeSearch :: CachedSearchPath -> ChangedT CachedSearchPath
+    probeSearch cached@(CSearchPath searchDirs name found) = do
+      -- First make sure it isn't in any of the early search directories
       file' <- liftIO $ findFile (map (root</>) searchDirs) name
       case file' of
-        Just path -> do
-          same <- liftIO $ probeModificationTime (root </> path) mtime
-          unless same somethingChanged
-          return cached
-        Nothing -> somethingChanged
+        Just _ -> somethingChanged
+        Nothing
+          | Just (foundDir, mtime) <- found -> do
+            same <- liftIO $ probeModificationTime (root </> foundDir </> name) mtime
+            unless same somethingChanged
+          | otherwise                       -> return ()
+      return cached
 
     probeGlobPath :: FilePath      -- ^ path of the directory we are looking in relative to @root@
                   -> CachedGlobPath
@@ -211,7 +221,7 @@ checkFileStatusChanged statusCacheFile root = do
           cgp' <- probeGlobPath (dirName </> path) cgp
           return (dirName </> path, cgp')
 
-    probeGlobPath dirName cached@(CFiles glob mtime children) = do
+    probeGlobPath dirName cached@(CFiles _glob mtime children) = do
         same <- liftIO $ probeModificationTime dirName mtime
         res <- if same
                  then forM_ children $ \(file, mtime', hash) ->
@@ -247,19 +257,19 @@ buildCachedGlobPath :: FilePath -- ^ the root directory
                     -> GlobPath -- ^ the matching glob
                     -> IO CachedGlobPath
 buildCachedGlobPath root dir globPath = do
-    all <- getDirectoryContents (root </> dir)
+    ents <- getDirectoryContents (root </> dir)
     dirMTime <- getModificationTime (root </> dir)
     case globPath of
       GlobDir glob globPath' -> do
-        all' <- filterM doesDirectoryExist $ filter (globMatches glob) all
+        all' <- filterM doesDirectoryExist $ filter (globMatches glob) ents
         subdirs <- forM all' $ \subdir -> do
           cgp <- buildCachedGlobPath root (dir </> subdir) globPath'
           return (subdir, cgp)
         return $ CSubdirs glob globPath dirMTime subdirs
 
       GlobFile glob -> do
-        all' <- filterM doesFileExist $ filter (globMatches glob) all
-        files <- forM all' $ \file -> do
+        ents' <- filterM doesFileExist $ filter (globMatches glob) ents
+        files <- forM ents' $ \file -> do
           let path = root </> dir </> file
           mtime <- getModificationTime path
           hash <- readFileHash path
@@ -275,21 +285,17 @@ updateFileStatusCache
                   -- the given patterns
     -> IO ()
 updateFileStatusCache cacheFile root specs cachedValue = do
-    fsc <- genFileStatusCache root specs cachedValue
-    Binary.encodeFile cacheFile fsc
+    fsc <- genFileStatusCache root specs
+    Binary.encodeFile cacheFile (fsc, cachedValue)
 
 genFileStatusCache
-    :: (Binary a)
-    => FilePath   -- ^ root directory
+    :: FilePath   -- ^ root directory
     -> [FileSpec] -- ^ patterns of interest relative to root
-    -> a          -- ^ a cached value dependent upon the paths identified by
-                  -- the given patterns
-    -> IO (FileStatusCache a)
-genFileStatusCache root specs cachedValue = do
-    cachedSpecs <- mapM go specs
-    return $ FileStatusCache cachedValue (fold cachedSpecs)
+    -> IO FileStatusCache
+genFileStatusCache root specs = do
+    fold <$> mapM go specs
   where
-    go :: FileSpec -> IO (Map FilePath CachedFileSpec)
+    go :: FileSpec -> IO FileStatusCache
     go (SingleHashedFile path) = do
       let file = root </> path
       exists <- doesFileExist file
@@ -298,7 +304,7 @@ genFileStatusCache root specs cachedValue = do
                        mtime <- getModificationTime file
                        return $ CSingleHashedFile mtime fileHash
                else return CSingleFileNotFound
-      return $ Map.singleton path cfs
+      return $ FileStatusCache (Map.singleton path cfs) [] []
 
     go (SingleFile path) = do
       let file = root </> path
@@ -307,13 +313,25 @@ genFileStatusCache root specs cachedValue = do
                then do mtime <- getModificationTime file
                        return $ CSingleFile mtime
                else return CSingleFileNotFound
-      return $ Map.singleton path cfs
+      return $ FileStatusCache (Map.singleton path cfs) [] []
 
-    go (GlobHashPath globPath) =
-      CGlobHashPath <$> mapM (buildCachedGlobPath root ".") globPath
+    go (GlobHashPath globPath) = do
+      cgp <- buildCachedGlobPath root "." globPath
+      return $ FileStatusCache mempty [cgp] []
 
-    go (SearchPath paths name) = do
-      undefined
+    go (SearchPath paths0 name) = do
+        csp <- search [] paths0
+        return $ FileStatusCache mempty [] [csp]
+      where
+        search :: [FilePath] -> [FilePath] -> IO CachedSearchPath
+        search searched [] = return $ CSearchPath searched name Nothing
+        search searched (dir:paths) = do
+          let path = root </> dir </> name
+          exists <- doesFileExist path
+          if exists
+            then do mtime <- getModificationTime path
+                    return $ CSearchPath searched name $ Just (dir, mtime)
+            else search (dir:searched) paths
 
 readFileHash :: FilePath -> IO Hash
 readFileHash file =
@@ -347,17 +365,19 @@ instance Binary UTCTime where
     return $! UTCTime (ModifiedJulianDay day)
                       (fromRational tod)
 
-instance Binary a => Binary (FileStatusCache a) where
-  put (FileStatusCache cachedValue fileCache) = do
+instance Binary FileStatusCache where
+  put (FileStatusCache singlePaths globPaths searchPaths) = do
     put (1 :: Int) -- version
-    put cachedValue
-    put fileCache
+    put singlePaths
+    put globPaths
+    put searchPaths
   get = do
     ver <- get
     if ver == (1 :: Int)
-      then do cachedValue <- get
-              fileCache <- get
-              return $! FileStatusCache cachedValue fileCache
+      then do singlePaths <- get
+              globPaths <- get
+              searchPaths <- get
+              return $! FileStatusCache singlePaths globPaths searchPaths
       else fail "FileStatusCache: wrong version"
 
 ---------------------------------------------------------------------
@@ -370,7 +390,7 @@ checkValueChanged :: (Binary a, Eq a, Binary b)
 checkValueChanged cacheFile currentValue =
     handleDoesNotExist (\_ -> return Changed) $ do   -- cache file didn't exist
       res <- Binary.decodeFileOrFail cacheFile
-      case res of          
+      case res of
         Right (cachedValue, cachedPayload)
           | currentValue == cachedValue
                        -> return (Unchanged cachedPayload)
