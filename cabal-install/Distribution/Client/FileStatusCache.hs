@@ -252,7 +252,7 @@ genFileStatusCache root specs cachedValue = do
     go :: FileSpec -> IO (Map FilePath CachedFileSpec)
     go (SingleHashedFile path) = do
       exists <- doesFileExist path
-      if not exists
+      if exists
         then do fileHash <- readFileHash path
                 mtime <- getModificationTime path
                 return $ Map.singleton path (CSingleHashedFile mtime fileHash)
@@ -260,7 +260,7 @@ genFileStatusCache root specs cachedValue = do
 
     go (SingleFile path) = do
       exists <- doesFileExist path
-      if not exists
+      if exists
         then do mtime <- getModificationTime path
                 return $ Map.singleton path (CSingleFile mtime)
         else return Map.empty
