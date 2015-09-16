@@ -136,6 +136,7 @@ executable cabal
         containers >= 0.1      && < 0.6,
         filepath   >= 1.0      && < 1.5,
         HTTP       >= 4000.1.5 && < 4000.3,
+        transformers >= 0.3      && < 1.0,
         mtl        >= 2.0      && < 3,
         pretty     >= 1        && < 1.2,
         random     >= 1        && < 1.2,

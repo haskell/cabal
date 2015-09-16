@@ -1,6 +1,8 @@
 -- | A cache which tracks a value whose validity depends upon
 -- the state of various files in the filesystem.
 
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+
 module Distribution.Client.FileStatusCache where
 
 import           Data.Map.Strict (Map)
@@ -8,43 +10,35 @@ import qualified Data.Map.Strict as Map
 import qualified Data.ByteString.Lazy as BS
 import           Data.Binary
 import qualified Data.Binary as Binary
-import           Data.Hashable
+import           Data.Foldable
+import qualified Data.Hashable as Hashable
+import           Data.List (sort)
 import           Data.Time (UTCTime(..), Day(..))
-import           Control.Applicative
 import           Control.Monad
-import           Control.Monad.Trans.State
-import           Control.Monad.Trans.Reader
+import           Control.Monad.IO.Class
+import qualified Control.Monad.Trans.State as State
+import           Control.Monad.Trans.Maybe
+import           Control.Monad.Trans.Class
 import           Control.Exception
+
+import           Distribution.Client.Glob
+import           Distribution.Client.Utils (mergeBy, MergeResult(..))
 
 import           System.FilePath
 import           System.Directory
 import           System.IO
 import           System.IO.Error
-
-
--- contains a mapping from normalised relative paths to timestamp and content hash.
-newtype FileStatusCache = FileStatusCache (Map FilePath FileInfo)
-
-data FileInfo = FileInfo {-# UNPACK #-} !UTCTime
-                         {-# UNPACK #-} !Hash
-              | NoFileExists -- meaning, file expected not to exist
+import           GHC.Generics (Generic)
 
 type Hash = Int
-
-emptyFileStatusCache :: FileStatusCache
-emptyFileStatusCache = FileStatusCache Map.empty
-
--- | A piece of a globbing pattern
-data GlobAtom = WildCard
-              | Literal String
-              | Union [Glob]
-
--- | A single directory or file component of a globbed path
-newtype Glob = Glob [GlobAtom]
+type ModTime = UTCTime
 
 -- | A path specified by file globbing
-data GlobPath = Directory [Glob] GlobPath
-              | File [Glob]
+data GlobPath = Directory Glob GlobPath
+              | File Glob
+              deriving (Generic)
+
+instance Binary GlobPath
 
 -- | A list of search paths
 type SearchPaths = [FilePath]
@@ -59,38 +53,42 @@ data FileSpec = SingleHashedFile FilePath
                 -- ^ Find the first occurrence of the file with the given
                 -- file name in the given list of directories
 
-data CachedGlobPath = CDirectory [Glob] CachedGlobPath ModTime [FilePath]
-                    | CFile [Glob] ModTime Hash
+-- | invariant: the lists of pairs above are sorted
+data CachedGlobPath = CSubdirs Glob GlobPath ModTime [(FilePath, CachedGlobPath)]
+                    | CFiles Glob ModTime [(FilePath, ModTime, Hash)]
+                    deriving (Generic, Binary)
 
+-- | 
 data CachedFileSpec = CSingleHashedFile ModTime Hash
                     | CSingleFile ModTime
                     | CGlobHashPath CachedGlobPath
-                    | CSearchPath [FilePath] FilePath (Maybe (FilePath, ModTime))
+                    | CSearchPath [FilePath] FilePath FilePath ModTime
+                      -- ^ @CSearchPath search_paths file_name found_dir mod_time@
+                    deriving (Generic)
+
+instance Binary CachedFileSpec
 
 data FileStatusCache a = FileStatusCache a (Map FilePath CachedFileSpec)
 
-type ChangedT m b = MaybeT (ReaderT b m)
+-- | Does a 'CachedGlobPath' have any relevant files within it?
+hasMatchingFiles :: CachedGlobPath -> Bool
+hasMatchingFiles (CFiles _ _ files) = not $ null files
+hasMatchingFiles (CSubdirs _ _ _ children) = any (hasMatchingFiles . snd) children
 
--- | @a `dropPrefix` b@ tests whether @b@ is a prefix of @a@,
--- return @Just@ the remaining portion of @a@ if so.
-dropPrefix :: String -> String -> Maybe String
-dropPrefix xs     []     = Just xs
-dropPrefix (x:xs) (y:ys)
-  | x == y               = dropPrefix xs ys
-dropPrefix _      _      = Nothing
+data CacheValidity = CacheChanged | CacheUnchanged
 
--- | Test whether a name matches a globbing pattern
-globMatches :: Glob -> String -> Bool
-globMatches [] ""                 = True
-globMatches (Literal lit:rest) s
-  | Just s' <- s `dropPrefix` lit = globMatches rest s'
-globMatches [WildCard] ""         = True
-globmatches (WildCard:rest) xs    =
-    globMatches rest xs || globmatches (WildCard:rest) (tail xs)
+allCacheUnchanged :: [CacheValidity] -> CacheValidity
+allCacheUnchanged xs
+  | null [() | CacheChanged <- xs] = CacheUnchanged
+  | otherwise                      = CacheChanged
 
-runChangedT :: b -> ChangedT m b () -> m (Changed b)
-runChangedT cached action =
-    maybe Changed NotChanged res <$> runReaderT (runMaybeT action) cached
+type ChangedT = State.StateT CacheValidity (MaybeT IO)
+
+somethingChanged :: ChangedT a
+somethingChanged = lift $ MaybeT $ return Nothing
+
+cacheChanged :: ChangedT ()
+cacheChanged = State.put CacheChanged
 
 -- |
 -- We may need to update the cache since there may be changes in the filesystem
@@ -111,52 +109,100 @@ checkFileStatusChanged statusCacheFile root = do
                            (return . Just)
                        =<< Binary.decodeFileOrFail statusCacheFile
     case mfileCache of
-      Nothing -> return True
-      Just (FileStatusCache cachedValued fileCache) ->
-        runMaybeOrChanged
-        $ runStateT (probe cachedValue (M.fromList fileCache)) fileCache
+      Nothing -> return Changed
+      Just (FileStatusCache cachedValue fileCache) -> do
+         res <- runMaybeT
+                $ State.runStateT (Map.traverseWithKey probe fileCache)
+                                  CacheUnchanged
+         case res of
+           Nothing -> return Changed
+           Just (cache', CacheChanged) ->
+             --writeCache stateCacheFile $ FileStatusCache cachedValue cache'
+             return (Unchanged cachedValue)
+           Just (_, CacheUnchanged) -> return (Unchanged cachedValue)
   where
-    probe :: [(FilePath, CachedFileSpec)]
-          -> StateT FileStatusCache (MaybeT (ReaderT a IO)) (Changed a)
-    probe [] = Unchanged `fmap` ask
-    probe ((file, CSingleFile mtime) : specs) = do
+    -- | Returns whether the returned cache matches the previous cache
+    probe :: FilePath -> CachedFileSpec
+          -> ChangedT CachedFileSpec
+    probe file cached@(CSingleFile mtime) = do
       same <- liftIO $ probeModificationTime file mtime
-      if same
-        then probe specs
-        else return Changed
+      unless same somethingChanged
+      return cached
 
-    probe ((file, CSingleHashedFile mtime hash) : specs) = do
+    probe file cached@(CSingleHashedFile mtime hash) = do
+      probeHashedFile file mtime hash
+      return cached
+
+    probe file (CGlobHashPath globpath) =
+      CGlobHashPath <$> probeGlobPath (root </> file) globpath
+
+    probe file cached@(CSearchPath searchDirs name foundDir mtime) = do
+      file' <- liftIO $ findFile searchDirs name
+      case file' of
+        Just path -> do
+          same <- liftIO $ probeModificationTime path mtime
+          unless same somethingChanged
+          return cached
+        Nothing -> somethingChanged
+
+    probeGlobPath :: FilePath      -- ^ absolute path of the directory we are looking in
+                  -> CachedGlobPath
+                  -> ChangedT CachedGlobPath
+                     -- ^ returns True if previous CachedGlobPath is still valid
+    probeGlobPath dirName (CSubdirs glob globPath mtime children) = do
+        same <- liftIO $ probeModificationTime dirName mtime
+        res <- if same
+                 then sequence [ do cgp' <- probeGlobPath (dirName</>fname) cgp
+                                    return (fname, cgp')
+                               | (fname, cgp) <- children ]
+                 else do names <- filter (globMatches glob) <$> liftIO (getDirectoryContents dirName)
+                         names' <- filterM (liftIO . doesDirectoryExist) names
+                         mapM probeMergeResult
+                                $ mergeBy (\(path1,_) path2 -> compare path1 path2)
+                                          children
+                                          (sort names')
+        return $ CSubdirs glob globPath mtime res
+      where
+        probeMergeResult :: MergeResult (FilePath, CachedGlobPath) FilePath
+                         -> ChangedT (FilePath, CachedGlobPath)
+                            -- ^ Return True if previous CachedGlobPath is still valid
+        -- Only in cached (directory deleted)
+        probeMergeResult (OnlyInLeft (path, cgp))
+          | not (hasMatchingFiles cgp) = return (path, cgp)
+            -- Strictly speaking we should be returning 'CacheChanged' above
+            -- as we should prune the now-missing 'CachedGlobPath'. However
+            -- we currently just leave these now-redundant entries in the
+            -- cache as they cost no IO and keeping them allows us to avoid
+            -- rewriting the cache.
+          | otherwise                  = somethingChanged
+
+        -- Only in current filesystem state (directory added)
+        probeMergeResult (OnlyInRight path) = do
+          cgp <- liftIO $ buildCachedGlobPath root globPath
+          if hasMatchingFiles cgp
+            then somethingChanged
+            else do cacheChanged
+                    return (path, cgp)
+
+        -- Found in path
+        probeMergeResult (InBoth (path, cgp) _) = do
+          cgp' <- probeGlobPath (dirName </> path) cgp
+          return (dirName </> path, cgp')
+
+    probeGlobPath dirName cached@(CFiles glob mtime children) = do
+        same <- liftIO $ probeModificationTime dirName mtime
+        res <- if same
+                 then forM_ children $ \(file, mtime', hash) ->
+                          probeHashedFile file mtime' hash
+                 else somethingChanged
+        return cached -- FIXME?
+
+    probeHashedFile :: FilePath -> ModTime -> Hash -> ChangedT ()
+    probeHashedFile file mtime hash = do
       sameMTime <- liftIO $ probeModificationTime file mtime
-      if sameMTime
-        then probe specs
-        else do sameHash <- liftIO $ probeFileHash file hash
-                if sameHash
-                  then probe specs
-                  else return Changed
-
-    probe ((file, CGlobHashPath globpath) : specs) = do
-      same <- liftIO $ probeGlobPath globpath
-      if same
-        then probe specs
-        else return Changed
-
-    probe ((file, CSearchPath search name file) : specs) = do
-      file' <- liftIO $ findFile search name
-      if file == file'
-        then case file of
-               Just (path, mtime) -> do
-                 same <- liftIO $ probeModificationTime path mtime
-                 if same
-                   then probe specs
-                   else return Changed
-               Nothing -> return Changed
-        else return Changed
-
-    probeGlobPath :: CachedGlobPath
-                  -> StateT FileStatusCache (MaybeT (ReaderT a IO)) (Changed a)
-    probeGlobPath (CDirectory globs rest mtime children) = do
-    probeGlobPath (CFile globs mtime hash) = do
-      f
+      unless sameMTime $ do
+           sameHash <- liftIO $ probeFileHash file hash
+           unless sameHash somethingChanged
 
     probeModificationTime :: FilePath -> ModTime -> IO Bool
     probeModificationTime file mtime =
@@ -174,159 +220,78 @@ checkFileStatusChanged statusCacheFile root = do
 
         return (chash == chash')
 
-updateFileStatusCache :: FilePath   -- ^ cache file path
-                      -> FilePath   -- ^ root directory
-                      -> [FileSpec] -- ^ patterns of interest relative to
-                                    -- root
-                      -> a          -- ^ a cached value dependent upon the
-                                    -- paths identified by the given patterns
-                      -> IO ()      -- ^ did any of these paths change
+buildCachedGlobPath :: FilePath -- ^ the root directory
+                    -> GlobPath
+                    -> IO CachedGlobPath
+buildCachedGlobPath root path = do
+    undefined
 
--- | Given a 'FileStatusCache' and a set of files that we are interested in,
--- check if any of those files have changed. The set of files and the cache
--- are both taken to be relative to the given root directory.
---
--- A change here includes additions or deletions compared to the set of files
--- that we are interested in, and any change in content.
---
--- To make this a bit faster it relies on an assumption: files where the
--- modification timestamps have not chagnged are assumed to have not changed
--- content. On the other hand, if there is change in modification timestamp, a
--- file content hash is checked to see if it's really changed. So in the
--- typical case only file timestamps need to be checked.
---
-checkFileStatusChanged :: FilePath -> FilePath -> IO Bool
-checkFileStatusChanged dir statusCacheFile = do
-    mfileCache <- handleDoesNotExist (\_ -> return Nothing) $
-                    either (\_ -> return Nothing)
-                           (return . Just)
-                       =<< Binary.decodeFileOrFail statusCacheFile
-    case mfileCache of
-      Nothing -> return True
-      Just (FileStatusCache fileCache) ->
-        -- Assume the files we are interested in are all those in the cache.
-        -- So, we go and probe them all.
-        probe (Map.toList fileCache)
+updateFileStatusCache
+    :: (Binary a)
+    => FilePath   -- ^ cache file path
+    -> FilePath   -- ^ root directory
+    -> [FileSpec] -- ^ patterns of interest relative to root
+    -> a          -- ^ a cached value dependent upon the paths identified by
+                  -- the given patterns
+    -> IO ()
+updateFileStatusCache cacheFile root specs cachedValue = do
+    fsc <- genFileStatusCache root specs cachedValue
+    Binary.encodeFile cacheFile fsc
+
+genFileStatusCache
+    :: (Binary a)
+    => FilePath   -- ^ root directory
+    -> [FileSpec] -- ^ patterns of interest relative to root
+    -> a          -- ^ a cached value dependent upon the paths identified by
+                  -- the given patterns
+    -> IO (FileStatusCache a)
+genFileStatusCache root specs cachedValue = do
+    cachedSpecs <- mapM go specs
+    return $ FileStatusCache cachedValue (fold cachedSpecs)
   where
-    probe []                                      = return False
-    probe ((relfile, NoFileExists         :files) = do
-      let file = dir </> relfile
-      exists <- doesFileExist file -- or dir?
+    go :: FileSpec -> IO (Map FilePath CachedFileSpec)
+    go (SingleHashedFile path) = do
+      exists <- doesFileExist path
       if not exists
-        then probe files
-        else return True
-      
-    probe ((relfile, FileInfo mtime chash):files) = do
-      let file = dir </> relfile
-      samemtime <- probeModificationTime file mtime
-      if samemtime
-        then probe files
-        -- Only read the file and calculate the hash if the mtime changed
-        else do
-          samechash <- probeFileHash file chash
-          if samechash
-            then probe files
-            else return True
+        then do fileHash <- readFileHash path
+                mtime <- getModificationTime path
+                return $ Map.singleton path (CSingleHashedFile mtime fileHash)
+        else return Map.empty
 
-    probeModificationTime file mtime =
-      handleDoesNotExist (\_ -> return True) $ do
-       mtime' <- getModificationTime file
-       return (mtime == mtime')
+    go (SingleFile path) = do
+      exists <- doesFileExist path
+      if not exists
+        then do mtime <- getModificationTime path
+                return $ Map.singleton path (CSingleFile mtime)
+        else return Map.empty
 
-    probeFileHash file chash =
-      handleDoesNotExist (\_ -> return True) $ do
-        chash' <- readFileHash file
+    go (GlobHashPath globs) = do
+      undefined
 
-        --TODO: debug only:
-        when (chash == chash') $
-          print ("checkFileStatusChanged", file, chash, chash')
-
-        return (chash == chash')
-{-
-checkFileStatusChanged :: FilePath -> FileStatusCache -> Set FilePath -> IO Bool
-checkFileStatusChanged dir (FileStatusCache fileCache) knownFiles
-
-    -- First check if the cache mentions all the files and only the files we
-    -- are interested in. If so, we go on to probe them all.
-    | Map.keysSet fileCache == knownFiles
-    = probe (Map.toList (fileCache `Map.intersection` knownFiles'))
-
-    -- If not, we can bail out immediately as something has changed.
-    | otherwise
-    = return True
-  where
-    knownFiles' = Map.fromSet (const ()) knownFiles
-
-    probe []                                      = return False
-    probe ((relfile, FileInfo mtime chash):files) = do
-      let file = dir </> relfile
-      mtime' <- getModificationTime file
-      if mtime == mtime'
-        then probe files
-        else do
-          -- Only read the file and calculate the hash if the mtime changed
-          chash' <- readFileHash file
-          if chash == chash'
-            then probe files
-            else return True
--}
-
-
-updateFileStatusCache :: FilePath -> FilePath -> [FilePath] -> IO ()
-updateFileStatusCache dir statusCacheFile knownFiles = do
-    FileStatusCache fileCacheOld <-
-      handleDoesNotExist (\_ -> return emptyFileStatusCache) $
-        either (\_ -> return emptyFileStatusCache)
-               return
-           =<< Binary.decodeFileOrFail statusCacheFile
-
-    -- Go over each of the knownFiles, joined with the old cache
-    -- and return up to date file info, reusing the cache where possible
-    fileCache <- Map.traverseWithKey probe $
-                   leftJoinWith (\_ -> Nothing) (\_ finfo -> Just finfo)
-                                (Map.fromList (map (\k->(k,())) knownFiles))
-                                fileCacheOld
-
-    Binary.encodeFile statusCacheFile (FileStatusCache fileCache)
-  where
-    probe :: FilePath -> Maybe FileInfo -> IO FileInfo
-    probe relfile Nothing = do
-      -- new file, have to get file info
-      let file = dir </> relfile
-      readFileInfo file
-
-    probe relfile (Just finfo@(FileInfo mtime _chash)) = do
-      -- existing file, check file info and update if necessary
-      let file = dir </> relfile
-      mtime' <- getModificationTime file
-      if mtime == mtime'
-        then return finfo
-        else readFileInfo file
-
-leftJoinWith :: Ord k => (a -> c) -> (a -> b -> c)
-             -> Map k a -> Map k b -> Map k c
-leftJoinWith left middle =
-    Map.mergeWithKey (\_ a b -> Just $! middle a b)  -- join the inner
-                     (Map.map left)                  -- include the left outer
-                     (const Map.empty)               -- drop the right
+    go (SearchPath paths name) = do
+      return Map.empty
 
 readFileHash :: FilePath -> IO Hash
 readFileHash file =
     withBinaryFile file ReadMode $ \hnd ->
-      evaluate . hash =<< BS.hGetContents hnd
-    
+      evaluate . Hashable.hash =<< BS.hGetContents hnd
+
+{-
 readFileInfo :: FilePath -> IO FileInfo
 readFileInfo file =
     FileInfo <$> getModificationTime file
              <*> readFileHash file
+-}
 
 handleDoesNotExist :: (IOError -> IO a) -> IO a -> IO a
 handleDoesNotExist =
     handleJust (\ioe -> if isDoesNotExistError ioe then Just ioe else Nothing)
 
+{-
 instance Binary FileInfo where
   put (FileInfo a b) = do put a >> put b
   get = do a <- get; b <- get; return $! FileInfo a b
+-}
 
 instance Binary UTCTime where
   put (UTCTime (ModifiedJulianDay day) tod) = do
@@ -338,17 +303,18 @@ instance Binary UTCTime where
     return $! UTCTime (ModifiedJulianDay day)
                       (fromRational tod)
 
-instance Binary FileStatusCache where
-  put (FileStatusCache fileCache) = do
-    put (0 :: Int) -- version
+instance Binary a => Binary (FileStatusCache a) where
+  put (FileStatusCache cachedValue fileCache) = do
+    put (1 :: Int) -- version
+    put cachedValue
     put fileCache
   get = do
     ver <- get
-    if ver == (0 :: Int)
-      then do fileCache <- get
-              return $! FileStatusCache fileCache
-      -- note, it's ok if the format is wrong to just return empty
-      else return emptyFileStatusCache
+    if ver == (1 :: Int)
+      then do cachedValue <- get
+              fileCache <- get
+              return $! FileStatusCache cachedValue fileCache
+      else fail "FileStatusCache: wrong version"
 
 ---------------------------------------------------------------------
 
@@ -370,4 +336,3 @@ checkValueChanged cacheFile currentValue =
 
 updateValueChangeCache :: (Binary a, Binary b) => FilePath -> a -> b -> IO ()
 updateValueChangeCache path key payload = Binary.encodeFile path (key, payload)
-
