@@ -44,6 +44,8 @@ instance Binary GlobPath
 type SearchPaths = [FilePath]
 
 -- | A description of the the files our cache is interested in.
+--
+-- File paths here are relative to the root directory.
 data FileSpec = SingleHashedFile FilePath
               | SingleFile FilePath
               | GlobHashPath GlobPath
@@ -59,9 +61,12 @@ data CachedGlobPath = CSubdirs Glob GlobPath ModTime [(FilePath, CachedGlobPath)
                     | CFiles Glob ModTime [(FilePath, ModTime, Hash)]
                     deriving (Show, Generic, Binary)
 
--- | 
+-- | The cached status of a file.
+--
+-- All file paths are relative to the root directory.
 data CachedFileSpec = CSingleHashedFile ModTime Hash
                     | CSingleFile ModTime
+                    | CSingleFileNotFound
                     | CGlobHashPath CachedGlobPath
                     | CSearchPath [FilePath] FilePath FilePath ModTime
                       -- ^ @CSearchPath search_paths file_name found_dir mod_time@
@@ -126,23 +131,29 @@ checkFileStatusChanged statusCacheFile root = do
     -- | Returns whether the returned cache matches the previous cache
     probe :: FilePath -> CachedFileSpec
           -> ChangedT CachedFileSpec
+    probe file CSingleFileNotFound = do
+      exists <- liftIO $ doesFileExist (root </> file)
+      if exists
+        then somethingChanged
+        else return CSingleFileNotFound
+
     probe file cached@(CSingleFile mtime) = do
-      same <- liftIO $ probeModificationTime file mtime
+      same <- liftIO $ probeModificationTime (root </> file) mtime
       unless same somethingChanged
       return cached
 
     probe file cached@(CSingleHashedFile mtime hash) = do
-      probeHashedFile file mtime hash
+      probeHashedFile (root </> file) mtime hash
       return cached
 
     probe file (CGlobHashPath globpath) =
       CGlobHashPath <$> probeGlobPath (root </> file) globpath
 
     probe file cached@(CSearchPath searchDirs name foundDir mtime) = do
-      file' <- liftIO $ findFile searchDirs name
+      file' <- liftIO $ findFile (map (root</>) searchDirs) name
       case file' of
         Just path -> do
-          same <- liftIO $ probeModificationTime path mtime
+          same <- liftIO $ probeModificationTime (root </> path) mtime
           unless same somethingChanged
           return cached
         Nothing -> somethingChanged
@@ -208,12 +219,12 @@ checkFileStatusChanged statusCacheFile root = do
 
     probeModificationTime :: FilePath -> ModTime -> IO Bool
     probeModificationTime file mtime =
-      handleDoesNotExist (\_ -> return True) $ do
+      handleDoesNotExist (\_ -> return False) $ do
        mtime' <- getModificationTime file
        return (mtime == mtime')
 
     probeFileHash file chash =
-      handleDoesNotExist (\_ -> return True) $ do
+      handleDoesNotExist (\_ -> return False) $ do
         chash' <- readFileHash file
 
         --TODO: debug only:
@@ -255,20 +266,21 @@ genFileStatusCache root specs cachedValue = do
     go (SingleHashedFile path) = do
       let file = root </> path
       exists <- doesFileExist file
-      if exists
-        then do fileHash <- readFileHash file
-                mtime <- getModificationTime file
-                return $ Map.singleton path (CSingleHashedFile mtime fileHash)
-        else return Map.empty
+      cfs <- if exists
+               then do fileHash <- readFileHash file
+                       mtime <- getModificationTime file
+                       return $ CSingleHashedFile mtime fileHash
+               else return CSingleFileNotFound
+      return $ Map.singleton path cfs
 
     go (SingleFile path) = do
       let file = root </> path
       exists <- doesFileExist file
-      print (file, exists)
-      if exists
-        then do mtime <- getModificationTime file
-                return $ Map.singleton path (CSingleFile mtime)
-        else return Map.empty
+      cfs <- if exists
+               then do mtime <- getModificationTime file
+                       return $ CSingleFile mtime
+               else return CSingleFileNotFound
+      return $ Map.singleton path cfs
 
     go (GlobHashPath globs) = do
       undefined
