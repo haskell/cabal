@@ -36,7 +36,7 @@ type ModTime = UTCTime
 -- | A path specified by file globbing
 data GlobPath = Directory Glob GlobPath
               | File Glob
-              deriving (Generic)
+              deriving (Show, Generic)
 
 instance Binary GlobPath
 
@@ -52,11 +52,12 @@ data FileSpec = SingleHashedFile FilePath
               | SearchPath SearchPaths FilePath
                 -- ^ Find the first occurrence of the file with the given
                 -- file name in the given list of directories
+              deriving (Show)
 
 -- | invariant: the lists of pairs above are sorted
 data CachedGlobPath = CSubdirs Glob GlobPath ModTime [(FilePath, CachedGlobPath)]
                     | CFiles Glob ModTime [(FilePath, ModTime, Hash)]
-                    deriving (Generic, Binary)
+                    deriving (Show, Generic, Binary)
 
 -- | 
 data CachedFileSpec = CSingleHashedFile ModTime Hash
@@ -64,7 +65,7 @@ data CachedFileSpec = CSingleHashedFile ModTime Hash
                     | CGlobHashPath CachedGlobPath
                     | CSearchPath [FilePath] FilePath FilePath ModTime
                       -- ^ @CSearchPath search_paths file_name found_dir mod_time@
-                    deriving (Generic)
+                    deriving (Show, Generic)
 
 instance Binary CachedFileSpec
 
@@ -111,6 +112,7 @@ checkFileStatusChanged statusCacheFile root = do
     case mfileCache of
       Nothing -> return Changed
       Just (FileStatusCache cachedValue fileCache) -> do
+         print fileCache
          res <- runMaybeT
                 $ State.runStateT (Map.traverseWithKey probe fileCache)
                                   CacheUnchanged
@@ -251,17 +253,20 @@ genFileStatusCache root specs cachedValue = do
   where
     go :: FileSpec -> IO (Map FilePath CachedFileSpec)
     go (SingleHashedFile path) = do
-      exists <- doesFileExist path
+      let file = root </> path
+      exists <- doesFileExist file
       if exists
-        then do fileHash <- readFileHash path
-                mtime <- getModificationTime path
+        then do fileHash <- readFileHash file
+                mtime <- getModificationTime file
                 return $ Map.singleton path (CSingleHashedFile mtime fileHash)
         else return Map.empty
 
     go (SingleFile path) = do
-      exists <- doesFileExist path
+      let file = root </> path
+      exists <- doesFileExist file
+      print (file, exists)
       if exists
-        then do mtime <- getModificationTime path
+        then do mtime <- getModificationTime file
                 return $ Map.singleton path (CSingleFile mtime)
         else return Map.empty
 

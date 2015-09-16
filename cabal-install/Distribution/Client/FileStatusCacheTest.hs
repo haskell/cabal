@@ -4,6 +4,7 @@ import Control.Monad.Reader
 import System.FilePath
 import System.Directory
 import System.Posix.Temp
+import Control.Exception
 
 main :: IO ()
 main = do
@@ -36,6 +37,10 @@ write fname contents = do
 getCacheName :: TestM FilePath
 getCacheName = (++".cache") <$> ask
 
+expectChanged, expectUnchanged :: TestM ()
+expectChanged = assertChanged True
+expectUnchanged = assertChanged False
+
 assertChanged :: Bool -> TestM ()
 assertChanged expectChange = do
   res <- checkChanged
@@ -59,7 +64,4 @@ updateCache specs = do
 test :: String -> TestM a -> IO a
 test name action = do
   putStrLn name
-  root <- mkdtemp "filestatus"
-  res <- runReaderT action root
-  removeDirectoryRecursive root
-  return res
+  bracket (mkdtemp "filestatus") removeDirectoryRecursive (runReaderT action)
