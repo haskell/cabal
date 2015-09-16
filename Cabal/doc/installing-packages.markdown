@@ -610,6 +610,14 @@ be controlled with the following command line options.
     be a file or directory. Not all implementations support arbitrary
     package databases.
 
+`--constraints-file=` _file_
+:   Allows a "default" `cabal.config` freeze file to be passed in
+    manually. This file will only be used if one does not exist in the
+    project directory already. Typically, this can be set from the global
+    cabal `config` file so as to provide a default set of partial
+    constraints to be used by projects, providing a way for users to peg
+    themselves to stable package collections.
+
 `--enable-optimization`[=_n_] or `-O`[_n_]
 :   (default) Build with optimization flags (if available). This is
     appropriate for production use, taking more time to build faster
