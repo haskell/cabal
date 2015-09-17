@@ -288,33 +288,6 @@ packageDesc :: PackageEntry -> GenericPackageDescription
 packageDesc (NormalPackage  _ descr _ _) = descr
 packageDesc (BuildTreeRef _ _ descr _ _) = descr
 
--- | Read a compressed \"00-index.tar.gz\" file into a 'PackageIndex'.
---
--- This is supposed to be an \"all in one\" way to easily get at the info in
--- the Hackage package index.
---
--- It takes a function to map a 'GenericPackageDescription' into any more
--- specific instance of 'Package' that you might want to use. In the simple
--- case you can just use @\_ p -> p@ here.
---
-
-{-
-readPackageIndexFile :: Package pkg
-                     => (PackageEntry -> pkg)
-                     -> FilePath
-                     -> IO (PackageIndex pkg, [Dependency])
-readPackageIndexFile mkPkg indexFile = do
-  (mkPkgs, prefs) <- either fail return
-                     . parsePackageIndex
-                     . maybeDecompress
-                     =<< BS.readFile indexFile
-
-  pkgEntries  <- sequence mkPkgs
-  pkgs <- evaluate $ PackageIndex.fromList (map mkPkg pkgEntries)
-  return (pkgs, prefs)
-
--}
-
 -- | Parse an uncompressed \"00-index.tar\" repository index file represented
 -- as a 'ByteString'.
 --
@@ -413,14 +386,12 @@ updatePackageIndexCacheFile verbosity indexFile cacheFile = do
                  . maybeDecompress
                =<< BS.readFile indexFile
     entries <- lazySequence pkgsOrPrefs
-    let cache = mkCache entries
+    let cache = map toCache entries
     writeFile cacheFile (showIndexCache cache)
   where
     toCache (Pkg (NormalPackage pkgid _ _ blockNo)) = CachePackageId pkgid blockNo
     toCache (Pkg (BuildTreeRef refType _ _ _ blockNo)) = CacheBuildTreeRef refType blockNo
     toCache (Dep d) = CachePreference d
-
-    mkCache = map toCache
 
 data ReadPackageIndexMode = ReadPackageIndexStrict
                           | ReadPackageIndexLazyIO
