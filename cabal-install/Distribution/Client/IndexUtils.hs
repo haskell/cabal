@@ -61,13 +61,13 @@ import Distribution.Simple.Utils
          ( die, warn, info, fromUTF8, ignoreBOM )
 
 import Data.Char   (isAlphaNum)
-import Data.Maybe  (mapMaybe, fromMaybe)
+import Data.Maybe  (mapMaybe)
 import Data.List   (isPrefixOf)
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid (Monoid(..))
 #endif
 import qualified Data.Map as Map
-import Control.Monad (MonadPlus(mplus), when, liftM)
+import Control.Monad (when, liftM)
 import Control.Exception (evaluate)
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.ByteString.Lazy.Char8 as BS.Char8
