@@ -18,7 +18,6 @@ module Distribution.Client.IndexUtils (
   getSourcePackagesStrict,
   convert,
 
-  --readPackageIndexFile,
   parsePackageIndex,
   readRepoIndex,
   updateRepoIndexCache,
